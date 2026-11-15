@@ -534,8 +534,9 @@ export function buildSheetRow(
   const boxDims = pick<Pick<SpecMeasure, "values">>([
     { value: spec.boxDims, kind: "request" },
     { value: sheet ? dimsMeasure(sheet.lengthCm, sheet.widthCm, sheet.heightCm) : null, kind: "order" },
-    { value: neg ? dimsMeasure(neg.lengthCm, neg.widthCm, neg.heightCm) : null, kind: "negotiation" },
-    { value: bk ? dimsMeasure(bk.lengthCm, bk.widthCm, bk.heightCm) : null, kind: "book" },
+    /* As medidas do Book (e da negociação, que as copia) são da PEÇA, não da
+       caixa master (dono, 15/11/2026; docs/SUPPLIER_REQUESTS.md): não entram
+       aqui; vão para "Medidas da peça". */
     {
       value: product && tech
         ? (dimsMeasure(product.boxLengthCm, product.boxWidthCm, product.boxHeightCm) ??
@@ -562,9 +563,7 @@ export function buildSheetRow(
     { value: sheet?.cbmPerCarton, kind: "order", calc: false },
     { value: cbmFrom(sheet), kind: "order", calc: true },
     { value: neg?.cbmPerCarton, kind: "negotiation", calc: false },
-    { value: cbmFrom(neg), kind: "negotiation", calc: true },
     { value: bk?.cbmPerCarton, kind: "book", calc: false },
-    { value: cbmFrom(bk), kind: "book", calc: true },
     { value: tech ? product?.cbm : null, kind: "current", calc: false },
     {
       value: tech && product
@@ -816,6 +815,9 @@ export function buildSheetRow(
   } else {
     const dims = pick<Pick<SpecMeasure, "values">>([
       { value: tech && variant ? dimsMeasure(variant.lengthCm, variant.widthCm, variant.heightCm) : null, kind: "variant" },
+      // Book e negociação: SIZE LENGTH/WIDTH/HEIGHT são as medidas da peça.
+      { value: neg ? dimsMeasure(neg.lengthCm, neg.widthCm, neg.heightCm) : null, kind: "negotiation" },
+      { value: bk ? dimsMeasure(bk.lengthCm, bk.widthCm, bk.heightCm) : null, kind: "book" },
       { value: tech && product ? dimsMeasure(product.lengthCm, product.widthCm, product.heightCm) : null, kind: "current" },
     ]);
     measureFields.push(

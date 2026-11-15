@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 import { realName } from "@/lib/placeholder-name";
 import { can } from "@/lib/auth/function-access";
 
@@ -423,7 +424,7 @@ export async function getOrderSignatureView(
   const reqs = await signatureRequirements(order.id);
   const wellmix = parseSignature(reqs.wellmix);
   const supplier = parseSignature(reqs.supplier);
-  const open = order.status !== "CANCELLED" && order.status !== "CLOSED";
+  const open = isOrderOpen(order.status);
   const stageActive = async (req: Requirement | null) => {
     if (!req || req.status === "done") return false;
     const stage = await store.get("stages", req.stageId);

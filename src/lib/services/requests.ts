@@ -29,6 +29,13 @@ import { emitProcessEvent } from "./process-engine";
 import { isHiddenByBooking } from "./booking-visibility";
 import { notifyWellmix } from "./notifications";
 import { quoteSlaDeadline } from "@/lib/sla";
+import { can } from "@/lib/auth/function-access";
+import {
+  ORDER_ORIGINS,
+  demandChannel,
+  demandKind,
+} from "@/lib/purchase-demand";
+import { isStockCustomer } from "./stock-party";
 import { effectiveMoq, isPieceUnit } from "@/lib/moq";
 
 export class RequestError extends Error {}
@@ -56,6 +63,8 @@ export interface CreateRequestInput {
   number?: number | null;
   /** Variação escolhida do produto (docs/PRODUCT_VARIANTS.md). */
   variantId?: string | null;
+  /** Data desejada (encomenda e reposição; docs/PURCHASE_DEMAND.md). */
+  desiredAt?: string | null;
 }
 
 /** Um produto do lote: vira uma solicitação própria. */
@@ -83,7 +92,7 @@ export async function createRequestBatch(
   user: User,
   base: Pick<
     CreateRequestInput,
-    "customerId" | "deadline" | "notes" | "requestedForUserId"
+    "customerId" | "deadline" | "notes" | "requestedForUserId" | "desiredAt"
   >,
   items: RequestBatchItem[],
   /**
@@ -91,7 +100,7 @@ export async function createRequestBatch(
    * o id de cada solicitação, escolhido antes por quem chama, na ordem dos
    * produtos.
    */
-  internal: { ids?: string[] } = {},
+  internal: { ids?: string[]; cart?: boolean } = {},
 ): Promise<Request[]> {
   if (!items.length) throw new Error("no_products");
   const groupId = items.length > 1 ? randomUUID() : null;
@@ -117,12 +126,17 @@ export async function createRequestBatch(
           origin:
             item.sourcingDemand && !item.productId
               ? "sourcing_demand"
-              : "manual",
+              : internal.cart
+                ? "cart"
+                : "manual",
           groupId,
           schedule: item.schedule ?? null,
           number,
         },
-        internal.ids?.[index] ? { id: internal.ids[index] } : {},
+        {
+          ...(internal.ids?.[index] ? { id: internal.ids[index] } : {}),
+          ...(internal.cart ? { cart: true } : {}),
+        },
       );
       created.push(request);
       number ??= request.number ?? undefined;
@@ -337,16 +351,38 @@ export async function createRequest(
    * `ownOrder` = recompra, o produto é o de um pedido que o cliente já tem;
    * `id` = o id que a solicitação vai ter, escolhido antes.
    */
-  internal: { ownOrder?: boolean; id?: string } = {},
+  internal: {
+    ownOrder?: boolean;
+    id?: string;
+    cart?: boolean;
+    /** Reposição aberta pelo Planner: o produto inteiro, sem variação. */
+    anyVariant?: boolean;
+  } = {},
 ): Promise<Request> {
   const store = getStore();
   const settings = await getSettings();
+  const origin = input.origin ?? "manual";
+  const stock = isStockCustomer(input.customerId);
   if (user.role === "customer") {
     if (!settings.customerCanCreateRequest) throw new ForbiddenError();
     if (input.customerId !== user.partyId) throw new ForbiddenError();
   } else if (!isWellmix(user)) {
     throw new ForbiddenError();
+  } else if (
+    !stock &&
+    (ORDER_ORIGINS as readonly string[]).includes(origin) &&
+    !can(user, "demand.createForCustomer")
+  ) {
+    // Encomenda lançada pela Wellmix em nome do cliente (mapa B14; dono,
+    // 15/11/2026): o vendedor e quem tem a ação em Funções e acessos.
+    throw new ForbiddenError();
   }
+  // Porta de entrada da encomenda (vitrine, cliente, vendedor, operador).
+  const channel = demandChannel(user, {
+    origin,
+    cart: internal.cart,
+    stock,
+  });
   // Cliente só pede produto do catálogo que ele pode ver: existe, está ativo
   // e não está escondido (docs/SUPPLIER_REQUESTS.md). A mesma recusa nos
   // três casos (não dá para descobrir se um produto existe), antes de olhar
@@ -371,7 +407,11 @@ export async function createRequest(
     );
   }
   // Produto com variações: a variação é obrigatória, do produto e ativa.
-  const variant = await resolveRequestVariant(input.productId, input.variantId);
+  const variant = await resolveRequestVariant(
+    input.productId,
+    input.variantId,
+    internal.anyVariant,
+  );
   // Pedido mínimo do produto do catálogo (da variação, quando há): conferido
   // antes de gastar número.
   await assertProductMoq(
@@ -424,7 +464,7 @@ export async function createRequest(
     sellPrice: null,
     sellCurrency: null,
     downPaymentAmount: null,
-    origin: input.origin ?? "manual",
+    origin,
     sourceOrderId: input.sourceOrderId ?? null,
     notes: input.notes ?? null,
     // Só vai ao banco quando há lote (coluna opcional; antes dela existir, nada muda).
@@ -440,6 +480,9 @@ export async function createRequest(
     ...(ownerUserId ? { ownerUserId } : {}),
     // Id escolhido antes por quem chama (só o servidor).
     ...(internal.id ? { id: internal.id } : {}),
+    // Compra por demanda (colunas opcionais): a porta e a data desejada.
+    ...(channel ? { channel } : {}),
+    ...(input.desiredAt ? { desiredAt: input.desiredAt } : {}),
   } as const;
   let request: Request;
   try {
@@ -458,7 +501,13 @@ export async function createRequest(
     "request.create",
     "request",
     request.id,
-    `Solicitação: ${request.productName}`,
+    `${
+      demandKind(request) === "replenishment"
+        ? "Reposição"
+        : demandKind(request) === "order" && !stock
+          ? `Encomenda${channel ? ` (${channel})` : ""}`
+          : "Solicitação"
+    }: ${request.productName}`,
   );
   // Sourcing sob demanda: produto ainda não catalogado vira item de sourcing para o time na China.
   // Sourcing em espera (decisão do dono): a solicitação nasce igual, mas não
@@ -516,9 +565,17 @@ export async function createRequest(
       link: `/app/sourcing?tab=items&status=draft`,
     });
   }
+  // Encomenda ou reposição recebida (docs/PURCHASE_DEMAND.md): a Wellmix
+  // fica sabendo (e-mail e WhatsApp simulados).
   await notifyWellmix({
     kind: "action",
-    subject: `Nova solicitação${request.number ? ` nº ${request.number}` : ""}: ${request.productName}`,
+    subject: `${
+      demandKind(request) === "replenishment"
+        ? "Reposição nova"
+        : stock
+          ? "Nova solicitação"
+          : "Encomenda nova"
+    }${request.number ? ` nº ${request.number}` : ""}: ${request.productName}`,
     body: `${request.quantity.toLocaleString("pt-BR")} ${request.unit}.`,
     link: `/app/requests/${request.id}`,
   });
@@ -533,11 +590,13 @@ export async function createRequest(
 async function resolveRequestVariant(
   productId: string | null | undefined,
   variantId: string | null | undefined,
+  anyVariant = false,
 ): Promise<ProductVariant | null> {
   if (!productId) return null;
   const variants = await listProductVariants(productId);
   if (!variantId) {
-    if (variants.length) throw new RequestError("variant_required");
+    if (variants.length && !anyVariant)
+      throw new RequestError("variant_required");
     return null;
   }
   const variant = variants.find((v) => v.id === variantId) ?? null;

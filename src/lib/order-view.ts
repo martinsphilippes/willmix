@@ -1,5 +1,10 @@
 import type { Requirement, Role, Stage, StageKey, User } from "@/lib/db";
 import { isPartner, isWellmix } from "@/lib/auth/permissions";
+import {
+  MILESTONE_KEYS,
+  milestoneOfRequirement,
+  type MilestoneKey,
+} from "@/lib/milestones";
 import type { OrderPartKey } from "@/lib/order-parts";
 
 /*
@@ -91,3 +96,114 @@ export function partRowFor(
 ): boolean {
   return seesWholeFlow(user) || ORDER_PART_ROLES[part].includes(user.role);
 }
+
+/*
+ * Fase 5c (docs/MILESTONES.md): a tela do pedido de cliente, fornecedor e
+ * parceiros mostra os marcos no lugar da tabela "Etapas do pedido". Quem vê
+ * cada item continua igual: o item do papel do login, os itens que andam
+ * junto com os dele (a mesma etapa do motor, que ainda libera os itens até a
+ * fase 5d) e, para o parceiro, os marcos que ele precisa ler. O que muda é o
+ * agrupamento (pelo marco gravado no item, `requirements.milestoneKey`) e a
+ * leitura do parceiro, por marco no lugar das etapas (PARTNER_READ_STAGES).
+ */
+
+/** Marcos que o parceiro lê sem agir neles, depois que começam. */
+export const PARTNER_READ_MILESTONES: Partial<
+  Record<Role, readonly MilestoneKey[]>
+> = {
+  // O despachante desembaraça com o BL, o navio e a chegada do embarque.
+  broker: ["shipment"],
+  // Comex e agente de carga acompanham o embarque (BL, navio, chegada).
+  comex: ["shipment"],
+  logistics: ["shipment"],
+};
+
+type ViewStage = Pick<Stage, "id" | "key" | "status" | "responsibleRole">;
+type ViewRequirement = Pick<Requirement, "id" | "stageId" | "key" | "role"> & {
+  milestoneKey?: string | null;
+};
+
+/** Marco do item: o gravado; sem ele, pela etapa e a chave. */
+export function requirementMilestone(
+  r: Pick<ViewRequirement, "key" | "milestoneKey">,
+  stage: Pick<Stage, "key">,
+): MilestoneKey | null {
+  const stored = r.milestoneKey;
+  if (stored && (MILESTONE_KEYS as readonly string[]).includes(stored))
+    return stored as MilestoneKey;
+  return milestoneOfRequirement(stage.key, r.key);
+}
+
+/**
+ * O item aparece para o login? (`stageReqs`: os itens que andam junto com
+ * ele, os da mesma etapa do motor.)
+ */
+export function requirementVisibleTo(
+  user: Pick<User, "role">,
+  r: ViewRequirement,
+  stage: ViewStage,
+  stageReqs: readonly Pick<Requirement, "role">[],
+): boolean {
+  if (stage.key === "CLOSED") return false;
+  if (isWellmix(user)) return true;
+  if (stage.status === "cancelled") return false;
+  // Liberado: o motor já começou o item (até a fase 5d, pela etapa).
+  const released = stage.status !== "pending";
+  if (isPartner(user)) {
+    // O item dele e os que andam junto com os dele, mesmo antes de começar.
+    if (r.role === user.role) return true;
+    if (stageOfRole(stage, stageReqs, user.role)) return true;
+    const milestone = requirementMilestone(r, stage);
+    const reads = PARTNER_READ_MILESTONES[user.role] ?? [];
+    return !!milestone && reads.includes(milestone) && released;
+  }
+  // Cliente e fornecedor: o andamento (o que já começou).
+  return released;
+}
+
+/**
+ * Os itens que o login vê, por marco (na ordem dos 16; dentro do marco, na
+ * ordem das etapas e dos itens). `stages` na ordem do fluxo.
+ */
+export function requirementsByMilestone<R extends ViewRequirement>(
+  user: Pick<User, "role">,
+  stages: readonly ViewStage[],
+  requirements: readonly R[],
+): Map<MilestoneKey, Array<{ r: R; stage: ViewStage }>> {
+  const byStage = new Map<string, R[]>();
+  for (const r of requirements) {
+    const list = byStage.get(r.stageId);
+    if (list) list.push(r);
+    else byStage.set(r.stageId, [r]);
+  }
+  const found = new Map<MilestoneKey, Array<{ r: R; stage: ViewStage }>>();
+  for (const stage of stages) {
+    const reqs = byStage.get(stage.id) ?? [];
+    for (const r of reqs) {
+      if (!requirementVisibleTo(user, r, stage, reqs)) continue;
+      const key = requirementMilestone(r, stage);
+      if (!key) continue;
+      const list = found.get(key);
+      if (list) list.push({ r, stage });
+      else found.set(key, [{ r, stage }]);
+    }
+  }
+  const out = new Map<MilestoneKey, Array<{ r: R; stage: ViewStage }>>();
+  for (const key of MILESTONE_KEYS) {
+    const list = found.get(key);
+    if (list) out.set(key, list);
+  }
+  return out;
+}
+
+/** Marco em que cada parte do pedido aparece na tela do parceiro. */
+export const ORDER_PART_MILESTONE: Record<OrderPartKey, MilestoneKey> = {
+  sheet: "new-order",
+  certification: "certification",
+  artwork: "art",
+  document: "contract",
+  supplier_payment: "down-payment",
+  production: "production",
+  import: "shipment",
+  receiving: "delivery",
+};

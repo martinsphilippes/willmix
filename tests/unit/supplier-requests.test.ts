@@ -627,6 +627,46 @@ describe("produto da solicitação aprovada", () => {
     ).toBeNull();
   });
 
+  it("medidas do Book são da peça: vão ao produto; a caixa master fica sem medida e o CBM é o do Book", async () => {
+    // Dono, 15/11/2026: com as medidas da peça na caixa master, o CBM da
+    // caixa era recalculado pelo volume da peça (0,0016 no lugar de 0,12).
+    const store = getStore();
+    const product = await import("@/lib/services/supplier-request-product");
+    const { request, itemA } = await approvedWithAlternative("PM");
+    const lineId = (await store.list("product_lines"))[0].id;
+    // Book: peça 10 × 8 × 20 cm; caixa master de 48 peças com 0,12 m³.
+    expect([
+      itemA.lengthCm,
+      itemA.widthCm,
+      itemA.heightCm,
+      itemA.cbmPerCarton,
+    ]).toEqual([10, 8, 20, 0.12]);
+    const created = await product.createProductFromRequest(admin, request.id, {
+      name: "Garrafa PM 500 ml",
+      lineId,
+      itemIds: [],
+    });
+    const saved = (await store.get("products", created.id))!;
+    expect([saved.lengthCm, saved.widthCm, saved.heightCm]).toEqual([
+      10, 8, 20,
+    ]);
+    expect([saved.boxLengthCm, saved.boxWidthCm, saved.boxHeightCm]).toEqual([
+      null,
+      null,
+      null,
+    ]);
+    expect([saved.cbm, saved.masterBoxQty]).toEqual([0.12, 48]);
+    const [master] = await store.list("purchase_sheets", {
+      filter: { orderId: created.id },
+    });
+    expect(master.cbmPerCarton).toBe(0.12);
+    expect([master.lengthCm, master.widthCm, master.heightCm]).toEqual([
+      null,
+      null,
+      null,
+    ]);
+  });
+
   it("associa a um produto existente sem esconder e não toma item de outro produto", async () => {
     const store = getStore();
     const product = await import("@/lib/services/supplier-request-product");

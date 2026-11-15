@@ -6,8 +6,8 @@ import {
   getStore,
   type Division,
   type JobLevel,
+  type OrderMilestone,
   type Role,
-  type Stage,
   type StageKey,
   type User,
 } from "@/lib/db";
@@ -16,10 +16,16 @@ import { ForbiddenError } from "@/lib/auth/permissions";
 import { isOffFlowStage } from "@/lib/workflow/stages";
 import {
   MILESTONE_KEYS,
-  milestoneOfItems,
-  milestoneOfStatus,
+  MILESTONE_STAGES,
   type MilestoneKey,
 } from "@/lib/milestones";
+import { isOrderOpen } from "@/lib/order-status";
+import {
+  milestonePendingKey,
+  openMilestoneRows,
+  pendingByMilestone,
+} from "./milestone-due";
+import { storedMilestone } from "./order-milestones";
 import {
   daysUntil,
   dueBucket,
@@ -88,17 +94,22 @@ export interface SlaPerson {
   /** Divisão que a pessoa atende (Wellmix ou WellKids). */
   division: Division | null;
   counts: SlaCounts;
-  /** Etapas concluídas nos últimos 30 dias: no prazo / total com prazo. */
+  /** Marcos concluídos nos últimos 30 dias: no prazo / total com prazo. */
   onTime: { done: number; total: number };
 }
 
-/** Etapa concluída nos últimos 30 dias (com prazo): a linha do indicador "no prazo". */
+/**
+ * Marco do pedido concluído nos últimos 30 dias (com prazo): a linha do
+ * indicador "no prazo". Desde a fase 5c, de `order_milestones` (prazo e
+ * conclusão gravados); antes era a etapa.
+ */
 export interface SlaStage {
   orderId: string;
   orderNumber: number;
   link: string;
-  stageKey: StageKey;
-  /** Marco da etapa (`milestoneOfStatus`), o que a tela mostra (fase 4c). */
+  /** Etapa antiga (antes da fase 5c); os marcos não têm. */
+  stageKey?: StageKey;
+  /** Marco concluído. */
   milestone: MilestoneKey | null;
   dueAt: string;
   completedAt: string;
@@ -291,14 +302,14 @@ export async function slaBoardFor(
     (i) => visible.has(i.ownerId) || (admin && i.ownerId === UNASSIGNED),
   );
 
-  // Etapas concluídas nos últimos 30 dias (com prazo): no prazo ou não.
+  // Marcos concluídos nos últimos 30 dias (com prazo): no prazo ou não.
   const since = new Date(now.getTime() - 30 * 86_400_000).toISOString();
   const doneStages = recentStages.filter(
     (s) =>
       !!s.completedAt &&
       !!s.dueAt &&
       s.completedAt >= since &&
-      !isOffFlowStage(s.key),
+      !isOffFlowMilestone(s.key),
   );
   const orderIds = [...new Set(doneStages.map((s) => s.orderId))];
   const orders = orderIds.length
@@ -376,8 +387,7 @@ export async function slaBoardFor(
         orderId: s.orderId,
         orderNumber: order?.number ?? 0,
         link: `/app/orders/${s.orderId}`,
-        stageKey: s.key,
-        milestone: milestoneOfStatus(s.key),
+        milestone: storedMilestone(s.key),
         dueAt: s.dueAt!,
         completedAt: s.completedAt!,
         onTime: onTimeDay(s.completedAt!, s.dueAt!),
@@ -414,13 +424,8 @@ async function partnerDelays(
   >
 > {
   const store = getStore();
-  // Só as colunas usadas (~13 mil etapas em andamento).
-  const stages = await listColumns(
-    store,
-    "stages",
-    ["orderId", "key", "dueAt", "status"],
-    { filter: { status: ["active", "blocked"] } },
-  );
+  // Fase 5c: os marcos em andamento gravados (prazo de `order_milestones`).
+  const rows = await openMilestoneRows();
   // Nomes só dos parceiros que aparecem (antes: a tabela inteira, ~32 mil).
   const partyNames = new Map<string, string>();
   const loadNames = async (ids: Array<string | null | undefined>) => {
@@ -438,21 +443,15 @@ async function partnerDelays(
     return { daysLeft, due: dueBucket(daysLeft) };
   };
 
-  // Etapas vencidas esperando parceiro.
-  const lateStages = stages.filter(
-    (s) => !isOffFlowStage(s.key) && late(s.dueAt).due === "overdue",
+  // Marcos vencidos esperando parceiro.
+  const lateRows = rows.filter(
+    (m) => !isOffFlowMilestone(m.key) && late(m.dueAt).due === "overdue",
   );
-  if (lateStages.length) {
-    const [orders, reqs] = await Promise.all([
-      store.list("orders", {
-        filter: { id: [...new Set(lateStages.map((s) => s.orderId))] },
-      }),
-      store.list("requirements", {
-        filter: {
-          stageId: lateStages.map((s) => s.id),
-          status: ["pending", "rejected"],
-        },
-      }),
+  if (lateRows.length) {
+    const orderIds = [...new Set(lateRows.map((m) => m.orderId))];
+    const [orders, pending] = await Promise.all([
+      store.list("orders", { filter: { id: orderIds } }),
+      pendingByMilestone(orderIds),
     ]);
     await loadNames(
       orders.flatMap((o) => [
@@ -469,20 +468,13 @@ async function partnerDelays(
       ]),
     );
     const orderById = indexBy(orders, "id");
-    for (const s of lateStages) {
-      const order = orderById.get(s.orderId);
-      if (!order || order.status === "CANCELLED") continue;
-      const roles = [
-        ...new Set(
-          reqs
-            .filter(
-              (r) =>
-                r.stageId === s.id &&
-                !(WELLMIX_ROLES as readonly string[]).includes(r.role),
-            )
-            .map((r) => r.role),
-        ),
-      ];
+    for (const m of lateRows) {
+      const order = orderById.get(m.orderId);
+      if (!order || !isOrderOpen(order.status)) continue;
+      const partnerReqs = (
+        pending.get(milestonePendingKey(m.orderId, m.key)) ?? []
+      ).filter((r) => !(WELLMIX_ROLES as readonly string[]).includes(r.role));
+      const roles = [...new Set(partnerReqs.map((r) => r.role))];
       if (!roles.length) continue;
       const field: Partial<Record<Role, keyof typeof order>> = {
         supplier: "supplierId",
@@ -499,28 +491,19 @@ async function partnerDelays(
       const parties = roles
         .map((r) => (field[r] ? name(order[field[r]!] as string | null) : null))
         .filter(Boolean);
-      const { daysLeft, due } = late(s.dueAt);
-      const partnerReqs = reqs.filter(
-        (r) =>
-          r.stageId === s.id &&
-          !(WELLMIX_ROLES as readonly string[]).includes(r.role),
-      );
+      const { daysLeft, due } = late(m.dueAt);
       out.push({
         source: "partner",
         kind: "partner_stage",
         title: `Pedido #${order.number}`,
         detail: partnerReqs.map((r) => withoutPlaceholder(r.label)).join(", "),
         link: `/app/orders/${order.id}`,
-        dueAt: s.dueAt,
+        dueAt: m.dueAt,
         due,
         daysLeft,
         customerId: order.customerId,
         ownerUserId: order.ownerUserId ?? null,
-        stageKey: s.key,
-        milestone: milestoneOfItems(
-          s.key,
-          partnerReqs.map((r) => r.key),
-        ),
+        milestone: storedMilestone(m.key),
         waitingOn: roles,
         waitingParty: parties.length === 1 ? parties[0] : null,
       });
@@ -573,13 +556,27 @@ async function partnerDelays(
 /* ------------------------------------------------------------------------ */
 
 const SLA_DONE_KEY = "sla.done";
-const SLA_DONE_VERSION = 1;
+/**
+ * Formato do indicador. 2 (fase 5c): os marcos concluídos com prazo
+ * (`order_milestones`), no lugar das etapas.
+ */
+const SLA_DONE_VERSION = 2;
 const WINDOW_MS = 30 * 86_400_000;
 
+/** Marco concluído com prazo (a chave é a do marco). */
 type DoneStage = Pick<
-  Stage,
+  OrderMilestone,
   "id" | "orderId" | "key" | "dueAt" | "completedAt"
 >;
+
+/**
+ * Marco fora do fluxo (só etapas fora do fluxo por trás, ex.: o pagamento ao
+ * fornecedor, que tem Contas a pagar): não conta prazo, como a etapa antes.
+ */
+export function isOffFlowMilestone(key: string): boolean {
+  const stages = MILESTONE_STAGES[key as MilestoneKey] ?? [];
+  return stages.length > 0 && stages.every((s) => isOffFlowStage(s));
+}
 
 interface SlaDone {
   version: number;
@@ -589,25 +586,25 @@ interface SlaDone {
 }
 
 /**
- * Refaz o indicador: as etapas concluídas com prazo nos últimos 30 dias.
- * Vale até a primeira delas sair da janela; uma etapa concluída com prazo
- * refaz antes (src/lib/db/summary-dirty.ts).
+ * Refaz o indicador: os marcos concluídos com prazo nos últimos 30 dias.
+ * Vale até o primeiro deles sair da janela; um marco gravado com prazo
+ * refaz antes (`noteMilestoneWrite`, src/lib/db/summary-dirty.ts).
  */
 export async function rebuildSlaDone(now: Date = new Date()): Promise<SlaDone> {
   const store = getStore();
   const rows = await listColumns(
     store,
-    "stages",
+    "order_milestones",
     ["orderId", "key", "dueAt", "completedAt"],
     { filter: { status: "done" } },
-  );
+  ).catch(() => [] as DoneStage[]);
   const since = new Date(now.getTime() - WINDOW_MS).toISOString();
   const stages = rows.filter(
     (s) =>
       !!s.completedAt &&
       !!s.dueAt &&
       s.completedAt >= since &&
-      !isOffFlowStage(s.key),
+      !isOffFlowMilestone(s.key),
   );
   const leaves = stages.map((s) => Date.parse(s.completedAt!) + WINDOW_MS);
   const snapshot: SlaDone = {
@@ -647,7 +644,7 @@ export async function rebuildSlaDone(now: Date = new Date()): Promise<SlaDone> {
   return snapshot;
 }
 
-/** As etapas concluídas com prazo dos últimos 30 dias (indicador pronto). */
+/** Os marcos concluídos com prazo dos últimos 30 dias (indicador pronto). */
 async function readSlaDone(now: Date): Promise<DoneStage[]> {
   const { flushSummaryChanges } = await import("@/lib/db/summary-dirty");
   await flushSummaryChanges();

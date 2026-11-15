@@ -80,7 +80,7 @@ export async function requestNowAction(form: FormData) {
     const variantId = variantSchema.parse(optionalText(form, "variantId"));
     const t = await getT();
     const { requestProductNow } = await import("@/lib/services/cart");
-    const created = await requestProductNow(
+    const { request, salesOrder } = await requestProductNow(
       user,
       id,
       quantity,
@@ -88,7 +88,9 @@ export async function requestNowAction(form: FormData) {
       t,
       variantId,
     );
-    return `/app/requests/${encodeURIComponent(created.id)}?fromCart=1`;
+    return request
+      ? `/app/requests/${encodeURIComponent(request.id)}?fromCart=1`
+      : `/app/explore/cart?sent=1&sale=${salesOrder!.number}`;
   });
 }
 
@@ -157,10 +159,18 @@ export async function checkoutCartAction(form: FormData) {
       .parse(optionalText(form, "notes"));
     const t = await getT();
     const { checkoutCart } = await import("@/lib/services/cart");
-    const created = await checkoutCart(user, { deadline, notes }, t);
+    const { requests: created, salesOrder } = await checkoutCart(
+      user,
+      { deadline, notes },
+      t,
+    );
+    // Pronta entrega (ordem de venda) e encomenda (docs/PURCHASE_DEMAND.md):
+    // a tela mostra as duas coisas que nasceram.
+    const sale = salesOrder ? `&sale=${salesOrder.number}` : "";
     const first = created[0];
+    if (!first) return `/app/explore/cart?sent=1${sale}`;
     return created.length === 1
-      ? `/app/requests/${encodeURIComponent(first.id)}?fromCart=1`
-      : `/app/requests/batch/${encodeURIComponent(first.groupId ?? "")}?created=${created.length}&fromCart=1`;
+      ? `/app/requests/${encodeURIComponent(first.id)}?fromCart=1${sale}`
+      : `/app/requests/batch/${encodeURIComponent(first.groupId ?? "")}?created=${created.length}&fromCart=1${sale}`;
   });
 }

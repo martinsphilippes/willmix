@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 
 import { translator } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -37,6 +38,7 @@ import {
 export type TaskKind =
   | "booking_invite"
   | "new_request"
+  | "replenishment_request"
   | "requirement"
   | "review"
   | "after_sales"
@@ -326,6 +328,7 @@ export function requirementWaiting(
 const KIND_ORDER: string[] = [
   "booking_invite",
   "new_request",
+  "replenishment_request",
   "supplier_request",
   "sampling_validate",
   "freight_quote",
@@ -811,13 +814,21 @@ export async function pendingTasksFor(
 
   const { getSettings } = await import("@/lib/settings");
   const flowSettings = await getSettings();
-  // Solicitação nova do cliente (a RFQ e a cotação saíram em 11/11/2026).
+  // Encomenda nova do cliente e reposição (docs/PURCHASE_DEMAND.md): esperam
+  // a estratégia de compra.
   for (const request of newRequests)
     tasks.push(
       finish(
         {
-          kind: "new_request",
-          title: `Solicitação nova: ${request.productName}`,
+          kind:
+            request.origin === "replenishment"
+              ? "replenishment_request"
+              : "new_request",
+          title: `${
+            request.origin === "replenishment"
+              ? "Reposição"
+              : "Encomenda nova"
+          }: ${request.productName}`,
           detail: `${request.quantity.toLocaleString("pt-BR")} ${request.unit}`,
           link: `/app/requests/${request.id}`,
           dueAt: request.deadline,
@@ -1982,7 +1993,7 @@ export async function heldTasksFor(
       filter: { held: true },
     })
   )
-    .filter((o) => o.held && o.status !== "CLOSED" && o.status !== "CANCELLED")
+    .filter((o) => o.held && isOrderOpen(o.status))
     .sort((a, b) => b.number - a.number);
   if (!held.length) return empty;
   const pages = Math.max(1, Math.ceil(held.length / HELD_TASKS_PAGE));

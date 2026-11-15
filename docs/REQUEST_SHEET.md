@@ -48,14 +48,14 @@ A especificação gravada na solicitação é lida linha por linha (`src/lib/req
 - **Identificação** (Wellmix): Código (SKU), Código no Sankhya, Código na fábrica, EAN, NCM (o da solicitação, senão o do pedido, do Book ou da ficha atual), Linha do produto, Marca. Para todos: Variação, Descrição e Observação (da solicitação).
 - **Especificações:** as linhas da especificação (seção 2) e os complementos da ficha atual.
 - **Exigências da linha do produto** (quando a linha tem): os atributos que a ficha deve ter (cada um com o valor achado ou "Não informado") e as certificações exigidas.
-- **Medidas e pesos da peça:** as medidas da especificação com eixos e unidade; sem elas, as da variação ou da ficha atual (comprimento × largura × altura do cadastro). Peso líquido e bruto por peça.
+- **Medidas e pesos da peça:** as medidas da especificação com eixos e unidade; sem elas, as da variação, da negociação, do Book (SIZE LENGTH/WIDTH/HEIGHT do Book são as medidas da **peça**, decisão do dono de 15/11/2026, docs/SUPPLIER_REQUESTS.md) ou da ficha atual (comprimento × largura × altura do cadastro). Peso líquido e bruto por peça.
 
 ### Embalagem e cubagem
 
 - **Total de peças:** a soma da programação gravada (selo "Programação", com a lista "2 programações: 1.000 + 1.000"); sem programação, a quantidade da solicitação. Em caixas (unidade CX, CTN…), peças = caixas × peças por caixa (Calculado). Se a quantidade gravada na solicitação for diferente da soma da programação, a linha mostra o aviso e a ficha usa a programação.
 - **Peças por embalagem interna** e **peças por caixa master** (solicitação → variação → pedido → negociação → Book → ficha atual).
 - **Quantidade de caixas master (Calculado):** com programação, uma conta por programação, cada uma em caixas inteiras para cima (a regra do gerador: `cartonsFromPieces`), e a soma; sem programação, peças ÷ peças por caixa, para cima. Em caixas, é a quantidade gravada.
-- **Medidas da caixa master** (comprimento × largura × altura) e **cubagem por caixa**: o CBM gravado na fonte; sem ele, das medidas da caixa da mesma fonte (Calculado, "Das medidas da caixa (fonte)").
+- **Medidas da caixa master** (comprimento × largura × altura) e **cubagem por caixa**: o CBM gravado na fonte; sem ele, das medidas da caixa da mesma fonte (Calculado, "Das medidas da caixa (fonte)"). As medidas da caixa vêm só do texto da solicitação, da ficha de compra do pedido e da ficha atual: o Book e a negociação não trazem as da caixa (as deles são da peça), então o CBM deles é o gravado, nunca o volume da peça.
 - **Cubagem total (Calculado):** caixas × cubagem por caixa, em m³ com 4 casas.
 - **Pedido mínimo (peças)** (Wellmix): o da variação; senão o da ficha mestre ou do cadastro.
 

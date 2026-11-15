@@ -8,7 +8,11 @@ import { getSettings } from "@/lib/settings";
 import { quoteSlaDeadline } from "@/lib/sla";
 import { brazilDay } from "@/lib/supplier-terms";
 import { canBuyOnStorefront } from "@/lib/services/catalog-explore";
-import { cartView, type CartView } from "@/lib/services/cart";
+import {
+  cartFulfilment,
+  cartView,
+  type CartView,
+} from "@/lib/services/cart";
 import { checkoutCartAction, cartLineAction } from "@/app/app/actions/cart";
 import { brl, CartIcon, PhotoPlaceholder } from "@/components/explore-ui";
 import { CartLineForm } from "@/components/cart-line-form";
@@ -56,6 +60,19 @@ export default async function CartPage({
   const input =
     "rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
   const lines = cart?.lines ?? [];
+  // O que cada item vira ao enviar (docs/PURCHASE_DEMAND.md): pronta entrega
+  // (ordem de venda) ou encomenda. Só os itens que vão ser enviados.
+  const fulfilment = await cartFulfilment(
+    lines.filter((l) => !l.unavailable && !l.variantUnavailable),
+  ).catch(() => new Map<string, "ready" | "order">());
+  const readyCount = [...fulfilment.values()].filter(
+    (v) => v === "ready",
+  ).length;
+  const orderCount = [...fulfilment.values()].filter(
+    (v) => v === "order",
+  ).length;
+  const saleNumber =
+    typeof sp.sale === "string" && /^\d{1,9}$/.test(sp.sale) ? sp.sale : null;
   // Erros do item (mostrados no próprio item, sem trocar de tela).
   const lineErrors: Record<string, string> = {
     cart_quantity_invalid: t("explore.error.cart_quantity_invalid"),
@@ -89,6 +106,13 @@ export default async function CartPage({
         </div>
       </div>
       {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
+      {sp.sent === "1" && saleNumber ? (
+        <div role="status" data-cart-sale-sent={saleNumber}>
+          <Alert tone="success">
+            {t("demand.cart.saleSent", { n: saleNumber })}
+          </Alert>
+        </div>
+      ) : null}
       {!canBuy ? <Alert tone="warning">{t("explore.disabled")}</Alert> : null}
 
       {!cart ? null : !lines.length ? (
@@ -186,6 +210,23 @@ export default async function CartPage({
                           </p>
                         </div>
                       </div>
+                      {fulfilment.get(line.id) ? (
+                        <p
+                          className={cx(
+                            "mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-semibold",
+                            fulfilment.get(line.id) === "ready"
+                              ? "bg-emerald-50 text-emerald-800"
+                              : "bg-amber-50 text-amber-800",
+                          )}
+                          data-cart-fulfilment={fulfilment.get(line.id)}
+                        >
+                          {t(
+                            fulfilment.get(line.id) === "ready"
+                              ? "demand.cart.ready"
+                              : "demand.cart.order",
+                          )}
+                        </p>
+                      ) : null}
                       {line.unavailable ? (
                         <p className="mt-2 text-xs font-medium text-amber-800">
                           {t("explore.cart.unavailable")}
@@ -267,6 +308,19 @@ export default async function CartPage({
                 <p className="mt-2 text-xs text-zinc-500">
                   {t("explore.cart.partial")}
                 </p>
+              ) : null}
+              {readyCount + orderCount > 0 ? (
+                <div
+                  className="mt-3 space-y-1 rounded-2xl bg-zinc-50 p-3 text-xs text-zinc-700"
+                  data-cart-split={`${readyCount}/${orderCount}`}
+                >
+                  {readyCount > 0 ? (
+                    <p>{t("demand.cart.readyCount", { n: readyCount })}</p>
+                  ) : null}
+                  {orderCount > 0 ? (
+                    <p>{t("demand.cart.orderCount", { n: orderCount })}</p>
+                  ) : null}
+                </div>
               ) : null}
               {canBuy ? (
                 <form action={checkoutCartAction} className="mt-4 space-y-3">

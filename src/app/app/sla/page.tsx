@@ -328,7 +328,7 @@ function StagesTable({
       <tbody>
         {stages.map((s, i) => (
           <tr
-            key={`${s.orderId}-${s.stageKey}-${i}`}
+            key={`${s.orderId}-${s.milestone ?? s.stageKey}-${i}`}
             className={rowClass}
             data-sla-stage={s.onTime ? "on-time" : "late"}
           >

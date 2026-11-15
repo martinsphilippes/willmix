@@ -80,6 +80,8 @@ import {
 import { productPhotoList } from "@/lib/services/product-list";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { galleryProps } from "@/components/photo-gallery-props";
+import { DemandTags } from "@/components/demand-tags";
+import { demandKind, type DemandKind } from "@/lib/purchase-demand";
 
 const BULK_FORM = "requests-bulk-delete";
 
@@ -151,6 +153,10 @@ export default async function RequestsPage({
     ? (sp.situ as RequestSituation)
     : "all";
   const q = typeof sp.q === "string" ? sp.q.slice(0, 120) : "";
+  // Encomenda (B14) ou reposição (B10): etiqueta e filtro (dono, 15/11/2026;
+  // docs/PURCHASE_DEMAND.md).
+  const kindFilter: DemandKind | null =
+    sp.kind === "order" || sp.kind === "replenishment" ? sp.kind : null;
   const today = todayBrazil();
   // Mapas no lugar de buscas na lista inteira a cada linha (auditoria de
   // performance, 14/11/2026: 16 mil solicitações × milhares de parceiros).
@@ -171,6 +177,7 @@ export default async function RequestsPage({
       (r) =>
         !filtering ||
         (inSituation(r, requestDisplayStatus(r, cancelled), situation, today) &&
+          (!kindFilter || demandKind(r) === kindFilter) &&
           matchesRequest(r, customerName(r.customerId), q)),
     );
   const orderIds = [
@@ -270,6 +277,7 @@ export default async function RequestsPage({
     const merged: Record<string, string | null> = {
       situ: situation === "all" ? null : situation,
       q: q || null,
+      kind: kindFilter,
       ...patch,
     };
     for (const [k, v] of Object.entries(merged)) if (v) p.set(k, v);
@@ -385,6 +393,7 @@ export default async function RequestsPage({
     const p = new URLSearchParams();
     if (situation !== "all") p.set("situ", situation);
     if (q) p.set("q", q);
+    if (kindFilter) p.set("kind", kindFilter);
     if (showDeleted) p.set("view", "deleted");
     if (groupId) p.set("group", groupId);
     const value = patch.sort !== undefined ? patch.sort : sortValue;
@@ -424,8 +433,9 @@ export default async function RequestsPage({
             : { body: "help.requests.body", steps: "help.requests.steps" }
         }
         t={t}
-        // Cliente: "Orçamentos", como no menu "Meus pedidos" (a vitrine é o início).
-        title={customer ? t("nav.myQuotes") : t("requests.title")}
+        // Encomendas (dono, 15/11/2026): o mesmo nome do menu, para o
+        // cliente e para a Wellmix.
+        title={t("nav.demands")}
         subtitle={customer ? t("home.welcome", { name: user.name }) : undefined}
         // O cliente cria pela vitrine (cartão abaixo). Outro login que receba
         // a tela (Gestão de telas) só consulta: não cria solicitação.
@@ -661,6 +671,28 @@ export default async function RequestsPage({
               />
             ))}
           </div>
+          <nav
+            className="flex flex-wrap gap-2 text-sm"
+            aria-label={t("demand.filter.kind")}
+            data-demand-kind-filter
+          >
+            {([null, "order", "replenishment"] as const).map((k) => (
+              <a
+                key={k ?? "all"}
+                href={`/app/requests${listQuery({ kind: k })}`}
+                aria-current={kindFilter === k ? "page" : undefined}
+                data-demand-kind={k ?? "all"}
+                className={cx(
+                  "rounded-full border px-3 py-1",
+                  kindFilter === k
+                    ? "border-brand-600 bg-brand-50 font-semibold text-brand-700"
+                    : "border-zinc-200 text-zinc-700 hover:bg-zinc-50",
+                )}
+              >
+                {t(k ? `demand.kind.${k}` : "demand.kind.all")}
+              </a>
+            ))}
+          </nav>
           <div className="flex flex-wrap items-center gap-2">
             <form
               method="get"
@@ -670,6 +702,9 @@ export default async function RequestsPage({
             >
               {situation !== "all" ? (
                 <input type="hidden" name="situ" value={situation} />
+              ) : null}
+              {kindFilter ? (
+                <input type="hidden" name="kind" value={kindFilter} />
               ) : null}
               <Input
                 name="q"
@@ -807,6 +842,7 @@ export default async function RequestsPage({
                       >
                         {t("reqBatch.count", { n: rows.length })}
                       </span>
+                      <DemandTags t={t} request={rows[0]} />
                     </Td>
                     <Td className="tabular-nums">
                       {/* Mesmos dois primeiros produtos do nome; o resto na página do lote. */}
@@ -965,6 +1001,7 @@ export default async function RequestsPage({
                         {r.variant.name}
                       </span>
                     ) : null}
+                    <DemandTags t={t} request={r} />
                   </Td>
                   <Td className="whitespace-nowrap tabular-nums">
                     {r.quantity} {r.unit}

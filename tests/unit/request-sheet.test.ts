@@ -367,6 +367,10 @@ describe("com negociação, Book, venda e condição do fornecedor", () => {
       incoterm: "FOB",
       masterCartonQty: 200,
       cbmPerCarton: 0.05,
+      // SIZE LENGTH/WIDTH/HEIGHT do Book: medidas da PEÇA (dono, 15/11/2026).
+      lengthCm: 20,
+      widthCm: 10,
+      heightCm: 5,
       analysis: {
         at: "2026-11-15T00:00:00.000Z",
         byUserId: admin.id,
@@ -466,6 +470,18 @@ describe("com negociação, Book, venda e condição do fornecedor", () => {
     expect(fieldOf(row, "payment", "leadTime").value).toBe("45 dias");
     expect(fieldOf(row, "payment", "saleDeposit").value).toMatch(/300,00/);
     expect(fieldOf(row, "payment", "saleTerms").value).toBeNull();
+    // As medidas do Book são da peça: não viram caixa master nem CBM.
+    expect(shown(fieldOf(row, "packing", "boxDims")).value).toBeNull();
+    expect(shown(fieldOf(row, "packing", "cbmPerBox"))).toEqual({
+      value: "0,05 m³",
+      source: "Book nº 77",
+    });
+    const plain = await request(p.id, { specification: null });
+    const [noSpec] = (await sheetOf(admin, plain)).rows;
+    expect(shown(fieldOf(noSpec, "product", "pieceDims"))).toEqual({
+      value: "Comprimento 20 cm · Largura 10 cm · Altura 5 cm",
+      source: "Book nº 77",
+    });
     // O cliente vê a venda e o sinal dele, nunca a compra nem o fornecedor.
     const [mine] = (await sheetOf(joao, r)).rows;
     expect(fieldOf(mine, "values", "saleTotal").value).toMatch(/1\.000,00/);

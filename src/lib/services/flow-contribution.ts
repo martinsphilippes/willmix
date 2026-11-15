@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type {
   ImportStep,
@@ -72,8 +73,7 @@ export interface FlowEntry {
  * Sankhya em espera também (dono, 14/11/2026): aparece na situação real, nos
  * passos em que tem atividade, só sem avisos (docs/SANKHYA.md).
  */
-export const flowLive = (o: Pick<Order, "status">) =>
-  o.status !== "CLOSED" && o.status !== "CANCELLED";
+export const flowLive = (o: Pick<Order, "status">) => isOrderOpen(o.status);
 
 /** Peças da descarga (Armazenagem); o resto (RIC, devolução, fechamento) é Retorno. */
 const STORAGE_PARTS = ["seal", "photos", "checklist", "counts"] as const;

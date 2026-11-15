@@ -230,7 +230,7 @@ describe("carrinho", () => {
   });
 
   it("enviar: cada produto vira uma solicitação no mesmo lote e o carrinho esvazia", async () => {
-    const created = await cart.checkoutCart(
+    const { requests: created } = await cart.checkoutCart(
       joao,
       { deadline: "2026-12-20", notes: "Entrega em Curitiba" },
       t,
@@ -266,7 +266,7 @@ describe("carrinho", () => {
     expect(
       view.lines.find((l) => l.productId === "prod-piscina")!.unavailable,
     ).toBe(true);
-    const created = await cart.checkoutCart(
+    const { requests: created } = await cart.checkoutCart(
       joao,
       { deadline: null, notes: null },
       t,
@@ -282,7 +282,7 @@ describe("carrinho", () => {
 
   it("solicitar agora: só aquele produto, sem mexer no carrinho", async () => {
     await cart.addToCart(joao, "prod-boneca", 2000);
-    const request = await cart.requestProductNow(
+    const { request } = await cart.requestProductNow(
       joao,
       "prod-panela",
       700,
@@ -291,8 +291,8 @@ describe("carrinho", () => {
     );
     expect(request).toMatchObject({ productId: "prod-panela", quantity: 700 });
     // Uma solicitação só (fora de lote).
-    expect(request.groupId ?? null).toBeNull();
-    expect(request.description).toContain("Cor vermelha");
+    expect(request!.groupId ?? null).toBeNull();
+    expect(request!.description).toContain("Cor vermelha");
     const view = await cart.cartView(joao);
     expect(view.lines.map((l) => [l.productId, l.quantity])).toEqual([
       ["prod-boneca", 2000],

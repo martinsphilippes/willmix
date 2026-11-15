@@ -284,7 +284,7 @@ describe("sourcing sob demanda", () => {
     expect(notes.some((n) => /^Sourcing sob demanda/.test(n.subject))).toBe(
       false,
     );
-    expect(notes.some((n) => /^Nova solicitação/.test(n.subject))).toBe(true);
+    expect(notes.some((n) => /^Encomenda nova/.test(n.subject))).toBe(true);
   });
 
   it("Sourcing ativo: solicitação sem produto vira item de sourcing e a promoção liga o produto de volta; em espera a pendência some", async () => {

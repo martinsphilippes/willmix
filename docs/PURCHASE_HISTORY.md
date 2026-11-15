@@ -4,7 +4,7 @@ Pedido do dono (14/11/2026, com as fotos da Nova solicitação no iPad, login Co
 
 ## 1. Onde e como funciona
 
-- **Tela:** `/app/requests/new`. Em telas grandes (a partir de 1024 px, o iPad deitado e o computador), o card fica na coluna da esquerda, embaixo da busca por foto ou link, e o formulário continua à direita com a largura de sempre. No celular e no iPad em pé (uma coluna só), a ordem é a de sempre: busca, formulário e, por último, o histórico.
+- **Tela:** `/app/requests/new`. Em telas grandes (a partir de 1024 px, o iPad deitado e o computador), o card fica na coluna da **direita**, embaixo da busca por foto ou link (as duas com a largura de sempre), e o formulário fica à esquerda (dono, 15/11/2026; antes a coluna estreita era a da esquerda). No celular e no iPad em pé (uma coluna só), a ordem é a de sempre: busca, formulário e, por último, o histórico.
 - **Sem cliente escolhido:** "Selecione um cliente para ver o histórico."
 - **Ao escolher o cliente:** carrega as 10 compras mais recentes, do mais recente para o mais antigo, com "Carregar mais" (mais 10 por vez) enquanto houver.
 - **Ao trocar o cliente** (ou apagar o nome e digitar outro): a lista anterior some na hora e carrega a do novo cliente; resposta atrasada do cliente anterior é descartada.
@@ -108,3 +108,19 @@ Para o histórico ficar completo: gravar a venda ao cliente nos pedidos (card "V
 - Tela: `src/components/customer-purchase-history.tsx` (o card), `src/components/request-customer-context.tsx` (a grade da tela, com o cliente escolhido no formulário para o card), `request-customer-field.tsx` e `search-picker.tsx` (`onDeselect`: apagar o nome escolhido limpa o cliente), `src/app/app/requests/new/page.tsx` (a grade com a coluna da esquerda).
 - Textos: `src/i18n/modules/purchase-history.ts` (pt/en/zh).
 - Testes: `tests/unit/purchase-history.test.ts` (cliente sem histórico, vários pedidos com "Carregar mais" e a janela lida, venda por pedido e por item, ficha de compra × ficha atual, medida zero, pedido antigo incompleto em caixas, data do Sankhya com e sem a etapa, programação com filho e rodada prevista também no login do cliente, permissões, inclusive o operador sem "Ver valores e margem"); E2E: `tests/e2e/search-pickers.spec.ts` (sem cliente, estoque, escolher, apagar e escolher de novo) e o caminho principal (o pedido de compra novo no topo do histórico da Wellmix SC, o detalhe e o link do pedido).
+
+## 9. Pela API do Sankhya (dono, 15/11/2026)
+
+Para a Wellmix, o card lê o histórico **direto do Sankhya**, na hora, pelo DbExplorer (`DbExplorerSP.executeQuery`), com as views do documento "API consultas pedidos Wellmix" (Amplio, 14/11/2026):
+
+- **Cliente:** o código do Sankhya gravado no cadastro do cliente (`parties.sankhyaCode`), que é o parceiro comprador do pedido (`COD_CLIENTE` = `TGFCAB.CODPARC`). O navegador manda só o cliente do portal; o código sai do cadastro no servidor e só inteiros entram no SQL.
+- **Lista:** `sankhya.VW_AD_PEDCLIENTE_ITEM_WELL`, um registro por pedido (`GROUP BY NUNOTA, DATA_PEDIDO`, `ORDER BY DATA_PEDIDO DESC, NUNOTA DESC`), pendentes e sem pendência, de todas as empresas e TOPs do cliente. 10 por vez; "Carregar mais" lê o topo de novo com mais linhas (até 500 pedidos), sem cursor de data. Cada linha: NUNOTA, NUMNOTA, data, pendência (PEDIDO_PENDENTE), TOP com a descrição, empresa, valor total (VALOR_TOTAL_PEDIDO_BRL, contado uma vez por pedido) e o número de itens.
+- **Itens** (ao tocar no pedido): a mesma view com `COD_CLIENTE` e `NUNOTA` no filtro, 100 por vez (`SEQUENCIA >` a última) até vir menos de 100. Produto (CODPROD, descrição, referência, referência do fornecedor, NCM), unidade, quantidade pedida e entregue, preço unitário antes do desconto (PRECO_UNITARIO_BRL), desconto, preço unitário e total após desconto e o container do item.
+- **Permissões:** só a Wellmix com a tela Solicitações; os valores só com "Ver valores e margem" (`canSeeMoney`). O login do cliente continua com o histórico gravado no portal (só os pedidos que ele pediu; o Sankhya não sabe quem pediu).
+- **Sem o Sankhya configurado** ou **cliente sem código do Sankhya**: o card avisa e mostra o histórico gravado no portal (seções 1 a 8). Erro do Sankhya: a mensagem dele, com "Tentar de novo".
+- **Requisito no ERP:** o usuário do token do gateway precisa de acesso ao DbExplorer e às views (o documento diz que a chamada com o token do portal não foi testada pela Amplio). A view de compras por fornecedor (`VW_AD_PEDCOMPRA_ITEM_WELL`) ainda não é usada nesta tela.
+- Código: `src/lib/services/sankhya-customer-history.ts` (SQL e leitura), `src/app/api/purchase-history/sankhya/route.ts` (GET `?customer=&shown=` ou `&nunota=`), `src/components/sankhya-purchase-history.tsx` (o card). Testes: `tests/unit/sankhya-customer-history.test.ts`.
+
+## 10. Produto do catálogo só para leitura (dono, 15/11/2026)
+
+Na Nova solicitação, ao escolher um produto do catálogo, nada da ficha se altera: descrição e especificação aparecem à direita da busca, só para ler, e o nome não se repete (fica no campo da busca). O servidor grava os textos da ficha (`productTexts` e `variantSpecificationText` em `src/lib/services/request-product-fill.ts`), ignorando o que vier diferente no formulário. Produto com nome de exemplo ("Produto novo XPTO") e produto fora do catálogo: os campos continuam editáveis.

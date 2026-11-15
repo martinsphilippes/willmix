@@ -30,7 +30,13 @@ import {
   type DocumentType,
 } from "@/lib/db";
 import { isLocale } from "@/i18n";
-import { LOCALE_COOKIE } from "@/i18n/server";
+import { LOCALE_COOKIE, getT } from "@/i18n/server";
+import { realName } from "@/lib/placeholder-name";
+import {
+  productTexts,
+  variantSpecificationText,
+} from "@/lib/services/request-product-fill";
+import { variantsByProduct } from "@/lib/services/product-variants";
 import {
   createRequestBatch,
   addProductsToRequest,
@@ -72,7 +78,7 @@ import {
 } from "./actions/helpers";
 import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
 import { itemIdOf } from "@/lib/purchase-lanes";
-import { parseRequestItems } from "./actions/request-items";
+import { assertSameSchedule, parseRequestItems } from "./actions/request-items";
 import { scheduleTotal } from "@/lib/workflow/request-schedule";
 
 /* ------------------------------------------------------------------------ */
@@ -138,14 +144,21 @@ export async function createRequestAction(form: FormData) {
       const store = getStore();
       const rows = parseRequestItems(form);
       if (!rows.length) throw new Error("no_products");
+      assertSameSchedule(rows);
       const items: RequestBatchItem[] = [];
       // Booking: produtos ainda escondidos do cliente (uma consulta só, e só
       // quando um login de fora da Wellmix manda produto sem nome).
       let hiddenByBooking: Set<string> | null = null;
+      // Fichas do catálogo (textos no idioma de quem envia, como na tela).
+      const t = await getT();
       for (const row of rows) {
         let productName = row.productName;
+        let description = row.description;
+        let specification = row.specification;
+        const product = row.productId
+          ? await store.get("products", row.productId)
+          : null;
         if (row.productId && !productName) {
-          const product = await store.get("products", row.productId);
           // Fora da Wellmix, o nome só é copiado de produto que o cliente pode
           // ver (existe, ativo e não escondido pelo Booking). A mesma recusa
           // nos três casos: não dá para descobrir se um produto existe.
@@ -158,7 +171,30 @@ export async function createRequestAction(form: FormData) {
           }
           productName = product?.name ?? "";
         }
-        const parsed = requestItemSchema.parse({ ...row, productName });
+        // Produto do catálogo (dono, 15/11/2026): nome, descrição e
+        // especificação são os da ficha, não editáveis na tela; o que vier
+        // diferente no formulário é ignorado. Nome de exemplo ("Produto novo
+        // XPTO"): quem pede preenche, como antes.
+        if (product && realName(product.name)) {
+          const texts = productTexts(t, product);
+          productName = texts.productName;
+          description = texts.description;
+          specification = texts.specification || null;
+          if (row.variantId) {
+            const variant = (await variantsByProduct([product.id]))
+              .get(product.id)
+              ?.find((v) => v.id === row.variantId);
+            if (variant)
+              specification =
+                variantSpecificationText(t, product, variant) || null;
+          }
+        }
+        const parsed = requestItemSchema.parse({
+          ...row,
+          productName,
+          description,
+          specification,
+        });
         items.push({
           productId: parsed.productId ?? null,
           variantId: parsed.productId ? (parsed.variantId ?? null) : null,

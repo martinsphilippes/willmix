@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { isOrderOpen } from "@/lib/order-status";
 import type { User } from "@/lib/db/schema";
 import { getStore } from "@/lib/db";
 import { isWellmix } from "@/lib/auth/permissions";
@@ -125,7 +126,7 @@ export const flowReceivingCasesFor = cache(
 );
 
 /** Pedidos em andamento (os encerrados e cancelados não entram). */
-const LIVE = (status: string) => status !== "CLOSED" && status !== "CANCELLED";
+const LIVE = (status: string) => isOrderOpen(status);
 
 /**
  * Pré-produção (mapa, P12 → R1): pedido de compra com o sinal pago (ou a
@@ -428,7 +429,7 @@ async function loadFlowAll(
   // O histórico em espera também: na situação real, só sem avisos.
   const orders = (
     await store.list("orders", onlyIds ? { filter: { id: onlyIds } } : {})
-  ).filter((o) => o.status !== "CLOSED" && o.status !== "CANCELLED");
+  ).filter((o) => isOrderOpen(o.status));
   if (!orders.length) return empty;
   const orderById = new Map(orders.map((o) => [o.id, o]));
   const ids = orders.map((o) => o.id);
@@ -561,7 +562,7 @@ export async function flowStepEntities(
   }
   if (!ids) {
     const live = (await getStore().list("orders")).filter(
-      (o) => !o.held && o.status !== "CLOSED" && o.status !== "CANCELLED",
+      (o) => !o.held && isOrderOpen(o.status),
     );
     const all =
       (
@@ -891,11 +892,7 @@ export const flowPartnerAllFor = cache(
     if (!mine.size) return new Map();
     const store = getStore();
     const orders = (await store.list("orders")).filter(
-      (o) =>
-        !o.held &&
-        o.status !== "CLOSED" &&
-        o.status !== "CANCELLED" &&
-        canViewOrder(user, o),
+      (o) => !o.held && isOrderOpen(o.status) && canViewOrder(user, o),
     );
     if (!orders.length) return new Map();
     const ids = orders.map((o) => o.id);

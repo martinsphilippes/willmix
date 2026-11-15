@@ -290,6 +290,18 @@ export default async function SettingsPage({
                       <option value="false">{t("common.no")}</option>
                     </Select>
                   </Field>
+                  <Field
+                    label={t("settings.label.autoReplenishmentByStock")}
+                    hint={t("settings.hint.autoReplenishmentByStock")}
+                  >
+                    <Select
+                      defaultValue="false"
+                      disabled
+                      data-auto-replenishment
+                    >
+                      <option value="false">{t("common.no")}</option>
+                    </Select>
+                  </Field>
                   <Field label={t("settings.label.agencyValidationEnabled")}>
                     <Select
                       name="agencyValidationEnabled"

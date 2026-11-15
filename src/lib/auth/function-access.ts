@@ -39,6 +39,10 @@ export const ACTION_GROUPS = [
       "approval.executive_director",
       "purchaseOrder.generate",
       "purchaseOrder.salesNotice",
+      // Compra por demanda (dono, 15/11/2026; docs/PURCHASE_DEMAND.md):
+      // lançar a encomenda em nome do cliente (B14) e abrir a reposição (B10).
+      "demand.createForCustomer",
+      "replenishment.open",
     ],
   },
   {
@@ -129,6 +133,16 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
       return withScreen("quotes");
     case "purchaseOrder.generate":
       return withScreen("quotes", "orders");
+    // Encomenda em nome do cliente (mapa B14): Vendas e quem já abria a tela
+    // de solicitações (o padrão não tira nada de ninguém).
+    case "demand.createForCustomer":
+      return [
+        "sales",
+        ...withScreen("requests").filter((f) => f !== "sales"),
+      ];
+    // Reposição aberta à mão (mapa B10): o Planner.
+    case "replenishment.open":
+      return ["planner"];
     // Assinar o contrato pela Wellmix: só as diretorias (decisão do dono,
     // 13/11/2026; mapa do processo, P11: a Diretoria de compras aprova). O
     // administrador muda em Equipe → Funções e acessos.
@@ -186,9 +200,61 @@ export interface StoredFunctions {
     name?: string | null;
     screens?: unknown;
     actions?: unknown;
+    /**
+     * Ações que existiam quando a função foi gravada. Ação nova depois disso
+     * vale pelo padrão do código até o administrador salvar a função de novo
+     * (sem a lista: as ações de antes de 15/11/2026, `LEGACY_ACTIONS`).
+     */
+    knownActions?: unknown;
     baseOff?: unknown;
     archived?: boolean;
   }>;
+}
+
+/**
+ * Ações que existiam antes da lista `knownActions` (15/11/2026). Funções
+ * gravadas antes dela recebem as ações novas pelo padrão do código.
+ */
+export const LEGACY_ACTIONS: readonly string[] = [
+  "supplierRequest.decide",
+  "sampling.validate",
+  "dumping.release",
+  "approval.planner",
+  "approval.purchasing_director",
+  "approval.executive_director",
+  "purchaseOrder.generate",
+  "purchaseOrder.salesNotice",
+  "art.validate",
+  "art.design",
+  "contract.sign",
+  "order.cancel",
+  "realMedia.approve",
+  "approve.productManager",
+  "approve.buyer",
+  "approve.planner",
+  "approve.purchasingDirector",
+  "numerario.manage",
+  "receiving.follow",
+  "container.tracking",
+  "receiving.quality",
+  "values.view",
+  "sale.record",
+];
+
+/** Ações gravadas mais as novas (que a função ainda não conhecia) pelo padrão. */
+function storedActions(
+  key: WellmixFunction,
+  actions: unknown,
+  known: unknown,
+): ActionKey[] {
+  const knownList = Array.isArray(known)
+    ? (known as unknown[]).filter((a): a is string => typeof a === "string")
+    : LEGACY_ACTIONS;
+  const saved = validActions(actions);
+  const fresh = defaultActionsFor(key).filter(
+    (a) => !knownList.includes(a) && !saved.includes(a),
+  );
+  return ACTION_KEYS.filter((a) => saved.includes(a) || fresh.includes(a));
 }
 
 /** Chave de função criada: "fn_" e o nome sem acento, em minúsculas. */
@@ -248,7 +314,7 @@ export function resolveFunctions(stored: unknown): FunctionDef[] {
           : [...FUNCTION_SCREENS[key]],
       actions:
         s?.actions !== undefined
-          ? validActions(s.actions)
+          ? storedActions(key, s.actions, s.knownActions)
           : defaultActionsFor(key),
       baseOff: validBaseOff(s?.baseOff),
       archived: false,

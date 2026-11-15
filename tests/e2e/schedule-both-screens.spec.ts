@@ -39,7 +39,11 @@ async function snapshot(scope: Locator) {
 async function generate(scope: Locator, cartons: string, rounds: string) {
   const gen = scope.locator("[data-rounds-generator]");
   await gen.locator("[data-generate-total]").fill(cartons);
-  await gen.locator("[data-generate-rounds]").fill(rounds);
+  // Nova solicitação: o número de datas é o do pedido (campo travado).
+  const roundsField = gen.locator("[data-generate-rounds]");
+  if ((await roundsField.getAttribute("readonly")) === null)
+    await roundsField.fill(rounds);
+  else await expect(roundsField).toHaveValue(rounds);
   await gen.locator("[data-generate-submit]").click();
 }
 
@@ -96,6 +100,11 @@ test("Programação de compra: a mesma entrada nas duas telas e 13 datas gravada
   await picker.locator('[data-product-picker-option="prod-boneca"]').click();
   await expect(line.locator('[role="status"]').first()).toBeVisible();
   await expect(line.locator('[data-generate-item="ok"]')).toBeVisible();
+  // As datas são do pedido (dono, 15/11/2026): 2 programações no bloco do
+  // pedido; o gerador do produto reparte as caixas nelas.
+  const planCount = page.locator("[data-order-plan-count]");
+  await planCount.fill("2");
+  await planCount.blur();
   await generate(line, "300", "2");
   await expect(line.locator("[data-schedule-item]")).toHaveCount(2);
   expect(await snapshot(line)).toEqual(selection);

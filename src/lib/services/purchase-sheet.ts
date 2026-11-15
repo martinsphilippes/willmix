@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 
 import { formatAmount } from "@/lib/workflow/money";
 import { formatNcm, normalizeNcm } from "@/lib/fiscal";
@@ -633,11 +634,7 @@ export async function saveSheet(
   // vai só o que este salvamento mudou (salvar o NCM de um pedido antigo não
   // devolve ao cadastro o preço e a caixa daquela compra); pedido encerrado
   // ou cancelado não mexe no cadastro.
-  if (
-    access.editSupplier &&
-    order.status !== "CLOSED" &&
-    order.status !== "CANCELLED"
-  ) {
+  if (access.editSupplier && isOrderOpen(order.status)) {
     const adopt = isWellmix(user);
     const before = existing as unknown as Record<string, unknown> | undefined;
     const after = sheet as unknown as Record<string, unknown>;

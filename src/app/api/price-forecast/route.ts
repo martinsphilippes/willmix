@@ -1,0 +1,94 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getCurrentUser } from "@/lib/auth/session";
+import { isWellmix } from "@/lib/auth/permissions";
+import { canOpen } from "@/lib/auth/screens";
+import { getStore } from "@/lib/db";
+import { canSeeMoney } from "@/lib/auth/function-access";
+import { getPriceForecastAdapter } from "@/lib/integrations/price-forecast";
+import { cbmFromDimensions } from "@/lib/logistics/cbm";
+
+export const dynamic = "force-dynamic";
+
+const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
+const QUERY = z.object({
+  productId: ID,
+  customerId: ID.optional(),
+  quantity: z
+    .string()
+    .regex(/^\d{1,9}$/)
+    .transform(Number)
+    .optional(),
+  // Preço de venda desejado ao cliente final, por peça (R$).
+  target: z
+    .string()
+    .regex(/^\d{1,9}([.,]\d{1,4})?$/)
+    .transform((v) => Number(v.replace(",", ".")))
+    .refine((n) => n > 0)
+    .optional(),
+});
+
+/**
+ * Previsão de preço ao cliente final de um produto (Nova solicitação;
+ * src/lib/integrations/price-forecast.ts, SuperPlan do Sankhya). Só a
+ * Wellmix. Sem `target`: os preços de venda previstos; com `target` (só com
+ * "Ver valores e margem"): o preço máximo de compra para o preço de venda
+ * desejado. Sem o Sankhya configurado: `{ mode: "manual" }` (nenhum preço).
+ */
+export async function GET(request: Request) {
+  const user = await getCurrentUser();
+  if (!user || !isWellmix(user) || !canOpen(user, "requests"))
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  const params = new URL(request.url).searchParams;
+  const parsed = QUERY.safeParse({
+    productId: params.get("productId") ?? undefined,
+    customerId: params.get("customerId") || undefined,
+    quantity: params.get("quantity") || undefined,
+    target: params.get("target") || undefined,
+  });
+  if (!parsed.success)
+    return NextResponse.json({ error: "invalid_input" }, { status: 400 });
+  const { productId, customerId, quantity, target } = parsed.data;
+  const store = getStore();
+  const [product, customer] = await Promise.all([
+    store.get("products", productId),
+    customerId ? store.get("parties", customerId) : Promise.resolve(null),
+  ]);
+  if (!product)
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  const query = {
+    productId: product.id,
+    sankhyaCode: product.sankhyaCode ?? null,
+    sku: product.sku ?? null,
+    quantity: quantity ?? null,
+    customerId: customer?.type === "customer" ? customer.id : null,
+    customerSankhyaCode:
+      customer?.type === "customer" ? (customer.sankhyaCode ?? null) : null,
+    ncm: product.ncm,
+    netWeightKg: product.netWeightKg,
+    grossWeightKg: product.grossWeightKg,
+    masterBoxQty: product.masterBoxQty,
+    cbmPerCarton:
+      product.cbm && product.cbm > 0
+        ? product.cbm
+        : cbmFromDimensions(
+            product.boxLengthCm,
+            product.boxWidthCm,
+            product.boxHeightCm,
+          ),
+    price: product.price,
+    currency: product.currency,
+  };
+  const money = canSeeMoney(user);
+  // O preço máximo de compra é custo do fornecedor: só com "Ver valores e
+  // margem" (a mesma regra das listas).
+  if (target && !money)
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const adapter = getPriceForecastAdapter(money);
+  const answer = target
+    ? await adapter.solve({ ...query, targetFinalPriceBrl: target })
+    : await adapter.forecast(query);
+  return NextResponse.json(answer, {
+    headers: { "Cache-Control": "private, no-store" },
+  });
+}
