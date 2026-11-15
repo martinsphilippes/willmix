@@ -2,6 +2,7 @@ import { LiveSearch } from "@/components/live-search";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { getStore } from "@/lib/db";
 import { listColumns } from "@/lib/db/lookup";
 import { PartyPicker } from "@/components/party-picker";
@@ -70,6 +71,8 @@ export default async function ProductsPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "products");
+  // Preço de compra: só com "Ver preço de compra" (docs/LINHA_DE_VISAO.md).
+  const seesPrice = canSeePurchasePrice(user);
   const sp = await searchParams;
   const { error, view, deleted, restored, purged, blocked } = sp;
   const filter = readProductFilter(sp);
@@ -411,7 +414,9 @@ export default async function ProductsPage({
                   <Th>SKU</Th>
                   <Th>{t("prodList.col.supplierSku")}</Th>
                   <Th>{t("nav.lines")}</Th>
-                  <Th className="text-right">{t("common.price")}</Th>
+                  {seesPrice ? (
+                    <Th className="text-right">{t("common.price")}</Th>
+                  ) : null}
                   <Th className="text-right">{t("catalog.moq")}</Th>
                   <Th>{t("prodList.col.box")}</Th>
                   <Th>{t("prodList.col.material")}</Th>
@@ -482,24 +487,30 @@ export default async function ProductsPage({
                       </span>
                     </Td>
                     <Td>{lines.find((l) => l.id === p.lineId)?.name ?? "—"}</Td>
-                    <Td className="whitespace-nowrap text-right tabular-nums">
-                      {/* Com variações: o preço é o da variação de referência, "a partir de". */}
-                      {(() => {
-                        const list = variants.get(p.id) ?? [];
-                        const ref = referenceVariant(list);
-                        if (ref && ref.price !== null)
-                          return (
-                            <span data-product-price-from>
-                              {t("productVariants.from", {
-                                price: formatMoney(ref.price, ref.currency, t),
-                              })}
-                            </span>
-                          );
-                        return p.price !== null
-                          ? formatMoney(p.price, p.currency, t)
-                          : "—";
-                      })()}
-                    </Td>
+                    {seesPrice ? (
+                      <Td className="whitespace-nowrap text-right tabular-nums">
+                        {/* Com variações: o preço é o da variação de referência, "a partir de". */}
+                        {(() => {
+                          const list = variants.get(p.id) ?? [];
+                          const ref = referenceVariant(list);
+                          if (ref && ref.price !== null)
+                            return (
+                              <span data-product-price-from>
+                                {t("productVariants.from", {
+                                  price: formatMoney(
+                                    ref.price,
+                                    ref.currency,
+                                    t,
+                                  ),
+                                })}
+                              </span>
+                            );
+                          return p.price !== null
+                            ? formatMoney(p.price, p.currency, t)
+                            : "—";
+                        })()}
+                      </Td>
+                    ) : null}
                     <Td className="text-right tabular-nums">{p.moq ?? "—"}</Td>
                     <Td className="whitespace-nowrap tabular-nums">
                       {p.masterBoxQty !== null || p.cbm !== null ? (

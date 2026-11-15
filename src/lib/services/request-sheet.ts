@@ -16,7 +16,10 @@ import type {
 } from "@/lib/db/schema";
 import { listByIds } from "@/lib/db/lookup";
 import { canViewOrder, isWellmix } from "@/lib/auth/permissions";
-import { canSeeMoney } from "@/lib/auth/function-access";
+import {
+  canSeeMoney,
+  canSeePurchasePrice,
+} from "@/lib/auth/function-access";
 import { cbmFromDimensions } from "@/lib/logistics/cbm";
 import { cartonsFromPieces } from "@/lib/purchase-rounds";
 import {
@@ -59,9 +62,12 @@ import { isBoxUnit, isPieceUnit } from "./purchase-history";
  * Permissões no servidor (o que o perfil não pode ver não sai daqui):
  * - Wellmix: códigos, caixa, medidas, cubagem e a ficha atual (como no
  *   Histórico de compras).
- * - Custo registrado, preço de compra (cotação, negociado, pedido), análise
- *   do Superplan e condições do fornecedor: só Wellmix com "Ver valores e
- *   margem" (`canSeeMoney`).
+ * - Preço de compra (cotação, negociado, pedido, o custo registrado do
+ *   cadastro, que é o da última compra, e as faixas de preço) e condições do
+ *   fornecedor: Wellmix com "Ver preço de compra" ou "Ver valores e margem"
+ *   (`canSeePurchasePrice`; dono, 15/11/2026, docs/LINHA_DE_VISAO.md).
+ * - Análise do Superplan (custo nacionalizado, venda sugerida, margem): só
+ *   Wellmix com "Ver valores e margem" (`canSeeMoney`).
  * - Venda ao cliente e sinal: Wellmix com "Ver valores e margem"; o login do
  *   cliente vê a venda e o sinal das solicitações dele.
  * - O cliente vê só o que a própria solicitação gravou (o texto que ele já
@@ -71,7 +77,12 @@ import { isBoxUnit, isPieceUnit } from "./purchase-history";
 export interface SheetAccess {
   /** Códigos, caixa, medidas, cubagem e a ficha atual do produto. */
   technical: boolean;
-  /** Custo, compra (cotação, negociado, pedido) e condições do fornecedor. */
+  /**
+   * Compra (cotação, negociado, pedido), custo registrado do cadastro (o da
+   * última compra), faixas de preço e condições do fornecedor.
+   */
+  purchase: boolean;
+  /** Análise do Superplan: custo nacionalizado, venda sugerida e margem. */
   cost: boolean;
   /** Venda ao cliente e sinal. */
   sale: boolean;
@@ -82,6 +93,7 @@ export function sheetAccess(user: User): SheetAccess {
   const money = wellmix && canSeeMoney(user);
   return {
     technical: wellmix,
+    purchase: wellmix && canSeePurchasePrice(user),
     cost: money,
     sale: wellmix ? money : user.role === "customer",
   };
@@ -945,28 +957,28 @@ export function buildSheetRow(
 
   // Compra: pedido → negociado → cotação do Book.
   const negotiated =
-    access.cost && negotiation && pos(negotiation.supplierPrice)
+    access.purchase && negotiation && pos(negotiation.supplierPrice)
       ? { amount: negotiation.supplierPrice, currency: negotiation.supplierCurrency, kind: "negotiation" as const }
       : null;
   const pendingProposal = (() => {
-    if (!access.cost || !negotiation?.negotiation?.length) return null;
+    if (!access.purchase || !negotiation?.negotiation?.length) return null;
     const last = negotiation.negotiation[negotiation.negotiation.length - 1];
     return last.kind === "proposal" && pos(last.price)
       ? { amount: last.price, currency: last.currency ?? negotiation.supplierCurrency }
       : null;
   })();
   const quoted =
-    access.cost && book && pos(book.price)
+    access.purchase && book && pos(book.price)
       ? { amount: book.price, currency: book.currency, kind: "book" as const }
-      : access.cost && negotiation && pos(negotiation.item?.price)
+      : access.purchase && negotiation && pos(negotiation.item?.price)
         ? { amount: negotiation.item.price, currency: negotiation.item.currency, kind: "book" as const }
         : null;
   const orderUnit =
-    access.cost && order && pos(orderItem?.unitPrice)
+    access.purchase && order && pos(orderItem?.unitPrice)
       ? { amount: orderItem.unitPrice, currency: fob, kind: "order" as const }
       : null;
   const purchaseUnit = orderUnit ?? negotiated ?? quoted;
-  const purchaseTotal = access.cost
+  const purchaseTotal = access.purchase
     ? order && pos(order.fobTotal) && inputs.orderItemCount <= 1
       ? { amount: order.fobTotal, currency: order.fobCurrency, kind: "order" as const, note: null }
       : purchaseUnit && piecesN
@@ -983,7 +995,7 @@ export function buildSheetRow(
         : null
     : null;
   // Custo registrado: o da variação pedida (copiado na solicitação); senão o da ficha atual.
-  const cost = !access.cost
+  const cost = !access.purchase
     ? null
     : variant && pos(variant.price)
       ? { amount: variant.price, currency: variant.currency, kind: "variant" as const }
@@ -1002,7 +1014,7 @@ export function buildSheetRow(
           }),
         }
       : null;
-  const incoterm = access.cost
+  const incoterm = access.purchase
     ? pick<string>([
         { value: order?.incoterm, kind: "order" },
         { value: sheet?.incoterm, kind: "order" },
@@ -1019,8 +1031,8 @@ export function buildSheetRow(
       title: t("requestSheet.s.sale"),
       fields: [moneyField("saleUnit", saleUnit, true), moneyField("saleTotal", saleTotal, false)],
     });
-  if (access.cost) {
-    const analysis = book?.analysis ?? null;
+  if (access.purchase || access.cost) {
+    const analysis = access.cost ? (book?.analysis ?? null) : null;
     const purchaseFields: SheetField[] = [
       moneyField("quote", quoted, true),
       field(
@@ -1048,9 +1060,9 @@ export function buildSheetRow(
       field("incoterm", L("incoterm"), incoterm?.value ?? null, incoterm?.kind ?? null),
     ];
     const costFields: SheetField[] = [
-      moneyField("cost", cost, true),
+      ...(access.purchase ? [moneyField("cost", cost, true)] : []),
       ...(cost ? [moneyField("costTotal", costTotal, false)] : []),
-      ...(product?.priceTiers?.length
+      ...(access.purchase && product?.priceTiers?.length
         ? [
             field(
               "tiers",
@@ -1090,10 +1102,14 @@ export function buildSheetRow(
           ]
         : []),
     ];
-    valuesSections.push(
-      { key: "purchase", title: t("requestSheet.s.purchase"), fields: purchaseFields },
-      { key: "cost", title: t("requestSheet.s.cost"), fields: costFields },
-    );
+    if (access.purchase)
+      valuesSections.push({
+        key: "purchase",
+        title: t("requestSheet.s.purchase"),
+        fields: purchaseFields,
+      });
+    if (costFields.length)
+      valuesSections.push({ key: "cost", title: t("requestSheet.s.cost"), fields: costFields });
   }
   const valuesGroup: SheetGroup = {
     key: "values",
@@ -1104,7 +1120,7 @@ export function buildSheetRow(
 
   /* ---------- Pagamento ---------- */
   const paymentSections: SheetSection[] = [];
-  if (access.cost) {
+  if (access.purchase) {
     const orderTerms = order?.supplierPaymentTerms?.length ? order.supplierPaymentTerms : null;
     const partyTerms = inputs.supplier?.paymentTerms?.length ? inputs.supplier.paymentTerms : null;
     const terms = orderTerms ?? partyTerms;
@@ -1255,8 +1271,8 @@ export function buildSheetRow(
       boxes: tech ? boxesField : null,
       cbm: tech ? cbmTotalField : null,
       deadline: request.deadline,
-      cost: access.cost ? moneyField("cost", cost, true) : null,
-      purchase: access.cost
+      cost: access.purchase ? moneyField("cost", cost, true) : null,
+      purchase: access.purchase
         ? field(
             "purchase",
             t("requestSheet.col.purchase"),
@@ -1329,7 +1345,7 @@ export async function loadRequestSheet(
   const orderIds = [
     ...new Set(requests.map((r) => r.orderId).filter((v): v is string => !!v)),
   ];
-  const fromProduct = access.technical || access.cost;
+  const fromProduct = access.technical || access.purchase || access.cost;
   const [products, masters, ordersRaw, items, orderSheets, negotiations, books] =
     await Promise.all([
       fromProduct ? listByIds(store, "products", productIds) : Promise.resolve([]),
@@ -1385,14 +1401,14 @@ export async function loadRequestSheet(
           [...bookChoice.values()].map((b) => b?.lotId),
         )
       : Promise.resolve([] as BookingLot[]),
-    access.cost
+    access.purchase
       ? listByIds(store, "parties", [
           ...orders.map((o) => o.supplierId),
           ...[...chosen.values()].map((n) => n?.supplierId),
           ...products.map((p) => p.supplierId),
         ])
       : Promise.resolve([] as Party[]),
-    access.cost
+    access.purchase
       ? listByIds(
           store,
           "payment_conditions",

@@ -60,10 +60,13 @@ export function VariantsCard({
   variants,
   done,
   errorText,
+  showPrice = true,
 }: {
   t: Translate;
   productId: string;
   variants: ProductVariant[];
+  /** Preço de compra da variação: só com "Ver preço de compra" (docs/LINHA_DE_VISAO.md). */
+  showPrice?: boolean;
   /** Resultado da última ação (?variants=saved|added|toggled). */
   done?: string | null;
   /** Erro da última ação (?error=…&from=variants), já traduzido. */
@@ -89,7 +92,12 @@ export function VariantsCard({
         {t("productVariants.add")}
       </summary>
       <div className="mt-3">
-        <VariantForm t={t} productId={productId} variant={null} />
+        <VariantForm
+          t={t}
+          productId={productId}
+          variant={null}
+          showPrice={showPrice}
+        />
       </div>
     </details>
   );
@@ -121,7 +129,11 @@ export function VariantsCard({
                 <Th>{t("productVariants.col.name")}</Th>
                 <Th>{t("productVariants.col.code")}</Th>
                 <Th>{t("productVariants.col.size")}</Th>
-                <Th className="text-right">{t("productVariants.col.price")}</Th>
+                {showPrice ? (
+                  <Th className="text-right">
+                    {t("productVariants.col.price")}
+                  </Th>
+                ) : null}
                 <Th className="text-right">{t("productVariants.col.moq")}</Th>
                 <Th className="text-right">{t("productVariants.col.box")}</Th>
                 <Th className="text-right">
@@ -142,6 +154,7 @@ export function VariantsCard({
                   productId={productId}
                   variant={v}
                   isReference={ref?.id === v.id}
+                  showPrice={showPrice}
                 />
               ))}
             </tbody>
@@ -158,11 +171,13 @@ function VariantRow({
   productId,
   variant: v,
   isReference,
+  showPrice,
 }: {
   t: Translate;
   productId: string;
   variant: ProductVariant;
   isReference: boolean;
+  showPrice: boolean;
 }) {
   return (
     <>
@@ -208,9 +223,11 @@ function VariantRow({
           </span>
         </Td>
         <Td>{v.sizeText ?? "—"}</Td>
-        <Td className="whitespace-nowrap text-right tabular-nums">
-          {v.price !== null ? formatMoney(v.price, v.currency, t) : "—"}
-        </Td>
+        {showPrice ? (
+          <Td className="whitespace-nowrap text-right tabular-nums">
+            {v.price !== null ? formatMoney(v.price, v.currency, t) : "—"}
+          </Td>
+        ) : null}
         <Td className="text-right tabular-nums">{num(v.moq, t, 0) ?? "—"}</Td>
         <Td className="whitespace-nowrap text-right tabular-nums">
           {pair(v.masterBoxQty, v.innerBoxQty, t, 0)}
@@ -256,7 +273,7 @@ function VariantRow({
         </Td>
       </tr>
       <tr>
-        <td colSpan={13} className="px-2 pb-2">
+        <td colSpan={showPrice ? 13 : 12} className="px-2 pb-2">
           <details className="rounded-md bg-zinc-50 px-3 py-1.5">
             <summary className="cursor-pointer text-xs font-medium text-brand-700">
               {t("productVariants.edit")}
@@ -267,6 +284,7 @@ function VariantRow({
                 t={t}
                 productId={productId}
                 variant={v}
+                showPrice={showPrice}
               />
             </div>
           </details>
@@ -303,10 +321,13 @@ function VariantForm({
   t,
   productId,
   variant,
+  showPrice,
 }: {
   t: Translate;
   productId: string;
   variant: ProductVariant | null;
+  /** Sem a permissão, preço e moeda não vão ao formulário (o servidor mantém os gravados). */
+  showPrice: boolean;
 }) {
   const value = (k: keyof ProductVariant) => {
     const v = variant?.[k];
@@ -351,7 +372,7 @@ function VariantForm({
             />,
           ),
         )}
-        {NUMBER_FIELDS.slice(0, 1).map(([k, integer]) =>
+        {(showPrice ? NUMBER_FIELDS.slice(0, 1) : []).map(([k, integer]) =>
           field(
             k,
             <input
@@ -365,18 +386,20 @@ function VariantForm({
             />,
           ),
         )}
-        {field(
-          "currency",
-          <div className="mt-1">
-            <CurrencySelect
-              name="currency"
-              value={variant?.currency ?? null}
-              t={t}
-              allowEmpty
-              dense
-            />
-          </div>,
-        )}
+        {showPrice
+          ? field(
+              "currency",
+              <div className="mt-1">
+                <CurrencySelect
+                  name="currency"
+                  value={variant?.currency ?? null}
+                  t={t}
+                  allowEmpty
+                  dense
+                />
+              </div>,
+            )
+          : null}
         {NUMBER_FIELDS.slice(1).map(([k, integer]) =>
           field(
             k,

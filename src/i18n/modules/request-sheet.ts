@@ -150,9 +150,9 @@ export const pt = {
   "requestSheet.warn.scheduleMismatch":
     "A quantidade gravada na solicitação ({qty}) é diferente da soma da programação ({total}). A ficha usa a programação.",
   "requestSheet.restricted.values":
-    "Custo, compra e venda aparecem só para quem tem “Ver valores e margem” (Gestão → Equipe → Funções e acessos).",
+    "Compra e custo aparecem para quem tem “Ver preço de compra”; venda e margem, para quem tem “Ver valores e margem” (Gestão → Equipe → Funções e acessos).",
   "requestSheet.restricted.payment":
-    "As condições de pagamento aparecem só para quem tem “Ver valores e margem” (Gestão → Equipe → Funções e acessos).",
+    "As condições de pagamento ao fornecedor aparecem para quem tem “Ver preço de compra”; as do cliente, para quem tem “Ver valores e margem” (Gestão → Equipe → Funções e acessos).",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -303,9 +303,9 @@ export const en: Record<keyof typeof pt, string> = {
   "requestSheet.warn.scheduleMismatch":
     "The quantity recorded in the request ({qty}) differs from the schedule total ({total}). The sheet uses the schedule.",
   "requestSheet.restricted.values":
-    "Cost, purchase and sale are shown only to users with “See values and margin” (Functions and access).",
+    "Purchase and cost are shown to users with “See purchase price”; sale and margin to users with “See values and margin” (Functions and access).",
   "requestSheet.restricted.payment":
-    "Payment terms are shown only to users with “See values and margin” (Functions and access).",
+    "Supplier payment terms are shown to users with “See purchase price”; customer terms to users with “See values and margin” (Functions and access).",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -451,7 +451,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "requestSheet.warn.scheduleMismatch":
     "申请中记录的数量（{qty}）与计划合计（{total}）不同。资料以计划为准。",
   "requestSheet.restricted.values":
-    "成本、采购和销售金额仅对拥有“查看金额与毛利”权限的用户显示（职能与权限）。",
+    "采购价和成本对拥有“查看采购价”权限的用户显示；销售和毛利对拥有“查看金额与毛利”权限的用户显示（职能与权限）。",
   "requestSheet.restricted.payment":
-    "付款条件仅对拥有“查看金额与毛利”权限的用户显示（职能与权限）。",
+    "供应商付款条件对拥有“查看采购价”权限的用户显示；客户付款条件对拥有“查看金额与毛利”权限的用户显示（职能与权限）。",
 };

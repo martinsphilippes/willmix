@@ -348,7 +348,7 @@ export function RequestSheetTable({
       label: t("requestSheet.col.deadline"),
       width: "minmax(0,1fr)",
     },
-    ...(access.cost
+    ...(access.purchase
       ? [
           {
             key: "cost",

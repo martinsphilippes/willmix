@@ -110,6 +110,9 @@ export const pt = {
     "Recebe a pendência diária de conferir o status do container de cada pedido de compra, da fábrica até a chegada.",
   "action.receiving.follow": "Acompanhar o recebimento",
   "action.desc.receiving.follow": "Recebe os avisos da conferência no armazém.",
+  "action.purchasePrice.view": "Ver preço de compra",
+  "action.desc.purchasePrice.view":
+    "Ver o preço de compra (Book, negociação, pedido, ficha de compra e cadastro do produto) em todas as telas. Sem ela, as colunas de compra não aparecem e o servidor não envia os valores.",
   "action.values.view": "Ver valores e margem",
   "action.desc.values.view":
     "Ver venda, recebido, custo e margem nas listas, exportações e na Control Tower (registrar pagamentos continua na tela Financeiro).",
@@ -266,6 +269,9 @@ export const en: Record<keyof typeof pt, string> = {
     "Gets the daily task of checking the container status of each purchase order, from the factory to arrival.",
   "action.receiving.follow": "Follow receiving",
   "action.desc.receiving.follow": "Receives the warehouse check notices.",
+  "action.purchasePrice.view": "See purchase price",
+  "action.desc.purchasePrice.view":
+    "See the purchase price (Book, negotiation, order, purchase sheet and product record) on every screen. Without it, the purchase columns are hidden and the server does not send the values.",
   "action.values.view": "See values and margin",
   "action.desc.values.view":
     "See sales, received, cost and margin in lists, exports and the Control Tower (recording payments stays in the Finance screen).",
@@ -407,6 +413,9 @@ export const zh: Record<keyof typeof pt, string> = {
     "每天收到核对每个采购订单集装箱状态的待办，从工厂到到港。",
   "action.receiving.follow": "跟进收货",
   "action.desc.receiving.follow": "接收仓库清点的通知。",
+  "action.purchasePrice.view": "查看采购价",
+  "action.desc.purchasePrice.view":
+    "在所有页面查看采购价（Book、谈判、订单、采购单和产品档案）。没有此权限时，采购相关的列不显示，服务器也不会发送这些数值。",
   "action.values.view": "查看金额与毛利",
   "action.desc.values.view":
     "在列表、导出和控制塔中查看销售、已收、成本和毛利（登记付款仍在财务页面）。",

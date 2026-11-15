@@ -2,6 +2,7 @@ import "server-only";
 
 import { assertWellmix, isWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import {
   BOOKING_PARTNER_TYPES,
   bookingDateOf,
@@ -703,6 +704,10 @@ export async function setBookingItemField(
   raw: string,
 ): Promise<BookingItem> {
   assertBooking(user);
+  // Preço e moeda: editar exige ver o preço de compra (dono, 15/11/2026;
+  // docs/LINHA_DE_VISAO.md).
+  if ((field === "price" || field === "currency") && !canSeePurchasePrice(user))
+    throw new BookingLotError("forbidden");
   const store = getStore();
   const item = await withSchema(() => store.get("booking_items", itemId));
   if (!item) throw new BookingLotError("not_found");

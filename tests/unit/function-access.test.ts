@@ -4,6 +4,8 @@ import {
   accessFromFunctions,
   can,
   canSeeMoney,
+  canSeeOrderPurchasePrice,
+  canSeePurchasePrice,
   customFunctionKey,
   defaultActionsFor,
   holdersOf,
@@ -269,5 +271,112 @@ describe("ação nova numa função já gravada (15/11/2026)", () => {
     expect(can(op(["sales"]), "demand.createForCustomer", defs)).toBe(true);
     expect(can(op(["sales"]), "replenishment.open", defs)).toBe(false);
     expect(can(op(["planner"]), "replenishment.open", defs)).toBe(true);
+  });
+});
+
+describe("Ver preço de compra (dono, 15/11/2026; docs/LINHA_DE_VISAO.md)", () => {
+  it("padrão: Comprador, Gerente de produto, diretorias e Financeiro; o administrador sempre", () => {
+    for (const fn of [
+      "buyer",
+      "product_manager",
+      "purchasing_director",
+      "executive_director",
+      "finance",
+    ])
+      expect(canSeePurchasePrice(op([fn]))).toBe(true);
+    for (const fn of [
+      "planner",
+      "catalog",
+      "designer",
+      "comex_internal",
+      "quality",
+      "sales",
+    ])
+      expect(canSeePurchasePrice(op([fn]))).toBe(false);
+    expect(canSeePurchasePrice({ role: "admin", functions: [] })).toBe(true);
+  });
+
+  it("quem tem Ver valores e margem também vê; o administrador tira e dá pela função", () => {
+    const defs = resolveFunctions({
+      functions: [
+        {
+          key: "designer",
+          actions: ["values.view"],
+          knownActions: [...ACTION_KEYS],
+        },
+        { key: "buyer", actions: [], knownActions: [...ACTION_KEYS] },
+        {
+          key: "catalog",
+          actions: ["purchasePrice.view"],
+          knownActions: [...ACTION_KEYS],
+        },
+      ],
+    });
+    // O login leva o acesso resolvido da requisição (como no servidor).
+    const login = (fn: string) => {
+      const user = op([fn]);
+      attachAccess(user, accessFromFunctions([fn], defs));
+      return user;
+    };
+    // Designer com "Ver valores e margem" vê o preço de compra.
+    expect(canSeePurchasePrice(login("designer"))).toBe(true);
+    // Comprador sem a ação: não vê.
+    expect(canSeePurchasePrice(login("buyer"))).toBe(false);
+    // Cadastro com a ação marcada: vê.
+    expect(canSeePurchasePrice(login("catalog"))).toBe(true);
+  });
+
+  it("função gravada antes da ação nova recebe o padrão do código", () => {
+    const defs = resolveFunctions({
+      functions: [
+        // Gravadas sem a lista de ações conhecidas (antes de 15/11/2026).
+        { key: "buyer", actions: ["receiving.follow"] },
+        { key: "planner", actions: ["approval.planner"] },
+      ],
+    });
+    expect(can(op(["buyer"]), "purchasePrice.view", defs)).toBe(true);
+    expect(can(op(["planner"]), "purchasePrice.view", defs)).toBe(false);
+  });
+
+  it("fora da Wellmix: o fornecedor vê o do pedido dele e o despachante o do pedido; certificadora e cliente nunca", () => {
+    const order = { supplierId: "forn-1", brokerId: "desp-1" };
+    expect(
+      canSeeOrderPurchasePrice(
+        { role: "supplier", functions: [], partyId: "forn-1" },
+        order,
+      ),
+    ).toBe(true);
+    expect(
+      canSeeOrderPurchasePrice(
+        { role: "supplier", functions: [], partyId: "forn-2" },
+        order,
+      ),
+    ).toBe(false);
+    expect(
+      canSeeOrderPurchasePrice(
+        { role: "broker", functions: [], partyId: "desp-1" },
+        order,
+      ),
+    ).toBe(true);
+    expect(
+      canSeeOrderPurchasePrice(
+        { role: "broker", functions: [], partyId: "desp-2" },
+        order,
+      ),
+    ).toBe(false);
+    for (const role of ["ocp", "customer", "agency", "carrier"])
+      expect(
+        canSeeOrderPurchasePrice(
+          { role, functions: [], partyId: "forn-1" },
+          order,
+        ),
+      ).toBe(false);
+    expect(canSeePurchasePrice({ role: "supplier", functions: [] })).toBe(
+      false,
+    );
+    expect(
+      canSeeOrderPurchasePrice(op(["planner"]), order),
+    ).toBe(false);
+    expect(canSeeOrderPurchasePrice(op(["buyer"]), order)).toBe(true);
   });
 });

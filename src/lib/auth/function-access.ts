@@ -81,8 +81,9 @@ export const ACTION_GROUPS = [
   {
     key: "money",
     // Gravar a venda ao cliente por pedido e por produto (dono, 14/11/2026;
-    // docs/ORDER_SALE.md).
-    actions: ["values.view", "sale.record"],
+    // docs/ORDER_SALE.md). Ver o preço de compra (dono, 15/11/2026;
+    // docs/LINHA_DE_VISAO.md, seção 7).
+    actions: ["purchasePrice.view", "values.view", "sale.record"],
   },
 ] as const;
 
@@ -179,6 +180,17 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
       return ["planner"];
     case "approve.purchasingDirector":
       return ["purchasing_director"];
+    // Preço de compra (dono, 15/11/2026; docs/LINHA_DE_VISAO.md): quem
+    // compra e negocia, as diretorias e o Financeiro (paga o fornecedor e
+    // confere a invoice). O administrador muda em Funções e acessos.
+    case "purchasePrice.view":
+      return [
+        "buyer",
+        "product_manager",
+        "purchasing_director",
+        "executive_director",
+        "finance",
+      ];
     // Só o administrador, como antes. A venda ao cliente (dono, 14/11/2026):
     // só o administrador por padrão; ele libera em Funções e acessos.
     case "order.cancel":
@@ -407,6 +419,33 @@ export function can(
  */
 export function canSeeMoney(user: Who): boolean {
   return can(user, "values.view");
+}
+
+/**
+ * Ver o preço de compra (o que a Wellmix paga ao fornecedor: Book,
+ * negociação, pedido, ficha de compra e cadastro do produto) na Wellmix: quem
+ * tem "Ver preço de compra" ou "Ver valores e margem" (o administrador
+ * sempre). Dono, 15/11/2026 (docs/LINHA_DE_VISAO.md, seção 7). Fora da
+ * Wellmix, só pelo contexto (`canSeeOrderPurchasePrice`).
+ */
+export function canSeePurchasePrice(user: Who): boolean {
+  return can(user, "purchasePrice.view") || can(user, "values.view");
+}
+
+/**
+ * Preço de compra de um pedido: a Wellmix pela permissão; o fornecedor do
+ * pedido (é o preço dele) e o despachante do pedido (declara o valor na
+ * importação). A certificadora, o cliente e os outros parceiros nunca.
+ */
+export function canSeeOrderPurchasePrice(
+  user: Who & { partyId?: string | null },
+  order: { supplierId?: string | null; brokerId?: string | null },
+): boolean {
+  if (canSeePurchasePrice(user)) return true;
+  if (!user.partyId) return false;
+  if (user.role === "supplier") return order.supplierId === user.partyId;
+  if (user.role === "broker") return order.brokerId === user.partyId;
+  return false;
 }
 
 /** Server Actions e serviços: recusa (forbidden) quem não tem a ação. */

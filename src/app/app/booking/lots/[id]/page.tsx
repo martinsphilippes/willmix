@@ -1,6 +1,7 @@
 import { EntityTimelineCard } from "@/components/entity-timeline-card";
 import { bookTimeline } from "@/lib/services/entity-timeline";
 import { isWellmix } from "@/lib/auth/permissions";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { PartnerBookingLotView } from "../../_components/partner-booking";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -333,6 +334,12 @@ export default async function BookingLotPage({
     </Select>
   );
 
+  // Preço e moeda do Book: só com "Ver preço de compra" (dono, 15/11/2026;
+  // docs/LINHA_DE_VISAO.md); sem ela as colunas não vão à tela.
+  const seesPrice = canSeePurchasePrice(user);
+  const columns = seesPrice
+    ? COLUMNS
+    : COLUMNS.filter((c) => c.field !== "price" && c.field !== "currency");
   const muted = <span className="text-zinc-400">—</span>;
   const itemCell = (item: BookingItem, col: (typeof COLUMNS)[number]) => {
     // Capacidade: os mililitros ou, sem volume, o tamanho que veio na planilha
@@ -858,7 +865,7 @@ export default async function BookingLotPage({
                     {t("bookingNcm.col")}
                     <span className="text-brand-700"> *</span>
                   </th>
-                  {COLUMNS.map((c) => (
+                  {columns.map((c) => (
                     <th
                       key={c.field}
                       className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap text-zinc-500"
@@ -992,7 +999,7 @@ export default async function BookingLotPage({
                           ) : null}
                         </span>
                       </td>
-                      {COLUMNS.map((c) => (
+                      {columns.map((c) => (
                         <td
                           key={c.field}
                           className="border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800"
