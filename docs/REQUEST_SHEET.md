@@ -1,15 +1,18 @@
 # Ficha completa da solicitação (seção "Solicitações")
 
-Pedido do dono (15/11/2026, com a foto da Solicitação nº 1 do bastão lança-bolhas no iPad, login Comprador / Operador Wellmix): a tabela da seção "Solicitações" cortava colunas e só repetia o texto da especificação. Agora cada produto tem uma linha com os dados principais e, na própria linha, **"Ver ficha completa"**, com tudo o que o portal já sabe do produto: o que a solicitação gravou, o pedido, a negociação, o Book e a ficha atual do cadastro, cada dado com a origem.
+Pedido do dono (15/11/2026, com a foto da Solicitação nº 1 do bastão lança-bolhas no iPad, login Comprador / Operador Wellmix): a tabela da seção "Solicitações" cortava colunas e só repetia o texto da especificação. Agora cada produto tem uma linha com os dados principais e **"Ver ficha completa"**, com tudo o que o portal já sabe do produto: o que a solicitação gravou, o pedido, a negociação, o Book e a ficha atual do cadastro, cada dado com a origem.
+
+Revisão do dono (15/11/2026, modelo "Linha de visão de produto", `docs/LINHA_DE_VISAO.md`): a ficha completa abre **em linha horizontal**, não em quadros embaixo da linha. O botão fica no alto da tabela e abre todas as linhas juntas (opção A); no celular, a linha resumida é um cartão e a ficha completa é a mesma linha horizontal, rolando dentro da tabela.
 
 ## 1. Onde e como funciona
 
 - **Tela:** `/app/requests/<id>`, cartão "Solicitações".
-- **Uma linha por produto:** esta solicitação e, se ela faz parte de um lote (Nova solicitação com vários produtos), as outras do lote que o login vê, na ordem em que foram criadas. A linha desta solicitação diz "Esta solicitação"; as outras abrem a própria tela por "Abrir a solicitação" dentro da ficha.
-- **Dados principais na linha:** produto (nome, SKU e variação), total de peças, caixas master, cubagem total, prazo de resposta, custo registrado, compra por peça e venda. Cada um aparece só para quem pode ver (seção 4).
-- **"Ver ficha completa" / "Ocultar ficha":** abre a ficha logo abaixo da linha, na largura toda do cartão, em quatro grupos: **Produto**, **Embalagem e cubagem**, **Valores** e **Pagamento**. Sem JavaScript (`<details>`).
-- **Largura:** a tabela não corta colunas. Pela largura do cartão (container query), a partir de ~900 px as linhas viram colunas com cabeçalho; no iPad (com o menu aberto) e no celular, cada linha vira um cartão com o título de cada dado, e a ficha usa a largura toda (dois grupos lado a lado quando cabe, um embaixo do outro no celular).
-- **"Programação de compra":** continua abaixo da tabela, como antes, com a programação desta solicitação. O total de peças da linha é o total dessa programação (seção 3); a programação dos outros produtos do lote aparece na ficha de cada um ("2 programações: 1.000 + 1.000").
+- **Uma linha por produto:** esta solicitação e, se ela faz parte de um lote (Nova solicitação com vários produtos), as outras do lote que o login vê, na ordem em que foram criadas. A linha desta solicitação diz "Esta solicitação"; as outras têm o link "Abrir a solicitação →" embaixo do nome (na linha resumida e na ficha completa).
+- **Dados principais na linha (linha resumida):** produto (nome, SKU e variação), total de peças, caixas master, cubagem total, prazo de resposta, custo registrado, compra por peça e venda. Cada um aparece só para quem pode ver (seção 4). Dado que falta: **"—"** ("Não informado" na dica e no leitor de tela).
+- **Botão no alto da tabela: "Linha resumida" | "Ver ficha completa".** Vale para todas as linhas de uma vez. É um link da mesma tela (`?ficha=completa#solicitacoes`), sem JavaScript: o endereço pode ser copiado e a tela volta aberta.
+- **Ficha completa em linha horizontal:** a linha de cada produto continua para a direita com todos os campos dos quatro grupos, **Produto**, **Embalagem e cubagem**, **Valores** e **Pagamento**, nessa ordem, com uma faixa colorida do grupo em cima e o título de cada campo no cabeçalho. O produto fica fixo à esquerda enquanto a tabela rola; cada valor mostra a origem embaixo (selo) e a conta quando é calculado. As colunas são a união dos campos de todas as linhas: o campo que um produto não tem fica com "—" na linha dele.
+- **Largura:** a página nunca rola de lado. Na linha resumida, pela largura do cartão (container query), a partir de ~900 px as linhas viram colunas com cabeçalho; no iPad (com o menu aberto) e no celular, cada linha vira um cartão com o título de cada dado. Na ficha completa, só a tabela rola de lado (iPad e celular também).
+- **"Programação de compra":** continua abaixo da tabela, como antes, com a programação desta solicitação. O total de peças da linha é o total dessa programação (seção 3); a programação dos outros produtos do lote aparece na coluna "Total de peças" da ficha completa de cada um ("2 programações: 1.000 + 1.000").
 - **Anexos, solicitante do cliente e NCM:** como antes, abaixo.
 
 ## 2. Origem de cada dado
@@ -30,7 +33,7 @@ Cada valor tem um selo com a origem. A ordem de prioridade é sempre a mesma: **
 | Cadastro do fornecedor | A condição de pagamento do fornecedor | `parties.paymentTerms` e `paymentTermsNote` |
 | Calculado | Conta das regras do portal com os dados gravados | caixas, cubagem, unitário a partir do total, totais |
 
-Sem nenhuma fonte: **"Não informado"**. Medida zerada conta como não preenchida (a carga do Sankhya grava 0 no campo vazio).
+Sem nenhuma fonte: **"—"** ("Não informado" na dica e no leitor de tela). Medida zerada conta como não preenchida (a carga do Sankhya grava 0 no campo vazio).
 
 ### O texto da especificação
 
@@ -47,7 +50,7 @@ A especificação gravada na solicitação é lida linha por linha (`src/lib/req
 
 - **Identificação** (Wellmix): Código (SKU), Código no Sankhya, Código na fábrica, EAN, NCM (o da solicitação, senão o do pedido, do Book ou da ficha atual), Linha do produto, Marca. Para todos: Variação, Descrição e Observação (da solicitação).
 - **Especificações:** as linhas da especificação (seção 2) e os complementos da ficha atual.
-- **Exigências da linha do produto** (quando a linha tem): os atributos que a ficha deve ter (cada um com o valor achado ou "Não informado") e as certificações exigidas.
+- **Exigências da linha do produto** (quando a linha tem): os atributos que a ficha deve ter (cada um com o valor achado ou "—") e as certificações exigidas.
 - **Medidas e pesos da peça:** as medidas da especificação com eixos e unidade; sem elas, as da variação, da negociação, do Book (SIZE LENGTH/WIDTH/HEIGHT do Book são as medidas da **peça**, decisão do dono de 15/11/2026, docs/SUPPLIER_REQUESTS.md) ou da ficha atual (comprimento × largura × altura do cadastro). Peso líquido e bruto por peça.
 
 ### Embalagem e cubagem
@@ -69,7 +72,7 @@ A especificação gravada na solicitação é lida linha por linha (`src/lib/req
 ### Pagamento
 
 - **Compra com o fornecedor:** fornecedor (do pedido, da negociação ou da ficha atual), condição de pagamento em parcelas (a do pedido; senão a do cadastro do fornecedor), forma de pagamento (a observação da condição do fornecedor, ex. "T/T"), sinal (as parcelas na data do pedido, com o valor sobre a compra total quando ela existe), parcelas, prazo da última parcela, condição do pedido no Sankhya e prazo de produção (da negociação).
-- **Venda ao cliente:** a **forma de pagamento do cliente** escolhida no pedido (docs/CUSTOMER_PAYMENT.md, `orders.customerPaymentPlan`), com o selo "Pedido nº N" e a situação da alçada (Aprovada, Em aprovação, Recusada); as **parcelas do cliente** por evento ("10% no pedido (R$ 1.000,00)", "90% no embarque…"), com o valor sobre a venda do pedido e os juros depois da entrega, como na tela do pedido; o **sinal do cliente** (o gravado na solicitação, `requests.downPaymentAmount`; sem ele, as parcelas "no pedido" da forma) e o **prazo da última parcela**. Quem vê é a regra do pedido (`customerPaymentView`): o cliente só a forma aprovada; a Wellmix, quem vê valores e margem. Pedido sem forma escolhida (ou solicitação sem pedido): "Não informado".
+- **Venda ao cliente:** a **forma de pagamento do cliente** escolhida no pedido (docs/CUSTOMER_PAYMENT.md, `orders.customerPaymentPlan`), com o selo "Pedido nº N" e a situação da alçada (Aprovada, Em aprovação, Recusada); as **parcelas do cliente** por evento ("10% no pedido (R$ 1.000,00)", "90% no embarque…"), com o valor sobre a venda do pedido e os juros depois da entrega, como na tela do pedido; o **sinal do cliente** (o gravado na solicitação, `requests.downPaymentAmount`; sem ele, as parcelas "no pedido" da forma) e o **prazo da última parcela**. Quem vê é a regra do pedido (`customerPaymentView`): o cliente só a forma aprovada; a Wellmix, quem vê valores e margem. Pedido sem forma escolhida (ou solicitação sem pedido): "—".
 
 ## 4. Permissões (no servidor)
 
@@ -79,7 +82,7 @@ O carregador (`loadRequestSheet`) só lê o que o perfil pode ver, e o montador 
 | --- | --- |
 | Wellmix com "Ver valores e margem" (`values.view`; o administrador sempre) | Tudo. |
 | Wellmix com "Ver preço de compra" (`purchasePrice.view`; padrão: comprador, gerente de produto, diretorias, financeiro), sem "Ver valores e margem" | Produto e Embalagem e cubagem completos; em Valores, a compra com o fornecedor e o custo registrado (o preço da última compra) com as faixas; em Pagamento, a compra com o fornecedor. Sem venda, sem a análise do Superplan (custo nacionalizado, venda sugerida, margem) e sem a forma de pagamento do cliente. |
-| Wellmix sem nenhuma das duas | Produto e Embalagem e cubagem completos (códigos, caixa, medidas, cubagem e ficha atual, como no Histórico de compras). Valores e Pagamento fechados, com o aviso de quem vê. Sem custo, compra, venda nem condições na linha. |
+| Wellmix sem nenhuma das duas | Produto e Embalagem e cubagem completos (códigos, caixa, medidas, cubagem e ficha atual, como no Histórico de compras). Valores e Pagamento ficam fora da ficha completa, com o aviso de quem vê embaixo da tabela. Sem custo, compra, venda nem condições na linha. |
 | Login do cliente (só as solicitações dele) | O que a solicitação dele gravou (descrição, variação, especificação, medidas e pesos do texto), total de peças, programação, venda e sinal dele. Nada do cadastro, do Book, da negociação, do fornecedor, nem custo ou compra. |
 
 Desde 15/11/2026 (docs/LINHA_DE_VISAO.md, seção 7), a compra com o fornecedor, o custo registrado e as condições do fornecedor seguem "Ver preço de compra" (`canSeePurchasePrice`); a análise do Superplan e a venda continuam só com "Ver valores e margem"; o cliente vê a venda dele.
@@ -99,10 +102,10 @@ Sem ninguém digitar nada, a ficha já traz:
 
 Conferido com os registros do Supabase (o montador da ficha rodando sobre as solicitações reais, nos três perfis: administrador, operador sem "Ver valores e margem" e cliente):
 
-- **Solicitação nº 1 (bastão lança-bolhas, WB12112), sem preço negociado:** "Dimensões (A x L x P) / Lança Bolhas: 14,5cm x 3,5cm x 2,5cm" → "Altura 14,5 cm · Largura 3,5 cm · Profundidade 2,5 cm" (Solicitação). Composição, faixa etária, cores, conteúdo e país de origem (Solicitação). Programação 1.000 + 1.000 → 2.000 peças. 192 por caixa master e 24 por embalagem interna (Ficha atual) → 6 + 6 = 12 caixas (Calculado: cada programação de 1.000 peças fecha em 6 caixas). Pesos 0,0112 / 0,0536 kg, NCM 95030099, EAN 7899527199518, Sankhya 12112, linha LANCA BOLHAS, marca WELLKIDS, fornecedor HUADA TOYS (Ficha atual). Custo registrado US$ 0,0809 por peça (Ficha atual) e US$ 161,80 pelo custo registrado (Calculado), só com "Ver valores e margem". Sem medidas nem CBM da caixa no cadastro: caixa, cubagem por caixa e cubagem total "Não informado". Sem negociação, Book, venda, sinal ou condição do fornecedor (HUADA sem condição cadastrada): "Não informado".
+- **Solicitação nº 1 (bastão lança-bolhas, WB12112), sem preço negociado:** "Dimensões (A x L x P) / Lança Bolhas: 14,5cm x 3,5cm x 2,5cm" → "Altura 14,5 cm · Largura 3,5 cm · Profundidade 2,5 cm" (Solicitação). Composição, faixa etária, cores, conteúdo e país de origem (Solicitação). Programação 1.000 + 1.000 → 2.000 peças. 192 por caixa master e 24 por embalagem interna (Ficha atual) → 6 + 6 = 12 caixas (Calculado: cada programação de 1.000 peças fecha em 6 caixas). Pesos 0,0112 / 0,0536 kg, NCM 95030099, EAN 7899527199518, Sankhya 12112, linha LANCA BOLHAS, marca WELLKIDS, fornecedor HUADA TOYS (Ficha atual). Custo registrado US$ 0,0809 por peça (Ficha atual) e US$ 161,80 pelo custo registrado (Calculado), só com "Ver preço de compra" (ou "Ver valores e margem"). Sem medidas nem CBM da caixa no cadastro: caixa, cubagem por caixa e cubagem total "—". Sem negociação, Book, venda, sinal ou condição do fornecedor (HUADA sem condição cadastrada): "—".
 - **Solicitação nº 2 (vários produtos):** BONECA LIULY e CUBO INTERATIVO, duas linhas, cada uma com 24.000 peças (8.160 + 7.920 + 7.920) e 100 caixas de 240 (34 + 33 + 33). A boneca com os eixos do cabeçalho ("Altura 26,5 cm · Largura 6 cm · Profundidade 3 cm"); o cubo sem eixos declarados ("5 × 5 × 5 cm", com "A especificação não diz os eixos"). Custos US$ 0,1205 e R$ 0,6188 por peça (Ficha atual).
-- **Solicitação nº 3 (BONECA ZOEY), sem preço negociado:** "Dimensões do produto (cm): 20 × 11 × 35.1" → "Comprimento 20 cm · Largura 11 cm · Altura 35,1 cm"; peso líquido 0,3728 kg e 6 peças por caixa master do texto (Solicitação); peso bruto 0,7333 kg (Ficha atual); 1.500 + 1.500 = 3.000 peças → 250 + 250 = 500 caixas (Calculado); custo US$ 3,5567 (Ficha atual); compra, venda e condições "Não informado".
-- **Operador sem "Ver valores e margem"** (o login da foto): as mesmas linhas com peças, caixas e cubagem; Valores e Pagamento fechados com o aviso. **Cliente:** peças, programação, o texto da solicitação e a venda (ainda "Não informado"); nada do cadastro.
+- **Solicitação nº 3 (BONECA ZOEY), sem preço negociado:** "Dimensões do produto (cm): 20 × 11 × 35.1" → "Comprimento 20 cm · Largura 11 cm · Altura 35,1 cm"; peso líquido 0,3728 kg e 6 peças por caixa master do texto (Solicitação); peso bruto 0,7333 kg (Ficha atual); 1.500 + 1.500 = 3.000 peças → 250 + 250 = 500 caixas (Calculado); custo US$ 3,5567 (Ficha atual); compra, venda e condições "—".
+- **Operador sem "Ver valores e margem"** (o login da foto): as mesmas linhas com peças, caixas e cubagem; Valores e Pagamento fora da ficha, com o aviso embaixo da tabela. **Cliente:** peças, programação, o texto da solicitação e a venda (ainda "—"); nada do cadastro.
 
 O que falta nos dados (para a ficha ficar completa sem digitação): medidas e CBM da caixa master (só 2 de 16.843 produtos têm), condição de pagamento dos fornecedores (a HUADA não tem) e, para a venda ao cliente, a forma de pagamento escolhida no pedido (só existe depois do pedido; docs/CUSTOMER_PAYMENT.md).
 
@@ -110,7 +113,7 @@ O que falta nos dados (para a ficha ficar completa sem digitação): medidas e C
 
 - `src/lib/request-spec-parse.ts`: leitura da especificação (pura).
 - `src/lib/services/request-sheet.ts`: permissões (`sheetAccess`), o montador puro (`buildSheetRow`) e o carregador (`loadRequestSheet`).
-- `src/components/request-sheet-table.tsx`: a tabela (linhas, ficha, selos, container queries).
+- `src/components/request-sheet-table.tsx`: a tabela (linha resumida, ficha completa em linha horizontal, selos, container queries).
 - `src/app/app/requests/[id]/page.tsx`: o cartão "Solicitações" usa a tabela nova no lugar da linha antiga (`RequestInfoTable`, que continua no código).
 - Textos: `src/i18n/modules/request-sheet.ts` (pt/en/zh).
-- Testes: `tests/unit/request-sheet.test.ts` (especificação, bastão nº 1, negociação e Book, lote, permissões) e `tests/e2e/request-sheet.spec.ts` (lote com dois produtos, ficha aberta, cliente, administrador, operador, celular e iPad sem rolagem de lado).
+- Testes: `tests/unit/request-sheet.test.ts` (especificação, bastão nº 1, negociação e Book, lote, permissões) e `tests/e2e/request-sheet.spec.ts` (lote com dois produtos, ficha completa em linha horizontal, cliente, administrador, Comprador, Vendas, celular e iPad sem rolagem de lado).

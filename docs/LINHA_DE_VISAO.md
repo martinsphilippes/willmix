@@ -137,7 +137,7 @@ O servidor só lê e só monta o que o login pode ver; o que fica de fora não s
 
 | Tela | Situação |
 | --- | --- |
-| Solicitação do cliente, seção "Solicitações" (docs/REQUEST_SHEET.md) | ficha completa em linha horizontal: aprovada pelo dono em 15/11/2026, em implantação |
+| Solicitação do cliente, seção "Solicitações" (docs/REQUEST_SHEET.md) | **aplicada** (15/11/2026): linha resumida e o botão "Linha resumida \| Ver ficha completa" no alto da tabela, que abre todas as linhas juntas; a ficha completa é a linha horizontal com Produto, Embalagem e cubagem, Valores e Pagamento e o produto fixo à esquerda; sem dado, "—". No celular e no iPad, a linha resumida é cartão e a ficha completa rola dentro da tabela. As faixas são os quatro grupos que a seção já tinha; ainda não tem as faixas separadas da seção 3 (Composição, Peça, Específicos da linha, Programação e Controle), a coluna Situação e a edição na própria linha (seção 6). |
 | Demais telas | quando o dono pedir "use a linha de visão de produto nesta tela" |
 
 **Permissão "Ver preço de compra" (seção 7), já aplicada** (`canSeePurchasePrice`, `canSeeOrderPurchasePrice` em `src/lib/auth/function-access.ts`; o servidor não envia o valor e recusa a gravação de quem não vê):
