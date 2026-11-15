@@ -512,3 +512,66 @@ describe("programação do pedido: produto sem quantidade numa data", () => {
     );
   });
 });
+
+describe("busca diária dos boletos (dono, 15/11/2026)", () => {
+  const config = {
+    baseUrl: "https://api.sankhya.com.br",
+    clientId: "c",
+    clientSecret: "s",
+    xToken: "x",
+  };
+  const fakeTitles = (paid: boolean) =>
+    (async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/authenticate"))
+        return new Response(
+          JSON.stringify({ access_token: "t", expires_in: 300 }),
+        );
+      return new Response(
+        JSON.stringify({
+          status: "1",
+          responseBody: {
+            fieldsMetadata: ["NUFIN", "DTVENC", "VLRDESDOB", "DHBAIXA"].map(
+              (name) => ({ name }),
+            ),
+            rows: [["901", "15112026", 1000, paid ? "15112026" : null]],
+          },
+        }),
+      );
+    }) as typeof globalThis.fetch;
+
+  it("o título pago no Sankhya destrava o pedido sem ninguém clicar", async () => {
+    const plans = await svc.listPaymentPlans();
+    const order = await newOrder();
+    await svc.chooseOrderPaymentPlan(admin, order.id, {
+      planId: plans.find((p) => p.name.startsWith("10%"))!.id,
+      sellerUserId: null,
+      saleNunota: "1520001",
+    });
+    expect((await getStore().get("orders", order.id))!.pauseReason).toBe(
+      "payment_open",
+    );
+    // Boleto emitido e ainda em aberto: o pedido segue travado.
+    await svc.syncAllSankhyaCharges({ config, fetch: fakeTitles(false) });
+    let saved = (await getStore().get("orders", order.id))!;
+    expect(saved.customerCharges?.[0]).toMatchObject({
+      nufin: "901",
+      status: "open",
+    });
+    expect(saved.pauseReason).toBe("payment_open");
+    // Baixa no Sankhya: a busca diária grava o pagamento e destrava.
+    const result = await svc.syncAllSankhyaCharges({
+      config,
+      fetch: fakeTitles(true),
+    });
+    expect(result.skipped).toBeNull();
+    saved = (await getStore().get("orders", order.id))!;
+    expect(saved.customerCharges?.[0].status).toBe("paid");
+    expect(saved.pausedAt).toBeNull();
+  });
+
+  it("sem o Sankhya configurado, não faz nada", async () => {
+    expect(await svc.syncAllSankhyaCharges({ config: null })).toMatchObject({
+      skipped: "sankhya_not_configured",
+    });
+  });
+});

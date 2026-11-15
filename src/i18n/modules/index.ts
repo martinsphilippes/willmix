@@ -141,6 +141,7 @@ import * as exwOrigin from "./exw-origin";
 import * as receivingDivergence from "./receiving-divergence";
 import * as delivery from "./delivery";
 import * as salesOrders from "./sales-orders";
+import * as divergenceLots from "./divergence-lots";
 import * as purchaseRounds from "./purchase-rounds";
 import * as colorVariants from "./color-variants";
 import * as aiReferences from "./ai-references";
@@ -297,6 +298,7 @@ export const modulesPt = {
   ...receivingDivergence.pt,
   ...delivery.pt,
   ...salesOrders.pt,
+  ...divergenceLots.pt,
   ...purchaseRounds.pt,
   ...colorVariants.pt,
   ...aiReferences.pt,
@@ -450,6 +452,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...receivingDivergence.en,
   ...delivery.en,
   ...salesOrders.en,
+  ...divergenceLots.en,
   ...purchaseRounds.en,
   ...colorVariants.en,
   ...aiReferences.en,
@@ -603,6 +606,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...receivingDivergence.zh,
   ...delivery.zh,
   ...salesOrders.zh,
+  ...divergenceLots.zh,
   ...purchaseRounds.zh,
   ...colorVariants.zh,
   ...aiReferences.zh,

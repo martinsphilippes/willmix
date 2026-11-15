@@ -2493,6 +2493,64 @@ export interface ReceivingItem {
   cartons?: number | null;
 }
 
+/*
+ * Lote com divergência (mapa E21, E24 a E27; dono, 15/11/2026): cada
+ * divergência da contagem por SKU vira um lote numerado, com os itens e
+ * quantidades com problema e os quatro passos dentro dele:
+ * E24 o sistema avisa Compras (automático); E25 a Diretoria de compras abre
+ * a divergência com o fornecedor e a Trading responde (aceita, contesta ou
+ * repõe); E26 Compras com a Logística juntam fotos e vídeos e a Trading
+ * aprova; E27 o Financeiro (com o Agente de carga) registra a mitigação e a
+ * Trading aprova o Acordo de Divergência, que fecha o lote.
+ */
+export const DIVERGENCE_LOT_STATUSES = ["open", "closed"] as const;
+export type DivergenceLotStatus = (typeof DIVERGENCE_LOT_STATUSES)[number];
+export const DIVERGENCE_KINDS = ["shortage", "excess", "damage"] as const;
+export type DivergenceKind = (typeof DIVERGENCE_KINDS)[number];
+
+export interface DivergenceLotItem {
+  orderItemId: string;
+  productId: string | null;
+  name: string;
+  expected: number;
+  received: number;
+  damaged: number;
+  kinds: DivergenceKind[];
+}
+
+/** Um passo do lote: quem faz envia; a Trading aprova (ou devolve). */
+export interface DivergenceLotStep {
+  status: "pending" | "submitted" | "approved" | "rejected";
+  text: string | null;
+  /** E25: resposta da Trading; E27: tipo da mitigação. */
+  choice: string | null;
+  amount: number | null;
+  currency: string | null;
+  documentIds: string[];
+  submittedByUserId: string | null;
+  submittedAt: string | null;
+  decidedByUserId: string | null;
+  decidedAt: string | null;
+  /** Resposta da Trading (E25) ou motivo da devolução (E26/E27). */
+  decisionText: string | null;
+}
+
+export interface DivergenceLot extends BaseRow {
+  number: number;
+  orderId: string;
+  items: DivergenceLotItem[];
+  status: DivergenceLotStatus;
+  note: string | null;
+  createdByUserId: string;
+  /** E24: quando o sistema avisou Compras e quem foi avisado. */
+  purchasingNotifiedAt: string | null;
+  purchasingUserIds: string[];
+  supplierStep: DivergenceLotStep;
+  evidenceStep: DivergenceLotStep;
+  financeStep: DivergenceLotStep;
+  closedAt: string | null;
+}
+
 /** Recebimento do container no armazém (um por pedido). */
 export interface Receiving extends BaseRow {
   orderId: string;
@@ -2947,6 +3005,90 @@ export interface PurchaseDecision extends BaseRow {
   quoteId: string | null;
 }
 
+/*
+ * Cotação de compra (mapa B13, dono 15/11/2026; docs/PURCHASE_DEMAND.md):
+ * aberta pelo sistema quando a estratégia "cotar entre fornecedores" é
+ * aprovada, para os fornecedores ativos que atendem as linhas dos produtos.
+ * Cada fornecedor tem o próprio prazo (24 h por padrão) e responde preço por
+ * item e condição de envio, ou recusa. O Comprador escolhe a vencedora e a
+ * Diretoria de compras aprova; a vencedora vira a Solicitação ao fornecedor.
+ */
+export const PURCHASE_QUOTE_STATUSES = [
+  "open",
+  "chosen",
+  "approved",
+  "cancelled",
+] as const;
+export type PurchaseQuoteStatus = (typeof PURCHASE_QUOTE_STATUSES)[number];
+export const QUOTE_RESPONSE_STATUSES = [
+  "invited",
+  "answered",
+  "declined",
+] as const;
+export type QuoteResponseStatus = (typeof QUOTE_RESPONSE_STATUSES)[number];
+
+export interface PurchaseQuoteItem {
+  productId: string;
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
+export interface PurchaseQuote extends BaseRow {
+  number: number;
+  decisionId: string;
+  demandIds: string[];
+  lineIds: string[];
+  items: PurchaseQuoteItem[];
+  status: PurchaseQuoteStatus;
+  /** Horas de prazo de cada fornecedor (Configurações, padrão 24). */
+  hours: number;
+  openedByUserId: string;
+  winnerResponseId: string | null;
+  chosenByUserId: string | null;
+  chosenAt: string | null;
+  chosenNote: string | null;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  approvalNote: string | null;
+  /** Solicitações ao fornecedor (B7) criadas da vencedora. */
+  supplierRequestIds: string[] | null;
+  /** Quando o Comprador foi avisado de que ninguém respondeu no prazo. */
+  emptyNotifiedAt: string | null;
+}
+
+export interface QuoteResponsePrice {
+  productId: string;
+  unitPrice: number;
+}
+
+export interface PurchaseQuoteResponse extends BaseRow {
+  quoteId: string;
+  supplierId: string;
+  status: QuoteResponseStatus;
+  invitedAt: string;
+  /** Prazo deste fornecedor (ISO, UTC). */
+  dueAt: string;
+  prices: QuoteResponsePrice[] | null;
+  currency: string | null;
+  incoterm: string | null;
+  leadTimeDays: number | null;
+  port: string | null;
+  moq: number | null;
+  note: string | null;
+  answeredAt: string | null;
+  answeredByUserId: string | null;
+  /** Lembrete antes de vencer, enviado uma vez. */
+  reminderSentAt: string | null;
+}
+
+/** Fornecedor × linha de produto (quem atende cada linha; docs/PURCHASE_DEMAND.md). */
+export interface SupplierLine extends BaseRow {
+  supplierId: string;
+  lineId: string;
+  createdByUserId: string | null;
+}
+
 export interface BookingInvite extends BaseRow {
   number: number;
   groupId: string;
@@ -3052,6 +3194,12 @@ export interface SupplierRequest extends BaseRow {
    * Wellmix valida. Nulo nas aprovadas antes da etapa (lida como pendente).
    */
   sampling?: SupplierRequestSampling | null;
+  /**
+   * Cotação de compra de onde a solicitação veio (a resposta vencedora) e as
+   * demandas (encomendas e reposições) que ela atende (docs/PURCHASE_DEMAND.md).
+   */
+  quoteResponseId?: string | null;
+  demandIds?: string[] | null;
 }
 
 export const SAMPLING_STATUSES = [
@@ -3495,6 +3643,7 @@ export interface Tables {
   sales_offers: SalesOffer;
   sales_orders: SalesOrder;
   sales_returns: SalesReturn;
+  divergence_lots: DivergenceLot;
   import_steps: ImportStep;
   receivings: Receiving;
   art_issues: ArtIssue;
@@ -3507,6 +3656,9 @@ export interface Tables {
   supplier_requests: SupplierRequest;
   booking_invites: BookingInvite;
   purchase_decisions: PurchaseDecision;
+  purchase_quotes: PurchaseQuote;
+  purchase_quote_responses: PurchaseQuoteResponse;
+  supplier_lines: SupplierLine;
   selection_groups: SelectionGroup;
   payment_conditions: PaymentCondition;
   payment_plans: PaymentPlan;
@@ -4908,6 +5060,27 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_customer", type: "key", columns: ["customerId"] },
     ],
   },
+  divergence_lots: {
+    label: "Lotes com divergência no recebimento",
+    columns: {
+      number: int(true),
+      orderId: id(),
+      items: json(),
+      status: enumOf(DIVERGENCE_LOT_STATUSES),
+      note: text(),
+      createdByUserId: id(),
+      purchasingNotifiedAt: datetime(),
+      purchasingUserIds: json(),
+      supplierStep: json(),
+      evidenceStep: json(),
+      financeStep: json(),
+      closedAt: datetime(),
+    },
+    indexes: [
+      { key: "number_unique", type: "unique", columns: ["number"] },
+      { key: "by_order", type: "key", columns: ["orderId"] },
+    ],
+  },
   sales_returns: {
     label: "Devoluções de venda (Vendas)",
     columns: {
@@ -5216,6 +5389,68 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_product", type: "key", columns: ["productId"] },
     ],
   },
+  purchase_quotes: {
+    label: "Cotações de compra",
+    columns: {
+      number: int(true),
+      decisionId: id(),
+      demandIds: json(),
+      lineIds: json(),
+      items: json(),
+      status: enumOf(PURCHASE_QUOTE_STATUSES),
+      hours: float(true),
+      openedByUserId: id(),
+      winnerResponseId: id(false),
+      chosenByUserId: id(false),
+      chosenAt: datetime(),
+      chosenNote: text(),
+      approvedByUserId: id(false),
+      approvedAt: datetime(),
+      approvalNote: text(),
+      supplierRequestIds: json(),
+      emptyNotifiedAt: datetime(),
+    },
+    indexes: [
+      { key: "by_status", type: "key", columns: ["status"] },
+      { key: "by_decision", type: "key", columns: ["decisionId"] },
+    ],
+  },
+  purchase_quote_responses: {
+    label: "Respostas das cotações de compra",
+    columns: {
+      quoteId: id(),
+      supplierId: id(),
+      status: enumOf(QUOTE_RESPONSE_STATUSES),
+      invitedAt: datetime(true),
+      dueAt: datetime(true),
+      prices: json(),
+      currency: str(3),
+      incoterm: str(10),
+      leadTimeDays: int(),
+      port: str(120),
+      moq: float(),
+      note: text(),
+      answeredAt: datetime(),
+      answeredByUserId: id(false),
+      reminderSentAt: datetime(),
+    },
+    indexes: [
+      { key: "by_quote", type: "key", columns: ["quoteId"] },
+      { key: "by_supplier", type: "key", columns: ["supplierId"] },
+    ],
+  },
+  supplier_lines: {
+    label: "Fornecedores por linha de produto",
+    columns: {
+      supplierId: id(),
+      lineId: id(),
+      createdByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_supplier", type: "key", columns: ["supplierId"] },
+      { key: "by_line", type: "key", columns: ["lineId"] },
+    ],
+  },
   purchase_decisions: {
     label: "Estratégias de compra",
     columns: {
@@ -5307,6 +5542,8 @@ export const TABLES: Record<TableName, TableDef> = {
       colorPlan: json(),
       aiAssets: json(),
       sampling: jsonLarge(),
+      quoteResponseId: id(false),
+      demandIds: json(),
     },
     indexes: [
       { key: "by_supplier", type: "key", columns: ["supplierId"] },

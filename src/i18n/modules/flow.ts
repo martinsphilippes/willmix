@@ -199,6 +199,9 @@ export const pt = {
   "flow.step.new-product.strategy": "Estratégia de compra",
   "flow.help.new-product.strategy":
     "Reposições e encomendas: repetir o fornecedor da última compra ou cotar entre fornecedores, com a aprovação da Diretoria de compras (B10?).",
+  "flow.step.new-product.purchase-quotes": "Cotação de compra",
+  "flow.help.new-product.purchase-quotes":
+    "Cotação de preço aberta pelo sistema com os fornecedores das linhas, 24 h para cada um responder; o Comprador escolhe e a Diretoria de compras aprova (B13).",
   "flow.step.new-product.negotiations": "Negociações",
   "flow.help.new-product.negotiations":
     "Solicitações ao fornecedor: análise, negociação e amostragem até a aprovação da amostra (B7 a B9).",
@@ -483,6 +486,9 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.step.new-product.strategy": "Purchase strategy",
   "flow.help.new-product.strategy":
     "Replenishments and customer orders: repeat the last purchase's supplier or quote among suppliers, approved by the Purchasing board (B10?).",
+  "flow.step.new-product.purchase-quotes": "Purchase quote",
+  "flow.help.new-product.purchase-quotes":
+    "Price quote opened by the system with the lines' suppliers, 24 h for each to answer; the Buyer picks and the Purchasing board approves (B13).",
   "flow.step.new-product.negotiations": "Negotiations",
   "flow.help.new-product.negotiations":
     "Supplier requests: review, negotiation and sampling up to sample approval (B7 to B9).",
@@ -759,6 +765,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.step.new-product.strategy": "采购策略",
   "flow.help.new-product.strategy":
     "补货和客户订货：沿用上次采购的供应商或在供应商之间询价，由采购总监批准（B10?）。",
+  "flow.step.new-product.purchase-quotes": "采购询价",
+  "flow.help.new-product.purchase-quotes":
+    "系统向产品线的供应商发起询价，每家 24 小时内回复；采购员选择，采购总监批准（B13）。",
   "flow.step.new-product.negotiations": "谈判",
   "flow.help.new-product.negotiations":
     "供应商请求：分析、谈判和打样，直到样品批准（B7–B9）。",

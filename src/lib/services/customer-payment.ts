@@ -25,6 +25,7 @@ import { paymentEventsFor } from "@/lib/supplier-terms";
 import { todayInBrazil } from "./supplier-terms";
 import { sankhyaDate } from "@/lib/integrations/sankhya-mapping";
 import {
+  SankhyaError,
   executeQuery,
   type SankhyaClientOptions,
   type SankhyaRow,
@@ -436,9 +437,28 @@ export async function syncSankhyaCharges(
   const order = await liveOrder(orderId);
   const plan = order.customerPaymentPlan;
   if (!plan || plan.status !== "approved") throw new Error("plan_not_approved");
-  const nunota = Number(plan.saleNunota);
-  if (!plan.saleNunota || !Number.isSafeInteger(nunota) || nunota <= 0)
-    throw new Error("plan_no_nunota");
+  if (!saleNunotaOf(plan)) throw new Error("plan_no_nunota");
+  return syncChargesFor(order, user, options);
+}
+
+/** NUNOTA da venda no Sankhya da forma escolhida (nulo sem um número válido). */
+function saleNunotaOf(plan: OrderPaymentPlan): number | null {
+  const n = Number(plan.saleNunota);
+  return plan.saleNunota && Number.isSafeInteger(n) && n > 0 ? n : null;
+}
+
+/**
+ * Lê os títulos a receber do pedido de venda no Sankhya e grava os boletos
+ * nas parcelas; depois confere a trava (o boleto pago destrava o pedido).
+ * `actor` nulo = o job diário.
+ */
+async function syncChargesFor(
+  order: Order,
+  actor: User | null,
+  options: SankhyaClientOptions = {},
+): Promise<{ titles: number }> {
+  const plan = order.customerPaymentPlan!;
+  const nunota = saleNunotaOf(plan)!;
   const table = await executeQuery(titlesSql(nunota), options);
   const now = new Date().toISOString();
   const fromErp = chargesFromTitles(
@@ -462,17 +482,58 @@ export async function syncSankhyaCharges(
       return old ?? null;
     })
     .filter((c): c is CustomerCharge => !!c);
-  const updated = await getStore().update("orders", order.id, {
-    customerCharges: merged,
-  });
-  await applyPaymentHold(updated, user);
-  await log(user, {
-    action: "order.charges.sync",
-    entity: "orders",
-    entityId: order.id,
-    summary: `NUNOTA ${nunota}: ${table.rows.length} título(s)`,
-  });
+  const changed = JSON.stringify(merged) !== JSON.stringify(previous);
+  const updated = changed
+    ? await getStore().update("orders", order.id, { customerCharges: merged })
+    : order;
+  await applyPaymentHold(updated, actor);
+  if (changed || actor)
+    await audit(
+      actor,
+      "order.charges.sync",
+      "orders",
+      order.id,
+      `NUNOTA ${nunota}: ${table.rows.length} título(s)${actor ? "" : " (busca diária)"}`,
+    );
   return { titles: table.rows.length };
+}
+
+/**
+ * Busca diária dos boletos (dono, 15/11/2026): para cada pedido com forma
+ * aprovada e o NUNOTA da venda, lê os títulos no Sankhya, como o botão
+ * "Buscar boletos no Sankhya". Pula o pedido com todas as parcelas pagas.
+ * Sem o Sankhya configurado, para na primeira tentativa; o erro de um
+ * pedido não impede os outros. Roda no job de lembretes.
+ */
+export async function syncAllSankhyaCharges(
+  options: SankhyaClientOptions = {},
+): Promise<{ orders: number; failed: number; skipped: string | null }> {
+  const orders = await getStore().list("orders", {
+    filter: { paymentPlanStatus: "approved" },
+  });
+  let synced = 0;
+  let failed = 0;
+  for (const order of orders) {
+    const plan = order.customerPaymentPlan;
+    if (!plan || !saleNunotaOf(plan)) continue;
+    if (order.status === "CANCELLED" || order.parentOrderId || order.held)
+      continue;
+    const payable = plan.installments.filter((i) => i.percent > 0).length;
+    const paid = (order.customerCharges ?? []).filter(
+      (c) => c.status === "paid",
+    ).length;
+    if (payable > 0 && paid >= payable) continue;
+    try {
+      await syncChargesFor(order, null, options);
+      synced++;
+    } catch (e) {
+      if (e instanceof SankhyaError && e.code === "sankhya_not_configured")
+        return { orders: synced, failed, skipped: "sankhya_not_configured" };
+      failed++;
+      console.error("[charges] sync", order.id, e);
+    }
+  }
+  return { orders: synced, failed, skipped: null };
 }
 
 /** O financeiro registra (ou corrige) o boleto de uma parcela à mão. */

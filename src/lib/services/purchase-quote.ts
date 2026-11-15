@@ -1,0 +1,928 @@
+import "server-only";
+
+import {
+  getStore,
+  type PurchaseDecision,
+  type PurchaseQuote,
+  type PurchaseQuoteItem,
+  type PurchaseQuoteResponse,
+  type SupplierRequest,
+  type User,
+} from "@/lib/db";
+import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
+import { assertCan, can, holdersOf } from "@/lib/auth/function-access";
+import { isAdmin, isWellmix } from "@/lib/auth/permissions";
+import { listColumns } from "@/lib/db/lookup";
+import { getSettings } from "@/lib/settings";
+import { audit } from "./audit";
+import { notify } from "./notifications";
+
+/*
+ * Cotação de compra (mapa B13; dono, 15/11/2026; docs/PURCHASE_DEMAND.md).
+ *
+ * - Aberta pelo sistema quando a estratégia "cotar entre fornecedores" é
+ *   aprovada, para os fornecedores ativos que atendem as linhas dos
+ *   produtos (vínculo fornecedor × linha, `supplierIdsForLines`).
+ * - Cada fornecedor tem `purchaseQuoteHours` horas corridas (padrão 24) a
+ *   partir do convite, com o prazo gravado em UTC; o vencimento é calculado
+ *   na leitura. Responde no portal (preço por item, moeda, incoterm, prazo
+ *   de produção, porto, pedido mínimo, observação) ou recusa.
+ * - Um fornecedor só lê a própria resposta: nunca quem mais foi convidado,
+ *   as outras respostas nem o cliente da encomenda (conferido aqui, no
+ *   servidor).
+ * - Encerrado o prazo de todos ou respondidos todos, o Comprador escolhe a
+ *   vencedora (ação purchaseQuote.choose) e a Diretoria de compras aprova
+ *   (purchaseQuote.approve). Aprovada, vira a Solicitação ao fornecedor (B7)
+ *   já preenchida com o preço e a condição cotados.
+ * - Sem nenhuma resposta: o Comprador reabre por mais um prazo, convida
+ *   outros fornecedores ou volta para a estratégia (fornecedor da última
+ *   compra).
+ */
+
+export class PurchaseQuoteError extends Error {}
+
+const HOUR = 3_600_000;
+
+/** Lembrete antes de vencer: a 1/6 do prazo (4 h num prazo de 24 h). */
+export const reminderLeadMs = (hours: number) => (hours * HOUR) / 6;
+
+export type ResponseState = "open" | "answered" | "declined" | "expired";
+
+/** Situação de uma resposta agora (o vencimento é calculado na leitura). */
+export function responseState(
+  r: Pick<PurchaseQuoteResponse, "status" | "dueAt">,
+  now: Date,
+): ResponseState {
+  if (r.status === "answered") return "answered";
+  if (r.status === "declined") return "declined";
+  return Date.parse(r.dueAt) <= now.getTime() ? "expired" : "open";
+}
+
+/** Encerrada para escolha: ninguém mais pode responder (todos responderam ou o prazo de todos passou). */
+export function quoteClosed(
+  responses: Pick<PurchaseQuoteResponse, "status" | "dueAt">[],
+  now: Date,
+): boolean {
+  return responses.every((r) => responseState(r, now) !== "open");
+}
+
+/** Sem nenhuma resposta e sem ninguém mais no prazo. */
+export function quoteEmpty(
+  responses: Pick<PurchaseQuoteResponse, "status" | "dueAt">[],
+  now: Date,
+): boolean {
+  return (
+    quoteClosed(responses, now) &&
+    !responses.some((r) => r.status === "answered")
+  );
+}
+
+/**
+ * Fornecedores ativos que atendem as linhas: o vínculo fornecedor × linha
+ * cadastrado (`supplier_lines`) e, enquanto o cadastro não está completo, o
+ * fornecedor principal dos produtos da linha e os fornecedores ligados aos
+ * produtos cotados (`product_suppliers`).
+ */
+export async function supplierIdsForLines(
+  lineIds: readonly string[],
+  productIds: readonly string[] = [],
+): Promise<string[]> {
+  const store = getStore();
+  const lines = [...new Set(lineIds.filter(Boolean))];
+  const ids = new Set<string>();
+  if (lines.length) {
+    const [explicit, products] = await Promise.all([
+      store
+        .list("supplier_lines", { filter: { lineId: lines } })
+        .catch(() => []),
+      listColumns(store, "products", ["supplierId", "lineId"], {
+        filter: { lineId: lines, active: true },
+      }),
+    ]);
+    for (const l of explicit) ids.add(l.supplierId);
+    for (const p of products) if (p.supplierId) ids.add(p.supplierId);
+  }
+  if (productIds.length) {
+    const links = await store
+      .list("product_suppliers", { filter: { productId: [...productIds] } })
+      .catch(() => []);
+    for (const l of links) ids.add(l.supplierId);
+  }
+  if (!ids.size) return [];
+  const parties = await store.list("parties", { filter: { id: [...ids] } });
+  return parties
+    .filter((p) => p.type === "supplier" && p.active)
+    .map((p) => p.id)
+    .sort();
+}
+
+async function wellmixHolders(action: Parameters<typeof can>[1]) {
+  const users = (
+    await getStore().list("users", { filter: { active: true } })
+  ).filter((u) => isWellmix(u));
+  const { loadFunctionDefs } = await import("./team-functions");
+  const holders = holdersOf(users, action, await loadFunctionDefs());
+  return holders.length ? holders : users.filter((u) => isAdmin(u));
+}
+
+async function inviteSuppliers(
+  quote: PurchaseQuote,
+  supplierIds: string[],
+  now: Date,
+): Promise<PurchaseQuoteResponse[]> {
+  const store = getStore();
+  const dueAt = new Date(now.getTime() + quote.hours * HOUR).toISOString();
+  const created: PurchaseQuoteResponse[] = [];
+  for (const supplierId of supplierIds) {
+    const response = await store.create("purchase_quote_responses", {
+      quoteId: quote.id,
+      supplierId,
+      status: "invited",
+      invitedAt: now.toISOString(),
+      dueAt,
+      prices: null,
+      currency: null,
+      incoterm: null,
+      leadTimeDays: null,
+      port: null,
+      moq: null,
+      note: null,
+      answeredAt: null,
+      answeredByUserId: null,
+      reminderSentAt: null,
+    });
+    created.push(response);
+    // Cada fornecedor recebe o convite na língua dele (só a cotação dele).
+    await notify(
+      { partyId: supplierId, role: "supplier" },
+      {
+        kind: "action",
+        link: `/app/purchase-quotes/${quote.id}`,
+        text: (t) => ({
+          subject: t("quote.notify.invite.subject", {
+            n: String(quote.number),
+          }),
+          body: t("quote.notify.invite.body", { hours: String(quote.hours) }),
+        }),
+      },
+    );
+  }
+  return created;
+}
+
+/**
+ * Abre a cotação de compra da estratégia aprovada (sem ação manual): os
+ * produtos das demandas, somados por produto, para todos os fornecedores
+ * ativos que atendem as linhas. Sem nenhum fornecedor, a cotação nasce
+ * vazia e o Comprador é avisado (convida ou volta à estratégia).
+ */
+export async function openQuoteForDecision(
+  user: User,
+  decision: PurchaseDecision,
+  now = new Date(),
+): Promise<PurchaseQuote> {
+  const store = getStore();
+  if (decision.choice !== "quote" || decision.status !== "approved")
+    throw new PurchaseQuoteError("quote_not_ready");
+  if (decision.quoteId) {
+    const existing = await store.get("purchase_quotes", decision.quoteId);
+    if (existing) return existing;
+  }
+  const demands = await store.list("requests", {
+    filter: { id: decision.demandIds },
+  });
+  const productIds = [
+    ...new Set(demands.map((d) => d.productId).filter(Boolean)),
+  ] as string[];
+  const products = await store.list("products", {
+    filter: { id: productIds },
+  });
+  const items: PurchaseQuoteItem[] = productIds.map((id) => {
+    const mine = demands.filter((d) => d.productId === id);
+    return {
+      productId: id,
+      name: products.find((p) => p.id === id)?.name ?? mine[0].productName,
+      quantity: mine.reduce((sum, d) => sum + d.quantity, 0),
+      unit: mine[0]?.unit ?? "un",
+    };
+  });
+  const lineIds = [
+    ...new Set(products.map((p) => p.lineId).filter(Boolean)),
+  ] as string[];
+  const hours = (await getSettings()).purchaseQuoteHours;
+  const quote = await store.create("purchase_quotes", {
+    number: await store.nextNumber("purchase_quote_number"),
+    decisionId: decision.id,
+    demandIds: decision.demandIds,
+    lineIds,
+    items,
+    status: "open",
+    hours,
+    openedByUserId: user.id,
+    winnerResponseId: null,
+    chosenByUserId: null,
+    chosenAt: null,
+    chosenNote: null,
+    approvedByUserId: null,
+    approvedAt: null,
+    approvalNote: null,
+    supplierRequestIds: null,
+    emptyNotifiedAt: null,
+  });
+  await store.update("purchase_decisions", decision.id, { quoteId: quote.id });
+  for (const d of demands)
+    await store.update("requests", d.id, { status: "RFQ_OPEN" });
+  const suppliers = await supplierIdsForLines(lineIds, productIds);
+  await inviteSuppliers(quote, suppliers, now);
+  await audit(
+    user,
+    "purchase_quote.open",
+    "purchase_quote",
+    quote.id,
+    `Cotação de compra nº ${quote.number} aberta para ${suppliers.length} fornecedor(es), ${hours} h cada: ${items.map((i) => i.name).join(", ")}`,
+  );
+  if (!suppliers.length) await notifyEmpty(quote, now);
+  return quote;
+}
+
+/** Comprador avisado: ninguém respondeu (ou não havia fornecedor da linha). */
+async function notifyEmpty(quote: PurchaseQuote, now: Date) {
+  const buyers = await wellmixHolders("purchaseQuote.choose");
+  if (buyers.length)
+    await notify(
+      { userIds: buyers.map((u) => u.id) },
+      {
+        kind: "alert",
+        link: `/app/purchase-quotes/${quote.id}`,
+        subject: `Cotação de compra nº ${quote.number} sem resposta`,
+        body: "Reabra por mais um prazo, convide outros fornecedores ou volte para o fornecedor da última compra.",
+      },
+    );
+  await getStore().update("purchase_quotes", quote.id, {
+    emptyNotifiedAt: now.toISOString(),
+  });
+}
+
+/**
+ * Lembretes e avisos que dependem do relógio (rodam no agendamento diário e
+ * a cada abertura das telas da cotação): o lembrete ao fornecedor antes de
+ * vencer (uma vez) e o aviso ao Comprador quando ninguém respondeu.
+ */
+export async function sweepQuotes(now = new Date()): Promise<{
+  reminded: number;
+  empty: number;
+}> {
+  const store = getStore();
+  const quotes = await store
+    .list("purchase_quotes", { filter: { status: "open" } })
+    .catch(() => [] as PurchaseQuote[]);
+  let reminded = 0;
+  let empty = 0;
+  for (const quote of quotes) {
+    const responses = await store.list("purchase_quote_responses", {
+      filter: { quoteId: quote.id },
+    });
+    for (const r of responses) {
+      if (r.status !== "invited" || r.reminderSentAt) continue;
+      const left = Date.parse(r.dueAt) - now.getTime();
+      if (left <= 0 || left > reminderLeadMs(quote.hours)) continue;
+      await notify(
+        { partyId: r.supplierId, role: "supplier" },
+        {
+          kind: "action",
+          link: `/app/purchase-quotes/${quote.id}`,
+          text: (t) => ({
+            subject: t("quote.notify.reminder.subject", {
+              n: String(quote.number),
+            }),
+            body: t("quote.notify.reminder.body"),
+          }),
+        },
+      );
+      await store.update("purchase_quote_responses", r.id, {
+        reminderSentAt: now.toISOString(),
+      });
+      reminded++;
+    }
+    if (!quote.emptyNotifiedAt && quoteEmpty(responses, now)) {
+      await notifyEmpty(quote, now);
+      empty++;
+    }
+  }
+  return { reminded, empty };
+}
+
+/* ------------------------------------------------------------------------ */
+/* Leitura                                                                  */
+/* ------------------------------------------------------------------------ */
+
+/** A resposta do fornecedor logado nesta cotação (nula: não foi convidado). */
+export async function ownResponse(
+  user: User,
+  quoteId: string,
+): Promise<PurchaseQuoteResponse | null> {
+  if (user.role !== "supplier" || !user.partyId) return null;
+  const rows = await getStore().list("purchase_quote_responses", {
+    filter: { quoteId, supplierId: user.partyId },
+  });
+  return rows[0] ?? null;
+}
+
+/**
+ * O que o fornecedor vê da cotação: só os itens (produto, quantidade) e a
+ * resposta dele. Nem as demandas, nem o cliente, nem os outros convidados.
+ */
+export async function supplierQuoteView(user: User, quoteId: string) {
+  const response = await ownResponse(user, quoteId);
+  if (!response) return null;
+  const quote = await getStore().get("purchase_quotes", quoteId);
+  if (!quote) return null;
+  return {
+    quote: {
+      id: quote.id,
+      number: quote.number,
+      items: quote.items,
+      hours: quote.hours,
+      status: quote.status,
+    },
+    response,
+  };
+}
+
+/** Os convites do fornecedor logado, os em aberto primeiro. */
+export async function supplierInvitations(user: User, now = new Date()) {
+  if (user.role !== "supplier" || !user.partyId) return [];
+  const store = getStore();
+  const responses = await store.list("purchase_quote_responses", {
+    filter: { supplierId: user.partyId },
+    orderBy: "createdAt",
+    direction: "desc",
+  });
+  if (!responses.length) return [];
+  const quotes = await store.list("purchase_quotes", {
+    filter: { id: [...new Set(responses.map((r) => r.quoteId))] },
+  });
+  return responses
+    .map((response) => {
+      const quote = quotes.find((q) => q.id === response.quoteId);
+      return quote
+        ? {
+            response,
+            state: responseState(response, now),
+            quote: {
+              id: quote.id,
+              number: quote.number,
+              items: quote.items,
+              status: quote.status,
+            },
+          }
+        : null;
+    })
+    .filter((x): x is NonNullable<typeof x> => !!x)
+    .sort(
+      (a, b) =>
+        Number(b.state === "open") - Number(a.state === "open") ||
+        b.response.createdAt.localeCompare(a.response.createdAt),
+    );
+}
+
+/* ------------------------------------------------------------------------ */
+/* Resposta do fornecedor                                                   */
+/* ------------------------------------------------------------------------ */
+
+export interface QuoteAnswer {
+  decline: boolean;
+  prices: Array<{ productId: string; unitPrice: number }>;
+  currency: string | null;
+  incoterm: string | null;
+  leadTimeDays: number | null;
+  port: string | null;
+  moq: number | null;
+  note: string | null;
+}
+
+/** O fornecedor responde (ou recusa) a própria cotação, dentro do prazo. */
+export async function answerQuote(
+  user: User,
+  quoteId: string,
+  input: QuoteAnswer,
+  now = new Date(),
+): Promise<PurchaseQuoteResponse> {
+  const response = await ownResponse(user, quoteId);
+  if (!response) throw new PurchaseQuoteError("not_found");
+  const store = getStore();
+  const quote = await store.get("purchase_quotes", quoteId);
+  if (!quote || quote.status !== "open")
+    throw new PurchaseQuoteError("quote_closed");
+  if (Date.parse(response.dueAt) <= now.getTime())
+    throw new PurchaseQuoteError("quote_expired");
+  let patch: Partial<PurchaseQuoteResponse>;
+  if (input.decline) {
+    patch = {
+      status: "declined",
+      prices: null,
+      note: input.note,
+    };
+  } else {
+    const prices = quote.items.map((item) => {
+      const p = input.prices.find((x) => x.productId === item.productId);
+      if (!p || !Number.isFinite(p.unitPrice) || p.unitPrice < 0)
+        throw new PurchaseQuoteError("quote_price_required");
+      return { productId: item.productId, unitPrice: p.unitPrice };
+    });
+    if (
+      !input.currency ||
+      !(SHEET_CURRENCIES as readonly string[]).includes(input.currency)
+    )
+      throw new PurchaseQuoteError("quote_currency_required");
+    if (
+      !input.incoterm ||
+      !(SHEET_INCOTERMS as readonly string[]).includes(input.incoterm)
+    )
+      throw new PurchaseQuoteError("quote_incoterm_required");
+    patch = {
+      status: "answered",
+      prices,
+      currency: input.currency,
+      incoterm: input.incoterm,
+      leadTimeDays: input.leadTimeDays,
+      port: input.port,
+      moq: input.moq,
+      note: input.note,
+    };
+  }
+  const updated = await store.update("purchase_quote_responses", response.id, {
+    ...patch,
+    answeredAt: now.toISOString(),
+    answeredByUserId: user.id,
+  });
+  await audit(
+    user,
+    input.decline ? "purchase_quote.decline" : "purchase_quote.answer",
+    "purchase_quote",
+    quote.id,
+    `Cotação de compra nº ${quote.number}: ${input.decline ? "recusada" : `respondida (${input.currency})`} pelo fornecedor ${response.supplierId}`,
+  );
+  const buyers = await wellmixHolders("purchaseQuote.choose");
+  if (buyers.length)
+    await notify(
+      { userIds: buyers.map((u) => u.id) },
+      {
+        kind: "info",
+        link: `/app/purchase-quotes/${quote.id}`,
+        subject: `Cotação de compra nº ${quote.number}: ${input.decline ? "um fornecedor recusou" : "nova resposta"}`,
+        body: "Veja o quadro comparativo.",
+      },
+    );
+  return updated;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Escolha, aprovação e o que fazer sem resposta                            */
+/* ------------------------------------------------------------------------ */
+
+async function loadOpen(quoteId: string) {
+  const store = getStore();
+  const quote = await store.get("purchase_quotes", quoteId);
+  if (!quote) throw new PurchaseQuoteError("not_found");
+  const responses = await store.list("purchase_quote_responses", {
+    filter: { quoteId },
+  });
+  return { quote, responses };
+}
+
+/** O Comprador escolhe a vencedora (encerrado o prazo ou respondidos todos). */
+export async function chooseWinner(
+  user: User,
+  quoteId: string,
+  responseId: string,
+  note: string | null,
+  now = new Date(),
+): Promise<PurchaseQuote> {
+  if (!isWellmix(user)) throw new PurchaseQuoteError("forbidden");
+  assertCan(user, "purchaseQuote.choose");
+  const { quote, responses } = await loadOpen(quoteId);
+  if (quote.status !== "open") throw new PurchaseQuoteError("quote_closed");
+  if (!quoteClosed(responses, now))
+    throw new PurchaseQuoteError("quote_still_open");
+  const winner = responses.find((r) => r.id === responseId);
+  if (!winner || winner.status !== "answered")
+    throw new PurchaseQuoteError("quote_winner_invalid");
+  const updated = await getStore().update("purchase_quotes", quote.id, {
+    status: "chosen",
+    winnerResponseId: winner.id,
+    chosenByUserId: user.id,
+    chosenAt: now.toISOString(),
+    chosenNote: note,
+  });
+  await audit(
+    user,
+    "purchase_quote.choose",
+    "purchase_quote",
+    quote.id,
+    `Cotação de compra nº ${quote.number}: vencedora ${winner.supplierId}`,
+  );
+  const approvers = await wellmixHolders("purchaseQuote.approve");
+  if (approvers.length)
+    await notify(
+      { userIds: approvers.map((u) => u.id) },
+      {
+        kind: "action",
+        link: `/app/purchase-quotes/${quote.id}`,
+        subject: `Aprovar a vencedora da cotação de compra nº ${quote.number}`,
+        body: "O Comprador escolheu a cotação vencedora.",
+      },
+    );
+  return updated;
+}
+
+/**
+ * A Diretoria de compras aprova a vencedora (vira a Solicitação ao
+ * fornecedor, B7) ou recusa (a cotação volta para a escolha, com o motivo).
+ */
+export async function decideWinner(
+  user: User,
+  quoteId: string,
+  input: { approve: boolean; note: string | null },
+  now = new Date(),
+): Promise<PurchaseQuote> {
+  if (!isWellmix(user)) throw new PurchaseQuoteError("forbidden");
+  assertCan(user, "purchaseQuote.approve");
+  const { quote, responses } = await loadOpen(quoteId);
+  if (quote.status !== "chosen")
+    throw new PurchaseQuoteError("quote_not_chosen");
+  const store = getStore();
+  if (!input.approve) {
+    if (!input.note?.trim()) throw new PurchaseQuoteError("quote_reject_note");
+    const back = await store.update("purchase_quotes", quote.id, {
+      status: "open",
+      winnerResponseId: null,
+      approvalNote: input.note.trim(),
+    });
+    await audit(
+      user,
+      "purchase_quote.reject",
+      "purchase_quote",
+      quote.id,
+      `Cotação de compra nº ${quote.number}: vencedora recusada (${input.note})`,
+    );
+    if (quote.chosenByUserId)
+      await notify(
+        { userIds: [quote.chosenByUserId] },
+        {
+          kind: "alert",
+          link: `/app/purchase-quotes/${quote.id}`,
+          subject: `Vencedora da cotação nº ${quote.number} recusada`,
+          body: `Motivo: ${input.note}`,
+        },
+      );
+    return back;
+  }
+  const winner = responses.find((r) => r.id === quote.winnerResponseId);
+  if (!winner) throw new PurchaseQuoteError("quote_winner_invalid");
+  const requests = await supplierRequestsFromWinner(user, quote, winner, now);
+  const updated = await store.update("purchase_quotes", quote.id, {
+    status: "approved",
+    approvedByUserId: user.id,
+    approvedAt: now.toISOString(),
+    approvalNote: input.note?.trim() || null,
+    supplierRequestIds: requests.map((r) => r.id),
+  });
+  for (const id of quote.demandIds)
+    await store.update("requests", id, { status: "SUPPLIER_SELECTED" });
+  await audit(
+    user,
+    "purchase_quote.approve",
+    "purchase_quote",
+    quote.id,
+    `Cotação de compra nº ${quote.number}: vencedora ${winner.supplierId} aprovada; solicitação ao fornecedor nº ${requests[0]?.number ?? "—"}`,
+  );
+  await notify(
+    { partyId: winner.supplierId, role: "supplier" },
+    {
+      kind: "info",
+      link: `/app/supplier-requests/${requests[0]?.id ?? ""}`,
+      text: (t) => ({
+        subject: t("quote.notify.won.subject", { n: String(quote.number) }),
+        body: t("quote.notify.won.body"),
+      }),
+    },
+  );
+  if (quote.chosenByUserId)
+    await notify(
+      { userIds: [quote.chosenByUserId] },
+      {
+        kind: "action",
+        link: `/app/supplier-requests/${requests[0]?.id ?? ""}`,
+        subject: `Cotação nº ${quote.number} aprovada: solicitação ao fornecedor criada`,
+        body: "Siga com a decisão e a amostragem na Solicitação ao fornecedor.",
+      },
+    );
+  return updated;
+}
+
+/**
+ * A vencedora vira a Solicitação ao fornecedor (B7), uma por produto (mesmo
+ * número, mesmo lote), já respondida com o preço e a condição cotados e com
+ * o produto do catálogo ligado. Sem item de book: o produto já existe.
+ */
+async function supplierRequestsFromWinner(
+  user: User,
+  quote: PurchaseQuote,
+  winner: PurchaseQuoteResponse,
+  now: Date,
+): Promise<SupplierRequest[]> {
+  const store = getStore();
+  const number = await store.nextNumber("supplier_request_number");
+  const batchId = crypto.randomUUID();
+  const out: SupplierRequest[] = [];
+  const currency = SHEET_CURRENCIES.find((c) => c === winner.currency) ?? null;
+  const incoterm = SHEET_INCOTERMS.find((c) => c === winner.incoterm) ?? null;
+  for (const item of quote.items) {
+    const price =
+      winner.prices?.find((p) => p.productId === item.productId)?.unitPrice ??
+      null;
+    const request = await store.create("supplier_requests", {
+      number,
+      batchId,
+      status: "answered",
+      supplierId: winner.supplierId,
+      // Sem book: a solicitação nasce da cotação, com o produto do catálogo.
+      bookingItemId: "",
+      bookingLotId: "",
+      alternativeItemIds: null,
+      item: {
+        itemNumber: null,
+        factoryItemCode: null,
+        productName: item.name,
+        description: null,
+        incoterm,
+        currency,
+        price,
+        masterCartonQty: null,
+        innerQty: null,
+        netWeightPcKg: null,
+        grossWeightPcKg: null,
+        cbmPerCarton: null,
+        lengthCm: null,
+        widthCm: null,
+        heightCm: null,
+        capacityMl: null,
+        packageType: null,
+        material: null,
+        moq: winner.moq,
+        colorAssortment: null,
+        powerDetail: null,
+        photoDocumentId: null,
+      },
+      quantity: Math.round(item.quantity),
+      unit: "pcs",
+      needs: `Cotação de compra nº ${quote.number}${winner.port ? ` · porto ${winner.port}` : ""}`,
+      searchQuery: null,
+      supplierCanDo: "yes",
+      supplierPrice: price,
+      supplierCurrency: currency,
+      supplierMoq: winner.moq,
+      supplierLeadTimeDays: winner.leadTimeDays,
+      supplierIncoterm: incoterm,
+      supplierNote: winner.note,
+      respondedAt: winner.answeredAt ?? now.toISOString(),
+      respondedByUserId: winner.answeredByUserId,
+      decidedAt: null,
+      decidedByUserId: null,
+      decisionNote: null,
+      createdByUserId: user.id,
+      productId: item.productId,
+      productAction: "linked",
+      productLinkedAt: now.toISOString(),
+      productLinkedByUserId: user.id,
+      quoteResponseId: winner.id,
+      demandIds: quote.demandIds,
+    });
+    out.push(request);
+  }
+  return out;
+}
+
+/** Sem resposta: o Comprador reabre por mais um prazo para quem não respondeu. */
+export async function reopenQuote(
+  user: User,
+  quoteId: string,
+  now = new Date(),
+): Promise<number> {
+  if (!isWellmix(user)) throw new PurchaseQuoteError("forbidden");
+  assertCan(user, "purchaseQuote.choose");
+  const { quote, responses } = await loadOpen(quoteId);
+  if (quote.status !== "open") throw new PurchaseQuoteError("quote_closed");
+  const store = getStore();
+  const dueAt = new Date(now.getTime() + quote.hours * HOUR).toISOString();
+  const expired = responses.filter((r) => responseState(r, now) === "expired");
+  if (!expired.length) throw new PurchaseQuoteError("quote_nothing_to_reopen");
+  for (const r of expired) {
+    await store.update("purchase_quote_responses", r.id, {
+      dueAt,
+      reminderSentAt: null,
+    });
+    await notify(
+      { partyId: r.supplierId, role: "supplier" },
+      {
+        kind: "action",
+        link: `/app/purchase-quotes/${quote.id}`,
+        text: (t) => ({
+          subject: t("quote.notify.reopen.subject", {
+            n: String(quote.number),
+          }),
+          body: t("quote.notify.invite.body", { hours: String(quote.hours) }),
+        }),
+      },
+    );
+  }
+  await store.update("purchase_quotes", quote.id, { emptyNotifiedAt: null });
+  await audit(
+    user,
+    "purchase_quote.reopen",
+    "purchase_quote",
+    quote.id,
+    `Cotação de compra nº ${quote.number} reaberta por ${quote.hours} h para ${expired.length} fornecedor(es)`,
+  );
+  return expired.length;
+}
+
+/** Convida outros fornecedores ativos (cada um com o prazo cheio). */
+export async function inviteMore(
+  user: User,
+  quoteId: string,
+  supplierIds: string[],
+  now = new Date(),
+): Promise<number> {
+  if (!isWellmix(user)) throw new PurchaseQuoteError("forbidden");
+  assertCan(user, "purchaseQuote.choose");
+  const { quote, responses } = await loadOpen(quoteId);
+  if (quote.status !== "open") throw new PurchaseQuoteError("quote_closed");
+  const already = new Set(responses.map((r) => r.supplierId));
+  const parties = supplierIds.length
+    ? await getStore().list("parties", {
+        filter: { id: [...new Set(supplierIds)] },
+      })
+    : [];
+  const fresh = parties
+    .filter((p) => p.type === "supplier" && p.active && !already.has(p.id))
+    .map((p) => p.id);
+  if (!fresh.length) throw new PurchaseQuoteError("quote_invite_none");
+  await inviteSuppliers(quote, fresh, now);
+  await getStore().update("purchase_quotes", quote.id, {
+    emptyNotifiedAt: null,
+  });
+  await audit(
+    user,
+    "purchase_quote.invite",
+    "purchase_quote",
+    quote.id,
+    `Cotação de compra nº ${quote.number}: ${fresh.length} fornecedor(es) convidado(s)`,
+  );
+  return fresh.length;
+}
+
+/**
+ * Volta para a estratégia de compra (para escolher o fornecedor da última
+ * compra): a cotação é cancelada e as demandas voltam para a fila.
+ */
+export async function backToStrategy(
+  user: User,
+  quoteId: string,
+): Promise<void> {
+  if (!isWellmix(user)) throw new PurchaseQuoteError("forbidden");
+  assertCan(user, "purchaseQuote.choose");
+  const { quote } = await loadOpen(quoteId);
+  if (quote.status !== "open") throw new PurchaseQuoteError("quote_closed");
+  const store = getStore();
+  await store.update("purchase_quotes", quote.id, { status: "cancelled" });
+  await store.update("purchase_decisions", quote.decisionId, {
+    status: "rejected",
+    approvalNote: "Cotação de compra cancelada: voltou para a estratégia.",
+  });
+  for (const id of quote.demandIds)
+    await store.update("requests", id, {
+      status: "REQUESTED",
+      purchaseDecisionId: null,
+    });
+  await audit(
+    user,
+    "purchase_quote.back_to_strategy",
+    "purchase_quote",
+    quote.id,
+    `Cotação de compra nº ${quote.number} cancelada: as demandas voltaram para a estratégia de compra`,
+  );
+}
+
+/**
+ * Pendências da cotação de compra (passo "Cotação de compra" do menu): o
+ * fornecedor responde a dele no prazo; o Comprador escolhe a vencedora (ou
+ * decide o que fazer sem resposta); a Diretoria aprova a vencedora. As
+ * portas por ação ficam em src/lib/task-owner.ts (kindGate).
+ */
+export async function quoteTaskDrafts(user: User, now = new Date()) {
+  type Draft = {
+    kind:
+      | "purchase_quote_answer"
+      | "purchase_quote_choose"
+      | "purchase_quote_empty"
+      | "purchase_quote_approve";
+    title: string;
+    detail: string;
+    link: string;
+    dueAt: string | null;
+  };
+  const drafts: Draft[] = [];
+  const store = getStore();
+  if (user.role === "supplier") {
+    for (const { quote, response, state } of await supplierInvitations(
+      user,
+      now,
+    ))
+      if (state === "open" && quote.status === "open")
+        drafts.push({
+          kind: "purchase_quote_answer",
+          title: `Cotação de compra nº ${quote.number}`,
+          detail: quote.items.map((i) => i.name).join(", "),
+          link: `/app/purchase-quotes/${quote.id}`,
+          dueAt: response.dueAt,
+        });
+    return drafts;
+  }
+  if (!isWellmix(user)) return drafts;
+  const quotes = await store
+    .list("purchase_quotes", { filter: { status: ["open", "chosen"] } })
+    .catch(() => [] as PurchaseQuote[]);
+  if (!quotes.length) return drafts;
+  const responses = await store.list("purchase_quote_responses", {
+    filter: { quoteId: quotes.map((q) => q.id) },
+  });
+  for (const q of quotes) {
+    const mine = responses.filter((r) => r.quoteId === q.id);
+    const base = {
+      title: `Cotação de compra nº ${q.number}`,
+      detail: q.items.map((i) => i.name).join(", "),
+      link: `/app/purchase-quotes/${q.id}`,
+      dueAt: null,
+    };
+    if (q.status === "chosen")
+      drafts.push({ ...base, kind: "purchase_quote_approve" });
+    else if (quoteEmpty(mine, now))
+      drafts.push({ ...base, kind: "purchase_quote_empty" });
+    else if (quoteClosed(mine, now))
+      drafts.push({ ...base, kind: "purchase_quote_choose" });
+  }
+  return drafts;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Fornecedor × linha (cadastro)                                            */
+/* ------------------------------------------------------------------------ */
+
+/** As linhas que o fornecedor atende (cadastro explícito). */
+export async function supplierLineIds(supplierId: string): Promise<string[]> {
+  const rows = await getStore()
+    .list("supplier_lines", { filter: { supplierId } })
+    .catch(() => []);
+  return rows.map((r) => r.lineId).sort();
+}
+
+/**
+ * Grava as linhas que o fornecedor atende (Cadastros → fornecedor): quem
+ * entra na cotação de compra de cada linha. Troca a lista inteira.
+ */
+export async function setSupplierLines(
+  user: User,
+  supplierId: string,
+  lineIds: string[],
+): Promise<void> {
+  if (!isWellmix(user)) throw new PurchaseQuoteError("forbidden");
+  const { assertScreen } = await import("@/lib/auth/screens");
+  assertScreen(user, "parties");
+  const store = getStore();
+  const supplier = await store.get("parties", supplierId);
+  if (!supplier || supplier.type !== "supplier")
+    throw new PurchaseQuoteError("not_found");
+  const wanted = new Set(lineIds);
+  const current = await store.list("supplier_lines", {
+    filter: { supplierId },
+  });
+  for (const row of current)
+    if (!wanted.has(row.lineId)) await store.remove("supplier_lines", row.id);
+  const have = new Set(current.map((r) => r.lineId));
+  for (const lineId of wanted)
+    if (!have.has(lineId))
+      await store.create("supplier_lines", {
+        supplierId,
+        lineId,
+        createdByUserId: user.id,
+      });
+  await audit(
+    user,
+    "supplier.lines",
+    "party",
+    supplierId,
+    `Linhas atendidas por ${supplier.name}: ${[...wanted].join(", ") || "nenhuma"}`,
+  );
+}

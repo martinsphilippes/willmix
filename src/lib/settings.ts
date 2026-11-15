@@ -54,6 +54,11 @@ export const DEFAULT_SETTINGS = {
    */
   bookingInviteSlaDays: 1,
   /**
+   * Cotação de compra (mapa B13; dono, 15/11/2026): horas corridas que cada
+   * fornecedor tem para responder (padrão 24).
+   */
+  purchaseQuoteHours: 24,
+  /**
    * SLA da amostragem, em dias corridos: da aprovação da solicitação (ou da
    * reprovação da amostra) até o responsável enviar as fotos e vídeos
    * (docs/SUPPLIER_SAMPLING.md). Decisão do dono (12/11/2026): 1 dia.
