@@ -5,7 +5,7 @@ import { realName } from "@/lib/placeholder-name";
 import { getStore, type Order, type User } from "@/lib/db";
 import { currentMilestone, type MilestoneKey } from "@/lib/milestones";
 import { requirementReleased } from "@/lib/milestone-release";
-import { orderRelease } from "./order-milestones";
+import { ordersRelease } from "./order-milestones";
 import { canViewOrder } from "@/lib/auth/permissions";
 
 export interface OrderInProgress {
@@ -63,9 +63,10 @@ export async function customerOrdersInProgress(
     ? await store.list("containers", { filter: { id: containerIds } })
     : [];
   const now = Date.now();
+  const released = await ordersRelease(ids);
   const out: OrderInProgress[] = [];
   for (const order of orders) {
-    const found = await orderRelease(order.id);
+    const found = released.get(order.id);
     const views = found?.views ?? [];
     const milestone = currentMilestone(views, order.status);
     const view = views.find((v) => v.key === milestone);

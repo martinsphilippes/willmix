@@ -617,6 +617,24 @@ export async function orderRelease(orderId: string): Promise<{
   return { views, release: releaseOf(views, input.stages) };
 }
 
+/** `orderRelease` de vários pedidos numa leitura só (uma consulta por tabela). */
+export async function ordersRelease(
+  orderIds: readonly string[],
+): Promise<Map<string, { views: MilestoneView[]; release: MilestoneRelease }>> {
+  const out = new Map<
+    string,
+    { views: MilestoneView[]; release: MilestoneRelease }
+  >();
+  if (!orderIds.length) return out;
+  const src = await loadSlice([...orderIds]);
+  for (const order of src.orders) {
+    const input = inputOf(order, src);
+    const views = viewsNow(input);
+    out.set(order.id, { views, release: releaseOf(views, input.stages) });
+  }
+  return out;
+}
+
 /**
  * O item está liberado pelo marco dele agora (fase 5d)? Para as telas e os
  * serviços que mostram ou aceitam o item fora do motor (pedido de amostras,
