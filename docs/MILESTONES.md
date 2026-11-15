@@ -223,3 +223,7 @@ Pedido do dono: o book, a seleção, o produto e o pedido ficam ligados pelo cam
 - **Leitura**: só por filtro com índice (lotId, productId, bookingItemId, orderId, chosenItemId) ou por id, e só as colunas usadas; nenhuma tabela grande é lida inteira.
 - Código: `src/lib/services/entity-links.ts` (`linksForOrder`, `linksForLot`, `linksForProduct`, `linksForSupplierRequest`, `linksOfItem`); links em `src/components/entity-links.tsx`; textos em `src/i18n/modules/entity-links.ts`; testes em `tests/unit/entity-links.test.ts`.
 - Fora por enquanto: as alternativas da solicitação (`alternativeItemIds`) não contam como ligação do item (só o item escolhido); a planilha do pedido e os painéis não mostram as ligações.
+
+## Pedidos de compra da compra por demanda (15/11/2026)
+
+O pedido de compra que nasce da estratégia "fornecedor da última compra" (pedido direto, sem solicitação ao fornecedor) e o que nasce da solicitação ao fornecedor criada pela cotação de compra (docs/PURCHASE_DEMAND.md) são pedidos de compra comuns (`flow: supplier_request`): as mesmas etapas, raias e marcos, sem campo de marco novo nem etapa antiga mudada. A diferença é só o vínculo `orders.demandIds` com as encomendas e reposições de origem e, na encomenda, a reserva para o cliente valendo na chegada.

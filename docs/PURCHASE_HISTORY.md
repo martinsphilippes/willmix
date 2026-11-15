@@ -138,6 +138,19 @@ No card do histórico pelo Sankhya (seção 9), um seletor **"Pedido | Produto"*
   - Ordem: do produto comprado mais recentemente para o mais antigo; no mesmo dia, pelo nome.
 - **Período consultado:** os pedidos que a lista já leu (10 de início), com as datas do mais antigo ao mais recente e o número de pedidos ("Período consultado: 01/08/2026 a 15/09/2026 (3 pedido(s))"). "Carregar mais pedidos" lê mais 10 na lista e soma de novo; o período e os totais crescem juntos.
 - **Quantidades e unidades do Sankhya:** a quantidade pedida (QTD_NEGOCIADA) na unidade negociada (UNIDADE_NEGOCIADA). Unidades diferentes do mesmo produto não se somam: "Total 2 CX · 10 UN".
+- **Ordenar e valor total (dono, 15/11/2026):**
+  - **Seletor "Ordenar":** fica no canto superior direito, ao lado do "Período consultado" e acima da lista. Na coluna estreita, o período quebra na própria coluna e o seletor continua ao lado, com o rótulo pequeno em cima.
+  - **Quatro ordens:** "Mais un.", "Menos un.", "Maior valor" e "Menor valor"; "Mais un." vem marcada.
+    - Por unidades: a quantidade total pedida do produto no período. Com unidades diferentes, as quantidades somam só para ordenar.
+    - Por valor: o valor total do produto no período. Produto sem valor fica no fim das duas ordens por valor.
+    - Empates: mais unidades, depois o nome.
+    - A ordem fica ao voltar de Pedido e ao trocar de cliente.
+    - As datas de cada produto continuam da mais recente para a mais antiga.
+  - **Totais à direita do nome, um embaixo do outro:** as unidades ("2.592 UN") e o valor ("R$ 12.450,00"), em qualquer ordem.
+  - **Valor:** a soma dos valores líquidos dos itens do produto, após descontos (VALOR_ITEM_APOS_DESCONTO_BRL, a mesma coluna do "Total do item após desconto" na visão Pedido).
+    - Se algum item vier sem valor, o produto mostra "—" (o total ficaria incompleto). Valor zero é valor (R$ 0,00).
+    - Só com "Ver valores e margem", a regra da lista. Sem ela, o valor fica "—" e o seletor mostra só "Mais un." e "Menos un." (nenhuma ordem por valor, que deixaria inferir valores).
+  - Código: `src/lib/sankhya-product-sort.ts` (`sortProducts`) e o `value` de `productHistory`.
 - **Muitos produtos:** 50 por vez, com "Mostrar mais produtos". Se o teto de leituras cortar itens (mais de 20 mil itens no período), o card avisa que os totais podem estar menores.
 - **Troca de cliente:** a visão escolhida fica e o conteúdo passa a ser o do cliente novo. A leitura fica guardada ao voltar de Pedido para Produto.
 - **Leitura:** `GET /api/purchase-history/sankhya?customer=&view=products&shown=N`.
