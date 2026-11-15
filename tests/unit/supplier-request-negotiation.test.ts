@@ -629,3 +629,57 @@ describe("pendências do fornecedor", () => {
     expect(await mine(supplierA, request.id)).toEqual([]);
   });
 });
+
+describe("contraproposta sem “Ver preço de compra”", () => {
+  /*
+   * Dono, 15/11/2026 (docs/LINHA_DE_VISAO.md, seção 7): quem abre a tela sem
+   * a permissão (o Planejamento, por padrão) propõe MOQ, prazo e FOB/EXW; o
+   * preço que chegar no envio é ignorado.
+   */
+  it("grava MOQ e prazo, ignora o preço; só preço vira proposta vazia", async () => {
+    const store = getStore();
+    const planner = await store.create("users", {
+      email: "planejamento@wellmix.com",
+      name: "Paulo Planejamento",
+      role: "operator",
+      partyId: null,
+      locale: "pt",
+      passwordHash: null,
+      active: true,
+      importerId: null,
+      functions: ["planner"],
+    } as never);
+    const { canSeePurchasePrice } = await import("@/lib/auth/function-access");
+    expect(canSeePurchasePrice(planner)).toBe(false);
+
+    const request = await answeredRequest("NEG-NOPRICE");
+    await neg.proposeCounter(
+      planner,
+      request.id,
+      offer({
+        price: 0.5,
+        currency: "USD",
+        moq: 1500,
+        leadTimeDays: 20,
+        text: "MOQ menor?",
+      }),
+    );
+    const after = (await store.get("supplier_requests", request.id))!;
+    const proposal = lib.pendingProposal(after.negotiation)!;
+    expect(proposal).toMatchObject({
+      price: null,
+      currency: null,
+      moq: 1500,
+      leadTimeDays: 20,
+    });
+
+    const other = await answeredRequest("NEG-NOPRICE-2");
+    await expect(
+      neg.proposeCounter(
+        planner,
+        other.id,
+        offer({ price: 0.5, currency: "USD", text: "Só o preço" }),
+      ),
+    ).rejects.toThrow("supplier_request_offer_empty");
+  });
+});

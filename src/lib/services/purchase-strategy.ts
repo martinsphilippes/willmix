@@ -9,7 +9,12 @@ import {
   type Request,
   type User,
 } from "@/lib/db";
-import { assertCan, can, holdersOf } from "@/lib/auth/function-access";
+import {
+  assertCan,
+  can,
+  canSeePurchasePrice,
+  holdersOf,
+} from "@/lib/auth/function-access";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { demandKind } from "@/lib/purchase-demand";
 import { audit } from "./audit";
@@ -302,6 +307,15 @@ export async function orderFromStrategy(
   const reference = decision.reference?.[0];
   if (!reference || !decision.productId)
     throw new PurchaseStrategyError("strategy_no_last_purchase");
+  // Sem "Ver preço de compra" (dono, 15/11/2026; docs/LINHA_DE_VISAO.md,
+  // seção 7): o pedido sai com o preço e a moeda da última compra gravados
+  // na decisão; o que vier no formulário é ignorado.
+  if (!canSeePurchasePrice(user))
+    input = {
+      ...input,
+      unitPrice: reference.unitPrice,
+      currency: reference.currency ?? "USD",
+    };
   const demands = await store.list("requests", {
     filter: { id: decision.demandIds },
   });

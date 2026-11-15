@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { assertScreen } from "@/lib/auth/screens";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { parseNumberInput } from "@/lib/number-input";
 import { getStore } from "@/lib/db";
 import { field, requireUser, run, str } from "./helpers";
@@ -95,15 +96,20 @@ export async function orderFromStrategyAction(form: FormData) {
       .positive()
       .max(1e9)
       .parse(parseNumberInput(str(form, "quantity")));
-    const priceRaw = str(form, "unitPrice");
+    // Sem "Ver preço de compra" a tela não tem preço nem moeda: o serviço
+    // usa os da última compra gravados na decisão (dono, 15/11/2026).
+    const seesPrice = canSeePurchasePrice(user);
+    const priceRaw = seesPrice ? str(form, "unitPrice") : "";
     const unitPrice = priceRaw
       ? z.number().nonnegative().max(1e9).parse(parseNumberInput(priceRaw))
       : null;
-    const currency = z
-      .string()
-      .trim()
-      .regex(/^[A-Z]{3}$/)
-      .parse(str(form, "currency").toUpperCase());
+    const currency = seesPrice
+      ? z
+          .string()
+          .trim()
+          .regex(/^[A-Z]{3}$/)
+          .parse(str(form, "currency").toUpperCase())
+      : "USD";
     const leadRaw = str(form, "leadTimeDays");
     const leadTimeDays = leadRaw
       ? z

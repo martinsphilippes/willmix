@@ -11,11 +11,19 @@ export const STATUS_TONE: Record<SupplierRequestStatus, Tone> = {
   cancelled: "neutral",
 };
 
-/** A resposta do fornecedor em uma linha ("Faz: 1,2 USD", "Não faz", "Esperando"). */
-export function answerText(t: Translate, r: SupplierRequest): string {
+/**
+ * A resposta do fornecedor em uma linha ("Faz: 1,2 USD", "Não faz",
+ * "Esperando"). Sem `showPrice` (Wellmix sem "Ver preço de compra"), só
+ * "Faz".
+ */
+export function answerText(
+  t: Translate,
+  r: SupplierRequest,
+  showPrice = true,
+): string {
   if (!r.supplierCanDo) return t("supplierRequests.answer.waiting");
   if (r.supplierCanDo === "no") return t("supplierRequests.answer.no");
-  return r.supplierPrice === null
+  return r.supplierPrice === null || !showPrice
     ? t("supplierRequests.answer.yesNoPrice")
     : t("supplierRequests.answer.yes", {
         price:

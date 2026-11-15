@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { getStore } from "@/lib/db";
 import { loadVisit } from "@/lib/services/sourcing";
 import { getT } from "@/i18n/server";
@@ -32,6 +33,8 @@ export default async function VisitPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "sourcing");
+  // Preço achado na feira: só com "Ver preço de compra" (dono, 15/11/2026).
+  const seesPrice = canSeePurchasePrice(user);
   const { id } = await params;
   const { error } = await searchParams;
   const data = await loadVisit(id);
@@ -156,11 +159,13 @@ export default async function VisitPage({
                           {item.name}
                         </p>
                         <p className="text-[13px] text-zinc-700">
-                          {formatMoney(item.price, item.currency, t)}
+                          {seesPrice
+                            ? formatMoney(item.price, item.currency, t)
+                            : null}
                           {item.moq ? (
                             <span className="text-zinc-500">
-                              {" "}
-                              · {t("sourcing.moq")}{" "}
+                              {seesPrice ? " · " : null}
+                              {t("sourcing.moq")}{" "}
                               {formatNumber(item.moq, t.intl)}
                             </span>
                           ) : null}

@@ -16,10 +16,16 @@ import { createPurchaseOrderAction } from "../../actions/purchase-order";
 export function PurchaseOrderCard({
   groups,
   customer,
+  showPrice = true,
   t,
 }: {
   groups: PurchaseCandidateGroup[];
   customer: Party | null;
+  /**
+   * Preço negociado: falso sem "Ver preço de compra" (o pedido sai com o
+   * preço combinado do mesmo jeito; dono, 15/11/2026).
+   */
+  showPrice?: boolean;
   t: Translate;
 }) {
   const num = (n: number | null | undefined, digits = 4) =>
@@ -59,7 +65,7 @@ export function PurchaseOrderCard({
                   <Th>{t("purchaseOrder.col.include")}</Th>
                   <Th>{t("purchaseOrder.col.request")}</Th>
                   <Th>{t("purchaseOrder.col.product")}</Th>
-                  <Th>{t("purchaseOrder.col.price")}</Th>
+                  {showPrice ? <Th>{t("purchaseOrder.col.price")}</Th> : null}
                   <Th>{t("purchaseOrder.col.moq")}</Th>
                   <Th>{t("purchaseOrder.col.leadTime")}</Th>
                   <Th>{t("purchaseOrder.col.quantity")}</Th>
@@ -83,10 +89,12 @@ export function PurchaseOrderCard({
                         {product.name}
                       </span>
                     </Td>
-                    <Td className="tabular-nums">
-                      {num(r.supplierPrice ?? r.item.price)}{" "}
-                      {r.supplierCurrency ?? r.item.currency ?? ""}
-                    </Td>
+                    {showPrice ? (
+                      <Td className="tabular-nums">
+                        {num(r.supplierPrice ?? r.item.price)}{" "}
+                        {r.supplierCurrency ?? r.item.currency ?? ""}
+                      </Td>
+                    ) : null}
                     <Td className="tabular-nums">
                       {num(r.supplierMoq ?? r.item.moq, 0)}
                     </Td>

@@ -130,12 +130,18 @@ export function NegotiationCard({
   wellmix,
   t,
   simulation = null,
+  showPrice = true,
 }: {
   request: SupplierRequest;
   wellmix: boolean;
   t: Translate;
   /** Só a Wellmix: base do Superplan do item e o mínimo do booking. */
   simulation?: { base: SuperplanInput; bookingMinimum: number | null } | null;
+  /**
+   * Preço na contraproposta: falso para a Wellmix sem "Ver preço de compra"
+   * (ela propõe MOQ, prazo e FOB/EXW; dono, 15/11/2026).
+   */
+  showPrice?: boolean;
 }) {
   const events = r.negotiation ?? [];
   const proposal = pendingProposal(events);
@@ -184,17 +190,22 @@ export function NegotiationCard({
               </p>
               <input type="hidden" name="id" value={r.id} />
               <ProposalFields
+                showPrice={showPrice}
                 values={{
-                  price: r.supplierPrice,
-                  currency: r.supplierCurrency ?? currencyDefault,
+                  price: showPrice ? r.supplierPrice : null,
+                  currency: showPrice
+                    ? (r.supplierCurrency ?? currencyDefault)
+                    : "",
                   moq: r.supplierMoq,
                   leadTimeDays: r.supplierLeadTimeDays,
                   incoterm: incotermDefault,
                 }}
                 currencies={SHEET_CURRENCIES}
                 incoterms={SHEET_INCOTERMS}
-                base={simulation?.base ?? null}
-                bookingMinimum={simulation?.bookingMinimum ?? null}
+                base={showPrice ? (simulation?.base ?? null) : null}
+                bookingMinimum={
+                  showPrice ? (simulation?.bookingMinimum ?? null) : null
+                }
                 intl={t.intl}
                 labels={{
                   price: t("supplierRequests.detail.answer.price"),

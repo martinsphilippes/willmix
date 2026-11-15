@@ -2,6 +2,7 @@ import { listByIds } from "@/lib/db/lookup";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import {
   getStore,
   MEASUREMENT_KINDS,
@@ -67,6 +68,10 @@ export default async function SourcingItemPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "sourcing");
+  // Preço e faixas: só com "Ver preço de compra" (dono, 15/11/2026;
+  // docs/LINHA_DE_VISAO.md, seção 7). Sem ela, o formulário não tem preço e
+  // salvar mantém o gravado.
+  const seesPrice = canSeePurchasePrice(user);
   const { id } = await params;
   const { error, from: errorFrom, ai: aiNotice, saved } = await searchParams;
   const data = await loadSourcingItem(id);
@@ -341,6 +346,7 @@ export default async function SourcingItemPage({
             item={item}
             suppliers={suppliers}
             lines={lines}
+            showPrice={seesPrice}
           />
         </div>
 
@@ -500,7 +506,14 @@ export default async function SourcingItemPage({
         >
           <DescriptionList
             items={[
-              [t("common.price"), formatMoney(item.price, item.currency, t)],
+              ...(seesPrice
+                ? [
+                    [
+                      t("common.price"),
+                      formatMoney(item.price, item.currency, t),
+                    ] as [string, string],
+                  ]
+                : []),
               [t("sourcing.moq"), formatNumber(item.moq, t.intl)],
               [t("common.conditions"), item.conditions ?? "—"],
               [
@@ -547,7 +560,14 @@ export default async function SourcingItemPage({
               </Alert>
             </div>
           ) : null}
-          {tiers.length === 0 ? (
+          {!seesPrice ? (
+            <p
+              className="mb-3 text-sm text-zinc-500"
+              data-sourcing-price-restricted
+            >
+              {t("sourcing.priceRestricted")}
+            </p>
+          ) : tiers.length === 0 ? (
             <p className="mb-3 text-sm text-zinc-500">
               {t("catalog.opp.tiers.empty")}
             </p>
@@ -571,34 +591,36 @@ export default async function SourcingItemPage({
               ))}
             </ul>
           )}
-          <form
-            action={saveSourcingPriceTiersAction}
-            className="space-y-2 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3"
-          >
-            <input type="hidden" name="itemId" value={item.id} />
-            <Field
-              label={t("catalog.opp.tiers")}
-              hint={t("catalog.opp.tiersHint")}
+          {seesPrice ? (
+            <form
+              action={saveSourcingPriceTiersAction}
+              className="space-y-2 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3"
             >
-              <Textarea
-                name="tiers"
-                rows={3}
-                placeholder={"500;4.10\n1000;3.80"}
-                defaultValue={formatPriceTiers(tiers)}
-                className={cx(bigField, "min-h-0 font-mono")}
-              />
-            </Field>
-            <p className="text-xs text-zinc-500">
-              {t("catalog.sourcing.tiersHint")}
-            </p>
-            <SubmitButton
-              variant="secondary"
-              pendingText="…"
-              className="w-full sm:w-auto"
-            >
-              {t("catalog.opp.saveTiers")}
-            </SubmitButton>
-          </form>
+              <input type="hidden" name="itemId" value={item.id} />
+              <Field
+                label={t("catalog.opp.tiers")}
+                hint={t("catalog.opp.tiersHint")}
+              >
+                <Textarea
+                  name="tiers"
+                  rows={3}
+                  placeholder={"500;4.10\n1000;3.80"}
+                  defaultValue={formatPriceTiers(tiers)}
+                  className={cx(bigField, "min-h-0 font-mono")}
+                />
+              </Field>
+              <p className="text-xs text-zinc-500">
+                {t("catalog.sourcing.tiersHint")}
+              </p>
+              <SubmitButton
+                variant="secondary"
+                pendingText="…"
+                className="w-full sm:w-auto"
+              >
+                {t("catalog.opp.saveTiers")}
+              </SubmitButton>
+            </form>
+          ) : null}
           <form
             action={linkSourcingItemRequestAction}
             className="mt-3 space-y-2 border-t border-zinc-100 pt-3"
