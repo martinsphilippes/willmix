@@ -1066,7 +1066,9 @@ export async function saveSettingsAction(form: FormData) {
         key === "freightTariffDestination" ||
         key === "freightPerCbmAuto" ||
         // Gravado pela tela do Superplan, com validação própria.
-        key === "superplan"
+        key === "superplan" ||
+        // Prazo por marco (fase 5): sem editor ainda; nunca vem do formulário.
+        key === "milestoneDueDays"
       )
         continue;
       if (

@@ -589,3 +589,63 @@ export const milestonesOfBlock = (block: FlowBlock): MilestoneKey[] =>
 export const MILESTONE_BLOCKS: FlowBlock[] = [
   ...new Set(MILESTONES.map((d) => d.block)),
 ];
+
+/*
+ * Fase 5 (docs/MILESTONES.md, "Fase 5: plano e andamento"): o motor passa a
+ * andar pelos marcos. 5a/5b gravam, em sombra, o passo e o marco de cada
+ * item (`requirements.step`/`milestoneKey`) e os marcos do pedido
+ * (`order_milestones`, `orders.milestoneKey`).
+ */
+
+/**
+ * Passo do menu e marco de um item do pedido, para gravar na criação e na
+ * migração: o passo é o de `flowStepsOf` (um item tem no máximo um), o marco
+ * é o de `milestoneOfRequirement` (pelo passo; sem passo nos marcos, pela
+ * etapa).
+ */
+export function requirementFlowFields(
+  stageKey: string,
+  key: string,
+): { step: string | null; milestoneKey: MilestoneKey | null } {
+  const [step] = flowStepsOf({
+    kind: "requirement",
+    stageKey,
+    items: [{ key }],
+  });
+  return {
+    step: step ? stepId(step) : null,
+    milestoneKey: milestoneOfRequirement(stageKey, key),
+  };
+}
+
+/** Etapas antigas de cada marco (o inverso do de-para etapa → marco). */
+export const MILESTONE_STAGES: Record<MilestoneKey, string[]> = (() => {
+  const out = Object.fromEntries(
+    MILESTONE_KEYS.map((k) => [k, [] as string[]]),
+  ) as Record<MilestoneKey, string[]>;
+  for (const [stage, key] of Object.entries(STAGE_MILESTONE))
+    if (key) out[key].push(stage);
+  return out;
+})();
+
+/**
+ * Prazo de cada marco em dias, tirado do prazo das etapas
+ * (`settings.stageDueDays`) enquanto `settings.milestoneDueDays` não foi
+ * gravado: a soma das etapas que caem no marco (Pedido criado + Preparação →
+ * Pedido novo; Entregue + Encerrado → Entrega e recebimento). Marco sem etapa
+ * antiga (Certificação, artes, pré-produção, amostras, produção, booking,
+ * carregamento): sem prazo (nulo), até o dono definir.
+ */
+export function milestoneDueDaysFromStages(
+  stageDueDays: Record<string, number | null | undefined>,
+): Record<MilestoneKey, number | null> {
+  const out = {} as Record<MilestoneKey, number | null>;
+  for (const key of MILESTONE_KEYS) {
+    const stages = MILESTONE_STAGES[key];
+    const days = stages
+      .map((s) => stageDueDays[s])
+      .filter((d): d is number => typeof d === "number" && Number.isFinite(d));
+    out[key] = days.length ? days.reduce((a, b) => a + b, 0) : null;
+  }
+  return out;
+}

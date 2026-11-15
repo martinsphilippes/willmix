@@ -35,6 +35,8 @@ Projeto: **wellmix** (`rokbtrvkzllowyqzcauq`), região São Paulo (sa-east-1). L
 2. `node scripts/supabase-missing.ts colunas.txt`: imprime as tabelas, colunas e índices do `supabase/schema.sql` que faltam (tudo com "if not exists").
 3. Aplicar essa saída como migração e conferir a contagem de colunas por tabela.
 
+Fase 5b dos marcos (docs/MILESTONES.md, "Fase 5"): depois de publicar o esquema, os dados vão para os marcos pela tela Configurações → Resumos dos pedidos → "Migrar para os marcos" (em fatias, sem avisos). Para os itens, `node scripts/milestone-backfill-sql.ts` imprime um UPDATE revisado (não roda nada) para aplicar pela ferramenta do Supabase, se for mais rápido.
+
 Virada (11/11/2026): o banco de produção é o Supabase. O Appwrite ficou parado (cota de leituras do plano esgotada) e não recebe mais o esquema; o workflow "Publicar esquema Appwrite" só roda pelo botão manual.
 
 ## Variáveis (Vercel, só na virada)

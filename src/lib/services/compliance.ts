@@ -1,4 +1,5 @@
 import "server-only";
+import { requirementFlowFields } from "@/lib/milestones";
 
 import {
   getStore,
@@ -261,6 +262,7 @@ export async function runComplianceGate(
         submittedByUserId: null,
         submittedAt: null,
         note: `Faltam: ${check.missing.join(", ")}`,
+        ...requirementFlowFields(stage.key, "compliance_check"),
       });
   }
   await audit(

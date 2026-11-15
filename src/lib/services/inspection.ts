@@ -1,4 +1,5 @@
 import "server-only";
+import { requirementFlowFields } from "@/lib/milestones";
 
 import {
   getStore,
@@ -349,6 +350,7 @@ export async function compareInspection(
         submittedByUserId: null,
         submittedAt: null,
         note: reason,
+        ...requirementFlowFields(stage.key, "inspection_review"),
       });
     } else if (review.status !== "pending") {
       await store.update("requirements", review.id, {

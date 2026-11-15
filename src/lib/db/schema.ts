@@ -1058,6 +1058,15 @@ export interface Order extends BaseRow {
    * telas de pedidos continuam mostrando o pedido.
    */
   held?: boolean | null;
+  /**
+   * Marco atual do pedido (fase 5b, docs/MILESTONES.md "Fase 5"): gravado em
+   * sombra por `syncMilestones` (src/lib/services/order-milestones.ts) e pela
+   * migração. Nenhuma tela lê ainda (5c). Nulo: ainda não migrado, cancelado
+   * ou sem marco que se aplique.
+   */
+  milestoneKey?: string | null;
+  /** Marco em que o pedido estava quando foi cancelado (ao lado de `cancelStageKey`). */
+  cancelMilestoneKey?: string | null;
 }
 
 /** Uma rodada da programação de compra no pedido pai. */
@@ -1144,6 +1153,14 @@ export interface Requirement extends BaseRow {
   note: string | null;
   /** Em espera até o go-live (ver Stage.held). */
   held?: boolean | null;
+  /**
+   * Passo do menu do item (`bloco/passo`, `flowStepsOf`) e o marco dele
+   * (`milestoneOfRequirement`), gravados na criação desde a fase 5b
+   * (docs/MILESTONES.md "Fase 5"); os antigos, pela migração. Nulos: ainda
+   * não migrado (ou item sem passo nem marco).
+   */
+  step?: string | null;
+  milestoneKey?: string | null;
 }
 
 export interface Document extends BaseRow {
@@ -3256,6 +3273,29 @@ export interface CommissionEvent extends BaseRow {
   createdByUserId: string | null;
 }
 
+export const ORDER_MILESTONE_STATUSES = ["active", "blocked", "done"] as const;
+export type OrderMilestoneStatus = (typeof ORDER_MILESTONE_STATUSES)[number];
+
+/**
+ * Um marco de um pedido (fase 5b, docs/MILESTONES.md "Fase 5"): a linha nasce
+ * quando o marco abre pela primeira vez (ou já concluído, na migração) e
+ * guarda início, prazo, conclusão e lembrete, como as etapas. Em sombra:
+ * gravada por `syncMilestones` sem avisos nem eventos; nada lê ainda (5c).
+ */
+export interface OrderMilestone extends BaseRow {
+  orderId: string;
+  /** Chave do marco (`MILESTONE_KEYS`, src/lib/milestones.ts). */
+  key: string;
+  status: OrderMilestoneStatus;
+  startedAt: string | null;
+  dueAt: string | null;
+  completedAt: string | null;
+  reminderSentAt: string | null;
+  blockReason: string | null;
+  /** Pedido do histórico do Sankhya em espera (ver Stage.held). */
+  held?: boolean | null;
+}
+
 export interface Tables {
   commission_agreements: CommissionAgreement;
   commission_entries: CommissionEntry;
@@ -3271,6 +3311,7 @@ export interface Tables {
   order_items: OrderItem;
   stages: Stage;
   requirements: Requirement;
+  order_milestones: OrderMilestone;
   documents: Document;
   payments: Payment;
   notifications: Notification;
@@ -3649,6 +3690,8 @@ export const TABLES: Record<TableName, TableDef> = {
       parentOrderId: id(false),
       roundIndex: int(),
       held: bool(),
+      milestoneKey: str(40),
+      cancelMilestoneKey: str(40),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
@@ -3729,9 +3772,16 @@ export const TABLES: Record<TableName, TableDef> = {
       submittedAt: datetime(),
       note: text(),
       held: bool(),
+      step: str(60),
+      milestoneKey: str(40),
     },
     indexes: [
       { key: "by_stage", type: "key", columns: ["stageId"] },
+      {
+        key: "by_order_milestone",
+        type: "key",
+        columns: ["orderId", "milestoneKey"],
+      },
       { key: "by_order", type: "key", columns: ["orderId"] },
       {
         key: "live_by_status",
@@ -3743,6 +3793,30 @@ export const TABLES: Record<TableName, TableDef> = {
         key: "live_by_key",
         type: "key",
         columns: ["key"],
+        where: `"held" is not true`,
+      },
+    ],
+  },
+  order_milestones: {
+    label: "Marcos do pedido (fase 5; gravado em sombra)",
+    columns: {
+      orderId: id(),
+      key: str(40, true),
+      status: enumOf(ORDER_MILESTONE_STATUSES),
+      startedAt: datetime(),
+      dueAt: datetime(),
+      completedAt: datetime(),
+      reminderSentAt: datetime(),
+      blockReason: text(),
+      held: bool(),
+    },
+    indexes: [
+      { key: "by_order", type: "key", columns: ["orderId"] },
+      { key: "order_key_unique", type: "unique", columns: ["orderId", "key"] },
+      {
+        key: "live_by_status",
+        type: "key",
+        columns: ["status"],
         where: `"held" is not true`,
       },
     ],

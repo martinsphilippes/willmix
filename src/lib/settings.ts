@@ -3,6 +3,11 @@ import "server-only";
 import { DEFAULT_SUPERPLAN, type SuperplanParams } from "@/lib/superplan";
 
 import { getStore } from "@/lib/db";
+import {
+  MILESTONE_KEYS,
+  milestoneDueDaysFromStages,
+  type MilestoneKey,
+} from "@/lib/milestones";
 
 /**
  * Decisões em aberto parametrizadas (docs/OPEN_DECISIONS.md).
@@ -92,6 +97,12 @@ export const DEFAULT_SETTINGS = {
     DELIVERED: 3,
     CLOSED: 0,
   } as Record<string, number>,
+  /**
+   * Prazo por marco, em dias (fase 5, docs/MILESTONES.md "Fase 5"). Nulo
+   * (padrão): sai do prazo das etapas (`milestoneDueDaysOf`). Sem editor na
+   * tela ainda; o formulário das Configurações não grava esta chave.
+   */
+  milestoneDueDays: null as Record<string, number> | null,
   /**
    * Início da produção: dias depois do contrato assinado (documento do pedido
    * com as duas assinaturas). A data entra sozinha na programação de compra
@@ -347,4 +358,23 @@ export async function setRawSetting(key: string, value: unknown) {
   });
   if (existing) await store.update("settings", existing.id, { value });
   else await store.create("settings", { key, value });
+}
+
+/**
+ * Prazo de cada marco em dias (fase 5): o gravado em `milestoneDueDays`
+ * (marco a marco; o que faltar sai das etapas) ou, sem nada gravado, o
+ * tirado de `stageDueDays` (`milestoneDueDaysFromStages`). Nulo: sem prazo.
+ */
+export function milestoneDueDaysOf(
+  settings: Pick<Settings, "stageDueDays" | "milestoneDueDays">,
+): Record<MilestoneKey, number | null> {
+  const derived = milestoneDueDaysFromStages(settings.stageDueDays ?? {});
+  const stored = settings.milestoneDueDays;
+  if (!stored || typeof stored !== "object") return derived;
+  const out = { ...derived };
+  for (const key of MILESTONE_KEYS) {
+    const v = (stored as Record<string, unknown>)[key];
+    if (typeof v === "number" && Number.isFinite(v) && v >= 0) out[key] = v;
+  }
+  return out;
 }

@@ -1203,4 +1203,14 @@ async function advanceStages(
     closedAt: closed ? at : null,
     ...hold,
   });
+  // Fase 5b (docs/MILESTONES.md): os marcos do pedido em sombra, na hora (a
+  // carga pode ter milhares de pedidos numa requisição), com a marca de
+  // espera do pedido e nunca avisando. Falha não para a carga: a migração
+  // refaz.
+  try {
+    const { syncMilestones } = await import("@/lib/services/order-milestones");
+    await syncMilestones(orderId, { shadow: true });
+  } catch (error) {
+    console.error("[milestones] carga do Sankhya", orderId, error);
+  }
 }

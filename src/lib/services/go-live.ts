@@ -74,10 +74,7 @@ export interface GoLiveStatus extends HistoryHoldState {
 
 /** Para a tela: quantas etapas e pendências ainda estão em espera. */
 export async function goLiveStatus(): Promise<GoLiveStatus> {
-  const [state, held] = await Promise.all([
-    readState(),
-    heldCount(getStore()),
-  ]);
+  const [state, held] = await Promise.all([readState(), heldCount(getStore())]);
   return { ...state, ...held };
 }
 
@@ -156,6 +153,20 @@ export async function releaseHistoryStep(opts: {
         }))
           await store.update(table, row.id, { held: null });
     }
+    // Marcos do pedido gravados em sombra (fase 5b): saem da espera junto.
+    if (store.updateWhere)
+      await store
+        .updateWhere(
+          "order_milestones",
+          { orderId: ids, held: true },
+          { held: null },
+        )
+        .catch(() => undefined);
+    else
+      for (const row of await store
+        .list("order_milestones", { filter: { orderId: ids, held: true } })
+        .catch(() => []))
+        await store.update("order_milestones", row.id, { held: null });
     orders += ids.length;
   }
   const remaining = sum(await heldCount(store));
