@@ -56,6 +56,7 @@ export function ItemForm({
   suppliers,
   lines,
   preset,
+  showPrice = true,
 }: {
   t: Translate;
   item?: SourcingItem | null;
@@ -66,6 +67,11 @@ export function ItemForm({
   suppliers: Pick<Party, "id" | "name">[];
   lines: ProductLine[];
   preset?: ItemPreset;
+  /**
+   * Preço e moeda: falso sem "Ver preço de compra" (dono, 15/11/2026); salvar
+   * mantém o preço gravado.
+   */
+  showPrice?: boolean;
 }) {
   const isNew = !item;
   const supplierId = item?.supplierId ?? preset?.supplierId ?? "";
@@ -190,32 +196,38 @@ export function ItemForm({
 
         <Section
           title={t("sourcing.item.section.negotiation")}
-          open={has(item?.price, item?.moq, item?.conditions)}
+          open={has(
+            showPrice ? item?.price : null,
+            item?.moq,
+            item?.conditions,
+          )}
         >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,9rem)] @2xl:col-span-2">
-            <Field label={t("common.price")}>
-              <MoneyInput
-                locale={t.intl}
-                name="price"
-                watchField="currency"
-                defaultAmount={item?.price ?? null}
-                decimals={4}
-              />
-            </Field>
-            <Field label={t("common.currency")}>
-              <Select
-                name="currency"
-                defaultValue={item?.currency ?? "USD"}
-                className={bigField}
-              >
-                {CURRENCIES.map((c) => (
-                  <option key={c} value={c}>
-                    {t(`currency.name.${c}` as DictionaryKey)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
+          {showPrice ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,9rem)] @2xl:col-span-2">
+              <Field label={t("common.price")}>
+                <MoneyInput
+                  locale={t.intl}
+                  name="price"
+                  watchField="currency"
+                  defaultAmount={item?.price ?? null}
+                  decimals={4}
+                />
+              </Field>
+              <Field label={t("common.currency")}>
+                <Select
+                  name="currency"
+                  defaultValue={item?.currency ?? "USD"}
+                  className={bigField}
+                >
+                  {CURRENCIES.map((c) => (
+                    <option key={c} value={c}>
+                      {t(`currency.name.${c}` as DictionaryKey)}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+          ) : null}
           <Field label={t("sourcing.moq")}>
             <Input
               name="moq"

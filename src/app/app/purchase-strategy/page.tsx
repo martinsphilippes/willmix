@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
-import { can } from "@/lib/auth/function-access";
+import { can, canSeePurchasePrice } from "@/lib/auth/function-access";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { productNameText } from "@/i18n";
@@ -91,6 +91,10 @@ export default async function PurchaseStrategyPage({
   const canApprove = canApproveStrategy(user);
   const canOrder =
     can(user, "purchaseOrder.generate") && canOpen(user, "orders");
+  // Preço da última compra: só com "Ver preço de compra" (dono, 15/11/2026;
+  // docs/LINHA_DE_VISAO.md, seção 7). Sem ela, o pedido sai com o preço
+  // gravado na decisão.
+  const seesPrice = canSeePurchasePrice(user);
 
   // Fila: por linha do produto (as demandas sem produto do catálogo ficam
   // numa linha à parte: só dá para cotar depois de cadastrar o produto).
@@ -114,14 +118,16 @@ export default async function PurchaseStrategyPage({
           <dt className="text-zinc-500">{t("strategy.last.supplier")}</dt>
           <dd className="font-medium">{ref.supplierName ?? "—"}</dd>
         </div>
-        <div>
-          <dt className="text-zinc-500">{t("strategy.last.price")}</dt>
-          <dd className="font-medium tabular-nums">
-            {ref.unitPrice !== null
-              ? `${ref.currency ?? ""} ${ref.unitPrice.toLocaleString(t.intl, { maximumFractionDigits: 4 })}`
-              : "—"}
-          </dd>
-        </div>
+        {seesPrice ? (
+          <div>
+            <dt className="text-zinc-500">{t("strategy.last.price")}</dt>
+            <dd className="font-medium tabular-nums">
+              {ref.unitPrice !== null
+                ? `${ref.currency ?? ""} ${ref.unitPrice.toLocaleString(t.intl, { maximumFractionDigits: 4 })}`
+                : "—"}
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt className="text-zinc-500">{t("strategy.last.date")}</dt>
           <dd>
@@ -407,24 +413,30 @@ export default async function PurchaseStrategyPage({
                             required
                           />
                         </Field>
-                        <Field label={t("strategy.last.price")}>
-                          <Input
-                            name="unitPrice"
-                            inputMode="decimal"
-                            defaultValue={
-                              ref.unitPrice !== null ? String(ref.unitPrice) : ""
-                            }
-                            data-strategy-order-price
-                          />
-                        </Field>
-                        <Field label={t("strategy.currency")}>
-                          <Input
-                            name="currency"
-                            defaultValue={ref.currency ?? "USD"}
-                            maxLength={3}
-                            required
-                          />
-                        </Field>
+                        {seesPrice ? (
+                          <>
+                            <Field label={t("strategy.last.price")}>
+                              <Input
+                                name="unitPrice"
+                                inputMode="decimal"
+                                defaultValue={
+                                  ref.unitPrice !== null
+                                    ? String(ref.unitPrice)
+                                    : ""
+                                }
+                                data-strategy-order-price
+                              />
+                            </Field>
+                            <Field label={t("strategy.currency")}>
+                              <Input
+                                name="currency"
+                                defaultValue={ref.currency ?? "USD"}
+                                maxLength={3}
+                                required
+                              />
+                            </Field>
+                          </>
+                        ) : null}
                         <Field label={t("strategy.last.leadTime")}>
                           <Input
                             name="leadTimeDays"

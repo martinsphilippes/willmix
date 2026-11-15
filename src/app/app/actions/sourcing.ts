@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import {
   getStore,
   MEASUREMENT_KINDS,
@@ -172,6 +173,9 @@ export async function saveSourcingItemAction(form: FormData) {
     const requested = str(form, "status") || current?.status || "draft";
     const requestedStatus =
       requested === "promoted" ? (current?.status ?? "draft") : requested;
+    // Sem "Ver preço de compra" a tela não tem preço nem moeda: fica o
+    // gravado; o enviado à força é ignorado (dono, 15/11/2026).
+    const seesPrice = canSeePurchasePrice(user);
     const parsed = parse(itemSchema, {
       ...supplier,
       visitId:
@@ -186,8 +190,10 @@ export async function saveSourcingItemAction(form: FormData) {
       material: str(form, "material") || null,
       color: str(form, "color") || null,
       pantone: str(form, "pantone") || null,
-      price: num(form, "price"),
-      currency: str(form, "currency") || null,
+      price: seesPrice ? num(form, "price") : (current?.price ?? null),
+      currency: seesPrice
+        ? str(form, "currency") || null
+        : (current?.currency ?? null),
       moq: num(form, "moq"),
       masterBoxQty: num(form, "masterBoxQty"),
       innerBoxQty: num(form, "innerBoxQty"),

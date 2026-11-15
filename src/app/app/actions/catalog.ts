@@ -597,6 +597,9 @@ export async function saveSourcingPriceTiersAction(form: FormData) {
   await run(`/app/sourcing/items/${itemId}`, async () => {
     assertWellmix(user);
     assertScreen(user, "sourcing");
+    // Faixas são preço de compra: só com "Ver preço de compra" (dono,
+    // 15/11/2026; docs/LINHA_DE_VISAO.md, seção 7).
+    if (!canSeePurchasePrice(user)) throw new ForbiddenError();
     const store = getStore();
     const item = await store.get("sourcing_items", itemId);
     if (!item) throw new Error("item_not_found");

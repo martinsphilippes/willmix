@@ -72,7 +72,7 @@ import {
   supplierRequestSlaMinutes,
 } from "@/lib/services/supplier-request-negotiation";
 import { NegotiationCard, SlaBadge } from "../_components/negotiation";
-import { can } from "@/lib/auth/function-access";
+import { can, canSeePurchasePrice } from "@/lib/auth/function-access";
 import { SupplierRequestTable } from "../_components/supplier-table";
 import { RequestTimeline } from "../_components/timeline";
 import { RequestChat, type ChatMessage } from "../_components/request-chat";
@@ -130,6 +130,10 @@ export default async function SupplierRequestPage({
   if (!detail) notFound();
   const { request: r, supplier, lot, chosen, alternatives } = detail;
   const wellmix = isWellmix(user);
+  // Preço de compra (dono, 15/11/2026; docs/LINHA_DE_VISAO.md, seção 7): a
+  // Wellmix com "Ver preço de compra"; o fornecedor vê o dele. Sem a
+  // permissão, também sem o Superplan (custo e mínimo saem do preço).
+  const seesPrice = !wellmix || canSeePurchasePrice(user);
   // Grupo da seleção de onde a solicitação saiu (fase 4b, docs/MILESTONES.md).
   const selections =
     wellmix && entityLinkAccess(user).book
@@ -277,6 +281,7 @@ export default async function SupplierRequestPage({
             wellmix={wellmix}
             legacy={legacy}
             bookSpecs={bookSpecs}
+            showPrice={seesPrice}
             t={t}
           />
         </div>
@@ -340,7 +345,10 @@ export default async function SupplierRequestPage({
       erp,
       query: q,
       suggestedName,
-      deal: svc.agreedConditions(r),
+      // Sem "Ver preço de compra": as condições combinadas sem o preço.
+      deal: seesPrice
+        ? svc.agreedConditions(r)
+        : { ...svc.agreedConditions(r), price: null, currency: null },
       readiness: product ? [] : svc.erpReadiness(r, chosenItem, suggestedName),
     };
   }
@@ -388,7 +396,7 @@ export default async function SupplierRequestPage({
   // eles (docs/SUPPLIER_REQUESTS.md, "Ficha negociada").
   const deal = r.supplierCanDo === "yes" ? agreedConditions(r) : null;
   const negotiated =
-    wellmix && deal && chosen
+    wellmix && seesPrice && deal && chosen
       ? await analyzeNegotiatedItem(chosen, deal, user.id).catch(
           (error: unknown) => {
             console.error("analyzeNegotiatedItem", error);
@@ -422,7 +430,7 @@ export default async function SupplierRequestPage({
   const cheaperThan = negotiated?.costBrl ?? null;
   // Contraproposta: a Wellmix simula o Superplan do item no navegador.
   const simulation =
-    wellmix && chosen && canPropose(r)
+    wellmix && seesPrice && chosen && canPropose(r)
       ? await superplanBaseForItem(chosen)
           .then((base) => ({
             base,
@@ -579,18 +587,22 @@ export default async function SupplierRequestPage({
                     ],
                     ...(deal
                       ? ([
-                          [
-                            t("supplierRequests.detail.negotiatedPrice"),
-                            changed(
-                              priceText(
-                                deal.price,
-                                deal.currency,
-                                deal.incoterm,
-                              ),
-                              bookingPrice,
-                              "price",
-                            ),
-                          ],
+                          ...(seesPrice
+                            ? [
+                                [
+                                  t("supplierRequests.detail.negotiatedPrice"),
+                                  changed(
+                                    priceText(
+                                      deal.price,
+                                      deal.currency,
+                                      deal.incoterm,
+                                    ),
+                                    bookingPrice,
+                                    "price",
+                                  ),
+                                ],
+                              ]
+                            : []),
                           [
                             col("moq"),
                             changed(num(deal.moq, 0), num(it.moq, 0), "moq"),
@@ -605,10 +617,14 @@ export default async function SupplierRequestPage({
                             : []),
                         ] as Array<[string, ReactNode]>)
                       : ([
-                          [
-                            t("supplierRequests.detail.bookingPrice"),
-                            bookingPrice,
-                          ],
+                          ...(seesPrice
+                            ? [
+                                [
+                                  t("supplierRequests.detail.bookingPrice"),
+                                  bookingPrice,
+                                ],
+                              ]
+                            : []),
                           [col("moq"), num(it.moq, 0)],
                         ] as Array<[string, ReactNode]>)),
                   ]}
@@ -740,10 +756,12 @@ export default async function SupplierRequestPage({
                         </span>
                       </span>
                       <span className="flex items-center gap-2 text-xs text-zinc-600">
-                        <span className="tabular-nums">
-                          {num(item.price)} {item.currency ?? ""}
-                        </span>
-                        {item.analysis?.costBrl != null ? (
+                        {seesPrice ? (
+                          <span className="tabular-nums">
+                            {num(item.price)} {item.currency ?? ""}
+                          </span>
+                        ) : null}
+                        {seesPrice && item.analysis?.costBrl != null ? (
                           <span className="font-semibold text-zinc-800">
                             {t("supplierRequests.detail.chosenCost", {
                               price: formatMoney(
@@ -754,7 +772,7 @@ export default async function SupplierRequestPage({
                             })}
                           </span>
                         ) : null}
-                        {item.analysis?.minimumBrl != null ? (
+                        {seesPrice && item.analysis?.minimumBrl != null ? (
                           <span>
                             {t("bookingLots.item.minimum", {
                               price: formatMoney(
@@ -896,7 +914,7 @@ export default async function SupplierRequestPage({
           <Card title={t("supplierRequests.detail.answer.title")} dense>
             {r.supplierCanDo ? (
               <div className="mb-3 space-y-1 text-sm" data-supplier-answer>
-                <p className="font-semibold">{answerText(t, r)}</p>
+                <p className="font-semibold">{answerText(t, r, seesPrice)}</p>
                 {r.supplierMoq !== null ? (
                   <p>
                     {t("supplierRequests.detail.answer.moq")}:{" "}
@@ -1054,6 +1072,7 @@ export default async function SupplierRequestPage({
                   }
             }
             legacyAnswers={timelineLegacy.get(r.id) ?? []}
+            showPrice={seesPrice}
             t={t}
           />
 
@@ -1143,7 +1162,7 @@ export default async function SupplierRequestPage({
                     {t("entityLinks.selection")}
                   </Link>
                 ))}
-                {chosen?.analysis ? (
+                {seesPrice && chosen?.analysis ? (
                   <div className="pt-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                       {t("supplierRequests.detail.chosenSuperplan")}
@@ -1178,6 +1197,7 @@ export default async function SupplierRequestPage({
             wellmix={wellmix}
             t={t}
             simulation={simulation}
+            showPrice={seesPrice}
           />
         </div>
       </div>

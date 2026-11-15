@@ -210,3 +210,49 @@ describe("escolha e aprovação", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("pedido pela estratégia sem “Ver preço de compra”", () => {
+  /*
+   * Dono, 15/11/2026 (docs/LINHA_DE_VISAO.md, seção 7): quem gera o pedido
+   * sem a permissão (o Planejamento, por padrão) não vê nem digita o preço; o
+   * pedido sai com o preço e a moeda da última compra gravados na decisão.
+   */
+  it("usa o preço da última compra e ignora o enviado", async () => {
+    const store = getStore();
+    const planner = await store.create("users", {
+      email: "planejamento@wellmix.com",
+      name: "Paulo Planejamento",
+      role: "operator",
+      partyId: null,
+      locale: "pt",
+      passwordHash: null,
+      active: true,
+      importerId: null,
+      functions: ["planner"],
+    } as never);
+    const { canSeePurchasePrice } = await import("@/lib/auth/function-access");
+    expect(canSeePurchasePrice(planner)).toBe(false);
+    const d = await demand("prod-panela", 1000);
+    const decision = await strategy.chooseStrategy(buyer, {
+      demandIds: [d.id],
+      choice: "last_supplier",
+      note: null,
+    });
+    await strategy.decideStrategy(director, decision.id, {
+      approve: true,
+      note: null,
+    });
+    const order = await strategy.orderFromStrategy(planner, decision.id, {
+      unitPrice: 0.01,
+      currency: "BRL",
+      quantity: 1000,
+      leadTimeDays: 30,
+      incoterm: "FOB",
+    });
+    // A última compra é a do pedido mais recente da panela (fornecedor A).
+    const ref = decision.reference![0];
+    expect(ref.unitPrice).toBeGreaterThan(1);
+    expect(order.fobCurrency).toBe(ref.currency);
+    expect(order.fobTotal).toBeCloseTo(ref.unitPrice! * 1000);
+  });
+});

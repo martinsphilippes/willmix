@@ -1,5 +1,6 @@
 import "server-only";
 
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { isWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
 import {
@@ -153,6 +154,11 @@ export async function proposeCounter(
     throw new SupplierRequestError("supplier_request_proposal_pending");
   if (!canPropose(request))
     throw new SupplierRequestError("supplier_request_propose_invalid");
+  // Sem "Ver preço de compra" (dono, 15/11/2026; docs/LINHA_DE_VISAO.md,
+  // seção 7), a Wellmix propõe MOQ, prazo e FOB/EXW; preço enviado à força
+  // é ignorado.
+  if (!canSeePurchasePrice(user))
+    input = { ...input, price: null, currency: null };
   const text = clip(input.text);
   if (!text)
     throw new SupplierRequestError("supplier_request_comment_required");

@@ -34,6 +34,30 @@ export async function login(page: Page, email: string) {
 }
 
 /**
+ * Login novo da equipe (Equipe → Criar login), com as funções dadas e a
+ * senha de demonstração, sem trocar no primeiro acesso. Precisa estar logado
+ * como administrador. Devolve o id da pessoa.
+ */
+export async function createTeamLogin(
+  page: Page,
+  name: string,
+  email: string,
+  functions: string[],
+): Promise<string> {
+  await page.goto("/app/team?tab=team&new=1");
+  const form = page.locator("[data-team-new-login]");
+  await form.locator('input[name="name"]').fill(name);
+  await form.locator('input[name="login"]').fill(email);
+  await form.locator('input[name="password"]').fill(PASSWORD);
+  for (const fn of functions)
+    await form.locator(`input[name="functions"][value="${fn}"]`).check();
+  await form.locator('input[name="mustChange"]').uncheck();
+  await form.getByRole("button", { name: "Criar login" }).click();
+  await page.waitForURL(/\/app\/team\/[^/?]+\?created=/);
+  return new URL(page.url()).pathname.split("/").pop()!;
+}
+
+/**
  * Câmbio manual em Configurações (Wellmix). As contas do Superplan (custo por
  * peça, simulação da proposta) precisam de câmbio, e o do dia vem de sites
  * públicos que nem todo ambiente de teste alcança (rede restrita). Com a

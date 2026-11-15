@@ -30,6 +30,7 @@ const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const catalog = await import("@/app/app/actions/catalog");
 const variantActions = await import("@/app/app/actions/product-variants");
+const sourcingActions = await import("@/app/app/actions/sourcing");
 const { canSeePurchasePrice } = await import("@/lib/auth/function-access");
 type User = import("@/lib/db").User;
 type Product = import("@/lib/db").Product;
@@ -182,5 +183,49 @@ describe("resumo do requisito Ficha de compra sem o preço", () => {
     expect(sheetSummaryWithoutPrice("USD 3")).toBe("—");
     expect(sheetSummaryWithoutPrice("FOB · 5000 pcs")).toBe("FOB · 5000 pcs");
     expect(sheetSummaryWithoutPrice("Ficha completa")).toBe("Ficha completa");
+  });
+});
+
+describe("Sourcing: quem não vê o preço de compra não o muda", () => {
+  it("salvar o item sem preço mantém o gravado; faixas são recusadas", async () => {
+    const store = getStore();
+    h.current = admin;
+    const f = new FormData();
+    f.set("name", "Garrafa térmica da feira");
+    f.set("supplierName", "Yiwu Fair Supplier");
+    f.set("price", "2.75");
+    f.set("currency", "USD");
+    f.set("moq", "500");
+    await sourcingActions.saveSourcingItemAction(f);
+    const [item] = await store.list("sourcing_items", {
+      filter: { name: "Garrafa térmica da feira" },
+    });
+    expect([item.price, item.currency]).toEqual([2.75, "USD"]);
+
+    // Cadastro salva o item (a tela dele não tem preço) e manda um preço à
+    // força: o resto vale, o preço fica o gravado.
+    h.current = cadastro;
+    const g = new FormData();
+    g.set("id", item.id);
+    g.set("name", item.name);
+    g.set("supplierName", "Yiwu Fair Supplier");
+    g.set("moq", "800");
+    g.set("price", "0.1");
+    g.set("currency", "BRL");
+    await sourcingActions.saveSourcingItemAction(g);
+    const after = (await store.get("sourcing_items", item.id))!;
+    expect(after.moq).toBe(800);
+    expect([after.price, after.currency]).toEqual([2.75, "USD"]);
+
+    // Faixas de preço: o servidor recusa.
+    h.redirects.length = 0;
+    const tiers = new FormData();
+    tiers.set("itemId", item.id);
+    tiers.set("tiers", "100;1");
+    await catalog.saveSourcingPriceTiersAction(tiers);
+    expect((await store.get("sourcing_items", item.id))!.priceTiers).toEqual(
+      after.priceTiers,
+    );
+    expect(h.redirects.join(" ")).toContain("error=");
   });
 });

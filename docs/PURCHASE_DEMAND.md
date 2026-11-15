@@ -61,6 +61,8 @@ V6 (vitrine) manda para a ordem de venda (V7) o que o estoque livre ou uma compr
 4. **Cotação de compra**: contagem das 24 h e quadro comparativo para a Wellmix (com a última compra como referência); para o fornecedor, só a própria cotação, em PT, EN ou ZH.
 5. O item "Cotações" de hoje (convites de book) passa a se chamar **"Convites de book"**; tela, rota e atalho continuam.
 
+**Preço de compra (dono, 15/11/2026; docs/LINHA_DE_VISAO.md, seções 7 e 8):** na estratégia, o preço da última compra aparece só com "Ver preço de compra"; quem gera o pedido sem a permissão não vê nem digita o preço, e o pedido sai com o preço e a moeda da última compra gravados na decisão. Na cotação, preços por item, total e a linha "Última compra" só com a permissão; sem ela, o quadro mostra fornecedores, situação e condições, com o aviso de quem vê.
+
 ## O que o PR 2 entregou
 
 - **Porta de entrada** (`requests.channel`), gravada pelo servidor: carrinho = `vitrine`; cliente = `cliente`; Wellmix com a função Vendas = `vendedor`; outro login da Wellmix (e o administrador) = `operador`. Reposição e compra para estoque ficam sem porta. Regra em `src/lib/purchase-demand.ts` (`demandChannel`, `demandKind`, `splitCart`).
