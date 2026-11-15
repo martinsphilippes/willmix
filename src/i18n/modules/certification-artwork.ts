@@ -95,7 +95,7 @@ export const pt = {
   "tasks.missing.certifier":
     "O pedido está sem certificadora: vincule em Parceiros do pedido.",
   "tasks.missing.analyst":
-    "O pedido está sem analista: distribua em Equipe e acessos.",
+    "O pedido está sem analista: distribua em Equipe Acessos e Parceiros.",
   "tasks.art.fix.title": "Corrigir a arte de {item}: pedido #{n}",
   "tasks.art.fix.detail":
     "Veja a não conformidade no cartão Artes e envie a correção.",
@@ -120,7 +120,7 @@ export const pt = {
   "lane.input.review": "Arte para validar",
   "lane.input.art": "Arte validada",
   "lane.input.certificate": "Certificado (selo)",
-  "certFlow.assign.analyst": "Distribuir em Equipe e acessos",
+  "certFlow.assign.analyst": "Distribuir em Equipe Acessos e Parceiros",
   "certFlow.replace.start": "Substituir arquivo",
   "certFlow.replace.chosen": "Novo arquivo: {name}",
   "certFlow.replace.confirm": "Confirmar substituição",
@@ -143,7 +143,7 @@ export const pt = {
   "certFlow.missingHint.designer":
     "A arte deste pedido é feita pela Wellmix e ele está sem designer: a aplicação do selo e as correções da arte ficam com {who}. Escolha o designer no cartão Artes.",
   "certFlow.missingHint.analyst":
-    "Este pedido está sem analista (responsável interno): o memorial e as validações ficam com toda a equipe Wellmix. Distribua em Equipe e acessos.",
+    "Este pedido está sem analista (responsável interno): o memorial e as validações ficam com toda a equipe Wellmix. Distribua em Equipe Acessos e Parceiros.",
   "certFlow.noCertNeeded":
     "Os produtos deste pedido não exigem certificação (linha do produto): o selo, o memorial e a arte com o selo não viram pendência.",
   "certFlow.sealDownload": "Baixar o selo",
@@ -296,7 +296,7 @@ export const en: Record<keyof typeof pt, string> = {
   "tasks.missing.certifier":
     "The order has no certifier: link one under Order partners.",
   "tasks.missing.analyst":
-    "The order has no analyst: distribute it under Team and access.",
+    "The order has no analyst: distribute it under Team, Access and Partners.",
   "tasks.art.fix.title": "Fix the artwork of {item}: order #{n}",
   "tasks.art.fix.detail":
     "See the non-conformity on the Artwork card and send the fix.",
@@ -320,7 +320,7 @@ export const en: Record<keyof typeof pt, string> = {
   "lane.input.review": "Artwork to validate",
   "lane.input.art": "Validated artwork",
   "lane.input.certificate": "Certificate (seal)",
-  "certFlow.assign.analyst": "Distribute under Team and access",
+  "certFlow.assign.analyst": "Distribute under Team, Access and Partners",
   "certFlow.replace.start": "Replace file",
   "certFlow.replace.chosen": "New file: {name}",
   "certFlow.replace.confirm": "Confirm replacement",
@@ -343,7 +343,7 @@ export const en: Record<keyof typeof pt, string> = {
   "certFlow.missingHint.designer":
     "Wellmix makes the artwork of this order and it has no designer: applying the seal and fixing the artwork stay with {who}. Choose the designer on the Artwork card.",
   "certFlow.missingHint.analyst":
-    "This order has no analyst (internal owner): the technical description and the validations stay with the whole Wellmix team. Distribute it under Team and access.",
+    "This order has no analyst (internal owner): the technical description and the validations stay with the whole Wellmix team. Distribute it under Team, Access and Partners.",
   "certFlow.noCertNeeded":
     "The products of this order do not require certification (product line): the seal, the technical description and the artwork with the seal do not become tasks.",
   "certFlow.sealDownload": "Download the seal",
@@ -482,7 +482,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "tasks.missing.designer":
     "此订单没有设计师：请在“设计稿 → 订单设计师”中指定。",
   "tasks.missing.certifier": "此订单没有认证机构：请在“订单合作方”中关联。",
-  "tasks.missing.analyst": "此订单没有专员：请在“团队与权限”中分配。",
+  "tasks.missing.analyst": "此订单没有专员：请在“团队、权限与合作伙伴”中分配。",
   "tasks.art.fix.title": "修改 {item} 的设计稿：订单 #{n}",
   "tasks.art.fix.detail": "请在“设计稿”卡片中查看不合格项并提交修改。",
   "tasks.art.review.title": "核对 {item} 的设计稿修改：订单 #{n}",
@@ -505,7 +505,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "lane.input.review": "待审核的设计稿",
   "lane.input.art": "已审核的设计稿",
   "lane.input.certificate": "证书（标志）",
-  "certFlow.assign.analyst": "在团队与权限中分配",
+  "certFlow.assign.analyst": "在团队、权限与合作伙伴中分配",
   "certFlow.replace.start": "替换文件",
   "certFlow.replace.chosen": "新文件：{name}",
   "certFlow.replace.confirm": "确认替换",
@@ -523,7 +523,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "certFlow.missingHint.designer":
     "此订单的设计稿由 Wellmix 制作，且未指定设计师：放入标志和修改设计稿由 {who} 负责。请在“设计稿”卡片中选择设计师。",
   "certFlow.missingHint.analyst":
-    "此订单没有专员（内部负责人）：技术说明书和审核由整个 Wellmix 团队负责。请在“团队与权限”中分配。",
+    "此订单没有专员（内部负责人）：技术说明书和审核由整个 Wellmix 团队负责。请在“团队、权限与合作伙伴”中分配。",
   "certFlow.noCertNeeded":
     "此订单的产品无需认证（按产品线）：标志、技术说明书和带标志的设计稿不会生成待办。",
   "certFlow.sealDownload": "下载标志",

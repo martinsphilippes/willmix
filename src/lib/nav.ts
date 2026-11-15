@@ -21,11 +21,11 @@ import {
  * dono, 14/11/2026). Depois os blocos na ordem do mapa do processo
  * (docs/FLOW_MENU.md): Produto novo, Pedido, Produção, Entrega, Vendas,
  * Financeiro, Painéis e Cadastros; cada passo com o contador do que espera
- * ação do login (src/lib/flow.ts). Configurações,
- * Equipe e acessos e Auditoria ficam fixos embaixo (navFooterFor). Grupo com
- * uma tela só vira link direto; grupo vazio some. Telas fora do fluxo de hoje
- * ficam fora do menu de todos (MENU_HIDDEN), mas continuam abrindo pelo
- * endereço.
+ * ação do login (src/lib/flow.ts). Configurações, Equipe Acessos e
+ * Parceiros (com Parceiros, que saiu de Cadastros) e Auditoria ficam fixos
+ * embaixo (navFooterFor). Grupo com uma tela só vira link direto; grupo
+ * vazio some. Telas fora do fluxo de hoje ficam fora do menu de todos
+ * (MENU_HIDDEN), mas continuam abrindo pelo endereço.
  */
 
 /** Ícone do item no menu lateral (desenhado em src/components/app-nav.tsx). */
@@ -58,6 +58,11 @@ export interface NavLink {
   /** Passo do fluxo (`bloco/passo`, src/lib/flow.ts): o contador do que espera ação ali. */
   step?: string;
   icon?: NavIcon;
+  /**
+   * Outros endereços em que o item também acende (área com telas em mais de
+   * um endereço: Equipe Acessos e Parceiros também em /app/parties).
+   */
+  match?: string[];
 }
 
 /** Mensagens (chat com a Wellmix / com as empresas): todo papel que entra no portal. */
@@ -323,9 +328,8 @@ export function navFor(
         "nav.group.registry",
         "folder",
         pick(has, [
-          // Clientes, fornecedores e demais parceiros numa tela só, com filtro
-          // por tipo (as listas de Clientes e Fornecedores seguem pelo endereço).
-          ["parties", { href: "/app/parties", key: "nav.parties" }],
+          // Parceiros saiu daqui (dono, 15/11/2026): é uma seção de Equipe
+          // Acessos e Parceiros, no rodapé do menu (navFooterFor).
           // NCM a classificar e fichas incompletas contam aqui.
           [
             "products",
@@ -477,21 +481,58 @@ export function navFor(
   ];
 }
 
-/** Itens fixos embaixo do menu lateral: Configurações, Equipe e acessos, Auditoria. */
+/**
+ * Telas de Parceiros (Cadastros, Tipos de parceiro e Acessos externos, e as
+ * listas antigas de Clientes e Fornecedores): seção da área Equipe Acessos e
+ * Parceiros, nos mesmos endereços de sempre.
+ */
+export const PARTNERS_AREA: readonly string[] = [
+  "/app/parties",
+  "/app/customers",
+  "/app/suppliers",
+];
+
+/**
+ * Equipe Acessos e Parceiros (dono, 15/11/2026): um item só no rodapé do menu
+ * para as seções Equipe, Funções e acessos e Linha de produto e divisão (a
+ * tela Equipe, só do administrador) e Parceiros (quem abre Parceiros). Abre
+ * na primeira seção que o login vê e acende nas telas das duas.
+ */
+function teamAreaLink(has: Set<Screen>): NavLink | null {
+  const base = { key: "nav.teamAccess", icon: "team" } as const;
+  if (has.has("team"))
+    return { ...base, href: "/app/team", match: [...PARTNERS_AREA] };
+  if (has.has("parties"))
+    return {
+      ...base,
+      href: "/app/parties",
+      match: PARTNERS_AREA.filter((href) => href !== "/app/parties"),
+    };
+  return null;
+}
+
+/** Itens fixos embaixo do menu lateral: Configurações, Equipe Acessos e Parceiros, Auditoria. */
 export function navFooterFor(
   user: Pick<User, "role"> & Partial<Pick<User, "functions">>,
 ): NavLink[] {
   if (!isWellmix(user)) return [];
-  return pick(menuScreensFor(user), [
-    [
-      "settings",
-      { href: "/app/settings", key: "nav.settings", icon: "settings" },
-    ],
-    // Cargo, chefe, funções e carteira de clientes (Painel de SLA).
-    ["team", { href: "/app/team", key: "nav.teamAccess", icon: "team" }],
+  const has = menuScreensFor(user);
+  const teamArea = teamAreaLink(has);
+  return [
+    ...pick(has, [
+      [
+        "settings",
+        { href: "/app/settings", key: "nav.settings", icon: "settings" },
+      ],
+    ]),
+    // Cargo, chefe, funções e carteira de clientes (Painel de SLA) e os
+    // cadastros de parceiros.
+    ...(teamArea ? [teamArea] : []),
     // Trilha de auditoria (quem fez o quê e quando).
-    ["audit", { href: "/app/audit", key: "nav.audit", icon: "shield" }],
-  ]);
+    ...pick(has, [
+      ["audit", { href: "/app/audit", key: "nav.audit", icon: "shield" }],
+    ]),
+  ];
 }
 
 /** Todos os links, na ordem, sem os grupos (celular e testes); o item pai vem antes dos subitens. */
@@ -525,5 +566,16 @@ export function isActiveHref(href: string, pathname: string): boolean {
       own !== href &&
       own.startsWith(`${href}/`) &&
       (pathname === own || pathname.startsWith(`${own}/`)),
+  );
+}
+
+/** O item acende na tela atual: o próprio endereço ou um dos outros da área (`match`). */
+export function isActiveLink(
+  link: { href: string; match?: readonly string[] },
+  pathname: string,
+): boolean {
+  return (
+    isActiveHref(link.href, pathname) ||
+    (link.match ?? []).some((href) => isActiveHref(href, pathname))
   );
 }

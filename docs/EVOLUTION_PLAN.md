@@ -1540,3 +1540,18 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Banco**: coluna nova `parties.rcaCode` (opcional, migração só aditiva) e a lista de vendedores em `settings` (chave `sankhyaSellers`).
 - **Correção junto**: nos campos com busca (cliente, fornecedor, produto), voltar ao campo logo depois de sair dele fechava a lista sozinha (o fechamento da saída, 150 ms depois, ainda valia). Agora voltar ao campo cancela esse fechamento (`src/components/search-picker.tsx`).
 - Testes: `tests/unit/customer-rca.test.ts` e `tests/e2e/customer-rca.spec.ts`.
+
+## Parceiros dentro de Equipe Acessos e Parceiros
+
+- **Pedido do dono** (15/11/2026): levar a área Parceiros (Cadastros → Parceiros, com as abas Cadastros, Tipos de parceiro e Acessos externos) para dentro de Equipe e acessos; renomear o item do menu, o título da área e os pontos de navegação que a citam para "Equipe Acessos e Parceiros"; tirar Parceiros de Cadastros; manter os links antigos e as permissões.
+- **Como ficou** (docs/FLOW_MENU.md, "Equipe Acessos e Parceiros"):
+  - Um item no rodapé do menu: abre a Equipe para quem abre Equipe e Parceiros para quem só abre Parceiros, e acende nas telas das duas.
+  - Seções da área: Equipe, Funções e acessos, Linha de produto e divisão e Parceiros, no padrão de abas da área (`src/components/team-area-nav.tsx`).
+  - Dentro de Parceiros, as três abas de sempre.
+  - Os textos que citavam o caminho da área ("Gestão → Equipe → Funções e acessos", "Equipe e acessos", "Equipe e divisões") passaram a "Equipe Acessos e Parceiros", em pt/en/zh.
+- **Não mudou**:
+  - Nenhuma rota mudou: `/app/parties`, `/app/parties/types`, `/app/parties/access`, `/app/parties/<id>`, `/app/parties/new`, `/app/customers`, `/app/suppliers` e `/app/team` abrem as mesmas telas, com os mesmos filtros e parâmetros; nada a redirecionar.
+  - Telas, ações, dados e permissões continuam os mesmos.
+  - O agrupamento das telas na configuração de acessos (`SCREEN_GROUPS`, que põe Parceiros em Cadastros) ficou como estava.
+- **Banco**: sem mudança.
+- Testes: `tests/unit/nav.test.ts` ("Equipe Acessos e Parceiros") e `tests/e2e/team-partners-area.spec.ts`.
