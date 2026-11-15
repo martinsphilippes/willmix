@@ -152,6 +152,7 @@ import * as messages from "./messages";
 import * as purchaseHistory from "./purchase-history";
 import * as requestSheet from "./request-sheet";
 import * as requestOrderPlan from "./request-order-plan";
+import * as customerPayment from "./customer-payment";
 import * as orderSale from "./order-sale";
 
 export const modulesPt = {
@@ -304,6 +305,7 @@ export const modulesPt = {
   ...purchaseHistory.pt,
   ...requestSheet.pt,
   ...requestOrderPlan.pt,
+  ...customerPayment.pt,
   ...orderSale.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
@@ -456,6 +458,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...purchaseHistory.en,
   ...requestSheet.en,
   ...requestOrderPlan.en,
+  ...customerPayment.en,
   ...orderSale.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
@@ -608,5 +611,6 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...purchaseHistory.zh,
   ...requestSheet.zh,
   ...requestOrderPlan.zh,
+  ...customerPayment.zh,
   ...orderSale.zh,
 };

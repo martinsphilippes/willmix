@@ -248,6 +248,16 @@ export default async function SettingsPage({
                 {t("settings.superplan.open")}
               </LinkButton>
             ) : null}
+            {/* Formas de pagamento do cliente (docs/CUSTOMER_PAYMENT.md). */}
+            {user.role === "admin" ? (
+              <LinkButton
+                href="/app/settings/payment-plans"
+                variant="secondary"
+                data-settings-payment-plans
+              >
+                {t("paymentPlans.title")}
+              </LinkButton>
+            ) : null}
             {/* ERP Sankhya: conexão, dicionário, consultas e envio de pedidos. */}
             <LinkButton href="/app/settings/sankhya" variant="secondary">
               {t("sankhya.open")}
