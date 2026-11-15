@@ -36,6 +36,39 @@ export const MILESTONE_KEYS = [
 ] as const;
 export type MilestoneKey = (typeof MILESTONE_KEYS)[number];
 
+/**
+ * Quem é informado quando o marco conclui (coluna "Informado" do RACI,
+ * docs/MILESTONES.md; fase 4c). Cada persona do mapa vira um alvo que existe
+ * no sistema:
+ *
+ * - funções da equipe (Equipe → Funções e acessos): `buyer` (Comprador),
+ *   `finance` (Financeiro), `planner` (Planner), `product_manager` (GP),
+ *   `designer` (Marketing), `comex_internal` (Comex interno);
+ * - `sales` (Vendas): quem tem "Avisar Vendas do pedido de compra"
+ *   (`purchaseOrder.salesNotice`), a mesma ação do aviso do pedido gerado;
+ * - `owner` (Dono): os administradores;
+ * - parceiros do pedido (só com a empresa definida): `supplier` (Fornecedor;
+ *   Trading é o fornecedor do pedido), `agency` (Agência), `ocp` (OCP),
+ *   `logistics` (Agente de carga);
+ * - `customer` (Cliente): só o login solicitante (`requesterTarget`).
+ */
+export const MILESTONE_INFORMED = [
+  "buyer",
+  "finance",
+  "planner",
+  "product_manager",
+  "designer",
+  "comex_internal",
+  "sales",
+  "owner",
+  "supplier",
+  "agency",
+  "ocp",
+  "logistics",
+  "customer",
+] as const;
+export type MilestoneInformed = (typeof MILESTONE_INFORMED)[number];
+
 export interface MilestoneDef {
   key: MilestoneKey;
   /** Bloco do mapa (o mesmo do menu lateral). */
@@ -46,6 +79,8 @@ export interface MilestoneDef {
   deps: MilestoneKey[];
   /** Passos do mapa que o marco cobre (docs/MAPA_PROCESSO.md). */
   map: string[];
+  /** Informados (I) quando o marco conclui (fase 4c). */
+  informed: MilestoneInformed[];
 }
 
 const m = (
@@ -54,7 +89,39 @@ const m = (
   steps: string[],
   deps: MilestoneKey[],
   map: string[],
-): MilestoneDef => ({ key, block, steps, deps, map });
+): MilestoneDef => ({
+  key,
+  block,
+  steps,
+  deps,
+  map,
+  informed: INFORMED[key],
+});
+
+/**
+ * Informados de cada marco, pela tabela "Os 16 marcos" (docs/MILESTONES.md).
+ * Desembaraço: o Dono só é informado do canal cinza ou vermelho, que já tem
+ * aviso próprio (o pedido pausa; docs/DELIVERY.md), então o marco não avisa
+ * ninguém ao concluir.
+ */
+const INFORMED: Record<MilestoneKey, MilestoneInformed[]> = {
+  "new-order": ["sales", "finance", "supplier"],
+  certification: ["comex_internal", "buyer"],
+  "art-material": ["agency"],
+  art: ["supplier", "ocp", "buyer"],
+  contract: ["owner", "finance", "supplier", "designer"],
+  "down-payment": ["owner", "supplier"],
+  "pre-production": ["buyer", "sales"],
+  inspection: ["product_manager"],
+  samples: ["customer", "sales"],
+  production: ["buyer", "sales"],
+  booking: ["logistics", "finance"],
+  loading: ["comex_internal", "owner"],
+  shipment: ["planner", "sales"],
+  customs: [],
+  "invoice-transport": ["customer", "sales"],
+  delivery: ["customer"],
+};
 
 /**
  * Os 16 marcos, na ordem definida pelo dono (14/11/2026), com as
@@ -352,6 +419,24 @@ export const milestoneOfStatus = (
   status: string | null | undefined,
 ): MilestoneKey | null => (status ? (STAGE_MILESTONE[status] ?? null) : null);
 
+/**
+ * Marco de itens de uma etapa (lembretes e SLA, fase 4c): o dos itens (o
+ * primeiro na ordem dos 16, `milestoneOfRequirement`); sem item nos marcos,
+ * o da etapa (`milestoneOfStatus`).
+ */
+export function milestoneOfItems(
+  stageKey: string,
+  itemKeys: readonly string[],
+): MilestoneKey | null {
+  let best: MilestoneKey | null = null;
+  for (const key of itemKeys) {
+    const found = milestoneOfRequirement(stageKey, key);
+    if (found && (!best || milestoneRank(found) < milestoneRank(best)))
+      best = found;
+  }
+  return best ?? milestoneOfStatus(stageKey);
+}
+
 type MilestoneLike = Pick<MilestoneView, "key" | "state">;
 
 /** Os marcos em andamento (podem correr em paralelo), na ordem do dono. */
@@ -451,3 +536,26 @@ export function orderMilestoneText(
 /** Ordem de um marco (0 a 15); sem marco, depois de todos. */
 export const milestoneRank = (key: MilestoneKey | null | undefined) =>
   key ? MILESTONE_KEYS.indexOf(key) : MILESTONE_KEYS.length;
+
+/**
+ * Marcos que acabaram de concluir (fase 4c, aviso aos informados): estavam
+ * no resumo anterior e não concluídos, e agora concluíram com todas as
+ * subtarefas feitas. Sem resumo anterior (pedido novo, formato antigo):
+ * nenhum. O "concluído" só pela situação do pedido (encerrado conclui tudo)
+ * não conta, para o encerramento não disparar um aviso por marco.
+ */
+export function newlyDoneMilestones(
+  previous: readonly CompactMilestone[] | null | undefined,
+  next: readonly CompactMilestone[] | null | undefined,
+): MilestoneKey[] {
+  if (!previous?.length || !next?.length) return [];
+  const before = new Map(previous.map((x) => [x.k, x]));
+  return next
+    .filter((x) => {
+      const old = before.get(x.k);
+      return (
+        !!old && old.s !== "done" && x.s === "done" && x.t > 0 && x.d === x.t
+      );
+    })
+    .map((x) => x.k);
+}

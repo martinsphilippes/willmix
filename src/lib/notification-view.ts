@@ -93,6 +93,8 @@ const TEMPLATE_KINDS: ReadonlyArray<
   ["notif.freightChanged.subject", "action", "recipient"],
   ["notif.kit.available.subject", "info", null],
   ["notif.kit.released.subject", "done", null],
+  // Marco concluído, aos informados (fase 4c, docs/MILESTONES.md).
+  ["milestone.notify.subject", "done", null],
 ];
 
 interface Template {

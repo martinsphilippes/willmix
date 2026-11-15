@@ -15,9 +15,16 @@ import { WELLMIX_ROLES, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { ForbiddenError } from "@/lib/auth/permissions";
 import { isOffFlowStage } from "@/lib/workflow/stages";
 import {
+  MILESTONE_KEYS,
+  milestoneOfItems,
+  milestoneOfStatus,
+  type MilestoneKey,
+} from "@/lib/milestones";
+import {
   daysUntil,
   dueBucket,
   pendingTasksFor,
+  taskMilestone,
   type TaskDue,
   type TaskKind,
 } from "./tasks";
@@ -52,6 +59,11 @@ export interface SlaItem {
   /** Operador responsável (ou UNASSIGNED). */
   ownerId: string;
   stageKey?: StageKey;
+  /**
+   * Marco do pedido (fase 4c, docs/MILESTONES.md): o que a tela mostra no
+   * lugar da etapa. Nulo fora dos marcos (solicitação ao fornecedor).
+   */
+  milestone: MilestoneKey | null;
   /** Parceiro: papéis de quem está devendo (a tela traduz). */
   waitingOn?: Role[];
   /** Parceiro: nome da empresa que está devendo, quando há uma só. */
@@ -86,6 +98,8 @@ export interface SlaStage {
   orderNumber: number;
   link: string;
   stageKey: StageKey;
+  /** Marco da etapa (`milestoneOfStatus`), o que a tela mostra (fase 4c). */
+  milestone: MilestoneKey | null;
   dueAt: string;
   completedAt: string;
   onTime: boolean;
@@ -109,6 +123,46 @@ export interface SlaBoard {
   recentStages: SlaStage[];
   /** O login tem equipe (ou é admin): mostra a tabela da equipe. */
   manages: boolean;
+  /**
+   * Os mesmos números da visão escolhida por marco (fase 4c): pendências,
+   * atrasadas, com parceiros e etapas no prazo. Na ordem dos 16; nulo
+   * (fora dos marcos) no fim. Só marcos com algum número.
+   */
+  byMilestone: SlaMilestoneRow[];
+}
+
+export interface SlaMilestoneRow {
+  milestone: MilestoneKey | null;
+  counts: SlaCounts;
+  onTime: { done: number; total: number };
+}
+
+/** Agrupa pendências e etapas concluídas pelo marco (ordem dos 16). */
+export function groupByMilestone(
+  items: readonly Pick<SlaItem, "milestone" | "source" | "due">[],
+  stages: readonly Pick<SlaStage, "milestone" | "onTime">[],
+): SlaMilestoneRow[] {
+  const rows = new Map<MilestoneKey | null, SlaMilestoneRow>();
+  const row = (milestone: MilestoneKey | null) => {
+    let found = rows.get(milestone);
+    if (!found) {
+      found = {
+        milestone,
+        counts: emptyCounts(),
+        onTime: { done: 0, total: 0 },
+      };
+      rows.set(milestone, found);
+    }
+    return found;
+  };
+  for (const i of items) addTo(row(i.milestone).counts, i as SlaItem);
+  for (const st of stages) {
+    const r = row(st.milestone);
+    r.onTime.total++;
+    if (st.onTime) r.onTime.done++;
+  }
+  const order: Array<MilestoneKey | null> = [...MILESTONE_KEYS, null];
+  return order.flatMap((k) => (rows.has(k) ? [rows.get(k)!] : []));
 }
 
 const emptyCounts = (): SlaCounts => ({
@@ -223,6 +277,7 @@ export async function slaBoardFor(
         : null,
       ownerId: ownerFor(t.ownerUserId),
       stageKey: t.stageKey,
+      milestone: t.milestone ?? taskMilestone(t),
     })),
     ...partnerItems.map((p) => ({
       ...p,
@@ -322,6 +377,7 @@ export async function slaBoardFor(
         orderNumber: order?.number ?? 0,
         link: `/app/orders/${s.orderId}`,
         stageKey: s.key,
+        milestone: milestoneOfStatus(s.key),
         dueAt: s.dueAt!,
         completedAt: s.completedAt!,
         onTime: onTimeDay(s.completedAt!, s.dueAt!),
@@ -342,6 +398,7 @@ export async function slaBoardFor(
     onTime: onTimeFor(onTimeMatch),
     recentStages: stageRows,
     manages,
+    byMilestone: groupByMilestone(items, stageRows),
   };
 }
 
@@ -443,18 +500,16 @@ async function partnerDelays(
         .map((r) => (field[r] ? name(order[field[r]!] as string | null) : null))
         .filter(Boolean);
       const { daysLeft, due } = late(s.dueAt);
+      const partnerReqs = reqs.filter(
+        (r) =>
+          r.stageId === s.id &&
+          !(WELLMIX_ROLES as readonly string[]).includes(r.role),
+      );
       out.push({
         source: "partner",
         kind: "partner_stage",
         title: `Pedido #${order.number}`,
-        detail: reqs
-          .filter(
-            (r) =>
-              r.stageId === s.id &&
-              !(WELLMIX_ROLES as readonly string[]).includes(r.role),
-          )
-          .map((r) => withoutPlaceholder(r.label))
-          .join(", "),
+        detail: partnerReqs.map((r) => withoutPlaceholder(r.label)).join(", "),
         link: `/app/orders/${order.id}`,
         dueAt: s.dueAt,
         due,
@@ -462,6 +517,10 @@ async function partnerDelays(
         customerId: order.customerId,
         ownerUserId: order.ownerUserId ?? null,
         stageKey: s.key,
+        milestone: milestoneOfItems(
+          s.key,
+          partnerReqs.map((r) => r.key),
+        ),
         waitingOn: roles,
         waitingParty: parties.length === 1 ? parties[0] : null,
       });
@@ -495,6 +554,7 @@ async function partnerDelays(
         daysLeft: daysUntil(dueAt, now),
         customerId: null,
         ownerUserId: r.createdByUserId,
+        milestone: null,
         ...(waiting
           ? {
               waitingOn: ["supplier" as Role],

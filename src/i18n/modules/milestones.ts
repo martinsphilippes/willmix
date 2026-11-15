@@ -39,6 +39,18 @@ export const pt = {
   // Fase 4a: telas que leem os marcos (docs/MILESTONES.md).
   "milestone.current": "Marco atual",
   "milestone.owner.title": "Pedidos em andamento por marco",
+  // Fase 4c: aviso aos informados, lembretes e SLA (docs/MILESTONES.md).
+  "milestone.notify.subject": "Pedido #{n}: marco {milestone} concluído",
+  "milestone.notify.body":
+    "O marco {milestone} do pedido #{n} foi concluído. Você é informado deste marco pelo mapa do processo.",
+  "milestone.label": "Marco",
+  "milestone.none": "Fora dos marcos",
+  "milestone.sla.title": "Por marco",
+  "milestone.sla.hint":
+    'As mesmas pendências e etapas concluídas da visão escolhida, agrupadas pelo marco do pedido. Solicitações ao fornecedor ficam em "Fora dos marcos".',
+  "milestone.sla.open": "Pendências",
+  "milestone.sla.late": "Atrasadas",
+  "milestone.sla.partner": "Com parceiros",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -77,6 +89,17 @@ export const en: Record<keyof typeof pt, string> = {
   "milestone.subtask.receiving": "Receiving at the DC",
   "milestone.current": "Current milestone",
   "milestone.owner.title": "Orders in progress by milestone",
+  "milestone.notify.subject": "Order #{n}: milestone {milestone} completed",
+  "milestone.notify.body":
+    "Milestone {milestone} of order #{n} was completed. You are informed of this milestone by the process map.",
+  "milestone.label": "Milestone",
+  "milestone.none": "Outside the milestones",
+  "milestone.sla.title": "By milestone",
+  "milestone.sla.hint":
+    'The same open items and completed stages of the chosen view, grouped by the order milestone. Supplier requests are under "Outside the milestones".',
+  "milestone.sla.open": "Open items",
+  "milestone.sla.late": "Overdue",
+  "milestone.sla.partner": "With partners",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -115,4 +138,15 @@ export const zh: Record<keyof typeof pt, string> = {
   "milestone.subtask.receiving": "仓库收货",
   "milestone.current": "当前里程碑",
   "milestone.owner.title": "进行中订单（按里程碑）",
+  "milestone.notify.subject": "订单 #{n}：里程碑 {milestone} 已完成",
+  "milestone.notify.body":
+    "订单 #{n} 的里程碑 {milestone} 已完成。根据流程图，您会收到此里程碑的通知。",
+  "milestone.label": "里程碑",
+  "milestone.none": "不属于里程碑",
+  "milestone.sla.title": "按里程碑",
+  "milestone.sla.hint":
+    "所选视图的同一批待办和已完成阶段，按订单里程碑分组。供应商询价归入“不属于里程碑”。",
+  "milestone.sla.open": "待办",
+  "milestone.sla.late": "已逾期",
+  "milestone.sla.partner": "合作方",
 };

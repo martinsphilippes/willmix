@@ -5,11 +5,13 @@ import { indexBy, listByIds } from "@/lib/db/lookup";
 import { getSettings } from "@/lib/settings";
 import { ROLE_PARTY_FIELD, isOffFlowStage } from "@/lib/workflow/stages";
 import { requirementLabel } from "@/i18n";
+import { milestoneOfItems, milestoneTitle } from "@/lib/milestones";
 import { requesterTarget, notify } from "./notifications";
 
 /**
  * Pendência + prazo + lembrete. Um lembrete por etapa a cada 24h enquanto
- * estiver vencida ou a `reminderDaysBeforeDue` dias do vencimento.
+ * estiver vencida ou a `reminderDaysBeforeDue` dias do vencimento. O prazo é
+ * o da etapa; o texto nomeia o marco dos itens pendentes (fase 4c).
  */
 export async function runReminders() {
   const store = getStore();
@@ -67,6 +69,10 @@ export async function runReminders() {
     const role = required[0].role;
     const partyField = ROLE_PARTY_FIELD[role];
     const overdue = Date.parse(stage.dueAt) < now;
+    const milestone = milestoneOfItems(
+      stage.key,
+      required.map((r) => r.key),
+    );
     await notify(
       role === "customer"
         ? requesterTarget(order.requestedByUserId)
@@ -81,7 +87,9 @@ export async function runReminders() {
         text: (t) => ({
           subject: t(overdue ? "notif.overdue.subject" : "notif.due.subject", {
             n: order.number,
-            stage: t(`stage.${stage.key}`),
+            stage: milestone
+              ? milestoneTitle(t, milestone)
+              : t(`stage.${stage.key}`),
           }),
           body: t("notif.stage.body", {
             items: required.map((r) => requirementLabel(t, r)).join(", "),
