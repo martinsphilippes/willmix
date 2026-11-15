@@ -112,6 +112,120 @@ describe("/api/parties/search", () => {
   });
 });
 
+describe("/api/parties/search: código do Sankhya e CNPJ/CPF (Wellmix)", () => {
+  // Dono, 15/11/2026: na Nova solicitação, achar o cliente pelo código dele
+  // ou pelo CNPJ. No banco o documento está só com números (carga do Sankhya).
+  beforeAll(async () => {
+    const { getStore } = await import("@/lib/db");
+    const { PARTY_EXTRA_DEFAULTS } = await import("@/lib/db/schema");
+    const store = getStore();
+    await store.update("parties", "cliente-joao", {
+      sankhyaCode: "4455",
+      taxId: "12345678000190",
+    } as never);
+    const party = (over: Record<string, unknown>) =>
+      store.create("parties", {
+        ...PARTY_EXTRA_DEFAULTS,
+        type: "customer",
+        legalName: null,
+        country: "BR",
+        email: null,
+        phone: null,
+        notes: null,
+        active: true,
+        ...over,
+      } as never);
+    // Filial do mesmo CNPJ (mesma raiz de 8 dígitos).
+    await party({
+      id: "cliente-joao-filial",
+      name: "Loja do João Filial Centro",
+      sankhyaCode: "4456",
+      taxId: "12345678000271",
+    });
+    // Cadastrado pelo portal: o CNPJ como foi digitado, com a pontuação.
+    await party({
+      id: "cliente-portal",
+      name: "Bazar Portal",
+      sankhyaCode: null,
+      taxId: "11.222.333/0001-81",
+    });
+    // Nome com o número: aparece depois de quem tem o código igual.
+    await party({
+      id: "loja-4455",
+      name: "Loja 4455 Atacado",
+      sankhyaCode: "9001",
+      taxId: "98765432100",
+    });
+  });
+  const options = async (q: string, who: User = admin) =>
+    (
+      await get(
+        parties,
+        `/api/parties/search?type=customer&q=${encodeURIComponent(q)}`,
+        who,
+      )
+    ).body.options!;
+
+  it("pelo código: o cliente do código primeiro, com código e CNPJ ao lado do nome", async () => {
+    const found = await options("4455");
+    expect(found[0]).toEqual({
+      id: "cliente-joao",
+      name: expect.any(String),
+      hint: "Cód. 4455 · CNPJ 12.345.678/0001-90",
+    });
+    // O nome com o número também aparece, depois.
+    expect(found.map((o) => o.id)).toContain("loja-4455");
+    expect(found.findIndex((o) => o.id === "loja-4455")).toBeGreaterThan(0);
+    // Código é igual ao digitado: "445" não é o 4455.
+    expect((await options("445")).map((o) => o.id)).not.toContain(
+      "cliente-joao",
+    );
+  });
+
+  it("pelo CNPJ: com ou sem pontuação, e a raiz traz as filiais", async () => {
+    for (const q of ["12.345.678/0001-90", "12345678000190"])
+      expect((await options(q)).map((o) => o.id)).toEqual(["cliente-joao"]);
+    expect((await options("12.345.678")).map((o) => o.id).sort()).toEqual([
+      "cliente-joao",
+      "cliente-joao-filial",
+    ]);
+    // CPF com a pontuação dele ao lado do nome.
+    const cpf = await options("987.654.321-00");
+    expect(cpf[0]).toMatchObject({
+      id: "loja-4455",
+      hint: "Cód. 9001 · CPF 987.654.321-00",
+    });
+  });
+
+  it("CNPJ gravado com a pontuação (cadastro pelo portal) também é achado", async () => {
+    for (const q of ["11222333000181", "11.222.333/0001-81", "11222333"])
+      expect((await options(q)).map((o) => o.id)).toEqual(["cliente-portal"]);
+    expect((await options("11222333000181"))[0].hint).toBe(
+      "CNPJ 11.222.333/0001-81",
+    );
+  });
+
+  it("pelo nome, como antes, com o código e o CNPJ ao lado", async () => {
+    const found = await options("filial centro");
+    expect(found).toEqual([
+      {
+        id: "cliente-joao-filial",
+        name: "Loja do João Filial Centro",
+        hint: "Cód. 4456 · CNPJ 12.345.678/0002-71",
+      },
+    ]);
+  });
+
+  it("quem é de fora: só pelo nome, sem o documento", async () => {
+    const byCode = (await options("4455", containersOnly)).map((o) => o.id);
+    expect(byCode).not.toContain("cliente-joao");
+    expect(byCode).toContain("loja-4455"); // o número está no nome
+    expect(await options("12345678000190", containersOnly)).toEqual([]);
+    for (const o of await options("loja", containersOnly))
+      expect(o).not.toHaveProperty("hint");
+  });
+});
+
 describe("/api/products/search e /api/products/fill", () => {
   it("Wellmix: rótulo 'Nome (SKU)' em cada escopo", async () => {
     for (const scope of ["all", "active", "catalog"]) {

@@ -54,7 +54,10 @@ test("nova solicitação (Wellmix): compra para estoque, cliente e produto com a
   // Histórico de compras do cliente (docs/PURCHASE_HISTORY.md): sem cliente,
   // o pedido para escolher.
   const history = page.locator("[data-purchase-history]");
-  await expect(history).toHaveAttribute("data-purchase-history-state", "select");
+  await expect(history).toHaveAttribute(
+    "data-purchase-history-state",
+    "select",
+  );
   await expect(history.locator("[data-purchase-history-select]")).toBeVisible();
   // Compra para estoque: o campo de cliente fica desligado e vai a opção de
   // estoque; o histórico some.
@@ -65,10 +68,18 @@ test("nova solicitação (Wellmix): compra para estoque, cliente e produto com a
   await expect(page.locator('input[name="customerId"]')).toHaveValue("__stock");
   await expect(history).toHaveCount(0);
   await customerBlock.locator("[data-stock-option]").uncheck();
-  await expect(history).toHaveAttribute("data-purchase-history-state", "select");
+  await expect(history).toHaveAttribute(
+    "data-purchase-history-state",
+    "select",
+  );
   const customerPicker = customerBlock.locator(
     '[data-party-picker="customer"]',
   );
+  // Wellmix acha o cliente também pelo código do Sankhya e pelo CNPJ (dono,
+  // 15/11/2026): o campo diz isso.
+  await expect(
+    customerPicker.locator("[data-party-picker-input]"),
+  ).toHaveAttribute("placeholder", /código|code|代码/i);
   await choose(customerPicker, "party-picker", "loja", "cliente-joao");
   await expect(page.locator('input[name="customerId"]')).toHaveValue(
     "cliente-joao",
@@ -80,7 +91,10 @@ test("nova solicitação (Wellmix): compra para estoque, cliente e produto com a
   );
   // Voltou a digitar sem escolher: o histórico volta a pedir o cliente.
   await customerPicker.locator("[data-party-picker-input]").fill("lo");
-  await expect(history).toHaveAttribute("data-purchase-history-state", "select");
+  await expect(history).toHaveAttribute(
+    "data-purchase-history-state",
+    "select",
+  );
   await choose(customerPicker, "party-picker", "loja", "cliente-joao");
   await expect(history).toHaveAttribute(
     "data-purchase-history-state",
