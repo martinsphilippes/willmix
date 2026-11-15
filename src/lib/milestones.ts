@@ -559,3 +559,33 @@ export function newlyDoneMilestones(
     })
     .map((x) => x.k);
 }
+
+/**
+ * Marcos que acabaram de começar (fase 4d, eventos das regras de processo,
+ * `milestone:<marco>:start`): estavam no resumo anterior fora do "em
+ * andamento" (aguardando, sem aplicação ou concluído e reaberto) e agora
+ * estão em andamento. Sem resumo anterior (pedido novo, formato antigo):
+ * nenhum, como em `newlyDoneMilestones`.
+ */
+export function newlyStartedMilestones(
+  previous: readonly CompactMilestone[] | null | undefined,
+  next: readonly CompactMilestone[] | null | undefined,
+): MilestoneKey[] {
+  if (!previous?.length || !next?.length) return [];
+  const before = new Map(previous.map((x) => [x.k, x]));
+  return next
+    .filter((x) => {
+      const old = before.get(x.k);
+      return !!old && old.s !== "active" && x.s === "active";
+    })
+    .map((x) => x.k);
+}
+
+/** Marcos de um bloco do mapa, na ordem dos 16. */
+export const milestonesOfBlock = (block: FlowBlock): MilestoneKey[] =>
+  MILESTONES.filter((d) => d.block === block).map((d) => d.key);
+
+/** Blocos que têm marcos (Pedido, Produção, Entrega), na ordem do mapa. */
+export const MILESTONE_BLOCKS: FlowBlock[] = [
+  ...new Set(MILESTONES.map((d) => d.block)),
+];

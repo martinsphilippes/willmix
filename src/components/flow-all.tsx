@@ -56,7 +56,7 @@ export async function FlowAll({
           <tr>
             <Th>{t("flow.all.order")}</Th>
             {partner ? null : <Th>{t("flow.all.supplier")}</Th>}
-            <Th>{t("flow.all.stage")}</Th>
+            <Th>{t("milestone.current")}</Th>
             <Th>{t("flow.all.open")}</Th>
             <Th>{t("flow.all.since")}</Th>
             <Th>

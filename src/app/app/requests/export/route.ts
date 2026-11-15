@@ -20,6 +20,10 @@ import {
   todayBrazil,
   type RequestSituation,
 } from "@/lib/services/request-list";
+import {
+  exportMilestoneCell,
+  orderMilestonesOf,
+} from "@/lib/services/request-export";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +79,8 @@ export async function GET(request: NextRequest) {
   const stages = stageIds.length
     ? await store.list("stages", { filter: { id: stageIds } })
     : [];
+  // Marco atual de cada pedido pelo resumo (`facts.m`); sem resumo, pela situação.
+  const milestones = await orderMilestonesOf(orderIds);
   const cell = (v: string | number | null | undefined) => {
     const s = v === null || v === undefined ? "" : String(v);
     return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -120,6 +126,10 @@ export async function GET(request: NextRequest) {
             nextStepText(t, next),
             nextStepWho(t, next),
             order ? t(`stage.${order.status}` as DictionaryKey) : "",
+            // Marco (fase 4d): coluna nova no fim; a "Etapa do pedido" fica.
+            order
+              ? exportMilestoneCell(t, order.status, milestones.get(order.id))
+              : "",
           ];
         })(),
       ]

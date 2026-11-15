@@ -18,8 +18,10 @@ import {
   SANKHYA_ENTITIES,
   TOP_STAGES,
   isRefColumn,
+  topMilestone,
   type SankhyaEntityKey,
 } from "@/lib/integrations/sankhya-mapping";
+import { milestoneTitle } from "@/lib/milestones";
 import { sankhyaImportSampleAction } from "../../actions/sankhya-integration";
 import {
   loadSankhyaSample,
@@ -446,20 +448,27 @@ export async function LoadTab({ t, q }: { t: Translate; q: Params }) {
                 <tr>
                   <Th>TOP</Th>
                   <Th>{t("sankhyaLoad.import.stage")}</Th>
+                  <Th>{t("milestone.label")}</Th>
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(TOP_STAGES).map(([top, s]) => (
-                  <tr key={top}>
-                    <Td className="whitespace-nowrap font-mono text-xs">
-                      {top} {s.label}
-                    </Td>
-                    <Td className="text-xs">
-                      {t(`stage.${s.stage}` as DictionaryKey)}
-                      {s.closed ? ` · ${t("sankhyaLoad.import.closed")}` : ""}
-                    </Td>
-                  </tr>
-                ))}
+                {Object.entries(TOP_STAGES).map(([top, s]) => {
+                  const milestone = topMilestone(Number(top));
+                  return (
+                    <tr key={top} data-top-milestone={milestone ?? ""}>
+                      <Td className="whitespace-nowrap font-mono text-xs">
+                        {top} {s.label}
+                      </Td>
+                      <Td className="text-xs">
+                        {t(`stage.${s.stage}` as DictionaryKey)}
+                        {s.closed ? ` · ${t("sankhyaLoad.import.closed")}` : ""}
+                      </Td>
+                      <Td className="text-xs">
+                        {milestone ? milestoneTitle(t, milestone) : "—"}
+                      </Td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </Table>
           </details>

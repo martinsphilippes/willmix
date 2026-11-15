@@ -56,7 +56,8 @@ import {
   isActionCardKey,
 } from "@/lib/tower-stages";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { ActionList, ProcessBoard } from "./tower-stages";
+import { ActionList, MilestonePanel, ProcessBoard } from "./tower-stages";
+import { countByMilestone } from "@/lib/tower-milestones";
 import {
   Alert,
   Badge,
@@ -342,6 +343,10 @@ export async function ControlTower({
   const bucketCount = (key: keyof TowerData["buckets"]) =>
     kpis ? kpis.buckets[key] : full![0].buckets[key].length;
   const exceptionsCount = kpis ? kpis.exceptions : full![0].exceptions.length;
+  // Pedidos em andamento por marco atual (fase 4d): do agregado ou das linhas.
+  const milestoneCounts = kpis
+    ? kpis.milestones
+    : countByMilestone(full![0].buckets.active.map((r) => r.milestone));
   const stages = board ? buildTowerStages(board, now) : null;
   const actionCards = board
     ? actionCardsFor(board, (screen) => canOpen(user, screen))
@@ -390,11 +395,12 @@ export async function ControlTower({
     { key: "requestsOpen", label: t("ct.requestsOpen") },
     { key: "waitingSupplier", label: t("ct.waitingSupplier") },
     { key: "waitingCustomer", label: t("ct.waitingCustomer") },
-    { key: "preparation", label: t("ct.preparation") },
-    { key: "inspection", label: t("ct.inspection") },
-    { key: "shipping", label: t("ct.shipping") },
-    { key: "customs", label: t("ct.customs") },
-    { key: "transport", label: t("ct.transport") },
+    // Fase 4d: contadas pelo marco atual (src/lib/tower-milestones.ts).
+    { key: "preparation", label: t("milestone.bucket.preparation") },
+    { key: "inspection", label: t("milestone.bucket.inspection") },
+    { key: "shipping", label: t("milestone.bucket.shipping") },
+    { key: "customs", label: t("milestone.bucket.customs") },
+    { key: "transport", label: t("milestone.bucket.transport") },
     { key: "overdue", label: t("ct.overdue"), tone: "danger" },
     { key: "problems", label: t("ct.problems"), tone: "warning" },
     { key: "closed", label: t("ct.closed") },
@@ -684,6 +690,7 @@ export async function ControlTower({
                 currency={board.currency}
               />
             ) : null}
+            {wellmix ? <MilestonePanel counts={milestoneCounts} t={t} /> : null}
             {actionList}
             {filterList}
             {extra === "exceptions" ? (

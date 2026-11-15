@@ -6,6 +6,7 @@ import { isSchemaMissing } from "@/lib/db/errors";
 import { stepsOf, stepId, type FlowBlock } from "@/lib/flow";
 import { PROGRESS_BLOCKS, type ProgressBlock } from "@/lib/flow-progress";
 import type { OrderFlow } from "./flow-contribution";
+import { milestoneOfFacts, type CompactMilestone } from "@/lib/milestones";
 import type { OverviewEntity } from "./flow";
 
 /*
@@ -73,7 +74,7 @@ const lateFrom = (due: string | null, now: Date) => {
 
 /** As linhas de um bloco montadas da contribuição de cada pedido. */
 export function entitiesFromFlows(
-  flows: Array<{ id: string; f: OrderFlow }>,
+  flows: Array<{ id: string; f: OrderFlow; m?: CompactMilestone[] | null }>,
   block: ProgressBlock,
   now: Date,
 ): OverviewEntity[] {
@@ -82,7 +83,7 @@ export function entitiesFromFlows(
     .filter((s) => !s.badgeOnly)
     .map((s) => s.key);
   const out: OverviewEntity[] = [];
-  for (const { id, f } of flows) {
+  for (const { id, f, m } of flows) {
     const keys = Object.keys(f.s)
       .filter((k) => k.startsWith(`${block}/`))
       .map((k) => k.slice(block.length + 1))
@@ -101,6 +102,8 @@ export function entitiesFromFlows(
       partyId: f.sup,
       steps: keys,
       statusKey: `stage.${f.st}`,
+      // Marco atual (fase 4d): pelo resumo (`facts.m`) ou pela situação.
+      milestone: milestoneOfFacts(m, f.st),
       since: f.b[i] ?? since ?? null,
       lateDays: lateFrom(f.d[i], now),
       percent: f.p[i] ?? 0,
@@ -152,23 +155,27 @@ export function aggregateFlow(
 }
 
 /** Contribuições dos pedidos em andamento. Nulo: resumos de outro formato. */
-export async function readOrderFlows(
-  ids?: string[],
-): Promise<Array<{ id: string; f: OrderFlow }> | null> {
+export async function readOrderFlows(ids?: string[]): Promise<Array<{
+  id: string;
+  f: OrderFlow;
+  /** Marcos do pedido (`facts.m`), para o selo do marco atual (fase 4d). */
+  m?: CompactMilestone[] | null;
+}> | null> {
   const { SUMMARY_VERSION } = await import("./order-summary");
   const rows = await listColumns(
     getStore(),
     "order_summaries",
-    ["kpi", "version"],
+    ["kpi", "version", "facts"],
     {
       filter: ids ? { id: ids } : { live: true },
-      jsonKeys: { kpi: ["f"] },
+      jsonKeys: { kpi: ["f"], facts: ["m"] },
     },
   );
   if (rows.some((r) => r.version !== SUMMARY_VERSION)) return null;
   return rows.flatMap((r) => {
     const f = (r.kpi as { f?: OrderFlow | null } | null)?.f;
-    return f ? [{ id: r.id, f }] : [];
+    const m = (r.facts as { m?: CompactMilestone[] } | null)?.m ?? null;
+    return f ? [{ id: r.id, f, m }] : [];
   });
 }
 

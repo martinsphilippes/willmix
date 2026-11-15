@@ -20,6 +20,8 @@ const SHIP_BOOKING: string[] = [
   "flow.help.production.booking",
   // Marco 11 "Booking e logística" (R8, reserva com a marítima; docs/MILESTONES.md).
   "milestone.booking",
+  // Visão geral da Control Tower dos marcos 11 a 13 (fase 4d): a mesma reserva.
+  "milestone.bucket.shipping",
 ];
 
 const LOCALES = ["pt", "en", "zh"] as const;

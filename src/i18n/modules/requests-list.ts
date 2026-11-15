@@ -24,7 +24,7 @@ export const pt = {
   "reqList.orders": "{n} pedido(s)",
   "reqList.empty": "Nenhuma solicitação nesta busca ou filtro.",
   "reqList.csv.header":
-    "Nº;Data;Produto;Cliente;Analista;Quantidade;Unidade;Situação;Prazo de resposta;Pedido;Próximo passo;Com quem;Etapa do pedido",
+    "Nº;Data;Produto;Cliente;Analista;Quantidade;Unidade;Situação;Prazo de resposta;Pedido;Próximo passo;Com quem;Etapa do pedido;Marco",
   "reqList.col.photo": "Foto",
   "reqList.col.next": "Próximo passo",
   "reqList.col.quotes": "Cotações",
@@ -84,7 +84,7 @@ export const en: Record<keyof typeof pt, string> = {
   "reqList.orders": "{n} order(s)",
   "reqList.empty": "No request in this search or filter.",
   "reqList.csv.header":
-    "No.;Date;Product;Customer;Analyst;Quantity;Unit;Status;Response deadline;Order;Next step;With;Order stage",
+    "No.;Date;Product;Customer;Analyst;Quantity;Unit;Status;Response deadline;Order;Next step;With;Order stage;Milestone",
   "reqList.col.photo": "Photo",
   "reqList.col.next": "Next step",
   "reqList.col.quotes": "Quotes",
@@ -144,7 +144,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqList.orders": "{n} 个订单",
   "reqList.empty": "该搜索或筛选下没有询价。",
   "reqList.csv.header":
-    "编号;日期;产品;客户;分析师;数量;单位;状态;回复期限;订单;下一步;负责方;订单阶段",
+    "编号;日期;产品;客户;分析师;数量;单位;状态;回复期限;订单;下一步;负责方;订单阶段;里程碑",
   "reqList.col.photo": "照片",
   "reqList.col.next": "下一步",
   "reqList.col.quotes": "报价",

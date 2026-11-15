@@ -3,6 +3,7 @@ import "server-only";
 import type { Request, Role, StageKey } from "@/lib/db";
 import type { Translate } from "@/i18n";
 import type { RequestDisplayStatus } from "./order-status";
+import { orderMilestoneText } from "@/lib/milestones";
 
 /*
  * Lista de solicitações da Wellmix (tela Solicitações): situação resumida
@@ -121,14 +122,17 @@ export function requestNextStep(input: {
   return { key: "new", who: "wellmix" };
 }
 
-/** Texto do próximo passo (tela e CSV). */
+/**
+ * Texto do próximo passo (tela e CSV). Pedido: o marco da etapa atual
+ * ("Pedido em 1. Pedido novo"; fase 4d, docs/MILESTONES.md).
+ */
 export function nextStepText(t: Translate, n: NextStep): string {
   if (n.key === "none") return t("reqList.next.none");
   if (n.key === "order")
     return n.stage === "CLOSED"
       ? t("reqList.next.closed")
       : t("reqList.next.order", {
-          stage: n.stage ? t(`stage.${n.stage}`) : "—",
+          stage: n.stage ? orderMilestoneText(t, n.stage) : "—",
         });
   return t(`reqList.next.${n.key}`);
 }

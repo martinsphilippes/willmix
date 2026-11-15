@@ -35,6 +35,8 @@ import {
   type TowerTotals,
 } from "./control-tower";
 import { summarizeFinance } from "./finance";
+import type { MilestoneKey } from "@/lib/milestones";
+import { countByMilestone } from "@/lib/tower-milestones";
 import {
   SUMMARY_VERSION,
   activeStagesFromFacts,
@@ -66,7 +68,11 @@ import {
  *   vencidos são recalculados e o agregado refeito antes de responder.
  */
 
-export const KPI_VERSION = 1;
+/**
+ * Formato do agregado. 2 (fase 4d): pedidos em andamento por marco atual
+ * (`milestones`) e visões gerais de preparação a transporte pelo marco.
+ */
+export const KPI_VERSION = 2;
 export const TOWER_KPI_KEY = "tower";
 /** Linhas mostradas na lista do quadrado escolhido (o total vem do indicador). */
 export const TOWER_LIST_LIMIT = 200;
@@ -114,6 +120,8 @@ export interface OrderKpi {
   b: string[];
   /** Exceções do pedido. */
   x: number;
+  /** Marco atual do pedido em andamento (fase 4d); fora dele, nulo. */
+  ms?: MilestoneKey | null;
   /** Valores do financeiro (totais e valor dos quadrados). */
   m: FactMoney;
   /** Até quando a contribuição vale (ISO); nulo = não muda com o tempo. */
@@ -137,6 +145,8 @@ export interface TowerKpis {
   currency: string;
   cards: Record<string, CardKpi>;
   buckets: Record<BucketKey, number>;
+  /** Pedidos em andamento por marco atual (fase 4d; "none": sem marco). */
+  milestones: Record<MilestoneKey | "none", number>;
   exceptions: number;
   totals: TowerTotals;
 }
@@ -293,6 +303,7 @@ export function buildOrderKpi(
             : null,
     productOf: () => f.product,
     stageOf: () => f.active[0],
+    milestonesOf: () => f.m,
     requests: [],
     penalties: side.penalties,
     rejected: side.rejected,
@@ -308,6 +319,7 @@ export function buildOrderKpi(
     c,
     b: BUCKET_KEYS.filter((k) => data.buckets[k].some((r) => r.id === o.id)),
     x: data.exceptions.length,
+    ms: data.buckets.active.find((r) => r.id === o.id)?.milestone ?? null,
     m: f.money,
     u: next === null ? null : new Date(next).toISOString(),
   };
@@ -431,6 +443,7 @@ export async function rebuildTowerKpis(
     number
   >;
   let exceptions = 0;
+  const live: Array<MilestoneKey | null> = [];
   let validUntil: number | null = null;
   const until = (t: number | null) => {
     if (t !== null && t > at && (validUntil === null || t < validUntil))
@@ -449,6 +462,7 @@ export async function rebuildTowerKpis(
       card.sum += key === "parReceivable" ? k.m.receivable : k.m.sell;
     }
     for (const b of k.b) buckets[b as BucketKey]++;
+    if (k.b.includes("active")) live.push(k.ms ?? null);
     exceptions += k.x;
     if (k.u) until(Date.parse(k.u));
   }
@@ -533,6 +547,7 @@ export async function rebuildTowerKpis(
       ]),
     ),
     buckets,
+    milestones: countByMilestone(live),
     exceptions,
     totals,
   };

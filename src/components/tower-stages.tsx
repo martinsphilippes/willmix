@@ -5,6 +5,14 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { BoardCard } from "@/lib/services/tower-board";
 import type { Stage, StageGroup } from "@/lib/tower-stages";
 import { cx, formatMoney } from "./ui";
+import { blockLabelKey } from "@/lib/flow";
+import {
+  MILESTONE_BLOCKS,
+  milestoneTitle,
+  milestonesOfBlock,
+  type MilestoneKey,
+} from "@/lib/milestones";
+import { TOWER_STAGE_MILESTONES, milestoneRange } from "@/lib/tower-milestones";
 
 /*
  * Control Tower por etapa.
@@ -236,6 +244,9 @@ function StageCard({
 }) {
   const label = t(`tower.stage.${s.key}` as DictionaryKey);
   const alert = alertOf(s.overdue, s.risk);
+  // Marcos que o quadro cobre (fase 4d): "Marcos 1–4".
+  const covered = TOWER_STAGE_MILESTONES[s.key] ?? [];
+  const range = milestoneRange(covered);
   return (
     <Link
       // Etapa de um passo só abre a lista direto; tocar no aberto fecha.
@@ -298,6 +309,17 @@ function StageCard({
         </span>
         <span className="text-[13px] font-semibold leading-tight text-zinc-800">
           {label}
+          {range ? (
+            <span
+              className="mt-0.5 block text-[11px] font-medium text-zinc-500"
+              data-tower-stage-milestones={range}
+              title={covered.map((k) => milestoneTitle(t, k)).join(", ")}
+            >
+              {covered.length === 1
+                ? t("milestone.tower.rangeOne", { range })
+                : t("milestone.tower.range", { range })}
+            </span>
+          ) : null}
         </span>
       </span>
     </Link>
@@ -370,5 +392,98 @@ function GroupCard({
         ) : null}
       </span>
     </Link>
+  );
+}
+
+/**
+ * Pedidos por marco (fase 4d, docs/MILESTONES.md): os pedidos em andamento
+ * pelo marco atual, nos três blocos do mapa. A soma é o total em andamento;
+ * cada marco abre Pedidos filtrado nele (`?ph=milestone:<marco>`).
+ */
+export function MilestonePanel({
+  counts,
+  t,
+}: {
+  counts: Partial<Record<MilestoneKey | "none", number>>;
+  t: Translate;
+}) {
+  const total = Object.values(counts).reduce((n, c) => n + (c ?? 0), 0);
+  return (
+    <section
+      aria-label={t("milestone.tower.title")}
+      className="rounded-xl border border-zinc-200/80 bg-white p-3 shadow-sm"
+      data-tower-milestones={total}
+    >
+      <div className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-600">
+          {t("milestone.tower.title")}
+        </h2>
+        <span className="text-xs text-zinc-500">
+          {t("milestone.tower.total", { n: total })} ·{" "}
+          {t("milestone.tower.hint")}
+        </span>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {MILESTONE_BLOCKS.map((block, i) => {
+          const keys = milestonesOfBlock(block);
+          const sum = keys.reduce((n, k) => n + (counts[k] ?? 0), 0);
+          return (
+            <div
+              key={block}
+              className="overflow-hidden rounded-lg border border-zinc-200/80"
+              data-tower-milestone-block={block}
+              data-block-count={sum}
+            >
+              <span
+                aria-hidden
+                className={cx(
+                  "block h-1 bg-gradient-to-r",
+                  ROW_TONE[Math.min(i, ROW_TONE.length - 1)],
+                )}
+              />
+              <div className="p-2.5">
+                <p className="mb-1.5 flex items-baseline justify-between text-xs font-semibold uppercase tracking-wide text-zinc-700">
+                  <span>{t(blockLabelKey(block))}</span>
+                  <span className="text-base font-extrabold tabular-nums text-zinc-900">
+                    {sum}
+                  </span>
+                </p>
+                <ul className="space-y-0.5">
+                  {keys.map((k) => (
+                    <li key={k}>
+                      <Link
+                        href={`/app/orders?ph=milestone:${k}`}
+                        className="flex items-center justify-between gap-2 rounded px-1.5 py-0.5 text-[12.5px] text-zinc-800 hover:bg-zinc-50"
+                        data-tower-milestone={k}
+                        data-milestone-count={counts[k] ?? 0}
+                      >
+                        <span className="leading-tight">
+                          {milestoneTitle(t, k)}
+                        </span>
+                        <span
+                          className={cx(
+                            "font-bold tabular-nums",
+                            (counts[k] ?? 0) === 0
+                              ? "text-zinc-300"
+                              : "text-zinc-900",
+                          )}
+                        >
+                          {counts[k] ?? 0}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {counts.none ? (
+        <p className="mt-2 text-xs text-zinc-500" data-tower-milestone="none">
+          {t("milestone.none")}: {counts.none}
+        </p>
+      ) : null}
+    </section>
   );
 }
