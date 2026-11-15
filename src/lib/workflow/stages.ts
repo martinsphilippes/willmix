@@ -65,7 +65,26 @@ export interface StageContext {
   inspectionExtendedChecks?: boolean;
   /** Produtos do pedido (pedido de compra: as raias são item a item). */
   items?: LaneItem[];
+  /**
+   * Pedido de compra sem arte (dono, 15/11/2026): reposição ou encomenda
+   * (`purchaseWithoutArt`) repete a arte já aprovada e pula os marcos
+   * Material de arte e Arte.
+   */
+  withoutArt?: boolean;
 }
+
+/**
+ * Pedido de compra da reposição ou da encomenda (com demanda ligada,
+ * `orders.demandIds`; na rodada, a do pedido pai): "Não tem arte" (dono,
+ * 15/11/2026). Só o pedido de produto novo (do Book) passa por Material de
+ * arte e Arte.
+ */
+export const purchaseWithoutArt = (
+  order: Pick<Order, "flow" | "demandIds">,
+  parent?: Pick<Order, "demandIds"> | null,
+) =>
+  isPurchaseFlow(order) &&
+  (!!order.demandIds?.length || !!parent?.demandIds?.length);
 
 /** Pedido de compra das solicitações ao fornecedor (docs/PURCHASE_ORDER.md). */
 export const isPurchaseFlow = (order: Pick<Order, "flow">) =>
@@ -342,16 +361,26 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     partyField: "supplierId",
     // Pedido de compra: as três raias em paralelo, produto a produto
     // (fornecedor, agência de arte e certificadora; src/lib/purchase-lanes.ts).
-    requirements: ({ order, line, items, agencyValidationEnabled }) =>
+    requirements: ({
+      order,
+      line,
+      items,
+      agencyValidationEnabled,
+      withoutArt,
+    }) =>
       isPurchaseFlow(order)
         ? withPreparationApprovals(
-            laneRequirements(items ?? [], {
-              art: artRole(order, agencyValidationEnabled),
-              // Certificado: da certificadora (OCP) do pedido (dono,
-              // 14/11/2026). Quem recebe cada tarefa sai de laneRoute
-              // (src/lib/services/cert-art-routing.ts); o papel é a etiqueta.
-              ocp: "ocp",
-            }),
+            laneRequirements(
+              items ?? [],
+              {
+                art: artRole(order, agencyValidationEnabled),
+                // Certificado: da certificadora (OCP) do pedido (dono,
+                // 14/11/2026). Quem recebe cada tarefa sai de laneRoute
+                // (src/lib/services/cert-art-routing.ts); o papel é a etiqueta.
+                ocp: "ocp",
+              },
+              { art: !withoutArt },
+            ),
           )
         : [
             ...(line?.requirements?.length

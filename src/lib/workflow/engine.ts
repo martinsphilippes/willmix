@@ -29,6 +29,7 @@ import {
   ORDER_SIGNED_WELLMIX,
   nextStageKey,
   isPurchaseFlow,
+  purchaseWithoutArt,
   SHIPPED_KEY,
 } from "./stages";
 import {
@@ -40,11 +41,15 @@ import { openReview, resolveReviews } from "@/lib/services/reviews";
 import { isMoneyRequirement, parseMoneyValue } from "./money";
 import { requirementFlowFields } from "@/lib/milestones";
 import {
+  INSPECTION_BLOCK_MILESTONE,
+  milestoneBlockOf,
   orderRelease,
   queueMilestoneSync,
+  setMilestoneBlock,
+  storedMilestone,
   syncMilestones,
 } from "@/lib/services/order-milestones";
-import { requirementReleased } from "@/lib/milestone-release";
+import { milestoneOfItem, requirementReleased } from "@/lib/milestone-release";
 import {
   approvalSourceOf,
   LANE_KEYS,
@@ -246,8 +251,14 @@ export async function createStagesForOrder(
     : null;
   // Pedido de compra: as raias são produto a produto, com o checklist da
   // linha de cada produto (docs/PURCHASE_ORDER.md).
+  // Reposição ou encomenda (ou rodada de uma): sem Material de arte e Arte.
+  const parent =
+    isPurchaseFlow(order) && order.parentOrderId
+      ? await store.get("orders", order.parentOrderId)
+      : null;
+  const withoutArt = purchaseWithoutArt(order, parent);
   const items = isPurchaseFlow(order)
-    ? await purchaseLaneItems(order.id)
+    ? await purchaseLaneItems(order.id, withoutArt)
     : undefined;
   const ctx = {
     order,
@@ -256,6 +267,7 @@ export async function createStagesForOrder(
     deliveryConfirmationMode: settings.deliveryConfirmationMode,
     inspectionExtendedChecks: settings.inspectionExtendedChecks,
     items,
+    withoutArt,
   };
 
   let firstStageId: string | null = null;
@@ -332,8 +344,15 @@ export async function createStagesForOrder(
   return firstStageId;
 }
 
-/** Produtos do pedido de compra, com o checklist da linha de cada um. */
-async function purchaseLaneItems(orderId: string): Promise<LaneItem[]> {
+/**
+ * Produtos do pedido de compra, com o checklist da linha de cada um. Sem arte
+ * (reposição e encomenda), também se a certificação válida do produto cobre
+ * o período do pedido (sem certificado novo, sem arte final).
+ */
+async function purchaseLaneItems(
+  orderId: string,
+  withoutArt = false,
+): Promise<LaneItem[]> {
   const store = getStore();
   const items = await store.list("order_items", { filter: { orderId } });
   const productIds = [
@@ -346,6 +365,13 @@ async function purchaseLaneItems(orderId: string): Promise<LaneItem[]> {
   const lines = lineIds.length
     ? await store.list("product_lines", { filter: { id: lineIds } })
     : [];
+  const covered = new Set<string>();
+  if (withoutArt) {
+    const { certificationCoversHorizon } =
+      await import("@/lib/services/purchase-gates");
+    for (const id of productIds)
+      if ((await certificationCoversHorizon(id)).covered) covered.add(id);
+  }
   return [...items]
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     .map((item) => {
@@ -364,6 +390,7 @@ async function purchaseLaneItems(orderId: string): Promise<LaneItem[]> {
         certificationRequired: !!line?.requiredCertifications?.some((k) =>
           k.trim(),
         ),
+        certificationCovered: !!item.productId && covered.has(item.productId),
       };
     });
 }
@@ -819,6 +846,10 @@ export async function decideRequirement(
       submittedByUserId: user.id,
       submittedAt: now,
     });
+    // A aprovação destrava o marco do item (fase 5e: a trava é do marco;
+    // a etapa só acompanha, como registro).
+    const milestone = storedMilestone(milestoneOfItem(requirement, stage));
+    if (milestone) await setMilestoneBlock(order.id, milestone, null);
     if (stage.status === "blocked") {
       await store.update("stages", stage.id, {
         status: "active",
@@ -927,6 +958,7 @@ async function reopenInspectionMeasures(
       note: reopenNote,
     });
   }
+  await setMilestoneBlock(stage.orderId, INSPECTION_BLOCK_MILESTONE, null);
   if (stage.status === "blocked")
     await store.update("stages", stage.id, {
       status: "active",
@@ -935,8 +967,8 @@ async function reopenInspectionMeasures(
   await audit(
     user,
     "inspection.remeasure_requested",
-    "stage",
-    stage.id,
+    "order",
+    stage.orderId,
     reopenNote,
   );
 }
@@ -987,6 +1019,8 @@ async function checkWeightDivergence(
 
   if (divergence > tolerance) {
     const reason = `Peso divergente: declarado ${declaredWeight} kg, medido ${measured} kg (${(divergence * 100).toFixed(1)}% > ${settings.weightTolerancePercent}%). REVISÃO NECESSÁRIA.`;
+    // Fase 5e: a trava é do marco da Inspeção (a etapa só acompanha).
+    await setMilestoneBlock(order.id, INSPECTION_BLOCK_MILESTONE, reason);
     await store.update("stages", stage.id, {
       status: "blocked",
       blockReason: reason,
@@ -1038,7 +1072,9 @@ async function checkWeightDivergence(
     });
   } else if (
     review &&
-    ((review.status === "pending" && stage.status === "blocked") ||
+    ((review.status === "pending" &&
+      (await milestoneBlockOf(order.id, INSPECTION_BLOCK_MILESTONE)) !==
+        undefined) ||
       (review.status === "rejected" &&
         !(await otherInspectionReviewsOpen(order.id))))
   ) {
@@ -1048,6 +1084,7 @@ async function checkWeightDivergence(
       value: "auto",
       note: "Dentro da tolerância após nova medição.",
     });
+    await setMilestoneBlock(order.id, INSPECTION_BLOCK_MILESTONE, null);
     await store.update("stages", stage.id, {
       status: "active",
       blockReason: null,
@@ -1195,26 +1232,47 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
   }
 }
 
-/** Wellmix pode reabrir a etapa ativa após uma revisão (ex.: inspeção). */
-export async function unblockStage(user: User, stageId: string) {
+/**
+ * Wellmix destrava o marco após uma revisão (ex.: inspeção; fase 5e: a trava
+ * é do marco). As etapas travadas do pedido voltam a andar no registro.
+ */
+export async function unblockMilestone(
+  user: User,
+  orderId: string,
+  key: string,
+) {
   if (!isWellmix(user)) throw new ForbiddenError();
+  const milestone = storedMilestone(key);
+  if (!milestone) throw new WorkflowError("stage_not_active");
   const store = getStore();
-  const stage = await store.get("stages", stageId);
-  if (stage?.status === "cancelled")
-    throw new WorkflowError("stage_not_active");
-  await store.update("stages", stageId, {
-    status: "active",
-    blockReason: null,
+  const order = await store.get("orders", orderId);
+  if (!order) throw new WorkflowError("order_not_found");
+  if (order.status === "CANCELLED") throw new WorkflowError("stage_not_active");
+  await setMilestoneBlock(orderId, milestone, null);
+  await resolveReviews(user, "order", orderId, {
+    rulePrefix: "inspection.",
+    status: "dismissed",
+    note: "Etapa liberada manualmente pela Wellmix.",
   });
-  if (stage)
-    await resolveReviews(user, "order", stage.orderId, {
-      rulePrefix: "inspection.",
-      status: "dismissed",
-      note: "Etapa liberada manualmente pela Wellmix.",
+  await audit(
+    user,
+    "milestone.unblock",
+    "order",
+    orderId,
+    `Marco ${milestone} desbloqueado`,
+  );
+  // Registro das etapas (até a fase 5f): a etapa travada volta a andar.
+  const stages = await store.list("stages", {
+    filter: { orderId, status: "blocked" },
+  });
+  for (const stage of stages) {
+    await store.update("stages", stage.id, {
+      status: "active",
+      blockReason: null,
     });
-  await audit(user, "stage.unblock", "stage", stageId, "Etapa desbloqueada");
-  await evaluateStage(user, stageId);
-  if (stage) await syncMilestones(stage.orderId, { user });
+    await evaluateStage(user, stage.id);
+  }
+  await syncMilestones(orderId, { user });
 }
 
 function dueDate(days: number | undefined) {

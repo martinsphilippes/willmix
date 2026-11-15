@@ -1,5 +1,6 @@
 import "server-only";
 import { isOrderOpen } from "@/lib/order-status";
+import { milestoneReached } from "@/lib/milestones";
 
 import { can, holdersOf } from "@/lib/auth/function-access";
 import { ForbiddenError, isAdmin, isWellmix } from "@/lib/auth/permissions";
@@ -46,14 +47,16 @@ import { loadFunctionDefs } from "./team-functions";
 
 export class SampleFlowError extends Error {}
 
-/** Etapas em que as amostras andam: depois da inspeção (SKU aprovado). */
-const SAMPLES_LIVE: readonly Order["status"][] = [
-  "SHIPPING",
-  "CUSTOMS",
-  "TRANSPORT",
-  "DELIVERED",
-  "CLOSED",
-];
+/**
+ * As amostras andam depois da inspeção (SKU aprovado): o marco Amostras (ou
+ * um seguinte) começou (fase 5e; antes, a situação "Embarque" em diante).
+ */
+async function samplesLive(order: Order): Promise<boolean> {
+  const rows = await getStore()
+    .list("order_milestones", { filter: { orderId: order.id } })
+    .catch(() => []);
+  return milestoneReached(order, rows, "samples");
+}
 
 /** Linhas do pedido de amostras gerado (nulo: sem amostras ou ainda não decidido). */
 export async function orderedSamples(
@@ -73,7 +76,7 @@ export async function samplesOrdered(order: Order) {
 
 /** Os passos das amostras estão abertos (SKU aprovado, já no Embarque ou depois). */
 export async function samplesApply(order: Order) {
-  return SAMPLES_LIVE.includes(order.status) && (await samplesOrdered(order));
+  return (await samplesLive(order)) && (await samplesOrdered(order));
 }
 
 /** Divisão por produto: Brasil, China e total. */
@@ -142,7 +145,7 @@ export async function realMediaView(
   const live = isOrderOpen(order.status);
   const open =
     live &&
-    SAMPLES_LIVE.includes(order.status) &&
+    (await samplesLive(order)) &&
     stepDone(steps.find((s) => s.key === "samples_china_received"));
   const lines = split.map((l) => {
     const row = rows.find((r) => r.orderItemId === l.itemId) ?? null;

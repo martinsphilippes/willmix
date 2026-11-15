@@ -500,11 +500,15 @@ export interface CompactMilestone {
   d: number;
   t: number;
   due?: string;
+  /** Travado (fase 5e: a linha gravada em "blocked", ex.: divergência na inspeção). */
+  b?: 1;
 }
 
 /** Os marcos no formato curto do resumo. */
 export const compactMilestones = (
   views: readonly MilestoneView[],
+  /** Marcos travados (linhas gravadas em "blocked"). */
+  blocked?: ReadonlySet<string>,
 ): CompactMilestone[] =>
   views.map((v) => ({
     k: v.key,
@@ -512,6 +516,7 @@ export const compactMilestones = (
     d: v.done,
     t: v.total,
     ...(v.dueAt ? { due: v.dueAt } : {}),
+    ...(v.state === "active" && blocked?.has(v.key) ? { b: 1 as const } : {}),
   }));
 
 /**
@@ -673,4 +678,127 @@ export function milestoneDueDaysFromStages(
       : DEFAULT_MILESTONE_DUE_DAYS;
   }
   return out;
+}
+
+/** Marco gravado (linha de `order_milestones`) ou calculado (visão, `facts.m`). */
+export interface MilestoneProgressLike {
+  key: string;
+  /** Linha gravada: "active", "blocked" ou "done". */
+  status?: string | null;
+  /** Visão calculada: "active", "done", "waiting" ou "na". */
+  state?: string | null;
+}
+
+/**
+ * O pedido já chegou ao marco `from` (fase 5e, no lugar das listas de
+ * situações antigas, ex.: "da Inspeção em diante")? Algum marco do `from`
+ * em diante começou (em andamento, travado ou concluído). Encerrado: sim;
+ * cancelado: não. Sem marcos (pedido ainda não sincronizado, só nos
+ * testes e nos dados de antes da migração), pela situação antiga.
+ */
+export function milestoneReached(
+  order: { status: string | null | undefined },
+  milestones: readonly MilestoneProgressLike[] | null | undefined,
+  from: MilestoneKey,
+): boolean {
+  if (order.status === "CLOSED") return true;
+  if (order.status === "CANCELLED") return false;
+  const min = milestoneRank(from);
+  if (milestones?.length)
+    return milestones.some((m) => {
+      const key = (MILESTONE_KEYS as readonly string[]).includes(m.key)
+        ? (m.key as MilestoneKey)
+        : null;
+      if (!key || milestoneRank(key) < min) return false;
+      const s = m.state ?? m.status;
+      return s === "active" || s === "blocked" || s === "done";
+    });
+  const legacy = LEGACY_STATUS_START[order.status ?? ""];
+  return !!legacy && milestoneRank(legacy) >= min;
+}
+
+/**
+ * Situação antiga → o primeiro marco que ela já tinha começado (só para o
+ * pedido sem marcos, `milestoneReached`): a Inspeção começava com a
+ * pré-produção; o Embarque, com o booking.
+ */
+const LEGACY_STATUS_START: Partial<Record<string, MilestoneKey>> = {
+  ORDER_CREATED: "new-order",
+  PREPARATION: "new-order",
+  SUPPLIER_PAYMENT: "contract",
+  PACKAGING: "contract",
+  INSPECTION: "pre-production",
+  SHIPPING: "booking",
+  CUSTOMS: "customs",
+  TRANSPORT: "invoice-transport",
+  DELIVERED: "delivery",
+};
+
+/**
+ * Prazo do pedido pelos marcos (fase 5e, Control Tower): o mais próximo dos
+ * marcos em andamento, do resumo (`facts.m`) ou das linhas gravadas. Sem
+ * nenhum dos dois: `undefined` (quem chama decide o que fazer).
+ */
+export function milestoneDueOf(
+  m: readonly CompactMilestone[] | null | undefined,
+  rows?: readonly { status: string; dueAt?: string | null }[] | null,
+): string | null | undefined {
+  const dates = m?.length
+    ? m.filter((x) => x.s === "active" && x.due).map((x) => x.due!)
+    : rows?.length
+      ? rows.filter((r) => r.status !== "done" && r.dueAt).map((r) => r.dueAt!)
+      : undefined;
+  if (!dates) return undefined;
+  return (
+    dates
+      .filter((d) => Number.isFinite(Date.parse(d)))
+      .sort((a, b) => Date.parse(a) - Date.parse(b))[0] ?? null
+  );
+}
+
+/** Algum marco travado (fase 5e)? Sem marcos: `undefined`. */
+export function milestoneBlockedOf(
+  m: readonly CompactMilestone[] | null | undefined,
+  rows?: readonly { status: string }[] | null,
+): boolean | undefined {
+  if (m?.length) return m.some((x) => x.b === 1);
+  if (rows?.length) return rows.some((r) => r.status === "blocked");
+  return undefined;
+}
+
+/** Sinal ao fornecedor do pedido (item `down_payment`): feito, aberto ou sem o item. */
+export type DownPaymentState = "done" | "pending" | "absent";
+
+/** Estado do sinal pelos itens do pedido (o item `down_payment`). */
+export function downPaymentStateOf(
+  requirements: readonly { key: string; status: string }[],
+): DownPaymentState {
+  const items = requirements.filter((r) => r.key === "down_payment");
+  if (!items.length) return "absent";
+  return items.every((r) => r.status === "done") ? "done" : "pending";
+}
+
+/**
+ * Passos do embarque e da origem abertos (decisão do dono, 15/11/2026): o
+ * contrato assinado e confirmado (marco Contrato concluído) e, no pedido de
+ * compra, o sinal resolvido: o item `down_payment` conclui sozinho com a
+ * conta corrente com o fornecedor (sem parcela antes da produção) ou com o
+ * sinal pago (purchase-gates.ts). A aprovação da Diretoria de compras não
+ * entra. Pedido sem marcos gravados (antes da migração e nos testes): pela
+ * situação antiga, da Inspeção em diante.
+ */
+export function shipmentStepsOpen(
+  order: { status: string | null | undefined; flow?: string | null },
+  milestones: readonly MilestoneProgressLike[] | null | undefined,
+  downPayment: DownPaymentState,
+): boolean {
+  if (order.status === "CLOSED" || order.status === "CANCELLED") return false;
+  if (!milestones?.length)
+    return milestoneReached(order, milestones, "pre-production");
+  const contract = milestones.find((m) => m.key === "contract");
+  const contractDone =
+    !!contract && (contract.state ?? contract.status) === "done";
+  if (!contractDone) return false;
+  if (order.flow !== "supplier_request") return true;
+  return downPayment !== "pending";
 }

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { z } from "zod";
+import { MILESTONE_KEYS } from "@/lib/milestones";
 import { PRODUCTION_VIDEO_KEY } from "@/lib/purchase-lanes";
 import { formatAmount, moneyValue, parseAmount } from "@/lib/workflow/money";
 import { CURRENCIES, isCurrency, parseCurrency } from "@/lib/currencies";
@@ -53,7 +54,7 @@ import {
   canSubmitRequirement,
   decideRequirement,
   submitRequirement,
-  unblockStage,
+  unblockMilestone,
 } from "@/lib/workflow/engine";
 import { audit } from "@/lib/services/audit";
 import { requesterTarget, notify } from "@/lib/services/notifications";
@@ -502,8 +503,22 @@ export async function submitRequirementAction(form: FormData) {
         item === "dieline" || item === "hd" ? item : "terms",
       );
     }
-    return `/app/orders/${orderId}#stage-${requirement.stageId}`;
+    return orderAnchor(orderId, requirement);
   });
+}
+
+/**
+ * Volta para o marco do item na tela do pedido (fase 5e: a âncora é do marco,
+ * `#milestone-<marco>`; o item sem marco volta para o topo do pedido).
+ */
+function orderAnchor(
+  orderId: string,
+  requirement: { milestoneKey?: string | null },
+): string {
+  const key = requirement.milestoneKey;
+  return key && (MILESTONE_KEYS as readonly string[]).includes(key)
+    ? `/app/orders/${orderId}#milestone-${key}`
+    : `/app/orders/${orderId}#order-stages`;
 }
 
 /** Exclui a foto/arquivo de um requisito para enviar outro. */
@@ -524,7 +539,7 @@ export async function clearRequirementDocumentAction(form: FormData) {
     await clearRequirementDocument(user, requirementId);
     if (flow) return flow;
     if (dieCut) return dieCutHref(orderId, itemIdOf(requirement.key));
-    return `/app/orders/${orderId}#stage-${requirement.stageId}`;
+    return orderAnchor(orderId, requirement);
   });
 }
 
@@ -557,12 +572,13 @@ export async function decideRequirementAction(form: FormData) {
   });
 }
 
-export async function unblockStageAction(form: FormData) {
+export async function unblockMilestoneAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");
   await run(`/app/orders/${orderId}`, async () => {
     assertScreen(user, "orders");
-    await unblockStage(user, str(form, "stageId"));
+    const milestone = z.enum(MILESTONE_KEYS).parse(str(form, "milestone"));
+    await unblockMilestone(user, orderId, milestone);
   });
 }
 
@@ -1179,10 +1195,26 @@ export async function saveSettingsAction(form: FormData) {
         key === "freightPerCbmAuto" ||
         // Gravado pela tela do Superplan, com validação própria.
         key === "superplan" ||
-        // Prazo por marco (fase 5): sem editor ainda; nunca vem do formulário.
-        key === "milestoneDueDays"
+        // Prazo por etapa (legado, fase 5e): o editor agora é por marco.
+        key === "stageDueDays"
       )
         continue;
+      if (key === "milestoneDueDays") {
+        // Prazo por marco (fase 5e): um campo "milestoneDueDays.<marco>" por
+        // marco, em dias inteiros de 0 a 365.
+        if (!form.has("milestoneDueDays.__form")) continue;
+        const shape = z.coerce.number().int().min(0).max(365);
+        const out: Record<string, number> = {};
+        for (const k of MILESTONE_KEYS) {
+          const text = String(form.get(`milestoneDueDays.${k}`) ?? "").trim();
+          if (text === "") continue;
+          const parsed = shape.safeParse(text);
+          if (!parsed.success) throw new Error("milestone_due_invalid");
+          out[k] = parsed.data;
+        }
+        pairs.push([key, Object.keys(out).length ? out : null]);
+        continue;
+      }
       if (
         key === "marginByLine" ||
         key === "marginByCustomer" ||

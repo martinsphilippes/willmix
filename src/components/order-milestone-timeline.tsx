@@ -145,10 +145,11 @@ function MilestoneRow({
   return (
     <div
       role="listitem"
+      id={`milestone-${m.key}`}
       data-milestone={m.key}
       data-milestone-state={m.state}
       className={cx(
-        "rounded-lg border",
+        "scroll-mt-24 rounded-lg border",
         item.mine === "now"
           ? "border-brand-300 bg-white ring-4 ring-brand-50"
           : m.state === "active"

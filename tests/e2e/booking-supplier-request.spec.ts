@@ -659,7 +659,8 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await group.locator("[data-purchase-submit]").click();
   await page.waitForURL(/\/app\/orders\/[^/?]+\?purchase=created/);
   await expect(
-    page.getByText("Preparação, arte e certificação").first(),
+    // Fase 5e: o selo do pedido mostra o marco atual (não a etapa).
+    page.getByText("1. Pedido novo").first(),
   ).toBeVisible();
   await expect(page.getByText(/Faca \(die cut\)/).first()).toBeVisible();
   const orderUrl = page.url().split("?")[0];

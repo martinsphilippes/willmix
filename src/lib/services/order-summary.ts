@@ -88,8 +88,12 @@ import { releaseOf } from "@/lib/milestone-release";
  * liberados pelo marco, não pela etapa em andamento.
  * 18: frete das ordens de venda ligadas ao pedido (`sfr`), no custo e na
  * margem do financeiro (docs/SALES_ORDERS.md).
+ * 19: fase 5e (docs/MILESTONES.md): o marco travado (`m[].b`, a trava da
+ * inspeção mora em `order_milestones`); a produção e o recebimento dos
+ * marcos e os passos abertos do embarque pelos marcos (não pela etapa nem
+ * pela situação); a Control Tower lê prazo e trava pelo marco.
  */
-export const SUMMARY_VERSION = 18;
+export const SUMMARY_VERSION = 19;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -216,10 +220,15 @@ interface Sources {
   milestoneRequirements: Map<string, Requirement[]>;
   /** Pedidos com produto de NCM que exige LPCO (`lpcoOrderIds`). */
   lpco: Set<string>;
-  /** Marcos gravados (fase 5c): só chave e prazo, para o prazo do marco. */
+  /** Marcos gravados (fase 5c): chave, prazo e situação (fase 5e: trava e onde o pedido está). */
   milestoneRows: Map<
     string,
-    Array<Pick<OrderMilestone, "orderId" | "key" | "dueAt">>
+    Array<
+      Pick<
+        OrderMilestone,
+        "orderId" | "key" | "dueAt" | "status" | "blockReason"
+      >
+    >
   >;
 }
 
@@ -323,9 +332,12 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     // Fase 5c: o prazo dos marcos sai de `order_milestones` (só chave e
     // prazo; tabela ainda não publicada: o prazo das etapas).
     safe(
-      listColumnsOf(store, "order_milestones", ["orderId", "key", "dueAt"], {
-        filter: byOrder,
-      }),
+      listColumnsOf(
+        store,
+        "order_milestones",
+        ["orderId", "key", "dueAt", "status", "blockReason"],
+        { filter: byOrder },
+      ),
     ),
     import("./finance").then((m) =>
       m.salesFreightByOrder(ids ? orderIds : null),
@@ -382,6 +394,11 @@ export function factMilestones(
       lpco: src.lpco.has(id),
       milestones: src.milestoneRows.get(id),
     }),
+    new Set(
+      (src.milestoneRows.get(id) ?? [])
+        .filter((r) => r.status === "blocked")
+        .map((r) => r.key),
+    ),
   );
 }
 
@@ -660,7 +677,12 @@ async function tasksOf(
   const [
     { stageTaskDrafts },
     { wellmixProductionCandidates, latestByItem },
-    { wellmixImportCandidates, WELLMIX_IMPORT_STATUSES, isDivergenceStep },
+    {
+      wellmixImportCandidates,
+      WELLMIX_IMPORT_STATUSES,
+      isDivergenceStep,
+      sealArtApplies,
+    },
     { artIssueCounts },
     { baseKeyOf, LANE_KEYS },
   ] = await Promise.all([
@@ -743,7 +765,16 @@ async function tasksOf(
         (src.portalRequirements.get(order.id) ?? []).some(
           (r) => baseKeyOf(r.key) === LANE_KEYS.certificate,
         );
-      const i = wellmixImportCandidates(order, steps, needsCert);
+      const i = wellmixImportCandidates(
+        order,
+        steps,
+        needsCert,
+        false,
+        sealArtApplies(
+          order,
+          (src.portalRequirements.get(order.id) ?? []).map((r) => r.key),
+        ),
+      );
       if (i.length) stored.i = i;
     } else if (order.status === "DELIVERED") {
       // Entregue: só a divergência no recebimento (mapa E24 a E27).
@@ -874,6 +905,7 @@ async function kpisOf(
 /** Contribuição de cada pedido para o Overview dos blocos (docs/FLOW_MENU.md). */
 async function flowsOf(src: Sources) {
   const { buildOrderFlow } = await import("./flow-contribution");
+  const { sealArtApplies } = await import("./import-flow");
   // LPCO: lido uma vez com as fontes (loadSources).
   const lpco = src.lpco;
   const out = new Map<string, unknown>();
@@ -894,6 +926,11 @@ async function flowsOf(src: Sources) {
           null,
         sampleOrder: reqs.find((r) => r.key === "sample_order") ?? null,
         lpco: lpco.has(order.id),
+        milestones: src.milestoneRows.get(order.id) ?? [],
+        sealArt: sealArtApplies(
+          order,
+          (src.milestoneRequirements.get(order.id) ?? []).map((r) => r.key),
+        ),
       }),
     );
   }

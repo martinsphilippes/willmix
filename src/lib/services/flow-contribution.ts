@@ -19,6 +19,12 @@ import {
 import { isPurchaseFlow } from "@/lib/workflow/stages";
 import { parseSampleOrder } from "@/lib/sample-order";
 import { openImportStepKeys } from "./import-flow";
+import {
+  downPaymentStateOf,
+  milestoneReached,
+  type MilestoneKey,
+  type MilestoneProgressLike,
+} from "@/lib/milestones";
 import { RECEIVING_STATUSES, missingForClose } from "./receiving";
 
 /*
@@ -60,6 +66,13 @@ export interface OrderFlowInput {
   sampleOrder: Requirement | null;
   /** LPCO: o pedido tem produto de NCM que exige (lpcoOrderIds). */
   lpco?: boolean;
+  /**
+   * Marcos gravados do pedido (`order_milestones`, fase 5e): onde ele está
+   * (contrato, amostras, entrega), no lugar da situação antiga.
+   */
+  milestones?: readonly MilestoneProgressLike[] | null;
+  /** A arte com o selo vale (`sealArtApplies`); sem valor, vale. */
+  sealArt?: boolean;
 }
 
 export interface FlowEntry {
@@ -77,13 +90,6 @@ export const flowLive = (o: Pick<Order, "status">) => isOrderOpen(o.status);
 
 /** Peças da descarga (Armazenagem); o resto (RIC, devolução, fechamento) é Retorno. */
 const STORAGE_PARTS = ["seal", "photos", "checklist", "counts"] as const;
-/** Etapas em que os passos das amostras andam (sample-flow.ts, SAMPLES_LIVE). */
-const SAMPLES_LIVE: readonly string[] = [
-  "SHIPPING",
-  "CUSTOMS",
-  "TRANSPORT",
-  "DELIVERED",
-];
 
 /**
  * Tudo o que está aberto no pedido, passo a passo: os itens de etapa das
@@ -121,8 +127,11 @@ export function orderFlowEntries(input: OrderFlowInput): FlowEntry[] {
   const steps = input.importSteps;
   const certification = steps.some((s) => s.key.startsWith("cert_"));
   const sampleDoc = parseSampleOrder(input.sampleOrder?.value);
+  // Amostras: depois da inspeção (o marco Amostras começou; sample-flow.ts).
+  const reached = (from: MilestoneKey) =>
+    milestoneReached(order, input.milestones, from);
   const samples =
-    SAMPLES_LIVE.includes(order.status) &&
+    reached("samples") &&
     isPurchaseFlow(order) &&
     sampleDoc?.status === "ordered" &&
     !!sampleDoc.lines?.length;
@@ -136,6 +145,11 @@ export function orderFlowEntries(input: OrderFlowInput): FlowEntry[] {
     certification,
     samples,
     lpco: input.lpco ?? false,
+    milestones: input.milestones,
+    downPayment: input.downPayment
+      ? "done"
+      : downPaymentStateOf(input.openRequirements),
+    sealArt: input.sealArt,
   })) {
     const step = flowStepOfImportKey(key);
     if (step)
@@ -145,8 +159,8 @@ export function orderFlowEntries(input: OrderFlowInput): FlowEntry[] {
         since: after,
       });
   }
-  // Produção em andamento: com ETD e na etapa de inspeção.
-  if (input.track?.etd && order.status === "INSPECTION")
+  // Produção em andamento: com ETD, da pré-produção até o booking.
+  if (input.track?.etd && reached("pre-production") && !reached("booking"))
     out.push({
       step: "production/production",
       item: {
@@ -164,7 +178,7 @@ export function orderFlowEntries(input: OrderFlowInput): FlowEntry[] {
   if (
     (RECEIVING_STATUSES as readonly string[]).includes(order.status) &&
     !row?.closedAt &&
-    (row || order.status === "DELIVERED")
+    (row || reached("delivery"))
   ) {
     const missing = missingForClose(row, input.items);
     const storage = missing.some((m) =>

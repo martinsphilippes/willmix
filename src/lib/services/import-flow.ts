@@ -1,5 +1,10 @@
 import "server-only";
 import { isOrderOpen } from "@/lib/order-status";
+import {
+  shipmentStepsOpen,
+  type DownPaymentState,
+  type MilestoneProgressLike,
+} from "@/lib/milestones";
 import { cache } from "react";
 import { can, holdersOf, type ActionKey } from "@/lib/auth/function-access";
 import { loadFunctionDefs } from "./team-functions";
@@ -569,7 +574,14 @@ export function stepApplies(
    * lista, não vale.
    */
   steps?: readonly Pick<ImportStep, "key">[],
+  /**
+   * A arte com o selo vale (`sealArtApplies`): na reposição e na encomenda
+   * sem certificado novo, a arte e o certificado já estão prontos e a
+   * certificação não pede a arte com o selo (dono, 15/11/2026).
+   */
+  sealArt = true,
 ): boolean {
+  if (key === "cert_seal_art" && !sealArt) return false;
   if (key === "lpco") return lpco;
   if (isDivergenceStep(key)) return !!steps?.some((s) => s.key === key);
   const purchase = isPurchaseFlow(order);
@@ -715,6 +727,8 @@ export async function canSubmitStep(
       key,
       key === "lpco" && (await lpcoApplies(order)),
       isDivergenceStep(key) ? await stepsOf(order.id) : undefined,
+      key !== "cert_seal_art" ||
+        !(await ordersWithoutSealArt([order])).has(order.id),
     )
   )
     return false;
@@ -1547,11 +1561,14 @@ export async function importFlowView(
   // Pedido encerrado: só leitura.
   const open = isOrderOpen(order.status);
   const lpco = group === "import" && (await lpcoApplies(order));
+  const sealArt =
+    group !== "certification" ||
+    !(await ordersWithoutSealArt([order])).has(order.id);
   const shown = IMPORT_STEPS.filter(
     (tpl) =>
       groupOf(tpl) === group &&
       // Container na origem só no pedido de compra; nele, sem os papéis antigos.
-      stepApplies(order, tpl.key, lpco, steps) &&
+      stepApplies(order, tpl.key, lpco, steps, sealArt) &&
       canSeeStep(user, order, tpl.key),
   );
   // Passo da agência: só de quem faz a arte (a Wellmix sempre pode agir;
@@ -1695,6 +1712,48 @@ async function purchaseOrdersNeedingCert(
   );
 }
 
+/**
+ * A arte com o selo vale para o pedido (dono, 15/11/2026)? Não no pedido de
+ * compra com certificado e sem arte final: a reposição e a encomenda sem
+ * certificado novo (a arte final só nasce com certificado novo, ou no
+ * pedido do Book). Pelas chaves dos itens do pedido.
+ */
+export function sealArtApplies(
+  order: Pick<Order, "flow">,
+  requirementKeys: readonly string[],
+): boolean {
+  if (!isPurchaseFlow(order)) return true;
+  const bases = requirementKeys.map(baseKeyOf);
+  return (
+    !bases.includes(LANE_KEYS.certificate) || bases.includes(LANE_KEYS.artFinal)
+  );
+}
+
+/** Pedidos (dos dados) em que a arte com o selo não vale (`sealArtApplies`). */
+export async function ordersWithoutSealArt(
+  orders: Pick<Order, "id" | "flow">[],
+): Promise<Set<string>> {
+  const ids = orders.filter(isPurchaseFlow).map((o) => o.id);
+  if (!ids.length) return new Set();
+  const { listColumns } = await import("@/lib/db/lookup");
+  const rows = await listColumns(
+    getStore(),
+    "requirements",
+    ["orderId", "key"],
+    { filter: { orderId: ids } },
+  );
+  const keys = new Map<string, string[]>();
+  for (const r of rows)
+    keys.set(r.orderId, [...(keys.get(r.orderId) ?? []), r.key]);
+  return new Set(
+    orders
+      .filter(
+        (o) => isPurchaseFlow(o) && !sealArtApplies(o, keys.get(o.id) ?? []),
+      )
+      .map((o) => o.id),
+  );
+}
+
 /** O pedido de compra exige certificação (a tela avisa quando não exige). */
 export async function purchaseNeedsCertification(
   order: Pick<Order, "id" | "flow">,
@@ -1751,6 +1810,7 @@ export async function importTasks(
   // Certificação: quem recebe cada passo, lido uma vez para a lista toda.
   const ctx = await loadRoutingContext();
   const certPurchase = await purchaseOrdersNeedingCert(open);
+  const noSealArt = await ordersWithoutSealArt(open);
   // Wellmix: a mesma regra que o resumo do pedido guarda (docs/RESUMOS.md),
   // em duas partes: o que não depende de quem vê e, na hora, para quem é.
   if (isWellmix(user)) {
@@ -1766,6 +1826,7 @@ export async function importTasks(
             steps,
             certPurchase.has(order.id),
             await lpcoApplies(order),
+            !noSealArt.has(order.id),
           ),
           ctx,
           today,
@@ -1795,7 +1856,8 @@ export async function importTasks(
         continue;
       if (groupOf(tpl) === "samples" && !samplesOn) continue;
       // Container na origem só no pedido de compra; nele, sem os papéis antigos.
-      if (!stepApplies(order, tpl.key, lpco, steps)) continue;
+      if (!stepApplies(order, tpl.key, lpco, steps, !noSealArt.has(order.id)))
+        continue;
       const step = steps.find((s) => s.key === tpl.key);
       if (cert) {
         const candidate = certCandidate(order, tpl, step, steps, gate);
@@ -1952,6 +2014,8 @@ export function wellmixImportCandidates(
   purchaseNeedsCert: boolean,
   /** LPCO: o pedido tem produto de NCM que exige (lpcoApplies). */
   lpcoRequired = false,
+  /** A arte com o selo vale (`sealArtApplies`). */
+  sealArt = true,
 ): ImportCandidate[] {
   if (order.status === "CLOSED" || order.status === "CANCELLED") return [];
   const out: ImportCandidate[] = [];
@@ -1966,7 +2030,7 @@ export function wellmixImportCandidates(
     } else if (!cert && !importLive) continue;
     // Container na origem só no pedido de compra; nele, sem os passos antigos
     // do despachante e do agente (docs/SHIPPING_DOCS.md).
-    if (!stepApplies(order, tpl.key, lpco, steps)) continue;
+    if (!stepApplies(order, tpl.key, lpco, steps, sealArt)) continue;
     // Amostras: passos da trading e da agência na China, nunca da Wellmix
     // por esta lista (docs/SAMPLE_FLOW.md).
     if (groupOf(tpl) === "samples") continue;
@@ -2163,8 +2227,10 @@ export async function laterStepsFor(
     steps,
     isPurchaseFlow(order) ? await purchaseNeedsCertification(order) : false,
   );
+  const noSealArt = (await ordersWithoutSealArt([order])).has(order.id);
   for (const tpl of IMPORT_STEPS) {
     if (options.openKeys.has(tpl.key)) continue;
+    if (tpl.key === "cert_seal_art" && noSealArt) continue;
     const step = steps.find((x) => x.key === tpl.key);
     if (isDone(step)) continue;
     const group = groupOf(tpl);
@@ -2342,19 +2408,11 @@ export async function readyImportTasks(
   );
 }
 
-/** Situações do pedido em que o embarque, a origem e as amostras andam. */
-const OPEN_FLOW_STATUSES: readonly string[] = [
-  "INSPECTION",
-  "SHIPPING",
-  "CUSTOMS",
-  "TRANSPORT",
-  "DELIVERED",
-];
-
 /**
  * Passos abertos do pedido (prontos e ainda não concluídos), quem quer que
  * os faça: a aba "Todos" das telas dos passos do menu (docs/FLOW_MENU.md).
- * Embarque, origem e amostras só do pedido já na inspeção em diante; a
+ * Embarque, origem e amostras só com o contrato concluído e o sinal
+ * resolvido (conta corrente ou sinal pago; `shipmentStepsOpen`); a
  * certificação e as amostras só quando o chamador diz que valem para o
  * pedido (certificação começada; amostras pedidas). O BL do pedido de compra
  * vem dos documentos do embarque (não entra).
@@ -2362,16 +2420,40 @@ const OPEN_FLOW_STATUSES: readonly string[] = [
 export function openImportStepKeys(
   order: Order,
   steps: ImportStep[],
-  options: { certification: boolean; samples: boolean; lpco?: boolean },
+  options: {
+    certification: boolean;
+    samples: boolean;
+    lpco?: boolean;
+    /** Marcos do pedido (gravados ou calculados), para saber onde ele está. */
+    milestones?: readonly MilestoneProgressLike[] | null;
+    /** O sinal ao fornecedor (item `down_payment`): feito, aberto ou sem. */
+    downPayment?: DownPaymentState;
+    /** A arte com o selo vale (`sealArtApplies`). */
+    sealArt?: boolean;
+  },
 ): ImportStepKey[] {
   if (order.status === "CANCELLED" || order.status === "CLOSED") return [];
-  const flowing = OPEN_FLOW_STATUSES.includes(order.status);
+  // Embarque, origem e amostras (dono, 15/11/2026): com o contrato assinado
+  // e confirmado e, sem conta corrente com o fornecedor, o sinal pago.
+  const flowing = shipmentStepsOpen(
+    order,
+    options.milestones,
+    options.downPayment ?? "absent",
+  );
   return IMPORT_STEPS.filter((tpl) => {
     const group = groupOf(tpl);
     if (group === "certification" ? !options.certification : !flowing)
       return false;
     if (group === "samples" && !options.samples) return false;
-    if (!stepApplies(order, tpl.key, options.lpco ?? false, steps))
+    if (
+      !stepApplies(
+        order,
+        tpl.key,
+        options.lpco ?? false,
+        steps,
+        options.sealArt ?? true,
+      )
+    )
       return false;
     if (tpl.key === "bl" && isPurchaseFlow(order)) return false;
     return (

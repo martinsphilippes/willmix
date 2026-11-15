@@ -72,9 +72,11 @@ import {
  * Formato do agregado. 2 (fase 4d): pedidos em andamento por marco atual
  * (`milestones`) e visões gerais de preparação a transporte pelo marco. 3
  * (fase 5c): os quadrados do bloco "Pedido" (e produção e canal) contam o
- * pedido pelo marco atual, não pela etapa.
+ * pedido pelo marco atual, não pela etapa. 4 (fase 5e): prazo vencido, em
+ * risco e travado pelos marcos (o prazo mais próximo dos marcos em andamento
+ * e o marco travado), não pela etapa em andamento.
  */
-export const KPI_VERSION = 3;
+export const KPI_VERSION = 4;
 export const TOWER_KPI_KEY = "tower";
 /** Linhas mostradas na lista do quadrado escolhido (o total vem do indicador). */
 export const TOWER_LIST_LIMIT = 200;
@@ -175,14 +177,17 @@ export function nextChange(f: OrderFacts, now: Date): number | null {
     if (Number.isFinite(t) && t > at) candidates.push(t);
   };
   const live = isLiveStatus(f.order.status);
-  // Prazo da etapa: vence (atrasado) e entra em risco RISK_DAYS antes.
-  for (const s of f.active)
-    if (s.dueAt) {
-      const due = Date.parse(s.dueAt);
-      add(due);
-      add(due + 1);
-      add(due - RISK_DAYS * DAY);
-    }
+  // Prazo dos marcos em andamento (fase 5e; sem marcos no resumo, o da
+  // etapa): vence (atrasado) e entra em risco RISK_DAYS antes.
+  const dues = f.m?.length
+    ? f.m.filter((x) => x.s === "active" && x.due).map((x) => x.due!)
+    : f.active.map((s) => s.dueAt).filter((d): d is string => !!d);
+  for (const d of dues) {
+    const due = Date.parse(d);
+    add(due);
+    add(due + 1);
+    add(due - RISK_DAYS * DAY);
+  }
   // Datas de dia (chegada, embarque) na viagem: viram à meia-noite.
   for (const r of f.reqs)
     if (r.v && /^\d{4}-\d{2}-\d{2}/.test(r.v)) {

@@ -22,7 +22,11 @@ import { getSettings } from "@/lib/settings";
 import { SAMPLE_ORDER_KEY } from "@/lib/purchase-lanes";
 import { RECEIVING_STATUSES } from "./receiving";
 import { orderFlowEntries, type OrderFlowInput } from "./flow-contribution";
-import { milestoneOfStatus, type MilestoneKey } from "@/lib/milestones";
+import {
+  downPaymentStateOf,
+  milestoneOfStatus,
+  type MilestoneKey,
+} from "@/lib/milestones";
 import {
   supplierRequestLate,
   supplierRequestSlaDue,
@@ -456,6 +460,7 @@ async function loadFlowAll(
     receivings,
     downPayments,
     sampleOrders,
+    milestoneRows,
   ] = await Promise.all([
     store.list("stages", { filter: { orderId: ids } }),
     store.list("import_steps", { filter: { orderId: ids } }).catch(() => []),
@@ -472,6 +477,9 @@ async function loadFlowAll(
     store.list("requirements", {
       filter: { orderId: ids, key: SAMPLE_ORDER_KEY },
     }),
+    store
+      .list("order_milestones", { filter: { orderId: ids } })
+      .catch(() => []),
   ]);
   // Itens do pedido só de quem está no recebimento (a contagem por SKU).
   const receivingIds = orders
@@ -491,9 +499,9 @@ async function loadFlowAll(
   const byItems = group(items);
   const now = new Date();
   const progress = new Map<string, OrderProgress>();
-  const lpco = await (
-    await import("./import-flow")
-  ).lpcoOrderIds(orders.map((o) => o.id));
+  const importFlow = await import("./import-flow");
+  const lpco = await importFlow.lpcoOrderIds(orders.map((o) => o.id));
+  const noSealArt = await importFlow.ordersWithoutSealArt(orders);
   for (const order of orders) {
     const input: OrderFlowInput = {
       order,
@@ -506,6 +514,8 @@ async function loadFlowAll(
       downPayment: downPayments.find((x) => x.orderId === order.id) ?? null,
       sampleOrder: sampleOrders.find((x) => x.orderId === order.id) ?? null,
       lpco: lpco.has(order.id),
+      milestones: milestoneRows.filter((x) => x.orderId === order.id),
+      sealArt: !noSealArt.has(order.id),
     };
     progress.set(order.id, orderProgress(input.stages, now));
     for (const e of orderFlowEntries(input))
@@ -915,10 +925,19 @@ export const flowPartnerAllFor = cache(
       byOrder.set(orderId, entity);
       out.set(key, byOrder);
     };
-    const [stages, importSteps] = await Promise.all([
-      store.list("stages", { filter: { orderId: ids } }),
-      store.list("import_steps", { filter: { orderId: ids } }).catch(() => []),
-    ]);
+    const [stages, importSteps, milestoneRows, downPayments] =
+      await Promise.all([
+        store.list("stages", { filter: { orderId: ids } }),
+        store
+          .list("import_steps", { filter: { orderId: ids } })
+          .catch(() => []),
+        store
+          .list("order_milestones", { filter: { orderId: ids } })
+          .catch(() => []),
+        store.list("requirements", {
+          filter: { orderId: ids, key: "down_payment" },
+        }),
+      ]);
     const live = stages.filter(
       (s) => s.status === "active" || s.status === "blocked",
     );
@@ -951,21 +970,19 @@ export const flowPartnerAllFor = cache(
     const flow = await import("./import-flow");
     const { samplesApply } = await import("./sample-flow");
     const lpcoIds = await flow.lpcoOrderIds(ids);
+    const noSealArt = await flow.ordersWithoutSealArt(orders);
     for (const order of orders) {
       const steps = importSteps.filter((s) => s.orderId === order.id);
-      const samples =
-        [
-          "INSPECTION",
-          "SHIPPING",
-          "CUSTOMS",
-          "TRANSPORT",
-          "DELIVERED",
-        ].includes(order.status) &&
-        (await samplesApply(order).catch(() => false));
+      const samples = await samplesApply(order).catch(() => false);
       for (const key of flow.openImportStepKeys(order, steps, {
         certification: steps.some((s) => s.key.startsWith("cert_")),
         samples,
         lpco: lpcoIds.has(order.id),
+        milestones: milestoneRows.filter((m) => m.orderId === order.id),
+        downPayment: downPaymentStateOf(
+          downPayments.filter((r) => r.orderId === order.id),
+        ),
+        sealArt: !noSealArt.has(order.id),
       })) {
         if (!flow.canSeeStep(user, order, key)) continue;
         const step = flowStepOfImportKey(key);

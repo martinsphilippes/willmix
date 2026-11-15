@@ -5,8 +5,9 @@ import type { MilestoneKey } from "@/lib/milestones";
  * pela etapa em andamento. Os testes que montam o pedido direto numa etapa
  * (etapas anteriores "done" no banco) usam isto para deixar também os marcos
  * anteriores concluídos: os itens deles feitos e os passos do embarque, da
- * certificação e da origem validados. As subtarefas que vêm das etapas
- * (produção, recebimento) seguem as etapas gravadas.
+ * certificação e da origem validados. Fase 5e: a produção e o recebimento
+ * também seguem os marcos (a Inspeção e a Nota fiscal e transporte
+ * concluídas), não a etapa.
  */
 export async function completeMilestonesBefore(
   orderId: string,

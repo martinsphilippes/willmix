@@ -152,7 +152,7 @@ export const pt = {
   "settings.containerTypes.label": "Tipos de container",
   "settings.hint.containerTypes":
     "Uma linha por tipo: código;capacidade em m³;peso máximo em kg. Ex.: 40HC;68;26500. Linhas vazias são ignoradas.",
-  "settings.error.invalid_json": "JSON inválido em stageDueDays.",
+  "settings.error.invalid_json": "JSON inválido nas configurações.",
   "settings.error.invalid_container_types":
     "Tipos de container inválidos: use código;capacidade;peso por linha.",
 };
@@ -298,7 +298,7 @@ export const en: Record<keyof typeof pt, string> = {
   "settings.containerTypes.label": "Container types",
   "settings.hint.containerTypes":
     "One line per type: code;capacity in m³;max weight in kg. E.g. 40HC;68;26500. Empty lines are ignored.",
-  "settings.error.invalid_json": "Invalid JSON in stageDueDays.",
+  "settings.error.invalid_json": "Invalid JSON in the settings.",
   "settings.error.invalid_container_types":
     "Invalid container types: use code;capacity;weight per line.",
 };
@@ -439,7 +439,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "settings.containerTypes.label": "箱型",
   "settings.hint.containerTypes":
     "每行一个箱型：代码;容量 m³;最大重量 kg。例如：40HC;68;26500。空行将被忽略。",
-  "settings.error.invalid_json": "stageDueDays 的 JSON 无效。",
+  "settings.error.invalid_json": "设置中的 JSON 无效。",
   "settings.error.invalid_container_types":
     "箱型无效：每行请使用 代码;容量;重量 的格式。",
 };

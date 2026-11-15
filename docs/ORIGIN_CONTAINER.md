@@ -4,7 +4,7 @@ Mapa do processo, etapa Produção: R19 (container no depósito da fábrica, ond
 
 ## Cartão "Container na origem"
 
-No pedido de compra, da Inspeção em diante (`/app/orders/{id}#container-origin`). Usa o mesmo mecanismo dos passos de embarque (docs/IMPORT_FLOW.md): quem faz, quem valida, quem vê, recusa com motivo, quem enviou não valida o próprio envio.
+No pedido de compra, com o contrato assinado e confirmado e, sem conta corrente com o fornecedor, o sinal pago (decisão do dono, 15/11/2026; `shipmentStepsOpen`, docs/MILESTONES.md "Embarque e origem: quando abrem") (`/app/orders/{id}#container-origin`). Usa o mesmo mecanismo dos passos de embarque (docs/IMPORT_FLOW.md): quem faz, quem valida, quem vê, recusa com motivo, quem enviou não valida o próprio envio.
 
 | Passo                                        | Faz                       | Valida  | Depois de              | Pede                     |
 | -------------------------------------------- | ------------------------- | ------- | ---------------------- | ------------------------ |

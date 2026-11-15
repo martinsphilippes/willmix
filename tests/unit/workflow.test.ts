@@ -242,7 +242,8 @@ describe("fluxo completo: solicitação → entrega", () => {
     const actions = report.timeline.map((e) => e.action);
     expect(actions).toContain("inspection.divergence");
     expect(actions).toContain("inspection.remeasure_requested");
-    expect(actions).toContain("stage.complete");
+    // Fase 5e: a conclusão é a do marco Inspeção (a linha gravada).
+    expect(report.milestone.status).toBe("done");
 
     // Fase 5d: o Embarque libera pelos marcos Booking e Carregamento (os
     // passos do embarque feitos).

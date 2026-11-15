@@ -1088,7 +1088,7 @@ describe("cartão Embarque: botão de importar e frete da rota", () => {
         createElement(FreightTariffBox, {
           t,
           orderId: "o1",
-          stageId: "s1",
+          anchor: "milestone-booking",
           view,
         }),
       );
@@ -1104,7 +1104,7 @@ describe("cartão Embarque: botão de importar e frete da rota", () => {
         createElement(FreightTariffBox, {
           t,
           orderId: "o1",
-          stageId: "s1",
+          anchor: "milestone-booking",
           shippingLineId: "armador",
           view: null,
         }),
@@ -1126,7 +1126,7 @@ describe("cartão Embarque: botão de importar e frete da rota", () => {
     const noLocation = render(base);
     expect(noLocation).toContain("não tem o local do fornecedor");
     // Escolher o porto à mão: formulário GET no próprio pedido.
-    expect(noLocation).toContain('action="/app/orders/o1#stage-s1"');
+    expect(noLocation).toContain('action="/app/orders/o1#milestone-booking"');
     expect(noLocation).toContain('name="tariffOrigin"');
     expect(render({ ...base, location: "Yiwu" })).toContain(
       "(&quot;Yiwu&quot;) não é um porto do tarifário",
@@ -1586,7 +1586,7 @@ describe("revisão 2: leitura em tempo linear, textos enormes, legado e endereç
       createElement(FreightTariffBox, {
         t: translator("pt"),
         orderId: "o1",
-        stageId: "s1",
+        anchor: "milestone-booking",
         keepParams: { remeasure: "1" },
         view: {
           tariffId: "t1",
@@ -1710,7 +1710,7 @@ describe("revisão 3: porto do distrito, nomes colados, aspas e container", () =
       createElement(FreightTariffBox, {
         t: translator("pt"),
         orderId: "o1",
-        stageId: "s1",
+        anchor: "milestone-booking",
         view: {
           tariffId: "t1",
           referenceDate: "2026-10-14",

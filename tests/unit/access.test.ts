@@ -133,7 +133,10 @@ describe("início do cliente (Solicitações)", () => {
     const mine = await customerOrdersInProgress(joao);
     const row = mine.find((o) => o.order.id === order.id)!;
     expect(row).toBeTruthy();
-    expect(row.stageKey).toBe(order.status);
+    // Fase 5e: o marco atual (não a etapa).
+    expect(row.milestone).toBe(
+      (await getStore().get("orders", order.id))?.milestoneKey ?? null,
+    );
     expect(row.productName).toBeTruthy();
     expect(row.eta).toBeNull();
     expect(Object.keys(row)).not.toContain("supplierId");

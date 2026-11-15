@@ -18,6 +18,8 @@ Quem responde a cotação de um produto do catálogo entra na lista de fornecedo
 
 ## Etapas do pedido (tabela `stages`, chave `key`)
 
+> **Legado (fase 5e, docs/MILESTONES.md).** O pedido anda pelos **16 marcos** (`src/lib/milestones.ts`, tabela `order_milestones`, `requirements.step`/`milestoneKey`): liberação dos itens, prazos (`settings.milestoneDueDays`, editável em Configurações), trava da inspeção, produção, recebimento, Control Tower e passos do embarque leem os marcos. As etapas abaixo continuam só como registro gravado pelo motor (e os valores de `orders.status`) até as fases 5f/5g; nada decide por elas. O texto desta seção descreve o desenho antigo.
+
 Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked`, `done`), responsável, prazo (`dueAt`, calculado por `stageDueDays`), percentual e requisitos.
 
 | Etapa              | Requisitos obrigatórios (papel)                                                                                                                                                                                                                                                                                    |
@@ -152,12 +154,12 @@ Os quadrados "Containers abertos" e "Itens para revisão" continuam em Container
 - Ao nascer, o pedido recebe um **snapshot da compra** (`purchase_snapshots`): ficha do produto + cotação congeladas. O cadastro mestre pode mudar depois; o snapshot não.
 - Com `inspectionExtendedChecks` (padrão ligado), a INSPECTION pede também, como opcionais do fornecedor: peso bruto, comprimento, largura, altura, CBM da caixa master, unidades por caixa master e inner box, material e cor encontrados. **O inspetor nunca vê o valor esperado**; ele informa o que encontrou. Inner box 0 na ficha é "Sem caixa inner": bate com 0 encontrado.
 - A cada medida enviada, `compareInspection` compara com o snapshot (tolerâncias `weightTolerancePercent`, `cbmTolerancePercent` para CBM e peso bruto, `dimensionTolerancePercent`, `quantityTolerancePercent`; texto compara igualdade normalizada). Resultado em `inspection_results` (`APPROVED`, `DIVERGENT`, `REVIEW_REQUIRED`). Só atributos presentes no snapshot e medidos entram na comparação: pedidos antigos sem snapshot seguem só com a regra de peso.
-- Cada divergência abre um item na **fila de revisão** (`review_items`: regra, esperado, encontrado, responsável, ação) e bloqueia a etapa com o mesmo requisito `inspection_review`. Aprovar resolve os itens e libera; nova medição dentro da tolerância resolve o item e, sem outros abertos, libera sozinha. `unblockStage` dispensa os itens.
+- Cada divergência abre um item na **fila de revisão** (`review_items`: regra, esperado, encontrado, responsável, ação) e trava o **marco Inspeção** (fase 5e: a linha de `order_milestones` em "blocked", com o motivo; a etapa só acompanha) com o mesmo requisito `inspection_review`. Aprovar resolve os itens e libera; nova medição dentro da tolerância resolve o item e, sem outros abertos, libera sozinha. "Desbloquear" no pedido (`unblockMilestone`) dispensa os itens.
 - Outros gates que alimentam a fila: FOB zerado na criação do pedido (`reviewOnZeroPrice`), container acima da ocupação máxima ou do peso (`containerMaxOccupancyPercent`).
 
 ## Bloqueio e revisão
 
-- **Peso divergente** (inspeção vs. preparação, tolerância `weightTolerancePercent`): etapa `blocked`, motivo em `blockReason`, requisito extra `inspection_review` (aprovação da Wellmix). Aprovar libera; nova medição dentro da tolerância libera automaticamente. Também abre o item `inspection.weightDeclared` na fila de revisão.
+- **Peso divergente** (inspeção vs. preparação, tolerância `weightTolerancePercent`): marco Inspeção travado (`order_milestones.status = blocked`, motivo em `blockReason`; fase 5e), requisito extra `inspection_review` (aprovação da Wellmix). Aprovar libera; nova medição dentro da tolerância libera automaticamente. Também abre o item `inspection.weightDeclared` na fila de revisão.
 - **Arte reprovada** pelo fornecedor: o requisito `art` volta para `rejected`; quem faz a arte (agência ou Wellmix) reenvia (nova versão do documento) e a aprovação volta a pendente.
 
 ## Documentos

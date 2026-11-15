@@ -7,7 +7,12 @@ import {
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { canOpen } from "@/lib/auth/screens";
-import { getSettings, DEFAULT_SETTINGS } from "@/lib/settings";
+import {
+  getSettings,
+  DEFAULT_SETTINGS,
+  milestoneDueDaysOf,
+} from "@/lib/settings";
+import { MILESTONE_KEYS, milestoneTitle } from "@/lib/milestones";
 import { getStore } from "@/lib/db";
 import { getFxRates } from "@/lib/services/fx";
 import { PricingSettings } from "@/components/pricing-settings";
@@ -414,14 +419,41 @@ export default async function SettingsPage({
                     </Select>
                   </Field>
                 </div>
-                <Field label={t("settings.label.stageDueDays")}>
-                  <Textarea
-                    name="stageDueDays"
-                    rows={6}
-                    className="font-mono text-xs"
-                    defaultValue={JSON.stringify(s.stageDueDays, null, 2)}
+                {/* Prazo por marco (fase 5e, docs/MILESTONES.md): no lugar do
+                    JSON do prazo por etapa. Vazio volta ao padrão. */}
+                <div data-milestone-due-days>
+                  <p className="text-sm font-medium text-zinc-800">
+                    {t("settings.milestoneDue.title")}
+                  </p>
+                  <p className={hintP}>{t("settings.milestoneDue.hint")}</p>
+                  <input
+                    type="hidden"
+                    name="milestoneDueDays.__form"
+                    value="1"
                   />
-                </Field>
+                  <div className="mt-2 grid gap-3 @sm:grid-cols-2 @xl:grid-cols-4">
+                    {MILESTONE_KEYS.map((k) => (
+                      <Field key={k} label={milestoneTitle(t, k)}>
+                        <Input
+                          name={`milestoneDueDays.${k}`}
+                          type="number"
+                          min="0"
+                          max="365"
+                          step="1"
+                          placeholder={String(milestoneDueDaysOf(s)[k] ?? "")}
+                          defaultValue={
+                            (
+                              s.milestoneDueDays as Record<
+                                string,
+                                number
+                              > | null
+                            )?.[k] ?? ""
+                          }
+                        />
+                      </Field>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* SLA de resposta da encomenda: prazo de toda nova solicitação. */}
