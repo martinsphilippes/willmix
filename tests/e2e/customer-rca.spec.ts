@@ -136,7 +136,10 @@ test("Nova solicitação (Wellmix): RCA do cliente, solicitante e login com aces
   await expectRca(page, "ready", "Ana Representações (101)");
   await expect(access(page)).toBeEnabled();
   const accessOptions = await access(page).locator("option").allInnerTexts();
-  expect(accessOptions[0]).toBe("Nenhum (só a Wellmix vê)");
+  // Na venda, o login com acesso é obrigatório (é ele quem confirma o
+  // pedido; docs/ORDER_TERMS.md): sem "Nenhum", a 1ª opção pede a escolha.
+  expect(accessOptions[0]).toBe("Escolha o login do cliente");
+  await expect(access(page)).toHaveAttribute("required", "");
   expect(accessOptions).toContain("João Cliente (joao@lojista.com)");
   const joaoLogin = await access(page)
     .locator("option", { hasText: "joao@lojista.com" })

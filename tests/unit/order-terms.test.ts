@@ -23,6 +23,30 @@ vi.mock("@/lib/integrations/sankhya-client", async (importOriginal) => ({
   >()),
   executeQuery: async (sql: string) => {
     if (!sankhya.rows) throw new Error("Sankhya fora do ar");
+    // Grupos de produto (TGFGRU): a família é o grupo pai da linha.
+    if (/FROM TGFGRU/.test(sql))
+      return {
+        columns: ["CODGRUPOPROD", "DESCRGRUPOPROD", "CODGRUPAI"],
+        rows: /CODGRUPOPROD > 0\b/.test(sql)
+          ? [
+              {
+                CODGRUPOPROD: 12007,
+                DESCRGRUPOPROD: "BRINQUEDOS GERAIS",
+                CODGRUPAI: 12000,
+              },
+              {
+                CODGRUPOPROD: 12007001,
+                DESCRGRUPOPROD: "BRINQUEDOS",
+                CODGRUPAI: 12007,
+              },
+              {
+                CODGRUPOPROD: 12007002,
+                DESCRGRUPOPROD: "INFLAVEIS",
+                CODGRUPAI: 12007,
+              },
+            ]
+          : [],
+      };
     // Fornecedor de cada produto (TGFPRO.CODPARCFORN), pela API.
     if (/FROM TGFPRO/.test(sql))
       return {
@@ -151,37 +175,47 @@ describe("contatos do cliente", () => {
 });
 
 describe("país de origem, grupo e entrega", () => {
-  it("país pelo fornecedor; grupo pela linha; a busca só oferece os deles", async () => {
+  it("país pelo fornecedor; grupo = família (o grupo pai no Sankhya); a busca só oferece os deles", async () => {
+    const { getStore } = await import("@/lib/db");
+    const families = await import("@/lib/services/sankhya-product-families");
+    // Sem código do Sankhya nas linhas: cada linha é a própria família.
     origin.resetOriginIndex();
+    families.resetSankhyaProductFamilies();
+    expect((await origin.originGroups("CHINA")).map((g) => g.id)).toContain(
+      "ln:linha-brinquedos",
+    );
+    // Com o código: Brinquedos e Infláveis sob a família "BRINQUEDOS GERAIS".
+    await getStore().update("product_lines", "linha-brinquedos", {
+      sankhyaCode: "12007001",
+    });
+    await getStore().update("product_lines", "linha-inflaveis", {
+      sankhyaCode: "12007002",
+    });
+    origin.resetOriginIndex();
+    families.resetSankhyaProductFamilies();
     const countries = await origin.originCountries();
     expect(countries.find((c) => c.key === "CHINA")?.products).toBeGreaterThan(
       0,
     );
     const groups = await origin.originGroups("CHINA");
-    expect(groups.map((g) => g.id)).toContain("linha-brinquedos");
-    expect(
-      (await searchProducts({ q: "boneca", scope: "catalog" })).map(
-        (p) => p.id,
-      ),
-    ).toContain("prod-boneca");
-    expect(
-      (
-        await searchProducts({
-          q: "boneca",
-          scope: "catalog",
-          origin: { country: "CHINA", lineId: "linha-utilidades" },
-        })
-      ).map((p) => p.id),
-    ).not.toContain("prod-boneca");
-    expect(
-      (
-        await searchProducts({
-          q: "boneca",
-          scope: "catalog",
-          origin: { country: "CHINA", lineId: "linha-brinquedos" },
-        })
-      ).map((p) => p.id),
-    ).toContain("prod-boneca");
+    expect(groups.find((g) => g.id === "sk:12007")).toMatchObject({
+      name: "BRINQUEDOS GERAIS",
+    });
+    expect(groups.map((g) => g.id)).not.toContain("ln:linha-brinquedos");
+    const search = (q: string, family: string) =>
+      searchProducts({
+        q,
+        scope: "catalog",
+        origin: { country: "CHINA", family },
+      }).then((hits) => hits.map((p) => p.id));
+    expect(await search("boneca", "sk:12007")).toContain("prod-boneca");
+    expect(await search("piscina", "sk:12007")).toContain("prod-piscina");
+    expect(await search("boneca", "ln:linha-utilidades")).not.toContain(
+      "prod-boneca",
+    );
+    expect(await origin.productOrigin("prod-piscina")).toMatchObject({
+      family: "sk:12007",
+    });
   });
 
   it("produto sem fornecedor no portal: o país pelo fornecedor do Sankhya (API)", async () => {
@@ -197,7 +231,7 @@ describe("país de origem, grupo e entrega", () => {
     (
       await import("@/lib/services/sankhya-product-suppliers")
     ).resetSankhyaProductSuppliers();
-    expect(await origin.productOrigin("prod-jarra")).toEqual({
+    expect(await origin.productOrigin("prod-jarra")).toMatchObject({
       country: "CHINA",
       lineId: "linha-utilidades",
     });
@@ -233,86 +267,50 @@ describe("país de origem, grupo e entrega", () => {
     carriers.resetCarrierCache();
   });
 
-  it("confere as condições e recusa produto de outro grupo", async () => {
-    const resolved = await orderTerms.resolveOrderTerms({
+  it("confere as condições: só TS, BRASIL fora, re-despacho Sim/Não, transportador obrigatório", async () => {
+    const base = {
       operationType: "ts",
       saleFormat: "wellmix",
       wellmixTier: "mega",
       carrier: "portal:transportador",
-      redispatch: "sankhya:812",
-      originSet: "1",
+      redispatch: "yes",
       originCountry: "CHINA",
-      productLineId: "linha-brinquedos",
-      noReturnsAccepted: "1",
-    });
+      productFamily: "sk:12007",
+    };
+    const resolved = await orderTerms.resolveOrderTerms(base);
     expect(resolved).toMatchObject({
       operationType: "ts",
       saleFormat: "wellmix",
       wellmixTier: "mega",
       carrier: { source: "portal", name: "Trans Rodo" },
-      redispatch: { source: "sankhya", code: "812", name: "RODONAVES" },
+      redispatchRequired: true,
       originCountryName: "CHINA",
-      productLineId: "linha-brinquedos",
-      noReturnsAccepted: true,
+      productFamily: "sk:12007",
+      productFamilyName: "BRINQUEDOS GERAIS",
+      confirmation: null,
     });
     await expect(
-      orderTerms.assertProductsMatchOrigin(["prod-boneca", null], resolved),
+      orderTerms.assertProductsMatchOrigin(
+        ["prod-boneca", "prod-piscina", null],
+        resolved,
+      ),
     ).resolves.toBeUndefined();
     await expect(
       orderTerms.assertProductsMatchOrigin(["prod-panela"], resolved),
     ).rejects.toThrow("order_terms_mismatch");
-    await expect(
-      orderTerms.resolveOrderTerms({
-        operationType: "sale",
-        saleFormat: "wellmix",
-        wellmixTier: "",
-        carrier: "portal:transportador",
-        redispatch: "",
-        originSet: "1",
-        originCountry: "CHINA",
-        productLineId: "linha-brinquedos",
-        noReturnsAccepted: "1",
-      }),
-    ).rejects.toThrow("order_terms_tier");
-    await expect(
-      orderTerms.resolveOrderTerms({
-        operationType: "",
-        saleFormat: "wd",
-        wellmixTier: "",
-        carrier: "",
-        redispatch: "",
-        originSet: "1",
-        originCountry: "CHINA",
-        productLineId: "linha-brinquedos",
-        noReturnsAccepted: "1",
-      }),
-    ).rejects.toThrow("order_terms_operation");
-  });
-
-  it('transportador e "Li e concordo" obrigatórios; sem país não vende', async () => {
-    const base = {
-      operationType: "sale",
-      saleFormat: "wd",
-      wellmixTier: "",
-      carrier: "portal:transportador",
-      redispatch: "",
-      originSet: "1",
-      originCountry: "CHINA",
-      productLineId: "linha-brinquedos",
-      noReturnsAccepted: "1",
-    };
-    await expect(
-      orderTerms.resolveOrderTerms({ ...base, carrier: "" }),
-    ).rejects.toThrow("order_terms_carrier_required");
-    await expect(
-      orderTerms.resolveOrderTerms({ ...base, noReturnsAccepted: "" }),
-    ).rejects.toThrow("order_terms_accept");
-    await expect(
-      orderTerms.resolveOrderTerms({ ...base, originCountry: "" }),
-    ).rejects.toThrow("order_terms_origin");
-    expect((await origin.originCountries()).every((c) => c.key !== "")).toBe(
-      true,
-    );
+    const fails = async (over: Record<string, string>, code: string) =>
+      expect(
+        orderTerms.resolveOrderTerms({ ...base, ...over }),
+      ).rejects.toThrow(code);
+    await fails({ operationType: "sale" }, "order_terms_operation_disabled");
+    await fails({ originCountry: "BRASIL" }, "order_terms_country_disabled");
+    await fails({ redispatch: "" }, "order_terms_redispatch");
+    await fails({ carrier: "" }, "order_terms_carrier_required");
+    await fails({ wellmixTier: "" }, "order_terms_tier");
+    await fails({ originCountry: "" }, "order_terms_origin");
+    await fails({ productFamily: "sk:999" }, "order_terms_origin");
+    expect(terms.countryAllowed("ts", "BRASIL")).toBe(false);
+    expect(terms.countryAllowed("sale", "BRASIL")).toBe(true);
     expect(await origin.originGroups("")).toEqual([]);
   });
 
@@ -330,7 +328,136 @@ describe("país de origem, grupo e entrega", () => {
       new Request("http://x/api/requests/order-options?country=CHINA"),
     );
     const body = (await res.json()) as { groups: Array<{ id: string }> };
-    expect(body.groups.map((g) => g.id)).toContain("linha-brinquedos");
+    expect(body.groups.map((g) => g.id)).toContain("sk:12007");
     current = null;
+  });
+});
+
+describe("confirmação do cliente e rascunho", () => {
+  it("CNPJ: dígitos verificadores", () => {
+    expect(terms.validCnpj("11.222.333/0001-81")).toBe(true);
+    expect(terms.validCnpj("11.222.333/0001-82")).toBe(false);
+    expect(terms.validCnpj("11111111111111")).toBe(false);
+    expect(terms.formatCnpj("11222333000181")).toBe("11.222.333/0001-81");
+  });
+
+  it("a venda nasce aguardando o cliente; ele confirma e informa a transportadora do re-despacho", async () => {
+    const { getStore } = await import("@/lib/db");
+    const { createRequestBatch } = await import("@/lib/services/requests");
+    const confirmation = await import("@/lib/services/customer-confirmation");
+    const store = getStore();
+    const resolved = await orderTerms.resolveOrderTerms({
+      operationType: "ts",
+      saleFormat: "wd",
+      wellmixTier: "",
+      carrier: "portal:transportador",
+      redispatch: "yes",
+      originCountry: "CHINA",
+      productFamily: "sk:12007",
+    });
+    const [request] = await createRequestBatch(
+      admin,
+      {
+        customerId: "cliente-joao",
+        deadline: null,
+        notes: null,
+        requestedForUserId: joao.id,
+        orderTerms: resolved,
+      },
+      [
+        {
+          productId: null,
+          productName: "Pote de teste",
+          description: "Pote de teste",
+          specification: null,
+          quantity: 100,
+          unit: "un",
+          sourcingDemand: false,
+        },
+      ],
+    );
+    expect(request.status).toBe("AWAITING_CUSTOMER");
+    // Só o login do cliente com acesso confirma; o aviso é obrigatório.
+    expect(confirmation.canConfirm(admin, request)).toBe(false);
+    expect(confirmation.canConfirm(joao, request)).toBe(true);
+    await expect(
+      confirmation.confirmCustomerOrder(joao, request.id, {
+        accept: false,
+        cnpj: "",
+        carrierName: "",
+      }),
+    ).rejects.toThrow("confirm_accept_required");
+    await expect(
+      confirmation.confirmCustomerOrder(joao, request.id, {
+        accept: true,
+        cnpj: "123",
+        carrierName: "",
+      }),
+    ).rejects.toThrow("cnpj_invalid");
+    // Modo memória: sem a consulta, o nome se digita; a transportadora é
+    // cadastrada pelo CNPJ.
+    const [done] = await confirmation.confirmCustomerOrder(joao, request.id, {
+      accept: true,
+      cnpj: "11.222.333/0001-81",
+      carrierName: "Rodo Sul Transportes",
+    });
+    expect(done.status).toBe("REQUESTED");
+    expect(done.orderTerms?.confirmation).toMatchObject({
+      userId: joao.id,
+      noReturnsAccepted: true,
+      redispatchCarrier: {
+        cnpj: "11222333000181",
+        name: "Rodo Sul Transportes",
+        source: "manual",
+      },
+    });
+    const carrier = await store.get(
+      "parties",
+      done.orderTerms!.confirmation!.redispatchCarrier!.partyId,
+    );
+    expect(carrier).toMatchObject({ type: "carrier", taxId: "11222333000181" });
+    // Confirmado: não confirma de novo.
+    await expect(
+      confirmation.confirmCustomerOrder(joao, request.id, {
+        accept: true,
+        cnpj: "",
+        carrierName: "",
+      }),
+    ).rejects.toThrow("confirm_not_allowed");
+  });
+
+  it("rascunho: só de quem criou, volta como foi salvo e some ao apagar", async () => {
+    const drafts = await import("@/lib/services/request-drafts");
+    const form = new FormData();
+    form.append("customerId", "cliente-joao");
+    form.append("p0.productId", "prod-boneca");
+    form.append("p0.productName", "Boneca articulada 30 cm");
+    form.append("p0.quantity", "480");
+    form.append("p1.productName", "Copo");
+    form.append("p1.quantity", "10");
+    form.append("$ACTION_ID_abc", "");
+    const draft = await drafts.saveRequestDraft(admin, form, null);
+    expect(draft).toMatchObject({
+      customerId: "cliente-joao",
+      customerName: "Loja do João Ltda",
+      title: "Boneca articulada 30 cm + 1",
+      itemCount: 2,
+    });
+    expect(draft.payload.some(([k]) => k.startsWith("$ACTION"))).toBe(false);
+    expect(drafts.draftForm(draft).get("p0.quantity")).toBe("480");
+    const operador = (
+      await (
+        await import("@/lib/db")
+      )
+        .getStore()
+        .list("users", { filter: { email: "operador@wellmix.com" } })
+    )[0];
+    expect(await drafts.getRequestDraft(operador, draft.id)).toBeNull();
+    expect((await drafts.listRequestDrafts(admin)).map((d) => d.id)).toContain(
+      draft.id,
+    );
+    await expect(drafts.saveRequestDraft(joao, form, null)).rejects.toThrow();
+    await drafts.deleteRequestDraft(admin, draft.id);
+    expect(await drafts.getRequestDraft(admin, draft.id)).toBeNull();
   });
 });

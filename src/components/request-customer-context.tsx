@@ -47,7 +47,8 @@ export interface RowLoad extends CompositionItem {
 
 export interface RequestOrigin {
   country: string;
-  lineId: string;
+  /** Família de produto (chave "sk:…" ou "ln:…"; docs/ORDER_TERMS.md). */
+  family: string;
 }
 
 const RequestCustomerContext = createContext<RequestCustomerState | null>(null);

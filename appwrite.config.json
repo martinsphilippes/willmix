@@ -1067,6 +1067,7 @@
           "format": "enum",
           "elements": [
             "REQUESTED",
+            "AWAITING_CUSTOMER",
             "RFQ_OPEN",
             "QUOTATION_RECEIVED",
             "SUPPLIER_SELECTED",
@@ -7011,6 +7012,74 @@
           "type": "key",
           "columns": [
             "supplierId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "request_drafts",
+      "databaseId": "willmix",
+      "name": "Rascunhos da Nova solicitação",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "userId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "customerId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "customerName",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "title",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 200
+        },
+        {
+          "key": "itemCount",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "payload",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "longtext"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_user",
+          "type": "key",
+          "columns": [
+            "userId"
           ],
           "orders": [
             "ASC"

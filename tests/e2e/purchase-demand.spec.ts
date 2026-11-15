@@ -1,5 +1,10 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { fillCustomerContacts, fillOrderTerms, login } from "./helpers";
+import {
+  chooseCustomerLogin,
+  fillCustomerContacts,
+  fillOrderTerms,
+  login,
+} from "./helpers";
 
 /*
  * Compra por demanda (mapa B10 e B14; dono, 15/11/2026;
@@ -29,7 +34,9 @@ async function orderForJoao(page: Page, name: string) {
     "loja",
     "cliente-joao",
   );
-  // Condições do pedido e contatos do cliente (docs/ORDER_TERMS.md).
+  // Condições do pedido, login do cliente (obrigatório: é ele quem
+  // confirma) e contatos do cliente (docs/ORDER_TERMS.md).
+  await chooseCustomerLogin(page, "joao@lojista.com");
   await fillOrderTerms(page);
   await fillCustomerContacts(page, "loja-joao");
   await page.check('[data-request-item="0"] input[name="p0.sourcingDemand"]');
