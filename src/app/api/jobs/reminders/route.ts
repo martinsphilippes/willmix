@@ -78,8 +78,17 @@ export async function GET(request: Request) {
       console.error("[reminders] purchase-gates", error);
       return null;
     });
+  // Forma de pagamento do cliente: parcela que chegou ao momento sem boleto
+  // avisa o financeiro (gerar no Sankhya) e o vendedor (docs/CUSTOMER_PAYMENT.md).
+  const chargesToIssue = await import("@/lib/services/customer-payment")
+    .then((m) => m.notifyChargesToIssue())
+    .catch((error) => {
+      console.error("[reminders] customer-charges", error);
+      return null;
+    });
   return NextResponse.json({
     ...result,
+    chargesToIssue,
     purchaseRounds,
     purchaseGates,
     supplierRequestsLate,

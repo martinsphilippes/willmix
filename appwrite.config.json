@@ -1791,6 +1791,48 @@
           "default": null,
           "type": "varchar",
           "size": 40
+        },
+        {
+          "key": "customerPaymentPlan",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "paymentPlanStatus",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "pending",
+            "approved",
+            "rejected"
+          ]
+        },
+        {
+          "key": "customerCharges",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "longtext"
+        },
+        {
+          "key": "chargeNotices",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "sellerUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -1799,6 +1841,16 @@
           "type": "unique",
           "columns": [
             "number"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_payment_plan",
+          "type": "key",
+          "columns": [
+            "paymentPlanStatus"
           ],
           "orders": [
             "ASC"
@@ -11727,6 +11779,76 @@
           ]
         }
       ]
+    },
+    {
+      "$id": "payment_plans",
+      "databaseId": "willmix",
+      "name": "Formas de pagamento do cliente (parcelas, alçada e juros)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "installments",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "requiresApproval",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "approverUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "monthlyInterestPercent",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "active",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "sortOrder",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "updatedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": []
     },
     {
       "$id": "payment_conditions",

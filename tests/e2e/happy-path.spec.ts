@@ -450,6 +450,39 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(historyOpen).toHaveAttribute("href", orderPath);
   await expect(historyOpen).toHaveAttribute("target", "_blank");
 
+  // Forma de pagamento do cliente (dono, 15/11/2026;
+  // docs/CUSTOMER_PAYMENT.md): no pedido, a forma, o vendedor e o NUNOTA da
+  // venda no Sankhya; as parcelas aparecem com o evento de cada uma.
+  await page.goto(orderPath);
+  const customerPayment = page.locator(
+    '[data-order-section="customer-payment"]',
+  );
+  await expect(customerPayment).toBeVisible();
+  const choosePlan = customerPayment.locator("[data-customer-payment-choose]");
+  await choosePlan
+    .locator('select[name="planId"]')
+    .selectOption({ label: "10% no pedido; 90% no embarque" });
+  await choosePlan
+    .locator('select[name="sellerUserId"]')
+    .selectOption({ label: "Otávio Operador" });
+  await choosePlan.locator('input[name="saleNunota"]').fill("1519042");
+  await choosePlan.getByRole("button", { name: /salvar|save/i }).click();
+  await page.waitForURL(/payment=saved/);
+  await expect(
+    customerPayment.locator("[data-customer-payment-status]"),
+  ).toHaveText("Aprovada");
+  await expect(
+    customerPayment.locator("[data-customer-payment-seller]"),
+  ).toHaveText("Otávio Operador");
+  const installments = customerPayment.locator("[data-customer-installment]");
+  await expect(installments).toHaveCount(2);
+  await expect(installments.nth(0)).toContainText("No pedido");
+  await expect(installments.nth(0)).toHaveAttribute("data-state", "to_issue");
+  await expect(installments.nth(1)).toContainText("No embarque");
+  await expect(
+    customerPayment.locator("[data-customer-payment-sync]"),
+  ).toContainText("1519042");
+
   // 5b. Cadastro e fiscal (mapa, P9/P14): o contrato espera o NCM validado e
   // a ficha mestre completa. O sistema confere; o atalho leva à tela dona.
   // A mesa do cadastro mostra o NCM e a ficha a fazer (docs/DESKS.md).
