@@ -37,6 +37,7 @@ import {
 export type TaskKind =
   | "booking_invite"
   | "new_request"
+  | "replenishment_request"
   | "requirement"
   | "review"
   | "after_sales"
@@ -326,6 +327,7 @@ export function requirementWaiting(
 const KIND_ORDER: string[] = [
   "booking_invite",
   "new_request",
+  "replenishment_request",
   "supplier_request",
   "sampling_validate",
   "freight_quote",
@@ -811,13 +813,21 @@ export async function pendingTasksFor(
 
   const { getSettings } = await import("@/lib/settings");
   const flowSettings = await getSettings();
-  // Solicitação nova do cliente (a RFQ e a cotação saíram em 11/11/2026).
+  // Encomenda nova do cliente e reposição (docs/PURCHASE_DEMAND.md): esperam
+  // a estratégia de compra.
   for (const request of newRequests)
     tasks.push(
       finish(
         {
-          kind: "new_request",
-          title: `Solicitação nova: ${request.productName}`,
+          kind:
+            request.origin === "replenishment"
+              ? "replenishment_request"
+              : "new_request",
+          title: `${
+            request.origin === "replenishment"
+              ? "Reposição"
+              : "Encomenda nova"
+          }: ${request.productName}`,
           detail: `${request.quantity.toLocaleString("pt-BR")} ${request.unit}`,
           link: `/app/requests/${request.id}`,
           dueAt: request.deadline,

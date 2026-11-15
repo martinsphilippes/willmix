@@ -59,6 +59,8 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/inventory", "products"],
   ["/app/booking", "booking"],
   ["/app/requests", "requests"],
+  // Reposição (mapa B10; docs/PURCHASE_DEMAND.md): a fila do Planner.
+  ["/app/replenishment", "requests"],
   // Solicitações ao fornecedor (docs/SUPPLIER_REQUESTS.md): quem abre Cotações.
   ["/app/supplier-requests", "quotes"],
   ["/app/orders", "orders"],
@@ -281,6 +283,9 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   designer: ["orders", "products", "marketing", "explore"],
   // Comex interno: acompanha o container (rastreio diário) e o embarque.
   comex_internal: ["orders", "containers", "freight", "history"],
+  // Vendas (dono, 15/11/2026; docs/PURCHASE_DEMAND.md): encomendas, ofertas,
+  // amostras, venda, ordens de venda e reservas (tela Produtos) e pós-venda.
+  sales: ["requests", "products", "afterSales"],
   // Qualidade do CD: o recebimento no pedido e os containers que chegam.
   quality: ["orders", "containers", "products"],
 };

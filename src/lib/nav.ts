@@ -98,7 +98,6 @@ export function isNavGroup(entry: NavEntry): entry is NavGroup {
  * pelo endereço; para voltar ao menu, basta tirar daqui.
  */
 export const MENU_HIDDEN: readonly string[] = [
-  "/app/requests",
   "/app/explore",
   "/app/sourcing",
   "/app/marketing",
@@ -279,8 +278,8 @@ export function navFor(
         "tag",
         pick(has, [
           ...flowEntries("sales"),
-          // Fora do menu (MENU_HIDDEN): Solicitações do cliente e Pós-venda.
-          ["requests", { href: "/app/requests", key: "nav.requests" }],
+          // Fora do menu (MENU_HIDDEN): Pós-venda. As encomendas (antes
+          // "Solicitações") estão no bloco Produto novo (dono, 15/11/2026).
           ["afterSales", { href: "/app/after-sales", key: "nav.afterSales" }],
         ]),
       ),
@@ -367,7 +366,9 @@ export function navFor(
           has,
           [
             ["explore", { href: "/app/explore", key: "nav.explore" }],
-            ["requests", { href: "/app/requests", key: "nav.myQuotes" }],
+            // Encomendas (dono, 15/11/2026; docs/PURCHASE_DEMAND.md): a
+            // lista volta ao menu do cliente.
+            ["requests", { href: "/app/requests", key: "nav.demands" }],
             // A lista de solicitações segue fora do menu (MENU_HIDDEN); a
             // entrada da encomenda fica à vista (dono, 14/11/2026).
             [

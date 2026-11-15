@@ -42,6 +42,16 @@ export const DEMO_USERS: Array<{
     functions: ["buyer", "planner"],
   },
   {
+    // Vendas (dono, 15/11/2026; docs/PURCHASE_DEMAND.md): lança encomendas
+    // em nome do cliente, faz ofertas e cuida das ordens de venda.
+    email: "vendas@wellmix.com",
+    name: "Vera Vendas",
+    role: "operator",
+    party: null,
+    locale: "pt",
+    functions: ["sales"],
+  },
+  {
     email: "joao@lojista.com",
     name: "João Cliente",
     role: "customer",

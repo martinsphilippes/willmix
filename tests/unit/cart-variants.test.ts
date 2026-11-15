@@ -255,7 +255,7 @@ describe("carrinho com variações", () => {
   });
 
   it("enviar: uma solicitação por linha, com a variação no nome, na especificação e no variantId", async () => {
-    const created = await cart.checkoutCart(
+    const { requests: created } = await cart.checkoutCart(
       joao,
       { deadline: null, notes: null },
       t,
@@ -284,7 +284,7 @@ describe("carrinho com variações", () => {
   });
 
   it("solicitar agora com a variação; variação desativada fica avisada e não é enviada", async () => {
-    const request = await cart.requestProductNow(
+    const { request } = await cart.requestProductNow(
       joao,
       productId,
       300,
@@ -312,7 +312,7 @@ describe("carrinho com variações", () => {
     await expect(
       cart.addToCart(joao, productId, 300, null, large.id),
     ).rejects.toThrow("cart_variant_invalid");
-    const created = await cart.checkoutCart(
+    const { requests: created } = await cart.checkoutCart(
       joao,
       { deadline: null, notes: null },
       t,
@@ -339,7 +339,9 @@ describe("carrinho com variações", () => {
     const stored = (await getStore().get("cart_items", line.id)) as object;
     expect("variantId" in stored).toBe(false);
     await cart.updateCartItem(joao, line.id, 600, null);
-    const [created] = await cart.checkoutCart(
+    const {
+      requests: [created],
+    } = await cart.checkoutCart(
       joao,
       { deadline: null, notes: null },
       t,

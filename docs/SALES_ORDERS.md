@@ -42,6 +42,16 @@ Produtos.
 - Dados: tabela `sales_orders` (número, cliente, oferta, pedido de compra,
   itens com a reserva, moeda, condição, situação, entrega, Sankhya).
 
+## V6: pedido pela vitrine (15/11/2026)
+
+Desenho do dono de 15/11/2026 (docs/PURCHASE_DEMAND.md). Antes, o carrinho virava só solicitações de orçamento. Agora, ao enviar:
+
+- o item que o estoque livre no Brasil ou uma compra a caminho sem pedido (o mesmo saldo dos selos da vitrine, `availableStockByProduct`) atende **por inteiro** vira uma **ordem de venda em rascunho** (`openSalesOrderFromCart`), criada pelo próprio cliente, sem preço; Vendas é avisada (quem tem a ação "Lançar encomenda em nome do cliente"; ninguém, os administradores) e confirma o preço e a entrega, como em qualquer ordem (a reserva nasce na confirmação);
+- o resto vira **encomenda** (origem `cart`, porta "vitrine"), que segue para a estratégia de compra (B10?);
+- itens do mesmo produto consomem o mesmo saldo, na ordem do carrinho; sem saldo conhecido (o portal ainda não controla o estoque), o item vira encomenda;
+- antes de confirmar, o carrinho mostra em cada item "Pronta entrega" ou "Encomenda" e o resumo das duas; depois, a tela diz o número da ordem de venda.
+- "Solicitar agora" na página do produto segue a mesma regra, para aquele produto.
+
 ## V8: agendamento da entrega
 
 Data e janela ficam na ordem. A **Agenda de entregas** em
@@ -70,15 +80,16 @@ Decisões do dono (15/11/2026):
 
    Toda baixa é um `stock_movements` do tipo `sale_out` com `salesOrderId`.
    Expedida, a ordem não cancela mais.
+
 3. **Entrega.** "Confirmar a entrega" pede a data, quem recebeu e o
    comprovante (canhoto). A ordem fica **Entregue**.
 
-| Dado | Onde |
-| --- | --- |
+| Dado        | Onde                                                                                |
+| ----------- | ----------------------------------------------------------------------------------- |
 | NF de venda | `sales_orders.invoiceNumber`, `invoiceDocumentId`, `invoicedAt`, `invoicedByUserId` |
-| Expedição | `carrierId`, `customerPickup`, `freightValue`, `shippedAt`, `shippedByUserId` |
-| Entrega | `deliveredAt`, `receivedBy`, `proofDocumentId`, `deliveredByUserId` |
-| Baixa | `stock_movements.salesOrderId` |
+| Expedição   | `carrierId`, `customerPickup`, `freightValue`, `shippedAt`, `shippedByUserId`       |
+| Entrega     | `deliveredAt`, `receivedBy`, `proofDocumentId`, `deliveredByUserId`                 |
+| Baixa       | `stock_movements.salesOrderId`                                                      |
 
 Os arquivos (NF e comprovante) são documentos internos da Wellmix.
 

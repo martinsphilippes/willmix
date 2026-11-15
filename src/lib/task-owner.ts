@@ -87,6 +87,7 @@ export function kindGate(
 ): TaskGate | null {
   switch (kind) {
     case "new_request":
+    case "replenishment_request":
       return { screen: "requests" };
     case "review":
       return { screen: "reviews" };

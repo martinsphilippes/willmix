@@ -2,7 +2,7 @@
 
 Desenho do dono de 15/11/2026 (mapa do processo, layout 15; docs/MAPA_PROCESSO.md). Reposição (B10) e Encomenda do cliente (B14) entram na mesma decisão, "Qual a estratégia de compra?" (B10?), que leva direto ao pedido de compra (P2) ou à Cotação de compra (B13), cuja vencedora vira a Solicitação ao fornecedor (B7). As decisões estão em docs/OPEN_DECISIONS.md.
 
-Situação: **PR 1 de 5 (mapa e documentação)**. As seções abaixo descrevem o alvo; cada PR marca o que entregou em "Andamento".
+Situação: **PR 2 de 5 (demanda única, encomenda pelas quatro portas e reposição manual)**. As seções abaixo descrevem o alvo; cada PR marca o que entregou em "Andamento".
 
 ## O caminho
 
@@ -61,12 +61,27 @@ V6 (vitrine) manda para a ordem de venda (V7) o que o estoque livre ou uma compr
 4. **Cotação de compra**: contagem das 24 h e quadro comparativo para a Wellmix (com a última compra como referência); para o fornecedor, só a própria cotação, em PT, EN ou ZH.
 5. O item "Cotações" de hoje (convites de book) passa a se chamar **"Convites de book"**; tela, rota e atalho continuam.
 
+## O que o PR 2 entregou
+
+- **Porta de entrada** (`requests.channel`), gravada pelo servidor: carrinho = `vitrine`; cliente = `cliente`; Wellmix com a função Vendas = `vendedor`; outro login da Wellmix (e o administrador) = `operador`. Reposição e compra para estoque ficam sem porta. Regra em `src/lib/purchase-demand.ts` (`demandChannel`, `demandKind`, `splitCart`).
+- **Data desejada** (`requests.desiredAt`): a do carrinho ("Quando você precisa?") e a da reposição.
+- **Lançar em nome do cliente**: a Wellmix só cria encomenda para um cliente com a ação `demand.createForCustomer` (padrão: a função Vendas e quem já abria a tela de solicitações; o administrador sempre). Compra para estoque e reposição não pedem a ação.
+- **Carrinho dividido** (docs/SALES_ORDERS.md, "V6"): pronta entrega vira ordem de venda em rascunho; o resto vira encomenda (origem `cart`).
+- **Reposição manual** (`/app/replenishment`, `openReplenishment`): ação `replenishment.open` (padrão: Planner). Vai para a empresa "Estoque Wellmix", origem `replenishment`; produto com variações entra pelo produto inteiro (a variação, se importar, vai na observação). A recompra do pós-venda (origem `replenishment`) aparece na mesma fila.
+- **Configuração** `autoReplenishmentByStock`: desligada e sem efeito (Configurações mostra o campo travado).
+- **Função Vendas** (`sales`): telas Encomendas (`requests`), Produtos (ofertas, amostras, venda, ordens de venda, reservas) e Pós-venda; ação `demand.createForCustomer`. Demonstração: `vendas@wellmix.com`.
+- **Ações novas em funções já gravadas**: a função guarda `knownActions` (as ações que existiam quando foi salva). Ação que a função não conhecia vale pelo padrão do código até o administrador salvar a função de novo; as gravadas antes de 15/11/2026 usam `LEGACY_ACTIONS`. Assim ninguém perde o que fazia hoje.
+- **Avisos**: "Encomenda nova" e "Reposição nova" para a Wellmix (e-mail e WhatsApp simulados); a ordem de venda da vitrine avisa Vendas.
+- **Auditoria**: `request.create` diz "Encomenda (porta)" ou "Reposição"; `cart.checkout` registra a ordem de venda e as encomendas; `sales.order_from_cart`.
+- **Menu**: passos Encomendas e Reposição (docs/FLOW_MENU.md); "Cotações" virou "Convites de book".
+- **Testes**: `tests/unit/purchase-demand.test.ts` (portas, carrinho, reposição, permissões, isolamento do cliente), `tests/unit/function-access.test.ts` (ações novas) e `tests/e2e/purchase-demand.spec.ts` (vendedor e operador em nome do cliente; carrinho com pronta entrega e encomenda; reposição do Planner).
+
 ## Andamento
 
 | PR  | Entrega                                                                                       | Situação |
 | --- | --------------------------------------------------------------------------------------------- | -------- |
 | 1   | Mapa (MAPA_PROCESSO.md gerado do data.json), decisões e este documento                        | feito    |
-| 2   | Demanda única: encomenda pelas 4 portas, divisão do carrinho, reposição manual, função Vendas | a fazer  |
+| 2   | Demanda única: encomenda pelas 4 portas, divisão do carrinho, reposição manual, função Vendas | feito    |
 | 3   | Estratégia de compra, aprovação e pedido de compra direto                                     | a fazer  |
 | 4   | Cotação de compra: fornecedor × linha, 24 h, isolamento, quadro comparativo                   | a fazer  |
 | 5   | Limpeza dos restos da RFQ                                                                     | a fazer  |
