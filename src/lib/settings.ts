@@ -24,6 +24,12 @@ export const DEFAULT_SETTINGS = {
    */
   sourcingEnabled: false,
   wellmixCanCreateRequest: true,
+  /**
+   * Reposição automática pelo estoque (mapa B10; dono, 15/11/2026): desligada
+   * e sem efeito. O estoque ainda não é controlado no portal; a reposição é
+   * aberta à mão pelo Planner ou vem do pós-venda. Só marca o lugar.
+   */
+  autoReplenishmentByStock: false,
   /** CUSTOMER | WELLMIX | BOTH: quem confirma o recebimento da entrega. */
   deliveryConfirmationMode: "BOTH" as "CUSTOMER" | "WELLMIX" | "BOTH",
   agencyValidationEnabled: true,

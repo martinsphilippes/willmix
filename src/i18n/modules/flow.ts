@@ -187,9 +187,15 @@ export const pt = {
   "flow.step.new-product.selection": "Seleção de itens",
   "flow.help.new-product.selection":
     "Itens dos books comparados e escolhidos, com o produto filho (B4).",
-  "flow.step.new-product.quotes": "Cotações",
+  "flow.step.new-product.quotes": "Convites de book",
   "flow.help.new-product.quotes":
-    "Convites de book: o fornecedor manda a cotação do item (B7).",
+    "Convites de book concorrente: o parceiro manda o book do item (B5). A cotação de preço é a Cotação de compra (B13).",
+  "flow.step.new-product.demands": "Encomendas",
+  "flow.help.new-product.demands":
+    "Encomendas do cliente pela vitrine, pela tela dele ou lançadas por Vendas ou por um operador em nome dele (B14). Seguem para a estratégia de compra.",
+  "flow.step.new-product.replenishment": "Reposição",
+  "flow.help.new-product.replenishment":
+    "Reposição de produto ativo aberta pelo Planner ou vinda do pós-venda (B10). Segue para a estratégia de compra.",
   "flow.step.new-product.negotiations": "Negociações",
   "flow.help.new-product.negotiations":
     "Solicitações ao fornecedor: análise, negociação e amostragem até a aprovação da amostra (B7 a B9).",
@@ -462,9 +468,15 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.step.new-product.selection": "Item selection",
   "flow.help.new-product.selection":
     "Book items compared and chosen, with the child product (B4).",
-  "flow.step.new-product.quotes": "Quotes",
+  "flow.step.new-product.quotes": "Book invites",
   "flow.help.new-product.quotes":
-    "Book invitations: the supplier sends the item quote (B7).",
+    "Competing book invitations: the partner sends the item's book (B5). Price quotes are in Purchase quote (B13).",
+  "flow.step.new-product.demands": "Customer orders",
+  "flow.help.new-product.demands":
+    "Customer orders from the storefront, from the customer's own screen, or placed by Sales or an operator on the customer's behalf (B14). They go to the purchase strategy.",
+  "flow.step.new-product.replenishment": "Replenishment",
+  "flow.help.new-product.replenishment":
+    "Replenishment of an active product opened by the Planner or coming from after-sales (B10). It goes to the purchase strategy.",
   "flow.step.new-product.negotiations": "Negotiations",
   "flow.help.new-product.negotiations":
     "Supplier requests: review, negotiation and sampling up to sample approval (B7 to B9).",
@@ -729,8 +741,15 @@ export const zh: Record<keyof typeof pt, string> = {
     "来自产品经理、Wellmix、贸易商或供应商的 Book（B1、B2、B11）。",
   "flow.step.new-product.selection": "选品",
   "flow.help.new-product.selection": "比较并选定 Book 中的商品及子商品（B4）。",
-  "flow.step.new-product.quotes": "报价",
-  "flow.help.new-product.quotes": "Book 邀请：供应商提交商品报价（B7）。",
+  "flow.step.new-product.quotes": "Book 邀请",
+  "flow.help.new-product.quotes":
+    "竞争 Book 邀请：合作方提交商品的 Book（B5）。价格报价见采购询价（B13）。",
+  "flow.step.new-product.demands": "客户订货",
+  "flow.help.new-product.demands":
+    "客户通过橱窗、自己的页面下的订货，或由销售或运营人员代客户录入（B14）。之后进入采购策略。",
+  "flow.step.new-product.replenishment": "补货",
+  "flow.help.new-product.replenishment":
+    "由计划员发起或来自售后的在售产品补货（B10）。之后进入采购策略。",
   "flow.step.new-product.negotiations": "谈判",
   "flow.help.new-product.negotiations":
     "供应商请求：分析、谈判和打样，直到样品批准（B7–B9）。",
