@@ -500,3 +500,72 @@ export function containersPerRound(
     },
   };
 }
+
+/**
+ * "Resultado da programação" (dono, 15/11/2026): a faixa embaixo de "Gerar
+ * programação" com o que as programações dão, sem fórmulas. Por programação,
+ * o menor e o maior valor (iguais quando as programações são iguais); no
+ * total, a soma e a ocupação equivalente.
+ */
+export interface ScheduleResult {
+  rounds: number;
+  perRound: {
+    cartons: [number, number];
+    pieces: [number, number];
+    cbm: [number, number];
+    /**
+     * Ocupação de um container do tipo escolhido, em % (caixas da
+     * programação ÷ caixas que cabem; mais de 100 quando passa de um), para
+     * baixo como nos cartões das programações ("cheio" só com tudo dentro).
+     */
+    pct: [number, number];
+  };
+  total: {
+    cartons: number;
+    pieces: number;
+    cbm: number;
+    /**
+     * Ocupação equivalente: o total programado em containers do tipo
+     * escolhido (0,215 = 21,5% de 1 container), sem arredondar; a tela
+     * arredonda só ao mostrar.
+     */
+    equivalent: number;
+  };
+}
+
+/** Resumo das programações; nulo sem programação ou sem a conta do container. */
+export function scheduleResult(
+  pieces: readonly number[],
+  loads: readonly Pick<RoundLoad, "cartons" | "cbm">[],
+  perContainer: number | null | undefined,
+): ScheduleResult | null {
+  if (!loads.length || loads.length !== pieces.length || !pos(perContainer))
+    return null;
+  const range = (list: number[]): [number, number] => [
+    Math.min(...list),
+    Math.max(...list),
+  ];
+  const cartons = loads.map((l) => l.cartons);
+  const totalCartons = cartons.reduce((a, c) => a + c, 0);
+  return {
+    rounds: loads.length,
+    perRound: {
+      cartons: range(cartons),
+      pieces: range([...pieces]),
+      cbm: range(loads.map((l) => l.cbm)),
+      pct: range(cartons.map((c) => Math.floor((c * 100) / perContainer))),
+    },
+    total: {
+      cartons: totalCartons,
+      pieces: pieces.reduce((a, q) => a + q, 0),
+      cbm: r4(loads.reduce((a, l) => a + l.cbm, 0)),
+      equivalent: totalCartons / perContainer,
+    },
+  };
+}
+
+/** Ocupação equivalente para mostrar: "22" (de 0,215), "<1" para quase nada. */
+export function equivalentPercent(equivalent: number): string {
+  const pct = Math.round(equivalent * 100);
+  return equivalent > 0 && pct < 1 ? "<1" : String(pct);
+}
