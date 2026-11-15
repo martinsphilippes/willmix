@@ -1,5 +1,5 @@
 import { expect, test, type Locator } from "@playwright/test";
-import { login } from "./helpers";
+import { chooseOrderOrigin, login } from "./helpers";
 
 /*
  * Campos com busca no lugar das listas de seleção com o cadastro inteiro
@@ -100,6 +100,8 @@ test("nova solicitação (Wellmix): compra para estoque, cliente e produto com a
     "data-purchase-history-state",
     /^(ready|empty)$/,
   );
+  // Venda ao cliente: país e grupo antes do produto (docs/ORDER_TERMS.md).
+  await chooseOrderOrigin(page);
   // Produto pelo nome: a ficha vem do servidor e preenche nome e descrição.
   const item = page.locator('[data-request-item="0"]');
   await choose(

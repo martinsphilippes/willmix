@@ -12,6 +12,7 @@ import {
 } from "@/lib/services/request-ncm";
 import { hasFiscalTable } from "@/lib/services/fiscal";
 import { RequestNcmCard } from "@/components/request-ncm-card";
+import { RequestOrderTermsView } from "@/components/request-order-terms-view";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import {
@@ -352,6 +353,10 @@ export default async function RequestDetailPage({
               unit={request.unit}
               t={t}
             />
+            {/* Condições do pedido (docs/ORDER_TERMS.md): só a Wellmix vê. */}
+            {wellmix ? (
+              <RequestOrderTermsView terms={request.orderTerms} t={t} />
+            ) : null}
             {attachments.length > 0 ? (
               <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-zinc-100 pt-2.5 text-sm">
                 {attachments.map((d) => (

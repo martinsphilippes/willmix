@@ -501,3 +501,80 @@ export async function approveMilestoneRows(
     expect(page.url()).not.toContain("error=");
   }
 }
+
+/**
+ * País de origem e grupo de produto da Nova solicitação (Wellmix vendendo ao
+ * cliente; docs/ORDER_TERMS.md): a busca de produto só abre depois deles.
+ */
+export async function chooseOrderOrigin(
+  page: Page,
+  country = "CHINA",
+  lineId = "linha-brinquedos",
+) {
+  const terms = page.locator("[data-order-terms]");
+  const countrySelect = terms.locator("[data-order-terms-country]");
+  await expect(
+    countrySelect.locator(`option[value="${country}"]`),
+  ).toBeAttached();
+  await countrySelect.selectOption(country);
+  const groupSelect = terms.locator("[data-order-terms-group]");
+  await expect(groupSelect.locator(`option[value="${lineId}"]`)).toBeAttached();
+  await groupSelect.selectOption(lineId);
+}
+
+/** Tipo de operação, formato de venda (e o nível, no Wellmix), país e grupo. */
+export async function fillOrderTerms(
+  page: Page,
+  options: {
+    operation?: "ts" | "sale";
+    format?: "wd" | "wellmix";
+    tier?: string;
+    country?: string;
+    lineId?: string;
+  } = {},
+) {
+  const terms = page.locator("[data-order-terms]");
+  await terms
+    .locator(
+      `[data-order-terms-operation-option="${options.operation ?? "sale"}"]`,
+    )
+    .check();
+  await terms
+    .locator(`[data-order-terms-format-option="${options.format ?? "wd"}"]`)
+    .check();
+  if ((options.format ?? "wd") === "wellmix")
+    await terms
+      .locator("[data-order-terms-tier]")
+      .selectOption(options.tier ?? "pleno");
+  // Ao menos o transportador e o "Li e concordo" do aviso (obrigatórios).
+  await terms
+    .locator("[data-order-terms-carrier]")
+    .selectOption("portal:transportador");
+  await terms.locator("[data-order-terms-accept]").check();
+  await chooseOrderOrigin(page, options.country, options.lineId);
+}
+
+/** Os contatos do cliente (bloco "Cliente"), quando o portal os pede. */
+export async function fillCustomerContacts(page: Page, prefix = "cliente") {
+  const block = page.locator("[data-customer-contacts]");
+  await expect(block).toHaveAttribute(
+    "data-customer-contacts",
+    /^(blind|known|edit)$/,
+  );
+  // Já atualizados pelo portal: "Editar" abre os campos.
+  if ((await block.getAttribute("data-customer-contacts")) === "known")
+    await block.locator("[data-customer-contacts-edit]").click();
+  for (const [i, role] of [
+    "partner",
+    "buyer",
+    "finance",
+    "logistics",
+  ].entries()) {
+    await block
+      .locator(`input[name="contact.${role}.phone"]`)
+      .fill(`(47) 99999-000${i + 1}`);
+    await block
+      .locator(`input[name="contact.${role}.email"]`)
+      .fill(`${role}@${prefix}.com`);
+  }
+}

@@ -1,5 +1,11 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { bookingSheet, chooseItem, importAndClose, login } from "./helpers";
+import {
+  bookingSheet,
+  chooseItem,
+  chooseOrderOrigin,
+  importAndClose,
+  login,
+} from "./helpers";
 
 /*
  * "Resultado da programação" (dono, 15/11/2026): embaixo de "Gerar
@@ -177,6 +183,9 @@ test("Resultado da programação: a faixa nas duas telas, o container, a caixa i
   // 4. Nova solicitação: a boneca do cadastro (caixa inner 6 e 0,28 kg por
   // peça) com a mesma entrada dá as mesmas programações e o mesmo total.
   await page.goto("/app/requests/new");
+  // Venda ao cliente pela Wellmix: país e grupo antes do produto
+  // (docs/ORDER_TERMS.md).
+  await chooseOrderOrigin(page);
   const line = page.locator('[data-request-item="0"]');
   const picker = line.locator('[data-product-picker="catalog"]');
   await picker.locator("[data-product-picker-input]").fill("boneca");
@@ -208,6 +217,7 @@ test("Resultado da programação: a faixa nas duas telas, o container, a caixa i
   // 5. A piscina do cadastro não tem caixa inner: "—"; o peso (3,1 kg) é
   // por peça. Trocar o produto pede gerar de novo.
   await page.goto("/app/requests/new");
+  await chooseOrderOrigin(page, "CHINA", "linha-inflaveis");
   await picker.locator("[data-product-picker-input]").fill("piscina");
   await picker.locator('[data-product-picker-option="prod-piscina"]').click();
   await expect(line.locator('[data-generate-item="ok"]')).toBeVisible();
