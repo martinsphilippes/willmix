@@ -77,7 +77,13 @@ export type TaskKind =
   | "art_fix"
   | "art_review"
   | "invoice_due"
-  | "real_media";
+  | "real_media"
+  /** Lote com divergência no recebimento (mapa E21, E24 a E27). */
+  | "divergence_lot"
+  /** Conferência da qualidade no CD (mapa E19). */
+  | "quality_check"
+  /** Amostras a conferir no show room do Brasil (docs/SAMPLE_FLOW.md). */
+  | "showroom_receive";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -1460,7 +1466,7 @@ export async function pendingTasksFor(
         tasks.push(
           finish(
             {
-              kind: "real_media",
+              kind: "showroom_receive",
               group: "showroom",
               title: ptText("showroom.task.title", values),
               detail: ptText("showroom.task.detail", values),
@@ -1496,7 +1502,7 @@ export async function pendingTasksFor(
         tasks.push(
           finish(
             {
-              kind: "real_media",
+              kind: "quality_check",
               group: "quality",
               title: ptText("quality.task.title", values),
               detail: ptText("quality.task.detail", values),
@@ -1539,7 +1545,7 @@ export async function pendingTasksFor(
         tasks.push(
           finish(
             {
-              kind: "real_media",
+              kind: "divergence_lot",
               group: "divergence_lot",
               title: ptText(title, values),
               detail: ptText(detail, values),

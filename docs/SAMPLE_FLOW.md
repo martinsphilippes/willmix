@@ -78,7 +78,8 @@ conferência e o aviso a vendas.
 
 - Abre quando a trading registra o envio ao Brasil. Fica no cartão Amostras
   do pedido, quadro **Recebimento no show room (Brasil)**, e vira pendência
-  "Receber as amostras no show room" para a Wellmix.
+  "Receber as amostras no show room" para a Wellmix. No menu, ela conta em
+  **Vendas → Amostras** (tipo `showroom_receive`).
 - A Wellmix confere, por produto, as peças **esperadas (4 × 3 × Nm)** e as
   **recebidas**. Com diferença, a observação é obrigatória. A foto é
   opcional.
