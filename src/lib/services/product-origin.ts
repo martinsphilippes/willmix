@@ -4,18 +4,21 @@ import { listColumns } from "@/lib/db/lookup";
 import { countryKey, countryName } from "@/lib/order-terms";
 import { hiddenBookingProductIds } from "./booking-visibility";
 import { sankhyaProductSuppliers } from "./sankhya-product-suppliers";
-import { sankhyaProductGroups } from "./sankhya-product-families";
+import {
+  sankhyaFamiliesByProduct,
+  sankhyaProductGroups,
+} from "./sankhya-product-families";
 
 /*
  * País de origem e grupo de produto da Nova solicitação (dono, 15/11/2026;
  * docs/ORDER_TERMS.md): o vendedor escolhe o país e depois o grupo, e só os
  * produtos daquele país e grupo entram no pedido.
  *
- * - Grupo de produto = a família, dois níveis acima da linha (dono,
- *   15/11/2026): o grupo avô da linha no Sankhya (TGFGRU.CODGRUPAI do
- *   CODGRUPAI), lido pela API (sankhya-product-families.ts). Famílias com o
- *   mesmo nome são uma só (chave "fm:<NOME>"). Linha sem código do Sankhya
- *   ou sem o Sankhya: o nome da própria linha.
+ * - Grupo de produto = a família, o PRIMEIRO nível da árvore de grupos do
+ *   Sankhya (TGFGRU.GRAU = 1; técnico do Sankhya, 15/11/2026), de cada
+ *   produto pelo DbExplorer (sankhya-product-families.ts). Sem ela: a raiz
+ *   da árvore da linha; sem a árvore, o nome da linha. Famílias com o mesmo
+ *   nome são uma só (chave "fm:<NOME>").
  * - País de origem = o país do fornecedor do produto: o fornecedor do
  *   cadastro (`supplierId`) ou, sem ele, o fornecedor que veio do Sankhya
  *   (`sankhyaRefs.CODPARCFORN` → parceiro com esse código). Sem nenhum dos
@@ -53,7 +56,7 @@ interface OriginIndex {
   /** família → nome e as linhas dela */
   families: Map<string, { name: string; lineIds: Set<string> }>;
   /** linha → família */
-  lineFamily: Map<string, string>;
+  lineFamily: Map<string, { key: string; name: string }>;
   /** CODPROD do Sankhya → produto do portal */
   byCode: Map<string, string>;
 }
@@ -75,8 +78,6 @@ export function familyKey(name: string | null | undefined): string | null {
   return slug ? `fm:${slug}` : null;
 }
 
-/** Quantos níveis acima da linha fica a família (dono, 15/11/2026: 2). */
-export const FAMILY_LEVELS_UP = 2;
 let cached: OriginIndex | null = null;
 let pending: Promise<OriginIndex> | null = null;
 
@@ -105,31 +106,42 @@ async function buildIndex(): Promise<OriginIndex> {
     listColumns(store, "product_lines", ["name", "sankhyaCode"]),
     sankhyaProductGroups(),
   ]);
-  // Família de cada linha: o grupo do Sankhya FAMILY_LEVELS_UP níveis acima
-  // dela (dono, 15/11/2026: o avô; o pai ainda era detalhado demais). Árvore
-  // mais rasa: o mais alto que houver. Sem o Sankhya: a própria linha.
-  const families = new Map<string, { name: string; lineIds: Set<string> }>();
-  const lineFamily = new Map<string, string>();
+  // Família de cada produto pelo Sankhya: o 1º nível da árvore (técnico do
+  // Sankhya, 15/11/2026). Vale por cima da família da linha.
+  const productFamilies = await sankhyaFamiliesByProduct();
+  // Família de cada linha (quando o produto não tem a dele pelo Sankhya):
+  // a raiz da árvore de grupos da linha (o 1º nível, GRAU = 1); sem a
+  // árvore, o nome da própria linha. Mesmo nome = mesma família.
+  const lineFamily = new Map<string, { key: string; name: string }>();
   for (const l of lines) {
-    let code: string | null = null;
     let at = l.sankhyaCode ? groups.get(String(Number(l.sankhyaCode))) : null;
-    for (let up = 0; up < FAMILY_LEVELS_UP && at?.parent; up++) {
-      // O topo da árvore (sem pai) não é família: agruparia tudo.
-      const next = groups.get(at.parent);
-      if (up > 0 && !next?.parent) break;
-      code = at.parent;
-      at = next ?? null;
+    let root: string | null = null;
+    for (let up = 0; up < 10 && at?.parent; up++) {
+      root = at.parent;
+      at = groups.get(at.parent) ?? null;
     }
-    const name = code ? (groups.get(code)?.name ?? code) : l.name;
-    // Mesmo nome = mesma família (dono, 15/11/2026): grupos do Sankhya com o
-    // mesmo nome em ramos diferentes viram uma família só, com todos os
-    // produtos deles.
-    const key = familyKey(name) ?? `ln:${l.id}`;
-    const family = families.get(key) ?? { name, lineIds: new Set<string>() };
-    family.lineIds.add(l.id);
-    families.set(key, family);
-    lineFamily.set(l.id, key);
+    const name = root ? (groups.get(root)?.name ?? root) : l.name;
+    lineFamily.set(l.id, { key: familyKey(name) ?? `ln:${l.id}`, name });
   }
+  const families = new Map<string, { name: string; lineIds: Set<string> }>();
+  const familyOf = (p: { lineId: string; sankhyaCode?: string | null }) => {
+    const own = p.sankhyaCode
+      ? productFamilies.get(String(Number(p.sankhyaCode)))
+      : null;
+    const key = own ? familyKey(own.name) : null;
+    const chosen =
+      own && key
+        ? { key, name: own.name }
+        : (lineFamily.get(p.lineId) ?? { key: `ln:${p.lineId}`, name: "" });
+    // As linhas da família (a busca filtra por elas no banco).
+    const family = families.get(chosen.key) ?? {
+      name: chosen.name,
+      lineIds: new Set<string>(),
+    };
+    family.lineIds.add(p.lineId);
+    families.set(chosen.key, family);
+    return chosen.key;
+  };
   const supplierCountry = new Map<string, string>();
   const bySankhya = new Map<string, string>();
   const countryNames = new Map<string, string>();
@@ -188,11 +200,7 @@ async function buildIndex(): Promise<OriginIndex> {
       (p.supplierId ? supplierCountry.get(p.supplierId) : undefined) ??
       (forn != null ? bySankhya.get(String(forn)) : undefined) ??
       "";
-    byProduct.set(p.id, {
-      country,
-      lineId: p.lineId,
-      family: lineFamily.get(p.lineId) ?? `ln:${p.lineId}`,
-    });
+    byProduct.set(p.id, { country, lineId: p.lineId, family: familyOf(p) });
   }
   const byCode = new Map<string, string>();
   for (const p of products)
@@ -234,7 +242,7 @@ export async function productOrigin(
   return {
     country: countryKey(supplier?.country),
     lineId: product.lineId,
-    family: index.lineFamily.get(product.lineId) ?? `ln:${product.lineId}`,
+    family: index.lineFamily.get(product.lineId)?.key ?? `ln:${product.lineId}`,
   };
 }
 

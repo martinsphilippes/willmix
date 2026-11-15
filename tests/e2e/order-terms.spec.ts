@@ -309,7 +309,15 @@ test("Histórico do cliente → pedido: filtra pela família, acrescenta com um 
     "ready",
   );
   await composition.locator('[data-composition-toggle="1"]').click();
+  // A composição fica fixa: só o histórico rola, dentro do espaço dele.
+  const historyScroll = page.locator("[data-request-history-scroll]");
+  expect(
+    await historyScroll.evaluate((el) => getComputedStyle(el).overflowY),
+  ).toBe("auto");
+  await historyScroll.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  await expect(composition).toBeInViewport();
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(composition).toBeInViewport();
   await composition.locator('[data-composition-goto="row-1"]').click();
   await expect(row).toBeInViewport();
 });
