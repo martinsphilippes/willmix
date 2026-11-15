@@ -21,6 +21,10 @@ export const pt = {
   "reqProduct.variantHint":
     "Este produto tem variações: a especificação, o pedido mínimo e a foto são os da variação escolhida.",
   "reqProduct.variantPhoto": "Foto da variação",
+  "reqProduct.lastPurchase":
+    "Última compra: {price} por {unit} · {qty} {unit} · pedido {order} · {supplier}",
+  "reqProduct.lastPurchaseCatalog":
+    "Preço da última compra (cadastro): {price} por {unit}",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -42,6 +46,10 @@ export const en: Record<keyof typeof pt, string> = {
   "reqProduct.variantHint":
     "This product has variations: the specification, minimum order and photo are those of the chosen variation.",
   "reqProduct.variantPhoto": "Variation photo",
+  "reqProduct.lastPurchase":
+    "Last purchase: {price} per {unit} · {qty} {unit} · order {order} · {supplier}",
+  "reqProduct.lastPurchaseCatalog":
+    "Last purchase price (product record): {price} per {unit}",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -62,4 +70,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqProduct.variantHint":
     "该产品有多个款式：规格、起订量和照片均以所选款式为准。",
   "reqProduct.variantPhoto": "款式照片",
+  "reqProduct.lastPurchase":
+    "最近一次采购：每{unit} {price} · {qty} {unit} · 订单 {order} · {supplier}",
+  "reqProduct.lastPurchaseCatalog":
+    "最近一次采购价（产品档案）：每{unit} {price}",
 };
