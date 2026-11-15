@@ -1,6 +1,7 @@
 import "server-only";
 import { productNameText, type Translate } from "@/i18n";
 import { isWellmix } from "@/lib/auth/permissions";
+import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { getStore, type Product, type User } from "@/lib/db";
 import { effectiveMoq } from "@/lib/moq";
 import { realName } from "@/lib/placeholder-name";
@@ -43,8 +44,12 @@ export async function requestProductFills(
       // Variações ativas (produto com variações exige escolher uma).
       variantsByProduct(ids),
       // Preço da última compra ao fornecedor: só a Wellmix vê.
+      // Sem "Ver preço de compra" (Vendas, por padrão), a linha vem sem o
+      // preço (dono, 15/11/2026, opção C).
       isWellmix(user)
-        ? lastPurchaseTexts(t, products)
+        ? lastPurchaseTexts(t, products, {
+            withPrice: canSeePurchasePrice(user),
+          })
         : Promise.resolve(new Map<string, string>()),
     ]);
   const sheetMoq = new Map(masterSheets.map((s) => [s.orderId, s.moq]));

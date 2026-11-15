@@ -161,8 +161,7 @@ O servidor só lê e só monta o que o login pode ver; o que fica de fora não s
 
 - O pedido de compra (tela e PDF) saiu da certificadora (`canViewOrderDocument`); o despachante do pedido continua lendo. A invoice comercial (comex e logística), as linhas da invoice (companhia marítima) e os arquivos de invoice e packing list (agência, transportador e jurídico) continuam com quem precisa deles para embarque e alfândega.
 - O Superplan no Book (coluna e cartão da análise), na Seleção de itens (custo por peça, coluna Superplan e o destaque do melhor custo) e na negociação segue "Ver preço de compra".
-
-**Em conversa com o dono:** o preço da última compra na Nova solicitação (PR #488) aparece para toda a Wellmix, inclusive Vendas; nada muda até o dono decidir.
+- Última compra na Nova solicitação (PR #488), opção C: quem tem "Ver preço de compra" vê a linha com o preço; quem não tem (Vendas, por padrão) vê quantidade, pedido e fornecedor, sem o preço (docs/PURCHASE_HISTORY.md).
 
 ## 9. O que o inventário mostrou (15/11/2026)
 

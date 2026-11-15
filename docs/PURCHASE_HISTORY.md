@@ -170,6 +170,7 @@ Pedido do dono: ao escolher o produto na Nova solicitação, o quadro verde "Pro
 - Origem: o item do pedido de compra mais recente do produto (maior número de pedido, sem os cancelados), com o preço unitário na moeda do pedido (`order_items.unitPrice` e `orders.fobCurrency`; na carga do Sankhya, VLRUNIT ÷ câmbio da nota). As notas de um mesmo pedido em várias TOPs (1101 → 1104) têm o mesmo preço.
 - Sem pedido: "Preço da última compra (cadastro)", com `products.price` e `products.currency`. A carga do Sankhya só preenche esse preço quando ele está vazio, então ele pode ser de uma compra antiga.
 - O cliente não vê (preço de fornecedor).
+- Na Wellmix, o preço segue "Ver preço de compra" (dono, 15/11/2026, opção C; docs/LINHA_DE_VISAO.md, seção 8). Quem não tem a permissão (Vendas, por padrão) vê a mesma linha sem o preço: "Última compra: 120.148 UN · pedido 11556 (Sankhya 1185804) · fornecedor". Sem pedido, o preço do cadastro não aparece para ele (a linha seria só o preço). O texto sem o preço sai do servidor (`lastPurchaseTexts(..., { withPrice })`): o preço nem chega ao navegador.
 
 Consulta para conferir no banco (Supabase), trocando o código:
 
