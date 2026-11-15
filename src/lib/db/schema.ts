@@ -985,6 +985,8 @@ export interface Request extends BaseRow {
   channel?: DemandChannel | null;
   /** Data desejada pelo cliente ou pelo Planner (encomenda e reposição). */
   desiredAt?: string | null;
+  /** Estratégia de compra em que a demanda está (docs/PURCHASE_DEMAND.md). */
+  purchaseDecisionId?: string | null;
 }
 
 export interface Order extends BaseRow {
@@ -1086,6 +1088,11 @@ export interface Order extends BaseRow {
    * nem produção. Nulo nos pedidos sem programação.
    */
   purchaseRounds?: PurchaseRound[] | null;
+  /**
+   * Demandas de compra (encomendas e reposições) de onde o pedido de compra
+   * veio (docs/PURCHASE_DEMAND.md).
+   */
+  demandIds?: string[] | null;
   /** No pedido filho: o pedido pai e o nº da rodada (1, 2, 3…). */
   parentOrderId?: string | null;
   roundIndex?: number | null;
@@ -1699,8 +1706,17 @@ export interface RequestScheduleItem {
   /** 1, 2, 3… */
   index: number;
   quantity: number;
-  /** AAAA-MM-DD: 1ª data + intervalo × (n − 1). */
+  /**
+   * AAAA-MM-DD: 1ª data + intervalo × (n − 1), ou a data fixada à mão
+   * (`manual`). É a data que vale (tela, pedido pai e filhos).
+   */
   expectedAt: string;
+  /**
+   * Data escolhida à mão nesta programação (Nova solicitação, dono,
+   * 15/11/2026): trocar o intervalo não a muda. Fica no JSON da programação
+   * (sem coluna nova).
+   */
+  manual?: boolean;
 }
 /** Peças de uma cor (linha por cor do produto, no pedido e na rodada). */
 export interface ColorQuantity {
@@ -2875,6 +2891,62 @@ export interface SupplierRequestEvent {
  * têm o mesmo `groupId`. O parceiro responde subindo a planilha do booking
  * (que nasce com ele como responsável) até `dueAt` (SLA em Configurações).
  */
+/*
+ * Estratégia de compra (mapa B10?, dono 15/11/2026; docs/PURCHASE_DEMAND.md):
+ * o Comprador escolhe, para uma ou mais demandas (encomenda ou reposição) do
+ * mesmo produto ou da mesma linha, entre o fornecedor da última compra e a
+ * cotação entre fornecedores; a Diretoria de compras aprova.
+ */
+export const PURCHASE_DECISION_CHOICES = ["last_supplier", "quote"] as const;
+export type PurchaseDecisionChoice = (typeof PURCHASE_DECISION_CHOICES)[number];
+export const PURCHASE_DECISION_STATUSES = [
+  "pending",
+  "approved",
+  "rejected",
+  "done",
+] as const;
+export type PurchaseDecisionStatus =
+  (typeof PURCHASE_DECISION_STATUSES)[number];
+
+/** A última compra de um produto (referência da estratégia e da cotação). */
+export interface LastPurchase {
+  productId: string;
+  supplierId: string;
+  supplierName: string | null;
+  unitPrice: number | null;
+  currency: string | null;
+  /** Data do pedido de compra (ISO). */
+  date: string;
+  orderId: string;
+  orderNumber: number;
+  leadTimeDays: number | null;
+  incoterm: string | null;
+  moq: number | null;
+}
+
+export interface PurchaseDecision extends BaseRow {
+  number: number;
+  /** Produto (todas as demandas do mesmo produto) ou nulo (vários da linha). */
+  productId: string | null;
+  lineId: string | null;
+  demandIds: string[];
+  quantity: number;
+  choice: PurchaseDecisionChoice;
+  /** Última compra de cada produto, na hora da escolha. */
+  reference: LastPurchase[] | null;
+  note: string | null;
+  status: PurchaseDecisionStatus;
+  chosenByUserId: string;
+  chosenAt: string;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  approvalNote: string | null;
+  /** Pedido de compra gerado (fornecedor da última compra). */
+  orderId: string | null;
+  /** Cotação de compra aberta (cotar entre fornecedores; docs/PURCHASE_DEMAND.md). */
+  quoteId: string | null;
+}
+
 export interface BookingInvite extends BaseRow {
   number: number;
   groupId: string;
@@ -3096,6 +3168,8 @@ export interface StockReservation extends BaseRow {
   movementId: string | null;
   closedByUserId: string | null;
   closedAt: string | null;
+  /** Encomenda do cliente que a reserva atende (reserva na chegada). */
+  requestId?: string | null;
 }
 
 /** Condição de pagamento (tabela de tipos de negociação do Sankhya, TGFTPV): vale para compra e venda. */
@@ -3432,6 +3506,7 @@ export interface Tables {
   booking_items: BookingItem;
   supplier_requests: SupplierRequest;
   booking_invites: BookingInvite;
+  purchase_decisions: PurchaseDecision;
   selection_groups: SelectionGroup;
   payment_conditions: PaymentCondition;
   payment_plans: PaymentPlan;
@@ -3691,6 +3766,7 @@ export const TABLES: Record<TableName, TableDef> = {
       // Compra por demanda (docs/PURCHASE_DEMAND.md): porta e data desejada.
       channel: enumOf(DEMAND_CHANNELS, false),
       desiredAt: datetime(),
+      purchaseDecisionId: id(false),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
@@ -3756,6 +3832,7 @@ export const TABLES: Record<TableName, TableDef> = {
       fxRate: float(),
       sankhyaRefs: json(),
       purchaseRounds: jsonLarge(),
+      demandIds: json(),
       parentOrderId: id(false),
       roundIndex: int(),
       held: bool(),
@@ -5049,6 +5126,7 @@ export const TABLES: Record<TableName, TableDef> = {
       movementId: id(false),
       closedByUserId: id(false),
       closedAt: datetime(),
+      requestId: id(false),
     },
     indexes: [
       { key: "by_product", type: "key", columns: ["productId"] },
@@ -5135,6 +5213,31 @@ export const TABLES: Record<TableName, TableDef> = {
     },
     indexes: [
       { key: "by_lot", type: "key", columns: ["lotId"] },
+      { key: "by_product", type: "key", columns: ["productId"] },
+    ],
+  },
+  purchase_decisions: {
+    label: "Estratégias de compra",
+    columns: {
+      number: int(true),
+      productId: id(false),
+      lineId: id(false),
+      demandIds: json(),
+      quantity: float(true),
+      choice: enumOf(PURCHASE_DECISION_CHOICES),
+      reference: json(),
+      note: text(),
+      status: enumOf(PURCHASE_DECISION_STATUSES),
+      chosenByUserId: id(),
+      chosenAt: datetime(true),
+      approvedByUserId: id(false),
+      approvedAt: datetime(),
+      approvalNote: text(),
+      orderId: id(false),
+      quoteId: id(false),
+    },
+    indexes: [
+      { key: "by_status", type: "key", columns: ["status"] },
       { key: "by_product", type: "key", columns: ["productId"] },
     ],
   },

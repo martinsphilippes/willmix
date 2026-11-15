@@ -170,9 +170,12 @@ export function RequestColorPlan({
   t: Translate;
 }) {
   if (!plan?.rows.length) return null;
+  // A data gravada de cada programação (a fixada à mão também vale).
   const dates = schedule?.items.length
-    ? schedule.items.map((_, i) =>
-        addDaysIso(schedule.firstDate, schedule.intervalDays * i),
+    ? schedule.items.map(
+        (item, i) =>
+          item.expectedAt ||
+          addDaysIso(schedule.firstDate, schedule.intervalDays * i),
       )
     : [];
   return (

@@ -138,7 +138,7 @@ test("reposição aberta pelo Planner entra na fila", async ({ page }) => {
   await expect(page.locator("[data-replenishment-manual]")).toBeVisible();
   const form = page.locator("[data-replenishment-new]");
   await choose(
-    form.locator('[data-product-picker="catalog"]'),
+    form.locator('[data-product-picker="active"]'),
     "product-picker",
     "boneca",
     "prod-boneca",

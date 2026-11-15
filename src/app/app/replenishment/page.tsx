@@ -83,7 +83,7 @@ export default async function ReplenishmentPage({
           >
             <Field label={t("common.product")}>
               <ProductPicker
-                scope="catalog"
+                scope="active"
                 name="productId"
                 required
                 labels={productPickerLabels(t)}

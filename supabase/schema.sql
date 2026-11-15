@@ -185,6 +185,7 @@ alter table public."requests" add column if not exists "ownerUserId" text;
 alter table public."requests" add column if not exists "sankhyaCode" text;
 alter table public."requests" add column if not exists "channel" text;
 alter table public."requests" add column if not exists "desiredAt" timestamptz;
+alter table public."requests" add column if not exists "purchaseDecisionId" text;
 create index if not exists "requests_by_customer" on public."requests" ("customerId");
 create index if not exists "requests_by_status" on public."requests" ("status");
 create index if not exists "requests_by_origin" on public."requests" ("origin");
@@ -252,6 +253,7 @@ alter table public."orders" add column if not exists "flow" text;
 alter table public."orders" add column if not exists "fxRate" double precision;
 alter table public."orders" add column if not exists "sankhyaRefs" jsonb;
 alter table public."orders" add column if not exists "purchaseRounds" jsonb;
+alter table public."orders" add column if not exists "demandIds" jsonb;
 alter table public."orders" add column if not exists "parentOrderId" text;
 alter table public."orders" add column if not exists "roundIndex" bigint;
 alter table public."orders" add column if not exists "held" boolean;
@@ -1628,6 +1630,7 @@ alter table public."stock_reservations" add column if not exists "createdByUserI
 alter table public."stock_reservations" add column if not exists "movementId" text;
 alter table public."stock_reservations" add column if not exists "closedByUserId" text;
 alter table public."stock_reservations" add column if not exists "closedAt" timestamptz;
+alter table public."stock_reservations" add column if not exists "requestId" text;
 create index if not exists "stock_reservations_by_product" on public."stock_reservations" ("productId");
 create index if not exists "stock_reservations_by_customer" on public."stock_reservations" ("customerId");
 create index if not exists "stock_reservations_by_status" on public."stock_reservations" ("status");
@@ -1719,6 +1722,33 @@ create index if not exists "booking_items_by_lot" on public."booking_items" ("lo
 create index if not exists "booking_items_by_product" on public."booking_items" ("productId");
 create index if not exists "booking_items_created" on public."booking_items" ("createdAt");
 create index if not exists "booking_items_created_id" on public."booking_items" ("createdAt", "id");
+
+create table if not exists public."purchase_decisions" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."purchase_decisions" enable row level security;
+alter table public."purchase_decisions" add column if not exists "number" bigint;
+alter table public."purchase_decisions" add column if not exists "productId" text;
+alter table public."purchase_decisions" add column if not exists "lineId" text;
+alter table public."purchase_decisions" add column if not exists "demandIds" jsonb;
+alter table public."purchase_decisions" add column if not exists "quantity" double precision;
+alter table public."purchase_decisions" add column if not exists "choice" text;
+alter table public."purchase_decisions" add column if not exists "reference" jsonb;
+alter table public."purchase_decisions" add column if not exists "note" text;
+alter table public."purchase_decisions" add column if not exists "status" text;
+alter table public."purchase_decisions" add column if not exists "chosenByUserId" text;
+alter table public."purchase_decisions" add column if not exists "chosenAt" timestamptz;
+alter table public."purchase_decisions" add column if not exists "approvedByUserId" text;
+alter table public."purchase_decisions" add column if not exists "approvedAt" timestamptz;
+alter table public."purchase_decisions" add column if not exists "approvalNote" text;
+alter table public."purchase_decisions" add column if not exists "orderId" text;
+alter table public."purchase_decisions" add column if not exists "quoteId" text;
+create index if not exists "purchase_decisions_by_status" on public."purchase_decisions" ("status");
+create index if not exists "purchase_decisions_by_product" on public."purchase_decisions" ("productId");
+create index if not exists "purchase_decisions_created" on public."purchase_decisions" ("createdAt");
+create index if not exists "purchase_decisions_created_id" on public."purchase_decisions" ("createdAt", "id");
 
 create table if not exists public."booking_invites" (
   "id" text primary key,

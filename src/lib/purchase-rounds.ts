@@ -56,14 +56,24 @@ export function scheduleSummary(
   };
 }
 
-/** Mesmas datas (1ª data, intervalo e número de rodadas). */
+/**
+ * Mesmas datas: o mesmo número de rodadas e a mesma data em cada uma (a
+ * data gravada de cada rodada, inclusive a fixada à mão).
+ */
 export function sameDates(a: RequestSchedule, b: RequestSchedule): boolean {
   return (
-    a.firstDate === b.firstDate &&
-    a.intervalDays === b.intervalDays &&
-    a.items.length === b.items.length
+    a.items.length === b.items.length &&
+    a.items.every((item, i) => roundDate(a, i) === roundDate(b, i))
   );
 }
+
+/**
+ * A data de uma rodada: a gravada nela (`expectedAt`, que pode ter sido
+ * fixada à mão na Nova solicitação, dono, 15/11/2026); sem ela, a conta.
+ */
+export const roundDate = (schedule: RequestSchedule, i: number): string =>
+  schedule.items[i]?.expectedAt ||
+  addDaysIso(schedule.firstDate, schedule.intervalDays * i);
 
 export type PurchaseRoundsError =
   "purchase_order_schedule_mixed" | "purchase_order_schedule_qty";
@@ -90,7 +100,7 @@ export function buildPurchaseRounds(
     return { error: "purchase_order_schedule_mixed" };
   const rounds = base.items.map((round, i) => ({
     index: i + 1,
-    expectedAt: addDaysIso(base.firstDate, base.intervalDays * i),
+    expectedAt: roundDate(base, i),
     items: scheduled.map((l) => {
       const colors = colorsOfRound(l.colorPlan, i);
       return {

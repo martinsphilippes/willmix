@@ -1472,6 +1472,22 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - Docs: `docs/SUPPLIER_REQUESTS.md` (Blocos sugeridos).
 - Testes: o E2E `tests/e2e/selection-colors.spec.ts` confere, no computador, no iPad e no celular, que nenhuma parte da linha do escolhido passa da borda do card (com o código antigo, passava 100 px).
 
+## Nova solicitação: Cliente → Programação → Produtos, 1ª data em 120 dias e datas editáveis
+
+- **Pedido do dono** (15/11/2026, com 3 fotos da tela no iPad): (1) a ordem Cliente → Programação → Produtos, com o bloco inteiro "Programação de compra do pedido" logo abaixo de Cliente e Solicitante, antes do título "Produtos"; (2) a 1ª data a partir do lançamento + 120 dias corridos (o 120º incluso), à vista junto ao campo, os dias antes desabilitados no calendário e a regra também no servidor; (3) cada data da lista editável sozinha e fixada, sem deslocar as outras; trocar o intervalo recalcula só as automáticas; datas fora de ordem apontadas antes de enviar; a data de cada programação gravada, igual ao reabrir e usada nos produtos e nos pedidos filhos.
+- **Como ficou**: docs/PURCHASE_SCHEDULE.md ("Nova solicitação: ordem, 120 dias e datas editáveis").
+- **Não mudou**: nenhuma tela, rota, campo ou dado saiu. Solicitações já gravadas continuam com as datas delas. A Seleção de itens e a solicitação ao fornecedor seguem como estavam.
+- **Banco**: sem coluna nova (campo opcional `manual` dentro do JSON `requests.schedule`).
+- Testes: `tests/unit/request-order-plan-dates.test.ts` e `tests/e2e/request-order-plan-dates.spec.ts`.
+
+## Solicitação: ficha completa na seção "Solicitações"
+
+- **Pedido do dono** (15/11/2026, com a foto da Solicitação nº 1 do bastão lança-bolhas no iPad): completar o preenchimento automático da seção "Solicitações" com os dados do cadastro, do Book e dos registros comerciais; uma linha por produto com os dados principais e "Ver ficha completa" na própria linha (Produto, Embalagem e cubagem, Valores, Pagamento), sem cortar colunas no iPad e no celular; "Não informado" sem dado; calculado diferente de gravado; permissões comerciais no servidor.
+- **Como ficou** (docs/REQUEST_SHEET.md): a linha antiga com uma coluna por linha da especificação deu lugar a uma linha por produto (esta solicitação e as do lote que o login vê) e à ficha completa, cada dado com o selo da origem (Solicitação, Programação, Pedido, Negociação, Book, Ficha atual, Calculado). As medidas do texto saem com os eixos e a unidade; caixas e cubagem pelas regras do gerador; o total de peças é o da programação gravada (aviso se a quantidade gravada for diferente).
+- **Permissões**: custo, compra, negociação e condições do fornecedor só para quem tem "Ver valores e margem"; a venda também (o cliente vê a dele); a ficha técnica (códigos, caixa, medidas, ficha atual) só para a Wellmix; o cliente vê o que a solicitação dele gravou. O resumo de valores da variação que aparecia para toda a Wellmix na linha antiga agora segue essa regra (preço só com "Ver valores e margem"; MOQ, caixa e CBM na ficha).
+- **Não mudou**: o bloco "Programação de compra" abaixo da tabela, anexos, solicitante do cliente, NCM, rotas, ações e o banco (só leitura, sem esquema novo). O componente antigo (`RequestInfoTable`) continua no código.
+- Peças: `src/lib/request-spec-parse.ts`, `src/lib/services/request-sheet.ts`, `src/components/request-sheet-table.tsx`, a página `src/app/app/requests/[id]/page.tsx`, textos em `src/i18n/modules/request-sheet.ts` (pt/en/zh). Testes: `tests/unit/request-sheet.test.ts` e `tests/e2e/request-sheet.spec.ts` (o lote nasce pela programação do pedido, `[data-order-plan-count]`).
+
 ## Histórico de compras do cliente: seletor Pedido | Produto
 
 - **Pedido do dono** (15/11/2026, com a foto do card na Nova solicitação): um seletor "Pedido | Produto" no topo do card "Histórico de compras do cliente", com Pedido por padrão e uma visão por vez no mesmo card.
