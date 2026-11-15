@@ -63,6 +63,8 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/replenishment", "requests"],
   // Estratégia de compra (mapa B10?): quem abre Solicitações ao fornecedor.
   ["/app/purchase-strategy", "quotes"],
+  // Cotação de compra (mapa B13): a Wellmix e o fornecedor convidado.
+  ["/app/purchase-quotes", "quotes"],
   // Solicitações ao fornecedor (docs/SUPPLIER_REQUESTS.md): quem abre Cotações.
   ["/app/supplier-requests", "quotes"],
   ["/app/orders", "orders"],

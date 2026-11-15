@@ -2947,6 +2947,90 @@ export interface PurchaseDecision extends BaseRow {
   quoteId: string | null;
 }
 
+/*
+ * Cotação de compra (mapa B13, dono 15/11/2026; docs/PURCHASE_DEMAND.md):
+ * aberta pelo sistema quando a estratégia "cotar entre fornecedores" é
+ * aprovada, para os fornecedores ativos que atendem as linhas dos produtos.
+ * Cada fornecedor tem o próprio prazo (24 h por padrão) e responde preço por
+ * item e condição de envio, ou recusa. O Comprador escolhe a vencedora e a
+ * Diretoria de compras aprova; a vencedora vira a Solicitação ao fornecedor.
+ */
+export const PURCHASE_QUOTE_STATUSES = [
+  "open",
+  "chosen",
+  "approved",
+  "cancelled",
+] as const;
+export type PurchaseQuoteStatus = (typeof PURCHASE_QUOTE_STATUSES)[number];
+export const QUOTE_RESPONSE_STATUSES = [
+  "invited",
+  "answered",
+  "declined",
+] as const;
+export type QuoteResponseStatus = (typeof QUOTE_RESPONSE_STATUSES)[number];
+
+export interface PurchaseQuoteItem {
+  productId: string;
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
+export interface PurchaseQuote extends BaseRow {
+  number: number;
+  decisionId: string;
+  demandIds: string[];
+  lineIds: string[];
+  items: PurchaseQuoteItem[];
+  status: PurchaseQuoteStatus;
+  /** Horas de prazo de cada fornecedor (Configurações, padrão 24). */
+  hours: number;
+  openedByUserId: string;
+  winnerResponseId: string | null;
+  chosenByUserId: string | null;
+  chosenAt: string | null;
+  chosenNote: string | null;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  approvalNote: string | null;
+  /** Solicitações ao fornecedor (B7) criadas da vencedora. */
+  supplierRequestIds: string[] | null;
+  /** Quando o Comprador foi avisado de que ninguém respondeu no prazo. */
+  emptyNotifiedAt: string | null;
+}
+
+export interface QuoteResponsePrice {
+  productId: string;
+  unitPrice: number;
+}
+
+export interface PurchaseQuoteResponse extends BaseRow {
+  quoteId: string;
+  supplierId: string;
+  status: QuoteResponseStatus;
+  invitedAt: string;
+  /** Prazo deste fornecedor (ISO, UTC). */
+  dueAt: string;
+  prices: QuoteResponsePrice[] | null;
+  currency: string | null;
+  incoterm: string | null;
+  leadTimeDays: number | null;
+  port: string | null;
+  moq: number | null;
+  note: string | null;
+  answeredAt: string | null;
+  answeredByUserId: string | null;
+  /** Lembrete antes de vencer, enviado uma vez. */
+  reminderSentAt: string | null;
+}
+
+/** Fornecedor × linha de produto (quem atende cada linha; docs/PURCHASE_DEMAND.md). */
+export interface SupplierLine extends BaseRow {
+  supplierId: string;
+  lineId: string;
+  createdByUserId: string | null;
+}
+
 export interface BookingInvite extends BaseRow {
   number: number;
   groupId: string;
@@ -3052,6 +3136,12 @@ export interface SupplierRequest extends BaseRow {
    * Wellmix valida. Nulo nas aprovadas antes da etapa (lida como pendente).
    */
   sampling?: SupplierRequestSampling | null;
+  /**
+   * Cotação de compra de onde a solicitação veio (a resposta vencedora) e as
+   * demandas (encomendas e reposições) que ela atende (docs/PURCHASE_DEMAND.md).
+   */
+  quoteResponseId?: string | null;
+  demandIds?: string[] | null;
 }
 
 export const SAMPLING_STATUSES = [
@@ -3507,6 +3597,9 @@ export interface Tables {
   supplier_requests: SupplierRequest;
   booking_invites: BookingInvite;
   purchase_decisions: PurchaseDecision;
+  purchase_quotes: PurchaseQuote;
+  purchase_quote_responses: PurchaseQuoteResponse;
+  supplier_lines: SupplierLine;
   selection_groups: SelectionGroup;
   payment_conditions: PaymentCondition;
   payment_plans: PaymentPlan;
@@ -5216,6 +5309,68 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_product", type: "key", columns: ["productId"] },
     ],
   },
+  purchase_quotes: {
+    label: "Cotações de compra",
+    columns: {
+      number: int(true),
+      decisionId: id(),
+      demandIds: json(),
+      lineIds: json(),
+      items: json(),
+      status: enumOf(PURCHASE_QUOTE_STATUSES),
+      hours: float(true),
+      openedByUserId: id(),
+      winnerResponseId: id(false),
+      chosenByUserId: id(false),
+      chosenAt: datetime(),
+      chosenNote: text(),
+      approvedByUserId: id(false),
+      approvedAt: datetime(),
+      approvalNote: text(),
+      supplierRequestIds: json(),
+      emptyNotifiedAt: datetime(),
+    },
+    indexes: [
+      { key: "by_status", type: "key", columns: ["status"] },
+      { key: "by_decision", type: "key", columns: ["decisionId"] },
+    ],
+  },
+  purchase_quote_responses: {
+    label: "Respostas das cotações de compra",
+    columns: {
+      quoteId: id(),
+      supplierId: id(),
+      status: enumOf(QUOTE_RESPONSE_STATUSES),
+      invitedAt: datetime(true),
+      dueAt: datetime(true),
+      prices: json(),
+      currency: str(3),
+      incoterm: str(10),
+      leadTimeDays: int(),
+      port: str(120),
+      moq: float(),
+      note: text(),
+      answeredAt: datetime(),
+      answeredByUserId: id(false),
+      reminderSentAt: datetime(),
+    },
+    indexes: [
+      { key: "by_quote", type: "key", columns: ["quoteId"] },
+      { key: "by_supplier", type: "key", columns: ["supplierId"] },
+    ],
+  },
+  supplier_lines: {
+    label: "Fornecedores por linha de produto",
+    columns: {
+      supplierId: id(),
+      lineId: id(),
+      createdByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_supplier", type: "key", columns: ["supplierId"] },
+      { key: "by_line", type: "key", columns: ["lineId"] },
+    ],
+  },
   purchase_decisions: {
     label: "Estratégias de compra",
     columns: {
@@ -5307,6 +5462,8 @@ export const TABLES: Record<TableName, TableDef> = {
       colorPlan: json(),
       aiAssets: json(),
       sampling: jsonLarge(),
+      quoteResponseId: id(false),
+      demandIds: json(),
     },
     indexes: [
       { key: "by_supplier", type: "key", columns: ["supplierId"] },

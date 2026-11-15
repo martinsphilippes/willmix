@@ -268,3 +268,7 @@ Na solicitação **Aprovada**, a Wellmix que abre Cotações e Produtos vê o bl
 6. **Depois**: o pedido de compra ao fornecedor junta os produtos aprovados do mesmo fornecedor (docs/PURCHASE_ORDER.md).
 
 Tudo fica na auditoria: `product.create`, `product.link_booking`, `product.showcase_release` e `product.erp_code`.
+
+## Solicitação nascida da cotação de compra (15/11/2026)
+
+A cotação de compra vencedora, aprovada pela Diretoria de compras (docs/PURCHASE_DEMAND.md), cria a solicitação ao fornecedor sem item de book (`bookingItemId` e `bookingLotId` vazios): uma por produto, com o mesmo número, o produto do catálogo já ligado (`productAction: "linked"`) e a resposta preenchida com o preço, a moeda, o incoterm, o prazo de produção e o pedido mínimo cotados (`status: "answered"`). Guarda `quoteResponseId` e as demandas (`demandIds`). A Wellmix decide, a amostragem e o pedido de compra seguem como sempre; o pedido de compra leva as demandas (`orders.demandIds`).

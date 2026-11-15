@@ -456,6 +456,21 @@ export default async function SettingsPage({
                     />
                   </Field>
                   <Field
+                    label={t("quote.settings.hours")}
+                    hint={t("quote.settings.hoursHint")}
+                  >
+                    <Input
+                      name="purchaseQuoteHours"
+                      type="number"
+                      min={0.01}
+                      max={240}
+                      step="any"
+                      required
+                      defaultValue={s.purchaseQuoteHours}
+                      data-setting-purchase-quote-hours
+                    />
+                  </Field>
+                  <Field
                     label={t("bookingInvites.settings.sla")}
                     hint={t("bookingInvites.settings.slaHint")}
                   >

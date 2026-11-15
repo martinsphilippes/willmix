@@ -1,0 +1,146 @@
+import { expect, test, type Locator, type Page } from "@playwright/test";
+import { login } from "./helpers";
+
+/*
+ * Cotação de compra (mapa B13; dono, 15/11/2026; docs/PURCHASE_DEMAND.md):
+ * (b) reposição → cotar → dois fornecedores respondem, um não, o Comprador
+ * escolhe, a Diretoria aprova → solicitação ao fornecedor com os valores
+ * cotados; e o isolamento: o fornecedor A não abre a resposta do B nem vê o
+ * cliente; o cliente não abre a demanda de outra empresa nem vê fornecedor
+ * ou custo. O prazo é curto (0,02 h) para vencer durante o teste; volta a 24.
+ */
+
+async function choose(picker: Locator, marker: string, text: string) {
+  await picker.locator(`[data-${marker}-input]`).fill(text);
+  const option = picker.locator(`[data-${marker}-option]`).first();
+  await expect(option).toBeVisible();
+  await option.click();
+}
+
+async function setQuoteHours(page: Page, hours: string) {
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/settings");
+  const field = page.locator("[data-setting-purchase-quote-hours]");
+  await field.fill(hours);
+  await field.evaluate((el) => (el as HTMLInputElement).form!.requestSubmit());
+  await page.waitForURL(/\/app\/settings\?ok=1/);
+}
+
+/** Os fornecedores B e C passam a atender a linha de utilidades (cadastro). */
+async function serveUtilities(page: Page, supplierId: string) {
+  await page.goto(`/app/suppliers/${supplierId}?tab=info`);
+  await page.locator('[data-supplier-line="linha-utilidades"]').check();
+  await page.locator("[data-supplier-lines-save]").click();
+  await page.waitForURL(/[?&]lines=saved/);
+}
+
+async function answer(
+  page: Page,
+  email: string,
+  quoteId: string,
+  price: string,
+) {
+  await login(page, email);
+  await page.goto("/app/purchase-quotes");
+  await page.locator(`[data-quote-invite="${quoteId}"] a`).click();
+  await page.waitForURL(new RegExp(`/app/purchase-quotes/${quoteId}`));
+  const form = page.locator("[data-quote-answer-form]");
+  await form.locator('[data-quote-price="prod-jarra"]').fill(price);
+  await form.locator("[data-quote-lead]").fill("35");
+  await form.locator("[data-quote-port]").fill("Ningbo");
+  await form.locator("[data-quote-submit]").click();
+  await page.waitForURL(/[?&]answered=1/);
+}
+
+test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria aprova, nasce a solicitação ao fornecedor", async ({
+  page,
+}) => {
+  test.slow();
+  await setQuoteHours(page, "0.02");
+  await serveUtilities(page, "fornecedor-b");
+  await serveUtilities(page, "fornecedor-c");
+
+  // Reposição da jarra pelo Planner; o Comprador escolhe cotar.
+  await login(page, "operador@wellmix.com");
+  await page.goto("/app/replenishment");
+  const form = page.locator("[data-replenishment-new]");
+  await choose(
+    form.locator('[data-product-picker="active"]'),
+    "product-picker",
+    "UTL-001",
+  );
+  await form.locator("[data-replenishment-quantity]").fill("4000");
+  await form.locator("[data-replenishment-submit]").click();
+  await page.waitForURL(/[?&]opened=/);
+  const demandId = new URL(page.url()).searchParams.get("opened")!;
+  await page.goto("/app/purchase-strategy");
+  const group = page.locator(`form:has([data-strategy-demand="${demandId}"])`);
+  const others = group.locator(
+    `[data-strategy-demand]:not([data-strategy-demand="${demandId}"]) input[type=checkbox]`,
+  );
+  for (let i = 0; i < (await others.count()); i++)
+    await others.nth(i).uncheck();
+  await group.locator('[data-strategy-choice="quote"]').check();
+  await group.locator("[data-strategy-submit]").click();
+  await page.waitForURL(/[?&]chosen=\d+/);
+  const decisionId = page.url().split("#decision-")[1];
+
+  // A Diretoria aprova: o sistema abre a cotação.
+  await login(page, "diretoria@wellmix.com");
+  await page.goto("/app/purchase-strategy");
+  await page.locator(`#decision-${decisionId} [data-strategy-approve]`).click();
+  await page.waitForURL(/[?&]decided=\d+/);
+  const quoteId = await page
+    .locator(`#decision-${decisionId} [data-strategy-quote-link]`)
+    .getAttribute("data-strategy-quote-link");
+  expect(quoteId).toBeTruthy();
+
+  // A e B respondem; C não.
+  await answer(page, "supplier.a@china.com", quoteId!, "2,10");
+  await answer(page, "supplier.b@china.com", quoteId!, "1,85");
+
+  // Isolamento: A abre a dele, sem o preço do B, sem o nome do B nem o cliente.
+  await login(page, "supplier.a@china.com");
+  await page.goto(`/app/purchase-quotes/${quoteId}`);
+  await expect(page.locator("[data-quote-supplier]")).toBeVisible();
+  const text = await page.locator("main").innerText();
+  expect(text).not.toContain("1.85");
+  expect(text).not.toContain("1,85");
+  expect(text).not.toContain("Guangzhou");
+  expect(text).not.toContain("Loja do João");
+  expect(text).not.toContain("Estoque Wellmix");
+
+  // O prazo vence; o Comprador vê o quadro e escolhe o B.
+  await login(page, "operador@wellmix.com");
+  const board = page.locator("[data-quote-choose-form]");
+  await expect(async () => {
+    await page.goto(`/app/purchase-quotes/${quoteId}`);
+    await expect(board).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 120_000, intervals: [5000] });
+  await expect(
+    page.locator('[data-quote-response-state="expired"]'),
+  ).toHaveCount(1);
+  await expect(page.locator("[data-quote-reference]")).toBeVisible();
+  await board.locator('[data-quote-winner-option="fornecedor-b"]').check();
+  await board.locator("[data-quote-choose]").click();
+  await page.waitForURL(/[?&]chosen=1/);
+
+  // A Diretoria aprova a vencedora: nasce a solicitação ao fornecedor.
+  await login(page, "diretoria@wellmix.com");
+  await page.goto(`/app/purchase-quotes/${quoteId}`);
+  await page.locator("[data-quote-approve]").click();
+  await page.waitForURL(/[?&]decided=approve/);
+  await page.locator("[data-quote-supplier-request]").first().click();
+  await page.waitForURL(/\/app\/supplier-requests\/[^/?]+/);
+  await expect(page.locator("main")).toContainText(/1[,.]85/);
+
+  // O cliente não abre a demanda de outra empresa (a reposição da Wellmix).
+  await login(page, "joao@lojista.com");
+  const response = await page.goto(`/app/requests/${demandId}`);
+  expect(
+    response?.status() === 404 ||
+      !(await page.locator("main").innerText()).includes("Jarra"),
+  ).toBe(true);
+
+  await setQuoteHours(page, "24");
+});
