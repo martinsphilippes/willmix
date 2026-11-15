@@ -91,7 +91,7 @@ Mudou o formato de `facts`? Suba `SUMMARY_VERSION`. **Formato 10 (14/11/2026):**
 **Só as partes do resumo que a tela usa (14/11/2026).** `readOrderSummaries(ids, keys)` e `factsForOrders(orders, keys)` pedem ao banco só as chaves de `facts` que a tela lê (`listColumns` com `jsonKeys`: `facts__chave:facts->chave` no PostgREST). O tipo de volta é `Pick<OrderFacts, chaves>`, e o compilador recusa uma chave que a tela usa sem pedir. O resumo inteiro tem cerca de 2,7 kB por pedido (44 MB de JSON para os 16 mil pedidos); os pagamentos sozinhos são 15 MB. Partes lidas por tela:
 
 - Pedidos: `order`, `active`, `reqs`, `lane`, `steps`, `product` e `itemCount`.
-- Financeiro: `pays`, `customer`, `supplier`, `product` e `pop`.
+- Financeiro: `pays`, `customer`, `supplier`, `product`, `pop` e `sfr` (frete das ordens de venda ligadas ao pedido; `SUMMARY_VERSION` 17). A gravação em `sales_orders` marca o pedido de compra ligado (`purchaseOrderId`).
 - Contas a pagar: `pays`, `ship`, `sreqs` e `product`.
 - Fluxo de caixa: `ship`.
 

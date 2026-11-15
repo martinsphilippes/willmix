@@ -88,7 +88,7 @@ import { milestoneViews } from "./milestones";
  * `order_milestones.dueAt`; a contribuição da Control Tower (`kpi.c`) põe
  * o pedido no quadrado pelo marco atual (fase 5c, docs/MILESTONES.md).
  */
-export const SUMMARY_VERSION = 16;
+export const SUMMARY_VERSION = 17;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -140,6 +140,8 @@ export interface OrderFacts {
   pays: FactPayment[];
   /** Custos de origem (POP) validados da compra EXW (docs/ORIGIN_CONTAINER.md). */
   pop?: import("./finance").OriginCost[];
+  /** Frete das ordens de venda ligadas, em reais (docs/SALES_ORDERS.md). */
+  sfr?: import("./finance").OriginCost[];
   /** Etapas de embarque e entrega (marcos do cronograma de pagamento e da entrega). */
   ship: FactStage[];
   /** Itens das etapas do cronograma de pagamento (data de embarque, pagamento antigo). */
@@ -197,6 +199,8 @@ interface Sources {
   /** Itens pendentes ou recusados (pendências das etapas em andamento). */
   openRequirements: Map<string, Requirement[]>;
   steps: Map<string, ImportStep[]>;
+  /** Frete das ordens de venda ligadas ao pedido (docs/SALES_ORDERS.md). */
+  salesFreights: Map<string, import("./finance").OriginCost[]>;
   tracks: Map<string, ProductionTrack[]>;
   skus: Map<string, SkuInspection[]>;
   art: Map<string, ArtIssue[]>;
@@ -248,6 +252,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
       portalRequirements: new Map(),
       openRequirements: new Map(),
       steps: new Map(),
+      salesFreights: new Map(),
       tracks: new Map(),
       skus: new Map(),
       art: new Map(),
@@ -275,6 +280,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     milestoneRequirements,
     lpco,
     milestoneRows,
+    salesFreights,
   ] = await Promise.all([
     partyIds.length
       ? store.list("parties", { filter: { id: partyIds } })
@@ -320,6 +326,9 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
         filter: byOrder,
       }),
     ),
+    import("./finance").then((m) =>
+      m.salesFreightByOrder(ids ? orderIds : null),
+    ),
   ]);
   const partyMap = new Map<string, Party>();
   for (const p of parties) if (!partyMap.has(p.id)) partyMap.set(p.id, p);
@@ -332,6 +341,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     portalRequirements: groupBy(portalRequirements, (r) => r.orderId),
     openRequirements: groupBy(openRequirements, (r) => r.orderId),
     steps: groupBy(steps, (r) => r.orderId),
+    salesFreights,
     tracks: groupBy(tracks, (r) => r.orderId),
     skus: groupBy(skus, (r) => r.orderId),
     art: groupBy(art, (r) => r.orderId),
@@ -403,6 +413,7 @@ export function buildOrderFacts(
   const items = src.items.get(id) ?? [];
   const payments = src.payments.get(id) ?? [];
   const pop = originCostsOf(src.steps.get(id) ?? []);
+  const sfr = src.salesFreights.get(id) ?? [];
   const finance = computeOrderFinance(
     order,
     payments,
@@ -419,6 +430,7 @@ export function buildOrderFacts(
         order.sellCurrency ?? "BRL",
       ),
       originCosts: pop,
+      salesFreights: sfr,
     },
   );
   const payable = payableFor(
@@ -487,6 +499,7 @@ export function buildOrderFacts(
     })),
     pays: payments.map(withoutRefs),
     ...(pop.length ? { pop } : {}),
+    ...(sfr.length ? { sfr } : {}),
     ship: stages
       .filter((x) => x.key === "SHIPPING" || x.key === "DELIVERED")
       .map((x) => ({
