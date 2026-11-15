@@ -482,6 +482,19 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     customerPayment.locator("[data-customer-payment-sync]"),
   ).toContainText("1519042");
+  // Parcela em aberto trava o pedido (dono, 15/11/2026): "10% no pedido"
+  // vence na hora e o pedido pausa; só o administrador destrava, e a parcela
+  // liberada não trava de novo.
+  const paused = page.locator('[data-order-paused="payment_open"]');
+  await expect(paused).toBeVisible();
+  await paused.locator('input[name="note"]').fill("Liberado no teste");
+  await paused.getByRole("button").click();
+  await expect(page.locator("[data-order-paused]")).toHaveCount(0);
+  await expect(
+    page.locator(
+      '[data-order-section="customer-payment"] [data-customer-installment-released]',
+    ),
+  ).toHaveCount(1);
 
   // 5b. Cadastro e fiscal (mapa, P9/P14): o contrato espera o NCM validado e
   // a ficha mestre completa. O sistema confere; o atalho leva à tela dona.

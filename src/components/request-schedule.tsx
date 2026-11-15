@@ -246,9 +246,11 @@ export function RequestScheduleFields({
           </span>
           <input
             type="number"
-            min="1"
+            // Programação do pedido (dono, 15/11/2026): o produto pode ficar
+            // sem quantidade numa data (0 ou em branco).
+            min={fixed ? "0" : "1"}
             step="1"
-            required
+            required={!fixed}
             inputMode="numeric"
             value={
               String(q).trim() === ""
@@ -605,9 +607,9 @@ export function RequestScheduleFields({
                   <input
                     name={`${prefix}schedule.qty.${i + 1}`}
                     type="number"
-                    min="1"
+                    min={fixed ? "0" : "1"}
                     step="any"
-                    required
+                    required={!fixed}
                     value={q}
                     onChange={(e) =>
                       update(qtys.map((x, j) => (j === i ? e.target.value : x)))
