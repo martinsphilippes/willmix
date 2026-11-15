@@ -29,6 +29,7 @@ import {
   ORDER_SIGNED_WELLMIX,
   nextStageKey,
   isPurchaseFlow,
+  purchaseWithoutArt,
   SHIPPED_KEY,
 } from "./stages";
 import {
@@ -249,6 +250,11 @@ export async function createStagesForOrder(
   const items = isPurchaseFlow(order)
     ? await purchaseLaneItems(order.id)
     : undefined;
+  // Reposição ou encomenda (ou rodada de uma): sem Material de arte e Arte.
+  const parent =
+    isPurchaseFlow(order) && order.parentOrderId
+      ? await store.get("orders", order.parentOrderId)
+      : null;
   const ctx = {
     order,
     line,
@@ -256,6 +262,7 @@ export async function createStagesForOrder(
     deliveryConfirmationMode: settings.deliveryConfirmationMode,
     inspectionExtendedChecks: settings.inspectionExtendedChecks,
     items,
+    withoutArt: purchaseWithoutArt(order, parent),
   };
 
   let firstStageId: string | null = null;

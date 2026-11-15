@@ -73,6 +73,7 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
   - Cotação de compra: 24 h corridas por fornecedor (configurável). Sem resposta em 24 h, o Comprador reabre por mais 24 h, convida outros fornecedores ou volta para "fornecedor da última compra". O vencimento é calculado na leitura; o lembrete antes de vencer usa um agendamento de hora em hora (ou o diário, se o plano da Vercel não permitir).
   - Reposição automática pelo estoque: desligada. A reposição é aberta à mão pelo Planner ou vem do pós-venda.
   - As solicitações de cliente em aberto em 15/11/2026 (as 3 da FC Distribuidora) entram na fila da estratégia de compra como encomendas, sem migração.
+  - Pedido de compra da reposição ou da encomenda (com demanda ligada, `orders.demandIds`; na rodada, a do pedido pai): "Não tem arte". Repete a arte já aprovada e pula os marcos Material de arte e Arte (sem faca, foto em alta, MOQ, prazo, aprovação do Comprador, arte, validação e arte final com o selo). O Contrato espera só Pedido novo e Certificação. A espera da arte pelo Material de arte inteiro vale só para o pedido de produto novo (do Book). Pedidos já abertos não mudam (docs/MILESTONES.md, "Pedido de compra sem arte").
 
 ## A confirmar com o negócio
 

@@ -221,6 +221,17 @@ Cada aprovação é um item obrigatório do pedido de compra, no fim do marco (`
 - **Padrão das ações:** GP (`product_manager`), Comprador (`buyer`), Planner (`planner`) e Diretoria de compras (`purchasing_director`). **Em produção as funções já têm as ações gravadas.** Enquanto o dono não marcar as ações novas em Equipe e acessos, só o administrador aprova.
 - **Validar a arte pelo Marketing (P5?):** a troca é feita em Equipe e acessos: desmarcar "Validar a arte" das funções que têm hoje (Comprador e outras) e marcar na função Designer (o Marketing). O padrão do código continua o de antes (quem abre Pedidos), porque não muda o que está gravado.
 
+## Pedido de compra sem arte (decisão do dono, 15/11/2026)
+
+A arte esperar o **Material de arte inteiro** (faca, foto em alta, MOQ e prazo de todos os produtos, mais a aprovação do Comprador; fase 5d) vale só para o pedido de **produto novo, que veio do Book**. Na reposição e na encomenda, a resposta do dono foi "Não tem arte": o pedido repete a arte já aprovada.
+
+- **Quando:** pedido de compra com demanda ligada (`orders.demandIds` não vazio: reposição ou encomenda, docs/PURCHASE_DEMAND.md); a rodada de uma programação segue o pedido pai (`purchaseWithoutArt`, `src/lib/workflow/stages.ts`).
+- **O que não nasce:** os itens dos marcos Material de arte e Arte (`laneRequirements(..., { art: false })`, `src/lib/purchase-lanes.ts`): faca, foto em alta, MOQ, prazo, aprovação do Comprador (`approval_art_material`), arte, validação e arte final com o selo. Os dois marcos ficam "não se aplica" e são transparentes: o **Contrato espera só Pedido novo e Certificação**.
+- **Continua:** o cadastro (NCM, ficha, aprovação do GP), a certificação da linha (certificado, aprovação do GP e os passos do cartão Certificação: memorial, selo e a arte com o selo, `cert_seal_art`) e o resto do pedido. O pedido do Book e o pedido clássico não mudam.
+- **Ponto em aberto para o dono:** na linha que exige certificação, o cartão Certificação ainda pede a **arte com o selo** (`cert_seal_art`: a agência aplica o selo e a Wellmix confere), porque é exigência da certificação. Se a arte repetida já tem o selo válido, esse passo vira só a conferência; se o dono quiser pular também esse passo na reposição e na encomenda, é uma decisão nova. O documento do contrato desses pedidos sai sem a lista de artes finais (não há arte final no pedido).
+- **Pedidos já abertos** não mudam (os itens já criados ficam).
+- Teste: `tests/unit/purchase-without-art.test.ts` (reposição/encomenda sem os itens e o Contrato sem esperar a arte; Book com a arte esperando o Material de arte).
+
 ## Lacunas que faltam
 
 Nenhuma. **E24–E27** (decisão do dono, 14/11/2026) entraram como passos do marco 16, no passo Armazenagem do menu (docs/RECEIVING.md, "Divergência no recebimento"). Só existem no pedido cuja contagem achou divergência:

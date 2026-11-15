@@ -220,14 +220,20 @@ const approvalTemplate = (a: MilestoneApproval): RequirementTemplate => ({
   role: "operator",
 });
 
-/** Aprovações do fim da Preparação: cadastro, material de arte e (se houver) certificação. */
+/**
+ * Aprovações do fim da Preparação: cadastro, material de arte (só com a
+ * faca entre os itens: sem arte, o marco não existe) e (se houver)
+ * certificação.
+ */
 export function preparationApprovals(
   lanes: RequirementTemplate[],
 ): RequirementTemplate[] {
   const cert = lanes.some((r) => baseKeyOf(r.key) === LANE_KEYS.certificate);
+  const artMaterial =
+    !lanes.length || lanes.some((r) => baseKeyOf(r.key) === LANE_KEYS.dieCut);
   return [
     approvalTemplate(MILESTONE_APPROVALS.registration),
-    approvalTemplate(MILESTONE_APPROVALS.artMaterial),
+    ...(artMaterial ? [approvalTemplate(MILESTONE_APPROVALS.artMaterial)] : []),
     ...(cert ? [approvalTemplate(MILESTONE_APPROVALS.certification)] : []),
   ];
 }
@@ -400,10 +406,29 @@ const req = (
  * Requisitos da etapa "Preparação, arte e certificação" do pedido de compra:
  * as três raias, para cada produto do pedido.
  */
+/** Itens dos marcos Material de arte e Arte (chave-base). */
+const ART_LANE_BASES: ReadonlySet<string> = new Set([
+  LANE_KEYS.dieCut,
+  LANE_KEYS.hdPhoto,
+  LANE_KEYS.moq,
+  LANE_KEYS.leadTime,
+  LANE_KEYS.art,
+  LANE_KEYS.artReview,
+  LANE_KEYS.artFinal,
+]);
+
 export function laneRequirements(
   items: LaneItem[],
   roles: { art: Role; ocp: Role },
+  /**
+   * Sem os marcos Material de arte e Arte (dono, 15/11/2026): o pedido de
+   * compra da reposição ou da encomenda repete a arte já aprovada ("Não tem
+   * arte"). Só o pedido de produto novo (do Book) faz faca, foto, MOQ,
+   * prazo, arte, validação e arte final.
+   */
+  options: { art?: boolean } = {},
 ): RequirementTemplate[] {
+  const withArt = options.art !== false;
   const out: RequirementTemplate[] = [];
   for (const item of items) {
     // Sem nome real (vazio ou de exemplo), fica só o título da tarefa.
@@ -424,39 +449,46 @@ export function laneRequirements(
         "operator",
       ),
     );
-    // Sempre a faca e a foto em alta; a linha do produto acrescenta os itens
-    // dela (a ficha de compra é do fluxo antigo e fica de fora).
-    const base: RequirementTemplate[] = [
-      req(LANE_KEYS.dieCut, "Faca (die cut)", "file", "supplier"),
-      req(LANE_KEYS.hdPhoto, "Foto em alta resolução", "photo", "supplier"),
-    ];
+    // Sempre a faca e a foto em alta (menos sem arte); a linha do produto
+    // acrescenta os itens dela (a ficha de compra é do fluxo antigo e fica
+    // de fora).
+    const base: RequirementTemplate[] = withArt
+      ? [
+          req(LANE_KEYS.dieCut, "Faca (die cut)", "file", "supplier"),
+          req(LANE_KEYS.hdPhoto, "Foto em alta resolução", "photo", "supplier"),
+        ]
+      : [];
     const extra = (item.lineRequirements ?? []).filter(
-      (r) => r.key !== "purchase_sheet" && !base.some((b) => b.key === r.key),
+      (r) =>
+        r.key !== "purchase_sheet" &&
+        (withArt || !ART_LANE_BASES.has(r.key)) &&
+        !base.some((b) => b.key === r.key),
     );
     const checklist = [...base, ...extra];
     for (const r of checklist)
       out.push({ ...r, key: laneKey(r.key, item.id), label: of(r.label) });
-    out.push(
-      req(
-        laneKey(LANE_KEYS.moq, item.id),
-        of("MOQ confirmado (peças)"),
-        "number",
-        "supplier",
-      ),
-      req(
-        laneKey(LANE_KEYS.leadTime, item.id),
-        of("Prazo de produção confirmado (dias)"),
-        "number",
-        "supplier",
-      ),
-      req(laneKey(LANE_KEYS.art, item.id), of("Arte"), "file", roles.art),
-      req(
-        laneKey(LANE_KEYS.artReview, item.id),
-        of("Validação da arte pela Wellmix"),
-        "approval",
-        "operator",
-      ),
-    );
+    if (withArt)
+      out.push(
+        req(
+          laneKey(LANE_KEYS.moq, item.id),
+          of("MOQ confirmado (peças)"),
+          "number",
+          "supplier",
+        ),
+        req(
+          laneKey(LANE_KEYS.leadTime, item.id),
+          of("Prazo de produção confirmado (dias)"),
+          "number",
+          "supplier",
+        ),
+        req(laneKey(LANE_KEYS.art, item.id), of("Arte"), "file", roles.art),
+        req(
+          laneKey(LANE_KEYS.artReview, item.id),
+          of("Validação da arte pela Wellmix"),
+          "approval",
+          "operator",
+        ),
+      );
     if (certified)
       out.push(
         req(
@@ -465,12 +497,17 @@ export function laneRequirements(
           "file",
           roles.ocp,
         ),
-        req(
-          laneKey(LANE_KEYS.artFinal, item.id),
-          of("Arte final com o selo"),
-          "file",
-          roles.art,
-        ),
+        // A arte final com o selo é do marco Arte: sem arte, não nasce.
+        ...(withArt
+          ? [
+              req(
+                laneKey(LANE_KEYS.artFinal, item.id),
+                of("Arte final com o selo"),
+                "file",
+                roles.art,
+              ),
+            ]
+          : []),
       );
   }
   return out;
