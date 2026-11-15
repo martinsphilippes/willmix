@@ -45,6 +45,8 @@ import { openReview, resolveReviews } from "@/lib/services/reviews";
 import { openAfterSales } from "@/lib/services/after-sales";
 
 import { isMoneyRequirement, parseMoneyValue } from "./money";
+import { requirementFlowFields } from "@/lib/milestones";
+import { queueMilestoneSync } from "@/lib/services/order-milestones";
 import {
   approvalSourceOf,
   LANE_KEYS,
@@ -297,6 +299,8 @@ export async function createStagesForOrder(
         submittedByUserId: null,
         submittedAt: null,
         note: null,
+        // Fase 5b (docs/MILESTONES.md): passo e marco do item, em sombra.
+        ...requirementFlowFields(template.key, req.key),
       });
     }
   }
@@ -304,6 +308,7 @@ export async function createStagesForOrder(
     currentStageId: firstStageId,
     status: "ORDER_CREATED",
   });
+  queueMilestoneSync(order.id);
   if (beforeStart && !existingStages.length) await beforeStart();
   // Pedido de compra: "Pedido criado" não tem itens e conclui na hora; as
   // raias abrem em seguida.
@@ -448,6 +453,8 @@ export async function submitRequirement(
   if (order.pausedAt) throw new WorkflowError("order_paused");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
+  // Fase 5b: marcos do pedido em sombra, depois da resposta.
+  queueMilestoneSync(order.id);
   await assertLaneAssignee(user, order, requirement);
   // Validação da ficha pelo comprador: antes, a programação de compra
   // (que é da Wellmix) tem de estar feita.
@@ -701,6 +708,8 @@ export async function clearRequirementDocument(
   if (order.pausedAt) throw new WorkflowError("order_paused");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
+  // Fase 5b: marcos do pedido em sombra, depois da resposta.
+  queueMilestoneSync(order.id);
   await assertLaneAssignee(user, order, requirement);
   if (
     stage.status !== "active" &&
@@ -768,6 +777,8 @@ export async function decideRequirement(
   if (order.pausedAt) throw new WorkflowError("order_paused");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
+  // Fase 5b: marcos do pedido em sombra, depois da resposta.
+  queueMilestoneSync(order.id);
   await assertLaneAssignee(user, order, requirement);
   if (order.status === "CANCELLED" || stage.status === "cancelled")
     throw new WorkflowError("stage_not_active");
@@ -987,6 +998,7 @@ async function checkWeightDivergence(
         submittedByUserId: null,
         submittedAt: null,
         note: reason,
+        ...requirementFlowFields(stage.key, "inspection_review"),
       });
     } else if (review.status !== "pending") {
       await store.update("requirements", review.id, {
@@ -1047,6 +1059,7 @@ async function checkWeightDivergence(
 export async function evaluateStage(user: User | null, stageId: string) {
   const store = getStore();
   const stage = await store.get("stages", stageId);
+  queueMilestoneSync(stage?.orderId);
   if (
     !stage ||
     stage.status === "done" ||
@@ -1091,6 +1104,7 @@ async function emitStageEvent(
 
 async function completeStage(user: User | null, stage: Stage) {
   const store = getStore();
+  queueMilestoneSync(stage.orderId);
   const now = new Date().toISOString();
   await store.update("stages", stage.id, {
     status: "done",
@@ -1136,6 +1150,7 @@ async function completeStage(user: User | null, stage: Stage) {
 
 async function activateStage(user: User | null, order: Order, key: StageKey) {
   const store = getStore();
+  queueMilestoneSync(order.id);
   const settings = await getSettings();
   const [stage] = await store.list("stages", {
     filter: { orderId: order.id, key },

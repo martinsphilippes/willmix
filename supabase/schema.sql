@@ -252,6 +252,8 @@ alter table public."orders" add column if not exists "purchaseRounds" jsonb;
 alter table public."orders" add column if not exists "parentOrderId" text;
 alter table public."orders" add column if not exists "roundIndex" bigint;
 alter table public."orders" add column if not exists "held" boolean;
+alter table public."orders" add column if not exists "milestoneKey" text;
+alter table public."orders" add column if not exists "cancelMilestoneKey" text;
 create unique index if not exists "orders_number_unique" on public."orders" ("number");
 create index if not exists "orders_live_by_status" on public."orders" ("status") where "held" is null;
 create index if not exists "orders_by_parent" on public."orders" ("parentOrderId");
@@ -331,12 +333,36 @@ alter table public."requirements" add column if not exists "submittedByUserId" t
 alter table public."requirements" add column if not exists "submittedAt" timestamptz;
 alter table public."requirements" add column if not exists "note" text;
 alter table public."requirements" add column if not exists "held" boolean;
+alter table public."requirements" add column if not exists "step" text;
+alter table public."requirements" add column if not exists "milestoneKey" text;
 create index if not exists "requirements_by_stage" on public."requirements" ("stageId");
+create index if not exists "requirements_by_order_milestone" on public."requirements" ("orderId", "milestoneKey");
 create index if not exists "requirements_by_order" on public."requirements" ("orderId");
 create index if not exists "requirements_live_by_status" on public."requirements" ("status") where "held" is not true;
 create index if not exists "requirements_live_by_key" on public."requirements" ("key") where "held" is not true;
 create index if not exists "requirements_created" on public."requirements" ("createdAt");
 create index if not exists "requirements_created_id" on public."requirements" ("createdAt", "id");
+
+create table if not exists public."order_milestones" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."order_milestones" enable row level security;
+alter table public."order_milestones" add column if not exists "orderId" text;
+alter table public."order_milestones" add column if not exists "key" text;
+alter table public."order_milestones" add column if not exists "status" text;
+alter table public."order_milestones" add column if not exists "startedAt" timestamptz;
+alter table public."order_milestones" add column if not exists "dueAt" timestamptz;
+alter table public."order_milestones" add column if not exists "completedAt" timestamptz;
+alter table public."order_milestones" add column if not exists "reminderSentAt" timestamptz;
+alter table public."order_milestones" add column if not exists "blockReason" text;
+alter table public."order_milestones" add column if not exists "held" boolean;
+create index if not exists "order_milestones_by_order" on public."order_milestones" ("orderId");
+create unique index if not exists "order_milestones_order_key_unique" on public."order_milestones" ("orderId", "key");
+create index if not exists "order_milestones_live_by_status" on public."order_milestones" ("status") where "held" is not true;
+create index if not exists "order_milestones_created" on public."order_milestones" ("createdAt");
+create index if not exists "order_milestones_created_id" on public."order_milestones" ("createdAt", "id");
 
 create table if not exists public."documents" (
   "id" text primary key,

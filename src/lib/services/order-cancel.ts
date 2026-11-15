@@ -141,6 +141,11 @@ export async function cancelOrder(
     throw new OrderCancelError("already_cancelled");
   const now = new Date().toISOString();
   const stageKey = order.status as StageKey;
+  // Fase 5b (docs/MILESTONES.md): o marco em que o pedido estava, ao lado da
+  // etapa (calculado antes de as etapas serem canceladas).
+  const { milestoneNow, queueMilestoneSync } =
+    await import("./order-milestones");
+  const cancelMilestoneKey = await milestoneNow(order);
 
   // Etapas que ainda não terminaram não acontecem mais.
   const stages = await store.list("stages", { filter: { orderId } });
@@ -206,6 +211,7 @@ export async function cancelOrder(
     cancelNote: input.note,
     cancelSettlement: input.settlement,
     cancelStageKey: stageKey,
+    cancelMilestoneKey,
     ...(order.cancelRequestStatus === "requested"
       ? { cancelRequestStatus: "approved" as const }
       : {}),
@@ -224,6 +230,8 @@ export async function cancelOrder(
       settlement: input.settlement,
     },
   );
+  // Marcos em sombra: o marco atual do pedido cancelado fica vazio.
+  queueMilestoneSync(orderId);
   {
     const { emitProcessEvent } = await import("./process-engine");
     await emitProcessEvent(user, "order:cancelled", { orderId });

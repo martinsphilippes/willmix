@@ -43,6 +43,12 @@ export interface MilestoneInput {
   receiving: Receiving | null;
   /** O pedido tem produto de NCM que exige LPCO. */
   lpco: boolean;
+  /**
+   * Passo do item no lugar do calculado pela etapa (fase 5b, conferência da
+   * migração): devolve o passo gravado no item (`requirements.step`) ou nulo
+   * (o item não entra). Sem ele, o passo sai da etapa e da chave.
+   */
+  requirementStep?: (r: Requirement, stage: Stage) => string | null;
 }
 
 /** As subtarefas do pedido, cada uma no passo do menu dela (função pura). */
@@ -54,6 +60,17 @@ export function orderSubtasks(input: MilestoneInput): Subtask[] {
   for (const r of input.requirements) {
     const stage = stageById.get(r.stageId);
     if (!stage || stage.status === "cancelled") continue;
+    if (input.requirementStep) {
+      const step = input.requirementStep(r, stage);
+      if (step)
+        out.push({
+          step,
+          key: r.key,
+          done: r.status === "done",
+          dueAt: r.status === "done" ? null : (stage.dueAt ?? null),
+        });
+      continue;
+    }
     for (const step of flowStepsOf({
       kind: "requirement",
       stageKey: stage.key,

@@ -76,6 +76,8 @@ const SALES_TABLES = [
   "stock_reservations",
   // Eventos das regras de processo das vendas de teste.
   "process_events",
+  // Marcos do pedido (fase 5b, docs/MILESTONES.md).
+  "order_milestones",
   // Resumo dos pedidos (derivado; docs/RESUMOS.md).
   "order_summaries",
   "kpi_snapshots",
@@ -102,6 +104,7 @@ const OPTIONAL_TABLES = new Set<TableName>([
   "stock_counts",
   "stock_reservations",
   "process_events",
+  "order_milestones",
   "order_summaries",
   "kpi_snapshots",
 ]);

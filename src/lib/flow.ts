@@ -196,6 +196,13 @@ const REQUIREMENT_STEP: Record<string, Ref> = {
   receipt_confirmed: "delivery/delivery",
 };
 
+/**
+ * Chaves-base dos itens com passo próprio (o resto vai pelo passo da etapa):
+ * para o SQL revisado da migração dos marcos (scripts/milestone-backfill-sql.ts).
+ */
+export const REQUIREMENT_STEP_KEYS: readonly string[] =
+  Object.keys(REQUIREMENT_STEP);
+
 /** Etapa do pedido → passo, quando o item não diz (ex.: medidas da ficha). */
 const STAGE_STEP: Partial<Record<string, Ref>> = {
   ORDER_CREATED: "order/orders",

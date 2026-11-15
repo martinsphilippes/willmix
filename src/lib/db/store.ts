@@ -94,6 +94,8 @@ export function matchesSearch<T extends object>(
 export const HELD_TABLES: ReadonlySet<TableName> = new Set<TableName>([
   "stages",
   "requirements",
+  // Marcos do pedido gravados em sombra (fase 5b, docs/MILESTONES.md).
+  "order_milestones",
 ]);
 
 const SCOPED_FILTERS = ["orderId", "stageId", "id", "held"];

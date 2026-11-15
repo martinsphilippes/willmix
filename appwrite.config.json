@@ -1743,6 +1743,22 @@
           "array": false,
           "default": false,
           "type": "boolean"
+        },
+        {
+          "key": "milestoneKey",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "cancelMilestoneKey",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
         }
       ],
       "indexes": [
@@ -2255,6 +2271,22 @@
           "array": false,
           "default": false,
           "type": "boolean"
+        },
+        {
+          "key": "step",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "milestoneKey",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
         }
       ],
       "indexes": [
@@ -2265,6 +2297,18 @@
             "stageId"
           ],
           "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_order_milestone",
+          "type": "key",
+          "columns": [
+            "orderId",
+            "milestoneKey"
+          ],
+          "orders": [
+            "ASC",
             "ASC"
           ]
         },
@@ -2293,6 +2337,121 @@
           "type": "key",
           "columns": [
             "key"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "order_milestones",
+      "databaseId": "willmix",
+      "name": "Marcos do pedido (fase 5; gravado em sombra)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "orderId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "key",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "active",
+            "blocked",
+            "done"
+          ]
+        },
+        {
+          "key": "startedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "dueAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "completedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "reminderSentAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "blockReason",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "held",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_order",
+          "type": "key",
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "order_key_unique",
+          "type": "unique",
+          "columns": [
+            "orderId",
+            "key"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        },
+        {
+          "key": "live_by_status",
+          "type": "key",
+          "columns": [
+            "status"
           ],
           "orders": [
             "ASC"

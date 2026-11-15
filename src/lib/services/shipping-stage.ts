@@ -1,4 +1,5 @@
 import "server-only";
+import { requirementFlowFields } from "@/lib/milestones";
 
 import { getStore, type Requirement, type Role, type Stage } from "@/lib/db";
 import { evaluateStage } from "@/lib/workflow/engine";
@@ -63,6 +64,7 @@ export async function normalizeShippingStage(stage: Stage): Promise<boolean> {
     submittedByUserId: null,
     submittedAt: null,
     note: null,
+    ...requirementFlowFields(stage.key, SHIPPED_KEY),
   });
   // Outra passada pode ter criado ao mesmo tempo: fica um só.
   const created = await store.list("requirements", {

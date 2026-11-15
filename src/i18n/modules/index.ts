@@ -105,6 +105,7 @@ import * as flow from "./flow";
 import * as orderSummary from "./order-summary";
 import * as goLive from "./go-live";
 import * as milestones from "./milestones";
+import * as milestoneMigration from "./milestone-migration";
 import * as entityLinks from "./entity-links";
 import * as placeholders from "./placeholders";
 import * as ncmSheet from "./ncm-sheet";
@@ -232,6 +233,7 @@ export const modulesPt = {
   ...orderSummary.pt,
   ...goLive.pt,
   ...milestones.pt,
+  ...milestoneMigration.pt,
   ...entityLinks.pt,
   ...placeholders.pt,
   ...ncmSheet.pt,
@@ -380,6 +382,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...orderSummary.en,
   ...goLive.en,
   ...milestones.en,
+  ...milestoneMigration.en,
   ...entityLinks.en,
   ...placeholders.en,
   ...ncmSheet.en,
@@ -528,6 +531,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...orderSummary.zh,
   ...goLive.zh,
   ...milestones.zh,
+  ...milestoneMigration.zh,
   ...entityLinks.zh,
   ...placeholders.zh,
   ...ncmSheet.zh,

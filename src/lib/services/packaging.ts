@@ -1,4 +1,5 @@
 import "server-only";
+import { requirementFlowFields } from "@/lib/milestones";
 
 import { getStore, type Order, type Requirement, type Stage } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
@@ -119,6 +120,7 @@ export async function normalizePackagingStage(
       submittedByUserId: null,
       submittedAt: null,
       note: null,
+      ...requirementFlowFields(stage.key, "art_approval"),
     });
     // Outra passada pode ter criado ao mesmo tempo: fica uma só.
     const created = await store.list("requirements", {
