@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { Button, cx } from "./ui";
 
 /*
@@ -19,6 +19,8 @@ export function QuickDialog({
   description,
   className,
   disabled = false,
+  size = "sm",
+  openOnHash,
   children,
   ...rest
 }: {
@@ -37,11 +39,29 @@ export function QuickDialog({
   className?: string;
   /** Botão desligado: a caixa não abre (quem usa mostra o motivo ao lado). */
   disabled?: boolean;
+  /** "lg": caixa larga (ex.: tabela de parceiros do pedido). */
+  size?: "sm" | "lg";
+  /**
+   * Abre sozinha quando o endereço traz este `#âncora` (links antigos que
+   * levavam à seção, ex.: `#order-partners`).
+   */
+  openOnHash?: string;
   children: ReactNode;
 } & { [key: `data-${string}`]: string | undefined }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const descriptionId = useId();
   const titleId = useId();
+  useEffect(() => {
+    if (!openOnHash) return;
+    const sync = () => {
+      const d = dialog.current;
+      if (d && !d.open && window.location.hash === `#${openOnHash}`)
+        d.showModal();
+    };
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, [openOnHash]);
   return (
     <>
       <button
@@ -71,7 +91,12 @@ export function QuickDialog({
       ) : null}
       <dialog
         ref={dialog}
-        className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-xl border border-zinc-200 bg-white p-0 text-left shadow-2xl backdrop:bg-zinc-900/40"
+        className={cx(
+          "m-auto rounded-xl border border-zinc-200 bg-white p-0 text-left shadow-2xl backdrop:bg-zinc-900/40",
+          size === "lg"
+            ? "w-[min(48rem,calc(100vw-2rem))]"
+            : "w-[min(26rem,calc(100vw-2rem))]",
+        )}
         onClick={(e) => {
           if (e.target === dialog.current) dialog.current?.close();
         }}

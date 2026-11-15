@@ -599,10 +599,12 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   ).toBeVisible();
   await expect(page.getByText(/Faca \(die cut\)/).first()).toBeVisible();
   const orderUrl = page.url().split("?")[0];
-  // A Wellmix vê a seção inteira, com as outras raias.
+  // A Wellmix vê a linha do tempo inteira dos marcos, com as outras raias
+  // (fase 3, docs/MILESTONES.md).
+  const milestones = page.locator("[data-order-milestones]");
+  await expect(milestones).toContainText("MOQ confirmado (peças)");
+  await expect(milestones).toContainText("Certificado (Inmetro)");
   const prep = page.locator('[data-stage-tasks="PREPARATION"]');
-  await expect(prep).toContainText("MOQ confirmado (peças)");
-  await expect(prep).toContainText("Certificado (Inmetro)");
 
   // 7. Visão do fornecedor (dono, 13/11/2026): na Preparação, só a faca, a
   // foto em alta e o prazo de cada produto, com a ajuda falando delas; o

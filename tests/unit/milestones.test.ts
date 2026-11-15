@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   MILESTONES,
+  milestoneOfImportKey,
+  milestoneOfRequirement,
   milestoneOfStep,
   orderMilestones,
   type Subtask,
@@ -92,5 +94,38 @@ describe("marcos do pedido", () => {
     expect(Object.keys(zh).sort()).toEqual(Object.keys(pt).sort());
     for (const m of MILESTONES)
       expect(pt[`milestone.${m.key}` as keyof typeof pt]).toBeTruthy();
+  });
+});
+
+/* Fase 3 (tela do pedido): cada item e cada passo do embarque cai no marco
+   do passo do menu dele; o item sem passo nos marcos, pela etapa. */
+describe("marco de um item ou passo", () => {
+  it("itens do pedido pelo passo do menu", () => {
+    expect(milestoneOfRequirement("PREPARATION", "die_cut__item1")).toBe(
+      "art-material",
+    );
+    expect(milestoneOfRequirement("PREPARATION", "art__item1")).toBe("art");
+    expect(milestoneOfRequirement("PACKAGING", "order_signed_wellmix")).toBe(
+      "contract",
+    );
+    expect(milestoneOfRequirement("PACKAGING", "down_payment")).toBe(
+      "down-payment",
+    );
+    expect(milestoneOfRequirement("INSPECTION", "weight_measured")).toBe(
+      "inspection",
+    );
+    expect(milestoneOfRequirement("SHIPPING", "vessel")).toBe("shipment");
+    expect(milestoneOfRequirement("TRANSPORT", "delivered")).toBe("delivery");
+  });
+  it("item sem passo nos marcos: pela etapa", () => {
+    expect(milestoneOfRequirement("CLOSED", "whatever")).toBe("delivery");
+  });
+  it("passos do embarque, da certificação e das amostras", () => {
+    expect(milestoneOfImportKey("booking")).toBe("booking");
+    expect(milestoneOfImportKey("cert_memorial")).toBe("certification");
+    expect(milestoneOfImportKey("container_loaded")).toBe("loading");
+    expect(milestoneOfImportKey("channel")).toBe("customs");
+    expect(milestoneOfImportKey("danfe")).toBe("invoice-transport");
+    expect(milestoneOfImportKey("unknown_step")).toBeNull();
   });
 });
