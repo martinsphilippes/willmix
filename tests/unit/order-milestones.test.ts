@@ -67,7 +67,9 @@ describe("prazo por marco", () => {
     expect(days["contract"]).toBe(7);
     expect(days["down-payment"]).toBe(5);
     expect(days["delivery"]).toBe(3 + 0);
-    expect(days["certification"]).toBeNull();
+    // Sem etapa antiga: 24 h (dono, 15/11/2026).
+    expect(days["certification"]).toBe(1);
+    expect(days["booking"]).toBe(1);
     expect(milestoneDueDaysOf(DEFAULT_SETTINGS)).toEqual(days);
     const stored = milestoneDueDaysOf({
       ...DEFAULT_SETTINGS,

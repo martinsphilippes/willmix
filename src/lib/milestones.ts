@@ -634,8 +634,11 @@ export const MILESTONE_STAGES: Record<MilestoneKey, string[]> = (() => {
  * gravado: a soma das etapas que caem no marco (Pedido criado + Preparação →
  * Pedido novo; Entregue + Encerrado → Entrega e recebimento). Marco sem etapa
  * antiga (Certificação, artes, pré-produção, amostras, produção, booking,
- * carregamento): sem prazo (nulo), até o dono definir.
+ * carregamento): 1 dia (24 h), padrão definido pelo dono em 15/11/2026 para o
+ * marco sem prazo claro, até ele gravar outro valor.
  */
+export const DEFAULT_MILESTONE_DUE_DAYS = 1;
+
 export function milestoneDueDaysFromStages(
   stageDueDays: Record<string, number | null | undefined>,
 ): Record<MilestoneKey, number | null> {
@@ -645,7 +648,9 @@ export function milestoneDueDaysFromStages(
     const days = stages
       .map((s) => stageDueDays[s])
       .filter((d): d is number => typeof d === "number" && Number.isFinite(d));
-    out[key] = days.length ? days.reduce((a, b) => a + b, 0) : null;
+    out[key] = days.length
+      ? days.reduce((a, b) => a + b, 0)
+      : DEFAULT_MILESTONE_DUE_DAYS;
   }
   return out;
 }
