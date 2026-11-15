@@ -1,0 +1,12 @@
+/* Fontes dos vídeos (docs/videos/GUIA.md, seção 4): Montserrat nos títulos,
+   Inter nos textos de apoio e Noto Sans SC no chinês. Arquivos do pacote
+   @fontsource (scripts/video/package.json). */
+@import url("../node_modules/@fontsource/montserrat/latin-500.css");
+@import url("../node_modules/@fontsource/montserrat/latin-600.css");
+@import url("../node_modules/@fontsource/montserrat/latin-700.css");
+@import url("../node_modules/@fontsource/montserrat/latin-800.css");
+@import url("../node_modules/@fontsource/inter/latin-400.css");
+@import url("../node_modules/@fontsource/inter/latin-500.css");
+@import url("../node_modules/@fontsource/inter/latin-600.css");
+@import url("../node_modules/@fontsource/noto-sans-sc/chinese-simplified-500.css");
+@import url("../node_modules/@fontsource/noto-sans-sc/chinese-simplified-700.css");

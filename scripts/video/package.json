@@ -1,0 +1,15 @@
+{
+  "name": "wellmix-video",
+  "private": true,
+  "type": "module",
+  "description": "Vídeos institucionais do portal (docs/videos/institucional): dependências só da produção dos vídeos, fora do portal.",
+  "dependencies": {
+    "@fontsource/inter": "5.2.8",
+    "@fontsource/montserrat": "5.2.8",
+    "@fontsource/noto-sans-sc": "5.2.8",
+    "d3-geo": "3.1.1",
+    "lucide-static": "0.544.0",
+    "topojson-client": "3.1.0",
+    "world-atlas": "2.0.2"
+  }
+}
