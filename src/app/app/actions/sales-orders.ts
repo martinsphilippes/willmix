@@ -5,6 +5,7 @@ import { assertScreen } from "@/lib/auth/screens";
 import { parseNumberInput } from "@/lib/number-input";
 import {
   field,
+  files,
   flowReturnTo,
   requireUser,
   run,
@@ -164,5 +165,101 @@ export async function cancelSalesOrderAction(form: FormData) {
     const { cancelSalesOrder } = await import("@/lib/services/sales-orders");
     await cancelSalesOrder(user, id);
     return `${backOf(id)}?cancelled=1`;
+  });
+}
+
+const DAY = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .nullable();
+const dayOf = (form: FormData, key: string) =>
+  DAY.parse(str(form, key) || null);
+
+/** Arquivo do formulário (NF ou comprovante), interno da Wellmix. */
+async function uploadOf(form: FormData, key: string) {
+  const [file] = files(form, key);
+  if (!file) return null;
+  const { uploadDocument } = await import("@/lib/services/documents");
+  return (
+    await uploadDocument(await requireUser(), file, {
+      type: "attachment",
+      visibility: "internal",
+    })
+  ).id;
+}
+
+/** O financeiro registra a NF de venda emitida no Sankhya (número e arquivo). */
+export async function registerSalesInvoiceAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "id");
+  await run(backOf(id), async () => {
+    ID.parse(id);
+    const { canInvoice, registerSalesInvoice } =
+      await import("@/lib/services/sales-orders");
+    if (!canInvoice(user)) throw new Error("forbidden");
+    const number = z
+      .string()
+      .trim()
+      .min(1)
+      .max(40)
+      .parse(str(form, "invoiceNumber"));
+    const documentId = await uploadOf(form, "invoiceFile");
+    await registerSalesInvoice(user, id, { number, documentId });
+    return `${backOf(id)}?invoiced=1`;
+  });
+}
+
+/** Expedição: transportadora (ou o cliente retira), data e frete; baixa no estoque. */
+export async function shipSalesOrderAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "id");
+  await run(backOf(id), async () => {
+    assertScreen(user, "products");
+    ID.parse(id);
+    const pickup = str(form, "carrierId") === "pickup";
+    const carrierId =
+      !pickup && str(form, "carrierId")
+        ? ID.parse(str(form, "carrierId"))
+        : null;
+    const freightRaw = str(form, "freightValue");
+    const freightValue = freightRaw ? parseNumberInput(freightRaw) : null;
+    const { shipSalesOrder } = await import("@/lib/services/sales-orders");
+    await shipSalesOrder(user, id, {
+      carrierId,
+      customerPickup: pickup,
+      freightValue: freightValue ?? null,
+      shippedOn: dayOf(form, "shippedOn"),
+    });
+    return `${backOf(id)}?shipped=1`;
+  });
+}
+
+/** Entrega ao cliente: data, quem recebeu e o comprovante. */
+export async function deliverSalesOrderAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "id");
+  await run(backOf(id), async () => {
+    assertScreen(user, "products");
+    ID.parse(id);
+    const receivedBy = z
+      .string()
+      .trim()
+      .min(1)
+      .max(120)
+      .parse(str(form, "receivedBy"));
+    const deliveredOn = dayOf(form, "deliveredOn");
+    const { getStore } = await import("@/lib/db");
+    const order = await getStore().get("sales_orders", id);
+    if (!order || order.status !== "shipped")
+      throw new Error("sales_order_not_shipped");
+    const proofDocumentId = await uploadOf(form, "proofFile");
+    if (!proofDocumentId) throw new Error("proof_required");
+    const { deliverSalesOrder } = await import("@/lib/services/sales-orders");
+    await deliverSalesOrder(user, id, {
+      deliveredOn,
+      receivedBy,
+      proofDocumentId,
+    });
+    return `${backOf(id)}?delivered=1`;
   });
 }
