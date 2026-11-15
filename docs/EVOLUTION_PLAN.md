@@ -1454,3 +1454,11 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Usado em**: quantidade nova pela ficha de compra (total = preço × quantidade nova), histórico de compras do cliente, Histórico comercial e ficha de vendas do cliente (o preço do produto no lugar da média do pedido).
 - **Não mudou**: nenhuma tela, rota, campo ou dado saiu; Financeiro, comissões e containers seguem lendo o total do pedido. A rodada da programação (pedido filho) não ganha venda própria: aponta para o pai.
 - **Banco**: coluna nova `order_items.sellUnitPrice` (double, opcional), publicada no Supabase depois do merge (só aditiva).
+
+## Busca de cliente e fornecedor pelo código do Sankhya e pelo CNPJ
+
+- **Pedido do dono** (15/11/2026, na Nova solicitação): achar o cliente pelo código dele, além do nome; depois "sim, faça a busca pelo código e pelo CNPJ".
+- **Como ficou**: nos campos de cliente e fornecedor com busca (`PartyPicker`, `/api/parties/search`), quem é da Wellmix acha a empresa pelo nome (como antes), pelo código do parceiro no Sankhya (igual ao digitado) e pelo CNPJ/CPF (só os números ou com a pontuação; o documento inteiro ou a raiz de 8 dígitos do CNPJ, que traz as filiais). A lista mostra "Cód. 4455 · CNPJ 12.345.678/0001-90" ao lado do nome. Ordem: o código igual, depois o documento, depois o nome, sem repetir. Na Nova solicitação, o campo diz "Nome, código ou CNPJ".
+- **Quem é de fora** (telas liberadas na Gestão de telas): continua só pelo nome e não vê o documento (o CPF é dado pessoal).
+- **Não mudou**: o campo, o valor gravado (o id da empresa), as ações e o banco. O documento continua como foi gravado (só números na carga do Sankhya; como digitado no cadastro pelo portal): a busca acha os dois.
+- Peças: `src/lib/services/party-search.ts` (`searchParties` com `identifiers`, `formatTaxId`), `src/app/api/parties/search/route.ts` (o texto ao lado do nome), `partyPickerLabels(t, true)` e os textos em `src/i18n/modules/party-picker.ts` (pt/en/zh). Testes: `tests/unit/search-routes.test.ts` e o E2E das buscas.

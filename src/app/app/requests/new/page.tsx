@@ -524,7 +524,7 @@ export default async function NewRequestPage({
                       presetCustomerId === STOCK_OPTION
                     }
                     ariaLabel={t("common.customer")}
-                    labels={partyPickerLabels(t)}
+                    labels={partyPickerLabels(t, true)}
                   />
                 </div>
                 <Field

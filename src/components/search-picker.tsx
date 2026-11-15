@@ -239,7 +239,10 @@ export function SearchPicker({
                 role="option"
                 aria-selected={i === active}
                 className={cx(
-                  "flex cursor-pointer items-baseline justify-between gap-3 px-3 py-1.5",
+                  // O texto ao lado do nome (tipo da empresa, código e CNPJ)
+                  // desce para baixo do nome quando não cabe: o nome nunca
+                  // fica espremido letra por letra.
+                  "flex cursor-pointer flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-3 py-1.5",
                   i === active ? "bg-brand-50 text-brand-800" : "text-zinc-800",
                 )}
                 onMouseDown={(e) => e.preventDefault()}
@@ -247,9 +250,14 @@ export function SearchPicker({
                 onClick={() => choose(option)}
                 {...data("-option", option.id)}
               >
-                <span className="min-w-0 break-words">{option.name}</span>
+                <span className="min-w-0 flex-[1_1_10rem] break-words">
+                  {option.name}
+                </span>
                 {option.hint ? (
-                  <span className="shrink-0 text-xs text-zinc-500">
+                  <span
+                    className="max-w-full shrink-0 break-words text-xs text-zinc-500"
+                    {...data("-option-hint")}
+                  >
                     {option.hint}
                   </span>
                 ) : null}
