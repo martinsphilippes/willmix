@@ -2,14 +2,12 @@ import "server-only";
 import { executeQuery } from "@/lib/integrations/sankhya-client";
 
 /*
- * Família de produto = o grupo pai da linha no Sankhya (dono, 15/11/2026;
- * docs/ORDER_TERMS.md seção 3.2): a árvore de grupos (TGFGRU) tem níveis no
- * código (70106001 "CJ COPOS" fica dentro do grupo pai de 70106…), e o
- * portal só carregou o último nível (as linhas). O pai e o nome dele vêm do
- * Sankhya pela API (CODGRUPOPROD → CODGRUPAI e DESCRGRUPOPROD), guardados
- * por 30 minutos por instância, até a carga gravá-los no banco. Sem o
- * Sankhya (ou com erro), um mapa vazio: cada linha vale como a própria
- * família.
+ * Árvore de grupos de produto do Sankhya (TGFGRU) e a família de cada
+ * produto (docs/ORDER_TERMS.md seções 3.2 e 11). A família é o primeiro
+ * nível da árvore (GRAU = 1; técnico do Sankhya, 15/11/2026); o portal só
+ * carregou o último nível (as linhas). Tudo pelo DbExplorer, guardado por
+ * 30 minutos por instância, até a carga gravar no banco. Sem o Sankhya (ou
+ * com erro), mapas vazios: vale o nome da linha.
  */
 
 export interface SankhyaGroup {
@@ -77,5 +75,85 @@ export async function sankhyaProductGroups(): Promise<
     });
   const map = await pending;
   cached = { at: map.size ? Date.now() : Date.now() - TTL_MS + RETRY_MS, map };
+  return map;
+}
+
+/*
+ * Família de cada produto pelo Sankhya (técnico do Sankhya, 15/11/2026): a
+ * família é o PRIMEIRO nível da árvore de grupos (TGFGRU.GRAU = 1); a API
+ * de produtos só traz o último nível. Consulta pelo DbExplorer, subindo até
+ * 4 níveis a partir do grupo do produto, só os ativos, em páginas pelo
+ * CODPROD. Ex. (testado pelo técnico): 7429 → 160000000 "CERAMICA";
+ * 21952 → 90000000 "WELLCLEAN".
+ */
+
+export interface ProductFamily {
+  code: string;
+  name: string;
+}
+
+let familiesCached: { at: number; map: Map<string, ProductFamily> } | null =
+  null;
+let familiesPending: Promise<Map<string, ProductFamily>> | null = null;
+
+/** Para testes: esquece o mapa produto → família. */
+export function resetSankhyaFamiliesByProduct() {
+  familiesCached = null;
+  familiesPending = null;
+}
+
+export const productFamiliesSql = (after: number) =>
+  [
+    `SELECT TOP ${PAGE} P.CODPROD, F.CODGRUPOPROD AS COD_FAMILIA, RTRIM(F.DESCRGRUPOPROD) AS FAMILIA`,
+    "FROM TGFPRO P",
+    "JOIN TGFGRU G1 ON G1.CODGRUPOPROD = P.CODGRUPOPROD",
+    "LEFT JOIN TGFGRU G2 ON G2.CODGRUPOPROD = G1.CODGRUPAI",
+    "LEFT JOIN TGFGRU G3 ON G3.CODGRUPOPROD = G2.CODGRUPAI",
+    "LEFT JOIN TGFGRU G4 ON G4.CODGRUPOPROD = G3.CODGRUPAI",
+    "JOIN TGFGRU F ON F.CODGRUPOPROD = CASE WHEN G1.GRAU = 1 THEN G1.CODGRUPOPROD WHEN G2.GRAU = 1 THEN G2.CODGRUPOPROD WHEN G3.GRAU = 1 THEN G3.CODGRUPOPROD ELSE G4.CODGRUPOPROD END",
+    // Só os ativos (dono, 15/11/2026).
+    `WHERE P.ATIVO = 'S' AND P.CODPROD > ${Math.max(0, Math.floor(after))}`,
+    "ORDER BY P.CODPROD",
+  ].join(" ");
+
+async function loadFamilies(): Promise<Map<string, ProductFamily>> {
+  const map = new Map<string, ProductFamily>();
+  let after = 0;
+  // ~14 mil produtos: até 15 páginas de 2 mil.
+  for (let page = 0; page < 15; page++) {
+    const { rows } = await executeQuery(productFamiliesSql(after));
+    for (const row of rows) {
+      const prod = code(row.CODPROD);
+      const family = code(row.COD_FAMILIA);
+      const name = String(row.FAMILIA ?? "").trim();
+      if (prod && family) map.set(prod, { code: family, name: name || family });
+      if (prod && Number(prod) > after) after = Number(prod);
+    }
+    if (rows.length < PAGE) break;
+  }
+  return map;
+}
+
+/** CODPROD → família (1º nível) do Sankhya (vazio sem o Sankhya). */
+export async function sankhyaFamiliesByProduct(): Promise<
+  Map<string, ProductFamily>
+> {
+  if (familiesCached && Date.now() - familiesCached.at < TTL_MS)
+    return familiesCached.map;
+  familiesPending ??= loadFamilies()
+    .catch((error) => {
+      const kind = (error as { code?: string }).code;
+      if (kind !== "sankhya_not_configured")
+        console.error("[origin] família dos produtos no Sankhya", error);
+      return new Map<string, ProductFamily>();
+    })
+    .finally(() => {
+      familiesPending = null;
+    });
+  const map = await familiesPending;
+  familiesCached = {
+    at: map.size ? Date.now() : Date.now() - TTL_MS + RETRY_MS,
+    map,
+  };
   return map;
 }

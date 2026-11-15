@@ -162,9 +162,36 @@ Esta seção vale por cima das anteriores onde elas divergem.
 
 - Com a linha do container aberta, **clicar no nome do produto leva a página até a linha dele no pedido**, com um destaque rápido.
 
-## 11. Em aberto (para o dono)
+## 11. Quinta rodada (dono e técnico do Sankhya, 15/11/2026)
+
+### 11.1 Família = 1º nível da árvore
+
+- A API de produtos do Sankhya só traz o último nível do grupo (`codigoGrupoProduto`). A **família é o primeiro nível da árvore** (`TGFGRU.GRAU = 1`). Substitui os critérios das seções 9 e 10 (pai e avô).
+- Consulta passada pelo técnico, pelo DbExplorer (`DbExplorerSP.executeQuery`, o mesmo caminho da API de custo), **só produtos ativos**, em páginas de 2 mil pelo `CODPROD`:
+
+```sql
+SELECT P.CODPROD, F.CODGRUPOPROD AS COD_FAMILIA, RTRIM(F.DESCRGRUPOPROD) AS FAMILIA
+FROM TGFPRO P
+JOIN TGFGRU G1 ON G1.CODGRUPOPROD = P.CODGRUPOPROD
+LEFT JOIN TGFGRU G2 ON G2.CODGRUPOPROD = G1.CODGRUPAI
+LEFT JOIN TGFGRU G3 ON G3.CODGRUPOPROD = G2.CODGRUPAI
+LEFT JOIN TGFGRU G4 ON G4.CODGRUPOPROD = G3.CODGRUPAI
+JOIN TGFGRU F ON F.CODGRUPOPROD = CASE WHEN G1.GRAU = 1 THEN G1.CODGRUPOPROD
+  WHEN G2.GRAU = 1 THEN G2.CODGRUPOPROD WHEN G3.GRAU = 1 THEN G3.CODGRUPOPROD
+  ELSE G4.CODGRUPOPROD END
+WHERE P.ATIVO = 'S' AND P.CODPROD > <último> ORDER BY P.CODPROD
+```
+
+- Exemplo testado pelo técnico: 7429 → 160000000 "CERAMICA"; 21952 → 90000000 "WELLCLEAN".
+- Cada produto do portal pega a família pelo seu código do Sankhya (`products.sankhyaCode` = `CODPROD`), guardada 30 minutos (`sankhyaFamiliesByProduct`, em `src/lib/services/sankhya-product-families.ts`). Sem ela (produto sem código, Sankhya fora): a raiz da árvore de grupos da linha; sem a árvore, o nome da linha. Famílias de mesmo nome continuam uma só (`fm:<NOME>`).
+
+### 11.2 Lateral: composição fixa, histórico rola dentro do bloco
+
+- Nas telas grandes, a **Composição de containers fica fixa** no alto da lateral (até 60% da altura, com rolagem própria se passar), e o **Histórico de compras do cliente rola dentro do espaço que sobra** (`data-request-history-scroll`). Ver os produtos ou pedidos mais abaixo no histórico não tira a composição da tela.
+
+## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.
-- **Carga no banco (outro dia):** o fornecedor de cada produto (`TGFPRO.CODPARCFORN`) e a árvore de grupos (`TGFGRU.CODGRUPAI`), para não depender da leitura pela API.
+- **Carga no banco (outro dia):** o fornecedor de cada produto (`TGFPRO.CODPARCFORN`) e a família de cada produto (a consulta da seção 11.1), para não depender da leitura pela API.
 - **Envio ao Sankhya:** tipo de operação, formato, transportadora e re-despacho ainda não vão para a nota do Sankhya.
 - **Venda (tipo de operação):** fica desabilitada até o dono liberar; com ela, BRASIL volta a valer.

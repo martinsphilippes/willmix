@@ -36,8 +36,9 @@ vi.mock("@/lib/integrations/sankhya-client", async (importOriginal) => ({
         columns: ["CODGRUPOPROD", "DESCRGRUPOPROD", "CODGRUPAI"],
         rows: /CODGRUPOPROD > 0\b/.test(sql)
           ? [
-              g(12, "BRINQ", 0),
-              g(14, "OUTROS", 0),
+              // Duas raízes (1º nível) com o mesmo nome em caixas diferentes.
+              g(12, "BRINQUEDOS GERAIS", 0),
+              g(14, "Brinquedos Gerais", 0),
               g(1200, "BRINQUEDOS GERAIS", 12),
               g(1400, "Brinquedos Gerais", 14),
               g(12007, "BONECAS", 1200),
@@ -49,6 +50,17 @@ vi.mock("@/lib/integrations/sankhya-client", async (importOriginal) => ({
       };
     }
     // Fornecedor de cada produto (TGFPRO.CODPARCFORN), pela API.
+    // Família de cada produto (1º nível da árvore; técnico do Sankhya).
+    if (/COD_FAMILIA/.test(sql))
+      return {
+        columns: ["CODPROD", "COD_FAMILIA", "FAMILIA"],
+        rows: /CODPROD > 0\b/.test(sql)
+          ? [
+              { CODPROD: 7429, COD_FAMILIA: 160000000, FAMILIA: "CERAMICA " },
+              { CODPROD: 21952, COD_FAMILIA: 90000000, FAMILIA: "WELLCLEAN" },
+            ]
+          : [],
+      };
     if (/FROM TGFPRO/.test(sql))
       return {
         columns: ["CODPROD", "CODPARCFORN"],
@@ -176,7 +188,7 @@ describe("contatos do cliente", () => {
 });
 
 describe("país de origem, grupo e entrega", () => {
-  it("país pelo fornecedor; grupo = família (o grupo pai no Sankhya); a busca só oferece os deles", async () => {
+  it("país pelo fornecedor; grupo = família (1º nível do Sankhya); a busca só oferece os deles", async () => {
     const { getStore } = await import("@/lib/db");
     const families = await import("@/lib/services/sankhya-product-families");
     // Sem código do Sankhya nas linhas: cada linha é a própria família.
@@ -185,7 +197,7 @@ describe("país de origem, grupo e entrega", () => {
     expect((await origin.originGroups("CHINA")).map((g) => g.id)).toContain(
       "fm:BRINQUEDOS",
     );
-    // Com o código: Brinquedos e Infláveis sob a família "BRINQUEDOS GERAIS".
+    // Com o código da linha: a raiz da árvore ("BRINQUEDOS GERAIS" nas duas).
     await getStore().update("product_lines", "linha-brinquedos", {
       sankhyaCode: "12007001",
     });
@@ -225,14 +237,25 @@ describe("país de origem, grupo e entrega", () => {
     expect(origin.familyKey("Utilidades Domésticas")).toBe(
       "fm:UTILIDADES_DOMESTICAS",
     );
-    // Histórico de compras: o código do Sankhya leva ao produto e à família.
-    await getStore().update("products", "prod-boneca", { sankhyaCode: "777" });
-    origin.resetOriginIndex();
-    const byCode = await origin.originsByCode([777, 999, null]);
-    expect(byCode.get(777)).toMatchObject({
-      productId: "prod-boneca",
-      family: "fm:BRINQUEDOS_GERAIS",
+    // Família do próprio produto pelo Sankhya (o 1º nível pela consulta do
+    // técnico) vale por cima da linha; o histórico liga o código ao produto.
+    await getStore().update("products", "prod-boneca", {
+      sankhyaCode: "7429",
     });
+    origin.resetOriginIndex();
+    families.resetSankhyaFamiliesByProduct();
+    const byCode = await origin.originsByCode([7429, 999, null]);
+    expect(byCode.get(7429)).toMatchObject({
+      productId: "prod-boneca",
+      family: "fm:CERAMICA",
+    });
+    expect(
+      (await origin.originGroups("CHINA")).find((g) => g.id === "fm:CERAMICA"),
+    ).toMatchObject({ name: "CERAMICA" });
+    expect(await search("boneca", "fm:CERAMICA")).toContain("prod-boneca");
+    // De volta: a boneca sem código do Sankhya (os testes seguintes).
+    await getStore().update("products", "prod-boneca", { sankhyaCode: null });
+    origin.resetOriginIndex();
     expect(byCode.has(999)).toBe(false);
     expect(await origin.productOrigin("prod-piscina")).toMatchObject({
       family: "fm:BRINQUEDOS_GERAIS",
