@@ -7,6 +7,11 @@ import type {
   HistoryPurchaseView,
 } from "@/lib/services/purchase-history";
 import { useRequestCustomer } from "./request-customer-context";
+import {
+  HistoryProductName,
+  useHistoryFamilyFilter,
+  type HistoryPickLabels,
+} from "./history-product-pick";
 import { Button, Card, cx } from "./ui";
 
 /** Textos do card (no idioma de quem vê). */
@@ -27,6 +32,8 @@ export interface PurchaseHistoryLabels {
   details: string;
   /** "Abrir o pedido #{n} (nova aba)". */
   open: string;
+  /** Histórico → pedido (docs/ORDER_TERMS.md seção 10). */
+  pick?: HistoryPickLabels;
 }
 
 /** Resultado de uma busca, guardado com o cliente e a tentativa dela. */
@@ -256,6 +263,9 @@ function PurchaseRow({
   onToggle: () => void;
   labels: PurchaseHistoryLabels;
 }) {
+  // Com a família escolhida no pedido, só os produtos dela.
+  const { keep } = useHistoryFamilyFilter();
+  const visibleItems = p.items.filter((i) => keep(i.family));
   const detailsId = `purchase-history-${p.id}`;
   return (
     <li data-purchase-history-order={p.number}>
@@ -310,8 +320,16 @@ function PurchaseRow({
           className="space-y-2 pb-3 pl-5"
           data-purchase-history-details
         >
+          {p.items.length > visibleItems.length && labels.pick ? (
+            <p className="text-xs text-zinc-500" data-history-family-filtered>
+              {labels.pick.filtered.replace(
+                "{n}",
+                String(p.items.length - visibleItems.length),
+              )}
+            </p>
+          ) : null}
           {p.items.length ? (
-            p.items.map((item, i) => (
+            visibleItems.map((item, i) => (
               <ItemBlock key={i} item={item} labels={labels} />
             ))
           ) : (
@@ -383,7 +401,11 @@ function ItemBlock({
       className="rounded-lg border border-zinc-100 bg-zinc-50/70 px-2.5 py-2"
       data-purchase-history-item
     >
-      <p className="text-sm font-medium text-zinc-900">{item.name}</p>
+      <HistoryProductName
+        name={item.name}
+        productId={item.productId}
+        labels={labels.pick}
+      />
       <div className="mt-1 space-y-0.5 text-xs leading-relaxed">
         {item.lines.map((l) => (
           <Fragment key={l.key}>

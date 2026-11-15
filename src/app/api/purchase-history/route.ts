@@ -7,6 +7,7 @@ import { getT } from "@/i18n/server";
 import {
   loadPurchaseHistory,
   purchaseHistoryView,
+  withHistoryFamilies,
 } from "@/lib/services/purchase-history";
 
 export const dynamic = "force-dynamic";
@@ -65,7 +66,9 @@ export async function GET(request: Request) {
     undefined,
     parsed.data.shown ?? 0,
   );
-  return NextResponse.json(purchaseHistoryView(page, await getT()), {
+  const view = purchaseHistoryView(page, await getT());
+  // A família de cada item: a Nova solicitação filtra por ela.
+  return NextResponse.json(wellmix ? await withHistoryFamilies(view) : view, {
     headers: { "Cache-Control": "private, no-store" },
   });
 }

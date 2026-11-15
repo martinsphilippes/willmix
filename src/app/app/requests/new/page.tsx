@@ -58,6 +58,17 @@ import { getLookup, STRONG_REASONS } from "@/lib/services/product-lookup";
 import { hiddenBookingProductIds } from "@/lib/services/booking-visibility";
 import type { LookupField } from "@/lib/db";
 import { createRequestAction } from "../../actions";
+import {
+  deleteRequestDraftAction,
+  saveRequestDraftAction,
+} from "../../actions/request-drafts";
+import { parseRequestItems } from "../../actions/request-items";
+import {
+  draftForm,
+  getRequestDraft,
+  listRequestDrafts,
+} from "@/lib/services/request-drafts";
+import type { InitialRequestRow } from "@/components/request-items";
 import { canAddProducts } from "@/lib/services/requests";
 import { launchDateOf, minFirstDate } from "@/lib/workflow/request-schedule";
 import { lookupProductAction } from "../../actions/lookup";
@@ -85,6 +96,9 @@ export default async function NewRequestPage({
     customerId,
     lookup,
     addTo,
+    draft: draftParam,
+    draftSaved,
+    draftDeleted,
   } = await searchParams;
   const t = await getT();
   const store = getStore();
@@ -116,8 +130,41 @@ export default async function NewRequestPage({
   const presetVariantId = typeof variantId === "string" ? variantId : "";
   const presetQuantity =
     schedule?.quantity ?? (typeof quantity === "string" ? quantity : "");
+  // Rascunho do vendedor (docs/ORDER_TERMS.md seção 9): o formulário volta
+  // como foi salvo. Só de quem criou; nada é conferido até o envio.
+  const draft =
+    typeof draftParam === "string" && isWellmix(user) && !addTo
+      ? await getRequestDraft(user, draftParam)
+      : null;
+  const draftFields = draft ? draftForm(draft) : null;
+  const draftValue = (key: string) => {
+    const v = draftFields?.get(key);
+    return typeof v === "string" ? v : "";
+  };
+  const draftRows: InitialRequestRow[] = (() => {
+    if (!draftFields) return [];
+    try {
+      return parseRequestItems(draftFields).map((r) => ({
+        productId: r.productId ?? "",
+        variantId: r.variantId ?? "",
+        notInCatalog: r.sourcingDemand && !r.productId,
+        quantity: r.quantity === null ? "" : String(r.quantity),
+        texts: {
+          productName: r.productName,
+          description: r.description,
+          specification: r.specification ?? "",
+        },
+        schedule: r.schedule,
+      }));
+    } catch {
+      return [];
+    }
+  })();
   const presetCustomerId =
-    schedule?.customerId ?? (typeof customerId === "string" ? customerId : "");
+    schedule?.customerId ??
+    (typeof customerId === "string" ? customerId : "") ??
+    "";
+  const initialCustomerId = presetCustomerId || draftValue("customerId");
   // Produto e cliente são escolhidos por busca (auditoria de performance,
   // 14/11/2026): o catálogo inteiro (~15 mil produtos, com a ficha de cada
   // um) e os ~26 mil clientes deixavam a página com 15 MB. Aqui só o que já
@@ -136,10 +183,10 @@ export default async function NewRequestPage({
         })
       : Promise.resolve([]),
     isWellmix(user) &&
-    presetCustomerId &&
-    presetCustomerId !== STOCK_OPTION &&
-    !isStockCustomer(presetCustomerId)
-      ? store.get("parties", presetCustomerId)
+    initialCustomerId &&
+    initialCustomerId !== STOCK_OPTION &&
+    !isStockCustomer(initialCustomerId)
+      ? store.get("parties", initialCustomerId)
       : Promise.resolve(null),
   ]);
   // Produto do catálogo: ativo e fora do Booking (a regra da lista antiga).
@@ -184,6 +231,8 @@ export default async function NewRequestPage({
     accessPick: t("requestPeople.accessPick"),
     accessNoLogins: t("requestPeople.accessNoLogins"),
     accessStock: t("requestPeople.accessStock"),
+    accessRequired: t("requestPeople.accessRequired"),
+    accessChoose: t("requestPeople.accessChoose"),
   };
   // Cliente pré-escolhido (programação de compra, endereço): só cliente ativo.
   const initialCustomer =
@@ -202,6 +251,7 @@ export default async function NewRequestPage({
     await listByIds(store, "products", [
       ...(found?.matches ?? []).map((m) => m.productId),
       presetProductId,
+      ...draftRows.map((r) => r.productId).filter(Boolean),
     ])
   ).filter(inCatalog);
   const productById = new Map(listedProducts.map((p) => [p.id, p]));
@@ -263,9 +313,18 @@ export default async function NewRequestPage({
   /* Ficha do produto que já chega escolhido (vitrine, busca por foto,
      programação de compra): preenche a primeira linha sem esperar a busca. */
   const presetProduct = productById.get(presetProductId);
-  const productFills = presetProduct
-    ? await requestProductFills(user, t, [presetProduct])
+  const fillProducts = [
+    ...(presetProduct ? [presetProduct] : []),
+    ...draftRows
+      .map((r) => productById.get(r.productId))
+      .filter((p): p is NonNullable<typeof p> => !!p && p !== presetProduct),
+  ];
+  const productFills = fillProducts.length
+    ? await requestProductFills(user, t, fillProducts)
     : [];
+  // Os rascunhos do vendedor (a lista no alto da tela).
+  const drafts =
+    isWellmix(user) && !addToRequest ? await listRequestDrafts(user) : [];
 
   const renderMatches = (items: typeof matched) => (
     <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200">
@@ -306,6 +365,10 @@ export default async function NewRequestPage({
       })}
     </ul>
   );
+  // Venda ao cliente pela Wellmix (nova solicitação): bloco do cliente e
+  // condições do pedido (docs/ORDER_TERMS.md). Fora da compra para estoque
+  // (a tela esconde quando a caixa de estoque é marcada).
+  const sellsToCustomer = isWellmix(user) && !addToRequest;
   // Textos do histórico gravado no portal (o card de sempre).
   const historyLabels = {
     title: t("purchaseHistory.title"),
@@ -322,11 +385,18 @@ export default async function NewRequestPage({
     noItems: t("purchaseHistory.noItems"),
     details: t("purchaseHistory.details", { n: "{n}" }),
     open: t("purchaseHistory.open", { n: "{n}" }),
+    // Histórico → pedido (docs/ORDER_TERMS.md seção 10): só na venda pela
+    // Wellmix (o login do cliente vê o histórico sem acrescentar).
+    ...(sellsToCustomer
+      ? {
+          pick: {
+            add: t("historyPick.add"),
+            inOrder: t("historyPick.inOrder"),
+            filtered: t("historyPick.filtered", { n: "{n}" }),
+          },
+        }
+      : {}),
   };
-  // Venda ao cliente pela Wellmix (nova solicitação): bloco do cliente e
-  // condições do pedido (docs/ORDER_TERMS.md). Fora da compra para estoque
-  // (a tela esconde quando a caixa de estoque é marcada).
-  const sellsToCustomer = isWellmix(user) && !addToRequest;
   const referenceNote = found?.url
     ? `${t("lookup.referenceNote")} ${found.url}`
     : "";
@@ -348,6 +418,69 @@ export default async function NewRequestPage({
         }
       />
       {error ? <Alert tone="danger">{errorText}</Alert> : null}
+      {draftSaved === "1" && draft ? (
+        <Alert tone="success">{t("requestDraft.saved")}</Alert>
+      ) : null}
+      {draftDeleted === "1" ? (
+        <Alert tone="info">{t("requestDraft.deleted")}</Alert>
+      ) : null}
+      {/* Rascunhos do vendedor (dono, 15/11/2026; docs/ORDER_TERMS.md
+          seção 9): reabrir para completar ou apagar. */}
+      {drafts.length ? (
+        <div className="mt-3" data-request-drafts>
+          <Card title={t("requestDraft.title")}>
+            <ul className="divide-y divide-zinc-100 text-sm">
+              {drafts.map((d) => (
+                <li
+                  key={d.id}
+                  className={cx(
+                    "flex flex-wrap items-center justify-between gap-2 py-2",
+                    draft?.id === d.id && "font-semibold",
+                  )}
+                  data-request-draft={d.id}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-zinc-900">
+                      {d.title}
+                    </span>
+                    <span className="block text-xs text-zinc-500">
+                      {[
+                        d.customerName ?? t("requestDraft.noCustomer"),
+                        t("requestDraft.updated", {
+                          date: formatDate(d.updatedAt, t),
+                        }),
+                      ].join(" · ")}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    {draft?.id === d.id ? (
+                      <Badge tone="info">{t("requestDraft.open")}</Badge>
+                    ) : (
+                      <LinkButton
+                        href={`/app/requests/new?draft=${encodeURIComponent(d.id)}`}
+                        variant="secondary"
+                        data-request-draft-open
+                      >
+                        {t("requestDraft.resume")}
+                      </LinkButton>
+                    )}
+                    <form action={deleteRequestDraftAction}>
+                      <input type="hidden" name="draftId" value={d.id} />
+                      <button
+                        type="submit"
+                        className="rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                        data-request-draft-delete
+                      >
+                        {t("requestDraft.delete")}
+                      </button>
+                    </form>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </div>
+      ) : null}
       {addToRequest ? (
         <div className="mt-3" data-add-to-request>
           <Alert tone="info">
@@ -371,7 +504,8 @@ export default async function NewRequestPage({
         className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:grid-rows-[auto_1fr]"
         initial={initialCustomer}
         initialStock={
-          isStockCustomer(presetCustomerId) || presetCustomerId === STOCK_OPTION
+          isStockCustomer(initialCustomerId) ||
+          initialCustomerId === STOCK_OPTION
         }
         originTerms={sellsToCustomer}
       >
@@ -380,7 +514,14 @@ export default async function NewRequestPage({
             cliente (às cegas na primeira vez; depois, com "Editar"). */}
         {sellsToCustomer ? (
           <RequestCustomerContacts
+            key={draft?.id ?? "new"}
             formId={FORM_ID}
+            initialValues={Object.fromEntries(
+              [...(draftFields?.entries() ?? [])].filter(
+                (e): e is [string, string] =>
+                  e[0].startsWith("contact.") && typeof e[1] === "string",
+              ),
+            )}
             labels={customerContactsLabels(t)}
             className="max-w-2xl lg:col-start-2 lg:row-start-1 lg:max-w-none"
           />
@@ -579,12 +720,15 @@ export default async function NewRequestPage({
             é recriado, senão o navegador mantém o valor anterior dos campos. */}
           <form
             id={FORM_ID}
-            key={`${found?.id ?? "none"}-${presetProductId}-${presetVariantId}-${presetCustomerId}`}
+            key={`${found?.id ?? "none"}-${presetProductId}-${presetVariantId}-${initialCustomerId}-${draft?.id ?? ""}-${draft?.updatedAt ?? ""}`}
             action={createRequestAction}
             className="space-y-3"
           >
             {found ? (
               <input type="hidden" name="lookupId" value={found.id} />
+            ) : null}
+            {draft ? (
+              <input type="hidden" name="draftId" value={draft.id} />
             ) : null}
             {addToRequest ? (
               <input type="hidden" name="addTo" value={addToRequest.id} />
@@ -612,8 +756,8 @@ export default async function NewRequestPage({
                     stockLabel={t("purchaseFlow.stock.option")}
                     initial={initialCustomer}
                     initialStock={
-                      isStockCustomer(presetCustomerId) ||
-                      presetCustomerId === STOCK_OPTION
+                      isStockCustomer(initialCustomerId) ||
+                      initialCustomerId === STOCK_OPTION
                     }
                     ariaLabel={t("common.customer")}
                     labels={partyPickerLabels(t, true)}
@@ -623,6 +767,8 @@ export default async function NewRequestPage({
                   requesterName={user.name}
                   loginsByCustomer={loginsByCustomer}
                   labels={requestPeopleLabels}
+                  loginRequired={sellsToCustomer}
+                  initialLogin={draftValue("requestedForUserId")}
                 />
               </div>
             ) : null}
@@ -631,7 +777,18 @@ export default async function NewRequestPage({
                 grupo (antes dos produtos: a busca só oferece os deles) e o
                 aviso de que não há devoluções. */}
             {sellsToCustomer ? (
-              <RequestOrderTerms labels={orderTermsLabels(t)} />
+              <RequestOrderTerms
+                labels={orderTermsLabels(t)}
+                initial={{
+                  operationType: draftValue("operationType"),
+                  saleFormat: draftValue("saleFormat"),
+                  wellmixTier: draftValue("wellmixTier"),
+                  carrier: draftValue("carrier"),
+                  redispatch: draftValue("redispatch"),
+                  originCountry: draftValue("originCountry"),
+                  productFamily: draftValue("productFamily"),
+                }}
+              />
             ) : null}
             {/* O próprio cliente (dono, 15/11/2026): ele é o solicitante e o
                 login com acesso (o servidor grava pela sessão). */}
@@ -672,7 +829,12 @@ export default async function NewRequestPage({
                 capacityCbm: c.capacityCbm,
               }))}
               launchDate={launchDate}
-              initialPlan={addToRequest?.schedule ?? null}
+              initialPlan={
+                addToRequest?.schedule ??
+                draftRows.find((r) => r.schedule)?.schedule ??
+                null
+              }
+              initialRows={draftRows}
               products={productFills}
               presetProductId={presetProductId}
               presetVariantId={presetVariantId}
@@ -846,7 +1008,7 @@ export default async function NewRequestPage({
                       <Input
                         name="deadline"
                         type="date"
-                        defaultValue={slaDate}
+                        defaultValue={draftValue("deadline") || slaDate}
                       />
                     </Field>
                   ) : (
@@ -869,16 +1031,31 @@ export default async function NewRequestPage({
                 <Field label={t("common.note")}>
                   <Textarea
                     name="notes"
-                    defaultValue={referenceNote}
+                    defaultValue={draftValue("notes") || referenceNote}
                     rows={2}
                   />
                 </Field>
               </div>
             )}
             <div className="border-t border-zinc-100 pt-3">
-              <SubmitButton pendingText="...">
-                {addToRequest ? t("reqAdd.submit") : t("common.send")}
-              </SubmitButton>
+              <div className="flex flex-wrap items-center gap-2">
+                <SubmitButton pendingText="...">
+                  {addToRequest ? t("reqAdd.submit") : t("common.send")}
+                </SubmitButton>
+                {/* Rascunho (dono, 15/11/2026): grava como está, sem
+                    conferir; o vendedor completa depois. */}
+                {sellsToCustomer ? (
+                  <button
+                    type="submit"
+                    formAction={saveRequestDraftAction}
+                    formNoValidate
+                    className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+                    data-request-draft-save
+                  >
+                    {t("requestDraft.save")}
+                  </button>
+                ) : null}
+              </div>
             </div>
           </form>
         </Card>

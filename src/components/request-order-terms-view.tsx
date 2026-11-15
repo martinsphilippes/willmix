@@ -1,11 +1,16 @@
 import type { Translate } from "@/i18n";
-import type { CarrierChoice, OrderTerms } from "@/lib/order-terms";
+import {
+  formatCnpj,
+  type CarrierChoice,
+  type OrderTerms,
+} from "@/lib/order-terms";
 
 /**
  * Condições do pedido gravadas na solicitação (docs/ORDER_TERMS.md), só
- * leitura: tipo de operação, formato, entrega, país e grupo e o aviso de
- * que não há devoluções. Solicitação sem condições (antiga, estoque,
- * aberta pelo cliente): nada aparece.
+ * leitura: tipo de operação, formato, entrega (transportador e re-despacho,
+ * com a transportadora informada pelo cliente), país e família e a
+ * confirmação do cliente (aviso "sem devoluções"). Solicitação sem
+ * condições (antiga, estoque, aberta pelo cliente): nada aparece.
  */
 export function RequestOrderTermsView({
   terms,
@@ -15,10 +20,19 @@ export function RequestOrderTermsView({
   t: Translate;
 }) {
   if (!terms) return null;
-  const carrier = (c: CarrierChoice | null) =>
+  const carrier = (c: CarrierChoice | null | undefined) =>
     c
       ? `${c.name}${c.source === "sankhya" ? ` (Sankhya ${c.code})` : ""}`
       : "—";
+  const confirmation = terms.confirmation ?? null;
+  const redispatch =
+    terms.redispatchRequired === undefined
+      ? carrier(terms.redispatch) // antes de 15/11/2026 (2ª rodada)
+      : terms.redispatchRequired
+        ? confirmation?.redispatchCarrier
+          ? `${t("orderTerms.redispatchYes")} · ${confirmation.redispatchCarrier.name} (${formatCnpj(confirmation.redispatchCarrier.cnpj)})`
+          : `${t("orderTerms.redispatchYes")} · ${t("orderTerms.view.redispatchPending")}`
+        : t("orderTerms.redispatchNo");
   const rows: Array<[string, string]> = [
     [
       t("orderTerms.operationType"),
@@ -31,14 +45,15 @@ export function RequestOrderTermsView({
         : t(`orderTerms.format.${terms.saleFormat}`),
     ],
     [t("orderTerms.carrier"), carrier(terms.carrier)],
-    [t("orderTerms.redispatch"), carrier(terms.redispatch)],
+    [t("orderTerms.redispatch"), redispatch],
     [
       t("orderTerms.country"),
-      terms.originCountry
-        ? terms.originCountryName || terms.originCountry
-        : t("orderTerms.countryUnknown"),
+      terms.originCountryName || terms.originCountry || "—",
     ],
-    [t("orderTerms.group"), terms.productLineName || "—"],
+    [
+      t("orderTerms.group"),
+      terms.productFamilyName || terms.productLineName || "—",
+    ],
   ];
   return (
     <div
@@ -56,14 +71,23 @@ export function RequestOrderTermsView({
           </div>
         ))}
       </dl>
-      {terms.noReturnsNotice ? (
-        <p className="mt-2 text-xs text-red-800">
-          <span className="font-semibold">
-            {t("orderTerms.disclaimerTitle")}:
-          </span>{" "}
-          {t("orderTerms.disclaimer")}
-        </p>
-      ) : null}
+      <p
+        className={
+          confirmation
+            ? "mt-2 text-xs text-emerald-800"
+            : "mt-2 text-xs font-medium text-amber-800"
+        }
+        data-request-confirmation={confirmation ? "confirmed" : "pending"}
+      >
+        {confirmation
+          ? t("orderTerms.view.confirmed", {
+              name: confirmation.userName,
+              date: new Date(confirmation.at).toLocaleString(t.intl),
+            })
+          : terms.noReturnsAccepted
+            ? t("orderTerms.view.sellerAccepted")
+            : t("orderTerms.view.awaiting")}
+      </p>
     </div>
   );
 }

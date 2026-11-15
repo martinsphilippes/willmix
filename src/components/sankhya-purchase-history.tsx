@@ -14,12 +14,19 @@ import {
   type ProductSort,
 } from "@/lib/sankhya-product-sort";
 import { useRequestCustomer } from "./request-customer-context";
+import {
+  HistoryProductName,
+  useHistoryFamilyFilter,
+  type HistoryPickLabels,
+} from "./history-product-pick";
 import { Button, Card, cx } from "./ui";
 
 /** Textos do card (no idioma de quem vê). */
 export interface SankhyaHistoryLabels {
   /** Tag Intl do idioma (datas e valores). */
   intl: string;
+  /** Histórico → pedido (docs/ORDER_TERMS.md seção 10). */
+  pick?: HistoryPickLabels;
   title: string;
   source: string;
   select: string;
@@ -481,8 +488,12 @@ function OrderRow({
   order: SankhyaHistoryOrder;
   labels: SankhyaHistoryLabels;
 }) {
+  // Com a família escolhida no pedido, só os produtos dela.
+  const { keep } = useHistoryFamilyFilter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Items | null>(null);
+  const visibleItems =
+    items?.state === "ok" ? items.items.filter((i) => keep(i.family)) : [];
   const [failed, setFailed] = useState(false);
   const format = formatter(labels.intl);
   const detailsId = `sankhya-history-${o.nunota}`;
@@ -590,14 +601,27 @@ function OrderRow({
               {labels.loading}
             </p>
           ) : items.state === "ok" && items.items.length ? (
-            items.items.map((item) => (
-              <ItemBlock
-                key={item.sequence}
-                item={item}
-                labels={labels}
-                format={format}
-              />
-            ))
+            <>
+              {items.items.length > visibleItems.length && labels.pick ? (
+                <p
+                  className="text-xs text-zinc-500"
+                  data-history-family-filtered
+                >
+                  {labels.pick.filtered.replace(
+                    "{n}",
+                    String(items.items.length - visibleItems.length),
+                  )}
+                </p>
+              ) : null}
+              {visibleItems.map((item) => (
+                <ItemBlock
+                  key={item.sequence}
+                  item={item}
+                  labels={labels}
+                  format={format}
+                />
+              ))}
+            </>
           ) : (
             <p className="text-xs text-zinc-500">{labels.noItems}</p>
           )}
@@ -640,7 +664,11 @@ function ItemBlock({
       className="rounded-lg border border-zinc-100 bg-zinc-50/70 px-2.5 py-2"
       data-purchase-history-item
     >
-      <p className="text-sm font-medium text-zinc-900">{item.name}</p>
+      <HistoryProductName
+        name={item.name}
+        productId={item.productId}
+        labels={labels.pick}
+      />
       <div className="mt-1 space-y-0.5 text-xs leading-relaxed">
         {lines.map(([key, label, value]) => (
           <p
@@ -696,6 +724,7 @@ function ProductsPanel({
 }) {
   const [limit, setLimit] = useState(PRODUCTS_STEP);
   const format = formatter(labels.intl);
+  const { keep } = useHistoryFamilyFilter();
   const data = loaded?.result?.state === "ok" ? loaded.result : null;
   if (!data) {
     if (!loaded || !current)
@@ -733,7 +762,10 @@ function ProductsPanel({
     (o) => data.money || !VALUE_SORTS.includes(o),
   );
   const active = sorts.includes(sort) ? sort : "units_desc";
-  const sorted = sortProducts(data.products, active);
+  // Com a família escolhida no pedido, só os produtos dela.
+  const inFamily = data.products.filter((p) => keep(p.family));
+  const hiddenByFamily = data.products.length - inFamily.length;
+  const sorted = sortProducts(inFamily, active);
   const shown = sorted.slice(0, limit);
   const left = sorted.length - shown.length;
   return (
@@ -777,6 +809,11 @@ function ProductsPanel({
           </select>
         </label>
       </div>
+      {hiddenByFamily > 0 && labels.pick ? (
+        <p className="mb-2 text-xs text-zinc-500" data-history-family-filtered>
+          {labels.pick.filtered.replace("{n}", String(hiddenByFamily))}
+        </p>
+      ) : null}
       {!data.complete ? (
         <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200">
           {labels.products.incomplete}
@@ -791,9 +828,11 @@ function ProductsPanel({
               data-sankhya-product={p.key}
             >
               <div className="flex items-start justify-between gap-3">
-                <p className="min-w-0 break-words text-sm font-medium text-zinc-900">
-                  {p.name}
-                </p>
+                <HistoryProductName
+                  name={p.name}
+                  productId={p.productId}
+                  labels={labels.pick}
+                />
                 {/* Totais do período, um embaixo do outro: unidades e valor
                     (após descontos; "—" sem valor). */}
                 <div className="shrink-0 text-right tabular-nums">

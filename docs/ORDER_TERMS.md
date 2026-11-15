@@ -103,8 +103,68 @@ Nada existente foi removido ou alterado.
 - Produto sem caixa master ou CBM no cadastro, ou com a caixa maior que o container, fica fora da conta e é listado embaixo.
 - **Fixo na lateral:** a composição e o histórico ficam juntos num painel `sticky` (abaixo da barra do topo, `z-index` 20) que acompanha a rolagem da página nas telas grandes; no celular e no iPad em pé, ficam depois do formulário.
 
-## 9. Em aberto (para o dono)
+## 9. Terceira rodada (dono, 15/11/2026): o que mudou
 
-- **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" hoje confere só o e-mail.
-- **Carga do fornecedor no banco (outro dia):** gravar `TGFPRO.CODPARCFORN` de cada produto no portal na carga do Sankhya, para não depender da leitura pela API.
-- **Envio ao Sankhya:** tipo de operação, formato e transportadora ainda não vão para a nota do Sankhya (falta saber os campos/TOP de cada um).
+Esta seção vale por cima das anteriores onde elas divergem.
+
+### 9.1 Condições no formulário do vendedor
+
+- **Tipo de operação:** hoje só **TS** (já marcado); **Venda** aparece desabilitada "(em breve)". O servidor recusa Venda (`order_terms_operation_disabled`).
+- **País de origem:** com TS, **BRASIL** aparece desabilitado "(não vale no TS)" e o servidor recusa (`order_terms_country_disabled`). Produto sem país continua fora da lista.
+- **Re-despacho:** deixou de ser uma transportadora; é **Sim/Não** obrigatório. Com Sim, quem informa a transportadora é o cliente, na confirmação (9.3).
+- **Transportador:** continua obrigatório (portal + Sankhya).
+- **Grupo de produto = família**, um nível acima da linha: o **grupo pai da linha no Sankhya** (`TGFGRU.CODGRUPAI`, nome em `DESCRGRUPOPROD`). Ex.: 70106001 "CJ COPOS" fica na família do grupo pai de 70106…. O portal só tinha o último nível (as linhas), então o pai e o nome vêm do Sankhya **pela API** (`SELECT TOP 2000 CODGRUPOPROD, DESCRGRUPOPROD, CODGRUPAI FROM TGFGRU …`, em páginas, 30 minutos em memória; `src/lib/services/sankhya-product-families.ts`). Chave da família: `sk:<CODGRUPAI>`. Linha sem código do Sankhya, sem pai ou com o Sankhya fora: a própria linha vale como família (`ln:<id da linha>`). A busca de produto filtra pelas linhas da família e pelo país; o servidor recusa produto de outra família ou país (`order_terms_mismatch`).
+- **Aviso "sem devoluções"** saiu do formulário do vendedor (fica uma nota: "depois do envio, o cliente confirma…").
+- **Login do cliente com acesso** passou a ser **obrigatório** na venda (`access_required`): é ele quem confirma. Cliente sem login ganha um em Cadastros antes.
+- **Contatos do cliente** seguem obrigatórios para enviar (concluir a venda); o rascunho guarda sem conferir.
+
+### 9.2 Rascunho
+
+- Botão **"Salvar rascunho"** ao lado de Enviar (só a Wellmix, na venda ao cliente). Grava o formulário como está, **sem conferir nada** (`formNoValidate`): cliente, login, condições, contatos digitados, produtos (produto, variação, textos fora do catálogo, quantidade e programação), prazo e observação. Arquivos não entram.
+- **"Seus rascunhos"** no alto da Nova solicitação: título (1º produto + quantos mais), cliente e data; **Continuar** reabre o formulário igual; **Apagar** tira da lista. Só quem criou vê.
+- Enviado o pedido a partir de um rascunho, o rascunho some.
+- Tabela nova `request_drafts` (`userId`, `customerId`, `customerName`, `title`, `itemCount`, `payload` com os campos `[nome, valor]`). Serviço `src/lib/services/request-drafts.ts`; ações `src/app/app/actions/request-drafts.ts`.
+
+### 9.3 Confirmação do pedido pelo cliente
+
+- A venda pela Wellmix nasce com a situação nova **"Aguardando confirmação do cliente"** (`AWAITING_CUSTOMER`). Enquanto isso **não entra na fila da Wellmix**: não abre o item de Sourcing nem avisa a Wellmix; quem é avisado é o login do cliente ("Confirme o pedido…"). A página da solicitação mostra à Wellmix o aviso de que espera o cliente.
+- O **login do cliente com acesso** abre a solicitação e vê o cartão **"Confirme o seu pedido"**: o aviso "sem devoluções" com **"Li e concordo"** obrigatório e, com Re-despacho = Sim, o **CNPJ da transportadora**:
+  - **Buscar** consulta o CNPJ na **BrasilAPI** (dados públicos da Receita, sem credencial; `GET /api/cnpj?cnpj=`) e mostra razão social, nome fantasia e endereço;
+  - CNPJ com dígitos inválidos: recusado; não encontrado na Receita: recusado;
+  - sem a consulta (BrasilAPI fora do ar ou modo memória dos testes): o cliente digita o nome, e a Wellmix é avisada para conferir o cadastro.
+- **Confirmar pedido**: todas as solicitações do lote passam a "Solicitado" (entram na fila), com a confirmação gravada em `orderTerms.confirmation` (quando, quem, aviso aceito e a transportadora). A transportadora do re-despacho é a do cadastro com o mesmo CNPJ ou uma **nova** (tipo Transportadora, com os dados da Receita). Auditoria: `request.customer_confirm` e `party.create`.
+- Só o login do cliente escolhido confirma, e só uma vez (`confirm_not_allowed`).
+- Serviço `src/lib/services/customer-confirmation.ts`; ação `src/app/app/actions/customer-confirmation.ts`; cartão `src/components/customer-order-confirm.tsx`.
+
+### 9.4 Dados (aditivos)
+
+- `requests.status` ganha o valor `AWAITING_CUSTOMER`.
+- `requests.orderTerms` ganha `redispatchRequired`, `productFamily`, `productFamilyName` e `confirmation`; os campos da rodada anterior (`redispatch`, `productLineId`, `productLineName`, `noReturnsAccepted`) ficam para as solicitações já gravadas.
+- Tabela nova `request_drafts`.
+
+## 10. Quarta rodada (dono, 15/11/2026): família, histórico → pedido e composição
+
+### 10.1 Família
+
+- A família ficou **dois níveis acima da linha** (o avô no Sankhya; o pai ainda era detalhado demais): `FAMILY_LEVELS_UP = 2` em `src/lib/services/product-origin.ts`. Árvore mais rasa: o nível mais alto abaixo do topo.
+- **Mesmo nome = mesma família:** grupos do Sankhya com o mesmo nome em ramos diferentes viram uma família só, com todos os produtos deles (antes apareciam vários "iguais"). A chave é o nome sem acento e sem caixa: `fm:<NOME>` (ex.: `fm:UTILIDADES_DOMESTICAS`).
+
+### 10.2 Histórico de compras do cliente → pedido
+
+- **Filtro pela família:** com a família escolhida nas condições do pedido, o histórico (Sankhya: lista de pedidos e visão Produto; portal: pedidos gravados) mostra só os produtos dela, com o aviso "Só os produtos da família escolhida (N de outras famílias não aparecem)". Sem família, todos.
+- **Clique no produto = mais um produto no pedido:** o nome do produto do catálogo é clicável ("Acrescentar ao pedido"); ele entra como uma linha nova (no lugar da primeira linha, se ela ainda está vazia), com a ficha e o mínimo dele, e a página rola até a linha. Item sem produto do catálogo (código do Sankhya sem produto no portal) não é clicável.
+- **Marca de "já entrou":** produto que já está nas linhas aparece riscado com o check "✓ No pedido".
+- Como o histórico sabe o produto e a família: o servidor liga o `CODPROD` de cada item do Sankhya ao produto do portal (`products.sankhyaCode`) e à família (`originsByCode`); no histórico do portal, pelo `productId` do item do pedido.
+- Só na venda pela Wellmix; o login do cliente vê o histórico como antes.
+- Código: `src/components/history-product-pick.tsx`; o contexto `request-customer-context.tsx` guarda os produtos das linhas e o pedido de acrescentar.
+
+### 10.3 Composição de containers
+
+- Com a linha do container aberta, **clicar no nome do produto leva a página até a linha dele no pedido**, com um destaque rápido.
+
+## 11. Em aberto (para o dono)
+
+- **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.
+- **Carga no banco (outro dia):** o fornecedor de cada produto (`TGFPRO.CODPARCFORN`) e a árvore de grupos (`TGFGRU.CODGRUPAI`), para não depender da leitura pela API.
+- **Envio ao Sankhya:** tipo de operação, formato, transportadora e re-despacho ainda não vão para a nota do Sankhya.
+- **Venda (tipo de operação):** fica desabilitada até o dono liberar; com ela, BRASIL volta a valer.

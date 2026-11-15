@@ -4,6 +4,11 @@ import type { SankhyaHistoryLabels } from "./sankhya-purchase-history";
 /** Textos do histórico pelo Sankhya, no idioma de quem vê. */
 export function sankhyaHistoryLabels(t: Translate): SankhyaHistoryLabels {
   return {
+    pick: {
+      add: t("historyPick.add"),
+      inOrder: t("historyPick.inOrder"),
+      filtered: t("historyPick.filtered", { n: "{n}" }),
+    },
     intl: t.intl,
     title: t("purchaseHistory.title"),
     source: t("sankhyaHistory.source"),

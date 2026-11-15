@@ -217,7 +217,7 @@ test("Resultado da programação: a faixa nas duas telas, o container, a caixa i
   // 5. A piscina do cadastro não tem caixa inner: "—"; o peso (3,1 kg) é
   // por peça. Trocar o produto pede gerar de novo.
   await page.goto("/app/requests/new");
-  await chooseOrderOrigin(page, "CHINA", "linha-inflaveis");
+  await chooseOrderOrigin(page, "CHINA", "fm:INFLAVEIS");
   await picker.locator("[data-product-picker-input]").fill("piscina");
   await picker.locator('[data-product-picker-option="prod-piscina"]').click();
   await expect(line.locator('[data-generate-item="ok"]')).toBeVisible();

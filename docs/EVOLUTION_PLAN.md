@@ -1555,3 +1555,14 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   - O agrupamento das telas na configuração de acessos (`SCREEN_GROUPS`, que põe Parceiros em Cadastros) ficou como estava.
 - **Banco**: sem mudança.
 - Testes: `tests/unit/nav.test.ts` ("Equipe Acessos e Parceiros") e `tests/e2e/team-partners-area.spec.ts`.
+
+## Cadastros → Clientes (clientes fora de Parceiros)
+
+- **Pedido do dono** (15/11/2026): levar a área de Clientes de Equipe Acessos e Parceiros → Parceiros → Cadastros para uma página própria em Cadastros → Clientes; tirar os clientes da lista de Parceiros (também em "Todos os tipos"); o endereço antigo `/app/parties?type=customer` abrindo Clientes com a busca; mesma fonte de dados e as permissões de antes.
+- **Como ficou** (docs/FLOW_MENU.md, "Cadastros → Clientes"):
+  - Cadastros → Clientes abre `/app/customers`, a tela Clientes que já existia (só clientes, busca, filtros, lote, exportação, ficha e editar), com o Login de acesso de cada cliente (embaixo do nome) e o Importar CSV que vinham de Parceiros.
+  - Parceiros lista só fornecedores e demais tipos; o filtro e o subtítulo não levam mais à lista de clientes.
+  - `/app/parties?type=customer` redireciona para `/app/customers` com `q` e a ordem por nome.
+- **Não mudou**: os cadastros, IDs, RCA, logins, solicitações, pedidos e o seletor de cliente; a ficha e o cadastro do cliente; as permissões (Clientes para quem abre Parceiros); nenhuma rota saiu.
+- **Banco**: sem mudança.
+- Testes: `tests/unit/nav.test.ts` ("Cadastros → Clientes") e `tests/e2e/customers-registry.spec.ts`; ajustados `tests/e2e/team-partners-area.spec.ts` e `tests/e2e/partner-access.spec.ts`.

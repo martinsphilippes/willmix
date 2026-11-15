@@ -40,6 +40,7 @@ const PORTAL_ONLY: TableName[] = [
   "conversation_topics",
   "conversations",
   "cart_items",
+  "request_drafts",
   "booking_invites",
   "selection_groups",
   "supplier_requests",

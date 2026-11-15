@@ -97,7 +97,7 @@ export async function searchProducts(input: {
    * País de origem e grupo (linha) escolhidos no pedido (Nova solicitação;
    * docs/ORDER_TERMS.md): só os produtos deles.
    */
-  origin?: { country: string; lineId: string } | null;
+  origin?: { country: string; family: string } | null;
 }): Promise<ProductHit[]> {
   const text = searchText(input.q).slice(0, 80);
   if (text.length < 2) return [];
@@ -105,12 +105,21 @@ export async function searchProducts(input: {
     input.scope === "catalog"
       ? await hiddenBookingProductIds()
       : new Set<string>();
-  const allowed = input.origin
-    ? await (
-        await import("./product-origin")
-      ).productIdsOfOrigin(input.origin.country, input.origin.lineId)
-    : null;
+  const originModule = input.origin ? await import("./product-origin") : null;
+  const allowed =
+    input.origin && originModule
+      ? await originModule.productIdsOfOrigin(
+          input.origin.country,
+          input.origin.family,
+        )
+      : null;
   if (allowed && !allowed.size) return [];
+  // As linhas da família escolhida (o banco filtra por elas).
+  const familyLines =
+    input.origin && originModule
+      ? ((await originModule.originFamily(input.origin.family))?.lineIds ?? [])
+      : null;
+  if (familyLines && !familyLines.length) return [];
   const store = getStore();
   // Nome e código em duas consultas (o banco devolve só id, nome e código).
   const [byName, bySku] = await Promise.all(
@@ -118,7 +127,7 @@ export async function searchProducts(input: {
       listColumns(store, "products", ["name", "sku"], {
         filter: {
           ...(input.scope === "all" ? {} : { active: true }),
-          ...(input.origin ? { lineId: input.origin.lineId } : {}),
+          ...(familyLines ? { lineId: familyLines } : {}),
         },
         search: { column, text },
         orderBy: "name",

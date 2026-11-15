@@ -37,10 +37,10 @@ export async function GET(request: Request) {
       // País e grupo do pedido (Nova solicitação; docs/ORDER_TERMS.md).
       origin:
         scope === "catalog" &&
-        /^[A-Za-z0-9_-]{1,64}$/.test(params.get("line") ?? "")
+        /^(fm|sk|ln):[A-Za-z0-9_-]{1,64}$/.test(params.get("family") ?? "")
           ? {
               country: (params.get("country") ?? "").slice(0, 80),
-              lineId: params.get("line")!,
+              family: params.get("family")!,
             }
           : null,
     }),

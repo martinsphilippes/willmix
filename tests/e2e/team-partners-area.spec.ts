@@ -76,7 +76,9 @@ test("administrador: Parceiros dentro de Equipe Acessos e Parceiros, as três ab
   ).toBeVisible();
   await expect(page.locator("[data-party-new]")).toBeVisible();
   await expect(page.locator("[data-parties-filter]")).toBeVisible();
-  await expect(page.locator("main")).toContainText("Loja do João Ltda");
+  // Os clientes têm a página própria (Cadastros → Clientes, 15/11/2026).
+  await expect(page.locator("main")).toContainText("Shenzhen Supplier A");
+  await expect(page.locator("main")).not.toContainText("Loja do João Ltda");
 
   // Aba Tipos de parceiro: o catálogo, com o menu ⋯ do administrador.
   await page.locator('[data-parties-tab="types"]').click();
@@ -105,13 +107,14 @@ test("links antigos de Parceiros abrem a mesma tela, com os filtros e os parâme
   await login(page, "admin@wellmix.com");
 
   // Cadastros com o tipo e a busca no endereço: nada redireciona.
-  await page.goto("/app/parties?type=customer&q=loja");
+  await page.goto("/app/parties?type=supplier&q=shenzhen");
   expect(new URL(page.url()).pathname).toBe("/app/parties");
-  expect(new URL(page.url()).searchParams.get("type")).toBe("customer");
-  expect(new URL(page.url()).searchParams.get("q")).toBe("loja");
+  expect(new URL(page.url()).searchParams.get("type")).toBe("supplier");
+  expect(new URL(page.url()).searchParams.get("q")).toBe("shenzhen");
   await expectArea(page, "Parceiros");
-  await expect(page.locator("main")).toContainText("Loja do João Ltda");
-  await expect(page.locator("main")).not.toContainText("Shenzhen Supplier A");
+  await expect(page.locator("main")).toContainText("Shenzhen Supplier A");
+  // O filtro de tipo vale (a busca curta fica na tabela, no navegador).
+  await expect(page.locator("main")).not.toContainText("Agência Criativa");
 
   // Acessos externos com o perfil no endereço.
   await page.goto("/app/parties/access?profile=type:trading");
@@ -120,12 +123,12 @@ test("links antigos de Parceiros abrem a mesma tela, com os filtros e os parâme
   );
   await expectArea(page, "Parceiros");
 
-  // Tipos, cadastro novo, ficha do parceiro e as listas antigas.
+  // Tipos, cadastro novo, ficha do parceiro e a lista de Fornecedores
+  // (Clientes é de Cadastros: tests/e2e/customers-registry.spec.ts).
   for (const path of [
     "/app/parties/types",
     "/app/parties/new?type=customer",
     "/app/parties/cliente-joao",
-    "/app/customers",
     "/app/suppliers",
   ]) {
     const res = await page.goto(path);

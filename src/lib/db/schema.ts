@@ -78,6 +78,8 @@ export type Locale = (typeof LOCALES)[number];
 
 export const REQUEST_STATUSES = [
   "REQUESTED",
+  // Venda pela Wellmix aguardando o cliente confirmar (docs/ORDER_TERMS.md).
+  "AWAITING_CUSTOMER",
   "RFQ_OPEN",
   "QUOTATION_RECEIVED",
   "SUPPLIER_SELECTED",
@@ -1939,6 +1941,22 @@ export interface ManufacturerCard extends BaseRow {
  * vira uma solicitação de orçamento (lote) e sai do carrinho. Guardado no
  * banco para valer em qualquer aparelho e para a Wellmix ver o interesse.
  */
+/**
+ * Rascunho da Nova solicitação (dono, 15/11/2026; docs/ORDER_TERMS.md
+ * seção 9): o vendedor salva o formulário e completa depois. `payload` são
+ * os campos de texto do formulário como foram enviados (sem arquivos). Só
+ * quem criou vê e reabre. Some quando a solicitação é enviada.
+ */
+export interface RequestDraft extends BaseRow {
+  userId: string;
+  customerId: string | null;
+  customerName: string | null;
+  /** Resumo para a lista ("Boneca articulada 30 cm + 1"). */
+  title: string;
+  itemCount: number;
+  payload: Array<[string, string]>;
+}
+
 export interface CartItem extends BaseRow {
   userId: string;
   customerId: string;
@@ -3666,6 +3684,7 @@ export interface Tables {
   sheet_readings: SheetReading;
   manufacturer_cards: ManufacturerCard;
   cart_items: CartItem;
+  request_drafts: RequestDraft;
   freight_tariffs: FreightTariff;
   product_variants: ProductVariant;
   conversations: Conversation;
@@ -4851,6 +4870,18 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_product", type: "key", columns: ["productId"] },
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
     ],
+  },
+  request_drafts: {
+    label: "Rascunhos da Nova solicitação",
+    columns: {
+      userId: id(),
+      customerId: id(false),
+      customerName: str(160),
+      title: str(200, true),
+      itemCount: int(true),
+      payload: jsonLarge(),
+    },
+    indexes: [{ key: "by_user", type: "key", columns: ["userId"] }],
   },
   cart_items: {
     label: "Carrinho da vitrine",

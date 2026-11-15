@@ -13,7 +13,7 @@ Pedido do dono (14/11/2026): o menu lateral segue os blocos do mapa do processo 
 | Vendas              | Estoque, Amostras, Ofertas, Venda                                                                                                                                                                        |
 | Financeiro          | Financeiro, Contas a pagar, Fluxo de caixa (saiu de Painéis), Acordos e comissões, Multas                                                                                                                |
 | Painéis             | Painel do dono, Painéis por área, Painel de SLA (só leitura, sem contador)                                                                                                                               |
-| Cadastros           | Produtos, Linhas                                                                                                                                                                                         |
+| Cadastros           | Clientes, Produtos, Linhas                                                                                                                                                                               |
 
 Fixos embaixo: Configurações, **Equipe Acessos e Parceiros** e Auditoria. Parceiros saiu de Cadastros (dono, 15/11/2026) e virou uma seção de Equipe Acessos e Parceiros; veja "Equipe Acessos e Parceiros" abaixo.
 
@@ -26,6 +26,7 @@ Pedido do dono (15/11/2026): a área de Parceiros (antes Cadastros → Parceiros
 - **Seções** (no padrão de abas da área, `src/components/team-area-nav.tsx`): Equipe, Funções e acessos, Linha de produto e divisão (`/app/team?tab=team|functions|lines`) e **Parceiros** (`/app/parties`).
 - **Abas de Parceiros**: dentro da seção Parceiros, as três de sempre: Cadastros (`/app/parties`), Tipos de parceiro (`/app/parties/types`) e Acessos externos (`/app/parties/access`). As telas, os filtros, as ações e os dados não mudaram.
 - **Endereços**: não mudaram. Os links antigos (`/app/parties` com os filtros `?type=…&q=…`, `/types`, `/access` com os painéis, `/app/parties/<id>`, `/app/parties/new`, `/app/customers` e `/app/suppliers`) continuam abrindo a mesma tela, sem redirecionamento.
+- **Sem clientes** (dono, 15/11/2026): a lista de Parceiros não mostra clientes, nem em "Todos os tipos", e o filtro não tem mais a opção Clientes (veja "Cadastros → Clientes" abaixo).
 - **Permissões**: as mesmas.
   - Equipe, Funções e acessos e Linha de produto e divisão: quem abre Equipe (o administrador).
   - Parceiros (Cadastros e Tipos de parceiro): quem abre Parceiros (administrador, Comprador, Catálogo, diretorias e quem recebeu a tela).
@@ -35,6 +36,21 @@ Pedido do dono (15/11/2026): a área de Parceiros (antes Cadastros → Parceiros
   - Para quem abre Equipe, ele leva à Equipe; para quem só abre Parceiros, direto a Parceiros.
   - Acende nas telas de Equipe e de Parceiros (`NavLink.match`), e o "Voltar" sem tela anterior continua levando a Parceiros.
   - Quem não abre nenhuma das duas não vê o item.
+
+## Cadastros → Clientes
+
+Pedido do dono (15/11/2026): os clientes saíram de Equipe Acessos e Parceiros → Parceiros → Cadastros e ganharam a página própria em Cadastros.
+
+- **Página**: `/app/customers`, a tela Clientes que já existia (só clientes; antes fora do menu, com o link no subtítulo de Parceiros). Tem a busca (nome, CNPJ, telefone, e-mail, cidade), o filtro Ativos/Inativos/Todos, a operação em lote e a exportação, a conta de cada cliente (só para quem vê valores) e os atalhos de cada linha (nova solicitação, ficha, editar o cadastro, conversa).
+- **Vindo de Parceiros**: o Login de acesso de cada cliente (os logins ativos, com o link para o quadro de acesso do cadastro, `/app/parties/<id>#access`), embaixo do nome para a tabela seguir cabendo em 1366 px, e o botão Importar CSV.
+- **Ficha e cadastro**: os de sempre. A ficha (`/app/customers/<id>`) tem a conta e os logins; o cadastro (`/app/parties/<id>`) tem a edição, o RCA e o quadro de acesso.
+- **Parceiros**: sem clientes na lista, nem em "Todos os tipos". O filtro não tem mais Clientes e o subtítulo não leva mais à lista de clientes. Fornecedores e os demais tipos seguem lá, com as três abas.
+- **Endereço antigo**: `/app/parties?type=customer` leva a `/app/customers`.
+  - Leva junto a busca (`q`) e a ordem por nome (`sort=name` ou `-name`), a única coluna que existe nas duas listas.
+  - O tipo e a página não vão, porque não existem lá.
+- **Permissões**: as de antes. Clientes aparece em Cadastros e abre para quem abre Parceiros: administrador, Comprador, Catálogo, diretorias e quem recebeu a tela. Os valores continuam só para quem vê valores.
+- **Dados**: nada mudou. Os mesmos cadastros (`parties` do tipo cliente), IDs, RCA, logins, solicitações e pedidos. O seletor de cliente (`/api/parties/search`) e a Nova solicitação seguem iguais.
+- **Menu**: Clientes acende na lista e na ficha do cliente; o item Equipe Acessos e Parceiros deixou de acender em `/app/customers`. No cadastro do cliente (`/app/parties/<id>`, o mesmo de todos os parceiros), o menu acende Equipe Acessos e Parceiros.
 
 ## Telas
 

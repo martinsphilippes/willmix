@@ -329,7 +329,11 @@ export function navFor(
         "folder",
         pick(has, [
           // Parceiros saiu daqui (dono, 15/11/2026): é uma seção de Equipe
-          // Acessos e Parceiros, no rodapé do menu (navFooterFor).
+          // Acessos e Parceiros, no rodapé do menu (navFooterFor). Os
+          // clientes ganharam a página própria (dono, 15/11/2026): a tela
+          // Clientes de sempre, com a conta e o login de cada um; quem abre
+          // Parceiros abre Clientes.
+          ["parties", { href: "/app/customers", key: "nav.customers" }],
           // NCM a classificar e fichas incompletas contam aqui.
           [
             "products",
@@ -482,13 +486,13 @@ export function navFor(
 }
 
 /**
- * Telas de Parceiros (Cadastros, Tipos de parceiro e Acessos externos, e as
- * listas antigas de Clientes e Fornecedores): seção da área Equipe Acessos e
- * Parceiros, nos mesmos endereços de sempre.
+ * Telas de Parceiros (Cadastros, Tipos de parceiro e Acessos externos, e a
+ * lista de Fornecedores com a conta de cada um): seção da área Equipe
+ * Acessos e Parceiros, nos mesmos endereços de sempre. Clientes
+ * (/app/customers) é de Cadastros (dono, 15/11/2026).
  */
 export const PARTNERS_AREA: readonly string[] = [
   "/app/parties",
-  "/app/customers",
   "/app/suppliers",
 ];
 

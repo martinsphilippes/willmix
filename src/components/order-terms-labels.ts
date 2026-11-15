@@ -8,6 +8,7 @@ import {
 import type { RequestOrderTermsLabels } from "./request-order-terms";
 import type { RequestCustomerContactsLabels } from "./request-customer-contacts";
 import type { ContainerCompositionLabels } from "./container-composition";
+import type { CustomerOrderConfirmLabels } from "./customer-order-confirm";
 
 const record = <K extends string>(
   keys: readonly K[],
@@ -22,6 +23,7 @@ export function orderTermsLabels(t: Translate): RequestOrderTermsLabels {
     hint: t("orderTerms.hint"),
     operationType: t("orderTerms.operationType"),
     operation: record(OPERATION_TYPES, (k) => t(`orderTerms.operation.${k}`)),
+    operationDisabled: t("orderTerms.operationDisabled"),
     saleFormat: t("orderTerms.saleFormat"),
     format: record(SALE_FORMATS, (k) => t(`orderTerms.format.${k}`)),
     tier: t("orderTerms.tier"),
@@ -31,13 +33,15 @@ export function orderTermsLabels(t: Translate): RequestOrderTermsLabels {
     carrier: t("orderTerms.carrier"),
     carrierNone: t("orderTerms.carrierNone"),
     redispatch: t("orderTerms.redispatch"),
-    redispatchNone: t("orderTerms.redispatchNone"),
+    redispatchYes: t("orderTerms.redispatchYes"),
+    redispatchNo: t("orderTerms.redispatchNo"),
+    redispatchHint: t("orderTerms.redispatchHint"),
     carrierSankhya: t("orderTerms.carrierSankhya"),
     carrierSankhyaOff: t("orderTerms.carrierSankhyaOff"),
     carrierSankhyaError: t("orderTerms.carrierSankhyaError"),
     country: t("orderTerms.country"),
     countryChoose: t("orderTerms.countryChoose"),
-    countryUnknown: t("orderTerms.countryUnknown"),
+    countryDisabled: t("orderTerms.countryDisabled"),
     group: t("orderTerms.group"),
     groupChoose: t("orderTerms.groupChoose"),
     groupPickCountry: t("orderTerms.groupPickCountry"),
@@ -47,9 +51,33 @@ export function orderTermsLabels(t: Translate): RequestOrderTermsLabels {
     error: t("orderTerms.error"),
     productsCount: t("orderTerms.productsCount", { n: "{n}" }),
     stock: t("orderTerms.stock"),
+    confirmNote: t("orderTerms.confirmNote"),
+  };
+}
+
+/** Textos da confirmação do pedido pelo cliente. */
+export function customerConfirmLabels(
+  t: Translate,
+): CustomerOrderConfirmLabels {
+  return {
+    title: t("customerConfirm.title"),
+    intro: t("customerConfirm.intro"),
     disclaimerTitle: t("orderTerms.disclaimerTitle"),
     disclaimer: t("orderTerms.disclaimer"),
     accept: t("orderTerms.accept"),
+    redispatchTitle: t("customerConfirm.redispatchTitle"),
+    redispatchHint: t("customerConfirm.redispatchHint"),
+    cnpj: t("customerConfirm.cnpj"),
+    cnpjPlaceholder: t("customerConfirm.cnpjPlaceholder"),
+    lookup: t("customerConfirm.lookup"),
+    looking: t("customerConfirm.looking"),
+    cnpjInvalid: t("customerConfirm.cnpjInvalid"),
+    notFound: t("customerConfirm.notFound"),
+    manual: t("customerConfirm.manual"),
+    carrierName: t("customerConfirm.carrierName"),
+    found: t("customerConfirm.found"),
+    submit: t("customerConfirm.submit"),
+    submitting: t("customerConfirm.submitting"),
   };
 }
 
@@ -93,6 +121,7 @@ export function compositionLabels(t: Translate): ContainerCompositionLabels {
     missing: t("composition.missing", { names: "{names}" }),
     tooBig: t("composition.tooBig", { names: "{names}" }),
     cartons: t("composition.cartons", { cartons: "{cartons}" }),
+    goTo: t("composition.goTo"),
     intl: t.intl,
   };
 }

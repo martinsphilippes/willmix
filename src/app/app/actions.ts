@@ -283,11 +283,13 @@ export async function createRequestAction(form: FormData) {
           wellmixTier: str(form, "wellmixTier"),
           carrier: str(form, "carrier"),
           redispatch: str(form, "redispatch"),
-          originSet: str(form, "originSet"),
           originCountry: str(form, "originCountry"),
-          productLineId: str(form, "productLineId"),
-          noReturnsAccepted: str(form, "noReturnsAccepted"),
+          productFamily: str(form, "productFamily"),
         });
+        // O login do cliente com acesso é obrigatório na venda: é ele quem
+        // confirma o pedido (dono, 15/11/2026).
+        if (!str(form, "requestedForUserId"))
+          throw new Error("access_required");
         await assertProductsMatchOrigin(
           items.map((i) => i.productId),
           orderTerms,
@@ -316,6 +318,15 @@ export async function createRequestAction(form: FormData) {
         },
         items,
       );
+      // Rascunho enviado (docs/ORDER_TERMS.md seção 9): sai da lista.
+      const draftId = str(form, "draftId");
+      if (draftId && isWellmix(user)) {
+        const { deleteRequestDraft } =
+          await import("@/lib/services/request-drafts");
+        await deleteRequestDraft(user, draftId).catch((error) =>
+          console.error("[action] rascunho enviado", error),
+        );
+      }
       const first = created[0];
       const destination =
         created.length === 1

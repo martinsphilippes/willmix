@@ -509,7 +509,7 @@ export async function approveMilestoneRows(
 export async function chooseOrderOrigin(
   page: Page,
   country = "CHINA",
-  lineId = "linha-brinquedos",
+  family = "fm:BRINQUEDOS",
 ) {
   const terms = page.locator("[data-order-terms]");
   const countrySelect = terms.locator("[data-order-terms-country]");
@@ -518,27 +518,29 @@ export async function chooseOrderOrigin(
   ).toBeAttached();
   await countrySelect.selectOption(country);
   const groupSelect = terms.locator("[data-order-terms-group]");
-  await expect(groupSelect.locator(`option[value="${lineId}"]`)).toBeAttached();
-  await groupSelect.selectOption(lineId);
+  await expect(groupSelect.locator(`option[value="${family}"]`)).toBeAttached();
+  await groupSelect.selectOption(family);
 }
 
-/** Tipo de operação, formato de venda (e o nível, no Wellmix), país e grupo. */
+/**
+ * Condições do pedido (docs/ORDER_TERMS.md): TS (o único liberado), formato
+ * de venda (e o nível, no Wellmix), transportador, re-despacho Sim/Não,
+ * país e família. O aviso "sem devoluções" é do cliente, na confirmação.
+ */
 export async function fillOrderTerms(
   page: Page,
   options: {
-    operation?: "ts" | "sale";
     format?: "wd" | "wellmix";
     tier?: string;
+    redispatch?: "yes" | "no";
     country?: string;
-    lineId?: string;
+    family?: string;
   } = {},
 ) {
   const terms = page.locator("[data-order-terms]");
-  await terms
-    .locator(
-      `[data-order-terms-operation-option="${options.operation ?? "sale"}"]`,
-    )
-    .check();
+  await expect(
+    terms.locator('[data-order-terms-operation-option="ts"]'),
+  ).toBeChecked();
   await terms
     .locator(`[data-order-terms-format-option="${options.format ?? "wd"}"]`)
     .check();
@@ -546,12 +548,49 @@ export async function fillOrderTerms(
     await terms
       .locator("[data-order-terms-tier]")
       .selectOption(options.tier ?? "pleno");
-  // Ao menos o transportador e o "Li e concordo" do aviso (obrigatórios).
   await terms
     .locator("[data-order-terms-carrier]")
     .selectOption("portal:transportador");
-  await terms.locator("[data-order-terms-accept]").check();
-  await chooseOrderOrigin(page, options.country, options.lineId);
+  await terms
+    .locator(
+      `[data-order-terms-redispatch-option="${options.redispatch ?? "no"}"]`,
+    )
+    .check();
+  await chooseOrderOrigin(page, options.country, options.family);
+}
+
+/** O login do cliente com acesso (obrigatório na venda pela Wellmix). */
+export async function chooseCustomerLogin(page: Page, email: string) {
+  const access = page.locator(
+    '[data-request-people] select[name="requestedForUserId"]',
+  );
+  await expect(access).toBeEnabled();
+  const value = await access
+    .locator("option", { hasText: email })
+    .getAttribute("value");
+  await access.selectOption(value!);
+}
+
+/** O cliente confirma o pedido (aviso "sem devoluções" e, com re-despacho, o CNPJ). */
+export async function confirmAsCustomer(
+  page: Page,
+  requestId: string,
+  redispatch?: { cnpj: string; name: string },
+) {
+  await page.goto(`/app/requests/${requestId}`);
+  const card = page.locator("[data-customer-confirm]");
+  await expect(card).toBeVisible();
+  if (redispatch) {
+    await card.locator("[data-customer-confirm-cnpj]").fill(redispatch.cnpj);
+    await card.locator("[data-customer-confirm-lookup]").click();
+    // Modo memória: sem a consulta do CNPJ, o nome se digita.
+    await card.locator('input[name="carrierName"]').fill(redispatch.name);
+  }
+  await card.locator("[data-customer-confirm-accept]").check();
+  await card
+    .getByRole("button", { name: /confirmar pedido|confirm order/i })
+    .click();
+  await page.waitForURL(/[?&]confirmed=1/);
 }
 
 /** Os contatos do cliente (bloco "Cliente"), quando o portal os pede. */

@@ -85,6 +85,7 @@ export function RequestProductFields({
   products,
   presetProductId,
   presetVariantId = "",
+  presetTexts,
   defaultNotInCatalog,
   suggestions,
   sourceLabels,
@@ -115,6 +116,12 @@ export function RequestProductFields({
   presetProductId: string;
   /** Variação pré-escolhida (?variantId=), junto com o produto. */
   presetVariantId?: string;
+  /** Textos já digitados (rascunho), para produto fora do catálogo. */
+  presetTexts?: {
+    productName: string;
+    description: string;
+    specification: string;
+  };
   defaultNotInCatalog: boolean;
   suggestions: Partial<Record<Field, Option[]>>;
   sourceLabels: Record<string, string>;
@@ -160,7 +167,7 @@ export function RequestProductFields({
   const originQuery = origin
     ? new URLSearchParams({
         country: origin.country,
-        line: origin.lineId,
+        family: origin.family,
       }).toString()
     : "";
   const initial = products.find((p) => p.id === presetProductId) ?? null;
@@ -183,10 +190,13 @@ export function RequestProductFields({
   // Variação escolhida (só para produto com variações; "" = ainda não escolheu).
   const [variantId, setVariantId] = useState(initialVariant?.id ?? "");
   const [values, setValues] = useState<Record<Field, string>>({
-    productName: initial?.productName ?? "",
-    description: initial?.description ?? "",
+    productName: initial?.productName ?? presetTexts?.productName ?? "",
+    description: initial?.description ?? presetTexts?.description ?? "",
     specification:
-      initialVariant?.specification ?? initial?.specification ?? "",
+      initialVariant?.specification ??
+      initial?.specification ??
+      presetTexts?.specification ??
+      "",
   });
   const [picked, setPicked] = useState<Record<Field, number | null>>({
     productName: null,

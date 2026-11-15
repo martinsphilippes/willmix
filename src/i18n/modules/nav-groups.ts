@@ -28,7 +28,7 @@ export const pt = {
   "nav.group.show": "Mostrar os itens de {name}",
   "nav.group.hide": "Ocultar os itens de {name}",
   "parties.all.subtitle":
-    "Clientes, fornecedores e demais parceiros num cadastro só. Use os filtros por tipo. Listas com a conta de cada um:",
+    "Fornecedores e demais parceiros num cadastro só; os clientes ficam em Cadastros → Clientes. Use os filtros por tipo. Lista com a conta de cada fornecedor:",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -57,7 +57,7 @@ export const en: Record<keyof typeof pt, string> = {
   "nav.group.show": "Show the {name} items",
   "nav.group.hide": "Hide the {name} items",
   "parties.all.subtitle":
-    "Customers, suppliers and other partners in one register. Filter by type. Lists with each account:",
+    "Suppliers and other partners in one register; customers are under Master data → Customers. Filter by type. List with each supplier's account:",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -86,5 +86,5 @@ export const zh: Record<keyof typeof pt, string> = {
   "nav.group.show": "显示{name}的子项",
   "nav.group.hide": "隐藏{name}的子项",
   "parties.all.subtitle":
-    "客户、供应商和其他合作方统一登记，可按类型筛选。各自账户的列表：",
+    "供应商和其他合作方统一登记；客户在“档案 → 客户”中。可按类型筛选。各供应商账户的列表：",
 };
