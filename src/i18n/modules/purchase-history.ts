@@ -57,6 +57,20 @@ export const pt = {
   "purchaseHistory.u.ml": "{n} ml",
   "purchaseHistory.u.m3": "{n} m³",
   "purchaseHistory.u.cm": "{dims} cm",
+  // Seletor Pedido | Produto e a visão Produto (dono, 15/11/2026).
+  "sankhyaHistory.view.label": "Ver o histórico por",
+  "sankhyaHistory.view.orders": "Pedido",
+  "sankhyaHistory.view.products": "Produto",
+  "sankhyaHistory.products.hint":
+    "Produtos dos pedidos do Sankhya, pelo código do produto. À direita, o total pedido no período; embaixo, a quantidade de cada data, da mais recente para a mais antiga (pedidos do mesmo dia somados).",
+  "sankhyaHistory.products.period":
+    "Período consultado: {from} a {to} ({n} pedido(s))",
+  "sankhyaHistory.products.total": "Total {q}",
+  "sankhyaHistory.products.empty": "Nenhum produto nesses pedidos.",
+  "sankhyaHistory.products.more": "Carregar mais pedidos",
+  "sankhyaHistory.products.showMore": "Mostrar mais produtos ({n} restantes)",
+  "sankhyaHistory.products.incomplete":
+    "Parte dos itens não foi lida (pedidos com muitos itens): os totais podem estar menores.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -114,6 +128,19 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseHistory.u.ml": "{n} ml",
   "purchaseHistory.u.m3": "{n} m³",
   "purchaseHistory.u.cm": "{dims} cm",
+  "sankhyaHistory.view.label": "View history by",
+  "sankhyaHistory.view.orders": "Order",
+  "sankhyaHistory.view.products": "Product",
+  "sankhyaHistory.products.hint":
+    "Products from the Sankhya orders, by product code. On the right, the total ordered in the period; below, the quantity on each date, newest first (orders on the same day are added up).",
+  "sankhyaHistory.products.period":
+    "Period consulted: {from} to {to} ({n} order(s))",
+  "sankhyaHistory.products.total": "Total {q}",
+  "sankhyaHistory.products.empty": "No products in these orders.",
+  "sankhyaHistory.products.more": "Load more orders",
+  "sankhyaHistory.products.showMore": "Show more products ({n} left)",
+  "sankhyaHistory.products.incomplete":
+    "Some items were not read (orders with many items): totals may be lower.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -169,4 +196,16 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseHistory.u.ml": "{n} 毫升",
   "purchaseHistory.u.m3": "{n} 立方米",
   "purchaseHistory.u.cm": "{dims} 厘米",
+  "sankhyaHistory.view.label": "历史查看方式",
+  "sankhyaHistory.view.orders": "订单",
+  "sankhyaHistory.view.products": "产品",
+  "sankhyaHistory.products.hint":
+    "Sankhya 订单中的产品，按产品代码分组。右侧为期间内的订购合计；下方为每个日期的数量，从最近到最早（同一天的订单合并计算）。",
+  "sankhyaHistory.products.period": "查询期间：{from} 至 {to}（{n} 个订单）",
+  "sankhyaHistory.products.total": "合计 {q}",
+  "sankhyaHistory.products.empty": "这些订单中没有产品。",
+  "sankhyaHistory.products.more": "加载更多订单",
+  "sankhyaHistory.products.showMore": "显示更多产品（剩余 {n} 个）",
+  "sankhyaHistory.products.incomplete":
+    "部分项目未读取（订单项目过多）：合计可能偏低。",
 };

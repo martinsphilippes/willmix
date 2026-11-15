@@ -5,6 +5,7 @@ import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
 import {
   sankhyaCustomerOrders,
+  sankhyaCustomerProducts,
   sankhyaOrderItems,
 } from "@/lib/services/sankhya-customer-history";
 
@@ -23,13 +24,16 @@ const QUERY = z.object({
     .transform(Number)
     .refine((n) => Number.isSafeInteger(n) && n > 0)
     .optional(),
+  /** Visão Produto (dono, 15/11/2026): os produtos dos `shown` pedidos. */
+  view: z.enum(["products"]).optional(),
 });
 
 /**
  * Histórico do cliente pelo Sankhya (Nova solicitação, dono, 15/11/2026;
  * docs/PURCHASE_HISTORY.md seção 9). Só a Wellmix. `?customer=` é o cliente
  * do portal (o código do Sankhya sai do cadastro, nunca do navegador);
- * `shown` = quantos pedidos a tela já tem; `nunota` = itens de um pedido.
+ * `shown` = quantos pedidos a tela já tem; `nunota` = itens de um pedido;
+ * `view=products` = os produtos dos `shown` pedidos, somados por código e data.
  * Sem o Sankhya configurado ou sem código no cliente, a resposta diz
  * (`state`) e a tela mostra o histórico gravado no portal.
  */
@@ -42,13 +46,17 @@ export async function GET(request: Request) {
     customer: params.get("customer") ?? undefined,
     shown: params.get("shown") ?? undefined,
     nunota: params.get("nunota") ?? undefined,
+    view: params.get("view") ?? undefined,
   });
   if (!parsed.success)
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
-  const { customer, shown, nunota } = parsed.data;
-  const result = nunota
-    ? await sankhyaOrderItems(user, customer, nunota)
-    : await sankhyaCustomerOrders(user, customer, shown ?? 0);
+  const { customer, shown, nunota, view } = parsed.data;
+  const result =
+    view === "products"
+      ? await sankhyaCustomerProducts(user, customer, shown)
+      : nunota
+        ? await sankhyaOrderItems(user, customer, nunota)
+        : await sankhyaCustomerOrders(user, customer, shown ?? 0);
   if (result.state === "forbidden")
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   return NextResponse.json(result, {
