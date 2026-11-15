@@ -93,6 +93,11 @@ export function canSearchProducts(
 export async function searchProducts(input: {
   q: string;
   scope: ProductScope;
+  /**
+   * País de origem e grupo (linha) escolhidos no pedido (Nova solicitação;
+   * docs/ORDER_TERMS.md): só os produtos deles.
+   */
+  origin?: { country: string; lineId: string } | null;
 }): Promise<ProductHit[]> {
   const text = searchText(input.q).slice(0, 80);
   if (text.length < 2) return [];
@@ -100,15 +105,25 @@ export async function searchProducts(input: {
     input.scope === "catalog"
       ? await hiddenBookingProductIds()
       : new Set<string>();
+  const allowed = input.origin
+    ? await (
+        await import("./product-origin")
+      ).productIdsOfOrigin(input.origin.country, input.origin.lineId)
+    : null;
+  if (allowed && !allowed.size) return [];
   const store = getStore();
   // Nome e código em duas consultas (o banco devolve só id, nome e código).
   const [byName, bySku] = await Promise.all(
     (["name", "sku"] as const).map((column) =>
       listColumns(store, "products", ["name", "sku"], {
-        filter: input.scope === "all" ? {} : { active: true },
+        filter: {
+          ...(input.scope === "all" ? {} : { active: true }),
+          ...(input.origin ? { lineId: input.origin.lineId } : {}),
+        },
         search: { column, text },
         orderBy: "name",
-        limit: PRODUCT_SEARCH_LIMIT + hidden.size,
+        // Com o país, parte do grupo fica de fora: lê mais para sobrar 20.
+        limit: PRODUCT_SEARCH_LIMIT + hidden.size + (allowed ? 200 : 0),
       }),
     ),
   );
@@ -119,6 +134,7 @@ export async function searchProducts(input: {
   return [...byName, ...bySku]
     .filter((p) => {
       if (hidden.has(p.id) || seen.has(p.id)) return false;
+      if (allowed && !allowed.has(p.id)) return false;
       seen.add(p.id);
       return true;
     })

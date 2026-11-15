@@ -80,6 +80,11 @@ import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
 import { itemIdOf } from "@/lib/purchase-lanes";
 import { assertSameSchedule, parseRequestItems } from "./actions/request-items";
 import {
+  CONTACT_ROLES,
+  type CustomerContacts,
+  type OrderTerms,
+} from "@/lib/order-terms";
+import {
   assertScheduleWindow,
   launchDateOf,
   scheduleTotal,
@@ -127,6 +132,17 @@ const requestItemSchema = z.object({
   quantity: z.number().positive().finite(),
   unit: z.string().min(1).max(20),
 });
+
+/** Os contatos do cliente do bloco "Cliente" da Nova solicitação (`contact.<área>.*`). */
+function contactsFromForm(form: FormData): CustomerContacts {
+  const out = {} as CustomerContacts;
+  for (const role of CONTACT_ROLES)
+    out[role] = {
+      phone: str(form, `contact.${role}.phone`),
+      email: str(form, `contact.${role}.email`),
+    };
+  return out;
+}
 
 /**
  * Nova solicitação com um ou vários produtos (linhas `p<n>.*`). Cada produto
@@ -251,6 +267,41 @@ export async function createRequestAction(form: FormData) {
         deadline: str(form, "deadline") || null,
         notes: str(form, "notes") || null,
       });
+      // Venda ao cliente pela Wellmix (dono, 15/11/2026; docs/ORDER_TERMS.md):
+      // condições do pedido (tipo de operação, formato, entrega, país e
+      // grupo), todos os produtos do catálogo do país e do grupo escolhidos,
+      // e os contatos do cliente (obrigatórios enquanto o portal nunca os
+      // atualizou). Conferido antes de criar qualquer solicitação.
+      let orderTerms: OrderTerms | null = null;
+      if (isWellmix(user) && !forStock) {
+        const { resolveOrderTerms, assertProductsMatchOrigin } =
+          await import("@/lib/services/order-terms");
+        orderTerms = await resolveOrderTerms({
+          operationType: str(form, "operationType"),
+          saleFormat: str(form, "saleFormat"),
+          wellmixTier: str(form, "wellmixTier"),
+          carrier: str(form, "carrier"),
+          redispatch: str(form, "redispatch"),
+          originSet: str(form, "originSet"),
+          originCountry: str(form, "originCountry"),
+          productLineId: str(form, "productLineId"),
+          noReturnsAccepted: str(form, "noReturnsAccepted"),
+        });
+        await assertProductsMatchOrigin(
+          items.map((i) => i.productId),
+          orderTerms,
+        );
+        const { saveCustomerContacts, hasPortalContacts } =
+          await import("@/lib/services/customer-contacts");
+        if (str(form, "contactsEdit") === "1")
+          await saveCustomerContacts(
+            user,
+            base.customerId,
+            contactsFromForm(form),
+          );
+        else if (!(await hasPortalContacts(base.customerId)))
+          throw new Error("contacts_required");
+      }
       const created = await createRequestBatch(
         user,
         {
@@ -260,6 +311,7 @@ export async function createRequestAction(form: FormData) {
             isWellmix(user) && !forStock
               ? str(form, "requestedForUserId") || null
               : null,
+          orderTerms,
         },
         items,
       );

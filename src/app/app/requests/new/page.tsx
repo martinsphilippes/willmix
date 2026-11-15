@@ -36,6 +36,14 @@ import {
   type RequestPeopleLabels,
 } from "@/components/request-people-fields";
 import { CustomerPurchaseHistory } from "@/components/customer-purchase-history";
+import { RequestCustomerContacts } from "@/components/request-customer-contacts";
+import { RequestOrderTerms } from "@/components/request-order-terms";
+import {
+  compositionLabels,
+  customerContactsLabels,
+  orderTermsLabels,
+} from "@/components/order-terms-labels";
+import { ContainerComposition } from "@/components/container-composition";
 import { SankhyaPurchaseHistory } from "@/components/sankhya-purchase-history";
 import { sankhyaHistoryLabels } from "@/components/sankhya-history-labels";
 import {
@@ -54,6 +62,9 @@ import { canAddProducts } from "@/lib/services/requests";
 import { launchDateOf, minFirstDate } from "@/lib/workflow/request-schedule";
 import { lookupProductAction } from "../../actions/lookup";
 import { aiErrorText } from "@/i18n/ai-error";
+
+/** O formulário da solicitação (o bloco do cliente fica fora dele, ligado pelo `form`). */
+const FORM_ID = "new-request-form";
 
 export default async function NewRequestPage({
   searchParams,
@@ -312,6 +323,10 @@ export default async function NewRequestPage({
     details: t("purchaseHistory.details", { n: "{n}" }),
     open: t("purchaseHistory.open", { n: "{n}" }),
   };
+  // Venda ao cliente pela Wellmix (nova solicitação): bloco do cliente e
+  // condições do pedido (docs/ORDER_TERMS.md). Fora da compra para estoque
+  // (a tela esconde quando a caixa de estoque é marcada).
+  const sellsToCustomer = isWellmix(user) && !addToRequest;
   const referenceNote = found?.url
     ? `${t("lookup.referenceNote")} ${found.url}`
     : "";
@@ -358,10 +373,22 @@ export default async function NewRequestPage({
         initialStock={
           isStockCustomer(presetCustomerId) || presetCustomerId === STOCK_OPTION
         }
+        originTerms={sellsToCustomer}
       >
+        {/* Bloco do cliente (dono, 15/11/2026; docs/ORDER_TERMS.md): no lugar
+            da busca por foto ou link, a Wellmix atualiza os contatos do
+            cliente (às cegas na primeira vez; depois, com "Editar"). */}
+        {sellsToCustomer ? (
+          <RequestCustomerContacts
+            formId={FORM_ID}
+            labels={customerContactsLabels(t)}
+            className="max-w-2xl lg:col-start-2 lg:row-start-1 lg:max-w-none"
+          />
+        ) : null}
         {/* Busca do produto por foto ou link: procura no catálogo e sugere os campos.
-          Fora do modo "adicionar à solicitação" (a busca recarrega a tela sem ele). */}
-        {addToRequest ? null : (
+          Fora do modo "adicionar à solicitação" (a busca recarrega a tela sem ele)
+          e, na Wellmix, trocada pelo bloco do cliente (acima). O cliente segue com ela. */}
+        {addToRequest || sellsToCustomer ? null : (
           <Card
             title={t("lookup.title")}
             className="max-w-2xl lg:col-start-2 lg:row-start-1 lg:max-w-none"
@@ -551,6 +578,7 @@ export default async function NewRequestPage({
           {/* key: ao escolher um produto da busca (mesma rota, outro ?productId) o formulário
             é recriado, senão o navegador mantém o valor anterior dos campos. */}
           <form
+            id={FORM_ID}
             key={`${found?.id ?? "none"}-${presetProductId}-${presetVariantId}-${presetCustomerId}`}
             action={createRequestAction}
             className="space-y-3"
@@ -597,6 +625,13 @@ export default async function NewRequestPage({
                   labels={requestPeopleLabels}
                 />
               </div>
+            ) : null}
+            {/* Condições do pedido (dono, 15/11/2026; docs/ORDER_TERMS.md):
+                tipo de operação, formato de venda, entrega, país de origem e
+                grupo (antes dos produtos: a busca só oferece os deles) e o
+                aviso de que não há devoluções. */}
+            {sellsToCustomer ? (
+              <RequestOrderTerms labels={orderTermsLabels(t)} />
             ) : null}
             {/* O próprio cliente (dono, 15/11/2026): ele é o solicitante e o
                 login com acesso (o servidor grava pela sessão). */}
@@ -752,6 +787,7 @@ export default async function NewRequestPage({
                 fillLoading: t("productPicker.fillLoading"),
                 fillError: t("productPicker.fillError"),
                 lockedHint: t("orderPlan.lockedHint"),
+                originFirst: t("orderTerms.originFirst"),
                 ...(isWellmix(user)
                   ? {
                       forecast: {
@@ -847,25 +883,37 @@ export default async function NewRequestPage({
           </form>
         </Card>
 
-        {/* Histórico de compras do cliente (dono, 14/11/2026;
+        {/* Lateral fixa (dono, 15/11/2026): a Composição de containers e,
+            embaixo dela, o Histórico de compras do cliente acompanham a
+            rolagem da página (sticky), sempre na lateral nas telas grandes.
+            Fora do "adicionar à solicitação". */}
+        {addToRequest ? null : (
+          <div
+            className="min-w-0 max-w-2xl lg:col-start-2 lg:row-start-2 lg:max-w-none lg:self-stretch"
+            data-request-side
+          >
+            <div
+              className="space-y-4 lg:sticky lg:top-[4.75rem] lg:z-20 lg:max-h-[calc(100dvh-5.75rem)] lg:overflow-y-auto"
+              data-request-side-sticky
+            >
+              <ContainerComposition labels={compositionLabels(t)} />
+              {/* Histórico de compras do cliente (dono, 14/11/2026;
             docs/PURCHASE_HISTORY.md): os pedidos do cliente escolhido; o login
             do cliente vê os dele. Fora do "adicionar à solicitação" (o cliente
             já é o da solicitação). */}
-        {addToRequest ? null : isWellmix(user) ? (
-          // Wellmix (dono, 15/11/2026): o histórico lido na hora no Sankhya
-          // (docs/PURCHASE_HISTORY.md seção 9); sem Sankhya configurado ou
-          // sem o código do cliente, o histórico gravado no portal.
-          <SankhyaPurchaseHistory
-            className="max-w-2xl lg:col-start-2 lg:row-start-2 lg:max-w-none"
-            labels={sankhyaHistoryLabels(t)}
-            fallback={<CustomerPurchaseHistory labels={historyLabels} />}
-          />
-        ) : (
-          <CustomerPurchaseHistory
-            self
-            className="max-w-2xl lg:col-start-2 lg:row-start-2 lg:max-w-none"
-            labels={historyLabels}
-          />
+              {addToRequest ? null : isWellmix(user) ? (
+                // Wellmix (dono, 15/11/2026): o histórico lido na hora no Sankhya
+                // (docs/PURCHASE_HISTORY.md seção 9); sem Sankhya configurado ou
+                // sem o código do cliente, o histórico gravado no portal.
+                <SankhyaPurchaseHistory
+                  labels={sankhyaHistoryLabels(t)}
+                  fallback={<CustomerPurchaseHistory labels={historyLabels} />}
+                />
+              ) : (
+                <CustomerPurchaseHistory self labels={historyLabels} />
+              )}
+            </div>
+          </div>
         )}
       </RequestCustomerProvider>
     </>

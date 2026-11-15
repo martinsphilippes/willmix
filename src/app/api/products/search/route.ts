@@ -31,7 +31,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   const [t, hits] = await Promise.all([
     getT(),
-    searchProducts({ q: params.get("q") ?? "", scope: scope as ProductScope }),
+    searchProducts({
+      q: params.get("q") ?? "",
+      scope: scope as ProductScope,
+      // País e grupo do pedido (Nova solicitação; docs/ORDER_TERMS.md).
+      origin:
+        scope === "catalog" &&
+        /^[A-Za-z0-9_-]{1,64}$/.test(params.get("line") ?? "")
+          ? {
+              country: (params.get("country") ?? "").slice(0, 80),
+              lineId: params.get("line")!,
+            }
+          : null,
+    }),
   ]);
   return NextResponse.json(
     {
