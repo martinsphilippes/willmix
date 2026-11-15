@@ -14,9 +14,13 @@ const port = process.env.E2E_PORT ?? "3100";
  * (para depurar com recarga automática).
  */
 const DATA = "DATA_MODE=memory DATA_DIR=.data-e2e";
+// Cada rodada começa dos dados de fábrica: o .data-e2e de uma rodada
+// anterior acumulava grupos e pedidos, e testes que contam o que há na tela
+// (Seleção de itens, comissões) falhavam sem nada quebrado (15/11/2026).
+const FRESH = "rm -rf .data-e2e";
 const SERVER = process.env.E2E_DEV
-  ? `${DATA} npx next dev -p ${port}`
-  : `${DATA} npx next build && ${DATA} npx next start -p ${port}`;
+  ? `${FRESH} && ${DATA} npx next dev -p ${port}`
+  : `${FRESH} && ${DATA} npx next build && ${DATA} npx next start -p ${port}`;
 
 /** E2E do caminho principal contra o servidor em modo memória com dados isolados. */
 export default defineConfig({
