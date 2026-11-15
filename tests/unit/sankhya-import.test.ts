@@ -284,6 +284,48 @@ describe("carga da amostra do Sankhya", () => {
     }).toEqual(before);
   });
 
+  it("produto de grupo interno (material de consumo, folha...) entra inativo", async () => {
+    const { isInternalGroup } = await import(
+      "@/lib/integrations/sankhya-mapping"
+    );
+    expect(isInternalGroup(910101001)).toBe(true);
+    expect(isInternalGroup("900101001")).toBe(true);
+    // Mercadoria: grupos de 8 dígitos 901... (limpeza) e amostras 920...
+    expect(isInternalGroup(90101001)).toBe(false);
+    expect(isInternalGroup(920101001)).toBe(false);
+    expect(isInternalGroup(160201001)).toBe(false);
+    expect(isInternalGroup(null)).toBe(false);
+    await importSankhyaSet(admin, {
+      ...set,
+      orders: [],
+      items: [],
+      financial: [],
+      products: [
+        {
+          CODPROD: 23484,
+          DESCRPROD: "CUBO PROMOCIONAL 20CM",
+          CODGRUPOPROD: 910101001,
+          ATIVO: "S",
+        },
+      ],
+      groups: [
+        {
+          CODGRUPOPROD: 910101001,
+          DESCRGRUPOPROD: "MATERIAIS DE CONSUMO",
+          ATIVO: "S",
+        },
+      ],
+    });
+    const [cube] = await getStore().list("products", {
+      filter: { sankhyaCode: "23484" },
+    });
+    expect(cube.active).toBe(false);
+    const [mug] = await getStore().list("products", {
+      filter: { sankhyaCode: "50" },
+    });
+    expect(mug.active).toBe(true);
+  });
+
   it("lê só os cadastros dos códigos da nota, não as tabelas inteiras", async () => {
     const store = getStore();
     const spy = vi.spyOn(store, "list");
