@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
@@ -96,7 +97,7 @@ export async function getSampleOrderView(
   const reqs = await sampleRequirements(order.id);
   const doc = parseSampleOrder(reqs.decide?.value);
   const acceptance = parseSampleAcceptance(reqs.accept?.value);
-  const live = order.status !== "CANCELLED" && order.status !== "CLOSED";
+  const live = isOrderOpen(order.status);
   const open = live && (await stageOpen(reqs.decide));
   return {
     order,

@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 
 import { translator } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -1992,7 +1993,7 @@ export async function heldTasksFor(
       filter: { held: true },
     })
   )
-    .filter((o) => o.held && o.status !== "CLOSED" && o.status !== "CANCELLED")
+    .filter((o) => o.held && isOrderOpen(o.status))
     .sort((a, b) => b.number - a.number);
   if (!held.length) return empty;
   const pages = Math.max(1, Math.ceil(held.length / HELD_TASKS_PAGE));

@@ -45,6 +45,18 @@ const KPI_TABLES = new Set<TableName>([
   "container_items",
   "settings",
 ]);
+/**
+ * Tabelas que mudam a situação dos marcos fora do motor das etapas (fase 5c,
+ * docs/MILESTONES.md): passos do embarque, da certificação, das amostras e
+ * da origem, o acompanhamento da produção e o recebimento no CD. A gravação
+ * pede a sincronização dos marcos do pedido (`queueMilestoneSync`), para
+ * `order_milestones` acompanhar o que as telas mostram.
+ */
+const MILESTONE_TABLES = new Set<TableName>([
+  "import_steps",
+  "production_tracks",
+  "receivings",
+]);
 /** Campos do parceiro que entram no resumo (nome e condição de pagamento do fornecedor). */
 const PARTY_FIELDS = ["name", "paymentTerms"];
 
@@ -52,8 +64,10 @@ const pending = {
   orders: new Set<string>(),
   parties: new Set<string>(),
   kpi: false,
-  /** Etapa com prazo concluída (ou reaberta): refaz o "no prazo" do SLA. */
+  /** Marco com prazo gravado (fase 5c): refaz o "no prazo" do SLA. */
   sla: false,
+  /** Pedidos cujos marcos mudaram fora do motor (MILESTONE_TABLES). */
+  milestones: new Set<string>(),
 };
 let scheduled = false;
 let chain: Promise<void> = Promise.resolve();
@@ -81,14 +95,10 @@ export function noteWrite(
     const orderId = (row as { orderId?: unknown } | null)?.orderId;
     if (typeof orderId !== "string" || !orderId) return;
     pending.orders.add(orderId);
-    if (table === "stages") {
-      const stage = row as { status?: string; dueAt?: string | null };
-      if (
-        stage.dueAt &&
-        (stage.status === "done" || (!!patch && "status" in patch))
-      )
-        pending.sla = true;
-    }
+    if (MILESTONE_TABLES.has(table)) pending.milestones.add(orderId);
+    // O "no prazo" do SLA sai dos marcos desde a fase 5c: a conclusão da
+    // etapa sincroniza os marcos, e a gravação deles marca o SLA
+    // (`noteMilestoneWrite`).
   } else if (table === "review_items") {
     // Revisão: do pedido dela (orderId ou, nos antigos, a entidade "order").
     const r = row as {
@@ -101,6 +111,17 @@ export function noteWrite(
     pending.kpi = true;
   } else if (KPI_TABLES.has(table)) pending.kpi = true;
   else return;
+  schedule();
+}
+
+/**
+ * Marcos do pedido gravados (fase 5c, `syncMilestones`): o resumo do pedido
+ * lê o prazo gravado; `sla`: uma linha com prazo mudou (o "no prazo" do
+ * painel de SLA sai dos marcos concluídos).
+ */
+export function noteMilestoneWrite(orderId: string, sla: boolean) {
+  pending.orders.add(orderId);
+  if (sla) pending.sla = true;
   schedule();
 }
 
@@ -122,6 +143,18 @@ function schedule() {
 export function flushSummaryChanges(): Promise<void> {
   scheduled = false;
   chain = chain.then(async () => {
+    // Fase 5c: os marcos pedidos nesta requisição são gravados antes do
+    // resumo (o resumo lê o prazo gravado em `order_milestones`).
+    try {
+      const { flushMilestoneSync, queueMilestoneSync, queuedMilestoneSyncs } =
+        await import("@/lib/services/order-milestones");
+      const changed = [...pending.milestones];
+      pending.milestones.clear();
+      for (const id of changed) queueMilestoneSync(id);
+      if (queuedMilestoneSyncs().length) await flushMilestoneSync();
+    } catch (error) {
+      console.error("[milestones] sincronização antes do resumo falhou", error);
+    }
     if (pending.sla) {
       pending.sla = false;
       try {
@@ -160,5 +193,6 @@ export function pendingSummaryChanges() {
     parties: [...pending.parties],
     kpi: pending.kpi,
     sla: pending.sla,
+    milestones: [...pending.milestones],
   };
 }

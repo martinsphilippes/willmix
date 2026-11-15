@@ -470,3 +470,61 @@ describe("em paralelo e problemas", () => {
     expect(keys(false)).not.toContain("parInstallmentOverdue");
   });
 });
+
+describe("pedido: quadrado pelo marco atual (fase 5c)", () => {
+  const facts = (current: string) =>
+    [
+      { k: "new-order", s: "done", d: 1, t: 1, due: null },
+      { k: current, s: "active", d: 0, t: 1, due: null },
+    ] as never;
+
+  it("o resumo (facts.m) manda: etapa antiga não decide o quadrado", () => {
+    const prepInspection = order("PREPARATION");
+    const shipCustoms = order("SHIPPING");
+    const sankhya = imported("PREPARATION");
+    const board = buildTowerBoard(
+      input({
+        orders: [prepInspection, shipCustoms, sankhya],
+        activeStages: [
+          stage(prepInspection).active,
+          stage(shipCustoms).active,
+          stage(sankhya).active,
+        ],
+        milestones: new Map([
+          [prepInspection.id, facts("inspection")],
+          [shipCustoms.id, facts("customs")],
+          [sankhya.id, facts("down-payment")],
+        ]),
+      }),
+    );
+    expect(ids(board, "ordInspection")).toEqual([prepInspection.id]);
+    expect(ids(board, "ordPrepPortal")).toEqual([]);
+    expect(ids(board, "ordAtSea")).toEqual([shipCustoms.id]);
+    expect(ids(board, "ordContractSankhya")).toEqual([sankhya.id]);
+    // Total igual: cada pedido em andamento num quadrado só.
+    const orderCards = board.cards.filter(
+      (c) =>
+        c.block === "order" &&
+        c.key !== "ordClosedMonth" &&
+        c.key !== "ordCancelledMonth",
+    );
+    expect(orderCards.reduce((n, c) => n + c.count, 0)).toBe(3);
+    const row = board.cards
+      .find((c) => c.key === "ordInspection")!
+      .rows.find((r) => r.id === prepInspection.id)!;
+    expect(row.milestone).toBe("inspection");
+  });
+
+  it("sem resumo: o marco gravado no pedido (orders.milestoneKey); sem ele, a situação", () => {
+    const stored = order("PREPARATION", { milestoneKey: "booking" } as never);
+    const plain = order("PREPARATION");
+    const board = buildTowerBoard(
+      input({
+        orders: [stored, plain],
+        activeStages: [stage(stored).active, stage(plain).active],
+      }),
+    );
+    expect(ids(board, "ordBooking")).toEqual([stored.id]);
+    expect(ids(board, "ordPrepPortal")).toEqual([plain.id]);
+  });
+});

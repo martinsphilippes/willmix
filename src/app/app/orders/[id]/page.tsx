@@ -2,10 +2,13 @@ import {
   OrderMilestoneTimeline,
   type MilestoneTimelineItem,
 } from "@/components/order-milestone-timeline";
+import { isOrderOpen } from "@/lib/order-status";
 import { QuickDialog } from "@/components/quick-dialog";
 import {
   milestoneOfImportKey,
   milestoneOfRequirement,
+  milestoneTitle,
+  MILESTONE_KEYS,
   type MilestoneKey,
 } from "@/lib/milestones";
 import { milestonesOf } from "@/lib/services/milestones";
@@ -45,7 +48,6 @@ import {
   isSampleOrderKey,
   itemIdOf,
   laneInputKeys,
-  supplierLaneView,
   supplierSeesLaneRequirement,
 } from "@/lib/purchase-lanes";
 import { canViewDieCut, negotiatedTerms } from "@/lib/services/die-cut-step";
@@ -74,15 +76,18 @@ import {
   isPartner,
   isWellmix,
 } from "@/lib/auth/permissions";
-import { partRowFor, stageRowFor, stageVisibleTo } from "@/lib/order-view";
+import {
+  ORDER_PART_MILESTONE,
+  partRowFor,
+  requirementsByMilestone,
+} from "@/lib/order-view";
 import {
   myOrderTimeline,
-  myProgress,
   myStageRow,
   timelineMineOnly,
 } from "@/lib/services/order-timeline";
 import {
-  ORDER_PART_PARALLEL,
+  type OrderPart,
   type OrderPartKey,
   documentPart,
   orderPartsByStage,
@@ -92,7 +97,6 @@ import {
 } from "@/lib/order-parts";
 import { ChatButtons } from "@/components/chat-buttons";
 import { ChatOpenButton } from "@/components/chat-open-button";
-import { stageChat } from "@/lib/stage-chat";
 import type { PartyType } from "@/lib/db/schema";
 import { cargoViewForOrder } from "@/lib/services/order-cargo";
 import { CargoCard } from "@/components/cargo-card";
@@ -167,9 +171,7 @@ import {
   Input,
   LinkButton,
   PageHeader,
-  Progress,
   Select,
-  StepDot,
   Table,
   Td,
   Textarea,
@@ -302,13 +304,6 @@ export default async function OrderPage({
     purchaseFlow && (key === "PREPARATION" || key === "PACKAGING")
       ? t(`purchaseOrder.stage.${key}` as DictionaryKey)
       : t(`stage.${key}` as DictionaryKey);
-  // Linha da etapa na tabela "Etapas do pedido" (pedido do dono, 13/11/2026):
-  // no pedido de compra a etapa 2 aparece como "Die-Cut, Arte e Certificação";
-  // o quadro da etapa e o resto da tela seguem com o nome de sempre.
-  const stageRowName = (key: string) =>
-    purchaseFlow && key === "PREPARATION"
-      ? t("purchaseOrder.stageRow.PREPARATION")
-      : stageName(key);
   const store = getStore();
   const wellmix = isWellmix(user);
   /* Certificadora (OCP) do pedido: vê tudo do pedido para gerar o selo
@@ -1127,16 +1122,6 @@ export default async function OrderPage({
         ]
       : []),
   ];
-  /* Login Trading no pedido de compra (pedido do dono, 13/11/2026): a etapa 2
-     aparece como "Die-Cut", com o responsável "Fornecedor" (sempre, mesmo
-     quando a etapa passa para a Wellmix) e o andamento só das tarefas dele
-     (faca, foto em alta e prazo de cada produto), contado do que está
-     gravado. A etapa de verdade, o andamento do pedido e a visão da Wellmix
-     não mudam. */
-  const tradingView =
-    supplierLanes && known.get(order.supplierId)?.type === "trading";
-  const tradingDieCut = (s: (typeof stages)[number], reqs: Requirement[]) =>
-    tradingView && s.key === "PREPARATION" ? supplierLaneView(s, reqs) : null;
   /* Operador da Wellmix (pedido do dono, 14/11/2026): a linha do tempo só
      com as tarefas a fazer que cabem ao login, tarefa a tarefa, inclusive
      dentro das etapas e das partes compartilhadas (regras em
@@ -1157,29 +1142,13 @@ export default async function OrderPage({
         sheetMissing: sheetState ? sheetState.missing.length : null,
         productionOpen: !!productionView && !productionView.allApproved,
         artIssues: artworkView?.items.flatMap((i) => i.issues) ?? [],
-        supplierPaymentOpen:
-          financeAccess &&
-          order.status !== "CLOSED" &&
-          order.status !== "CANCELLED",
+        supplierPaymentOpen: financeAccess && isOrderOpen(order.status),
         receivingOpen: !!receivingView && !receivingView.row?.closedAt,
       })
     : null;
-  const myStage = (s: (typeof stages)[number]) =>
-    myTimeline?.stages.get(s.id) ?? null;
-  /** O operador tem item nesta etapa (liberado ou que vem depois). */
-  const myStageOpen = (s: (typeof stages)[number]) => {
-    const mine = myStage(s);
-    return !!mine && mine.open.length + mine.later.length > 0;
-  };
-  /* Etapas em linhas: quem vê a etapa abre os detalhes dela; a etapa em
-     andamento (ou que ainda aceita dados, como o BL depois do embarque)
-     fica aberta sempre. ?stage=CHAVE abre outra; ?stage=all, todas. */
-  const stageVisible = (s: (typeof stages)[number]) =>
-    stageVisibleTo(
-      user,
-      s,
-      visibleReqs(requirements.filter((r) => r.stageId === s.id)),
-    );
+  /* A etapa em andamento (ou que ainda aceita dados, como o BL depois do
+     embarque) abre o marco dos itens dela; ?stage=CHAVE abre outra;
+     ?stage=all, todas. */
   const defaultExpanded = (s: (typeof stages)[number]) =>
     s.status === "active" ||
     s.status === "blocked" ||
@@ -1189,21 +1158,14 @@ export default async function OrderPage({
         r.status !== "done" &&
         canCompleteLater(s, r, order),
     );
-  // Operador: só as etapas em que ele tem tarefa a fazer abrem (também em
-  // "Abrir todas as etapas" e "Ver detalhes").
-  const openableStages = flowStages.filter(
-    (s) => stageVisible(s) && (!mineOnly || myStageOpen(s)),
-  );
   const expandedStageIds = new Set(
-    openableStages
+    flowStages
       .filter(
         (s) =>
           defaultExpanded(s) || stageParam === "all" || stageParam === s.key,
       )
       .map((s) => s.id),
   );
-  const stageHref = (s: (typeof stages)[number]) =>
-    `/app/orders/${order.id}?stage=${s.key}#stage-${s.id}`;
   // Pagamento ao fornecedor: o administrador e o fornecedor do pedido.
   const showSupplierPayment =
     financeAccess ||
@@ -1313,7 +1275,6 @@ export default async function OrderPage({
         ])
       : [],
   );
-  const myRow = (s: (typeof stages)[number]) => myRows.get(s.id) ?? null;
   /** O operador tem alguma tarefa a fazer no pedido (etapa ou subetapa). */
   const myAnything = [...myRows.values()].some((row) => !!row);
   /* Cartões coloridos do alto (como Clientes e Fornecedores): os mesmos
@@ -1842,6 +1803,212 @@ export default async function OrderPage({
         ) : view.state !== "na" ? (
           <p className="py-2 text-sm text-zinc-500">{t("milestone.empty")}</p>
         ) : null,
+      });
+    }
+  }
+
+  /* Cliente, fornecedor e parceiros (fase 5c, docs/MILESTONES.md): os
+     marcos no lugar da tabela "Etapas do pedido". Os itens são os mesmos que
+     o login via nas etapas (`requirementsByMilestone`: o papel dele, os que
+     andam junto e, para o parceiro, os marcos que ele lê), com as mesmas
+     ações; cada marco abre aberto quando tem item liberado agora. */
+  const partnerItems: MilestoneTimelineItem[] = [];
+  /** Partes do pedido em que o login atua, sempre à vista, na ordem dos marcos. */
+  const partnerParts: Array<{ part: OrderPart; milestone: MilestoneKey }> = [];
+  if (!wellmix) {
+    const views = await milestonesOf(order);
+    const byMilestone = requirementsByMilestone(user, flowStages, requirements);
+    const stageById = new Map(flowStages.map((s) => [s.id, s]));
+    const live = (s: (typeof stages)[number], r: Requirement) =>
+      s.status === "active" ||
+      s.status === "blocked" ||
+      canCompleteLater(s, r, order);
+    // Partes do pedido em que o login atua (cartão ou página própria).
+    const parts = [...partsByStage.values()]
+      .flat()
+      .filter((part) => partRowFor(user, part.key));
+    const seesAll = user.role === "customer";
+    for (const key of MILESTONE_KEYS)
+      for (const part of parts)
+        if (ORDER_PART_MILESTONE[part.key] === key)
+          partnerParts.push({ part, milestone: key });
+    for (const view of views) {
+      const rows = (byMilestone.get(view.key) ?? []).flatMap(({ r, stage }) => {
+        const s = stageById.get(stage.id);
+        if (!s) return [];
+        // Pedido de compra, fornecedor: na Preparação só a faca, a foto em
+        // alta e o prazo (como no cartão da etapa).
+        const supplierView = supplierLanes && s.key === "PREPARATION";
+        if (supplierView && !supplierSeesLaneRequirement(r)) return [];
+        if (!visibleReqs([r]).length) return [];
+        return [{ r, stage: s, supplierView }];
+      });
+      if (!rows.length && !(seesAll && view.state !== "na")) continue;
+      const rowStages = [...new Set(rows.map((x) => x.stage))];
+      const expanded = rowStages.some((s) => expandedStageIds.has(s.id));
+      const mineNow = rows.some(
+        ({ r, stage }) =>
+          r.role === user.role && r.status !== "done" && live(stage, r),
+      );
+      const mineLater = rows.some(
+        ({ r, stage }) =>
+          r.role === user.role && r.status !== "done" && !live(stage, r),
+      );
+      const inspectionStage = rowStages.find((s) => s.key === "INSPECTION");
+      const prepStage = rowStages.find((s) => s.key === "PREPARATION");
+      const prepReqs = prepStage
+        ? requirements.filter((r) => r.stageId === prepStage.id)
+        : [];
+      const supplierView = rows.some((x) => x.supplierView);
+      const shipping = rowStages.find(
+        (s) => s.key === "SHIPPING" && expandedStageIds.has(s.id),
+      );
+      const done = rows.filter(({ r }) => r.status === "done").length;
+      const shownView = rows.length
+        ? {
+            ...view,
+            done,
+            total: rows.length,
+            percent: Math.round((done / rows.length) * 100),
+          }
+        : view;
+      const detail = (
+        <div data-milestone-partner={view.key}>
+          {rowStages.map((s) => (
+            <p
+              key={`help-${s.id}`}
+              className="mb-2 mt-1 text-xs leading-relaxed text-zinc-500"
+              data-stage-help={
+                supplierView && s.key === "PREPARATION" ? "supplier" : s.key
+              }
+            >
+              {supplierView && s.key === "PREPARATION"
+                ? t("dieCut.stageHelp.supplier")
+                : t(`help.stage.${s.key}` as DictionaryKey)}
+            </p>
+          ))}
+          {shipping && showMyTariff ? (
+            <FreightTariffUploadBox
+              t={t}
+              orderId={order.id}
+              status={myTariff}
+            />
+          ) : null}
+          {inspectionStage && user.role === "supplier" ? (
+            <p className="mb-2 rounded-lg bg-brand-50 px-3 py-1.5 text-xs leading-relaxed text-brand-800">
+              {t("orders.inspection.blindHint")}
+            </p>
+          ) : null}
+          {inspectionStage &&
+          (inspectionStage.status === "blocked" ||
+            inspectionStage.status === "active") &&
+          requirements.some(
+            (r) =>
+              r.stageId === inspectionStage.id &&
+              r.status === "done" &&
+              isRemeasurable(r),
+          ) &&
+          user.role === "supplier" ? (
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
+              {remeasureMode ? (
+                <>
+                  <span className="text-xs text-zinc-600">
+                    {t("orders.inspection.remeasureHint")}
+                  </span>
+                  <TextLink
+                    href={`/app/orders/${order.id}#stage-${inspectionStage.id}`}
+                    className="text-xs"
+                  >
+                    {t("orders.inspection.remeasureClose")}
+                  </TextLink>
+                </>
+              ) : (
+                <TextLink
+                  href={`/app/orders/${order.id}?remeasure=1#stage-${inspectionStage.id}`}
+                >
+                  {t("orders.inspection.remeasure")} →
+                </TextLink>
+              )}
+            </div>
+          ) : null}
+          {rows.length ? (
+            <ul
+              className="@container divide-y divide-zinc-100"
+              data-milestone-tasks={view.key}
+              // Alias de antes (testes e atalhos): a etapa dos itens, quando é uma só.
+              data-stage-tasks={
+                rowStages.length === 1 ? rowStages[0].key : undefined
+              }
+            >
+              {/* Pedido de compra: os itens do fornecedor também ficam
+                  juntos, produto a produto, no quadro Die Cut. */}
+              {purchaseFlow &&
+              prepStage &&
+              canViewDieCut(user, progress.order) &&
+              rows.some(({ r }) => dieCutItemOf(r.key)) ? (
+                <li
+                  className="flex flex-wrap items-center justify-between gap-2 py-2.5"
+                  data-die-cut-link
+                >
+                  <span className="text-sm text-zinc-600">
+                    {t(
+                      supplierView
+                        ? "dieCut.orderHint.supplier"
+                        : "dieCut.orderHint",
+                    )}
+                  </span>
+                  <LinkButton
+                    href={dieCutHref(order.id)}
+                    variant={
+                      user.role === "supplier" &&
+                      prepReqs.some(
+                        (r) => dieCutItemOf(r.key) && r.status !== "done",
+                      )
+                        ? "primary"
+                        : "secondary"
+                    }
+                  >
+                    {prepReqs.some(
+                      (r) => dieCutItemOf(r.key) && r.status !== "done",
+                    )
+                      ? t("dieCut.open")
+                      : t("dieCut.view")}
+                  </LinkButton>
+                </li>
+              ) : null}
+              {rows.map(({ r, stage, supplierView: lane }) => (
+                <Fragment key={r.id}>
+                  {requirementRowOf(r, stage, {
+                    open: live(stage, r),
+                    supplierView: lane,
+                  })}
+                </Fragment>
+              ))}
+            </ul>
+          ) : (
+            <p className="py-2 text-sm text-zinc-500">{t("milestone.empty")}</p>
+          )}
+          {rows.length ? (
+            <div className="mt-1.5 print:hidden" data-milestone-chat={view.key}>
+              <ChatOpenButton
+                target={{
+                  orderId: order.id,
+                  draft: t("milestone.chatDraft", {
+                    milestone: milestoneTitle(t, view.key),
+                  }),
+                }}
+                label={t("milestone.chatWellmix")}
+              />
+            </div>
+          ) : null}
+        </div>
+      );
+      partnerItems.push({
+        view: shownView,
+        mine: mineNow ? "now" : mineLater ? "later" : null,
+        expanded: expanded || stageParam === "all",
+        // Marco só acompanhado (cliente), sem item nem parte: só a linha.
+        detail: rows.length ? detail : null,
       });
     }
   }
@@ -2399,623 +2566,72 @@ export default async function OrderPage({
           ) : null}
         </OrderSection>
       ) : (
-        /* Etapas (fornecedor, parceiros e cliente): uma linha por etapa
-         (todas, como a linha do tempo). A etapa em andamento (e a que ainda
-         aceita dados) aparece aberta embaixo; as outras abrem em "Ver
-         detalhes". */
-        <OrderSection
-          id="order-stages"
-          title={t("orderView.stages")}
-          actions={
-            openableStages.length > 1 ? (
-              stageParam === "all" ? (
-                <TextLink
-                  href={`/app/orders/${order.id}#order-stages`}
-                  className="text-sm"
-                  data-stage-show-current
-                >
-                  {t("orderView.stage.current")}
-                </TextLink>
-              ) : (
-                <TextLink
-                  href={`/app/orders/${order.id}?stage=all#order-stages`}
-                  className="text-sm"
-                  data-stage-show-all
-                >
-                  {t("orderView.stage.all")}
-                </TextLink>
-              )
-            ) : null
-          }
-        >
-          <Table>
-            <thead>
-              <tr>
-                <Th className="w-10">#</Th>
-                <Th>{t("orderView.col.stage")}</Th>
-                <Th>{t("orderView.col.status")}</Th>
-                <Th>{t("orderView.col.responsible")}</Th>
-                <Th>{t("orderView.col.due")}</Th>
-                <Th>{t("orderView.col.done")}</Th>
-                <Th>{t("orderView.col.progress")}</Th>
-                <Th className="text-right">{t("orderView.col.reqs")}</Th>
-                <Th />
-              </tr>
-            </thead>
-            <tbody>
-              {flowStages.map((s, index) => {
-                const visible = stageVisible(s);
-                // Operador: os detalhes da etapa abrem quando há item dele na
-                // etapa; a tarefa só de subetapa abre pela linha da subetapa.
-                const details = visible && (!mineOnly || myStageOpen(s));
-                // Só o que este login vê (arte e certificado: quem recebe).
-                const reqs = visibleReqs(
-                  requirements.filter((r) => r.stageId === s.id),
-                );
-                // Fornecedor e parceiros: só as linhas que são do próprio
-                // login (a numeração continua a do fluxo inteiro).
-                // Operador da Wellmix: só as etapas e partes com tarefa dele.
-                const mineRow = mineOnly ? myRow(s) : null;
-                const ownStage = mineOnly
-                  ? !!mineRow
-                  : stageRowFor(user, s, reqs);
-                const ownParts = (partsByStage.get(s.key) ?? []).filter(
-                  (part) =>
-                    mineOnly
-                      ? !!mineRow?.parts.includes(part.key)
-                      : partRowFor(user, part.key),
-                );
-                if (!ownStage && !ownParts.length) return null;
-                const open = s.status === "active" || s.status === "blocked";
-                const expanded = expandedStageIds.has(s.id);
-                // Login Trading: a etapa 2 como "Die-Cut", com o andamento dele.
-                const dieCut = tradingDieCut(s, reqs);
-                // Operador: situação, andamento e contagem das tarefas dele.
-                const mine = mineRow?.progress ?? null;
-                const status = mine?.status ?? dieCut?.status ?? s.status;
-                const rowName = dieCut
-                  ? t("purchaseOrder.dieCut.title")
-                  : stageRowName(s.key);
-                const completedAt = mine
-                  ? null
-                  : dieCut
-                    ? dieCut.completedAt
-                    : s.completedAt;
-                return (
-                  <Fragment key={s.id}>
-                    {ownStage ? (
-                      <tr
-                        className={cx(
-                          rowClass,
-                          status === "active" && "bg-brand-50/60",
-                          status === "blocked" && "bg-amber-50/70",
-                        )}
-                        data-stage-row={s.key}
-                        data-stage-status={status}
-                      >
-                        <Td className="w-10">
-                          <StepDot state={status}>{index + 1}</StepDot>
-                        </Td>
-                        <Td className="min-w-40">
-                          <span
-                            className={cx(
-                              status === "pending"
-                                ? "text-zinc-500"
-                                : status === "active"
-                                  ? "font-semibold text-brand-800"
-                                  : status === "blocked"
-                                    ? "font-semibold text-amber-900"
-                                    : "font-medium text-zinc-900",
-                            )}
-                          >
-                            {details ? (
-                              <a
-                                href={stageHref(s)}
-                                className="transition hover:text-brand-700"
-                              >
-                                {rowName}
-                              </a>
-                            ) : (
-                              rowName
-                            )}
-                          </span>
-                        </Td>
-                        <Td className="whitespace-nowrap">
-                          <Badge tone={stageTone(status)}>
-                            {dieCut && status === "done"
-                              ? t("purchaseOrder.dieCut.done")
-                              : t(`stageStatus.${status}`)}
-                          </Badge>
-                        </Td>
-                        <Td className="whitespace-nowrap text-zinc-700">
-                          {visible ? (
-                            <span
-                              className="inline-flex items-center gap-1"
-                              data-stage-responsible={s.key}
-                            >
-                              {dieCut
-                                ? t("role.supplier")
-                                : t(`role.${s.responsibleRole}`)}
-                              {(() => {
-                                // Mensagem para o responsável da etapa (Wellmix: a
-                                // empresa; quem é de fora: a Wellmix), já com a etapa escrita.
-                                const chat = stageChat(
-                                  order,
-                                  s.responsibleRole,
-                                  wellmix,
-                                );
-                                const draft = t("orderView.stage.chatDraft", {
-                                  stage: dieCut
-                                    ? t("purchaseOrder.dieCut.title")
-                                    : stageName(s.key),
-                                });
-                                if (!chat) return null;
-                                if (chat.kind === "unassigned")
-                                  return (
-                                    <a
-                                      href="#order-partners"
-                                      className="text-xs font-medium text-brand-700 underline underline-offset-2"
-                                      title={t(
-                                        "orderView.stage.chatAssignTitle",
-                                        {
-                                          role: t(`role.${s.responsibleRole}`),
-                                        },
-                                      )}
-                                      data-stage-chat-assign={s.key}
-                                    >
-                                      {t("orderView.stage.chatAssign")}
-                                    </a>
-                                  );
-                                return (
-                                  <span data-stage-chat={s.key}>
-                                    <ChatOpenButton
-                                      target={
-                                        chat.kind === "party"
-                                          ? {
-                                              orderId: order.id,
-                                              partyId: chat.partyId,
-                                              draft,
-                                            }
-                                          : { orderId: order.id, draft }
-                                      }
-                                      label={
-                                        chat.kind === "party"
-                                          ? t("orderView.stage.chat", {
-                                              who: `${t(`role.${s.responsibleRole}`)} (${partyName(chat.partyId)})`,
-                                            })
-                                          : t("orderView.stage.chatWellmix")
-                                      }
-                                    />
-                                  </span>
-                                );
-                              })()}
-                            </span>
-                          ) : (
-                            "—"
-                          )}
-                        </Td>
-                        <Td
-                          className={cx(
-                            "whitespace-nowrap tabular-nums",
-                            visible &&
-                              open &&
-                              !dieCut?.complete &&
-                              isOverdue(s.dueAt)
-                              ? "font-semibold text-red-700"
-                              : "text-zinc-700",
-                          )}
-                        >
-                          {visible && s.dueAt ? formatDate(s.dueAt, t) : "—"}
-                        </Td>
-                        <Td className="whitespace-nowrap tabular-nums text-zinc-700">
-                          {visible && completedAt
-                            ? formatDate(completedAt, t)
-                            : "—"}
-                        </Td>
-                        <Td className="w-32">
-                          {open || mine ? (
-                            <span className="flex items-center gap-2">
-                              <span className="w-16">
-                                <Progress
-                                  percent={
-                                    mine?.percent ??
-                                    dieCut?.percent ??
-                                    s.percent
-                                  }
-                                />
-                              </span>
-                              <span
-                                className="text-xs font-semibold tabular-nums text-zinc-600"
-                                data-stage-percent={s.key}
-                              >
-                                {mine?.percent ?? dieCut?.percent ?? s.percent}%
-                              </span>
-                            </span>
-                          ) : status === "done" ? (
-                            <span className="text-xs font-semibold text-emerald-700">
-                              100%
-                            </span>
-                          ) : (
-                            <span className="text-zinc-400">—</span>
-                          )}
-                        </Td>
-                        <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
-                          {mine
-                            ? t("orderView.stage.reqs", {
-                                done: mine.done,
-                                total: mine.total,
-                              })
-                            : visible && dieCut
-                              ? t("orderView.stage.reqs", {
-                                  done: dieCut.done,
-                                  total: dieCut.total,
-                                })
-                              : visible && reqs.length
-                                ? t("orderView.stage.reqs", {
-                                    done: reqs.filter(
-                                      (r) => r.status === "done",
-                                    ).length,
-                                    total: reqs.length,
-                                  })
-                                : "—"}
-                        </Td>
-                        <Td className="whitespace-nowrap text-right">
-                          {details ? (
-                            expanded && !defaultExpanded(s) ? (
-                              <TextLink
-                                href={`/app/orders/${order.id}#order-stages`}
-                                className="text-sm"
-                              >
-                                {t("orderView.stage.close")}
-                              </TextLink>
-                            ) : expanded ? null : (
-                              <TextLink
-                                href={stageHref(s)}
-                                className="text-sm"
-                                data-stage-open={s.key}
-                              >
-                                {t("orderView.stage.open")}
-                              </TextLink>
-                            )
-                          ) : null}
-                        </Td>
-                      </tr>
-                    ) : null}
-                    {/* Partes do pedido que acontecem nesta altura do fluxo e têm
-                    cartão (ou página) próprio: aparecem aqui, na ordem do
-                    negócio, com a situação e o atalho. */}
-                    {ownParts.map((part) => {
-                      // Operador: a parte com a situação e a contagem dele.
-                      const minePart = mineOnly
-                        ? myTimeline?.parts[part.key]
-                        : null;
-                      const partState = minePart
-                        ? myProgress(minePart).status
-                        : part.state;
-                      // Só o que vem depois: em cinza.
-                      const partMuted = !!minePart && minePart.open === 0;
-                      const partTotal = minePart
-                        ? minePart.open + minePart.later + minePart.done
-                        : 0;
-                      const partCount =
-                        minePart && partTotal > 0
-                          ? { done: minePart.done, total: partTotal }
-                          : !minePart && part.total
-                            ? { done: part.done ?? 0, total: part.total }
-                            : null;
-                      return (
-                        <tr
-                          key={part.key}
-                          className={cx(rowClass, "bg-zinc-50/60")}
-                          data-order-part={part.key}
-                          data-order-part-state={partState}
-                        >
-                          <Td className="w-10 text-center text-zinc-400">↳</Td>
-                          <Td className="min-w-40">
-                            <a
-                              href={part.href}
-                              className={cx(
-                                "font-medium transition hover:text-brand-700",
-                                partMuted ? "text-zinc-500" : "text-zinc-800",
-                              )}
-                            >
-                              {t(`orderParts.${part.key}` as DictionaryKey)}
-                            </a>
-                            {ORDER_PART_PARALLEL.includes(part.key) ? (
-                              <span className="ml-1.5 whitespace-nowrap rounded-full bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-800 ring-1 ring-inset ring-sky-200">
-                                {t("orderParts.parallel")}
-                              </span>
-                            ) : null}
-                          </Td>
-                          <Td className="whitespace-nowrap">
-                            <Badge
-                              tone={
-                                partState === "done"
-                                  ? "success"
-                                  : partState === "active"
-                                    ? "warning"
-                                    : "neutral"
-                              }
-                            >
-                              {t(
-                                `orderParts.state.${partState}` as DictionaryKey,
-                              )}
-                            </Badge>
-                          </Td>
-                          <Td className="whitespace-nowrap text-zinc-700">
-                            {t(`orderParts.who.${part.key}` as DictionaryKey)}
-                          </Td>
-                          <Td colSpan={3} className="text-xs text-zinc-600">
-                            {part.detail ?? "—"}
-                          </Td>
-                          <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
-                            {partCount
-                              ? t("orderView.stage.reqs", partCount)
-                              : "—"}
-                          </Td>
-                          <Td className="whitespace-nowrap text-right">
-                            <TextLink
-                              href={part.href}
-                              className="text-sm"
-                              data-order-part-open={part.key}
-                            >
-                              {t("orderParts.open")}
-                            </TextLink>
-                          </Td>
-                        </tr>
-                      );
-                    })}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </Table>
-          {openableStages.length > 1 ? (
-            <p className="mt-1.5 text-xs text-zinc-500 print:hidden">
-              {t("orderView.stage.hint")}
-            </p>
+        /* Cliente, fornecedor e parceiros (fase 5c): os marcos em que o
+           login atua ou acompanha, no lugar da tabela "Etapas do pedido",
+           com os mesmos itens e as mesmas ações. */
+        <OrderSection id="order-stages" title={t("milestone.title")}>
+          {/* Âncoras das etapas (as ações voltam para #stage-…). */}
+          {flowStages.map((s) => (
+            <span
+              key={s.id}
+              id={`stage-${s.id}`}
+              className="block scroll-mt-24"
+            />
+          ))}
+          <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+            {t("milestone.partnerHint")}
+          </p>
+          {partnerItems.length ? (
+            <OrderMilestoneTimeline items={partnerItems} t={t} />
+          ) : !partnerParts.length ? (
+            <Empty>{t("common.none")}</Empty>
           ) : null}
-
-          {flowStages
-            .filter((s) => stageVisible(s) && expandedStageIds.has(s.id))
-            .map((stage) => {
-              const reqs = requirements.filter((r) => r.stageId === stage.id);
-              const open =
-                stage.status === "active" || stage.status === "blocked";
-              // Pedido de compra, fornecedor: só a faca, a foto em alta e o prazo.
-              const supplierView = supplierLanes && stage.key === "PREPARATION";
-              // Operador da Wellmix: só as tarefas abertas dele na etapa.
-              const mine = mineOnly ? (myRow(stage)?.progress ?? null) : null;
-              // As que vêm depois ficam em cinza, na ordem da etapa.
-              const mineIds = new Set(
-                [
-                  ...(myStage(stage)?.open ?? []),
-                  ...(myStage(stage)?.later ?? []),
-                ].map((r) => r.id),
-              );
-              const laterIds = new Set(
-                (myStage(stage)?.later ?? []).map((r) => r.id),
-              );
-              const shownReqs = mineOnly
-                ? reqs.filter((r) => mineIds.has(r.id))
-                : supplierView
-                  ? reqs.filter(supplierSeesLaneRequirement)
-                  : visibleReqs(reqs);
-              // Login Trading: a etapa 2 como "Die-Cut", com o andamento dele.
-              const dieCut = tradingDieCut(stage, reqs);
-              const status = mine?.status ?? dieCut?.status ?? stage.status;
-              return (
-                <Fragment key={stage.id}>
-                  <Card
-                    className={cx(
-                      "mt-4",
-                      status === "active" &&
-                        "border-brand-300! ring-4 ring-brand-50",
-                      status === "blocked" &&
-                        "border-amber-400! ring-4 ring-amber-50",
-                    )}
-                    title={
-                      <span
-                        id={`stage-${stage.id}`}
-                        className="flex scroll-mt-24 flex-wrap items-center gap-2"
-                        data-stage-card={stage.key}
-                        data-stage-status={status}
-                      >
-                        {dieCut
-                          ? t("purchaseOrder.dieCut.title")
-                          : stageName(stage.key)}
-                        <Badge tone={stageTone(status)}>
-                          {dieCut && status === "done"
-                            ? t("purchaseOrder.dieCut.done")
-                            : t(`stageStatus.${status}`)}
-                        </Badge>
-                        {open && !dieCut?.complete && stage.dueAt ? (
-                          <span
-                            className={cx(
-                              "text-xs",
-                              isOverdue(stage.dueAt)
-                                ? "font-semibold text-red-700"
-                                : "font-normal text-zinc-500",
-                            )}
-                          >
-                            {t("common.due")}: {formatDate(stage.dueAt, t)}
-                          </span>
-                        ) : null}
-                      </span>
-                    }
-                    actions={
-                      open ? (
-                        <span className="flex items-center gap-2 text-xs text-zinc-500">
-                          <span>
-                            {t("common.responsible")}:{" "}
-                            <span
-                              className="font-semibold text-zinc-700"
-                              data-stage-card-responsible={stage.key}
-                            >
-                              {dieCut
-                                ? t("role.supplier")
-                                : t(`role.${stage.responsibleRole}`)}
-                            </span>
-                          </span>
-                          <span
-                            className="w-24"
-                            data-stage-card-percent={
-                              mine?.percent ?? dieCut?.percent ?? stage.percent
-                            }
-                          >
-                            <Progress
-                              percent={
-                                mine?.percent ??
-                                dieCut?.percent ??
-                                stage.percent
-                              }
-                            />
-                          </span>
-                        </span>
-                      ) : !defaultExpanded(stage) ? (
-                        <TextLink
-                          href={`/app/orders/${order.id}#order-stages`}
-                          className="text-xs"
-                        >
-                          {t("orderView.stage.close")}
-                        </TextLink>
-                      ) : null
-                    }
-                  >
-                    <p
-                      className="mb-2 text-xs leading-relaxed text-zinc-500"
-                      data-stage-help={supplierView ? "supplier" : undefined}
+          {/* Partes do pedido com cartão ou página própria em que o login
+              atua (como as linhas da tabela de antes), com o marco delas. */}
+          {partnerParts.length ? (
+            <ul
+              className="mt-3 divide-y divide-zinc-100 rounded-lg border border-zinc-200 px-3"
+              data-order-parts
+            >
+              {partnerParts.map(({ part, milestone }) => (
+                <li
+                  key={`part-${part.key}`}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2"
+                  data-order-part={part.key}
+                  data-order-part-state={part.state}
+                  data-order-part-milestone={milestone}
+                >
+                  <span className="text-sm text-zinc-700">
+                    ↳ {t(`orderParts.${part.key}` as DictionaryKey)}
+                    <span className="ml-1.5 text-xs text-zinc-500">
+                      {milestoneTitle(t, milestone)}
+                      {part.detail ? ` · ${part.detail}` : ""}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <Badge
+                      tone={
+                        part.state === "done"
+                          ? "success"
+                          : part.state === "active"
+                            ? "warning"
+                            : "neutral"
+                      }
                     >
-                      {supplierView
-                        ? t("dieCut.stageHelp.supplier")
-                        : t(`help.stage.${stage.key}`)}
-                    </p>
-                    {stage.key === "SHIPPING" && showTariff ? (
-                      <FreightTariffBox
-                        t={t}
-                        orderId={order.id}
-                        stageId={stage.id}
-                        shippingLineId={order.shippingLineId}
-                        view={tariffView}
-                        keepParams={remeasureMode ? { remeasure: "1" } : {}}
-                      />
-                    ) : null}
-                    {stage.key === "SHIPPING" && showMyTariff ? (
-                      <FreightTariffUploadBox
-                        t={t}
-                        orderId={order.id}
-                        status={myTariff}
-                      />
-                    ) : null}
-                    {stage.key === "INSPECTION" && user.role === "supplier" ? (
-                      <p className="mb-2 rounded-lg bg-brand-50 px-3 py-1.5 text-xs leading-relaxed text-brand-800">
-                        {t("orders.inspection.blindHint")}
-                      </p>
-                    ) : null}
-                    {stage.key === "INSPECTION" &&
-                    open &&
-                    (stage.status === "blocked" || stage.status === "active") &&
-                    reqs.some(
-                      (r) => r.status === "done" && isRemeasurable(r),
-                    ) &&
-                    (wellmix || user.role === "supplier") ? (
-                      <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
-                        {remeasureMode ? (
-                          <>
-                            <span className="text-xs text-zinc-600">
-                              {t("orders.inspection.remeasureHint")}
-                            </span>
-                            <TextLink
-                              href={`/app/orders/${order.id}#stage-${stage.id}`}
-                              className="text-xs"
-                            >
-                              {t("orders.inspection.remeasureClose")}
-                            </TextLink>
-                          </>
-                        ) : (
-                          <TextLink
-                            href={`/app/orders/${order.id}?remeasure=1#stage-${stage.id}`}
-                          >
-                            {t("orders.inspection.remeasure")} →
-                          </TextLink>
-                        )}
-                      </div>
-                    ) : null}
-                    {stage.status === "pending" ? (
-                      <p className="text-sm text-zinc-500">
-                        {shownReqs
-                          .map((r) => requirementLabel(t, r))
-                          .join(" · ")}
-                      </p>
-                    ) : (
-                      <ul
-                        className="@container divide-y divide-zinc-100"
-                        data-stage-tasks={stage.key}
-                      >
-                        {/* Pedido de compra: os quatro itens do fornecedor também
-                          ficam juntos, produto a produto, no quadro Die Cut. */}
-                        {purchaseFlow &&
-                        !mineOnly &&
-                        stage.key === "PREPARATION" &&
-                        canViewDieCut(user, progress.order) &&
-                        reqs.some((r) => dieCutItemOf(r.key)) ? (
-                          <li
-                            className="flex flex-wrap items-center justify-between gap-2 py-2.5"
-                            data-die-cut-link
-                          >
-                            <span className="text-sm text-zinc-600">
-                              {t(
-                                supplierView
-                                  ? "dieCut.orderHint.supplier"
-                                  : "dieCut.orderHint",
-                              )}
-                            </span>
-                            <LinkButton
-                              href={dieCutHref(order.id)}
-                              variant={
-                                user.role === "supplier" &&
-                                reqs.some(
-                                  (r) =>
-                                    dieCutItemOf(r.key) && r.status !== "done",
-                                )
-                                  ? "primary"
-                                  : "secondary"
-                              }
-                            >
-                              {reqs.some(
-                                (r) =>
-                                  dieCutItemOf(r.key) && r.status !== "done",
-                              )
-                                ? t("dieCut.open")
-                                : t("dieCut.view")}
-                            </LinkButton>
-                          </li>
-                        ) : null}
-                        {shownReqs.map((r) =>
-                          requirementRowOf(r, stage, {
-                            open:
-                              open ||
-                              // Embarque confirmado: BL, datas e navio ainda podem vir.
-                              canCompleteLater(stage, r, order),
-                            muted: laterIds.has(r.id),
-                            supplierView,
-                          }),
-                        )}
-                      </ul>
-                    )}
-                    {stage.status === "blocked" && wellmix ? (
-                      <form action={unblockStageAction} className="mt-2">
-                        <input type="hidden" name="orderId" value={order.id} />
-                        <input type="hidden" name="stageId" value={stage.id} />
-                        <SubmitButton variant="secondary">
-                          {t("orders.unblock")}
-                        </SubmitButton>
-                      </form>
-                    ) : null}
-                  </Card>
-                </Fragment>
-              );
-            })}
+                      {t(`orderParts.state.${part.state}` as DictionaryKey)}
+                    </Badge>
+                    <TextLink
+                      href={part.href}
+                      className="text-sm"
+                      data-order-part-open={part.key}
+                    >
+                      {t("orderParts.open")}
+                    </TextLink>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </OrderSection>
       )}
 

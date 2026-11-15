@@ -1,4 +1,5 @@
 import "server-only";
+import { isOrderOpen } from "@/lib/order-status";
 
 import { realName } from "@/lib/placeholder-name";
 import {
@@ -7,6 +8,7 @@ import {
   type ImportStep,
   type Order,
   type OrderItem,
+  type OrderMilestone,
   type OrderSummary,
   type Party,
   type Payment,
@@ -41,10 +43,9 @@ import {
   compactMilestones,
   newlyDoneMilestones,
   newlyStartedMilestones,
-  orderMilestones,
   type CompactMilestone,
 } from "@/lib/milestones";
-import { orderSubtasks } from "./milestones";
+import { milestoneViews } from "./milestones";
 
 /*
  * Resumo por pedido (docs/RESUMOS.md). A Control Tower lia, a cada abertura,
@@ -82,9 +83,12 @@ import { orderSubtasks } from "./milestones";
  * marco atual (docs/MILESTONES.md, fase 4a). 15: a contribuição para a
  * Control Tower (`kpi`) conta as visões gerais de preparação, inspeção,
  * embarque, desembaraço e transporte pelo marco atual e guarda o marco
- * (`kpi.ms`; fase 4d).
+ * (`kpi.ms`; fase 4d). 16: os marcos (`m`) agrupam os itens pelo passo
+ * gravado (`requirements.step`) e o prazo do marco em andamento vem de
+ * `order_milestones.dueAt`; a contribuição da Control Tower (`kpi.c`) põe
+ * o pedido no quadrado pelo marco atual (fase 5c, docs/MILESTONES.md).
  */
-export const SUMMARY_VERSION = 15;
+export const SUMMARY_VERSION = 16;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";
@@ -207,6 +211,11 @@ interface Sources {
   milestoneRequirements: Map<string, Requirement[]>;
   /** Pedidos com produto de NCM que exige LPCO (`lpcoOrderIds`). */
   lpco: Set<string>;
+  /** Marcos gravados (fase 5c): só chave e prazo, para o prazo do marco. */
+  milestoneRows: Map<
+    string,
+    Array<Pick<OrderMilestone, "orderId" | "key" | "dueAt">>
+  >;
 }
 
 /**
@@ -247,6 +256,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
       flowRequirements: new Map(),
       milestoneRequirements: new Map(),
       lpco: new Set(),
+      milestoneRows: new Map(),
     };
   const [
     parties,
@@ -264,6 +274,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     flowRequirements,
     milestoneRequirements,
     lpco,
+    milestoneRows,
   ] = await Promise.all([
     partyIds.length
       ? store.list("parties", { filter: { id: partyIds } })
@@ -297,10 +308,18 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
     listColumnsOf(
       store,
       "requirements",
-      ["orderId", "stageId", "key", "status"],
+      // Fase 5c: o passo gravado no item (`step`) agrupa as subtarefas.
+      ["orderId", "stageId", "key", "status", "step"],
       { filter: byOrder },
     ),
     import("./import-flow").then((m) => m.lpcoOrderIds(orderIds)),
+    // Fase 5c: o prazo dos marcos sai de `order_milestones` (só chave e
+    // prazo; tabela ainda não publicada: o prazo das etapas).
+    safe(
+      listColumnsOf(store, "order_milestones", ["orderId", "key", "dueAt"], {
+        filter: byOrder,
+      }),
+    ),
   ]);
   const partyMap = new Map<string, Party>();
   for (const p of parties) if (!partyMap.has(p.id)) partyMap.set(p.id, p);
@@ -324,6 +343,7 @@ async function loadSources(ids: string[] | null): Promise<Sources> {
       (r) => r.orderId,
     ),
     lpco,
+    milestoneRows: groupBy(milestoneRows, (r) => r.orderId),
   };
 }
 
@@ -341,18 +361,16 @@ export function factMilestones(
     sample && r.id === sample.id ? sample : r,
   );
   return compactMilestones(
-    orderMilestones(
-      orderSubtasks({
-        order,
-        stages: src.stages.get(id) ?? [],
-        requirements,
-        importSteps: src.steps.get(id) ?? [],
-        track: src.tracks.get(id)?.[0] ?? null,
-        receiving: src.receivings.get(id)?.[0] ?? null,
-        lpco: src.lpco.has(id),
-      }),
-      order.status,
-    ),
+    milestoneViews({
+      order,
+      stages: src.stages.get(id) ?? [],
+      requirements,
+      importSteps: src.steps.get(id) ?? [],
+      track: src.tracks.get(id)?.[0] ?? null,
+      receiving: src.receivings.get(id)?.[0] ?? null,
+      lpco: src.lpco.has(id),
+      milestones: src.milestoneRows.get(id),
+    }),
   );
 }
 
@@ -501,7 +519,7 @@ function withoutRefs(p: Payment): FactPayment {
   return copy as FactPayment;
 }
 
-const live = (status: string) => status !== "CLOSED" && status !== "CANCELLED";
+const live = (status: string) => isOrderOpen(status);
 
 function summaryRow(
   facts: OrderFacts,

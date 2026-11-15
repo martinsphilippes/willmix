@@ -2,6 +2,7 @@ import "server-only";
 import type {
   ImportStep,
   Order,
+  OrderMilestone,
   ProductionTrack,
   Receiving,
   Requirement,
@@ -49,6 +50,27 @@ export interface MilestoneInput {
    * (o item não entra). Sem ele, o passo sai da etapa e da chave.
    */
   requirementStep?: (r: Requirement, stage: Stage) => string | null;
+  /**
+   * De onde sai o passo do item (fase 5c): "stored" (o padrão) lê o passo
+   * gravado no item (`requirements.step`) e só cai no de-para pela etapa
+   * quando ele está vazio; "stages" usa sempre a etapa (a conta antiga, para
+   * a conferência da migração).
+   */
+  source?: "stored" | "stages";
+}
+
+/** Passos de um item: o gravado (fase 5c) ou, sem ele, pela etapa e a chave. */
+function stepsOfRequirement(
+  r: Pick<Requirement, "key" | "step">,
+  stage: Pick<Stage, "key">,
+  source: "stored" | "stages",
+): string[] {
+  if (source === "stored" && r.step) return [r.step];
+  return flowStepsOf({
+    kind: "requirement",
+    stageKey: stage.key,
+    items: [{ key: r.key }],
+  }).map(stepId);
 }
 
 /** As subtarefas do pedido, cada uma no passo do menu dela (função pura). */
@@ -71,13 +93,9 @@ export function orderSubtasks(input: MilestoneInput): Subtask[] {
         });
       continue;
     }
-    for (const step of flowStepsOf({
-      kind: "requirement",
-      stageKey: stage.key,
-      items: [{ key: r.key }],
-    }))
+    for (const step of stepsOfRequirement(r, stage, input.source ?? "stored"))
       out.push({
-        step: stepId(step),
+        step,
         key: r.key,
         done: r.status === "done",
         dueAt: r.status === "done" ? null : (stage.dueAt ?? null),
@@ -143,13 +161,45 @@ export function orderSubtasks(input: MilestoneInput): Subtask[] {
   return out;
 }
 
+/**
+ * Prazo dos marcos pelo gravado em `order_milestones` (fase 5c): o marco em
+ * andamento com linha e prazo usa o `dueAt` dela; sem linha (ou sem prazo),
+ * fica o da subtarefa aberta mais antiga (o prazo da etapa).
+ */
+export function withStoredDue<
+  T extends Pick<MilestoneView, "key" | "state" | "dueAt">,
+>(
+  views: T[],
+  rows: readonly Pick<OrderMilestone, "key" | "dueAt">[] | null | undefined,
+): T[] {
+  if (!rows?.length) return views;
+  const due = new Map(rows.map((r) => [r.key, r.dueAt ?? null]));
+  return views.map((v) => {
+    if (v.state !== "active") return v;
+    const stored = due.get(v.key);
+    return stored ? { ...v, dueAt: stored } : v;
+  });
+}
+
+/** Os marcos do pedido pelas subtarefas e pelo prazo gravado (fase 5c). */
+export function milestoneViews(
+  input: MilestoneInput & {
+    milestones?: readonly Pick<OrderMilestone, "key" | "dueAt">[] | null;
+  },
+): MilestoneView[] {
+  return withStoredDue(
+    orderMilestones(orderSubtasks(input), input.order.status),
+    input.milestones,
+  );
+}
+
 /** Os marcos de um pedido, lendo o que ele tem (leituras pelo pedido). */
 export async function milestonesOf(input: Order): Promise<MilestoneView[]> {
   const store = getStore();
   // A situação de agora (o pedido pode ter mudado depois de lido).
   const order = (await store.get("orders", input.id)) ?? input;
   const filter = { orderId: order.id };
-  const [stages, requirements, importSteps, tracks, receivings, lpco] =
+  const [stages, requirements, importSteps, tracks, receivings, lpco, rows] =
     await Promise.all([
       store.list("stages", { filter }),
       store.list("requirements", { filter }),
@@ -157,17 +207,16 @@ export async function milestonesOf(input: Order): Promise<MilestoneView[]> {
       store.list("production_tracks", { filter }).catch(() => []),
       store.list("receivings", { filter }).catch(() => []),
       lpcoApplies(order).catch(() => false),
+      store.list("order_milestones", { filter }).catch(() => []),
     ]);
-  return orderMilestones(
-    orderSubtasks({
-      order,
-      stages,
-      requirements,
-      importSteps,
-      track: tracks[0] ?? null,
-      receiving: receivings[0] ?? null,
-      lpco,
-    }),
-    order.status,
-  );
+  return milestoneViews({
+    order,
+    stages,
+    requirements,
+    importSteps,
+    track: tracks[0] ?? null,
+    receiving: receivings[0] ?? null,
+    lpco,
+    milestones: rows,
+  });
 }
