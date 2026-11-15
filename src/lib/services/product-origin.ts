@@ -3,6 +3,7 @@ import { getStore } from "@/lib/db";
 import { listColumns } from "@/lib/db/lookup";
 import { countryKey, countryName } from "@/lib/order-terms";
 import { hiddenBookingProductIds } from "./booking-visibility";
+import { sankhyaProductSuppliers } from "./sankhya-product-suppliers";
 
 /*
  * País de origem e grupo de produto da Nova solicitação (dono, 15/11/2026;
@@ -53,10 +54,15 @@ export function resetOriginIndex() {
 async function buildIndex(): Promise<OriginIndex> {
   const store = getStore();
   const [products, suppliers, hidden] = await Promise.all([
-    listColumns(store, "products", ["lineId", "supplierId", "sankhyaRefs"], {
-      filter: { active: true },
-      jsonKeys: { sankhyaRefs: ["CODPARCFORN"] },
-    }),
+    listColumns(
+      store,
+      "products",
+      ["lineId", "supplierId", "sankhyaRefs", "sankhyaCode"],
+      {
+        filter: { active: true },
+        jsonKeys: { sankhyaRefs: ["CODPARCFORN"] },
+      },
+    ),
     listColumns(store, "parties", ["country", "sankhyaCode"], {
       filter: { type: "supplier" },
     }),
@@ -73,9 +79,49 @@ async function buildIndex(): Promise<OriginIndex> {
     if (s.sankhyaCode) bySankhya.set(String(s.sankhyaCode), key);
   }
   const byProduct = new Map<string, { country: string; lineId: string }>();
+  // Sem fornecedor no portal: o fornecedor do produto no Sankhya
+  // (TGFPRO.CODPARCFORN), lido pela API enquanto a carga não grava no banco
+  // (dono, 15/11/2026). Sem o Sankhya, esses produtos ficam sem país.
+  const missing = products.filter(
+    (p) =>
+      !hidden.has(p.id) &&
+      !p.supplierId &&
+      p.sankhyaRefs?.CODPARCFORN == null &&
+      p.sankhyaCode,
+  );
+  const fromApi = missing.length
+    ? await sankhyaProductSuppliers()
+    : new Map<string, string>();
+  // Fornecedor do Sankhya que não está como "fornecedor" no portal (o
+  // parceiro pode ter vindo como outro tipo): o país pelo código dele.
+  const unknownCodes = [
+    ...new Set(
+      missing
+        .map((p) => fromApi.get(String(p.sankhyaCode)))
+        .filter((c): c is string => !!c && !bySankhya.has(c)),
+    ),
+  ];
+  for (let i = 0; i < unknownCodes.length; i += 500) {
+    const others = await listColumns(
+      store,
+      "parties",
+      ["country", "sankhyaCode"],
+      {
+        filter: { sankhyaCode: unknownCodes.slice(i, i + 500) },
+      },
+    );
+    for (const o of others) {
+      const key = countryKey(o.country);
+      if (!key || !o.sankhyaCode) continue;
+      if (!countryNames.has(key)) countryNames.set(key, countryName(o.country));
+      bySankhya.set(String(o.sankhyaCode), key);
+    }
+  }
   for (const p of products) {
     if (hidden.has(p.id)) continue;
-    const forn = p.sankhyaRefs?.CODPARCFORN;
+    const forn =
+      p.sankhyaRefs?.CODPARCFORN ??
+      (p.sankhyaCode ? fromApi.get(String(p.sankhyaCode)) : undefined);
     const country =
       (p.supplierId ? supplierCountry.get(p.supplierId) : undefined) ??
       (forn != null ? bySankhya.get(String(forn)) : undefined) ??

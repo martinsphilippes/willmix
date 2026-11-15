@@ -52,6 +52,8 @@ Card "Condições do pedido", logo abaixo de Cliente/Solicitante/RCA. Valem para
 - O índice produto → país e grupo é lido do banco e guardado por 10 minutos por instância (`src/lib/services/product-origin.ts`).
 - **Servidor:** todo produto do catálogo do lote precisa ser do país e do grupo escolhidos; senão o envio é recusado ("Há produto de outro país ou grupo…"). Produto fora do catálogo (sourcing) não tem cadastro para conferir e passa.
 
+- **Fornecedor pela API do Sankhya (dono, 15/11/2026):** o portal já tem os fornecedores (parceiros com o código do Sankhya), mas a carga não trouxe o fornecedor da maioria dos produtos. Para esses (sem `supplierId` e sem `CODPARCFORN`), o índice lê `SELECT TOP 2000 CODPROD, CODPARCFORN FROM TGFPRO WHERE CODPARCFORN > 0 AND CODPROD > … ORDER BY CODPROD` em páginas (`src/lib/services/sankhya-product-suppliers.ts`), guarda 30 minutos e liga ao parceiro do portal com aquele código (fornecedor ou, se veio como outro tipo, qualquer parceiro com o código) para achar o país. Sem o Sankhya (ou com erro), esses produtos seguem sem país e tenta de novo em 2 minutos. Depois, a carga grava o fornecedor no banco e a leitura pela API deixa de ser necessária.
+
 ### 3.3 Aviso (disclaimer)
 
 Caixa vermelha no fim das condições, sempre visível na venda ao cliente:
@@ -104,5 +106,5 @@ Nada existente foi removido ou alterado.
 ## 9. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" hoje confere só o e-mail.
-- **Fornecedor dos 9.725 produtos sem país:** trazer o `CODPARCFORN` (e o país do fornecedor) do Sankhya na carga, para eles voltarem à venda.
+- **Carga do fornecedor no banco (outro dia):** gravar `TGFPRO.CODPARCFORN` de cada produto no portal na carga do Sankhya, para não depender da leitura pela API.
 - **Envio ao Sankhya:** tipo de operação, formato e transportadora ainda não vão para a nota do Sankhya (falta saber os campos/TOP de cada um).

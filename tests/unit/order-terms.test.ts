@@ -21,8 +21,16 @@ vi.mock("@/lib/integrations/sankhya-client", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@/lib/integrations/sankhya-client")
   >()),
-  executeQuery: async () => {
+  executeQuery: async (sql: string) => {
     if (!sankhya.rows) throw new Error("Sankhya fora do ar");
+    // Fornecedor de cada produto (TGFPRO.CODPARCFORN), pela API.
+    if (/FROM TGFPRO/.test(sql))
+      return {
+        columns: ["CODPROD", "CODPARCFORN"],
+        rows: /CODPROD > 0\b/.test(sql)
+          ? [{ CODPROD: 9001, CODPARCFORN: 4321 }]
+          : [],
+      };
     return { columns: ["CODPARC", "NOMEPARC", "NOMECID"], rows: sankhya.rows };
   },
 }));
@@ -174,6 +182,39 @@ describe("país de origem, grupo e entrega", () => {
         })
       ).map((p) => p.id),
     ).toContain("prod-boneca");
+  });
+
+  it("produto sem fornecedor no portal: o país pelo fornecedor do Sankhya (API)", async () => {
+    const { getStore } = await import("@/lib/db");
+    const store = getStore();
+    // A jarra não tem fornecedor no portal; no Sankhya, o 4321 (Guangzhou B).
+    await store.update("products", "prod-jarra", {
+      supplierId: null,
+      sankhyaCode: "9001",
+    });
+    await store.update("parties", "fornecedor-b", { sankhyaCode: "4321" });
+    origin.resetOriginIndex();
+    (
+      await import("@/lib/services/sankhya-product-suppliers")
+    ).resetSankhyaProductSuppliers();
+    expect(await origin.productOrigin("prod-jarra")).toEqual({
+      country: "CHINA",
+      lineId: "linha-utilidades",
+    });
+    // Sem o Sankhya, a jarra fica sem país (e fora da venda).
+    sankhya.rows = null;
+    origin.resetOriginIndex();
+    (
+      await import("@/lib/services/sankhya-product-suppliers")
+    ).resetSankhyaProductSuppliers();
+    expect((await origin.productOrigin("prod-jarra"))?.country).toBe("");
+    sankhya.rows = [
+      { CODPARC: 812, NOMEPARC: "RODONAVES", NOMECID: "JOINVILLE" },
+    ];
+    origin.resetOriginIndex();
+    (
+      await import("@/lib/services/sankhya-product-suppliers")
+    ).resetSankhyaProductSuppliers();
   });
 
   it("transportadoras do portal e do Sankhya; sem o Sankhya, só as do portal", async () => {
