@@ -82,7 +82,39 @@ Decisões do dono (15/11/2026):
 
 Os arquivos (NF e comprovante) são documentos internos da Wellmix.
 
+## Devolução de venda
+
+Decisões do dono (15/11/2026):
+
+1. **Parcial por item.** Numa ordem expedida ou entregue, vendas registra a
+   quantidade devolvida de cada produto e o motivo, no bloco "Devoluções" da
+   ordem. Pode haver mais de uma devolução até devolver tudo: o limite é o
+   expedido menos o já devolvido (as canceladas não contam). O financeiro é
+   avisado.
+2. **NF de devolução.** O financeiro registra o número e, se quiser, o
+   arquivo da NF de devolução emitida no Sankhya. Sem ela a devolução não
+   fecha.
+3. **A qualidade confere.** Quem tem a ação "Conferir a qualidade"
+   (`receiving.quality`; sem ninguém marcado, qualquer login da Wellmix)
+   informa por produto quanto está bom. O bom volta ao estoque livre no
+   Brasil, como movimentação `return_in` ligada à ordem. O resto fica como
+   perda na própria devolução, com o motivo obrigatório. A mercadoria já
+   tinha saído na expedição, por isso a perda não gera nova baixa.
+
+Uma devolução aberta pode ser cancelada por vendas. Dados em `sales_returns`
+(itens com `goodQty` e `lossQty`, motivo, NF, conferência).
+
+## Frete da venda no Financeiro
+
+Na expedição com transportadora, o frete (R$) vira conta a pagar. Ela vence na
+data de saída mais o "Prazo do frete (dias)", que por padrão é 0. Quando o
+cliente retira, não há frete. Em **Contas a pagar**, o bloco "Fretes de venda"
+lista os fretes em aberto primeiro, com o vencido em vermelho. O financeiro
+marca como pago, com o comprovante. Quem faz isso: a tela Contas a pagar
+aberta ou o administrador. Dados: `sales_orders.freightDueDate`,
+`freightPaidAt`, `freightPaidByUserId` e `freightProofDocumentId`.
+
 ## Fica para depois
 
-- Devolução depois da expedição (estorno da baixa).
-- Frete da venda no Financeiro (contas a pagar da transportadora).
+- O frete da venda no fluxo de caixa e nos painéis do Financeiro.
+- A NF de devolução e a de venda emitidas pelo próprio portal no Sankhya.

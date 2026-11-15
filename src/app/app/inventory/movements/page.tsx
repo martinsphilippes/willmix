@@ -35,6 +35,7 @@ const KIND_TONE = {
   process_in: "success",
   process_out: "warning",
   sankhya_balance: "neutral",
+  return_in: "success",
 } as const;
 
 type Tab = "all" | StockMovement["kind"];

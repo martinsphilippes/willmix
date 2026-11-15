@@ -6,6 +6,8 @@ import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getStore } from "@/lib/db";
 import { canInvoice, canSell } from "@/lib/services/sales-orders";
+import { listSalesReturns, returnableOf } from "@/lib/services/sales-returns";
+import { canDoQuality } from "@/lib/services/receiving";
 import {
   Alert,
   Badge,
@@ -31,6 +33,10 @@ import {
   registerSalesInvoiceAction,
   setSalesOrderErpNumberAction,
   shipSalesOrderAction,
+  openSalesReturnAction,
+  registerReturnInvoiceAction,
+  checkSalesReturnAction,
+  cancelSalesReturnAction,
   updateSalesOrderAction,
 } from "../../actions/sales-orders";
 
@@ -58,6 +64,10 @@ export default async function SalesOrderPage({
     invoiced,
     shipped,
     delivered,
+    returned,
+    returnInvoiced,
+    returnChecked,
+    returnCancelled,
   } = await searchParams;
   const store = getStore();
   const order = await store.get("sales_orders", id);
@@ -81,6 +91,11 @@ export default async function SalesOrderPage({
         : "—"));
   const dayOf = (iso: string | null | undefined) =>
     iso ? formatDate(iso, t) : "—";
+  const returns = out ? await listSalesReturns(order.id) : [];
+  const returnable = returnableOf(order.lines, returns);
+  const quality = out && returns.length ? await canDoQuality(user) : false;
+  const fmtQty = (n: number | null | undefined) =>
+    (n ?? 0).toLocaleString(t.intl, { maximumFractionDigits: 3 });
   const editable = order.status === "draft";
   const errorCode = typeof error === "string" ? error : "";
   const errorKey = `salesOrder.error.${errorCode}` as DictionaryKey;
@@ -101,7 +116,15 @@ export default async function SalesOrderPage({
                 ? "salesOrder.done.shipped"
                 : delivered
                   ? "salesOrder.done.delivered"
-                  : null;
+                  : returned
+                    ? "salesOrder.done.returned"
+                    : returnInvoiced
+                      ? "salesOrder.done.returnInvoiced"
+                      : returnChecked
+                        ? "salesOrder.done.returnChecked"
+                        : returnCancelled
+                          ? "salesOrder.done.returnCancelled"
+                          : null;
   const total = order.lines.reduce(
     (s, l) => s + (l.unitPrice ?? 0) * l.quantity,
     0,
@@ -472,7 +495,7 @@ export default async function SalesOrderPage({
                 </p>
                 <form
                   action={shipSalesOrderAction}
-                  className="grid gap-3 sm:grid-cols-4"
+                  className="grid gap-3 sm:grid-cols-5"
                   data-sales-order-ship-form
                 >
                   <input type="hidden" name="id" value={order.id} />
@@ -494,6 +517,13 @@ export default async function SalesOrderPage({
                   </Field>
                   <Field label={t("salesOrder.ship.freight")}>
                     <Input name="freightValue" inputMode="decimal" />
+                  </Field>
+                  <Field label={t("salesOrder.ship.freightDays")}>
+                    <Input
+                      name="freightDays"
+                      inputMode="numeric"
+                      defaultValue="0"
+                    />
                   </Field>
                   <div className="flex items-end">
                     <SubmitButton disabled={!order.invoiceNumber}>
@@ -548,6 +578,203 @@ export default async function SalesOrderPage({
                 </div>
               </form>
             )}
+          </div>
+        </Card>
+      ) : null}
+      {out ? (
+        <Card title={t("salesReturn.title")} dense>
+          <div className="space-y-4" data-sales-returns={returns.length}>
+            {returns.map((r) => (
+              <div
+                key={r.id}
+                className="rounded border border-zinc-200 p-3"
+                data-sales-return={r.status}
+              >
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
+                  <Badge
+                    tone={
+                      r.status === "closed"
+                        ? "success"
+                        : r.status === "cancelled"
+                          ? "neutral"
+                          : "warning"
+                    }
+                  >
+                    {t(`salesReturn.status.${r.status}` as DictionaryKey)}
+                  </Badge>
+                  <span>{formatDate(r.createdAt, t)}</span>
+                  <span className="text-zinc-600">· {r.reason}</span>
+                </div>
+                <ul className="mb-2 text-sm">
+                  {r.lines.map((l) => (
+                    <li key={l.productId}>
+                      {l.name}: {fmtQty(l.quantity)} {l.unit}
+                      {r.status === "closed"
+                        ? ` (${t("salesReturn.check.done", { good: fmtQty(l.goodQty), loss: fmtQty(l.lossQty) })})`
+                        : ""}
+                    </li>
+                  ))}
+                </ul>
+                {r.lossNote ? (
+                  <p className="mb-2 text-xs text-zinc-600">
+                    {t("salesReturn.check.lossNote")}: {r.lossNote}
+                  </p>
+                ) : null}
+                <p className="text-sm">
+                  {t("salesReturn.invoice")}:{" "}
+                  {r.invoiceNumber ? (
+                    <>
+                      {r.invoiceNumber}
+                      {r.invoiceDocumentId ? (
+                        <>
+                          {" · "}
+                          <a
+                            href={`/api/files/${r.invoiceDocumentId}`}
+                            className={linkClass}
+                          >
+                            {t("salesOrder.invoice.open")}
+                          </a>
+                        </>
+                      ) : null}
+                    </>
+                  ) : r.status === "open" ? (
+                    t("salesReturn.invoice.waiting")
+                  ) : (
+                    "—"
+                  )}
+                </p>
+                {r.status === "open" && !r.invoiceNumber && canInvoice(user) ? (
+                  <form
+                    action={registerReturnInvoiceAction}
+                    className="mt-2 grid gap-3 sm:grid-cols-3"
+                    data-sales-return-invoice-form
+                  >
+                    <input type="hidden" name="id" value={order.id} />
+                    <input type="hidden" name="returnId" value={r.id} />
+                    <Field label={t("salesOrder.invoice.number")}>
+                      <Input name="invoiceNumber" required maxLength={40} />
+                    </Field>
+                    <Field label={t("salesOrder.invoice.file")}>
+                      <Input type="file" name="invoiceFile" />
+                    </Field>
+                    <div className="flex items-end">
+                      <SubmitButton variant="secondary">
+                        {t("salesOrder.invoice.save")}
+                      </SubmitButton>
+                    </div>
+                  </form>
+                ) : null}
+                {r.status === "open" && r.invoiceNumber ? (
+                  quality ? (
+                    <form
+                      action={checkSalesReturnAction}
+                      className="mt-2 space-y-2"
+                      data-sales-return-check-form
+                    >
+                      <input type="hidden" name="id" value={order.id} />
+                      <input type="hidden" name="returnId" value={r.id} />
+                      <p className="text-xs font-medium text-zinc-700">
+                        {t("salesReturn.check")}
+                      </p>
+                      {r.lines.map((l, i) => (
+                        <Field
+                          key={l.productId}
+                          label={`${l.name} · ${t("salesReturn.check.good")}`}
+                        >
+                          <input
+                            type="hidden"
+                            name="productId"
+                            value={l.productId}
+                          />
+                          <Input
+                            dense
+                            name={`goodQty_${i}`}
+                            inputMode="decimal"
+                            defaultValue={l.quantity}
+                            className="w-28 text-right"
+                          />
+                        </Field>
+                      ))}
+                      <Field label={t("salesReturn.check.lossNote")}>
+                        <Input name="lossNote" maxLength={1000} />
+                      </Field>
+                      <SubmitButton>
+                        {t("salesReturn.check.submit")}
+                      </SubmitButton>
+                    </form>
+                  ) : (
+                    <p className="mt-2 text-sm text-zinc-600">
+                      {t("salesReturn.check.waiting")}
+                    </p>
+                  )
+                ) : null}
+                {r.status === "open" ? (
+                  <form action={cancelSalesReturnAction} className="mt-2">
+                    <input type="hidden" name="id" value={order.id} />
+                    <input type="hidden" name="returnId" value={r.id} />
+                    <SubmitButton variant="secondary">
+                      {t("salesReturn.cancel")}
+                    </SubmitButton>
+                  </form>
+                ) : null}
+              </div>
+            ))}
+            {[...returnable.values()].some((q) => q > 1e-6) ? (
+              <form
+                action={openSalesReturnAction}
+                className="space-y-3"
+                data-sales-return-form
+              >
+                <input type="hidden" name="id" value={order.id} />
+                <p className="text-sm text-zinc-600">{t("salesReturn.hint")}</p>
+                <Table tools={false}>
+                  <thead>
+                    <tr>
+                      <Th>{t("salesOrder.product")}</Th>
+                      <Th className="text-right">
+                        {t("salesReturn.returnable")}
+                      </Th>
+                      <Th className="text-right">{t("salesReturn.qty")}</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {order.lines.map((l, i) => (
+                      <tr key={`${l.productId}-${i}`}>
+                        <Td>
+                          <input
+                            type="hidden"
+                            name="productId"
+                            value={l.productId}
+                          />
+                          {l.name}
+                        </Td>
+                        <Td className="text-right">
+                          {fmtQty(
+                            Math.max(0, returnable.get(l.productId) ?? 0),
+                          )}{" "}
+                          {l.unit}
+                        </Td>
+                        <Td className="text-right">
+                          <Input
+                            dense
+                            name={`returnQty_${i}`}
+                            inputMode="decimal"
+                            className="w-24 text-right"
+                            aria-label={t("salesReturn.qty")}
+                          />
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+                <Field label={t("salesReturn.reason")}>
+                  <Input name="reason" required maxLength={1000} />
+                </Field>
+                <SubmitButton variant="secondary">
+                  {t("salesReturn.submit")}
+                </SubmitButton>
+              </form>
+            ) : null}
           </div>
         </Card>
       ) : null}

@@ -34,6 +34,7 @@ import {
   rowClass,
 } from "@/components/ui";
 import { ChatOpenButton } from "@/components/chat-open-button";
+import { SalesFreight } from "./_components/sales-freight";
 import { ServerPager, SortTh } from "@/components/server-table";
 import {
   SERVER_TABLE_FROM,
@@ -504,6 +505,7 @@ export default async function PayablesPage({
           </ul>
         </Card>
       ) : null}
+      <SalesFreight user={user} t={t} paid={params.freightPaid === "1"} />
     </>
   );
 }
