@@ -17,9 +17,12 @@ export type ProductPickerScope = "all" | "active" | "catalog";
  */
 export function ProductPicker({
   scope,
+  query,
   ...props
 }: {
   scope: ProductPickerScope;
+  /** Filtros a mais na busca (ex.: "country=CHINA&line=linha-x"). */
+  query?: string;
   name?: string;
   inputId?: string;
   initial?: SearchOption | null;
@@ -34,7 +37,7 @@ export function ProductPicker({
 }) {
   return (
     <SearchPicker
-      endpoint={`/api/products/search?scope=${scope}`}
+      endpoint={`/api/products/search?scope=${scope}${query ? `&${query}` : ""}`}
       marker="product-picker"
       kind={scope}
       {...props}

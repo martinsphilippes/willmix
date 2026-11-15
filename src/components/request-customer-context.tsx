@@ -19,6 +19,19 @@ interface RequestCustomerState {
   stock: boolean;
   setCustomer: (customer: SearchOption | null) => void;
   setStock: (stock: boolean) => void;
+  /**
+   * País de origem e grupo do pedido (docs/ORDER_TERMS.md): a busca de
+   * produto só oferece os deles. `originRequired`: a venda ao cliente pela
+   * Wellmix pede os dois antes do produto (fora da compra para estoque).
+   */
+  origin: RequestOrigin | null;
+  setOrigin: (origin: RequestOrigin | null) => void;
+  originRequired: boolean;
+}
+
+export interface RequestOrigin {
+  country: string;
+  lineId: string;
 }
 
 const RequestCustomerContext = createContext<RequestCustomerState | null>(null);
@@ -30,19 +43,32 @@ const RequestCustomerContext = createContext<RequestCustomerState | null>(null);
 export function RequestCustomerProvider({
   initial,
   initialStock,
+  originTerms = false,
   className,
   children,
 }: {
   initial: SearchOption | null;
   initialStock: boolean;
+  /** A tela tem as condições do pedido (Wellmix, nova solicitação). */
+  originTerms?: boolean;
   className?: string;
   children: ReactNode;
 }) {
   const [customer, setCustomer] = useState(initial);
   const [stock, setStock] = useState(initialStock);
+  const [origin, setOrigin] = useState<RequestOrigin | null>(null);
+  const originRequired = originTerms && !stock;
   const value = useMemo(
-    () => ({ customer, stock, setCustomer, setStock }),
-    [customer, stock],
+    () => ({
+      customer,
+      stock,
+      setCustomer,
+      setStock,
+      origin: originRequired ? origin : null,
+      setOrigin,
+      originRequired,
+    }),
+    [customer, stock, origin, originRequired],
   );
   return (
     <RequestCustomerContext.Provider value={value}>

@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { login } from "./helpers";
+import { fillCustomerContacts, fillOrderTerms, login } from "./helpers";
 
 /*
  * RCA do cliente (dono, 15/11/2026; docs/CUSTOMER_RCA.md). No cadastro do
@@ -185,6 +185,9 @@ test("Nova solicitação (Wellmix): RCA do cliente, solicitante e login com aces
   await chooseCustomer(page, "loja", "cliente-joao");
   await expectRca(page, "ready", "Ana Representações (101)");
   await access(page).selectOption(joaoLogin!);
+  // Condições do pedido e contatos do cliente (docs/ORDER_TERMS.md).
+  await fillOrderTerms(page);
+  await fillCustomerContacts(page, "loja-joao");
   const requestId = await sendDoll(page);
   await expect(
     page.locator('[data-request-requester] select[name="requestedForUserId"]'),

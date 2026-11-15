@@ -14,6 +14,7 @@ import {
   type RequestSchedule,
 } from "@/lib/db";
 import { variantSnapshot } from "@/lib/variants";
+import type { OrderTerms } from "@/lib/order-terms";
 import { getProductVariant, listProductVariants } from "./product-variants";
 import { requestProductName, variantSpecification } from "./variant-sales";
 import {
@@ -65,6 +66,8 @@ export interface CreateRequestInput {
   variantId?: string | null;
   /** Data desejada (encomenda e reposição; docs/PURCHASE_DEMAND.md). */
   desiredAt?: string | null;
+  /** Condições do pedido da Nova solicitação (docs/ORDER_TERMS.md). */
+  orderTerms?: OrderTerms | null;
 }
 
 /** Um produto do lote: vira uma solicitação própria. */
@@ -92,7 +95,12 @@ export async function createRequestBatch(
   user: User,
   base: Pick<
     CreateRequestInput,
-    "customerId" | "deadline" | "notes" | "requestedForUserId" | "desiredAt"
+    | "customerId"
+    | "deadline"
+    | "notes"
+    | "requestedForUserId"
+    | "desiredAt"
+    | "orderTerms"
   >,
   items: RequestBatchItem[],
   /**
@@ -483,6 +491,8 @@ export async function createRequest(
     // Compra por demanda (colunas opcionais): a porta e a data desejada.
     ...(channel ? { channel } : {}),
     ...(input.desiredAt ? { desiredAt: input.desiredAt } : {}),
+    // Condições do pedido (coluna opcional): só na venda ao cliente pela Wellmix.
+    ...(input.orderTerms ? { orderTerms: input.orderTerms } : {}),
   } as const;
   let request: Request;
   try {

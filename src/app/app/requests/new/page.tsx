@@ -36,6 +36,12 @@ import {
   type RequestPeopleLabels,
 } from "@/components/request-people-fields";
 import { CustomerPurchaseHistory } from "@/components/customer-purchase-history";
+import { RequestCustomerContacts } from "@/components/request-customer-contacts";
+import { RequestOrderTerms } from "@/components/request-order-terms";
+import {
+  customerContactsLabels,
+  orderTermsLabels,
+} from "@/components/order-terms-labels";
 import { SankhyaPurchaseHistory } from "@/components/sankhya-purchase-history";
 import { sankhyaHistoryLabels } from "@/components/sankhya-history-labels";
 import {
@@ -54,6 +60,9 @@ import { canAddProducts } from "@/lib/services/requests";
 import { launchDateOf, minFirstDate } from "@/lib/workflow/request-schedule";
 import { lookupProductAction } from "../../actions/lookup";
 import { aiErrorText } from "@/i18n/ai-error";
+
+/** O formulário da solicitação (o bloco do cliente fica fora dele, ligado pelo `form`). */
+const FORM_ID = "new-request-form";
 
 export default async function NewRequestPage({
   searchParams,
@@ -312,6 +321,10 @@ export default async function NewRequestPage({
     details: t("purchaseHistory.details", { n: "{n}" }),
     open: t("purchaseHistory.open", { n: "{n}" }),
   };
+  // Venda ao cliente pela Wellmix (nova solicitação): bloco do cliente e
+  // condições do pedido (docs/ORDER_TERMS.md). Fora da compra para estoque
+  // (a tela esconde quando a caixa de estoque é marcada).
+  const sellsToCustomer = isWellmix(user) && !addToRequest;
   const referenceNote = found?.url
     ? `${t("lookup.referenceNote")} ${found.url}`
     : "";
@@ -358,10 +371,22 @@ export default async function NewRequestPage({
         initialStock={
           isStockCustomer(presetCustomerId) || presetCustomerId === STOCK_OPTION
         }
+        originTerms={sellsToCustomer}
       >
+        {/* Bloco do cliente (dono, 15/11/2026; docs/ORDER_TERMS.md): no lugar
+            da busca por foto ou link, a Wellmix atualiza os contatos do
+            cliente (às cegas na primeira vez; depois, com "Editar"). */}
+        {sellsToCustomer ? (
+          <RequestCustomerContacts
+            formId={FORM_ID}
+            labels={customerContactsLabels(t)}
+            className="max-w-2xl lg:col-start-2 lg:row-start-1 lg:max-w-none"
+          />
+        ) : null}
         {/* Busca do produto por foto ou link: procura no catálogo e sugere os campos.
-          Fora do modo "adicionar à solicitação" (a busca recarrega a tela sem ele). */}
-        {addToRequest ? null : (
+          Fora do modo "adicionar à solicitação" (a busca recarrega a tela sem ele)
+          e, na Wellmix, trocada pelo bloco do cliente (acima). O cliente segue com ela. */}
+        {addToRequest || sellsToCustomer ? null : (
           <Card
             title={t("lookup.title")}
             className="max-w-2xl lg:col-start-2 lg:row-start-1 lg:max-w-none"
@@ -551,6 +576,7 @@ export default async function NewRequestPage({
           {/* key: ao escolher um produto da busca (mesma rota, outro ?productId) o formulário
             é recriado, senão o navegador mantém o valor anterior dos campos. */}
           <form
+            id={FORM_ID}
             key={`${found?.id ?? "none"}-${presetProductId}-${presetVariantId}-${presetCustomerId}`}
             action={createRequestAction}
             className="space-y-3"
@@ -597,6 +623,13 @@ export default async function NewRequestPage({
                   labels={requestPeopleLabels}
                 />
               </div>
+            ) : null}
+            {/* Condições do pedido (dono, 15/11/2026; docs/ORDER_TERMS.md):
+                tipo de operação, formato de venda, entrega, país de origem e
+                grupo (antes dos produtos: a busca só oferece os deles) e o
+                aviso de que não há devoluções. */}
+            {sellsToCustomer ? (
+              <RequestOrderTerms labels={orderTermsLabels(t)} />
             ) : null}
             {/* O próprio cliente (dono, 15/11/2026): ele é o solicitante e o
                 login com acesso (o servidor grava pela sessão). */}
@@ -752,6 +785,7 @@ export default async function NewRequestPage({
                 fillLoading: t("productPicker.fillLoading"),
                 fillError: t("productPicker.fillError"),
                 lockedHint: t("orderPlan.lockedHint"),
+                originFirst: t("orderTerms.originFirst"),
                 ...(isWellmix(user)
                   ? {
                       forecast: {
