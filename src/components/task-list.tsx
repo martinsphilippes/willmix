@@ -63,8 +63,9 @@ export async function TaskList({
     : null;
   const shown = filterTasks(tasks, { due, group });
   const filtering = shown.length !== tasks.length || !!due || !!group;
-  // Fornecedor: os filtros são as etapas dele (do Booking ao embarque), cada
-  // uma explicada, e a tabela ganha a data em que a pendência chegou a ele.
+  // Fornecedor e Trading: os filtros são as etapas dele (do Book à Invoice),
+  // cada uma explicada, e a tabela ganha a data em que a pendência chegou a
+  // ele.
   const supplier = user.role === "supplier";
   // Agência: os mesmos filtros por etapa, com o caminho dela.
   const agency = user.role === "agency";
@@ -176,10 +177,10 @@ function tasksHref(due: string | null, group: string | null) {
 }
 
 /**
- * Fornecedor: as etapas que chegam na mão dele, do Booking ao embarque, na
- * ordem em que acontecem. Cada cartão diz o que fazer e quantas pendências
- * tem; tocar filtra a lista. Aparecem todas, mesmo sem pendência, para ele
- * conhecer o caminho inteiro.
+ * Fornecedor e Trading: as etapas que chegam na mão dele, do Book à Invoice
+ * (onde o serviço da Trading termina), na ordem em que acontecem. Cada cartão
+ * diz o que fazer e quantas pendências tem; tocar filtra a lista. Aparecem
+ * todas, mesmo sem pendência, para ele conhecer o caminho inteiro.
  */
 function SupplierSteps({
   tasks,
@@ -284,7 +285,10 @@ function SupplierSteps({
                 >
                   {i + 1}
                 </span>
-                <span className="whitespace-nowrap text-xs font-semibold text-zinc-900">
+                <span
+                  className="whitespace-nowrap text-xs font-semibold text-zinc-900"
+                  data-supplier-step-label
+                >
                   {t(`tasks.group.${key}` as DictionaryKey)}
                 </span>
                 {n ? (

@@ -1,4 +1,4 @@
-import { indexBy, listByIds } from "@/lib/db/lookup";
+import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 import { ServerPager, SortTh } from "@/components/server-table";
 import {
   SERVER_TABLE_FROM,
@@ -38,7 +38,7 @@ import {
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { deleteRequestsAction } from "../actions/requests";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { getStore } from "@/lib/db";
+import { getStore, type Role } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import { productNameText } from "@/i18n";
 import {
@@ -82,6 +82,12 @@ import { PhotoGallery } from "@/components/photo-gallery";
 import { galleryProps } from "@/components/photo-gallery-props";
 import { DemandTags } from "@/components/demand-tags";
 import { demandKind, type DemandKind } from "@/lib/purchase-demand";
+import {
+  requestComposition,
+  shortProductName,
+  type Composition,
+  type CompositionItem,
+} from "@/lib/request-composition";
 
 const BULK_FORM = "requests-bulk-delete";
 
@@ -190,27 +196,14 @@ export default async function RequestsPage({
   const orderById = indexBy(orders, "id");
   const orderNumber = (id: string | null) =>
     id ? (orderById.get(id)?.number ?? null) : null;
-  /* Wellmix: foto do produto e quem age no pedido, numa rodada só. */
-  const productIds = [
-    ...new Set(requests.map((r) => r.productId).filter(Boolean)),
-  ] as string[];
-  const [products, photos, nextInfo] = wellmix
-    ? await Promise.all([
-        productIds.length
-          ? store.list("products", { filter: { id: productIds } })
-          : Promise.resolve([]),
-        productIds.length
-          ? store.list("product_photos", {
-              filter: { productId: productIds },
-            })
-          : Promise.resolve([]),
-        // Quem age e o prazo de cada pedido pelos marcos (fase 5g).
-        import("@/lib/services/request-export").then((m) =>
-          m.orderNextInfoOf(orders),
-        ),
-      ])
-    : [[], [], new Map()];
-  const productById = indexBy(products, "id");
+  /* Wellmix: quem age e o prazo de cada pedido pelos marcos (fase 5g). As
+     fotos e os itens dos pedidos são lidos depois, só para as linhas da
+     página (composição do pedido, mais abaixo). */
+  const nextInfo = wellmix
+    ? await import("@/lib/services/request-export").then((m) =>
+        m.orderNextInfoOf(orders),
+      )
+    : new Map<string, { responsibleRole: Role | null; dueAt: string | null }>();
   const teamById = indexBy(team, "id");
   const nextOf = (r: (typeof requests)[number]): NextStep => {
     const order = r.orderId ? orderById.get(r.orderId) : null;
@@ -256,15 +249,6 @@ export default async function RequestsPage({
         ) : null}
       </span>
     );
-  const photoCell = (r: (typeof requests)[number]) => {
-    const p = r.productId ? productById.get(r.productId) : null;
-    return (
-      <PhotoGallery
-        name={productNameText(t, r.productName)}
-        {...galleryProps(t, p ? productPhotoList(p, photos) : [])}
-      />
-    );
-  };
   const ownerName = (id: string | null | undefined) =>
     id ? (teamById.get(id)?.name ?? "—") : "—";
   const listQuery = (patch: Record<string, string | null>) => {
@@ -384,6 +368,192 @@ export default async function RequestsPage({
     decimalComma: t.locale === "pt",
   });
   const sortValue = sort ? `${sort.desc ? "-" : ""}${sort.key}` : null;
+  /* Encomendas, composição do pedido de cada linha (dono, 16/11/2026): os
+     produtos, as fotos e a soma das peças pelos itens do pedido, não pelo
+     produto da solicitação. Lidos só para as linhas da página: a lista
+     inteira tem ~16 mil pedidos e ~185 mil itens (src/lib/request-composition.ts). */
+  const shownRows = wellmix ? paged.rows.flatMap(rowsOf) : [];
+  const shownOrderIds = [
+    ...new Set(
+      shownRows.map((r) => r.orderId).filter((id): id is string => !!id),
+    ),
+  ];
+  const shownItems = shownOrderIds.length
+    ? await listColumns(
+        store,
+        "order_items",
+        ["orderId", "productId", "name", "quantity", "unit"],
+        { filter: { orderId: shownOrderIds } },
+      )
+    : [];
+  const itemsByOrder = new Map<string, CompositionItem[]>();
+  for (const i of [...shownItems].sort(
+    (a, b) =>
+      a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
+  )) {
+    const list = itemsByOrder.get(i.orderId);
+    if (list) list.push(i);
+    else itemsByOrder.set(i.orderId, [i]);
+  }
+  const compositionOf = new Map<Entry, Composition>(
+    wellmix
+      ? paged.rows.map((e) => [e, requestComposition(rowsOf(e), itemsByOrder)])
+      : [],
+  );
+  /* Fotos: a primeira de cada produto, até 12 por linha (a grade mostra 4;
+     a galeria, até 12). Só os produtos dessas linhas. */
+  const PHOTO_PRODUCTS = 12;
+  const photoProductIds = [
+    ...new Set(
+      [...compositionOf.values()].flatMap((c) =>
+        c.products
+          .slice(0, PHOTO_PRODUCTS)
+          .map((cp) => cp.productId)
+          .filter((id): id is string => !!id),
+      ),
+    ),
+  ];
+  const [products, photos] = photoProductIds.length
+    ? await Promise.all([
+        listColumns(store, "products", ["primaryPhotoDocumentId"], {
+          filter: { id: photoProductIds },
+        }),
+        listColumns(
+          store,
+          "product_photos",
+          ["productId", "documentId", "isPrimary", "kind"],
+          { filter: { productId: photoProductIds } },
+        ),
+      ])
+    : [[], []];
+  const productById = indexBy(products, "id");
+  const photoListOf = (productId: string | null) => {
+    const p = productId ? productById.get(productId) : null;
+    return p ? productPhotoList(p, photos) : [];
+  };
+  /** Foto: um produto, a galeria dele; vários, a grade (uma miniatura por produto). */
+  const photoCell = (e: Entry) => {
+    const comp = compositionOf.get(e);
+    const first = rowsOf(e)[0];
+    const cell = "h-14 w-14";
+    if (!comp || comp.products.length <= 1) {
+      const only = comp?.products[0];
+      return (
+        <PhotoGallery
+          name={productNameText(t, only?.name ?? first.productName)}
+          {...galleryProps(t, photoListOf(only?.productId ?? first.productId))}
+          badge={false}
+          className={cell}
+        />
+      );
+    }
+    const shown = comp.products.slice(0, PHOTO_PRODUCTS).map((cp) => ({
+      cp,
+      name: productNameText(t, cp.name),
+      photo: photoListOf(cp.productId)[0] ?? null,
+    }));
+    // A galeria: a foto de cada produto, com o nome dele (sem repetir foto).
+    const seen = new Set<string>();
+    const withPhoto = shown.filter(
+      (x) =>
+        x.photo &&
+        !seen.has(x.photo.documentId) &&
+        seen.add(x.photo.documentId),
+    );
+    const gallery = galleryProps(
+      t,
+      withPhoto.map((x) => ({ documentId: x.photo!.documentId, kind: null })),
+    );
+    return (
+      <PhotoGallery
+        name={t("reqList.photos.title", { n: comp.products.length })}
+        photos={gallery.photos.map((ph, i) => ({
+          ...ph,
+          label: withPhoto[i].name,
+        }))}
+        labels={gallery.labels}
+        badge={false}
+        className={cell}
+        tiles={{
+          list: shown.slice(0, 4).map((x) => ({
+            id: x.photo?.documentId ?? null,
+            initial: (x.name.trim()[0] ?? "?").toUpperCase(),
+            label: x.name,
+          })),
+          more: Math.max(0, comp.products.length - 4),
+        }}
+      />
+    );
+  };
+  /** Produtos: o início do nome de cada um (todos; depois de 6, num "+N" que abre). */
+  const PRODUCTS_INLINE = 6;
+  const productsList = (comp: Composition) => {
+    const names = comp.products.map((cp) => productNameText(t, cp.name));
+    const inline = names.slice(0, PRODUCTS_INLINE);
+    const rest = names.slice(PRODUCTS_INLINE);
+    // Um produto só cabe quase inteiro; com mais, o começo de cada um.
+    const max = names.length === 1 ? 60 : names.length <= 3 ? 30 : 24;
+    return {
+      inline: (
+        <span data-request-products={names.length}>
+          {inline.map((name, i) => (
+            <span key={`${name}-${i}`} title={name} data-request-product-name>
+              {i > 0 ? <span className="text-zinc-400"> · </span> : null}
+              <span className="whitespace-nowrap">
+                {shortProductName(name, max)}
+              </span>
+            </span>
+          ))}
+        </span>
+      ),
+      rest: rest.length ? (
+        <details className="mt-0.5 text-xs font-normal text-zinc-600">
+          <summary
+            className="cursor-pointer select-none font-semibold text-brand-800"
+            data-request-products-more={rest.length}
+          >
+            {t("reqList.products.more", { n: rest.length })}
+          </summary>
+          <span className="mt-0.5 block">
+            {rest.map((name, i) => (
+              <span key={`${name}-${i}`} title={name}>
+                {i > 0 ? " · " : ""}
+                <span className="whitespace-nowrap">
+                  {shortProductName(name, max)}
+                </span>
+              </span>
+            ))}
+          </span>
+        </details>
+      ) : null,
+    };
+  };
+  /** Quantidade: a soma das peças do pedido (outra unidade, à parte). */
+  const totalText = (comp: Composition) =>
+    comp.totals.length
+      ? comp.totals
+          .map(
+            (x) =>
+              `${x.quantity.toLocaleString(t.intl, { maximumFractionDigits: 2 })} ${x.unit}`,
+          )
+          .join(" · ")
+      : "—";
+  /** Pedido da linha (lote: quantos pedidos; uma solicitação: o número com link). */
+  const orderCell = (e: Entry) => {
+    if (e.kind === "batch") {
+      const rows = rowsOf(e);
+      return rows.some((r) => r.orderId)
+        ? t("reqList.orders", { n: rows.filter((r) => r.orderId).length })
+        : "—";
+    }
+    return e.row.orderId ? (
+      <TextLink href={`/app/orders/${e.row.orderId}`}>
+        #{orderNumber(e.row.orderId) ?? "?"}
+      </TextLink>
+    ) : (
+      "—"
+    );
+  };
   const pageListHref = (patch: { sort?: string | null; page?: number }) => {
     const p = new URLSearchParams();
     if (situation !== "all") p.set("situ", situation);
@@ -758,10 +928,16 @@ export default async function RequestsPage({
                 </Th>
               ) : null}
               {header(t("requests.numberShort"), "number", "w-14")}
+              {/* Wellmix (dono, 16/11/2026): Foto → Pedido → Produtos →
+                  Quantidade → Cliente → Situação → Próximo passo → o resto. */}
               {wellmix ? (
-                <Th className="w-14">{t("reqList.col.photo")}</Th>
+                <Th className="w-16">{t("reqList.col.photo")}</Th>
               ) : null}
-              {header(t("common.product"), "product")}
+              {wellmix ? header(t("reqList.col.order"), "order") : null}
+              {header(
+                wellmix ? t("reqList.col.products") : t("common.product"),
+                "product",
+              )}
               {header(t("common.quantity"), "quantity")}
               {isWellmix(user)
                 ? header(t("common.customer"), "customer")
@@ -769,7 +945,6 @@ export default async function RequestsPage({
               {header(t("common.status"), "status")}
               {wellmix ? header(t("reqList.col.next"), "next") : null}
               {header(t("requests.deadline"), "deadline")}
-              {wellmix ? header(t("reqList.col.order"), "order") : null}
               {wellmix ? header(t("reqList.col.owner"), "owner") : null}
               {wellmix ? header(t("reqList.col.date"), "date") : null}
               <Th />
@@ -786,6 +961,7 @@ export default async function RequestsPage({
                 const names = rows.map((r) =>
                   productNameText(t, r.productName),
                 );
+                const comp = compositionOf.get(entry);
                 // Próximos passos diferentes do lote (o primeiro e quantos mais).
                 const steps = [
                   ...new Map(
@@ -823,16 +999,28 @@ export default async function RequestsPage({
                       </span>
                     </Td>
                     {wellmix ? (
-                      <Td className="w-14">{photoCell(rows[0])}</Td>
+                      <Td className="w-16">{photoCell(entry)}</Td>
                     ) : null}
-                    <Td className="min-w-40 font-medium text-zinc-900">
+                    {wellmix ? (
+                      <Td className="whitespace-nowrap" data-request-order="">
+                        {orderCell(entry)}
+                      </Td>
+                    ) : null}
+                    <Td className="min-w-48 font-medium text-zinc-900">
                       <TextLink
                         href={batchHref(entry.groupId)}
                         className="text-zinc-900 no-underline hover:underline"
                       >
-                        {names.slice(0, 2).join(", ")}
-                        {names.length > 2 ? ` +${names.length - 2}` : ""}
+                        {comp ? (
+                          productsList(comp).inline
+                        ) : (
+                          <>
+                            {names.slice(0, 2).join(", ")}
+                            {names.length > 2 ? ` +${names.length - 2}` : ""}
+                          </>
+                        )}
                       </TextLink>
+                      {comp ? productsList(comp).rest : null}
                       <span
                         className="ml-2 inline-block rounded bg-brand-50 px-1.5 py-0.5 text-[11px] font-semibold text-brand-800 ring-1 ring-inset ring-brand-200"
                         data-batch-count
@@ -842,18 +1030,30 @@ export default async function RequestsPage({
                       <DemandTags t={t} request={rows[0]} />
                     </Td>
                     <Td className="tabular-nums">
-                      {/* Mesmos dois primeiros produtos do nome; o resto na página do lote. */}
-                      {rows.slice(0, 2).map((r, i) => (
-                        <span key={r.id} className="whitespace-nowrap">
-                          {i > 0 ? " · " : ""}
-                          {r.quantity} {r.unit}
+                      {comp ? (
+                        // A soma das peças do pedido (dono, 16/11/2026).
+                        <span
+                          className="whitespace-nowrap"
+                          data-request-total=""
+                        >
+                          {totalText(comp)}
                         </span>
-                      ))}
-                      {rows.length > 2 ? (
-                        <span className="whitespace-nowrap">
-                          {` +${rows.length - 2}`}
-                        </span>
-                      ) : null}
+                      ) : (
+                        <>
+                          {/* Mesmos dois primeiros produtos do nome; o resto na página do lote. */}
+                          {rows.slice(0, 2).map((r, i) => (
+                            <span key={r.id} className="whitespace-nowrap">
+                              {i > 0 ? " · " : ""}
+                              {r.quantity} {r.unit}
+                            </span>
+                          ))}
+                          {rows.length > 2 ? (
+                            <span className="whitespace-nowrap">
+                              {` +${rows.length - 2}`}
+                            </span>
+                          ) : null}
+                        </>
+                      )}
                     </Td>
                     {isWellmix(user) ? (
                       <Td className="min-w-32">
@@ -891,15 +1091,6 @@ export default async function RequestsPage({
                     <Td className="whitespace-nowrap tabular-nums">
                       {formatDate(earliestDeadline(rows), t)}
                     </Td>
-                    {wellmix ? (
-                      <Td className="whitespace-nowrap">
-                        {rows.some((r) => r.orderId)
-                          ? t("reqList.orders", {
-                              n: rows.filter((r) => r.orderId).length,
-                            })
-                          : "—"}
-                      </Td>
-                    ) : null}
                     {wellmix ? (
                       <Td className="whitespace-nowrap">
                         {ownerName(rows[0].ownerUserId)}
@@ -942,6 +1133,7 @@ export default async function RequestsPage({
                 );
               }
               const r = entry.row;
+              const comp = compositionOf.get(entry);
               const status = requestDisplayStatus(r, cancelled);
               // Pedido cancelado: a dica não diz mais que "o pedido continua".
               const lockedHint =
@@ -975,15 +1167,25 @@ export default async function RequestsPage({
                   <Td className="whitespace-nowrap tabular-nums text-zinc-600">
                     <span data-request-number>{r.number ?? "—"}</span>
                   </Td>
-                  {wellmix ? <Td className="w-14">{photoCell(r)}</Td> : null}
-                  <Td className="min-w-40 font-medium text-zinc-900">
+                  {wellmix ? (
+                    <Td className="w-16">{photoCell(entry)}</Td>
+                  ) : null}
+                  {wellmix ? (
+                    <Td className="whitespace-nowrap" data-request-order="">
+                      {orderCell(entry)}
+                    </Td>
+                  ) : null}
+                  <Td className="min-w-48 font-medium text-zinc-900">
                     <TextLink
                       href={`/app/requests/${r.id}`}
                       className="text-zinc-900 no-underline hover:underline"
                       data-request-open
                     >
-                      {productNameText(t, r.productName)}
+                      {comp
+                        ? productsList(comp).inline
+                        : productNameText(t, r.productName)}
                     </TextLink>
+                    {comp ? productsList(comp).rest : null}
                     {r.groupId && (groupSize.get(r.groupId) ?? 0) > 1 ? (
                       <TextLink
                         href={batchHref(r.groupId)}
@@ -1001,7 +1203,14 @@ export default async function RequestsPage({
                     <DemandTags t={t} request={r} />
                   </Td>
                   <Td className="whitespace-nowrap tabular-nums">
-                    {r.quantity} {r.unit}
+                    {comp ? (
+                      // A soma das peças do pedido (dono, 16/11/2026).
+                      <span data-request-total="">{totalText(comp)}</span>
+                    ) : (
+                      <>
+                        {r.quantity} {r.unit}
+                      </>
+                    )}
                   </Td>
                   {isWellmix(user) ? (
                     <Td className="min-w-32">
@@ -1019,17 +1228,6 @@ export default async function RequestsPage({
                   <Td className="whitespace-nowrap tabular-nums">
                     {formatDate(r.deadline, t)}
                   </Td>
-                  {wellmix ? (
-                    <Td className="whitespace-nowrap">
-                      {r.orderId ? (
-                        <TextLink href={`/app/orders/${r.orderId}`}>
-                          #{orderNumber(r.orderId) ?? "?"}
-                        </TextLink>
-                      ) : (
-                        "—"
-                      )}
-                    </Td>
-                  ) : null}
                   {wellmix ? (
                     <Td className="whitespace-nowrap">
                       {ownerName(r.ownerUserId)}
