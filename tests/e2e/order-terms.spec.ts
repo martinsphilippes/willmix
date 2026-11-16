@@ -104,6 +104,27 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await chooseCustomerLogin(page, "joao@lojista.com");
   await fillOrderTerms(page, { format: "wd", redispatch: "yes" });
   await expect(page.locator("[data-request-origin-missing]")).toHaveCount(0);
+  // A Wellmix chama o transportador: com re-despacho, duas transportadoras.
+  await expect(
+    terms.locator("[data-order-terms-redispatch-carrier-summary]"),
+  ).toBeVisible();
+  // O cliente chama: as transportadoras saem daqui (ele informa).
+  await terms
+    .locator('[data-order-terms-carrier-caller-option="customer"]')
+    .check();
+  await expect(terms.locator("[data-order-terms-carrier]")).toHaveCount(0);
+  await expect(
+    terms.locator("[data-order-terms-carrier-caller-hint]"),
+  ).toContainText("porto ao cliente");
+  await terms
+    .locator('[data-order-terms-carrier-caller-option="wellmix"]')
+    .check();
+  await terms
+    .locator("[data-order-terms-carrier]")
+    .selectOption("portal:transportador");
+  await terms
+    .locator("[data-order-terms-redispatch-carrier]")
+    .selectOption("portal:transportador");
   // Cliente e transportador escolhidos: código (e CNPJ do transportador) e
   // nome logo abaixo; o transportador também se busca por código ou CNPJ.
   await expect(page.locator("[data-request-customer-summary]")).toContainText(
@@ -157,7 +178,12 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await page.goto(`/app/requests/new?draft=${draftId}`);
   await chooseCustomer(page, "loja", "cliente-joao");
   await chooseCustomerLogin(page, "joao@lojista.com");
-  await fillOrderTerms(page, { format: "wd", redispatch: "yes" });
+  // Agora o cliente chama o transportador: ele informa as duas.
+  await fillOrderTerms(page, {
+    format: "wd",
+    redispatch: "yes",
+    caller: "customer",
+  });
   await pickDoll(page);
   await fillCustomerContacts(page, "loja-joao");
   const requestId = await send(page);
@@ -182,10 +208,13 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await expect(
     page.locator("[data-customer-confirm-disclaimer]"),
   ).toContainText("não há devoluções previstas para esta operação");
-  await confirmAsCustomer(page, requestId, {
-    cnpj: "11.222.333/0001-81",
-    name: "Rodo Sul Transportes",
-  });
+  await expect(page.locator("[data-customer-confirm-carrier]")).toBeVisible();
+  await confirmAsCustomer(
+    page,
+    requestId,
+    { cnpj: "11.222.333/0001-81", name: "Rodo Sul Transportes" },
+    { cnpj: "11.444.777/0001-61", name: "Trans Norte Cargas" },
+  );
   await expect(page.locator("[data-customer-confirm]")).toHaveCount(0);
 
   // A Wellmix vê o pedido confirmado, com a transportadora do re-despacho.
@@ -197,6 +226,9 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   ).toBeVisible();
   await expect(page.locator("[data-request-order-terms]")).toContainText(
     "Rodo Sul Transportes",
+  );
+  await expect(page.locator("[data-request-order-terms]")).toContainText(
+    "Trans Norte Cargas",
   );
 
   // Compra para estoque: sem bloco do cliente nem condições.
@@ -499,4 +531,79 @@ test("Lupa da busca de produto: seletor com Grupo, Sub grupo e Coleção, seleç
   await expect(browser.locator("[data-product-browser-progress]")).toHaveText(
     "1 de 2 produtos da família já vistos",
   );
+});
+
+test("Previsão de preço (cotação V2): manda formato, nível e quem chama; mostra o preço, o frete e o WD", async ({
+  page,
+}) => {
+  // O frete de entrega padrão fica nas Configurações (R$ 8.000 de início).
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/settings");
+  await expect(page.locator("[data-settings-delivery-freight]")).toHaveValue(
+    "8000",
+  );
+  // A previsão é do Sankhya (aqui simulada): confere o que a tela manda.
+  const asked: URLSearchParams[] = [];
+  await page.route("**/api/price-forecast?**", async (route) => {
+    asked.push(new URL(route.request().url()).searchParams);
+    await route.fulfill({
+      json: {
+        mode: "api",
+        kind: "forecast",
+        salePrice: null,
+        tablePrice: null,
+        wholesalePrice: null,
+        retailPrice: null,
+        targetPrice: null,
+        cost: null,
+        profitPercent: null,
+        goalPercent: null,
+        status: "PRONTA",
+        productPrice: 9.2,
+        freightUnit: 0.8,
+        withFreight: 10,
+        wdBase: null,
+        wdPercent: null,
+        wdPrice: 10.63,
+        wdWithFreight: 11.43,
+        goalReached: true,
+        sent: { vip: 3, route: "PORTO_CLIENTE", deliveryFreightBrl: 8000 },
+      },
+    });
+  });
+  await page.goto("/app/requests/new");
+  await chooseCustomer(page, "loja", "cliente-joao");
+  await chooseCustomerLogin(page, "joao@lojista.com");
+  await fillOrderTerms(page, {
+    format: "wellmix",
+    tier: "hiper",
+    caller: "customer",
+  });
+  await pickDoll(page);
+  const forecast = page
+    .locator('[data-request-item="0"] [data-price-forecast]')
+    .first();
+  await forecast.locator("[data-price-forecast-submit]").click();
+  await expect(
+    forecast.locator('[data-price-forecast-line="product"]'),
+  ).toHaveText(/9,20/);
+  await expect(
+    forecast.locator('[data-price-forecast-line="withFreight"]'),
+  ).toHaveText(/10,00/);
+  await expect(forecast.locator('[data-price-forecast-line="wd"]')).toHaveText(
+    /10,63/,
+  );
+  // Sem valor na resposta, a linha não aparece (nada de "—" solto).
+  await expect(
+    forecast.locator('[data-price-forecast-line="retail"]'),
+  ).toHaveCount(0);
+  await expect(forecast.locator("[data-price-forecast-sent]")).toContainText(
+    "VIP 3",
+  );
+  await expect(forecast.locator("[data-price-forecast-sent]")).toContainText(
+    "PORTO_CLIENTE",
+  );
+  expect(asked[0].get("saleFormat")).toBe("wellmix");
+  expect(asked[0].get("tier")).toBe("hiper");
+  expect(asked[0].get("caller")).toBe("customer");
 });

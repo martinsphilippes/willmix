@@ -533,6 +533,8 @@ export async function fillOrderTerms(
     format?: "wd" | "wellmix";
     tier?: string;
     redispatch?: "yes" | "no";
+    /** Quem chama o transportador (16/11/2026); padrão: a Wellmix. */
+    caller?: "customer" | "wellmix";
     country?: string;
     family?: string;
   } = {},
@@ -549,13 +551,25 @@ export async function fillOrderTerms(
       .locator("[data-order-terms-tier]")
       .selectOption(options.tier ?? "pleno");
   await terms
-    .locator("[data-order-terms-carrier]")
-    .selectOption("portal:transportador");
-  await terms
     .locator(
       `[data-order-terms-redispatch-option="${options.redispatch ?? "no"}"]`,
     )
     .check();
+  const caller = options.caller ?? "wellmix";
+  await terms
+    .locator(`[data-order-terms-carrier-caller-option="${caller}"]`)
+    .check();
+  // A Wellmix chama: escolhe a transportadora (e a do re-despacho, com Sim);
+  // o cliente chama: ele informa as dele na confirmação.
+  if (caller === "wellmix") {
+    await terms
+      .locator("[data-order-terms-carrier]")
+      .selectOption("portal:transportador");
+    if (options.redispatch === "yes")
+      await terms
+        .locator("[data-order-terms-redispatch-carrier]")
+        .selectOption("portal:transportador");
+  }
   await chooseOrderOrigin(page, options.country, options.family);
 }
 
@@ -576,15 +590,22 @@ export async function confirmAsCustomer(
   page: Page,
   requestId: string,
   redispatch?: { cnpj: string; name: string },
+  /** Quem chama = Cliente: a transportadora do pedido. */
+  carrier?: { cnpj: string; name: string },
 ) {
   await page.goto(`/app/requests/${requestId}`);
   const card = page.locator("[data-customer-confirm]");
   await expect(card).toBeVisible();
-  if (redispatch) {
-    await card.locator("[data-customer-confirm-cnpj]").fill(redispatch.cnpj);
-    await card.locator("[data-customer-confirm-lookup]").click();
+  for (const [block, data, field] of [
+    ["carrier", carrier, "mainCarrierName"],
+    ["redispatch", redispatch, "carrierName"],
+  ] as const) {
+    if (!data) continue;
+    const box = card.locator(`[data-customer-confirm-${block}]`);
+    await box.locator("[data-customer-confirm-cnpj]").fill(data.cnpj);
+    await box.locator("[data-customer-confirm-lookup]").click();
     // Modo memória: sem a consulta do CNPJ, o nome se digita.
-    await card.locator('input[name="carrierName"]').fill(redispatch.name);
+    await box.locator(`input[name="${field}"]`).fill(data.name);
   }
   await card.locator("[data-customer-confirm-accept]").check();
   await card

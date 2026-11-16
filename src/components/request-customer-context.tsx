@@ -64,6 +64,18 @@ interface RequestCustomerState {
    */
   browserOpen: boolean;
   setBrowserOpen: (open: boolean) => void;
+  /**
+   * Formato de venda, nível e quem chama o transportador (condições do
+   * pedido): a previsão de preço manda o VIP e a rota (dono, 16/11/2026).
+   */
+  saleTerms: SaleTerms | null;
+  setSaleTerms: (terms: SaleTerms | null) => void;
+}
+
+export interface SaleTerms {
+  saleFormat: "wd" | "wellmix" | null;
+  wellmixTier: "pleno" | "mega" | "hiper" | "ultra" | "evo" | "super" | null;
+  carrierCaller: "customer" | "wellmix" | null;
 }
 
 export interface AddRequest {
@@ -119,6 +131,12 @@ export function RequestCustomerProvider({
   const [addRequest, setAddRequest] = useState<AddRequest | null>(null);
   const [clearSeq, setClearSeq] = useState(0);
   const [browserOpen, setBrowserOpen] = useState(false);
+  const [saleTerms, setSaleTermsState] = useState<SaleTerms | null>(null);
+  const setSaleTerms = useCallback((next: SaleTerms | null) => {
+    setSaleTermsState((prev) =>
+      JSON.stringify(prev) === JSON.stringify(next) ? prev : next,
+    );
+  }, []);
   const requestClearProducts = useCallback(() => setClearSeq((n) => n + 1), []);
   const requestAddProduct = useCallback((productId: string) => {
     setAddRequest((prev) => ({
@@ -179,8 +197,12 @@ export function RequestCustomerProvider({
       requestClearProducts,
       browserOpen,
       setBrowserOpen,
+      saleTerms,
+      setSaleTerms,
     }),
     [
+      saleTerms,
+      setSaleTerms,
       browserOpen,
       requestAddProducts,
       clearSeq,

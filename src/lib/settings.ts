@@ -156,6 +156,13 @@ export const DEFAULT_SETTINGS = {
    * a ordem fica "a lançar" e vendas informa o número do Sankhya à mão.
    */
   salesTop: null as number | null,
+  /**
+   * Frete de entrega padrão da previsão de preço ao cliente final (dono,
+   * 16/11/2026): o total em R$ da entrega para a quantidade cotada, enviado
+   * em @FRETE_ENTREGA_BRL à cotação de encomenda V2 do Sankhya. 0 = sem
+   * custo; nulo = frete pendente (NULL).
+   */
+  deliveryFreightDefaultBrl: 8000 as number | null,
   /** Dias para lembrar antes do vencimento e depois. */
   reminderDaysBeforeDue: 1,
   /* ---- Evolução incremental (docs/EVOLUTION_PLAN.md) ---- */

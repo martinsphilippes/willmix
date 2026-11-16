@@ -77,7 +77,7 @@ export const pt = {
   "orderTerms.redispatchYes": "Sim",
   "orderTerms.redispatchNo": "Não",
   "orderTerms.redispatchHint":
-    "Com re-despacho, o cliente informa o CNPJ da transportadora ao confirmar o pedido.",
+    "Sim: o pedido tem duas transportadoras, a do pedido e a do re-despacho. Quem as informa depende de quem chama o transportador.",
   "orderTerms.countryDisabled": "(não vale no TS)",
   "orderTerms.confirmNote":
     'Depois do envio, o cliente confirma o pedido no portal (aviso "sem devoluções" e, com re-despacho, a transportadora). Só então ele entra na fila da Wellmix.',
@@ -185,6 +185,43 @@ export const pt = {
   "productBrowser.prev": "Anterior",
   "productBrowser.next": "Próxima",
   "productBrowser.noPhoto": "Sem foto",
+  "orderTerms.carrierCaller": "Quem chama o transportador?",
+  "orderTerms.carrierCaller.customer": "Cliente",
+  "orderTerms.carrierCaller.wellmix": "Wellmix",
+  "orderTerms.carrierCallerHint.customer":
+    "O cliente informa a transportadora (e a do re-despacho, com Sim) ao confirmar o pedido. A entrega vai do porto ao cliente.",
+  "orderTerms.carrierCallerHint.wellmix":
+    "Você escolhe aqui a transportadora (e a do re-despacho, com Sim). A entrega passa pelo depósito.",
+  "orderTerms.redispatchCarrier": "Transportador do re-despacho",
+  "orderTerms.view.carrierCaller": "Quem chama o transportador",
+  "orderTerms.view.carrierPending": "o cliente informa na confirmação",
+  "reqBatch.error.order_terms_carrier_caller":
+    "Diga quem chama o transportador: Cliente ou Wellmix.",
+  "reqBatch.error.order_terms_redispatch_carrier_required":
+    "Com re-despacho, escolha também o transportador do re-despacho.",
+  "customerConfirm.carrierTitle": "Transportadora do pedido",
+  "customerConfirm.carrierHint":
+    "Você chama o transportador: digite o CNPJ e toque em Buscar; completamos os dados para o cadastro.",
+  "settings.label.deliveryFreightDefaultBrl":
+    "Frete de entrega padrão da cotação (R$, total)",
+  "settings.hint.deliveryFreightDefaultBrl":
+    "Vai em FRETE_ENTREGA_BRL na previsão de preço ao cliente final (cotação de encomenda V2 do Sankhya): o total da entrega para a quantidade cotada. 0 = sem custo; vazio = frete pendente.",
+  "priceForecast.productPrice": "Preço do produto (markup)",
+  "priceForecast.freightUnit": "Frete de entrega por peça",
+  "priceForecast.withFreight": "Preço com frete (referência)",
+  "priceForecast.wdPrice": "Preço WD (referência)",
+  "priceForecast.wdWithFreight": "Preço WD com frete (referência)",
+  "priceForecast.wdBase": "Base WD",
+  "priceForecast.wdPercent": "Percentual WD de referência",
+  "priceForecast.goalReached": "Meta de margem",
+  "priceForecast.goalYes": "atingida",
+  "priceForecast.goalNo": "não atingida",
+  "priceForecast.freightPending":
+    "Frete pendente: o preço com frete fica em branco até o frete ser cotado.",
+  "priceForecast.quotePending": "Cotação pendente no Sankhya.",
+  "priceForecast.sent":
+    "Enviado: {format} · VIP {vip} · rota {route} · frete de entrega {freight}",
+  "priceForecast.freightNull": "pendente",
   "orderTerms.carrierSearch": "Buscar por nome, código ou CNPJ",
   "orderTerms.summaryCode": "Código {code}",
   "orderTerms.summaryCnpj": "CNPJ {cnpj}",
@@ -308,7 +345,7 @@ export const en: Record<keyof typeof pt, string> = {
   "orderTerms.redispatchYes": "Yes",
   "orderTerms.redispatchNo": "No",
   "orderTerms.redispatchHint":
-    "With redispatch, the customer enters the carrier's CNPJ when confirming the order.",
+    "Yes: the order has two carriers, the order carrier and the redispatch carrier. Who gives them depends on who calls the carrier.",
   "orderTerms.countryDisabled": "(not allowed in TS)",
   "orderTerms.confirmNote":
     'After sending, the customer confirms the order in the portal ("no returns" notice and, with redispatch, the carrier). Only then does it go to Wellmix\'s queue.',
@@ -415,6 +452,43 @@ export const en: Record<keyof typeof pt, string> = {
   "productBrowser.prev": "Previous",
   "productBrowser.next": "Next",
   "productBrowser.noPhoto": "No photo",
+  "orderTerms.carrierCaller": "Who calls the carrier?",
+  "orderTerms.carrierCaller.customer": "Customer",
+  "orderTerms.carrierCaller.wellmix": "Wellmix",
+  "orderTerms.carrierCallerHint.customer":
+    "The customer gives the carrier (and the redispatch carrier, with Yes) when confirming the order. Delivery goes from the port to the customer.",
+  "orderTerms.carrierCallerHint.wellmix":
+    "You choose the carrier here (and the redispatch carrier, with Yes). Delivery goes through the warehouse.",
+  "orderTerms.redispatchCarrier": "Redispatch carrier",
+  "orderTerms.view.carrierCaller": "Who calls the carrier",
+  "orderTerms.view.carrierPending": "the customer gives it on confirmation",
+  "reqBatch.error.order_terms_carrier_caller":
+    "Say who calls the carrier: Customer or Wellmix.",
+  "reqBatch.error.order_terms_redispatch_carrier_required":
+    "With redispatch, also choose the redispatch carrier.",
+  "customerConfirm.carrierTitle": "Order carrier",
+  "customerConfirm.carrierHint":
+    "You call the carrier: type the CNPJ and tap Search; we fill in the carrier details.",
+  "settings.label.deliveryFreightDefaultBrl":
+    "Default delivery freight for the quote (BRL, total)",
+  "settings.hint.deliveryFreightDefaultBrl":
+    "Sent as FRETE_ENTREGA_BRL in the end-customer price forecast (Sankhya order quote V2): the total delivery cost for the quoted quantity. 0 = no cost; empty = freight pending.",
+  "priceForecast.productPrice": "Product price (markup)",
+  "priceForecast.freightUnit": "Delivery freight per piece",
+  "priceForecast.withFreight": "Price with freight (reference)",
+  "priceForecast.wdPrice": "WD price (reference)",
+  "priceForecast.wdWithFreight": "WD price with freight (reference)",
+  "priceForecast.wdBase": "WD base",
+  "priceForecast.wdPercent": "Reference WD percentage",
+  "priceForecast.goalReached": "Margin goal",
+  "priceForecast.goalYes": "reached",
+  "priceForecast.goalNo": "not reached",
+  "priceForecast.freightPending":
+    "Freight pending: the price with freight stays blank until the freight is quoted.",
+  "priceForecast.quotePending": "Quote pending in Sankhya.",
+  "priceForecast.sent":
+    "Sent: {format} · VIP {vip} · route {route} · delivery freight {freight}",
+  "priceForecast.freightNull": "pending",
   "orderTerms.carrierSearch": "Search by name, code or CNPJ",
   "orderTerms.summaryCode": "Code {code}",
   "orderTerms.summaryCnpj": "CNPJ {cnpj}",
@@ -530,7 +604,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderTerms.operationDisabled": "（即将开放）",
   "orderTerms.redispatchYes": "是",
   "orderTerms.redispatchNo": "否",
-  "orderTerms.redispatchHint": "如需转运，客户在确认订单时填写承运商的 CNPJ。",
+  "orderTerms.redispatchHint":
+    "是：订单有两个承运商，即订单承运商和转运承运商。由谁填写取决于由谁联系承运商。",
   "orderTerms.countryDisabled": "（TS 不适用）",
   "orderTerms.confirmNote":
     "提交后，客户需在门户中确认订单（“不予退货”提示，如需转运还要填写承运商）。确认后订单才进入 Wellmix 的队列。",
@@ -629,6 +704,42 @@ export const zh: Record<keyof typeof pt, string> = {
   "productBrowser.prev": "上一页",
   "productBrowser.next": "下一页",
   "productBrowser.noPhoto": "无图片",
+  "orderTerms.carrierCaller": "由谁联系承运商？",
+  "orderTerms.carrierCaller.customer": "客户",
+  "orderTerms.carrierCaller.wellmix": "Wellmix",
+  "orderTerms.carrierCallerHint.customer":
+    "客户在确认订单时填写承运商（选择转运时还要填写转运承运商）。从港口直接送到客户。",
+  "orderTerms.carrierCallerHint.wellmix":
+    "在此选择承运商（选择转运时还要选择转运承运商）。经仓库配送。",
+  "orderTerms.redispatchCarrier": "转运承运商",
+  "orderTerms.view.carrierCaller": "联系承运商的一方",
+  "orderTerms.view.carrierPending": "客户确认时填写",
+  "reqBatch.error.order_terms_carrier_caller":
+    "请选择由谁联系承运商：客户或 Wellmix。",
+  "reqBatch.error.order_terms_redispatch_carrier_required":
+    "选择转运时，还需选择转运承运商。",
+  "customerConfirm.carrierTitle": "订单承运商",
+  "customerConfirm.carrierHint":
+    "由您联系承运商：输入 CNPJ 并点击搜索，我们会补全承运商资料。",
+  "settings.label.deliveryFreightDefaultBrl":
+    "报价默认送货运费（雷亚尔，总额）",
+  "settings.hint.deliveryFreightDefaultBrl":
+    "作为 FRETE_ENTREGA_BRL 发送到终端客户价格预测（Sankhya 订货报价 V2）：报价数量的送货总费用。0 = 无费用；留空 = 运费待定。",
+  "priceForecast.productPrice": "产品价格（加价）",
+  "priceForecast.freightUnit": "每件送货运费",
+  "priceForecast.withFreight": "含运费价格（参考）",
+  "priceForecast.wdPrice": "WD 价格（参考）",
+  "priceForecast.wdWithFreight": "含运费 WD 价格（参考）",
+  "priceForecast.wdBase": "WD 基数",
+  "priceForecast.wdPercent": "WD 参考百分比",
+  "priceForecast.goalReached": "利润目标",
+  "priceForecast.goalYes": "已达成",
+  "priceForecast.goalNo": "未达成",
+  "priceForecast.freightPending": "运费待定：在运费报价前，含运费价格为空。",
+  "priceForecast.quotePending": "Sankhya 中报价待定。",
+  "priceForecast.sent":
+    "已发送：{format} · VIP {vip} · 路线 {route} · 送货运费 {freight}",
+  "priceForecast.freightNull": "待定",
   "orderTerms.carrierSearch": "按名称、代码或 CNPJ 搜索",
   "orderTerms.summaryCode": "代码 {code}",
   "orderTerms.summaryCnpj": "CNPJ {cnpj}",

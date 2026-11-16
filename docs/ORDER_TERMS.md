@@ -213,6 +213,19 @@ Ao lado da busca de produto de cada linha, uma **lupa** abre o seletor (um só n
 - **Filtro visto**: "Marcar este filtro como visto" guarda a combinação atual (Grupo, Sub grupo, Coleção). As opções mostram "✓ … · visto" quando todos os produtos delas já entraram num filtro visto, ou "n/m vistos"; os produtos ganham a marca "Visto" e o rodapé diz "n de m produtos da família já vistos". Fica no navegador de quem usa (por cliente, país e família), não no banco.
 - Leitura: `GET /api/products/browse` (`browseOrigin` em `src/lib/services/product-origin.ts`), para quem busca no catálogo. Nome, SKU e foto vêm do índice de origem (10 minutos).
 
+### 11.6 Quem chama o transportador e a previsão de preço pela cotação V2 (dono, 16/11/2026)
+
+- **Quem chama o transportador?** (Cliente ou Wellmix), ao lado de Re-despacho, é obrigatória. Re-despacho = Sim agora só quer dizer que o pedido tem **duas transportadoras**: a do pedido e a do re-despacho. Quem chama define quem as vincula:
+  - **Wellmix**: o vendedor escolhe na solicitação o Transportador (portal ou Sankhya) e, com Sim, também o **Transportador do re-despacho** (`orderTerms.carrier` e `orderTerms.redispatch`). O cliente não informa nenhuma na confirmação.
+  - **Cliente**: os campos de transportadora saem da solicitação. Na confirmação, o cliente informa pelo CNPJ a **transportadora do pedido** (`confirmation.carrier`) e, com Sim, a do re-despacho (`confirmation.redispatchCarrier`). Cada CNPJ é buscado na BrasilAPI e cadastrado como Transportadora se ainda não existir.
+  - Solicitações antigas (sem `carrierCaller`) seguem como eram: o vendedor escolheu o transportador e o cliente informou o re-despacho.
+- **Previsão de preço ao cliente final**: a ida é a cotação de encomenda V2 do Sankhya (`FN_AD_ENC_COTACAO_V2_WELL`, 71 posições; docs/INTEGRATIONS.md item 8). Ela leva:
+  - o **VIP** pelo formato: WD = 5; Wellmix pelo nível (Pleno 1, Mega 2, Hiper 3, Ultra 5, Evo 1,42857143, Super 4);
+  - a **rota** por quem chama (Cliente → `PORTO_CLIENTE`, Wellmix → `VIA_DEPOSITO`);
+  - o **frete de entrega** total das Configurações (padrão R$ 8.000; vazio = pendente);
+  - o RCA do cliente como vendedor e a data de hoje.
+- A tela mostra o preço do produto, o frete por peça, as referências com frete e WD e o aviso de frete pendente. Também diz o que foi enviado (formato, VIP, rota e frete).
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

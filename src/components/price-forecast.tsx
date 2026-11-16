@@ -43,6 +43,24 @@ export interface PriceForecastLabels {
   auditOutputs?: string;
   /** Vê o preço máximo de compra (custo): só com "Ver valores e margem". */
   canSolve?: boolean;
+  /** Cotação de encomenda V2 (dono, 16/11/2026). */
+  productPrice?: string;
+  freightUnit?: string;
+  withFreight?: string;
+  wdPrice?: string;
+  wdWithFreight?: string;
+  wdBase?: string;
+  wdPercent?: string;
+  goalReached?: string;
+  goalYes?: string;
+  goalNo?: string;
+  freightPending?: string;
+  quotePending?: string;
+  /** "Enviado: {format} · VIP {vip} · rota {route} · frete de entrega {freight}" */
+  sent?: string;
+  freightNull?: string;
+  /** Nome do formato de venda (WD, Wellmix · nível) para a linha "Enviado". */
+  formats?: Record<string, string>;
 }
 
 type Mode = "view" | "target";
@@ -96,6 +114,11 @@ export function PriceForecast({
       if (Number.isFinite(pieces) && pieces > 0)
         params.set("quantity", String(pieces));
       if (shared?.customer?.id) params.set("customerId", shared.customer.id);
+      // Condições do pedido: VIP (nível), rota (quem chama o transportador).
+      const terms = shared?.saleTerms;
+      if (terms?.saleFormat) params.set("saleFormat", terms.saleFormat);
+      if (terms?.wellmixTier) params.set("tier", terms.wellmixTier);
+      if (terms?.carrierCaller) params.set("caller", terms.carrierCaller);
       if (mode === "target") params.set("target", String(targetNumber));
       const res = await fetch(`/api/price-forecast?${params.toString()}`);
       if (!res.ok) throw new Error(String(res.status));
@@ -233,19 +256,54 @@ export function PriceForecast({
               >
                 {(
                   [
-                    ["retail", labels.retail, money(shown.value.retailPrice)],
-                    ["sale", labels.sale, money(shown.value.salePrice)],
-                    ["table", labels.table, money(shown.value.tablePrice)],
+                    // Cotação V2 (16/11/2026): preço pelo markup, frete por
+                    // peça e as referências com frete e WD.
+                    ["product", labels.productPrice, shown.value.productPrice],
+                    ["freight", labels.freightUnit, shown.value.freightUnit],
                     [
-                      "wholesale",
-                      labels.wholesale,
-                      money(shown.value.wholesalePrice),
+                      "withFreight",
+                      labels.withFreight,
+                      shown.value.withFreight,
                     ],
-                    ["goal", labels.goal, money(shown.value.targetPrice)],
-                    ...(shown.value.cost !== null
-                      ? [["cost", labels.cost, money(shown.value.cost)]]
-                      : []),
-                    ...(shown.value.profitPercent !== null
+                    ["wd", labels.wdPrice, shown.value.wdPrice],
+                    [
+                      "wdWithFreight",
+                      labels.wdWithFreight,
+                      shown.value.wdWithFreight,
+                    ],
+                    ["wdBase", labels.wdBase, shown.value.wdBase],
+                    // Da SuperPlan (quando a função ainda devolve).
+                    ["retail", labels.retail, shown.value.retailPrice],
+                    ["sale", labels.sale, shown.value.salePrice],
+                    ["table", labels.table, shown.value.tablePrice],
+                    ["wholesale", labels.wholesale, shown.value.wholesalePrice],
+                    ["goal", labels.goal, shown.value.targetPrice],
+                    ["cost", labels.cost, shown.value.cost],
+                  ] as Array<
+                    [string, string | undefined, number | null | undefined]
+                  >
+                )
+                  .filter(
+                    (row): row is [string, string, number] =>
+                      !!row[1] && row[2] !== null && row[2] !== undefined,
+                  )
+                  .map(
+                    ([key, label, value]) =>
+                      [key, label, money(value)] as [string, string, string],
+                  )
+                  .concat(
+                    shown.value.wdPercent !== null &&
+                      shown.value.wdPercent !== undefined &&
+                      labels.wdPercent
+                      ? [
+                          [
+                            "wdPercent",
+                            labels.wdPercent,
+                            `${num(shown.value.wdPercent)}%`,
+                          ],
+                        ]
+                      : [],
+                    shown.value.profitPercent !== null
                       ? [
                           [
                             "profit",
@@ -261,19 +319,80 @@ export function PriceForecast({
                               ),
                           ],
                         ]
-                      : []),
-                  ] as Array<[string, string, string]>
-                ).map(([key, label, value]) => (
-                  <div key={key} className="contents">
-                    <dt className="text-emerald-800">{label}</dt>
-                    <dd
-                      className="font-semibold tabular-nums"
-                      data-price-forecast-line={key}
-                    >
-                      {value}
-                    </dd>
-                  </div>
-                ))}
+                      : [],
+                    shown.value.goalReached !== null &&
+                      shown.value.goalReached !== undefined &&
+                      labels.goalReached
+                      ? [
+                          [
+                            "goalReached",
+                            labels.goalReached,
+                            (shown.value.goalReached
+                              ? labels.goalYes
+                              : labels.goalNo) ?? "",
+                          ],
+                        ]
+                      : [],
+                  )
+                  .map(([key, label, value]) => (
+                    <div key={key} className="contents">
+                      <dt className="text-emerald-800">{label}</dt>
+                      <dd
+                        className="font-semibold tabular-nums"
+                        data-price-forecast-line={key}
+                      >
+                        {value}
+                      </dd>
+                    </div>
+                  ))}
+                {shown.value.status === "FRETE_PENDENTE" &&
+                labels.freightPending ? (
+                  <p
+                    className="col-span-2 pt-0.5 text-[11px] font-medium text-amber-800"
+                    data-price-forecast-status="FRETE_PENDENTE"
+                  >
+                    {labels.freightPending}
+                  </p>
+                ) : shown.value.status === "PENDENTE" && labels.quotePending ? (
+                  <p
+                    className="col-span-2 pt-0.5 text-[11px] font-medium text-amber-800"
+                    data-price-forecast-status="PENDENTE"
+                  >
+                    {labels.quotePending}
+                  </p>
+                ) : null}
+                {shown.value.sent && labels.sent ? (
+                  <p
+                    className="col-span-2 pt-0.5 text-[11px] text-emerald-800"
+                    data-price-forecast-sent
+                  >
+                    {labels.sent
+                      .replace(
+                        "{format}",
+                        shared?.saleTerms?.saleFormat === "wellmix" &&
+                          shared.saleTerms.wellmixTier
+                          ? (labels.formats?.[shared.saleTerms.wellmixTier] ??
+                              shared.saleTerms.wellmixTier)
+                          : shared?.saleTerms?.saleFormat
+                            ? (labels.formats?.[shared.saleTerms.saleFormat] ??
+                              shared.saleTerms.saleFormat)
+                            : "—",
+                      )
+                      .replace(
+                        "{vip}",
+                        shown.value.sent.vip === null
+                          ? "—"
+                          : num(shown.value.sent.vip, 8),
+                      )
+                      .replace("{route}", shown.value.sent.route ?? "—")
+                      .replace(
+                        "{freight}",
+                        shown.value.sent.deliveryFreightBrl === null
+                          ? (labels.freightNull ?? "—")
+                          : money(shown.value.sent.deliveryFreightBrl),
+                      )}
+                  </p>
+                ) : null}
                 <p className="col-span-2 pt-0.5 text-[11px] text-emerald-800">
                   {labels.source}
                 </p>

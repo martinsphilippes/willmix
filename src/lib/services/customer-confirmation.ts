@@ -126,6 +126,7 @@ async function carrierByCnpj(
   user: User,
   cnpj: string,
   typedName: string,
+  role: "main" | "redispatch" = "redispatch",
 ): Promise<RedispatchCarrier> {
   const store = getStore();
   const digits = cnpjDigits(cnpj);
@@ -157,7 +158,7 @@ async function carrierByCnpj(
     email: data?.email ?? null,
     phone: data?.phone ?? null,
     taxId: digits,
-    notes: `Cadastrada pelo cliente na confirmação do pedido (re-despacho)${data ? ", dados da Receita pela BrasilAPI" : ", nome digitado (sem a consulta do CNPJ)"}.`,
+    notes: `Cadastrada pelo cliente na confirmação do pedido (${role === "main" ? "transportador" : "re-despacho"})${data ? ", dados da Receita pela BrasilAPI" : ", nome digitado (sem a consulta do CNPJ)"}.`,
     active: true,
     city: data?.city
       ? `${data.city}${data.state ? ` - ${data.state}` : ""}`
@@ -169,7 +170,7 @@ async function carrierByCnpj(
     "party.create",
     "party",
     party.id,
-    `Transportadora do re-despacho cadastrada pelo cliente: ${party.name} (${formatCnpj(digits)})`,
+    `Transportadora ${role === "main" ? "do pedido" : "do re-despacho"} cadastrada pelo cliente: ${party.name} (${formatCnpj(digits)})`,
   );
   return {
     cnpj: digits,
@@ -187,7 +188,14 @@ async function carrierByCnpj(
 export async function confirmCustomerOrder(
   user: User,
   requestId: string,
-  input: { accept: boolean; cnpj: string; carrierName: string },
+  input: {
+    accept: boolean;
+    cnpj: string;
+    carrierName: string;
+    /** Quem chama = Cliente (16/11/2026): a transportadora do pedido. */
+    mainCnpj?: string;
+    mainCarrierName?: string;
+  },
 ): Promise<Request[]> {
   const store = getStore();
   const request = await store.get("requests", requestId);
@@ -195,17 +203,36 @@ export async function confirmCustomerOrder(
     throw new ConfirmationError("confirm_not_allowed");
   if (!input.accept) throw new ConfirmationError("confirm_accept_required");
   const terms = request.orderTerms!;
-  const carrier = terms.redispatchRequired
+  // Quem chama o transportador (dono, 16/11/2026): o cliente informa a
+  // transportadora do pedido e, com re-despacho, a segunda; quando é a
+  // Wellmix, as duas já vieram da solicitação. Nas antigas (sem a
+  // pergunta), o cliente só informava a do re-despacho.
+  const caller = terms.carrierCaller;
+  const customerCalls = caller === "customer";
+  if (customerCalls && !String(input.mainCnpj ?? "").trim())
+    throw new ConfirmationError("cnpj_required");
+  const mainCarrier = customerCalls
+    ? await carrierByCnpj(
+        user,
+        input.mainCnpj ?? "",
+        input.mainCarrierName ?? "",
+        "main",
+      )
+    : null;
+  const askRedispatch =
+    !!terms.redispatchRequired && (customerCalls || !caller);
+  if (askRedispatch && !input.cnpj.trim())
+    throw new ConfirmationError("cnpj_required");
+  const carrier = askRedispatch
     ? await carrierByCnpj(user, input.cnpj, input.carrierName)
     : null;
-  if (terms.redispatchRequired && !carrier)
-    throw new ConfirmationError("cnpj_required");
   const confirmation: CustomerConfirmation = {
     at: new Date().toISOString(),
     userId: user.id,
     userName: user.name,
     noReturnsAccepted: true,
     redispatchCarrier: carrier,
+    carrier: mainCarrier,
   };
   const batch = await batchOf(request);
   const released: Request[] = [];
@@ -220,13 +247,20 @@ export async function confirmCustomerOrder(
       "request.customer_confirm",
       "request",
       r.id,
-      `Pedido confirmado pelo cliente (aviso "sem devoluções" aceito${carrier ? `; re-despacho: ${carrier.name}, ${formatCnpj(carrier.cnpj)}` : ""})`,
+      `Pedido confirmado pelo cliente (aviso "sem devoluções" aceito${mainCarrier ? `; transportadora: ${mainCarrier.name}, ${formatCnpj(mainCarrier.cnpj)}` : ""}${carrier ? `; re-despacho: ${carrier.name}, ${formatCnpj(carrier.cnpj)}` : ""})`,
       { status: "AWAITING_CUSTOMER" },
       { status: "REQUESTED" },
     );
     released.push(updated);
   }
   for (const r of released) await releaseRequest(user, r);
+  if (mainCarrier)
+    await notifyWellmix({
+      kind: "info",
+      subject: `Transportadora informada pelo cliente: ${mainCarrier.name}`,
+      body: `CNPJ ${formatCnpj(mainCarrier.cnpj)}${mainCarrier.source === "manual" ? " (nome digitado; confira o cadastro)" : ""}.`,
+      link: `/app/parties/${mainCarrier.partyId}`,
+    });
   if (carrier)
     await notifyWellmix({
       kind: "info",

@@ -14,13 +14,17 @@ import { parseNumberInput } from "@/lib/number-input";
  * linhas dela e não são produtos do cadastro.
  */
 
-/** Campos do item que o booking exige para fechar (os com * na planilha). */
+/**
+ * Campos do item que o booking exige para fechar (os com * na planilha).
+ * Sem o INNER (peças por caixa inner): opcional desde 16/11/2026 (dono);
+ * em branco fica sem valor (nulo, nunca zero) e não trava salvar, enviar
+ * para conferência nem fechar. Preenchido, segue as regras de número.
+ */
 export const BOOKING_ITEM_REQUIRED = [
   "incoterm",
   "currency",
   "price",
   "masterCartonQty",
-  "innerQty",
   "netWeightPcKg",
   "grossWeightPcKg",
   "cbmPerCarton",

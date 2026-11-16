@@ -3,7 +3,6 @@ import { bookTimeline } from "@/lib/services/entity-timeline";
 import { isWellmix } from "@/lib/auth/permissions";
 import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { PartnerBookingLotView } from "../../_components/partner-booking";
-import { BookingItemPhotos } from "../../_components/booking-item-photos";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -622,12 +621,32 @@ export default async function BookingLotPage({
                 )}
                 data-booking-item-photo=""
               >
-                <BookingItemPhotos
-                  photoDocumentId={item.photoDocumentId}
-                  cardDocumentId={item.cardDocumentId}
-                  photoLabel={t("bookingLots.item.col.photo")}
-                  cardLabel={t("bookingLots.item.card")}
-                />
+                <span className="flex gap-1">
+                  {[item.photoDocumentId, item.cardDocumentId]
+                    .filter((d): d is string => !!d)
+                    .map((doc) => (
+                      <a
+                        key={doc}
+                        href={`/api/files/${doc}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={
+                          doc === item.cardDocumentId
+                            ? t("bookingLots.item.card")
+                            : t("bookingLots.item.col.photo")
+                        }
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+                        <img
+                          src={`/api/files/${doc}`}
+                          alt=""
+                          className="h-10 w-10 rounded border border-zinc-200 object-cover"
+                          loading="lazy"
+                        />
+                      </a>
+                    ))}
+                  {!item.photoDocumentId && !item.cardDocumentId ? muted : null}
+                </span>
               </td>
               <td
                 className="border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800"

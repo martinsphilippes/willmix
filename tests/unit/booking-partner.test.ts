@@ -23,7 +23,8 @@ const { attachAccess } = await import("@/lib/auth/access-cache");
 const { externalAccessFor } = await import("@/lib/services/partner-access");
 const { flattenNav, navFor } = await import("@/lib/nav");
 const { ROLE_SCREENS } = await import("@/lib/auth/screens");
-const { uploadDocument } = await import("@/lib/services/documents");
+const { uploadDocument, canAccessDocument } =
+  await import("@/lib/services/documents");
 type User = import("@/lib/db").User;
 
 const HEADER = [
@@ -228,6 +229,113 @@ describe("tela Booking do Trading", () => {
     expect(detail.partnerName).toBe(await nameOf(lot.partnerId));
     expect(detail.factoryName).toBe(await nameOf(lot.supplierId));
     expect(detail.partnerName).toBeTruthy();
+  });
+
+  it("fotos da tabela de consulta: as dos itens do book dele, também as que a Wellmix subiu", async () => {
+    // O parceiro vê as fotos (e o cartão do fabricante) dos itens dos books
+    // da empresa dele, também as que a Wellmix carregou por ele (dono,
+    // 16/11/2026). Outra empresa e a fábrica citada no book, não.
+    const store = getStore();
+    const png = (name: string) =>
+      new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], name, {
+        type: "image/png",
+      });
+    const own = await uploadDocument(trader, png("foto.png"), {
+      type: "photo",
+      visibility: "internal",
+    });
+    const wellmix = await uploadDocument(admin, png("cartao.png"), {
+      type: "photo",
+      visibility: "internal",
+    });
+    const loose = await uploadDocument(admin, png("solta.png"), {
+      type: "photo",
+      visibility: "internal",
+    });
+    const [item] = await store.list("booking_items", {
+      filter: { lotId: mine },
+    });
+    await store.update("booking_items", item.id, {
+      photoDocumentId: wellmix.id,
+      cardDocumentId: own.id,
+    });
+    const detail = (await svc.getPartnerBookingLot(trader, mine))!;
+    expect(detail.items[0].photoDocumentId).toBe(wellmix.id);
+    expect(detail.items[0].cardDocumentId).toBe(own.id);
+    // O arquivo abre para ele, também o que a Wellmix subiu...
+    expect(await canAccessDocument(trader, wellmix)).toBe(true);
+    expect(await svc.partnerSeesBookingPhoto(trader, wellmix.id)).toBe(true);
+    // ...e não para outra empresa, nem para a fábrica do book, nem foto
+    // solta (de book nenhum).
+    expect(await canAccessDocument(otherTrader, wellmix)).toBe(false);
+    expect(await canAccessDocument(supplier, wellmix)).toBe(false);
+    expect(await canAccessDocument(trader, loose)).toBe(false);
+    // Sem a tela Booking, a regra não abre (mesmo sendo da empresa).
+    const noScreen = { ...trader };
+    attachAccess(noScreen, {
+      screens: [],
+      actions: [],
+      external: [...ROLE_SCREENS.supplier],
+      menuHidden: [],
+    });
+    expect(await svc.partnerSeesBookingPhoto(noScreen, wellmix.id)).toBe(false);
+    expect(await svc.partnerSeesBookingPhoto(admin, wellmix.id)).toBe(false);
+    await store.update("booking_items", item.id, {
+      photoDocumentId: null,
+      cardDocumentId: null,
+    });
+  });
+
+  it("capacidade da consulta: tamanho em texto e ml juntos valem o cadastro do produto", async () => {
+    // Porta-retrato com "A4" e "0,5 ml" (provável erro da planilha): vale a
+    // capacidade do cadastro do produto (ficha mestre); em branco lá, "—".
+    // Sem tamanho em texto, os mililitros do book (dono, 16/11/2026).
+    const store = getStore();
+    const [item] = await store.list("booking_items", {
+      filter: { lotId: mine },
+    });
+    const before = {
+      productId: item.productId,
+      sizeText: item.sizeText ?? null,
+      capacityMl: item.capacityMl ?? null,
+    };
+    const [existing] = await store.list("purchase_sheets", {
+      filter: { orderId: "prod-jarra" },
+    });
+    const master =
+      existing ??
+      (await store.create("purchase_sheets", {
+        orderId: "prod-jarra",
+        capacityMl: null,
+      } as never));
+    const shown = async () =>
+      (await svc.getPartnerBookingLot(trader, mine))!.items[0].capacityMlShown;
+
+    await store.update("booking_items", item.id, {
+      sizeText: "A4",
+      capacityMl: 0.5,
+    });
+    await store.update("purchase_sheets", master.id, { capacityMl: null });
+    expect(await shown()).toBeNull();
+    await store.update("purchase_sheets", master.id, { capacityMl: 750 });
+    expect(await shown()).toBe(750);
+    // Sem produto ligado, nada a conferir: "—".
+    await store.update("booking_items", item.id, { productId: null });
+    expect(await shown()).toBeNull();
+    // Sem tamanho em texto, vale o que o book diz.
+    await store.update("booking_items", item.id, {
+      productId: before.productId,
+      sizeText: null,
+      capacityMl: 500,
+    });
+    expect(await shown()).toBe(500);
+
+    await store.update("booking_items", item.id, before);
+    if (existing)
+      await store.update("purchase_sheets", master.id, {
+        capacityMl: existing.capacityMl ?? null,
+      });
+    else await store.remove("purchase_sheets", master.id);
   });
 
   it("booking de outra empresa não abre", async () => {
@@ -752,70 +860,5 @@ describe("capacidade com letras na planilha", () => {
     expect(supplierRequestItemOf(byCode.get("PR-ML")!)).not.toHaveProperty(
       "sizeText",
     );
-  });
-});
-
-describe("fotos da planilha na tela do parceiro", () => {
-  it("o book que ele subiu mostra a foto e o cartão de cada linha; o da Wellmix, não", async () => {
-    const { PNG_1X1 } = await import("./xlsx-fixture");
-    const { canAccessDocument } = await import("@/lib/services/documents");
-    const store = getStore();
-    // Mesmo leitor da tela da Wellmix: PHOTO na 1ª coluna, cartão na última.
-    const withPhotos = () =>
-      new File(
-        [
-          xlsxBytes(
-            [
-              {
-                name: "BOOKING",
-                cells: [
-                  ["PHOTO", ...HEADER, "SUPPLIER BUSINESS CARD"],
-                  ["", ...row("Fábrica Foto", "PH-1", "1.00"), ""],
-                  ["", ...row("Fábrica Foto", "PH-2", "2.00"), ""],
-                ],
-              },
-            ],
-            {
-              images: [
-                { sheet: 0, row: 1, col: 0, bytes: PNG_1X1, ext: "png" },
-                { sheet: 0, row: 2, col: 0, bytes: PNG_1X1, ext: "png" },
-                {
-                  sheet: 0,
-                  row: 1,
-                  col: HEADER.length + 1,
-                  bytes: PNG_1X1,
-                  ext: "png",
-                },
-              ],
-            },
-          ),
-        ],
-        "fotos.xlsx",
-        {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        },
-      );
-    const own = await svc.launchPartnerBooking(trader, withPhotos());
-    const { items } = (await svc.getPartnerBookingLot(trader, own.id))!;
-    expect(items.map((i) => [!!i.photoDocumentId, !!i.cardDocumentId])).toEqual(
-      [
-        [true, true],
-        [true, false],
-      ],
-    );
-    // E ele abre as fotos (arquivos que ele mesmo subiu).
-    const photo = (await store.get("documents", items[0].photoDocumentId!))!;
-    expect(await canAccessDocument(trader, photo)).toBe(true);
-    // Book subido pela Wellmix com ele de responsável: fotos internas, fora.
-    const internalLot = await internal.createBookingLotFromSheet(
-      admin,
-      withPhotos(),
-    );
-    await internal.setBookingLotPartner(admin, internalLot.id, trader.partyId!);
-    const seen = (await svc.getPartnerBookingLot(trader, internalLot.id))!;
-    expect(seen.items.length).toBe(2);
-    expect(
-      seen.items.every((i) => !i.photoDocumentId && !i.cardDocumentId),
-    ).toBe(true);
   });
 });
