@@ -89,7 +89,9 @@ export const SHOTS = {
   "order-container": ["admin", O2, { sel: "#container-origin" }],
   "shipping-docs": ["admin", () => `${O2()}/shipping-docs`],
   sla: ["admin", "/app/sla"],
-  audit: ["admin", "/app/audit"],
+  // A coluna "Ação" da auditoria mostra o código técnico (team.member.delete...):
+  // o vídeo não a mostra (pedido do dono, 16/11/2026); o resto da tela é real.
+  audit: ["admin", "/app/audit", { hideCol: "^(a[çc][ãa]o|action|操作)" }],
   team: ["admin", "/app/team"],
   dashboards: ["admin", "/app/dashboards"],
   // Janela mais alta: a caixa da conversa (60 % da altura) mostra as cinco mensagens.
@@ -187,6 +189,19 @@ for (const name of names) {
       },
     );
     await page.addStyleTag({ content: CLEAN });
+    if (o.hideCol)
+      await page.evaluate((src) => {
+        const re = new RegExp(src, "i");
+        for (const table of document.querySelectorAll("table")) {
+          const heads = [...table.querySelectorAll("thead th")];
+          const k = heads.findIndex((th) => re.test(th.innerText.trim()));
+          if (k < 0) continue;
+          for (const row of table.querySelectorAll("tr")) {
+            const cell = row.children[k];
+            if (cell) cell.style.display = "none";
+          }
+        }
+      }, o.hideCol);
     if (o.sel)
       await page.evaluate((sel) => {
         const el = document.querySelector(sel);
