@@ -21,7 +21,7 @@ import {
   type PaymentEventDates,
   type PaymentPlanInstallment,
 } from "@/lib/customer-payment";
-import { paymentEventsFor } from "@/lib/supplier-terms";
+import { brazilDay, paymentEventsFor } from "@/lib/supplier-terms";
 import { todayInBrazil } from "./supplier-terms";
 import { sankhyaDate } from "@/lib/integrations/sankhya-mapping";
 import {
@@ -165,10 +165,13 @@ export async function paymentEventDates(
     (s) => s.key === "cargo_presence" && s.status !== "rejected",
   );
   const cargoAt = cargo?.validatedAt ?? cargo?.submittedAt ?? null;
-  // "No pedido": a forma vale (escolhida e, com alçada, aprovada).
+  // "No pedido": a forma vale (escolhida e, com alçada, aprovada). O dia é o
+  // de Brasília, como o "hoje" da trava (todayInBrazil): pelo dia em UTC, uma
+  // forma escolhida depois das 21h ficava com a data de amanhã e a parcela do
+  // dia não travava até a meia-noite seguinte.
   const planDay =
     plan && plan.status === "approved"
-      ? ((plan.decidedAt ?? plan.chosenAt).slice(0, 10) as string)
+      ? brazilDay(plan.decidedAt ?? plan.chosenAt)
       : null;
   return {
     order:
@@ -178,7 +181,7 @@ export async function paymentEventDates(
           : base.order_created
         : null,
     shipment: planDay ? base.shipped : null,
-    cargo_presence: planDay && cargoAt ? cargoAt.slice(0, 10) : null,
+    cargo_presence: planDay && cargoAt ? brazilDay(cargoAt) : null,
     delivery: planDay ? base.delivered : null,
   };
 }
