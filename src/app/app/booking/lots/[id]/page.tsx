@@ -75,6 +75,21 @@ import { EntityLinkList, entityLinkNodes } from "@/components/entity-links";
 import type { NcmSuggestion } from "@/lib/ncm-match";
 import { TableTools } from "@/components/table-tools";
 import {
+  BookingBulkProvider,
+  BulkFieldInput,
+  BulkLoadButton,
+  BulkRowCheck,
+  BulkSelectAll,
+  BulkStatus,
+} from "@/components/booking-bulk-fill";
+import {
+  bulkFillLabels,
+  colRem,
+  FIRST_COL_REM,
+  STICKY_FIRST_PLAIN,
+  STICKY_PHOTO,
+} from "@/lib/booking-bulk-ui";
+import {
   BookingPendingList,
   type PendingItemView,
 } from "@/components/booking-pending-list";
@@ -453,6 +468,296 @@ export default async function BookingLotPage({
       </span>
     );
   };
+
+  /* Itens: cabeçalho congelado (TableTools stickyHead) e, com algo para
+     editar, o preenchimento em massa (dono, 16/11/2026): a caixa de cada
+     linha, a do cabeçalho (todas) e, abaixo dos títulos, um campo vazio por
+     coluna editável e "Carregar". Rascunho: as colunas do item (preço e
+     moeda só com "Ver preço de compra") e o NCM; fechado ou em andamento,
+     só o NCM; cancelado, nada. Larguras fixas: as duas partes alinham. */
+  const bulkColumns = editable ? columns : [];
+  const bulkOn = bulkColumns.length > 0 || ncmEditable;
+  const th =
+    "border-b border-zinc-200 bg-zinc-50 px-2 py-2 align-bottom text-[11px] font-semibold uppercase tracking-wide break-words text-zinc-500";
+  const bulkTh =
+    "border-b border-zinc-200 bg-white px-2 py-1.5 align-top text-left font-normal normal-case tracking-normal";
+  const itemsTable = (
+    <TableTools
+      stickyHead
+      stickyBar={bulkOn ? <BulkStatus /> : undefined}
+      className=""
+      tableClassName="min-w-0"
+      data-booking-items=""
+    >
+      <colgroup>
+        <col style={{ width: `${FIRST_COL_REM}rem` }} />
+        <col style={{ width: "6.5rem" }} />
+        <col style={{ width: "11.5rem" }} />
+        {columns.map((c) => (
+          <col key={c.field} style={{ width: `${colRem(c.width)}rem` }} />
+        ))}
+        <col style={{ width: "12rem" }} />
+        {seesPrice ? <col style={{ width: "11rem" }} /> : null}
+        <col style={{ width: "13rem" }} />
+      </colgroup>
+      <thead>
+        <tr data-table-sort-row="">
+          <th className={cx(th, STICKY_FIRST_PLAIN, "bg-zinc-50")}>
+            {bulkOn ? (
+              <span className="flex items-center gap-2">
+                <BulkSelectAll />
+                {colLabel("position")}
+              </span>
+            ) : (
+              colLabel("position")
+            )}
+          </th>
+          <th className={cx(th, STICKY_PHOTO, "bg-zinc-50")}>
+            {colLabel("photo")}
+          </th>
+          <th className={th}>
+            {t("bookingNcm.col")}
+            <span className="text-brand-700"> *</span>
+          </th>
+          {columns.map((c) => (
+            <th key={c.field} className={th}>
+              {colLabel(c.field)}
+              {isRequiredItemField(c.field) ? (
+                <span className="text-brand-700"> *</span>
+              ) : null}
+            </th>
+          ))}
+          {(seesPrice ? ["check", "analysis"] : ["check"]).map((k) => (
+            <th key={k} className={th}>
+              {colLabel(k)}
+            </th>
+          ))}
+          <th className={th}>{t("entityLinks.col")}</th>
+        </tr>
+        {bulkOn ? (
+          <tr data-bulk-fill-row="">
+            <th className={cx(bulkTh, STICKY_FIRST_PLAIN, "bg-white")}>
+              <BulkLoadButton />
+            </th>
+            <th className={cx(bulkTh, STICKY_PHOTO, "bg-white")} />
+            <th className={bulkTh}>
+              {ncmEditable ? (
+                <BulkFieldInput
+                  field="ncm"
+                  kind="number"
+                  label={t("bookingNcm.col")}
+                />
+              ) : null}
+            </th>
+            {columns.map((c) => (
+              <th key={c.field} className={bulkTh}>
+                {bulkColumns.includes(c) ? (
+                  <BulkFieldInput
+                    field={c.field}
+                    kind={
+                      c.kind === "incoterm" || c.kind === "currency"
+                        ? "select"
+                        : c.kind === "number" && c.field !== "capacityMl"
+                          ? "number"
+                          : "text"
+                    }
+                    label={colLabel(c.field)}
+                    options={
+                      c.kind === "incoterm"
+                        ? SHEET_INCOTERMS
+                        : c.kind === "currency"
+                          ? SHEET_CURRENCIES
+                          : undefined
+                    }
+                  />
+                ) : null}
+              </th>
+            ))}
+            <th className={bulkTh} />
+            {seesPrice ? <th className={bulkTh} /> : null}
+            <th className={bulkTh} />
+          </tr>
+        ) : null}
+      </thead>
+      <tbody>
+        {items.map((item) => {
+          const missing = missingItemFields(item);
+          return (
+            <tr
+              key={item.id}
+              className="group transition hover:bg-brand-50/40"
+              data-booking-item={item.id}
+              data-bulk-row={bulkOn ? item.id : undefined}
+            >
+              <td
+                className={cx(
+                  "border-b border-zinc-100 px-2 py-2 align-top text-xs text-zinc-500",
+                  STICKY_FIRST_PLAIN,
+                  "bg-white group-hover:bg-[color-mix(in_oklab,var(--color-brand-50)_40%,white)]",
+                )}
+              >
+                <label className="flex cursor-pointer items-start gap-2">
+                  {bulkOn ? (
+                    <BulkRowCheck
+                      itemId={item.id}
+                      n={String(item.position + 1)}
+                    />
+                  ) : null}
+                  <span>
+                    {item.position + 1}
+                    {item.sourceRows ? (
+                      <span className="block text-[10px]">
+                        L{item.sourceRows}
+                      </span>
+                    ) : null}
+                  </span>
+                </label>
+              </td>
+              <td
+                className={cx(
+                  "border-b border-zinc-100 px-2 py-2 align-top",
+                  STICKY_PHOTO,
+                  "bg-white group-hover:bg-[color-mix(in_oklab,var(--color-brand-50)_40%,white)]",
+                )}
+                data-booking-item-photo=""
+              >
+                <span className="flex gap-1">
+                  {[item.photoDocumentId, item.cardDocumentId]
+                    .filter((d): d is string => !!d)
+                    .map((doc) => (
+                      <a
+                        key={doc}
+                        href={`/api/files/${doc}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={
+                          doc === item.cardDocumentId
+                            ? t("bookingLots.item.card")
+                            : t("bookingLots.item.col.photo")
+                        }
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+                        <img
+                          src={`/api/files/${doc}`}
+                          alt=""
+                          className="h-10 w-10 rounded border border-zinc-200 object-cover"
+                          loading="lazy"
+                        />
+                      </a>
+                    ))}
+                  {!item.photoDocumentId && !item.cardDocumentId ? muted : null}
+                </span>
+              </td>
+              <td
+                className="border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800"
+                data-booking-item-ncm-cell={
+                  item.ncmSource ??
+                  (item.ncmRequestedAt ? "broker_pending" : "none")
+                }
+              >
+                {ncmEditable ? (
+                  <BookingItemNcmInput
+                    lotId={lot.id}
+                    itemId={item.id}
+                    saved={item.ncm ?? ""}
+                    labels={cellLabels(
+                      t("bookingNcm.edit", {
+                        n: item.itemNumber ?? String(item.position + 1),
+                      }),
+                    )}
+                    suggestions={
+                      item.ncm
+                        ? []
+                        : (ncmSuggestions.get(item.id) ?? []).map(
+                            (sg: NcmSuggestion) => ({
+                              ncm: sg.ncm,
+                              pct: Math.round(sg.score * 100),
+                              title: t("bookingNcm.suggestion", {
+                                pct: Math.round(sg.score * 100),
+                                n: sg.products,
+                                example: sg.example,
+                              }),
+                            }),
+                          )
+                    }
+                    suggestLabel={t("bookingNcm.suggestions")}
+                    recommendedLabel={t("bookingNcm.recommended")}
+                    fillLabel={t("bookingNcm.fillRecommended")}
+                    othersLabel={t("bookingNcm.otherSuggestions")}
+                  />
+                ) : (
+                  <span className="tabular-nums">{item.ncm ?? "—"}</span>
+                )}
+                <span className="mt-0.5 block">
+                  {item.ncm && item.ncmSource ? (
+                    <Badge
+                      tone={item.ncmSource === "match" ? "info" : "neutral"}
+                    >
+                      {t(
+                        `bookingNcm.source.${item.ncmSource}` as DictionaryKey,
+                        {
+                          pct: Math.round((item.ncmScore ?? 0) * 100),
+                        },
+                      )}
+                    </Badge>
+                  ) : !item.ncm && item.ncmRequestedAt ? (
+                    <Badge tone="warning">{t("bookingNcm.pending")}</Badge>
+                  ) : null}
+                </span>
+              </td>
+              {columns.map((c) => (
+                <td
+                  key={c.field}
+                  className="border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800"
+                >
+                  {itemCell(item, c)}
+                </td>
+              ))}
+              <td className="border-b border-zinc-100 px-2 py-2 align-top text-xs">
+                {missing.length ? (
+                  <span
+                    className="block max-w-44 whitespace-normal text-amber-800"
+                    data-booking-item-missing={missing.join(",")}
+                  >
+                    {t("bookingLots.item.missing", {
+                      list: missing.map(colLabel).join(", "),
+                    })}
+                  </span>
+                ) : (
+                  <Badge tone="success">{t("bookingLots.item.complete")}</Badge>
+                )}
+              </td>
+              {seesPrice ? (
+                <td className="border-b border-zinc-100 px-2 py-2 align-top">
+                  {analysisCell(item)}
+                </td>
+              ) : null}
+              <td
+                className="border-b border-zinc-100 px-2 py-2 align-top text-xs"
+                data-booking-item-links=""
+              >
+                <EntityLinkList
+                  className="max-w-48 gap-y-0.5"
+                  nodes={entityLinkNodes({
+                    t,
+                    links: linksOfItem(lotLinks, item.id),
+                    access: linkAccess,
+                    kinds: [
+                      "selection",
+                      "supplierRequests",
+                      "products",
+                      "orders",
+                    ],
+                  })}
+                  empty={muted}
+                />
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </TableTools>
+  );
 
   return (
     <>
@@ -846,215 +1151,34 @@ export default async function BookingLotPage({
               : t("bookingLots.detail.itemsLocked", {
                   status: statusLabel(lot.status).toLowerCase(),
                 }) + (ncmEditable ? ` ${t("bookingNcm.closedHint")}` : "")}
+            {bulkOn && items.length ? (
+              <span className="block" data-bulk-hint>
+                {t("bookingLots.bulk.hint")}
+              </span>
+            ) : null}
           </p>
           {items.length ? (
-            <TableTools
-              className=""
-              tableClassName="min-w-0"
-              data-booking-items=""
-            >
-              <thead>
-                <tr>
-                  {["position", "photo"].map((k) => (
-                    <th
-                      key={k}
-                      className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500"
-                    >
-                      {colLabel(k)}
-                    </th>
-                  ))}
-                  <th className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap text-zinc-500">
-                    {t("bookingNcm.col")}
-                    <span className="text-brand-700"> *</span>
-                  </th>
-                  {columns.map((c) => (
-                    <th
-                      key={c.field}
-                      className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap text-zinc-500"
-                    >
-                      {colLabel(c.field)}
-                      {isRequiredItemField(c.field) ? (
-                        <span className="text-brand-700"> *</span>
-                      ) : null}
-                    </th>
-                  ))}
-                  {(seesPrice ? ["check", "analysis"] : ["check"]).map((k) => (
-                    <th
-                      key={k}
-                      className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500"
-                    >
-                      {colLabel(k)}
-                    </th>
-                  ))}
-                  <th className="border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                    {t("entityLinks.col")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => {
-                  const missing = missingItemFields(item);
-                  return (
-                    <tr
-                      key={item.id}
-                      className="transition hover:bg-brand-50/40"
-                      data-booking-item={item.id}
-                    >
-                      <td className="border-b border-zinc-100 px-2 py-2 align-top text-xs text-zinc-500">
-                        {item.position + 1}
-                        {item.sourceRows ? (
-                          <span className="block text-[10px]">
-                            L{item.sourceRows}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="border-b border-zinc-100 px-2 py-2 align-top">
-                        <span className="flex gap-1">
-                          {[item.photoDocumentId, item.cardDocumentId]
-                            .filter((d): d is string => !!d)
-                            .map((doc) => (
-                              <a
-                                key={doc}
-                                href={`/api/files/${doc}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                title={
-                                  doc === item.cardDocumentId
-                                    ? t("bookingLots.item.card")
-                                    : t("bookingLots.item.col.photo")
-                                }
-                              >
-                                {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
-                                <img
-                                  src={`/api/files/${doc}`}
-                                  alt=""
-                                  className="h-10 w-10 rounded border border-zinc-200 object-cover"
-                                  loading="lazy"
-                                />
-                              </a>
-                            ))}
-                          {!item.photoDocumentId && !item.cardDocumentId
-                            ? muted
-                            : null}
-                        </span>
-                      </td>
-                      <td
-                        className="border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800"
-                        data-booking-item-ncm-cell={
-                          item.ncmSource ??
-                          (item.ncmRequestedAt ? "broker_pending" : "none")
-                        }
-                      >
-                        {ncmEditable ? (
-                          <BookingItemNcmInput
-                            lotId={lot.id}
-                            itemId={item.id}
-                            saved={item.ncm ?? ""}
-                            labels={cellLabels(
-                              t("bookingNcm.edit", {
-                                n: item.itemNumber ?? String(item.position + 1),
-                              }),
-                            )}
-                            suggestions={
-                              item.ncm
-                                ? []
-                                : (ncmSuggestions.get(item.id) ?? []).map(
-                                    (sg: NcmSuggestion) => ({
-                                      ncm: sg.ncm,
-                                      pct: Math.round(sg.score * 100),
-                                      title: t("bookingNcm.suggestion", {
-                                        pct: Math.round(sg.score * 100),
-                                        n: sg.products,
-                                        example: sg.example,
-                                      }),
-                                    }),
-                                  )
-                            }
-                            suggestLabel={t("bookingNcm.suggestions")}
-                            recommendedLabel={t("bookingNcm.recommended")}
-                            fillLabel={t("bookingNcm.fillRecommended")}
-                            othersLabel={t("bookingNcm.otherSuggestions")}
-                          />
-                        ) : (
-                          <span className="tabular-nums">
-                            {item.ncm ?? "—"}
-                          </span>
-                        )}
-                        <span className="mt-0.5 block">
-                          {item.ncm && item.ncmSource ? (
-                            <Badge
-                              tone={
-                                item.ncmSource === "match" ? "info" : "neutral"
-                              }
-                            >
-                              {t(
-                                `bookingNcm.source.${item.ncmSource}` as DictionaryKey,
-                                {
-                                  pct: Math.round((item.ncmScore ?? 0) * 100),
-                                },
-                              )}
-                            </Badge>
-                          ) : !item.ncm && item.ncmRequestedAt ? (
-                            <Badge tone="warning">
-                              {t("bookingNcm.pending")}
-                            </Badge>
-                          ) : null}
-                        </span>
-                      </td>
-                      {columns.map((c) => (
-                        <td
-                          key={c.field}
-                          className="border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800"
-                        >
-                          {itemCell(item, c)}
-                        </td>
-                      ))}
-                      <td className="border-b border-zinc-100 px-2 py-2 align-top text-xs">
-                        {missing.length ? (
-                          <span
-                            className="block max-w-44 whitespace-normal text-amber-800"
-                            data-booking-item-missing={missing.join(",")}
-                          >
-                            {t("bookingLots.item.missing", {
-                              list: missing.map(colLabel).join(", "),
-                            })}
-                          </span>
-                        ) : (
-                          <Badge tone="success">
-                            {t("bookingLots.item.complete")}
-                          </Badge>
-                        )}
-                      </td>
-                      {seesPrice ? (
-                        <td className="border-b border-zinc-100 px-2 py-2 align-top">
-                          {analysisCell(item)}
-                        </td>
-                      ) : null}
-                      <td
-                        className="border-b border-zinc-100 px-2 py-2 align-top text-xs"
-                        data-booking-item-links=""
-                      >
-                        <EntityLinkList
-                          className="max-w-48 gap-y-0.5"
-                          nodes={entityLinkNodes({
-                            t,
-                            links: linksOfItem(lotLinks, item.id),
-                            access: linkAccess,
-                            kinds: [
-                              "selection",
-                              "supplierRequests",
-                              "products",
-                              "orders",
-                            ],
-                          })}
-                          empty={muted}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </TableTools>
+            bulkOn ? (
+              <BookingBulkProvider
+                lotId={lot.id}
+                mode="wellmix"
+                itemIds={items.map((i) => i.id)}
+                rowLabels={Object.fromEntries(
+                  items.map((i) => [i.id, String(i.position + 1)]),
+                )}
+                fieldLabels={{
+                  ncm: t("bookingNcm.col"),
+                  ...Object.fromEntries(
+                    columns.map((c) => [c.field, colLabel(c.field)]),
+                  ),
+                }}
+                labels={bulkFillLabels(t)}
+              >
+                {itemsTable}
+              </BookingBulkProvider>
+            ) : (
+              itemsTable
+            )
           ) : (
             <Empty>{t("bookingLots.empty")}</Empty>
           )}

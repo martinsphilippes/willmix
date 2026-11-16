@@ -1532,6 +1532,25 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   - `tests/unit/schedule-result.test.ts`: as contas, acima de 100%, "<1", os grupos e campos na tela, a caixa inner com e sem quantidade e as três bases do peso.
   - `tests/e2e/schedule-result-strip.spec.ts`: as duas telas, a troca de 20GP, 40GP e 40HC, a caixa inner com e sem quantidade, o peso por peça e a faixa no celular.
 
+## Book: cabeçalho congelado e preenchimento em massa nos itens
+
+- **Pedido do dono** (16/11/2026), em todos os logins que abrem o Book (tela da Wellmix e "Meus books → Book" do parceiro):
+  - **Cabeçalho congelado**: os títulos e uma linha de preenchimento ficam presos abaixo da barra vermelha, saem com a tabela no fim e acompanham as colunas na rolagem para o lado.
+  - **Preenchimento em massa**: uma caixa em cada linha e uma no cabeçalho (todas), um campo vazio acima de cada coluna editável e "Carregar", que grava nas linhas marcadas.
+  - **Aviso**: quantos itens foram atualizados; na falha, quais não gravaram, com "Tentar de novo".
+- **Como ficou**: docs/BOOKING.md, "Tabela dos itens: cabeçalho congelado e preenchimento em massa".
+- **Não mudou**: a edição de cada célula, as permissões e as regras de gravação. O preenchimento em massa usa a mesma leitura (`bookingItemPatch`, agora também na célula) e os mesmos serviços do NCM.
+  - Na tela da Wellmix continuam a busca, a ordem e as páginas da tabela. A ordem pela coluna "#" saiu, porque o título dela leva a caixa "todas": a ordem original volta no terceiro clique de qualquer título.
+  - Nenhuma rota ou dado saiu. Sem mudança no banco: a auditoria ganha a ação `booking_item.bulk`.
+- **Mudou na tabela**:
+  - **Larguras**: cada coluna tem largura fixa, a do campo dela com folga. Os títulos quebram em linhas em vez de alargar a coluna.
+  - **Colunas presas**: a caixa e o número da linha ficam presos à esquerda. Na tela da Wellmix, a coluna das fotos também, logo depois delas (pedido do dono no mesmo dia).
+  - **`TableTools`**: ganhou `stickyHead` e `stickyBar`, só nas telas que pedem. A busca marca `data-table-filtered` nas linhas que esconde.
+- Testes:
+  - `tests/unit/booking-bulk-fill.test.ts`: regra de cada campo, valor válido, linhas 2, 5 e 8 com USD, várias colunas, valor recusado, item de outro book, NCM e book travado.
+  - `tests/unit/booking-partner.test.ts`: o "Carregar" do parceiro.
+  - `tests/e2e/booking-bulk-fill.spec.ts`: desktop (cabeçalho preso, linhas 2, 5 e 8, recarregar, várias colunas, valor inválido, todas, rolagem para o lado, fim da tabela), falha com "Tentar de novo", iPad em pé e deitado (emulado no Chromium) e a Trading em "Meus books".
+
 ## RCA do cliente no cadastro e na Nova solicitação
 
 - **Pedido do dono** (15/11/2026, com as fotos da Nova solicitação e de Cadastros → Parceiros no iPad): o campo "RCA responsável" no cadastro do cliente; na Nova solicitação, o "RCA do cliente" ao lado do "Solicitante", o solicitante preenchido com quem está criando e o seletor de antes como "Login do cliente com acesso". Decisões: o RCA é o vendedor do Sankhya (TGFVEN, pelo código) e o Sankhya manda (a carga sobrescreve o portal).

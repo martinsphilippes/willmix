@@ -16,11 +16,11 @@ import {
   bookingLotPreparing,
   bookingRecipientId,
   isBookingPartner,
-  readBookingCapacity,
-  readBookingItemValue,
+  bookingItemPatch,
   type BookingItemField,
 } from "@/lib/booking-lots";
 import { audit } from "./audit";
+import type { BookingBulkResult } from "./booking-lots";
 import type { SheetSource } from "./product-sheet-import";
 
 /*
@@ -282,26 +282,35 @@ export async function setPartnerBookingItemField(
   const item = await store.get("booking_items", itemId);
   if (!item) throw new PartnerBookingError("not_found");
   await ownPreparingLot(user, item.lotId);
-  // Capacidade: mililitros ou o tamanho em texto (os dois campos juntos).
-  if (field === "capacityMl") {
-    const next = readBookingCapacity(raw, item);
-    if (
-      next.capacityMl === item.capacityMl &&
-      next.sizeText === (item.sizeText ?? null)
-    )
-      return;
-    await store.update("booking_items", item.id, {
-      ...next,
-      updatedByUserId: user.id,
-    });
-    return;
-  }
-  const value = readBookingItemValue(field, raw);
-  if (item[field] === value) return;
+  // A mesma regra da tela da Wellmix e do preenchimento em massa.
+  const patch = bookingItemPatch(item, field, raw);
+  if (!patch) return;
   await store.update("booking_items", item.id, {
-    [field]: value,
+    ...patch,
     updatedByUserId: user.id,
-  } as Partial<BookingItem>);
+  });
+}
+
+/**
+ * Preenchimento em massa do parceiro (dono, 16/11/2026): os valores
+ * digitados acima das colunas vão para os itens marcados, com as regras da
+ * célula (só o booking dele e só antes de enviar).
+ */
+export async function setPartnerBookingItemsFields(
+  user: User,
+  lotId: string,
+  itemIds: readonly string[],
+  values: ReadonlyArray<readonly [BookingItemField, string]>,
+): Promise<BookingBulkResult> {
+  await ownPreparingLot(user, lotId);
+  const { applyBookingItemsBulk } = await import("./booking-lots");
+  const { updated, failed } = await applyBookingItemsBulk(
+    user,
+    lotId,
+    itemIds,
+    values,
+  );
+  return { updated, failed };
 }
 
 /**

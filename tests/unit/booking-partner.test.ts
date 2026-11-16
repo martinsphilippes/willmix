@@ -436,6 +436,70 @@ describe("lançar booking pelo parceiro", () => {
     expect((await store.get("booking_items", item.id))!.price).toBe(2.55);
   });
 
+  it("Carregar (preenchimento em massa): os itens marcados, só o booking dele e antes de enviar", async () => {
+    const store = getStore();
+    const launched = await svc.launchPartnerBooking(
+      trader,
+      sheet("massa.xlsx", [
+        row("Fábrica M", "M-1", "1.00"),
+        row("Fábrica M", "M-2", "1.10"),
+        row("Fábrica M", "M-3", "1.20"),
+      ]),
+    );
+    const items = (await svc.getPartnerBookingLot(trader, launched.id))!.items;
+    const [first, second, third] = items;
+    const result = await svc.setPartnerBookingItemsFields(
+      trader,
+      launched.id,
+      [first.id, third.id],
+      [
+        ["currency", "RMB"],
+        ["material", "glass"],
+      ],
+    );
+    expect(result.updated.sort()).toEqual([first.id, third.id].sort());
+    expect(result.failed).toEqual([]);
+    const after = await Promise.all(
+      items.map(async (i) => (await store.get("booking_items", i.id))!),
+    );
+    expect(after.map((i) => [i.currency, i.material])).toEqual([
+      ["RMB", "glass"],
+      ["USD", null],
+      ["RMB", "glass"],
+    ]);
+    // O preço de cada linha ficou o dela.
+    expect(after.map((i) => i.price)).toEqual([1, 1.1, 1.2]);
+    expect(after[0].updatedByUserId).toBe(trader.id);
+    // Valor que não dá para ler: recusado em cada item, com o campo.
+    const bad = await svc.setPartnerBookingItemsFields(
+      trader,
+      launched.id,
+      [second.id],
+      [["price", "abc"]],
+    );
+    expect(bad.updated).toEqual([]);
+    expect(bad.failed[0]).toMatchObject({ itemId: second.id, field: "price" });
+    // Outra empresa e a Wellmix não mexem.
+    await expect(
+      svc.setPartnerBookingItemsFields(
+        otherTrader,
+        launched.id,
+        [second.id],
+        [["moq", "5"]],
+      ),
+    ).rejects.toThrow("not_found");
+    await expect(
+      svc.setPartnerBookingItemsFields(
+        admin,
+        launched.id,
+        [second.id],
+        [["moq", "5"]],
+      ),
+    ).rejects.toThrow();
+    // Descarta (o próximo teste envia o outro booking em preenchimento).
+    await svc.discardPartnerBooking(trader, launched.id);
+  });
+
   it("Enviar para Wellmix Conferir: ganha o número, vira rascunho e a Wellmix é avisada", async () => {
     const store = getStore();
     const before = (await store.list("notifications")).length;

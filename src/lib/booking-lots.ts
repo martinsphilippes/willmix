@@ -225,6 +225,78 @@ export function readBookingCapacity(
   return { capacityMl: null, sizeText: value.slice(0, 60) };
 }
 
+/* ------------------------------------------------------------------------ */
+/* O que gravar: um campo (a célula) ou vários (o preenchimento em massa)    */
+/* ------------------------------------------------------------------------ */
+
+type PatchableItem = Pick<BookingItem, BookingItemField> &
+  Partial<Pick<BookingItem, "sizeText">>;
+
+/**
+ * O que gravar no item para o valor digitado num campo: a mesma regra na
+ * célula e no preenchimento em massa (dono, 16/11/2026). null quando nada
+ * muda; valor que não dá para ler: BookingItemValueError.
+ */
+export function bookingItemPatch(
+  item: PatchableItem,
+  field: BookingItemField,
+  raw: string,
+): Partial<BookingItem> | null {
+  // Capacidade: mililitros ou o tamanho em texto (os dois campos juntos).
+  if (field === "capacityMl") {
+    const next = readBookingCapacity(raw, item);
+    return next.capacityMl === item.capacityMl &&
+      next.sizeText === (item.sizeText ?? null)
+      ? null
+      : next;
+  }
+  const value = readBookingItemValue(field, raw);
+  return item[field] === value
+    ? null
+    : ({ [field]: value } as Partial<BookingItem>);
+}
+
+/**
+ * Vários campos no mesmo item (preenchimento em massa): um a um, na ordem,
+ * sobre o item já com os anteriores. null quando nada muda.
+ */
+export function bookingItemPatches(
+  item: PatchableItem,
+  values: ReadonlyArray<readonly [BookingItemField, string]>,
+): Partial<BookingItem> | null {
+  let current = item;
+  let patch: Partial<BookingItem> | null = null;
+  for (const [field, raw] of values) {
+    const next = bookingItemPatch(current, field, raw);
+    if (!next) continue;
+    patch = { ...(patch ?? {}), ...next };
+    current = { ...current, ...next } as PatchableItem;
+  }
+  return patch;
+}
+
+/**
+ * Valor do preenchimento em massa que a gravação aceita: as mesmas leituras
+ * da célula (número acima de zero, incoterm e moeda da lista, NCM com 8
+ * dígitos). Vazio não é valor (a coluna fica como está).
+ */
+export function bulkValueValid(
+  field: BookingItemField | "ncm",
+  raw: string,
+): boolean {
+  const value = raw.trim();
+  if (!value) return false;
+  // A mesma conta de normalizeNcm (src/lib/fiscal.ts): só os dígitos, 8.
+  if (field === "ncm") return value.replace(/\D/g, "").length === 8;
+  try {
+    if (field === "capacityMl") readBookingCapacity(value, {});
+    else readBookingItemValue(field, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Campos obrigatórios que faltam no item (o tamanho vale como capacidade). */
 export function missingItemFields(
   item: Pick<BookingItem, BookingItemRequiredField> &

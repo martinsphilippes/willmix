@@ -35,6 +35,7 @@ import {
   Table,
   Td,
   Th,
+  cx,
   formatDate,
   linkClass,
   rowClass,
@@ -45,6 +46,21 @@ import {
   PartnerItemInput,
   PartnerItemSelect,
 } from "@/components/partner-booking-fields";
+import { TableTools } from "@/components/table-tools";
+import {
+  BookingBulkProvider,
+  BulkFieldInput,
+  BulkLoadButton,
+  BulkRowCheck,
+  BulkSelectAll,
+  BulkStatus,
+} from "@/components/booking-bulk-fill";
+import {
+  bulkFillLabels,
+  colRem,
+  FIRST_COL_REM,
+  STICKY_FIRST,
+} from "@/lib/booking-bulk-ui";
 import {
   discardPartnerBookingAction,
   launchBookingAction,
@@ -501,7 +517,18 @@ function PreparingItems({
     0,
   );
   const th =
-    "border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap text-zinc-500";
+    "border-b border-zinc-200 bg-zinc-50 px-2 py-2 align-bottom text-[11px] font-semibold uppercase tracking-wide break-words text-zinc-500";
+  const bulkTh =
+    "border-b border-zinc-200 bg-white px-2 py-1.5 align-top text-left font-normal normal-case tracking-normal";
+  /** Como o campo em massa é digitado: o da coluna (a capacidade aceita letras). */
+  const bulkKind = (field: BookingItemField) => {
+    const kind = field === "capacityMl" ? "text" : bookingItemFieldKind(field);
+    return kind === "incoterm" || kind === "currency"
+      ? ("select" as const)
+      : kind === "number"
+        ? ("number" as const)
+        : ("text" as const);
+  };
   const td =
     "border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800";
   const cell = (
@@ -576,7 +603,8 @@ function PreparingItems({
         }
       >
         <p className="mb-2 text-xs text-zinc-500">
-          {t("bookingLots.partner.editHint")}
+          {t("bookingLots.partner.editHint")}{" "}
+          {items.length ? t("bookingLots.bulk.hint") : null}
           {blanks ? (
             <span
               className="text-amber-800"
@@ -588,14 +616,42 @@ function PreparingItems({
           ) : null}
         </p>
         {items.length ? (
-          <div className="relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border">
-            <table
-              className="w-full text-left text-sm"
-              data-partner-booking-edit
+          // Cabeçalho congelado e preenchimento em massa (dono, 16/11/2026):
+          // a mesma tabela, sem busca, ordem nem páginas, como antes.
+          <BookingBulkProvider
+            lotId={lot.id}
+            mode="partner"
+            itemIds={items.map((item) => item.id)}
+            rowLabels={Object.fromEntries(
+              items.map((item, index) => [item.id, String(index + 1)]),
+            )}
+            fieldLabels={Object.fromEntries(
+              EDIT_COLUMNS.map(({ field }) => [field, colLabel(field)]),
+            )}
+            labels={bulkFillLabels(t)}
+          >
+            <TableTools
+              stickyHead
+              stickyBar={<BulkStatus />}
+              sortable={false}
+              searchable={false}
+              paginated={false}
+              tableClassName="min-w-0"
+              data-partner-booking-edit=""
             >
+              <colgroup>
+                <col style={{ width: `${FIRST_COL_REM}rem` }} />
+                {EDIT_COLUMNS.map(({ field, width }) => (
+                  <col key={field} style={{ width: `${colRem(width)}rem` }} />
+                ))}
+              </colgroup>
               <thead>
-                <tr>
-                  <th className={th}>#</th>
+                <tr data-table-sort-row="">
+                  <th className={cx(th, STICKY_FIRST, "bg-zinc-50")}>
+                    <span className="flex items-center gap-2">
+                      <BulkSelectAll />#
+                    </span>
+                  </th>
                   {EDIT_COLUMNS.map(({ field }) => (
                     <th key={field} className={th}>
                       {colLabel(field)}
@@ -605,14 +661,48 @@ function PreparingItems({
                     </th>
                   ))}
                 </tr>
+                <tr data-bulk-fill-row="">
+                  <th className={cx(bulkTh, STICKY_FIRST, "bg-white")}>
+                    <BulkLoadButton />
+                  </th>
+                  {EDIT_COLUMNS.map(({ field }) => (
+                    <th key={field} className={bulkTh}>
+                      <BulkFieldInput
+                        field={field}
+                        kind={bulkKind(field)}
+                        label={colLabel(field)}
+                        options={
+                          field === "incoterm"
+                            ? SHEET_INCOTERMS
+                            : field === "currency"
+                              ? SHEET_CURRENCIES
+                              : undefined
+                        }
+                      />
+                    </th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
                 {items.map((item, index) => (
-                  <tr key={item.id} data-partner-booking-item={item.id}>
+                  <tr
+                    key={item.id}
+                    className="group"
+                    data-partner-booking-item={item.id}
+                    data-bulk-row={item.id}
+                  >
                     <td
-                      className={`${td} text-right tabular-nums text-zinc-500`}
+                      className={cx(
+                        td,
+                        "tabular-nums text-zinc-500",
+                        STICKY_FIRST,
+                        "bg-white",
+                      )}
                     >
-                      {index + 1}
+                      <label className="flex cursor-pointer items-start gap-2">
+                        <BulkRowCheck itemId={item.id} n={String(index + 1)} />
+                        <span>{index + 1}</span>
+                      </label>
                     </td>
                     {EDIT_COLUMNS.map(({ field, width }) => (
                       <td key={field} className={td}>
@@ -622,8 +712,8 @@ function PreparingItems({
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+            </TableTools>
+          </BookingBulkProvider>
         ) : (
           <Empty>{t("bookingLots.partner.noItems")}</Empty>
         )}
@@ -656,7 +746,13 @@ function SentItems({
   return (
     <Card title={t("bookingLots.partner.items", { n: String(items.length) })}>
       {items.length ? (
-        <Table>
+        // Cabeçalho congelado (dono, 16/11/2026): só consulta, sem marcar.
+        <Table stickyHead>
+          <colgroup>
+            {[3, 16, 9, 6, 7, 6, 10, 8, 14].map((rem, i) => (
+              <col key={i} style={{ width: `${rem}rem` }} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
               <Th className="w-10 text-right">#</Th>

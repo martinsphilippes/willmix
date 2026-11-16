@@ -8,7 +8,7 @@ import {
   isWellmix,
 } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
-import { isBookingItemField } from "@/lib/booking-lots";
+import { isBookingItemField, type BookingItemField } from "@/lib/booking-lots";
 import { BOOKING_LOT_STATUSES, SHEET_CURRENCIES } from "@/lib/db/schema";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
@@ -257,6 +257,157 @@ export async function setPartnerBookingItemFieldAction(
       );
     },
     partnerUser,
+  );
+}
+
+/* ------------------------------------------------------------------------ */
+/* Preenchimento em massa ("Carregar", dono, 16/11/2026)                     */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Resultado do "Carregar": quantos itens gravaram e quais não, cada um com o
+ * campo e o motivo. `ok: false` quando nada foi tentado (login, booking
+ * travado, pedido inválido).
+ */
+export type BulkFillResult =
+  | {
+      ok: true;
+      updated: number;
+      failed: Array<{ itemId: string; field: string | null; message: string }>;
+    }
+  | { ok: false; message: string };
+
+const BULK_INPUT = z.object({
+  lotId: ID,
+  itemIds: z.array(ID).min(1).max(500),
+  values: z.record(z.string().max(40), z.string().max(4000)),
+});
+
+/** Texto do erro, como o da célula (o do NCM incluído). */
+async function bulkMessages() {
+  const { getT } = await import("@/i18n/server");
+  const t = await getT();
+  return (error: unknown) => {
+    const code = errorCode(LIST, error);
+    return (
+      [
+        `bookingLots.error.${code}`,
+        `bookingNcm.error.${code}`,
+        `common.${code}`,
+      ]
+        .map((k) => [k, t(k as DictionaryKey)] as const)
+        .find(([k, v]) => v !== k)?.[1] ?? fallbackError(t, code)
+    );
+  };
+}
+
+/**
+ * Os valores do "Carregar": só campos do item (e o NCM, na Wellmix). Campo
+ * vazio fica de fora (a coluna fica como está); sem nenhum, nada a gravar.
+ */
+function bulkValues(values: Record<string, string>, withNcm: boolean) {
+  const fields: Array<[BookingItemField, string]> = [];
+  let ncm: string | null = null;
+  for (const [field, raw] of Object.entries(values)) {
+    const value = raw.trim();
+    if (!value) continue;
+    if (withNcm && field === "ncm") ncm = value;
+    else if (isBookingItemField(field)) fields.push([field, value]);
+    else throw new Error("invalid_input");
+  }
+  if (!fields.length && ncm === null) throw new Error("invalid_input");
+  return { fields, ncm };
+}
+
+async function bulk(
+  lotId: string,
+  itemIds: string[],
+  values: Record<string, string>,
+  who: () => ReturnType<typeof requireUser>,
+  save: (
+    user: Awaited<ReturnType<typeof requireUser>>,
+    input: z.infer<typeof BULK_INPUT> & ReturnType<typeof bulkValues>,
+  ) => Promise<{
+    updated: string[];
+    failed: Array<{ itemId: string; field: string | null; error: unknown }>;
+  }>,
+  withNcm: boolean,
+): Promise<BulkFillResult> {
+  const message = await bulkMessages();
+  let result: Awaited<ReturnType<typeof save>>;
+  let lot: string;
+  try {
+    const user = await who();
+    const input = BULK_INPUT.parse({ lotId, itemIds, values });
+    lot = input.lotId;
+    result = await save(user, {
+      ...input,
+      ...bulkValues(input.values, withNcm),
+    });
+  } catch (error) {
+    return { ok: false, message: message(error) };
+  }
+  revalidatePath(detail(lot));
+  revalidatePath(LIST);
+  return {
+    ok: true,
+    updated: result.updated.length,
+    failed: result.failed.map((f) => ({
+      itemId: f.itemId,
+      field: f.field,
+      message: message(f.error),
+    })),
+  };
+}
+
+/** Wellmix: os valores acima das colunas nos itens marcados do booking. */
+export async function bulkSetBookingItemsAction(
+  lotId: string,
+  itemIds: string[],
+  values: Record<string, string>,
+): Promise<BulkFillResult> {
+  return bulk(
+    lotId,
+    itemIds,
+    values,
+    screenUser,
+    async (user, input) => {
+      const { setBookingItemsFields } =
+        await import("@/lib/services/booking-lots");
+      return setBookingItemsFields(
+        user,
+        input.lotId,
+        input.itemIds,
+        input.fields,
+        input.ncm,
+      );
+    },
+    true,
+  );
+}
+
+/** O parceiro: os valores acima das colunas nos itens marcados do booking dele. */
+export async function bulkSetPartnerBookingItemsAction(
+  lotId: string,
+  itemIds: string[],
+  values: Record<string, string>,
+): Promise<BulkFillResult> {
+  return bulk(
+    lotId,
+    itemIds,
+    values,
+    partnerUser,
+    async (user, input) => {
+      const { setPartnerBookingItemsFields } =
+        await import("@/lib/services/booking-partner");
+      return setPartnerBookingItemsFields(
+        user,
+        input.lotId,
+        input.itemIds,
+        input.fields,
+      );
+    },
+    false,
   );
 }
 
