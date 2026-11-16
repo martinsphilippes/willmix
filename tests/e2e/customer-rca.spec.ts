@@ -165,8 +165,16 @@ test("Nova solicitação (Wellmix): RCA do cliente, solicitante e login com aces
     "stock",
   );
   await expect(requester).toHaveValue("Ana Admin");
+  // A compra para estoque tira o cliente da busca (dono, 16/11/2026): ao
+  // desmarcar, o campo fica em branco e o RCA espera a escolha.
+  await expect(
+    page.locator("[data-request-customer] [data-party-picker-input]"),
+  ).toHaveValue("");
   await page.locator("[data-request-customer] [data-stock-option]").uncheck();
-  await expectRca(page, "ready", "Bruno Vendas (102)");
+  await expect(rcaField(page)).toHaveAttribute(
+    "data-request-rca-state",
+    "pick",
+  );
 
   // De volta ao João: Ana de novo e o acesso em "Nenhum" (não volta sozinho).
   await chooseCustomer(page, "loja", "cliente-joao");
