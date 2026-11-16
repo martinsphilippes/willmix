@@ -14,6 +14,7 @@ import {
   saleVip,
 } from "@/lib/order-terms";
 import { getSettings } from "@/lib/settings";
+import { NO_RCA, rcaCodeOf } from "@/lib/services/rca";
 import { brazilDay } from "@/lib/supplier-terms";
 
 export const dynamic = "force-dynamic";
@@ -88,7 +89,9 @@ export async function GET(request: Request) {
     customerId ? store.get("parties", customerId) : Promise.resolve(null),
     getSettings(),
   ]);
-  const rca = customer?.type === "customer" ? customer.rcaCode : null;
+  // O RCA do cliente como a tela mostra: o gravado no portal ou, sem ele,
+  // o vendedor que veio do Sankhya (sankhyaRefs.CODVEND); 0 = sem vendedor.
+  const rca = customer?.type === "customer" ? rcaCodeOf(customer) : null;
   if (!product)
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   const query = {
@@ -120,7 +123,7 @@ export async function GET(request: Request) {
     route: caller ? DELIVERY_ROUTE[caller] : null,
     deliveryFreightBrl: freight ?? settings.deliveryFreightDefaultBrl ?? null,
     sellerCode:
-      rca && /^\d{1,9}$/.test(String(rca).trim()) ? Number(rca) : null,
+      rca && rca !== NO_RCA && /^\d{1,9}$/.test(rca) ? Number(rca) : null,
     dataRef: (brazilDay(new Date()) ?? "").replace(/-/g, "") || null,
   };
   const money = canSeeMoney(user);

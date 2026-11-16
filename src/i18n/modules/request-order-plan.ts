@@ -49,7 +49,7 @@ export const pt = {
   "priceForecast.resultTarget":
     "Para vender a {target} por peça, o preço máximo de compra é",
   "priceForecast.targetField": "Preço de venda desejado (R$ por peça, com IPI)",
-  "priceForecast.error": "A SuperPlan não devolveu preço:",
+  "priceForecast.error": "A cotação do Sankhya não devolveu preço:",
   "priceForecast.sale": "Preço de venda (com IPI)",
   "priceForecast.table": "Preço de tabela (com IPI)",
   "priceForecast.wholesale": "Sugestão para o atacado",
@@ -139,7 +139,7 @@ export const en: Record<keyof typeof pt, string> = {
   "priceForecast.resultTarget":
     "To sell at {target} per piece, the maximum purchase price is",
   "priceForecast.targetField": "Desired sale price (R$ per piece, with IPI)",
-  "priceForecast.error": "SuperPlan returned no price:",
+  "priceForecast.error": "Sankhya's quote returned no price:",
   "priceForecast.sale": "Sale price (with IPI)",
   "priceForecast.table": "List price (with IPI)",
   "priceForecast.wholesale": "Wholesale suggestion",
@@ -222,7 +222,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "priceForecast.hint":
     "来自 Sankhya 订货报价（V2），包含销售形式（VIP）、由谁联系承运商（路线）和默认送货运费：查看产品的预测价格，或输入期望售价以求出最高采购价。",
   "priceForecast.targetField": "期望售价（每件 R$，含 IPI）",
-  "priceForecast.error": "SuperPlan 未返回价格：",
+  "priceForecast.error": "Sankhya 报价未返回价格：",
   "priceForecast.sale": "售价（含 IPI）",
   "priceForecast.table": "目录价（含 IPI）",
   "priceForecast.wholesale": "批发建议价",
