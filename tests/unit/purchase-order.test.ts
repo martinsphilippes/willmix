@@ -488,6 +488,19 @@ describe("pedido de compra", () => {
  * Pedido de compra levado até o contrato pela sequência do mapa: fornecedor,
  * arte (e certificado, quando a linha exige), cadastro e as duas assinaturas.
  */
+/**
+ * Minhas pendências do fornecedor (Trading) no pedido, por passo: a etapa
+ * do caminho dele em "Etapas que chegam até você" (dono, 16/11/2026: do Book
+ * à Invoice; docs/EVOLUTION_PLAN.md).
+ */
+async function supplierStepsOf(order: { number: number }) {
+  return Object.fromEntries(
+    (await pendingTasksFor(supplierA))
+      .filter((t) => t.orderNumber === order.number && t.stepKey)
+      .map((t) => [t.stepKey!, t.group]),
+  );
+}
+
 async function signedPurchaseOrder(
   codes: [string, string],
   lineId: string | null = null,
@@ -533,6 +546,18 @@ async function signedPurchaseOrder(
   if (samplesStatus === "ordered") {
     const doc = await samples.decideSampleOrder(admin, order.id, {
       status: "ordered",
+    });
+    // Aceitar o pedido de amostras é do contrato (P17): em Minhas
+    // pendências, na etapa Assinar o pedido (não em Aprovar a arte).
+    expect(
+      (await pendingTasksFor(supplierA)).find(
+        (t) =>
+          t.orderId === order.id &&
+          t.items?.some((i) => i.key === "sample_order_supplier"),
+      ),
+    ).toMatchObject({
+      group: "supplier.sign",
+      link: `/app/orders/${order.id}`,
     });
     await samples.acceptSampleOrder(supplierA, order.id, {
       name: "Li Supplier",
@@ -1008,6 +1033,10 @@ describe("pedido de compra: sequência do mapa do processo", () => {
     await flow.validateStep(ops, order.id, "booking", "validated", null);
     // O fornecedor faz a sequência; cada passo só abre depois do anterior.
     expect(await keysOf(supplierA)).toEqual(["container_at_factory"]);
+    // Em Minhas pendências: o container vazio na fábrica é Transportadora.
+    expect(await supplierStepsOf(order)).toMatchObject({
+      container_at_factory: "supplier.carrier",
+    });
     await expect(
       flow.submitStep(supplierA, order.id, "container_empty", {
         documentId: await doc(supplierA, "vazio.pdf"),
@@ -1031,6 +1060,10 @@ describe("pedido de compra: sequência do mapa do processo", () => {
     await flow.submitStep(supplierA, order.id, "container_empty", {
       documentId: await doc(supplierA, "vazio.pdf"),
     });
+    expect(await supplierStepsOf(order)).toMatchObject({
+      container_loaded: "supplier.loading",
+      shipping_load: "supplier.loading",
+    });
     await flow.submitStep(supplierA, order.id, "container_loaded", {
       value: "480 caixas, sem avarias",
       documentId: await doc(supplierA, "carga.pdf"),
@@ -1049,9 +1082,16 @@ describe("pedido de compra: sequência do mapa do processo", () => {
       "validated",
       null,
     );
+    expect(await supplierStepsOf(order)).toMatchObject({
+      container_sealed: "supplier.loading",
+    });
     await flow.submitStep(supplierA, order.id, "container_sealed", {
       value: "MSCU1234567",
       documentId: await doc(supplierA, "lacre.pdf"),
+    });
+    // O container lacrado de volta ao porto (R26) fecha o Carregamento.
+    expect(await supplierStepsOf(order)).toMatchObject({
+      container_at_port: "supplier.loading",
     });
     await flow.submitStep(supplierA, order.id, "container_at_port", {
       value: "2027-01-15",
@@ -1185,10 +1225,19 @@ describe("pedido de compra: sequência do mapa do processo", () => {
         .filter((t) => t.order.id === order.id)
         .map((t) => t.kind),
     ).toEqual(["load"]);
+    // Minhas pendências: o check list de carga é do Carregamento.
+    expect(await supplierStepsOf(order)).toMatchObject({
+      shipping_load: "supplier.loading",
+    });
     await docs.addLoad(supplierA, order.id, [{ itemId: a.id, cartons: 1 }]);
     view = (await docs.shippingDocsView(supplierA, order.id))!;
     expect(view.loadDone).toBe(true);
     expect(view.open.load).toBe(false);
+    // O packing list também (R21); a invoice ainda não abriu.
+    expect(await supplierStepsOf(order)).toMatchObject({
+      shipping_packing_list: "supplier.loading",
+    });
+    expect(await supplierStepsOf(order)).not.toHaveProperty("shipping_invoice");
     // Packing list: caixas do check list, peças e pesos pelo cadastro.
     expect(view.suggestion).toEqual([
       expect.objectContaining({
@@ -1219,6 +1268,10 @@ describe("pedido de compra: sequência do mapa do processo", () => {
     });
     view = (await docs.shippingDocsView(supplierA, order.id))!;
     expect(view.docs.packing_list!.lines.map((l) => l.cartons)).toEqual([3, 3]);
+    // Packing list enviado: a invoice é a última etapa do caminho dele.
+    expect(await supplierStepsOf(order)).toMatchObject({
+      shipping_invoice: "supplier.invoice",
+    });
     // Invoice da trading: uma linha com peso bruto diferente volta para refazer.
     const file = (
       await uploadDocument(supplierA, pdf("invoice.pdf"), {
@@ -1251,6 +1304,10 @@ describe("pedido de compra: sequência do mapa do processo", () => {
         expect.objectContaining({ kind: "invoice", redo: true }),
       ]),
     );
+    // Refazer a invoice (R22?) continua na Invoice.
+    expect(await supplierStepsOf(order)).toMatchObject({
+      shipping_invoice: "supplier.invoice",
+    });
     await docs.submitInvoice(supplierA, order.id, {
       number: "INV-1",
       lines: view.docs.packing_list!.lines,
@@ -1260,6 +1317,11 @@ describe("pedido de compra: sequência do mapa do processo", () => {
     view = (await docs.shippingDocsView(supplierA, order.id))!;
     expect(view.docs.invoice!.status).toBe("accepted");
     expect(view.can.bl).toBe(false);
+    // Invoice conferida: o BL é da marítima (ou da Wellmix); nada dos
+    // documentos fica com a Trading.
+    expect(Object.keys(await supplierStepsOf(order))).not.toEqual(
+      expect.arrayContaining([expect.stringMatching(/^shipping_/)]),
+    );
     // BL: sem marítima no pedido, a Wellmix faz; conferido com a invoice.
     expect(await docs.shipmentBlockers(order.id)).toEqual([
       "container_at_port",
@@ -1381,8 +1443,16 @@ describe("pedido de compra: sequência do mapa do processo", () => {
           type: "import_step",
         })
       ).id;
+    // Minhas pendências: retirada e envios das amostras são da etapa Amostra.
+    expect(await supplierStepsOf(order)).toMatchObject({
+      samples_picked: "supplier.sample",
+    });
     await flow.submitStep(supplierA, order.id, "samples_picked", {
       value: "2026-11-20",
+    });
+    expect(await supplierStepsOf(order)).toMatchObject({
+      samples_brazil: "supplier.sample",
+      samples_china: "supplier.sample",
     });
     await flow.submitStep(supplierA, order.id, "samples_brazil", {
       value: "AWB-BR-1",
