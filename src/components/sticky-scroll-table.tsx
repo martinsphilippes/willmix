@@ -69,16 +69,15 @@ export function StickyScrollTable({
         aria-hidden
         data-sticky-head
       >
-        <div
-          ref={headRef}
-          className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
+        {/* A barra de rolagem lateral fica aqui, logo abaixo dos títulos
+            presos: sempre à mão durante a rolagem (a do corpo some). */}
+        <div ref={headRef} className="overflow-x-auto [scrollbar-width:thin]">
           {head}
         </div>
       </div>
       <div
         ref={bodyRef}
-        className="overflow-x-auto"
+        className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         role="region"
         aria-label={label}
         tabIndex={0}

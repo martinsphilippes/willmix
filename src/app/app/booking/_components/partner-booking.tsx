@@ -718,7 +718,7 @@ function SentItems({
     );
   };
   const columns: SentColumn[] = [
-    { key: "line", label: label("line"), width: 3.25, align: "right", frozen: true, value: (_, index) => index + 1 },
+    { key: "line", label: label("line"), width: 4.5, align: "right", frozen: true, value: (_, index) => index + 1 },
     { key: "photo", label: field("photo"), width: 6.25, align: "left", frozen: true, value: photos },
     {
       key: "name",
