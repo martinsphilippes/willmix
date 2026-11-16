@@ -1044,7 +1044,11 @@ function SentItems({
            congelado logo abaixo da barra vermelha e a rolagem para o lado
            dentro da tabela (TableTools stickyHead): título e célula com a
            mesma largura de coluna. */
-        <Table stickyHead>
+        /* Bordas separadas: com as bordas "coladas" (border-collapse), quem
+           desenha a borda é a tabela e o fundo da célula presa (Nº e Foto)
+           a cobre; separadas, cada célula desenha a sua e as divisórias
+           continuam nas colunas congeladas. */
+        <Table stickyHead tableClassName="border-separate border-spacing-0">
           <colgroup>
             {columns.map((c) => (
               <col key={c.key} style={{ width: `${c.width}rem` }} />

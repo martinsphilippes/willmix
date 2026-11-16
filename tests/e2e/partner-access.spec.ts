@@ -555,6 +555,13 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
     .locator("[data-table-sticky-head]")
     .evaluate((el) => getComputedStyle(el).top);
   expect(stickyTop).toBe("56px");
+  // Bordas separadas: as divisórias continuam nas colunas congeladas (com
+  // as bordas "coladas", o fundo da célula presa cobre a borda da tabela).
+  expect(
+    await frame
+      .locator("[data-table-sticky-body] table")
+      .evaluate((el) => getComputedStyle(el).borderCollapse),
+  ).toBe("separate");
   // iPad: as colunas rolam de lado dentro da tabela; títulos acompanham; o
   // nº da linha e a foto ficam parados.
   await page.setViewportSize({ width: 820, height: 1180 });
