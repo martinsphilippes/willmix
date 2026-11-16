@@ -86,6 +86,10 @@ export async function setTeamMember(
      * área da pessoa (o `areaId` enviado não vale).
      */
     positionId?: string | null;
+    /**
+     * "A conferir" (o motivo; null ou vazio = conferido); ausente = não muda.
+     */
+    reviewNote?: string | null;
     /** Funções (de fábrica ou criadas); ausente = não muda. */
     functions?: string[];
     /**
@@ -144,6 +148,9 @@ export async function setTeamMember(
     ...(positionId !== undefined
       ? { positionId: target.positionId ?? null }
       : {}),
+    ...(input.reviewNote !== undefined
+      ? { reviewNote: target.reviewNote ?? null }
+      : {}),
     ...(areaId !== undefined ? { areaId: target.areaId ?? null } : {}),
     functions: target.functions ?? [],
     screens: target.screens ?? null,
@@ -201,6 +208,10 @@ export async function setTeamMember(
       : {}),
     ...(areaId !== undefined && areaId !== (target.areaId ?? null)
       ? { areaId }
+      : {}),
+    ...(input.reviewNote !== undefined &&
+    (input.reviewNote?.trim() || null) !== (target.reviewNote ?? null)
+      ? { reviewNote: input.reviewNote?.trim().slice(0, 500) || null }
       : {}),
     ...(functions ? { functions } : {}),
     ...(screensChanged ? { screens } : {}),

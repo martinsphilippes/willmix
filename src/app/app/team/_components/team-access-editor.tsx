@@ -53,6 +53,8 @@ export interface EditorMember {
   areaId: string;
   /** Cargo (Equipe Acessos e Parceiros → Cargos); vazio = sem cargo. */
   positionId: string;
+  /** "A conferir": o motivo; vazio = nada a conferir. */
+  reviewNote: string;
   division: string;
   managerUserId: string;
   functions: string[];
@@ -88,6 +90,8 @@ export interface EditorTexts {
   positionInactiveSuffix: string;
   areaFromPosition: string;
   noArea: string;
+  reviewTitle: string;
+  reviewDone: string;
   division: string;
   manager: string;
   none: string;
@@ -190,6 +194,7 @@ export function TeamAccessEditor({
   const [jobLevel, setJobLevel] = useState(member.jobLevel);
   const [areaId, setAreaId] = useState(member.areaId);
   const [positionId, setPositionId] = useState(member.positionId);
+  const [reviewDone, setReviewDone] = useState(false);
   // O cargo com área manda na área (a mesma regra do servidor).
   const positionArea =
     options.positions.find((p) => p.value === positionId)?.areaId ?? "";
@@ -239,6 +244,7 @@ export function TeamAccessEditor({
     functions.find((f) => f.key === key)?.label ?? key;
   const dirty =
     jobLevel !== member.jobLevel ||
+    (reviewDone && !!member.reviewNote) ||
     shownArea !== member.areaId ||
     positionId !== member.positionId ||
     division !== member.division ||
@@ -397,6 +403,30 @@ export function TeamAccessEditor({
           mode === "drawer" && "overflow-y-auto px-4 pb-4 sm:px-5",
         )}
       >
+        {/* "A conferir" (importação da planilha; dono, 16/11/2026): o
+            motivo e a caixa para tirar a marcação ao salvar. */}
+        {member.reviewNote ? (
+          <div
+            className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+            data-team-review={member.id}
+          >
+            <p className="font-semibold">{texts.reviewTitle}</p>
+            <p className="mt-0.5 text-xs" data-team-review-note>
+              {member.reviewNote}
+            </p>
+            <label className="mt-2 inline-flex items-center gap-2 text-xs font-medium">
+              <input
+                type="checkbox"
+                name="reviewDone"
+                checked={reviewDone}
+                onChange={(e) => setReviewDone(e.target.checked)}
+                className="h-4 w-4 accent-brand-600"
+                data-team-review-done
+              />
+              {texts.reviewDone}
+            </label>
+          </div>
+        ) : null}
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className={field}>{texts.level}</span>

@@ -152,6 +152,14 @@
           "size": 36
         },
         {
+          "key": "reviewNote",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 500
+        },
+        {
           "key": "functions",
           "required": false,
           "array": false,

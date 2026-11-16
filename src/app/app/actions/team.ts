@@ -72,6 +72,8 @@ function teamMemberInput(form: FormData) {
     ...(form.has("positionId")
       ? { positionId: optionalId.parse(str(form, "positionId")) }
       : {}),
+    // "A conferir": marcado como conferido, a marcação sai.
+    ...(form.getAll("reviewDone").includes("on") ? { reviewNote: null } : {}),
     // Funções marcadas (o formulário sempre manda o marcador).
     ...(form.has("functions.__form")
       ? {
@@ -603,6 +605,119 @@ export async function bulkTeamPositionsAction(
     };
   } catch (error) {
     return bulkRefused(POSITIONS, error, form);
+  }
+}
+
+/* ---- Importar equipe (Equipe → "Importar da planilha"; só o administrador) ---- */
+
+/** Uma linha da prévia, pronta para a tela. */
+export interface TeamImportViewRow {
+  line: number;
+  name: string;
+  email: string;
+  position: string;
+  positionKnown: boolean;
+  area: string | null;
+  functions: string[];
+  level: string;
+  review: string[];
+  status: string;
+}
+
+/** Resultado de "Conferir" e de "Criar os logins" (fica na tela). */
+export interface TeamImportState {
+  ok: boolean;
+  error: string | null;
+  message: string | null;
+  intent: "preview" | "run" | null;
+  header: string | null;
+  rows: TeamImportViewRow[];
+  invalid: { line: number; text: string; reason: string }[];
+  repeated: { line: number; email: string }[];
+  result: {
+    created: { name: string; email: string; review: boolean }[];
+    linked: { name: string; email: string }[];
+    skipped: { name: string; email: string; reason: string }[];
+    failed: { name: string; email: string; error: string; message: string }[];
+    remaining: number;
+  } | null;
+  doneAt: string | null;
+}
+
+/**
+ * "Conferir" mostra o que cada linha vira (sem gravar); "Criar os logins"
+ * cria em lotes, com a senha provisória igual para todos e a troca no
+ * primeiro acesso (src/lib/services/team-import.ts).
+ */
+export async function teamImportAction(
+  _prev: TeamImportState,
+  form: FormData,
+): Promise<TeamImportState> {
+  const user = await requireUser();
+  const intent = str(form, "intent") === "run" ? "run" : "preview";
+  const empty: TeamImportState = {
+    ok: false,
+    error: null,
+    message: null,
+    intent,
+    header: null,
+    rows: [],
+    invalid: [],
+    repeated: [],
+    result: null,
+    doneAt: new Date().toISOString(),
+  };
+  try {
+    assertRole(user, ["admin"]);
+    const text = z.string().max(100_000).parse(str(form, "rows"));
+    const service = await import("@/lib/services/team-import");
+    let result: TeamImportState["result"] = null;
+    if (intent === "run") {
+      const password = z
+        .string()
+        .max(128)
+        .parse(form.get("password") ?? "");
+      const done = await service.runTeamImport(user, text, password);
+      const t = await getT();
+      result = {
+        ...done,
+        failed: done.failed.map((f) => ({
+          ...f,
+          message: errorTextFor(t, f.error, ["team.error"]),
+        })),
+      };
+      revalidatePath("/app", "layout");
+    }
+    // A prévia depois de criar mostra a situação nova de cada linha.
+    const preview = await service.previewTeamImport(user, text);
+    return {
+      ...empty,
+      ok: true,
+      header: preview.header,
+      invalid: preview.invalid,
+      repeated: preview.repeated,
+      rows: preview.rows.map((r) => ({
+        line: r.line,
+        name: r.name,
+        email: r.email,
+        position: r.positionName,
+        positionKnown: !!r.positionId,
+        area: r.areaName,
+        functions: r.functions,
+        level: r.level,
+        review: r.review,
+        status: r.status,
+      })),
+      result,
+    };
+  } catch (error) {
+    const code = errorCode("/app/team/import", error);
+    const t = await getT();
+    return {
+      ...empty,
+      error: code,
+      message: errorTextFor(t, code, ["team.error"]),
+    };
   }
 }
 

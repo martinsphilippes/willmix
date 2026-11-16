@@ -135,6 +135,7 @@ export function editorMember(
     jobLevel: member.jobLevel ?? "",
     areaId: member.areaId ?? "",
     positionId: member.positionId ?? "",
+    reviewNote: member.reviewNote ?? "",
     division: member.division ?? "",
     managerUserId: member.managerUserId ?? "",
     functions: (member.functions ?? []).filter((f) =>
@@ -197,6 +198,8 @@ export function editorTexts(t: Translate): EditorTexts {
     positionInactiveSuffix: t("position.inactiveSuffix"),
     areaFromPosition: t("access.areaFromPosition"),
     noArea: t("position.noArea"),
+    reviewTitle: t("team.review.title"),
+    reviewDone: t("team.review.done"),
     division: t("team.col.division"),
     manager: t("team.col.manager"),
     none: t("team.none"),

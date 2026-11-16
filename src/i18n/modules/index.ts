@@ -74,6 +74,7 @@ import * as dashboards from "./dashboards";
 import * as demoAccounts from "./demo-accounts";
 import * as accessScreens from "./access-screens";
 import * as teamAreas from "./team-areas";
+import * as teamImport from "./team-import";
 import * as teamAccess from "./team-access";
 import * as requestProduct from "./request-product";
 import * as requestDelete from "./request-delete";
@@ -213,6 +214,7 @@ export const modulesPt = {
   ...demoAccounts.pt,
   ...accessScreens.pt,
   ...teamAreas.pt,
+  ...teamImport.pt,
   ...teamAccess.pt,
   ...requestProduct.pt,
   ...requestDelete.pt,
@@ -373,6 +375,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...demoAccounts.en,
   ...accessScreens.en,
   ...teamAreas.en,
+  ...teamImport.en,
   ...teamAccess.en,
   ...requestProduct.en,
   ...requestDelete.en,
@@ -533,6 +536,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...demoAccounts.zh,
   ...accessScreens.zh,
   ...teamAreas.zh,
+  ...teamImport.zh,
   ...teamAccess.zh,
   ...requestProduct.zh,
   ...requestDelete.zh,
