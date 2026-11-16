@@ -95,14 +95,17 @@ export async function requestProductFills(
     };
   };
   /**
-   * Caixa inner e peso líquido por peça (kg) para o "Resultado da
-   * programação": cadastro, senão ficha mestre.
+   * Caixa inner e pesos líquido e bruto por peça (kg) para o "Resultado da
+   * programação": cadastro, senão ficha mestre. O bruto (dono, 16/11/2026)
+   * segue a mesma regra; sem ele, a tela mostra "—" (nada é estimado).
    */
   const packOf = (p: Product) => {
     const sheet = sheetOf.get(p.id);
     return {
       innerBoxQty: positive(p.innerBoxQty) ?? positive(sheet?.innerQty),
       netWeightKg: positive(p.netWeightKg) ?? positive(sheet?.netWeightPcKg),
+      grossWeightKg:
+        positive(p.grossWeightKg) ?? positive(sheet?.grossWeightPcKg),
     };
   };
   const specLabels = productSpecLabels(t);
@@ -140,6 +143,7 @@ export async function requestProductFills(
       cbmPerCarton: v.cbm && v.cbm > 0 ? v.cbm : cartonOf(p).cbmPerCarton,
       innerBoxQty: positive(v.innerBoxQty) ?? packOf(p).innerBoxQty,
       netWeightKg: positive(v.netWeightKg) ?? packOf(p).netWeightKg,
+      grossWeightKg: positive(v.grossWeightKg) ?? packOf(p).grossWeightKg,
       specification: variantSpecificationText(t, p, v, specLabels),
       photoDocumentId: v.photoDocumentId,
     })),

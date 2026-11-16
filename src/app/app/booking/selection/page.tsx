@@ -706,10 +706,16 @@ export default async function BookingSelectionPage({
                   sheetQty: sheetQuantity(item),
                   colors: colorsOf(item.colorAssortment),
                   // "Resultado da programação" (dono, 15/11/2026): a caixa
-                  // inner e o peso líquido do Book, que é por peça (kg).
+                  // inner e o peso líquido do Book, que é por peça (kg); o
+                  // bruto (G.W./PC, 16/11/2026) também.
                   innerQty: item.innerQty,
                   netWeight: {
                     value: item.netWeightPcKg,
+                    unit: "kg",
+                    basis: "piece" as const,
+                  },
+                  grossWeight: {
+                    value: item.grossWeightPcKg,
                     unit: "kg",
                     basis: "piece" as const,
                   },
