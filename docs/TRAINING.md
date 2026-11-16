@@ -31,7 +31,7 @@ Pedido do dono (16/11/2026): uma tela "Treinamento do Portal", aberta pelo ícon
 - Textos: `src/i18n/modules/training.ts`.
 - Testes:
   - `tests/unit/training.test.ts`: os textos nos três idiomas e a página fora do controle de telas.
-  - `tests/e2e/training.spec.ts`: as 15 contas de demonstração, da equipe e de fora, abrem pelo ícone e pelo endereço; o endereço sem login; os três idiomas; e a barra em 10 tamanhos (desktop, notebook, iPads em pé e deitados, celulares). A barra fica numa faixa só, com 56 px, os ícones do mesmo tamanho, centrados e na ordem idiomas → capelo → mensagens → sino, sem passar da largura da tela.
+  - `tests/e2e/training.spec.ts`: as 16 contas de demonstração, da equipe e de fora, abrem pelo ícone e pelo endereço, cada uma no idioma do próprio login (PT, EN e ZH); o endereço sem login; a troca de idioma; e a barra em 11 tamanhos (desktop, notebook, iPads em pé e deitados e celulares, até 320 px). A barra fica numa faixa só, com 56 px, os ícones do mesmo tamanho, centrados e na ordem idiomas → capelo → mensagens → sino, sem passar da largura da tela.
 
 Sem mudança no banco.
 

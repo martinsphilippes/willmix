@@ -11,7 +11,29 @@ import { login, PASSWORD } from "./helpers";
 
 const TITLE = "Treinamento do Portal";
 
-/** Todas as contas de demonstração: a equipe Wellmix e cada tipo de parceiro. */
+/** O título e o texto do ícone em cada idioma do portal. */
+const TEXT = {
+  pt: TITLE,
+  en: "Portal Training",
+  zh: "门户培训",
+} as const;
+type Lang = keyof typeof TEXT;
+
+/** O idioma em que o login vê o portal (o seletor da barra marca o atual). */
+async function langOf(page: Page): Promise<Lang> {
+  const value = await page
+    .locator("[data-app-header] [data-locale-switcher]")
+    .first()
+    .getAttribute("data-locale-switcher");
+  expect(value && value in TEXT, `idioma ${value}`).toBeTruthy();
+  return value as Lang;
+}
+
+/**
+ * Todas as contas de demonstração: a equipe Wellmix e cada tipo de parceiro,
+ * cada uma no idioma do próprio login (fornecedores e a agência da China em
+ * chinês, o fornecedor B e o armador em inglês, os demais em português).
+ */
 const ACCOUNTS = [
   { email: "admin@wellmix.com", who: "administrador" },
   { email: "operador@wellmix.com", who: "comprador e planner" },
@@ -20,6 +42,7 @@ const ACCOUNTS = [
   { email: "juridico@wellmix.com", who: "jurídico" },
   { email: "joao@lojista.com", who: "cliente" },
   { email: "supplier.a@china.com", who: "fornecedor" },
+  { email: "supplier.b@china.com", who: "fornecedor (inglês)" },
   { email: "agencia@design.com", who: "agência de design" },
   { email: "despachante@comex.com", who: "despachante" },
   { email: "armador@maritima.com", who: "armador" },
@@ -78,13 +101,17 @@ test.describe("Treinamento do Portal", () => {
     page,
   }) => {
     test.setTimeout(240_000);
+    const seen = new Set<Lang>();
     for (const account of ACCOUNTS) {
       await test.step(account.who, async () => {
         await login(page, account.email);
-        // Texto de ajuda e nome acessível do botão.
+        const lang = await langOf(page);
+        seen.add(lang);
+        const text = TEXT[lang];
+        // Texto de ajuda e nome acessível do botão, no idioma do login.
         await expect(icon(page)).toBeVisible();
-        await expect(icon(page)).toHaveAttribute("title", TITLE);
-        await expect(icon(page)).toHaveAttribute("aria-label", TITLE);
+        await expect(icon(page)).toHaveAttribute("title", text);
+        await expect(icon(page)).toHaveAttribute("aria-label", text);
         // Entre o seletor de idiomas e as mensagens.
         const bar = await header(page);
         expect(bar.locale, account.who).not.toBeNull();
@@ -94,15 +121,17 @@ test.describe("Treinamento do Portal", () => {
         // O clique abre a tela dentro do layout do portal (barra e menu).
         await page
           .locator("[data-app-header]")
-          .getByRole("link", { name: TITLE })
+          .getByRole("link", { name: text })
           .click();
-        await expectTrainingPage(page);
+        await expectTrainingPage(page, text);
         await expect(page.locator("[data-app-header]")).toBeVisible();
         // O endereço direto também abre.
         await page.goto("/app/training");
-        await expectTrainingPage(page);
+        await expectTrainingPage(page, text);
       });
     }
+    // Os três idiomas passaram pelos logins de verdade.
+    expect([...seen].sort()).toEqual(["en", "pt", "zh"]);
   });
 
   test("endereço direto sem login: entra e volta ao Treinamento", async ({
@@ -119,19 +148,19 @@ test.describe("Treinamento do Portal", () => {
   });
 
   test("PT, EN e ZH: o título e o texto do ícone", async ({ page }) => {
+    // O fornecedor da China entra em chinês; a troca pelo seletor termina no
+    // idioma dele, para não mudar o login dos outros testes.
     await login(page, "supplier.a@china.com");
     await page.goto("/app/training");
-    await expectTrainingPage(page);
+    await expectTrainingPage(page, TEXT.zh);
     const switcher = page.locator("[data-app-header] [data-locale-switcher]");
-    for (const [locale, text] of [
-      ["en", "Portal Training"],
-      ["zh", "门户培训"],
-      ["pt", TITLE],
-    ] as const) {
-      await switcher.locator(`button[data-locale="${locale}"]`).click();
-      await expect(page.getByRole("heading", { level: 1 })).toHaveText(text);
-      await expect(icon(page)).toHaveAttribute("title", text);
-      await expect(icon(page)).toHaveAttribute("aria-label", text);
+    for (const lang of ["pt", "en", "zh"] as const) {
+      await switcher.locator(`button[data-locale="${lang}"]`).click();
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+        TEXT[lang],
+      );
+      await expect(icon(page)).toHaveAttribute("title", TEXT[lang]);
+      await expect(icon(page)).toHaveAttribute("aria-label", TEXT[lang]);
     }
   });
 
@@ -150,6 +179,7 @@ test.describe("Treinamento do Portal", () => {
       { name: "celular deitado", width: 844, height: 390 },
       { name: "celular", width: 390, height: 844 },
       { name: "celular Android", width: 360, height: 800 },
+      { name: "celular pequeno", width: 320, height: 568 },
     ];
     for (const email of ["admin@wellmix.com", "joao@lojista.com"]) {
       await login(page, email);
