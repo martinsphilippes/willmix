@@ -6,10 +6,12 @@
  *   node seed-chat.mjs            cria a conversa
  *   node seed-chat.mjs --foto     só desenha a foto e mostra onde ficou
  * PORTAL escolhe o servidor (padrão: porta 3201, a base em inglês de
- * data-en.mjs). PAUSA: segundos entre as mensagens (padrão 65, para cada uma
- * sair com um minuto diferente; 0 = sem espera). FOTO: um JPEG pronto no lugar
- * da foto desenhada aqui. Rodar de novo não muda nada: com a primeira mensagem
- * já na conversa, o script para.
+ * data-en.mjs). LANGUAGE escolhe o idioma do portal e das mensagens: "en"
+ * (padrão) ou "pt" (a base em português de data-pt.mjs, por exemplo
+ * PORTAL=http://localhost:3203 LANGUAGE=pt). PAUSA: segundos entre as
+ * mensagens (padrão 65, para cada uma sair com um minuto diferente; 0 = sem
+ * espera). FOTO: um JPEG pronto no lugar da foto desenhada aqui. Rodar de novo
+ * não muda nada: com a primeira mensagem já na conversa, o script para.
  */
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -18,6 +20,29 @@ import { launch } from "./lib.mjs";
 
 const BASE = process.env.PORTAL ?? "http://localhost:3201";
 const PAUSA = Number(process.env.PAUSA ?? 65) * 1000;
+// Idioma do portal e das mensagens (en é o padrão; os rótulos foram conferidos
+// nas telas reais: login, botões de conversa do pedido, Configurações).
+const IDIOMA = process.env.LANGUAGE === "pt" ? "pt" : "en";
+const T = {
+  en: {
+    cookie: "en",
+    locale: "en-US",
+    email: "Email",
+    senha: "Password",
+    entrar: "Sign in",
+    fornecedor: /^Supplier$/,
+    arquivo: "sample-long-drink-glass.jpg",
+  },
+  pt: {
+    cookie: "pt",
+    locale: "pt-BR",
+    email: /e-mail/i,
+    senha: /senha/i,
+    entrar: "Entrar",
+    fornecedor: /^Fornecedor$/,
+    arquivo: "amostra-copo-long-drink.jpg",
+  },
+}[IDIOMA];
 const SENHA = "wellmix123";
 const WELLMIX = "admin@wellmix.com";
 const FORNECEDOR = "supplier.a@china.com";
@@ -31,23 +56,39 @@ const OUTROS = [
 ];
 
 /* [quem escreve, texto, com a foto?] */
-const CONVERSA = [
-  [
-    WELLMIX,
-    "Hello, Li Wei. Could you send the photos of the mass-production sample for this order?",
+const CONVERSAS = {
+  en: [
+    [
+      WELLMIX,
+      "Hello, Li Wei. Could you send the photos of the mass-production sample for this order?",
+    ],
+    [
+      FORNECEDOR,
+      "Hello! Photos attached. Production finishes on the 28th.",
+      true,
+    ],
+    [WELLMIX, "Received, thank you. Color and logo position approved."],
+    [FORNECEDOR, "Great. We will book the inspection for next week."],
+    [
+      WELLMIX,
+      "Perfect. The inspection date goes on the order as soon as you confirm it.",
+    ],
   ],
-  [
-    FORNECEDOR,
-    "Hello! Photos attached. Production finishes on the 28th.",
-    true,
+  pt: [
+    [
+      WELLMIX,
+      "Olá, Li Wei. Pode nos enviar as fotos da amostra de produção deste pedido?",
+    ],
+    [FORNECEDOR, "Olá! Fotos em anexo. A produção termina no dia 28.", true],
+    [WELLMIX, "Recebido, agradeço! Cor e posição do logotipo aprovadas."],
+    [FORNECEDOR, "Ótimo. Vamos agendar a inspeção para a próxima semana."],
+    [
+      WELLMIX,
+      "Perfeito. A data da inspeção entra no pedido assim que você confirmar.",
+    ],
   ],
-  [WELLMIX, "Received, thank you. Color and logo position approved."],
-  [FORNECEDOR, "Great. We will book the inspection for next week."],
-  [
-    WELLMIX,
-    "Perfect. The inspection date goes on the order as soon as you confirm it.",
-  ],
-];
+};
+const CONVERSA = CONVERSAS[IDIOMA];
 
 /* Foto fictícia da amostra: copo alto de vidro azulado, com um logotipo de
    exemplo, em fundo cinza-claro de estúdio (1600 × 1200). */
@@ -132,10 +173,7 @@ async function desenharFoto(browser) {
     deviceScaleFactor: 1,
   });
   await page.setContent(`<body style="margin:0">${fotoSvg()}</body>`);
-  const arquivo = join(
-    mkdtempSync(join(tmpdir(), "seed-chat-")),
-    "sample-long-drink-glass.jpg",
-  );
+  const arquivo = join(mkdtempSync(join(tmpdir(), "seed-chat-")), T.arquivo);
   await page
     .locator("svg")
     .screenshot({ path: arquivo, type: "jpeg", quality: 90 });
@@ -143,24 +181,25 @@ async function desenharFoto(browser) {
   return arquivo;
 }
 
-/** Entra no portal com o login, em inglês, e devolve a aba. */
+/** Entra no portal com o login, no idioma escolhido, e devolve a aba. */
 async function entrar(browser, email) {
-  const ctx = await browser.newContext({ locale: "en-US" });
+  const ctx = await browser.newContext({ locale: T.locale });
   ctx.setDefaultTimeout(60_000);
   ctx.setDefaultNavigationTimeout(60_000);
-  await ctx.addCookies([{ name: "wm_locale", value: "en", url: BASE }]);
+  await ctx.addCookies([{ name: "wm_locale", value: T.cookie, url: BASE }]);
   const page = await ctx.newPage();
   await page.goto(`${BASE}/login?intro=off`);
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(SENHA);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByLabel(T.email).fill(email);
+  await page.getByLabel(T.senha).fill(SENHA);
+  await page.getByRole("button", { name: T.entrar }).click();
   await page.waitForURL(/\/app/);
   return page;
 }
 
 /**
- * Abre a conversa pelo pedido, como a Wellmix faz: Pedidos → #2 → "Chat with:
- * Supplier". Devolve o endereço do assunto (o mesmo para os dois lados).
+ * Abre a conversa pelo pedido, como a Wellmix faz: Pedidos → #2 → botão
+ * "Supplier" ("Fornecedor" em português). Devolve o endereço do assunto (o
+ * mesmo para os dois lados).
  */
 async function abrirAssunto(page) {
   await page.goto(`${BASE}/app/orders`);
@@ -172,7 +211,7 @@ async function abrirAssunto(page) {
   await page.goto(BASE + pedido);
   await page
     .locator("[data-chat-buttons] button")
-    .filter({ hasText: /^Supplier$/ })
+    .filter({ hasText: T.fornecedor })
     .click();
   await page.waitForURL(/\/app\/messages\?c=[^&]+&t=/);
   await page.locator("[data-thread]").waitFor();
@@ -223,7 +262,7 @@ async function ler(page, assunto) {
   );
 }
 
-const browser = await launch(["--lang=en-US"]);
+const browser = await launch([`--lang=${T.locale}`]);
 try {
   if (process.argv.includes("--foto")) {
     console.log(await desenharFoto(browser));

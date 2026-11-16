@@ -91,20 +91,52 @@ def main(path):
         desc = f"0 → compasso {to}, final"
     else:
         # Completo: música inteira até o fim de F e blocos repetidos até a assinatura.
-        # Cada volta recomeça em um compasso de partida e vai até o fim de F (65): a
-        # pausa mais D, E e F (B1), a pausa mais E e F (B2), a pausa mais F (B3) ou
-        # só F (F1, sem a pausa: F termina e F recomeça). O tamanho de cada
-        # combinação é calculado das voltas (antes ele era escrito à mão e um
-        # valor errado deixou o acorde final 4 s depois da assinatura).
-        F1 = F
-        options = [[], [B3], [B2], [B1], [F1], [B2, B2], [B1, B3], [B1, B2], [B1, B2, F1], [B1, B1], [B1, B2, B3], [B1, B2, B2], [B1, B1, B2]]
+        # Cada volta recomeça em um compasso de partida e vai até o fim de F (65). Os
+        # recomeços são só os de início de bloco (pausa + D, D, pausa + E, E, pausa + F,
+        # F): ali a música já "respira" e a emenda não se ouve. O tamanho de cada
+        # combinação é calculado das voltas (antes ele era escrito à mão e um valor
+        # errado deixou o acorde final 4 s depois da assinatura). Entre as combinações
+        # de até 4 voltas, vale a que põe o final mais perto da assinatura, com
+        # preferência pelas que repetem menos.
+        import itertools
+
+        entries = [B1, D, B2, E, B3, F]
         bars = lambda loops: sum(OUT - b for b in loops)
-        loops = min(options, key=lambda o: abs(video_time(bars(o)) - logo))
+        best = None
+        for n_loops in range(0, 5):
+            for loops in itertools.combinations_with_replacement(entries, n_loops):
+                miss = abs(video_time(bars(loops)) - logo)
+                cost = miss + 0.35 * n_loops + 0.6 * (n_loops - len(set(loops)))
+                if best is None or cost < best[0]:
+                    best = (cost, list(loops))
+        loops = best[1]
         n = bars(loops)
         parts = [cut(start, at_bar(OUT))] + [cut(at_bar(b), at_bar(OUT)) for b in loops] + [x[int(at_bar(OUT) * SR) :]]
         outro_at = video_time(n)
         desc = f"música inteira + {n} compassos repetidos (voltas a partir dos compassos {loops}), final"
+    # Quando a marca demora a aparecer (narração mais longa antes da cena "hub"), a
+    # música começaria vários segundos depois do vídeo, com a vinheta muda. Em vez
+    # desse silêncio, a música começa antes, do zero, e a introdução calma (compassos
+    # 0–2, antes da subida) ganha até 3 compassos: depois do compasso 2 repete-se a
+    # frase 1–2 (ou só o 2), na mesma grade, e a batida continua caindo com a marca.
+    # (Antes, compassos do começo vinham na frente e a faixa recomeçava do zero: 0,1 s
+    # de silêncio e uma queda de 10 dB no meio da vinheta.)
+    pre_bars = min(3, int(lead // BAR)) if lead > 1.0 and start == 0 else 0
+    if pre_bars:
+        ins = ([1, 2] * 3)[-pre_bars:]
+        first = parts[0]
+        split = int(at_bar(3) * SR)
+        parts = (
+            [first[: split + int(XFADE * SR)]]
+            + [cut(at_bar(k), at_bar(k + 1)) for k in ins]
+            + [first[split:]]
+            + parts[1:]
+        )
+        lead -= pre_bars * BAR
     y = join(parts)
+    if pre_bars:
+        k = int(0.02 * SR)
+        y[:k] *= np.linspace(0, 1, k)[:, None]
     if start > 0:
         k = int(0.5 * SR)
         y[:k] *= np.linspace(0, 1, k)[:, None] ** 2
@@ -116,6 +148,8 @@ def main(path):
     out = os.path.join(os.path.dirname(os.path.abspath(path)), "audio", os.path.basename(path).replace(".audio.json", ".music.wav"))
     sf.write(out, y, SR, subtype="PCM_16")
     end_of_music = outro_at + (len(x) / SR - at_bar(OUT))
+    if pre_bars:
+        desc = f"introdução com {pre_bars} compasso(s) a mais (repete {ins}), " + desc
     print(f"{out}: {desc}")
     print(f"  batida com a marca em {hub:.2f} s; final da música começa em {outro_at:.2f} s (assinatura em {logo:.2f} s: diferença {outro_at - logo:+.2f} s)")
     print(f"  a música termina em {end_of_music:.2f} s; o vídeo tem {total:.2f} s (sobra {total - end_of_music:+.2f} s)")

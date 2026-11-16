@@ -14,11 +14,18 @@
  *                 computador, antes e depois do envio
  * e os pontos de toque em out/insp/state.json (vão para o roteiro).
  *
+ * LANGUAGE=pt faz as mesmas capturas com o portal em português (cookie
+ * wm_locale=pt, navegador pt-BR, fotos com nomes em português, peso "0,30" com
+ * a vírgula que o campo aceita) e grava em film/shots/br; os pontos de toque
+ * ficam na chave "br" do mesmo state.json (o inglês, em "taps", não muda).
+ * Sem a variável (ou LANGUAGE=en) tudo continua como antes.
+ *
  *   python3 inspection/photos.py                       (as três fotos, uma vez)
  *   DATA_MODE=memory DATA_DIR=.data-video-insp npx next start -p 3300
  *   node inspection/flow.mjs                           (tudo, base nova)
  *   node inspection/flow.mjs --from <etapa>            (continua; estado em out/insp/state.json)
  *   node inspection/flow.mjs --only phone              (só as capturas)
+ *   LANGUAGE=pt node inspection/flow.mjs --only phone  (as capturas em português)
  *
  * Etapas: books, request, product, order, registry, lanes, contract, payment,
  * snapshot, phone. "snapshot" copia a base para .data-video-insp-before: para
@@ -41,8 +48,17 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REPO = join(ROOT, "../..");
 /** Pasta de trabalho (fotos, estado, capturas de falha): fora do repositório. */
 const HERE = join(ROOT, "out/insp");
+/**
+ * Idioma das capturas: LANGUAGE=pt (ou pt-BR) liga o português; qualquer outro
+ * valor, ou nenhum, é o inglês de sempre.
+ */
+const PT = /^pt/i.test(process.env.LANGUAGE ?? "");
+/** Idioma do portal (cookie wm_locale), do navegador e pasta das capturas. */
+const LOCALE = PT
+  ? { cookie: "pt", browser: "pt-BR" }
+  : { cookie: "en", browser: "en-US" };
 /** Onde as capturas do vídeo ficam. */
-const SHOTS = join(ROOT, "film/shots/intl");
+const SHOTS = join(ROOT, PT ? "film/shots/br" : "film/shots/intl");
 mkdirSync(HERE, { recursive: true });
 mkdirSync(SHOTS, { recursive: true });
 const BASE = process.env.PORTAL ?? "http://localhost:3300";
@@ -60,17 +76,29 @@ const PRODUCT = "Glass cup 350 ml";
 const CODE_A = "GC-350";
 const CODE_B = "GH-350";
 const SEARCH = "Glass cup 350";
-const WEIGHT = "0.30";
+/* The portal's number field takes the decimal comma when the browser is pt-BR. */
+const WEIGHT = PT ? "0,30" : "0.30";
+/** Texts the script matches on the screen, per language (data-attributes first). */
+const TEXT = PT
+  ? { card: /em Inspeção$/, saved: "Salvo." }
+  : { card: /in Inspection$/, saved: "Saved." };
 
-const photo = (name) => ({
-  name,
+/** `as`: the file name the portal shows (the bytes come from `name`). */
+const photo = (name, as = name) => ({
+  name: as,
   mimeType: "image/jpeg",
   buffer: readFileSync(join(HERE, "photos", name)),
 });
 const PHOTO = {
-  unpacked: photo("glass-cup-unpacked.jpg"),
-  packed: photo("glass-cup-packed.jpg"),
-  scale: photo("glass-cup-on-scale.jpg"),
+  unpacked: photo(
+    "glass-cup-unpacked.jpg",
+    PT ? "copo-sem-embalagem.jpg" : undefined,
+  ),
+  packed: photo("glass-cup-packed.jpg", PT ? "copo-embalado.jpg" : undefined),
+  scale: photo(
+    "glass-cup-on-scale.jpg",
+    PT ? "copo-na-balanca.jpg" : undefined,
+  ),
 };
 const pdf = (name) => ({
   name,
@@ -222,7 +250,7 @@ function bookingSheet(supplier, code, description) {
 
 /* -------------------------------------------------------------- helpers */
 async function login(page, email) {
-  // Keep the language cookie (the phone session reads the portal in English).
+  // Keep the language cookie (the phone session reads the portal in LANGUAGE).
   const keep = (await page.context().cookies(BASE)).filter(
     (c) => c.name === "wm_locale",
   );
@@ -826,11 +854,13 @@ async function phone(browser) {
     deviceScaleFactor: 3,
     isMobile: true,
     hasTouch: true,
-    locale: "en-US",
+    locale: LOCALE.browser,
   });
   ctx.setDefaultTimeout(TIMEOUT);
   ctx.setDefaultNavigationTimeout(TIMEOUT);
-  await ctx.addCookies([{ name: "wm_locale", value: "en", url: BASE }]);
+  await ctx.addCookies([
+    { name: "wm_locale", value: LOCALE.cookie, url: BASE },
+  ]);
   const page = await ctx.newPage();
   await login(page, SUPPLIER);
   const url = `/app/flow/production/inspection/${orderId}`;
@@ -838,8 +868,8 @@ async function phone(browser) {
   const taps = {};
   // Framing: the order card right under the portal header; once something was
   // sent, the "Saved." notice takes that place and pushes the card down.
-  const card = page.getByText(/in Inspection$/).first();
-  const saved = page.getByText("Saved.", { exact: true }).first();
+  const card = page.getByText(TEXT.card).first();
+  const saved = page.getByText(TEXT.saved, { exact: true }).first();
   const TOP = 66;
   const sendPhoto = async (key, file) => {
     await Promise.all([
@@ -880,7 +910,20 @@ async function phone(browser) {
   await sendPhoto("photo_packed", PHOTO.packed);
   await sendPhoto("photo_scale", PHOTO.scale);
   const weight = page.locator('[data-requirement-form="weight_measured"]');
-  await weight.locator("input[name=value]").fill(WEIGHT);
+  const weightInput = weight.locator("input[name=value]");
+  if (PT) {
+    // type="number": fill() refuses "0,30"; type it key by key, as a person
+    // does (the pt-BR browser turns the comma into the decimal point).
+    await weightInput.click();
+    await weightInput.pressSequentially(WEIGHT, { delay: 60 });
+    const typed = await weightInput.inputValue();
+    if (Number(typed) !== 0.3)
+      throw new Error(
+        `weight field did not take "${WEIGHT}" (value "${typed}")`,
+      );
+  } else {
+    await weightInput.fill(WEIGHT);
+  }
   await page.evaluate(() => document.activeElement?.blur());
   await clean(page);
   await frame(page, saved, TOP);
@@ -900,8 +943,9 @@ async function phone(browser) {
   await frame(page, saved, TOP);
   await shot(page, "m-insp-4.png");
 
-  remember({ taps });
-  log("taps", JSON.stringify(taps));
+  // The English taps stay in "taps"; the Portuguese ones go to "br".
+  remember(PT ? { br: taps } : { taps });
+  log("taps", PT ? "br" : "en", JSON.stringify(taps));
   await ctx.close();
 
   // 5. The same step as Wellmix sees it (computer), now with what was sent.
@@ -913,17 +957,19 @@ async function desktop(browser, url, name) {
   const desk = await browser.newContext({
     viewport: { width: 1280, height: 800 },
     deviceScaleFactor: 2,
-    locale: "en-US",
+    locale: LOCALE.browser,
   });
   desk.setDefaultTimeout(TIMEOUT);
   desk.setDefaultNavigationTimeout(TIMEOUT);
-  await desk.addCookies([{ name: "wm_locale", value: "en", url: BASE }]);
+  await desk.addCookies([
+    { name: "wm_locale", value: LOCALE.cookie, url: BASE },
+  ]);
   const dpage = await desk.newPage();
   await login(dpage, ADMIN);
   await go(dpage, url);
   await idle(dpage);
   await clean(dpage);
-  await frame(dpage, dpage.getByText(/in Inspection$/).first(), 90);
+  await frame(dpage, dpage.getByText(TEXT.card).first(), 90);
   await shot(dpage, name);
   await desk.close();
 }
@@ -939,13 +985,16 @@ const todo = only
   ? only.split(",")
   : ORDER.slice(from ? ORDER.indexOf(from) : 0);
 
+// The LANGUAGE variable is also what Chromium on Linux reads for its locale:
+// with "pt" the number field takes the decimal comma (--lang alone does not).
 const browser = await chromium.launch({
-  args: ["--lang=en-US", "--force-color-profile=srgb"],
+  args: [`--lang=${LOCALE.browser}`, "--force-color-profile=srgb"],
+  env: PT ? { ...process.env, LANGUAGE: "pt" } : process.env,
 });
 try {
   const ctx = await browser.newContext({
     viewport: { width: 1440, height: 900 },
-    locale: "en-US",
+    locale: LOCALE.browser,
   });
   ctx.setDefaultTimeout(TIMEOUT);
   ctx.setDefaultNavigationTimeout(TIMEOUT);

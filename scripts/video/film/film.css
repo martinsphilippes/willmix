@@ -235,6 +235,21 @@ body {
     transform: scaleX(0);
   }
 }
+/* Barra longa que cresce pela largura (a linha da jornada). Esticada por
+   transform a partir de zero (a-grow), o navegador desenhava a barra e o brilho
+   em escala quase nula e eles piscavam nos primeiros quadros; pela largura, cada
+   quadro é desenhado no tamanho real, com o degradê e o brilho na ponta. */
+.a-wide {
+  animation-name: a-wide;
+}
+@keyframes a-wide {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
 .a-draw {
   stroke-dasharray: 1;
   animation-name: a-draw;
@@ -818,6 +833,18 @@ html[data-lang="zh"] #sub-box {
 }
 .handoff.up b {
   top: -40px;
+}
+.handoff.right b,
+.handoff.left b {
+  top: 50%;
+  translate: 0 -50%;
+}
+.handoff.right b {
+  left: 62px;
+}
+.handoff.left b {
+  left: auto;
+  right: 62px;
 }
 .s-route .scrim {
   position: absolute;
@@ -1525,7 +1552,8 @@ html[data-lang="zh"] #sub-box {
 .s-mobile .shot .pill {
   position: absolute;
   left: 96px;
-  top: -30px;
+  /* Acima da janela: em cima da barra, cobria metade de "Portal Wellmix". */
+  top: -76px;
   z-index: 2;
   background: linear-gradient(
     90deg,

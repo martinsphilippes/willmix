@@ -23,8 +23,25 @@ const esc = (s) =>
     /[&<>"]/g,
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
   );
+/** Textos fixos das cenas (rótulos que não vêm do roteiro): o roteiro pode trocá-los (`ui`). */
+const UI = {
+  brazil: "Brazil",
+  sees: "Sees",
+  neverSees: "Never sees",
+  chaos: {
+    mail: "E-mail",
+    sheet: "Spreadsheet",
+    chat: "Chat group",
+    phone: "Phone call",
+    pdf: "PDF",
+    attach: "Attachment",
+  },
+  ...(tl.ui ?? {}),
+};
+UI.chaos = { ...UI.chaos, ...(tl.ui?.chaos ?? {}) };
 const ctx = {
   lang,
+  ui: UI,
   world,
   esc,
   /** Tela real do portal (shots.mjs): a pasta vem do roteiro (`shots`, por

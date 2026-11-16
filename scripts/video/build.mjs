@@ -14,6 +14,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT } from "./lib.mjs";
 import { VIDEOS } from "./script.mjs";
+import { VIDEOS_BR } from "./script.br.mjs";
 
 export const FPS = 60;
 /** Vinheta de abertura do portal: 410 quadros a 60 fps. */
@@ -23,12 +24,17 @@ const PRE = 0.6;
 const GAP = 0.3;
 const POST = 0.75;
 const LIMIT = { pt: 42, zh: 16, en: 42 };
-const LANGS = ["pt", "zh"];
+const ALL = { ...VIDEOS, ...VIDEOS_BR };
 const SPEED = { pt: 17, zh: 9 };
 
 const [video = "short"] = process.argv.slice(2);
-const def = VIDEOS[video];
+const def = ALL[video];
 if (!def) throw new Error(`vídeo desconhecido: ${video}`);
+/** Idioma da narração (en no roteiro original; pt em script.br.mjs) e das legendas. */
+const VOICE = def.voice ?? "en";
+const LANGS = def.noSubs ? [def.lang ?? VOICE] : ["pt", "zh"];
+/** Texto que a voz lê: o `say` da fala ou o texto do idioma, com as leituras de siglas e nomes. */
+const spoken = (c) => c.say ?? (def.speak ? def.speak(c[VOICE]) : c[VOICE]);
 const out = join(ROOT, "out");
 mkdirSync(join(out, "audio", video), { recursive: true });
 mkdirSync(join(ROOT, "film/build"), { recursive: true });
@@ -37,7 +43,7 @@ const clip = (scene, i) => join(out, "audio", video, `${scene.id}.${i}.wav`);
 
 if (process.argv.includes("--tts")) {
   const list = def.scenes.flatMap((s) =>
-    (s.say ?? []).map((c, i) => ({ file: clip(s, i), text: c.say ?? c.en })),
+    (s.say ?? []).map((c, i) => ({ file: clip(s, i), text: spoken(c) })),
   );
   writeFileSync(join(out, `${video}.tts.json`), JSON.stringify(list, null, 1));
   console.log(
@@ -66,8 +72,9 @@ let t = 0;
 const scenes = [];
 const cues = [];
 for (const s of def.scenes) {
-  const pre = s.pre ?? PRE;
-  const post = s.post ?? POST;
+  // Folgas padrão do vídeo (def.pre, def.post) valem onde a cena não define as suas.
+  const pre = s.pre ?? def.pre ?? PRE;
+  const post = s.post ?? def.post ?? POST;
   let local = pre;
   const cue = [];
   const cueDur = [];
@@ -75,7 +82,7 @@ for (const s of def.scenes) {
     let d;
     if (existsSync(clip(s, i))) d = wavSeconds(clip(s, i));
     else {
-      d = c.en.split(/\s+/).length / 2.7 + 0.25;
+      d = c[VOICE].split(/\s+/).length / 2.7 + 0.25;
       estimated++;
     }
     cue.push(local);
@@ -130,6 +137,7 @@ const chapters = marks.map((s, i) => ({
 const problems = [];
 function subsFor(lang) {
   const list = [];
+  if (def.noSubs) return list; // vídeo sem legenda queimada
   cues.forEach((c, k) => {
     const parts = c[lang].split("||").map((p) => p.trim());
     const total = parts.reduce((n, p) => n + p.replace(/\|/g, "").length, 0);
@@ -187,6 +195,7 @@ for (const lang of LANGS) {
       lang,
       // Pasta das telas do portal (film/shots/<pasta>); sem ela, a do idioma.
       shots: def.shots,
+      ui: def.ui,
       fps: FPS,
       intro: INTRO,
       overlap: OVERLAP,
@@ -197,7 +206,7 @@ for (const lang of LANGS) {
       glyphs,
     }),
   );
-  writeSrt(lang, subs);
+  if (!def.noSubs) writeSrt(lang, subs);
   // Velocidade de leitura do guia (pt 17, zh 9 caracteres por segundo): só avisa.
   const fast = subs
     .map((c) => c.lines.join("").length / (c.t1 - c.t0))
@@ -210,32 +219,35 @@ for (const lang of LANGS) {
 const enSubs = cues.map((c, k) => ({
   t0: c.t0,
   t1: Math.min(c.t1 + 0.18, (cues[k + 1]?.t0 ?? Infinity) - 0.04),
-  lines: [c.en],
+  lines: [c[VOICE]],
 }));
-writeSrt("en", enSubs);
-writeFileSync(
-  join(out, `${video}.audio.json`),
-  JSON.stringify(
-    {
-      intro: INTRO,
-      duration: INTRO + duration,
-      logo: +(INTRO + logoAt).toFixed(3),
-      scenes: scenes.map((s) => ({
-        id: s.id,
-        type: s.type,
-        at: INTRO + s.start,
-        dur: s.dur,
-      })),
-      cues: cues.map((c) => ({
-        file: c.file,
-        at: +(INTRO + c.t0).toFixed(4),
-        dur: +(c.t1 - c.t0).toFixed(4),
-      })),
-    },
-    null,
-    1,
-  ),
+if (!def.noSubs) writeSrt("en", enSubs);
+// Plano do áudio: só regrava quando muda. O mix.mjs para se a voz ou a
+// trilha forem mais antigas que ele; mudar só o texto da tela não mexe nos
+// tempos e não pede voz nem trilha novas.
+const plan = join(out, `${video}.audio.json`);
+const planJson = JSON.stringify(
+  {
+    intro: INTRO,
+    duration: INTRO + duration,
+    logo: +(INTRO + logoAt).toFixed(3),
+    scenes: scenes.map((s) => ({
+      id: s.id,
+      type: s.type,
+      at: INTRO + s.start,
+      dur: s.dur,
+    })),
+    cues: cues.map((c) => ({
+      file: c.file,
+      at: +(INTRO + c.t0).toFixed(4),
+      dur: +(c.t1 - c.t0).toFixed(4),
+    })),
+  },
+  null,
+  1,
 );
+if (!existsSync(plan) || readFileSync(plan, "utf8") !== planJson)
+  writeFileSync(plan, planJson);
 const mmss = (s) =>
   `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 console.log(

@@ -43,18 +43,20 @@ def main():
     ap.add_argument("list")
     ap.add_argument("--voice", default="af_heart")
     ap.add_argument("--speed", type=float, default=1.0)
+    ap.add_argument("--lang", default="en-us", help="idioma do Kokoro (en-us, pt-br...)")
     args = ap.parse_args()
     items = json.load(open(args.list, encoding="utf-8"))
     kokoro = None
     made = 0
     for it in items:
-        key = hashlib.sha1(f"{it['text']}|{args.voice}|{args.speed}".encode()).hexdigest()
+        extra = "" if args.lang == "en-us" else f"|{args.lang}"  # chave das falas em inglês não muda
+        key = hashlib.sha1(f"{it['text']}|{args.voice}|{args.speed}{extra}".encode()).hexdigest()
         mark = it["file"] + ".key"
         if os.path.exists(it["file"]) and os.path.exists(mark) and open(mark).read() == key:
             continue
         if kokoro is None:
             kokoro = Kokoro(os.path.join(MODELS, "kokoro-v1.0.onnx"), os.path.join(MODELS, "voices-v1.0.bin"))
-        samples, sr = kokoro.create(it["text"], voice=args.voice, speed=args.speed, lang="en-us")
+        samples, sr = kokoro.create(it["text"], voice=args.voice, speed=args.speed, lang=args.lang)
         y = resample_poly(trim(samples.astype(np.float64), sr), 2, 1)  # 24 kHz → 48 kHz
         y /= max(1.0, np.abs(y).max() / 0.97)  # sem estouro no WAV de 16 bits
         os.makedirs(os.path.dirname(it["file"]), exist_ok=True)
