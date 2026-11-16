@@ -109,7 +109,7 @@ Esta seção vale por cima das anteriores onde elas divergem.
 
 ### 9.1 Condições no formulário do vendedor
 
-- **Tipo de operação:** hoje só **TS** (já marcado); **Venda** aparece desabilitada "(em breve)". O servidor recusa Venda (`order_terms_operation_disabled`).
+- **Tipo de operação:** hoje só **TS** (já marcado); **Venda** aparece desabilitada "(em breve)". O servidor recusa Venda (`order_terms_operation_disabled`). Desde 16/11/2026, a Venda tem tela própria no Produto novo, **Venda - Encomenda**, e o TS também, **TS - Trading Sales**. Nas duas o tipo é fixo pela tela (docs/REQUEST_SCREENS.md); esta tela de Encomendas continua como está.
 - **País de origem:** com TS, **BRASIL** aparece desabilitado "(não vale no TS)" e o servidor recusa (`order_terms_country_disabled`). Produto sem país continua fora da lista.
 - **Re-despacho:** deixou de ser uma transportadora; é **Sim/Não** obrigatório. Com Sim, quem informa a transportadora é o cliente, na confirmação (9.3).
 - **Transportador:** continua obrigatório (portal + Sankhya).

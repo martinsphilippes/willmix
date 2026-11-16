@@ -36,6 +36,10 @@ const TOP = ["/app", "/app/tasks"];
 /** Blocos do fluxo do admin, na ordem do mapa (docs/FLOW_MENU.md). */
 const NEW_PRODUCT = [
   "/app/flow/new-product",
+  // TS - Trading Sales e Venda - Encomenda, logo abaixo do Overview (dono,
+  // 16/11/2026; docs/REQUEST_SCREENS.md).
+  "/app/new-request/ts",
+  "/app/new-request/sale",
   "/app/booking",
   "/app/booking/selection",
   "/app/supplier-requests/invites",

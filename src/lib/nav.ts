@@ -1,4 +1,5 @@
 import type { DictionaryKey } from "@/i18n/dictionaries";
+import { REQUEST_SCREEN, REQUEST_SCREEN_MODES } from "@/lib/request-screens";
 import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen, menuScreensFor, type Screen } from "@/lib/auth/screens";
 import type { User } from "@/lib/db/schema";
@@ -181,6 +182,34 @@ function flowEntries(block: FlowBlock): Entry[] {
 }
 
 /**
+ * TS - Trading Sales e Venda - Encomenda (dono, 16/11/2026;
+ * docs/REQUEST_SCREENS.md): no Produto novo, logo abaixo do Overview (no
+ * topo, quando o bloco não tem Overview), nesta ordem. Cada uma com a sua
+ * tela de acesso.
+ */
+const REQUEST_SCREEN_ENTRIES: Entry[] = REQUEST_SCREEN_MODES.map(
+  (mode): Entry => [
+    REQUEST_SCREEN[mode].screen,
+    {
+      href: REQUEST_SCREEN[mode].path,
+      key: mode === "ts" ? "nav.requestTs" : "nav.requestSale",
+    },
+  ],
+);
+
+function withRequestScreens(entries: Entry[]): Entry[] {
+  const overview = entries.findIndex(
+    ([, link]) => link.href === overviewHref("new-product"),
+  );
+  const at = overview + 1;
+  return [
+    ...entries.slice(0, at),
+    ...REQUEST_SCREEN_ENTRIES,
+    ...entries.slice(at),
+  ];
+}
+
+/**
  * Só os links das telas que o login abre, na ordem dada, sem os ocultos. A
  * tela liberada a um perfil na Gestão de telas (granted) aparece mesmo oculta:
  * foi o administrador que escolheu dar a tela.
@@ -252,7 +281,7 @@ export function navFor(
         "nav.group.newProduct",
         "cart",
         pick(has, [
-          ...flowEntries("new-product"),
+          ...withRequestScreens(flowEntries("new-product")),
           // Fora do menu (MENU_HIDDEN): Sourcing.
           ["sourcing", { href: "/app/sourcing", key: "nav.sourcing" }],
         ]),
@@ -414,10 +443,7 @@ export function navFor(
         { href: "/app/supplier-requests", key: "nav.supplierRequests" },
       ],
       // Cotação de compra (mapa B13): os convites de preço do fornecedor.
-      [
-        "quotes",
-        { href: "/app/purchase-quotes", key: "nav.purchaseQuotes" },
-      ],
+      ["quotes", { href: "/app/purchase-quotes", key: "nav.purchaseQuotes" }],
       ["orders", { href: "/app/orders", key: "nav.orders" }],
       ["freight", { href: "/app/freight", key: "nav.freight" }],
       // A companhia envia a própria tabela de fretes (só vê as dela).

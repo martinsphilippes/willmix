@@ -21,6 +21,7 @@ export function RequestCustomerField({
   ariaLabel,
   labels,
   summary,
+  allowStock = true,
 }: {
   /** Valor gravado para compra para estoque (STOCK_OPTION). */
   stockValue: string;
@@ -35,10 +36,15 @@ export function RequestCustomerField({
    * "Código {code} · {name}". Sem ele, nada.
    */
   summary?: { code: string; none: string };
+  /**
+   * Mostra a caixa "Compra para estoque" (padrão). As telas de TS e de Venda
+   * (docs/REQUEST_SCREENS.md) vendem ao cliente: sem a caixa, sem estoque.
+   */
+  allowStock?: boolean;
 }) {
   const shared = useRequestCustomer();
   const [localStock, setLocalStock] = useState(initialStock);
-  const stock = shared ? shared.stock : localStock;
+  const stock = allowStock && (shared ? shared.stock : localStock);
   return (
     <div className="space-y-1.5" data-request-customer>
       {stock ? (
@@ -68,20 +74,22 @@ export function RequestCustomerField({
           {shared.customer.name}
         </p>
       ) : null}
-      <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-700">
-        <input
-          type="checkbox"
-          checked={stock}
-          onChange={(e) =>
-            shared
-              ? shared.setStock(e.target.checked)
-              : setLocalStock(e.target.checked)
-          }
-          className="h-4 w-4 shrink-0 accent-brand-600"
-          data-stock-option
-        />
-        {stockLabel}
-      </label>
+      {allowStock ? (
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-700">
+          <input
+            type="checkbox"
+            checked={stock}
+            onChange={(e) =>
+              shared
+                ? shared.setStock(e.target.checked)
+                : setLocalStock(e.target.checked)
+            }
+            className="h-4 w-4 shrink-0 accent-brand-600"
+            data-stock-option
+          />
+          {stockLabel}
+        </label>
+      ) : null}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import "server-only";
 import { productNameText, type Translate } from "@/i18n";
 import { isWellmix } from "@/lib/auth/permissions";
-import { canOpen } from "@/lib/auth/screens";
+import { canOpen, canOpenNewRequest } from "@/lib/auth/screens";
 import { getStore, type User } from "@/lib/db";
 import { listColumns } from "@/lib/db/lookup";
 import { searchText } from "@/lib/db/store";
@@ -55,7 +55,8 @@ export function canPickRequestProducts(
   user: User,
   settings: Pick<Settings, "customerCanCreateRequest">,
 ): boolean {
-  if (!canOpen(user, "requests")) return false;
+  // Telas de nova solicitação (Encomendas, TS e Venda; docs/REQUEST_SCREENS.md).
+  if (!canOpenNewRequest(user)) return false;
   if (isWellmix(user)) return true;
   return user.role === "customer" && settings.customerCanCreateRequest;
 }
