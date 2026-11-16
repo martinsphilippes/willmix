@@ -99,13 +99,30 @@ test("Produto novo: TS e Venda logo abaixo do Overview; o tipo é o da tela; Enc
   await chooseCustomer(page, "loja", "cliente-joao");
   await expectFixedOperation(page, "ts");
 
-  // Rascunho da tela de TS: fica nela, não em Encomendas.
+  // Rascunho da tela de TS: fica nela; não aparece na de Venda nem em
+  // Encomendas; apaga-se nela.
   await page.locator("[data-request-draft-save]").click();
   await page.waitForURL(/\/app\/new-request\/ts\?draft=[^&]+&draftSaved=1/);
   const draftId = new URL(page.url()).searchParams.get("draft")!;
-  await expect(page.locator(`[data-request-draft="${draftId}"]`)).toBeVisible();
+  const draftRow = page.locator(`[data-request-draft="${draftId}"]`);
+  await expect(draftRow).toBeVisible();
+  await page.goto("/app/new-request/sale");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Venda - Encomenda",
+  );
+  await expect(draftRow).toHaveCount(0);
+  await page.goto("/app/requests/new");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Nova solicitação",
+  );
+  await expect(draftRow).toHaveCount(0);
+  await page.goto("/app/new-request/ts");
+  await draftRow.locator("[data-request-draft-delete]").click();
+  await page.waitForURL(/\/app\/new-request\/ts\?draftDeleted=1/);
+  await expect(draftRow).toHaveCount(0);
 
   // Enviar: nasce TS.
+  await page.goto("/app/new-request/ts");
   await chooseCustomer(page, "loja", "cliente-joao");
   await chooseCustomerLogin(page, "joao@lojista.com");
   await fillOrderTerms(page, { format: "wd", caller: "customer" });
@@ -122,10 +139,6 @@ test("Produto novo: TS e Venda logo abaixo do Overview; o tipo é o da tela; Enc
     "Venda - Encomenda",
   );
   await expect(page.locator("[data-stock-option]")).toHaveCount(0);
-  // O rascunho de TS não aparece na de Venda.
-  await expect(page.locator(`[data-request-draft="${draftId}"]`)).toHaveCount(
-    0,
-  );
   await chooseCustomer(page, "loja", "cliente-joao");
   await expectFixedOperation(page, "sale");
   await chooseCustomerLogin(page, "joao@lojista.com");
@@ -142,16 +155,13 @@ test("Produto novo: TS e Venda logo abaixo do Overview; o tipo é o da tela; Enc
   await expect(terms).not.toContainText("TS (Trading Sales)");
 
   // Encomendas → Nova solicitação: como sempre (TS marcado, Venda "(em
-  // breve)", compra para estoque) e sem o rascunho da tela de TS.
+  // breve)", compra para estoque).
   await page.goto("/app/requests/new");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Nova solicitação",
   );
   await expect(page.locator("[data-request-screen]")).toHaveCount(0);
   await expect(page.locator("[data-stock-option]")).toBeVisible();
-  await expect(page.locator(`[data-request-draft="${draftId}"]`)).toHaveCount(
-    0,
-  );
   await chooseCustomer(page, "loja", "cliente-joao");
   const legacy = page.locator("[data-order-terms]");
   await expect(
@@ -163,16 +173,6 @@ test("Produto novo: TS e Venda logo abaixo do Overview; o tipo é o da tela; Enc
   await expect(
     legacy.locator("[data-order-terms-operation-fixed]"),
   ).toHaveCount(0);
-
-  // O rascunho volta a ser apagado na tela dele.
-  await page.goto(`/app/new-request/ts`);
-  await page
-    .locator(`[data-request-draft="${draftId}"] [data-request-draft-delete]`)
-    .click();
-  await page.waitForURL(/\/app\/new-request\/ts\?draftDeleted=1/);
-  await expect(page.locator(`[data-request-draft="${draftId}"]`)).toHaveCount(
-    0,
-  );
 });
 
 test("Acesso: Comprador só TS; diretoria as duas; Vendas nenhuma; endereço direto recusado", async ({
