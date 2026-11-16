@@ -20,10 +20,21 @@ export function colRem(width: string): number {
 /**
  * Primeira coluna (a caixa e o número da linha; no cabeçalho, a caixa de
  * todas e o "Carregar"): presa à esquerda na rolagem para o lado, para
- * marcar e carregar sem voltar ao começo da linha.
+ * marcar e carregar sem voltar ao começo da linha. Largura: FIRST_COL_REM.
  */
+export const FIRST_COL_REM = 6;
 export const STICKY_FIRST =
   "sticky left-0 z-10 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.18)]";
+
+/**
+ * Tela da Wellmix (dono, 16/11/2026): a coluna das fotos também fica presa,
+ * logo depois da primeira (left = FIRST_COL_REM), para ver qual é o item
+ * enquanto a tabela anda para o lado. A sombra que separa as colunas presas
+ * das que rolam fica nela; a primeira vai sem sombra.
+ */
+export const STICKY_FIRST_PLAIN = "sticky left-0 z-10";
+export const STICKY_PHOTO =
+  "sticky left-[6rem] z-10 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.18)]";
 
 /** Os textos da seleção e do "Carregar". */
 export function bulkFillLabels(t: Translate): BulkFillLabels {

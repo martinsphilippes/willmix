@@ -82,7 +82,13 @@ import {
   BulkSelectAll,
   BulkStatus,
 } from "@/components/booking-bulk-fill";
-import { bulkFillLabels, colRem, STICKY_FIRST } from "@/lib/booking-bulk-ui";
+import {
+  bulkFillLabels,
+  colRem,
+  FIRST_COL_REM,
+  STICKY_FIRST_PLAIN,
+  STICKY_PHOTO,
+} from "@/lib/booking-bulk-ui";
 import {
   BookingPendingList,
   type PendingItemView,
@@ -484,7 +490,7 @@ export default async function BookingLotPage({
       data-booking-items=""
     >
       <colgroup>
-        <col style={{ width: "6rem" }} />
+        <col style={{ width: `${FIRST_COL_REM}rem` }} />
         <col style={{ width: "6.5rem" }} />
         <col style={{ width: "11.5rem" }} />
         {columns.map((c) => (
@@ -496,7 +502,7 @@ export default async function BookingLotPage({
       </colgroup>
       <thead>
         <tr data-table-sort-row="">
-          <th className={cx(th, STICKY_FIRST, "bg-zinc-50")}>
+          <th className={cx(th, STICKY_FIRST_PLAIN, "bg-zinc-50")}>
             {bulkOn ? (
               <span className="flex items-center gap-2">
                 <BulkSelectAll />
@@ -506,7 +512,9 @@ export default async function BookingLotPage({
               colLabel("position")
             )}
           </th>
-          <th className={th}>{colLabel("photo")}</th>
+          <th className={cx(th, STICKY_PHOTO, "bg-zinc-50")}>
+            {colLabel("photo")}
+          </th>
           <th className={th}>
             {t("bookingNcm.col")}
             <span className="text-brand-700"> *</span>
@@ -528,10 +536,10 @@ export default async function BookingLotPage({
         </tr>
         {bulkOn ? (
           <tr data-bulk-fill-row="">
-            <th className={cx(bulkTh, STICKY_FIRST, "bg-white")}>
+            <th className={cx(bulkTh, STICKY_FIRST_PLAIN, "bg-white")}>
               <BulkLoadButton />
             </th>
-            <th className={bulkTh} />
+            <th className={cx(bulkTh, STICKY_PHOTO, "bg-white")} />
             <th className={bulkTh}>
               {ncmEditable ? (
                 <BulkFieldInput
@@ -584,7 +592,7 @@ export default async function BookingLotPage({
               <td
                 className={cx(
                   "border-b border-zinc-100 px-2 py-2 align-top text-xs text-zinc-500",
-                  STICKY_FIRST,
+                  STICKY_FIRST_PLAIN,
                   "bg-white group-hover:bg-[color-mix(in_oklab,var(--color-brand-50)_40%,white)]",
                 )}
               >
@@ -605,7 +613,14 @@ export default async function BookingLotPage({
                   </span>
                 </label>
               </td>
-              <td className="border-b border-zinc-100 px-2 py-2 align-top">
+              <td
+                className={cx(
+                  "border-b border-zinc-100 px-2 py-2 align-top",
+                  STICKY_PHOTO,
+                  "bg-white group-hover:bg-[color-mix(in_oklab,var(--color-brand-50)_40%,white)]",
+                )}
+                data-booking-item-photo=""
+              >
                 <span className="flex gap-1">
                   {[item.photoDocumentId, item.cardDocumentId]
                     .filter((d): d is string => !!d)

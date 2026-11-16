@@ -55,7 +55,12 @@ import {
   BulkSelectAll,
   BulkStatus,
 } from "@/components/booking-bulk-fill";
-import { bulkFillLabels, colRem, STICKY_FIRST } from "@/lib/booking-bulk-ui";
+import {
+  bulkFillLabels,
+  colRem,
+  FIRST_COL_REM,
+  STICKY_FIRST,
+} from "@/lib/booking-bulk-ui";
 import {
   discardPartnerBookingAction,
   launchBookingAction,
@@ -635,7 +640,7 @@ function PreparingItems({
               data-partner-booking-edit=""
             >
               <colgroup>
-                <col style={{ width: "6rem" }} />
+                <col style={{ width: `${FIRST_COL_REM}rem` }} />
                 {EDIT_COLUMNS.map(({ field, width }) => (
                   <col key={field} style={{ width: `${colRem(width)}rem` }} />
                 ))}

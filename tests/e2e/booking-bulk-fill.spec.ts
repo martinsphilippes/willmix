@@ -260,6 +260,30 @@ test("Book: cabeçalho congelado e Carregar nas linhas 2, 5 e 8 (desktop)", asyn
     .toBeLessThan(1);
   for (const field of ["currency", "moq", "material", "productName"])
     expect(await offsetOf(page, field)).toBeLessThan(1.5);
+  // A primeira coluna e a das fotos ficam presas à esquerda (o título da
+  // foto sobre a foto de cada linha), mesmo com a tabela rolada.
+  const frozen = await page.evaluate(() => {
+    const titles = document.querySelectorAll(
+      "[data-table-sticky-head] tr[data-table-sort-row] th",
+    );
+    const body = document
+      .querySelector("[data-table-sticky-body]")!
+      .getBoundingClientRect();
+    const photo = document
+      .querySelector("[data-booking-item-photo]")!
+      .getBoundingClientRect();
+    return {
+      first: Math.round(titles[0].getBoundingClientRect().left - body.left),
+      photoTitle: Math.round(titles[1].getBoundingClientRect().left),
+      firstRight: Math.round(titles[0].getBoundingClientRect().right),
+      photoCell: Math.round(photo.left),
+    };
+  });
+  expect(Math.abs(frozen.first)).toBeLessThanOrEqual(1);
+  expect(Math.abs(frozen.photoTitle - frozen.firstRight)).toBeLessThanOrEqual(
+    1,
+  );
+  expect(Math.abs(frozen.photoCell - frozen.photoTitle)).toBeLessThanOrEqual(1);
 
   // No fim da tabela o cabeçalho sai junto com ela.
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));

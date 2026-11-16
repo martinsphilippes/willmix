@@ -1544,7 +1544,7 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   - Nenhuma rota ou dado saiu. Sem mudança no banco: a auditoria ganha a ação `booking_item.bulk`.
 - **Mudou na tabela**:
   - **Larguras**: cada coluna tem largura fixa, a do campo dela com folga. Os títulos quebram em linhas em vez de alargar a coluna.
-  - **Primeira coluna**: a caixa e o número da linha ficam presos à esquerda.
+  - **Colunas presas**: a caixa e o número da linha ficam presos à esquerda. Na tela da Wellmix, a coluna das fotos também, logo depois delas (pedido do dono no mesmo dia).
   - **`TableTools`**: ganhou `stickyHead` e `stickyBar`, só nas telas que pedem. A busca marca `data-table-filtered` nas linhas que esconde.
 - Testes:
   - `tests/unit/booking-bulk-fill.test.ts`: regra de cada campo, valor válido, linhas 2, 5 e 8 com USD, várias colunas, valor recusado, item de outro book, NCM e book travado.
