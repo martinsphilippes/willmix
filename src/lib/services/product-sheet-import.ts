@@ -286,6 +286,9 @@ const DATA_COLUMNS: SheetColumn[] = [
   "masterCartonQty",
   "moq",
 ];
+/** Cabeçalho feito só de moedas, duas ou mais ("RMB USD", "USD OR RMB"). */
+const CURRENCY_ONLY_HEADER =
+  /^(RMB|CNY|USD|US|BRL|R|EUR)( (OR|OU|E|AND))?( (RMB|CNY|USD|US|BRL|R|EUR))+$/;
 /** Cabeçalhos que abrem um grupo de subcolunas (SIZE → LENGTH, WIDTH, HEIGHT). */
 const GROUP_HEADER = /\b(SIZE|TAMANHO|MEDIDAS?|DIMENSIONS?|DIMENSOES)\b|尺寸/;
 /** Peso da caixa (não é por peça): fica de fora. */
@@ -305,6 +308,9 @@ function matchColumn(header: string): SheetColumn | null {
   if (!h) return null;
   for (const [column, synonyms] of HEADERS)
     if (synonyms.includes(h)) return column;
+  // "RMB/USD", "USD / RMB", "US$ OR RMB": só nomes de moeda no cabeçalho é a
+  // coluna da moeda de cada linha (planilha de booking de Yiwu).
+  if (CURRENCY_ONLY_HEADER.test(h)) return "currency";
   // "FOB PRICE", "PRICE USD", "UNIT PRICE RMB": é o preço (o incoterm vem junto).
   if (/\b(PRICE|PRECO)\b|单价|价格/.test(h) && !/\bTOTAL\b/.test(h))
     return "price";

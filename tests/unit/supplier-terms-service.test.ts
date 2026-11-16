@@ -370,6 +370,11 @@ describe("pedidos antigos e correções da revisão", () => {
       (x) => x.kind === "confirm_receipt" && x.orderNumber === order.number,
     );
     expect(confirm?.link).toBe("/app/account");
+    // Em Minhas pendências, na etapa Confirmar sinal (dono, 16/11/2026).
+    expect(confirm).toMatchObject({
+      supplierStep: "deposit",
+      group: "supplier.deposit",
+    });
     // Outro fornecedor não vê.
     const supplierB = (
       await store.list("users", { filter: { email: "supplier.b@china.com" } })

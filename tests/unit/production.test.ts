@@ -194,10 +194,11 @@ describe("produção do pedido", () => {
       }),
     ).rejects.toThrow("waiting_supplier");
     expect(
-      (await pendingTasksFor(supplierA)).some(
+      (await pendingTasksFor(supplierA)).find(
         (t) => t.kind === "sku_fix" && t.link.includes(order.id),
       ),
-    ).toBe(true);
+      // Em Minhas pendências, na etapa Inspeção.
+    ).toMatchObject({ group: "supplier.inspection" });
     await pr.respondSku(supplierA, rejected.id, "Nova tinta aplicada");
     expect(
       (await pendingTasksFor(admin)).some(

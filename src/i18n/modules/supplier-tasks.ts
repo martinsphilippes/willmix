@@ -1,14 +1,15 @@
 /**
  * Dicionário do módulo "supplier-tasks" (pendências do fornecedor, pedido do
- * dono em 10/11/2026): os filtros são as etapas que chegam na mão do
- * fornecedor, do Booking ao embarque, cada uma com a explicação, e a coluna
- * "Com você desde". Mesmas chaves em pt, en e zh.
+ * dono em 10/11/2026; até a Invoice em 16/11/2026): os filtros são as etapas
+ * que chegam na mão do fornecedor e da Trading, do Book à Invoice (onde o
+ * serviço da Trading termina), cada uma com a explicação, e a coluna "Com
+ * você desde". Mesmas chaves em pt, en e zh.
  */
 export const pt = {
   "supplierTasks.rfq.title": "RFQ: {product}",
   "supplierTasks.booking.detail": "{qty} {unit}",
   "supplierTasks.intro":
-    "Aqui está tudo que depende de você, do Book até o embarque. Toque numa etapa para ver só as pendências dela.",
+    "Aqui está tudo que depende de você, do Book até a Invoice. Toque numa etapa para ver só as pendências dela.",
   "supplierTasks.steps.title": "Etapas que chegam até você",
   "supplierTasks.steps.all": "Todas as etapas",
   "supplierTasks.steps.none": "nada agora",
@@ -18,7 +19,7 @@ export const pt = {
   "supplierTasks.steps.count1": "1 pendência",
   "supplierTasks.steps.count": "{n} pendências",
   "supplierTasks.after":
-    "Depois do embarque (desembaraço, transporte e entrega ao cliente) nada depende de você. Para acompanhar, abra Pedidos.",
+    "Na Invoice o seu serviço termina. Depois dela (BL, embarque, desembaraço, transporte e entrega ao cliente) nada depende de você. Para acompanhar, abra Pedidos.",
   "supplierTasks.due.hint":
     "Prazo: escolha pelo vencimento. A lista já vem com as mais urgentes primeiro.",
   "supplierTasks.col.step": "Etapa",
@@ -56,8 +57,12 @@ export const pt = {
   "tasks.group.supplier.sheet": "Ficha de compra",
   "tasks.group.supplier.art": "Aprovar a arte",
   "tasks.group.supplier.sign": "Assinar o pedido",
-  "tasks.group.supplier.inspection": "Produção e inspeção",
-  "tasks.group.supplier.shipping": "Embarque",
+  "tasks.group.supplier.deposit": "Confirmar sinal",
+  "tasks.group.supplier.inspection": "Inspeção",
+  "tasks.group.supplier.sample": "Amostra",
+  "tasks.group.supplier.carrier": "Transportadora",
+  "tasks.group.supplier.loading": "Carregamento",
+  "tasks.group.supplier.invoice": "Invoice",
   "supplierTasks.help.booking":
     "Confira preço, pedido mínimo, prazo e fotos do produto e envie a resposta.",
   "supplierTasks.help.dieline":
@@ -68,17 +73,25 @@ export const pt = {
     "Confira a arte da embalagem e aprove, ou reprove dizendo o que mudar.",
   "supplierTasks.help.sign":
     "Assine o documento do pedido no portal ou envie o PDF assinado.",
+  "supplierTasks.help.deposit":
+    "Confirme na Conta corrente o recebimento do sinal pago pela Wellmix; as outras parcelas do pedido também se confirmam aqui.",
   "supplierTasks.help.inspection":
-    "Envie fotos e peso do produto pronto e corrija o que for reprovado.",
-  "supplierTasks.help.shipping":
-    "Confira a invoice e o packing list e envie a invoice assinada.",
+    "Envie fotos, peso e vídeo do produto pronto, declare a conformidade e corrija o que for reprovado.",
+  "supplierTasks.help.sample":
+    "Retire as amostras do pedido, envie ao show room no Brasil e à agência de marketing na China e confirme quando a amostra da China voltar.",
+  "supplierTasks.help.carrier":
+    "Na compra EXW, contrate a transportadora e registre os custos de origem; depois informe o container vazio na fábrica, com fotos e vídeos.",
+  "supplierTasks.help.loading":
+    "Registre o carregamento com fotos e vídeos, marque o check list de carga, envie o packing list e o lacre com o número do container e informe o container no porto.",
+  "supplierTasks.help.invoice":
+    "Faça a invoice com as mesmas caixas, peças e pesos do packing list (ou confira a enviada pela Wellmix) e envie a invoice assinada. Aqui o seu serviço termina.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
   "supplierTasks.rfq.title": "RFQ: {product}",
   "supplierTasks.booking.detail": "{qty} {unit}",
   "supplierTasks.intro":
-    "Everything that depends on you, from the Book to shipment. Tap a step to see only its pending items.",
+    "Everything that depends on you, from the Book to the Invoice. Tap a step to see only its pending items.",
   "supplierTasks.steps.title": "Steps that reach you",
   "supplierTasks.steps.all": "All steps",
   "supplierTasks.steps.none": "nothing now",
@@ -88,7 +101,7 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierTasks.steps.count1": "1 pending",
   "supplierTasks.steps.count": "{n} pending",
   "supplierTasks.after":
-    "After shipment (customs, transport and delivery to the customer) nothing depends on you. To follow up, open Orders.",
+    "Your service ends at the Invoice. After it (BL, shipment, customs, transport and delivery to the customer) nothing depends on you. To follow up, open Orders.",
   "supplierTasks.due.hint":
     "Due: choose by due date. The list already shows the most urgent first.",
   "supplierTasks.col.step": "Step",
@@ -126,8 +139,12 @@ export const en: Record<keyof typeof pt, string> = {
   "tasks.group.supplier.sheet": "Purchase sheet",
   "tasks.group.supplier.art": "Approve the artwork",
   "tasks.group.supplier.sign": "Sign the order",
-  "tasks.group.supplier.inspection": "Production and inspection",
-  "tasks.group.supplier.shipping": "Shipment",
+  "tasks.group.supplier.deposit": "Confirm down payment",
+  "tasks.group.supplier.inspection": "Inspection",
+  "tasks.group.supplier.sample": "Sample",
+  "tasks.group.supplier.carrier": "Carrier",
+  "tasks.group.supplier.loading": "Loading",
+  "tasks.group.supplier.invoice": "Invoice",
   "supplierTasks.help.booking":
     "Check price, minimum order, lead time and product photos and send your answer.",
   "supplierTasks.help.dieline":
@@ -138,17 +155,25 @@ export const en: Record<keyof typeof pt, string> = {
     "Check the packaging artwork and approve it, or reject it saying what to change.",
   "supplierTasks.help.sign":
     "Sign the order document in the portal or upload the signed PDF.",
+  "supplierTasks.help.deposit":
+    "Confirm in the Account statement that you received the down payment from Wellmix; the order's other installments are confirmed here too.",
   "supplierTasks.help.inspection":
-    "Send photos and weight of the finished product and fix what was rejected.",
-  "supplierTasks.help.shipping":
-    "Check the invoice and the packing list and send the signed invoice.",
+    "Send photos, weight and video of the finished product, declare conformity and fix what was rejected.",
+  "supplierTasks.help.sample":
+    "Pick up the order samples, send them to the showroom in Brazil and to the marketing agency in China, and confirm when the sample from China comes back.",
+  "supplierTasks.help.carrier":
+    "On EXW purchases, hire the carrier and record the origin costs; then report the empty container at the factory, with photos and videos.",
+  "supplierTasks.help.loading":
+    "Record the loading with photos and videos, tick the load checklist, send the packing list and the seal with the container number, and report the container at the port.",
+  "supplierTasks.help.invoice":
+    "Make the invoice with the same cartons, pieces and weights as the packing list (or check the one Wellmix sent) and send the signed invoice. Your service ends here.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
   "supplierTasks.rfq.title": "RFQ：{product}",
   "supplierTasks.booking.detail": "{qty} {unit}",
   "supplierTasks.intro":
-    "这里是所有需要您处理的事项，从 Book 到装运。点击某个环节，只看该环节的待办。",
+    "这里是所有需要您处理的事项，从 Book 到发票。点击某个环节，只看该环节的待办。",
   "supplierTasks.steps.title": "需要您处理的环节",
   "supplierTasks.steps.all": "全部环节",
   "supplierTasks.steps.none": "暂无",
@@ -158,7 +183,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "supplierTasks.steps.count1": "1 项待办",
   "supplierTasks.steps.count": "{n} 项待办",
   "supplierTasks.after":
-    "装运之后（清关、运输、交付客户）不再需要您处理。如需跟进，请打开“订单”。",
+    "您的服务到发票为止。发票之后（提单、装运、清关、运输、交付客户）不再需要您处理。如需跟进，请打开“订单”。",
   "supplierTasks.due.hint": "期限：按到期日筛选。列表已按最紧急的排在最前。",
   "supplierTasks.col.step": "环节",
   "supplierTasks.col.since": "到您手上的日期",
@@ -192,8 +217,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "tasks.group.supplier.sheet": "采购表",
   "tasks.group.supplier.art": "确认设计稿",
   "tasks.group.supplier.sign": "签署订单",
-  "tasks.group.supplier.inspection": "生产与验货",
-  "tasks.group.supplier.shipping": "装运",
+  "tasks.group.supplier.deposit": "确认定金",
+  "tasks.group.supplier.inspection": "验货",
+  "tasks.group.supplier.sample": "样品",
+  "tasks.group.supplier.carrier": "拖车公司",
+  "tasks.group.supplier.loading": "装柜",
+  "tasks.group.supplier.invoice": "发票",
   "supplierTasks.help.booking":
     "核对价格、起订量、交期和产品照片，然后提交答复。",
   "supplierTasks.help.dieline": "上传刀模和高清照片，并确认起订量和交期。",
@@ -201,6 +230,16 @@ export const zh: Record<keyof typeof pt, string> = {
   "supplierTasks.help.art":
     "核对包装设计稿并确认，或退回并说明需要修改的地方。",
   "supplierTasks.help.sign": "在门户中签署订单文件，或上传已签署的 PDF。",
-  "supplierTasks.help.inspection": "上传成品照片和重量，并整改被退回的项目。",
-  "supplierTasks.help.shipping": "核对发票和装箱单，并上传已签署的发票。",
+  "supplierTasks.help.deposit":
+    "请在往来账中确认已收到 Wellmix 支付的定金；订单的其他分期付款也在这里确认。",
+  "supplierTasks.help.inspection":
+    "上传成品的照片、重量和视频，声明符合性，并整改被退回的项目。",
+  "supplierTasks.help.sample":
+    "提取订单样品，寄往巴西展厅和中国的营销代理，并在中国的样品退回时确认。",
+  "supplierTasks.help.carrier":
+    "EXW 采购：委托拖车公司并登记起运地费用；然后报告空柜到达工厂，并上传照片和视频。",
+  "supplierTasks.help.loading":
+    "用照片和视频记录装柜，勾选装柜清单，提交装箱单以及铅封和集装箱号，并报告集装箱到港。",
+  "supplierTasks.help.invoice":
+    "按装箱单的箱数、件数和重量制作发票（或核对 Wellmix 发送的发票），并上传已签署的发票。您的服务到此结束。",
 };

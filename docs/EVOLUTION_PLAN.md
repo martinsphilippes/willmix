@@ -1551,6 +1551,29 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   - `tests/unit/booking-partner.test.ts`: o "Carregar" do parceiro.
   - `tests/e2e/booking-bulk-fill.spec.ts`: desktop (cabeçalho preso, linhas 2, 5 e 8, recarregar, várias colunas, valor inválido, todas, rolagem para o lado, fim da tabela), falha com "Tentar de novo", iPad em pé e deitado (emulado no Chromium) e a Trading em "Meus books".
 
+## Encomendas: o pedido inteiro em cada linha
+
+- **Pedido do dono** (16/11/2026, com as fotos da tela no iPad), na tabela de Produto novo → Encomendas:
+  - a coluna Pedido logo depois da Foto;
+  - Produtos com o início do nome de todos os produtos do pedido;
+  - a Foto em grade, uma miniatura por produto diferente;
+  - a Quantidade com a soma das peças do pedido.
+  - Tudo calculado por pedido, nos pedidos de um produto e de vários, sem pesar a tabela.
+- **Por quê**: em produção quase toda solicitação tem pedido (16.268 de 16.274). Esses pedidos somam 185 mil itens, até 233 num pedido, mas a linha mostrava só o produto da solicitação.
+- **Como ficou**: docs/FLOW_MENU.md, "Encomendas" → "Tabela da Wellmix".
+- **Não mudou**: filtros (situação, tipo, busca), as demais colunas, as ações, as páginas e a visão do cliente. Nenhuma rota, campo ou dado saiu; sem mudança no banco.
+- **O que muda na tela**:
+  - **Título**: "Produto" vira "Produtos" (só na Wellmix).
+  - **Número de fotos**: o número no canto da foto de um produto não aparece mais nesta lista, para não ser lido como número de produtos. O clique continua abrindo todas as fotos do produto.
+  - **Ordenação na lista grande** (mais de 200 linhas): Produtos e Quantidade seguem pela solicitação. Ordenar pelo total do pedido nela exige o resumo do pedido guardar o total (`order_summaries`).
+- **Desempenho**:
+  - Itens, produtos e fotos são lidos só das linhas da página.
+  - Antes, os produtos e as fotos de todas as solicitações da lista eram lidos a cada abertura; agora, só os da página.
+- **Componentes**: `PhotoGallery` ganhou `tiles` (a grade) e `badge` e continua igual nas outras telas.
+- Testes:
+  - `tests/unit/request-composition.test.ts`: pedido com vários itens, produto repetido, unidades, lote, pedido sem itens, início do nome.
+  - `tests/e2e/requests-composition.spec.ts`: ordem das colunas; lote de dois produtos com a foto real e a inicial, os nomes, 1.207 un e a galeria; e o pedido de um produto só.
+
 ## RCA do cliente no cadastro e na Nova solicitação
 
 - **Pedido do dono** (15/11/2026, com as fotos da Nova solicitação e de Cadastros → Parceiros no iPad): o campo "RCA responsável" no cadastro do cliente; na Nova solicitação, o "RCA do cliente" ao lado do "Solicitante", o solicitante preenchido com quem está criando e o seletor de antes como "Login do cliente com acesso". Decisões: o RCA é o vendedor do Sankhya (TGFVEN, pelo código) e o Sankhya manda (a carga sobrescreve o portal).
@@ -1619,3 +1642,18 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **INNER**: saiu de `BOOKING_ITEM_REQUIRED` (`src/lib/booking-lots.ts`), a lista que dá o asterisco, o destaque, o "Falta para fechar", a Conferência de cada item, a contagem de campos em branco do parceiro e a trava de fechar. Vazio já gravava nulo (planilha e tela); as regras de número ficam. Os textos de ajuda da importação deixaram de pôr asterisco no qty/inner.
 - **Aditivo**: nenhuma tela, rota, campo ou dado removido; sem mudança no banco. As outras telas que leem o INNER já tratavam o vazio ("—" ou sem a parte do inner).
 - Testes: `tests/unit/booking-lots.test.ts` (INNER vazio da planilha fica nulo, não falta, apagar grava nulo, "0"/"-3"/"abc" recusados, "24" aceito, o Book fecha) e `tests/e2e/book-items-table.spec.ts` (INNER sem asterisco, sem destaque e fora do que falta, apagar grava vazio, número inválido recusado, fecha com INNER vazio, consulta com "—"; e o teste do dono para as fotos: até a última coluna e depois a página para baixo, fotos à vista, por cima das outras colunas e alinhadas às linhas e ao título, no desktop e na tela do iPad).
+
+## Minhas pendências do fornecedor e da Trading: a linha do tempo vai até a Invoice
+
+- **Pedido do dono** (16/11/2026, com a foto da tela do login da Trading): continuar a faixa "Etapas que chegam até você" depois do Die Cut: Ficha de compra → Aprovar a arte → Assinar o pedido → Confirmar sinal → Inspeção → Amostra → Transportadora → Carregamento → Invoice. Na Invoice o serviço da Trading termina. Usar o que o sistema já tem, sem lógica paralela, e manter o visual.
+- **Como ficou** (`src/lib/supplier-steps.ts`, docs/ARQUITETURA.md): a faixa tem 13 etapas, as de antes até Assinar o pedido e as novas no lugar de "Produção e inspeção" e "Embarque". Cada pendência cai na etapa pelo passo do menu dela (o mapa do processo, o mesmo do menu lateral e dos marcos do pedido):
+  - Confirmar sinal (P12): "Confirmar recebimento" do pagamento da Wellmix, na Conta corrente; o sinal e as outras parcelas se confirmam ali.
+  - Inspeção (R3, R4?): fotos, peso, vídeo, conformidade e o SKU reprovado a corrigir. É a antiga "Produção e inspeção", com o nome do pedido do dono.
+  - Amostra (R12 a R14): retirada, envio ao Brasil e à China e a devolução da amostra da China.
+  - Transportadora (R17 a R20): na compra EXW, transportadora, previsão e custos de origem; o container vazio na fábrica, com fotos e vídeos.
+  - Carregamento (R7, R21, R25, R26): carregamento, check list de carga, packing list, lacre e o container lacrado no porto.
+  - Invoice (R22, R22?): a invoice, o refazer quando não bate com o packing list e, no fluxo antigo, a conferência e a invoice assinada.
+- **Acertos do mesmo caminho**: o aceite do pedido de amostras (P17) é do contrato e passou de "Aprovar a arte" para "Assinar o pedido", ainda levando ao pedido. A divergência no recebimento, depois da Invoice, fica no filtro "Tipo", em "Lote com divergência", que ganhou o nome nos três idiomas.
+- **Textos**: a introdução diz "do Book até a Invoice"; a nota embaixo da faixa diz que na Invoice o serviço termina e que depois dela (BL, embarque, desembaraço, transporte e entrega ao cliente) nada depende dele.
+- **Não mudou**: o visual da faixa (quadrados em fluxo, cores e legenda), os filtros, a coluna "Com você desde", as etapas até Assinar o pedido, as pendências da Wellmix e dos outros papéis e o menu lateral. O link antigo `?type=supplier.shipping` (etapa Embarque) mostra as etapas que a substituíram. Sem mudança no banco.
+- Testes: `tests/unit/supplier-steps.test.ts`, `tests/unit/supplier-tasks.test.ts`, os passos da origem, das amostras e dos documentos do embarque em `tests/unit/purchase-order.test.ts`, `tests/unit/supplier-terms-service.test.ts`, `tests/unit/production.test.ts` e `tests/e2e/supplier-timeline.spec.ts`.
