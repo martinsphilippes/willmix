@@ -202,6 +202,17 @@ WHERE P.ATIVO = 'S' AND P.CODPROD > <último> ORDER BY P.CODPROD
 - **Cliente** (busca no topo): ao escolher, logo abaixo aparece "Código X · Nome" (código do parceiro no Sankhya, `parties.sankhyaCode`; sem ele, "—").
 - **Transportador**: um campo de busca filtra a lista por nome, código (CODPARC) ou CNPJ, e abaixo do escolhido aparece "Código · CNPJ · Nome". O CNPJ vem de `TGFPAR.CGC_CPF` (Sankhya) ou de `parties.taxId` (portal); o código, de `CODPARC` ou `parties.sankhyaCode`. A lista mostra o código antes do nome.
 
+### 11.5 Seletor de produtos pela lupa (dono, 16/11/2026)
+
+Ao lado da busca de produto de cada linha, uma **lupa** abre o seletor (um só na tela, fora das linhas: acrescentar troca a linha vazia sem fechar o seletor). Só com o país e a família do pedido escolhidos.
+
+- **Filtros**: Grupo, Sub grupo e Coleção do grupo, os três níveis da árvore de grupos do Sankhya logo abaixo da família (TGFGRU, de cima para baixo: família = GRAU 1, Grupo = 2º nível, Sub grupo = 3º, Coleção do grupo = 4º). O grupo de cada produto vem da consulta do técnico (`TGFPRO.CODGRUPOPROD`, coluna `COD_GRUPO`) ou, sem ela, do código da linha; sobe-se na árvore até a família. Mesmo nome no mesmo nível = uma opção só (como a família). Cada filtro mostra só as opções que sobram com os outros (com a contagem), e a lista acompanha; trocar um nível limpa os de baixo.
+- **Lista**: tabela paginada (12 por página, por nome) só com Foto (grande, 160 px) e Nome; o código Wellmix e as marcas "No pedido" e "Visto" ficam sob o nome.
+- **Acrescentar**: clique na foto ou no nome acrescenta ao pedido e o seletor continua aberto. O seletor à esquerda da foto (e "Selecionar todos desta página") acrescenta vários de uma vez. Produto que já está no pedido não entra de novo.
+- **Quantidade padrão** (peças): cada produto acrescentado entra com ela, nunca abaixo do pedido mínimo em caixas inteiras; vazia, o pedido mínimo como sempre.
+- **Filtro visto**: "Marcar este filtro como visto" guarda a combinação atual (Grupo, Sub grupo, Coleção). As opções mostram "✓ … · visto" quando todos os produtos delas já entraram num filtro visto, ou "n/m vistos"; os produtos ganham a marca "Visto" e o rodapé diz "n de m produtos da família já vistos". Fica no navegador de quem usa (por cliente, país e família), não no banco.
+- Leitura: `GET /api/products/browse` (`browseOrigin` em `src/lib/services/product-origin.ts`), para quem busca no catálogo. Nome, SKU e foto vêm do índice de origem (10 minutos).
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

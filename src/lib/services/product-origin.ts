@@ -48,6 +48,18 @@ export interface ProductOrigin {
   family: string;
 }
 
+/** Os três níveis abaixo da família: Grupo, Sub grupo e Coleção do grupo. */
+export const BROWSE_LEVELS = 3;
+export type BrowseLevels = [string | null, string | null, string | null];
+
+interface ProductFace {
+  name: string;
+  sku: string | null;
+  photoId: string | null;
+  /** Chaves ("lv:<NOME>") de Grupo, Sub grupo e Coleção do grupo. */
+  levels: BrowseLevels;
+}
+
 interface OriginIndex {
   at: number;
   /** produto → país, linha e família */
@@ -59,6 +71,10 @@ interface OriginIndex {
   lineFamily: Map<string, { key: string; name: string }>;
   /** CODPROD do Sankhya → produto do portal */
   byCode: Map<string, string>;
+  /** produto → nome, SKU, foto e os níveis abaixo da família */
+  faces: Map<string, ProductFace>;
+  /** chave do nível → nome */
+  levelNames: Map<string, string>;
 }
 
 const TTL_MS = 10 * 60 * 1000;
@@ -93,7 +109,15 @@ async function buildIndex(): Promise<OriginIndex> {
     listColumns(
       store,
       "products",
-      ["lineId", "supplierId", "sankhyaRefs", "sankhyaCode"],
+      [
+        "lineId",
+        "supplierId",
+        "sankhyaRefs",
+        "sankhyaCode",
+        "name",
+        "sku",
+        "primaryPhotoDocumentId",
+      ],
       {
         filter: { active: true },
         jsonKeys: { sankhyaRefs: ["CODPARCFORN"] },
@@ -202,6 +226,42 @@ async function buildIndex(): Promise<OriginIndex> {
       "";
     byProduct.set(p.id, { country, lineId: p.lineId, family: familyOf(p) });
   }
+  // Grupo, Sub grupo e Coleção do grupo de cada produto (seletor de
+  // produtos; docs/ORDER_TERMS.md 11.5): sobe na árvore do grupo do produto
+  // (ou da linha) até a família e fica com os 3 níveis logo abaixo dela.
+  // Mesmo nome no mesmo nível = um só (como a família).
+  const levelNames = new Map<string, string>();
+  const lineCode = new Map(
+    lines.map((l) => [
+      l.id,
+      l.sankhyaCode ? String(Number(l.sankhyaCode)) : null,
+    ]),
+  );
+  const faces = new Map<string, ProductFace>();
+  for (const p of products) {
+    if (!byProduct.has(p.id)) continue;
+    const own = p.sankhyaCode
+      ? productFamilies.get(String(Number(p.sankhyaCode)))
+      : null;
+    const chain = groupChain(
+      groups,
+      own?.group ?? lineCode.get(p.lineId) ?? null,
+      own?.code ?? null,
+    );
+    const levels: BrowseLevels = [null, null, null];
+    chain.slice(0, BROWSE_LEVELS).forEach((name, i) => {
+      const key = familyKey(name)?.replace(/^fm:/, "lv:") ?? null;
+      if (!key) return;
+      if (!levelNames.has(key)) levelNames.set(key, name);
+      levels[i] = key;
+    });
+    faces.set(p.id, {
+      name: p.name ?? "",
+      sku: p.sku ?? null,
+      photoId: p.primaryPhotoDocumentId ?? null,
+      levels,
+    });
+  }
   const byCode = new Map<string, string>();
   for (const p of products)
     if (p.sankhyaCode && byProduct.has(p.id))
@@ -213,7 +273,36 @@ async function buildIndex(): Promise<OriginIndex> {
     families,
     lineFamily,
     byCode,
+    faces,
+    levelNames,
   };
+}
+
+/**
+ * Os nomes dos grupos entre a família (fora) e o grupo do produto, de cima
+ * para baixo. Sem a família conhecida, a raiz da árvore faz o papel dela.
+ */
+function groupChain(
+  groups: Map<string, { name: string; parent: string | null }>,
+  leaf: string | null,
+  familyCode: string | null,
+): string[] {
+  const up: string[] = [];
+  let at = leaf;
+  let reached = false;
+  for (let i = 0; at && i < 10; i++) {
+    if (at === familyCode) {
+      reached = true;
+      break;
+    }
+    const g = groups.get(at);
+    if (!g) return [];
+    up.push(g.name);
+    at = g.parent;
+  }
+  // Sem a família pelo código: o último da subida é a raiz (a família).
+  if (!reached) up.pop();
+  return up.reverse();
 }
 
 async function originIndex(): Promise<OriginIndex> {
@@ -327,4 +416,113 @@ export async function originsByCode(
     if (productId && origin) out.set(code, { ...origin, productId });
   }
   return out;
+}
+
+/** Um filtro "visto" (dono, 15/11/2026): Grupo, Sub grupo e Coleção. */
+export type BrowseCombo = BrowseLevels;
+
+export interface BrowseFacetOption {
+  key: string;
+  name: string;
+  products: number;
+  /** Quantos destes já entraram num filtro marcado como visto. */
+  seen: number;
+}
+
+export interface BrowseResult {
+  facets: BrowseFacetOption[][];
+  items: Array<{
+    id: string;
+    name: string;
+    sku: string | null;
+    photoId: string | null;
+    seen: boolean;
+  }>;
+  total: number;
+  page: number;
+  pages: number;
+  /** A família inteira: produtos e quantos já foram vistos. */
+  family: { products: number; seen: number };
+}
+
+const comboMatches = (combo: BrowseCombo, levels: BrowseLevels) =>
+  combo.every((v, i) => !v || levels[i] === v);
+
+/**
+ * Seletor de produtos da Nova solicitação (dono, 15/11/2026;
+ * docs/ORDER_TERMS.md 11.5): os produtos do país e da família do pedido,
+ * filtrados por Grupo, Sub grupo e Coleção do grupo. Cada filtro mostra as
+ * opções que sobram com os outros (as contas andam juntas) e quantos
+ * produtos de cada uma já foram vistos (filtros marcados como vistos).
+ */
+export async function browseOrigin(input: {
+  country: string;
+  family: string;
+  filters: BrowseLevels;
+  seen: BrowseCombo[];
+  page: number;
+  perPage: number;
+}): Promise<BrowseResult> {
+  const index = await originIndex();
+  const inFamily: Array<[string, ProductFace]> = [];
+  for (const [id, o] of index.byProduct) {
+    if (o.country !== input.country || o.family !== input.family) continue;
+    const face = index.faces.get(id);
+    if (face) inFamily.push([id, face]);
+  }
+  const seenIds = new Set(
+    inFamily
+      .filter(([, f]) => input.seen.some((c) => comboMatches(c, f.levels)))
+      .map(([id]) => id),
+  );
+  const facets: BrowseFacetOption[][] = [];
+  for (let level = 0; level < BROWSE_LEVELS; level++) {
+    const counts = new Map<string, { products: number; seen: number }>();
+    for (const [id, f] of inFamily) {
+      const key = f.levels[level];
+      if (!key) continue;
+      // As outras escolhas valem; a deste nível, não (para trocar).
+      const others = input.filters.every(
+        (v, i) => i === level || !v || f.levels[i] === v,
+      );
+      if (!others) continue;
+      const c = counts.get(key) ?? { products: 0, seen: 0 };
+      c.products++;
+      if (seenIds.has(id)) c.seen++;
+      counts.set(key, c);
+    }
+    facets.push(
+      [...counts.entries()]
+        .map(([key, c]) => ({
+          key,
+          name: index.levelNames.get(key) ?? key,
+          ...c,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, "pt")),
+    );
+  }
+  const matching = inFamily
+    .filter(([, f]) => comboMatches(input.filters, f.levels))
+    .sort(
+      ([a, fa], [b, fb]) =>
+        fa.name.localeCompare(fb.name, "pt") || a.localeCompare(b),
+    );
+  const pages = Math.max(1, Math.ceil(matching.length / input.perPage));
+  const page = Math.min(Math.max(1, input.page), pages);
+  return {
+    facets,
+    items: matching
+      .slice((page - 1) * input.perPage, page * input.perPage)
+      .map(([id, f]) => ({
+        id,
+        name: f.name,
+        sku: f.sku,
+        photoId: f.photoId,
+        seen: seenIds.has(id),
+      })),
+    total: matching.length,
+    page,
+    pages,
+    family: { products: inFamily.length, seen: seenIds.size },
+  };
 }

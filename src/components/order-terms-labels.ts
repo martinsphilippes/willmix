@@ -9,6 +9,7 @@ import type { RequestOrderTermsLabels } from "./request-order-terms";
 import type { RequestCustomerContactsLabels } from "./request-customer-contacts";
 import type { ContainerCompositionLabels } from "./container-composition";
 import type { CustomerOrderConfirmLabels } from "./customer-order-confirm";
+import type { ProductBrowserLabels } from "./product-browser";
 
 const record = <K extends string>(
   keys: readonly K[],
@@ -130,5 +131,47 @@ export function compositionLabels(t: Translate): ContainerCompositionLabels {
     cartons: t("composition.cartons", { cartons: "{cartons}" }),
     goTo: t("composition.goTo"),
     intl: t.intl,
+  };
+}
+
+/** Textos do seletor de produtos (lupa; docs/ORDER_TERMS.md 11.5). */
+export function productBrowserLabels(t: Translate): ProductBrowserLabels {
+  return {
+    open: t("productBrowser.open"),
+    title: t("productBrowser.title"),
+    close: t("productBrowser.close"),
+    all: t("productBrowser.all"),
+    seenMark: t("productBrowser.seenMark"),
+    partialSeen: t("productBrowser.partialSeen", { n: "{n}", m: "{m}" }),
+    markSeen: t("productBrowser.markSeen"),
+    unmarkSeen: t("productBrowser.unmarkSeen"),
+    progress: t("productBrowser.progress", { n: "{n}", m: "{m}" }),
+    defaultQty: t("productBrowser.defaultQty"),
+    defaultQtyHint: t("productBrowser.defaultQtyHint"),
+    selectAll: t("productBrowser.selectAll"),
+    select: t("productBrowser.select", { name: "{name}" }),
+    photo: t("productBrowser.photo"),
+    name: t("productBrowser.name"),
+    addOne: t("productBrowser.addOne"),
+    addSelected: t("productBrowser.addSelected", { n: "{n}" }),
+    added: t("productBrowser.added", { n: "{n}" }),
+    inOrder: t("productBrowser.inOrder"),
+    seen: t("productBrowser.seen"),
+    empty: t("productBrowser.empty"),
+    loading: t("productBrowser.loading"),
+    error: t("productBrowser.error"),
+    pageOf: t("productBrowser.pageOf", {
+      page: "{page}",
+      pages: "{pages}",
+      total: "{total}",
+    }),
+    prev: t("productBrowser.prev"),
+    next: t("productBrowser.next"),
+    noPhoto: t("productBrowser.noPhoto"),
+    levels: [
+      t("productBrowser.level1"),
+      t("productBrowser.level2"),
+      t("productBrowser.level3"),
+    ],
   };
 }

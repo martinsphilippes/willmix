@@ -3,6 +3,10 @@
 import { useRef, useState } from "react";
 import { inputClass } from "@/components/ui";
 import { ProductPicker } from "@/components/product-picker";
+import {
+  ProductBrowserButton,
+  type ProductBrowserLabels,
+} from "@/components/product-browser";
 import { useRequestCustomer } from "@/components/request-customer-context";
 import type {
   SearchOption,
@@ -157,6 +161,8 @@ export function RequestProductFields({
     lockedHint?: string;
     /** Escolha o país e o grupo antes do produto (docs/ORDER_TERMS.md). */
     originFirst?: string;
+    /** Seletor de produtos pela lupa (Wellmix, condições do pedido). */
+    browser?: ProductBrowserLabels;
   };
 }) {
   // País de origem e grupo do pedido (docs/ORDER_TERMS.md): a busca só
@@ -455,20 +461,29 @@ export function RequestProductFields({
               {labels.originFirst ?? ""}
             </p>
           ) : null}
-          <ProductPicker
-            key={`${pickerKey}-${originQuery}`}
-            scope="catalog"
-            query={originQuery}
-            disabled={originMissing}
-            inputId={`rp-${prefix}productId`}
-            name={`${prefix}productId`}
-            initial={
-              selected ? { id: selected.id, name: selected.label } : null
-            }
-            ariaLabel={labels.product}
-            labels={pickerLabels}
-            onChoose={(option) => void choose(option)}
-          />
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <ProductPicker
+                key={`${pickerKey}-${originQuery}`}
+                scope="catalog"
+                query={originQuery}
+                disabled={originMissing}
+                inputId={`rp-${prefix}productId`}
+                name={`${prefix}productId`}
+                initial={
+                  selected ? { id: selected.id, name: selected.label } : null
+                }
+                ariaLabel={labels.product}
+                labels={pickerLabels}
+                onChoose={(option) => void choose(option)}
+              />
+            </div>
+            {/* Lupa: o seletor de produtos da família (dono, 15/11/2026;
+                docs/ORDER_TERMS.md 11.5). */}
+            {labels.browser ? (
+              <ProductBrowserButton labels={labels.browser} />
+            ) : null}
+          </div>
           {loadingId ? (
             <p className="text-xs text-zinc-500" data-request-fill-loading>
               {labels.fillLoading}

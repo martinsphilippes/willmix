@@ -165,10 +165,9 @@ export async function paymentEventDates(
     (s) => s.key === "cargo_presence" && s.status !== "rejected",
   );
   const cargoAt = cargo?.validatedAt ?? cargo?.submittedAt ?? null;
-  // "No pedido": a forma vale (escolhida e, com alçada, aprovada). O dia é o
-  // de Brasília, como o "hoje" da trava (todayInBrazil): pelo dia em UTC, uma
-  // forma escolhida depois das 21h ficava com a data de amanhã e a parcela do
-  // dia não travava até a meia-noite seguinte.
+  // "No pedido": a forma vale (escolhida e, com alçada, aprovada). O dia
+  // é o de Brasília, como "hoje" (todayInBrazil): depois das 21h o dia em
+  // UTC já é o seguinte e a parcela vencia um dia depois.
   const planDay =
     plan && plan.status === "approved"
       ? brazilDay(plan.decidedAt ?? plan.chosenAt)
