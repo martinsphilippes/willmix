@@ -690,3 +690,68 @@ describe("capacidade com letras na planilha", () => {
     );
   });
 });
+
+describe("fotos da planilha na tela do parceiro", () => {
+  it("o book que ele subiu mostra a foto e o cartão de cada linha; o da Wellmix, não", async () => {
+    const { PNG_1X1 } = await import("./xlsx-fixture");
+    const { canAccessDocument } = await import("@/lib/services/documents");
+    const store = getStore();
+    // Mesmo leitor da tela da Wellmix: PHOTO na 1ª coluna, cartão na última.
+    const withPhotos = () =>
+      new File(
+        [
+          xlsxBytes(
+            [
+              {
+                name: "BOOKING",
+                cells: [
+                  ["PHOTO", ...HEADER, "SUPPLIER BUSINESS CARD"],
+                  ["", ...row("Fábrica Foto", "PH-1", "1.00"), ""],
+                  ["", ...row("Fábrica Foto", "PH-2", "2.00"), ""],
+                ],
+              },
+            ],
+            {
+              images: [
+                { sheet: 0, row: 1, col: 0, bytes: PNG_1X1, ext: "png" },
+                { sheet: 0, row: 2, col: 0, bytes: PNG_1X1, ext: "png" },
+                {
+                  sheet: 0,
+                  row: 1,
+                  col: HEADER.length + 1,
+                  bytes: PNG_1X1,
+                  ext: "png",
+                },
+              ],
+            },
+          ),
+        ],
+        "fotos.xlsx",
+        {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        },
+      );
+    const own = await svc.launchPartnerBooking(trader, withPhotos());
+    const { items } = (await svc.getPartnerBookingLot(trader, own.id))!;
+    expect(items.map((i) => [!!i.photoDocumentId, !!i.cardDocumentId])).toEqual(
+      [
+        [true, true],
+        [true, false],
+      ],
+    );
+    // E ele abre as fotos (arquivos que ele mesmo subiu).
+    const photo = (await store.get("documents", items[0].photoDocumentId!))!;
+    expect(await canAccessDocument(trader, photo)).toBe(true);
+    // Book subido pela Wellmix com ele de responsável: fotos internas, fora.
+    const internalLot = await internal.createBookingLotFromSheet(
+      admin,
+      withPhotos(),
+    );
+    await internal.setBookingLotPartner(admin, internalLot.id, trader.partyId!);
+    const seen = (await svc.getPartnerBookingLot(trader, internalLot.id))!;
+    expect(seen.items.length).toBe(2);
+    expect(
+      seen.items.every((i) => !i.photoDocumentId && !i.cardDocumentId),
+    ).toBe(true);
+  });
+});

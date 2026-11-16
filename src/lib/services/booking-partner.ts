@@ -96,14 +96,27 @@ const lotView = (lot: BookingLot): PartnerBookingLot => ({
 export type PartnerBookingItem = Pick<
   BookingItem,
   // `sizeText`: o tamanho que veio na coluna da capacidade ("8X10", "A4").
-  "id" | "position" | "sizeText" | BookingItemField
+  // Foto e cartão: as imagens da linha na planilha, como na tela da Wellmix.
+  | "id"
+  | "position"
+  | "sizeText"
+  | "photoDocumentId"
+  | "cardDocumentId"
+  | BookingItemField
 >;
 
-const itemView = (i: BookingItem): PartnerBookingItem => {
+/**
+ * `ownFiles`: a planilha foi subida por quem abre, então as fotos lidas dela
+ * são arquivos dele (abrem em /api/files). Book subido pela Wellmix: as fotos
+ * são internas e ficam de fora.
+ */
+const itemView = (i: BookingItem, ownFiles: boolean): PartnerBookingItem => {
   const view = {
     id: i.id,
     position: i.position,
     sizeText: i.sizeText ?? null,
+    photoDocumentId: ownFiles ? (i.photoDocumentId ?? null) : null,
+    cardDocumentId: ownFiles ? (i.cardDocumentId ?? null) : null,
   } as PartnerBookingItem;
   for (const field of BOOKING_ITEM_FIELDS)
     (view as Record<string, unknown>)[field] = i[field];
@@ -177,7 +190,9 @@ export async function getPartnerBookingLot(
     (id && parties.find((p) => p.id === id)?.name) || null;
   return {
     lot: lotView(lot),
-    items: items.sort((a, b) => a.position - b.position).map(itemView),
+    items: items
+      .sort((a, b) => a.position - b.position)
+      .map((i) => itemView(i, lot.createdByUserId === user.id)),
     partnerName: nameOf(lot.partnerId),
     factoryName: nameOf(lot.supplierId),
   };

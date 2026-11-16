@@ -41,6 +41,7 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { SheetFileInput } from "@/components/sheet-file-input";
+import { BookingItemPhotos } from "./booking-item-photos";
 import {
   PartnerItemInput,
   PartnerItemSelect,
@@ -596,6 +597,7 @@ function PreparingItems({
               <thead>
                 <tr>
                   <th className={th}>#</th>
+                  <th className={th}>{colLabel("photo")}</th>
                   {EDIT_COLUMNS.map(({ field }) => (
                     <th key={field} className={th}>
                       {colLabel(field)}
@@ -613,6 +615,14 @@ function PreparingItems({
                       className={`${td} text-right tabular-nums text-zinc-500`}
                     >
                       {index + 1}
+                    </td>
+                    <td className={td}>
+                      <BookingItemPhotos
+                        photoDocumentId={item.photoDocumentId}
+                        cardDocumentId={item.cardDocumentId}
+                        photoLabel={colLabel("photo")}
+                        cardLabel={t("bookingLots.item.card")}
+                      />
                     </td>
                     {EDIT_COLUMNS.map(({ field, width }) => (
                       <td key={field} className={td}>
@@ -660,6 +670,7 @@ function SentItems({
           <thead>
             <tr>
               <Th className="w-10 text-right">#</Th>
+              <Th>{t("bookingLots.item.col.photo")}</Th>
               <Th>{col("item")}</Th>
               <Th className="text-right">{col("price")}</Th>
               <Th className="text-right">{col("moq")}</Th>
@@ -675,6 +686,14 @@ function SentItems({
               <tr key={i.id} className={rowClass}>
                 <Td className="text-right tabular-nums text-zinc-500">
                   {index + 1}
+                </Td>
+                <Td>
+                  <BookingItemPhotos
+                    photoDocumentId={i.photoDocumentId}
+                    cardDocumentId={i.cardDocumentId}
+                    photoLabel={t("bookingLots.item.col.photo")}
+                    cardLabel={t("bookingLots.item.card")}
+                  />
                 </Td>
                 <Td className="min-w-56">
                   <span className="font-medium text-zinc-900">
