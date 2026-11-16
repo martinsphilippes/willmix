@@ -135,10 +135,23 @@ export function ContainerComposition({
                         data-composition-round-date
                       >
                         {labels.roundDate && dates[r]
-                          ? labels.roundDate.replace(
-                              "{date}",
-                              fmtDate(dates[r]),
-                            )
+                          ? (() => {
+                              // "Recebimento previsto:" numa linha e a data
+                              // na outra: a coluna fica estreita na lateral.
+                              const [before, after = ""] =
+                                labels.roundDate.split("{date}");
+                              return (
+                                <>
+                                  <span className="block">
+                                    {`${before.trimEnd()} `}
+                                  </span>
+                                  <span className="block">
+                                    {fmtDate(dates[r])}
+                                    {after}
+                                  </span>
+                                </>
+                              );
+                            })()
                           : fmtDate(dates[r])}
                       </span>
                     </th>

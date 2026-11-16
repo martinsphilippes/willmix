@@ -256,6 +256,12 @@ test("TS e Venda: as programações falam do recebimento previsto pelo cliente; 
     new RegExp(`^Programação 2 — Recebimento previsto: ${date.source}`),
   );
   await pickDoll(page);
+  // Gera as entregas pelo total de caixas: a composição sai delas.
+  await page
+    .locator(
+      '[data-request-item="0"] [data-rounds-generator] [data-generate-submit]',
+    )
+    .click();
   const card = page.locator('[data-request-item="0"] [data-schedule-item="1"]');
   await expect(card).toContainText("Programação 1");
   await expect(card).toContainText("Recebimento previsto:");
@@ -293,6 +299,11 @@ test("TS e Venda: as programações falam do recebimento previsto pelo cliente; 
       '[data-request-item="0"] [data-rounds-generator] [data-generate-total]',
     )
     .fill("100");
+  await page
+    .locator(
+      '[data-request-item="0"] [data-rounds-generator] [data-generate-submit]',
+    )
+    .click();
   await expect(
     page.locator('[data-composition-round="1"] [data-composition-round-date]'),
   ).toHaveText(new RegExp(`^${date.source}$`));
