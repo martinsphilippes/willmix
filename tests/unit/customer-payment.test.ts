@@ -575,3 +575,23 @@ describe("busca diária dos boletos (dono, 15/11/2026)", () => {
     });
   });
 });
+
+describe("dia do evento no fuso de Brasília (16/11/2026)", () => {
+  it("forma aprovada às 22h30 de Brasília vence no mesmo dia de Brasília, não no dia UTC", async () => {
+    const at = (iso: string) =>
+      svc.paymentEventDates(
+        { id: "sem-pedido", createdAt: "2026-11-15T12:00:00.000Z" } as never,
+        {
+          status: "approved",
+          chosenAt: iso,
+          decidedAt: iso,
+        } as never,
+      );
+    // 22h30 em Brasília = 01h30 UTC do dia seguinte: o dia é 15/11.
+    expect((await at("2026-11-16T01:30:00.000Z")).order).toBe("2026-11-15");
+    // 12h em Brasília: o mesmo dia nos dois fusos.
+    expect((await at("2026-11-15T15:00:00.000Z")).order).toBe("2026-11-15");
+    // Depois da meia-noite de Brasília: já é 16/11.
+    expect((await at("2026-11-16T03:30:00.000Z")).order).toBe("2026-11-16");
+  });
+});
