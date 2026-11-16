@@ -207,7 +207,7 @@ export const SCENES = {
     const p = s.props;
     const n = p.blocks.length;
     return `<div class="top">${head(ctx, p, 0.35, "h3")}</div>
-      <div class="rail"><i class="a a-grow" style="${at(s.cue[1] ?? 1, (s.cue[n] ?? n + 1) - (s.cue[1] ?? 1) + 1.2)};animation-timing-function:linear"></i></div>
+      <div class="rail"><i class="a a-wipe" style="${at(s.cue[1] ?? 1, (s.cue[n] ?? n + 1) - (s.cue[1] ?? 1) + 1.2)};animation-timing-function:linear"></i></div>
       <div class="blocks n${n}" style="--n:${n}">${p.blocks
         .map(
           (

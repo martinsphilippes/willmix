@@ -235,6 +235,20 @@ body {
     transform: scaleX(0);
   }
 }
+/* Revela uma barra longa da esquerda para a direita, já desenhada inteira (com o
+   brilho): esticada a partir de largura zero (a-grow), o brilho ficava com menos
+   de 1 px e piscava nos primeiros quadros da linha da jornada. */
+.a-wipe {
+  animation-name: a-wipe;
+}
+@keyframes a-wipe {
+  from {
+    clip-path: inset(-40px 100% -40px 0);
+  }
+  to {
+    clip-path: inset(-40px -40px -40px 0);
+  }
+}
 .a-draw {
   stroke-dasharray: 1;
   animation-name: a-draw;
