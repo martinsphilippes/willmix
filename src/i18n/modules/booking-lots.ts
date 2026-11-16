@@ -121,7 +121,7 @@ export const pt = {
   "bookingLots.import.submitting": "Lendo a planilha…",
   "bookingLots.import.columns.title": "Colunas lidas",
   "bookingLots.import.columns.body":
-    "Fornecedor (nome, nº da loja, telefone e cidade), data, product number list, SKU/factory item code e description. Com * os obrigatórios para fechar o book: FOB/EXW*, coin US$/RMB*, price*, qty/box*, qty/inner*, N.W./pc*, G.W./pc*, CBM*, size (cm) length*, width* e height*, capacity (ml)*, package*, material* e MOQ*.",
+    "Fornecedor (nome, nº da loja, telefone e cidade), data, product number list, SKU/factory item code e description. Com * os obrigatórios para fechar o book: FOB/EXW*, coin US$/RMB*, price*, qty/box*, N.W./pc*, G.W./pc*, CBM*, size (cm) length*, width* e height*, capacity (ml)*, package*, material* e MOQ*. Qty/inner é opcional.",
   "bookingLots.import.columns.extra":
     "Também são guardados: color assortment, function/battery/110/220, purchase schedule, departure interval in days, purchase qty in pcs, foto e supplier business card, e qualquer outra coluna da planilha (só como informação, fora da tela).",
   "bookingLots.import.after":
@@ -407,7 +407,7 @@ export const en: typeof pt = {
   "bookingLots.import.submitting": "Reading the spreadsheet…",
   "bookingLots.import.columns.title": "Columns read",
   "bookingLots.import.columns.body":
-    "Supplier (name, store no., phone and city), date, product number list, SKU/factory item code and description. Marked * are required to close the book: FOB/EXW*, coin US$/RMB*, price*, qty/box*, qty/inner*, N.W./pc*, G.W./pc*, CBM*, size (cm) length*, width* and height*, capacity (ml)*, package*, material* and MOQ*.",
+    "Supplier (name, store no., phone and city), date, product number list, SKU/factory item code and description. Marked * are required to close the book: FOB/EXW*, coin US$/RMB*, price*, qty/box*, N.W./pc*, G.W./pc*, CBM*, size (cm) length*, width* and height*, capacity (ml)*, package*, material* and MOQ*. Qty/inner is optional.",
   "bookingLots.import.columns.extra":
     "Also kept: color assortment, function/battery/110/220, purchase schedule, departure interval in days, purchase qty in pcs, photo and supplier business card, and any other column of the spreadsheet (as information only, off screen).",
   "bookingLots.import.after":
@@ -686,7 +686,7 @@ export const zh: typeof pt = {
   "bookingLots.import.submitting": "正在读取表格…",
   "bookingLots.import.columns.title": "读取的列",
   "bookingLots.import.columns.body":
-    "供应商（名称、店铺号、电话和城市）、日期、product number list、SKU/factory item code 和 description。带 * 的为关闭 Book 的必填项：FOB/EXW*、coin US$/RMB*、price*、qty/box*、qty/inner*、N.W./pc*、G.W./pc*、CBM*、size (cm) length*、width* 和 height*、capacity (ml)*、package*、material* 和 MOQ*。",
+    "供应商（名称、店铺号、电话和城市）、日期、product number list、SKU/factory item code 和 description。带 * 的为关闭 Book 的必填项：FOB/EXW*、coin US$/RMB*、price*、qty/box*、N.W./pc*、G.W./pc*、CBM*、size (cm) length*、width* 和 height*、capacity (ml)*、package*、material* 和 MOQ*。qty/inner 为选填。",
   "bookingLots.import.columns.extra":
     "同时保存：color assortment、function/battery/110/220、purchase schedule、departure interval in days、purchase qty in pcs、照片和 supplier business card，以及表格中的其他任何列（仅作信息，不在页面显示）。",
   "bookingLots.import.after":

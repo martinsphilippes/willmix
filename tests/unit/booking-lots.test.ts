@@ -72,7 +72,7 @@ const line = (
   "USD",
   extra.price ?? "1.25",
   "48",
-  "12",
+  extra.inner ?? "12",
   "0.3",
   "0.35",
   "0.12",
@@ -267,6 +267,77 @@ describe("booking por planilha", () => {
     );
   });
 
+  /*
+   * INNER (peças por caixa inner) opcional (dono, 16/11/2026): sem asterisco,
+   * em branco fica sem valor (nulo, nunca zero) e não trava salvar nem fechar;
+   * preenchido, segue as regras de número.
+   */
+  it("INNER em branco: fica sem valor, não falta e o book fecha", async () => {
+    const store = getStore();
+    const lot = await svc.createBookingLotFromSheet(
+      admin,
+      file(
+        [
+          line("1", "IN-01", "Cup without inner", { inner: "" }),
+          line("2", "IN-02", "Cup with inner"),
+        ],
+        "booking-inner.xlsx",
+      ),
+    );
+    const items = await store.list("booking_items", {
+      filter: { lotId: lot.id },
+    });
+    const blank = items.find((i) => i.factoryItemCode === "IN-01")!;
+    const filled = items.find((i) => i.factoryItemCode === "IN-02")!;
+    // Da planilha: em branco fica sem valor (nunca zero).
+    expect(blank.innerQty).toBeNull();
+    expect(filled.innerQty).toBe(12);
+    expect(lib.isRequiredItemField("innerQty")).toBe(false);
+    expect(lib.missingItemFields(blank)).not.toContain("innerQty");
+
+    // Apagar o INNER grava nulo; preenchido, as regras de número continuam.
+    const cleared = await svc.setBookingItemField(
+      admin,
+      filled.id,
+      "innerQty",
+      "",
+    );
+    expect(cleared.innerQty).toBeNull();
+    for (const bad of ["0", "-3", "abc"])
+      await expect(
+        svc.setBookingItemField(admin, filled.id, "innerQty", bad),
+      ).rejects.toThrow("booking_item_invalid");
+    expect(
+      (await svc.setBookingItemField(admin, filled.id, "innerQty", "24"))
+        .innerQty,
+    ).toBe(24);
+
+    // Fecha com o INNER em branco num dos itens.
+    if (!lot.supplierId)
+      await svc.registerBookingLotSupplier(admin, lot.id, {
+        name: lot.supplierHint!.name!,
+        storeNumber: lot.supplierHint!.store,
+        phone: lot.supplierHint!.phone,
+        city: lot.supplierHint!.city,
+        country: null,
+      });
+    const { setBookingItemsNcm } = await import("@/lib/services/booking-ncm");
+    await setBookingItemsNcm(
+      admin,
+      items.map((i) => i.id),
+      "7013.37.00",
+    );
+    const pending = lib.bookingLotPending(
+      (await store.get("booking_lots", lot.id))!,
+      await store.list("booking_items", { filter: { lotId: lot.id } }),
+    );
+    expect(lib.bookingLotReady(pending)).toBe(true);
+    const closed = await svc.closeBookingLot(admin, lot.id, null);
+    expect(closed.status).toBe("closed");
+    expect((await store.get("booking_items", blank.id))!.innerQty).toBeNull();
+    expect((await store.get("booking_items", filled.id))!.innerQty).toBe(24);
+  });
+
   it("cliente não sobe booking", async () => {
     await expect(
       svc.createBookingLotFromSheet(joao, file([line("1", "X", "Y")])),
@@ -282,6 +353,12 @@ describe("regras puras", () => {
     expect(lib.readBookingItemValue("currency", "cny")).toBe("RMB");
     expect(lib.readBookingItemValue("material", "  ABS  ")).toBe("ABS");
     expect(lib.readBookingItemValue("price", "")).toBeNull();
+    // INNER: vazio é nulo (nunca zero); preenchido, número inteiro positivo.
+    expect(lib.readBookingItemValue("innerQty", "")).toBeNull();
+    expect(lib.readBookingItemValue("innerQty", "  ")).toBeNull();
+    expect(lib.readBookingItemValue("innerQty", "12")).toBe(12);
+    expect(() => lib.readBookingItemValue("innerQty", "0")).toThrow();
+    expect(() => lib.readBookingItemValue("innerQty", "doze")).toThrow();
     expect(() => lib.readBookingItemValue("price", "0")).toThrow();
     expect(() => lib.readBookingItemValue("incoterm", "CIF")).toThrow();
   });
