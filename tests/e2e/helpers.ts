@@ -537,11 +537,18 @@ export async function fillOrderTerms(
     caller?: "customer" | "wellmix";
     country?: string;
     family?: string;
+    /**
+     * Tipo de operação já marcado: TS (Encomendas e a tela TS - Trading
+     * Sales) ou Venda (a tela Venda - Encomenda; docs/REQUEST_SCREENS.md).
+     */
+    operation?: "ts" | "sale";
   } = {},
 ) {
   const terms = page.locator("[data-order-terms]");
   await expect(
-    terms.locator('[data-order-terms-operation-option="ts"]'),
+    terms.locator(
+      `[data-order-terms-operation-option="${options.operation ?? "ts"}"]`,
+    ),
   ).toBeChecked();
   await terms
     .locator(`[data-order-terms-format-option="${options.format ?? "wd"}"]`)
