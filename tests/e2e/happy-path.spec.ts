@@ -1650,12 +1650,16 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   await expect(
     page.locator('[data-request-item="0"] [role="status"]'),
   ).toBeVisible();
-  // Produto do catálogo (dono, 15/11/2026): descrição e especificação só
-  // para leitura, à direita da busca; nada da ficha se digita.
+  // Produto do catálogo: Produto (Nome), Descrição e Especificação saíram
+  // da tela (dono, 16/11/2026); os textos da ficha vão escondidos.
   await expect(
     page.locator('[data-request-item="0"] [data-request-product-locked]'),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(page.locator('textarea[name="p0.description"]')).toHaveCount(0);
+  await expect(page.locator('input[name="p0.description"]')).toHaveAttribute(
+    "type",
+    "hidden",
+  );
   // Programação do pedido (dono, 15/11/2026): 3 programações a cada 30
   // dias, as mesmas datas para os dois produtos. A jarra não tem caixa
   // master no cadastro: as peças de cada data se digitam (334 + 333 + 340 =
@@ -1675,6 +1679,20 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   ).toContainText("1.007");
   await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("1007");
   await page.click("[data-add-request-item]");
+  // O produto anterior se recolhe na tabela "Produtos no pedido", abaixo da
+  // ficha nova (dono, 16/11/2026), completo e com a quantidade.
+  await expect(page.locator('[data-request-item="0"]')).toBeHidden();
+  const row0 = page.locator('[data-request-items-row="0"]');
+  await expect(row0).toHaveAttribute(
+    "data-request-items-row-state",
+    "complete",
+  );
+  await expect(row0).toContainText("1.007");
+  // Abre e recolhe de novo pela tabela.
+  await page.click('[data-request-items-expand="0"]');
+  await expect(page.locator('[data-request-item="0"]')).toBeVisible();
+  await page.click('[data-request-item-collapse="0"]');
+  await expect(page.locator('[data-request-item="0"]')).toBeHidden();
   await page.check('[data-request-item="1"] input[name="p1.sourcingDemand"]');
   // Fora do catálogo: os textos se digitam, como sempre.
   await page.fill('input[name="p1.productName"]', "Copo de vidro");
@@ -1686,8 +1704,16 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   await page.fill('input[name="p1.schedule.qty.2"]', "50");
   await page.fill('input[name="p1.schedule.qty.3"]', "50");
   await expect(page.locator('input[name="p1.quantity"]')).toHaveValue("200");
-  // Terceira linha adicionada e removida: não vira solicitação.
+  // Terceira linha adicionada (as duas de antes se recolhem) e removida:
+  // não vira solicitação. A linha nova, vazia, fica marcada incompleta.
   await page.click("[data-add-request-item]");
+  await expect(page.locator('[data-request-items-row="1"]')).toHaveAttribute(
+    "data-request-items-row-state",
+    "complete",
+  );
+  await expect(
+    page.locator('[data-request-item="2"] [data-request-items-incomplete]'),
+  ).toBeVisible();
   await page.getByRole("button", { name: /Remover: Produto 3/ }).click();
   await page.getByRole("button", { name: /enviar|send/i }).click();
   // O lote abre numa página só, com os dois produtos dentro.

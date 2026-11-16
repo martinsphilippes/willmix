@@ -3,6 +3,19 @@
  * cada produto vira uma solicitação do mesmo lote): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "reqBatch.inOrder": "Produtos no pedido",
+  "reqBatch.inOrderHint": "Os produtos já preenchidos ficam recolhidos aqui. Abra um para revisar ou completar.",
+  "reqBatch.expand": "Abrir",
+  "reqBatch.collapse": "Recolher",
+  "reqBatch.colProduct": "Produto",
+  "reqBatch.colVariant": "Variação",
+  "reqBatch.colQuantity": "Quantidade",
+  "reqBatch.colStatus": "Preenchimento",
+  "reqBatch.complete": "Completo",
+  "reqBatch.incomplete": "Incompleto",
+  "reqBatch.incompleteHint": "Faltam dados neste produto: abra para completar antes de enviar.",
+  "reqBatch.outside": "Fora do catálogo",
+  "reqBatch.noProduct": "Produto não escolhido",
   "reqBatch.products": "Produtos",
   "reqBatch.productN": "Produto {n}",
   "reqBatch.add": "Adicionar outro produto",
@@ -73,6 +86,19 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "reqBatch.inOrder": "Products in the order",
+  "reqBatch.inOrderHint": "Products already filled in are collapsed here. Open one to review or complete it.",
+  "reqBatch.expand": "Open",
+  "reqBatch.collapse": "Collapse",
+  "reqBatch.colProduct": "Product",
+  "reqBatch.colVariant": "Variant",
+  "reqBatch.colQuantity": "Quantity",
+  "reqBatch.colStatus": "Completion",
+  "reqBatch.complete": "Complete",
+  "reqBatch.incomplete": "Incomplete",
+  "reqBatch.incompleteHint": "This product is missing data: open it and complete before sending.",
+  "reqBatch.outside": "Not in catalog",
+  "reqBatch.noProduct": "No product chosen",
   "reqBatch.products": "Products",
   "reqBatch.productN": "Product {n}",
   "reqBatch.add": "Add another product",
@@ -144,6 +170,19 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "reqBatch.inOrder": "订单中的产品",
+  "reqBatch.inOrderHint": "已填写的产品在此收起。展开即可检查或补充。",
+  "reqBatch.expand": "展开",
+  "reqBatch.collapse": "收起",
+  "reqBatch.colProduct": "产品",
+  "reqBatch.colVariant": "规格",
+  "reqBatch.colQuantity": "数量",
+  "reqBatch.colStatus": "填写情况",
+  "reqBatch.complete": "完整",
+  "reqBatch.incomplete": "不完整",
+  "reqBatch.incompleteHint": "此产品缺少数据：请展开并在发送前补全。",
+  "reqBatch.outside": "非目录产品",
+  "reqBatch.noProduct": "未选择产品",
   "reqBatch.products": "产品",
   "reqBatch.productN": "产品 {n}",
   "reqBatch.add": "添加另一个产品",
