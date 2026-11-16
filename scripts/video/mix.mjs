@@ -1,7 +1,7 @@
 /*
  * Fecha um vídeo: junta a vinheta de abertura do portal, o filme renderizado
  * (out/tmp/<vídeo>.<idioma>.film.mp4) e o áudio (voz + trilha).
- *   node mix.mjs <vídeo> <idioma> [--audio] [--audio-only]
+ *   node mix.mjs <vídeo> <idioma> [--audio] [--audio-only] [--crf N] [--dir pasta]
  * --audio refaz a mixagem; --audio-only para depois dela (sem juntar a imagem).
  * Áudio: voz com compressão leve; a trilha abaixa sozinha sob a voz (ducking)
  * e o conjunto sai em −16 LUFS (docs/videos/GUIA.md, seção 3). O áudio é o
@@ -9,7 +9,7 @@
  * Saída: out/wellmix-<vídeo>-<idioma>.mp4 (1920 × 1080, 60 fps, H.264 + AAC).
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT } from "./lib.mjs";
 
@@ -104,33 +104,42 @@ if (process.argv.includes("--audio-only")) process.exit(0);
 /* 2. Vinheta + filme + áudio. A vinheta é a do portal, sem alteração. */
 const intro = join(ROOT, "../../public/intro/wellmix-intro.mp4");
 const film = join(out, "tmp", `${video}.${lang}.film.mp4`);
-// Começo refeito (render.mjs --to N --name head): entra no lugar dos primeiros quadros do filme.
-const head = join(out, "tmp", `${video}.${lang}.head.mp4`);
-// Só vale se for mais novo que o filme: um filme renderizado depois dele já
-// traz o começo certo.
-const patched =
-  existsSync(head) && statSync(head).mtimeMs > statSync(film).mtimeMs;
-const headFrames = patched
-  ? Number(
-      spawnSync(
-        "ffprobe",
-        [
-          "-v",
-          "error",
-          "-count_packets",
-          "-select_streams",
-          "v:0",
-          "-show_entries",
-          "stream=nb_read_packets",
-          "-of",
-          "csv=p=0",
-          head,
-        ],
-        { encoding: "utf8" },
-      ).stdout,
-    )
-  : 0;
-const final = join(out, `wellmix-${video}-${lang}.mp4`);
+// Trechos refeitos (render.mjs --from A --to B --patch): cada um entra no
+// lugar dos mesmos quadros do filme. Só valem os mais novos que o filme (um
+// filme renderizado depois já traz a cena certa).
+const frames = (file) =>
+  Number(
+    spawnSync(
+      "ffprobe",
+      [
+        "-v",
+        "error",
+        "-count_packets",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "stream=nb_read_packets",
+        "-of",
+        "csv=p=0",
+        file,
+      ],
+      { encoding: "utf8" },
+    ).stdout,
+  );
+const patches = readdirSync(join(out, "tmp"))
+  .map((f) => new RegExp(`^${video}\\.${lang}\\.patch\\.(\\d+)\\.mp4$`).exec(f))
+  .filter(Boolean)
+  .map((m) => ({ file: join(out, "tmp", m[0]), from: Number(m[1]) }))
+  .filter((p) => statSync(p.file).mtimeMs > statSync(film).mtimeMs)
+  .map((p) => ({ ...p, to: p.from + frames(p.file) }))
+  .sort((x, y) => x.from - y.from);
+// --dir <pasta>: grava o vídeo pronto em out/<pasta>/ (para não escrever por
+// cima de um arquivo que ainda está sendo conferido).
+const dir = process.argv.includes("--dir")
+  ? join(out, process.argv[process.argv.indexOf("--dir") + 1])
+  : out;
+mkdirSync(dir, { recursive: true });
+const final = join(dir, `wellmix-${video}-${lang}.mp4`);
 // --chroma-fix: só para filmes renderizados antes da correção de arredondamento
 // de render.mjs (15/11/2026): devolve o nível de croma que faltava nos neutros.
 const chroma = process.argv.includes("--chroma-fix")
@@ -139,6 +148,50 @@ const chroma = process.argv.includes("--chroma-fix")
 const crf = process.argv.includes("--crf")
   ? process.argv[process.argv.indexOf("--crf") + 1]
   : "18";
+// Sequência de imagem: vinheta, depois o filme com os trechos refeitos no lugar.
+const FMT = "fps=60,format=yuv420p,setsar=1";
+const parts = ["[i]"];
+const graph = [
+  "[0:v]fps=60,scale=1920:1080:in_color_matrix=bt709:out_color_matrix=bt709,format=yuv420p,setsar=1[i]",
+];
+if (!patches.length) {
+  graph.push(`[1:v]fps=60,${chroma}format=yuv420p,setsar=1[f]`);
+  parts.push("[f]");
+} else {
+  // O filme entra uma vez e é repartido nos pedaços que ficam entre os trechos.
+  const keep = [];
+  let at = 0;
+  for (const p of patches) {
+    if (p.from < at)
+      throw new Error(`trechos refeitos se sobrepõem em ${p.file}`);
+    if (p.from > at) keep.push({ from: at, to: p.from });
+    keep.push({ patch: p });
+    at = p.to;
+  }
+  keep.push({ from: at, to: null });
+  const cuts = keep.filter((k) => !k.patch);
+  graph.push(
+    `[1:v]fps=60,${chroma}format=yuv420p,setsar=1,split=${cuts.length}${cuts.map((_, i) => `[c${i}]`).join("")}`,
+  );
+  let c = 0;
+  keep.forEach((k) => {
+    if (k.patch) {
+      const n = patches.indexOf(k.patch);
+      graph.push(`[${3 + n}:v]${FMT}[p${n}]`);
+      parts.push(`[p${n}]`);
+    } else {
+      graph.push(
+        `[c${c}]trim=start_frame=${k.from}${k.to == null ? "" : `:end_frame=${k.to}`},setpts=PTS-STARTPTS[s${c}]`,
+      );
+      parts.push(`[s${c}]`);
+      c++;
+    }
+  });
+  console.log(
+    `trechos refeitos: ${patches.map((p) => `${(p.from / 60).toFixed(2)}–${(p.to / 60).toFixed(2)} s`).join(", ")}`,
+  );
+}
+graph.push(`${parts.join("")}concat=n=${parts.length}:v=1:a=0[v]`);
 ff([
   "-i",
   intro,
@@ -146,12 +199,9 @@ ff([
   film,
   "-i",
   mix,
-  ...(patched ? ["-i", head] : []),
+  ...patches.flatMap((p) => ["-i", p.file]),
   "-filter_complex",
-  "[0:v]fps=60,scale=1920:1080:in_color_matrix=bt709:out_color_matrix=bt709,format=yuv420p,setsar=1[i];" +
-    (patched
-      ? `[3:v]fps=60,format=yuv420p,setsar=1[h];[1:v]fps=60,trim=start_frame=${headFrames},setpts=PTS-STARTPTS,${chroma}format=yuv420p,setsar=1[f];[i][h][f]concat=n=3:v=1:a=0[v]`
-      : `[1:v]fps=60,${chroma}format=yuv420p,setsar=1[f];[i][f]concat=n=2:v=1:a=0[v]`),
+  graph.join(";"),
   "-map",
   "[v]",
   "-map",

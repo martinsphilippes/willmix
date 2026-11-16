@@ -80,8 +80,7 @@ export const VIDEOS = {
         id: "chaos",
         type: "chaos",
         props: {
-          title:
-            "Different inboxes.\nDifferent spreadsheets.\nDifferent *chats.*",
+          title: "Different inboxes,\nspreadsheets\nand *chats.*",
         },
         say: [
           {
@@ -209,7 +208,7 @@ export const VIDEOS = {
         type: "focus",
         props: {
           kicker: "Control Tower",
-          title: "What is late.\nWhat is next.\n*Who is responsible.*",
+          title: "What is late.\nWhat is next.\n*Who owns it.*",
           shots: [{ shot: "tower", ox: "62%", oy: "34%", zoom: 1.12 }],
         },
         say: [
@@ -243,6 +242,9 @@ export const VIDEOS = {
   /* ────────────────────────── Vídeo completo ────────────────────────── */
   full: {
     title: "Wellmix Portal · What each role can do",
+    // Telas do portal em inglês, com a base de demonstração em inglês
+    // (data-en.mjs + shots.mjs --out intl); a legenda continua em pt ou zh.
+    shots: "intl",
     scenes: [
       {
         id: "route",
@@ -272,8 +274,7 @@ export const VIDEOS = {
         id: "chaos",
         type: "chaos",
         props: {
-          title:
-            "Different inboxes.\nDifferent spreadsheets.\nDifferent *chats.*",
+          title: "Different inboxes,\nspreadsheets\nand *chats.*",
         },
         say: [
           {
@@ -363,19 +364,29 @@ export const VIDEOS = {
               name: "Sales",
               steps: ["Offers", "Sales orders", "Delivery schedule"],
             },
+            {
+              icon: "wallet",
+              name: "Finance",
+              steps: [
+                "Supplier payables",
+                "Customer receivables",
+                "Cash flow",
+                "Commissions",
+              ],
+            },
           ],
           footer: [
             { icon: "user-cog", label: "An owner" },
             { icon: "clock", label: "A deadline" },
             { icon: "list-checks", label: "A status" },
           ],
-          footerC: 6,
+          footerC: 7,
         },
         say: [
           {
-            en: "The portal follows the import from start to finish, in five blocks.",
-            pt: "O portal acompanha a importação|do início ao fim, em cinco blocos.",
-            zh: "门户分五个板块，|全程跟进进口流程。",
+            en: "The portal follows the import from start to finish, in six blocks.",
+            pt: "O portal acompanha a importação|do início ao fim, em seis blocos.",
+            zh: "门户分六个板块，|全程跟进进口流程。",
           },
           {
             en: "Book: supplier price books, item selection, negotiation and samples.",
@@ -398,9 +409,14 @@ export const VIDEOS = {
             zh: "交付：清关、运输和收货。",
           },
           {
-            en: "And Sales: offers, sales orders and the delivery schedule.",
-            pt: "E Vendas: ofertas, ordens de venda|e agenda de entregas.",
+            en: "Sales: offers, sales orders and the delivery schedule.",
+            pt: "Vendas: ofertas, ordens de venda|e agenda de entregas.",
             zh: "销售：报价、销售订单|和送货日程。",
+          },
+          {
+            en: "And Finance: supplier payables, customer receivables, cash flow and commissions.",
+            pt: "E Financeiro: contas a pagar, a receber,|fluxo de caixa e comissões.",
+            zh: "还有财务：供应商应付、|客户应收、现金流和佣金。",
           },
           {
             en: "Every step has an owner, a deadline and a status.",
@@ -421,7 +437,7 @@ export const VIDEOS = {
           oy: "18%",
           bullets: [
             { t: "<b>Places orders</b> and follows every stage", c: 0, d: 1.4 },
-            { t: "<b>Payment plan</b>, instalments and bank slips", c: 1 },
+            { t: "<b>Payment plan</b>, installments and bank slips", c: 1 },
             { t: "<b>Confirms receipt</b> and rates the purchase", c: 2 },
           ],
         },
@@ -508,13 +524,17 @@ export const VIDEOS = {
               c: 1,
             },
             { t: "Delivers the <b>final art with the seal</b>", c: 2 },
+            {
+              t: "<b>Factory files</b> arrive as tasks; questions go to Wellmix by chat",
+              c: 3,
+            },
           ],
         },
         say: [
           {
-            en: "The art agency receives the die cut and the product photos in its workdesk.",
-            pt: "A agência de arte recebe a faca e as fotos|do produto na sua mesa de trabalho.",
-            zh: "设计公司在工作台收到|刀模和产品照片。",
+            en: "The art agency receives the factory's die cut and product photos in its workdesk.",
+            pt: "A agência de arte recebe da fábrica a faca|e as fotos do produto na mesa de trabalho.",
+            zh: "设计公司在工作台收到|工厂的刀模和产品照片。",
           },
           {
             en: "It uploads the artwork and gets feedback with a clear reason.",
@@ -525,6 +545,14 @@ export const VIDEOS = {
             en: "Then it delivers the final art with the certification seal.",
             pt: "Depois entrega a arte final|com o selo de certificação.",
             zh: "最后交付带认证标志的终稿。",
+          },
+          {
+            // Não há chat direto entre agência e fornecedor: cada empresa
+            // conversa com a Wellmix; o que passa de um para o outro são as
+            // pendências e os arquivos do pedido (docs/PURCHASE_ORDER.md).
+            en: "Agency in Brazil, factory abroad: files and tasks flow through the portal, and each side chats with Wellmix. No e-mails.",
+            pt: "Agência no Brasil, fábrica no exterior:||arquivos e pendências correm pelo portal,||e cada um conversa com a Wellmix.|Sem e-mails.",
+            zh: "设计公司在巴西，工厂在海外：||文件和待办都通过门户流转，||各自与 Wellmix 对话，|无需邮件。",
           },
         ],
       },
@@ -564,8 +592,70 @@ export const VIDEOS = {
         ],
       },
       {
+        // Inspeção pelo celular (pedido do dono, 15/11/2026): telas reais do
+        // passo Produção > Inspeção com o login do fornecedor, capturadas por
+        // inspection/flow.mjs. `tap` é o ponto tocado (pixels da janela de
+        // 390 × 844, de out/insp/state.json); a tela seguinte entra em seguida.
+        id: "inspect",
+        type: "mobile",
+        post: 0.85,
+        props: {
+          role: "Supplier · factory floor",
+          icon: "smartphone",
+          title: "Inspection, *straight from the phone*",
+          screens: [
+            { shot: "m-insp-1", tap: [132, 378] },
+            { shot: "m-insp-2", c: 1, d: 1.5, tap: [132, 490] },
+            { shot: "m-insp-3", c: 2, d: 0.5, tap: [194, 602] },
+            { shot: "m-insp-4", c: 3, d: -0.2 },
+          ],
+          desk: {
+            before: "insp-desk-0",
+            shot: "insp-desk",
+            c: 3,
+            d: 0.35,
+            ox: "46%",
+            oy: "45%",
+            zoom0: 1.45,
+            zoom: 1.6,
+            icon: "eye",
+            label: "What Wellmix sees",
+          },
+          bullets: [
+            { t: "<b>Photos</b> taken on the spot, saved at once", c: 1 },
+            { t: "<b>Measured weight</b> and sizes typed in", c: 2 },
+            { t: "<b>Wellmix sees</b> every item on the order", c: 3 },
+          ],
+        },
+        say: [
+          {
+            en: "On the factory floor, the inspection is done from a phone.",
+            pt: "No chão de fábrica, a inspeção|é feita pelo celular.",
+            zh: "在工厂车间，|用手机就能完成验货。",
+          },
+          {
+            en: "The supplier takes each photo, and the portal saves it at once.",
+            pt: "O fornecedor tira cada foto,|e o portal salva na hora.",
+            zh: "供应商拍下每张照片，|门户即时保存。",
+          },
+          {
+            en: "Then types the measured weight and taps send.",
+            pt: "Depois digita o peso medido|e toca em enviar.",
+            zh: "然后输入实测重量，|点击发送。",
+          },
+          {
+            // Sem "pronto para aprovar": a aprovação do SKU ainda pede o vídeo
+            // da produção e a declaração do fornecedor (docs/PRODUCTION.md).
+            en: "On the other side, Wellmix sees every item on the order.",
+            pt: "Do outro lado, a Wellmix vê|cada item no pedido.",
+            zh: "另一边，Wellmix|在订单中看到每一项。",
+          },
+        ],
+      },
+      {
         id: "marketing",
         type: "role",
+        cls: "flip",
         props: {
           role: "Marketing agency · at origin",
           icon: "camera",
@@ -611,7 +701,7 @@ export const VIDEOS = {
             {
               role: "Shipping line",
               icon: "ship",
-              title: "Freight quotes, bill of lading, shipment",
+              title: "Freight quotes, BL, shipment",
               shot: "line",
               oy: "10%",
               c: 1,
@@ -625,9 +715,10 @@ export const VIDEOS = {
             zh: "货运代理登记订舱，|并跟进起运地的货柜。",
           },
           {
-            en: "The shipping line answers freight requests, issues the bill of lading and confirms the shipment.",
+            en: "The shipping line answers freight requests, issues the BL and confirms the shipment.",
+            say: "The shipping line answers freight requests, issues the B L, and confirms the shipment.",
             pt: "A companhia marítima responde|às cotações de frete,||emite o BL e confirma o embarque.",
-            zh: "船公司回复运费询价，||签发提单并确认出运。",
+            zh: "船公司回复运费询价，||签发提单（BL）并确认出运。",
           },
         ],
       },
@@ -639,7 +730,7 @@ export const VIDEOS = {
             {
               role: "Comex advisory",
               icon: "briefcase",
-              title: "Licences, funds and import declaration",
+              title: "Licenses, funds and import declaration",
               shot: "comex",
               oy: "40%",
               c: 0,
@@ -854,51 +945,43 @@ export const VIDEOS = {
         ],
       },
       {
-        id: "comms",
-        type: "comms",
+        // O chat do portal no lugar dos e-mails (pedido do dono, 15/11/2026):
+        // a tela real de Mensagens, com a conversa de seed-chat.mjs.
+        id: "chat",
+        type: "chat",
         chapter: "One conversation",
+        post: 0.85,
         props: {
           kicker: "Communication",
-          title: "Everything stays\n*inside the portal*",
-          shot: "order",
-          bubbles: [
-            {
-              who: "Customer",
-              icon: "store",
-              text: "Can we add 500 units to this order?",
-              side: "l",
-              c: 1,
-            },
-            {
-              who: "Supplier",
-              icon: "factory",
-              text: "样品视频已上传，请查看。",
-              side: "r",
-              c: 2,
-            },
-            {
-              who: "Wellmix",
-              icon: "users",
-              text: "Artwork approved. Contract ready to sign.",
-              side: "l",
-              c: 2,
-              d: 1.6,
-            },
+          title: "E-mail threads\n*end here.*",
+          shot: "messages",
+          phone: "m-messages",
+          phoneAt: { c: 2, d: 1.2 },
+          ox: "100%",
+          oy: "50%",
+          zoom0: 1.14,
+          zoom: 1.3,
+          gone: [
+            { icon: "mail", label: "E-mail threads", c: 1 },
+            { icon: "message-circle", label: "Chat groups", c: 1 },
+            { icon: "file-spreadsheet", label: "Loose files", c: 1 },
           ],
-          cards: [
-            { icon: "bell", label: "Notifications", value: "3 new", c: 3 },
+          chips: [
             {
-              icon: "inbox",
-              label: "My tasks",
-              value: "5 waiting",
-              c: 3,
-              d: 1.4,
+              icon: "messages-square",
+              label: "One chat per company, with Wellmix",
+              c: 2,
             },
             {
-              icon: "clock",
-              label: "Reply owed by",
-              value: "Supplier · 1 business day",
-              c: 4,
+              icon: "list-checks",
+              label: "Organized by order and by item",
+              c: 2,
+              d: 2.0,
+            },
+            {
+              icon: "paperclip",
+              label: "Photos, videos and files in the thread",
+              c: 3,
             },
           ],
         },
@@ -909,9 +992,14 @@ export const VIDEOS = {
             zh: "所有沟通都在门户内进行。",
           },
           {
-            en: "Each company has one conversation with Wellmix, organised by order and by item.",
-            pt: "Cada empresa tem uma só conversa|com a Wellmix,||organizada por pedido e por item.",
-            zh: "每家公司与 Wellmix|只有一个会话，||按订单和产品分类。",
+            en: "The scattered e-mail threads end here.",
+            pt: "Os e-mails espalhados|terminam aqui.",
+            zh: "分散的邮件往来|到此为止。",
+          },
+          {
+            en: "Each company has one chat with Wellmix, organised by order and by item.",
+            pt: "Cada empresa tem um só chat|com a Wellmix,||organizado por pedido e por item.",
+            zh: "每家公司与 Wellmix|只有一个对话，||按订单和商品分类。",
           },
           {
             en: "Photos, videos and files stay attached to the subject they belong to.",
@@ -919,14 +1007,57 @@ export const VIDEOS = {
             zh: "照片、视频和文件|都归在对应的主题下。",
           },
           {
+            en: "Nothing gets lost. No mess.",
+            pt: "Nada se perde. Sem bagunça.",
+            zh: "不遗漏，不混乱。",
+          },
+        ],
+      },
+      {
+        id: "comms",
+        type: "focus",
+        cls: "flip",
+        post: 0.75,
+        props: {
+          kicker: "Tasks and notifications",
+          title: "Everyone knows *what is waiting*",
+          shots: [
+            // Pendências do despachante: lista limpa em inglês (as pendências
+            // internas ainda têm rótulos sem tradução no portal).
+            { shot: "broker", ox: "55%", oy: "18%", zoom: 1.12, c: 0 },
+            {
+              shot: "messages-control",
+              ox: "55%",
+              oy: "22%",
+              zoom: 1.12,
+              c: 1,
+            },
+          ],
+          chips: [
+            { icon: "bell", label: "Notification bell", c: 0, d: 0.6 },
+            {
+              icon: "inbox",
+              label: "My tasks · what depends on you",
+              c: 0,
+              d: 2.2,
+            },
+            {
+              icon: "clock",
+              label: "Wellmix sees who's up · 1 business day",
+              c: 1,
+            },
+          ],
+        },
+        say: [
+          {
             en: "A notification bell and a task inbox show each person what is waiting for them.",
             pt: "O sino de notificações e as pendências|mostram a cada pessoa o que a espera.",
-            zh: "通知铃和待办清单||告诉每个人|有什么在等他处理。",
+            zh: "通知铃铛和待办清单||告诉每个人|有什么在等他处理。",
           },
           {
-            en: "And the portal shows who owes a reply.",
-            pt: "E o portal mostra|quem deve a resposta.",
-            zh: "门户还会显示该由谁回复。",
+            en: "And Wellmix sees who owes a reply.",
+            pt: "E a Wellmix vê|quem deve a resposta.",
+            zh: "Wellmix 还能看到|该由谁回复。",
           },
         ],
       },
@@ -938,6 +1069,7 @@ export const VIDEOS = {
           kicker: "Three languages",
           title: "Português. English. *中文.*",
           shot: "supplier",
+          dirs: { pt: "intl-pt", en: "intl", zh: "intl-zh" },
         },
         say: [
           {
@@ -1054,9 +1186,10 @@ export const VIDEOS = {
             zh: "装柜：照片、铅封和柜号。",
           },
           {
-            en: "Packing list, invoice and bill of lading, checked line by line.",
+            en: "Packing list, invoice and BL, checked line by line.",
+            say: "Packing list, invoice and B L, checked line by line.",
             pt: "Packing list, invoice e BL|conferidos linha a linha.",
-            zh: "装箱单、发票和提单，|逐行核对。",
+            zh: "装箱单、发票和提单（BL），|逐行核对。",
           },
         ],
       },
@@ -1103,7 +1236,7 @@ export const VIDEOS = {
       {
         id: "devices",
         type: "devices",
-        post: 0.15,
+        post: 0.55,
         props: {
           kicker: "Anywhere",
           title: "Any screen.\n*Installs like an app.*",
@@ -1111,7 +1244,7 @@ export const VIDEOS = {
           phones: ["m-tower", "m-supplier"],
           chip: {
             icon: "link",
-            label: "Built to work with the Sankhya ERP",
+            label: "Built to work with Wellmix's ERP",
             c: 1,
           },
         },
@@ -1122,15 +1255,18 @@ export const VIDEOS = {
             zh: "适配任何屏幕，|还能像应用一样安装到手机上。",
           },
           {
-            en: "And it is built to work with Sankhya, the company's ERP.",
-            say: "And it is built to work with Sankia, the company's E R P.",
-            pt: "E foi feito para trabalhar com o Sankhya,|o ERP da empresa.",
-            zh: "并可与公司的 ERP 系统|Sankhya 协同工作。",
+            en: "And it is built to work with Wellmix's ERP.",
+            say: "And it is built to work with Wellmix's E R P.",
+            pt: "E foi feito para trabalhar|com o ERP da Wellmix.",
+            zh: "而且专为配合 Wellmix 的|ERP 系统而设计。",
           },
         ],
       },
       {
         ...END,
+        // Folgas medidas com tts/track.py: a marca entra com o acorde final.
+        pre: 0.4,
+        post: 1.95,
         say: [
           {
             en: "One portal. Every partner. Every step of the journey.",

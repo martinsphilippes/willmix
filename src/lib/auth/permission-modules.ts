@@ -26,11 +26,12 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
     actions: [],
   },
   {
-    // Produto novo (o Book do mapa): Book e Seleção de itens, Convites e
-    // Solicitações ao fornecedor.
+    // Produto novo (o Book do mapa): TS - Trading Sales e Venda - Encomenda
+    // (logo abaixo do Overview no menu; docs/REQUEST_SCREENS.md), Book e
+    // Seleção de itens, Convites e Solicitações ao fornecedor.
     key: "newProduct",
     label: "nav.group.newProduct",
-    screens: ["booking", "quotes", "sourcing"],
+    screens: ["requestTs", "requestSale", "booking", "quotes", "sourcing"],
     actions: [
       "supplierRequest.decide",
       "sampling.validate",

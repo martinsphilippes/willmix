@@ -63,10 +63,11 @@ import { splitByColor, spreadCartons } from "@/lib/color-split";
  */
 
 /**
- * Peso líquido do item com a base do dado (dono, 15/11/2026): por caixa
- * master, por peça ou total, na unidade gravada; `value` nulo sem o peso.
+ * Peso do item (líquido ou bruto) com a base do dado (dono, 15/11/2026): por
+ * caixa master, por peça ou total, na unidade gravada; `value` nulo sem o
+ * peso.
  */
-export interface SelectionNetWeight {
+export interface SelectionWeight {
   value: number | null;
   unit: string;
   basis: "carton" | "piece" | "total";
@@ -80,7 +81,12 @@ export interface SelectionCarton {
   /** Peças por caixa inner (nulo sem caixa inner informada). */
   innerQty?: number | null;
   /** Peso líquido e a base dele (nulo quando a tela não sabe). */
-  netWeight?: SelectionNetWeight | null;
+  netWeight?: SelectionWeight | null;
+  /**
+   * Peso bruto e a base dele (dono, 16/11/2026), da mesma fonte que o
+   * líquido; nulo quando a tela não sabe.
+   */
+  grossWeight?: SelectionWeight | null;
   /** Quantidade da planilha (total sugerido). */
   sheetQty: number | null;
   /** Cores do item no Book (duas ou mais = variações). */
@@ -180,7 +186,10 @@ export interface GenerateLabels {
     cbmPerCarton: string;
     /** Peso líquido sem base conhecida e por base. */
     netWeight: string;
-    netWeightBasis: Record<SelectionNetWeight["basis"], string>;
+    netWeightBasis: Record<SelectionWeight["basis"], string>;
+    /** Peso bruto sem base conhecida e por base (dono, 16/11/2026). */
+    grossWeight: string;
+    grossWeightBasis: Record<SelectionWeight["basis"], string>;
     /** "Capacidade {container}" e "{cartons} caixas · {pieces} peças". */
     capacity: string;
     capacityValue: string;
@@ -266,6 +275,24 @@ const fill = (s: string, vars: Record<string, string | number>) =>
   s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : `{${k}}`));
 
 const usable = (i: SelectionCarton) => !!(i.masterCartonQty && i.cbmPerCarton);
+
+/**
+ * Campos da faixa do "Resultado da programação" em blocos que quebram a
+ * linha juntos: o campo com `withNext` leva o seguinte no mesmo bloco (o peso
+ * líquido e o bruto, dono 16/11/2026); os demais vão um por bloco.
+ */
+export function fieldUnits<T extends { withNext?: boolean }>(
+  fields: readonly T[],
+): T[][] {
+  const units: T[][] = [];
+  let joined = false;
+  for (const f of fields) {
+    if (joined) units[units.length - 1].push(f);
+    else units.push([f]);
+    joined = !!f.withNext;
+  }
+  return units;
+}
 
 /** A carga de um produto para a Composição de containers. */
 export interface SelectionLoad {
@@ -866,15 +893,26 @@ export function SelectionQuantity({
     /** "100" ou "100 a 101" (programações diferentes). */
     const span = ([min, max]: [number, number], f: (n: number) => string) =>
       min === max ? f(min) : fill(res.range, { min: f(min), max: f(max) });
-    const weight = item.netWeight ?? null;
-    const weightValue =
-      weight && weight.value !== null && weight.value > 0
-        ? `${fmt(weight.value, 3)} ${weight.unit}`
+    /** Peso em kg (ou na unidade gravada); "—" sem o peso. */
+    const weightText = (w: SelectionWeight | null) =>
+      w && w.value !== null && w.value > 0
+        ? `${fmt(w.value, 3)} ${w.unit}`
         : dash;
+    const weight = item.netWeight ?? null;
+    const gross = item.grossWeight ?? null;
     const groups: Array<{
       key: "carton" | "per-round" | "total";
       title: string;
-      fields: Array<{ key: string; label: string; value: string }>;
+      /**
+       * `withNext`: o campo e o seguinte ficam juntos quando a faixa quebra
+       * a linha (o peso líquido e o bruto, lado a lado).
+       */
+      fields: Array<{
+        key: string;
+        label: string;
+        value: string;
+        withNext?: boolean;
+      }>;
     }> = [
       {
         key: "carton",
@@ -900,7 +938,15 @@ export function SelectionQuantity({
             key: "net-weight",
             // A base do dado no rótulo: por caixa master, por peça ou total.
             label: weight ? res.netWeightBasis[weight.basis] : res.netWeight,
-            value: weightValue,
+            value: weightText(weight),
+            withNext: true,
+          },
+          {
+            // Peso bruto (dono, 16/11/2026): logo depois do líquido, da
+            // mesma fonte e no mesmo formato; "—" sem o dado.
+            key: "gross-weight",
+            label: gross ? res.grossWeightBasis[gross.basis] : res.grossWeight,
+            value: weightText(gross),
           },
           {
             key: "capacity",
@@ -999,44 +1045,50 @@ export function SelectionQuantity({
         data-generate-item="ok"
       >
         <p className="text-sm font-semibold text-zinc-900">{res.title}</p>
-        {/* Uma faixa só: em largura curta ela rola para o lado (os grupos
-            não empilham e nada é cortado). O fundo cinza e a sombra na
-            borda que ainda tem dados estão em globals.css. Com foco, as
-            setas do teclado também rolam a faixa. */}
+        {/* Tudo à vista, sem rolagem para o lado (dono, 16/11/2026; até
+            então a faixa rolava no card estreito): os grupos e os campos
+            quebram a linha quando não cabem. Os grupos de uma linha se
+            esticam até a borda; a divisória à esquerda e em cima de cada
+            grupo some na borda da faixa (margem de -1 px, cortada pelo
+            quadro). O peso líquido e o bruto quebram juntos. Cada campo
+            pode quebrar o próprio texto só se sozinho não couber. */}
         <div
-          className="overflow-x-auto rounded-lg"
+          className="overflow-hidden rounded-lg bg-zinc-100"
           role="group"
           aria-label={res.title}
-          tabIndex={0}
           data-generate-strip
         >
-          <div className="flex w-max min-w-full divide-x divide-zinc-300">
+          <div className="-ml-px -mt-px flex flex-wrap">
             {groups.map((g) => (
               <section
                 key={g.key}
-                className="shrink-0 px-2 py-2"
+                className="min-w-0 flex-auto border-l border-t border-zinc-300 px-2 py-2"
                 data-generate-group={g.key}
                 {...(g.key === "total" ? { "data-generate-result": "" } : {})}
               >
-                <h4 className="mb-1 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                <h4 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
                   {g.title}
                 </h4>
-                <dl className="flex gap-x-2.5">
-                  {g.fields.map((f) => (
-                    <div
-                      key={f.key}
-                      className="shrink-0"
-                      data-generate-field={f.key}
-                    >
-                      <dt className="whitespace-nowrap text-[11px] leading-4 text-zinc-500">
-                        {f.label}
-                      </dt>
-                      <dd className="whitespace-nowrap text-[13px] font-semibold leading-5 tabular-nums text-zinc-900">
-                        {f.value}
-                      </dd>
-                    </div>
+                <div className="flex flex-wrap gap-x-2.5 gap-y-1.5">
+                  {fieldUnits(g.fields).map((unit) => (
+                    <dl key={unit[0].key} className="flex min-w-0 gap-x-2.5">
+                      {unit.map((f) => (
+                        <div
+                          key={f.key}
+                          className="min-w-0"
+                          data-generate-field={f.key}
+                        >
+                          <dt className="text-[11px] leading-4 text-zinc-500">
+                            {f.label}
+                          </dt>
+                          <dd className="text-[13px] font-semibold leading-5 tabular-nums text-zinc-900">
+                            {f.value}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
                   ))}
-                </dl>
+                </div>
               </section>
             ))}
           </div>

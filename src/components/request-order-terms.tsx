@@ -25,6 +25,11 @@ export interface RequestOrderTermsLabels {
   operation: Record<OperationType, string>;
   /** "(em breve)" ao lado do tipo desabilitado. */
   operationDisabled: string;
+  /**
+   * Explicação do tipo fixo pela tela (TS - Trading Sales ou Venda -
+   * Encomenda; docs/REQUEST_SCREENS.md).
+   */
+  operationFixed?: string;
   saleFormat: string;
   format: Record<SaleFormat, string>;
   tier: string;
@@ -127,15 +132,23 @@ const radioClass =
 export function RequestOrderTerms({
   labels,
   initial = {},
+  fixedOperation,
 }: {
   labels: RequestOrderTermsLabels;
   initial?: OrderTermsInitial;
+  /**
+   * Tipo de operação fixo pela tela (TS - Trading Sales ou Venda -
+   * Encomenda; docs/REQUEST_SCREENS.md): só ele aparece, já marcado, e o
+   * servidor grava o da tela. Sem ele (Encomendas), TS marcado e Venda
+   * desabilitada, como sempre.
+   */
+  fixedOperation?: OperationType;
 }) {
   const shared = useRequestCustomer();
   const stock = !!shared?.stock;
   const [options, setOptions] = useState<Options | null>(null);
   const [failed, setFailed] = useState(false);
-  const operation: OperationType = "ts";
+  const operation: OperationType = fixedOperation ?? "ts";
   const [format, setFormat] = useState<SaleFormat | "">(
     (SALE_FORMATS as readonly string[]).includes(initial.saleFormat ?? "")
       ? (initial.saleFormat as SaleFormat)
@@ -263,14 +276,20 @@ export function RequestOrderTerms({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        {/* Tipo de operação: hoje só TS (Venda desabilitada). */}
-        <fieldset className="min-w-0 space-y-1" data-order-terms-operation>
+        {/* Tipo de operação: em Encomendas, hoje só TS (Venda desabilitada);
+            nas telas de TS e de Venda, só o tipo da tela, já marcado. */}
+        <fieldset
+          className="min-w-0 space-y-1"
+          data-order-terms-operation
+          data-order-terms-operation-fixed={fixedOperation}
+        >
           <legend className="block text-xs font-medium leading-5 text-zinc-700">
             {labels.operationType}
           </legend>
           <div className="flex flex-wrap gap-2">
-            {OPERATION_TYPES.map((op) => {
-              const enabled = ENABLED_OPERATION_TYPES.includes(op);
+            {(fixedOperation ? [fixedOperation] : OPERATION_TYPES).map((op) => {
+              const enabled =
+                op === fixedOperation || ENABLED_OPERATION_TYPES.includes(op);
               return (
                 <label key={op} className={radioClass}>
                   <input
@@ -292,6 +311,9 @@ export function RequestOrderTerms({
               );
             })}
           </div>
+          {fixedOperation && labels.operationFixed ? (
+            <p className="text-xs text-zinc-500">{labels.operationFixed}</p>
+          ) : null}
         </fieldset>
 
         {/* Formato de venda e, no Wellmix, o nível */}

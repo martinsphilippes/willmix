@@ -185,6 +185,8 @@ for (const lang of LANGS) {
     JSON.stringify({
       video,
       lang,
+      // Pasta das telas do portal (film/shots/<pasta>); sem ela, a do idioma.
+      shots: def.shots,
       fps: FPS,
       intro: INTRO,
       overlap: OVERLAP,

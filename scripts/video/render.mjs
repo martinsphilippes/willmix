@@ -2,7 +2,7 @@
  * Renderiza o filme quadro a quadro (sem perder quadro: o tempo é o do
  * motor, não o do relógio) e grava out/tmp/<vídeo>.<idioma>.film.mp4, ainda
  * sem a vinheta e sem som (quem junta é mix.mjs).
- *   node render.mjs <vídeo> <idioma> [--fps 60] [--workers 4] [--from s] [--to s] [--name head]
+ *   node render.mjs <vídeo> <idioma> [--fps 60] [--workers 4] [--from s] [--to s] [--patch]
  * Cada trabalhador abre o próprio navegador, percorre um trecho e manda os
  * quadros (JPEG de alta qualidade) direto para o ffmpeg.
  */
@@ -18,9 +18,14 @@ const opt = (name, def) => {
   return i > -1 ? Number(args[i + 1]) : def;
 };
 const fps = opt("fps", 60);
-/** --name head: grava out/tmp/<vídeo>.<idioma>.head.mp4 (um trecho refeito, que o mix.mjs põe no lugar do começo do filme). */
-const name = args.includes("--name")
-  ? args[args.indexOf("--name") + 1]
+/**
+ * --patch: em vez do filme inteiro, grava só o trecho de --from a --to em
+ * out/tmp/<vídeo>.<idioma>.patch.<quadro inicial>.mp4. O mix.mjs põe esse
+ * trecho no lugar dos mesmos quadros do filme (serve quando muda o desenho
+ * de uma cena sem mudar a linha do tempo).
+ */
+const name = args.includes("--patch")
+  ? `patch.${String(Math.round(opt("from", 0) * fps)).padStart(6, "0")}`
   : "film";
 const workers = opt("workers", 4);
 

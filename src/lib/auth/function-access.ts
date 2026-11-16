@@ -234,10 +234,59 @@ export interface StoredFunctions {
      * (sem a lista: as ações de antes de 15/11/2026, `LEGACY_ACTIONS`).
      */
     knownActions?: unknown;
+    /**
+     * Telas que existiam quando a função foi gravada. Tela nova depois disso
+     * vale pelo padrão do código (FUNCTION_SCREENS) até o administrador salvar
+     * a função de novo (sem a lista: as telas de antes de 16/11/2026,
+     * `LEGACY_SCREENS`).
+     */
+    knownScreens?: unknown;
     baseOff?: unknown;
     archived?: boolean;
   }>;
 }
+
+/**
+ * Telas que existiam antes da lista `knownScreens` (16/11/2026). As funções
+ * gravadas antes dela recebem as telas novas pelo padrão do código: TS -
+ * Trading Sales e Venda - Encomenda (docs/REQUEST_SCREENS.md) chegam ao
+ * Comprador, ao Gerente de produto e às diretorias sem mexer no que o
+ * administrador já marcou.
+ */
+export const LEGACY_SCREENS: readonly string[] = [
+  "home",
+  "tasks",
+  "sla",
+  "notifications",
+  "messages",
+  "booking",
+  "requests",
+  "quotes",
+  "orders",
+  "production",
+  "sourcing",
+  "reviews",
+  "freight",
+  "freightTariff",
+  "containers",
+  "superplan",
+  "parties",
+  "products",
+  "lines",
+  "explore",
+  "import",
+  "dashboards",
+  "finance",
+  "payables",
+  "penalties",
+  "afterSales",
+  "marketing",
+  "history",
+  "account",
+  "settings",
+  "team",
+  "audit",
+];
 
 /**
  * Ações que existiam antes da lista `knownActions` (15/11/2026). Funções
@@ -283,6 +332,22 @@ function storedActions(
     (a) => !knownList.includes(a) && !saved.includes(a),
   );
   return ACTION_KEYS.filter((a) => saved.includes(a) || fresh.includes(a));
+}
+
+/** Telas gravadas mais as novas (que a função ainda não conhecia) pelo padrão. */
+function storedScreens(
+  key: WellmixFunction,
+  screens: unknown,
+  known: unknown,
+): Screen[] {
+  const knownList = Array.isArray(known)
+    ? (known as unknown[]).filter((s): s is string => typeof s === "string")
+    : LEGACY_SCREENS;
+  const saved = validScreens(screens);
+  const fresh = FUNCTION_SCREENS[key].filter(
+    (s) => !knownList.includes(s) && !saved.includes(s),
+  );
+  return SCREENS.filter((s) => saved.includes(s) || fresh.includes(s));
 }
 
 /** Chave de função criada: "fn_" e o nome sem acento, em minúsculas. */
@@ -338,7 +403,7 @@ export function resolveFunctions(stored: unknown): FunctionDef[] {
       builtin: true,
       screens:
         s?.screens !== undefined
-          ? validScreens(s.screens)
+          ? storedScreens(key, s.screens, s.knownScreens)
           : [...FUNCTION_SCREENS[key]],
       actions:
         s?.actions !== undefined

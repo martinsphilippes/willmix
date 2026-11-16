@@ -434,6 +434,57 @@ describe("país de origem, grupo e entrega", () => {
     expect(await origin.originGroups("")).toEqual([]);
   });
 
+  it("telas de TS e de Venda (docs/REQUEST_SCREENS.md): o tipo é o da tela; Venda aceita BRASIL", async () => {
+    const base = {
+      operationType: "sale",
+      saleFormat: "wd",
+      wellmixTier: "",
+      carrierCaller: "customer",
+      carrier: "",
+      redispatchCarrier: "",
+      redispatch: "no",
+      originCountry: "CHINA",
+      productFamily: "fm:BRINQUEDOS_GERAIS",
+    };
+    // A tela de TS grava TS, mesmo com Venda (ou nada) no formulário.
+    expect(
+      (await orderTerms.resolveOrderTerms(base, { operationType: "ts" }))
+        .operationType,
+    ).toBe("ts");
+    expect(
+      (
+        await orderTerms.resolveOrderTerms(
+          { ...base, operationType: "" },
+          { operationType: "ts" },
+        )
+      ).operationType,
+    ).toBe("ts");
+    // A de Venda grava Venda (liberada pela própria tela).
+    expect(
+      (
+        await orderTerms.resolveOrderTerms(
+          { ...base, operationType: "ts" },
+          { operationType: "sale" },
+        )
+      ).operationType,
+    ).toBe("sale");
+    // BRASIL: vale na Venda, não no TS (a regra de sempre).
+    const brazil = { ...base, originCountry: "BRASIL" };
+    await expect(
+      orderTerms.resolveOrderTerms(brazil, { operationType: "sale" }),
+    ).resolves.toMatchObject({
+      operationType: "sale",
+      originCountry: "BRASIL",
+    });
+    await expect(
+      orderTerms.resolveOrderTerms(brazil, { operationType: "ts" }),
+    ).rejects.toThrow("order_terms_country_disabled");
+    // Sem a tela (Encomendas): Venda continua desligada.
+    await expect(orderTerms.resolveOrderTerms(base)).rejects.toThrow(
+      "order_terms_operation_disabled",
+    );
+  });
+
   it("a rota das opções é só da Wellmix", async () => {
     current = joao;
     expect(

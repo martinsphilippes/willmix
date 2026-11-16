@@ -20,6 +20,7 @@ import {
   isWellmix,
 } from "@/lib/auth/permissions";
 import { assertScreen, canOpen } from "@/lib/auth/screens";
+import { REQUEST_SCREEN, type RequestScreenMode } from "@/lib/request-screens";
 import {
   getStore,
   PARTY_EXTRA_DEFAULTS,
@@ -150,18 +151,57 @@ function contactsFromForm(form: FormData): CustomerContacts {
  * vira uma solicitação; com 2 ou mais, todas no mesmo lote.
  */
 export async function createRequestAction(form: FormData) {
+  await createRequest(form, null);
+}
+
+/**
+ * TS - Trading Sales (dono, 16/11/2026; docs/REQUEST_SCREENS.md): o mesmo
+ * envio, com a tela de TS conferida e o tipo de operação TS gravado (o do
+ * formulário é ignorado).
+ */
+export async function createTsRequestAction(form: FormData) {
+  await createRequest(form, "ts");
+}
+
+/** Venda - Encomenda (docs/REQUEST_SCREENS.md): o mesmo, com a tela e o tipo Venda. */
+export async function createSaleRequestAction(form: FormData) {
+  await createRequest(form, "sale");
+}
+
+/**
+ * O envio da Nova solicitação. `screenMode` nulo: a de Encomendas, como
+ * sempre. "ts" e "sale": as telas de TS e de Venda, só da Wellmix vendendo
+ * ao cliente (sem estoque nem "Adicionar produto"), com a tela conferida e o
+ * tipo de operação dela.
+ */
+async function createRequest(
+  form: FormData,
+  screenMode: RequestScreenMode | null,
+) {
   const user = await requireUser();
+  const screenDef = screenMode ? REQUEST_SCREEN[screenMode] : null;
   // "Adicionar produto" numa solicitação existente (Wellmix): mesmo formulário.
-  const addToRaw = str(form, "addTo");
+  // Só na tela de Encomendas.
+  const addToRaw = screenDef ? "" : str(form, "addTo");
   const addTo = /^[A-Za-z0-9_-]{1,64}$/.test(addToRaw) ? addToRaw : "";
   await run(
-    addTo ? `/app/requests/new?addTo=${addTo}` : "/app/requests/new",
+    screenDef
+      ? screenDef.path
+      : addTo
+        ? `/app/requests/new?addTo=${addTo}`
+        : "/app/requests/new",
     async () => {
-      assertScreen(user, "requests");
-      // Só o cliente e a Wellmix criam solicitação: a recusa vem antes de
-      // qualquer consulta a produto (a tela pode estar em outro perfil).
-      if (!isWellmix(user) && user.role !== "customer")
-        throw new ForbiddenError();
+      if (screenDef) {
+        // TS e Venda: a Wellmix, com a tela marcada no acesso dela.
+        if (!isWellmix(user)) throw new ForbiddenError();
+        assertScreen(user, screenDef.screen);
+      } else {
+        assertScreen(user, "requests");
+        // Só o cliente e a Wellmix criam solicitação: a recusa vem antes de
+        // qualquer consulta a produto (a tela pode estar em outro perfil).
+        if (!isWellmix(user) && user.role !== "customer")
+          throw new ForbiddenError();
+      }
       const store = getStore();
       const rows = parseRequestItems(form);
       if (!rows.length) throw new Error("no_products");
@@ -261,6 +301,9 @@ export async function createRequestAction(form: FormData) {
       // Compra para estoque (Wellmix, sem cliente): empresa interna.
       const { STOCK_OPTION, ensureStockParty } =
         await import("@/lib/services/stock-party");
+      // TS e Venda vendem ao cliente: compra para estoque fica em Encomendas.
+      if (screenDef && str(form, "customerId") === STOCK_OPTION)
+        throw new Error("request_screen_stock");
       const forStock =
         isWellmix(user) && str(form, "customerId") === STOCK_OPTION;
       const stockId = forStock ? (await ensureStockParty(user)).id : null;
@@ -281,17 +324,21 @@ export async function createRequestAction(form: FormData) {
       if (isWellmix(user) && !forStock) {
         const { resolveOrderTerms, assertProductsMatchOrigin } =
           await import("@/lib/services/order-terms");
-        orderTerms = await resolveOrderTerms({
-          operationType: str(form, "operationType"),
-          saleFormat: str(form, "saleFormat"),
-          wellmixTier: str(form, "wellmixTier"),
-          carrierCaller: str(form, "carrierCaller"),
-          carrier: str(form, "carrier"),
-          redispatchCarrier: str(form, "redispatchCarrier"),
-          redispatch: str(form, "redispatch"),
-          originCountry: str(form, "originCountry"),
-          productFamily: str(form, "productFamily"),
-        });
+        orderTerms = await resolveOrderTerms(
+          {
+            operationType: str(form, "operationType"),
+            saleFormat: str(form, "saleFormat"),
+            wellmixTier: str(form, "wellmixTier"),
+            carrierCaller: str(form, "carrierCaller"),
+            carrier: str(form, "carrier"),
+            redispatchCarrier: str(form, "redispatchCarrier"),
+            redispatch: str(form, "redispatch"),
+            originCountry: str(form, "originCountry"),
+            productFamily: str(form, "productFamily"),
+          },
+          // TS e Venda: o tipo de operação é o da tela.
+          screenDef ? { operationType: screenDef.operation } : {},
+        );
         // O login do cliente com acesso é obrigatório na venda: é ele quem
         // confirma o pedido (dono, 15/11/2026).
         if (!str(form, "requestedForUserId"))
@@ -329,15 +376,18 @@ export async function createRequestAction(form: FormData) {
       if (draftId && isWellmix(user)) {
         const { deleteRequestDraft } =
           await import("@/lib/services/request-drafts");
-        await deleteRequestDraft(user, draftId).catch((error) =>
+        await deleteRequestDraft(user, draftId, screenMode).catch((error) =>
           console.error("[action] rascunho enviado", error),
         );
       }
       const first = created[0];
       const destination =
-        created.length === 1
-          ? `/app/requests/${first.id}`
-          : `/app/requests/batch/${encodeURIComponent(first.groupId ?? "")}?created=${created.length}`;
+        // TS e Venda: quem não abre Encomendas volta à tela com o aviso.
+        screenDef && !canOpen(user, "requests")
+          ? `${screenDef.path}?created=${first.number ? String(first.number) : "ok"}`
+          : created.length === 1
+            ? `/app/requests/${first.id}`
+            : `/app/requests/batch/${encodeURIComponent(first.groupId ?? "")}?created=${created.length}`;
       // Só a linha 0 recebe a busca por foto/link e a programação de compra; se
       // o usuário a removeu, não há a que ligar.
       const presetPos = rows.findIndex((r) => r.index === 0);
