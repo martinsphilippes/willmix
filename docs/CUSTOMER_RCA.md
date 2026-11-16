@@ -32,7 +32,7 @@ Pedido do dono (15/11/2026, com as fotos da Nova solicitação e de Cadastros �
   - Lê `SELECT CODVEND, APELIDO, ATIVO FROM TGFVEN`.
   - Precisa da integração do Sankhya configurada. Sem ela: "Não deu para ler os vendedores no Sankhya…", e a lista de antes fica.
   - Na Auditoria: `rca.list`.
-  - Em produção, a lista começa vazia até o primeiro clique; o campo já mostra o código do RCA de cada cliente ("Vendedor X (fora da lista)") enquanto isso.
+  - Em produção, a lista começa vazia até o primeiro clique; o campo mostra "Vendedor fora da lista do Sankhya" enquanto isso. Na lista, cada vendedor aparece como "CODPARC - APELIDO" (dono, 16/11/2026; o CODVEND é interno).
 - **Permissões:** as de editar o cadastro (Wellmix com a tela Parceiros), no servidor. O cliente não vê o campo.
 
 ## 4. Carga do Sankhya
@@ -50,14 +50,16 @@ Duas linhas: **Cliente | Login do cliente com acesso** e **Solicitante | RCA do 
 
 - **RCA do cliente:** só consulta.
   - Ao escolher o cliente, a tela busca `/api/parties/rca?customer=<id>`.
-    - Responde à Wellmix que abre Solicitações; para os outros, 404.
+    - Responde à Wellmix que abre uma tela de nova solicitação (Encomendas, TS ou Venda); para os outros, 404.
+    - O que aparece (dono, 16/11/2026) é **"CODPARC - APELIDO"**: o código do vendedor como parceiro na empresa (`TGFVEN.CODPARC`) e o apelido. O `CODVEND` é interno do Sankhya: continua sendo o vínculo do cliente (`parties.rcaCode`), mas não aparece na tela.
+    - A cópia da lista guarda o CODPARC (`SELECT CODVEND, CODPARC, APELIDO, ATIVO FROM TGFVEN`). Sem o apelido ou o CODPARC na cópia (lista trazida antes ou vendedor novo), a tela lê direto do Sankhya, `SELECT CODVEND, CODPARC, APELIDO, ATIVO FROM TGFVEN WHERE CODVEND = <código>` (só leitura). Sem o Sankhya, fica o que a lista tem.
     - Sem cache (`private, no-store`).
   - Troca junto com o cliente.
   - Estados:
     - "Escolha o cliente para ver o RCA."
     - "Buscando o RCA…"
-    - "Nome (código)"
-    - "Vendedor X" (código fora da lista)
+    - "CODPARC - APELIDO" (antes "Nome (código)"); sem CODPARC, só o apelido
+    - "Vendedor sem cadastro no Sankhya" (o vendedor não está na lista nem no Sankhya; antes "Vendedor X")
     - "Sem RCA vinculado"
     - "Não deu para buscar o RCA."
   - Compra para estoque: "Compra para estoque: sem RCA."

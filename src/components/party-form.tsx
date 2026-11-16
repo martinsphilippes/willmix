@@ -138,9 +138,12 @@ export function PartyForm({
                   .filter((s) => s.active || s.code === rca.current)
                   .map((s) => (
                     <option key={s.code} value={s.code}>
-                      {(s.active
-                        ? s.name
-                        : t("rca.inactive", { name: s.name })) + ` (${s.code})`}
+                      {/* "CODPARC - APELIDO" (dono, 16/11/2026): o
+                          CODVEND é interno do Sankhya e não aparece. */}
+                      {(s.partnerCode ? `${s.partnerCode} - ` : "") +
+                        (s.active
+                          ? s.name
+                          : t("rca.inactive", { name: s.name }))}
                     </option>
                   ))}
               </Select>

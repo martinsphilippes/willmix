@@ -37,7 +37,11 @@ export interface CustomerLogin {
 interface RcaResult {
   key: string;
   failed: boolean;
-  rca: { code: string; name: string | null } | null;
+  rca: {
+    code: string;
+    name: string | null;
+    partnerCode?: string | null;
+  } | null;
 }
 
 /**
@@ -120,8 +124,13 @@ export function RequestPeopleFields({
             : rcaState === "none"
               ? labels.rcaNone
               : mine!.rca!.name
-                ? `${mine!.rca!.name} (${mine!.rca!.code})`
-                : labels.rcaUnknown.replace("{code}", mine!.rca!.code);
+                ? // "CODPARC - APELIDO" (dono, 16/11/2026): o código do
+                  // vendedor na empresa e o nome; o CODVEND é interno do
+                  // Sankhya e não aparece.
+                  mine!.rca!.partnerCode
+                  ? `${mine!.rca!.partnerCode} - ${mine!.rca!.name}`
+                  : mine!.rca!.name
+                : labels.rcaUnknown;
 
   // Login do cliente com acesso: só os logins do cliente escolhido; trocar
   // de cliente recria o campo e ele volta para "Nenhum" (key).

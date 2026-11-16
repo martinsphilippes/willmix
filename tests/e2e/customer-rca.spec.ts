@@ -81,8 +81,8 @@ test("RCA no cadastro do cliente: trocar, remover e reabrir", async ({
   const options = await select().locator("option").allInnerTexts();
   expect(options).toEqual([
     "Sem RCA",
-    "Ana Representações (101)",
-    "Bruno Vendas (102)",
+    "5101 - Ana Representações",
+    "5102 - Bruno Vendas",
   ]);
 
   // Trocar: Bruno; ao reabrir, o Bruno.
@@ -133,7 +133,7 @@ test("Nova solicitação (Wellmix): RCA do cliente, solicitante e login com aces
 
   // Loja do João: RCA Ana; o acesso só com o login do João.
   await chooseCustomer(page, "loja", "cliente-joao");
-  await expectRca(page, "ready", "Ana Representações (101)");
+  await expectRca(page, "ready", "5101 - Ana Representações");
   await expect(access(page)).toBeEnabled();
   const accessOptions = await access(page).locator("option").allInnerTexts();
   // Na venda, o login com acesso é obrigatório (é ele quem confirma o
@@ -149,7 +149,7 @@ test("Nova solicitação (Wellmix): RCA do cliente, solicitante e login com aces
   // Trocar para a Wellmix SC: outro RCA (Bruno); o acesso volta para
   // "Nenhum" e fica desligado (o cliente não tem login).
   await chooseCustomer(page, "wellmix sc", "wellmix-sc");
-  await expectRca(page, "ready", "Bruno Vendas (102)");
+  await expectRca(page, "ready", "5102 - Bruno Vendas");
   await expect(access(page)).toHaveValue("");
   await expect(access(page)).toBeDisabled();
   await expect(people(page)).toContainText(
@@ -178,7 +178,7 @@ test("Nova solicitação (Wellmix): RCA do cliente, solicitante e login com aces
 
   // De volta ao João: Ana de novo e o acesso em "Nenhum" (não volta sozinho).
   await chooseCustomer(page, "loja", "cliente-joao");
-  await expectRca(page, "ready", "Ana Representações (101)");
+  await expectRca(page, "ready", "5101 - Ana Representações");
   await expect(access(page)).toHaveValue("");
 
   // Cliente sem RCA: tira o RCA do João no cadastro.
@@ -194,7 +194,7 @@ test("Nova solicitação (Wellmix): RCA do cliente, solicitante e login com aces
   // acesso: o login escolhido fica gravado e o João vê a solicitação.
   await page.goto("/app/requests/new");
   await chooseCustomer(page, "loja", "cliente-joao");
-  await expectRca(page, "ready", "Ana Representações (101)");
+  await expectRca(page, "ready", "5101 - Ana Representações");
   await access(page).selectOption(joaoLogin!);
   // Condições do pedido e contatos do cliente (docs/ORDER_TERMS.md).
   await fillOrderTerms(page);

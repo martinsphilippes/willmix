@@ -7,7 +7,7 @@ export const pt = {
   "rca.field": "RCA responsável",
   "rca.none": "Sem RCA",
   "rca.inactive": "{name} (inativo)",
-  "rca.unknown": "Vendedor {code} (fora da lista)",
+  "rca.unknown": "Vendedor fora da lista do Sankhya",
   "rca.hint":
     "Vendedor do Sankhya. A carga do Sankhya substitui o que for escolhido aqui.",
   "rca.listDate": "Lista do Sankhya de {date}: {n} vendedores.",
@@ -31,7 +31,7 @@ export const pt = {
   "requestPeople.rcaLoading": "Buscando o RCA…",
   "requestPeople.rcaError": "Não deu para buscar o RCA.",
   "requestPeople.rcaStock": "Compra para estoque: sem RCA.",
-  "requestPeople.rcaUnknown": "Vendedor {code}",
+  "requestPeople.rcaUnknown": "Vendedor sem cadastro no Sankhya",
   "requestPeople.access": "Login do cliente com acesso",
   "requestPeople.accessHint":
     "Só este login do cliente verá a solicitação e o pedido; outros logins da mesma empresa não veem. Sem login escolhido, só a Wellmix vê.",
@@ -46,7 +46,7 @@ export const en: Record<keyof typeof pt, string> = {
   "rca.field": "Responsible sales rep (RCA)",
   "rca.none": "No sales rep",
   "rca.inactive": "{name} (inactive)",
-  "rca.unknown": "Seller {code} (not in the list)",
+  "rca.unknown": "Sales rep not in the Sankhya list",
   "rca.hint":
     "Seller from Sankhya. The Sankhya load replaces what is chosen here.",
   "rca.listDate": "Sankhya list from {date}: {n} sellers.",
@@ -71,7 +71,7 @@ export const en: Record<keyof typeof pt, string> = {
   "requestPeople.rcaLoading": "Loading the sales rep…",
   "requestPeople.rcaError": "Could not load the sales rep.",
   "requestPeople.rcaStock": "Stock purchase: no sales rep.",
-  "requestPeople.rcaUnknown": "Seller {code}",
+  "requestPeople.rcaUnknown": "Sales rep not found in Sankhya",
   "requestPeople.access": "Customer login with access",
   "requestPeople.accessHint":
     "Only this customer login will see the request and the order; other logins of the same company do not. With no login chosen, only Wellmix sees it.",
@@ -86,7 +86,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "rca.field": "负责的销售代表 (RCA)",
   "rca.none": "无销售代表",
   "rca.inactive": "{name}（停用）",
-  "rca.unknown": "销售员 {code}（不在列表中）",
+  "rca.unknown": "销售员不在 Sankhya 列表中",
   "rca.hint": "Sankhya 的销售员。Sankhya 同步会覆盖此处的选择。",
   "rca.listDate": "Sankhya 列表（{date}）：{n} 名销售员。",
   "rca.listEmpty": "尚未从 Sankhya 获取销售员列表。",
@@ -106,7 +106,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "requestPeople.rcaLoading": "正在获取销售代表…",
   "requestPeople.rcaError": "无法获取销售代表。",
   "requestPeople.rcaStock": "库存采购：无销售代表。",
-  "requestPeople.rcaUnknown": "销售员 {code}",
+  "requestPeople.rcaUnknown": "Sankhya 中未找到该销售员",
   "requestPeople.access": "有访问权限的客户账号",
   "requestPeople.accessHint":
     "只有该客户账号可以查看申请和订单；同公司的其他账号看不到。未选择账号时，仅 Wellmix 可见。",
