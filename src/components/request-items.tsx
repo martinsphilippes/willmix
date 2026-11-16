@@ -520,7 +520,7 @@ export function RequestItems({
       return same ? prev : out;
     });
   }
-  // A cada mudança da tela (produto, quantidade, linhas) e a cada tecla.
+  // A cada mudança da tela (produto, quantidade, linhas).
   useEffect(() => {
     recheck();
   });
@@ -578,8 +578,9 @@ export function RequestItems({
       <div
         ref={listRef}
         className="flex flex-col gap-3"
-        onInputCapture={recheck}
-        onChangeCapture={recheck}
+        // Ao sair de um campo (não a cada tecla: atualizar o estado na
+        // tecla apagava o que se digitava nos campos controlados).
+        onBlurCapture={recheck}
         // Envio com dado faltando numa linha recolhida: ela se abre para o
         // navegador mostrar o campo.
         onInvalidCapture={(e) => {
