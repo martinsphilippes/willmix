@@ -1,0 +1,1012 @@
+{
+ "modulo": {
+  "id": 1,
+  "titulo": "Entrar, Pendências e o book"
+ },
+ "cenas": [
+  {
+   "id": "a0-abertura",
+   "tipo": "cartao",
+   "capitulo": "Boas-vindas",
+   "cartao": {
+    "tipo": "abertura",
+    "sobretitulo": "Treinamento do Portal Wellmix · Fornecedor",
+    "titulo": "Entrar, Pendências e o book",
+    "subtitulo": "Módulo 1"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Olá! Você é fornecedor da Wellmix. É pelo portal que você recebe os pedidos da Wellmix e responde, do book até o embarque."
+    },
+    {
+     "id": "f2",
+     "fala": "Aqui no primeiro módulo, você aprende a entrar, a achar o que depende de você e a enviar o seu book quando a Wellmix convidar."
+    }
+   ]
+  },
+  {
+   "id": "t0-cartao",
+   "tipo": "cartao",
+   "capitulo": "1 · Entrar e se localizar",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 1 de 4",
+    "titulo": "Entrar e se localizar",
+    "subtitulo": "O login, o idioma e o menu do fornecedor"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Primeiro: entrar e se localizar."
+    }
+   ]
+  },
+  {
+   "id": "t1-entrar",
+   "tipo": "tela",
+   "capitulo": "1 · Entrar e se localizar",
+   "estado": "forn-m1-base",
+   "login": false,
+   "inicio": {
+    "url": "/login?intro=off"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Esta é a entrada do portal. Antes de tudo, escolha o idioma aqui no alto: português, inglês ou chinês.",
+     "alvo": {
+      "papel": "button",
+      "nome": "Português",
+      "acima": 1
+     },
+     "rotulo": "Idioma",
+     "rotulo_lado": "esquerda",
+     "acao": "mostrar",
+     "destaque_em": {
+      "em": "idioma"
+     }
+    },
+    {
+     "id": "p2",
+     "fala": "Em \"Login ou e-mail\", digite o seu login.",
+     "alvo": {
+      "rotulo": "Login ou e-mail"
+     },
+     "rotulo": "Login ou e-mail",
+     "rotulo_lado": "esquerda",
+     "resumo": "Digite o seu login",
+     "acao": "digitar",
+     "valor": "supplier.a@china.com",
+     "acao_em": {
+      "apos": "digite"
+     },
+     "pausa": 0.6
+    },
+    {
+     "id": "p3",
+     "fala": "Logo abaixo, a sua senha.",
+     "alvo": {
+      "rotulo": "Senha"
+     },
+     "rotulo": "Senha",
+     "rotulo_lado": "esquerda",
+     "resumo": "Digite a sua senha",
+     "acao": "digitar",
+     "valor": "wellmix123",
+     "acao_em": 1.0
+    },
+    {
+     "id": "p4",
+     "fala": "Depois, clique em \"Entrar\", o botão vermelho.",
+     "alvo": {
+      "papel": "button",
+      "nome": "Entrar"
+     },
+     "rotulo": "Entrar",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Entrar\"",
+     "acao": "clicar",
+     "espera": {
+      "url": "/app",
+      "rede": true
+     }
+    },
+    {
+     "id": "p5",
+     "fala": "Você cai direto em \"Minhas pendências\": tudo o que depende de você.",
+     "alvo": {
+      "papel": "heading",
+      "nome": "Minhas pendências"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p6",
+     "fala": "No menu da esquerda, \"Pendências\" mostra quantas coisas esperam por você.",
+     "alvo": {
+      "seletor": "aside a[href='/app']"
+     },
+     "rotulo": "Pendências",
+     "acao": "mostrar",
+     "destaque_em": {
+      "em": "menu"
+     }
+    },
+    {
+     "id": "p7",
+     "fala": "Embaixo ficam os passos do pedido e da produção. Abra o grupo \"Pedido\" para ver os passos dele.",
+     "alvo": {
+      "seletor": "aside button",
+      "contem": "Pedido"
+     },
+     "rotulo": "Pedido",
+     "resumo": "Abra o grupo \"Pedido\"",
+     "acao": "clicar",
+     "destaque_em": {
+      "em": "Abra"
+     },
+     "espera": {
+      "seletor": "aside a[href='/app/flow/order/contract']"
+     }
+    },
+    {
+     "id": "p8",
+     "fala": "No grupo \"Meus books\" ficam os convites de book, as solicitações da Wellmix, os seus pedidos e a conta corrente.",
+     "alvo": {
+      "seletor": "aside button",
+      "contem": "Meus books"
+     },
+     "rotulo": "Meus books",
+     "resumo": "Abra o grupo \"Meus books\"",
+     "acao": "clicar",
+     "acao_em": {
+      "apos": "books"
+     },
+     "espera": {
+      "seletor": "aside a[href='/app/supplier-requests/invites']"
+     }
+    },
+    {
+     "id": "p9",
+     "fala": "No alto, à direita, o balão abre as mensagens, e o sino mostra os avisos.",
+     "alvo": {
+      "seletor": "header a[href='/app/messages']"
+     },
+     "rotulo": "Mensagens",
+     "rotulo_lado": "esquerda",
+     "acao": "mostrar",
+     "destaque_em": {
+      "em": "balão"
+     },
+     "destaques": [
+      {
+       "alvo": {
+        "seletor": "header a[href='/app/notifications']"
+       },
+       "rotulo": "Avisos",
+       "rotulo_lado": "esquerda",
+       "em": {
+        "em": "sino"
+       }
+      }
+     ]
+    },
+    {
+     "id": "p10",
+     "fala": "E aqui embaixo, o seu nome e o seu papel no portal: Fornecedor.",
+     "alvo": {
+      "seletor": "[data-user-role]",
+      "acima": 1
+     },
+     "acao": "mostrar",
+     "pausa": 0.6,
+     "cursor": false
+    }
+   ],
+   "sim": false,
+   "tarefa": "Entrar no portal"
+  },
+  {
+   "id": "c1-cartao",
+   "tipo": "cartao",
+   "capitulo": "2 · Suas pendências",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 2 de 4",
+    "titulo": "Suas pendências",
+    "subtitulo": "O ponto de partida de todo dia"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora: as suas pendências."
+    }
+   ]
+  },
+  {
+   "id": "c1-pendencias",
+   "tipo": "tela",
+   "capitulo": "2 · Suas pendências",
+   "estado": "forn-m1-base",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Todo dia, comece por aqui. Esta tela junta tudo o que a Wellmix espera de você, do book até o embarque."
+    },
+    {
+     "id": "p2",
+     "fala": "As etapas aparecem em ordem, da esquerda para a direita. O número à direita do nome diz quantas pendências há ali.",
+     "alvo": {
+      "seletor": "main a[href='/app/tasks?type=supplier.booking']"
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "destaques": [
+      {
+       "alvo": {
+        "seletor": "main a[href='/app/tasks?type=supplier.request']"
+       },
+       "em": {
+        "em": "número"
+       },
+       "foco": false
+      }
+     ]
+    },
+    {
+     "id": "p3",
+     "fala": "As cores avisam: amarelo é a fazer, no prazo. Vermelho é atrasado. Verde é nada a fazer.",
+     "alvo": {
+      "texto": "A fazer, no prazo",
+      "exato": false,
+      "acima": 1
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "zoom": 1.3,
+     "cursor": false
+    },
+    {
+     "id": "p4",
+     "fala": "Clique em uma etapa para ver apenas as pendências dela. Por exemplo, \"Responder a solicitação\".",
+     "alvo": {
+      "seletor": "main a[href='/app/tasks?type=supplier.request']"
+     },
+     "rotulo": "Responder a solicitação",
+     "resumo": "Clique numa etapa para filtrar",
+     "acao": "clicar",
+     "acao_em": {
+      "apos": "exemplo"
+     },
+     "espera": {
+      "url": "type=supplier.request",
+      "rede": true
+     }
+    },
+    {
+     "id": "p5",
+     "fala": "A lista ficou só com essa etapa.",
+     "alvo": {
+      "seletor": "main table tbody tr"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p6",
+     "fala": "Para voltar a ver tudo, escolha \"Todas as etapas\".",
+     "alvo": {
+      "seletor": "main a",
+      "contem": "Todas as etapas"
+     },
+     "rotulo": "Todas as etapas",
+     "resumo": "Clique em \"Todas as etapas\"",
+     "acao": "clicar",
+     "espera": {
+      "url": "/app/tasks$",
+      "rede": true
+     }
+    },
+    {
+     "id": "p7",
+     "fala": "Em cada linha você vê a pendência, o detalhe, a etapa, desde quando está com você e o prazo.",
+     "alvo": {
+      "seletor": "main table thead"
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "cursor": false
+    },
+    {
+     "id": "p8",
+     "fala": "Veja o selo \"vence hoje\". A lista já vem com o mais urgente primeiro.",
+     "alvo": {
+      "seletor": "main table tbody tr span",
+      "contem": "vence hoje"
+     },
+     "acao": "mostrar",
+     "zoom": 1.3
+    },
+    {
+     "id": "p9",
+     "fala": "E o botão vermelho \"Abrir\", no fim da linha, leva você direto para a tela onde se resolve.",
+     "alvo": {
+      "seletor": "main table tbody tr a",
+      "contem": "Abrir"
+     },
+     "rotulo": "Abrir",
+     "rotulo_lado": "esquerda",
+     "acao": "mostrar",
+     "destaque_em": {
+      "em": "botão"
+     },
+     "pausa": 0.6
+    }
+   ],
+   "tarefa": "Achar as suas pendências",
+   "cuidados": [
+    {
+     "erro": "A lista parece incompleta.",
+     "solucao": "Pode haver um filtro de etapa ligado. Escolha \"Todas as etapas\" para ver tudo."
+    }
+   ]
+  },
+  {
+   "id": "c1-suavez",
+   "tipo": "cartao",
+   "capitulo": "2 · Suas pendências",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Suas pendências",
+    "itens": [
+     "Entre no portal e veja \"Minhas pendências\"",
+     "Clique numa etapa para filtrar a lista",
+     "Volte com \"Todas as etapas\"",
+     "Ache o botão \"Abrir\" da pendência mais urgente"
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora é com você. Pause o vídeo e ache as suas pendências no portal."
+    }
+   ]
+  },
+  {
+   "id": "c2-cartao",
+   "tipo": "cartao",
+   "capitulo": "3 · Enviar o book de um convite",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 3 de 4",
+    "titulo": "Enviar o book de um convite",
+    "subtitulo": "Quando a Wellmix procura um produto e chama você"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Depois: enviar o book de um convite."
+    }
+   ]
+  },
+  {
+   "id": "c2-convite",
+   "tipo": "tela",
+   "capitulo": "3 · Enviar o book de um convite",
+   "estado": "forn-m1-base",
+   "salvar": "forn-m1-s2",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "De vez em quando, a equipe da Wellmix procura um produto e convida você a mandar o seu book: a planilha com o item e o seu preço. Ele concorre com o de outros fornecedores. Por isso o nome: book concorrente."
+    },
+    {
+     "id": "p2",
+     "fala": "O convite chega nas pendências, com o nome \"Enviar book concorrente\". Na linha dele, clique em \"Abrir\".",
+     "alvo": {
+      "seletor": "a",
+      "contem": "Abrir",
+      "dentro": {
+       "seletor": "main table tbody tr",
+       "contem": "Enviar book concorrente"
+      }
+     },
+     "alvo_visual": {
+      "seletor": "main table tbody tr",
+      "contem": "Enviar book concorrente"
+     },
+     "rotulo": "Abrir",
+     "rotulo_lado": "acima",
+     "resumo": "Abra a pendência \"Enviar book concorrente\"",
+     "acao": "clicar",
+     "destaque_em": {
+      "em": "nome"
+     },
+     "espera": {
+      "url": "/app/supplier-requests/invites/",
+      "rede": true
+     }
+    },
+    {
+     "id": "p3",
+     "fala": "O convite abriu. À esquerda está o que a Wellmix procura: o item, a quantidade, as medidas e o prazo para você responder.",
+     "alvo": {
+      "papel": "heading",
+      "nome": "O que a Wellmix procura"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p4",
+     "fala": "Mais abaixo, o que a Wellmix precisa, nas palavras dela.",
+     "alvo": {
+      "texto": "Copo de 300 ml com alça, em caixa colorida.",
+      "exato": false
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p5",
+     "fala": "À direita, em \"Enviar o book\", vai a sua planilha. O modelo é o do book de sempre: as colunas estão listadas ali.",
+     "alvo": {
+      "texto": "Suba a planilha do seu book",
+      "exato": false
+     },
+     "acao": "mostrar",
+     "destaque_em": {
+      "em": "Enviar"
+     }
+    },
+    {
+     "id": "p9",
+     "fala": "Em \"Arquivo\", use o botão \"Escolher arquivo\" e escolha a planilha do seu book.",
+     "alvo": {
+      "seletor": "[data-booking-invite-answer-form] input[type=file]"
+     },
+     "rotulo": "Arquivo",
+     "rotulo_lado": "acima",
+     "resumo": "Escolha a planilha do seu book",
+     "acao": "anexar",
+     "valor": "{DEMO}/planilhas/book-convite-copo-com-alca.xlsx",
+     "destaque_em": {
+      "em": "Arquivo"
+     },
+     "acao_em": "fim",
+     "zoom": 1.25
+    },
+    {
+     "id": "p10",
+     "fala": "No campo \"Moeda quando a planilha não diz\", confira a moeda dos seus preços e troque, se for outra.",
+     "alvo": {
+      "rotulo": "Moeda quando a planilha não diz"
+     },
+     "acao": "mostrar",
+     "destaque_em": {
+      "em": "Moeda"
+     }
+    },
+    {
+     "id": "p11",
+     "fala": "E clique em \"Enviar book\".",
+     "alvo": {
+      "seletor": "[data-booking-invite-answer-submit]"
+     },
+     "rotulo": "Enviar book",
+     "rotulo_lado": "direita",
+     "resumo": "Clique em \"Enviar book\"",
+     "acao": "clicar",
+     "espera": {
+      "url": "answered=1",
+      "rede": true
+     }
+    },
+    {
+     "id": "p12",
+     "fala": "Pronto: book enviado. A Wellmix foi avisada e vai avaliar. Se ela escolher o seu item, você recebe uma solicitação.",
+     "alvo": {
+      "texto": "Book enviado. A Wellmix foi avisada e vai avaliar.",
+      "exato": false
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p13",
+     "fala": "Você também acha os convites pelo menu, em \"Meus books\", \"Convites de book\".",
+     "alvo": {
+      "seletor": "aside a[href='/app/supplier-requests/invites']"
+     },
+     "rotulo": "Convites de book",
+     "acao": "mostrar",
+     "destaque_em": {
+      "em": "menu"
+     }
+    },
+    {
+     "id": "p14",
+     "fala": "Agora volte para \"Pendências\".",
+     "alvo": {
+      "seletor": "aside a[href='/app']"
+     },
+     "rotulo": "Pendências",
+     "resumo": "Volte às Pendências",
+     "acao": "clicar",
+     "espera": {
+      "url": "/app$",
+      "rede": true
+     }
+    },
+    {
+     "id": "p15",
+     "fala": "O convite saiu da lista. Ficou só o que ainda depende de você.",
+     "alvo": {
+      "seletor": "main table tbody"
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "pausa": 0.6
+    }
+   ],
+   "tarefa": "Enviar o book de um convite",
+   "cuidados": [
+    {
+     "erro": "\"Não achei o cabeçalho da ficha (DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX…). Confira se é o modelo.\"",
+     "solucao": "A planilha está fora do modelo e nada foi enviado. Use as mesmas colunas do book de sempre e envie de novo."
+    }
+   ]
+  },
+  {
+   "id": "c2-cuidado",
+   "tipo": "tela",
+   "capitulo": "3 · Enviar o book de um convite",
+   "estado": "forn-m1-base",
+   "sim": false,
+   "inicio": {
+    "url": "/app",
+    "antes": [
+     {
+      "acao": "clicar",
+      "alvo": {
+       "seletor": "a",
+       "contem": "Abrir",
+       "dentro": {
+        "seletor": "main table tbody tr",
+        "contem": "Enviar book concorrente"
+       }
+      },
+      "espera": {
+       "url": "/app/supplier-requests/invites/",
+       "rede": true
+      }
+     }
+    ]
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Agora um cuidado. Voltei ao convite, antes do envio, para mostrar um erro comum: a planilha fora do modelo.",
+     "alvo": {
+      "texto": "Suba a planilha do seu book",
+      "exato": false
+     },
+     "acao": "mostrar",
+     "conta_passo": false
+    },
+    {
+     "id": "p2",
+     "fala": "Vou escolher uma planilha que não está no modelo.",
+     "alvo": {
+      "seletor": "[data-booking-invite-answer-form] input[type=file]"
+     },
+     "rotulo": "Arquivo",
+     "rotulo_lado": "acima",
+     "acao": "anexar",
+     "valor": "{DEMO}/planilhas/planilha-fora-do-modelo.xlsx",
+     "conta_passo": false,
+     "acao_em": "fim"
+    },
+    {
+     "id": "p3",
+     "fala": "E clico em \"Enviar book\".",
+     "alvo": {
+      "seletor": "[data-booking-invite-answer-submit]"
+     },
+     "acao": "clicar",
+     "conta_passo": false,
+     "espera": {
+      "url": "error=no_header",
+      "rede": true
+     }
+    },
+    {
+     "id": "p4",
+     "fala": "O portal avisa que não achou o cabeçalho da ficha. Nada foi enviado. É só corrigir a planilha e enviar de novo.",
+     "alvo": {
+      "texto": "Não achei o cabeçalho da ficha",
+      "exato": false
+     },
+     "acao": "mostrar",
+     "conta_passo": false,
+     "pausa": 0.6
+    }
+   ]
+  },
+  {
+   "id": "c2-suavez",
+   "tipo": "cartao",
+   "capitulo": "3 · Enviar o book de um convite",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Enviar o book de um convite",
+    "itens": [
+     "Em Pendências, clique em \"Abrir\" na linha \"Enviar book concorrente\"",
+     "Leia o que a Wellmix procura e o que ela precisa",
+     "Em \"Arquivo\", escolha a planilha do seu book, no modelo",
+     "Confira a moeda e clique em \"Enviar book\""
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Sua vez. Pause o vídeo e envie o book de um convite."
+    }
+   ]
+  },
+  {
+   "id": "c3-cartao",
+   "tipo": "cartao",
+   "capitulo": "4 · Avisos e mensagens",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 4 de 4",
+    "titulo": "Avisos e mensagens",
+    "subtitulo": "O sino e a conversa com a Wellmix"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Por fim: avisos e mensagens."
+    }
+   ]
+  },
+  {
+   "id": "c3-avisos",
+   "tipo": "tela",
+   "capitulo": "4 · Avisos e mensagens",
+   "estado": "forn-m1-base",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Agora, um momento antes do envio do book. O sino, no alto, mostra os avisos. O número é quantos ainda esperam por você. Abra o sino.",
+     "alvo": {
+      "seletor": "header a[href='/app/notifications']"
+     },
+     "rotulo": "Avisos",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique no sino",
+     "acao": "clicar",
+     "espera": {
+      "url": "/app/notifications",
+      "rede": true
+     },
+     "zoom": 1.3
+    },
+    {
+     "id": "p2",
+     "fala": "Cada aviso diz o que aconteceu e de quem é a vez. \"Sua vez\" quer dizer que depende de você.",
+     "alvo": {
+      "seletor": "main table tbody tr"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p3",
+     "fala": "O botão \"Resolver\" leva você para a tela certa.",
+     "alvo": {
+      "seletor": "main table tbody tr button",
+      "contem": "Resolver"
+     },
+     "rotulo": "Resolver",
+     "rotulo_lado": "esquerda",
+     "acao": "mostrar"
+    },
+    {
+     "id": "p4",
+     "fala": "Para falar com a Wellmix, clique no balão de mensagens, ao lado do sino.",
+     "alvo": {
+      "seletor": "header a[href='/app/messages']"
+     },
+     "rotulo": "Mensagens",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique no balão de mensagens",
+     "acao": "clicar",
+     "destaque_em": {
+      "em": "balão"
+     },
+     "espera": {
+      "url": "/app/messages",
+      "rede": true
+     }
+    },
+    {
+     "id": "p5",
+     "fala": "Escreva sua mensagem no campo de baixo. Pode ser uma dúvida, um aviso ou um combinado com a Wellmix.",
+     "alvo": {
+      "seletor": "main textarea[name=body]"
+     },
+     "rotulo": "Mensagem",
+     "rotulo_lado": "acima",
+     "resumo": "Escreva a mensagem",
+     "acao": "digitar",
+     "valor": "Olá! Recebi o convite. Envio o book hoje.",
+     "acao_em": {
+      "apos": "baixo"
+     },
+     "pausa": 0.5
+    },
+    {
+     "id": "p6",
+     "fala": "E clique em \"Enviar\".",
+     "alvo": {
+      "seletor": "main form button[type=submit]",
+      "contem": "Enviar"
+     },
+     "rotulo": "Enviar",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Enviar\"",
+     "acao": "clicar",
+     "espera": {
+      "texto": "Olá! Recebi o convite. Envio o book hoje.",
+      "ms": 400
+     },
+     "pausa": 0.6
+    },
+    {
+     "id": "p7",
+     "fala": "A mensagem fica na conversa e a Wellmix recebe um aviso.",
+     "alvo": {
+      "texto": "Olá! Recebi o convite. Envio o book hoje.",
+      "exato": false
+     },
+     "acao": "mostrar",
+     "pausa": 0.6
+    }
+   ],
+   "tarefa": "Ler os avisos e falar com a Wellmix"
+  },
+  {
+   "id": "c3-suavez",
+   "tipo": "cartao",
+   "capitulo": "4 · Avisos e mensagens",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Avisos e mensagens",
+    "itens": [
+     "Clique no sino e leia os avisos",
+     "Veja de quem é a vez em cada aviso",
+     "Abra as mensagens e escreva para a Wellmix"
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora você. Pause, abra os avisos e mande uma mensagem."
+    }
+   ]
+  },
+  {
+   "id": "z9-resumo",
+   "tipo": "cartao",
+   "capitulo": "Resumo",
+   "cartao": {
+    "tipo": "encerramento",
+    "titulo": "Você já sabe se localizar",
+    "subtitulo": "Entrar, achar suas pendências, enviar o book de um convite e falar com a Wellmix."
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Resumindo: você entra com o seu login, começa pelas pendências, envia o book quando a Wellmix convidar e fala com ela pelas mensagens."
+    },
+    {
+     "id": "f2",
+     "fala": "Agora responda ao quiz deste módulo. No próximo, você responde a uma solicitação da Wellmix."
+    }
+   ]
+  }
+ ],
+ "quiz": {
+  "corte": 0.8,
+  "perguntas": [
+   {
+    "id": "q1",
+    "tipo": "cenario",
+    "tema": "Por onde começar o dia",
+    "rever": {
+     "cena": "c1-pendencias",
+     "passo": "p1"
+    },
+    "enunciado": "Você entra no portal de manhã e quer saber o que a Wellmix espera de você hoje. Por onde começa?",
+    "alternativas": [
+     "Pelo menu \"Pedido\", abrindo pedido por pedido",
+     "Por \"Minhas pendências\", a tela que abre quando você entra",
+     "Pela \"Conta corrente\"",
+     "Mandando uma mensagem para a Wellmix e esperando a resposta"
+    ],
+    "correta": 1,
+    "feedback": "\"Minhas pendências\" junta tudo o que depende de você, do book até o embarque, com o mais urgente primeiro."
+   },
+   {
+    "id": "q2",
+    "tipo": "clique",
+    "tema": "Filtrar as pendências por etapa",
+    "rever": {
+     "cena": "c1-pendencias",
+     "passo": "p4"
+    },
+    "enunciado": "Você quer ver só as pendências da etapa \"Responder a solicitação\". Clique no lugar certo.",
+    "imagem": {
+     "cena": "c1-pendencias",
+     "passo": "p4"
+    },
+    "feedback": "Clicar numa etapa da faixa filtra a lista e mostra só as pendências dela."
+   },
+   {
+    "id": "q3",
+    "tipo": "cenario",
+    "tema": "Voltar a ver todas as pendências",
+    "rever": {
+     "cena": "c1-pendencias",
+     "passo": "p6"
+    },
+    "enunciado": "Você filtrou por uma etapa e a lista ficou com uma linha só. Agora quer ver tudo de novo. O que faz?",
+    "alternativas": [
+     "Sai do portal e entra de novo",
+     "Clica no sino de avisos",
+     "Escolhe \"Todas as etapas\"",
+     "Abre \"Meus books\""
+    ],
+    "correta": 2,
+    "feedback": "\"Todas as etapas\" tira o filtro e a lista volta inteira."
+   },
+   {
+    "id": "q4",
+    "tipo": "cenario",
+    "tema": "O que é o convite de book",
+    "rever": {
+     "cena": "c2-convite",
+     "passo": "p1"
+    },
+    "enunciado": "Apareceu nas suas pendências a linha \"Enviar book concorrente\". O que a Wellmix está pedindo?",
+    "alternativas": [
+     "Que você aprove o preço de outro fornecedor",
+     "Que você mande a planilha do seu book, com o item e o seu preço",
+     "Que você assine o contrato do pedido",
+     "Que você envie fotos da amostra"
+    ],
+    "correta": 1,
+    "feedback": "No convite, a Wellmix procura um produto e pede o seu book: a planilha com o item e o seu preço."
+   },
+   {
+    "id": "q5",
+    "tipo": "ordenar",
+    "tema": "Passos para enviar o book de um convite",
+    "rever": {
+     "cena": "c2-convite",
+     "passo": "p2"
+    },
+    "enunciado": "Ponha em ordem os passos para enviar o book de um convite.",
+    "itens": [
+     "Em Pendências, clicar em \"Abrir\" na linha \"Enviar book concorrente\"",
+     "Ler o que a Wellmix procura e o que ela precisa",
+     "Em \"Arquivo\", escolher a planilha do book",
+     "Conferir a moeda e clicar em \"Enviar book\""
+    ],
+    "feedback": "Primeiro abra o convite e leia o pedido; depois escolha a planilha, confira a moeda e envie."
+   },
+   {
+    "id": "q6",
+    "tipo": "cenario",
+    "tema": "Planilha fora do modelo",
+    "rever": {
+     "cena": "c2-cuidado",
+     "passo": "p4"
+    },
+    "enunciado": "Você clicou em \"Enviar book\" e o portal respondeu: \"Não achei o cabeçalho da ficha… Confira se é o modelo.\" O que aconteceu e o que você faz?",
+    "alternativas": [
+     "O book foi enviado; não precisa fazer nada",
+     "O convite foi cancelado; peça outro à Wellmix",
+     "Nada foi enviado: a planilha está fora do modelo. Corrija e envie de novo",
+     "O portal saiu do ar; tente amanhã"
+    ],
+    "correta": 2,
+    "feedback": "Esse aviso quer dizer que a planilha não está no modelo de book. Nada foi enviado: é só corrigir a planilha e enviar de novo."
+   },
+   {
+    "id": "q7",
+    "tipo": "clique",
+    "tema": "Onde escolher a planilha no convite",
+    "rever": {
+     "cena": "c2-convite",
+     "passo": "p9"
+    },
+    "enunciado": "O convite está aberto. Clique onde você escolhe a planilha do seu book.",
+    "imagem": {
+     "cena": "c2-convite",
+     "passo": "p9"
+    },
+    "feedback": "A planilha vai no campo \"Arquivo\", dentro de \"Enviar o book\", à direita."
+   },
+   {
+    "id": "q8",
+    "tipo": "cenario",
+    "tema": "O que quer dizer \"Sua vez\" num aviso",
+    "rever": {
+     "cena": "c3-avisos",
+     "passo": "p2"
+    },
+    "enunciado": "Você abriu o sino e um aviso está marcado com \"Sua vez\". O que isso quer dizer?",
+    "alternativas": [
+     "Que a Wellmix está resolvendo e você só espera",
+     "Que depende de você agir",
+     "Que o aviso é só para leitura",
+     "Que o prazo já venceu"
+    ],
+    "correta": 1,
+    "feedback": "\"Sua vez\" quer dizer que a próxima ação é sua. O botão \"Resolver\" leva para a tela certa."
+   },
+   {
+    "id": "q9",
+    "tipo": "clique",
+    "tema": "Onde ficam as mensagens",
+    "rever": {
+     "cena": "c3-avisos",
+     "passo": "p4"
+    },
+    "enunciado": "Você quer falar com a Wellmix. Clique no lugar certo.",
+    "imagem": {
+     "cena": "c3-avisos",
+     "passo": "p4"
+    },
+    "feedback": "O balão de mensagens fica no alto, à direita, ao lado do sino."
+   },
+   {
+    "id": "q10",
+    "tipo": "cenario",
+    "tema": "Trocar o idioma do portal",
+    "rever": {
+     "cena": "t1-entrar",
+     "passo": "p1"
+    },
+    "enunciado": "Um colega da sua empresa prefere usar o portal em inglês. Onde ele troca o idioma?",
+    "alternativas": [
+     "Em \"Conta corrente\"",
+     "No alto da tela, nos botões de idioma",
+     "Só pedindo à Wellmix por mensagem",
+     "Não dá para trocar"
+    ],
+    "correta": 1,
+    "feedback": "O idioma se escolhe no alto da tela: português, inglês ou chinês."
+   }
+  ]
+ }
+}

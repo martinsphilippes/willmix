@@ -1,0 +1,160 @@
+{
+ "corte": 0.8,
+ "perguntas": [
+  {
+   "id": "f1",
+   "tipo": "ordenar",
+   "tema": "Trocar o arquivo do selo",
+   "rever": {
+    "cena": "m2-c3-substituir",
+    "passo": "p3"
+   },
+   "enunciado": "O selo de um pedido foi enviado com o arquivo errado e não há mais pendência na lista. Ponha em ordem os passos para trocar o arquivo.",
+   "itens": [
+    "Abrir \"Pedidos\", no menu, e clicar no número do pedido",
+    "No quadro do selo, clicar em \"Substituir arquivo\" e selecionar o arquivo novo",
+    "Conferir o nome do arquivo novo",
+    "Clicar em \"Confirmar substituição\""
+   ],
+   "feedback": "Sem pendência, o caminho é a lista \"Pedidos\". No quadro do selo, \"Substituir arquivo\" abre a troca, que só vale depois de \"Confirmar substituição\"."
+  },
+  {
+   "id": "f2",
+   "tipo": "cenario",
+   "tema": "Por onde começar o dia",
+   "rever": {
+    "cena": "m1-c1-pendencias",
+    "passo": "p1"
+   },
+   "enunciado": "Você entra no portal com vários pedidos em andamento. Como saber o que fazer primeiro?",
+   "alternativas": [
+    "Esperar a Wellmix ligar",
+    "Olhar \"Minhas pendências\", que já vem com o mais urgente primeiro, e usar \"Abrir\"",
+    "Abrir a ficha de compra de cada pedido",
+    "Abrir cada pedido e procurar o que falta"
+   ],
+   "correta": 1,
+   "feedback": "Tudo o que depende da certificadora aparece em \"Minhas pendências\", por prazo. O botão \"Abrir\" leva direto ao lugar da tarefa."
+  },
+  {
+   "id": "f3",
+   "tipo": "cenario",
+   "tema": "Dois jeitos de enviar",
+   "rever": {
+    "cena": "m2-c1-selo",
+    "passo": "p6"
+   },
+   "enunciado": "Na linha do certificado, o arquivo é enviado assim que você seleciona. E no quadro do alto, para o selo e o memorial?",
+   "alternativas": [
+    "Não se envia arquivo ali",
+    "Quem envia é a Wellmix",
+    "Você seleciona o arquivo e depois clica em \"Enviar\"",
+    "É igual: o envio é automático"
+   ],
+   "correta": 2,
+   "feedback": "Nos itens dos marcos, selecionar o arquivo já envia. No quadro do alto do cartão \"Certificação\", é o botão \"Enviar\" que manda."
+  },
+  {
+   "id": "f4",
+   "tipo": "cenario",
+   "tema": "Certificado por produto, selo por pedido",
+   "rever": {
+    "cena": "m1-c1-pendencias",
+    "passo": "p2"
+   },
+   "enunciado": "Um pedido tem dois produtos com certificação. Quantos certificados e quantos selos o portal pede?",
+   "alternativas": [
+    "Um certificado e dois selos",
+    "Dois certificados, um por produto, e um selo para o pedido",
+    "Um certificado e um selo",
+    "Dois certificados e dois selos"
+   ],
+   "correta": 1,
+   "feedback": "O certificado tem uma linha por produto. O selo e o memorial descritivo são do pedido inteiro."
+  },
+  {
+   "id": "f5",
+   "tipo": "cenario",
+   "tema": "O que a certificadora pode fazer no pedido",
+   "rever": {
+    "cena": "m1-c2-pedido",
+    "passo": "p6"
+   },
+   "enunciado": "No pedido, você vê a ficha de compra e o documento do pedido. O que dá para fazer com eles?",
+   "alternativas": [
+    "Editar a ficha e assinar o documento",
+    "Só ler: a ficha abre sem edição, e o documento é assinado pela Wellmix e pelo fornecedor",
+    "Aprovar o preço",
+    "Apagar os dois"
+   ],
+   "correta": 1,
+   "feedback": "A certificadora vê o pedido completo para certificar, mas só lê. O que ela envia é o certificado, o selo e o memorial."
+  },
+  {
+   "id": "f6",
+   "tipo": "cenario",
+   "tema": "Quem faz o quê depois do selo",
+   "rever": {
+    "cena": "m2-c1-selo",
+    "passo": "p8"
+   },
+   "enunciado": "O selo foi enviado. O que acontece em seguida, e com quem?",
+   "alternativas": [
+    "A certificadora aplica o selo na arte",
+    "Quem faz a arte baixa o selo, aplica e envia a arte com o selo; a Wellmix valida",
+    "Nada mais acontece",
+    "O fornecedor valida o selo"
+   ],
+   "correta": 1,
+   "feedback": "A certificadora envia o selo. Quem faz a arte aplica e envia a arte com o selo. A Wellmix confere."
+  },
+  {
+   "id": "f7",
+   "tipo": "clique",
+   "tema": "Enviar o certificado",
+   "rever": {
+    "cena": "m1-c3-certificado",
+    "passo": "p3"
+   },
+   "enunciado": "Você está no marco \"Certificação\" e o certificado do produto já está emitido, em PDF. Clique no lugar certo para enviar.",
+   "imagem": {
+    "cena": "m1-c3-certificado",
+    "passo": "p3"
+   },
+   "feedback": "Na linha do certificado, \"Escolher arquivo\" envia na hora o PDF selecionado."
+  },
+  {
+   "id": "f8",
+   "tipo": "clique",
+   "tema": "Trocar o arquivo do selo",
+   "rever": {
+    "cena": "m2-c3-substituir",
+    "passo": "p3"
+   },
+   "enunciado": "O selo enviado estava com o arquivo errado. Clique no lugar certo para trocar.",
+   "imagem": {
+    "cena": "m2-c3-substituir",
+    "passo": "p3"
+   },
+   "feedback": "\"Substituir arquivo\", no quadro do selo, abre a troca. Depois, \"Confirmar substituição\"."
+  },
+  {
+   "id": "f9",
+   "tipo": "cenario",
+   "tema": "Achar o trabalho por outro caminho",
+   "rever": {
+    "cena": "m2-c4-mesa",
+    "passo": "p2"
+   },
+   "enunciado": "Você quer ver só o passo da certificação, com todos os seus pedidos. Onde olhar?",
+   "alternativas": [
+    "Em \"Certificação\", no menu: abas \"Pendências\" e \"Todos no passo\"",
+    "No documento do pedido",
+    "Na tela de entrada",
+    "Na ficha de compra"
+   ],
+   "correta": 0,
+   "feedback": "No menu, \"Certificação\" abre a tela do passo. A aba \"Pendências\" mostra o que espera por você; \"Todos no passo\", todos os pedidos naquele passo."
+  }
+ ]
+}

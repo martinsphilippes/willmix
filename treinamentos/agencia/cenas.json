@@ -1,0 +1,1928 @@
+{
+ "papel": "agencia",
+ "conta": {
+  "email": "agencia@design.com",
+  "idioma": "pt"
+ },
+ "titulo": "Treinamento da Agência de arte",
+ "nome": "Agência de arte",
+ "modulos": [
+  {
+   "id": 1,
+   "titulo": "Entrar, Pendências e a arte do pedido"
+  },
+  {
+   "id": 2,
+   "titulo": "O selo e a arte final"
+  },
+  {
+   "id": 3,
+   "titulo": "Ajustes, a tela Arte e a mesa de trabalho"
+  }
+ ],
+ "cenas": [
+  {
+   "id": "m1-a0-abertura",
+   "tipo": "cartao",
+   "capitulo": "Boas-vindas",
+   "cartao": {
+    "tipo": "abertura",
+    "sobretitulo": "Treinamento do Portal Wellmix · Agência de arte",
+    "titulo": "Entrar, Pendências e a arte do pedido",
+    "subtitulo": "Módulo 1"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Olá! Você é da agência que faz a arte das embalagens da Wellmix. É pelo portal que você recebe cada arte, envia os arquivos e acompanha a validação."
+    },
+    {
+     "id": "f2",
+     "fala": "Aqui no primeiro módulo, você aprende a entrar, a achar o que depende de você e a enviar a arte de um produto."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-t0-cartao",
+   "tipo": "cartao",
+   "capitulo": "1 · Entrar e se localizar",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 1 de 4",
+    "titulo": "Entrar e se localizar",
+    "subtitulo": "O login e o menu da agência"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Para começar: a entrada e o menu."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-t1-entrar",
+   "tipo": "tela",
+   "capitulo": "1 · Entrar e se localizar",
+   "estado": "arte-base",
+   "inicio": {
+    "url": "/login?intro=off"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Esta é a entrada do portal. O idioma se escolhe aqui no alto: português, inglês ou chinês.",
+     "alvo": {
+      "papel": "button",
+      "nome": "Português",
+      "acima": 1
+     },
+     "acao": "mostrar",
+     "rotulo": "Idioma",
+     "rotulo_lado": "esquerda",
+     "destaque_em": {
+      "em": "idioma"
+     }
+    },
+    {
+     "id": "p2",
+     "fala": "Em \"Login ou e-mail\", digite o seu login.",
+     "alvo": {
+      "rotulo": "Login ou e-mail"
+     },
+     "acao": "digitar",
+     "valor": "agencia@design.com",
+     "rotulo": "Login ou e-mail",
+     "rotulo_lado": "esquerda",
+     "resumo": "Digite o seu login",
+     "acao_em": {
+      "apos": "digite"
+     },
+     "pausa": 0.6
+    },
+    {
+     "id": "p3",
+     "fala": "Logo abaixo, a sua senha.",
+     "alvo": {
+      "rotulo": "Senha"
+     },
+     "acao": "digitar",
+     "valor": "wellmix123",
+     "rotulo": "Senha",
+     "rotulo_lado": "esquerda",
+     "resumo": "Digite a sua senha",
+     "acao_em": 1.0
+    },
+    {
+     "id": "p4",
+     "fala": "Depois, clique em \"Entrar\", o botão vermelho.",
+     "alvo": {
+      "papel": "button",
+      "nome": "Entrar"
+     },
+     "acao": "clicar",
+     "rotulo": "Entrar",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Entrar\"",
+     "espera": {
+      "url": "/app",
+      "rede": true
+     }
+    },
+    {
+     "id": "p5",
+     "fala": "Você cai direto em \"Minhas pendências\": tudo o que depende da agência.",
+     "alvo": {
+      "papel": "heading",
+      "nome": "Minhas pendências"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p6",
+     "fala": "No menu da esquerda, \"Pendências\" mostra quantas coisas esperam por você.",
+     "alvo": {
+      "seletor": "aside a[href='/app']"
+     },
+     "acao": "mostrar",
+     "rotulo": "Pendências",
+     "destaque_em": {
+      "em": "menu"
+     }
+    },
+    {
+     "id": "p7",
+     "fala": "Abra o grupo \"Pedido\". Ele tem dois passos seus: \"Certificação\", onde entra o selo, e \"Arte\".",
+     "alvo": {
+      "seletor": "aside button",
+      "contem": "Pedido"
+     },
+     "acao": "clicar",
+     "rotulo": "Pedido",
+     "resumo": "Abra o grupo \"Pedido\"",
+     "destaque_em": {
+      "em": "Abra"
+     },
+     "acao_em": {
+      "apos": "Pedido"
+     },
+     "espera": {
+      "seletor": "aside a[href='/app/flow/order/art']"
+     }
+    },
+    {
+     "id": "p8",
+     "fala": "E \"Pedidos\" mostra os pedidos em que a sua agência trabalha.",
+     "alvo": {
+      "seletor": "aside a[href='/app/orders']"
+     },
+     "acao": "mostrar",
+     "rotulo": "Pedidos"
+    },
+    {
+     "id": "p9",
+     "fala": "No alto, à direita, o balão abre as mensagens, e o sino mostra os avisos.",
+     "alvo": {
+      "seletor": "header a[href='/app/messages']"
+     },
+     "acao": "mostrar",
+     "rotulo": "Mensagens",
+     "rotulo_lado": "esquerda",
+     "destaque_em": {
+      "em": "balão"
+     },
+     "destaques": [
+      {
+       "alvo": {
+        "seletor": "header a[href='/app/notifications']"
+       },
+       "rotulo": "Notificações",
+       "rotulo_lado": "esquerda",
+       "em": {
+        "em": "sino"
+       }
+      }
+     ]
+    },
+    {
+     "id": "p10",
+     "fala": "E aqui embaixo, o nome da sua conta e o seu papel no portal: Agência.",
+     "alvo": {
+      "seletor": "[data-user-role]",
+      "acima": 1
+     },
+     "acao": "mostrar",
+     "pausa": 0.6,
+     "cursor": false
+    }
+   ],
+   "tarefa": "Entrar no portal",
+   "sim": false,
+   "login": false,
+   "modulo": 1
+  },
+  {
+   "id": "m1-c1-cartao",
+   "tipo": "cartao",
+   "capitulo": "2 · Suas pendências",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 2 de 4",
+    "titulo": "Suas pendências",
+    "subtitulo": "O ponto de partida de todo dia"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora: a tela das pendências."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-c1-pendencias",
+   "tipo": "tela",
+   "capitulo": "2 · Suas pendências",
+   "estado": "arte-base",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Todo dia, comece por aqui. Esta tela junta tudo o que a Wellmix espera da agência."
+    },
+    {
+     "id": "p2",
+     "fala": "O caminho da agência tem duas etapas: \"Arte do pedido\" e \"Selo na arte\". A bolinha depois do nome diz quantas pendências há ali. Etapa sem bolinha não tem nada esperando.",
+     "alvo": {
+      "seletor": "main a[href='/app/tasks?type=agency.art']"
+     },
+     "acao": "mostrar",
+     "zoom": 1.3,
+     "cursor": false
+    },
+    {
+     "id": "p3",
+     "fala": "As cores avisam: amarelo é a fazer, no prazo. Vermelho é atrasado. Verde é nada a fazer.",
+     "alvo": {
+      "texto": "A fazer, no prazo",
+      "exato": false,
+      "acima": 1
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "cursor": false
+    },
+    {
+     "id": "p4",
+     "fala": "Clique em uma etapa para ver só as pendências dela. Por exemplo, \"Arte do pedido\".",
+     "alvo": {
+      "seletor": "main a[href='/app/tasks?type=agency.art']"
+     },
+     "acao": "clicar",
+     "rotulo": "Arte do pedido",
+     "resumo": "Clique numa etapa para filtrar",
+     "acao_em": {
+      "apos": "exemplo"
+     },
+     "espera": {
+      "url": "type=agency.art",
+      "rede": true
+     }
+    },
+    {
+     "id": "p5",
+     "fala": "A lista mostra só as pendências dessa etapa. Aqui continua a mesma linha: é a única pendência.",
+     "alvo": {
+      "seletor": "main table tbody tr"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p6",
+     "fala": "Para voltar a ver tudo, escolha \"Todas as etapas\".",
+     "alvo": {
+      "seletor": "main a",
+      "contem": "Todas as etapas"
+     },
+     "acao": "clicar",
+     "rotulo": "Todas as etapas",
+     "resumo": "Clique em \"Todas as etapas\"",
+     "espera": {
+      "url": "/app/tasks$",
+      "rede": true
+     }
+    },
+    {
+     "id": "p7",
+     "fala": "Cada linha traz o pedido, o detalhe e o prazo. A coluna \"Detalhe\" diz o que falta: aqui, a arte do pote de vidro do pedido número 1.",
+     "alvo": {
+      "seletor": "main table tbody tr",
+      "contem": "Arte · Glass jar"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p8",
+     "fala": "Embaixo da data, o portal diz em quantos dias a pendência vence. A lista já vem com o mais urgente primeiro.",
+     "alvo": {
+      "seletor": "main table tbody tr td:has(span:has-text(\"vence em\"))"
+     },
+     "acao": "mostrar",
+     "cursor": false
+    },
+    {
+     "id": "p9",
+     "fala": "E o botão vermelho \"Abrir\", no fim da linha, leva você direto ao pedido.",
+     "alvo": {
+      "seletor": "a",
+      "contem": "Abrir",
+      "dentro": {
+       "seletor": "main table tbody tr",
+       "contem": "Arte · Glass jar"
+      }
+     },
+     "acao": "mostrar",
+     "rotulo": "Abrir",
+     "rotulo_lado": "esquerda",
+     "destaque_em": {
+      "em": "botão"
+     },
+     "pausa": 0.6
+    }
+   ],
+   "tarefa": "Achar as suas pendências",
+   "modulo": 1
+  },
+  {
+   "id": "m1-c1-suavez",
+   "tipo": "cartao",
+   "capitulo": "2 · Suas pendências",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Suas pendências",
+    "itens": [
+     "Entre no portal e veja \"Minhas pendências\"",
+     "Clique numa etapa para filtrar a lista",
+     "Volte com \"Todas as etapas\"",
+     "Ache o botão \"Abrir\" da pendência mais urgente"
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora é com você: pause o vídeo e ache as suas pendências."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-c2-cartao",
+   "tipo": "cartao",
+   "capitulo": "3 · Enviar a arte do produto",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 3 de 4",
+    "titulo": "Enviar a arte do produto",
+    "subtitulo": "Baixar a faca e a foto, e subir a arte"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora, a tarefa principal: enviar a arte."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-c2-arte",
+   "tipo": "tela",
+   "capitulo": "3 · Enviar a arte do produto",
+   "estado": "arte-base",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "A arte aparece para você quando o material está pronto: o fornecedor enviou a faca da caixa e a foto do produto, e a Wellmix aprovou. Aí a pendência entra na sua lista.",
+     "alvo": {
+      "seletor": "main table tbody tr",
+      "contem": "Arte · Glass jar"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p2",
+     "fala": "Na linha da arte, clique em \"Abrir\".",
+     "alvo": {
+      "seletor": "a",
+      "contem": "Abrir",
+      "dentro": {
+       "seletor": "main table tbody tr",
+       "contem": "Arte · Glass jar"
+      }
+     },
+     "acao": "clicar",
+     "alvo_visual": {
+      "seletor": "main table tbody tr",
+      "contem": "Arte · Glass jar"
+     },
+     "resumo": "Em Pendências, clique em \"Abrir\" na linha da arte",
+     "espera": {
+      "url": "/app/orders/[^/?#]+",
+      "rede": true
+     }
+    },
+    {
+     "id": "p3",
+     "fala": "Você está no pedido número 1: o pote de vidro, duas mil e quatrocentas peças.",
+     "alvo": {
+      "papel": "heading",
+      "nome": "Pedido #1",
+      "acima": 1
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p4",
+     "fala": "Mais abaixo estão os marcos do pedido. São as etapas em que a agência atua, e as que ela só acompanha.",
+     "alvo": {
+      "papel": "heading",
+      "nome": "Marcos do pedido"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p5",
+     "fala": "No marco \"Material de arte\" está o que o fornecedor enviou. A faca é o desenho da caixa aberta, com as medidas e as dobras.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Faca (die cut) · Glass jar 1.5L with lid\"))"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p6",
+     "fala": "O nome do arquivo é um link. É por ele que você baixa a faca, para montar a arte em cima dela.",
+     "alvo": {
+      "seletor": "main a",
+      "contem": "faca-caixa-pote-1500ml.pdf"
+     },
+     "acao": "passar",
+     "rotulo": "Baixar a faca",
+     "rotulo_lado": "direita",
+     "resumo": "Baixe a faca pelo nome do arquivo",
+     "zoom": 1.3
+    },
+    {
+     "id": "p7",
+     "fala": "Logo abaixo, do mesmo jeito, a foto do produto em alta resolução.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Foto em alta resolução · Glass jar 1.5L with lid\")) a",
+      "contem": "foto-alta-pote-1500ml.jpg"
+     },
+     "acao": "passar",
+     "rotulo": "Baixar a foto",
+     "rotulo_lado": "direita",
+     "resumo": "Baixe a foto em alta resolução",
+     "zoom": 1.3
+    },
+    {
+     "id": "p8",
+     "fala": "O marco \"Arte\" vem marcado com \"Sua tarefa\". A linha da arte do produto está pendente, e está com a sua agência.",
+     "alvo": {
+      "seletor": "main details:has(> summary:has-text(\"Sua tarefa\"))"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p9",
+     "fala": "Com a arte pronta, use o botão \"Escolher arquivo\" e selecione o arquivo. Vale PDF, imagem ou o arquivo aberto da arte.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Arte · Glass jar 1.5L with lid\")) input[aria-label=\"Escolher arquivo\"]"
+     },
+     "acao": "anexar",
+     "valor": "{DEMO}/arquivos/arte-caixa-pote-1500ml.pdf",
+     "alvo_visual": "main li:has(span.font-medium:text-is(\"Arte · Glass jar 1.5L with lid\")) [data-file-button]",
+     "rotulo": "Escolher arquivo",
+     "rotulo_lado": "esquerda",
+     "resumo": "Na linha da arte, clique em \"Escolher arquivo\" e selecione a arte",
+     "acao_em": "fim",
+     "espera": {
+      "some": "main li:has(span.font-medium:text-is(\"Arte · Glass jar 1.5L with lid\")) form:has(input[name=requirementId]):not([data-requirement-clear])",
+      "rede": true
+     }
+    },
+    {
+     "id": "p10",
+     "fala": "O envio acontece na hora, sem outro botão. A linha passa para \"Concluído\", com o nome do arquivo e a versão.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Arte · Glass jar 1.5L with lid\"))"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p11",
+     "fala": "Agora a Wellmix valida a sua arte. A linha de baixo, a arte final com o selo, ainda espera essa validação e o certificado do produto. Ela fica para o próximo módulo.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Arte final com o selo · Glass jar 1.5L with lid\"))"
+     },
+     "acao": "mostrar",
+     "pausa": 0.6
+    }
+   ],
+   "salvar": "arte-s1",
+   "tarefa": "Enviar a arte de um produto",
+   "cuidados": [
+    {
+     "erro": "\"Formato não aceito: envie foto (JPG, PNG, WEBP, HEIC) ou PDF.\"",
+     "solucao": "Vídeo não entra, e nada foi enviado. Exporte a arte em PDF ou imagem e envie de novo. O arquivo aberto da arte (AI, PSD, EPS, CDR, TIFF) também é aceito, embora o aviso cite só foto e PDF."
+    },
+    {
+     "erro": "\"Arquivo grande demais (máx. 50 MB).\"",
+     "solucao": "Cada arquivo pode ter até 50 MB. Reduza o arquivo ou envie em PDF compactado."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-c2-cuidado",
+   "tipo": "tela",
+   "capitulo": "3 · Enviar a arte do produto",
+   "estado": "arte-base",
+   "inicio": {
+    "url": "/app",
+    "antes": [
+     {
+      "acao": "clicar",
+      "alvo": {
+       "seletor": "a",
+       "contem": "Abrir",
+       "dentro": {
+        "seletor": "main table tbody tr",
+        "contem": "Arte · Glass jar"
+       }
+      },
+      "espera": {
+       "url": "/app/orders/[^/?#]+",
+       "rede": true
+      }
+     }
+    ]
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Agora, um ponto de atenção. Voltamos ao momento antes do envio, com a linha da arte ainda pendente. Ela aceita PDF, imagem e arquivo de arte. Vídeo não entra.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Arte · Glass jar 1.5L with lid\"))"
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "conta_passo": false,
+     "sim": false
+    },
+    {
+     "id": "p2",
+     "fala": "Veja o que acontece quando o arquivo escolhido é um vídeo.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Arte · Glass jar 1.5L with lid\")) input[aria-label=\"Escolher arquivo\"]"
+     },
+     "acao": "anexar",
+     "valor": "{DEMO}/arquivos/amostra-3d-video.mp4",
+     "alvo_visual": "main li:has(span.font-medium:text-is(\"Arte · Glass jar 1.5L with lid\")) [data-file-button]",
+     "acao_em": "fim",
+     "espera": {
+      "url": "error=",
+      "rede": true
+     },
+     "conta_passo": false,
+     "sim": false
+    },
+    {
+     "id": "p3",
+     "fala": "O portal avisa que o formato não é aceito, e nada é enviado. Salve a arte em PDF e mande outra vez.",
+     "alvo": {
+      "texto": "Formato não aceito",
+      "exato": false
+     },
+     "acao": "mostrar",
+     "pausa": 0.6,
+     "conta_passo": false,
+     "sim": false
+    }
+   ],
+   "sim": false,
+   "modulo": 1
+  },
+  {
+   "id": "m1-c2-suavez",
+   "tipo": "cartao",
+   "capitulo": "3 · Enviar a arte do produto",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Enviar a arte do produto",
+    "itens": [
+     "Em Pendências, clique em \"Abrir\" na linha da arte",
+     "No marco \"Material de arte\", baixe a faca e a foto em alta",
+     "No marco \"Arte\", clique em \"Escolher arquivo\" e selecione a arte",
+     "Veja a linha passar para \"Concluído\""
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Sua vez. Pause o vídeo e envie a arte de um produto."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-c3-cartao",
+   "tipo": "cartao",
+   "capitulo": "4 · Arte devolvida",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 4 de 4",
+    "titulo": "Arte devolvida",
+    "subtitulo": "Ler o motivo e enviar a nova versão"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Por fim: quando a arte volta para a agência."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-c3-devolvida",
+   "tipo": "tela",
+   "capitulo": "4 · Arte devolvida",
+   "estado": "arte-devolvida",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Às vezes a arte volta: a equipe da Wellmix olhou e pediu um ajuste. O aviso chega pelo sino, aqui no alto. Abra o sino.",
+     "alvo": {
+      "seletor": "header a[href='/app/notifications']"
+     },
+     "acao": "clicar",
+     "rotulo": "Notificações",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique no sino",
+     "espera": {
+      "url": "/app/notifications",
+      "rede": true
+     },
+     "zoom": 1.3
+    },
+    {
+     "id": "p2",
+     "fala": "O aviso diz que a arte foi reprovada, e traz o motivo: a marca precisa ficar maior na frente da caixa.",
+     "alvo": {
+      "seletor": "main table tbody tr",
+      "contem": "reprovado"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p3",
+     "fala": "Use o botão \"Resolver\" para ir ao pedido.",
+     "alvo": {
+      "seletor": "button",
+      "contem": "Resolver",
+      "dentro": {
+       "seletor": "main table tbody tr",
+       "contem": "reprovado"
+      }
+     },
+     "acao": "clicar",
+     "rotulo": "Resolver",
+     "rotulo_lado": "esquerda",
+     "resumo": "No aviso, clique em \"Resolver\"",
+     "espera": {
+      "url": "/app/orders/[^/?#]+",
+      "rede": true
+     }
+    },
+    {
+     "id": "p4",
+     "fala": "No marco da arte, a linha voltou para \"Reprovado\". O motivo aparece logo abaixo, junto do arquivo que você tinha enviado.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Arte · Glass jar 1.5L with lid\"))"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p5",
+     "fala": "Ajuste a arte e envie a nova versão pelo mesmo botão, \"Escolher arquivo\".",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Arte · Glass jar 1.5L with lid\")) input[aria-label=\"Escolher arquivo\"]"
+     },
+     "acao": "anexar",
+     "valor": "{DEMO}/arquivos/arte-caixa-pote-1500ml-v2.pdf",
+     "alvo_visual": "main li:has(span.font-medium:text-is(\"Arte · Glass jar 1.5L with lid\")) [data-file-button]",
+     "rotulo": "Escolher arquivo",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Escolher arquivo\" e selecione a nova versão",
+     "acao_em": "fim",
+     "espera": {
+      "some": "main li:has(span.font-medium:text-is(\"Arte · Glass jar 1.5L with lid\")) form:has(input[name=requirementId]):not([data-requirement-clear])",
+      "rede": true
+     }
+    },
+    {
+     "id": "p6",
+     "fala": "Pronto: a linha mostra a versão 2. O motivo antigo continua escrito ali, mas a arte já voltou para a validação da Wellmix.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Arte · Glass jar 1.5L with lid\"))"
+     },
+     "acao": "mostrar",
+     "pausa": 0.6
+    }
+   ],
+   "salvar": "arte-s2",
+   "tarefa": "Reenviar uma arte devolvida",
+   "modulo": 1
+  },
+  {
+   "id": "m1-c3-suavez",
+   "tipo": "cartao",
+   "capitulo": "4 · Arte devolvida",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Reenviar a arte devolvida",
+    "itens": [
+     "Abra o sino e leia o aviso da arte reprovada",
+     "Clique em \"Resolver\"",
+     "No marco \"Arte\", leia o motivo na linha da arte",
+     "Clique em \"Escolher arquivo\" e selecione a nova versão"
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora é com você: pause o vídeo e envie a nova versão de uma arte."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-z9-resumo",
+   "tipo": "cartao",
+   "capitulo": "Resumo",
+   "cartao": {
+    "tipo": "encerramento",
+    "titulo": "A arte está com a Wellmix",
+    "subtitulo": "Entrar, achar as pendências, enviar a arte e reenviar quando ela volta."
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Resumindo: você entra com o seu login, começa pelas pendências, baixa a faca e a foto, e envia a arte na linha do produto. Se a arte voltar, você lê o motivo e envia a nova versão."
+    },
+    {
+     "id": "f2",
+     "fala": "Agora responda ao quiz deste módulo. No próximo, você aplica o selo e envia a arte final."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m2-a0-abertura",
+   "tipo": "cartao",
+   "capitulo": "Boas-vindas",
+   "cartao": {
+    "tipo": "abertura",
+    "sobretitulo": "Treinamento do Portal Wellmix · Agência de arte",
+    "titulo": "O selo e a arte final",
+    "subtitulo": "Módulo 2"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Aqui você fecha o trabalho da arte: aplica o selo de certificação e envia a arte final."
+    },
+    {
+     "id": "f2",
+     "fala": "E descobre o que fazer quando a Wellmix recusa a arte com o selo."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c1-cartao",
+   "tipo": "cartao",
+   "capitulo": "1 · Aplicar o selo na arte",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 1 de 3",
+    "titulo": "Aplicar o selo na arte",
+    "subtitulo": "Baixar o selo e enviar a arte com ele"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Para começar: o selo de certificação."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c1-selo",
+   "tipo": "tela",
+   "capitulo": "1 · Aplicar o selo na arte",
+   "estado": "arte-final",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "A Wellmix validou a sua arte, e a certificadora enviou o certificado e o selo do produto. Com isso, chegam duas pendências novas.",
+     "alvo": {
+      "seletor": "main table tbody"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p2",
+     "fala": "Comece por esta: aplicar o selo de certificação na arte. Ela fica na etapa \"Selo na arte\".",
+     "alvo": {
+      "seletor": "main table tbody tr",
+      "contem": "Aplicar o selo de certificação na arte"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p3",
+     "fala": "Na linha dela, clique em \"Abrir\".",
+     "alvo": {
+      "seletor": "a",
+      "contem": "Abrir",
+      "dentro": {
+       "seletor": "main table tbody tr",
+       "contem": "Aplicar o selo de certificação na arte"
+      }
+     },
+     "acao": "clicar",
+     "alvo_visual": {
+      "seletor": "main table tbody tr",
+      "contem": "Aplicar o selo de certificação na arte"
+     },
+     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Aplicar o selo de certificação na arte\"",
+     "espera": {
+      "url": "/app/orders/[^/?#]+",
+      "rede": true
+     }
+    },
+    {
+     "id": "p4",
+     "fala": "Você cai no cartão \"Certificação\" do pedido. A primeira linha é o selo: a certificadora já enviou, e o número dele aparece ao lado.",
+     "alvo": {
+      "seletor": "#certification-step-cert_seal"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p5",
+     "fala": "A segunda linha é a sua: \"Selo aplicado na arte\". A agência faz, e a Wellmix valida.",
+     "alvo": {
+      "seletor": "#certification-step-cert_seal_art"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p6",
+     "fala": "Use o link \"Baixar o selo\" para pegar o arquivo do selo.",
+     "alvo": {
+      "seletor": "[data-seal-download]"
+     },
+     "acao": "passar",
+     "rotulo": "Baixar o selo",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Baixar o selo\"",
+     "zoom": 1.3
+    },
+    {
+     "id": "p7",
+     "fala": "Aplique o selo na arte, no seu programa de arte, e exporte o arquivo."
+    },
+    {
+     "id": "p8",
+     "fala": "De volta ao portal, use o botão \"Escolher arquivo\", na mesma linha, e selecione a arte com o selo.",
+     "alvo": {
+      "seletor": "#certification-step-cert_seal_art input[type=file]"
+     },
+     "acao": "anexar",
+     "valor": "{DEMO}/arquivos/arte-final-com-selo-pote-1500ml.pdf",
+     "rotulo": "Escolher arquivo",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Escolher arquivo\" e selecione a arte com o selo",
+     "acao_em": "fim",
+     "espera": {
+      "ms": 600
+     }
+    },
+    {
+     "id": "p9",
+     "fala": "O nome do arquivo aparece ao lado do botão. Aqui o envio não é automático: falta um passo.",
+     "alvo": {
+      "seletor": "#certification-step-cert_seal_art input[type=file]"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p10",
+     "fala": "Clique em \"Enviar\".",
+     "alvo": {
+      "seletor": "[data-import-submit=\"cert_seal_art\"]"
+     },
+     "acao": "clicar",
+     "rotulo": "Enviar",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Enviar\"",
+     "espera": {
+      "url": "certStep=submitted",
+      "rede": true
+     }
+    },
+    {
+     "id": "p11",
+     "fala": "A linha passa para \"Enviado, aguardando validação\", e o botão vira \"Enviar de novo\". A Wellmix olha a arte com o selo e valida, ou devolve com o motivo.",
+     "alvo": {
+      "seletor": "#certification-step-cert_seal_art"
+     },
+     "acao": "mostrar",
+     "pausa": 0.6
+    }
+   ],
+   "salvar": "arte-final-s1",
+   "tarefa": "Enviar a arte com o selo aplicado",
+   "modulo": 2
+  },
+  {
+   "id": "m2-c1-suavez",
+   "tipo": "cartao",
+   "capitulo": "1 · Aplicar o selo na arte",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Aplicar o selo na arte",
+    "itens": [
+     "Em Pendências, clique em \"Abrir\" na linha \"Aplicar o selo de certificação na arte\"",
+     "No cartão \"Certificação\", clique em \"Baixar o selo\"",
+     "Aplique o selo na arte e selecione o arquivo em \"Escolher arquivo\"",
+     "Clique em \"Enviar\""
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora é com você: pause o vídeo e envie a arte com o selo aplicado."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c2-cartao",
+   "tipo": "cartao",
+   "capitulo": "2 · Arte final com o selo",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 2 de 3",
+    "titulo": "Arte final com o selo",
+    "subtitulo": "A mesma arte, na linha do produto"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora: a arte final, no marco da arte."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c2-final",
+   "tipo": "tela",
+   "capitulo": "2 · Arte final com o selo",
+   "estado": "arte-final-s1",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Falta a outra pendência: a arte final com o selo. Hoje o portal pede a arte com o selo em dois lugares. Um é o cartão da certificação, que você acabou de ver. O outro é a linha \"Arte final com o selo\", no marco da arte.",
+     "alvo": {
+      "seletor": "main table tbody tr",
+      "contem": "Arte final com o selo"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p2",
+     "fala": "Na linha dessa pendência, clique em \"Abrir\".",
+     "alvo": {
+      "seletor": "a",
+      "contem": "Abrir",
+      "dentro": {
+       "seletor": "main table tbody tr",
+       "contem": "Arte final com o selo"
+      }
+     },
+     "acao": "clicar",
+     "alvo_visual": {
+      "seletor": "main table tbody tr",
+      "contem": "Arte final com o selo"
+     },
+     "resumo": "Em Pendências, clique em \"Abrir\" na linha da arte final com o selo",
+     "espera": {
+      "url": "/app/orders/[^/?#]+",
+      "rede": true
+     }
+    },
+    {
+     "id": "p3",
+     "fala": "Mais abaixo, no marco da arte, a arte final com o selo já pode ser enviada. Essa linha traz dois arquivos de apoio.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Arte final com o selo · Glass jar 1.5L with lid\"))"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p4",
+     "fala": "O primeiro é a arte que a Wellmix validou.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Arte final com o selo · Glass jar 1.5L with lid\")) a",
+      "contem": "arte-caixa-pote-1500ml-v2.pdf"
+     },
+     "acao": "passar",
+     "zoom": 1.3,
+     "conta_passo": false,
+     "sim": false
+    },
+    {
+     "id": "p5",
+     "fala": "O segundo é o certificado do produto. Os dois abrem pelo nome do arquivo.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Arte final com o selo · Glass jar 1.5L with lid\")) a",
+      "contem": "certificado-de-conformidade"
+     },
+     "acao": "passar",
+     "zoom": 1.3,
+     "conta_passo": false,
+     "sim": false
+    },
+    {
+     "id": "p6",
+     "fala": "Use o botão \"Escolher arquivo\" e selecione a arte final, a mesma que tem o selo aplicado.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Arte final com o selo · Glass jar 1.5L with lid\")) input[aria-label=\"Escolher arquivo\"]"
+     },
+     "acao": "anexar",
+     "valor": "{DEMO}/arquivos/arte-final-com-selo-pote-1500ml.pdf",
+     "alvo_visual": "main li:has(span.font-medium:text-is(\"Arte final com o selo · Glass jar 1.5L with lid\")) [data-file-button]",
+     "rotulo": "Escolher arquivo",
+     "rotulo_lado": "esquerda",
+     "resumo": "Na linha \"Arte final com o selo\", clique em \"Escolher arquivo\" e selecione a arte final",
+     "acao_em": "fim",
+     "espera": {
+      "some": "main li:has(span.font-medium:text-is(\"Arte final com o selo · Glass jar 1.5L with lid\")) form:has(input[name=requirementId]):not([data-requirement-clear])",
+      "rede": true
+     }
+    },
+    {
+     "id": "p7",
+     "fala": "Como na primeira arte, o envio acontece na hora. O marco \"Arte\" fecha como \"Concluído\", com as duas linhas feitas.",
+     "alvo": {
+      "seletor": "main details > summary:has-text(\"2 de 2\")"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p8",
+     "fala": "Agora falta só a Wellmix validar a arte com o selo, no cartão da certificação. Depois disso, o pedido segue para o contrato. Para rever o que foi enviado, use \"Ver detalhes\".",
+     "alvo": {
+      "seletor": "main details > summary:has-text(\"2 de 2\") span, main details > summary:has-text(\"2 de 2\") div",
+      "contem": "Ver detalhes",
+      "n": -1
+     },
+     "acao": "mostrar",
+     "pausa": 0.6
+    }
+   ],
+   "salvar": "arte-final-s2",
+   "tarefa": "Enviar a arte final com o selo",
+   "modulo": 2
+  },
+  {
+   "id": "m2-c2-suavez",
+   "tipo": "cartao",
+   "capitulo": "2 · Arte final com o selo",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Enviar a arte final com o selo",
+    "itens": [
+     "Em Pendências, clique em \"Abrir\" na linha da arte final com o selo",
+     "No marco \"Arte\", clique em \"Escolher arquivo\" e selecione a arte final",
+     "Veja o marco \"Arte\" fechar como \"Concluído\""
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Sua vez. Pause o vídeo e envie a arte final com o selo."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c3-cartao",
+   "tipo": "cartao",
+   "capitulo": "3 · Selo recusado",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 3 de 3",
+    "titulo": "Selo recusado",
+    "subtitulo": "Ler o motivo e enviar de novo"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Por fim: quando a Wellmix recusa a arte com o selo."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c3-recusado",
+   "tipo": "tela",
+   "capitulo": "3 · Selo recusado",
+   "estado": "arte-selo-recusado",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "A Wellmix olhou a arte com o selo e não aceitou. O aviso chega pelo sino. Abra o sino.",
+     "alvo": {
+      "seletor": "header a[href='/app/notifications']"
+     },
+     "acao": "clicar",
+     "rotulo": "Notificações",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique no sino",
+     "espera": {
+      "url": "/app/notifications",
+      "rede": true
+     },
+     "zoom": 1.3
+    },
+    {
+     "id": "p2",
+     "fala": "O aviso diz que o selo aplicado na arte foi recusado, e traz o motivo: o selo ficou sobre o código de barras.",
+     "alvo": {
+      "seletor": "main table tbody tr",
+      "contem": "Selo aplicado na arte recusado"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p3",
+     "fala": "Use o botão \"Resolver\" para ir ao pedido.",
+     "alvo": {
+      "seletor": "button",
+      "contem": "Resolver",
+      "dentro": {
+       "seletor": "main table tbody tr",
+       "contem": "Selo aplicado na arte recusado"
+      }
+     },
+     "acao": "clicar",
+     "rotulo": "Resolver",
+     "rotulo_lado": "esquerda",
+     "resumo": "No aviso, clique em \"Resolver\"",
+     "espera": {
+      "url": "/app/orders/[^/?#]+",
+      "rede": true
+     }
+    },
+    {
+     "id": "p4",
+     "fala": "No cartão \"Certificação\", a linha \"Selo aplicado na arte\" está como \"Recusado\", com o motivo escrito logo abaixo.",
+     "alvo": {
+      "seletor": "#certification-step-cert_seal_art"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p5",
+     "fala": "Ajuste a arte, mudando o selo de lugar, e selecione o arquivo novo em \"Escolher arquivo\".",
+     "alvo": {
+      "seletor": "#certification-step-cert_seal_art input[type=file]"
+     },
+     "acao": "anexar",
+     "valor": "{DEMO}/arquivos/arte-final-com-selo-pote-1500ml-v2.pdf",
+     "rotulo": "Escolher arquivo",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Escolher arquivo\" e selecione a arte ajustada",
+     "acao_em": "fim",
+     "espera": {
+      "ms": 600
+     }
+    },
+    {
+     "id": "p6",
+     "fala": "O botão desta linha é \"Enviar de novo\". Clique nele.",
+     "alvo": {
+      "seletor": "[data-import-submit=\"cert_seal_art\"]"
+     },
+     "acao": "clicar",
+     "rotulo": "Enviar de novo",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Enviar de novo\"",
+     "espera": {
+      "url": "certStep=submitted",
+      "rede": true
+     }
+    },
+    {
+     "id": "p7",
+     "fala": "A linha volta para \"Enviado, aguardando validação\", e a Wellmix olha de novo. A nova versão é enviada só aqui, no cartão da certificação. É ela que a Wellmix valida.",
+     "alvo": {
+      "seletor": "#certification-step-cert_seal_art"
+     },
+     "acao": "mostrar",
+     "pausa": 0.6
+    }
+   ],
+   "salvar": "arte-recusado-s1",
+   "tarefa": "Reenviar a arte com o selo recusada",
+   "modulo": 2
+  },
+  {
+   "id": "m2-c3-suavez",
+   "tipo": "cartao",
+   "capitulo": "3 · Selo recusado",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Reenviar a arte com o selo",
+    "itens": [
+     "Abra o sino e clique em \"Resolver\" no aviso do selo recusado",
+     "Leia o motivo na linha \"Selo aplicado na arte\"",
+     "Selecione a arte ajustada em \"Escolher arquivo\"",
+     "Clique em \"Enviar de novo\""
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora é com você: pause o vídeo e reenvie uma arte com o selo."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-z9-resumo",
+   "tipo": "cartao",
+   "capitulo": "Resumo",
+   "cartao": {
+    "tipo": "encerramento",
+    "titulo": "Selo aplicado, arte final enviada",
+    "subtitulo": "Baixar o selo, enviar a arte com ele nos dois lugares e reenviar quando a Wellmix recusa."
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Resumindo: você baixa o selo no cartão da certificação, aplica na arte e envia. Depois, envia a mesma arte na linha \"Arte final com o selo\". Se a Wellmix recusar, você lê o motivo e envia de novo."
+    },
+    {
+     "id": "f2",
+     "fala": "Agora responda ao quiz deste módulo. No próximo, os ajustes de arte, a mesa de trabalho e os avisos."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m3-a0-abertura",
+   "tipo": "cartao",
+   "capitulo": "Boas-vindas",
+   "cartao": {
+    "tipo": "abertura",
+    "sobretitulo": "Treinamento do Portal Wellmix · Agência de arte",
+    "titulo": "Ajustes, a tela Arte e a mesa de trabalho",
+    "subtitulo": "Módulo 3"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Aqui você descobre o que acontece depois de entregar a arte: o ajuste pedido pela Wellmix."
+    },
+    {
+     "id": "f2",
+     "fala": "E conhece outros dois caminhos para achar o seu trabalho, a tela \"Arte\" e a mesa de trabalho, além dos avisos e das mensagens."
+    }
+   ],
+   "modulo": 3
+  },
+  {
+   "id": "m3-c1-cartao",
+   "tipo": "cartao",
+   "capitulo": "1 · Ajuste de arte",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 1 de 3",
+    "titulo": "Ajuste de arte",
+    "subtitulo": "Quando a Wellmix aponta um problema na arte de um produto"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Para começar: o ajuste de arte."
+    }
+   ],
+   "modulo": 3
+  },
+  {
+   "id": "m3-c1-ajuste",
+   "tipo": "tela",
+   "capitulo": "1 · Ajuste de arte",
+   "estado": "arte-correcao",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Mesmo depois da entrega, a Wellmix pode apontar um problema na arte de um produto. Chega uma pendência nova, pedindo a correção da arte.",
+     "alvo": {
+      "seletor": "main table tbody tr",
+      "contem": "Corrigir a arte de Glass jar"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p2",
+     "fala": "Na linha dela, clique em \"Abrir\".",
+     "alvo": {
+      "seletor": "a",
+      "contem": "Abrir",
+      "dentro": {
+       "seletor": "main table tbody tr",
+       "contem": "Corrigir a arte de Glass jar"
+      }
+     },
+     "acao": "clicar",
+     "alvo_visual": {
+      "seletor": "main table tbody tr",
+      "contem": "Corrigir a arte de Glass jar"
+     },
+     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Corrigir a arte\"",
+     "espera": {
+      "url": "/app/orders/[^/?#]+",
+      "rede": true
+     }
+    },
+    {
+     "id": "p3",
+     "fala": "Você cai no cartão das artes do pedido, direto na linha do produto. A situação é \"Não conforme\", e ao lado vem o que a Wellmix apontou.",
+     "alvo": {
+      "seletor": "tr[data-artwork-issue]"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p4",
+     "fala": "Ajuste a arte. Depois, no campo \"O que foi corrigido\", escreva em poucas palavras o que mudou.",
+     "alvo": {
+      "seletor": "tr[data-artwork-issue] input[name=\"fixNote\"]"
+     },
+     "acao": "digitar",
+     "valor": "Margem branca do código de barras ajustada dos dois lados.",
+     "rotulo": "O que foi corrigido",
+     "rotulo_lado": "acima",
+     "resumo": "Escreva o que mudou em \"O que foi corrigido\"",
+     "acao_em": {
+      "apos": "campo"
+     },
+     "pausa": 0.4
+    },
+    {
+     "id": "p5",
+     "fala": "Escolha o arquivo da arte ajustada.",
+     "alvo": {
+      "seletor": "tr[data-artwork-issue] input[type=file]"
+     },
+     "acao": "anexar",
+     "valor": "{DEMO}/arquivos/arte-corrigida-pote-1500ml.pdf",
+     "rotulo": "Arquivo",
+     "rotulo_lado": "acima",
+     "resumo": "Escolha o arquivo da arte ajustada",
+     "acao_em": "fim",
+     "espera": {
+      "ms": 600
+     }
+    },
+    {
+     "id": "p6",
+     "fala": "E clique em \"Enviar correção\".",
+     "alvo": {
+      "seletor": "[data-artwork-fix]"
+     },
+     "acao": "clicar",
+     "rotulo": "Enviar correção",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Enviar correção\"",
+     "espera": {
+      "seletor": "tr[data-artwork-issue=\"fixed\"]",
+      "rede": true
+     }
+    },
+    {
+     "id": "p7",
+     "fala": "A situação muda para \"Corrigida, aguardando aceite\". Quem apontou o problema olha a arte nova: se aceitar, o ajuste fecha. Se reabrir, a pendência volta com o motivo.",
+     "alvo": {
+      "seletor": "tr[data-artwork-issue]"
+     },
+     "acao": "mostrar",
+     "pausa": 0.6
+    },
+    {
+     "id": "p8",
+     "fala": "No alto do mesmo cartão, o link \"Baixar todas as artes\" reúne em um único arquivo a versão mais nova de tudo: a faca, as artes e o selo.",
+     "alvo": {
+      "seletor": "[data-artwork-zip]"
+     },
+     "acao": "passar",
+     "rotulo": "Baixar todas as artes",
+     "rotulo_lado": "esquerda",
+     "zoom": 1.3,
+     "conta_passo": false,
+     "sim": false
+    }
+   ],
+   "salvar": "arte-correcao-s1",
+   "tarefa": "Enviar a correção de uma arte",
+   "modulo": 3
+  },
+  {
+   "id": "m3-c1-suavez",
+   "tipo": "cartao",
+   "capitulo": "1 · Ajuste de arte",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Enviar a correção de uma arte",
+    "itens": [
+     "Em Pendências, clique em \"Abrir\" na linha \"Corrigir a arte\"",
+     "Leia o que a Wellmix apontou, na linha \"Não conforme\"",
+     "Escreva o que mudou e escolha o arquivo da arte ajustada",
+     "Clique em \"Enviar correção\""
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora é com você: pause o vídeo e envie a correção de uma arte."
+    }
+   ],
+   "modulo": 3
+  },
+  {
+   "id": "m3-c2-cartao",
+   "tipo": "cartao",
+   "capitulo": "2 · A tela Arte e a mesa de trabalho",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 2 de 3",
+    "titulo": "A tela Arte e a mesa de trabalho",
+    "subtitulo": "Outros dois caminhos para o mesmo trabalho"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora: a tela Arte e a mesa de trabalho."
+    }
+   ],
+   "modulo": 3
+  },
+  {
+   "id": "m3-c2-mesa",
+   "tipo": "tela",
+   "capitulo": "2 · A tela Arte e a mesa de trabalho",
+   "estado": "arte-final",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "As pendências não são o único caminho. Para este exemplo, o pedido aparece em um momento anterior, com a arte final ainda por enviar. No menu, abra o grupo \"Pedido\".",
+     "alvo": {
+      "seletor": "aside button",
+      "contem": "Pedido"
+     },
+     "acao": "clicar",
+     "rotulo": "Pedido",
+     "resumo": "No menu, abra o grupo \"Pedido\"",
+     "espera": {
+      "seletor": "aside a[href='/app/flow/order/art']"
+     }
+    },
+    {
+     "id": "p2",
+     "fala": "E clique em \"Arte\".",
+     "alvo": {
+      "seletor": "aside a[href='/app/flow/order/art']"
+     },
+     "acao": "clicar",
+     "rotulo": "Arte",
+     "resumo": "Clique em \"Arte\"",
+     "espera": {
+      "url": "/app/flow/order/art",
+      "rede": true
+     }
+    },
+    {
+     "id": "p3",
+     "fala": "Esta tela junta só o passo da arte. A aba \"Pendências\" lista o que espera por você, com o prazo e há quantos dias está aberto.",
+     "alvo": {
+      "seletor": "[data-flow-tab=pending]"
+     },
+     "acao": "mostrar",
+     "rotulo": "Pendências",
+     "rotulo_lado": "abaixo"
+    },
+    {
+     "id": "p4",
+     "fala": "A aba \"Todos no passo\" mostra todos os seus pedidos que estão na arte, mesmo sem nada pendente. Abra essa aba.",
+     "alvo": {
+      "seletor": "[data-flow-tab=all]"
+     },
+     "acao": "clicar",
+     "rotulo": "Todos no passo",
+     "rotulo_lado": "abaixo",
+     "resumo": "Clique na aba \"Todos no passo\"",
+     "acao_em": "fim",
+     "espera": {
+      "url": "tab=all",
+      "rede": true
+     }
+    },
+    {
+     "id": "p4b",
+     "fala": "Cada linha é um pedido, com a etapa em que ele está e o que continua aberto neste passo.",
+     "alvo": {
+      "seletor": "main table tbody tr"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p4c",
+     "fala": "Volte para a aba \"Pendências\".",
+     "alvo": {
+      "seletor": "[data-flow-tab=pending]"
+     },
+     "acao": "clicar",
+     "rotulo": "Pendências",
+     "rotulo_lado": "abaixo",
+     "resumo": "Volte para a aba \"Pendências\"",
+     "espera": {
+      "seletor": "[data-flow-case-open]",
+      "rede": true
+     }
+    },
+    {
+     "id": "p5",
+     "fala": "Na linha da pendência, clique em \"Resolver\".",
+     "alvo": {
+      "seletor": "[data-flow-case-open]"
+     },
+     "acao": "clicar",
+     "rotulo": "Resolver",
+     "rotulo_lado": "esquerda",
+     "resumo": "Na linha da pendência, clique em \"Resolver\"",
+     "espera": {
+      "url": "/app/flow/order/art/",
+      "rede": true
+     }
+    },
+    {
+     "id": "p6",
+     "fala": "Abre só o produto daquela linha, com as duas linhas da arte. Dá para enviar o arquivo daqui mesmo, sem abrir o pedido inteiro.",
+     "alvo": {
+      "papel": "heading",
+      "nome": "Este produto no passo",
+      "acima": 2
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p7",
+     "fala": "Agora, a mesa de trabalho. Volte às pendências, pelo menu.",
+     "alvo": {
+      "seletor": "aside a[href='/app']"
+     },
+     "acao": "clicar",
+     "rotulo": "Pendências",
+     "resumo": "No menu, clique em \"Pendências\"",
+     "acao_em": {
+      "apos": "Volte"
+     },
+     "espera": {
+      "url": "/app$",
+      "rede": true
+     }
+    },
+    {
+     "id": "p8",
+     "fala": "Use o filtro \"Todas as etapas\", mesmo que já apareça marcado.",
+     "alvo": {
+      "seletor": "main a",
+      "contem": "Todas as etapas"
+     },
+     "acao": "clicar",
+     "rotulo": "Todas as etapas",
+     "resumo": "Clique em \"Todas as etapas\"",
+     "espera": {
+      "url": "/app/tasks$",
+      "rede": true
+     }
+    },
+    {
+     "id": "p9",
+     "fala": "Com isso aparece o botão \"Mesa de trabalho\". Clique nele.",
+     "alvo": {
+      "seletor": "[data-desk-link]"
+     },
+     "acao": "clicar",
+     "rotulo": "Mesa de trabalho",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Mesa de trabalho\"",
+     "espera": {
+      "url": "/app/tasks/desk",
+      "rede": true
+     }
+    },
+    {
+     "id": "p10",
+     "fala": "A mesa separa o trabalho em duas filas, por prazo: as artes a fazer e as artes finais com o selo. Aqui, uma arte final espera por você.",
+     "alvo": {
+      "seletor": "main"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p11",
+     "fala": "Em cada linha, \"Abrir\" leva ao pedido.",
+     "alvo": {
+      "seletor": "main a",
+      "contem": "Abrir"
+     },
+     "acao": "mostrar",
+     "rotulo": "Abrir",
+     "rotulo_lado": "esquerda",
+     "pausa": 0.6
+    }
+   ],
+   "tarefa": "Achar as artes pela tela Arte e pela mesa de trabalho",
+   "modulo": 3
+  },
+  {
+   "id": "m3-c2-suavez",
+   "tipo": "cartao",
+   "capitulo": "2 · A tela Arte e a mesa de trabalho",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "A tela Arte e a mesa de trabalho",
+    "itens": [
+     "No menu, abra \"Pedido\" e clique em \"Arte\"",
+     "Veja as abas \"Pendências\" e \"Todos no passo\"",
+     "Clique em \"Resolver\" numa linha",
+     "Em Pendências, clique em \"Todas as etapas\" e depois em \"Mesa de trabalho\""
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Sua vez. Pause o vídeo e ache as suas artes pela tela Arte e pela mesa de trabalho."
+    }
+   ],
+   "modulo": 3
+  },
+  {
+   "id": "m3-c3-cartao",
+   "tipo": "cartao",
+   "capitulo": "3 · Avisos e mensagens",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 3 de 3",
+    "titulo": "Avisos e mensagens",
+    "subtitulo": "O sino e a conversa com a Wellmix"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Por fim: os avisos e as mensagens."
+    }
+   ],
+   "modulo": 3
+  },
+  {
+   "id": "m3-c3-avisos",
+   "tipo": "tela",
+   "capitulo": "3 · Avisos e mensagens",
+   "estado": "arte-final",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "O sino, no alto, mostra os avisos. O número é quantos você ainda não leu. Abra o sino.",
+     "alvo": {
+      "seletor": "header a[href='/app/notifications']"
+     },
+     "acao": "clicar",
+     "rotulo": "Notificações",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique no sino",
+     "espera": {
+      "url": "/app/notifications",
+      "rede": true
+     },
+     "zoom": 1.3
+    },
+    {
+     "id": "p2",
+     "fala": "Cada aviso diz o que aconteceu e de quem é a vez. \"Sua vez\" quer dizer que depende da agência.",
+     "alvo": {
+      "seletor": "main table tbody tr"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p3",
+     "fala": "O botão \"Resolver\" leva você para a tela certa, e o aviso sai da lista.",
+     "alvo": {
+      "seletor": "main table tbody tr button",
+      "contem": "Resolver"
+     },
+     "acao": "mostrar",
+     "rotulo": "Resolver",
+     "rotulo_lado": "esquerda"
+    },
+    {
+     "id": "p4",
+     "fala": "Para falar com a Wellmix, clique no balão de mensagens, ao lado do sino.",
+     "alvo": {
+      "seletor": "header a[href='/app/messages']"
+     },
+     "acao": "clicar",
+     "rotulo": "Mensagens",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique no balão de mensagens",
+     "destaque_em": {
+      "em": "balão"
+     },
+     "espera": {
+      "url": "/app/messages",
+      "rede": true
+     }
+    },
+    {
+     "id": "p5",
+     "fala": "Esta conversa é da sua agência com a equipe da Wellmix. Todos os logins da agência veem as mesmas mensagens.",
+     "alvo": {
+      "texto": "Todos os logins da sua empresa veem esta conversa",
+      "exato": false
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p6",
+     "fala": "Escreva a mensagem no campo de baixo. Pode ser uma dúvida sobre a faca, o prazo ou um ajuste.",
+     "alvo": {
+      "seletor": "main textarea[name=body]"
+     },
+     "acao": "digitar",
+     "valor": "Olá! A arte final do pote segue hoje, com o selo na lateral.",
+     "rotulo": "Mensagem",
+     "rotulo_lado": "acima",
+     "resumo": "Escreva a mensagem",
+     "acao_em": {
+      "apos": "baixo"
+     },
+     "pausa": 0.5
+    },
+    {
+     "id": "p7",
+     "fala": "E clique em \"Enviar\".",
+     "alvo": {
+      "seletor": "main form button[type=submit]",
+      "contem": "Enviar"
+     },
+     "acao": "clicar",
+     "rotulo": "Enviar",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Enviar\"",
+     "espera": {
+      "texto": "Olá! A arte final do pote segue hoje, com o selo na lateral.",
+      "ms": 400
+     },
+     "pausa": 0.6
+    },
+    {
+     "id": "p8",
+     "fala": "A mensagem fica na conversa, para a equipe da Wellmix responder.",
+     "alvo": {
+      "texto": "Olá! A arte final do pote segue hoje, com o selo na lateral.",
+      "exato": false
+     },
+     "acao": "mostrar",
+     "pausa": 0.6
+    }
+   ],
+   "tarefa": "Ler os avisos e falar com a Wellmix",
+   "modulo": 3
+  },
+  {
+   "id": "m3-c3-suavez",
+   "tipo": "cartao",
+   "capitulo": "3 · Avisos e mensagens",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Avisos e mensagens",
+    "itens": [
+     "Clique no sino e leia os avisos",
+     "Veja de quem é a vez em cada aviso",
+     "Abra as mensagens e escreva para a Wellmix"
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora é com você: pause o vídeo, leia os avisos e mande uma mensagem."
+    }
+   ],
+   "modulo": 3
+  },
+  {
+   "id": "m3-z9-resumo",
+   "tipo": "cartao",
+   "capitulo": "Resumo",
+   "cartao": {
+    "tipo": "encerramento",
+    "titulo": "Você domina o portal da agência",
+    "subtitulo": "Arte, selo, arte final, ajustes, a tela Arte, a mesa de trabalho e as mensagens."
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Resumindo: quando a Wellmix aponta um ajuste, você envia a correção pelo cartão \"Artes\". Para achar o seu trabalho, use as pendências, a tela \"Arte\" ou a mesa de trabalho. E fale com a Wellmix pelas mensagens."
+    },
+    {
+     "id": "f2",
+     "fala": "Agora responda ao quiz deste módulo e, depois, ao quiz final do treinamento."
+    }
+   ],
+   "modulo": 3
+  }
+ ]
+}

@@ -1,0 +1,360 @@
+[
+ {
+  "modulo": 1,
+  "corte": 0.8,
+  "perguntas": [
+   {
+    "id": "q1",
+    "tipo": "cenario",
+    "tema": "Por onde começar",
+    "rever": {
+     "cena": "m1-c1-pendencias",
+     "passo": "p1"
+    },
+    "enunciado": "Você entrou no portal de manhã. Onde você vê tudo o que a Wellmix espera da certificadora?",
+    "alternativas": [
+     "Em \"Minhas pendências\", a primeira tela",
+     "Na lista \"Pedidos\"",
+     "Na ficha de compra",
+     "Nas mensagens"
+    ],
+    "correta": 0,
+    "feedback": "A conta da certificadora abre em \"Minhas pendências\", com tudo o que depende de você, por prazo."
+   },
+   {
+    "id": "q2",
+    "tipo": "cenario",
+    "tema": "As três tarefas de um pedido",
+    "rever": {
+     "cena": "m1-c1-pendencias",
+     "passo": "p3"
+    },
+    "enunciado": "Chegou um pedido novo, de um produto com certificação. Quais tarefas aparecem para a certificadora?",
+    "alternativas": [
+     "O contrato e o certificado",
+     "A arte da embalagem e o selo",
+     "O certificado de cada produto, o memorial descritivo e o selo",
+     "Só o selo"
+    ],
+    "correta": 2,
+    "feedback": "São três: o certificado, uma linha por produto, e, para o pedido inteiro, o memorial descritivo e o selo."
+   },
+   {
+    "id": "q3",
+    "tipo": "clique",
+    "tema": "Abrir a tarefa",
+    "rever": {
+     "cena": "m1-c1-pendencias",
+     "passo": "p6"
+    },
+    "enunciado": "Você quer ir direto ao lugar onde se envia o certificado do produto. Clique no lugar certo.",
+    "imagem": {
+     "cena": "m1-c1-pendencias",
+     "passo": "p6"
+    },
+    "feedback": "O botão \"Abrir\", no fim da linha, leva você ao pedido daquela tarefa."
+   },
+   {
+    "id": "q4",
+    "tipo": "cenario",
+    "tema": "Onde estão os dados técnicos",
+    "rever": {
+     "cena": "m1-c2-pedido",
+     "passo": "p6"
+    },
+    "enunciado": "Para certificar, você precisa do peso, do material e da embalagem do produto. Onde eles estão?",
+    "alternativas": [
+     "Na ficha de compra, que abre por \"Ver ficha de compra\", só para leitura",
+     "No cartão \"Artes\"",
+     "A Wellmix manda por e-mail",
+     "Nas mensagens"
+    ],
+    "correta": 0,
+    "feedback": "A ficha de compra traz os dados do fornecedor, do produto e da caixa. A certificadora vê tudo, sem editar."
+   },
+   {
+    "id": "q5",
+    "tipo": "clique",
+    "tema": "Abrir a ficha de compra",
+    "rever": {
+     "cena": "m1-c2-pedido",
+     "passo": "p5"
+    },
+    "enunciado": "Você está no pedido e quer os dados técnicos do produto. Clique no lugar certo.",
+    "imagem": {
+     "cena": "m1-c2-pedido",
+     "passo": "p5"
+    },
+    "feedback": "\"Ver ficha de compra\", no resumo do pedido, abre a ficha só para leitura."
+   },
+   {
+    "id": "q6",
+    "tipo": "cenario",
+    "tema": "O documento do pedido",
+    "rever": {
+     "cena": "m1-c2-pedido",
+     "passo": "p9"
+    },
+    "enunciado": "Você abriu o documento do pedido para conferir o que foi combinado. A certificadora precisa assinar?",
+    "alternativas": [
+     "Sim, depois da Wellmix",
+     "Não: quem assina são a Wellmix e o fornecedor; a certificadora só lê",
+     "Sim, antes do fornecedor",
+     "Só se o pedido tiver selo"
+    ],
+    "correta": 1,
+    "feedback": "O documento do pedido é assinado pela Wellmix e pelo fornecedor. Para a certificadora, ele é só leitura."
+   },
+   {
+    "id": "q7",
+    "tipo": "ordenar",
+    "tema": "Passos para enviar o certificado",
+    "rever": {
+     "cena": "m1-c3-certificado",
+     "passo": "p3"
+    },
+    "enunciado": "Ponha em ordem os passos para enviar o certificado de um produto.",
+    "itens": [
+     "Em Pendências, clicar em \"Abrir\" na linha do certificado",
+     "No marco \"Certificação\", achar a linha do certificado do produto",
+     "Clicar em \"Escolher arquivo\" e selecionar o PDF",
+     "Ver a linha passar para \"Concluído\""
+    ],
+    "feedback": "Abra a pendência, ache a linha do produto no marco \"Certificação\", suba o PDF e veja a situação mudar."
+   },
+   {
+    "id": "q8",
+    "tipo": "cenario",
+    "tema": "Depois de escolher o arquivo",
+    "rever": {
+     "cena": "m1-c3-certificado",
+     "passo": "p4"
+    },
+    "enunciado": "Você selecionou o PDF do certificado em \"Escolher arquivo\". O que falta para enviar?",
+    "alternativas": [
+     "Assinar o documento do pedido",
+     "Clicar em \"Enviar\"",
+     "Avisar a Wellmix por mensagem",
+     "Nada: o envio acontece na hora e a linha passa para \"Concluído\""
+    ],
+    "correta": 3,
+    "feedback": "Na linha do certificado, o arquivo é enviado assim que você seleciona. Não há outro botão."
+   },
+   {
+    "id": "q9",
+    "tipo": "cenario",
+    "tema": "Formato não aceito",
+    "rever": {
+     "cena": "m1-c3-cuidado",
+     "passo": "p3"
+    },
+    "enunciado": "Você selecionou o certificado em Word e o portal respondeu \"Formato não aceito\". O que fazer?",
+    "alternativas": [
+     "Esperar a Wellmix liberar o formato",
+     "Mandar o Word pelo cartão \"Artes\"",
+     "Salvar o certificado em PDF e enviar de novo",
+     "Tentar de novo com o mesmo arquivo"
+    ],
+    "correta": 2,
+    "feedback": "Arquivo do Word não entra na linha do certificado, e o que é recusado não é enviado. Salve em PDF e envie de novo."
+   },
+   {
+    "id": "q10",
+    "tipo": "cenario",
+    "tema": "Pedido com vários produtos",
+    "rever": {
+     "cena": "m1-c3-certificado",
+     "passo": "p6"
+    },
+    "enunciado": "O pedido tem três produtos com certificação. Como você envia os certificados?",
+    "alternativas": [
+     "Um arquivo só, em qualquer linha",
+     "Só o do primeiro produto",
+     "Pelas mensagens",
+     "Um certificado em cada linha: cada produto tem a sua"
+    ],
+    "correta": 3,
+    "feedback": "O certificado é por produto: cada produto do pedido tem a própria linha no marco \"Certificação\"."
+   }
+  ]
+ },
+ {
+  "modulo": 2,
+  "corte": 0.8,
+  "perguntas": [
+   {
+    "id": "q1",
+    "tipo": "cenario",
+    "tema": "Onde entram o selo e o memorial",
+    "rever": {
+     "cena": "m2-c1-selo",
+     "passo": "p3"
+    },
+    "enunciado": "Você precisa enviar o selo e o memorial descritivo de um pedido. Onde isso é feito?",
+    "alternativas": [
+     "Na ficha de compra",
+     "No quadro do alto do cartão \"Certificação\", no pedido",
+     "Na lista \"Pedidos\"",
+     "Nas mensagens"
+    ],
+    "correta": 1,
+    "feedback": "O quadro do alto do cartão \"Certificação\" tem um espaço para o selo e outro para o memorial descritivo."
+   },
+   {
+    "id": "q2",
+    "tipo": "cenario",
+    "tema": "O número do selo",
+    "rever": {
+     "cena": "m2-c1-selo",
+     "passo": "p4"
+    },
+    "enunciado": "O selo que você vai enviar ainda não tem número de registro. Dá para enviar?",
+    "alternativas": [
+     "Não: o número é obrigatório",
+     "Sim: o campo do número é opcional",
+     "Só depois de o memorial ser enviado",
+     "Só com a aprovação da Wellmix"
+    ],
+    "correta": 1,
+    "feedback": "O campo \"Nº do selo ou do registro\" é opcional: selecione o arquivo do selo e envie."
+   },
+   {
+    "id": "q3",
+    "tipo": "ordenar",
+    "tema": "Passos para enviar o selo",
+    "rever": {
+     "cena": "m2-c1-selo",
+     "passo": "p2"
+    },
+    "enunciado": "Ponha em ordem os passos para enviar o selo de um pedido.",
+    "itens": [
+     "Em Pendências, clicar em \"Abrir\" na linha \"Gerar o selo de certificação\"",
+     "Digitar o número do selo, se houver",
+     "Clicar em \"Escolher arquivo\" e selecionar o selo",
+     "Clicar em \"Enviar\""
+    ],
+    "feedback": "Abra a pendência, digite o número (se houver), selecione o arquivo e clique em \"Enviar\"."
+   },
+   {
+    "id": "q4",
+    "tipo": "clique",
+    "tema": "Enviar o selo",
+    "rever": {
+     "cena": "m2-c1-selo",
+     "passo": "p6"
+    },
+    "enunciado": "O número e o arquivo do selo já estão preenchidos. Clique no botão que envia o selo.",
+    "imagem": {
+     "cena": "m2-c1-selo",
+     "passo": "p6"
+    },
+    "feedback": "No quadro do alto, selecionar o arquivo não envia: é o botão \"Enviar\" que manda."
+   },
+   {
+    "id": "q5",
+    "tipo": "cenario",
+    "tema": "Depois do selo",
+    "rever": {
+     "cena": "m2-c1-selo",
+     "passo": "p8"
+    },
+    "enunciado": "Você enviou o selo. Quem aplica o selo na arte da embalagem?",
+    "alternativas": [
+     "A certificadora",
+     "O portal, sozinho",
+     "Quem faz a arte: baixa o selo, aplica e envia a arte com o selo; a Wellmix valida",
+     "O fornecedor"
+    ],
+    "correta": 2,
+    "feedback": "Com o selo enviado, quem faz a arte recebe o aviso. A linha \"Selo aplicado na arte\" a certificadora só acompanha."
+   },
+   {
+    "id": "q6",
+    "tipo": "clique",
+    "tema": "Enviar o memorial",
+    "rever": {
+     "cena": "m2-c2-memorial",
+     "passo": "p4"
+    },
+    "enunciado": "Você está no quadro do alto e quer selecionar o PDF do memorial descritivo. Clique no lugar certo.",
+    "imagem": {
+     "cena": "m2-c2-memorial",
+     "passo": "p4"
+    },
+    "feedback": "No quadro \"Memorial descritivo\", \"Escolher arquivo\" seleciona o PDF. Depois, \"Enviar\"."
+   },
+   {
+    "id": "q7",
+    "tipo": "cenario",
+    "tema": "Arquivo errado",
+    "rever": {
+     "cena": "m2-c3-substituir",
+     "passo": "p3"
+    },
+    "enunciado": "Você enviou o selo e percebeu que o arquivo estava errado. O que fazer?",
+    "alternativas": [
+     "Abrir o pedido e usar \"Substituir arquivo\" no quadro do selo",
+     "Enviar o arquivo certo pelas mensagens",
+     "Pedir para a Wellmix apagar o pedido",
+     "Nada: não dá para trocar"
+    ],
+    "correta": 0,
+    "feedback": "\"Substituir arquivo\" troca o arquivo do selo ou do memorial. O número do selo continua o mesmo."
+   },
+   {
+    "id": "q8",
+    "tipo": "cenario",
+    "tema": "Antes de confirmar a troca",
+    "rever": {
+     "cena": "m2-c3-substituir",
+     "passo": "p4"
+    },
+    "enunciado": "Você clicou em \"Substituir arquivo\" e selecionou o arquivo novo. O arquivo antigo já foi trocado?",
+    "alternativas": [
+     "Ainda não: só depois de \"Confirmar substituição\"; até lá, dá para cancelar",
+     "Só amanhã",
+     "Só se a Wellmix aceitar",
+     "Sim, na hora"
+    ],
+    "correta": 0,
+    "feedback": "O portal mostra o nome do arquivo novo e espera a confirmação. Sem ela, o arquivo anterior continua valendo."
+   },
+   {
+    "id": "q9",
+    "tipo": "cenario",
+    "tema": "A mesa de trabalho",
+    "rever": {
+     "cena": "m2-c4-mesa",
+     "passo": "p9"
+    },
+    "enunciado": "Você quer ver, numa tela só, todos os certificados que ainda precisa emitir, por prazo. Qual tela usar?",
+    "alternativas": [
+     "A ficha de compra",
+     "O cartão \"Artes\"",
+     "O documento do pedido",
+     "A \"Mesa de trabalho\", que abre pelo botão em Pendências, depois de clicar num filtro"
+    ],
+    "correta": 3,
+    "feedback": "A mesa de trabalho da certificadora tem a fila \"Certificados a emitir\", com o pedido e o prazo de cada produto."
+   },
+   {
+    "id": "q10",
+    "tipo": "cenario",
+    "tema": "Falar com a Wellmix",
+    "rever": {
+     "cena": "m2-c5-avisos",
+     "passo": "p4"
+    },
+    "enunciado": "Falta um dado do produto para emitir o certificado. Como pedir à Wellmix pelo portal?",
+    "alternativas": [
+     "Enviar um certificado em branco",
+     "Recusar a pendência",
+     "Abrir as mensagens, pelo balão ao lado do sino, e escrever",
+     "Esperar o prazo vencer"
+    ],
+    "correta": 2,
+    "feedback": "O balão abre a conversa da certificadora com a equipe da Wellmix. Todos os logins da certificadora veem as mesmas mensagens."
+   }
+  ]
+ }
+]
