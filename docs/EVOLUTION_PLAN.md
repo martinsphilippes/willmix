@@ -1551,6 +1551,29 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   - `tests/unit/booking-partner.test.ts`: o "Carregar" do parceiro.
   - `tests/e2e/booking-bulk-fill.spec.ts`: desktop (cabeçalho preso, linhas 2, 5 e 8, recarregar, várias colunas, valor inválido, todas, rolagem para o lado, fim da tabela), falha com "Tentar de novo", iPad em pé e deitado (emulado no Chromium) e a Trading em "Meus books".
 
+## Encomendas: o pedido inteiro em cada linha
+
+- **Pedido do dono** (16/11/2026, com as fotos da tela no iPad), na tabela de Produto novo → Encomendas:
+  - a coluna Pedido logo depois da Foto;
+  - Produtos com o início do nome de todos os produtos do pedido;
+  - a Foto em grade, uma miniatura por produto diferente;
+  - a Quantidade com a soma das peças do pedido.
+  - Tudo calculado por pedido, nos pedidos de um produto e de vários, sem pesar a tabela.
+- **Por quê**: em produção quase toda solicitação tem pedido (16.268 de 16.274). Esses pedidos somam 185 mil itens, até 233 num pedido, mas a linha mostrava só o produto da solicitação.
+- **Como ficou**: docs/FLOW_MENU.md, "Encomendas" → "Tabela da Wellmix".
+- **Não mudou**: filtros (situação, tipo, busca), as demais colunas, as ações, as páginas e a visão do cliente. Nenhuma rota, campo ou dado saiu; sem mudança no banco.
+- **O que muda na tela**:
+  - **Título**: "Produto" vira "Produtos" (só na Wellmix).
+  - **Número de fotos**: o número no canto da foto de um produto não aparece mais nesta lista, para não ser lido como número de produtos. O clique continua abrindo todas as fotos do produto.
+  - **Ordenação na lista grande** (mais de 200 linhas): Produtos e Quantidade seguem pela solicitação. Ordenar pelo total do pedido nela exige o resumo do pedido guardar o total (`order_summaries`).
+- **Desempenho**:
+  - Itens, produtos e fotos são lidos só das linhas da página.
+  - Antes, os produtos e as fotos de todas as solicitações da lista eram lidos a cada abertura; agora, só os da página.
+- **Componentes**: `PhotoGallery` ganhou `tiles` (a grade) e `badge` e continua igual nas outras telas.
+- Testes:
+  - `tests/unit/request-composition.test.ts`: pedido com vários itens, produto repetido, unidades, lote, pedido sem itens, início do nome.
+  - `tests/e2e/requests-composition.spec.ts`: ordem das colunas; lote de dois produtos com a foto real e a inicial, os nomes, 1.207 un e a galeria; e o pedido de um produto só.
+
 ## RCA do cliente no cadastro e na Nova solicitação
 
 - **Pedido do dono** (15/11/2026, com as fotos da Nova solicitação e de Cadastros → Parceiros no iPad): o campo "RCA responsável" no cadastro do cliente; na Nova solicitação, o "RCA do cliente" ao lado do "Solicitante", o solicitante preenchido com quem está criando e o seletor de antes como "Login do cliente com acesso". Decisões: o RCA é o vendedor do Sankhya (TGFVEN, pelo código) e o Sankhya manda (a carga sobrescreve o portal).

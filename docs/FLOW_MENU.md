@@ -83,6 +83,17 @@ Pedido do dono (15/11/2026): os clientes saíram de Equipe Acessos e Parceiros �
 Compra por demanda (docs/PURCHASE_DEMAND.md): dois passos novos no bloco Produto novo, antes de Negociações.
 
 - **Encomendas** (`new-product/demands`, tela `/app/requests`, a de solicitações, que saiu de MENU_HIDDEN): a encomenda do cliente (B14) pelas quatro portas, com etiqueta e filtro de tipo (encomenda ou reposição) e a porta de entrada (vitrine, cliente, vendedor, operador). Contador: a pendência `new_request` ("Encomenda nova"). O cliente vê a mesma tela, só com as dele, como "Encomendas" no menu "Meus pedidos".
+  - **Tabela da Wellmix** (dono, 16/11/2026):
+    - **Ordem das colunas**: Foto → Pedido → Produtos → Quantidade → Cliente → Situação → Próximo passo → Prazo de resposta, Analista e Data.
+    - **Cada linha mostra o pedido inteiro**, calculado por pedido em `requestComposition` (`src/lib/request-composition.ts`). Com pedido, valem os itens do pedido (`order_items`, cada pedido uma vez). Sem pedido, vale o produto da solicitação. No lote, entra a soma das solicitações.
+    - **Foto**: uma miniatura por produto diferente, com a primeira foto real do cadastro; produto sem foto mostra a inicial. Cabem até 4 no quadrado, com "+N" na última quando há mais. Com um produto só, aparecem a foto dele e a galeria dele, sem o número de fotos no canto. O clique abre a galeria com a foto de cada produto (até 12).
+    - **Produtos**: o início do nome de cada um. Todos aparecem; depois de 6, "+N produtos" abre o resto.
+    - **Quantidade**: a soma das peças. un, pcs, pç e peças somam juntas; outra unidade fica à parte.
+    - **Desempenho**: itens, produtos e fotos são lidos só para as linhas da página (50 na lista grande), com `listColumns`. A lista inteira tem ~16 mil pedidos e ~185 mil itens.
+    - **Ordenação**:
+      - **Lista grande** (mais de 200 linhas, ordem no servidor): ordenar por Produtos e Quantidade continua pela solicitação.
+      - **Lista filtrada** (até 200 linhas): a ordem segue o que a tela mostra, com o total do pedido.
+    - **Cliente**: a visão dele continua como era.
 - **Reposição** (`new-product/replenishment`, tela `/app/replenishment`): a fila do Planner, com "Abrir reposição" (produto, quantidade, data desejada; ação `replenishment.open`) e a recompra do pós-venda. Contador: a pendência `replenishment_request`.
 - "Cotações" (os convites de book) passou a se chamar **Convites de book**: a tela, a rota e o atalho continuam; a cotação de preço é a Cotação de compra (B13, PR 4).
 - O link "Solicitações" que ficava no bloco Vendas (fora do menu) saiu: as encomendas estão no Produto novo.
