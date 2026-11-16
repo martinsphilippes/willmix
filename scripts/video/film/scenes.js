@@ -105,7 +105,7 @@ export const SCENES = {
             `<div class="origin" style="left:${o[0]}px;top:${o[1]}px"><i class="a a-pop" style="${at(0.65 + i * 0.09, 0.55)}"></i></div>`,
         )
         .join("")}
-      <div class="pin br a a-pop" style="left:${P.santos[0]}px;top:${P.santos[1]}px;${at(t0 + 2.3, 0.6)}"><i></i><b>Brazil</b></div>
+      <div class="pin br a a-pop" style="left:${P.santos[0]}px;top:${P.santos[1]}px;${at(t0 + 2.3, 0.6)}"><i></i><b>${ctx.esc(ctx.ui.brazil)}</b></div>
       ${p.handoffs
         .map((h, i) => {
           const f = [14, 30, 46, 62, 78, 91][i];
@@ -119,19 +119,20 @@ export const SCENES = {
   /** Cada um no seu canal: ícones soltos, ligados por um emaranhado. */
   chaos(s, ctx) {
     const p = s.props;
+    const U = ctx.ui.chaos;
     const T = [
-      ["mail", "E-mail", 930, 150, -7, "37"],
-      ["file-spreadsheet", "Spreadsheet", 1180, 110, 5, "v12"],
-      ["message-circle", "Chat group", 1450, 170, -4, "99+"],
-      ["phone", "Phone call", 1690, 120, 8, "5"],
-      ["file-text", "PDF", 860, 400, 6, "8"],
-      ["mail", "E-mail", 1090, 360, -5, "14"],
-      ["message-circle", "Chat group", 1330, 420, 7, "63"],
-      ["file-spreadsheet", "Spreadsheet", 1580, 380, -8, "v7"],
-      ["paperclip", "Attachment", 1740, 560, 5, "21"],
-      ["phone", "Phone call", 960, 650, -6, "3"],
-      ["mail", "E-mail", 1210, 640, 4, "52"],
-      ["file-spreadsheet", "Spreadsheet", 1460, 680, -3, "final"],
+      ["mail", U.mail, 930, 150, -7, "37"],
+      ["file-spreadsheet", U.sheet, 1180, 110, 5, "v12"],
+      ["message-circle", U.chat, 1450, 170, -4, "99+"],
+      ["phone", U.phone, 1690, 120, 8, "5"],
+      ["file-text", U.pdf, 860, 400, 6, "8"],
+      ["mail", U.mail, 1090, 360, -5, "14"],
+      ["message-circle", U.chat, 1330, 420, 7, "63"],
+      ["file-spreadsheet", U.sheet, 1580, 380, -8, "v7"],
+      ["paperclip", U.attach, 1740, 560, 5, "21"],
+      ["phone", U.phone, 960, 650, -6, "3"],
+      ["mail", U.mail, 1210, 640, 4, "52"],
+      ["file-spreadsheet", U.sheet, 1460, 680, -3, "final"],
     ];
     const c = (i) => [T[i][2] + 60, T[i][3] + 60];
     const links = [
@@ -386,9 +387,9 @@ export const SCENES = {
             i,
           ) => `<div class="view-card a a-up" style="${at(when(s, v) - 0.1, 0.8)}">
             <div class="who"><span class="dot">${ctx.icon(v.icon)}</span>${ctx.esc(v.role)}</div>
-            <small>Sees</small>
+            <small>${ctx.esc(ctx.ui.sees)}</small>
             ${v.sees.map((t) => `<div class="row ok">${ctx.icon("eye")}${ctx.esc(t)}</div>`).join("")}
-            <small>Never sees</small>
+            <small>${ctx.esc(ctx.ui.neverSees)}</small>
             <div class="${i === 0 ? "locks hot" : "locks"}" style="${at(mark)}">${v.hidden.map((t) => `<div class="row no">${ctx.icon("lock")}${ctx.esc(t)}</div>`).join("")}</div>
           </div>`,
         )
