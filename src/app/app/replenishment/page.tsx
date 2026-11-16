@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canOpen } from "@/lib/auth/screens";
 import { can } from "@/lib/auth/function-access";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
@@ -14,29 +15,26 @@ import {
   Badge,
   Card,
   Empty,
-  Field,
-  Input,
+  LinkButton,
   PageHeader,
   Table,
   Td,
-  Textarea,
   Th,
   formatDate,
   linkClass,
   rowClass,
 } from "@/components/ui";
-import { ProductPicker } from "@/components/product-picker";
-import { productPickerLabels } from "@/components/party-picker-labels";
-import { SubmitButton } from "@/components/submit-button";
 import { ActionError } from "@/components/action-error";
-import { openReplenishmentAction } from "../actions/purchase-demand";
+import { REQUEST_SCREEN, REPLENISHMENT_QUERY } from "@/lib/request-screens";
 
 /*
  * Reposição (mapa B10; dono, 15/11/2026; docs/PURCHASE_DEMAND.md): a fila do
- * Planner. Entradas: a reposição aberta à mão (produto, quantidade, data
- * desejada) e a recompra vinda do pós-venda. Sem sugestão automática pelo
- * estoque: o estoque ainda não é controlado no portal (Configurações,
- * "Reposição automática pelo estoque", desligada e sem efeito).
+ * Planner. Entradas: a reposição aberta pelo botão "+ Adicionar" (dono,
+ * 16/11/2026: abre a tela Venda - Encomenda como compra para estoque, com a
+ * origem reposição; o bloco "Abrir reposição" saiu) e a recompra vinda do
+ * pós-venda. Sem sugestão automática pelo estoque: o estoque ainda não é
+ * controlado no portal (Configurações, "Reposição automática pelo estoque",
+ * desligada e sem efeito).
  */
 export default async function ReplenishmentPage({
   searchParams,
@@ -51,7 +49,13 @@ export default async function ReplenishmentPage({
     listDemands("replenishment"),
     getSettings(),
   ]);
-  const canOpenNew = can(user, "replenishment.open");
+  // "+ Adicionar": a compra para estoque (ação "Abrir reposição") ou, sem ela,
+  // a tela Venda - Encomenda de sempre para quem a abre.
+  const addHref = can(user, "replenishment.open")
+    ? `${REQUEST_SCREEN.sale.path}?${REPLENISHMENT_QUERY}`
+    : canOpen(user, "requestSale")
+      ? REQUEST_SCREEN.sale.path
+      : null;
   const errorCode = typeof error === "string" ? error : "";
   const errorKey = `demand.error.${errorCode}` as DictionaryKey;
   const errorText = errorCode && t(errorKey) !== errorKey ? t(errorKey) : null;
@@ -62,6 +66,13 @@ export default async function ReplenishmentPage({
         t={t}
         title={t("demand.replenishment.title")}
         subtitle={t("demand.replenishment.subtitle")}
+        actions={
+          addHref ? (
+            <LinkButton href={addHref} variant="primary" data-replenishment-add>
+              + {t("requestScreen.add")}
+            </LinkButton>
+          ) : undefined
+        }
       />
       <ActionError t={t} code={errorCode} text={errorText} fields={null} />
       {typeof opened === "string" ? (
@@ -73,46 +84,6 @@ export default async function ReplenishmentPage({
         <p className="mb-3 text-sm text-zinc-600" data-replenishment-manual>
           {t("demand.replenishment.manualOnly")}
         </p>
-      ) : null}
-      {canOpenNew ? (
-        <Card title={t("demand.replenishment.new")} dense>
-          <form
-            action={openReplenishmentAction}
-            className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]"
-            data-replenishment-new
-          >
-            <Field label={t("common.product")}>
-              <ProductPicker
-                scope="active"
-                name="productId"
-                required
-                labels={productPickerLabels(t)}
-                ariaLabel={t("common.product")}
-              />
-            </Field>
-            <Field label={t("common.quantity")}>
-              <Input
-                name="quantity"
-                inputMode="numeric"
-                required
-                data-replenishment-quantity
-              />
-            </Field>
-            <Field label={t("demand.desiredAt")}>
-              <Input type="date" name="desiredAt" data-replenishment-date />
-            </Field>
-            <div className="sm:col-span-3">
-              <Field label={t("demand.notes")}>
-                <Textarea name="notes" rows={2} />
-              </Field>
-            </div>
-            <div className="sm:col-span-3">
-              <SubmitButton data-replenishment-submit>
-                {t("demand.replenishment.submit")}
-              </SubmitButton>
-            </div>
-          </form>
-        </Card>
       ) : null}
       <Card title={t("demand.replenishment.queue", { n: open.length })}>
         {rows.length ? (

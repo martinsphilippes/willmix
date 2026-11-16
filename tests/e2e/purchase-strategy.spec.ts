@@ -3,6 +3,7 @@ import {
   bookingSheet,
   importAndClose,
   login,
+  openReplenishment,
   selectAndOpenSupplierRequest,
 } from "./helpers";
 
@@ -142,17 +143,7 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
 
   // (a) Reposição aberta pelo Planner.
   await login(page, "operador@wellmix.com");
-  await page.goto("/app/replenishment");
-  const form = page.locator("[data-replenishment-new]");
-  await choose(
-    form.locator('[data-product-picker="active"]'),
-    "product-picker",
-    TAG,
-  );
-  await form.locator("[data-replenishment-quantity]").fill("3000");
-  await form.locator("[data-replenishment-submit]").click();
-  await page.waitForURL(/[?&]opened=/);
-  const replenishment = new URL(page.url()).searchParams.get("opened")!;
+  const replenishment = await openReplenishment(page, TAG, "3000");
   // O Comprador: a última compra aparece (fornecedor A, 1,40) e ele escolhe.
   await page.goto("/app/purchase-strategy");
   const group = page.locator(
@@ -193,6 +184,11 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   // O cliente não vê fornecedor nem custo na encomenda.
   await expect(page.locator("main")).not.toContainText("Shenzhen");
   await login(page, "operador@wellmix.com");
+  // Ainda encomenda: está na lista de Encomendas.
+  await page.goto("/app/requests");
+  await expect(
+    page.locator(`a[href="/app/requests/${encomenda}"]`).first(),
+  ).toBeVisible();
   const decisionC = await chooseFor(page, encomenda, "last_supplier");
   await approve(page, decisionC);
   await login(page, "operador@wellmix.com");
@@ -202,6 +198,12 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   // A encomenda virou "pedido" e a mercadoria fica reservada para o cliente.
   await page.goto(`/app/requests/${encomenda}`);
   await expect(page.locator("main")).toContainText(/Pedido/);
+  // Virou pedido: já não é da etapa de encomenda (dono, 16/11/2026), sai da
+  // lista de Encomendas e segue de Pedido em diante.
+  await page.goto("/app/requests");
+  await expect(
+    page.locator(`a[href="/app/requests/${encomenda}"]`),
+  ).toHaveCount(0);
   await page.goto("/app/inventory/reservations");
   await expect(page.locator("main")).toContainText(
     /Encomenda nº \d+: pedido de compra #\d+/,

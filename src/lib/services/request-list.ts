@@ -16,6 +16,15 @@ import { orderMilestoneText } from "@/lib/milestones";
 export const REQUEST_SITUATIONS = ["all", "open", "ordered", "late"] as const;
 export type RequestSituation = (typeof REQUEST_SITUATIONS)[number];
 
+/**
+ * Situações da lista de Encomendas (dono, 16/11/2026): "Viraram pedido" saiu,
+ * porque a encomenda que virou pedido já não é desta etapa. `inSituation`
+ * ainda entende "ordered" (a exportação e links antigos).
+ */
+export const LISTED_SITUATIONS = REQUEST_SITUATIONS.filter(
+  (k): k is Exclude<RequestSituation, "ordered"> => k !== "ordered",
+);
+
 /** Em aberto (RFQ, cotação e sinal só existem em solicitações antigas). */
 const OPEN: readonly string[] = [
   "REQUESTED",
