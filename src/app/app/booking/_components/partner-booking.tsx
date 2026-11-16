@@ -834,7 +834,7 @@ function SentItems({
       align: "left",
       value: (i) => (
         <span className="font-medium text-zinc-900">
-          {text(i.productName ?? i.description)}
+          {text(i.productName?.trim() ? i.productName : i.description)}
         </span>
       ),
     },
@@ -970,7 +970,7 @@ function SentItems({
       width: 16,
       align: "left",
       // Sem nome, a descrição já aparece como nome do item.
-      value: (i) => (i.productName ? text(i.description) : missing),
+      value: (i) => (i.productName?.trim() ? text(i.description) : missing),
     },
     {
       key: "netWeight",
