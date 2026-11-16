@@ -51,13 +51,15 @@ test("administrador: Parceiros dentro de Equipe Acessos e Parceiros, as três ab
   await expect(footerItem(page)).toHaveAttribute("data-nav-link", "/app/team");
   await expect(sidebar(page)).not.toContainText("Equipe e acessos");
 
-  // Pelo menu: a área com as seções, na ordem (Áreas entrou em 16/11/2026).
+  // Pelo menu: a área com as seções, na ordem (Áreas e Cargos entraram em
+  // 16/11/2026).
   await footerItem(page).click();
   await page.waitForURL(/\/app\/team$/);
   await expectArea(page, "Equipe");
   expect(await texts(sections(page))).toEqual([
     "Equipe",
     "Áreas",
+    "Cargos",
     "Funções e acessos",
     "Linha de produto e divisão",
     "Parceiros",

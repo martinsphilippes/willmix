@@ -1753,7 +1753,14 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 ## Equipe: cadastro de Áreas (Marketing, Comex...) com cadastro em massa
 
 - **Pedido do dono** (16/11/2026): cadastrar em massa os "Cargos" da lista (Marketing, Showroom, Financeiro, Comercial, Contabil Fiscal, Tecnologia da Informação, Compras, Comex, Recursos Humanos, Presidência, Operações e Processos, Processos Projetos), em que "Cargo" é a área; sem duplicar o que já existe ("Processos/Projetos" vale por "Processos Projetos"), preservando Admin, Master, Funções, permissões e vínculos.
-- **Situação encontrada**: não havia cadastro de áreas. O "Cargo" da equipe é o nível (Analista a Diretor) e "Admin" e "Master" são logins de administrador. O dono escolheu criar o cadastro de Áreas (docs/ACCESS.md, "Áreas da equipe").
+- **Situação encontrada**: não havia cadastro de áreas. O "Cargo" da equipe é o nível (Analista a Diretor) e "Admin" e "Master" são logins de administrador. O dono escolheu criar o cadastro de Áreas (docs/ACCESS.md, "Áreas e cargos da equipe").
 - **Como ficou**: seção Áreas em Equipe Acessos e Parceiros (`/app/team?tab=areas`) com nova área, renomear, desativar/reativar e cadastro em massa (só as que faltam, com o resumo); campo "Área" em Editar acessos e no Novo usuário; coluna "Área" na lista da equipe; Auditoria de tudo.
 - **Aditivo:** tabela nova `team_areas` e coluna nova `users.areaId` (opcional). Cargo, Funções, permissões, logins e telas existentes não mudam; a seção nova entra entre Equipe e Funções e acessos.
 - Testes: `tests/unit/team-areas.test.ts`, `tests/e2e/team-areas.spec.ts` e a ordem das seções em `tests/e2e/team-partners-area.spec.ts`.
+
+## Equipe: Cargos ligados às Áreas e o campo de Analista a Diretor como "Nível"
+
+- **Pedido do dono** (16/11/2026): cadastrar a lista "AREA" com 44 nomes (Designer Gráfico Sênior, Vendedor Key Accounts, Analista Financeiro Jr...). Eram cargos, não áreas; o dono escolheu **cargos ligados às áreas** e o nome **Nível** para o campo de Analista a Diretor (docs/ACCESS.md, "Áreas e cargos da equipe").
+- **Como ficou**: seção Cargos (`/app/team?tab=positions`) com novo cargo, renomear, área na própria linha, desativar/reativar, filtro por área e cadastro em massa (área na mesma linha por tabulação ou ";"; linha de título ignorada, também nas Áreas); campo "Cargo" em Editar acessos e no Novo usuário, com a área vindo do cargo; coluna "Cargo" na lista; trocar a área do cargo leva quem tem o cargo; contagem de cargos por área na aba Áreas.
+- **Aditivo:** tabela nova `team_positions` e coluna nova `users.positionId` (opcional). O campo de Analista a Diretor só mudou de rótulo (Cargo → Nível, aprovado pelo dono); valores, regras do painel de SLA, funções, permissões e logins não mudam.
+- Testes: `tests/unit/team-positions.test.ts`, `tests/e2e/team-positions.spec.ts`, ordem das seções em `tests/unit/nav.test.ts` e `tests/e2e/team-partners-area.spec.ts`, e o cadastro em massa das Áreas com a linha de título em `tests/unit/team-areas.test.ts`.

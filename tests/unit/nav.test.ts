@@ -568,10 +568,11 @@ describe("Equipe Acessos e Parceiros", () => {
       "/app/customers/cliente-joao",
     ])
       expect(isActiveLink(link, path)).toBe(false);
-    // Áreas (dono, 16/11/2026) logo depois da Equipe.
+    // Áreas e Cargos (dono, 16/11/2026) logo depois da Equipe.
     expect(teamAreaSections(ADMIN as never)).toEqual([
       "team",
       "areas",
+      "positions",
       "functions",
       "lines",
       "partners",

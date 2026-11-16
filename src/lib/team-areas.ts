@@ -71,12 +71,62 @@ export function sortAreas<T extends AreaLike>(areas: T[]): T[] {
 /** Marcador de lista colado junto ("- ", "• ", "1. ", "2) " ou sozinho). */
 const BULLET = /^(?:[-*•·–—]+|\d{1,3}[.)-])(?:\s+|$)/;
 
-/** As linhas do cadastro em massa (sem as vazias e sem o marcador de lista). */
+/**
+ * A linha sem o marcador de lista e sem espaços nas pontas. A tabulação do
+ * meio fica (separa o cargo da área quando a lista vem da planilha).
+ */
+export function withoutBullet(line: string): string {
+  return line.trim().replace(BULLET, "").trim();
+}
+
+/** Palavras de título de coluna ("AREA", "CARGO", "Nome do cargo", "Cargo Área"). */
+const HEADER_WORDS = new Set([
+  "area",
+  "areas",
+  "cargo",
+  "cargos",
+  "nome",
+  "nomes",
+  "setor",
+  "setores",
+  "departamento",
+  "departamentos",
+  "do",
+  "da",
+  "de",
+  "e",
+]);
+
+/**
+ * Título da coluna colado junto com a lista (a primeira linha da planilha,
+ * como "AREA" ou "CARGO<TAB>ÁREA"): não é um nome para cadastrar.
+ */
+export function isHeaderLine(line: string): boolean {
+  const words = areaNameKey(line).split(" ").filter(Boolean);
+  return (
+    words.length > 0 &&
+    words.some((w) => w !== "do" && w !== "da" && w !== "de" && w !== "e") &&
+    words.every((w) => HEADER_WORDS.has(w))
+  );
+}
+
+/**
+ * Linhas do texto colado (sem as vazias e sem o marcador de lista) e o título
+ * da coluna, quando a primeira linha é um (fica de fora do cadastro).
+ */
+export function splitBulkText(
+  text: string,
+  separator: RegExp,
+): { lines: string[]; header: string | null } {
+  const lines = text.split(separator).map(withoutBullet).filter(Boolean);
+  if (lines.length && isHeaderLine(lines[0]))
+    return { lines: lines.slice(1), header: lines[0] };
+  return { lines, header: null };
+}
+
+/** As linhas do cadastro em massa (sem as vazias, o marcador e o título). */
 export function bulkAreaLines(text: string): string[] {
-  return text
-    .split(/\r?\n|;/)
-    .map((line) => cleanAreaName(cleanAreaName(line).replace(BULLET, "")))
-    .filter(Boolean);
+  return splitBulkText(text, /\r?\n|;/).lines.map(cleanAreaName);
 }
 
 export interface BulkAreaPlan {
@@ -88,18 +138,22 @@ export interface BulkAreaPlan {
   repeated: string[];
   /** Linhas recusadas: curtas, longas demais ou só com pontuação. */
   invalid: string[];
+  /** Título da coluna colado na primeira linha (ignorado). */
+  header: string | null;
 }
 
 /** Compara a lista colada com as áreas cadastradas, sem gravar nada. */
 export function planBulkAreas(text: string, areas: AreaLike[]): BulkAreaPlan {
+  const { lines, header } = splitBulkText(text, /\r?\n|;/);
   const plan: BulkAreaPlan = {
     create: [],
     existing: [],
     repeated: [],
     invalid: [],
+    header,
   };
   const seen = new Set<string>();
-  for (const name of bulkAreaLines(text)) {
+  for (const name of lines.map(cleanAreaName)) {
     if (!validAreaName(name)) {
       plan.invalid.push(name);
       continue;

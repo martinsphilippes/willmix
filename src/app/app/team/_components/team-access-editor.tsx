@@ -51,6 +51,8 @@ export interface EditorMember {
   jobLevel: string;
   /** Área (Equipe Acessos e Parceiros → Áreas); vazio = sem área. */
   areaId: string;
+  /** Cargo (Equipe Acessos e Parceiros → Cargos); vazio = sem cargo. */
+  positionId: string;
   division: string;
   managerUserId: string;
   functions: string[];
@@ -63,6 +65,13 @@ export interface EditorMember {
 export interface EditorOptions {
   levels: Array<{ value: string; label: string }>;
   areas: Array<{ value: string; label: string; active: boolean }>;
+  /** Cargos com a área de cada um (vazio = sem área). */
+  positions: Array<{
+    value: string;
+    label: string;
+    active: boolean;
+    areaId: string;
+  }>;
   divisions: Array<{ value: string; label: string }>;
   managers: Array<{ value: string; label: string }>;
 }
@@ -74,6 +83,11 @@ export interface EditorTexts {
   area: string;
   areaNote: string;
   inactiveSuffix: string;
+  position: string;
+  positionNote: string;
+  positionInactiveSuffix: string;
+  areaFromPosition: string;
+  noArea: string;
   division: string;
   manager: string;
   none: string;
@@ -175,6 +189,11 @@ export function TeamAccessEditor({
 }) {
   const [jobLevel, setJobLevel] = useState(member.jobLevel);
   const [areaId, setAreaId] = useState(member.areaId);
+  const [positionId, setPositionId] = useState(member.positionId);
+  // O cargo com área manda na área (a mesma regra do servidor).
+  const positionArea =
+    options.positions.find((p) => p.value === positionId)?.areaId ?? "";
+  const shownArea = positionArea || areaId;
   const [division, setDivision] = useState(member.division);
   const [manager, setManager] = useState(member.managerUserId);
   const [selected, setSelected] = useState(member.functions);
@@ -220,7 +239,8 @@ export function TeamAccessEditor({
     functions.find((f) => f.key === key)?.label ?? key;
   const dirty =
     jobLevel !== member.jobLevel ||
-    areaId !== member.areaId ||
+    shownArea !== member.areaId ||
+    positionId !== member.positionId ||
     division !== member.division ||
     manager !== member.managerUserId ||
     !sameList(selected, member.functions) ||
@@ -415,20 +435,72 @@ export function TeamAccessEditor({
               ))}
             </select>
           </label>
+          {/* Cargo (dono, 16/11/2026): por área; o cargo com área leva a
+              área junto. */}
+          <label className="block sm:col-span-2">
+            <span className={field}>{texts.position}</span>
+            <select
+              name="positionId"
+              value={positionId}
+              onChange={(e) => setPositionId(e.target.value)}
+              className={select}
+              data-team-position
+            >
+              <option value="">{texts.none}</option>
+              {[
+                ...options.areas.map((a) => ({ id: a.value, label: a.label })),
+                { id: "", label: texts.noArea },
+              ].map((group) => {
+                const items = options.positions.filter(
+                  (p) =>
+                    p.areaId === group.id &&
+                    (p.active || p.value === member.positionId),
+                );
+                return items.length ? (
+                  <optgroup key={group.id || "none"} label={group.label}>
+                    {items.map((p) => (
+                      <option key={p.value} value={p.value}>
+                        {p.active
+                          ? p.label
+                          : `${p.label} ${texts.positionInactiveSuffix}`}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null;
+              })}
+            </select>
+            <span className="mt-1 block text-[11px] text-zinc-500">
+              {texts.positionNote}
+            </span>
+          </label>
           {/* Área (dono, 16/11/2026): linha própria, sem mexer nos outros. */}
           <label className="block sm:col-span-2">
             <span className={field}>{texts.area}</span>
+            {positionArea ? (
+              <input type="hidden" name="areaId" value={positionArea} />
+            ) : null}
             <select
-              name="areaId"
-              value={areaId}
+              name={positionArea ? undefined : "areaId"}
+              value={shownArea}
               onChange={(e) => setAreaId(e.target.value)}
-              className={select}
+              disabled={!!positionArea}
+              className={cx(
+                select,
+                // Travada: a área vem do cargo.
+                "disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-600",
+              )}
               data-team-area
+              data-team-area-locked={positionArea ? "1" : undefined}
             >
               <option value="">{texts.none}</option>
               {/* Desativada: só na pessoa que já está nela. */}
               {options.areas
-                .filter((o) => o.active || o.value === member.areaId)
+                .filter(
+                  (o) =>
+                    o.active ||
+                    o.value === member.areaId ||
+                    o.value === positionArea,
+                )
                 .map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.active ? o.label : `${o.label} ${texts.inactiveSuffix}`}
@@ -436,7 +508,7 @@ export function TeamAccessEditor({
                 ))}
             </select>
             <span className="mt-1 block text-[11px] text-zinc-500">
-              {texts.areaNote}
+              {positionArea ? texts.areaFromPosition : texts.areaNote}
             </span>
           </label>
           <label className="block sm:col-span-2">

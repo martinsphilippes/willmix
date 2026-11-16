@@ -6,6 +6,7 @@ import { isAdmin } from "@/lib/auth/permissions";
 import { WELLMIX_BASE } from "@/lib/auth/screens";
 import { loadFunctionDefs } from "@/lib/services/team-functions";
 import { listTeamAreas } from "@/lib/services/team-areas";
+import { listTeamPositions } from "@/lib/services/team-positions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { Alert, Button, PageHeader, TextLink } from "@/components/ui";
@@ -45,10 +46,11 @@ export default async function TeamMemberPage({
   const t = await getT();
   const { id } = await params;
   const { error, created } = await searchParams;
-  const [team, defs, areas] = await Promise.all([
+  const [team, defs, areas, positions] = await Promise.all([
     wellmixTeam(),
     loadFunctionDefs(),
     listTeamAreas(),
+    listTeamPositions(),
   ]);
   const member = team.find((m) => m.id === id);
   // Já excluído (por outra pessoa, ou na tentativa que voltou com erro): a
@@ -223,7 +225,7 @@ export default async function TeamMemberPage({
           screenGroups={groups.screens}
           actionGroups={groups.actions}
           base={[...WELLMIX_BASE]}
-          options={editorOptions(team, t, areas)}
+          options={editorOptions(team, t, areas, positions)}
           texts={editorTexts(t)}
           mode="page"
         />

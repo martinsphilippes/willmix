@@ -307,10 +307,10 @@ describe("ação do cadastro em massa", () => {
         ok: false,
         error: null,
         message: null,
-        created: [],
-        existing: [],
-        repeated: [],
-        invalid: [],
+        done: null,
+        created: 0,
+        existing: 0,
+        groups: [],
         text: "",
         doneAt: null,
       },
@@ -321,13 +321,21 @@ describe("ação do cadastro em massa", () => {
   it("devolve o resumo; vazio, o motivo e o texto colado", async () => {
     jar.clear();
     await session.signIn("admin@wellmix.com", DEMO_PASSWORD);
-    const ok = await send("Comex\nLogística Reversa\n- Logistica reversa");
+    // Com a linha de título da planilha ("AREA"), que fica de fora.
+    const ok = await send(
+      "AREA\nComex\nLogística Reversa\n- Logistica reversa",
+    );
     expect(ok.ok).toBe(true);
-    expect(ok.created).toEqual(["Logística Reversa"]);
-    expect(ok.existing).toEqual([
-      { asked: "Comex", name: "Comex", active: true },
-    ]);
-    expect(ok.repeated).toEqual(["Logistica reversa"]);
+    expect(ok.done).toBe("Pronto: 1 criada(s) e 1 já cadastrada(s).");
+    const items = (kind: string) =>
+      ok.groups.find((g) => g.kind === kind)?.items ?? [];
+    expect(items("created")).toEqual(["Logística Reversa"]);
+    expect(items("existing")).toEqual(["Comex"]);
+    expect(items("repeated")).toEqual(["Logistica reversa"]);
+    expect(items("header")).toEqual(["AREA"]);
+    expect(
+      (await areas.listTeamAreas()).some((a) => areaNameKey(a.name) === "area"),
+    ).toBe(false);
 
     const empty = await send("  \n - \n");
     expect(empty.ok).toBe(false);

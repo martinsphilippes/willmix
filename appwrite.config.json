@@ -144,6 +144,14 @@
           "size": 36
         },
         {
+          "key": "positionId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
           "key": "functions",
           "required": false,
           "array": false,
@@ -12525,6 +12533,67 @@
         }
       ],
       "indexes": []
+    },
+    {
+      "$id": "team_positions",
+      "databaseId": "willmix",
+      "name": "Cargos da equipe (Analista Financeiro Jr, Vendedor Sênior...)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 120
+        },
+        {
+          "key": "areaId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "active",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "createdByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "updatedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_area",
+          "type": "key",
+          "columns": [
+            "areaId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
     },
     {
       "$id": "partner_types",

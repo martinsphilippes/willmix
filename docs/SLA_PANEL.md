@@ -16,7 +16,7 @@ Até aqui, todos os logins da Wellmix viam a mesma lista de Pendências. Nada er
 ## 3. Decisões do dono
 
 - **Dono da pendência:** automático, por divisão (segmento). Cada linha de produto pertence a uma divisão: **Wellmix** (Limpeza, Organização, Cutelaria, Cerâmica, Vidros, Mesa posta, Decoração, Eletro, Presentes) ou **WellKids** (Brinquedos, Primeira idade, Funs: infláveis, casa e lazer). Cada analista pertence a uma divisão. A solicitação nova cai no analista da divisão da linha do produto com menos pendências abertas; o pedido herda. (Versão anterior, por carteira de clientes escolhida à mão, foi trocada a pedido do dono; a coluna `parties.ownerUserId` fica sem uso.)
-- **Hierarquia:** cada login tem um cargo (Analista, Coordenador, Supervisor, Gerente, Diretor) e a quem responde. A visibilidade segue a árvore, não o cargo.
+- **Hierarquia:** cada login tem um cargo (Analista, Coordenador, Supervisor, Gerente, Diretor) e a quem responde. A visibilidade segue a árvore, não o cargo. (Desde 16/11/2026 esse campo se chama **Nível** na tela; "Cargo" passou a ser o cargo da pessoa, como Analista Financeiro Jr: docs/ACCESS.md, "Áreas e cargos da equipe".)
 - **Conteúdo:** pendências da Wellmix e, à parte, atrasos de parceiros nos clientes da carteira.
 
 ## 4. Modelo de dados (aditivo)

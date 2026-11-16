@@ -153,7 +153,7 @@ export const pt = {
   "access.adminBadge": "Administrador",
   "access.actionsNote":
     "As ações vêm só das funções marcadas; o Personalizado vale para as telas. Abrir uma tela não dá as ações dela.",
-  "access.levelNote": "O cargo não libera telas nem ações.",
+  "access.levelNote": "O nível não libera telas nem ações.",
   "access.save": "Salvar alterações",
   "access.saving": "Salvando…",
   "access.saved": "Acessos salvos às {time}.",
@@ -312,7 +312,7 @@ export const en: Record<keyof typeof pt, string> = {
   "access.adminBadge": "Administrator",
   "access.actionsNote":
     "Actions come only from the ticked functions; Custom applies to screens. Opening a screen does not grant its actions.",
-  "access.levelNote": "The position does not grant screens or actions.",
+  "access.levelNote": "The level does not grant screens or actions.",
   "access.save": "Save changes",
   "access.saving": "Saving…",
   "access.saved": "Access saved at {time}.",
@@ -455,7 +455,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "access.adminBadge": "管理员",
   "access.actionsNote":
     "操作只来自所选职能；自定义只适用于页面。能打开页面并不代表拥有该页面的操作。",
-  "access.levelNote": "职位不开放页面或操作。",
+  "access.levelNote": "级别不开放页面或操作。",
   "access.save": "保存更改",
   "access.saving": "保存中…",
   "access.saved": "权限已于 {time} 保存。",
