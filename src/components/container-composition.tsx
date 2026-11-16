@@ -136,13 +136,16 @@ export function ContainerComposition({
                       >
                         {labels.roundDate && dates[r]
                           ? (() => {
-                              // "Recebimento previsto:" numa linha e a data
-                              // na outra: a coluna fica estreita na lateral.
+                              // "Recebimento previsto:" em cima da data, com
+                              // largura limitada (quebra em "Recebimento" /
+                              // "previsto:"): a coluna fica com a largura de
+                              // "Programação N" e as programações cabem lado
+                              // a lado na lateral, como antes.
                               const [before, after = ""] =
                                 labels.roundDate.split("{date}");
                               return (
                                 <>
-                                  <span className="block">
+                                  <span className="ml-auto block max-w-[6rem]">
                                     {`${before.trimEnd()} `}
                                   </span>
                                   <span className="block">
