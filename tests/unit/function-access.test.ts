@@ -13,6 +13,7 @@ import {
 } from "@/lib/auth/function-access";
 import {
   FUNCTION_SCREENS,
+  SCREENS,
   WELLMIX_BASE,
   screensFor,
   startPathFor,
@@ -70,6 +71,8 @@ describe("configuração do administrador", () => {
           actions: ["order.cancel"],
           // Gravada depois de 15/11/2026: conhece todas as ações de hoje.
           knownActions: [...ACTION_KEYS],
+          // E, depois de 16/11/2026, todas as telas de hoje.
+          knownScreens: [...SCREENS],
         },
         {
           key: "fn_logistica",

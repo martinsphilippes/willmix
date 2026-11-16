@@ -23,6 +23,10 @@ export const SCREENS = [
   "messages",
   "booking",
   "requests",
+  // Nova solicitação por tipo de operação (dono, 16/11/2026;
+  // docs/REQUEST_SCREENS.md): TS - Trading Sales e Venda - Encomenda.
+  "requestTs",
+  "requestSale",
   "quotes",
   "orders",
   "production",
@@ -59,6 +63,10 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/inventory", "products"],
   ["/app/booking", "booking"],
   ["/app/requests", "requests"],
+  // Nova solicitação por tipo de operação (docs/REQUEST_SCREENS.md): cada
+  // tela com a sua chave de acesso.
+  ["/app/new-request/ts", "requestTs"],
+  ["/app/new-request/sale", "requestSale"],
   // Reposição (mapa B10; docs/PURCHASE_DEMAND.md): a fila do Planner.
   ["/app/replenishment", "requests"],
   // Estratégia de compra (mapa B10?): quem abre Solicitações ao fornecedor.
@@ -126,6 +134,8 @@ export const SCREEN_LABEL: Record<Screen, DictionaryKey> = {
   messages: "nav.messages",
   booking: "nav.booking",
   requests: "nav.requests",
+  requestTs: "nav.requestTs",
+  requestSale: "nav.requestSale",
   quotes: "nav.quotes",
   orders: "nav.orders",
   production: "nav.production",
@@ -229,9 +239,14 @@ const DIRECTOR: readonly Screen[] = SCREENS.filter(
  * (docs/IMPORT_FLOW.md).
  */
 export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
+  // TS - Trading Sales e Venda - Encomenda (dono, 16/11/2026;
+  // docs/REQUEST_SCREENS.md): o Comprador abre só o TS; o Gerente de produto
+  // (o "Gestor") e as diretorias (a "Liderança", pela lista DIRECTOR) abrem
+  // as duas; as outras funções, só se o administrador marcar.
   buyer: [
     "booking",
     "requests",
+    "requestTs",
     "quotes",
     "orders",
     "production",
@@ -248,6 +263,8 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   product_manager: [
     "booking",
     "requests",
+    "requestTs",
+    "requestSale",
     "quotes",
     "orders",
     "sourcing",
@@ -313,6 +330,8 @@ export const SCREEN_GROUPS: ReadonlyArray<{
     screens: [
       "booking",
       "requests",
+      "requestTs",
+      "requestSale",
       "quotes",
       "orders",
       "production",
@@ -448,6 +467,24 @@ export const canOpen = (user: Who, screen: Screen) =>
 export function assertScreen(user: Who, screen: Screen) {
   if (!canOpen(user, screen)) throw new ForbiddenError();
 }
+
+/**
+ * Telas de nova solicitação: a de Encomendas (`requests`) e as de TS e Venda
+ * (docs/REQUEST_SCREENS.md). O formulário é o mesmo, e as consultas dele
+ * (opções do pedido, contatos, RCA, histórico, previsão de preço, busca de
+ * produto) valem para quem abre qualquer uma delas.
+ */
+export const NEW_REQUEST_SCREENS: readonly Screen[] = [
+  "requests",
+  "requestTs",
+  "requestSale",
+];
+
+/** O login abre alguma tela de nova solicitação? */
+export const canOpenNewRequest = (user: Who) => {
+  const has = screensFor(user);
+  return NEW_REQUEST_SCREENS.some((s) => has.has(s));
+};
 
 /** Ação usada em mais de uma tela (ex.: briefing na solicitação e em Embalagem): basta abrir uma delas. */
 export function assertAnyScreen(user: Who, screens: readonly Screen[]) {

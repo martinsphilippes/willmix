@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
-import { canOpen } from "@/lib/auth/screens";
+import { canOpenNewRequest } from "@/lib/auth/screens";
 import {
   ConfirmationError,
   lookupCnpj,
@@ -15,7 +15,8 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: Request) {
   const user = await getCurrentUser();
-  if (!user || !canOpen(user, "requests"))
+  // Telas de nova solicitação (Encomendas, TS e Venda; docs/REQUEST_SCREENS.md).
+  if (!user || !canOpenNewRequest(user))
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   const cnpj = new URL(request.url).searchParams.get("cnpj") ?? "";
   try {

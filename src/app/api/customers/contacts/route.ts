@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
-import { canOpen } from "@/lib/auth/screens";
+import { canOpenNewRequest } from "@/lib/auth/screens";
 import { customerContactsView } from "@/lib/services/customer-contacts";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,8 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: Request) {
   const user = await getCurrentUser();
-  if (!user || !isWellmix(user) || !canOpen(user, "requests"))
+  // Telas de nova solicitação (Encomendas, TS e Venda; docs/REQUEST_SCREENS.md).
+  if (!user || !isWellmix(user) || !canOpenNewRequest(user))
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   const customer = new URL(request.url).searchParams.get("customer") ?? "";
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(customer))

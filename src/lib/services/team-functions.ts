@@ -56,6 +56,8 @@ async function writeDefs(defs: FunctionDef[]) {
       actions: d.actions,
       // As ações que existiam agora: a próxima ação nova vale pelo padrão.
       knownActions: [...ACTION_KEYS],
+      // As telas que existiam agora: a próxima tela nova vale pelo padrão.
+      knownScreens: [...SCREENS],
       baseOff: d.baseOff,
       archived: d.archived,
     })),

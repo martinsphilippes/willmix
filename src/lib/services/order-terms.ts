@@ -8,6 +8,7 @@ import {
   CARRIER_CALLERS,
   countryAllowed,
   parseCarrierValue,
+  type OperationType,
   type OrderTerms,
 } from "@/lib/order-terms";
 import { resolveCarrier } from "./delivery-carriers";
@@ -43,12 +44,22 @@ const RAW = z.object({
 
 export type OrderTermsInput = z.input<typeof RAW>;
 
-/** Confere e completa (nomes) as condições vindas do formulário. */
+/**
+ * Confere e completa (nomes) as condições vindas do formulário.
+ *
+ * `operationType`: o tipo de operação da tela de onde veio o formulário (TS -
+ * Trading Sales ou Venda - Encomenda; docs/REQUEST_SCREENS.md). Ele manda,
+ * seja qual for o valor do formulário, e a própria tela libera o tipo (a de
+ * Venda grava Venda). Sem ele (Nova solicitação de Encomendas), o do
+ * formulário, e só os tipos liberados lá (hoje só TS).
+ */
 export async function resolveOrderTerms(
   input: Record<string, string | null>,
+  opts: { operationType?: OperationType } = {},
 ): Promise<OrderTerms> {
   const parsed = RAW.safeParse({
     ...input,
+    ...(opts.operationType ? { operationType: opts.operationType } : {}),
     wellmixTier: input.wellmixTier || null,
     carrier: input.carrier || null,
     redispatchCarrier: input.redispatchCarrier || null,
@@ -60,8 +71,12 @@ export async function resolveOrderTerms(
         : "order_terms_invalid",
     );
   const raw = parsed.data;
-  // Hoje só TS (dono, 15/11/2026): Venda aparece desabilitada.
-  if (!ENABLED_OPERATION_TYPES.includes(raw.operationType))
+  // Encomendas: hoje só TS (dono, 15/11/2026); Venda aparece desabilitada.
+  // Nas telas de TS e de Venda, o tipo é o da tela (já liberado por ela).
+  if (
+    !opts.operationType &&
+    !ENABLED_OPERATION_TYPES.includes(raw.operationType)
+  )
     throw new OrderTermsError("order_terms_operation_disabled");
   if (raw.saleFormat === "wellmix" && !raw.wellmixTier)
     throw new OrderTermsError("order_terms_tier");

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
-import { canOpen } from "@/lib/auth/screens";
+import { canOpen, canOpenNewRequest } from "@/lib/auth/screens";
 import { getT } from "@/i18n/server";
 import {
   loadPurchaseHistory,
@@ -44,7 +44,9 @@ export async function GET(request: Request) {
   const wellmix = !!user && isWellmix(user);
   if (
     !user ||
-    !canOpen(user, "requests") ||
+    // A Wellmix: qualquer tela de nova solicitação (Encomendas, TS e Venda;
+    // docs/REQUEST_SCREENS.md); o cliente, a de sempre.
+    !(wellmix ? canOpenNewRequest(user) : canOpen(user, "requests")) ||
     (!wellmix && user.role !== "customer")
   )
     return NextResponse.json({ error: "not_found" }, { status: 404 });
