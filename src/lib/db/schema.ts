@@ -730,6 +730,12 @@ export interface User extends BaseRow {
    */
   areaId?: string | null;
   /**
+   * Cargo da pessoa (Equipe Acessos e Parceiros → Cargos; `team_positions`):
+   * Analista Financeiro Jr, Vendedor Sênior... O cargo com área leva a área
+   * junto (`areaId`). Não é o Nível (`jobLevel`) nem libera telas.
+   */
+  positionId?: string | null;
+  /**
    * Funções do login da Wellmix: as de fábrica (comprador, planner,
    * diretoria…) e as criadas pelo administrador (chave "fn_…").
    */
@@ -3510,6 +3516,23 @@ export interface TeamArea extends BaseRow {
   updatedByUserId: string | null;
 }
 
+/**
+ * Cargo da equipe da Wellmix (Equipe Acessos e Parceiros → Cargos; dono,
+ * 16/11/2026): Designer Gráfico Sênior, Analista Financeiro Jr... Cada cargo
+ * fica em uma área (`team_areas`); a pessoa recebe o cargo
+ * (`users.positionId`) e a área vem junto. Não se apaga: desativado, sai das
+ * escolhas e continua em quem já está nele.
+ */
+export interface TeamPosition extends BaseRow {
+  /** Nome como o administrador cadastrou (a grafia é mantida). */
+  name: string;
+  /** Área do cargo; nulo = sem área (a área da pessoa é escolhida à mão). */
+  areaId: string | null;
+  active: boolean;
+  createdByUserId: string | null;
+  updatedByUserId: string | null;
+}
+
 export interface PartnerType extends BaseRow {
   /** Identificador estável (não muda ao renomear). */
   key: string;
@@ -3665,6 +3688,7 @@ export interface Tables {
   commission_events: CommissionEvent;
   partner_types: PartnerType;
   team_areas: TeamArea;
+  team_positions: TeamPosition;
   users: User;
   parties: Party;
   product_lines: ProductLine;
@@ -3842,6 +3866,7 @@ export const TABLES: Record<TableName, TableDef> = {
       managerUserId: id(false),
       division: enumOf(DIVISIONS, false),
       areaId: id(false),
+      positionId: id(false),
       functions: json(),
       screens: json(),
       mustChangePassword: bool(),
@@ -5783,6 +5808,17 @@ export const TABLES: Record<TableName, TableDef> = {
       createdByUserId: id(false),
       updatedByUserId: id(false),
     },
+  },
+  team_positions: {
+    label: "Cargos da equipe (Analista Financeiro Jr, Vendedor Sênior...)",
+    columns: {
+      name: str(120, true),
+      areaId: id(false),
+      active: bool(),
+      createdByUserId: id(false),
+      updatedByUserId: id(false),
+    },
+    indexes: [{ key: "by_area", type: "key", columns: ["areaId"] }],
   },
   partner_types: {
     label: "Tipos de parceiro (catálogo administrável)",

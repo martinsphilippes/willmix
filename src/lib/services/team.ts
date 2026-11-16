@@ -3,6 +3,7 @@ import { isOrderOpen } from "@/lib/order-status";
 import { indexBy, listByIds } from "@/lib/db/lookup";
 import { loadFunctionDefs } from "./team-functions";
 import { checkMemberArea } from "./team-areas";
+import { checkMemberPosition, listTeamPositions } from "./team-positions";
 
 import {
   getStore,
@@ -79,6 +80,12 @@ export async function setTeamMember(
      * já tem; null = sem área; ausente = não muda.
      */
     areaId?: string | null;
+    /**
+     * Cargo (Equipe Acessos e Parceiros → Cargos): um ativo ou o que a pessoa
+     * já tem; null = sem cargo; ausente = não muda. O cargo com área manda na
+     * área da pessoa (o `areaId` enviado não vale).
+     */
+    positionId?: string | null;
     /** Funções (de fábrica ou criadas); ausente = não muda. */
     functions?: string[];
     /**
@@ -109,14 +116,34 @@ export async function setTeamMember(
     if (descendantsOf(target.id, team).has(input.managerUserId))
       throw new TeamError("manager_cycle");
   }
-  const areaId =
-    input.areaId === undefined
+  // Cargo e área: o cargo com área leva a área junto; sem cargo (ou cargo
+  // sem área), vale a área escolhida.
+  const position =
+    input.positionId === undefined
+      ? undefined
+      : await checkMemberPosition(input.positionId, target.positionId ?? null);
+  const positionId =
+    position === undefined ? undefined : (position?.id ?? null);
+  const finalPosition =
+    position !== undefined
+      ? position
+      : target.positionId && input.areaId !== undefined
+        ? ((await listTeamPositions()).find(
+            (p) => p.id === target.positionId,
+          ) ?? null)
+        : null;
+  const areaId = finalPosition?.areaId
+    ? finalPosition.areaId
+    : input.areaId === undefined
       ? undefined
       : await checkMemberArea(input.areaId, target.areaId ?? null);
   const before = {
     jobLevel: target.jobLevel ?? null,
     managerUserId: target.managerUserId ?? null,
     division: target.division ?? null,
+    ...(positionId !== undefined
+      ? { positionId: target.positionId ?? null }
+      : {}),
     ...(areaId !== undefined ? { areaId: target.areaId ?? null } : {}),
     functions: target.functions ?? [],
     screens: target.screens ?? null,
@@ -167,7 +194,11 @@ export async function setTeamMember(
     jobLevel: input.jobLevel,
     managerUserId: input.managerUserId,
     division: input.division,
-    // A área só é gravada quando muda (o login que nunca teve fica sem).
+    // Cargo e área só são gravados quando mudam (o login que nunca teve
+    // fica sem).
+    ...(positionId !== undefined && positionId !== (target.positionId ?? null)
+      ? { positionId }
+      : {}),
     ...(areaId !== undefined && areaId !== (target.areaId ?? null)
       ? { areaId }
       : {}),
@@ -180,10 +211,11 @@ export async function setTeamMember(
     "team.member",
     "user",
     target.id,
-    `Equipe: ${target.name} (cargo, área, chefe, divisão, funções e telas)`,
+    `Equipe: ${target.name} (nível, cargo, área, chefe, divisão, funções e telas)`,
     before,
     {
       ...input,
+      ...(areaId !== undefined ? { areaId } : {}),
       ...(screens !== undefined ? { screens } : {}),
       ...(screenExceptions !== undefined ? { screenExceptions } : {}),
     },

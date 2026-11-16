@@ -1,7 +1,7 @@
 import "server-only";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import type { TeamArea, User } from "@/lib/db";
+import type { TeamArea, TeamPosition, User } from "@/lib/db";
 import { DIVISIONS, JOB_LEVELS } from "@/lib/db/schema";
 import { loginLabel } from "@/lib/auth/login-id";
 import { isAdmin } from "@/lib/auth/permissions";
@@ -134,6 +134,7 @@ export function editorMember(
     admin: isAdmin(member),
     jobLevel: member.jobLevel ?? "",
     areaId: member.areaId ?? "",
+    positionId: member.positionId ?? "",
     division: member.division ?? "",
     managerUserId: member.managerUserId ?? "",
     functions: (member.functions ?? []).filter((f) =>
@@ -152,6 +153,7 @@ export function editorOptions(
   team: User[],
   t: Translate,
   areas: TeamArea[] = [],
+  positions: TeamPosition[] = [],
 ): EditorOptions {
   return {
     levels: JOB_LEVELS.map((l) => ({
@@ -164,6 +166,15 @@ export function editorOptions(
       value: a.id,
       label: a.name,
       active: a.active,
+    })),
+    // Cargos (Equipe Acessos e Parceiros → Cargos), com a área de cada um:
+    // escolhido o cargo, a área vem junto. O desativado só aparece em quem
+    // já está nele (o editor filtra).
+    positions: positions.map((p) => ({
+      value: p.id,
+      label: p.name,
+      active: p.active,
+      areaId: p.areaId ?? "",
     })),
     divisions: DIVISIONS.map((d) => ({
       value: d,
@@ -181,6 +192,11 @@ export function editorTexts(t: Translate): EditorTexts {
     area: t("team.col.area"),
     areaNote: t("access.areaNote"),
     inactiveSuffix: t("area.inactiveSuffix"),
+    position: t("team.col.position"),
+    positionNote: t("access.positionNote"),
+    positionInactiveSuffix: t("position.inactiveSuffix"),
+    areaFromPosition: t("access.areaFromPosition"),
+    noArea: t("position.noArea"),
     division: t("team.col.division"),
     manager: t("team.col.manager"),
     none: t("team.none"),

@@ -83,6 +83,8 @@ export interface BulkAreaResult {
   existing: BulkAreaPlan["existing"];
   repeated: string[];
   invalid: string[];
+  /** Título da coluna colado na primeira linha (ignorado). */
+  header: string | null;
 }
 
 /**
@@ -117,6 +119,7 @@ export async function bulkCreateTeamAreas(
       existing: plan.existing.map((e) => ({ asked: e.asked, name: e.name })),
       repeated: plan.repeated,
       invalid: plan.invalid,
+      header: plan.header,
     },
   );
   return {
@@ -124,6 +127,7 @@ export async function bulkCreateTeamAreas(
     existing: plan.existing,
     repeated: plan.repeated,
     invalid: plan.invalid,
+    header: plan.header,
   };
 }
 

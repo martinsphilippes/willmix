@@ -9,7 +9,13 @@ import {
   functionLabel,
   type FunctionDef,
 } from "@/lib/auth/function-access";
-import { getStore, type ProductLine, type TeamArea, type User } from "@/lib/db";
+import {
+  getStore,
+  type ProductLine,
+  type TeamArea,
+  type TeamPosition,
+  type User,
+} from "@/lib/db";
 import { loginLabel } from "@/lib/auth/login-id";
 import { DIVISIONS, JOB_LEVELS } from "@/lib/db/schema";
 import {
@@ -35,6 +41,7 @@ import {
   rowClass,
 } from "@/components/ui";
 import { listTeamAreas } from "@/lib/services/team-areas";
+import { listTeamPositions } from "@/lib/services/team-positions";
 import { TeamAreaNav } from "@/components/team-area-nav";
 import { SubmitButton } from "@/components/submit-button";
 import { wellmixTeam } from "@/lib/services/team";
@@ -43,12 +50,16 @@ import { isRetiredAction } from "@/lib/auth/permission-modules";
 import {
   createTeamAreaAction,
   createTeamLoginAction,
+  createTeamPositionAction,
   distributeUnassignedAction,
   renameTeamAreaAction,
+  renameTeamPositionAction,
   setLineDivisionAction,
   setTeamAreaActiveAction,
+  setTeamPositionActiveAction,
+  setTeamPositionAreaAction,
 } from "../actions/team";
-import { TeamAreaBulk } from "./_components/team-area-bulk";
+import { TeamBulkForm } from "./_components/team-bulk-form";
 import { FunctionList } from "./_components/function-list";
 import { FunctionPermissions } from "./_components/function-permissions";
 import { TeamAccessDrawer } from "./_components/team-access-drawer";
@@ -78,9 +89,14 @@ import {
  * - Áreas (dono, 16/11/2026): as áreas da empresa (Marketing, Comex...),
  *   nova área, renomear, desativar e o cadastro em massa (só as que faltam).
  *   Cada pessoa fica em uma área (coluna "Área" e "Editar acessos").
+ * - Cargos (dono, 16/11/2026): Analista Financeiro Jr, Vendedor Sênior...,
+ *   cada um em uma área; novo cargo, renomear, mudar a área (quem tem o
+ *   cargo vai junto), desativar e o cadastro em massa (a área pode vir na
+ *   mesma linha). A pessoa recebe o cargo em "Editar acessos" e a área vem
+ *   junto. O campo de antes, de Analista a Diretor, passou a se chamar Nível.
  */
 
-const TABS = ["team", "areas", "functions", "lines"] as const;
+const TABS = ["team", "areas", "positions", "functions", "lines"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function TeamPage({
@@ -98,7 +114,7 @@ export default async function TeamPage({
     : "team";
   const saved = one("saved");
   const error = one("error");
-  const [team, lines, defs, areas] = await Promise.all([
+  const [team, lines, defs, areas, positions] = await Promise.all([
     wellmixTeam(),
     getStore().list("product_lines", {
       filter: { active: true },
@@ -106,6 +122,7 @@ export default async function TeamPage({
     }),
     loadFunctionDefs(),
     listTeamAreas(),
+    listTeamPositions(),
   ]);
   const errorKey = `team.error.${error ?? ""}`;
   const errorText = error
@@ -123,6 +140,11 @@ export default async function TeamPage({
           area_renamed: "area.saved.area_renamed",
           area_deactivated: "area.saved.area_deactivated",
           area_activated: "area.saved.area_activated",
+          position_created: "position.saved.position_created",
+          position_renamed: "position.saved.position_renamed",
+          position_area: "position.saved.position_area",
+          position_deactivated: "position.saved.position_deactivated",
+          position_activated: "position.saved.position_activated",
         } as Record<string, DictionaryKey>
       )[saved] ?? (`fn.saved.${saved}` as DictionaryKey))
     : null;
@@ -184,6 +206,11 @@ export default async function TeamPage({
                 {t("team.saved.deleted.work", { n: deleted.work })}
               </span>
             ) : null}
+            {saved === "position_area" && count("moved") ? (
+              <span className="mt-1 block" data-position-moved>
+                {t("position.saved.moved", { n: count("moved") })}
+              </span>
+            ) : null}
           </Alert>
         </div>
       ) : null}
@@ -208,6 +235,7 @@ export default async function TeamPage({
           team={team}
           defs={defs}
           areas={areas}
+          positions={positions}
           label={label}
           canCreate={isAdmin(user)}
           modalOpen={one("new") === "1"}
@@ -225,7 +253,18 @@ export default async function TeamPage({
         />
       ) : null}
       {tab === "lines" ? <LinesTab t={t} lines={lines} /> : null}
-      {tab === "areas" ? <AreasTab t={t} team={team} areas={areas} /> : null}
+      {tab === "areas" ? (
+        <AreasTab t={t} team={team} areas={areas} positions={positions} />
+      ) : null}
+      {tab === "positions" ? (
+        <PositionsTab
+          t={t}
+          team={team}
+          areas={areas}
+          positions={positions}
+          areaFilter={one("area")}
+        />
+      ) : null}
     </>
   );
 }
@@ -237,6 +276,7 @@ function TeamTab({
   team,
   defs,
   areas,
+  positions,
   label,
   canCreate,
   modalOpen,
@@ -246,6 +286,7 @@ function TeamTab({
   team: User[];
   defs: FunctionDef[];
   areas: TeamArea[];
+  positions: TeamPosition[];
   label: (key: string) => string;
   canCreate: boolean;
   modalOpen: boolean;
@@ -255,6 +296,8 @@ function TeamTab({
     (id && team.find((m) => m.id === id)?.name) || t("team.none");
   const areaOf = (id: string | null | undefined) =>
     (id && areas.find((a) => a.id === id)?.name) || t("team.none");
+  const positionOf = (id: string | null | undefined) =>
+    (id && positions.find((p) => p.id === id)?.name) || t("team.none");
   const accessOf = (m: User) => accessFromFunctions(m.functions, defs);
   // Telas além do básico (as que de fato dependem de função ou de liberação).
   const extraScreens = (m: User) =>
@@ -277,7 +320,7 @@ function TeamTab({
         screenGroups={groups.screens}
         actionGroups={groups.actions}
         base={[...WELLMIX_BASE]}
-        options={editorOptions(team, t, areas)}
+        options={editorOptions(team, t, areas, positions)}
         texts={editorTexts(t)}
         savedText={t("access.savedFor")}
       />
@@ -307,6 +350,7 @@ function TeamTab({
           <thead>
             <tr>
               <Th>{t("team.col.name")}</Th>
+              <Th>{t("team.col.position")}</Th>
               <Th>{t("team.col.level")}</Th>
               <Th>{t("team.col.area")}</Th>
               <Th>{t("team.col.division")}</Th>
@@ -337,6 +381,12 @@ function TeamTab({
                     {t(`role.${member.role}` as DictionaryKey)} ·{" "}
                     {loginLabel(member.email)}
                   </div>
+                </Td>
+                <Td
+                  className="whitespace-nowrap"
+                  data-team-member-position={member.id}
+                >
+                  {positionOf(member.positionId)}
                 </Td>
                 <Td className="whitespace-nowrap">
                   {member.jobLevel
@@ -402,6 +452,7 @@ function TeamTab({
           team={team}
           defs={defs}
           areas={areas}
+          positions={positions}
           label={label}
           error={modalError}
         />
@@ -416,6 +467,7 @@ function NewUserModal({
   team,
   defs,
   areas,
+  positions,
   label,
   error,
 }: {
@@ -423,6 +475,7 @@ function NewUserModal({
   team: User[];
   defs: FunctionDef[];
   areas: TeamArea[];
+  positions: TeamPosition[];
   label: (key: string) => string;
   error: string | null;
 }) {
@@ -497,6 +550,14 @@ function NewUserModal({
                     {t(`level.${l}` as DictionaryKey)}
                   </option>
                 ))}
+              </Select>
+            </Field>
+            <Field
+              label={t("team.col.position")}
+              hint={t("position.pick.hint")}
+            >
+              <Select name="positionId" defaultValue="" data-team-new-position>
+                <PositionOptions t={t} areas={areas} positions={positions} />
               </Select>
             </Field>
             <Field label={t("team.col.area")}>
@@ -782,12 +843,16 @@ function AreasTab({
   t,
   team,
   areas,
+  positions,
 }: {
   t: Translate;
   team: User[];
   areas: TeamArea[];
+  positions: TeamPosition[];
 }) {
   const people = (id: string) => team.filter((m) => m.areaId === id).length;
+  const positionsIn = (id: string) =>
+    positions.filter((p) => p.areaId === id).length;
   const peopleText = (n: number) =>
     n === 0
       ? t("area.people.none")
@@ -813,6 +878,7 @@ function AreasTab({
                 <thead>
                   <tr>
                     <Th>{t("area.col.name")}</Th>
+                    <Th>{t("area.col.positions")}</Th>
                     <Th>{t("area.col.people")}</Th>
                     <Th>{t("area.col.status")}</Th>
                     <Th className="text-right">
@@ -831,6 +897,22 @@ function AreasTab({
                       data-area-active={area.active ? "1" : "0"}
                     >
                       <Td className="font-medium text-zinc-900">{area.name}</Td>
+                      <Td className="whitespace-nowrap">
+                        {positionsIn(area.id) ? (
+                          <TextLink
+                            href={`/app/team?tab=positions&area=${area.id}`}
+                            className="text-sm"
+                          >
+                            {t("area.positions.count", {
+                              n: positionsIn(area.id),
+                            })}
+                          </TextLink>
+                        ) : (
+                          <span className="text-zinc-400">
+                            {t("team.none")}
+                          </span>
+                        )}
+                      </Td>
                       <Td className="whitespace-nowrap">
                         {peopleText(people(area.id))}
                       </Td>
@@ -935,21 +1017,369 @@ function AreasTab({
             <SubmitButton>{t("area.new.submit")}</SubmitButton>
           </form>
         </Card>
-        <TeamAreaBulk
+        <TeamBulkForm
+          kind="area"
           texts={{
             title: t("area.bulk.title"),
             hint: t("area.bulk.hint"),
             label: t("area.bulk.label"),
             submit: t("area.bulk.submit"),
-            done: t("area.bulk.done"),
-            created: t("area.bulk.created"),
-            existing: t("area.bulk.existing"),
-            as: t("area.bulk.as"),
-            inactive: t("area.inactiveSuffix"),
-            repeated: t("area.bulk.repeated"),
-            invalid: t("area.bulk.invalid"),
           }}
         />
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Cargos ---------------- */
+
+/** As escolhas de cargo, por área (ativos; o desativado só em quem já tem). */
+function PositionOptions({
+  t,
+  areas,
+  positions,
+  current = null,
+}: {
+  t: Translate;
+  areas: TeamArea[];
+  positions: TeamPosition[];
+  current?: string | null;
+}) {
+  const shown = positions.filter((p) => p.active || p.id === current);
+  const inArea = (areaId: string | null) =>
+    shown.filter((p) => (p.areaId ?? null) === areaId);
+  const label = (p: TeamPosition) =>
+    p.active ? p.name : `${p.name} ${t("position.inactiveSuffix")}`;
+  return (
+    <>
+      <option value="">{t("team.none")}</option>
+      {areas
+        .filter((a) => inArea(a.id).length)
+        .map((a) => (
+          <optgroup key={a.id} label={a.name}>
+            {inArea(a.id).map((p) => (
+              <option key={p.id} value={p.id}>
+                {label(p)}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      {inArea(null).length ? (
+        <optgroup label={t("position.noArea")}>
+          {inArea(null).map((p) => (
+            <option key={p.id} value={p.id}>
+              {label(p)}
+            </option>
+          ))}
+        </optgroup>
+      ) : null}
+    </>
+  );
+}
+
+/** A área de um cargo: as ativas (a desativada só no cargo que já está nela). */
+function AreaOptions({
+  t,
+  areas,
+  current = null,
+  noneLabel,
+}: {
+  t: Translate;
+  areas: TeamArea[];
+  current?: string | null;
+  noneLabel?: string;
+}) {
+  return (
+    <>
+      <option value="">{noneLabel ?? t("position.noArea")}</option>
+      {areas
+        .filter((a) => a.active || a.id === current)
+        .map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.active ? a.name : `${a.name} ${t("area.inactiveSuffix")}`}
+          </option>
+        ))}
+    </>
+  );
+}
+
+function PositionsTab({
+  t,
+  team,
+  areas,
+  positions,
+  areaFilter,
+}: {
+  t: Translate;
+  team: User[];
+  areas: TeamArea[];
+  positions: TeamPosition[];
+  areaFilter: string | null;
+}) {
+  const filter = areas.find((a) => a.id === areaFilter) ?? null;
+  const shown = filter
+    ? positions.filter((p) => p.areaId === filter.id)
+    : positions;
+  const people = (id: string) => team.filter((m) => m.positionId === id).length;
+  const peopleText = (n: number) =>
+    n === 0
+      ? t("area.people.none")
+      : n === 1
+        ? t("area.people.one")
+        : t("area.people.many", { n });
+  const active = positions.filter((p) => p.active).length;
+  const noArea = positions.filter((p) => p.active && !p.areaId).length;
+  return (
+    <div className="grid items-start gap-4 lg:grid-cols-12" data-team-positions>
+      <div className="min-w-0 lg:col-span-8">
+        <Card title={t("position.title")}>
+          <p className="mb-2 text-sm text-zinc-600">{t("position.intro")}</p>
+          {positions.length === 0 ? (
+            <p className="text-sm text-zinc-500" data-position-empty>
+              {t("position.empty")}
+            </p>
+          ) : (
+            <>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-zinc-500" data-position-count>
+                  {t("position.count", { n: positions.length, active })}
+                </p>
+                {/* Filtro por área (sem JavaScript: o endereço guarda a área). */}
+                <form
+                  action="/app/team"
+                  className="flex items-center gap-2"
+                  data-position-filter
+                >
+                  <input type="hidden" name="tab" value="positions" />
+                  <Select
+                    dense
+                    name="area"
+                    defaultValue={filter?.id ?? ""}
+                    aria-label={t("position.filter")}
+                  >
+                    <option value="">{t("position.filter.all")}</option>
+                    {areas.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <button
+                    type="submit"
+                    className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
+                  >
+                    {t("position.filter.apply")}
+                  </button>
+                </form>
+              </div>
+              {noArea ? (
+                <div className="mb-2" data-position-no-area>
+                  <Alert tone="warning">
+                    {t("position.noArea.notice", { n: noArea })}
+                  </Alert>
+                </div>
+              ) : null}
+              <Table paginated={false}>
+                <thead>
+                  <tr>
+                    <Th>{t("position.col.name")}</Th>
+                    <Th>{t("position.col.area")}</Th>
+                    <Th>{t("area.col.people")}</Th>
+                    <Th>{t("area.col.status")}</Th>
+                    <Th className="text-right">
+                      <span className="sr-only">{t("area.rename")}</span>
+                    </Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shown.map((position) => {
+                    const areaForm = `position-area-${position.id}`;
+                    return (
+                      <tr
+                        key={position.id}
+                        id={`p-${position.id}`}
+                        className={`${rowClass} scroll-mt-24`}
+                        data-position={position.id}
+                        data-position-name={position.name}
+                        data-position-active={position.active ? "1" : "0"}
+                      >
+                        <Td className="font-medium text-zinc-900">
+                          {position.name}
+                        </Td>
+                        <Td>
+                          {/* A área do cargo na própria linha: escolhe e salva. */}
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-48">
+                              <Select
+                                dense
+                                name="areaId"
+                                form={areaForm}
+                                defaultValue={position.areaId ?? ""}
+                                aria-label={t("position.area.label", {
+                                  name: position.name,
+                                })}
+                                data-position-area-select={position.id}
+                              >
+                                <AreaOptions
+                                  t={t}
+                                  areas={areas}
+                                  current={position.areaId}
+                                />
+                              </Select>
+                            </div>
+                            <form
+                              id={areaForm}
+                              action={setTeamPositionAreaAction}
+                            >
+                              <input
+                                type="hidden"
+                                name="positionId"
+                                value={position.id}
+                              />
+                              <SubmitButton
+                                variant="secondary"
+                                className="px-2 py-1 text-xs"
+                                data-position-area-save={position.id}
+                              >
+                                {t("team.save")}
+                              </SubmitButton>
+                            </form>
+                          </div>
+                        </Td>
+                        <Td className="whitespace-nowrap">
+                          {peopleText(people(position.id))}
+                        </Td>
+                        <Td>
+                          {position.active ? (
+                            <Badge tone="success">
+                              {t("area.status.active")}
+                            </Badge>
+                          ) : (
+                            <Badge>{t("area.status.inactive")}</Badge>
+                          )}
+                        </Td>
+                        <Td className="text-right">
+                          <div className="flex flex-wrap items-start justify-end gap-2">
+                            <details data-position-rename={position.id}>
+                              <summary className="cursor-pointer list-none rounded-md px-2 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50">
+                                {t("area.rename")}
+                              </summary>
+                              <form
+                                action={renameTeamPositionAction}
+                                className="mt-2 flex flex-wrap items-center justify-end gap-2"
+                              >
+                                <input
+                                  type="hidden"
+                                  name="positionId"
+                                  value={position.id}
+                                />
+                                <Input
+                                  dense
+                                  name="name"
+                                  defaultValue={position.name}
+                                  required
+                                  minLength={2}
+                                  maxLength={120}
+                                  autoComplete="off"
+                                  aria-label={t("area.rename.label", {
+                                    name: position.name,
+                                  })}
+                                  className="w-48"
+                                />
+                                <SubmitButton
+                                  variant="secondary"
+                                  className="px-2.5 py-1 text-xs"
+                                >
+                                  {t("area.rename.save")}
+                                </SubmitButton>
+                              </form>
+                            </details>
+                            <form action={setTeamPositionActiveAction}>
+                              <input
+                                type="hidden"
+                                name="positionId"
+                                value={position.id}
+                              />
+                              <input
+                                type="hidden"
+                                name="active"
+                                value={position.active ? "0" : "1"}
+                              />
+                              <SubmitButton
+                                variant="secondary"
+                                className="px-2.5 py-1 text-xs"
+                                data-position-toggle={position.id}
+                              >
+                                {position.active
+                                  ? t("area.deactivate")
+                                  : t("area.activate")}
+                              </SubmitButton>
+                            </form>
+                          </div>
+                        </Td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+              <p className="mt-2 text-xs text-zinc-500">
+                {t("position.deactivate.hint")}
+              </p>
+            </>
+          )}
+        </Card>
+      </div>
+      <div className="min-w-0 space-y-4 lg:col-span-4">
+        <Card title={t("position.new")}>
+          <form
+            id="position-new"
+            action={createTeamPositionAction}
+            className="scroll-mt-24 space-y-2"
+            data-position-new
+          >
+            <Field label={t("position.new.name")}>
+              <Input
+                name="name"
+                required
+                minLength={2}
+                maxLength={120}
+                autoComplete="off"
+              />
+            </Field>
+            <Field label={t("position.col.area")}>
+              <Select name="areaId" defaultValue={filter?.id ?? ""}>
+                <AreaOptions t={t} areas={areas} />
+              </Select>
+            </Field>
+            <SubmitButton>{t("position.new.submit")}</SubmitButton>
+          </form>
+        </Card>
+        <TeamBulkForm
+          kind="position"
+          texts={{
+            title: t("position.bulk.title"),
+            hint: t("position.bulk.hint"),
+            label: t("position.bulk.label"),
+            submit: t("position.bulk.submit"),
+          }}
+        >
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-zinc-700">
+              {t("position.bulk.area")}
+            </span>
+            <Select
+              name="areaId"
+              defaultValue={filter?.id ?? ""}
+              data-position-bulk-area
+            >
+              <AreaOptions
+                t={t}
+                areas={areas}
+                noneLabel={t("position.bulk.area.none")}
+              />
+            </Select>
+          </label>
+        </TeamBulkForm>
       </div>
     </div>
   );

@@ -19,6 +19,7 @@ alter table public."users" add column if not exists "jobLevel" text;
 alter table public."users" add column if not exists "managerUserId" text;
 alter table public."users" add column if not exists "division" text;
 alter table public."users" add column if not exists "areaId" text;
+alter table public."users" add column if not exists "positionId" text;
 alter table public."users" add column if not exists "functions" jsonb;
 alter table public."users" add column if not exists "screens" jsonb;
 alter table public."users" add column if not exists "mustChangePassword" boolean;
@@ -2100,6 +2101,22 @@ alter table public."team_areas" add column if not exists "updatedByUserId" text;
 create index if not exists "team_areas_created" on public."team_areas" ("createdAt");
 create index if not exists "team_areas_created_id" on public."team_areas" ("createdAt", "id");
 create index if not exists "team_areas_name_id" on public."team_areas" ("name", "id");
+
+create table if not exists public."team_positions" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."team_positions" enable row level security;
+alter table public."team_positions" add column if not exists "name" text;
+alter table public."team_positions" add column if not exists "areaId" text;
+alter table public."team_positions" add column if not exists "active" boolean;
+alter table public."team_positions" add column if not exists "createdByUserId" text;
+alter table public."team_positions" add column if not exists "updatedByUserId" text;
+create index if not exists "team_positions_by_area" on public."team_positions" ("areaId");
+create index if not exists "team_positions_created" on public."team_positions" ("createdAt");
+create index if not exists "team_positions_created_id" on public."team_positions" ("createdAt", "id");
+create index if not exists "team_positions_name_id" on public."team_positions" ("name", "id");
 
 create table if not exists public."partner_types" (
   "id" text primary key,

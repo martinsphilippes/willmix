@@ -68,6 +68,10 @@ function teamMemberInput(form: FormData) {
     ...(form.has("areaId")
       ? { areaId: optionalId.parse(str(form, "areaId")) }
       : {}),
+    // Cargo (com área, a área vem dele; formulário sem o campo não muda).
+    ...(form.has("positionId")
+      ? { positionId: optionalId.parse(str(form, "positionId")) }
+      : {}),
     // Funções marcadas (o formulário sempre manda o marcador).
     ...(form.has("functions.__form")
       ? {
@@ -213,6 +217,7 @@ export async function createTeamLoginAction(form: FormData) {
       managerUserId: optionalId.parse(str(form, "managerUserId")),
       division: division.parse(str(form, "division")),
       areaId: optionalId.parse(str(form, "areaId")),
+      positionId: optionalId.parse(str(form, "positionId")),
       functions: z
         .array(z.string().regex(/^[a-z0-9_]{1,48}$/))
         .max(60)
@@ -310,68 +315,294 @@ export async function setTeamAreaActiveAction(form: FormData) {
   });
 }
 
-/** Resultado do cadastro em massa (fica na tela, com o resumo). */
-export interface AreaBulkState {
+/** Um grupo do resumo do cadastro em massa, já no idioma de quem enviou. */
+export interface TeamBulkGroup {
+  kind: string;
+  title: string;
+  items: string[];
+}
+
+/**
+ * Resultado do cadastro em massa de áreas e de cargos: fica na tela, com o
+ * resumo (o que entrou, o que já existia e o que ficou de fora).
+ */
+export interface TeamBulkState {
   ok: boolean;
   error: string | null;
   message: string | null;
-  created: string[];
-  existing: { asked: string; name: string; active: boolean }[];
-  repeated: string[];
-  invalid: string[];
+  /** "Pronto: N criada(s)..." */
+  done: string | null;
+  /** Quantos entraram e quantos já existiam. */
+  created: number;
+  existing: number;
+  groups: TeamBulkGroup[];
   /** O texto colado, de volta quando a gravação foi recusada. */
   text: string;
   /** Quando o servidor terminou (ISO); muda a cada envio. */
   doneAt: string | null;
 }
 
+const group = (kind: string, title: string, items: string[]) =>
+  items.length ? [{ kind, title, items }] : [];
+
+async function bulkRefused(
+  back: string,
+  error: unknown,
+  form: FormData,
+): Promise<TeamBulkState> {
+  const code = errorCode(back, error);
+  const t = await getT();
+  return {
+    ok: false,
+    error: code,
+    message: errorTextFor(t, code, ["team.error"]),
+    done: null,
+    created: 0,
+    existing: 0,
+    groups: [],
+    text: str(form, "names").slice(0, 20_000),
+    doneAt: new Date().toISOString(),
+  };
+}
+
 /**
- * Cadastro em massa: uma área por linha. Cria só as que faltam; as que já
- * existem ficam como estão e voltam no resumo (src/lib/team-areas.ts).
+ * Cadastro em massa de áreas: uma por linha. Cria só as que faltam; as que
+ * já existem ficam como estão e voltam no resumo (src/lib/team-areas.ts).
  */
 export async function bulkTeamAreasAction(
-  _prev: AreaBulkState,
+  _prev: TeamBulkState,
   form: FormData,
-): Promise<AreaBulkState> {
+): Promise<TeamBulkState> {
   const user = await requireUser();
-  const empty = {
-    created: [],
-    existing: [],
-    repeated: [],
-    invalid: [],
-  };
   try {
     assertRole(user, ["admin"]);
     const text = z.string().max(20_000).parse(str(form, "names"));
     const { bulkCreateTeamAreas } = await import("@/lib/services/team-areas");
     const done = await bulkCreateTeamAreas(user, text);
     revalidatePath("/app", "layout");
+    const t = await getT();
     return {
       ok: true,
       error: null,
       message: null,
-      created: done.created.map((c) => c.name),
-      existing: done.existing.map((e) => ({
-        asked: e.asked,
-        name: e.name,
-        active: e.active,
-      })),
-      repeated: done.repeated,
-      invalid: done.invalid,
+      done: t("area.bulk.done", {
+        created: done.created.length,
+        existing: done.existing.length,
+      }),
+      created: done.created.length,
+      existing: done.existing.length,
+      groups: [
+        ...group(
+          "created",
+          t("area.bulk.created", { n: done.created.length }),
+          done.created.map((c) => c.name),
+        ),
+        ...group(
+          "existing",
+          t("area.bulk.existing", { n: done.existing.length }),
+          done.existing.map((e) =>
+            [
+              e.asked,
+              e.name !== e.asked
+                ? `(${t("area.bulk.as", { name: e.name })})`
+                : null,
+              e.active ? null : t("area.inactiveSuffix"),
+            ]
+              .filter(Boolean)
+              .join(" "),
+          ),
+        ),
+        ...group(
+          "repeated",
+          t("area.bulk.repeated", { n: done.repeated.length }),
+          done.repeated,
+        ),
+        ...group(
+          "invalid",
+          t("area.bulk.invalid", { n: done.invalid.length }),
+          done.invalid,
+        ),
+        ...group(
+          "header",
+          t("area.bulk.header"),
+          done.header ? [done.header.replace(/\s+/g, " ")] : [],
+        ),
+      ],
       text: "",
       doneAt: new Date().toISOString(),
     };
   } catch (error) {
-    const code = errorCode(AREAS, error);
+    return bulkRefused(AREAS, error, form);
+  }
+}
+
+/* ---- Cargos (Equipe Acessos e Parceiros → Cargos; só o administrador) ---- */
+
+const POSITIONS = "/app/team?tab=positions";
+const positionBack = (id: string, saved: string) =>
+  `${POSITIONS}&saved=${saved}#p-${id}`;
+
+/** Um cargo novo, com a área. */
+export async function createTeamPositionAction(form: FormData) {
+  const user = await requireUser();
+  await run(`${POSITIONS}#position-new`, async () => {
+    assertRole(user, ["admin"]);
+    const { createTeamPosition } =
+      await import("@/lib/services/team-positions");
+    const position = await createTeamPosition(
+      user,
+      z.string().max(500).parse(str(form, "name")),
+      optionalId.parse(str(form, "areaId")),
+    );
+    return positionBack(position.id, "position_created");
+  });
+}
+
+/** Muda o nome de um cargo. */
+export async function renameTeamPositionAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "positionId");
+  const valid = ID.safeParse(raw).success;
+  await run(valid ? `${POSITIONS}#p-${raw}` : POSITIONS, async () => {
+    assertRole(user, ["admin"]);
+    const positionId = ID.parse(raw);
+    const { renameTeamPosition } =
+      await import("@/lib/services/team-positions");
+    await renameTeamPosition(
+      user,
+      positionId,
+      z.string().max(500).parse(str(form, "name")),
+    );
+    return positionBack(positionId, "position_renamed");
+  });
+}
+
+/** Muda a área do cargo (quem tem o cargo vai junto). */
+export async function setTeamPositionAreaAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "positionId");
+  const valid = ID.safeParse(raw).success;
+  await run(valid ? `${POSITIONS}#p-${raw}` : POSITIONS, async () => {
+    assertRole(user, ["admin"]);
+    const positionId = ID.parse(raw);
+    const { setTeamPositionArea } =
+      await import("@/lib/services/team-positions");
+    const done = await setTeamPositionArea(
+      user,
+      positionId,
+      optionalId.parse(str(form, "areaId")),
+    );
+    return `${POSITIONS}&saved=position_area&moved=${done.moved}#p-${positionId}`;
+  });
+}
+
+/** Desativa (sai das escolhas, fica em quem já está nele) ou reativa. */
+export async function setTeamPositionActiveAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "positionId");
+  const valid = ID.safeParse(raw).success;
+  await run(valid ? `${POSITIONS}#p-${raw}` : POSITIONS, async () => {
+    assertRole(user, ["admin"]);
+    const positionId = ID.parse(raw);
+    const active = z.enum(["0", "1"]).parse(str(form, "active")) === "1";
+    const { setTeamPositionActive } =
+      await import("@/lib/services/team-positions");
+    await setTeamPositionActive(user, positionId, active);
+    return positionBack(
+      positionId,
+      active ? "position_activated" : "position_deactivated",
+    );
+  });
+}
+
+/**
+ * Cadastro em massa de cargos: um por linha, com a área na mesma linha
+ * (tabulação ou ";") ou a área escolhida para a lista. Cria só os que
+ * faltam (src/lib/team-positions.ts).
+ */
+export async function bulkTeamPositionsAction(
+  _prev: TeamBulkState,
+  form: FormData,
+): Promise<TeamBulkState> {
+  const user = await requireUser();
+  try {
+    assertRole(user, ["admin"]);
+    const text = z.string().max(20_000).parse(str(form, "names"));
+    const { bulkCreateTeamPositions } =
+      await import("@/lib/services/team-positions");
+    const done = await bulkCreateTeamPositions(
+      user,
+      text,
+      optionalId.parse(str(form, "areaId")),
+    );
+    revalidatePath("/app", "layout");
     const t = await getT();
+    const { listTeamAreas } = await import("@/lib/services/team-areas");
+    const areas = await listTeamAreas();
+    const areaName = (id: string | null) =>
+      (id && areas.find((a) => a.id === id)?.name) || t("position.noArea");
     return {
-      ok: false,
-      error: code,
-      message: errorTextFor(t, code, ["team.error"]),
-      ...empty,
-      text: str(form, "names").slice(0, 20_000),
+      ok: true,
+      error: null,
+      message: null,
+      done: t("position.bulk.done", {
+        created: done.created.length,
+        existing: done.existing.length,
+      }),
+      created: done.created.length,
+      existing: done.existing.length,
+      groups: [
+        ...group(
+          "created",
+          t("position.bulk.created", { n: done.created.length }),
+          done.created.map(
+            (c) => `${c.name} → ${c.areaName ?? t("position.noArea")}`,
+          ),
+        ),
+        ...group(
+          "existing",
+          t("position.bulk.existing", { n: done.existing.length }),
+          done.existing.map((e) =>
+            [
+              e.asked,
+              e.name !== e.asked
+                ? `(${t("position.bulk.as", { name: e.name })})`
+                : null,
+              `→ ${areaName(e.areaId)}`,
+              e.active ? null : t("position.inactiveSuffix"),
+            ]
+              .filter(Boolean)
+              .join(" "),
+          ),
+        ),
+        ...group(
+          "unknownArea",
+          t("position.bulk.unknownArea", { n: done.unknownArea.length }),
+          done.unknownArea.map((u) =>
+            t("position.bulk.unknownAreaItem", { name: u.name, area: u.area }),
+          ),
+        ),
+        ...group(
+          "repeated",
+          t("position.bulk.repeated", { n: done.repeated.length }),
+          done.repeated,
+        ),
+        ...group(
+          "invalid",
+          t("position.bulk.invalid", { n: done.invalid.length }),
+          done.invalid,
+        ),
+        ...group(
+          "header",
+          t("area.bulk.header"),
+          done.header ? [done.header.replace(/\s+/g, " ")] : [],
+        ),
+      ],
+      text: "",
       doneAt: new Date().toISOString(),
     };
+  } catch (error) {
+    return bulkRefused(POSITIONS, error, form);
   }
 }
 
