@@ -1729,3 +1729,12 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Fica como está**: o histórico de compras do cliente na lateral (rodadas da programação de compra dos pedidos antigos, cuja data não é a de recebimento pelo cliente) e a Nova solicitação de Encomendas.
 - **Aditivo**: só textos; cálculos, intervalos, regras de datas, distribuição das quantidades, Composição de containers e nomes técnicos não mudam. Sem mudança no banco.
 - Testes: `tests/unit/delivery-schedule-labels.test.ts` (toda recusa do envio que fala de programação tem a versão das entregas, nos três idiomas) e `tests/e2e/request-screens.spec.ts` (a recusa depois de criar em TS e Venda com o texto novo; Encomendas com o de sempre).
+
+## Control Tower não abria depois do login (indicador vencido)
+
+- **Relato do dono** (16/11/2026): um login não conseguia entrar pelo aplicativo instalado (PWA).
+- **Causa:** a senha estava certa; o que caía era `/app`, a tela depois do login. ~4.900 pedidos tinham o prazo do marco Arte no mesmo minuto (11:40 UTC). O indicador pronto da Control Tower venceu e cada abertura de `/app` tentava refazer os resumos desses pedidos antes de responder: estourava memória ou os 300 s, nada era gravado e a próxima abertura tentava de novo. O "Reconstruir resumos" de Configurações caía no mesmo passo final.
+- **Destravado na hora:** a validade do indicador `tower` em `kpi_snapshots` foi estendida por 2 horas (dado derivado).
+- **Como ficou** (docs/RESUMOS.md): vencido, a tela mostra o último agregado e reconstrói depois da resposta; a reconstrução refaz as vencidas em lotes (200) e no máximo 1.000 por rodada.
+- **Aditivo:** sem mudança no banco nem em telas.
+- Testes: `tests/unit/tower-kpis-stale.test.ts`.

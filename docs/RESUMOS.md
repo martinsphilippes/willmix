@@ -184,7 +184,9 @@ O momento em que a contribuição muda (`nextChange`) é o mais próximo entre:
 
 - a cada leva de gravações, depois do recálculo dos pedidos marcados;
 - em gravações de bookings, solicitações, certificações, containers, revisão e configurações, que marcam `kpi`;
-- antes da leitura, se o `validUntil` passou.
+- quando o `validUntil` passou: numa tela, ela mostra o último agregado e a reconstrução roda depois da resposta (`after`, uma por instância a cada minuto); fora de uma tela (jobs, testes), antes de responder.
+
+**Contribuições vencidas em lotes (16/11/2026):** a reconstrução refaz as contribuições vencidas em lotes de `STALE_CHUNK` (200) pedidos e no máximo `STALE_MAX` (1.000) por rodada; sobrou alguma, o agregado vale só mais 1 minuto e a próxima rodada continua. Motivo: ~4.900 pedidos com o prazo da Arte no mesmo minuto venceram juntos; refeitos de uma vez dentro da tela, estouravam memória e tempo, nada era gravado e a Control Tower (a tela depois do login, também no aplicativo instalado) não abria.
 
 **Listas:** só a do quadrado, visão ou exceções escolhido é montada. A tela lê os pedidos membros na coluna `kpi`, busca o resumo das primeiras 200 linhas e usa as mesmas funções da tela. Acima de 200, mostra "Mostrando os 200 primeiros de N".
 

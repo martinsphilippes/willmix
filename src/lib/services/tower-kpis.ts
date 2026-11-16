@@ -1,4 +1,5 @@
 import "server-only";
+import { after } from "next/server";
 
 import {
   getStore,
@@ -407,8 +408,20 @@ async function readOrderKpis(): Promise<Array<{
 }
 
 /**
+ * Contribuições vencidas refeitas por vez (16/11/2026: ~4.900 pedidos com o
+ * prazo da Arte no mesmo minuto venceram juntos; refeitos de uma vez dentro
+ * da tela, estouravam a memória e o tempo, nada era gravado e a Control
+ * Tower, que é a tela depois do login, não abria). Em lotes, e no máximo
+ * STALE_MAX por reconstrução: o resto fica para a próxima, em 1 minuto.
+ */
+export const STALE_CHUNK = 200;
+export const STALE_MAX = 1000;
+const CONTINUE_MS = 60_000;
+
+/**
  * Refaz o agregado: soma as contribuições (recalcula antes as que venceram
- * ou faltam) e o que não é de pedido, e grava. Nulo: resumos fora de uso.
+ * ou faltam, em lotes) e o que não é de pedido, e grava. Nulo: resumos fora
+ * de uso.
  */
 export async function rebuildTowerKpis(
   now: Date = new Date(),
@@ -420,8 +433,13 @@ export async function rebuildTowerKpis(
   const stale = rows
     .filter((r) => !r.kpi || (r.kpi.u !== null && Date.parse(r.kpi.u) <= at))
     .map((r) => r.id);
+  // Vencidas que ficam para a próxima rodada (somam com o valor anterior).
+  let pending = 0;
   if (stale.length) {
-    await recomputeOrderSummaries(stale, now);
+    const batch = stale.slice(0, STALE_MAX);
+    pending = stale.length - batch.length;
+    for (let i = 0; i < batch.length; i += STALE_CHUNK)
+      await recomputeOrderSummaries(batch.slice(i, i + STALE_CHUNK), now);
     rows = await readOrderKpis();
     if (!rows) return null;
   }
@@ -523,6 +541,8 @@ export async function rebuildTowerKpis(
   for (const c of boardSide[3])
     if (c.validUntil) until(Date.parse(c.validUntil));
   until(midnight(addDays(brazilDay(now.toISOString()) as string, 1)));
+  // Sobrou vencida: o agregado vale só até a próxima rodada.
+  if (pending > 0) until(at + CONTINUE_MS);
 
   // Totais (faixa do financeiro e visão comercial).
   const moneyRows = kpis.map((k) => ({
@@ -606,11 +626,40 @@ export async function readTowerKpis(
   if (
     data &&
     data.version === KPI_VERSION &&
-    data.summaryVersion === SUMMARY_VERSION &&
-    (!data.validUntil || Date.parse(data.validUntil) > now.getTime())
-  )
-    return data;
+    data.summaryVersion === SUMMARY_VERSION
+  ) {
+    if (!data.validUntil || Date.parse(data.validUntil) > now.getTime())
+      return data;
+    // Vencido: a tela mostra o último agregado e a reconstrução roda depois
+    // da resposta (16/11/2026). Fora de uma requisição (testes, jobs),
+    // reconstrói antes de responder, como sempre.
+    if (rebuildAfterResponse()) return data;
+  }
   return rebuildTowerKpis(now);
+}
+
+/** Uma reconstrução por instância a cada minuto, depois da resposta. */
+const REBUILD_EVERY_MS = 60_000;
+let lastRebuild = Number.NEGATIVE_INFINITY;
+
+/** Agenda a reconstrução para depois da resposta; diz se agendou. */
+function rebuildAfterResponse(): boolean {
+  const at = Date.now();
+  if (at - lastRebuild < REBUILD_EVERY_MS) return true;
+  try {
+    after(async () => {
+      try {
+        await rebuildTowerKpis(new Date());
+      } catch (error) {
+        console.error("[tower-kpis] reconstrução depois da resposta", error);
+      }
+    });
+  } catch {
+    // Fora de uma requisição: quem chamou reconstrói agora.
+    return false;
+  }
+  lastRebuild = at;
+  return true;
 }
 
 /* ------------------------------------------------------------------------ */
