@@ -123,6 +123,11 @@ export function auditLink(e: Pick<AuditEntry, "entity" | "entityId">) {
       return `/app/products/${e.entityId}`;
     case "party":
       return `/app/parties/${e.entityId}`;
+    case "team_area":
+      // Áreas da equipe (a linha da área; o resumo do cadastro em massa, a lista).
+      return e.entityId === "bulk"
+        ? "/app/team?tab=areas"
+        : `/app/team?tab=areas#a-${e.entityId}`;
     default:
       return null;
   }

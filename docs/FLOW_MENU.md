@@ -23,7 +23,7 @@ Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeça
 
 Pedido do dono (15/11/2026): a área de Parceiros (antes Cadastros → Parceiros) entrou na área de Equipe, que passou a se chamar **Equipe Acessos e Parceiros** no menu e no título.
 
-- **Seções** (no padrão de abas da área, `src/components/team-area-nav.tsx`): Equipe, Funções e acessos, Linha de produto e divisão (`/app/team?tab=team|functions|lines`) e **Parceiros** (`/app/parties`).
+- **Seções** (no padrão de abas da área, `src/components/team-area-nav.tsx`): Equipe, Áreas (16/11/2026; docs/ACCESS.md, "Áreas da equipe"), Funções e acessos, Linha de produto e divisão (`/app/team?tab=team|areas|functions|lines`) e **Parceiros** (`/app/parties`).
 - **Abas de Parceiros**: dentro da seção Parceiros, as três de sempre: Cadastros (`/app/parties`), Tipos de parceiro (`/app/parties/types`) e Acessos externos (`/app/parties/access`). As telas, os filtros, as ações e os dados não mudaram.
 - **Endereços**: não mudaram. Os links antigos (`/app/parties` com os filtros `?type=…&q=…`, `/types`, `/access` com os painéis, `/app/parties/<id>`, `/app/parties/new`, `/app/customers` e `/app/suppliers`) continuam abrindo a mesma tela, sem redirecionamento.
 - **Sem clientes** (dono, 15/11/2026): a lista de Parceiros não mostra clientes, nem em "Todos os tipos", e o filtro não tem mais a opção Clientes (veja "Cadastros → Clientes" abaixo).

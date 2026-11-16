@@ -1749,3 +1749,11 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   - **Contagens explicadas:** em Tipos, "Parceiros" conta cadastros de empresa (não logins); em Acessos externos, "logins ativos" são as pessoas que entram com o perfil.
 - **Aditivo:** nenhuma tela, rota, campo, permissão ou dado mudou; só links e textos. Docs: docs/PARTNER_ACCESS.md e docs/PARTNER_TYPES.md.
 - Testes: `tests/unit/partner-access-panels.test.ts` (endereços, aviso e o tipo por trás de cada perfil) e `tests/e2e/partner-access-panels.spec.ts` (ida e volta entre as abas, aviso e explicações).
+
+## Equipe: cadastro de Áreas (Marketing, Comex...) com cadastro em massa
+
+- **Pedido do dono** (16/11/2026): cadastrar em massa os "Cargos" da lista (Marketing, Showroom, Financeiro, Comercial, Contabil Fiscal, Tecnologia da Informação, Compras, Comex, Recursos Humanos, Presidência, Operações e Processos, Processos Projetos), em que "Cargo" é a área; sem duplicar o que já existe ("Processos/Projetos" vale por "Processos Projetos"), preservando Admin, Master, Funções, permissões e vínculos.
+- **Situação encontrada**: não havia cadastro de áreas. O "Cargo" da equipe é o nível (Analista a Diretor) e "Admin" e "Master" são logins de administrador. O dono escolheu criar o cadastro de Áreas (docs/ACCESS.md, "Áreas da equipe").
+- **Como ficou**: seção Áreas em Equipe Acessos e Parceiros (`/app/team?tab=areas`) com nova área, renomear, desativar/reativar e cadastro em massa (só as que faltam, com o resumo); campo "Área" em Editar acessos e no Novo usuário; coluna "Área" na lista da equipe; Auditoria de tudo.
+- **Aditivo:** tabela nova `team_areas` e coluna nova `users.areaId` (opcional). Cargo, Funções, permissões, logins e telas existentes não mudam; a seção nova entra entre Equipe e Funções e acessos.
+- Testes: `tests/unit/team-areas.test.ts`, `tests/e2e/team-areas.spec.ts` e a ordem das seções em `tests/e2e/team-partners-area.spec.ts`.

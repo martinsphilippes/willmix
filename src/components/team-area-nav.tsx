@@ -7,14 +7,15 @@ import { cx } from "@/components/ui";
 
 /*
  * Seções da área Equipe Acessos e Parceiros (dono, 15/11/2026): Equipe,
- * Funções e acessos e Linha de produto e divisão (a tela Equipe, só de quem
- * abre Equipe: o administrador) e Parceiros (as três abas de sempre, de quem
- * abre Parceiros). Cada login vê só as seções que já abria; as telas e as
+ * Áreas (16/11/2026), Funções e acessos e Linha de produto e divisão (a tela
+ * Equipe, só de quem abre Equipe: o administrador) e Parceiros (as três abas
+ * de sempre, de quem abre Parceiros). Cada login vê só as seções que já abria; as telas e as
  * ações conferem de novo. Os endereços não mudaram: /app/team?tab=… e
  * /app/parties.
  */
 
-export type TeamAreaSection = "team" | "functions" | "lines" | "partners";
+export type TeamAreaSection =
+  "team" | "areas" | "functions" | "lines" | "partners";
 
 const SECTIONS: {
   key: TeamAreaSection;
@@ -26,6 +27,13 @@ const SECTIONS: {
     key: "team",
     href: "/app/team?tab=team",
     label: "team.tab.team",
+    screen: "team",
+  },
+  {
+    // Áreas da empresa (dono, 16/11/2026): logo depois da Equipe.
+    key: "areas",
+    href: "/app/team?tab=areas",
+    label: "team.tab.areas",
     screen: "team",
   },
   {

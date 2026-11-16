@@ -18,6 +18,7 @@ alter table public."users" add column if not exists "importerId" text;
 alter table public."users" add column if not exists "jobLevel" text;
 alter table public."users" add column if not exists "managerUserId" text;
 alter table public."users" add column if not exists "division" text;
+alter table public."users" add column if not exists "areaId" text;
 alter table public."users" add column if not exists "functions" jsonb;
 alter table public."users" add column if not exists "screens" jsonb;
 alter table public."users" add column if not exists "mustChangePassword" boolean;
@@ -2085,6 +2086,20 @@ alter table public."commission_events" add column if not exists "createdByUserId
 create index if not exists "commission_events_by_order" on public."commission_events" ("orderId");
 create index if not exists "commission_events_created" on public."commission_events" ("createdAt");
 create index if not exists "commission_events_created_id" on public."commission_events" ("createdAt", "id");
+
+create table if not exists public."team_areas" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."team_areas" enable row level security;
+alter table public."team_areas" add column if not exists "name" text;
+alter table public."team_areas" add column if not exists "active" boolean;
+alter table public."team_areas" add column if not exists "createdByUserId" text;
+alter table public."team_areas" add column if not exists "updatedByUserId" text;
+create index if not exists "team_areas_created" on public."team_areas" ("createdAt");
+create index if not exists "team_areas_created_id" on public."team_areas" ("createdAt", "id");
+create index if not exists "team_areas_name_id" on public."team_areas" ("name", "id");
 
 create table if not exists public."partner_types" (
   "id" text primary key,

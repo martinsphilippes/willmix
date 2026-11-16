@@ -64,6 +64,10 @@ function teamMemberInput(form: FormData) {
     jobLevel: level.parse(str(form, "jobLevel")),
     managerUserId: optionalId.parse(str(form, "managerUserId")),
     division: division.parse(str(form, "division")),
+    // Área (o campo novo; formulário de antes, sem ele, não muda a área).
+    ...(form.has("areaId")
+      ? { areaId: optionalId.parse(str(form, "areaId")) }
+      : {}),
     // Funções marcadas (o formulário sempre manda o marcador).
     ...(form.has("functions.__form")
       ? {
@@ -208,6 +212,7 @@ export async function createTeamLoginAction(form: FormData) {
       jobLevel: level.parse(str(form, "jobLevel")),
       managerUserId: optionalId.parse(str(form, "managerUserId")),
       division: division.parse(str(form, "division")),
+      areaId: optionalId.parse(str(form, "areaId")),
       functions: z
         .array(z.string().regex(/^[a-z0-9_]{1,48}$/))
         .max(60)
@@ -250,6 +255,124 @@ export async function distributeUnassignedAction() {
     const done = await distributeUnassigned(user);
     return `/app/team?tab=lines&distributed=${done.requests + done.orders}`;
   });
+}
+
+/* ---- Áreas (Equipe Acessos e Parceiros → Áreas; só o administrador) ---- */
+
+const AREAS = "/app/team?tab=areas";
+const areaBack = (id: string, saved: string) =>
+  `${AREAS}&saved=${saved}#a-${id}`;
+
+/** Uma área nova. */
+export async function createTeamAreaAction(form: FormData) {
+  const user = await requireUser();
+  await run(`${AREAS}#area-new`, async () => {
+    assertRole(user, ["admin"]);
+    const { createTeamArea } = await import("@/lib/services/team-areas");
+    const area = await createTeamArea(
+      user,
+      z.string().max(500).parse(str(form, "name")),
+    );
+    return areaBack(area.id, "area_created");
+  });
+}
+
+/** Muda o nome de uma área. */
+export async function renameTeamAreaAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "areaId");
+  const valid = ID.safeParse(raw).success;
+  await run(valid ? `${AREAS}#a-${raw}` : AREAS, async () => {
+    assertRole(user, ["admin"]);
+    const areaId = ID.parse(raw);
+    const { renameTeamArea } = await import("@/lib/services/team-areas");
+    await renameTeamArea(
+      user,
+      areaId,
+      z.string().max(500).parse(str(form, "name")),
+    );
+    return areaBack(areaId, "area_renamed");
+  });
+}
+
+/** Desativa (sai das escolhas, fica em quem já está nela) ou reativa. */
+export async function setTeamAreaActiveAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "areaId");
+  const valid = ID.safeParse(raw).success;
+  await run(valid ? `${AREAS}#a-${raw}` : AREAS, async () => {
+    assertRole(user, ["admin"]);
+    const areaId = ID.parse(raw);
+    const active = z.enum(["0", "1"]).parse(str(form, "active")) === "1";
+    const { setTeamAreaActive } = await import("@/lib/services/team-areas");
+    await setTeamAreaActive(user, areaId, active);
+    return areaBack(areaId, active ? "area_activated" : "area_deactivated");
+  });
+}
+
+/** Resultado do cadastro em massa (fica na tela, com o resumo). */
+export interface AreaBulkState {
+  ok: boolean;
+  error: string | null;
+  message: string | null;
+  created: string[];
+  existing: { asked: string; name: string; active: boolean }[];
+  repeated: string[];
+  invalid: string[];
+  /** O texto colado, de volta quando a gravação foi recusada. */
+  text: string;
+  /** Quando o servidor terminou (ISO); muda a cada envio. */
+  doneAt: string | null;
+}
+
+/**
+ * Cadastro em massa: uma área por linha. Cria só as que faltam; as que já
+ * existem ficam como estão e voltam no resumo (src/lib/team-areas.ts).
+ */
+export async function bulkTeamAreasAction(
+  _prev: AreaBulkState,
+  form: FormData,
+): Promise<AreaBulkState> {
+  const user = await requireUser();
+  const empty = {
+    created: [],
+    existing: [],
+    repeated: [],
+    invalid: [],
+  };
+  try {
+    assertRole(user, ["admin"]);
+    const text = z.string().max(20_000).parse(str(form, "names"));
+    const { bulkCreateTeamAreas } = await import("@/lib/services/team-areas");
+    const done = await bulkCreateTeamAreas(user, text);
+    revalidatePath("/app", "layout");
+    return {
+      ok: true,
+      error: null,
+      message: null,
+      created: done.created.map((c) => c.name),
+      existing: done.existing.map((e) => ({
+        asked: e.asked,
+        name: e.name,
+        active: e.active,
+      })),
+      repeated: done.repeated,
+      invalid: done.invalid,
+      text: "",
+      doneAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    const code = errorCode(AREAS, error);
+    const t = await getT();
+    return {
+      ok: false,
+      error: code,
+      message: errorTextFor(t, code, ["team.error"]),
+      ...empty,
+      text: str(form, "names").slice(0, 20_000),
+      doneAt: new Date().toISOString(),
+    };
+  }
 }
 
 /* ---- Funções e acessos (Equipe → Funções e acessos; só o administrador) ---- */

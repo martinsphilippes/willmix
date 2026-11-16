@@ -49,6 +49,8 @@ export interface EditorMember {
   login: string;
   admin: boolean;
   jobLevel: string;
+  /** Área (Equipe Acessos e Parceiros → Áreas); vazio = sem área. */
+  areaId: string;
   division: string;
   managerUserId: string;
   functions: string[];
@@ -60,6 +62,7 @@ export interface EditorMember {
 
 export interface EditorOptions {
   levels: Array<{ value: string; label: string }>;
+  areas: Array<{ value: string; label: string; active: boolean }>;
   divisions: Array<{ value: string; label: string }>;
   managers: Array<{ value: string; label: string }>;
 }
@@ -68,6 +71,9 @@ export interface EditorTexts {
   title: string;
   close: string;
   level: string;
+  area: string;
+  areaNote: string;
+  inactiveSuffix: string;
   division: string;
   manager: string;
   none: string;
@@ -168,6 +174,7 @@ export function TeamAccessEditor({
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const [jobLevel, setJobLevel] = useState(member.jobLevel);
+  const [areaId, setAreaId] = useState(member.areaId);
   const [division, setDivision] = useState(member.division);
   const [manager, setManager] = useState(member.managerUserId);
   const [selected, setSelected] = useState(member.functions);
@@ -213,6 +220,7 @@ export function TeamAccessEditor({
     functions.find((f) => f.key === key)?.label ?? key;
   const dirty =
     jobLevel !== member.jobLevel ||
+    areaId !== member.areaId ||
     division !== member.division ||
     manager !== member.managerUserId ||
     !sameList(selected, member.functions) ||
@@ -406,6 +414,30 @@ export function TeamAccessEditor({
                 </option>
               ))}
             </select>
+          </label>
+          {/* Área (dono, 16/11/2026): linha própria, sem mexer nos outros. */}
+          <label className="block sm:col-span-2">
+            <span className={field}>{texts.area}</span>
+            <select
+              name="areaId"
+              value={areaId}
+              onChange={(e) => setAreaId(e.target.value)}
+              className={select}
+              data-team-area
+            >
+              <option value="">{texts.none}</option>
+              {/* Desativada: só na pessoa que já está nela. */}
+              {options.areas
+                .filter((o) => o.active || o.value === member.areaId)
+                .map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.active ? o.label : `${o.label} ${texts.inactiveSuffix}`}
+                  </option>
+                ))}
+            </select>
+            <span className="mt-1 block text-[11px] text-zinc-500">
+              {texts.areaNote}
+            </span>
           </label>
           <label className="block sm:col-span-2">
             <span className={field}>{texts.manager}</span>

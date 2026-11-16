@@ -724,6 +724,12 @@ export interface User extends BaseRow {
   /** Divisão que o analista atende (as solicitações das linhas dela caem nele). */
   division?: Division | null;
   /**
+   * Área da empresa em que a pessoa trabalha (Equipe Acessos e Parceiros →
+   * Áreas; `team_areas`). Não é o Cargo (`jobLevel`) nem libera telas.
+   * Opcional: logins antigos ficam sem.
+   */
+  areaId?: string | null;
+  /**
    * Funções do login da Wellmix: as de fábrica (comprador, planner,
    * diretoria…) e as criadas pelo administrador (chave "fn_…").
    */
@@ -3489,6 +3495,21 @@ export interface PaymentCondition extends BaseRow {
  * `parties.partnerTypeId`); `builtin` preenchido = nome novo ou inativação de
  * um tipo de fábrica (agência, despachante...), sem mexer nos cadastros.
  */
+/**
+ * Área da equipe da Wellmix (Equipe Acessos e Parceiros → Áreas; dono,
+ * 16/11/2026): Marketing, Financeiro, Comex... Cada login da equipe pode
+ * ficar em uma área (`users.areaId`). Não é o Cargo (o nível, de Analista a
+ * Diretor) nem a Função (que libera telas e ações). Não se apaga: desativada,
+ * sai das escolhas e continua em quem já está nela.
+ */
+export interface TeamArea extends BaseRow {
+  /** Nome como o administrador cadastrou (a grafia é mantida). */
+  name: string;
+  active: boolean;
+  createdByUserId: string | null;
+  updatedByUserId: string | null;
+}
+
 export interface PartnerType extends BaseRow {
   /** Identificador estável (não muda ao renomear). */
   key: string;
@@ -3643,6 +3664,7 @@ export interface Tables {
   commission_payments: CommissionPayment;
   commission_events: CommissionEvent;
   partner_types: PartnerType;
+  team_areas: TeamArea;
   users: User;
   parties: Party;
   product_lines: ProductLine;
@@ -3819,6 +3841,7 @@ export const TABLES: Record<TableName, TableDef> = {
       jobLevel: enumOf(JOB_LEVELS, false),
       managerUserId: id(false),
       division: enumOf(DIVISIONS, false),
+      areaId: id(false),
       functions: json(),
       screens: json(),
       mustChangePassword: bool(),
@@ -5751,6 +5774,15 @@ export const TABLES: Record<TableName, TableDef> = {
       createdByUserId: id(false),
     },
     indexes: [{ key: "by_order", type: "key", columns: ["orderId"] }],
+  },
+  team_areas: {
+    label: "Áreas da equipe (Marketing, Financeiro, Comex...)",
+    columns: {
+      name: str(120, true),
+      active: bool(),
+      createdByUserId: id(false),
+      updatedByUserId: id(false),
+    },
   },
   partner_types: {
     label: "Tipos de parceiro (catálogo administrável)",

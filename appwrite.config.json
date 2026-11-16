@@ -136,6 +136,14 @@
           ]
         },
         {
+          "key": "areaId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
           "key": "functions",
           "required": false,
           "array": false,
@@ -12475,6 +12483,48 @@
           ]
         }
       ]
+    },
+    {
+      "$id": "team_areas",
+      "databaseId": "willmix",
+      "name": "Áreas da equipe (Marketing, Financeiro, Comex...)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 120
+        },
+        {
+          "key": "active",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "createdByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "updatedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": []
     },
     {
       "$id": "partner_types",
