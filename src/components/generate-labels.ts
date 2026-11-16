@@ -88,6 +88,12 @@ export function generateLabels(
         piece: t("purchaseRounds.res.netWeight.piece"),
         total: t("purchaseRounds.res.netWeight.total"),
       },
+      grossWeight: t("purchaseRounds.res.grossWeight"),
+      grossWeightBasis: {
+        carton: t("purchaseRounds.res.grossWeight.carton"),
+        piece: t("purchaseRounds.res.grossWeight.piece"),
+        total: t("purchaseRounds.res.grossWeight.total"),
+      },
       capacity: t("purchaseRounds.res.capacity", { container: "{container}" }),
       capacityValue: t("purchaseRounds.res.capacityValue", {
         cartons: "{cartons}",

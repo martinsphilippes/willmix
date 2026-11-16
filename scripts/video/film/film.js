@@ -27,8 +27,9 @@ const ctx = {
   lang,
   world,
   esc,
-  /** Tela real do portal, capturada no idioma do vídeo (shots.mjs). */
-  shot: (name) => `shots/${lang}/${name}.png`,
+  /** Tela real do portal (shots.mjs): a pasta vem do roteiro (`shots`, por
+   *  exemplo "intl" = telas em inglês) ou, sem ela, é a do idioma da legenda. */
+  shot: (name) => `shots/${tl.shots ?? lang}/${name}.png`,
   icon: (name, cls = "") => {
     if (!icons[name])
       throw new Error(`ícone fora de assets/icons.json: ${name}`);

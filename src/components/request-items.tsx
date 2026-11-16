@@ -295,10 +295,16 @@ export function RequestItems({
         : null,
       sheetQty: null,
       // "Resultado da programação" (dono, 15/11/2026): caixa inner e peso
-      // líquido do cadastro, que é por peça (kg).
+      // líquido do cadastro, que é por peça (kg); o bruto (16/11/2026) da
+      // mesma fonte.
       innerQty: (v ? v.innerBoxQty : p?.innerBoxQty) ?? null,
       netWeight: {
         value: (v ? v.netWeightKg : p?.netWeightKg) ?? null,
+        unit: "kg",
+        basis: "piece" as const,
+      },
+      grossWeight: {
+        value: (v ? v.grossWeightKg : p?.grossWeightKg) ?? null,
         unit: "kg",
         basis: "piece" as const,
       },

@@ -70,10 +70,12 @@ export async function openFilm(browser, port, video, lang) {
   return { page, film };
 }
 
-export const launch = () =>
+/** `extra`: argumentos a mais do Chromium (ex.: --lang=pt-BR nas capturas). */
+export const launch = (extra = []) =>
   chromium.launch({
     executablePath: process.env.PW_CHROMIUM || undefined,
     args: [
+      ...extra,
       "--force-color-profile=srgb",
       "--font-render-hinting=none",
       "--disable-lcd-text",

@@ -1532,6 +1532,33 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   - `tests/unit/schedule-result.test.ts`: as contas, acima de 100%, "<1", os grupos e campos na tela, a caixa inner com e sem quantidade e as três bases do peso.
   - `tests/e2e/schedule-result-strip.spec.ts`: as duas telas, a troca de 20GP, 40GP e 40HC, a caixa inner com e sem quantidade, o peso por peça e a faixa no celular.
 
+## Resultado da programação: peso bruto por peça e tudo à vista
+
+- **Pedido do dono** (16/11/2026, com a foto da Nova solicitação no iPad), em "Resultado da programação → Caixa master e capacidade":
+  - o campo "Peso bruto por peça" logo depois de "Peso líquido por peça", no mesmo padrão (rótulo, valor e kg);
+  - o peso bruto já cadastrado, com a lógica do líquido, e "—" sem o dado, sem estimar;
+  - todos os campos à vista, sem corte, sobreposição ou rolagem para o lado dentro do quadro.
+- **Como ficou**: docs/PURCHASE_SCHEDULE.md, item "O resultado fica sempre à vista" (o campo, de onde vem o peso e "Largura").
+- **De onde vem o bruto**: a mesma fonte do líquido em cada tela.
+  - **Seleção de itens**: G.W./PC do item do Book.
+  - **Nova solicitação**: a variação, senão o cadastro do produto (`grossWeightKg`), senão a ficha mestre (`grossWeightPcKg`).
+  - **Sem estimativa**: a estimativa do bruto pelo líquido (`estimatedGrossKg`, só no Superplan) não entra aqui.
+- **Mudou na faixa**: a faixa não rola mais para o lado. Grupos e campos quebram a linha quando não cabem, e o líquido e o bruto quebram juntos.
+  - Isso troca a opção A, decidida pelo dono em 15/11/2026, pela B, que ele pediu agora.
+  - A sombra da rolagem saiu de `src/app/globals.css`.
+- **Não mudou**: as contas, os outros campos e grupos, os botões, os cartões das programações, a geração e a gravação. Nenhuma rota, Server Action, permissão ou dado mudou; sem mudança no banco.
+- **Como**:
+  - **Componente**: `SelectionQuantity` (`src/components/selection-quantity.tsx`). O tipo `SelectionWeight` vale para os dois pesos (era `SelectionNetWeight`, usado só ali). `fieldUnits` monta os blocos que quebram juntos.
+  - **Textos**: `purchaseRounds.res.grossWeight*` (pt/en/zh).
+  - **Dados**: `grossWeightKg` em `ProductFill` e na variação (`src/lib/services/request-product-fill.ts`).
+- Testes:
+  - `tests/unit/schedule-result.test.ts`: o bruto com a base no rótulo, "—" sem valor ou com zero, a ordem dos campos e os dois pesos no mesmo bloco. Também a faixa sem rolagem e `fieldUnits`.
+  - `tests/e2e/schedule-result-strip.spec.ts`: o bruto nas duas telas (Book 0,35 kg; boneca 0,35 kg; piscina 3,6 kg). Em celular, iPad em pé, iPad deitado e computador confere quatro pontos:
+    - a faixa sem rolagem;
+    - cada campo dentro do quadro, sem corte nem sobreposição;
+    - o bruto na mesma linha do líquido, logo à direita;
+    - a página sem rolagem para o lado.
+
 ## Book: cabeçalho congelado e preenchimento em massa nos itens
 
 - **Pedido do dono** (16/11/2026), em todos os logins que abrem o Book (tela da Wellmix e "Meus books → Book" do parceiro):

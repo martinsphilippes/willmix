@@ -19,6 +19,18 @@ function browser(ctx, shot, style = "", extra = "") {
 const phone = (ctx, shot, style = "") =>
   `<div class="phone" style="${style}"><div class="view"><img src="${ctx.shot(shot)}" alt="" /></div></div>`;
 
+/** Tela do computador ao lado do celular: começa com `before` e, na fala de
+ *  `d`, passa (em fusão) para `shot`, já com o que o celular enviou. */
+function mobileDesk(s, ctx, d) {
+  const t = when(s, d);
+  const frame = `--ox:${d.ox ?? "50%"};--oy:${d.oy ?? "20%"};--z0:${d.zoom0 ?? 1};--z1:${d.zoom ?? 1.08};--kd:${s.dur}s`;
+  return `<div class="shot tilt" style="${at(0.45)};--float:${s.dur}s"><div class="browser" style="--w:${d.w ?? 760}px">
+      <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}Portal Wellmix</span></div>
+      <div class="view"><img src="${ctx.shot(d.before ?? d.shot)}" alt="" style="${frame}" />
+        ${d.before ? `<div class="layer a a-fade" style="${at(t, 0.5)}"><img src="${ctx.shot(d.shot)}" alt="" style="${frame}" /></div>` : ""}</div></div>
+    ${d.label ? `<div class="pill a a-pop" style="${at(1.1, 0.6)}">${ctx.icon(d.icon ?? "eye")}${ctx.esc(d.label)}</div>` : ""}</div>`;
+}
+
 const head = (ctx, p, t0 = 0.35, size = "h2") => `
   ${p.kicker ? `<div class="kicker a a-right" style="${at(t0)}">${ctx.esc(p.kicker)}</div>` : ""}
   <div class="${size}">${ctx.words(p.title, t0 + 0.15, 0.07)}</div>`;
@@ -75,7 +87,7 @@ export const SCENES = {
       [P.hoChiMinh, 0.2],
       [P.mumbai, 0.22],
       [P.istanbul, 0.24],
-      [P.genoa, 0.22],
+      [P.dubai, 0.22],
     ];
     const t0 = 1.0;
     const hand = p.handoffsC != null ? s.cue[p.handoffsC] : (p.handoffsAt ?? 2);
@@ -186,12 +198,13 @@ export const SCENES = {
       ${p.note ? `<div class="note a a-up" style="${at(when(s, { c: p.noteC }), 0.7)}">${ctx.icon("shield-check")}${ctx.esc(p.note)}</div>` : ""}`;
   },
 
-  /** A jornada em cinco blocos, acesos um a um com a narração. */
+  /** A jornada em blocos, acesos um a um com a narração. */
   journey(s, ctx) {
     const p = s.props;
+    const n = p.blocks.length;
     return `<div class="top">${head(ctx, p, 0.35, "h3")}</div>
-      <div class="rail"><i class="a a-grow" style="${at(s.cue[1] ?? 1, (s.cue[5] ?? 6) - (s.cue[1] ?? 1) + 1.2)};animation-timing-function:linear"></i></div>
-      <div class="blocks">${p.blocks
+      <div class="rail"><i class="a a-grow" style="${at(s.cue[1] ?? 1, (s.cue[n] ?? n + 1) - (s.cue[1] ?? 1) + 1.2)};animation-timing-function:linear"></i></div>
+      <div class="blocks n${n}" style="--n:${n}">${p.blocks
         .map(
           (
             b,
@@ -271,13 +284,72 @@ export const SCENES = {
           )
           .join("")}</div>
       </div>
-      <div class="shot tilt" style="${at(0.15)};--float:${s.dur}s">${browser(ctx, p.shot, `--w:1080px;--ox:62%;--oy:15%;--z0:1.12;--z1:1.3;--kd:${s.dur}s`)}</div>
-      ${p.bubbles
+      <div class="shot tilt" style="${at(0.15)};--float:${s.dur}s">${browser(ctx, p.shot, `--w:1080px;--ox:${p.ox ?? "62%"};--oy:${p.oy ?? "15%"};--z0:${p.zoom0 ?? 1.12};--z1:${p.zoom ?? 1.3};--kd:${s.dur}s`)}</div>
+      ${(p.bubbles ?? [])
         .map(
           (b, i) =>
             `<div class="bubble b${i} ${b.side} a a-pop" style="${at(b.c != null ? when(s, b) : fixed[i], 0.6)}"><span class="av">${ctx.icon(b.icon)}</span><div><small>${ctx.esc(b.who)}</small><p>${ctx.esc(b.text)}</p></div></div>`,
         )
         .join("")}`;
+  },
+
+  /** O chat do portal no lugar dos e-mails: a tela real de Mensagens e, na
+   *  frente, a mesma conversa no celular de quem está do outro lado. */
+  chat(s, ctx) {
+    const p = s.props;
+    return `<div class="copy">${head(ctx, p, 0.3, "h2")}
+        <div class="gone">${p.gone
+          .map((g, i) => {
+            const t = when(s, g) + i * 0.24;
+            return `<div class="old a a-pop" style="${at(t, 0.5)}"><span style="${at(t + 0.5)}">${ctx.icon(g.icon)}${ctx.esc(g.label)}</span><i class="a a-grow" style="${at(t + 0.45, 0.4)}"></i></div>`;
+          })
+          .join("")}</div>
+        <div class="chips">${p.chips
+          .map(
+            (c) =>
+              `<div class="pill a a-right" style="${at(when(s, c), 0.7)}">${ctx.icon(c.icon)}${ctx.esc(c.label)}</div>`,
+          )
+          .join("")}</div>
+      </div>
+      <div class="shot tilt" style="${at(0.15)};--float:${s.dur}s">${browser(ctx, p.shot, `--w:1090px;--ox:${p.ox ?? "70%"};--oy:${p.oy ?? "40%"};--z0:${p.zoom0 ?? 1.1};--z1:${p.zoom ?? 1.3};--kd:${s.dur}s`)}</div>
+      ${p.phone ? `<div class="hand tilt" style="${at(when(s, p.phoneAt ?? { c: 2 }) - 0.4)};--float:${s.dur}s">${phone(ctx, p.phone)}</div>` : ""}`;
+  },
+
+  /** Um passo feito no celular: a tela real muda a cada toque (o ponto branco
+   *  é o dedo) e, no fim, o que foi enviado aparece na tela da Wellmix. */
+  mobile(s, ctx) {
+    const p = s.props;
+    // Ponto do toque em pixels da captura (janela de 390 × 844) → % da tela
+    // do aparelho, que começa 6 % abaixo por causa da barra de status.
+    const pos = ([x, y]) =>
+      `left:${((x / 390) * 100).toFixed(2)}%;top:${(6 + (y / 844) * 100).toFixed(2)}%`;
+    const t = p.screens.map((sc, i) => (i === 0 ? 0 : when(s, sc)));
+    const screens = p.screens
+      .map(
+        (sc, i) =>
+          `<img ${i ? `class="a a-fade" style="${at(t[i], 0.35)}"` : ""} src="${ctx.shot(sc.shot)}" alt="" />`,
+      )
+      .join("");
+    // O toque acontece meio segundo antes de a tela seguinte entrar.
+    const taps = p.screens
+      .map((sc, i) =>
+        sc.tap && t[i + 1] != null
+          ? `<i class="tap" style="${pos(sc.tap)};${at(t[i + 1] - 0.55)}"><b></b><u></u></i>`
+          : "",
+      )
+      .join("");
+    return `<div class="copy">
+        ${chip(ctx, p.role, p.icon, 0.25)}
+        <div class="h2">${ctx.words(p.title, 0.4, 0.07)}</div>
+        <div class="bullets">${p.bullets
+          .map(
+            (b) =>
+              `<div class="bullet a a-up" style="${at(when(s, b) - 0.1, 0.7)}"><span class="ck">${ctx.icon("check")}</span><span>${b.t}</span></div>`,
+          )
+          .join("")}</div>
+      </div>
+      ${p.desk ? mobileDesk(s, ctx, p.desk) : ""}
+      <div class="device tilt" style="${at(0.15)};--float:${s.dur}s"><div class="phone"><div class="view">${screens}${taps}</div></div></div>`;
   },
 
   /** A mesma tela em português, inglês e chinês. */
@@ -297,7 +369,7 @@ export const SCENES = {
           <div class="lang">${ctx.icon("languages")}${name}</div>
           <div class="browser" style="--oy:14%;--z1:1.06;--kd:${s.dur}s">
             <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}Portal Wellmix</span></div>
-            <div class="view"><img src="shots/${l}/${p.shot}.png" alt="" /></div>
+            <div class="view"><img src="shots/${p.dirs?.[l] ?? l}/${p.shot}.png" alt="" /></div>
           </div></div></div>`,
       ).join("")}</div>`;
   },
