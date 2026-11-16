@@ -259,9 +259,24 @@ export async function seedDemo(): Promise<{
         syncedAt: null,
         demo: true,
         sellers: [
-          { code: "101", name: "Ana Representações", active: true },
-          { code: "102", name: "Bruno Vendas", active: true },
-          { code: "103", name: "Carla Comercial", active: false },
+          {
+            code: "101",
+            name: "Ana Representações",
+            active: true,
+            partnerCode: "5101",
+          },
+          {
+            code: "102",
+            name: "Bruno Vendas",
+            active: true,
+            partnerCode: "5102",
+          },
+          {
+            code: "103",
+            name: "Carla Comercial",
+            active: false,
+            partnerCode: "5103",
+          },
         ],
       },
     }),

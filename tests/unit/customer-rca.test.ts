@@ -143,20 +143,37 @@ describe("lista de vendedores", () => {
   it("traz a TGFVEN: ativos e inativos, sem o vendedor 0", async () => {
     sankhya.rows = [
       { CODVEND: 0, APELIDO: "<SEM VENDEDOR>", ATIVO: "S" },
-      { CODVEND: 101, APELIDO: " Ana Representações ", ATIVO: "S" },
-      { CODVEND: 102, APELIDO: "Bruno Vendas", ATIVO: "S" },
-      { CODVEND: 103, APELIDO: "Carla Comercial", ATIVO: "N" },
-      { CODVEND: 104, APELIDO: "Dora", ATIVO: null },
+      {
+        CODVEND: 101,
+        CODPARC: 5101,
+        APELIDO: " Ana Representações ",
+        ATIVO: "S",
+      },
+      { CODVEND: 102, CODPARC: 5102, APELIDO: "Bruno Vendas", ATIVO: "S" },
+      { CODVEND: 103, CODPARC: 5103, APELIDO: "Carla Comercial", ATIVO: "N" },
+      { CODVEND: 104, CODPARC: null, APELIDO: "Dora", ATIVO: null },
       { CODVEND: 105, APELIDO: "", ATIVO: "S" },
     ];
     const list = await rca.refreshRcaList(admin);
     expect(sankhya.sql.at(-1)).toMatch(/FROM TGFVEN/);
     expect(list.sellers).toEqual([
-      { code: "101", name: "Ana Representações", active: true },
-      { code: "102", name: "Bruno Vendas", active: true },
-      { code: "103", name: "Carla Comercial", active: false },
-      { code: "104", name: "Dora", active: true },
+      {
+        code: "101",
+        name: "Ana Representações",
+        active: true,
+        partnerCode: "5101",
+      },
+      { code: "102", name: "Bruno Vendas", active: true, partnerCode: "5102" },
+      {
+        code: "103",
+        name: "Carla Comercial",
+        active: false,
+        partnerCode: "5103",
+      },
+      { code: "104", name: "Dora", active: true, partnerCode: null },
     ]);
+    // O CODPARC vem na mesma leitura da TGFVEN.
+    expect(sankhya.sql.at(-1)).toContain("CODPARC");
     const saved = await rca.loadRcaList();
     expect(saved.demo).toBe(false);
     expect(saved.syncedAt).toBe(list.syncedAt);
@@ -300,6 +317,7 @@ describe("/api/parties/rca (Nova solicitação)", () => {
     expect(joaoRca.body.rca).toMatchObject({
       code: "101",
       name: "Ana Representações",
+      partnerCode: "5101",
     });
     // Outro cliente, outro RCA (a troca de cliente na tela).
     expect((await get("wellmix-sc", requestsOnly)).body.rca).toMatchObject({
@@ -311,11 +329,34 @@ describe("/api/parties/rca (Nova solicitação)", () => {
   it("cliente sem RCA e código fora da lista", async () => {
     expect((await get("cliente-maria", admin)).body.rca).toBeNull();
     await getStore().update("parties", "cliente-maria", { rcaCode: "999" });
-    expect((await get("cliente-maria", admin)).body.rca).toEqual({
+    // Fora da cópia da lista (dono, 16/11/2026): o apelido vem direto da
+    // TGFVEN pelo código; sem ele no Sankhya (ou sem o Sankhya), só o código.
+    sankhya.rows = [];
+    const unknown = {
       code: "999",
       name: null,
       active: null,
+      partnerCode: null,
+    };
+    expect((await get("cliente-maria", admin)).body.rca).toEqual(unknown);
+    sankhya.rows = null;
+    expect((await get("cliente-maria", admin)).body.rca).toEqual(unknown);
+    // O CODPARC (o código do vendedor na empresa) vem junto: a tela mostra
+    // "CODPARC - APELIDO"; o CODVEND é interno.
+    sankhya.rows = [
+      { CODVEND: 999, CODPARC: 4321, APELIDO: "CARLOS RCA", ATIVO: "S" },
+    ];
+    sankhya.sql = [];
+    expect((await get("cliente-maria", admin)).body.rca).toEqual({
+      code: "999",
+      name: "CARLOS RCA",
+      active: true,
+      partnerCode: "4321",
     });
+    expect(sankhya.sql).toEqual([
+      "SELECT CODVEND, CODPARC, APELIDO, ATIVO FROM TGFVEN WHERE CODVEND = 999",
+    ]);
+    sankhya.rows = [];
     await getStore().update("parties", "cliente-maria", { rcaCode: "0" });
     expect((await get("cliente-maria", admin)).body.rca).toBeNull();
     // Não é cliente: sem RCA.

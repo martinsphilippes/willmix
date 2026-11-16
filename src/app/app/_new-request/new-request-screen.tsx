@@ -311,7 +311,7 @@ export async function renderNewRequest({
     rcaLoading: t("requestPeople.rcaLoading"),
     rcaError: t("requestPeople.rcaError"),
     rcaStock: t("requestPeople.rcaStock"),
-    rcaUnknown: t("requestPeople.rcaUnknown", { code: "{code}" }),
+    rcaUnknown: t("requestPeople.rcaUnknown"),
     access: t("requestPeople.access"),
     accessHint: t("requestPeople.accessHint"),
     accessNone: t("requestPeople.accessNone"),

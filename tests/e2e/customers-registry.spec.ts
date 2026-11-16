@@ -150,7 +150,7 @@ test("Nova solicitação: o seletor de cliente e o RCA vinculado seguem funciona
   );
   const rca = page.locator("[data-request-rca]");
   await expect(rca).toHaveAttribute("data-request-rca-state", "ready");
-  await expect(rca).toHaveValue("Ana Representações (101)");
+  await expect(rca).toHaveValue("5101 - Ana Representações");
 });
 
 test("permissões: comprador abre Clientes; Vendas não vê nem abre", async ({
