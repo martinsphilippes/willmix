@@ -49,6 +49,13 @@ import { SubmitTracker } from "@/components/field-errors";
 import { MissingLive } from "@/components/missing-live";
 import { BackButton } from "@/components/back-button";
 
+/**
+ * Os ícones redondos do cabeçalho (Treinamento, Mensagens e o sino): o mesmo
+ * tamanho, a mesma cor e o mesmo espaçamento.
+ */
+const HEADER_ICON =
+  "relative inline-flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10 focus-visible:outline-white";
+
 /** Sino com as notificações não lidas (link para a caixa de entrada). */
 function NotificationsBell({
   unread,
@@ -65,7 +72,7 @@ function NotificationsBell({
       aria-label={unread > 0 ? `${label}: ${unreadLabel}` : label}
       title={label}
       data-notifications-bell={unread}
-      className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10 focus-visible:outline-white"
+      className={HEADER_ICON}
     >
       <svg
         viewBox="0 0 24 24"
@@ -111,7 +118,7 @@ function MessagesLink({
       aria-label={unread > 0 ? `${label}: ${unreadLabel}` : label}
       title={unread > 0 ? `${label}: ${unreadLabel}` : label}
       data-messages-link={unread}
-      className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10 focus-visible:outline-white"
+      className={HEADER_ICON}
     >
       <svg
         viewBox="0 0 24 24"
@@ -133,6 +140,38 @@ function MessagesLink({
           {unread > 99 ? "99+" : unread}
         </span>
       ) : null}
+    </Link>
+  );
+}
+
+/**
+ * Treinamento do Portal (dono, 16/11/2026; docs/TRAINING.md): o capelo entre
+ * o seletor de idiomas e as mensagens, para todo login (equipe, clientes,
+ * fornecedores e demais parceiros).
+ */
+function TrainingLink({ label }: { label: string }) {
+  return (
+    <Link
+      href="/app/training"
+      aria-label={label}
+      title={label}
+      data-training-link
+      className={HEADER_ICON}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+        className="h-5 w-5"
+      >
+        <path d="M2.5 9.5 12 5l9.5 4.5L12 14 2.5 9.5Z" />
+        <path d="M6.5 12.1v3.6c0 1.5 2.5 2.8 5.5 2.8s5.5-1.3 5.5-2.8v-3.6" />
+        <path d="M21.5 9.5v5" />
+      </svg>
     </Link>
   );
 }
@@ -368,7 +407,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         <SubmitTracker />
         <MissingLive />
       </Suspense>
-      {/* Cabeçalho numa faixa só (marca, idioma, demo, mensagens e sino),
+      {/* Cabeçalho numa faixa só (marca, idioma, demo, treinamento, mensagens e sino),
           fixo no alto em todas as telas; o menu fica na barra lateral (no
           celular, no painel aberto pelo botão). A altura fica em --wm-header
           (globals.css), usada pela barra lateral, pelos painéis laterais
@@ -465,6 +504,8 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
                 />
               </div>
             ) : null}
+            {/* Treinamento do Portal: todo login, em todos os tamanhos. */}
+            <TrainingLink label={t("nav.training")} />
             {hasMessages ? (
               <MessagesLink
                 unread={unreadMessages}
