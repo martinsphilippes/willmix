@@ -672,7 +672,7 @@ export async function openReplenishment(
     .fill(total);
   // Produto sem peças por caixa master: as caixas não viram peças, e a
   // quantidade (peças) é digitada.
-  const pieces = row.locator('input[name="p0.quantity"]');
+  const pieces = row.locator("[data-selection-quantity]");
   if (!(await pieces.inputValue())) await pieces.fill(total);
   await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
   await page.waitForURL(/\/app\/replenishment\?opened=/);
