@@ -5,11 +5,12 @@ Dois vídeos para o dono compartilhar o portal com clientes, fornecedores e parc
 | Vídeo        | Para quê                                                                  | Duração | Arquivos                                       |
 | ------------ | ------------------------------------------------------------------------- | ------- | ---------------------------------------------- |
 | **Curto**    | Os benefícios do portal, para mandar por mensagem ou rede social          | 0:59    | `wellmix-short-pt.mp4`, `wellmix-short-zh.mp4` |
-| **Completo** | O que cada papel faz, a comunicação centralizada e os atributos do portal | 4:43    | `wellmix-full-pt.mp4`, `wellmix-full-zh.mp4`   |
+| **Completo** | O que cada papel faz, a comunicação centralizada e os atributos do portal | 5:15    | `wellmix-full-pt.mp4`, `wellmix-full-zh.mp4`   |
 
 - **Formato:** 1920 × 1080 (Full HD), 60 quadros por segundo, H.264 + AAC, pronto para YouTube, LinkedIn e WhatsApp.
 - **Áudio:** narração em **inglês**, igual nas quatro versões.
-- **Legenda:** queimada na imagem, em **português** (`-pt`) ou **mandarim** (`-zh`). A tela do portal que aparece no vídeo também está no idioma da legenda (o portal de verdade, em pt ou zh).
+- **Legenda:** queimada na imagem, em **português** (`-pt`) ou **mandarim** (`-zh`).
+- **Idioma das telas do portal:** no vídeo **curto**, o da legenda (pt ou zh). No **completo**, **inglês** nas duas versões (pedido do dono em 15/11/2026): o portal de verdade com o idioma em EN e a base de demonstração também em inglês (`scripts/video/data-en.mjs`). A cena dos três idiomas continua mostrando pt, en e zh.
 - **Abertura:** a vinheta do portal (`public/intro/wellmix-intro.mp4`), sem alteração; o vídeo continua do último quadro dela.
 - **Música:** a faixa enviada pelo dono (`scripts/video/music/track.mp3`), editada nos compassos para caber em cada vídeo.
 - **Telas:** são capturas reais do portal em modo demonstração (dados fictícios; nenhuma informação de produção aparece).
@@ -78,7 +79,7 @@ Levantado dos documentos e do código em 15/11/2026. A coluna "Onde está" apont
 | 25  | **Containers**                                  | CBM, ocupação e regra de consolidação (produtos do mesmo cliente no container); comparativo das tabelas de frete das companhias                                                                                          | `src/lib/services/containers.ts`, `src/lib/services/freight-tariff.ts` |
 | 26  | **Pagamento do cliente e vendas**               | Formas de pagamento, parcelas e boletos; ordens de venda com reserva e agenda de entregas                                                                                                                                | `docs/CUSTOMER_PAYMENT.md`, `docs/SALES_ORDERS.md`                     |
 | 27  | **Aplicativo instalável**                       | Funciona no celular, no tablet e no computador e instala como aplicativo                                                                                                                                                 | `docs/PWA.md`                                                          |
-| 28  | **Feito para o Sankhya**                        | Cadastros e histórico carregados do ERP; envio de pedido e cadastro ao ERP                                                                                                                                               | `docs/SANKHYA.md`                                                      |
+| 28  | **Feito para o ERP da Wellmix** (Sankhya)       | Cadastros e histórico carregados do ERP; envio de pedido e cadastro ao ERP                                                                                                                                               | `docs/SANKHYA.md`                                                      |
 
 ### 1.3 O que os vídeos não prometem
 
@@ -87,7 +88,11 @@ Estas coisas **não** estão ditas nem mostradas, porque não é assim que o por
 - **E-mail e WhatsApp:** hoje só o sino do portal avisa (os dois são simulados).
 - **Rastreio automático e reserva automática de navio:** o rastreio é lançado todo dia pelo Comex interno.
 - **Pagamento on-line:** não há gateway; o boleto nasce no Sankhya e o portal só lê.
-- **Sincronia em tempo real com o ERP:** o vídeo diz "feito para trabalhar com o Sankhya" (a escrita no ERP começa desligada, em simulação).
+- **Sincronia em tempo real com o ERP:** o vídeo diz "built to work with Wellmix's ERP" (a escrita no ERP começa desligada, em simulação).
+- **Chat direto entre parceiros:** não existe. Cada empresa conversa só com a Wellmix (`src/lib/services/messages.ts`); entre a agência de arte e o fornecedor o que passa são as pendências e os arquivos do pedido (`docs/PURCHASE_ORDER.md`).
+- **Tradução automática das mensagens:** só funciona com a IA ligada (`src/lib/services/message-translation.ts`); o vídeo não fala dela.
+- **Tela da Wellmix atualizando sozinha na inspeção:** a cena mostra a tela antes e depois do envio; a narração diz que a Wellmix vê cada item no pedido, não que é ao vivo. Também não diz "pronto para aprovar": a aprovação de cada produto ainda pede o vídeo da produção e a declaração do fornecedor (`docs/PRODUCTION.md`).
+- **Quem deve a resposta:** a controladoria de mensagens é só da Wellmix; o vídeo diz "Wellmix sees who owes a reply".
 - **Assinatura digital certificada:** o pedido de compra é assinado enviando o PDF assinado e carimbado.
 - **Uso sem conexão**, **IA que decide sozinha** e a **vitrine do cliente** (escondida do menu).
 - **Fluxo antigo:** RFQ, cotação ao cliente, proposta e sinal saíram em 11/11/2026 (`docs/QUOTE_FLOW.md`).
@@ -98,6 +103,18 @@ Decisões do dono em 15/11/2026, depois de assistir à primeira versão:
 - **Sem país de origem.** A Wellmix não importa só da China: a narração fala em "a factory abroad" e "at origin", e o mapa da abertura mostra várias origens sem destacar nenhuma. Chinês e inglês continuam citados só como **idiomas** do portal.
 - **Cena do cliente mantida.** Ela mostra forma de pagamento, parcelas, boletos e a confirmação do recebimento. Essas telas existem para o **cliente do pedido**; hoje todo pedido de compra é da própria Wellmix ("clientes terceiros só virão com a vitrine", `src/lib/services/purchase-order.ts`), então o login de um cliente vê a encomenda dele, a situação dela e a conversa com a Wellmix. O dono preferiu manter a cena como está.
 
+Pedidos do dono em 15/11/2026 para o vídeo **completo**, depois de assistir às versões finais (o curto não mudou):
+
+| Pedido                                          | Como ficou                                                                                                                                                                                                                                                              |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Telas em inglês                                 | Todas as telas do completo vêm do portal em inglês, com a base de demonstração em inglês (produtos, textos digitados). Nomes de pessoas e empresas fictícias continuam                                                                                                  |
+| Etapa do financeiro                             | A jornada passou a ter seis blocos; o sexto é **Finance**: contas a pagar ao fornecedor, a receber do cliente, fluxo de caixa e comissões (menu Financeiro, `docs/FLOW_MENU.md`). Multas ficaram de fora do bloco                                                       |
+| Agência de arte no Brasil falando com a fábrica | Fala nova: "Agency in Brazil, factory abroad: files and tasks flow through the portal, and each side chats with Wellmix. No e-mails." O portal **não tem chat direto** entre agência e fornecedor (cada um conversa com a Wellmix), então o vídeo não diz "diretamente" |
+| Inspeção pelo celular                           | Cena nova antes do frete: o passo Produção > Inspeção com o login do fornecedor em um celular (telas reais: escolhe a foto, o portal salva na hora, digita o peso, envia) e, ao lado, o mesmo passo na tela da Wellmix                                                  |
+| BL só abreviado                                 | Conferido: o portal em inglês escreve "BL" (sem barra) em 29 rótulos. A narração, a tela e as três legendas dizem "BL"                                                                                                                                                  |
+| Sem o nome do Sankhya                           | Narração e tela dizem "Wellmix's ERP" (o ERP é o da Wellmix, não o do parceiro). Nas capturas, onde o portal escreve o nome do ERP a tela do vídeo mostra "ERP" (`shots.mjs`, troca só do texto visível)                                                                |
+| Foco nos chats: o e-mail acaba, sem bagunça     | Cena nova "E-mail threads end here.": a tela real de Mensagens com uma conversa por pedido (texto e foto), a mesma conversa no celular do fornecedor, e os canais antigos riscados. Fala: "The scattered e-mail threads end here." e "Nothing gets lost. No mess."      |
+
 Limites que a revisão independente encontrou e o roteiro respeita:
 
 - **BL:** no pedido de compra quem faz o BL é a companhia marítima (`docs/SHIPPING_DOCS.md`), não o agente de carga.
@@ -107,7 +124,7 @@ Limites que a revisão independente encontrou e o roteiro respeita:
 - **Mesa de trabalho** existe para cinco mesas (`docs/DESKS.md`); o vídeo diz que cada função tem as suas telas e pendências.
 - **Lacre:** no carregamento vão a foto do lacre e o número do container; o número do lacre é conferido no recebimento.
 
-Os balões de conversa e os cartões "Notifications · 3 new" da cena de comunicação são **ilustrações** desenhadas sobre a tela real do pedido (os botões "Conversar com" são do portal).
+No vídeo **curto**, os balões de conversa da cena de comunicação são **ilustrações** desenhadas sobre a tela real do pedido (os botões "Conversar com" são do portal). No **completo** a conversa é de verdade: as mensagens foram enviadas pelo próprio portal de demonstração (`scripts/video/seed-chat.mjs`, cerca de 5 minutos, porque espera um minuto entre as mensagens), e as fotos da inspeção e do chat são desenhos gerados aqui (nenhuma imagem baixada). A tela de Mensagens é capturada em uma janela mais alta, para a conversa inteira caber na caixa. A cena de pendências usa a lista do despachante, porque as pendências internas ainda têm rótulos sem tradução em inglês.
 
 ## 2. Estrutura dos vídeos
 
@@ -126,31 +143,33 @@ Os balões de conversa e os cartões "Notifications · 3 new" da cena de comunic
 | 0:45  | Control Tower (tela real)                                                               | And management sees what is late, what is next and who is responsible.                                |
 | 0:51  | Assinatura                                                                              | Wellmix. Imports from order to delivery, in one place.                                                |
 
-### Completo (4:43)
+### Completo (5:15)
 
-| Tempo | Capítulo              | Cena                                                                                                |
-| ----- | --------------------- | --------------------------------------------------------------------------------------------------- |
-| 0:00  |                       | Vinheta do portal                                                                                   |
-| 0:06  |                       | "O desafio" (título da cena): as rotas e as mãos por onde a carga passa; cada um no seu canal       |
-| 0:24  |                       | Um portal, um fluxo (os papéis em volta da marca)                                                   |
-| 0:37  | A jornada             | Os cinco blocos: Book, Pedido, Produção, Entrega e Vendas                                           |
-| 1:06  | Quem faz o quê        | Cliente                                                                                             |
-| 1:19  |                       | Fornecedor                                                                                          |
-| 1:36  |                       | Agência de arte                                                                                     |
-| 1:49  |                       | Certificadora                                                                                       |
-| 1:59  |                       | Agência de marketing na origem                                                                      |
-| 2:10  |                       | Agente de carga e companhia marítima                                                                |
-| 2:22  |                       | Comex e despachante                                                                                 |
-| 2:33  |                       | Transportador (com o celular)                                                                       |
-| 2:42  |                       | Dentro da Wellmix: comprador, gerente de produto, planner, cadastro, designer, jurídico             |
-| 3:02  |                       | Financeiro, qualidade, vendas, diretorias, administrador, comex interno                             |
-| 3:23  | Uma conversa          | Comunicação dentro do portal: conversa por empresa, anexos, sino, pendências e quem deve a resposta |
-| 3:45  | Feito para o controle | Três idiomas                                                                                        |
-| 3:49  |                       | Acesso por papel (o que cada um vê e o que fica oculto)                                             |
-| 3:59  |                       | Qualidade documentada: inspeção, carregamento, documentos                                           |
-| 4:13  |                       | Control Tower, painel de SLA, painéis e auditoria                                                   |
-| 4:26  |                       | Qualquer tela, instala como aplicativo; feito para o Sankhya                                        |
-| 4:34  |                       | Assinatura                                                                                          |
+| Tempo | Capítulo              | Cena                                                                                                       |
+| ----- | --------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 0:00  |                       | Vinheta do portal                                                                                          |
+| 0:06  |                       | "O desafio" (título da cena): as rotas e as mãos por onde a carga passa; cada um no seu canal              |
+| 0:24  |                       | Um portal, um fluxo (os papéis em volta da marca)                                                          |
+| 0:37  | A jornada             | Os seis blocos: Book, Pedido, Produção, Entrega, Vendas e Financeiro                                       |
+| 1:11  | Quem faz o quê        | Cliente                                                                                                    |
+| 1:24  |                       | Fornecedor                                                                                                 |
+| 1:41  |                       | Agência de arte (recebe da fábrica a faca e as fotos do produto; arquivos e pendências correm pelo portal) |
+| 2:03  |                       | Certificadora                                                                                              |
+| 2:13  |                       | Inspeção pelo celular: o fornecedor envia fotos e peso; a Wellmix vê no pedido                             |
+| 2:28  |                       | Agência de marketing na origem                                                                             |
+| 2:38  |                       | Agente de carga e companhia marítima (BL)                                                                  |
+| 2:50  |                       | Comex e despachante                                                                                        |
+| 3:01  |                       | Transportador (com o celular)                                                                              |
+| 3:10  |                       | Dentro da Wellmix: comprador, gerente de produto, planner, cadastro, designer, jurídico                    |
+| 3:30  |                       | Financeiro, qualidade, vendas, diretorias, administrador, comex interno                                    |
+| 3:51  | Uma conversa          | O chat no lugar dos e-mails: uma conversa por empresa, por pedido e por item, com fotos, vídeos e arquivos |
+| 4:09  |                       | Sino, pendências e, para a Wellmix, quem deve a resposta (controladoria de mensagens)                      |
+| 4:17  | Feito para o controle | Três idiomas                                                                                               |
+| 4:22  |                       | Acesso por papel (o que cada um vê e o que fica oculto)                                                    |
+| 4:32  |                       | Qualidade documentada: inspeção, carregamento, documentos                                                  |
+| 4:45  |                       | Control Tower, painel de SLA, painéis e auditoria                                                          |
+| 4:59  |                       | Qualquer tela, instala como aplicativo; feito para o ERP da Wellmix                                        |
+| 5:06  |                       | Assinatura                                                                                                 |
 
 O texto completo da narração e das legendas está em `scripts/video/script.mjs` (uma fala por linha, com pt e zh ao lado) e nos arquivos de [`legendas/`](legendas/).
 
@@ -158,17 +177,18 @@ O texto completo da narração e das legendas está em `scripts/video/script.mjs
 
 Nada é gravado à mão: o vídeo é desenhado em HTML e renderizado quadro a quadro, então dá para refazer quando o portal mudar.
 
-| Etapa          | Arquivo                      | O que faz                                                                                                                                                                                                                                                                            |
-| -------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Roteiro        | `scripts/video/script.mjs`   | Cenas, narração (en) e legendas (pt, zh)                                                                                                                                                                                                                                             |
-| Telas          | `scrub.mjs`, `shots.mjs`     | Limpa os nomes de teste da base de demonstração e captura as telas reais em pt, zh e en                                                                                                                                                                                              |
-| Voz            | `tts/tts.py`, `tts/check.py` | Narração sintética em inglês, gerada na máquina (modelo aberto Kokoro, voz `af_heart`), e conferência por transcrição                                                                                                                                                                |
-| Linha do tempo | `build.mjs`                  | Mede cada fala, calcula a duração das cenas e das legendas e grava os `.srt` (em `out/` e em `legendas/`). Confere o tamanho da linha e as duas linhas por legenda de `docs/videos/GUIA.md`; a velocidade de leitura do guia (17 caracteres por segundo em pt, 9 em zh) ele só avisa |
-| Faixa de voz   | `tts/audio.py`               | Põe cada fala no instante dela e grava a faixa de voz que o `mix.mjs` usa                                                                                                                                                                                                            |
-| Música         | `tts/track.py`               | Corta a faixa do dono nos compassos: a batida entra quando a marca aparece e o acorde final cai na assinatura                                                                                                                                                                        |
-| Mapa e ícones  | `map.mjs`, `icons.mjs`       | Geram o mapa-múndi e os ícones do palco a partir dos pacotes npm                                                                                                                                                                                                                     |
-| Imagem         | `film/`, `render.mjs`        | O palco (HTML e CSS) e o renderizador (60 quadros por segundo)                                                                                                                                                                                                                       |
-| Fechamento     | `mix.mjs`                    | Voz + música (a música abaixa cerca de 12 dB sob a fala), −16 LUFS, vinheta + filme                                                                                                                                                                                                  |
+| Etapa           | Arquivo                                       | O que faz                                                                                                                                                                                                                                                                            |
+| --------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Roteiro         | `scripts/video/script.mjs`                    | Cenas, narração (en) e legendas (pt, zh)                                                                                                                                                                                                                                             |
+| Telas           | `scrub.mjs`, `shots.mjs`                      | Limpa os nomes de teste da base de demonstração e captura as telas reais em pt, zh e en. Onde a tela escreve o nome do ERP, a captura mostra "ERP"                                                                                                                                   |
+| Telas em inglês | `data-en.mjs`, `seed-chat.mjs`, `inspection/` | Só para o completo: copia a base com os textos gravados em inglês, envia pelo portal a conversa da cena do chat e leva um pedido até a inspeção para capturar o passo no celular (`inspection/flow.mjs`, fotos desenhadas por `inspection/photos.py`)                                |
+| Voz             | `tts/tts.py`, `tts/check.py`                  | Narração sintética em inglês, gerada na máquina (modelo aberto Kokoro, voz `af_heart`), e conferência por transcrição                                                                                                                                                                |
+| Linha do tempo  | `build.mjs`                                   | Mede cada fala, calcula a duração das cenas e das legendas e grava os `.srt` (em `out/` e em `legendas/`). Confere o tamanho da linha e as duas linhas por legenda de `docs/videos/GUIA.md`; a velocidade de leitura do guia (17 caracteres por segundo em pt, 9 em zh) ele só avisa |
+| Faixa de voz    | `tts/audio.py`                                | Põe cada fala no instante dela e grava a faixa de voz que o `mix.mjs` usa                                                                                                                                                                                                            |
+| Música          | `tts/track.py`                                | Corta a faixa do dono nos compassos: a batida entra quando a marca aparece e o acorde final cai na assinatura                                                                                                                                                                        |
+| Mapa e ícones   | `map.mjs`, `icons.mjs`                        | Geram o mapa-múndi e os ícones do palco a partir dos pacotes npm                                                                                                                                                                                                                     |
+| Imagem          | `film/`, `render.mjs`                         | O palco (HTML e CSS) e o renderizador (60 quadros por segundo)                                                                                                                                                                                                                       |
+| Fechamento      | `mix.mjs`                                     | Voz + música (a música abaixa cerca de 12 dB sob a fala), −16 LUFS, vinheta + filme                                                                                                                                                                                                  |
 
 Para refazer tudo:
 
@@ -185,7 +205,21 @@ python3 -m venv .venv && .venv/bin/pip install kokoro-onnx soundfile scipy faste
 # modelos da voz em tts/models/ (ver o cabeçalho de tts/tts.py)
 
 # 3. Telas, voz, linha do tempo, música
-for l in pt zh en; do node shots.mjs $l; done
+for l in pt zh en; do node shots.mjs $l; done       # telas do curto (base em português)
+
+# 3a. Telas do completo: em inglês, com a base em inglês (pasta film/shots/intl)
+node data-en.mjs                                    # .data-video → .data-video-en
+(cd ../.. && DATA_MODE=memory DATA_DIR=.data-video-en npx next start -p 3201 &)
+PORTAL=http://localhost:3201 node seed-chat.mjs     # a conversa da cena do chat
+export PORTAL=http://localhost:3201 DATA_DIR=$PWD/../../.data-video-en
+node shots.mjs en --out intl
+node shots.mjs pt supplier --out intl-pt && node shots.mjs zh supplier --out intl-zh   # cena dos três idiomas
+unset PORTAL DATA_DIR
+# 3b. Inspeção pelo celular (base nova, porta 3300; uns 2 min)
+python3 inspection/photos.py
+(cd ../.. && DATA_MODE=memory DATA_DIR=.data-video-insp npx next start -p 3300 &)
+node inspection/flow.mjs
+
 for v in short full; do
   node build.mjs $v --tts && .venv/bin/python tts/tts.py out/$v.tts.json && .venv/bin/python tts/check.py out/$v.tts.json
   node build.mjs $v
@@ -200,7 +234,7 @@ for v in short full; do for l in pt zh; do node render.mjs $v $l && node mix.mjs
 
 Para conferir uma cena sem renderizar: `node still.mjs full pt 70,88` grava quadros soltos em `out/still/`.
 
-Mudou o texto de uma fala? Só ela é gerada de novo, e a duração das cenas se ajusta sozinha; depois de cada `build.mjs`, refaça a voz e a trilha (o `mix.mjs` para com erro se elas estiverem mais antigas que a linha do tempo). As legendas em português passam um pouco da velocidade de leitura do guia em algumas falas (até 19 caracteres por segundo, contra 17): o guia é o dos tutoriais, e a narração de um vídeo institucional é mais corrida. `tts/track.py` avisa se o acorde final da música deixou de cair na assinatura; ajuste as folgas (`pre` e `post`) da cena final em `script.mjs`.
+Mudou o texto de uma fala? Só ela é gerada de novo, e a duração das cenas se ajusta sozinha; depois de cada `build.mjs`, refaça a voz e a trilha (o `mix.mjs` para com erro se elas estiverem mais antigas que a linha do tempo). As legendas em português passam um pouco da velocidade de leitura do guia em algumas falas (até 19 caracteres por segundo, contra 17): o guia é o dos tutoriais, e a narração de um vídeo institucional é mais corrida. `tts/track.py` avisa se o acorde final da música deixou de cair na assinatura; ajuste as folgas (`pre` e `post`) da cena final em `script.mjs`. O aviso só vale se a conta das voltas estiver certa: o script calcula os compassos de cada combinação de voltas (antes o número era escrito à mão e uma combinação errada deixou o acorde final 4 s depois da marca, o que a conferência independente pegou). Confirme sempre medindo: o início do final da música (compasso 65 da trilha original) tem de cair em `logo` de `out/<vídeo>.audio.json`.
 
 ## 4. Pontos para o dono decidir ou conferir
 
@@ -208,5 +242,9 @@ Mudou o texto de uma fala? Só ela é gerada de novo, e a duração das cenas se
 2. **Voz.** É sintética (boa qualidade, sem custo). Para trocar por locutor, basta gravar as falas de `script.mjs` com os mesmos nomes de arquivo; o resto se ajusta.
 3. **Música no completo.** A faixa enviada tem 2:15 e o nome dela fala em vídeo curto; no completo ela foi estendida repetindo blocos inteiros (sem emenda audível na medição). Se preferir outra música para o completo, é só trocar `scripts/video/music/track.mp3` (o encaixe pressupõe 120 BPM e a forma descrita em `tts/track.py`).
 4. **"Importação direta · desde 2010"** aparece desenhado na vinheta; a narração não repete a data.
-5. **Versão só em inglês** (sem legenda queimada, com a tela em inglês) não foi pedida; sai com mais uma renderização.
+5. **Versão só em inglês** (sem legenda queimada) não foi pedida; as telas do completo já estão em inglês, então sai com mais uma renderização.
 6. **Onde publicar** (YouTube não listado, Vimeo, LinkedIn) e se o portal ganha um link para o vídeo completo.
+7. **Chat direto entre agência e fornecedor.** O dono pediu para o vídeo dizer que a agência de arte no Brasil fala direto com a fábrica pelo chat. Hoje o portal não permite: cada empresa conversa só com a Wellmix. O vídeo diz que arquivos e pendências correm pelo portal e que cada lado conversa com a Wellmix, sem e-mails. Abrir conversa direta entre parceiros é decisão de produto (quem vê o quê, preço, quem responde).
+8. **Curto com tela em inglês e sem o nome do ERP?** O curto não mudou: a narração dele já não cita BL nem o ERP, mas as telas continuam em pt ou zh e a Control Tower mostra, em letra pequena, o cartão "Sem nº Sankhya". Para deixar igual ao completo basta refazer as capturas (`shots.mjs` já troca o nome por "ERP") e renderizar de novo.
+9. **Pendências internas em inglês.** A lista de pendências dos logins da Wellmix ainda mostra rótulos sem tradução em inglês (`tasks.group.purchase_strategy`, títulos "Estratégia de compra: …"). Por isso a cena de pendências usa a lista do despachante. Vale corrigir no portal.
+10. **Tradução automática do chat.** Se a IA estiver ligada em produção, dá para acrescentar "cada um escreve no seu idioma" na cena do chat.

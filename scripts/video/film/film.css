@@ -484,28 +484,52 @@ html[data-lang="zh"] #sub-box {
     0 50px 110px rgba(0, 0, 0, 0.65),
     0 20px 100px rgba(229, 37, 44, 0.22);
 }
+/* Recorte da câmera, proporcional ao tamanho do aparelho. */
 .phone::before {
   content: "";
   position: absolute;
-  top: 24px;
+  top: calc(12px + var(--w, 330px) * 0.02);
   left: 50%;
-  width: 96px;
-  height: 26px;
-  margin-left: -48px;
-  border-radius: 14px;
+  width: calc(var(--w, 330px) * 0.29);
+  height: calc(var(--w, 330px) * 0.082);
+  margin-left: calc(var(--w, 330px) * -0.145);
+  border-radius: calc(var(--w, 330px) * 0.041);
   background: #0a0a0c;
   z-index: 2;
 }
+/* A tela do portal começa abaixo da barra de status (hora e bateria), na cor
+   do cabeçalho do portal: o recorte da câmera não cobre mais a marca. */
 .phone .view {
   position: relative;
   aspect-ratio: 390 / 844;
   border-radius: 40px;
   overflow: hidden;
-  background: #f5f5f6;
+  background: #9b181d;
+}
+.phone .view::before {
+  content: "9:41";
+  position: absolute;
+  top: 1.5%;
+  left: 9%;
+  z-index: 1;
+  color: #fff;
+  font: 600 calc(var(--w, 330px) * 0.046) / 1 var(--text);
+}
+.phone .view::after {
+  content: "";
+  position: absolute;
+  top: 1.9%;
+  right: 8.5%;
+  z-index: 1;
+  width: 7.5%;
+  height: 1.35%;
+  border-radius: 3px;
+  background: #fff;
+  opacity: 0.95;
 }
 .phone .view img {
   position: absolute;
-  inset: 0;
+  inset: 6% 0 auto 0;
   width: 100%;
   height: auto;
 }
@@ -808,7 +832,8 @@ html[data-lang="zh"] #sub-box {
 .s-route .copy {
   position: absolute;
   left: 96px;
-  top: 150px;
+  /* Mais alto que as outras cenas: o fim do título fica longe dos pontos do mapa. */
+  top: 118px;
   gap: 30px;
 }
 .s-route .h1 {
@@ -1017,7 +1042,7 @@ html[data-lang="zh"] #sub-box {
   top: 152px;
 }
 
-/* ───────── Cena: a jornada em cinco blocos ───────── */
+/* ───────── Cena: a jornada em blocos ───────── */
 .s-journey .top,
 .s-team .top,
 .s-access .top {
@@ -1047,8 +1072,22 @@ html[data-lang="zh"] #sub-box {
   right: 122px;
   top: 296px;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(var(--n, 5), 1fr);
   gap: 22px;
+}
+/* Seis blocos (com o Financeiro): colunas mais estreitas, texto um ponto menor. */
+.blocks.n6 {
+  gap: 16px;
+}
+.blocks.n6 .blk {
+  padding: 26px 22px;
+}
+.blocks.n6 .blk .name {
+  font-size: 34px;
+}
+.blocks.n6 .blk li {
+  font-size: 21.5px;
+  padding-left: 20px;
 }
 .blk,
 .fn,
@@ -1239,7 +1278,8 @@ html[data-lang="zh"] #sub-box {
   min-height: 44px;
 }
 .s-duo .note {
-  top: 826px;
+  /* 14 px acima da caixa da legenda de duas linhas. */
+  top: 812px;
 }
 
 /* ───────── Cena: funções da Wellmix ───────── */
@@ -1376,6 +1416,196 @@ html[data-lang="zh"] #sub-box {
   top: 726px;
 }
 
+/* ───────── Cena: o chat no lugar dos e-mails ───────── */
+.s-chat .copy {
+  position: absolute;
+  left: 96px;
+  top: 172px;
+  width: 700px;
+}
+.s-chat .h2 {
+  font-size: 68px;
+}
+.s-chat .shot {
+  position: absolute;
+  left: 846px;
+  top: 150px;
+}
+.s-chat .hand {
+  position: absolute;
+  left: 806px;
+  top: 396px;
+  z-index: 3;
+}
+.s-chat .hand .phone {
+  --w: 236px;
+}
+/* O que deixa de existir: cada canal antigo é riscado. */
+.gone {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 4px;
+}
+.old {
+  position: relative;
+  display: inline-flex;
+  height: 54px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+}
+.old span {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px 0 14px;
+  font: 600 22px/1 var(--display);
+  color: var(--soft);
+  white-space: nowrap;
+  animation: old-dim 0.5s var(--ease) both;
+  animation-delay: var(--at);
+}
+.old span .ic {
+  font-size: 25px;
+}
+@keyframes old-dim {
+  to {
+    opacity: 0.42;
+  }
+}
+.old i {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 50%;
+  height: 3px;
+  margin-top: -1.5px;
+  border-radius: 2px;
+  background: var(--red);
+  box-shadow: 0 0 14px var(--red-glow);
+}
+
+/* ───────── Cena: um passo feito no celular ───────── */
+.s-mobile .copy {
+  position: absolute;
+  left: 96px;
+  top: 172px;
+  width: 760px;
+}
+.s-mobile .h2 {
+  font-size: 64px;
+}
+.s-mobile .device {
+  position: absolute;
+  left: 920px;
+  top: 80px;
+  z-index: 3;
+}
+.s-mobile .device .phone {
+  --w: 376px;
+  --ry0: -26deg;
+  --ry: -9deg;
+  --tx0: 200px;
+  --fx: -12px;
+  --fy: -8px;
+  --fs: 1.02;
+}
+.s-mobile .shot {
+  position: absolute;
+  left: 1276px;
+  top: 232px;
+  z-index: 1;
+}
+.s-mobile .shot .browser {
+  --ry0: -30deg;
+  --ry: -15deg;
+  --tx0: 220px;
+}
+.s-mobile .shot .pill {
+  position: absolute;
+  left: 96px;
+  top: -30px;
+  z-index: 2;
+  background: linear-gradient(
+    90deg,
+    rgba(229, 37, 44, 0.96),
+    rgba(191, 32, 38, 0.96)
+  );
+  border-color: transparent;
+  box-shadow: 0 18px 50px rgba(229, 37, 44, 0.35);
+  font-size: 22px;
+  height: 52px;
+}
+.s-mobile .shot .pill .ic {
+  color: #fff;
+}
+/* O toque: o ponto (dedo) aperta e solta, e um anel se abre. */
+.tap {
+  position: absolute;
+  z-index: 4;
+  width: 0;
+  height: 0;
+}
+.tap b,
+.tap u {
+  position: absolute;
+  left: -23px;
+  top: -23px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+}
+.tap b {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 0 0 3px rgba(229, 37, 44, 0.95),
+    0 8px 20px rgba(0, 0, 0, 0.4);
+  animation: tap-dot 1s var(--ease) both;
+  animation-delay: var(--at);
+}
+.tap u {
+  border: 3px solid var(--red);
+  animation: tap-ring 0.6s var(--ease) both;
+  animation-delay: calc(var(--at) + 0.42s);
+}
+@keyframes tap-dot {
+  0% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+  28% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  44% {
+    opacity: 1;
+    transform: scale(0.74);
+  }
+  62% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+@keyframes tap-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  6% {
+    opacity: 0.95;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.8);
+  }
+}
+
 /* ───────── Cena: três idiomas ───────── */
 .s-trio .top {
   position: absolute;
@@ -1495,6 +1725,7 @@ html[data-lang="zh"] #sub-box {
 }
 
 /* ───────── Cena: tela em destaque ───────── */
+
 .s-focus .shot {
   left: 812px;
 }

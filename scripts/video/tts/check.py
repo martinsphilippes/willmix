@@ -21,7 +21,7 @@ items = json.load(open(sys.argv[1], encoding="utf-8"))
 for it in items:
     x, sr = sf.read(it["file"], dtype="float32")
     audio = resample_poly(x, 16000, sr).astype("float32")  # o Whisper ouve em 16 kHz
-    segs, _ = model.transcribe(audio, language="en", beam_size=3, initial_prompt="Wellmix Portal, Sankhya ERP, Comex, bill of lading.")
+    segs, _ = model.transcribe(audio, language="en", beam_size=3, initial_prompt="Wellmix Portal, ERP, Comex, BL.")
     heard = " ".join(s.text.strip() for s in segs)
     ratio = SequenceMatcher(None, norm(it["text"]), norm(heard)).ratio()
     if ratio < 0.93:

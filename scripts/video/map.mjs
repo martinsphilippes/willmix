@@ -46,7 +46,7 @@ const out = {
     hoChiMinh: pt(106.66, 10.82),
     mumbai: pt(72.88, 19.08),
     istanbul: pt(28.98, 41.01),
-    genoa: pt(8.93, 44.41),
+    dubai: pt(55.27, 25.2),
     yiwu: pt(120.07, 29.31),
     shanghai: pt(121.47, 31.23),
     santos: pt(-46.33, -23.96),
