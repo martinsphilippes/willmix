@@ -1,14 +1,15 @@
 # Vídeos institucionais do Portal Wellmix
 
-Dois vídeos para o dono compartilhar o portal com clientes, fornecedores e parceiros, pedidos em 15/11/2026:
+Vídeos para o dono compartilhar o portal com clientes, fornecedores e parceiros, pedidos em 15/11/2026 (a versão em português do Brasil, em 16/11/2026):
 
-| Vídeo        | Para quê                                                                  | Duração | Arquivos                                       |
-| ------------ | ------------------------------------------------------------------------- | ------- | ---------------------------------------------- |
-| **Curto**    | Os benefícios do portal, para mandar por mensagem ou rede social          | 0:59    | `wellmix-short-pt.mp4`, `wellmix-short-zh.mp4` |
-| **Completo** | O que cada papel faz, a comunicação centralizada e os atributos do portal | 5:15    | `wellmix-full-pt.mp4`, `wellmix-full-zh.mp4`   |
+| Vídeo                               | Para quê                                                                            | Duração | Arquivos                                       |
+| ----------------------------------- | ----------------------------------------------------------------------------------- | ------- | ---------------------------------------------- |
+| **Curto**                           | Os benefícios do portal, para mandar por mensagem ou rede social                    | 0:59    | `wellmix-short-pt.mp4`, `wellmix-short-zh.mp4` |
+| **Completo**                        | O que cada papel faz, a comunicação centralizada e os atributos do portal           | 5:15    | `wellmix-full-pt.mp4`, `wellmix-full-zh.mp4`   |
+| **Completo em português do Brasil** | O mesmo vídeo completo, com telas, textos e narração em português e **sem legenda** | 5:55    | `wellmix-full_br-pt.mp4`                       |
 
 - **Formato:** 1920 × 1080 (Full HD), 60 quadros por segundo, H.264 + AAC, pronto para YouTube, LinkedIn e WhatsApp.
-- **Áudio:** narração em **inglês**, igual nas quatro versões.
+- **Áudio:** narração em **inglês**, igual nas quatro versões em inglês. A versão em português do Brasil tem narração em português, com voz feminina gerada pelo dono no ElevenLabs (seção 4).
 - **Legenda:** queimada na imagem, em **português** (`-pt`) ou **mandarim** (`-zh`).
 - **Idioma das telas do portal:** no vídeo **curto**, o da legenda (pt ou zh). No **completo**, **inglês** nas duas versões (pedido do dono em 15/11/2026): o portal de verdade com o idioma em EN e a base de demonstração também em inglês (`scripts/video/data-en.mjs`). A cena dos três idiomas continua mostrando pt, en e zh.
 - **Abertura:** a vinheta do portal (`public/intro/wellmix-intro.mp4`), sem alteração; o vídeo continua do último quadro dela.
@@ -236,7 +237,45 @@ Para conferir uma cena sem renderizar: `node still.mjs full pt 70,88` grava quad
 
 Mudou o texto de uma fala? Só ela é gerada de novo, e a duração das cenas se ajusta sozinha; depois de cada `build.mjs`, refaça a voz e a trilha (o `mix.mjs` para com erro se elas estiverem mais antigas que a linha do tempo). As legendas em português passam um pouco da velocidade de leitura do guia em algumas falas (até 19 caracteres por segundo, contra 17): o guia é o dos tutoriais, e a narração de um vídeo institucional é mais corrida. `tts/track.py` avisa se o acorde final da música deixou de cair na assinatura; ajuste as folgas (`pre` e `post`) da cena final em `script.mjs`. O aviso só vale se a conta das voltas estiver certa: o script calcula os compassos de cada combinação de voltas (antes o número era escrito à mão e uma combinação errada deixou o acorde final 4 s depois da marca, o que a conferência independente pegou). Confirme sempre medindo: o início do final da música (compasso 65 da trilha original) tem de cair em `logo` de `out/<vídeo>.audio.json`.
 
-## 4. Pontos para o dono decidir ou conferir
+## 4. Versão em português do Brasil (16/11/2026)
+
+Pedido do dono: "o vídeo completo com as telas e o áudio em português do Brasil, voz feminina e humana, sem legenda". É o mesmo vídeo completo (as 23 cenas, na mesma ordem), com:
+
+- **Roteiro:** `scripts/video/script.br.mjs` (`VIDEOS_BR.full_br`): texto da tela e narração em português, revisados por duas lentes independentes (português natural e nomes do portal; fidelidade à versão em inglês e riscos de leitura pela voz); nove correções confirmadas e aplicadas. `speak()` troca nomes e siglas pela leitura ("Uélmiks" = Wellmix, "bê-éle" = BL, "érre-pê" = ERP, "ésse-éle-á" = SLA...). `ui` traduz os rótulos fixos das cenas (Brasil, Vê, Nunca vê, canais soltos).
+- **Telas:** o portal em português com a base de demonstração em português (`data-pt.mjs`), a conversa do chat em português (`seed-chat.mjs` com `LANGUAGE=pt`) e a inspeção no celular em português (`inspection/flow.mjs` com `LANGUAGE=pt`), em `film/shots/br`. A tela de auditoria sai sem a coluna "Ação" (códigos técnicos como `team.member.delete`), pedido do dono.
+- **Sem legenda:** `noSubs` no roteiro; `build.mjs` não grava `.srt` para esta versão.
+- **Voz:** feminina, gerada pelo dono no ElevenLabs a partir do pacote `narracao-ptbr/` (LEIA-ME, três partes para colar e a tabela das 72 falas, feitos por `narration-export.mjs`). `tts/import_voice.py` reconhece cada parte pelo conteúdo (o nome do arquivo não importa), transcreve com o Whisper local, alinha as palavras ao roteiro e corta uma fala por arquivo no ponto mais quieto entre as falas; também aceita um arquivo por fala e `--fix id=arquivo` para trocar uma fala só. Na narração do dono, as 72 falas entraram sem nenhuma a rever.
+- **Vozes locais testadas antes (não usadas):** Kokoro `pf_dora`, Chatterbox (ajuste pt-BR), Supertonic e Qwen3-TTS (`tts/tts_pt.py`). A Qwen3-TTS clonada foi a melhor nas medidas de naturalidade, mas **o dono ouviu sotaque de Portugal**; uma medida de sotaque feita depois (fonemas ouvidos comparados à pronúncia esperada no Brasil e em Portugal) confirmou: só 2 de 14 frases soavam brasileiras. O dono preferiu trazer a voz do ElevenLabs. Lição: medir o sotaque antes de mostrar uma voz.
+- **Música e tempos:** `tts/track.py` agora escolhe, entre combinações de até quatro voltas que recomeçam em início de bloco, a que põe o acorde final na marca; o resto se acerta com as folgas do vídeo (`post: 0.6`) e da cena final (`pre: 0.2`, `post: 0.55`). Na versão final, o acorde cai a +0,01 s da marca.
+
+Para refazer (de `scripts/video`; portais em modo demonstração como na seção 3):
+
+```bash
+# Telas em português (base .data-video-br, porta 3203)
+node data-pt.mjs                                       # .data-video → .data-video-br
+(cd ../.. && DATA_MODE=memory DATA_DIR=.data-video-br npx next start -p 3203 &)
+PORTAL=http://localhost:3203 LANGUAGE=pt node seed-chat.mjs   # conversa (uns 5 min)
+# pare o portal, traduza o que a conversa gravou e suba de novo
+node data-pt.mjs .data-video-br .data-video-br
+export PORTAL=http://localhost:3203 DATA_DIR=$PWD/../../.data-video-br
+node shots.mjs pt customer,supplier,agency,ocp,marketing,forwarder,line,comex,broker,carrier,m-carrier,m-tower,m-supplier,order-inspection,order-container,shipping-docs,tower,sla,audit,messages,m-messages,messages-control --out br
+for l in pt en zh; do node shots.mjs $l supplier --out br-$l; done   # cena dos três idiomas
+unset PORTAL DATA_DIR
+# Inspeção pelo celular (cópia de .data-video-insp-before em .data-video-insp-br, porta 3300)
+LANGUAGE=pt node inspection/flow.mjs --only phone
+
+# Narração: pacote para o ElevenLabs e, com os áudios de volta, o corte
+node narration-export.mjs                              # docs/videos/institucional/narracao-ptbr
+python tts/import_voice.py out/full_br.tts.json --manifest out/full_br.voice-parts.json --audio <pasta com os áudios>
+
+# Linha do tempo, trilha, imagem e fechamento
+node build.mjs full_br && python tts/audio.py voice out/full_br.audio.json && python tts/track.py out/full_br.audio.json
+node render.mjs full_br pt && node mix.mjs full_br pt --audio
+```
+
+O `import_voice.py` precisa do `faster-whisper` (modelo "medium", baixado do Hugging Face na primeira vez). Mudou o texto de uma fala? Rode `narration-export.mjs`, gere de novo só aquela fala no ElevenLabs (com a mesma voz) e use `--fix <id>=<arquivo>`.
+
+## 5. Pontos para o dono decidir ou conferir
 
 1. **Áudio.** Quem montou não ouve áudio: a narração foi conferida por transcrição automática (todas as falas batem com o roteiro) e os volumes por medição (−16 LUFS, música cerca de 12 dB abaixo da fala). O dono assistiu à primeira versão em 15/11/2026 e aprovou; pediu só tirar a China do exemplo.
 2. **Voz.** É sintética (boa qualidade, sem custo). Para trocar por locutor, basta gravar as falas de `script.mjs` com os mesmos nomes de arquivo; o resto se ajusta.
@@ -248,3 +287,5 @@ Mudou o texto de uma fala? Só ela é gerada de novo, e a duração das cenas se
 8. **Curto com tela em inglês e sem o nome do ERP?** O curto não mudou: a narração dele já não cita BL nem o ERP, mas as telas continuam em pt ou zh e a Control Tower mostra, em letra pequena, o cartão "Sem nº Sankhya". Para deixar igual ao completo basta refazer as capturas (`shots.mjs` já troca o nome por "ERP") e renderizar de novo.
 9. **Pendências internas em inglês.** A lista de pendências dos logins da Wellmix ainda mostra rótulos sem tradução em inglês (`tasks.group.purchase_strategy`, títulos "Estratégia de compra: …"). Por isso a cena de pendências usa a lista do despachante. Vale corrigir no portal.
 10. **Tradução automática do chat.** Se a IA estiver ligada em produção, dá para acrescentar "cada um escreve no seu idioma" na cena do chat.
+11. **Licença da voz.** A narração em português foi gerada na conta do dono no ElevenLabs; para uso comercial (vídeo da empresa), o plano precisa incluir licença comercial.
+12. **Legenda opcional da versão em português.** O vídeo sai sem legenda, como pedido. Se quiser publicar com legenda opcional (YouTube), dá para gerar o `.srt` da narração em português a partir da linha do tempo.

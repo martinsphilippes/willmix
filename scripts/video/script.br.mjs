@@ -69,8 +69,8 @@ const END = {
   noBrand: true,
   // Folgas da cena final: a marca entra junto com o acorde final da música
   // (tts/track.py mostra a diferença).
-  pre: 0.4,
-  post: 1.95,
+  pre: 0.2,
+  post: 0.55,
   props: {
     lines: ["Um portal.", "Todos os parceiros.", "Cada etapa."],
     tagline: "Importação do pedido à entrega",
@@ -82,6 +82,10 @@ export const VIDEOS_BR = {
     title: "Portal Wellmix · O que cada papel faz",
     voice: "pt",
     noSubs: true,
+    // Folga depois da última fala de cada cena (padrão 0,75 s): ajustada com
+    // tts/track.py para o acorde final da música cair na marca com a narração do
+    // ElevenLabs (16/11/2026).
+    post: 0.6,
     lang: "pt",
     // Telas do portal em português (shots.mjs pt --out br, inspection/flow.mjs
     // com LANGUAGE=pt); a cena dos três idiomas usa as mesmas telas em pt, en e zh.
