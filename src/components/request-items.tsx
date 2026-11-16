@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ProductBrowserHost } from "./product-browser";
 import { cx, inputClass } from "@/components/ui";
 import {
   DEFAULT_SCHEDULE_INTERVAL,
@@ -351,53 +352,81 @@ export function RequestItems({
   >({});
   const addRequest = shared?.addRequest ?? null;
   const handledAdd = useRef(0);
+  // Índices reservados na hora do pedido (cliques seguidos no seletor não
+  // pegam o mesmo índice enquanto as fichas chegam).
+  const reserved = useRef(0);
   useEffect(() => {
     if (!addRequest || addRequest.seq === handledAdd.current) return;
     handledAdd.current = addRequest.seq;
-    const productId = addRequest.productId;
+    const { productIds, quantity, scroll } = addRequest;
+    const start = Math.max(next, reserved.current);
+    reserved.current = start + productIds.length;
+    setNext((n) => Math.max(n, start + productIds.length));
     void (async () => {
-      let productFill: ProductFill | null = null;
-      try {
-        const res = await fetch(
-          `/api/products/fill?id=${encodeURIComponent(productId)}`,
+      // As fichas de todos (em paralelo); a que não vier fica de fora.
+      const fills = await Promise.all(
+        productIds.map(async (productId) => {
+          try {
+            const res = await fetch(
+              `/api/products/fill?id=${encodeURIComponent(productId)}`,
+            );
+            if (!res.ok) return null;
+            const fill = ((await res.json()) as { fill: ProductFill }).fill;
+            return fill ? { productId, fill } : null;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      const ready = fills.filter(
+        (f): f is { productId: string; fill: ProductFill } => !!f,
+      );
+      if (!ready.length) return;
+      const indexes = ready.map((_, i) => start + i);
+      setHistoryRows((h) => {
+        const out = { ...h };
+        ready.forEach((f, i) => (out[start + i] = f));
+        return out;
+      });
+      setProduct((p) => {
+        const out = { ...p };
+        ready.forEach(
+          (f, i) =>
+            (out[start + i] = { id: f.productId, variantId: "", fill: f.fill }),
         );
-        if (res.ok)
-          productFill = ((await res.json()) as { fill: ProductFill }).fill;
-      } catch {
-        productFill = null;
-      }
-      if (!productFill) return;
-      const fillOk = productFill;
-      const index = next;
-      setHistoryRows((h) => ({
-        ...h,
-        [index]: { productId, fill: fillOk },
-      }));
-      setProduct((p) => ({
-        ...p,
-        [index]: { id: productId, variantId: "", fill: fillOk },
-      }));
-      setOutside((o) => ({ ...o, [index]: false }));
-      const moq = fillOk.moq;
-      if (moq)
-        setQty((q) => ({
-          ...q,
-          [index]: String(minQty(moq, fillOk.masterCartonQty ?? null)),
-        }));
-      // A primeira linha ainda vazia sai: o produto entra no lugar dela.
+        return out;
+      });
+      setOutside((o) => {
+        const out = { ...o };
+        indexes.forEach((i) => (out[i] = false));
+        return out;
+      });
+      // Quantidade padrão do seletor (dono, 15/11/2026), nunca abaixo do
+      // pedido mínimo em caixas inteiras; sem ela, o mínimo como sempre.
+      setQty((q) => {
+        const out = { ...q };
+        ready.forEach((f, i) => {
+          const moq = f.fill.moq;
+          const floor = moq ? minQty(moq, f.fill.masterCartonQty ?? null) : 0;
+          const wanted = quantity && quantity > 0 ? quantity : 0;
+          const value = Math.max(floor, wanted);
+          if (value) out[start + i] = String(value);
+        });
+        return out;
+      });
+      // A primeira linha ainda vazia sai: os produtos entram no lugar dela.
       setRows((r) => {
         const empty = r.filter(
           (i) => !product[i]?.id && !outside[i] && !historyRows[i],
         );
-        const kept = r.length === 1 && empty.length === 1 ? [] : r;
-        return [...kept, index];
+        return [...r.filter((i) => !empty.includes(i)), ...indexes];
       });
-      setNext((n) => n + 1);
-      requestAnimationFrame(() =>
-        document
-          .querySelector(`[data-request-item="${index}"]`)
-          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      );
+      if (scroll)
+        requestAnimationFrame(() =>
+          document
+            .querySelector(`[data-request-item="${start}"]`)
+            ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+        );
     })();
   }, [addRequest, next, product, outside, historyRows]);
 
@@ -435,6 +464,7 @@ export function RequestItems({
 
   return (
     <div className="space-y-3">
+      {labels.browser ? <ProductBrowserHost labels={labels.browser} /> : null}
       {/* Cliente → Programação → Produtos (dono, 15/11/2026): as datas do
           pedido vêm antes dos produtos, que repartem a quantidade nelas. */}
       <OrderPlan

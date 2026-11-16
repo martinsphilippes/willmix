@@ -42,6 +42,7 @@ import {
   compositionLabels,
   customerContactsLabels,
   orderTermsLabels,
+  productBrowserLabels,
 } from "@/components/order-terms-labels";
 import { ContainerComposition } from "@/components/container-composition";
 import { SankhyaPurchaseHistory } from "@/components/sankhya-purchase-history";
@@ -958,6 +959,9 @@ export default async function NewRequestPage({
                 fillError: t("productPicker.fillError"),
                 lockedHint: t("orderPlan.lockedHint"),
                 originFirst: t("orderTerms.originFirst"),
+                ...(isWellmix(user)
+                  ? { browser: productBrowserLabels(t) }
+                  : {}),
                 ...(isWellmix(user)
                   ? {
                       forecast: {

@@ -45,14 +45,34 @@ interface RequestCustomerState {
    */
   chosenProductIds: string[];
   setChosenProductIds: (ids: string[]) => void;
-  addRequest: { productId: string; seq: number } | null;
+  addRequest: AddRequest | null;
   requestAddProduct: (productId: string) => void;
+  /**
+   * Seletor de produtos (lupa; docs/ORDER_TERMS.md 11.5): vários de uma
+   * vez, com a quantidade padrão escolhida no seletor, sem rolar a tela.
+   */
+  requestAddProducts: (productIds: string[], quantity: number | null) => void;
   /**
    * Trocar o país ou a família com produtos no pedido (dono, 15/11/2026):
    * depois do "sim" no aviso, as linhas de produto são limpas (contador).
    */
   clearSeq: number;
   requestClearProducts: () => void;
+  /**
+   * Seletor de produtos aberto (a lupa de qualquer linha abre o mesmo, que
+   * fica fora das linhas: acrescentar troca a linha vazia sem fechá-lo).
+   */
+  browserOpen: boolean;
+  setBrowserOpen: (open: boolean) => void;
+}
+
+export interface AddRequest {
+  productIds: string[];
+  /** Quantidade padrão (peças); nula = a de sempre (o pedido mínimo). */
+  quantity: number | null;
+  /** Rola até a linha nova (o clique no histórico). */
+  scroll: boolean;
+  seq: number;
 }
 
 export interface RowLoad extends CompositionItem {
@@ -96,15 +116,30 @@ export function RequestCustomerProvider({
   const setChosenProductIds = useCallback((ids: string[]) => {
     setChosenState((prev) => (prev.join("|") === ids.join("|") ? prev : ids));
   }, []);
-  const [addRequest, setAddRequest] = useState<{
-    productId: string;
-    seq: number;
-  } | null>(null);
+  const [addRequest, setAddRequest] = useState<AddRequest | null>(null);
   const [clearSeq, setClearSeq] = useState(0);
+  const [browserOpen, setBrowserOpen] = useState(false);
   const requestClearProducts = useCallback(() => setClearSeq((n) => n + 1), []);
   const requestAddProduct = useCallback((productId: string) => {
-    setAddRequest((prev) => ({ productId, seq: (prev?.seq ?? 0) + 1 }));
+    setAddRequest((prev) => ({
+      productIds: [productId],
+      quantity: null,
+      scroll: true,
+      seq: (prev?.seq ?? 0) + 1,
+    }));
   }, []);
+  const requestAddProducts = useCallback(
+    (productIds: string[], quantity: number | null) => {
+      if (!productIds.length) return;
+      setAddRequest((prev) => ({
+        productIds,
+        quantity,
+        scroll: false,
+        seq: (prev?.seq ?? 0) + 1,
+      }));
+    },
+    [],
+  );
   const setPlanDates = useCallback((dates: string[]) => {
     setPlanDatesState((prev) =>
       prev.join("|") === dates.join("|") ? prev : dates,
@@ -139,10 +174,15 @@ export function RequestCustomerProvider({
       setChosenProductIds,
       addRequest,
       requestAddProduct,
+      requestAddProducts,
       clearSeq,
       requestClearProducts,
+      browserOpen,
+      setBrowserOpen,
     }),
     [
+      browserOpen,
+      requestAddProducts,
       clearSeq,
       requestClearProducts,
       chosenProductIds,
