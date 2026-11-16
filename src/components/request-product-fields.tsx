@@ -314,7 +314,12 @@ export function RequestProductFields({
       value: values[name],
       onChange: (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-      ) => setValues((v) => ({ ...v, [name]: e.target.value })),
+      ) => {
+        // Lido já: o atualizador pode rodar depois de o React restaurar o
+        // campo controlado (a tabela de produtos também atualiza na tecla).
+        const value = e.target.value;
+        setValues((v) => ({ ...v, [name]: value }));
+      },
       className: inputClass,
     };
     return (
