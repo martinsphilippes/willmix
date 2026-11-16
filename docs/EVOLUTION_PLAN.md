@@ -1604,3 +1604,10 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   - Equipe: por função, em Funções e acessos; as funções que já abriam a tela a veem em Cadastros.
 - **Não mudou**: quem abre a vitrine (o padrão do Cliente e das funções); os dados (em produção, nenhum perfil gravado mexia na vitrine e o Cliente segue o padrão). Sem mudança no banco.
 - Testes: `tests/unit/nav.test.ts` ("Vitrine pelas caixas de acesso") e `tests/e2e/team-partners-area.spec.ts`.
+
+## Book: INNER opcional na tabela de itens
+
+- **Pedido do dono** (16/11/2026): na tabela de edição de itens de "Produto novo → Books", tornar opcional o INNER (peças por caixa inner): sem asterisco, vazio não impede salvar o item, enviar o Book para conferência nem fechar, grava sem valor (sem zero), preenchido mantém as validações, e a consulta mostra "—". No mesmo pedido, a coluna FOTO presa na rolagem para o lado: já entregue no #513 (com a primeira coluna, "#", também presa e a FOTO logo depois dela) e conferida aqui com o teste do dono.
+- **INNER**: saiu de `BOOKING_ITEM_REQUIRED` (`src/lib/booking-lots.ts`), a lista que dá o asterisco, o destaque, o "Falta para fechar", a Conferência de cada item, a contagem de campos em branco do parceiro e a trava de fechar. Vazio já gravava nulo (planilha e tela); as regras de número ficam. Os textos de ajuda da importação deixaram de pôr asterisco no qty/inner.
+- **Aditivo**: nenhuma tela, rota, campo ou dado removido; sem mudança no banco. As outras telas que leem o INNER já tratavam o vazio ("—" ou sem a parte do inner).
+- Testes: `tests/unit/booking-lots.test.ts` (INNER vazio da planilha fica nulo, não falta, apagar grava nulo, "0"/"-3"/"abc" recusados, "24" aceito, o Book fecha) e `tests/e2e/book-items-table.spec.ts` (INNER sem asterisco, sem destaque e fora do que falta, apagar grava vazio, número inválido recusado, fecha com INNER vazio, consulta com "—"; e o teste do dono para as fotos: até a última coluna e depois a página para baixo, fotos à vista, por cima das outras colunas e alinhadas às linhas e ao título, no desktop e na tela do iPad).
