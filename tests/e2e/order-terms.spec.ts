@@ -688,9 +688,10 @@ test("Previsão de preço (cotação V2): manda formato, nível e quem chama; mo
     .first();
   // Sem botão (dono, 16/11/2026): escolhido o produto, a conta roda sozinha.
   await expect(forecast.locator("[data-price-forecast-submit]")).toHaveCount(0);
-  // Só "Preço" e "Valor total": o cliente chama, então o preço é o WD.
+  // Só "Preço" e "Valor total": sempre com frete (dono, 16/11/2026), mesmo
+  // com o cliente chamando (PRECO_COM_FRETE_REFERENCIA).
   const priceLine = forecast.locator('[data-price-forecast-line="price"]');
-  await expect(priceLine).toHaveText(/10,63/);
+  await expect(priceLine).toHaveText(/10,00/);
   await expect(
     forecast.locator('[data-price-forecast-line="total"]'),
   ).toHaveText(/R\$/);
@@ -714,7 +715,7 @@ test("Previsão de preço (cotação V2): manda formato, nível e quem chama; mo
   );
   await expect(page.locator("[data-order-terms-total]")).toHaveAttribute(
     "data-order-terms-total",
-    (10.63 * quantity).toFixed(2),
+    (10 * quantity).toFixed(2),
   );
   const last = () => asked[asked.length - 1];
   expect(last().get("saleFormat")).toBe("wellmix");

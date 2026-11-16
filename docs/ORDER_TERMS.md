@@ -239,7 +239,7 @@ Ao lado da busca de produto de cada linha, uma **lupa** abre o seletor (um só n
 - **Quadro "Produto do catálogo Wellmix"** saiu da venda da Wellmix. Fica só um aviso para leitor de tela.
 - **Previsão de preço ao cliente final**:
   - **Sem o botão Calcular**: com o produto escolhido, a conta roda sozinha. Ela roda de novo (com espera de 0,6 s) sempre que muda algo que vai para a API: quantidade, cliente, formato, nível, quem chama o transportador ou valor do transporte.
-  - O quadro verde mostra só o **Preço** e o **Valor total** (preço × quantidade). O Preço é o "Preço com frete (referência)" (`PRECO_COM_FRETE_REFERENCIA`) quando a Wellmix chama o transportador, e o "Preço WD" (`PRECO_WD_REFERENCIA`) quando é o cliente (no formato WD, desde a 11.9, o WD com frete).
+  - O quadro verde mostra só o **Preço** e o **Valor total** (preço × quantidade). O Preço é o "Preço com frete (referência)" (`PRECO_COM_FRETE_REFERENCIA`) quando a Wellmix chama o transportador, e o "Preço WD" (`PRECO_WD_REFERENCIA`) quando é o cliente (desde a 11.9: sempre com frete; WD com frete no formato WD).
   - Saíram as demais linhas, a linha "Enviado" e a "Memória de cálculo do Sankhya (auditoria)". Os avisos de frete pendente, erro e modo manual continuam.
 - **Valor do transporte (R$)**: um campo logo abaixo do Transportador (quando a Wellmix chama). É o total da entrega, gravado em `orderTerms.deliveryFreightBrl`. Quando preenchido, vai em `@FRETE_ENTREGA_BRL` no lugar do frete padrão das Configurações; vazio, vale o padrão.
 - **Valor total** do pedido: ao lado de "Formato de venda", na mesma linha. É a soma do valor total de cada produto, inclusive dos recolhidos em "Produtos no pedido".
@@ -250,7 +250,7 @@ Ao lado da busca de produto de cada linha, uma **lupa** abre o seletor (um só n
 - **Quantidade padrão da lupa em caixas master**: cada produto entra com caixas × peças por caixa (`masterCartonQty` da ficha), nunca abaixo do pedido mínimo em caixas inteiras. Produto sem peças por caixa não converte: entra com o mínimo e a ficha aberta.
 - **Recolhidos**: com a quantidade padrão, os produtos da lupa entram já recolhidos em "Produtos no pedido"; sem ela, abertos como antes. Com todos recolhidos, "+ Adicionar outro produto" abre a ficha nova, que tem a lupa.
 - **Correção**: com a ficha do produto demorando (Sankhya), acrescentar dois produtos seguidos pela lupa apagava o primeiro e as linhas ficavam sem a quantidade. As linhas agora são lidas no momento em que a ficha chega.
-- **Preço da previsão**: formato **WD** → `PRECO_WD_COM_FRETE_REFERENCIA`; **Wellmix chamando o transportador** (formato Wellmix) → `PRECO_COM_FRETE_REFERENCIA`; formato Wellmix com o cliente chamando → o Preço WD, como antes. No formato WD, o **Valor do transporte (R$)** aparece mesmo com o cliente chamando, vai em `@FRETE_ENTREGA_BRL` e é gravado em `orderTerms.deliveryFreightBrl`.
+- **Preço da previsão**: formato **WD** → `PRECO_WD_COM_FRETE_REFERENCIA`; **Wellmix chamando o transportador** (formato Wellmix) → `PRECO_COM_FRETE_REFERENCIA`; formato Wellmix com o cliente chamando → também `PRECO_COM_FRETE_REFERENCIA` (o preço é sempre com frete; sem valor digitado, o frete padrão das Configurações). No formato WD, o **Valor do transporte (R$)** aparece mesmo com o cliente chamando, vai em `@FRETE_ENTREGA_BRL` e é gravado em `orderTerms.deliveryFreightBrl`.
 
 ## 12. Em aberto (para o dono)
 
