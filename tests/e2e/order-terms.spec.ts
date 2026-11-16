@@ -468,7 +468,8 @@ test("Lupa da busca de produto: seletor com Grupo, Sub grupo e Coleção, seleç
   const browser = page.locator("[data-product-browser]");
   await expect(browser).toBeVisible();
   await expect(browser.locator("[data-product-browser-item]")).toHaveCount(2);
-  await browser.locator("[data-product-browser-qty]").fill("3000");
+  // Quantidade padrão em caixas master (dono, 16/11/2026).
+  await browser.locator("[data-product-browser-qty]").fill("60");
 
   // Sub grupo BONECAS: só a boneca; a coleção acompanha. Marca como visto.
   await browser
@@ -512,24 +513,127 @@ test("Lupa da busca de produto: seletor com Grupo, Sub grupo e Coleção, seleç
   await browser.locator("[data-product-browser-close]").click();
   await expect(browser).toHaveCount(0);
 
-  // Os dois no pedido com a quantidade padrão (acima do mínimo de cada um).
+  // Os dois no pedido com a quantidade padrão em caixas (60 caixas × peças
+  // por caixa, acima do mínimo de cada um), já recolhidos em "Produtos no
+  // pedido" (dono, 16/11/2026).
   const items = page.locator("[data-request-item]");
   await expect(items).toHaveCount(2);
+  await expect(page.locator("[data-request-items-row]")).toHaveCount(2);
+  for (let i = 0; i < 2; i++) await expect(items.nth(i)).toBeHidden();
   const inputs = page.locator(
     '[data-request-item] [data-product-picker="catalog"] [data-product-picker-input]',
   );
   await expect(inputs.nth(0)).toHaveValue(/Boneca/);
   await expect(inputs.nth(1)).toHaveValue(/Piscina/);
-  for (let i = 0; i < 2; i++)
+  for (const [i, pieces] of [
+    [0, "2880"],
+    [1, "360"],
+  ] as const)
     await expect(
       items.nth(i).locator('input[type="hidden"][name$=".quantity"]'),
-    ).toHaveValue("3000");
+    ).toHaveValue(pieces);
 
-  // Reabre: o filtro visto continua (no navegador).
-  await page.locator("[data-product-browser-open]").first().click();
+  // Reabre: com os produtos recolhidos, "+ Adicionar outro produto" abre a
+  // ficha nova com a lupa; o filtro visto continua (no navegador).
+  await page.click("[data-add-request-item]");
+  await page.locator("[data-product-browser-open]:visible").click();
   await expect(browser.locator("[data-product-browser-progress]")).toHaveText(
     "1 de 2 produtos da família já vistos",
   );
+});
+
+test("Lupa com a ficha demorando: dois produtos seguidos ficam os dois no pedido", async ({
+  page,
+}) => {
+  // O seletor lê /api/products/browse; aqui a família com dois produtos
+  // em dois sub grupos (no modo memória não há a árvore do Sankhya).
+  type Combo = [string | null, string | null, string | null];
+  const catalog = [
+    {
+      id: "prod-boneca",
+      name: "Boneca articulada 30 cm",
+      sku: "BRQ-001",
+      photoId: null,
+      levels: ["lv:BRINQUEDOS", "lv:BONECAS", "lv:ARTICULADAS"] as Combo,
+    },
+    {
+      id: "prod-piscina",
+      name: "Piscina inflável 2.000 L",
+      sku: "INF-001",
+      photoId: null,
+      levels: ["lv:BRINQUEDOS", "lv:PISCINAS", "lv:INFLAVEIS"] as Combo,
+    },
+  ];
+  const names: Record<string, string> = {
+    "lv:BRINQUEDOS": "BRINQUEDOS",
+    "lv:BONECAS": "BONECAS",
+    "lv:PISCINAS": "PISCINAS",
+    "lv:ARTICULADAS": "ARTICULADAS",
+    "lv:INFLAVEIS": "INFLAVEIS",
+  };
+  const matches = (c: Combo, l: Combo) => c.every((v, i) => !v || l[i] === v);
+  await page.route("**/api/products/browse?**", async (route) => {
+    const url = new URL(route.request().url());
+    const filters = [1, 2, 3].map(
+      (i) => url.searchParams.get(`l${i}`) || null,
+    ) as Combo;
+    const seen = JSON.parse(url.searchParams.get("seen") || "[]") as Combo[];
+    const isSeen = (l: Combo) => seen.some((c) => matches(c, l));
+    const facets = [0, 1, 2].map((level) => {
+      const counts = new Map<string, { products: number; seen: number }>();
+      for (const p of catalog) {
+        if (!filters.every((v, i) => i === level || !v || p.levels[i] === v))
+          continue;
+        const key = p.levels[level]!;
+        const c = counts.get(key) ?? { products: 0, seen: 0 };
+        c.products++;
+        if (isSeen(p.levels)) c.seen++;
+        counts.set(key, c);
+      }
+      return [...counts].map(([key, c]) => ({ key, name: names[key], ...c }));
+    });
+    const items = catalog.filter((p) => matches(filters, p.levels));
+    await route.fulfill({
+      json: {
+        facets,
+        items: items.map((p) => ({ ...p, seen: isSeen(p.levels) })),
+        total: items.length,
+        page: 1,
+        pages: 1,
+        family: {
+          products: catalog.length,
+          seen: catalog.filter((p) => isSeen(p.levels)).length,
+        },
+      },
+    });
+  });
+  // A ficha do produto demora (o Sankhya em produção).
+  await page.route("**/api/products/fill?**", async (route) => {
+    await new Promise((r) => setTimeout(r, 1500));
+    await route.continue();
+  });
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/requests/new");
+  await chooseCustomer(page, "loja", "cliente-joao");
+  await chooseCustomerLogin(page, "joao@lojista.com");
+  await fillOrderTerms(page);
+  await page.locator("[data-product-browser-open]").first().click();
+  const browser = page.locator("[data-product-browser]");
+  await expect(browser.locator("[data-product-browser-item]")).toHaveCount(2);
+  await browser.locator("[data-product-browser-qty]").fill("60");
+  await browser.locator('[data-product-browser-add="prod-boneca"]').click();
+  await browser.locator('[data-product-browser-add="prod-piscina"]').click();
+  await browser.locator("[data-product-browser-close]").click();
+  await expect(page.locator("[data-request-items-row]")).toHaveCount(2);
+  const items = page.locator("[data-request-item]");
+  await expect(items).toHaveCount(2);
+  for (const [i, pieces] of [
+    [0, "2880"],
+    [1, "360"],
+  ] as const)
+    await expect(
+      items.nth(i).locator('input[type="hidden"][name$=".quantity"]'),
+    ).toHaveValue(pieces);
 });
 
 test("Previsão de preço (cotação V2): manda formato, nível e quem chama; mostra o preço, o frete e o WD", async ({
@@ -631,6 +735,23 @@ test("Previsão de preço (cotação V2): manda formato, nível e quem chama; mo
   await expect(priceLine).toHaveText(/10,00/);
   await expect.poll(() => last().get("freight")).toBe("1500.5");
   expect(last().get("caller")).toBe("wellmix");
+
+  // Formato WD (dono, 16/11/2026): o preço é o WD com frete
+  // (PRECO_WD_COM_FRETE_REFERENCIA), com o valor do transporte na chamada.
+  await terms.locator('[data-order-terms-format-option="wd"]').check();
+  await expect(priceLine).toHaveText(/11,43/);
+  await expect.poll(() => last().get("saleFormat")).toBe("wd");
+  expect(last().get("freight")).toBe("1500.5");
+  // WD com o cliente chamando: o valor do transporte continua na tela.
+  await terms
+    .locator('[data-order-terms-carrier-caller-option="customer"]')
+    .check();
+  await expect(terms.locator("[data-order-terms-freight]")).toHaveValue(
+    "1.500,50",
+  );
+  await expect(priceLine).toHaveText(/11,43/);
+  await expect.poll(() => last().get("caller")).toBe("customer");
+  expect(last().get("freight")).toBe("1500.5");
 
   // Compra para estoque: o cliente sai da busca e aparece o preço desejado.
   await page.locator("[data-stock-option]").check();

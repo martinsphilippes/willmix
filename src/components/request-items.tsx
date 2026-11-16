@@ -383,6 +383,11 @@ export function RequestItems({
   const [historyRows, setHistoryRows] = useState<
     Record<number, { productId: string; fill: ProductFill }>
   >({});
+  // O estado atual das linhas, para as fichas que chegam depois.
+  const latest = useRef({ product, outside, historyRows });
+  useEffect(() => {
+    latest.current = { product, outside, historyRows };
+  });
   const addRequest = shared?.addRequest ?? null;
   const handledAdd = useRef(0);
   // Índices reservados na hora do pedido (cliques seguidos no seletor não
@@ -434,23 +439,39 @@ export function RequestItems({
         indexes.forEach((i) => (out[i] = false));
         return out;
       });
-      // Quantidade padrão do seletor (dono, 15/11/2026), nunca abaixo do
-      // pedido mínimo em caixas inteiras; sem ela, o mínimo como sempre.
-      setQty((q) => {
-        const out = { ...q };
-        ready.forEach((f, i) => {
-          const moq = f.fill.moq;
-          const floor = moq ? minQty(moq, f.fill.masterCartonQty ?? null) : 0;
-          const wanted = quantity && quantity > 0 ? quantity : 0;
-          const value = Math.max(floor, wanted);
-          if (value) out[start + i] = String(value);
+      // Quantidade padrão do seletor em caixas master (dono, 16/11/2026):
+      // caixas × peças por caixa, nunca abaixo do pedido mínimo em caixas
+      // inteiras; sem ela, o mínimo como sempre. Produto sem peças por caixa
+      // não converte: fica o mínimo e a ficha aberta para completar.
+      const applied = new Set<number>();
+      const values: Record<number, string> = {};
+      ready.forEach((f, i) => {
+        const per = f.fill.masterCartonQty ?? null;
+        const moq = f.fill.moq;
+        const floor = moq ? minQty(moq, per) : 0;
+        const cartons = quantity && quantity > 0 ? Math.floor(quantity) : 0;
+        const wanted = cartons && per && per > 0 ? cartons * per : 0;
+        if (wanted) applied.add(start + i);
+        const value = Math.max(floor, wanted);
+        if (value) values[start + i] = String(value);
+      });
+      setQty((q) => ({ ...q, ...values }));
+      // Com a quantidade padrão, os produtos entram recolhidos na tabela
+      // "Produtos no pedido" (dono, 16/11/2026); sem ela, abertos.
+      setCollapsed((c) => {
+        const out = { ...c };
+        indexes.forEach((i) => {
+          if (applied.has(i)) out[i] = true;
         });
         return out;
       });
       // A primeira linha ainda vazia sai: os produtos entram no lugar dela.
+      // O que está nas linhas é lido agora (não do momento do pedido): com a
+      // ficha demorando, dois produtos seguidos não se apagam.
       setRows((r) => {
+        const now = latest.current;
         const empty = r.filter(
-          (i) => !product[i]?.id && !outside[i] && !historyRows[i],
+          (i) => !now.product[i]?.id && !now.outside[i] && !now.historyRows[i],
         );
         return [...r.filter((i) => !empty.includes(i)), ...indexes];
       });
