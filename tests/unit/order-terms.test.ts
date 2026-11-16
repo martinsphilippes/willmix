@@ -112,6 +112,16 @@ describe("regras puras", () => {
     expect(terms.countryKey(null)).toBe("");
   });
 
+  it("VIP da cotação V2: WD = 5; Wellmix pelo nível; sem formato, nenhum", () => {
+    expect(terms.saleVip("wd", null)).toBe(5);
+    expect(terms.saleVip("wellmix", "hiper")).toBe(3);
+    expect(terms.saleVip("wellmix", "evo")).toBe(1.42857143);
+    expect(terms.saleVip("wellmix", null)).toBeNull();
+    expect(terms.saleVip(null, null)).toBeNull();
+    expect(terms.DELIVERY_ROUTE.customer).toBe("PORTO_CLIENTE");
+    expect(terms.DELIVERY_ROUTE.wellmix).toBe("VIA_DEPOSITO");
+  });
+
   it("transportadora: o valor do campo vai e volta", () => {
     const v = terms.carrierValue({ source: "sankhya", code: "812" });
     expect(terms.parseCarrierValue(v)).toEqual({

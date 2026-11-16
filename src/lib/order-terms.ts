@@ -55,6 +55,19 @@ export const WELLMIX_TIER_VIP: Record<WellmixTier, number> = {
   super: 4,
 };
 
+/** VIP do formato WD (dono, 16/11/2026). */
+export const WD_VIP = 5;
+
+/** VIP da cotação V2 pelo formato de venda (e o nível, no Wellmix). */
+export function saleVip(
+  format: SaleFormat | null | undefined,
+  tier: WellmixTier | null | undefined,
+): number | null {
+  if (format === "wd") return WD_VIP;
+  if (format === "wellmix" && tier) return WELLMIX_TIER_VIP[tier];
+  return null;
+}
+
 /**
  * Quem chama o transportador (dono, 16/11/2026): o Cliente (ele informa a
  * transportadora, ou as duas com re-despacho, na confirmação do pedido; a

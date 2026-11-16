@@ -11,7 +11,7 @@ import {
   CARRIER_CALLERS,
   DELIVERY_ROUTE,
   WELLMIX_TIERS,
-  WELLMIX_TIER_VIP,
+  saleVip,
 } from "@/lib/order-terms";
 import { getSettings } from "@/lib/settings";
 import { brazilDay } from "@/lib/supplier-terms";
@@ -97,10 +97,10 @@ export async function GET(request: Request) {
           ),
     price: product.price,
     currency: product.currency,
-    // VIP pelo nível do formato Wellmix; rota por quem chama o
+    // VIP pelo formato (WD = 5) e pelo nível do Wellmix; rota por quem chama o
     // transportador; frete de entrega das Configurações; o RCA do cliente
     // como vendedor; a data de hoje (Brasília).
-    vip: saleFormat === "wellmix" && tier ? WELLMIX_TIER_VIP[tier] : null,
+    vip: saleVip(saleFormat, tier),
     route: caller ? DELIVERY_ROUTE[caller] : null,
     deliveryFreightBrl: settings.deliveryFreightDefaultBrl ?? null,
     sellerCode:

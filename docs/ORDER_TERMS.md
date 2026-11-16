@@ -220,7 +220,7 @@ Ao lado da busca de produto de cada linha, uma **lupa** abre o seletor (um só n
   - **Cliente**: os campos de transportadora saem da solicitação. Na confirmação, o cliente informa pelo CNPJ a **transportadora do pedido** (`confirmation.carrier`) e, com Sim, a do re-despacho (`confirmation.redispatchCarrier`). Cada CNPJ é buscado na BrasilAPI e cadastrado como Transportadora se ainda não existir.
   - Solicitações antigas (sem `carrierCaller`) seguem como eram: o vendedor escolheu o transportador e o cliente informou o re-despacho.
 - **Previsão de preço ao cliente final**: a ida é a cotação de encomenda V2 do Sankhya (`FN_AD_ENC_COTACAO_V2_WELL`, 71 posições; docs/INTEGRATIONS.md item 8). Ela leva:
-  - o **VIP** pelo nível do formato Wellmix (Pleno 1, Mega 2, Hiper 3, Ultra 5, Evo 1,42857143, Super 4);
+  - o **VIP** pelo formato: WD = 5; Wellmix pelo nível (Pleno 1, Mega 2, Hiper 3, Ultra 5, Evo 1,42857143, Super 4);
   - a **rota** por quem chama (Cliente → `PORTO_CLIENTE`, Wellmix → `VIA_DEPOSITO`);
   - o **frete de entrega** total das Configurações (padrão R$ 8.000; vazio = pendente);
   - o RCA do cliente como vendedor e a data de hoje.
