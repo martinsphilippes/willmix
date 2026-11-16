@@ -218,6 +218,10 @@ export async function createRequestAction(form: FormData) {
                 variantSpecificationText(t, product, variant) || null;
           }
         }
+        // Os campos de texto saíram da tela do pedido (dono, 16/11/2026):
+        // produto do catálogo cuja ficha não tem descrição usa o nome.
+        if (product && description.trim().length < 2)
+          description = productName;
         const parsed = requestItemSchema.parse({
           ...row,
           productName,

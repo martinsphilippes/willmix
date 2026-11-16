@@ -105,12 +105,6 @@ interface Carrier {
   taxId?: string | null;
 }
 
-const foldText = (v: string) =>
-  v
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-
 interface Options {
   countries: Country[];
   carriers: Carrier[];
@@ -565,8 +559,9 @@ export function RequestOrderTerms({
 }
 
 /**
- * Uma transportadora (do portal ou do Sankhya): busca por nome, código ou
- * CNPJ e, abaixo da escolhida, código · CNPJ · nome (dono, 15/11/2026).
+ * Uma transportadora (do portal ou do Sankhya): só a lista "Escolha o
+ * transportador" (a busca por nome, código ou CNPJ saiu: dono, 16/11/2026)
+ * e, abaixo da escolhida, código · CNPJ · nome (dono, 15/11/2026).
  */
 function CarrierPicker({
   name,
@@ -583,50 +578,36 @@ function CarrierPicker({
   labels: RequestOrderTermsLabels;
   dataKey: "carrier" | "redispatch-carrier";
 }) {
-  const [query, setQuery] = useState("");
   const [pick, setPick] = useState(initial);
-  const q = foldText(query.trim());
-  const digits = query.replace(/\D/g, "");
-  const matches = (c: Carrier) =>
-    !q ||
-    foldText(c.name).includes(q) ||
-    (!!digits &&
-      (!!c.erpCode?.includes(digits) || !!c.taxId?.includes(digits)));
   const value = carriers.some((c) => carrierValue(c) === pick) ? pick : "";
   const picked = carriers.find((c) => carrierValue(c) === value);
   const carrierLabel = (c: Carrier) =>
     `${c.erpCode ? `${c.erpCode} · ` : ""}${c.name}${c.city ? ` · ${c.city}` : ""}${c.source === "sankhya" ? ` (${labels.carrierSankhya})` : ""}`;
   return (
     <div className="space-y-1">
-      <Field label={label}>
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={labels.carrierSearch}
-          aria-label={`${label}: ${labels.carrierSearch}`}
-          className="mb-1 w-full rounded-lg border border-zinc-300 px-2.5 py-1.5 text-sm"
-          {...{ [`data-order-terms-${dataKey}-search`]: "" }}
-        />
-      </Field>
+      <label
+        htmlFor={`order-terms-${dataKey}`}
+        className="block text-xs font-medium leading-5 text-zinc-700"
+      >
+        {label}
+      </label>
       <Select
         name={name}
         value={value}
         onChange={(e) => setPick(e.target.value)}
         required
         aria-label={label}
+        id={`order-terms-${dataKey}`}
         {...{ [`data-order-terms-${dataKey}`]: "" }}
       >
         <option value="" disabled>
           {labels.carrierNone}
         </option>
-        {carriers
-          .filter((c) => carrierValue(c) === value || matches(c))
-          .map((c) => (
-            <option key={carrierValue(c)} value={carrierValue(c)}>
-              {carrierLabel(c)}
-            </option>
-          ))}
+        {carriers.map((c) => (
+          <option key={carrierValue(c)} value={carrierValue(c)}>
+            {carrierLabel(c)}
+          </option>
+        ))}
       </Select>
       {picked ? (
         <p

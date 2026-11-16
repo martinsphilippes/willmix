@@ -126,18 +126,17 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
     .locator("[data-order-terms-redispatch-carrier]")
     .selectOption("portal:transportador");
   // Cliente e transportador escolhidos: código (e CNPJ do transportador) e
-  // nome logo abaixo; o transportador também se busca por código ou CNPJ.
+  // nome logo abaixo. A busca por nome, código ou CNPJ saiu (dono,
+  // 16/11/2026): só a lista "Escolha o transportador".
   await expect(page.locator("[data-request-customer-summary]")).toContainText(
     "Código",
   );
   await expect(
     page.locator("[data-order-terms-carrier-summary]"),
   ).toBeVisible();
-  await terms.locator("[data-order-terms-carrier-search]").fill("zzzz-nada");
-  await expect(terms.locator("[data-order-terms-carrier]")).toHaveValue(
-    "portal:transportador",
+  await expect(terms.locator("[data-order-terms-carrier-search]")).toHaveCount(
+    0,
   );
-  await terms.locator("[data-order-terms-carrier-search]").fill("");
   // Composição de containers: vazia sem produto; com a boneca, o container
   // 1 da programação 1 com a ocupação, fechado; abre para ver o produto.
   const composition = page.locator("[data-container-composition]");

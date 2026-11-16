@@ -75,12 +75,13 @@ test("Nova solicitação: programação do pedido, produto só para leitura, ger
   // direita, só para leitura (sem campo para digitar). O pedido único se
   // digita em caixas; o mínimo (2.000) vira 42 caixas = 2.016 peças.
   await pick(page, 0, "boneca", "prod-boneca");
-  const locked = first.locator("[data-request-product-locked]");
-  await expect(locked).toBeVisible();
-  await expect(
-    locked.locator("[data-request-product-description]"),
-  ).toContainText("Boneca");
+  // Produto (Nome), Descrição e Especificação saíram da tela (dono,
+  // 16/11/2026): os textos da ficha vão escondidos no formulário.
+  await expect(first.locator("[data-request-product-locked]")).toHaveCount(0);
   await expect(first.locator('textarea[name="p0.description"]')).toHaveCount(0);
+  await expect(first.locator('input[name="p0.description"]')).toHaveValue(
+    /Boneca/,
+  );
   await expect(first.locator('input[name="p0.productName"]')).toHaveAttribute(
     "type",
     "hidden",

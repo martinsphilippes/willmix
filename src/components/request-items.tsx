@@ -97,6 +97,11 @@ export function RequestItems({
     productN: string;
     add: string;
     remove: string;
+    /**
+     * Tabela "Produtos no pedido" (dono, 16/11/2026): o produto anterior se
+     * recolhe numa linha ao clicar "+ Adicionar outro produto".
+     */
+    inOrder: RequestItemsTableLabels;
     hint: string;
     quantity: string;
     unit: string;
@@ -131,6 +136,23 @@ export function RequestItems({
   const [rows, setRows] = useState<number[]>(() =>
     draftRows ? draftRows.map((_, i) => i) : [0],
   );
+  // Linhas recolhidas na tabela "Produtos no pedido" (dono, 16/11/2026): o
+  // produto anterior se recolhe ao clicar "+ Adicionar outro produto" e se
+  // abre de novo pela tabela. Recolhida, a ficha continua no formulário
+  // (escondida), com tudo o que foi preenchido. Rascunho: só a última fica
+  // aberta.
+  const [collapsed, setCollapsed] = useState<Record<number, boolean>>(() =>
+    draftRows && draftRows.length > 1
+      ? Object.fromEntries(draftRows.slice(0, -1).map((_, i) => [i, true]))
+      : {},
+  );
+  // O que a tabela mostra de cada linha, lido do formulário: o nome digitado
+  // (fora do catálogo) e se falta dado (campo inválido, sem produto ou sem
+  // quantidade).
+  const listRef = useRef<HTMLDivElement>(null);
+  const [rowInfo, setRowInfo] = useState<
+    Record<number, { name: string; incomplete: boolean }>
+  >({});
   // Programação do pedido (dono, 15/11/2026): quantas programações e as
   // datas são do pedido; cada produto só reparte a quantidade dele nelas.
   // A 1ª data vale a partir do lançamento + 120 dias; começa nela.
@@ -340,6 +362,11 @@ export function RequestItems({
       .replace("{cartons}", (cartons ?? 0).toLocaleString(labels.intl));
 
   function add() {
+    setCollapsed((c) => {
+      const out = { ...c };
+      for (const i of rows) out[i] = true;
+      return out;
+    });
     setRows((r) => [...r, next]);
     setNext((n) => n + 1);
   }
@@ -444,6 +471,7 @@ export function RequestItems({
     setQty({});
     setOutside({});
     setHistoryRows({});
+    setCollapsed({});
     setNext(fresh + 1);
   }, [clearSeq, rows, next, setLoad]);
 
@@ -461,6 +489,49 @@ export function RequestItems({
     setLoad?.(`row-${index}`, null);
     setRows((r) => (r.length > 1 ? r.filter((i) => i !== index) : r));
   }
+
+  /** Lê do formulário o nome e a incompletude de cada linha. */
+  function recheck() {
+    const root = listRef.current;
+    if (!root) return;
+    const out: Record<number, { name: string; incomplete: boolean }> = {};
+    for (const i of rows) {
+      const box = root.querySelector<HTMLElement>(`[data-request-item="${i}"]`);
+      if (!box) continue;
+      const name =
+        box.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+          `[name="p${i}.productName"]`,
+        )?.value ?? "";
+      const quantity = Number((qty[i] ?? "").replace(",", ".")) || 0;
+      const incomplete =
+        (!outside[i] && !product[i]?.id) ||
+        quantity <= 0 ||
+        !!box.querySelector(":invalid");
+      out[i] = { name: name.trim(), incomplete };
+    }
+    setRowInfo((prev) => {
+      const same =
+        Object.keys(prev).length === Object.keys(out).length &&
+        Object.entries(out).every(
+          ([k, v]) =>
+            prev[Number(k)]?.name === v.name &&
+            prev[Number(k)]?.incomplete === v.incomplete,
+        );
+      return same ? prev : out;
+    });
+  }
+  // A cada mudança da tela (produto, quantidade, linhas) e a cada tecla.
+  useEffect(() => {
+    recheck();
+  });
+  const expand = (index: number, open: boolean) =>
+    setCollapsed((c) => ({ ...c, [index]: !open }));
+  const nameOf = (index: number, fallback: string) =>
+    (!outside[index] &&
+      (product[index]?.fill?.label || product[index]?.fill?.productName)) ||
+    rowInfo[index]?.name ||
+    fallback;
+  const collapsedRows = rows.filter((i) => collapsed[i]);
 
   return (
     <div className="space-y-3">
@@ -504,180 +575,220 @@ export function RequestItems({
           {labels.hint}
         </p>
       </div>
-      {rows.map((index, position) => {
-        const prefix = `p${index}.`;
-        const first = index === 0;
-        const productLabel = labels.productN.replace(
-          "{n}",
-          String(position + 1),
-        );
-        const moq = moqOf(product[index]);
-        const rowUnit = unit[index] ?? "un";
-        const moqApplies = !!moq && isPieceUnit(rowUnit);
-        return (
-          <fieldset
-            key={index}
-            data-request-item={index}
-            className="min-w-0 max-w-full rounded-xl border border-zinc-200 bg-zinc-50/40 p-3"
-          >
-            <legend className="flex w-full items-center justify-between gap-2 px-1">
-              <span className="text-sm font-semibold text-zinc-800">
-                {productLabel}
-              </span>
-              {rows.length > 1 ? (
-                <button
-                  type="button"
-                  onClick={() => remove(index)}
-                  aria-label={`${labels.remove}: ${productLabel}`}
-                  className="rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
-                >
-                  {labels.remove}
-                </button>
-              ) : null}
-            </legend>
-            {/* Grade de 4 colunas (2 no celular): textos em meia linha ou linha
+      <div
+        ref={listRef}
+        className="flex flex-col gap-3"
+        onInputCapture={recheck}
+        onChangeCapture={recheck}
+        // Envio com dado faltando numa linha recolhida: ela se abre para o
+        // navegador mostrar o campo.
+        onInvalidCapture={(e) => {
+          const box = (e.target as HTMLElement).closest<HTMLElement>(
+            "[data-request-item]",
+          );
+          const index = Number(box?.dataset.requestItem);
+          if (box && Number.isFinite(index) && collapsed[index])
+            expand(index, true);
+        }}
+      >
+        {rows.map((index, position) => {
+          const prefix = `p${index}.`;
+          const first = index === 0;
+          const productLabel = labels.productN.replace(
+            "{n}",
+            String(position + 1),
+          );
+          const moq = moqOf(product[index]);
+          const rowUnit = unit[index] ?? "un";
+          const moqApplies = !!moq && isPieceUnit(rowUnit);
+          return (
+            <fieldset
+              key={index}
+              data-request-item={index}
+              data-request-item-collapsed={collapsed[index] ? "" : undefined}
+              hidden={!!collapsed[index]}
+              className="min-w-0 max-w-full rounded-xl border border-zinc-200 bg-zinc-50/40 p-3"
+            >
+              <legend className="flex w-full items-center justify-between gap-2 px-1">
+                <span className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-zinc-800">
+                  {productLabel}
+                  {rowInfo[index]?.incomplete ? (
+                    <IncompleteBadge labels={labels.inOrder} />
+                  ) : null}
+                </span>
+                <span className="flex shrink-0 items-center gap-1">
+                  {rows.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => expand(index, false)}
+                      aria-label={`${labels.inOrder.collapse}: ${productLabel}`}
+                      data-request-item-collapse={index}
+                      className="rounded-md px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100"
+                    >
+                      {labels.inOrder.collapse}
+                    </button>
+                  ) : null}
+                  {rows.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => remove(index)}
+                      aria-label={`${labels.remove}: ${productLabel}`}
+                      className="rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                    >
+                      {labels.remove}
+                    </button>
+                  ) : null}
+                </span>
+              </legend>
+              {/* Grade de 4 colunas (2 no celular): textos em meia linha ou linha
                 cheia; o bloco "Programação de compra" na linha toda. */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <RequestProductFields
-                {...fields}
-                products={
-                  historyRows[index]
-                    ? [...fields.products, historyRows[index].fill]
-                    : fields.products
-                }
-                labels={labels}
-                prefix={prefix}
-                presetProductId={
-                  historyRows[index]
-                    ? historyRows[index].productId
-                    : draftRows
-                      ? (draftRows[index]?.productId ?? "")
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <RequestProductFields
+                  {...fields}
+                  products={
+                    historyRows[index]
+                      ? [...fields.products, historyRows[index].fill]
+                      : fields.products
+                  }
+                  labels={labels}
+                  prefix={prefix}
+                  presetProductId={
+                    historyRows[index]
+                      ? historyRows[index].productId
+                      : draftRows
+                        ? (draftRows[index]?.productId ?? "")
+                        : first
+                          ? presetProductId
+                          : ""
+                  }
+                  presetVariantId={
+                    draftRows
+                      ? (draftRows[index]?.variantId ?? "")
                       : first
-                        ? presetProductId
+                        ? presetVariantId
                         : ""
-                }
-                presetVariantId={
-                  draftRows
-                    ? (draftRows[index]?.variantId ?? "")
-                    : first
-                      ? presetVariantId
-                      : ""
-                }
-                presetTexts={draftRows?.[index]?.texts}
-                defaultNotInCatalog={
-                  draftRows
-                    ? !!draftRows[index]?.notInCatalog
-                    : first
-                      ? defaultNotInCatalog
-                      : false
-                }
-                suggestions={first ? suggestions : {}}
-                onProductChange={(id, variantId, fill) =>
-                  onProductChange(index, id, variantId, fill)
-                }
-                onCatalogModeChange={(on) =>
-                  setOutside((o) => ({ ...o, [index]: on }))
-                }
-              />
-              {/* Quantidade e unidade saíram da tela (dono, 14/11/2026): a
+                  }
+                  presetTexts={draftRows?.[index]?.texts}
+                  defaultNotInCatalog={
+                    draftRows
+                      ? !!draftRows[index]?.notInCatalog
+                      : first
+                        ? defaultNotInCatalog
+                        : false
+                  }
+                  suggestions={first ? suggestions : {}}
+                  onProductChange={(id, variantId, fill) =>
+                    onProductChange(index, id, variantId, fill)
+                  }
+                  onCatalogModeChange={(on) =>
+                    setOutside((o) => ({ ...o, [index]: on }))
+                  }
+                />
+                {/* Quantidade e unidade saíram da tela (dono, 14/11/2026): a
                   quantidade se digita no bloco "Programação de compra"
                   (pedido único) ou é a soma das programações; os dois
                   continuam no formulário e no envio. */}
-              <input
-                type="hidden"
-                name={`${prefix}quantity`}
-                value={qty[index] ?? ""}
-              />
-              <input
-                type="hidden"
-                name={`${prefix}unit`}
-                value={unit[index] ?? "un"}
-              />
-              {/* Programação de entregas pela quantidade (dono, 14/11/2026): o
+                <input
+                  type="hidden"
+                  name={`${prefix}quantity`}
+                  value={qty[index] ?? ""}
+                />
+                <input
+                  type="hidden"
+                  name={`${prefix}unit`}
+                  value={unit[index] ?? "un"}
+                />
+                {/* Programação de entregas pela quantidade (dono, 14/11/2026): o
                   mesmo card da Seleção de itens, ligado ao produto escolhido
                   acima e à quantidade desta linha; as entregas geradas vão
                   com as datas e o intervalo de sempre. */}
-              {(() => {
-                const item = cartonOf(index);
-                return (
-                  <SelectionQuantity
-                    label={labels.pieces}
-                    hint={labels.piecesHint}
-                    scheduledHint={labels.piecesScheduledHint}
-                    defaultQuantity={null}
-                    schedule={draftRows?.[index]?.schedule ?? null}
-                    labels={labels.schedule}
-                    gen={
-                      item?.id === "outside"
-                        ? {
-                            ...labels.generate,
-                            noPieces: labels.generateOutside,
-                          }
-                        : labels.generate
-                    }
-                    items={item ? [item] : []}
-                    chosenItemId={null}
-                    controlledItemId={item?.id ?? null}
-                    containerTypes={containerTypes}
-                    prefix={prefix}
-                    quantityValue={qty[index] ?? ""}
-                    onQuantityChange={(total) =>
-                      setQty((q) => ({ ...q, [index]: total }))
-                    }
-                    unit={rowUnit}
-                    quantityRequired
-                    moq={(() => {
-                      if (!moqApplies) return null;
-                      // Com as peças travadas (vêm das caixas), o mínimo
-                      // também em caixas: "2.000 un (42 caixas)".
-                      const per = perCartonOf(product[index], rowUnit);
-                      const boxes = per ? Math.ceil(moq! / per - 1e-9) : 0;
-                      return {
-                        min: moq!,
-                        hint:
-                          per && labels.moqCartons
-                            ? fill(labels.moqCartons, moq!, rowUnit, boxes)
-                            : fill(labels.moq, moq!, rowUnit),
-                        below:
-                          per && labels.belowMoqCartons
-                            ? fill(labels.belowMoqCartons, moq!, rowUnit, boxes)
-                            : fill(labels.belowMoq, moq!, rowUnit),
-                      };
-                    })()}
-                    onQuantityBlur={() => floorToMoq(index)}
-                    fixedPlan={plan}
-                    onLoadChange={(load) =>
-                      setLoad?.(
-                        `row-${index}`,
-                        load
+                {(() => {
+                  const item = cartonOf(index);
+                  return (
+                    <SelectionQuantity
+                      label={labels.pieces}
+                      hint={labels.piecesHint}
+                      scheduledHint={labels.piecesScheduledHint}
+                      defaultQuantity={null}
+                      schedule={draftRows?.[index]?.schedule ?? null}
+                      labels={labels.schedule}
+                      gen={
+                        item?.id === "outside"
                           ? {
-                              ...load,
-                              key: `row-${index}`,
-                              name:
-                                product[index]?.fill?.productName ||
-                                product[index]?.fill?.label ||
-                                productLabel,
+                              ...labels.generate,
+                              noPieces: labels.generateOutside,
                             }
-                          : null,
-                      )
-                    }
+                          : labels.generate
+                      }
+                      items={item ? [item] : []}
+                      chosenItemId={null}
+                      controlledItemId={item?.id ?? null}
+                      containerTypes={containerTypes}
+                      prefix={prefix}
+                      quantityValue={qty[index] ?? ""}
+                      onQuantityChange={(total) =>
+                        setQty((q) => ({ ...q, [index]: total }))
+                      }
+                      unit={rowUnit}
+                      quantityRequired
+                      moq={(() => {
+                        if (!moqApplies) return null;
+                        // Com as peças travadas (vêm das caixas), o mínimo
+                        // também em caixas: "2.000 un (42 caixas)".
+                        const per = perCartonOf(product[index], rowUnit);
+                        const boxes = per ? Math.ceil(moq! / per - 1e-9) : 0;
+                        return {
+                          min: moq!,
+                          hint:
+                            per && labels.moqCartons
+                              ? fill(labels.moqCartons, moq!, rowUnit, boxes)
+                              : fill(labels.moq, moq!, rowUnit),
+                          below:
+                            per && labels.belowMoqCartons
+                              ? fill(
+                                  labels.belowMoqCartons,
+                                  moq!,
+                                  rowUnit,
+                                  boxes,
+                                )
+                              : fill(labels.belowMoq, moq!, rowUnit),
+                        };
+                      })()}
+                      onQuantityBlur={() => floorToMoq(index)}
+                      fixedPlan={plan}
+                      onLoadChange={(load) =>
+                        setLoad?.(
+                          `row-${index}`,
+                          load
+                            ? {
+                                ...load,
+                                key: `row-${index}`,
+                                name:
+                                  product[index]?.fill?.productName ||
+                                  product[index]?.fill?.label ||
+                                  productLabel,
+                              }
+                            : null,
+                        )
+                      }
+                      className="col-span-2 sm:col-span-4"
+                    />
+                  );
+                })()}
+                {labels.forecast ? (
+                  <PriceForecast
+                    key={product[index]?.id ?? ""}
+                    productId={outside[index] ? "" : (product[index]?.id ?? "")}
+                    quantity={qty[index] ?? ""}
+                    labels={labels.forecast}
                     className="col-span-2 sm:col-span-4"
                   />
-                );
-              })()}
-              {labels.forecast ? (
-                <PriceForecast
-                  key={product[index]?.id ?? ""}
-                  productId={outside[index] ? "" : (product[index]?.id ?? "")}
-                  quantity={qty[index] ?? ""}
-                  labels={labels.forecast}
-                  className="col-span-2 sm:col-span-4"
-                />
-              ) : null}
-            </div>
-          </fieldset>
-        );
-      })}
+                ) : null}
+              </div>
+            </fieldset>
+          );
+        })}
+      </div>
       <button
         type="button"
         onClick={add}
@@ -687,7 +798,179 @@ export function RequestItems({
         <span aria-hidden>+</span>
         {labels.add}
       </button>
+      {/* Produtos no pedido (dono, 16/11/2026): os recolhidos, um por linha,
+          abaixo da ficha que está sendo preenchida. */}
+      {collapsedRows.length > 0 ? (
+        <section
+          className="min-w-0 rounded-xl border border-zinc-200 bg-white"
+          data-request-items-table
+        >
+          <div className="border-b border-zinc-100 px-3 py-2">
+            <p className="text-sm font-semibold text-zinc-900">
+              {labels.inOrder.title}
+            </p>
+            <p className="mt-0.5 text-xs text-zinc-500">
+              {labels.inOrder.hint}
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[34rem] text-left text-sm">
+              <thead className="bg-zinc-50 text-xs text-zinc-500">
+                <tr>
+                  <th className="px-3 py-1.5 font-medium">#</th>
+                  <th className="px-3 py-1.5 font-medium">
+                    {labels.inOrder.product}
+                  </th>
+                  <th className="px-3 py-1.5 font-medium">
+                    {labels.inOrder.variant}
+                  </th>
+                  <th className="px-3 py-1.5 text-right font-medium">
+                    {labels.inOrder.quantity}
+                  </th>
+                  <th className="px-3 py-1.5 font-medium">
+                    {labels.inOrder.status}
+                  </th>
+                  <th className="px-3 py-1.5" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {collapsedRows.map((index) => {
+                  const position = rows.indexOf(index);
+                  const productLabel = labels.productN.replace(
+                    "{n}",
+                    String(position + 1),
+                  );
+                  const chosen = product[index];
+                  const photo = outside[index]
+                    ? null
+                    : chosen?.fill?.photos[0]?.documentId;
+                  const variant = chosen?.variantId
+                    ? chosen.fill?.variants.find(
+                        (v) => v.id === chosen.variantId,
+                      )?.name
+                    : null;
+                  const quantity = Number((qty[index] ?? "").replace(",", "."));
+                  const incomplete = rowInfo[index]?.incomplete ?? false;
+                  return (
+                    <tr
+                      key={index}
+                      data-request-items-row={index}
+                      data-request-items-row-state={
+                        incomplete ? "incomplete" : "complete"
+                      }
+                      className={incomplete ? "bg-amber-50/50" : undefined}
+                    >
+                      <td className="px-3 py-2 text-xs text-zinc-500">
+                        {position + 1}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="flex min-w-0 items-center gap-2">
+                          {photo ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão
+                            <img
+                              src={`/api/files/${photo}`}
+                              alt=""
+                              loading="lazy"
+                              className="h-9 w-9 shrink-0 rounded border border-zinc-200 object-cover"
+                            />
+                          ) : null}
+                          <span className="min-w-0">
+                            <span className="block break-words font-medium text-zinc-900">
+                              {nameOf(
+                                index,
+                                outside[index]
+                                  ? labels.inOrder.outside
+                                  : labels.inOrder.noProduct,
+                              )}
+                            </span>
+                            {outside[index] ? (
+                              <span className="text-xs text-zinc-500">
+                                {labels.inOrder.outside}
+                              </span>
+                            ) : null}
+                          </span>
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-zinc-700">
+                        {variant || "—"}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-zinc-900">
+                        {quantity > 0
+                          ? `${quantity.toLocaleString(labels.intl)} ${unit[index] ?? "un"}`
+                          : "—"}
+                      </td>
+                      <td className="px-3 py-2">
+                        {incomplete ? (
+                          <IncompleteBadge labels={labels.inOrder} />
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200"
+                            data-request-items-complete
+                          >
+                            ✓ {labels.inOrder.complete}
+                          </span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => expand(index, true)}
+                          aria-label={`${labels.inOrder.expand}: ${productLabel}`}
+                          data-request-items-expand={index}
+                          className="rounded-md px-2 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+                        >
+                          {labels.inOrder.expand}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => remove(index)}
+                          aria-label={`${labels.remove}: ${productLabel}`}
+                          className="rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                        >
+                          {labels.remove}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
     </div>
+  );
+}
+
+/** Textos da tabela "Produtos no pedido" (dono, 16/11/2026). */
+export interface RequestItemsTableLabels {
+  title: string;
+  hint: string;
+  expand: string;
+  collapse: string;
+  product: string;
+  variant: string;
+  quantity: string;
+  status: string;
+  complete: string;
+  incomplete: string;
+  incompleteHint: string;
+  outside: string;
+  noProduct: string;
+}
+
+/** Marca de produto com dado faltando. */
+function IncompleteBadge({ labels }: { labels: RequestItemsTableLabels }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-900 ring-1 ring-inset ring-amber-300"
+      title={labels.incompleteHint}
+      data-request-items-incomplete
+    >
+      <span aria-hidden>!</span>
+      {labels.incomplete}
+      <span className="sr-only">: {labels.incompleteHint}</span>
+    </span>
   );
 }
 
