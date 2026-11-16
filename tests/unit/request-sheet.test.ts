@@ -343,7 +343,8 @@ describe("Solicitação nº 1: bastão lança-bolhas, sem preço negociado", () 
     );
     expect(mine.groups.find((g) => g.key === "values")!.sections.map((s) => s.key)).toEqual(["sale"]);
     expect(mine.groups.find((g) => g.key === "payment")!.sections.map((s) => s.key)).toEqual(["customerPay"]);
-    const json = JSON.stringify(mine);
+    // Sem o id da solicitação: um UUID aleatório pode conter "192".
+    const json = JSON.stringify({ ...mine, requestId: "" });
     for (const secret of ["WB12112", "0,0809", "Guangzhou", "Ficha atual", "192"])
       expect(json).not.toContain(secret);
   });

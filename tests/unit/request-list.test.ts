@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { inSituation, matchesRequest } from "@/lib/services/request-list";
+import {
+  LISTED_SITUATIONS,
+  inSituation,
+  matchesRequest,
+} from "@/lib/services/request-list";
 
 const req = (status: string, deadline: string | null = null) =>
   ({ status, deadline }) as never;
@@ -30,6 +34,17 @@ describe("lista de solicitações", () => {
     expect(
       inSituation(req("ORDERED", "2026-01-01"), "ORDERED", "late", today),
     ).toBe(false);
+  });
+
+  it('a lista de Encomendas não oferece "viraram pedido" (virou pedido, saiu da etapa)', () => {
+    expect(LISTED_SITUATIONS).toEqual(["all", "open", "late"]);
+    // Quem já virou pedido não entra em nenhuma das situações da lista, exceto
+    // "todas" (que a página alimenta sem os pedidos).
+    const today = "2026-11-06";
+    for (const k of ["open", "late"] as const)
+      expect(
+        inSituation(req("ORDERED", "2026-01-01"), "ORDERED", k, today),
+      ).toBe(false);
   });
 
   it("busca por número, produto e cliente, sem acento", () => {

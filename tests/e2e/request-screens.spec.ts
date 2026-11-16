@@ -8,10 +8,11 @@ import {
 
 /*
  * TS - Trading Sales e Venda - Encomenda (dono, 16/11/2026;
- * docs/REQUEST_SCREENS.md): no menu Produto novo, logo abaixo do Overview,
- * duas telas de nova solicitação com o formulário de sempre e o tipo de
- * operação fixo pela tela; cada uma com o seu acesso (Comprador só TS;
- * Gerente de produto e diretorias as duas; administrador tudo). A Nova
+ * docs/REQUEST_SCREENS.md): duas telas de nova solicitação com o formulário
+ * de sempre e o tipo de operação fixo pela tela; cada uma com o seu acesso
+ * (Comprador só TS; Gerente de produto e diretorias as duas; administrador
+ * tudo). Fora do menu: o "+ Adicionar" de Encomendas abre TS e o de
+ * Reposição abre Venda (compra para estoque, origem reposição). A Nova
  * solicitação de Encomendas continua como está.
  */
 
@@ -70,27 +71,27 @@ async function expectFixedOperation(page: Page, op: "ts" | "sale") {
   ).toBeChecked();
 }
 
-test("Produto novo: TS e Venda logo abaixo do Overview; o tipo é o da tela; Encomendas igual", async ({
+test("TS e Venda fora do menu: o + Adicionar de Encomendas abre TS e o de Reposição abre Venda; o tipo é o da tela; Encomendas igual", async ({
   page,
 }) => {
   await login(page, "admin@wellmix.com");
   const links = await newProductLinks(page);
-  expect(links.slice(0, 3)).toEqual([
-    "/app/flow/new-product",
-    "/app/new-request/ts",
-    "/app/new-request/sale",
-  ]);
-  const group = sidebar(page).locator('[data-nav-group="Produto novo"]');
+  // Fora do menu (dono, 16/11/2026); Encomendas e Reposição seguem nele.
+  expect(links).not.toContain("/app/new-request/ts");
+  expect(links).not.toContain("/app/new-request/sale");
+  expect(links).toEqual(
+    expect.arrayContaining(["/app/requests", "/app/replenishment"]),
+  );
+
+  // Encomendas: "+ Adicionar" abre TS - Trading Sales; o item do menu acende.
+  await page.goto("/app/requests");
+  await page.locator("[data-request-add]").click();
+  await page.waitForURL(/\/app\/new-request\/ts$/);
   await expect(
-    group.locator('[data-nav-link="/app/new-request/ts"]'),
-  ).toHaveText(/TS - Trading Sales/);
-  await expect(
-    group.locator('[data-nav-link="/app/new-request/sale"]'),
-  ).toHaveText(/Venda - Encomenda/);
+    sidebar(page).locator('[data-nav-link="/app/requests"]'),
+  ).toHaveAttribute("aria-current", "page");
 
   // TS - Trading Sales: a tela própria, sem compra para estoque.
-  await group.locator('[data-nav-link="/app/new-request/ts"]').click();
-  await page.waitForURL(/\/app\/new-request\/ts$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "TS - Trading Sales",
   );
@@ -154,6 +155,18 @@ test("Produto novo: TS e Venda logo abaixo do Overview; o tipo é o da tela; Enc
   await expect(terms).toContainText("Venda");
   await expect(terms).not.toContainText("TS (Trading Sales)");
 
+  // Reposição: "+ Adicionar" abre a tela Venda como compra para estoque.
+  await page.goto("/app/replenishment");
+  await page.locator("[data-replenishment-add]").click();
+  await page.waitForURL(/\/app\/new-request\/sale\?from=replenishment$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Reposição - Adicionar",
+  );
+  await expect(page.locator("[data-stock-option]")).toBeChecked();
+  await expect(
+    sidebar(page).locator('[data-nav-link="/app/replenishment"]'),
+  ).toHaveAttribute("aria-current", "page");
+
   // Encomendas → Nova solicitação: como sempre (TS marcado, Venda "(em
   // breve)", compra para estoque).
   await page.goto("/app/requests/new");
@@ -178,37 +191,55 @@ test("Produto novo: TS e Venda logo abaixo do Overview; o tipo é o da tela; Enc
 test("Acesso: Comprador só TS; diretoria as duas; Vendas nenhuma; endereço direto recusado", async ({
   page,
 }) => {
-  // Comprador (e Planner): TS no menu e na tela; Venda nem no menu nem pelo
-  // endereço.
+  // Comprador (e Planner): TS pelo "+ Adicionar" de Encomendas, fora do menu;
+  // Venda nem pelo endereço, só pela entrada da Reposição (ação "Abrir
+  // reposição").
   await login(page, "operador@wellmix.com");
   let links = await newProductLinks(page);
-  expect(links).toContain("/app/new-request/ts");
+  expect(links).not.toContain("/app/new-request/ts");
   expect(links).not.toContain("/app/new-request/sale");
+  await page.goto("/app/requests");
+  await expect(page.locator("[data-request-add]")).toHaveAttribute(
+    "href",
+    "/app/new-request/ts",
+  );
   await page.goto("/app/new-request/ts");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "TS - Trading Sales",
   );
   await page.goto("/app/new-request/sale");
   await page.waitForURL(/[?&]denied=requestSale/);
+  await page.goto("/app/new-request/sale?from=replenishment");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Reposição - Adicionar",
+  );
 
-  // Diretoria de compras (a "Liderança"): as duas.
+  // Diretoria de compras (a "Liderança"): as duas telas, pelo endereço e
+  // pelos botões; Reposição abre Venda.
   await login(page, "diretoria@wellmix.com");
   links = await newProductLinks(page);
-  expect(links.indexOf("/app/new-request/ts")).toBeGreaterThan(-1);
-  expect(links.indexOf("/app/new-request/sale")).toBe(
-    links.indexOf("/app/new-request/ts") + 1,
+  expect(links).not.toContain("/app/new-request/ts");
+  expect(links).not.toContain("/app/new-request/sale");
+  await page.goto("/app/replenishment");
+  await expect(page.locator("[data-replenishment-add]")).toHaveAttribute(
+    "href",
+    /\/app\/new-request\/sale/,
   );
   await page.goto("/app/new-request/sale");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Venda - Encomenda",
   );
+  // Sem a entrada da Reposição, a tela é só de venda ao cliente.
+  await expect(page.locator("[data-stock-option]")).toHaveCount(0);
 
-  // Vendas: nenhuma das duas (o administrador libera em Funções e acessos).
+  // Vendas: nenhuma das duas (o administrador libera em Funções e acessos);
+  // o "+ Adicionar" de Encomendas segue para a Nova solicitação de sempre.
   await login(page, "vendas@wellmix.com");
-  await page.goto("/app");
-  await expect(
-    sidebar(page).locator('[data-nav-link^="/app/new-request/"]'),
-  ).toHaveCount(0);
+  await page.goto("/app/requests");
+  await expect(page.locator("[data-request-add]")).toHaveAttribute(
+    "href",
+    "/app/requests/new",
+  );
   await page.goto("/app/new-request/ts");
   await page.waitForURL(/[?&]denied=requestTs/);
 
@@ -217,6 +248,8 @@ test("Acesso: Comprador só TS; diretoria as duas; Vendas nenhuma; endereço dir
   await login(page, "joao@lojista.com");
   await page.goto("/app/new-request/ts");
   await page.waitForURL(/[?&]denied=requestTs/);
+  await page.goto("/app/new-request/sale?from=replenishment");
+  await page.waitForURL(/[?&]denied=requestSale/);
 });
 
 /** A quantidade de entregas programadas (o número de programações do pedido). */
@@ -307,4 +340,24 @@ test("TS e Venda: as programações falam do recebimento previsto pelo cliente; 
   await expect(
     page.locator('[data-composition-round="1"] [data-composition-round-date]'),
   ).toHaveText(new RegExp(`^${date.source}$`));
+});
+
+test("TS e Venda: a recusa depois de criar fala das entregas programadas; Encomendas com o texto de sempre", async ({
+  page,
+}) => {
+  // Revisão completa dos textos das programações (dono, 16/11/2026).
+  await login(page, "admin@wellmix.com");
+  for (const path of ["/app/new-request/ts", "/app/new-request/sale"]) {
+    await page.goto(`${path}?error=after_create`);
+    await expect(
+      page.getByText(
+        "As solicitações foram criadas, mas uma etapa seguinte falhou (anexo, foto da busca ou entregas programadas ao cliente).",
+        { exact: false },
+      ),
+    ).toBeVisible();
+  }
+  await page.goto("/app/requests/new?error=after_create");
+  await expect(
+    page.getByText("(anexo, foto da busca ou programação)", { exact: false }),
+  ).toBeVisible();
 });

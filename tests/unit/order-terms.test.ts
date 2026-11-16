@@ -363,6 +363,34 @@ describe("país de origem, grupo e entrega", () => {
     carriers.resetCarrierCache();
   });
 
+  it("forma de pagamento da solicitação: uma das formas ativas, copiada (16/11/2026)", async () => {
+    const { listPaymentPlans } =
+      await import("@/lib/services/customer-payment");
+    const { getStore } = await import("@/lib/db");
+    const [first, second] = await listPaymentPlans();
+    const copy = await orderTerms.resolveRequestPaymentPlan(first.id);
+    expect(copy).toEqual({
+      planId: first.id,
+      name: "10% no pedido; 90% no embarque",
+      installments: [
+        { percent: 10, event: "order", days: 0 },
+        { percent: 90, event: "shipment", days: 0 },
+      ],
+      monthlyInterestPercent: null,
+      requiresApproval: false,
+    });
+    // Sem forma, forma que não existe ou inativa: recusada.
+    for (const id of ["", "nao-existe", "../x"])
+      await expect(orderTerms.resolveRequestPaymentPlan(id)).rejects.toThrow(
+        "order_terms_payment_plan",
+      );
+    await getStore().update("payment_plans", second.id, { active: false });
+    await expect(
+      orderTerms.resolveRequestPaymentPlan(second.id),
+    ).rejects.toThrow("order_terms_payment_plan");
+    await getStore().update("payment_plans", second.id, { active: true });
+  });
+
   it("confere as condições: só TS, BRASIL fora, re-despacho Sim/Não, transportador obrigatório", async () => {
     const base = {
       operationType: "ts",

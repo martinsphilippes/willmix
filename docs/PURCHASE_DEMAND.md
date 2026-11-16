@@ -56,7 +56,7 @@ V6 (vitrine) manda para a ordem de venda (V7) o que o estoque livre ou uma compr
 ## Telas (alvo; bloco Produto novo)
 
 1. **Encomendas**: a tela de solicitações volta ao menu com esse nome; etiqueta e filtro de origem e de porta. O cliente vê só as próprias, sem fornecedor, custo nem cotação.
-2. **Reposição**: fila do Planner, com "Abrir reposição" (produto, quantidade, data desejada) e o que vem do pós-venda.
+2. **Reposição**: fila do Planner, com o botão "+ Adicionar" (desde 16/11/2026, no lugar do bloco "Abrir reposição": abre a tela Venda como compra para estoque, docs/REQUEST_SCREENS.md seção 7) e o que vem do pós-venda.
 3. **Estratégia de compra**: fila do Comprador, com a última compra de cada item, as duas saídas e a opção de juntar demandas. Produto sem compra anterior só pode ser cotado, com o motivo escrito.
 4. **Cotação de compra**: contagem das 24 h e quadro comparativo para a Wellmix (com a última compra como referência); para o fornecedor, só a própria cotação, em PT, EN ou ZH.
 5. O item "Cotações" de hoje (convites de book) passa a se chamar **"Convites de book"**; tela, rota e atalho continuam.

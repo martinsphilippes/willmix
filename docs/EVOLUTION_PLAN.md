@@ -1699,9 +1699,53 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Aditivo:** nenhum cálculo, regra de data, distribuição, composição, nome técnico, tela, rota ou dado mudou; a Nova solicitação de Encomendas e as outras telas seguem com os textos de antes.
 - Testes: `tests/unit/delivery-schedule-labels.test.ts` e `tests/e2e/request-screens.spec.ts`.
 
+## Encomendas e Reposição: "+ Adicionar", TS e Venda fora do menu, lista só do que ainda é encomenda
+
+- **Pedido do dono** (16/11/2026): (1) TS - Trading Sales e Venda - Encomenda estavam no menu de forma equivocada; saem do menu e passam a abrir pelos botões "+ Adicionar" de Encomendas (`/app/requests`, TS) e de Reposição (`/app/replenishment`, Venda), respectivamente; (2) o bloco "Abrir reposição" da Reposição sai, e o caminho natural é o botão; (3) a lista de Encomendas tinha elementos demais: o que já virou pedido não é mais da etapa de encomenda, e sim do Pedido em diante.
+- **Decisões do dono ao pedir** (16/11/2026): a ordem do texto vale (Encomendas abre TS, Reposição abre Venda); a entrada da Reposição na tela Venda aceita compra para estoque e grava a origem reposição, para a solicitação cair na fila de Reposição.
+- **Como ficou:** docs/REQUEST_SCREENS.md (seções 2 e 7) e docs/FLOW_MENU.md. Lista de Encomendas: `byStatus` sem as solicitações com pedido (`requestDisplayStatus` = ORDERED), cartões de situação sem "Viraram pedido" (`LISTED_SITUATIONS`).
+- **Aditivo:** nenhuma tela, rota, campo ou dado removido; as rotas e o acesso de TS e Venda seguem iguais (endereço direto); o menu só acende Encomendas e Reposição nelas. Quem não abre TS segue com a Nova solicitação de Encomendas pelo mesmo botão. `openReplenishment` segue no código. A exportação CSV de Encomendas não mudou (ainda leva as que viraram pedido). Sem mudança no banco.
+- Testes: `tests/unit/request-screens.test.ts`, `tests/unit/request-list.test.ts`, `tests/unit/nav.test.ts` e os E2E `request-screens`, `purchase-demand`, `purchase-strategy` e `purchase-quote`.
+
 ## Treinamento do Portal: o capelo na barra vermelha
 
 - **Pedido do dono** (16/11/2026): uma tela "Treinamento do Portal" e um ícone de treinamento (capelo) na barra vermelha, entre o seletor de idiomas e o ícone de mensagens, com o mesmo tamanho, cor e espaçamento dos outros ícones e "Treinamento do Portal" como texto de ajuda e nome acessível; a tela aberta dentro do layout do portal para todo login (equipe, clientes, fornecedores e demais parceiros), também pelo endereço; nesta etapa, só o título, com a área de conteúdo em branco, em PT, EN e ZH. Mais adiante: vídeos, quizzes e provas por login.
 - **Como ficou** (docs/TRAINING.md): rota `/app/training` que só exige o login (fora do controle de telas), `TrainingLink` no cabeçalho com a mesma classe do ícone de mensagens e do sino (`HEADER_ICON`) e os textos em `src/i18n/modules/training.ts`.
 - **Aditivo:** tela e rota novas; nada removido. O ícone de mensagens e o sino passaram a usar a constante `HEADER_ICON`, com a mesma classe de antes. Sem mudança no banco nem nas permissões gravadas.
 - Testes: `tests/unit/training.test.ts` e `tests/e2e/training.spec.ts`.
+
+## Encomendas mais rápida, exportação e fila de Reposição sem o que virou pedido
+
+- **Pedido do dono** (16/11/2026): a exportação de Encomendas ainda trazia o que virou pedido; a tela estava lenta; a fila de Reposição listava as reposições já pedidas.
+- **Causa da lentidão:** a tela lia todas as solicitações (~16 mil, quase todas do histórico, já pedidas) e, para saber quais pedidos estavam cancelados, buscava cada pedido (~160 consultas em partes de 100), para depois esconder quase tudo. Os cartões de situação eram contados sobre essa lista inteira.
+- **Como ficou** (`src/lib/services/request-list-data.ts`): o banco devolve só as encomendas em andamento (`status` fora de pedido e excluída, índice `requests_by_status`); as encerradas (excluídas e com pedido cancelado) só ao abrir "Ver canceladas e excluídas", e o link conta sem trazer as linhas; o lote (`?group=`) lê só o lote; o selo "lote de N" lê só os lotes da página. Os cartões contam a lista já carregada (poucas linhas), sem consulta a mais. Exportação: a mesma leitura e o filtro de tipo (encomenda ou reposição), que a tela já mandava. Reposição: `listDemands` pede ao banco só as abertas.
+- **Aditivo:** nenhuma tela, rota, campo ou dado removido; sem mudança no banco.
+- Testes: `tests/unit/request-list-data.test.ts`.
+
+## Nova solicitação (TS e Venda): revisão completa dos textos das programações
+
+- **Pedido do dono** (16/11/2026, com a foto da tela TS): deixar claro em todos os textos que cada programação é a data em que o cliente deve receber o pedido (não produção, embarque nem saída), com o padrão "Datas previstas de recebimento pelo cliente", "Data prevista do 1º recebimento", "Programação 1 — Recebimento previsto: 16/03/2027", "Quantidade de entregas programadas", "Intervalo entre recebimentos previstos" e a data prevista de recebimento no cabeçalho de cada coluna da Composição de containers.
+- **Situação**: o mesmo padrão já tinha sido aplicado nas telas TS e Venda (`docs/REQUEST_SCREENS.md`, seção 6). A revisão conferiu todos os textos que as duas telas recebem (bloco do pedido, cartões de cada produto, gerador, Composição de containers, recusas do envio, em pt, en e zh) e achou só a recusa da etapa depois de criar (`after_create`) ainda com "programação" sem o sentido de entrega: ganhou a versão `deliverySchedule.error.after_create` ("anexo, foto da busca ou entregas programadas ao cliente"), que as telas TS e Venda já preferem.
+- **Fica como está**: o histórico de compras do cliente na lateral (rodadas da programação de compra dos pedidos antigos, cuja data não é a de recebimento pelo cliente) e a Nova solicitação de Encomendas.
+- **Aditivo**: só textos; cálculos, intervalos, regras de datas, distribuição das quantidades, Composição de containers e nomes técnicos não mudam. Sem mudança no banco.
+- Testes: `tests/unit/delivery-schedule-labels.test.ts` (toda recusa do envio que fala de programação tem a versão das entregas, nos três idiomas) e `tests/e2e/request-screens.spec.ts` (a recusa depois de criar em TS e Venda com o texto novo; Encomendas com o de sempre).
+
+## Control Tower não abria depois do login (indicador vencido)
+
+- **Relato do dono** (16/11/2026): um login não conseguia entrar pelo aplicativo instalado (PWA).
+- **Causa:** a senha estava certa; o que caía era `/app`, a tela depois do login. ~4.900 pedidos tinham o prazo do marco Arte no mesmo minuto (11:40 UTC). O indicador pronto da Control Tower venceu e cada abertura de `/app` tentava refazer os resumos desses pedidos antes de responder: estourava memória ou os 300 s, nada era gravado e a próxima abertura tentava de novo. O "Reconstruir resumos" de Configurações caía no mesmo passo final.
+- **Destravado na hora:** a validade do indicador `tower` em `kpi_snapshots` foi estendida por 2 horas (dado derivado).
+- **Como ficou** (docs/RESUMOS.md): vencido, a tela mostra o último agregado e reconstrói depois da resposta; a reconstrução refaz as vencidas em lotes (200) e no máximo 1.000 por rodada.
+- **Aditivo:** sem mudança no banco nem em telas.
+- Testes: `tests/unit/tower-kpis-stale.test.ts`.
+
+## Parceiros: ligação entre Tipos de parceiro e Acessos externos
+
+- **Pedido do dono** (16/11/2026), depois da análise das duas abas (as duas ficam: Tipos cuida do cadastro da categoria e do login permitido; Acessos externos, das telas de cada perfil): fazer os ajustes de ligação entre elas.
+- **Como ficou:**
+  - **Acessos externos → Tipos:** "Editar tipo" ao lado do nome do perfil abre o painel "Editar" do tipo em Tipos de parceiro. Vale nos perfis de tipo e nos papéis dos tipos antigos (Agência, Despachante…); Cliente e Fornecedor ficam sem o link.
+  - **Tipos → Acessos externos:** além do "Configurar telas" da linha, o painel Editar/Renomear de um tipo com perfil de telas traz o mesmo link.
+  - **Perfil inexistente no endereço:** aviso com o perfil pedido e o mostrado, e o link para Tipos de parceiro (antes, a aba trocava para o primeiro perfil sem avisar).
+  - **Contagens explicadas:** em Tipos, "Parceiros" conta cadastros de empresa (não logins); em Acessos externos, "logins ativos" são as pessoas que entram com o perfil.
+- **Aditivo:** nenhuma tela, rota, campo, permissão ou dado mudou; só links e textos. Docs: docs/PARTNER_ACCESS.md e docs/PARTNER_TYPES.md.
+- Testes: `tests/unit/partner-access-panels.test.ts` (endereços, aviso e o tipo por trás de cada perfil) e `tests/e2e/partner-access-panels.spec.ts` (ida e volta entre as abas, aviso e explicações).

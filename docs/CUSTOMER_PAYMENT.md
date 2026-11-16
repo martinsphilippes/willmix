@@ -32,6 +32,7 @@ A seção fica em `/app/orders/<id>#customer-payment`, logo abaixo de "Venda ao 
   - a forma de pagamento;
   - o vendedor;
   - o **NUNOTA do pedido de venda no Sankhya**, cujos títulos a receber são os boletos deste pedido.
+- **Vinda da solicitação** (dono, 16/11/2026): a forma escolhida na Nova solicitação (docs/ORDER_TERMS.md seção 11.10) já vem marcada na escolha enquanto o pedido não tem forma.
 - **Cópia da forma**: o pedido guarda uma cópia da forma (`orders.customerPaymentPlan`). Mudar a forma em Configurações depois não muda o pedido.
 - **Alçada**: forma com alçada fica "Em aprovação" (`orders.paymentPlanStatus = pending`) e avisa quem responde. Quem responde, ou o administrador, aprova ou recusa, com observação opcional, e quem escolheu e o vendedor recebem o aviso. Forma sem alçada vale na hora.
 - **Troca**: a forma pode ser trocada enquanto não há boleto registrado. Depois do primeiro boleto, só o vendedor e o NUNOTA mudam.

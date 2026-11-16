@@ -48,3 +48,18 @@ export function draftScreenOf(
   const value = (payload ?? []).find(([k]) => k === REQUEST_SCREEN_FIELD)?.[1];
   return isRequestScreenMode(value) ? value : null;
 }
+
+/**
+ * Reposição (dono, 16/11/2026; docs/REQUEST_SCREENS.md seção 7): o botão
+ * "+ Adicionar" de Reposição abre a tela Venda - Encomenda com
+ * `?from=replenishment`. Nessa entrada a tela aceita a compra para estoque
+ * (sem cliente) e grava a solicitação com a origem "reposição", que cai na
+ * fila de Reposição. Com um cliente escolhido, segue sendo a Venda de sempre.
+ */
+export const REPLENISHMENT_FROM = "from";
+export const REPLENISHMENT_VALUE = "replenishment";
+export const REPLENISHMENT_QUERY = `${REPLENISHMENT_FROM}=${REPLENISHMENT_VALUE}`;
+
+/** O valor de `from` (URL ou campo do formulário) é a entrada da Reposição? */
+export const isReplenishmentEntry = (v: unknown): boolean =>
+  v === REPLENISHMENT_VALUE;

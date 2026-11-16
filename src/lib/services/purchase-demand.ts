@@ -69,18 +69,17 @@ export async function openReplenishment(
 }
 
 /**
- * As demandas de um tipo (reposição ou encomenda), as abertas primeiro e as
- * mais novas em cima. A reposição lê pela origem (índice `by_origin`).
+ * As demandas de um tipo que ainda esperam a compra, as mais novas em cima.
+ * A reposição que já virou pedido sai da fila (dono, 16/11/2026): segue de
+ * Pedido em diante. O banco devolve só as abertas (índice `by_origin`).
  */
 export async function listDemands(kind: "replenishment"): Promise<Request[]> {
   const rows = await getStore().list("requests", {
-    filter: { origin: "replenishment" },
+    filter: { origin: "replenishment", status: [...OPEN_DEMAND_STATUSES] },
     orderBy: "createdAt",
     direction: "desc",
   });
-  return rows
-    .filter((r) => demandKind(r) === kind && r.status !== "CANCELLED")
-    .sort((a, b) => Number(isOpenDemand(b)) - Number(isOpenDemand(a)));
+  return rows.filter((r) => demandKind(r) === kind);
 }
 
 /**

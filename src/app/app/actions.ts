@@ -19,8 +19,16 @@ import {
   assertWellmix,
   isWellmix,
 } from "@/lib/auth/permissions";
-import { assertScreen, canOpen } from "@/lib/auth/screens";
-import { REQUEST_SCREEN, type RequestScreenMode } from "@/lib/request-screens";
+import { assertAnyScreen, assertScreen, canOpen } from "@/lib/auth/screens";
+import { assertCan } from "@/lib/auth/function-access";
+import { STOCK_OPTION } from "@/lib/services/stock-party";
+import {
+  REPLENISHMENT_FROM,
+  REPLENISHMENT_QUERY,
+  REQUEST_SCREEN,
+  isReplenishmentEntry,
+  type RequestScreenMode,
+} from "@/lib/request-screens";
 import {
   getStore,
   PARTY_EXTRA_DEFAULTS,
@@ -163,7 +171,11 @@ export async function createTsRequestAction(form: FormData) {
   await createRequest(form, "ts");
 }
 
-/** Venda - Encomenda (docs/REQUEST_SCREENS.md): o mesmo, com a tela e o tipo Venda. */
+/**
+ * Venda - Encomenda (docs/REQUEST_SCREENS.md): o mesmo, com a tela e o tipo
+ * Venda. Aberta pelo "+ Adicionar" de Reposição (`from=replenishment`), aceita
+ * também a compra para estoque, gravada com a origem reposição.
+ */
 export async function createSaleRequestAction(form: FormData) {
   await createRequest(form, "sale");
 }
@@ -180,13 +192,20 @@ async function createRequest(
 ) {
   const user = await requireUser();
   const screenDef = screenMode ? REQUEST_SCREEN[screenMode] : null;
+  // Entrada pelo "+ Adicionar" de Reposição (só na tela Venda): a compra para
+  // estoque vale e vira reposição (dono, 16/11/2026).
+  const replenish =
+    screenMode === "sale" &&
+    isReplenishmentEntry(str(form, REPLENISHMENT_FROM));
   // "Adicionar produto" numa solicitação existente (Wellmix): mesmo formulário.
   // Só na tela de Encomendas.
   const addToRaw = screenDef ? "" : str(form, "addTo");
   const addTo = /^[A-Za-z0-9_-]{1,64}$/.test(addToRaw) ? addToRaw : "";
   await run(
     screenDef
-      ? screenDef.path
+      ? replenish
+        ? `${screenDef.path}?${REPLENISHMENT_QUERY}`
+        : screenDef.path
       : addTo
         ? `/app/requests/new?addTo=${addTo}`
         : "/app/requests/new",
@@ -194,7 +213,11 @@ async function createRequest(
       if (screenDef) {
         // TS e Venda: a Wellmix, com a tela marcada no acesso dela.
         if (!isWellmix(user)) throw new ForbiddenError();
-        assertScreen(user, screenDef.screen);
+        if (replenish && str(form, "customerId") === STOCK_OPTION) {
+          // Reposição: a ação "Abrir reposição" e a tela da fila (ou a Venda).
+          assertCan(user, "replenishment.open");
+          assertAnyScreen(user, ["requests", screenDef.screen]);
+        } else assertScreen(user, screenDef.screen);
       } else {
         assertScreen(user, "requests");
         // Só o cliente e a Wellmix criam solicitação: a recusa vem antes de
@@ -298,13 +321,16 @@ async function createRequest(
         return `/app/requests/batch/${encodeURIComponent(added.groupId)}?added=${added.created.length}`;
       }
       // Compra para estoque (Wellmix, sem cliente): empresa interna.
-      const { STOCK_OPTION, ensureStockParty } =
-        await import("@/lib/services/stock-party");
-      // TS e Venda vendem ao cliente: compra para estoque fica em Encomendas.
-      if (screenDef && str(form, "customerId") === STOCK_OPTION)
+      const { ensureStockParty } = await import("@/lib/services/stock-party");
+      // TS e Venda vendem ao cliente: a compra para estoque fica em Encomendas
+      // (nova solicitação) e na entrada de Reposição da tela Venda.
+      if (screenDef && !replenish && str(form, "customerId") === STOCK_OPTION)
         throw new Error("request_screen_stock");
       const forStock =
         isWellmix(user) && str(form, "customerId") === STOCK_OPTION;
+      // Reposição é de produto do catálogo (como era o "Abrir reposição").
+      if (replenish && forStock && items.some((i) => !i.productId))
+        throw new Error("replenishment_product");
       const stockId = forStock ? (await ensureStockParty(user)).id : null;
       const base = requestBaseSchema.parse({
         customerId:
@@ -321,8 +347,11 @@ async function createRequest(
       // atualizou). Conferido antes de criar qualquer solicitação.
       let orderTerms: OrderTerms | null = null;
       if (isWellmix(user) && !forStock) {
-        const { resolveOrderTerms, assertProductsMatchOrigin } =
-          await import("@/lib/services/order-terms");
+        const {
+          resolveOrderTerms,
+          assertProductsMatchOrigin,
+          resolveRequestPaymentPlan,
+        } = await import("@/lib/services/order-terms");
         orderTerms = await resolveOrderTerms(
           {
             operationType: str(form, "operationType"),
@@ -338,6 +367,10 @@ async function createRequest(
           },
           // TS e Venda: o tipo de operação é o da tela.
           screenDef ? { operationType: screenDef.operation } : {},
+        );
+        // Forma de pagamento (dono, 16/11/2026): uma das formas ativas.
+        orderTerms.paymentPlan = await resolveRequestPaymentPlan(
+          str(form, "paymentPlanId"),
         );
         // O login do cliente com acesso é obrigatório na venda: é ele quem
         // confirma o pedido (dono, 15/11/2026).
@@ -370,6 +403,9 @@ async function createRequest(
           orderTerms,
         },
         items,
+        // Compra para estoque pela Reposição: a origem é reposição (fila da
+        // Reposição); o resto segue como encomenda.
+        replenish && forStock ? { origin: "replenishment" } : {},
       );
       // Rascunho enviado (docs/ORDER_TERMS.md seção 9): sai da lista.
       const draftId = str(form, "draftId");
@@ -382,12 +418,15 @@ async function createRequest(
       }
       const first = created[0];
       const destination =
-        // TS e Venda: quem não abre Encomendas volta à tela com o aviso.
-        screenDef && !canOpen(user, "requests")
-          ? `${screenDef.path}?created=${first.number ? String(first.number) : "ok"}`
-          : created.length === 1
-            ? `/app/requests/${first.id}`
-            : `/app/requests/batch/${encodeURIComponent(first.groupId ?? "")}?created=${created.length}`;
+        // Reposição aberta pelo "+ Adicionar": volta à fila, com o aviso.
+        replenish && forStock && canOpen(user, "requests")
+          ? `/app/replenishment?opened=${encodeURIComponent(first.id)}`
+          : // TS e Venda: quem não abre Encomendas volta à tela com o aviso.
+            screenDef && !canOpen(user, "requests")
+            ? `${screenDef.path}?created=${first.number ? String(first.number) : "ok"}`
+            : created.length === 1
+              ? `/app/requests/${first.id}`
+              : `/app/requests/batch/${encodeURIComponent(first.groupId ?? "")}?created=${created.length}`;
       // Só a linha 0 recebe a busca por foto/link e a programação de compra; se
       // o usuário a removeu, não há a que ligar.
       const presetPos = rows.findIndex((r) => r.index === 0);

@@ -688,9 +688,10 @@ test("Previsão de preço (cotação V2): manda formato, nível e quem chama; mo
     .first();
   // Sem botão (dono, 16/11/2026): escolhido o produto, a conta roda sozinha.
   await expect(forecast.locator("[data-price-forecast-submit]")).toHaveCount(0);
-  // Só "Preço" e "Valor total": o cliente chama, então o preço é o WD.
+  // Só "Preço" e "Valor total": sempre com frete (dono, 16/11/2026), mesmo
+  // com o cliente chamando (PRECO_COM_FRETE_REFERENCIA).
   const priceLine = forecast.locator('[data-price-forecast-line="price"]');
-  await expect(priceLine).toHaveText(/10,63/);
+  await expect(priceLine).toHaveText(/10,00/);
   await expect(
     forecast.locator('[data-price-forecast-line="total"]'),
   ).toHaveText(/R\$/);
@@ -714,8 +715,27 @@ test("Previsão de preço (cotação V2): manda formato, nível e quem chama; mo
   );
   await expect(page.locator("[data-order-terms-total]")).toHaveAttribute(
     "data-order-terms-total",
-    (10.63 * quantity).toFixed(2),
+    (10 * quantity).toFixed(2),
   );
+  // Forma de pagamento logo abaixo do Valor total (dono, 16/11/2026): a
+  // previsão reparte o valor total pelas parcelas da forma escolhida.
+  const payment = page.locator("[data-order-terms-payment]");
+  await payment
+    .locator("[data-order-terms-payment-plan]")
+    .selectOption({ label: "10% no pedido; 90% no embarque" });
+  const total = 10 * quantity;
+  await expect(
+    payment.locator('[data-order-terms-payment-row="1"]'),
+  ).toHaveAttribute("data-amount", (total * 0.1).toFixed(2));
+  await expect(
+    payment.locator('[data-order-terms-payment-row="2"]'),
+  ).toHaveAttribute("data-amount", (total * 0.9).toFixed(2));
+  await expect(
+    payment.locator('[data-order-terms-payment-row="1"]'),
+  ).toContainText("No pedido");
+  await expect(
+    payment.locator('[data-order-terms-payment-row="2"]'),
+  ).toContainText("No embarque");
   const last = () => asked[asked.length - 1];
   expect(last().get("saleFormat")).toBe("wellmix");
   expect(last().get("tier")).toBe("hiper");

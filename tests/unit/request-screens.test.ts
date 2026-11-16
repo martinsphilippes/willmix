@@ -72,7 +72,7 @@ const { seedDemo } = await import("@/lib/seed");
 const screens = await import("@/lib/auth/screens");
 const fa = await import("@/lib/auth/function-access");
 const { attachAccess } = await import("@/lib/auth/access-cache");
-const { navFor, flattenNav, isNavGroup } = await import("@/lib/nav");
+const { navFor, flattenNav, isActiveLink } = await import("@/lib/nav");
 const { PERMISSION_MODULES } = await import("@/lib/auth/permission-modules");
 const { isGrantable } = await import("@/lib/partner-access");
 const drafts = await import("@/lib/services/request-drafts");
@@ -86,18 +86,11 @@ const op = (functions: string[]) => ({
   functions,
 });
 
-/** Os links do grupo Produto novo, na ordem do menu. */
-const newProductLinks = (user: Parameters<typeof navFor>[0]) => {
-  const group = navFor(user).find(
-    (e) => isNavGroup(e) && e.key === "nav.group.newProduct",
-  );
-  return group && isNavGroup(group) ? group.items.map((l) => l.href) : [];
-};
-
 let admin: User;
 let buyer: User;
 let joao: User;
 let designer: User;
+let planner: User;
 
 beforeAll(async () => {
   const { users } = await seedDemo();
@@ -112,6 +105,14 @@ beforeAll(async () => {
     email: "designer.ts@wellmix.com",
     name: "Designer TS",
     functions: ["designer"],
+  } as never);
+  // Planner: abre Encomendas e tem "Abrir reposição", mas não a tela Venda.
+  planner = await store.create("users", {
+    ...operator,
+    id: undefined,
+    email: "planner.rep@wellmix.com",
+    name: "Planner Reposição",
+    functions: ["planner"],
   } as never);
 });
 
@@ -219,29 +220,37 @@ describe("acesso de cada tela (o controle de telas de sempre)", () => {
     expect(REQUEST_SCREEN.sale.operation).toBe("sale");
   });
 
-  it("menu: logo abaixo do Overview do Produto novo, nesta ordem, só para quem abre", () => {
-    expect(newProductLinks({ role: "admin" }).slice(0, 3)).toEqual([
-      "/app/flow/new-product",
-      "/app/new-request/ts",
-      "/app/new-request/sale",
-    ]);
-    const buyerLinks = newProductLinks(op(["buyer"]));
-    expect(buyerLinks.slice(0, 2)).toEqual([
-      "/app/flow/new-product",
-      "/app/new-request/ts",
-    ]);
-    expect(buyerLinks).not.toContain("/app/new-request/sale");
-    expect(newProductLinks(op(["product_manager"])).slice(1, 3)).toEqual([
-      "/app/new-request/ts",
-      "/app/new-request/sale",
-    ]);
-    const plannerLinks = flattenNav(navFor(op(["planner"]))).map((l) => l.href);
-    expect(plannerLinks).not.toContain("/app/new-request/ts");
-    expect(plannerLinks).not.toContain("/app/new-request/sale");
-    // A Nova solicitação de Encomendas segue no menu de sempre.
-    expect(flattenNav(navFor({ role: "admin" })).map((l) => l.href)).toContain(
-      "/app/requests",
+  it("menu: TS e Venda saíram; Encomendas e Reposição acendem nas telas que abrem", () => {
+    for (const who of [
+      { role: "admin" as const },
+      op(["buyer"]),
+      op(["product_manager"]),
+      op(["planner"]),
+      op(["purchasing_director"]),
+    ]) {
+      const links = flattenNav(navFor(who)).map((l) => l.href);
+      expect(links).not.toContain("/app/new-request/ts");
+      expect(links).not.toContain("/app/new-request/sale");
+    }
+    // Encomendas e Reposição seguem no menu de sempre.
+    const admin = flattenNav(navFor({ role: "admin" }));
+    expect(admin.map((l) => l.href)).toEqual(
+      expect.arrayContaining(["/app/requests", "/app/replenishment"]),
     );
+    const link = (href: string) => admin.find((l) => l.href === href)!;
+    // O item acende na tela que o "+ Adicionar" dele abre.
+    expect(isActiveLink(link("/app/requests"), "/app/new-request/ts")).toBe(
+      true,
+    );
+    expect(isActiveLink(link("/app/requests"), "/app/new-request/sale")).toBe(
+      false,
+    );
+    expect(
+      isActiveLink(link("/app/replenishment"), "/app/new-request/sale"),
+    ).toBe(true);
+    expect(
+      isActiveLink(link("/app/replenishment"), "/app/new-request/ts"),
+    ).toBe(false);
   });
 
   it("as consultas do formulário valem para quem abre qualquer tela de nova solicitação", () => {
@@ -336,6 +345,13 @@ describe("rascunhos por tela", () => {
 });
 
 describe("enviar: o tipo de operação é o da tela", () => {
+  // Forma de pagamento (obrigatória na venda; dono, 16/11/2026).
+  let planId = "";
+  beforeAll(async () => {
+    const { listPaymentPlans } =
+      await import("@/lib/services/customer-payment");
+    planId = (await listPaymentPlans())[0].id;
+  });
   const sale = (extra: Record<string, string> = {}) => {
     const f = new FormData();
     const fields: Record<string, string> = {
@@ -347,6 +363,7 @@ describe("enviar: o tipo de operação é o da tela", () => {
       redispatch: "no",
       originCountry: "CHINA",
       productFamily: "fm:UTILIDADES",
+      paymentPlanId: planId,
       contactsEdit: "1",
       "contact.partner.phone": "(47) 99999-0001",
       "contact.partner.email": "socio@loja.com",
@@ -412,5 +429,92 @@ describe("enviar: o tipo de operação é o da tela", () => {
     await actions.createTsRequestAction(sale({ addTo: "qualquer" }));
     const added = await lastRequest();
     expect(added?.orderTerms?.operationType).toBe("ts");
+  });
+});
+
+describe("Reposição: o + Adicionar abre a tela Venda como compra para estoque", () => {
+  const stockForm = async (extra: Record<string, string> = {}) => {
+    const { STOCK_OPTION } = await import("@/lib/services/stock-party");
+    const f = new FormData();
+    const fields: Record<string, string> = {
+      customerId: STOCK_OPTION,
+      from: "replenishment",
+      "p0.productId": "prod-jarra",
+      "p0.productName": "Jarra",
+      "p0.quantity": "300",
+      "p0.unit": "un",
+      ...extra,
+    };
+    for (const [k, v] of Object.entries(fields)) f.set(k, v);
+    return f;
+  };
+
+  it("grava a origem reposição, sem cliente nem condições do pedido, e volta à fila", async () => {
+    const { demandKind } = await import("@/lib/purchase-demand");
+    const { isStockCustomer } = await import("@/lib/services/stock-party");
+    // O Planner abre a fila (Encomendas) e tem a ação, sem a tela de Venda.
+    expect(screens.canOpen(planner, "requestSale")).toBe(false);
+    h.current = planner;
+    h.terms.length = 0;
+    await actions.createSaleRequestAction(await stockForm());
+    expect(h.redirects.at(-1)).toMatch(/^\/app\/replenishment\?opened=[^&]+$/);
+    expect(h.terms).toHaveLength(0);
+    const rows = await getStore().list("requests", {
+      filter: { origin: "replenishment" },
+      orderBy: "createdAt",
+      direction: "desc",
+    });
+    const made = rows.find(
+      (r) => r.quantity === 300 && r.productId === "prod-jarra",
+    );
+    expect(made).toBeTruthy();
+    expect(demandKind(made!)).toBe("replenishment");
+    expect(isStockCustomer(made!.customerId)).toBe(true);
+    expect(made!.orderTerms ?? null).toBeNull();
+    expect(made!.channel ?? null).toBeNull();
+    // Entra na fila de Reposição (a mesma lista da tela).
+    const { listDemands } = await import("@/lib/services/purchase-demand");
+    expect((await listDemands("replenishment")).map((r) => r.id)).toContain(
+      made!.id,
+    );
+  });
+
+  it("sem a entrada da Reposição a tela segue só de venda (estoque recusado)", async () => {
+    h.current = admin;
+    await actions.createSaleRequestAction(await stockForm({ from: "" }));
+    expect(h.redirects.at(-1)).toBe(
+      "/app/new-request/sale?error=request_screen_stock",
+    );
+    // O campo só vale na tela Venda: em TS segue recusado.
+    await actions.createTsRequestAction(await stockForm());
+    expect(h.redirects.at(-1)).toBe(
+      "/app/new-request/ts?error=request_screen_stock",
+    );
+  });
+
+  it("recusa quem não tem a ação Abrir reposição e produto fora do catálogo", async () => {
+    // Comprador: não tem a ação nem a tela de Venda.
+    h.current = buyer;
+    await actions.createSaleRequestAction(await stockForm());
+    expect(h.redirects.at(-1)).toBe(
+      "/app/new-request/sale?from=replenishment&error=forbidden",
+    );
+    // Cliente do portal: nunca.
+    h.current = joao;
+    await actions.createSaleRequestAction(await stockForm());
+    expect(h.redirects.at(-1)).toMatch(/error=forbidden$/);
+    // Reposição é de produto do catálogo.
+    h.current = planner;
+    await actions.createSaleRequestAction(
+      await stockForm({
+        "p0.productId": "",
+        "p0.productName": "Copo de vidro",
+        "p0.description": "Copo de vidro 300 ml",
+        "p0.sourcingDemand": "on",
+      }),
+    );
+    expect(h.redirects.at(-1)).toBe(
+      "/app/new-request/sale?from=replenishment&error=replenishment_product",
+    );
   });
 });

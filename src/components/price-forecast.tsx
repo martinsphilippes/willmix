@@ -108,7 +108,6 @@ export function PriceForecast({
   const targetNumber = Number(target.replace(",", "."));
   const targetOk = Number.isFinite(targetNumber) && targetNumber > 0;
   const terms = stock ? null : (shared?.saleTerms ?? null);
-  const caller = terms?.carrierCaller ?? null;
 
   // O que vai para a API: quando muda, a conta roda de novo.
   // (Uma string: o efeito abaixo só roda quando ela muda.)
@@ -165,19 +164,15 @@ export function PriceForecast({
     shown.value.kind === "forecast"
       ? shown.value
       : null;
-  // Preço na tela (dono, 16/11/2026): formato WD → PRECO_WD_COM_FRETE_
-  // REFERENCIA; Wellmix chamando o transportador → PRECO_COM_FRETE_
-  // REFERENCIA. Os dois com o "Valor do transporte (R$)" enviado na chamada.
-  // Fora disso (formato Wellmix e o cliente chama), o WD como antes.
+  // Preço na tela, sempre com frete (dono, 16/11/2026): formato WD →
+  // PRECO_WD_COM_FRETE_REFERENCIA; os demais (Wellmix ou o cliente chamando
+  // o transportador) → PRECO_COM_FRETE_REFERENCIA. O frete é o "Valor do
+  // transporte (R$)" digitado ou, sem ele, o padrão das Configurações.
   const wd = terms?.saleFormat === "wd";
   const price = forecast
     ? wd
       ? (forecast.wdWithFreight ?? null)
-      : caller === "wellmix"
-        ? (forecast.withFreight ?? null)
-        : caller === "customer"
-          ? (forecast.wdPrice ?? null)
-          : (forecast.withFreight ?? forecast.productPrice ?? null)
+      : (forecast.withFreight ?? null)
     : null;
   const total = price !== null && piecesOk ? price * pieces : null;
 

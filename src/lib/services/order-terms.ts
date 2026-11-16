@@ -10,7 +10,9 @@ import {
   parseCarrierValue,
   type OperationType,
   type OrderTerms,
+  type RequestPaymentPlan,
 } from "@/lib/order-terms";
+import { getStore } from "@/lib/db";
 import { resolveCarrier } from "./delivery-carriers";
 import {
   originCountryName,
@@ -164,4 +166,31 @@ export async function assertProductsMatchOrigin(
     )
       throw new OrderTermsError("order_terms_mismatch");
   }
+}
+
+/**
+ * Forma de pagamento da Nova solicitação (dono, 16/11/2026): obrigatória na
+ * venda ao cliente, uma das formas ativas de Configurações → Formas de
+ * pagamento do cliente. Devolve a cópia que vai em `orderTerms.paymentPlan`.
+ */
+export async function resolveRequestPaymentPlan(
+  planId: string,
+): Promise<RequestPaymentPlan> {
+  const id = planId.trim();
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id))
+    throw new OrderTermsError("order_terms_payment_plan");
+  const plan = await getStore().get("payment_plans", id);
+  if (!plan || !plan.active)
+    throw new OrderTermsError("order_terms_payment_plan");
+  return {
+    planId: plan.id,
+    name: plan.name,
+    installments: plan.installments.map((i) => ({
+      percent: i.percent,
+      event: i.event,
+      days: i.days,
+    })),
+    monthlyInterestPercent: plan.monthlyInterestPercent ?? null,
+    requiresApproval: !!plan.requiresApproval,
+  };
 }

@@ -2,7 +2,7 @@ import "server-only";
 import { getStore, type Party, type User } from "@/lib/db";
 import { isWellmix } from "@/lib/auth/permissions";
 import { ForbiddenError } from "@/lib/auth/permissions";
-import { canOpen } from "@/lib/auth/screens";
+import { canOpen, canOpenNewRequest } from "@/lib/auth/screens";
 import { executeQuery } from "@/lib/integrations/sankhya-client";
 import { setRawSetting } from "@/lib/settings";
 import { audit } from "./audit";
@@ -25,6 +25,12 @@ export interface RcaSeller {
   code: string;
   name: string;
   active: boolean;
+  /**
+   * Código do vendedor como parceiro na empresa (TGFVEN.CODPARC; dono,
+   * 16/11/2026): é o que a tela mostra ("CODPARC - APELIDO"). O CODVEND
+   * (`code`) é interno do Sankhya. Ausente nas listas trazidas antes.
+   */
+  partnerCode?: string | null;
 }
 
 export interface RcaList {
@@ -35,10 +41,13 @@ export interface RcaList {
 }
 
 export interface RcaView {
+  /** CODVEND (interno do Sankhya; o vínculo do cliente). */
   code: string;
   /** Nome na lista do Sankhya; nulo = o código não está na lista. */
   name: string | null;
   active: boolean | null;
+  /** CODPARC do vendedor (o código dele na empresa); nulo sem ele. */
+  partnerCode: string | null;
 }
 
 export class RcaError extends Error {}
@@ -78,6 +87,7 @@ export async function loadRcaList(): Promise<RcaList> {
           code: normalizeRcaCode((s as RcaSeller).code) ?? "",
           name: String((s as RcaSeller).name ?? "").trim(),
           active: (s as RcaSeller).active !== false,
+          partnerCode: normalizeRcaCode((s as RcaSeller).partnerCode),
         }))
         .filter((s) => s.code && s.name)
     : [];
@@ -96,6 +106,7 @@ export function rcaView(code: string | null, list: RcaList): RcaView | null {
     code,
     name: seller?.name ?? null,
     active: seller ? seller.active : null,
+    partnerCode: seller?.partnerCode ?? null,
   };
 }
 
@@ -113,7 +124,7 @@ export async function refreshRcaList(user: User): Promise<RcaList> {
   try {
     rows = (
       await executeQuery(
-        "SELECT CODVEND, APELIDO, ATIVO FROM TGFVEN ORDER BY CODVEND",
+        "SELECT CODVEND, CODPARC, APELIDO, ATIVO FROM TGFVEN ORDER BY CODVEND",
       )
     ).rows;
   } catch (error) {
@@ -128,6 +139,7 @@ export async function refreshRcaList(user: User): Promise<RcaList> {
         String(row.ATIVO ?? "S")
           .trim()
           .toUpperCase() !== "N",
+      partnerCode: normalizeRcaCode(row.CODPARC),
     }))
     .filter((s) => s.code && s.name);
   const list: RcaList = { syncedAt: new Date().toISOString(), sellers };
@@ -147,11 +159,55 @@ export async function customerRca(
   user: User,
   customerId: string,
 ): Promise<RcaView | null> {
-  if (!isWellmix(user) || !canOpen(user, "requests"))
-    throw new ForbiddenError();
+  // Telas de nova solicitação (Encomendas, TS e Venda), como a rota.
+  if (!isWellmix(user) || !canOpenNewRequest(user)) throw new ForbiddenError();
   const party = await getStore().get("parties", customerId);
   if (!party || party.type !== "customer") return null;
-  return rcaView(rcaCodeOf(party), await loadRcaList());
+  const view = rcaView(rcaCodeOf(party), await loadRcaList());
+  // Sem o nome ou o CODPARC na cópia da lista (lista antiga ou vendedor
+  // novo; dono, 16/11/2026): vêm direto do Sankhya (TGFVEN), só leitura;
+  // sem o Sankhya, fica o que a lista tem.
+  if (view && (!view.name || !view.partnerCode)) {
+    const live = await sankhyaSeller(view.code);
+    if (live)
+      return {
+        code: view.code,
+        name: live.name,
+        active: live.active,
+        partnerCode: live.partnerCode,
+      };
+  }
+  return view;
+}
+
+/** Um vendedor do Sankhya pelo código (TGFVEN); nulo sem ele ou sem o Sankhya. */
+export async function sankhyaSeller(code: string): Promise<{
+  name: string;
+  active: boolean;
+  partnerCode: string | null;
+} | null> {
+  const n = normalizeRcaCode(code);
+  if (!n) return null;
+  try {
+    const [row] = (
+      await executeQuery(
+        `SELECT CODVEND, CODPARC, APELIDO, ATIVO FROM TGFVEN WHERE CODVEND = ${Number(n)}`,
+      )
+    ).rows;
+    const name = String(row?.APELIDO ?? "").trim();
+    if (!name) return null;
+    return {
+      name,
+      active:
+        String(row?.ATIVO ?? "S")
+          .trim()
+          .toUpperCase() !== "N",
+      partnerCode: normalizeRcaCode(row?.CODPARC),
+    };
+  } catch (error) {
+    console.error("[rca] vendedor do Sankhya", error);
+    return null;
+  }
 }
 
 /**

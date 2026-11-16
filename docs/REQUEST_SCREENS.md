@@ -1,6 +1,6 @@
 # Nova solicitação por tipo de operação: TS - Trading Sales e Venda - Encomenda
 
-Pedido do dono (16/11/2026): duas telas de nova solicitação no módulo **Produto novo**, iguais à Nova solicitação da Wellmix (docs/ORDER_TERMS.md), com regras de negócio separadas pelo tipo de operação. A Nova solicitação que fica em **Encomendas** (`/app/requests/new`) não muda: mesma rota, mesmo funcionamento, mesmos dados e regras. O que fazer com ela, o dono decide depois.
+Pedido do dono (16/11/2026): duas telas de nova solicitação, iguais à Nova solicitação da Wellmix (docs/ORDER_TERMS.md), com regras de negócio separadas pelo tipo de operação. **Desde a segunda decisão do dono (16/11/2026) elas não estão mais no menu**: abrem pelos botões "+ Adicionar" de Encomendas (TS) e de Reposição (Venda); ver as seções 2 e 7. A Nova solicitação que fica em **Encomendas** (`/app/requests/new`) não muda: mesma rota, mesmo funcionamento, mesmos dados e regras. O que fazer com ela, o dono decide depois.
 
 ## 1. As duas telas
 
@@ -29,9 +29,19 @@ Pedido do dono (16/11/2026): duas telas de nova solicitação no módulo **Produ
   - quem abre Encomendas vai para a solicitação criada, como antes;
   - quem não abre Encomendas volta à tela com o aviso "Solicitação nº N criada".
 
-## 2. Menu
+## 2. Menu e botões "+ Adicionar"
 
-No menu lateral **Produto novo**, logo abaixo de **Overview**, nesta ordem: **TS - Trading Sales** e **Venda - Encomenda** (`withRequestScreens` em `src/lib/nav.ts`). Cada item aparece só para quem abre a tela dele.
+**Fora do menu** (dono, 16/11/2026: estavam listadas de forma equivocada). Quem abre cada tela:
+
+| Onde                             | Botão           | Abre                                                                                                      |
+| -------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------- |
+| Encomendas (`/app/requests`)     | **+ Adicionar** | **TS - Trading Sales** (`/app/new-request/ts`); sem a tela `requestTs`, a Nova solicitação de Encomendas. |
+| Reposição (`/app/replenishment`) | **+ Adicionar** | **Venda - Encomenda** (`/app/new-request/sale?from=replenishment`); ver a seção 7.                        |
+
+- O botão de Encomendas é só da Wellmix (o cliente cria pela vitrine, como sempre). Quem não abre TS (a função Vendas, por exemplo) segue para `/app/requests/new`: ninguém perde o caminho que já tinha.
+- O botão de Reposição aparece para quem tem a ação `replenishment.open` (abre a entrada da Reposição) ou, sem ela, para quem abre `requestSale` (abre a tela Venda de sempre).
+- No menu, **Encomendas** acende em `/app/new-request/ts` e **Reposição** em `/app/new-request/sale` (`match` em `withOpenedScreens`, `src/lib/nav.ts`).
+- O endereço direto das duas telas continua valendo, com o acesso da seção 3.
 
 ## 3. Acesso (Equipe, Acessos e Parceiros)
 
@@ -90,10 +100,24 @@ Pedido do dono (16/11/2026): nas telas TS e Venda, a programação é a data em 
   - os cartões de cada produto ("Recebimento previsto: data");
   - o gerador pela quantidade: título, explicação, quantidade de entregas, containers por entrega, resultado, avisos de caixas e falta de dados;
   - a Composição de containers: explicação e, em cada coluna, "Programação N" com "Recebimento previsto:" e a data embaixo, em linhas curtas para a coluna caber na lateral;
-  - as recusas do envio que falam das datas (`schedule_too_soon`, `schedule_out_of_order`, `schedule_mismatch`, `schedule_product_changed`).
+  - as recusas do envio que falam das datas (`schedule_too_soon`, `schedule_out_of_order`, `schedule_mismatch`, `schedule_product_changed`) e a da etapa depois de criar (`after_create`: "anexo, foto da busca ou entregas programadas ao cliente").
 - **Como:** os textos ficam em `src/i18n/modules/delivery-schedule.ts` (pt, en e zh, chaves `deliverySchedule.*`). `src/components/delivery-schedule-labels.ts` troca, por cima dos rótulos de sempre, só os que falam das programações; `renderNewRequest` usa esses rótulos quando `mode` é "ts" ou "sale". Os componentes ganharam dois rótulos opcionais, que só as telas novas passam: `receipt` no bloco do pedido (`OrderPlanLabels`) e `roundDate` na Composição (`ContainerCompositionLabels`). Sem eles, a tela mostra o que mostrava.
 - **Não muda:** a Nova solicitação de Encomendas, a Seleção de itens, o pedido, a ficha de compra e as outras telas que falam de programação; ficam com os textos de antes.
+- **Revisão completa** (dono, 16/11/2026, segundo pedido com o mesmo padrão): conferidos todos os textos que as telas TS e Venda recebem (bloco do pedido, cartões, gerador, Composição, recusas, nos três idiomas). Faltava só a recusa `after_create`; um teste confere que toda recusa do envio que fala de programação tem a versão das entregas. **Fica como está**, de propósito, o histórico de compras do cliente na lateral ("Pedidos da programação", "Rodada N, prevista para…"): são as rodadas da programação de compra dos pedidos antigos, de todos os fluxos, e a data delas não é a de recebimento pelo cliente.
 - **Testes:** `tests/unit/delivery-schedule-labels.test.ts` e `tests/e2e/request-screens.spec.ts`. O E2E confere o bloco do pedido, os chips "Programação N — Recebimento previsto", o cartão do produto e a Composição em TS e Venda, e os textos de sempre em Encomendas.
+
+## 7. Reposição: o "+ Adicionar" abre a tela Venda como compra para estoque
+
+Pedido do dono (16/11/2026): o bloco "Abrir reposição" da página de Reposição saiu; o caminho natural é o botão **+ Adicionar** do alto da página, que abre a tela Venda - Encomenda. Como a reposição é compra para estoque (sem cliente) e a Venda sempre recusou o estoque, a entrada da Reposição tem regra própria (decisão do dono):
+
+- **Entrada:** `/app/new-request/sale?from=replenishment` (`src/lib/request-screens.ts`: `REPLENISHMENT_QUERY`, `isReplenishmentEntry`). Título "Reposição - Adicionar".
+- **O que muda nessa entrada** (o resto é a tela Venda de sempre):
+  - a caixa "Compra para estoque" aparece e começa marcada; desmarcada e com cliente, vale a Venda de sempre;
+  - na compra para estoque a solicitação nasce com a **origem reposição** (`origin = "replenishment"`, empresa "Estoque Wellmix", sem cliente nem condições do pedido) e cai na fila de Reposição, com a etiqueta de reposição na lista geral; ao enviar, volta a `/app/replenishment?opened=<id>`;
+  - só produto do catálogo (`replenishment_product`), como era no "Abrir reposição";
+  - sem rascunhos (o formulário é curto) e com os textos de programação de sempre (a data não é recebimento previsto pelo cliente).
+- **Acesso:** entra quem tem a ação `replenishment.open` (padrão: Planner) e abre Encomendas (`requests`), **mesmo sem a tela `requestSale`**; o servidor confere as duas coisas (`createSaleRequestAction`). Vender a um cliente por essa entrada continua pedindo `requestSale`. Fora da entrada, a Venda recusa o estoque como antes (`request_screen_stock`).
+- **O que não mudou:** `openReplenishment` e `openReplenishmentAction` seguem no código (sem tela); a recompra do pós-venda continua entrando na mesma fila.
 
 ## 5. Fica para o dono decidir
 
