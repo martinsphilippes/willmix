@@ -73,6 +73,7 @@ import * as certificationArtwork from "./certification-artwork";
 import * as dashboards from "./dashboards";
 import * as demoAccounts from "./demo-accounts";
 import * as accessScreens from "./access-screens";
+import * as teamAreas from "./team-areas";
 import * as teamAccess from "./team-access";
 import * as requestProduct from "./request-product";
 import * as requestDelete from "./request-delete";
@@ -211,6 +212,7 @@ export const modulesPt = {
   ...dashboards.pt,
   ...demoAccounts.pt,
   ...accessScreens.pt,
+  ...teamAreas.pt,
   ...teamAccess.pt,
   ...requestProduct.pt,
   ...requestDelete.pt,
@@ -370,6 +372,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...dashboards.en,
   ...demoAccounts.en,
   ...accessScreens.en,
+  ...teamAreas.en,
   ...teamAccess.en,
   ...requestProduct.en,
   ...requestDelete.en,
@@ -529,6 +532,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...dashboards.zh,
   ...demoAccounts.zh,
   ...accessScreens.zh,
+  ...teamAreas.zh,
   ...teamAccess.zh,
   ...requestProduct.zh,
   ...requestDelete.zh,

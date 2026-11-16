@@ -5,6 +5,7 @@ import { requireScreen } from "@/lib/auth/guard";
 import { isAdmin } from "@/lib/auth/permissions";
 import { WELLMIX_BASE } from "@/lib/auth/screens";
 import { loadFunctionDefs } from "@/lib/services/team-functions";
+import { listTeamAreas } from "@/lib/services/team-areas";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { Alert, Button, PageHeader, TextLink } from "@/components/ui";
@@ -44,7 +45,11 @@ export default async function TeamMemberPage({
   const t = await getT();
   const { id } = await params;
   const { error, created } = await searchParams;
-  const [team, defs] = await Promise.all([wellmixTeam(), loadFunctionDefs()]);
+  const [team, defs, areas] = await Promise.all([
+    wellmixTeam(),
+    loadFunctionDefs(),
+    listTeamAreas(),
+  ]);
   const member = team.find((m) => m.id === id);
   // Já excluído (por outra pessoa, ou na tentativa que voltou com erro): a
   // lista mostra o motivo, sem cair na página de "não encontrado".
@@ -218,7 +223,7 @@ export default async function TeamMemberPage({
           screenGroups={groups.screens}
           actionGroups={groups.actions}
           base={[...WELLMIX_BASE]}
-          options={editorOptions(team, t)}
+          options={editorOptions(team, t, areas)}
           texts={editorTexts(t)}
           mode="page"
         />

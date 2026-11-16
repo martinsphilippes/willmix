@@ -2,6 +2,7 @@ import "server-only";
 import { isOrderOpen } from "@/lib/order-status";
 import { indexBy, listByIds } from "@/lib/db/lookup";
 import { loadFunctionDefs } from "./team-functions";
+import { checkMemberArea } from "./team-areas";
 
 import {
   getStore,
@@ -73,6 +74,11 @@ export async function setTeamMember(
     jobLevel: JobLevel | null;
     managerUserId: string | null;
     division: Division | null;
+    /**
+     * Área (Equipe Acessos e Parceiros → Áreas): uma ativa ou a que a pessoa
+     * já tem; null = sem área; ausente = não muda.
+     */
+    areaId?: string | null;
     /** Funções (de fábrica ou criadas); ausente = não muda. */
     functions?: string[];
     /**
@@ -103,10 +109,15 @@ export async function setTeamMember(
     if (descendantsOf(target.id, team).has(input.managerUserId))
       throw new TeamError("manager_cycle");
   }
+  const areaId =
+    input.areaId === undefined
+      ? undefined
+      : await checkMemberArea(input.areaId, target.areaId ?? null);
   const before = {
     jobLevel: target.jobLevel ?? null,
     managerUserId: target.managerUserId ?? null,
     division: target.division ?? null,
+    ...(areaId !== undefined ? { areaId: target.areaId ?? null } : {}),
     functions: target.functions ?? [],
     screens: target.screens ?? null,
     screenExceptions: target.screenExceptions ?? null,
@@ -156,6 +167,10 @@ export async function setTeamMember(
     jobLevel: input.jobLevel,
     managerUserId: input.managerUserId,
     division: input.division,
+    // A área só é gravada quando muda (o login que nunca teve fica sem).
+    ...(areaId !== undefined && areaId !== (target.areaId ?? null)
+      ? { areaId }
+      : {}),
     ...(functions ? { functions } : {}),
     ...(screensChanged ? { screens } : {}),
     ...(exceptionsChanged ? { screenExceptions } : {}),
@@ -165,7 +180,7 @@ export async function setTeamMember(
     "team.member",
     "user",
     target.id,
-    `Equipe: ${target.name} (cargo, chefe, divisão, funções e telas)`,
+    `Equipe: ${target.name} (cargo, área, chefe, divisão, funções e telas)`,
     before,
     {
       ...input,

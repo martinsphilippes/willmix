@@ -9,7 +9,7 @@ import {
   functionLabel,
   type FunctionDef,
 } from "@/lib/auth/function-access";
-import { getStore, type ProductLine, type User } from "@/lib/db";
+import { getStore, type ProductLine, type TeamArea, type User } from "@/lib/db";
 import { loginLabel } from "@/lib/auth/login-id";
 import { DIVISIONS, JOB_LEVELS } from "@/lib/db/schema";
 import {
@@ -34,16 +34,21 @@ import {
   Th,
   rowClass,
 } from "@/components/ui";
+import { listTeamAreas } from "@/lib/services/team-areas";
 import { TeamAreaNav } from "@/components/team-area-nav";
 import { SubmitButton } from "@/components/submit-button";
 import { wellmixTeam } from "@/lib/services/team";
 import { loadFunctionDefs } from "@/lib/services/team-functions";
 import { isRetiredAction } from "@/lib/auth/permission-modules";
 import {
+  createTeamAreaAction,
   createTeamLoginAction,
   distributeUnassignedAction,
+  renameTeamAreaAction,
   setLineDivisionAction,
+  setTeamAreaActiveAction,
 } from "../actions/team";
+import { TeamAreaBulk } from "./_components/team-area-bulk";
 import { FunctionList } from "./_components/function-list";
 import { FunctionPermissions } from "./_components/function-permissions";
 import { TeamAccessDrawer } from "./_components/team-access-drawer";
@@ -70,9 +75,12 @@ import {
  *   desativar (as criadas).
  * - Linha de produto e divisão: a divisão de cada linha (a solicitação nova
  *   cai no analista da divisão) e a distribuição das pendências.
+ * - Áreas (dono, 16/11/2026): as áreas da empresa (Marketing, Comex...),
+ *   nova área, renomear, desativar e o cadastro em massa (só as que faltam).
+ *   Cada pessoa fica em uma área (coluna "Área" e "Editar acessos").
  */
 
-const TABS = ["team", "functions", "lines"] as const;
+const TABS = ["team", "areas", "functions", "lines"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function TeamPage({
@@ -90,13 +98,14 @@ export default async function TeamPage({
     : "team";
   const saved = one("saved");
   const error = one("error");
-  const [team, lines, defs] = await Promise.all([
+  const [team, lines, defs, areas] = await Promise.all([
     wellmixTeam(),
     getStore().list("product_lines", {
       filter: { active: true },
       orderBy: "name",
     }),
     loadFunctionDefs(),
+    listTeamAreas(),
   ]);
   const errorKey = `team.error.${error ?? ""}`;
   const errorText = error
@@ -110,6 +119,10 @@ export default async function TeamPage({
           member: "team.saved.member",
           line: "team.saved.line",
           deleted: "team.saved.deleted",
+          area_created: "area.saved.area_created",
+          area_renamed: "area.saved.area_renamed",
+          area_deactivated: "area.saved.area_deactivated",
+          area_activated: "area.saved.area_activated",
         } as Record<string, DictionaryKey>
       )[saved] ?? (`fn.saved.${saved}` as DictionaryKey))
     : null;
@@ -194,6 +207,7 @@ export default async function TeamPage({
           t={t}
           team={team}
           defs={defs}
+          areas={areas}
           label={label}
           canCreate={isAdmin(user)}
           modalOpen={one("new") === "1"}
@@ -211,6 +225,7 @@ export default async function TeamPage({
         />
       ) : null}
       {tab === "lines" ? <LinesTab t={t} lines={lines} /> : null}
+      {tab === "areas" ? <AreasTab t={t} team={team} areas={areas} /> : null}
     </>
   );
 }
@@ -221,6 +236,7 @@ function TeamTab({
   t,
   team,
   defs,
+  areas,
   label,
   canCreate,
   modalOpen,
@@ -229,6 +245,7 @@ function TeamTab({
   t: Translate;
   team: User[];
   defs: FunctionDef[];
+  areas: TeamArea[];
   label: (key: string) => string;
   canCreate: boolean;
   modalOpen: boolean;
@@ -236,6 +253,8 @@ function TeamTab({
 }) {
   const nameOf = (id: string | null | undefined) =>
     (id && team.find((m) => m.id === id)?.name) || t("team.none");
+  const areaOf = (id: string | null | undefined) =>
+    (id && areas.find((a) => a.id === id)?.name) || t("team.none");
   const accessOf = (m: User) => accessFromFunctions(m.functions, defs);
   // Telas além do básico (as que de fato dependem de função ou de liberação).
   const extraScreens = (m: User) =>
@@ -258,7 +277,7 @@ function TeamTab({
         screenGroups={groups.screens}
         actionGroups={groups.actions}
         base={[...WELLMIX_BASE]}
-        options={editorOptions(team, t)}
+        options={editorOptions(team, t, areas)}
         texts={editorTexts(t)}
         savedText={t("access.savedFor")}
       />
@@ -289,6 +308,7 @@ function TeamTab({
             <tr>
               <Th>{t("team.col.name")}</Th>
               <Th>{t("team.col.level")}</Th>
+              <Th>{t("team.col.area")}</Th>
               <Th>{t("team.col.division")}</Th>
               <Th>{t("team.col.manager")}</Th>
               <Th>{t("team.col.functions")}</Th>
@@ -322,6 +342,12 @@ function TeamTab({
                   {member.jobLevel
                     ? t(`level.${member.jobLevel}` as DictionaryKey)
                     : t("team.none")}
+                </Td>
+                <Td
+                  className="whitespace-nowrap"
+                  data-team-member-area={member.id}
+                >
+                  {areaOf(member.areaId)}
                 </Td>
                 <Td className="whitespace-nowrap">
                   {member.division
@@ -375,6 +401,7 @@ function TeamTab({
           t={t}
           team={team}
           defs={defs}
+          areas={areas}
           label={label}
           error={modalError}
         />
@@ -388,12 +415,14 @@ function NewUserModal({
   t,
   team,
   defs,
+  areas,
   label,
   error,
 }: {
   t: Translate;
   team: User[];
   defs: FunctionDef[];
+  areas: TeamArea[];
   label: (key: string) => string;
   error: string | null;
 }) {
@@ -468,6 +497,18 @@ function NewUserModal({
                     {t(`level.${l}` as DictionaryKey)}
                   </option>
                 ))}
+              </Select>
+            </Field>
+            <Field label={t("team.col.area")}>
+              <Select name="areaId" defaultValue="" data-team-new-area>
+                <option value="">{t("team.none")}</option>
+                {areas
+                  .filter((a) => a.active)
+                  .map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
               </Select>
             </Field>
             <Field label={t("team.col.division")}>
@@ -732,5 +773,184 @@ function LinesTab({ t, lines }: { t: Translate; lines: ProductLine[] }) {
         </SubmitButton>
       </form>
     </Card>
+  );
+}
+
+/* ---------------- Áreas ---------------- */
+
+function AreasTab({
+  t,
+  team,
+  areas,
+}: {
+  t: Translate;
+  team: User[];
+  areas: TeamArea[];
+}) {
+  const people = (id: string) => team.filter((m) => m.areaId === id).length;
+  const peopleText = (n: number) =>
+    n === 0
+      ? t("area.people.none")
+      : n === 1
+        ? t("area.people.one")
+        : t("area.people.many", { n });
+  const active = areas.filter((a) => a.active).length;
+  return (
+    <div className="grid items-start gap-4 lg:grid-cols-12" data-team-areas>
+      <div className="min-w-0 lg:col-span-7">
+        <Card title={t("area.title")}>
+          <p className="mb-2 text-sm text-zinc-600">{t("area.intro")}</p>
+          {areas.length === 0 ? (
+            <p className="text-sm text-zinc-500" data-area-empty>
+              {t("area.empty")}
+            </p>
+          ) : (
+            <>
+              <p className="mb-2 text-xs text-zinc-500" data-area-count>
+                {t("area.count", { n: areas.length, active })}
+              </p>
+              <Table paginated={false}>
+                <thead>
+                  <tr>
+                    <Th>{t("area.col.name")}</Th>
+                    <Th>{t("area.col.people")}</Th>
+                    <Th>{t("area.col.status")}</Th>
+                    <Th className="text-right">
+                      <span className="sr-only">{t("area.rename")}</span>
+                    </Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {areas.map((area) => (
+                    <tr
+                      key={area.id}
+                      id={`a-${area.id}`}
+                      className={`${rowClass} scroll-mt-24`}
+                      data-area={area.id}
+                      data-area-name={area.name}
+                      data-area-active={area.active ? "1" : "0"}
+                    >
+                      <Td className="font-medium text-zinc-900">{area.name}</Td>
+                      <Td className="whitespace-nowrap">
+                        {peopleText(people(area.id))}
+                      </Td>
+                      <Td>
+                        {area.active ? (
+                          <Badge tone="success">
+                            {t("area.status.active")}
+                          </Badge>
+                        ) : (
+                          <Badge>{t("area.status.inactive")}</Badge>
+                        )}
+                      </Td>
+                      <Td className="text-right">
+                        <div className="flex flex-wrap items-start justify-end gap-2">
+                          <details data-area-rename={area.id}>
+                            <summary className="cursor-pointer list-none rounded-md px-2 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50">
+                              {t("area.rename")}
+                            </summary>
+                            <form
+                              action={renameTeamAreaAction}
+                              className="mt-2 flex flex-wrap items-center justify-end gap-2"
+                            >
+                              <input
+                                type="hidden"
+                                name="areaId"
+                                value={area.id}
+                              />
+                              <Input
+                                dense
+                                name="name"
+                                defaultValue={area.name}
+                                required
+                                minLength={2}
+                                maxLength={120}
+                                autoComplete="off"
+                                aria-label={t("area.rename.label", {
+                                  name: area.name,
+                                })}
+                                className="w-48"
+                              />
+                              <SubmitButton
+                                variant="secondary"
+                                className="px-2.5 py-1 text-xs"
+                              >
+                                {t("area.rename.save")}
+                              </SubmitButton>
+                            </form>
+                          </details>
+                          <form action={setTeamAreaActiveAction}>
+                            <input
+                              type="hidden"
+                              name="areaId"
+                              value={area.id}
+                            />
+                            <input
+                              type="hidden"
+                              name="active"
+                              value={area.active ? "0" : "1"}
+                            />
+                            <SubmitButton
+                              variant="secondary"
+                              className="px-2.5 py-1 text-xs"
+                              data-area-toggle={area.id}
+                            >
+                              {area.active
+                                ? t("area.deactivate")
+                                : t("area.activate")}
+                            </SubmitButton>
+                          </form>
+                        </div>
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+              <p className="mt-2 text-xs text-zinc-500">
+                {t("area.deactivate.hint")}
+              </p>
+            </>
+          )}
+        </Card>
+      </div>
+      <div className="min-w-0 space-y-4 lg:col-span-5">
+        <Card title={t("area.new")}>
+          <form
+            id="area-new"
+            action={createTeamAreaAction}
+            className="flex scroll-mt-24 flex-wrap items-end gap-2"
+            data-area-new
+          >
+            <div className="min-w-0 flex-1">
+              <Field label={t("area.new.name")}>
+                <Input
+                  name="name"
+                  required
+                  minLength={2}
+                  maxLength={120}
+                  autoComplete="off"
+                />
+              </Field>
+            </div>
+            <SubmitButton>{t("area.new.submit")}</SubmitButton>
+          </form>
+        </Card>
+        <TeamAreaBulk
+          texts={{
+            title: t("area.bulk.title"),
+            hint: t("area.bulk.hint"),
+            label: t("area.bulk.label"),
+            submit: t("area.bulk.submit"),
+            done: t("area.bulk.done"),
+            created: t("area.bulk.created"),
+            existing: t("area.bulk.existing"),
+            as: t("area.bulk.as"),
+            inactive: t("area.inactiveSuffix"),
+            repeated: t("area.bulk.repeated"),
+            invalid: t("area.bulk.invalid"),
+          }}
+        />
+      </div>
+    </div>
   );
 }
