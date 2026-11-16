@@ -20,6 +20,7 @@ alter table public."users" add column if not exists "managerUserId" text;
 alter table public."users" add column if not exists "division" text;
 alter table public."users" add column if not exists "areaId" text;
 alter table public."users" add column if not exists "positionId" text;
+alter table public."users" add column if not exists "reviewNote" text;
 alter table public."users" add column if not exists "functions" jsonb;
 alter table public."users" add column if not exists "screens" jsonb;
 alter table public."users" add column if not exists "mustChangePassword" boolean;

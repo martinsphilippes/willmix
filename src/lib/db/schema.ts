@@ -736,6 +736,12 @@ export interface User extends BaseRow {
    */
   positionId?: string | null;
   /**
+   * "A conferir" (Equipe; dono, 16/11/2026): o motivo de conferir à mão o
+   * cargo, a área ou as funções (ex.: login criado pela importação da
+   * planilha com a função sugerida pelo cargo). Vazio ou nulo = conferido.
+   */
+  reviewNote?: string | null;
+  /**
    * Funções do login da Wellmix: as de fábrica (comprador, planner,
    * diretoria…) e as criadas pelo administrador (chave "fn_…").
    */
@@ -3867,6 +3873,7 @@ export const TABLES: Record<TableName, TableDef> = {
       division: enumOf(DIVISIONS, false),
       areaId: id(false),
       positionId: id(false),
+      reviewNote: str(500),
       functions: json(),
       screens: json(),
       mustChangePassword: bool(),

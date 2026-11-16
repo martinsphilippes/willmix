@@ -1764,3 +1764,10 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Como ficou**: seção Cargos (`/app/team?tab=positions`) com novo cargo, renomear, área na própria linha, desativar/reativar, filtro por área e cadastro em massa (área na mesma linha por tabulação ou ";"; linha de título ignorada, também nas Áreas); campo "Cargo" em Editar acessos e no Novo usuário, com a área vindo do cargo; coluna "Cargo" na lista; trocar a área do cargo leva quem tem o cargo; contagem de cargos por área na aba Áreas.
 - **Aditivo:** tabela nova `team_positions` e coluna nova `users.positionId` (opcional). O campo de Analista a Diretor só mudou de rótulo (Cargo → Nível, aprovado pelo dono); valores, regras do painel de SLA, funções, permissões e logins não mudam.
 - Testes: `tests/unit/team-positions.test.ts`, `tests/e2e/team-positions.spec.ts`, ordem das seções em `tests/unit/nav.test.ts` e `tests/e2e/team-partners-area.spec.ts`, e o cadastro em massa das Áreas com a linha de título em `tests/unit/team-areas.test.ts`.
+
+## Equipe: importar os logins da planilha, com o "a conferir"
+
+- **Pedido do dono** (16/11/2026): depois dos cargos, criar os logins de cada pessoa da planilha (Nome, Cargo, Área, Email) ligados ao cargo, à função e à área; o que der para entender, ligar; o que tiver dúvida, deixar no portal para o detalhamento à mão da função. Senha provisória igual para todos, com a troca pedida no primeiro acesso (a pessoa pode pular, como hoje).
+- **Como ficou**: Equipe → "Importar da planilha" (`/app/team/import`) com "Conferir" (prévia sem gravar) e "Criar os logins" (lotes de 25, continua de onde parou); funções e nível sugeridos pelo cargo; "a conferir" gravado no login com o motivo, selo e filtro na lista e "Conferido" em Editar acessos (docs/ACCESS.md, "Importar equipe").
+- **Aditivo:** coluna nova `users.reviewNote` (opcional); nenhum login existente perde nada (quem já tem login só recebe cargo e área se não tinha; funções e telas ficam).
+- Testes: `tests/unit/team-import.test.ts` e `tests/e2e/team-import.spec.ts`.

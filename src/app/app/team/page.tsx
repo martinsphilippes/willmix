@@ -238,6 +238,7 @@ export default async function TeamPage({
           positions={positions}
           label={label}
           canCreate={isAdmin(user)}
+          onlyReview={one("review") === "1"}
           modalOpen={one("new") === "1"}
           modalError={one("new") === "1" ? errorText : null}
         />
@@ -279,6 +280,7 @@ function TeamTab({
   positions,
   label,
   canCreate,
+  onlyReview,
   modalOpen,
   modalError,
 }: {
@@ -289,9 +291,13 @@ function TeamTab({
   positions: TeamPosition[];
   label: (key: string) => string;
   canCreate: boolean;
+  /** Só os logins "a conferir" (?review=1). */
+  onlyReview: boolean;
   modalOpen: boolean;
   modalError: string | null;
 }) {
+  const toReview = team.filter((m) => m.reviewNote);
+  const shown = onlyReview ? toReview : team;
   const nameOf = (id: string | null | undefined) =>
     (id && team.find((m) => m.id === id)?.name) || t("team.none");
   const areaOf = (id: string | null | undefined) =>
@@ -335,17 +341,49 @@ function TeamTab({
         title={t("team.members")}
         actions={
           canCreate ? (
-            <LinkButton
-              href="/app/team?tab=team&new=1"
-              variant="primary"
-              data-team-new-user
-            >
-              + {t("team.newUser")}
-            </LinkButton>
+            <div className="flex flex-wrap gap-2">
+              {/* Importar da planilha (dono, 16/11/2026). */}
+              <LinkButton
+                href="/app/team/import"
+                variant="secondary"
+                data-team-import-open
+              >
+                {t("teamImport.open")}
+              </LinkButton>
+              <LinkButton
+                href="/app/team?tab=team&new=1"
+                variant="primary"
+                data-team-new-user
+              >
+                + {t("team.newUser")}
+              </LinkButton>
+            </div>
           ) : undefined
         }
       >
         <p className="mb-2 text-xs text-zinc-500">{t("team.screens.hint")}</p>
+        {/* "A conferir": os logins com cargo, área ou funções para conferir à mão. */}
+        {toReview.length || onlyReview ? (
+          <div className="mb-2" data-team-review-filter>
+            <Alert tone="warning">
+              {onlyReview ? (
+                <>
+                  {t("team.review.only", { n: toReview.length })}{" "}
+                  <TextLink href="/app/team?tab=team">
+                    {t("team.review.all")}
+                  </TextLink>
+                </>
+              ) : (
+                <>
+                  {t("team.review.notice", { n: toReview.length })}{" "}
+                  <TextLink href="/app/team?tab=team&review=1">
+                    {t("team.review.show")}
+                  </TextLink>
+                </>
+              )}
+            </Alert>
+          </div>
+        ) : null}
         <Table>
           <thead>
             <tr>
@@ -363,7 +401,7 @@ function TeamTab({
             </tr>
           </thead>
           <tbody>
-            {team.map((member) => (
+            {shown.map((member) => (
               <tr
                 key={member.id}
                 id={`u-${member.id}`}
@@ -381,6 +419,15 @@ function TeamTab({
                     {t(`role.${member.role}` as DictionaryKey)} ·{" "}
                     {loginLabel(member.email)}
                   </div>
+                  {member.reviewNote ? (
+                    <span
+                      className="mt-0.5 inline-block"
+                      title={member.reviewNote}
+                      data-team-member-review={member.id}
+                    >
+                      <Badge tone="warning">{t("team.review.badge")}</Badge>
+                    </span>
+                  ) : null}
                 </Td>
                 <Td
                   className="whitespace-nowrap"
