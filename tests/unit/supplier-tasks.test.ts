@@ -64,6 +64,7 @@ const mine = async () => pendingTasksFor(supplierA);
 
 describe("pendências do fornecedor por etapa", () => {
   it("toda etapa do caminho tem nome e explicação nos três idiomas", () => {
+    // Do Book à Invoice, onde o serviço da Trading termina (dono, 16/11/2026).
     expect([...SUPPLIER_STEPS]).toEqual([
       "booking",
       "request",
@@ -72,9 +73,33 @@ describe("pendências do fornecedor por etapa", () => {
       "sheet",
       "art",
       "sign",
+      "deposit",
       "inspection",
-      "shipping",
+      "sample",
+      "carrier",
+      "loading",
+      "invoice",
     ]);
+    const pt = translator("pt");
+    expect(
+      SUPPLIER_STEPS.slice(SUPPLIER_STEPS.indexOf("dieline")).map((step) =>
+        pt(`tasks.group.${supplierGroup(step)}` as never),
+      ),
+    ).toEqual([
+      "Die Cut",
+      "Ficha de compra",
+      "Aprovar a arte",
+      "Assinar o pedido",
+      "Confirmar sinal",
+      "Inspeção",
+      "Amostra",
+      "Transportadora",
+      "Carregamento",
+      "Invoice",
+    ]);
+    expect(pt("supplierTasks.after")).toContain(
+      "Na Invoice o seu serviço termina",
+    );
     for (const locale of ["pt", "en", "zh"] as const) {
       const t = translator(locale);
       for (const step of SUPPLIER_STEPS) {
@@ -85,8 +110,40 @@ describe("pendências do fornecedor por etapa", () => {
       }
     }
     expect(supplierStepOfGroup("supplier.sign")).toBe("sign");
+    expect(supplierStepOfGroup("supplier.invoice")).toBe("invoice");
     expect(supplierStepOfGroup("supplier.outra")).toBeNull();
     expect(supplierStepOfGroup("PACKAGING")).toBeNull();
+    // A etapa antiga "Embarque" saiu do caminho.
+    expect(supplierStepOfGroup("supplier.shipping")).toBeNull();
+  });
+
+  it("link antigo da etapa Embarque mostra as etapas que a substituíram", () => {
+    const task = (step: string, group = `supplier.${step}`) =>
+      ({ supplierStep: step, group, due: "none" }) as never;
+    const tasks = [
+      task("inspection"),
+      task("sample"),
+      task("carrier"),
+      task("loading"),
+      task("invoice"),
+      { kind: "confirm_receipt", group: "confirm_receipt", due: "none" },
+    ] as never[];
+    expect(
+      filterTasks(tasks, { group: "supplier.shipping" }).map(
+        (t: { group: string }) => t.group,
+      ),
+    ).toEqual([
+      "supplier.sample",
+      "supplier.carrier",
+      "supplier.loading",
+      "supplier.invoice",
+    ]);
+    // As etapas novas filtram só a si mesmas.
+    expect(
+      filterTasks(tasks, { group: "supplier.invoice" }).map(
+        (t: { group: string }) => t.group,
+      ),
+    ).toEqual(["supplier.invoice"]);
   });
 
   it("pedido: ficha de compra, aprovar a arte e assinar são etapas separadas, na ordem do caminho", async () => {

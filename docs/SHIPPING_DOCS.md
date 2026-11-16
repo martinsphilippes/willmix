@@ -44,8 +44,10 @@ uma) e a tela avisa "sem caixa master no cadastro".
 - BL não bateu → marítima: refazer.
 - BL conferido → Wellmix: documentos conferidos, embarque pode ser confirmado.
 
-Em Pendências cada documento aberto aparece para quem o faz (grupo Embarque
-do fornecedor), com link direto para o cartão.
+Em Pendências cada documento aberto aparece para quem o faz, com link direto
+para o cartão. No fornecedor e na Trading (dono, 16/11/2026): o check list de
+carga e o packing list na etapa Carregamento; a invoice (e o refazer) na
+etapa Invoice, a última do caminho dele.
 
 ## Dados
 

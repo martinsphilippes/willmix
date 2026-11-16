@@ -24,6 +24,14 @@ import {
   isPurchaseFlow,
 } from "@/lib/workflow/templates";
 import { dieCutHref, dieCutItemOf, dieCutProducts } from "@/lib/die-cut-step";
+import {
+  SUPPLIER_STEPS,
+  legacySupplierSteps,
+  supplierGroup,
+  supplierStepOfImportKey,
+  supplierStepOfItem,
+  type SupplierStep,
+} from "@/lib/supplier-steps";
 import { blockedBy } from "@/lib/purchase-lanes";
 import { realName, withoutPlaceholder } from "@/lib/placeholder-name";
 import { isRoutedLaneKey } from "@/lib/purchase-lanes";
@@ -144,40 +152,29 @@ export interface Task {
 }
 
 /*
- * Caminho do fornecedor: tudo que chega na mão dele, do Booking ao embarque,
- * na ordem em que acontece. É o filtro "Etapa" da tela de pendências do
- * fornecedor (o grupo da pendência vira `supplier.<etapa>`). Depois do
- * embarque (desembaraço, transporte, entrega ao cliente) nada depende dele.
+ * Caminho do fornecedor e da Trading, do Book à Invoice (filtro "Etapa" da
+ * tela de pendências dele; o grupo da pendência vira `supplier.<etapa>`): a
+ * regra pura fica em src/lib/supplier-steps.ts.
  */
-export const SUPPLIER_STEPS = [
-  "booking",
-  "request",
-  "sampling",
-  "dieline",
-  "sheet",
-  "art",
-  "sign",
-  "inspection",
-  "shipping",
-] as const;
-export type SupplierStep = (typeof SUPPLIER_STEPS)[number];
+export {
+  SUPPLIER_STEPS,
+  supplierGroup,
+  supplierStepOfGroup,
+  type SupplierStep,
+} from "@/lib/supplier-steps";
 
-export const supplierGroup = (step: SupplierStep) => `supplier.${step}`;
-
-/** A etapa do fornecedor de um grupo `supplier.<etapa>`; nulo nos demais. */
-export function supplierStepOfGroup(group: string): SupplierStep | null {
-  const step = group.startsWith("supplier.") ? group.slice(9) : "";
-  return (SUPPLIER_STEPS as readonly string[]).includes(step)
-    ? (step as SupplierStep)
-    : null;
+/**
+ * Passo do embarque, da origem, das amostras ou dos documentos do embarque
+ * na lista do fornecedor: a etapa do caminho dele; a divergência no
+ * recebimento (depois da Invoice) fica no grupo dos lotes com divergência.
+ */
+function supplierPlaceOfImportKey(
+  key: string,
+): { supplierStep: SupplierStep } | { group: string } | Record<never, never> {
+  const step = supplierStepOfImportKey(key);
+  if (step) return { supplierStep: step };
+  return key.startsWith("divergence_") ? { group: "divergence_lot" } : {};
 }
-
-/** Etapa do pedido → etapa do fornecedor (itens dele que não são a assinatura). */
-const SUPPLIER_STAGE_STEP: Partial<Record<StageKey, SupplierStep>> = {
-  PREPARATION: "sheet",
-  PACKAGING: "art",
-  INSPECTION: "inspection",
-};
 
 /* ---------------------------------------------------------------------------
  * Prazo: dia civil em Brasília. Uma pendência que vence hoje "vence hoje";
@@ -271,11 +268,15 @@ export function filterTasks(tasks: Task[], filter: TaskFilter): Task[] {
   const group = filter.group || null;
   // Link antigo pela etapa (?type=PREPARATION): as pendências daquela etapa.
   const stage = !!group && STAGE_ORDER.includes(group);
+  // Etapa antiga do fornecedor (?type=supplier.shipping, "Embarque"): as
+  // etapas que a substituíram.
+  const legacy = group ? legacySupplierSteps(group) : null;
   return tasks.filter(
     (t) =>
       (!due || t.due === due) &&
       (!group ||
         t.group === group ||
+        (!!legacy && !!t.supplierStep && legacy.includes(t.supplierStep)) ||
         (stage && t.stageKey === group && !t.supplierStep)),
   );
 }
@@ -661,8 +662,18 @@ export function stageTaskDrafts(
         sinceAt: stage.startedAt,
         supplierStep: "dieline",
       });
+    // Fornecedor: cada item na etapa do caminho dele pelo passo do menu do
+    // item (ficha, arte, aceite do pedido de amostras, sinal, inspeção); o
+    // item fora do caminho segue sem etapa, como antes.
+    const byStep = new Map<SupplierStep | undefined, typeof mine>();
+    for (const r of other) {
+      const step = supplier
+        ? (supplierStepOfItem(stage.key, r) ?? undefined)
+        : undefined;
+      byStep.set(step, [...(byStep.get(step) ?? []), r]);
+    }
     for (const [items, step] of [
-      [other, supplier ? SUPPLIER_STAGE_STEP[stage.key] : undefined],
+      ...[...byStep].map(([step, items]) => [items, step]),
       [sign, "sign"],
     ] as Array<[typeof mine, SupplierStep | undefined]>) {
       if (!items.length) continue;
@@ -670,8 +681,10 @@ export function stageTaskDrafts(
         kind: "requirement",
         title: `Pedido #${order.number}: ${stage.key}`,
         detail: withoutPlaceholder(items.map((r) => r.label).join(", ")),
+        // A assinatura do fornecedor leva direto ao documento do pedido; o
+        // resto (o aceite do pedido de amostras, na mesma etapa), ao pedido.
         link:
-          step === "sign"
+          items === sign
             ? `/app/orders/${order.id}/purchase-order`
             : `/app/orders/${order.id}`,
         dueAt: laneDue ?? stage.dueAt,
@@ -1171,6 +1184,8 @@ export async function pendingTasksFor(
             link: "/app/account",
             dueAt: null,
             orderNumber: order.number,
+            // O sinal pago (P12) e as outras parcelas: a etapa Confirmar sinal.
+            supplierStep: "deposit",
           },
           now,
         ),
@@ -1435,7 +1450,9 @@ export async function pendingTasksFor(
             dueAt: null,
             requestId: p.order.requestId,
             sinceAt: p.sinceAt ?? null,
-            ...(supplier && !cert ? { supplierStep: "shipping" as const } : {}),
+            // Fornecedor: a etapa do caminho dele pelo passo do menu (amostra,
+            // transportadora, carregamento, invoice).
+            ...(supplier && !cert ? supplierPlaceOfImportKey(p.key) : {}),
             orderNumber: p.order.number,
             customerId: p.order.customerId,
             ownerUserId:
@@ -1650,8 +1667,10 @@ export async function pendingTasksFor(
               stepKey: `shipping_${p.kind}`,
               dueAt: null,
               requestId: p.order.requestId,
+              // Fornecedor: check list e packing list no Carregamento; a
+              // invoice na Invoice.
               ...(user.role === "supplier"
-                ? { supplierStep: "shipping" as const }
+                ? supplierPlaceOfImportKey(`shipping_${p.kind}`)
                 : {}),
               orderNumber: p.order.number,
               customerId: p.order.customerId,
@@ -1900,7 +1919,10 @@ async function datesForSupplier(tasks: Task[]): Promise<void> {
     (t) =>
       t.kind === "requirement" &&
       !!t.orderId &&
-      (t.supplierStep === "art" || t.supplierStep === "sign"),
+      (t.supplierStep === "art" ||
+        // A assinatura (o aceite do pedido de amostras não espera a Wellmix).
+        (t.supplierStep === "sign" &&
+          !!t.items?.some((i) => i.key === ORDER_SIGNED_SUPPLIER))),
   );
   if (!waiting.length) return;
   const before = await store.list("requirements", {
