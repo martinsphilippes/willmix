@@ -660,3 +660,36 @@ export async function fillCustomerContacts(page: Page, prefix = "cliente") {
       .fill(`${role}@${prefix}.com`);
   }
 }
+
+/**
+ * Reposição pelo "+ Adicionar" (dono, 16/11/2026; docs/REQUEST_SCREENS.md,
+ * seção 7): o botão da fila abre a tela Venda como compra para estoque. Abre
+ * a reposição de um produto do catálogo (a busca e o total de caixas) e
+ * devolve o id da solicitação, que a fila de Reposição mostra.
+ */
+export async function openReplenishment(
+  page: Page,
+  search: string,
+  total: string,
+): Promise<string> {
+  await page.goto("/app/replenishment");
+  await page.locator("[data-replenishment-add]").click();
+  await page.waitForURL(/\/app\/new-request\/sale\?from=replenishment$/);
+  const row = page.locator('[data-request-item="0"]');
+  const picker = row.locator('[data-product-picker="catalog"]');
+  await picker.locator("[data-product-picker-input]").fill(search);
+  const option = picker.locator("[data-product-picker-option]").first();
+  await expect(option).toBeVisible();
+  await option.click();
+  await expect(row.locator('[role="status"]').first()).toBeVisible();
+  await row
+    .locator("[data-rounds-generator] [data-generate-total]")
+    .fill(total);
+  // Produto sem peças por caixa master: as caixas não viram peças, e a
+  // quantidade (peças) é digitada.
+  const pieces = row.locator("[data-selection-quantity]");
+  if (!(await pieces.inputValue())) await pieces.fill(total);
+  await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
+  await page.waitForURL(/\/app\/replenishment\?opened=/);
+  return new URL(page.url()).searchParams.get("opened")!;
+}

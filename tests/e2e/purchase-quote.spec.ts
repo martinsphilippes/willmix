@@ -1,5 +1,10 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
-import { createTeamLogin, grantTeamScreen, login } from "./helpers";
+import { expect, test, type Page } from "@playwright/test";
+import {
+  createTeamLogin,
+  grantTeamScreen,
+  login,
+  openReplenishment,
+} from "./helpers";
 
 /*
  * Cotação de compra (mapa B13; dono, 15/11/2026; docs/PURCHASE_DEMAND.md):
@@ -9,13 +14,6 @@ import { createTeamLogin, grantTeamScreen, login } from "./helpers";
  * cliente; o cliente não abre a demanda de outra empresa nem vê fornecedor
  * ou custo. O prazo é curto (0,02 h) para vencer durante o teste; volta a 24.
  */
-
-async function choose(picker: Locator, marker: string, text: string) {
-  await picker.locator(`[data-${marker}-input]`).fill(text);
-  const option = picker.locator(`[data-${marker}-option]`).first();
-  await expect(option).toBeVisible();
-  await option.click();
-}
 
 async function setQuoteHours(page: Page, hours: string) {
   await login(page, "admin@wellmix.com");
@@ -62,17 +60,7 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
 
   // Reposição da jarra pelo Planner; o Comprador escolhe cotar.
   await login(page, "operador@wellmix.com");
-  await page.goto("/app/replenishment");
-  const form = page.locator("[data-replenishment-new]");
-  await choose(
-    form.locator('[data-product-picker="active"]'),
-    "product-picker",
-    "UTL-001",
-  );
-  await form.locator("[data-replenishment-quantity]").fill("4000");
-  await form.locator("[data-replenishment-submit]").click();
-  await page.waitForURL(/[?&]opened=/);
-  const demandId = new URL(page.url()).searchParams.get("opened")!;
+  const demandId = await openReplenishment(page, "UTL-001", "4000");
   await page.goto("/app/purchase-strategy");
   const group = page.locator(`form:has([data-strategy-demand="${demandId}"])`);
   const others = group.locator(

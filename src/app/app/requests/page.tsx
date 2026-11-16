@@ -18,6 +18,7 @@ import {
   type Screen,
 } from "@/lib/auth/screens";
 import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
+import { REQUEST_SCREEN } from "@/lib/request-screens";
 import { canDeleteRequest } from "@/lib/services/requests";
 import {
   cancelledOrderIds,
@@ -67,7 +68,7 @@ import { pendingTasksFor } from "@/lib/services/tasks";
 import { customerOrdersInProgress } from "@/lib/services/customer-home";
 import { milestoneTitle, orderMilestoneText } from "@/lib/milestones";
 import {
-  REQUEST_SITUATIONS,
+  LISTED_SITUATIONS,
   inSituation,
   matchesRequest,
   nextStepText,
@@ -149,12 +150,17 @@ export default async function RequestsPage({
     r.status === "CANCELLED" ||
     requestDisplayStatus(r, cancelled) === "ORDER_CANCELLED";
   const deletedCount = visible.filter(closed).length;
+  // Encomenda que já virou pedido não é mais desta etapa (dono, 16/11/2026):
+  // segue no Pedido em diante (/app/orders). Fora da lista, dos contadores e
+  // dos filtros; o filtro de um lote (?group=) continua mostrando o lote todo.
+  const ordered = (r: (typeof visible)[number]) =>
+    !groupId && requestDisplayStatus(r, cancelled) === "ORDERED";
   const byStatus = visible.filter((r) =>
-    showDeleted ? closed(r) : !closed(r),
+    showDeleted ? closed(r) : !closed(r) && !ordered(r),
   );
   // Wellmix: filtro por situação (cartões) e busca, como na ordem de venda.
   const situation: RequestSituation = (
-    REQUEST_SITUATIONS as readonly string[]
+    LISTED_SITUATIONS as readonly string[]
   ).includes(String(sp.situ))
     ? (sp.situ as RequestSituation)
     : "all";
@@ -169,7 +175,7 @@ export default async function RequestsPage({
   const partyById = indexBy(parties, "id");
   const customerName = (id: string) => partyById.get(id)?.name ?? "";
   const situationCounts = Object.fromEntries(
-    REQUEST_SITUATIONS.map((k) => [
+    LISTED_SITUATIONS.map((k) => [
       k,
       byStatus.filter((r) =>
         inSituation(r, requestDisplayStatus(r, cancelled), k, today),
@@ -604,10 +610,20 @@ export default async function RequestsPage({
         subtitle={customer ? t("home.welcome", { name: user.name }) : undefined}
         // O cliente cria pela vitrine (cartão abaixo). Outro login que receba
         // a tela (Gestão de telas) só consulta: não cria solicitação.
+        // Wellmix (dono, 16/11/2026): "+ Adicionar" abre TS - Trading Sales;
+        // quem não abre essa tela segue para a Nova solicitação de Encomendas.
         actions={
           wellmix ? (
-            <LinkButton href="/app/requests/new" variant="primary">
-              + {t("requests.new")}
+            <LinkButton
+              href={
+                canOpen(user, "requestTs")
+                  ? REQUEST_SCREEN.ts.path
+                  : "/app/requests/new"
+              }
+              variant="primary"
+              data-request-add
+            >
+              + {t("requestScreen.add")}
             </LinkButton>
           ) : undefined
         }
@@ -820,7 +836,7 @@ export default async function RequestsPage({
         <div className="mb-3 space-y-2" data-request-filters>
           {/* Situação como cartões-filtro (o escolhido fica marcado). */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            {REQUEST_SITUATIONS.map((k) => (
+            {LISTED_SITUATIONS.map((k) => (
               <Stat
                 key={k}
                 compact

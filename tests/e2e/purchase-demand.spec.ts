@@ -142,21 +142,30 @@ test("carrinho da vitrine: um item de pronta entrega e outro sob encomenda", asy
   ).toBeVisible();
 });
 
-test("reposição aberta pelo Planner entra na fila", async ({ page }) => {
+test("reposição aberta pelo + Adicionar entra na fila", async ({ page }) => {
   await login(page, "operador@wellmix.com");
   await page.goto("/app/replenishment");
   await expect(page.locator("[data-replenishment-manual]")).toBeVisible();
-  const form = page.locator("[data-replenishment-new]");
+  // O bloco "Abrir reposição" saiu (dono, 16/11/2026): o caminho é o botão.
+  await expect(page.locator("[data-replenishment-new]")).toHaveCount(0);
+  await page.locator("[data-replenishment-add]").click();
+  // A tela Venda - Encomenda, aberta como compra para estoque.
+  await page.waitForURL(/\/app\/new-request\/sale\?from=replenishment$/);
+  await expect(page.locator("[data-request-replenishment]")).toBeVisible();
+  await expect(page.locator("[data-stock-option]")).toBeChecked();
+  const row = page.locator('[data-request-item="0"]');
   await choose(
-    form.locator('[data-product-picker="active"]'),
+    row.locator('[data-product-picker="catalog"]'),
     "product-picker",
     "boneca",
     "prod-boneca",
   );
-  await form.locator("[data-replenishment-quantity]").fill("3000");
-  await form.locator("[data-replenishment-date]").fill("2099-03-01");
-  await form.locator("[data-replenishment-submit]").click();
-  await page.waitForURL(/[?&]opened=/);
+  await expect(row.locator('[role="status"]').first()).toBeVisible();
+  await row
+    .locator("[data-rounds-generator] [data-generate-total]")
+    .fill("3000");
+  await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
+  await page.waitForURL(/\/app\/replenishment\?opened=/);
   await expect(page.locator("[data-replenishment-opened]")).toBeVisible();
   const opened = new URL(page.url()).searchParams.get("opened");
   await expect(
