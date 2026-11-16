@@ -135,6 +135,16 @@ describe("passos do menu", () => {
         expect(dict[`flow.help.${s.block}.${s.key}`]).toBeTruthy();
       }
   });
+
+  it("a explicação do passo não leva os códigos do mapa (R3, R4?, B10?…)", () => {
+    // O subtítulo aparece para o fornecedor e os parceiros, que não conhecem
+    // os códigos do mapa do processo (docs/FLOW_MENU.md).
+    for (const s of FLOW_STEPS)
+      for (const dict of [pt, en, zh] as Record<string, string>[])
+        expect(dict[`flow.help.${s.block}.${s.key}`]).not.toMatch(
+          /\b[BPREV]\d{1,2}\b/,
+        );
+  });
 });
 
 describe("resolver na tela do passo", () => {

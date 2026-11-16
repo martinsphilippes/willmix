@@ -211,6 +211,110 @@ describe("escolha e aprovação", () => {
   });
 });
 
+describe("pendências da estratégia de compra nos três idiomas", () => {
+  it("título, detalhe e tipo por chave: nada em português em en e zh", async () => {
+    const { translator } = await import("@/i18n");
+    const { dictionaries } = await import("@/i18n/dictionaries");
+    const { taskTextValues } = await import("@/lib/task-text");
+    const store = getStore();
+    // Uma encomenda esperando a escolha, uma estratégia esperando a
+    // aprovação e uma aprovada sem pedido: os três tipos de pendência.
+    const chooseDemand = await demand("prod-jarra", 4800);
+    const approve = await strategy.chooseStrategy(buyer, {
+      demandIds: [(await demand("prod-panela", 1100)).id],
+      choice: "quote",
+      note: null,
+    });
+    const order = await strategy.chooseStrategy(buyer, {
+      demandIds: [(await demand("prod-panela", 1200)).id],
+      choice: "last_supplier",
+      note: null,
+    });
+    await strategy.decideStrategy(director, order.id, {
+      approve: true,
+      note: null,
+    });
+    const drafts = await strategy.strategyTaskDrafts(
+      await store.list("requests", { filter: { status: "REQUESTED" } }),
+    );
+    const of = (kind: string, link: string) =>
+      drafts.find((d) => d.kind === kind && d.link === link)!;
+    const choose = drafts.find(
+      (d) =>
+        d.kind === "purchase_strategy" &&
+        d.text.numbers?.quantity === chooseDemand.quantity,
+    )!;
+    const picked = [
+      choose,
+      of(
+        "purchase_strategy_approve",
+        `/app/purchase-strategy#decision-${approve.id}`,
+      ),
+      of(
+        "purchase_strategy_order",
+        `/app/purchase-strategy#decision-${order.id}`,
+      ),
+    ];
+    expect(picked.every(Boolean)).toBe(true);
+
+    // Em português segue como era (quem não traduz lê `title` e `detail`).
+    expect(choose.title).toBe("Estratégia de compra: prod-jarra");
+    expect(choose.detail).toBe("Encomenda · 4.800 un");
+    expect(picked[1].title).toBe(
+      `Aprovar estratégia de compra nº ${approve.number}`,
+    );
+    expect(picked[1].detail).toBe("Cotar entre fornecedores");
+    expect(picked[2].title).toBe(
+      `Gerar pedido de compra da estratégia nº ${order.number}`,
+    );
+    expect(picked[2].detail).toBe("Fornecedor da última compra");
+
+    const render = (locale: "pt" | "en" | "zh", d: (typeof drafts)[number]) => {
+      const t = translator(locale);
+      const values = taskTextValues(t, d.text);
+      return {
+        title: t(d.text.title, values),
+        detail: t(d.text.detail, values),
+        group: t(`tasks.group.${d.kind}` as Parameters<typeof t>[0]),
+      };
+    };
+    // A tela traduz pela chave: o mesmo texto de `title`/`detail` em pt.
+    for (const d of picked)
+      expect(render("pt", d)).toMatchObject({
+        title: d.title,
+        detail: d.detail,
+      });
+    expect(render("en", choose)).toEqual({
+      title: "Purchase strategy: prod-jarra",
+      detail: "Customer order · 4,800 un",
+      group: "Purchase strategy",
+    });
+    expect(render("zh", choose)).toEqual({
+      title: "采购策略：prod-jarra",
+      detail: "客户订货 · 4,800 un",
+      group: "采购策略",
+    });
+    for (const locale of ["en", "zh"] as const) {
+      const dict = dictionaries[locale] as Record<string, string>;
+      for (const d of picked) {
+        // A chave existe no próprio idioma (sem cair no português).
+        for (const key of [
+          d.text.title,
+          d.text.detail,
+          `tasks.group.${d.kind}`,
+        ])
+          expect(dict[key], `${locale}: ${key}`).toBeTruthy();
+        const text = render(locale, d);
+        // Sem chave crua e sem as palavras do texto gravado em português.
+        expect(text.group).not.toContain("tasks.group.");
+        expect(`${text.title} ${text.detail} ${text.group}`).not.toMatch(
+          /Estratégia|Encomenda|Reposição|Aprovar|Gerar|Fornecedor|Cotar|nº/,
+        );
+      }
+    }
+  });
+});
+
 describe("pedido pela estratégia sem “Ver preço de compra”", () => {
   /*
    * Dono, 15/11/2026 (docs/LINHA_DE_VISAO.md, seção 7): quem gera o pedido

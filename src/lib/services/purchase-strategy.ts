@@ -15,8 +15,10 @@ import {
   canSeePurchasePrice,
   holdersOf,
 } from "@/lib/auth/function-access";
+import { translator } from "@/i18n";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { demandKind } from "@/lib/purchase-demand";
+import { taskTextValues, type TaskText } from "@/lib/task-text";
 import { audit } from "./audit";
 import { notify } from "./notifications";
 import { isStockCustomer } from "./stock-party";
@@ -441,40 +443,72 @@ export async function strategyTaskDrafts(openRequests: Request[]) {
       | "purchase_strategy_order";
     title: string;
     detail: string;
+    text: TaskText;
     link: string;
     dueAt: string | null;
     customerId?: string | null;
     ownerUserId?: string | null;
   };
-  const drafts: Draft[] = waiting.map((r) => ({
-    kind: "purchase_strategy",
-    title: `Estratégia de compra: ${r.productName}`,
-    detail: `${demandKind(r) === "replenishment" ? "Reposição" : "Encomenda"} · ${r.quantity.toLocaleString("pt-BR")} ${r.unit}`,
-    link: "/app/purchase-strategy",
-    dueAt: null,
-    customerId: r.customerId,
-    ownerUserId: r.ownerUserId ?? null,
-  }));
-  for (const d of decisions) {
-    if (d.status === "pending")
-      drafts.push({
-        kind: "purchase_strategy_approve",
-        title: `Aprovar estratégia de compra nº ${d.number}`,
+  // Título e detalhe por chave e valores: a tela traduz no idioma de quem lê
+  // (`Task.text`); `title` e `detail` ficam em português para quem não traduz.
+  const ptText = translator("pt");
+  const draft = (d: Omit<Draft, "title" | "detail">): Draft => {
+    const values = taskTextValues(ptText, d.text);
+    return {
+      ...d,
+      title: ptText(d.text.title, values),
+      detail: ptText(d.text.detail, values),
+    };
+  };
+  const drafts: Draft[] = waiting.map((r) =>
+    draft({
+      kind: "purchase_strategy",
+      text: {
+        title: "strategy.task.choose.title",
         detail:
-          d.choice === "last_supplier"
-            ? "Fornecedor da última compra"
-            : "Cotar entre fornecedores",
-        link: `/app/purchase-strategy#decision-${d.id}`,
-        dueAt: null,
-      });
+          demandKind(r) === "replenishment"
+            ? "strategy.task.choose.detail.replenishment"
+            : "strategy.task.choose.detail.order",
+        values: { product: r.productName, unit: r.unit },
+        numbers: { quantity: r.quantity },
+      },
+      link: "/app/purchase-strategy",
+      dueAt: null,
+      customerId: r.customerId,
+      ownerUserId: r.ownerUserId ?? null,
+    }),
+  );
+  for (const d of decisions) {
+    const values = { n: d.number };
+    if (d.status === "pending")
+      drafts.push(
+        draft({
+          kind: "purchase_strategy_approve",
+          text: {
+            title: "strategy.task.approve.title",
+            detail:
+              d.choice === "last_supplier"
+                ? "strategy.choice.last_supplier"
+                : "strategy.choice.quote",
+            values,
+          },
+          link: `/app/purchase-strategy#decision-${d.id}`,
+          dueAt: null,
+        }),
+      );
     else if (d.choice === "last_supplier" && !d.orderId)
-      drafts.push({
-        kind: "purchase_strategy_order",
-        title: `Gerar pedido de compra da estratégia nº ${d.number}`,
-        detail: "Fornecedor da última compra",
-        link: `/app/purchase-strategy#decision-${d.id}`,
-        dueAt: null,
-      });
+      drafts.push(
+        draft({
+          kind: "purchase_strategy_order",
+          text: {
+            title: "strategy.task.order.title",
+            detail: "strategy.choice.last_supplier",
+            values,
+          },
+          link: `/app/purchase-strategy#decision-${d.id}`,
+          dueAt: null,
+        }),
+      );
   }
   return drafts;
 }

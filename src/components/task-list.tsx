@@ -16,6 +16,7 @@ import {
   type Task,
 } from "@/lib/services/tasks";
 import { tasksForFunctions } from "@/lib/task-owner";
+import { taskTextValues } from "@/lib/task-text";
 import { milestoneTitle } from "@/lib/milestones";
 import { getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
@@ -497,8 +498,9 @@ export function TaskItems({
       <tbody>
         {tasks.map((task, i) => {
           // Requisito de etapa: etapa traduzida (o serviço guarda a chave).
+          const values = task.text ? taskTextValues(t, task.text) : undefined;
           const title = task.text
-            ? t(task.text.title, task.text.values)
+            ? t(task.text.title, values)
             : task.supplierStep && task.stageKey && task.orderNumber
               ? t("supplierTasks.orderStep", {
                   n: task.orderNumber,
@@ -516,10 +518,8 @@ export function TaskItems({
           // rótulos dos itens do pedido são gravados em português).
           const detail = task.text
             ? [
-                t(task.text.detail, task.text.values),
-                task.text.detailExtra
-                  ? t(task.text.detailExtra, task.text.values)
-                  : "",
+                t(task.text.detail, values),
+                task.text.detailExtra ? t(task.text.detailExtra, values) : "",
               ]
                 .filter(Boolean)
                 .join(" ")

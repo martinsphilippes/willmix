@@ -2,6 +2,7 @@ import type { FlowCase as Task } from "@/lib/services/flow";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { milestoneTitle } from "@/lib/milestones";
+import { taskTextValues } from "@/lib/task-text";
 import {
   caseHref,
   itemsInStep,
@@ -38,7 +39,7 @@ const PIN =
   "sticky right-0 z-10 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] lg:shadow-none";
 
 export function caseTitle(task: Task, t: Translate): string {
-  if (task.text) return t(task.text.title, task.text.values);
+  if (task.text) return t(task.text.title, taskTextValues(t, task.text));
   if (task.stageKey && task.orderNumber)
     return t("tasks.orderStage", {
       n: task.orderNumber,
@@ -54,7 +55,9 @@ export function caseDetail(task: Task, step: FlowStep, t: Translate): string {
     const mine = itemsInStep(step, task);
     if (mine.length) return mine.map((i) => i.label).join(", ");
   }
-  return task.text ? t(task.text.detail, task.text.values) : task.detail;
+  return task.text
+    ? t(task.text.detail, taskTextValues(t, task.text))
+    : task.detail;
 }
 
 export function FlowCases({

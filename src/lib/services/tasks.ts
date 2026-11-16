@@ -15,6 +15,7 @@ import {
 import { STAGE_KEYS } from "@/lib/db/schema";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import type { TaskItem } from "@/lib/task-owner";
+import type { TaskText } from "@/lib/task-text";
 import { can } from "@/lib/auth/function-access";
 import {
   ORDER_SIGN_SEND,
@@ -110,13 +111,7 @@ export interface Task {
    * quem usa outro idioma (ex.: fornecedor chinês); sem isto valem `title` e
    * `detail`, em português.
    */
-  text?: {
-    title: DictionaryKey;
-    detail: DictionaryKey;
-    /** Frase a mais no detalhe (ex.: o que falta designar e onde). */
-    detailExtra?: DictionaryKey;
-    values: Record<string, string | number>;
-  };
+  text?: TaskText;
   /** Filtro "tipo": a etapa (requisito) ou o tipo da pendência. */
   group: string;
   /** Filtro "prazo". */
