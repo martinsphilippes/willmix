@@ -5,7 +5,14 @@
  * Grava film/shots/<idioma ou pasta>/<nome>.png (2560 × 1600: janela de
  * 1280 × 800 em dobro, para os zooms continuarem nítidos). Com --review grava
  * miniaturas. PORTAL e DATA_DIR escolhem o servidor e a base (padrão: porta
- * 3200 e .data-video).
+ * 3200 e .data-video). Em português, com a base de data-pt.mjs e o chat de
+ * seed-chat.mjs (LANGUAGE=pt):
+ *   PORTAL=http://localhost:3203 DATA_DIR=<repo>/.data-video-br \
+ *   PW_CHROMIUM=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome \
+ *   node shots.mjs pt <nomes> --out br
+ * (PW_CHROMIUM = Chromium completo: o campo de data nativo sai "dd/mm/aaaa";
+ * o Chromium "headless shell" escreve "dd/mm/yyyy".) Cada captura avisa
+ * ("ATENÇÃO") se o texto visível tem cara de sobra de teste ou chave crua.
  */
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -40,6 +47,11 @@ const REDACT = () => {
       if (/sankhya/i.test(el.getAttribute(a) ?? ""))
         el.setAttribute(a, el.getAttribute(a).replace(/Sankhya/gi, "ERP"));
 };
+
+/* O que não pode aparecer nas telas: sobra do E2E ou do scrub, tradução de
+   exemplo, ERP pelo nome, "undefined" e chaves de dicionário cruas (a.b.c). */
+const SUSPECT =
+  /e2e|zqx|exemplo mock|\(mock\)|sankhya|undefined|\[object|\bNaN\b|\b[a-z]+(?:\.[a-z][a-zA-Z]+){2,}\b/i;
 
 const A = {
   admin: "admin@wellmix.com",
@@ -125,6 +137,9 @@ await mkdir(outDir, { recursive: true });
 // O navegador sobe no idioma da tela: os campos de data nativos seguem o
 // idioma do próprio Chromium (dd/mm/aaaa em pt, 年/月/日 em zh), não o da página.
 const LOCALE = { pt: "pt-BR", zh: "zh-CN", en: "en-US" }[lang] ?? "en-US";
+// No Linux o Chromium escolhe a ordem do campo de data (dd/mm × mm/dd) pela
+// variável LANGUAGE, não pelo --lang: o navegador herda a do idioma da tela.
+process.env.LANGUAGE = LOCALE.replace("-", "_");
 const browser = await launch([`--lang=${LOCALE}`]);
 const sessions = new Map();
 async function session(account, mobile, wide, tall) {
@@ -202,14 +217,27 @@ for (const name of names) {
           card.getBoundingClientRect().top + window.scrollY - below - top,
         );
         thread.scrollTop = 0; // coluna invertida: 0 = mensagens mais novas
-        // A conversa não cabe inteira na caixa: se a mensagem do topo ficou
-        // com o cabeçalho cortado por pouco, sobe o bastante para mostrá-lo.
-        const box = thread.getBoundingClientRect();
-        for (const li of thread.querySelectorAll("li[data-message]")) {
-          const r = li.getBoundingClientRect();
-          const cut = box.top - r.top;
-          if (cut > 0 && cut < 40 && r.bottom > box.top)
-            thread.scrollTop -= cut + 2;
+        // A caixa da conversa tem 60 % da altura e pode não mostrar tudo.
+        // Em vez de deixar uma bolha cortada em cima ou embaixo, a caixa cresce
+        // (até 140 px) para mostrar inteiras as mensagens mais novas que couberem.
+        const cs = getComputedStyle(thread);
+        const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+        const lis = [...thread.querySelectorAll("li[data-message]")];
+        if (lis.length) {
+          const rects = lis.map((li) => li.getBoundingClientRect());
+          const end = rects.at(-1).bottom;
+          let fit = 0;
+          let need = 0;
+          for (let k = 1; k <= lis.length; k++) {
+            const h = end - rects[lis.length - k].top + pad;
+            if (h > thread.clientHeight + 140) break;
+            fit = k;
+            need = h;
+          }
+          // Só mexe na caixa se alguma bolha ficaria cortada.
+          if (fit < lis.length || need > thread.clientHeight)
+            thread.style.maxHeight = `${Math.ceil(need) + 1}px`;
+          thread.scrollTop = 0;
         }
       }, o.chat);
     }
@@ -218,6 +246,16 @@ for (const name of names) {
       () => (document.body.innerText.match(/sankhya/gi) ?? []).length,
     );
     await page.evaluate(REDACT);
+    // Sobra de teste, chave de texto crua ("tasks.group.x") ou valor vazio na tela.
+    const suspect = await page.evaluate(
+      (src) =>
+        [
+          ...new Set(
+            document.body.innerText.match(new RegExp(src, "gi")) ?? [],
+          ),
+        ].slice(0, 8),
+      SUSPECT.source,
+    );
     await page.screenshot({
       path: join(outDir, `${name}.${review ? "jpg" : "png"}`),
       ...(review ? { type: "jpeg", quality: 72 } : {}),
@@ -228,6 +266,7 @@ for (const name of names) {
       res?.status(),
       new URL(page.url()).pathname,
       named ? `(ERP: ${named} trocas)` : "",
+      suspect.length ? `ATENÇÃO: ${JSON.stringify(suspect)}` : "",
     );
   } catch (e) {
     console.log("FALHOU", lang, name, e.message.split("\n")[0]);

@@ -31,6 +31,7 @@ const T = {
     senha: "Password",
     entrar: "Sign in",
     fornecedor: /^Supplier$/,
+    arquivo: "sample-long-drink-glass.jpg",
   },
   pt: {
     cookie: "pt",
@@ -39,6 +40,7 @@ const T = {
     senha: /senha/i,
     entrar: "Entrar",
     fornecedor: /^Fornecedor$/,
+    arquivo: "amostra-copo-long-drink.jpg",
   },
 }[IDIOMA];
 const SENHA = "wellmix123";
@@ -177,7 +179,7 @@ async function desenharFoto(browser) {
   await page.setContent(`<body style="margin:0">${fotoSvg()}</body>`);
   const arquivo = join(
     mkdtempSync(join(tmpdir(), "seed-chat-")),
-    "sample-long-drink-glass.jpg",
+    T.arquivo,
   );
   await page
     .locator("svg")

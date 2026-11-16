@@ -50,6 +50,15 @@ const RULES = [
   ["marco inspection", "marco Inspeção"],
   ["marco production", "marco Produção"],
   ["Bill of Lading (BL)", "Conhecimento de embarque (BL)"],
+  // Tipo do arquivo no começo do texto da trilha ("attachment: foto.jpg v1")
+  [/^attachment: /, "anexo: "],
+  [/^photo: /, "foto: "],
+  [/^other: /, "outro: "],
+  // Função da pessoa criada, gravada com o nome interno ("gabi@wellmix.com (operator)")
+  [/(@[\w.-]+) \(operator\)/g, "$1 (operador)"],
+  [/(@[\w.-]+) \(supplier\)/g, "$1 (fornecedor)"],
+  // Pessoa criada pelo teste de cotação, sem nome de gente
+  ["Planejamento cotação", "Pedro Planejamento"],
 ];
 
 /* Passos do pedido que o E2E preencheu com "ok": valor de exemplo plausível. */
@@ -121,13 +130,20 @@ const tr = (s) => {
   return s;
 };
 // Só valores (as chaves do JSON são nomes de campo e ficam como estão).
-const walk = (v) => {
-  if (typeof v === "string") return tr(v);
-  if (Array.isArray(v)) return v.map(walk);
+const walk = (v, key = "") => {
+  if (typeof v === "string") {
+    // Unidade em inglês ("pcs") nos pedidos: o resto da base usa "un".
+    if (key === "unit" && v === "pcs") {
+      count.set("unit pcs", (count.get("unit pcs") ?? 0) + 1);
+      return "un";
+    }
+    return tr(v);
+  }
+  if (Array.isArray(v)) return v.map((x) => walk(x, key));
   if (v && typeof v === "object") {
     for (const k of Object.keys(v))
       // E-mail é login: fica como está.
-      if (!/email/i.test(k)) v[k] = walk(v[k]);
+      if (!/email/i.test(k)) v[k] = walk(v[k], k);
     return v;
   }
   return v;
