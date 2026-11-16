@@ -1738,3 +1738,14 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Como ficou** (docs/RESUMOS.md): vencido, a tela mostra o último agregado e reconstrói depois da resposta; a reconstrução refaz as vencidas em lotes (200) e no máximo 1.000 por rodada.
 - **Aditivo:** sem mudança no banco nem em telas.
 - Testes: `tests/unit/tower-kpis-stale.test.ts`.
+
+## Parceiros: ligação entre Tipos de parceiro e Acessos externos
+
+- **Pedido do dono** (16/11/2026), depois da análise das duas abas (as duas ficam: Tipos cuida do cadastro da categoria e do login permitido; Acessos externos, das telas de cada perfil): fazer os ajustes de ligação entre elas.
+- **Como ficou:**
+  - **Acessos externos → Tipos:** "Editar tipo" ao lado do nome do perfil abre o painel "Editar" do tipo em Tipos de parceiro. Vale nos perfis de tipo e nos papéis dos tipos antigos (Agência, Despachante…); Cliente e Fornecedor ficam sem o link.
+  - **Tipos → Acessos externos:** além do "Configurar telas" da linha, o painel Editar/Renomear de um tipo com perfil de telas traz o mesmo link.
+  - **Perfil inexistente no endereço:** aviso com o perfil pedido e o mostrado, e o link para Tipos de parceiro (antes, a aba trocava para o primeiro perfil sem avisar).
+  - **Contagens explicadas:** em Tipos, "Parceiros" conta cadastros de empresa (não logins); em Acessos externos, "logins ativos" são as pessoas que entram com o perfil.
+- **Aditivo:** nenhuma tela, rota, campo, permissão ou dado mudou; só links e textos. Docs: docs/PARTNER_ACCESS.md e docs/PARTNER_TYPES.md.
+- Testes: `tests/unit/partner-access-panels.test.ts` (endereços, aviso e o tipo por trás de cada perfil) e `tests/e2e/partner-access-panels.spec.ts` (ida e volta entre as abas, aviso e explicações).

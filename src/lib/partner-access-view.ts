@@ -138,3 +138,36 @@ export function editHref(profile: string, screen: string): string {
   const p = new URLSearchParams({ profile, focus: screen });
   return `${ACCESS_BASE}?${p.toString()}#access-${screen}`;
 }
+
+/*
+ * Ligação entre as abas Tipos de parceiro e Acessos externos (dono,
+ * 16/11/2026): "Configurar telas" (do tipo para o perfil de telas) e
+ * "Editar tipo" (do perfil para o tipo), e o aviso quando o endereço pede um
+ * perfil que não está na lista.
+ */
+
+/** A aba Tipos de parceiro. */
+export const PARTNER_TYPES_BASE = "/app/parties/types";
+
+/** Acessos externos já no perfil (o link "Configurar telas"). */
+export const profileHref = (profileKey: string) =>
+  `${ACCESS_BASE}?${new URLSearchParams({ profile: profileKey }).toString()}`;
+
+/** Tipos de parceiro com o painel "Editar" do tipo aberto (o link "Editar tipo"). */
+export const typeEditHref = (value: string) =>
+  `${PARTNER_TYPES_BASE}?${new URLSearchParams({ panel: "edit", type: value }).toString()}`;
+
+/**
+ * O endereço pediu um perfil que não está na lista (o tipo deixou de
+ * permitir login, foi trocado ou o link é antigo). Devolve o que foi pedido,
+ * para o aviso; nulo quando nada foi pedido ou o perfil existe. A página
+ * continua mostrando o primeiro perfil, agora com o aviso.
+ */
+export function missingProfile(
+  requested: string | string[] | undefined,
+  known: readonly string[],
+): string | null {
+  const raw = typeof requested === "string" ? requested.trim() : "";
+  if (!raw) return null;
+  return known.includes(raw) ? null : raw.slice(0, 80);
+}

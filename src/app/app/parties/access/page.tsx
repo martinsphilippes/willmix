@@ -8,6 +8,8 @@ import { getT } from "@/i18n/server";
 import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
 import type { CopyPreviewRow, ScreenChange } from "@/lib/partner-access";
 import {
+  PARTNER_TYPES_BASE,
+  missingProfile,
   panelHref,
   parseAccessUrl,
   viewHref,
@@ -61,6 +63,12 @@ export default async function PartnerAccessPage({
   const profiles = await listAccessProfiles();
   const byKey = (key: string) => profiles.find((p) => p.key === key) ?? null;
   const current = byKey(url.profile) ?? profiles[0];
+  // Perfil pedido no endereço que não está na lista (dono, 16/11/2026): a
+  // página mostra o primeiro, com o aviso, em vez de trocar em silêncio.
+  const missing = missingProfile(
+    sp.profile,
+    profiles.map((p) => p.key),
+  );
   const screen: Screen = isScreen(url.screen) ? url.screen : "orders";
 
   const error = one("error");
@@ -133,6 +141,22 @@ export default async function PartnerAccessPage({
         }
       />
       <div className="mb-3 space-y-2">
+        {missing ? (
+          <div data-access-missing-profile={missing}>
+            <Alert tone="warning">
+              {t("partnerAccess.missingProfile", {
+                profile: missing,
+                shown: profileLabel(current, t),
+              })}{" "}
+              <Link
+                href={PARTNER_TYPES_BASE}
+                className="font-medium underline underline-offset-2"
+              >
+                {t("partnerAccess.missingProfile.types")}
+              </Link>
+            </Alert>
+          </div>
+        ) : null}
         {error && url.panel !== "copy" ? (
           <Alert tone="danger">{errorText(error)}</Alert>
         ) : null}

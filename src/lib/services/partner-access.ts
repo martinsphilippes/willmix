@@ -141,6 +141,13 @@ export interface AccessProfileInfo {
   /** Papel (para o nome traduzido) ou a entrada do catálogo de tipos. */
   role: string | null;
   type: PartnerTypeEntry | null;
+  /**
+   * O tipo de parceiro cujos logins usam este perfil (link "Editar tipo",
+   * dono, 16/11/2026): o próprio tipo nos perfis de tipo; nos papéis, o tipo
+   * de fábrica do mesmo nome (Agência, Despachante…). Nulo em Cliente e
+   * Fornecedor, que não são tipos de parceiro.
+   */
+  partnerType: PartnerTypeEntry | null;
   access: ProfileAccess;
   /** Logins ativos que usam o perfil (quem a mudança afeta). */
   users: number;
@@ -188,6 +195,7 @@ export async function listAccessProfiles(): Promise<AccessProfileInfo[]> {
     kind,
     role,
     type,
+    partnerType: catalog.find((e) => e.profileKey === key) ?? null,
     access: resolveProfile(config, key),
     users: count.get(key) ?? 0,
   });

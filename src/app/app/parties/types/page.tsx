@@ -13,6 +13,7 @@ import {
   type PartnerTypeEntry,
 } from "@/lib/partner-types";
 import { OTHER_PARTY_TYPES, isOtherPartyType } from "@/lib/party-types";
+import { ACCESS_BASE, profileHref } from "@/lib/partner-access-view";
 import {
   editableTypeNames,
   getPartnerTypeCatalog,
@@ -414,6 +415,23 @@ export default async function PartnerTypesPage({
             </table>
           </div>
         )}
+        {/* O que a coluna Parceiros conta (dono, 16/11/2026): cadastros de
+            empresa, não logins; logins e telas ficam em Acessos externos. */}
+        <p className="mt-3 text-xs text-zinc-500" data-partner-type-count-hint>
+          {t("partnerTypes.countHint")}
+          {admin ? (
+            <>
+              {" "}
+              <Link
+                href={ACCESS_BASE}
+                className="font-medium text-brand-700 underline decoration-brand-200 underline-offset-2 hover:decoration-brand-600"
+                data-partner-type-count-access
+              >
+                {t("partnerTypes.countHint.access")}
+              </Link>
+            </>
+          ) : null}
+        </p>
       </Card>
 
       {panel === "new" ? (
@@ -512,6 +530,24 @@ export default async function PartnerTypesPage({
               </p>
             )}
           </form>
+          {/* Do tipo para as telas dos logins dele (dono, 16/11/2026). */}
+          {target.profileKey ? (
+            <p
+              className="mt-4 border-t border-zinc-100 pt-3 text-sm"
+              data-partner-type-panel-access-row
+            >
+              <span className="block text-xs text-zinc-500">
+                {t("partnerTypes.panel.access")}
+              </span>
+              <Link
+                href={profileHref(target.profileKey)}
+                className="font-medium text-brand-700 underline decoration-brand-200 underline-offset-2 hover:decoration-brand-600"
+                data-partner-type-panel-access={target.key}
+              >
+                {t("partnerAccess.configure")}
+              </Link>
+            </p>
+          ) : null}
         </SidePanel>
       ) : null}
     </>
