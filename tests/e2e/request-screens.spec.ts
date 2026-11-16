@@ -218,3 +218,82 @@ test("Acesso: Comprador só TS; diretoria as duas; Vendas nenhuma; endereço dir
   await page.goto("/app/new-request/ts");
   await page.waitForURL(/[?&]denied=requestTs/);
 });
+
+/** A quantidade de entregas programadas (o número de programações do pedido). */
+async function setPlanCount(page: Page, n: string) {
+  const input = page.locator("[data-order-plan-count]");
+  await input.fill(n);
+  await input.blur();
+}
+
+test("TS e Venda: as programações falam do recebimento previsto pelo cliente; Encomendas com os textos de sempre", async ({
+  page,
+}) => {
+  const date = /\d{2}\/\d{2}\/\d{4}/;
+  await login(page, "admin@wellmix.com");
+
+  // TS - Trading Sales: o bloco do pedido, as datas, os cartões de cada
+  // produto e a Composição de containers dizem que cada programação é um
+  // recebimento previsto pelo cliente.
+  await page.goto("/app/new-request/ts");
+  await chooseCustomer(page, "loja", "cliente-joao");
+  await fillOrderTerms(page, { format: "wd", caller: "customer" });
+  await setPlanCount(page, "2");
+  const plan = page.locator("[data-order-plan]");
+  for (const text of [
+    "Programação de entregas ao cliente",
+    "Quantidade de entregas programadas",
+    "Intervalo entre recebimentos previstos",
+    "Data prevista do 1º recebimento",
+    "Datas previstas de recebimento pelo cliente",
+  ])
+    await expect(plan).toContainText(text);
+  await expect(plan).not.toContainText("Datas das programações");
+  await expect(page.locator('[data-order-plan-date="1"]')).toHaveText(
+    new RegExp(`^Programação 1 — Recebimento previsto: ${date.source}`),
+  );
+  await expect(page.locator('[data-order-plan-date="2"]')).toHaveText(
+    new RegExp(`^Programação 2 — Recebimento previsto: ${date.source}`),
+  );
+  await pickDoll(page);
+  const card = page.locator('[data-request-item="0"] [data-schedule-item="1"]');
+  await expect(card).toContainText("Programação 1");
+  await expect(card).toContainText("Recebimento previsto:");
+  const round = page.locator('[data-composition-round="1"]');
+  await expect(round).toContainText("Programação 1");
+  await expect(round.locator("[data-composition-round-date]")).toHaveText(
+    new RegExp(`^Recebimento previsto: ${date.source}$`),
+  );
+
+  // Venda - Encomenda: os mesmos textos.
+  await page.goto("/app/new-request/sale");
+  await setPlanCount(page, "2");
+  await expect(page.locator('[data-order-plan-date="1"]')).toHaveText(
+    new RegExp(`^Programação 1 — Recebimento previsto: ${date.source}`),
+  );
+
+  // Encomendas → Nova solicitação: os textos de sempre.
+  await page.goto("/app/requests/new");
+  await page.locator("[data-request-customer] [data-stock-option]").check();
+  await setPlanCount(page, "2");
+  await expect(page.locator("[data-order-plan]")).toContainText(
+    "Datas das programações",
+  );
+  await expect(page.locator('[data-order-plan-date="1"]')).toHaveText(
+    new RegExp(`^Programação 1: ${date.source}`),
+  );
+  await expect(page.locator("[data-order-plan-receipt]")).toHaveCount(0);
+  const picker = page.locator(
+    '[data-request-item="0"] [data-product-picker="catalog"]',
+  );
+  await picker.locator("[data-product-picker-input]").fill("boneca");
+  await picker.locator('[data-product-picker-option="prod-boneca"]').click();
+  await page
+    .locator(
+      '[data-request-item="0"] [data-rounds-generator] [data-generate-total]',
+    )
+    .fill("100");
+  await expect(
+    page.locator('[data-composition-round="1"] [data-composition-round-date]'),
+  ).toHaveText(new RegExp(`^${date.source}$`));
+});

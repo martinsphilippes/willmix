@@ -1691,3 +1691,10 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Como ficou** (docs/REQUEST_SCREENS.md): rotas `/app/new-request/ts` e `/app/new-request/sale`, telas `requestTs` e `requestSale`, o mesmo formulário (`renderNewRequest`) com o tipo fixo pela tela e gravado pelo servidor; Venda com BRASIL (a regra que já existia); sem compra para estoque nem "Adicionar produto"; rascunhos por tela. Gestor = Gerente de produto; Liderança = as duas diretorias.
 - **Aditivo:** nenhuma tela, rota, campo ou dado removido. A página de Encomendas virou uma chamada ao formulário compartilhado, com o mesmo comportamento (`mode` nulo). As funções já gravadas recebem as telas novas pelo padrão (`knownScreens`/`LEGACY_SCREENS`), sem alterar o `settings`. As consultas do formulário passaram a aceitar as telas novas além de Encomendas (`canOpenNewRequest`). Sem mudança no banco.
 - Testes: `tests/unit/request-screens.test.ts`, `tests/unit/order-terms.test.ts` e `tests/e2e/request-screens.spec.ts`.
+
+## TS e Venda: programações como entregas previstas ao cliente
+
+- **Pedido do dono** (16/11/2026): nas telas TS - Trading Sales e Venda - Encomenda, deixar claro que cada programação é a data em que o cliente deve receber o pedido (não a de produção, embarque ou saída), com o padrão dado ("Datas previstas de recebimento pelo cliente", "Data prevista do 1º recebimento", "Programação 1 — Recebimento previsto: 16/03/2027", "Quantidade de entregas programadas", "Intervalo entre recebimentos previstos" e a data prevista de recebimento no cabeçalho de cada programação na Composição de containers).
+- **Como ficou** (docs/REQUEST_SCREENS.md, seção 6): textos em `deliverySchedule.*` (pt, en e zh) aplicados por cima dos de sempre só nas telas TS e Venda; dois rótulos opcionais nos componentes (`receipt` e `roundDate`).
+- **Aditivo:** nenhum cálculo, regra de data, distribuição, composição, nome técnico, tela, rota ou dado mudou; a Nova solicitação de Encomendas e as outras telas seguem com os textos de antes.
+- Testes: `tests/unit/delivery-schedule-labels.test.ts` e `tests/e2e/request-screens.spec.ts`.

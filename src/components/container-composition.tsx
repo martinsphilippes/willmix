@@ -17,6 +17,11 @@ export interface ContainerCompositionLabels {
   containerN: string;
   /** "Programação {n}" */
   roundN: string;
+  /**
+   * "Recebimento previsto: {date}" embaixo de cada programação (telas TS e
+   * Venda; docs/REQUEST_SCREENS.md, seção 6). Sem ele, só a data.
+   */
+  roundDate?: string;
   expand: string;
   collapse: string;
   unused: string;
@@ -125,8 +130,16 @@ export function ContainerComposition({
                       <span className="block">
                         {labels.roundN.replace("{n}", String(r + 1))}
                       </span>
-                      <span className="block font-normal">
-                        {fmtDate(dates[r])}
+                      <span
+                        className="block font-normal"
+                        data-composition-round-date
+                      >
+                        {labels.roundDate && dates[r]
+                          ? labels.roundDate.replace(
+                              "{date}",
+                              fmtDate(dates[r]),
+                            )
+                          : fmtDate(dates[r])}
                       </span>
                     </th>
                   ))}
