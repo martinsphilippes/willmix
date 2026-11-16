@@ -56,6 +56,8 @@ export interface ProductFill {
    */
   innerBoxQty?: number | null;
   netWeightKg?: number | null;
+  /** Peso bruto por peça em kg, da mesma fonte que o líquido (dono, 16/11/2026). */
+  grossWeightKg?: number | null;
   /**
    * Preço da última compra ao fornecedor, já em texto (pedido mais recente,
    * senão o cadastro). Só para a Wellmix; nulo para o cliente e sem compra.
@@ -75,9 +77,10 @@ export interface ProductVariantFill {
   /** Caixa master da variação (senão a do produto). */
   masterCartonQty?: number | null;
   cbmPerCarton?: number | null;
-  /** Caixa inner e peso líquido por peça da variação (senão os do produto). */
+  /** Caixa inner e pesos líquido e bruto por peça da variação (senão os do produto). */
   innerBoxQty?: number | null;
   netWeightKg?: number | null;
+  grossWeightKg?: number | null;
   /** Especificação montada com os dados da variação. */
   specification: string;
   photoDocumentId: string | null;

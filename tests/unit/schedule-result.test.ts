@@ -143,6 +143,8 @@ describe("a faixa na tela (o mesmo componente nas duas telas)", async () => {
       "Peso líquido por caixa master",
       "3,21 kg",
     ]);
+    // Sem o peso bruto na tela: o rótulo sem base e "—".
+    expect(field(html, "gross-weight")).toEqual(["Peso bruto", "—"]);
     expect(field(html, "capacity")).toEqual([
       "Capacidade 40HC",
       "930 caixas · 22.320 peças",
@@ -178,5 +180,82 @@ describe("a faixa na tela (o mesmo componente nas duas telas)", async () => {
     ).toEqual(["Peso líquido por peça", "—"]);
     // Sem saber a base (nem o peso): o rótulo sem base e "—".
     expect(field(render({}), "net-weight")).toEqual(["Peso líquido", "—"]);
+  });
+
+  it("peso bruto (dono, 16/11/2026): logo depois do líquido, no mesmo formato; \"—\" sem o dado", () => {
+    const html = render({
+      netWeight: { value: 0.189, unit: "kg", basis: "piece" },
+      grossWeight: { value: 0.21, unit: "kg", basis: "piece" },
+    });
+    expect(field(html, "gross-weight")).toEqual([
+      "Peso bruto por peça",
+      "0,21 kg",
+    ]);
+    // A ordem dos campos da caixa master: o bruto logo depois do líquido.
+    const carton = /data-generate-group="carton"[\s\S]*?<\/section>/.exec(
+      html,
+    )![0];
+    expect(
+      [...carton.matchAll(/data-generate-field="([^"]+)"/g)].map((m) => m[1]),
+    ).toEqual([
+      "pieces-per-carton",
+      "inner",
+      "cbm-per-carton",
+      "net-weight",
+      "gross-weight",
+      "capacity",
+    ]);
+    // Os dois pesos no mesmo bloco: quebram a linha juntos, lado a lado.
+    expect(
+      /<dl[^>]*><div[^>]*data-generate-field="net-weight">[\s\S]*?<\/div><div[^>]*data-generate-field="gross-weight">/.test(
+        carton,
+      ),
+    ).toBe(true);
+    // A base no rótulo, como o líquido; sem valor (ou zero), "—".
+    expect(
+      field(
+        render({ grossWeight: { value: 2.5, unit: "kg", basis: "carton" } }),
+        "gross-weight",
+      ),
+    ).toEqual(["Peso bruto por caixa master", "2,5 kg"]);
+    expect(
+      field(
+        render({ grossWeight: { value: null, unit: "kg", basis: "piece" } }),
+        "gross-weight",
+      ),
+    ).toEqual(["Peso bruto por peça", "—"]);
+    expect(
+      field(
+        render({ grossWeight: { value: 0, unit: "kg", basis: "piece" } }),
+        "gross-weight",
+      ),
+    ).toEqual(["Peso bruto por peça", "—"]);
+  });
+
+  it("sem rolagem para o lado: a faixa e os grupos quebram a linha", () => {
+    const html = render({});
+    const strip = /<div([^>]*data-generate-strip[^>]*)>/.exec(html)![1];
+    expect(strip).not.toContain("overflow-x-auto");
+    expect(strip).not.toContain("tabindex");
+    expect(html).toMatch(/class="-ml-px -mt-px flex flex-wrap"/);
+    expect(html).not.toContain("whitespace-nowrap text-[13px]");
+  });
+});
+
+describe("blocos da faixa que quebram juntos", async () => {
+  const { fieldUnits } = await import("@/components/selection-quantity");
+  it("o campo com withNext leva o seguinte; os demais vão sozinhos", () => {
+    const f = (key: string, withNext?: boolean) => ({ key, withNext });
+    expect(
+      fieldUnits([
+        f("a"),
+        f("net", true),
+        f("gross"),
+        f("cap"),
+      ]).map((u) => u.map((x) => x.key)),
+    ).toEqual([["a"], ["net", "gross"], ["cap"]]);
+    // O último com withNext não cria bloco vazio.
+    expect(fieldUnits([f("a", true)]).map((u) => u.length)).toEqual([1]);
+    expect(fieldUnits([])).toEqual([]);
   });
 });
