@@ -798,7 +798,7 @@ function SentItems({
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
             <img
-              src={`/api/files/${doc}`}
+              src={`/api/files/${doc}?thumb=1`}
               alt=""
               className="h-10 w-10 rounded border border-zinc-200 bg-white object-cover"
               loading="lazy"
@@ -822,7 +822,7 @@ function SentItems({
     {
       key: "photo",
       label: field("photo"),
-      width: 6.25,
+      width: 6.5,
       align: "left",
       frozen: true,
       value: photos,
