@@ -717,6 +717,25 @@ test("Previsão de preço (cotação V2): manda formato, nível e quem chama; mo
     "data-order-terms-total",
     (10 * quantity).toFixed(2),
   );
+  // Forma de pagamento logo abaixo do Valor total (dono, 16/11/2026): a
+  // previsão reparte o valor total pelas parcelas da forma escolhida.
+  const payment = page.locator("[data-order-terms-payment]");
+  await payment
+    .locator("[data-order-terms-payment-plan]")
+    .selectOption({ label: "10% no pedido; 90% no embarque" });
+  const total = 10 * quantity;
+  await expect(
+    payment.locator('[data-order-terms-payment-row="1"]'),
+  ).toHaveAttribute("data-amount", (total * 0.1).toFixed(2));
+  await expect(
+    payment.locator('[data-order-terms-payment-row="2"]'),
+  ).toHaveAttribute("data-amount", (total * 0.9).toFixed(2));
+  await expect(
+    payment.locator('[data-order-terms-payment-row="1"]'),
+  ).toContainText("No pedido");
+  await expect(
+    payment.locator('[data-order-terms-payment-row="2"]'),
+  ).toContainText("No embarque");
   const last = () => asked[asked.length - 1];
   expect(last().get("saleFormat")).toBe("wellmix");
   expect(last().get("tier")).toBe("hiper");

@@ -81,6 +81,8 @@ import { canAddProducts } from "@/lib/services/requests";
 import { launchDateOf, minFirstDate } from "@/lib/workflow/request-schedule";
 import { lookupProductAction } from "../actions/lookup";
 import { aiErrorText } from "@/i18n/ai-error";
+import { listPaymentPlans } from "@/lib/services/customer-payment";
+import type { RequestPaymentPlan } from "@/lib/order-terms";
 import {
   REQUEST_SCREEN,
   REQUEST_SCREEN_FIELD,
@@ -448,6 +450,23 @@ export async function renderNewRequest({
   // condições do pedido (docs/ORDER_TERMS.md). Fora da compra para estoque
   // (a tela esconde quando a caixa de estoque é marcada).
   const sellsToCustomer = isWellmix(user) && !addToRequest;
+  // Formas de pagamento ativas (dono, 16/11/2026), logo abaixo do Valor
+  // total nas condições do pedido.
+  const paymentPlans: RequestPaymentPlan[] = sellsToCustomer
+    ? (await listPaymentPlans())
+        .filter((p) => p.active)
+        .map((p) => ({
+          planId: p.id,
+          name: p.name,
+          installments: p.installments.map((i) => ({
+            percent: i.percent,
+            event: i.event,
+            days: i.days,
+          })),
+          monthlyInterestPercent: p.monthlyInterestPercent ?? null,
+          requiresApproval: !!p.requiresApproval,
+        }))
+    : [];
   // Textos do histórico gravado no portal (o card de sempre).
   const historyLabels = {
     title: t("purchaseHistory.title"),
@@ -942,6 +961,7 @@ export async function renderNewRequest({
                     : orderTermsLabels(t)
                 }
                 fixedOperation={screenDef?.operation}
+                paymentPlans={paymentPlans}
                 initial={{
                   operationType: draftValue("operationType"),
                   saleFormat: draftValue("saleFormat"),
@@ -953,6 +973,7 @@ export async function renderNewRequest({
                   redispatch: draftValue("redispatch"),
                   originCountry: draftValue("originCountry"),
                   productFamily: draftValue("productFamily"),
+                  paymentPlanId: draftValue("paymentPlanId"),
                 }}
               />
             ) : null}
