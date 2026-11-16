@@ -1,10 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type {
-  PriceForecastAnswer,
-  SuperplanAudit,
-} from "@/lib/integrations/price-forecast";
+import { useEffect, useState } from "react";
+import type { PriceForecastAnswer } from "@/lib/integrations/price-forecast";
 import { useRequestCustomer } from "./request-customer-context";
 import { cx, inputDenseClass } from "./ui";
 
@@ -20,7 +17,7 @@ export interface PriceForecastLabels {
   noProduct: string;
   manual: string;
   error: string;
-  /** Linhas da previsão (SuperPlan do Sankhya). */
+  /** Linhas antigas (a tela mostra só "Preço" e "Valor total" desde 16/11/2026). */
   sale: string;
   table: string;
   wholesale: string;
@@ -28,16 +25,12 @@ export interface PriceForecastLabels {
   goal: string;
   cost: string;
   profit: string;
-  /** "{profit}% (meta {goal}%)". */
   profitValue: string;
   /** "Para vender a {target} por peça: preço máximo de compra". */
   resultTarget: string;
-  /** Sem "Ver valores e margem": o preço máximo de compra não aparece. */
   targetLocked?: string;
   source: string;
-  /** Memória de cálculo do Sankhya (só com "Ver valores e margem"). */
   auditTitle?: string;
-  /** "Enviado à função {fn}". */
   auditInputs?: string;
   auditDefaults?: string;
   auditOutputs?: string;
@@ -56,37 +49,52 @@ export interface PriceForecastLabels {
   goalNo?: string;
   freightPending?: string;
   quotePending?: string;
-  /** "Enviado: {format} · VIP {vip} · rota {route} · frete de entrega {freight}" */
   sent?: string;
   freightNull?: string;
-  /** Nome do formato de venda (WD, Wellmix · nível) para a linha "Enviado". */
   formats?: Record<string, string>;
+  /** "Preço" e "Valor total" (preço × quantidade) do produto. */
+  price?: string;
+  rowTotal?: string;
+  /** Sem a quantidade, o valor total espera. */
+  noQuantity?: string;
 }
 
 type Mode = "view" | "target";
 
+const DEBOUNCE_MS = 600;
+
 /**
  * Previsão de preço ao cliente final de um produto da Nova solicitação
- * (dono, 15/11/2026; src/lib/integrations/price-forecast.ts): o operador vê
- * o preço previsto ou informa o preço de venda desejado para encontrar o
- * preço. A conta é da API externa; sem ela ligada, a tela diz e nada é
- * estimado. Só a Wellmix. Nada é gravado na solicitação.
+ * (dono, 15 e 16/11/2026; docs/ORDER_TERMS.md 11.8): a conta é da cotação
+ * V2 do Sankhya e roda sozinha quando o produto é escolhido e sempre que
+ * muda algo que vai para ela (quantidade, cliente, formato, nível, quem
+ * chama o transportador, valor do transporte). Mostra só o **Preço**: o
+ * preço com frete (referência) quando a Wellmix chama o transportador, e o
+ * preço WD quando é o cliente; e o **Valor total** (preço × quantidade),
+ * que as condições do pedido somam. "Informar o preço de venda desejado"
+ * só na compra para estoque. Sem a API, a tela diz e nada é estimado.
  */
 export function PriceForecast({
   productId,
   quantity,
+  rowKey,
   labels,
   className,
 }: {
   /** Produto do catálogo da linha ("" sem produto). */
   productId: string;
   quantity: string;
+  /** Linha do formulário (o valor total vai para a soma do pedido). */
+  rowKey?: string;
   labels: PriceForecastLabels;
   className?: string;
 }) {
-  const canSolve = labels.canSolve ?? true;
   const shared = useRequestCustomer();
-  const [mode, setMode] = useState<Mode>("view");
+  const stock = !!shared?.stock;
+  // O preço de venda desejado só na compra para estoque (dono, 16/11/2026).
+  const canTarget = (labels.canSolve ?? true) && stock;
+  const [chosenMode, setMode] = useState<Mode>("view");
+  const mode: Mode = canTarget ? chosenMode : "view";
   const [target, setTarget] = useState("");
   const [answer, setAnswer] = useState<{
     for: string;
@@ -94,46 +102,96 @@ export function PriceForecast({
     target: number | null;
   } | null>(null);
   const [loading, setLoading] = useState(false);
-  const shown = answer && answer.for === `${productId}:${mode}` ? answer : null;
+
+  const pieces = Math.floor(Number(quantity.replace(",", ".")));
+  const piecesOk = Number.isFinite(pieces) && pieces > 0;
+  const targetNumber = Number(target.replace(",", "."));
+  const targetOk = Number.isFinite(targetNumber) && targetNumber > 0;
+  const terms = stock ? null : (shared?.saleTerms ?? null);
+  const caller = terms?.carrierCaller ?? null;
+
+  // O que vai para a API: quando muda, a conta roda de novo.
+  // (Uma string: o efeito abaixo só roda quando ela muda.)
+  const query = (() => {
+    if (!productId || (mode === "target" && !targetOk)) return null;
+    const params = new URLSearchParams({ productId });
+    if (piecesOk) params.set("quantity", String(pieces));
+    const customerId = shared?.customer?.id;
+    if (!stock && customerId) params.set("customerId", customerId);
+    if (terms?.saleFormat) params.set("saleFormat", terms.saleFormat);
+    if (terms?.wellmixTier) params.set("tier", terms.wellmixTier);
+    if (terms?.carrierCaller) params.set("caller", terms.carrierCaller);
+    const freight = terms?.deliveryFreightBrl;
+    if (freight !== null && freight !== undefined)
+      params.set("freight", String(freight));
+    if (mode === "target") params.set("target", String(targetNumber));
+    return params.toString();
+  })();
+
+  useEffect(() => {
+    if (!query) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/price-forecast?${query}`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        const value = (await res.json()) as PriceForecastAnswer;
+        setAnswer({
+          for: query,
+          value,
+          target: mode === "target" ? targetNumber : null,
+        });
+      } catch {
+        if (!controller.signal.aborted)
+          setAnswer({ for: query, value: "error", target: null });
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, DEBOUNCE_MS);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [query, mode, targetNumber]);
+
+  const shown = answer && answer.for === query ? answer : null;
+  const forecast =
+    shown &&
+    shown.value !== "error" &&
+    shown.value.mode === "api" &&
+    shown.value.kind === "forecast"
+      ? shown.value
+      : null;
+  // Preço: com frete quando a Wellmix chama; o WD quando é o cliente.
+  const price = forecast
+    ? caller === "customer"
+      ? (forecast.wdPrice ?? null)
+      : (forecast.withFreight ?? forecast.productPrice ?? null)
+    : null;
+  const total = price !== null && piecesOk ? price * pieces : null;
+
+  // O valor total da linha vai para a soma do pedido.
+  const setRowTotal = shared?.setRowTotal;
+  useEffect(() => {
+    if (!rowKey || !setRowTotal) return;
+    setRowTotal(rowKey, mode === "view" ? total : null);
+  }, [rowKey, setRowTotal, total, mode]);
+  useEffect(
+    () => () => {
+      if (rowKey) setRowTotal?.(rowKey, null);
+    },
+    [rowKey, setRowTotal],
+  );
+
   const money = (n: number | null) =>
     n === null
       ? "—"
       : n.toLocaleString(labels.intl, { style: "currency", currency: "BRL" });
   const num = (n: number, digits = 2) =>
     n.toLocaleString(labels.intl, { maximumFractionDigits: digits });
-  const targetNumber = Number(target.replace(",", "."));
-  const targetOk = Number.isFinite(targetNumber) && targetNumber > 0;
-
-  async function calculate() {
-    if (!productId || (mode === "target" && !targetOk)) return;
-    const key = `${productId}:${mode}`;
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ productId });
-      const pieces = Math.floor(Number(quantity.replace(",", ".")));
-      if (Number.isFinite(pieces) && pieces > 0)
-        params.set("quantity", String(pieces));
-      if (shared?.customer?.id) params.set("customerId", shared.customer.id);
-      // Condições do pedido: VIP (nível), rota (quem chama o transportador).
-      const terms = shared?.saleTerms;
-      if (terms?.saleFormat) params.set("saleFormat", terms.saleFormat);
-      if (terms?.wellmixTier) params.set("tier", terms.wellmixTier);
-      if (terms?.carrierCaller) params.set("caller", terms.carrierCaller);
-      if (mode === "target") params.set("target", String(targetNumber));
-      const res = await fetch(`/api/price-forecast?${params.toString()}`);
-      if (!res.ok) throw new Error(String(res.status));
-      setAnswer({
-        for: key,
-        value: (await res.json()) as PriceForecastAnswer,
-        target: mode === "target" ? targetNumber : null,
-      });
-    } catch {
-      setAnswer({ for: key, value: "error", target: null });
-    } finally {
-      setLoading(false);
-    }
-  }
-
   const chip = (on: boolean) =>
     cx(
       "rounded-md border px-2.5 py-1 text-xs font-semibold",
@@ -150,69 +208,63 @@ export function PriceForecast({
       )}
       role="group"
       aria-label={labels.title}
+      aria-busy={loading}
       data-price-forecast
+      data-price-forecast-loading={loading ? "1" : undefined}
     >
       <p className="text-sm font-semibold text-zinc-900">{labels.title}</p>
-      <p className="text-zinc-600">{labels.hint}</p>
       {!productId ? (
         <p className="text-zinc-500" data-price-forecast-no-product>
           {labels.noProduct}
         </p>
       ) : (
         <>
-          <div className="flex flex-wrap gap-1.5" role="group">
-            <button
-              type="button"
-              aria-pressed={mode === "view"}
-              onClick={() => setMode("view")}
-              data-price-forecast-mode="view"
-              className={chip(mode === "view")}
-            >
-              {labels.view}
-            </button>
-            <button
-              type="button"
-              hidden={!canSolve}
-              aria-pressed={mode === "target"}
-              onClick={() => setMode("target")}
-              data-price-forecast-mode="target"
-              className={chip(mode === "target")}
-            >
-              {labels.target}
-            </button>
-          </div>
-          <div className="flex flex-wrap items-end gap-2">
-            {mode === "target" ? (
-              <label className="space-y-1">
-                <span className="block font-medium text-zinc-700">
-                  {labels.targetField}
-                </span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={target}
-                  onChange={(e) => setTarget(e.target.value)}
-                  onKeyDown={(e) => {
-                    // Enter calcula; não envia a solicitação.
-                    if (e.key !== "Enter") return;
-                    e.preventDefault();
-                    void calculate();
-                  }}
-                  data-price-forecast-target
-                  className={cx(inputDenseClass, "w-36 tabular-nums")}
-                />
-              </label>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => void calculate()}
-              disabled={loading || (mode === "target" && !targetOk)}
-              data-price-forecast-submit
-              className="min-h-8 rounded-md bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-50"
-            >
-              {loading ? labels.loading : labels.calculate}
-            </button>
-          </div>
+          {canTarget ? (
+            <div className="flex flex-wrap gap-1.5" role="group">
+              <button
+                type="button"
+                aria-pressed={mode === "view"}
+                onClick={() => setMode("view")}
+                data-price-forecast-mode="view"
+                className={chip(mode === "view")}
+              >
+                {labels.view}
+              </button>
+              <button
+                type="button"
+                aria-pressed={mode === "target"}
+                onClick={() => setMode("target")}
+                data-price-forecast-mode="target"
+                className={chip(mode === "target")}
+              >
+                {labels.target}
+              </button>
+            </div>
+          ) : null}
+          {mode === "target" ? (
+            <label className="block space-y-1">
+              <span className="block font-medium text-zinc-700">
+                {labels.targetField}
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                onKeyDown={(e) => {
+                  // Enter não envia a solicitação.
+                  if (e.key === "Enter") e.preventDefault();
+                }}
+                data-price-forecast-target
+                className={cx(inputDenseClass, "w-36 tabular-nums")}
+              />
+            </label>
+          ) : null}
+          {loading && !shown ? (
+            <p className="text-zinc-500" role="status">
+              {labels.loading}
+            </p>
+          ) : null}
           {shown ? (
             shown.value === "error" ? (
               <p className="font-medium text-red-700" role="alert">
@@ -250,101 +302,33 @@ export function PriceForecast({
               </p>
             ) : (
               <dl
-                className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 rounded-md bg-emerald-50 px-2.5 py-1.5 text-emerald-950"
+                className={cx(
+                  "grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 rounded-md bg-emerald-50 px-2.5 py-1.5 text-emerald-950",
+                  loading && "opacity-60",
+                )}
                 role="status"
                 data-price-forecast-result="forecast"
               >
-                {(
-                  [
-                    // Cotação V2 (16/11/2026): preço pelo markup, frete por
-                    // peça e as referências com frete e WD.
-                    ["product", labels.productPrice, shown.value.productPrice],
-                    ["freight", labels.freightUnit, shown.value.freightUnit],
-                    [
-                      "withFreight",
-                      labels.withFreight,
-                      shown.value.withFreight,
-                    ],
-                    ["wd", labels.wdPrice, shown.value.wdPrice],
-                    [
-                      "wdWithFreight",
-                      labels.wdWithFreight,
-                      shown.value.wdWithFreight,
-                    ],
-                    ["wdBase", labels.wdBase, shown.value.wdBase],
-                    // Da SuperPlan (quando a função ainda devolve).
-                    ["retail", labels.retail, shown.value.retailPrice],
-                    ["sale", labels.sale, shown.value.salePrice],
-                    ["table", labels.table, shown.value.tablePrice],
-                    ["wholesale", labels.wholesale, shown.value.wholesalePrice],
-                    ["goal", labels.goal, shown.value.targetPrice],
-                    ["cost", labels.cost, shown.value.cost],
-                  ] as Array<
-                    [string, string | undefined, number | null | undefined]
-                  >
-                )
-                  .filter(
-                    (row): row is [string, string, number] =>
-                      !!row[1] && row[2] !== null && row[2] !== undefined,
-                  )
-                  .map(
-                    ([key, label, value]) =>
-                      [key, label, money(value)] as [string, string, string],
-                  )
-                  .concat(
-                    shown.value.wdPercent !== null &&
-                      shown.value.wdPercent !== undefined &&
-                      labels.wdPercent
-                      ? [
-                          [
-                            "wdPercent",
-                            labels.wdPercent,
-                            `${num(shown.value.wdPercent)}%`,
-                          ],
-                        ]
-                      : [],
-                    shown.value.profitPercent !== null
-                      ? [
-                          [
-                            "profit",
-                            labels.profit,
-                            labels.profitValue
-                              .replace(
-                                "{profit}",
-                                num(shown.value.profitPercent),
-                              )
-                              .replace(
-                                "{goal}",
-                                num(shown.value.goalPercent ?? 0),
-                              ),
-                          ],
-                        ]
-                      : [],
-                    shown.value.goalReached !== null &&
-                      shown.value.goalReached !== undefined &&
-                      labels.goalReached
-                      ? [
-                          [
-                            "goalReached",
-                            labels.goalReached,
-                            (shown.value.goalReached
-                              ? labels.goalYes
-                              : labels.goalNo) ?? "",
-                          ],
-                        ]
-                      : [],
-                  )
-                  .map(([key, label, value]) => (
-                    <div key={key} className="contents">
-                      <dt className="text-emerald-800">{label}</dt>
-                      <dd
-                        className="font-semibold tabular-nums"
-                        data-price-forecast-line={key}
-                      >
-                        {value}
-                      </dd>
-                    </div>
-                  ))}
+                <dt className="text-emerald-800">{labels.price ?? "Preço"}</dt>
+                <dd
+                  className="font-semibold tabular-nums"
+                  data-price-forecast-line="price"
+                >
+                  {money(price)}
+                </dd>
+                <dt className="text-emerald-800">
+                  {labels.rowTotal ?? "Valor total"}
+                </dt>
+                <dd
+                  className="font-semibold tabular-nums"
+                  data-price-forecast-line="total"
+                >
+                  {total !== null
+                    ? money(total)
+                    : price !== null
+                      ? (labels.noQuantity ?? "—")
+                      : "—"}
+                </dd>
                 {shown.value.status === "FRETE_PENDENTE" &&
                 labels.freightPending ? (
                   <p
@@ -361,109 +345,11 @@ export function PriceForecast({
                     {labels.quotePending}
                   </p>
                 ) : null}
-                {shown.value.sent && labels.sent ? (
-                  <p
-                    className="col-span-2 pt-0.5 text-[11px] text-emerald-800"
-                    data-price-forecast-sent
-                  >
-                    {labels.sent
-                      .replace(
-                        "{format}",
-                        shared?.saleTerms?.saleFormat === "wellmix" &&
-                          shared.saleTerms.wellmixTier
-                          ? (labels.formats?.[shared.saleTerms.wellmixTier] ??
-                              shared.saleTerms.wellmixTier)
-                          : shared?.saleTerms?.saleFormat
-                            ? (labels.formats?.[shared.saleTerms.saleFormat] ??
-                              shared.saleTerms.saleFormat)
-                            : "—",
-                      )
-                      .replace(
-                        "{vip}",
-                        shown.value.sent.vip === null
-                          ? "—"
-                          : num(shown.value.sent.vip, 8),
-                      )
-                      .replace("{route}", shown.value.sent.route ?? "—")
-                      .replace(
-                        "{freight}",
-                        shown.value.sent.deliveryFreightBrl === null
-                          ? (labels.freightNull ?? "—")
-                          : money(shown.value.sent.deliveryFreightBrl),
-                      )}
-                  </p>
-                ) : null}
-                <p className="col-span-2 pt-0.5 text-[11px] text-emerald-800">
-                  {labels.source}
-                </p>
               </dl>
             )
-          ) : null}
-          {shown &&
-          shown.value !== "error" &&
-          shown.value.mode === "api" &&
-          shown.value.audit ? (
-            <AuditBox audit={shown.value.audit} labels={labels} />
           ) : null}
         </>
       )}
     </div>
-  );
-}
-
-/**
- * Memória de cálculo da SuperPlan para auditoria: o que foi enviado à
- * função e todas as colunas que ela devolveu, como vieram do Sankhya.
- */
-function AuditBox({
-  audit,
-  labels,
-}: {
-  audit: SuperplanAudit;
-  labels: PriceForecastLabels;
-}) {
-  const value = (v: string | number | null) =>
-    v === null || v === ""
-      ? "—"
-      : typeof v === "number"
-        ? v.toLocaleString(labels.intl, { maximumFractionDigits: 8 })
-        : v;
-  const table = (
-    rows: Array<[string, string | number | null]>,
-    key: string,
-  ) => (
-    <dl
-      className="grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 gap-y-0.5 font-mono text-[11px]"
-      data-price-forecast-audit={key}
-    >
-      {rows.map(([name, v]) => (
-        <div key={name} className="contents">
-          <dt className="break-all text-zinc-600">{name}</dt>
-          <dd className="break-all tabular-nums text-zinc-900">{value(v)}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-  return (
-    <details className="rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1.5">
-      <summary className="cursor-pointer font-semibold text-zinc-800">
-        {labels.auditTitle ?? "Sankhya"}
-      </summary>
-      <div className="mt-2 space-y-3">
-        <section className="space-y-1">
-          <p className="font-medium text-zinc-700">
-            {(labels.auditInputs ?? "{fn}").replace("{fn}", audit.fn)}
-          </p>
-          {table(audit.inputs, "inputs")}
-          {labels.auditDefaults ? (
-            <p className="text-[11px] text-zinc-500">{labels.auditDefaults}</p>
-          ) : null}
-        </section>
-        <section className="space-y-1">
-          <p className="font-medium text-zinc-700">{labels.auditOutputs}</p>
-          {table(audit.outputs, "outputs")}
-        </section>
-      </div>
-    </details>
   );
 }

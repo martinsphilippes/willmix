@@ -36,6 +36,22 @@ const RAW = z.object({
   carrier: z.string().max(80).nullable(),
   redispatchCarrier: z.string().max(80).nullable(),
   redispatch: z.enum(["yes", "no"], { error: "order_terms_redispatch" }),
+  deliveryFreightBrl: z
+    .string()
+    .max(20)
+    .nullable()
+    .transform((v, ctx) => {
+      const t = (v ?? "").trim();
+      if (!t) return null;
+      const n = Number(
+        t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : t,
+      );
+      if (!Number.isFinite(n) || n < 0 || n > 100_000_000) {
+        ctx.addIssue({ code: "custom", message: "order_terms_freight" });
+        return z.NEVER;
+      }
+      return n;
+    }),
   originCountry: z.string().min(1, { error: "order_terms_origin" }).max(80),
   productFamily: z
     .string()
@@ -63,6 +79,7 @@ export async function resolveOrderTerms(
     wellmixTier: input.wellmixTier || null,
     carrier: input.carrier || null,
     redispatchCarrier: input.redispatchCarrier || null,
+    deliveryFreightBrl: input.deliveryFreightBrl || null,
   });
   if (!parsed.success)
     throw new OrderTermsError(
@@ -115,6 +132,7 @@ export async function resolveOrderTerms(
     carrier: carrier ?? null,
     redispatch: redispatchCarrier ?? null,
     redispatchRequired,
+    deliveryFreightBrl: wellmixCalls ? raw.deliveryFreightBrl : null,
     originCountry: raw.originCountry,
     originCountryName: countryName,
     productFamily: raw.productFamily,

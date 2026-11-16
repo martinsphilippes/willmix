@@ -393,7 +393,13 @@ export function RequestProductFields({
     <>
       {/* 1) Com produto escolhido: o quadro mostra que é do catálogo e o estoque.
              Sem produto: "fora do catálogo", antes da escolha do produto. */}
-      {selected ? (
+      {selected && labels.browser ? (
+        // Venda da Wellmix (dono, 16/11/2026): o quadro "Produto do catálogo
+        // Wellmix" saiu da tela; fica só o aviso para leitor de tela.
+        <span role="status" className="sr-only" data-request-catalog-status>
+          {labels.fromCatalog}
+        </span>
+      ) : selected ? (
         <div
           role="status"
           className="col-span-2 flex items-start gap-3 rounded-xl border border-emerald-300 bg-emerald-50/70 px-3 py-2 sm:col-span-4"

@@ -234,6 +234,17 @@ Ao lado da busca de produto de cada linha, uma **lupa** abre o seletor (um só n
 - **Produto (Nome), Descrição e Especificação** saíram da tela do pedido (sobra da versão anterior), inclusive o quadro só de leitura do produto do catálogo. Os textos da ficha vão escondidos no formulário e o servidor grava os da ficha, como antes; ficha sem descrição usa o nome. **Fora do catálogo** os três campos continuam: não há ficha e eles são a única descrição do que se procura (encomenda B14).
 - **Transportador**: saiu o campo "Buscar por nome, código ou CNPJ"; fica só a lista "Escolha o transportador" (com o resumo Código · CNPJ · Nome abaixo). Com Wellmix chamando o transportador e Re-despacho = Sim, abre-se a segunda lista igual, do transportador do re-despacho (como na 11.6).
 
+### 11.8 Previsão automática só com o Preço, valor do transporte e valor total (dono, 16/11/2026)
+
+- **Quadro "Produto do catálogo Wellmix"** saiu da venda da Wellmix. Fica só um aviso para leitor de tela.
+- **Previsão de preço ao cliente final**:
+  - **Sem o botão Calcular**: com o produto escolhido, a conta roda sozinha. Ela roda de novo (com espera de 0,6 s) sempre que muda algo que vai para a API: quantidade, cliente, formato, nível, quem chama o transportador ou valor do transporte.
+  - O quadro verde mostra só o **Preço** e o **Valor total** (preço × quantidade). O Preço é o "Preço com frete (referência)" (`PRECO_COM_FRETE_REFERENCIA`) quando a Wellmix chama o transportador, e o "Preço WD" (`PRECO_WD_REFERENCIA`) quando é o cliente.
+  - Saíram as demais linhas, a linha "Enviado" e a "Memória de cálculo do Sankhya (auditoria)". Os avisos de frete pendente, erro e modo manual continuam.
+- **Valor do transporte (R$)**: um campo logo abaixo do Transportador (quando a Wellmix chama). É o total da entrega, gravado em `orderTerms.deliveryFreightBrl`. Quando preenchido, vai em `@FRETE_ENTREGA_BRL` no lugar do frete padrão das Configurações; vazio, vale o padrão.
+- **Valor total** do pedido: ao lado de "Formato de venda", na mesma linha. É a soma do valor total de cada produto, inclusive dos recolhidos em "Produtos no pedido".
+- **Informar o preço de venda desejado** (preço máximo de compra): só aparece com "Compra para estoque (sem cliente)". Ao marcar a compra para estoque, o cliente sai da busca, que fica em branco.
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

@@ -39,6 +39,12 @@ const QUERY = z.object({
   saleFormat: z.enum(["wd", "wellmix"]).optional(),
   tier: z.enum(WELLMIX_TIERS).optional(),
   caller: z.enum(CARRIER_CALLERS).optional(),
+  // Valor do transporte digitado no pedido (R$, total): no lugar do padrão.
+  freight: z
+    .string()
+    .regex(/^\d{1,9}(\.\d{1,2})?$/)
+    .transform(Number)
+    .optional(),
 });
 
 /**
@@ -62,11 +68,20 @@ export async function GET(request: Request) {
     saleFormat: params.get("saleFormat") || undefined,
     tier: params.get("tier") || undefined,
     caller: params.get("caller") || undefined,
+    freight: params.get("freight") || undefined,
   });
   if (!parsed.success)
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
-  const { productId, customerId, quantity, target, saleFormat, tier, caller } =
-    parsed.data;
+  const {
+    productId,
+    customerId,
+    quantity,
+    target,
+    saleFormat,
+    tier,
+    caller,
+    freight,
+  } = parsed.data;
   const store = getStore();
   const [product, customer, settings] = await Promise.all([
     store.get("products", productId),
@@ -103,7 +118,7 @@ export async function GET(request: Request) {
     // como vendedor; a data de hoje (Brasília).
     vip: saleVip(saleFormat, tier),
     route: caller ? DELIVERY_ROUTE[caller] : null,
-    deliveryFreightBrl: settings.deliveryFreightDefaultBrl ?? null,
+    deliveryFreightBrl: freight ?? settings.deliveryFreightDefaultBrl ?? null,
     sellerCode:
       rca && /^\d{1,9}$/.test(String(rca).trim()) ? Number(rca) : null,
     dataRef: (brazilDay(new Date()) ?? "").replace(/-/g, "") || null,

@@ -787,6 +787,7 @@ export function RequestItems({
                     key={product[index]?.id ?? ""}
                     productId={outside[index] ? "" : (product[index]?.id ?? "")}
                     quantity={qty[index] ?? ""}
+                    rowKey={`row-${index}`}
                     labels={labels.forecast}
                     className="col-span-2 sm:col-span-4"
                   />

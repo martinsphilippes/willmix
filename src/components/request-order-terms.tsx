@@ -51,6 +51,11 @@ export interface RequestOrderTermsLabels {
   carrierCallerHint: Record<CarrierCaller, string>;
   /** Transportador do re-despacho (quem chama = Wellmix, com Sim). */
   redispatchCarrier: string;
+  /** Valor do transporte (R$, total) e a dica; valor total do pedido. */
+  freight?: string;
+  freightHint?: string;
+  orderTotal?: string;
+  intl?: string;
   country: string;
   countryChoose: string;
   /** "(não vale no TS)" */
@@ -86,6 +91,7 @@ export interface OrderTermsInitial {
   carrier?: string;
   redispatchCarrier?: string;
   carrierCaller?: string;
+  deliveryFreightBrl?: string;
   redispatch?: string;
   originCountry?: string;
   productFamily?: string;
@@ -177,13 +183,18 @@ export function RequestOrderTerms({
   // A previsão de preço lê o formato, o nível e quem chama (VIP e rota da
   // cotação V2 do Sankhya; dono, 16/11/2026).
   const setSaleTerms = shared?.setSaleTerms;
+  const [freight, setFreight] = useState(initial.deliveryFreightBrl ?? "");
+  const freightValue = parseMoney(freight);
   useEffect(() => {
     setSaleTerms?.({
       saleFormat: format || null,
       wellmixTier: format === "wellmix" && tier ? (tier as WellmixTier) : null,
       carrierCaller: caller || null,
+      // O valor do transporte digitado (Wellmix chama) vai no lugar do frete
+      // padrão das Configurações (dono, 16/11/2026).
+      deliveryFreightBrl: caller === "wellmix" ? freightValue : null,
     });
-  }, [format, tier, caller, setSaleTerms]);
+  }, [format, tier, caller, freightValue, setSaleTerms]);
   // Trocar o país ou a família com produto no pedido (dono, 15/11/2026): o
   // aviso recomenda terminar este pedido e começar outro; "trocar" limpa os
   // produtos.
@@ -262,6 +273,8 @@ export function RequestOrderTerms({
     );
 
   const myGroups = groups && groups.key === country ? groups.list : null;
+  const totals = Object.values(shared?.rowTotals ?? {});
+  const orderTotal = totals.length ? totals.reduce((a, b) => a + b, 0) : null;
   const count = (n: number) =>
     labels.productsCount.replace("{n}", n.toLocaleString("pt-BR"));
 
@@ -275,7 +288,7 @@ export function RequestOrderTerms({
         <p className="text-xs text-zinc-500">{labels.hint}</p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
         {/* Tipo de operação: em Encomendas, hoje só TS (Venda desabilitada);
             nas telas de TS e de Venda, só o tipo da tela, já marcado. */}
         <fieldset
@@ -358,6 +371,27 @@ export function RequestOrderTerms({
             </Field>
           ) : null}
         </fieldset>
+
+        {/* Valor total do pedido (dono, 16/11/2026): a soma do valor total
+            de cada produto (preço previsto × quantidade). */}
+        <div
+          className="min-w-0 space-y-1 sm:text-right"
+          data-order-terms-total={
+            orderTotal === null ? "" : orderTotal.toFixed(2)
+          }
+        >
+          <p className="text-xs font-medium leading-5 text-zinc-700">
+            {labels.orderTotal ?? "Valor total"}
+          </p>
+          <p className="text-lg font-semibold tabular-nums text-zinc-900">
+            {orderTotal === null
+              ? "—"
+              : orderTotal.toLocaleString(labels.intl ?? "pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                })}
+          </p>
+        </div>
       </div>
 
       {/* Entrega: Transportador (obrigatório) e Re-despacho Sim/Não */}
@@ -439,6 +473,22 @@ export function RequestOrderTerms({
                   labels={labels}
                   dataKey="carrier"
                 />
+                {/* Valor do transporte (dono, 16/11/2026): o total da
+                    entrega; vai na previsão de preço no lugar do padrão. */}
+                <Field
+                  label={labels.freight ?? "Valor do transporte (R$)"}
+                  hint={labels.freightHint}
+                >
+                  <input
+                    name="deliveryFreightBrl"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    value={freight}
+                    onChange={(e) => setFreight(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-300 px-2.5 py-1.5 text-sm tabular-nums"
+                    data-order-terms-freight
+                  />
+                </Field>
                 {redispatch === "yes" ? (
                   <CarrierPicker
                     name="redispatchCarrier"
@@ -647,4 +697,13 @@ function CarrierPicker({
       ) : null}
     </div>
   );
+}
+
+/** "8.000,00", "8000" ou "8000.5" → número ≥ 0; vazio ou inválido = nulo. */
+function parseMoney(text: string): number | null {
+  const t = text.trim();
+  if (!t) return null;
+  const normal = t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : t;
+  const n = Number(normal);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
 }

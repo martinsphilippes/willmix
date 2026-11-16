@@ -145,6 +145,11 @@ export interface OrderTerms {
    * vendedor escolhia o transportador e o cliente informava o re-despacho.
    */
   carrierCaller?: CarrierCaller;
+  /**
+   * Valor do transporte digitado no pedido (R$, total; quem chama =
+   * Wellmix; dono, 16/11/2026). Nulo = o frete padrão das Configurações.
+   */
+  deliveryFreightBrl?: number | null;
   /** Re-despacho: Sim ou Não (o cliente informa a transportadora na confirmação). */
   redispatchRequired?: boolean;
   /** País de origem (chave normalizada, ver `countryKey`). Produto sem país não é vendido. */

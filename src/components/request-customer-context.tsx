@@ -70,12 +70,20 @@ interface RequestCustomerState {
    */
   saleTerms: SaleTerms | null;
   setSaleTerms: (terms: SaleTerms | null) => void;
+  /**
+   * Valor total de cada produto (preço previsto × quantidade, R$; dono,
+   * 16/11/2026): as condições do pedido somam no "Valor total".
+   */
+  rowTotals: Record<string, number>;
+  setRowTotal: (key: string, total: number | null) => void;
 }
 
 export interface SaleTerms {
   saleFormat: "wd" | "wellmix" | null;
   wellmixTier: "pleno" | "mega" | "hiper" | "ultra" | "evo" | "super" | null;
   carrierCaller: "customer" | "wellmix" | null;
+  /** Valor do transporte digitado no pedido (R$, total); nulo = o padrão. */
+  deliveryFreightBrl?: number | null;
 }
 
 export interface AddRequest {
@@ -132,6 +140,18 @@ export function RequestCustomerProvider({
   const [clearSeq, setClearSeq] = useState(0);
   const [browserOpen, setBrowserOpen] = useState(false);
   const [saleTerms, setSaleTermsState] = useState<SaleTerms | null>(null);
+  const [rowTotals, setRowTotals] = useState<Record<string, number>>({});
+  const setRowTotal = useCallback((key: string, total: number | null) => {
+    setRowTotals((prev) => {
+      if (total === null) {
+        if (!(key in prev)) return prev;
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return prev[key] === total ? prev : { ...prev, [key]: total };
+    });
+  }, []);
   const setSaleTerms = useCallback((next: SaleTerms | null) => {
     setSaleTermsState((prev) =>
       JSON.stringify(prev) === JSON.stringify(next) ? prev : next,
@@ -199,8 +219,12 @@ export function RequestCustomerProvider({
       setBrowserOpen,
       saleTerms,
       setSaleTerms,
+      rowTotals,
+      setRowTotal,
     }),
     [
+      rowTotals,
+      setRowTotal,
       saleTerms,
       setSaleTerms,
       browserOpen,
