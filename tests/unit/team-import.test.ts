@@ -155,6 +155,17 @@ describe("leitura da planilha (sem banco)", () => {
     ]);
   });
 
+  it("e-mail com * na planilha: entra sem o * e fica a conferir", () => {
+    const parsed = parseTeamImport(
+      "Nome;Cargo;Area;E-mail\nBia Alves;Vendedora Jr;Showroom Recife;bia@outlook.com *",
+    );
+    expect(parsed.invalid).toEqual([]);
+    expect(parsed.rows[0]).toMatchObject({
+      email: "bia@outlook.com",
+      emailNote: "E-mail com * na planilha",
+    });
+  });
+
   it("sem títulos: Nome, Cargo, Área, Email", () => {
     const parsed = parseTeamImport(
       "Eva Melo; Designer Gráfico Pleno; Marketing; eva@empresa.com",
@@ -197,7 +208,12 @@ describe("funções e nível sugeridos pelo cargo", () => {
       sure: true,
     });
     expect(sure("Assistente de Compras").functions).toEqual(["buyer"]);
-    expect(sure("Analista de Planejamento Sr").functions).toEqual(["planner"]);
+    // Planejamento: Planner sugerido, mas a conferir (na planilha do dono o
+    // cargo está em Marketing; o Planner do portal é o da importação).
+    expect(sure("Analista de Planejamento Sr")).toMatchObject({
+      functions: ["planner"],
+      sure: false,
+    });
     expect(sure("Analista de Importação Sênior").functions).toEqual([
       "comex_internal",
     ]);
@@ -278,12 +294,45 @@ describe("funções e nível sugeridos pelo cargo", () => {
     ]);
     // Cargo sem área: vale a área da planilha.
     expect(apprentice).toMatchObject({ positionId: "p2", areaId: "a3" });
+    expect(apprentice.review).toEqual([
+      "Função: sem função; conferir o que a pessoa precisa abrir",
+    ]);
     expect(unknown.positionId).toBeNull();
     expect(unknown.areaId).toBeNull();
     expect(unknown.review.slice(0, 2)).toEqual([
       'Cargo "Estagiário" não está cadastrado em Cargos',
       'Área "Jurídico" não está cadastrada em Áreas',
     ]);
+  });
+});
+
+describe("sub-área da planilha (Showroom Recife, Comercial ADM Vendas)", () => {
+  it("fica na área cadastrada pelo começo do nome, sem conferir", () => {
+    const areaRows = [
+      { id: "s", name: "Showroom", active: true },
+      { id: "c", name: "Comercial", active: true },
+      { id: "cf", name: "Comercial Fiscal", active: true },
+    ];
+    const positionRows = [
+      { id: "v", name: "Vendedora Jr", active: true, areaId: "s" },
+      { id: "j", name: "Jovem Aprendiz", active: true, areaId: null },
+    ];
+    const [seller, apprentice, fiscal] = proposeTeamImport(
+      parseTeamImport(
+        [
+          "Ana;Vendedora Jr;Showroom Recife;ana@x.com",
+          "Bia;Jovem Aprendiz;Comercial ADM Vendas;bia@x.com",
+          "Cid;Jovem Aprendiz;Comercial Fiscal SP;cid@x.com",
+        ].join("\n"),
+      ).rows,
+      positionRows,
+      areaRows,
+    );
+    expect(seller).toMatchObject({ areaId: "s", areaName: "Showroom" });
+    expect(seller.review).toEqual([]);
+    expect(apprentice).toMatchObject({ areaId: "c", areaName: "Comercial" });
+    // O começo mais longo vale ("Comercial Fiscal", não "Comercial").
+    expect(fiscal).toMatchObject({ areaId: "cf" });
   });
 });
 

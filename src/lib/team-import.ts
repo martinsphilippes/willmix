@@ -30,6 +30,8 @@ export interface TeamImportLine {
   position: string;
   area: string;
   email: string;
+  /** Marca que veio junto do e-mail na planilha (ex.: "*"); a conferir. */
+  emailNote?: string | null;
 }
 
 export interface TeamImportParse {
@@ -41,6 +43,8 @@ export interface TeamImportParse {
 }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** E-mail com marca no fim ("fulano@x.com *"): o e-mail e a marca. */
+const MARKED_EMAIL = /^([^\s@]+@[^\s@]+\.[^\s@*]+)\s*(\*+)$/;
 
 type Column = "name" | "position" | "area" | "email";
 const DEFAULT_ORDER: (Column | null)[] = ["name", "position", "area", "email"];
@@ -90,6 +94,13 @@ export function parseTeamImport(text: string): TeamImportParse {
       return at >= 0 ? (parts[at] ?? "") : "";
     };
     let email = pick("email").toLowerCase();
+    let emailNote: string | null = null;
+    // E-mail com "*" no fim (marca da planilha): entra sem o "*", a conferir.
+    const marked = MARKED_EMAIL.exec(email);
+    if (marked) {
+      email = marked[1];
+      emailNote = `E-mail com ${marked[2]} na planilha`;
+    }
     // E-mail fora do lugar: a célula que tem "@".
     if (!EMAIL.test(email))
       email = (
@@ -101,6 +112,7 @@ export function parseTeamImport(text: string): TeamImportParse {
       position: pick("position"),
       area: pick("area"),
       email,
+      ...(emailNote ? { emailNote } : {}),
     };
     if (row.name.length < 2) {
       out.invalid.push({ line: row.line, text: raw.trim(), reason: "name" });
@@ -158,7 +170,13 @@ const RULES: Rule[] = [
     sure: true,
   },
   { match: /\bcompras\b/, functions: ["buyer"], sure: true },
-  { match: /\bplanejamento\b/, functions: ["planner"], sure: true },
+  {
+    match: /\bplanejamento\b/,
+    functions: ["planner"],
+    sure: false,
+    doubt:
+      "Planner; conferir: o Planner do portal aprova o pré-custo e acompanha ETD, containers e fretes",
+  },
   {
     match: /\b(importacao|comex)\b/,
     functions: ["comex_internal"],
@@ -268,6 +286,28 @@ export interface TeamImportProposal extends TeamImportLine {
   review: string[];
 }
 
+/**
+ * A área da planilha entre as cadastradas: o mesmo nome ou, se não houver,
+ * a área cujo nome é o começo do da planilha ("Showroom Recife" → Showroom,
+ * "Comercial ADM Vendas" → Comercial; o começo mais longo vale).
+ */
+export function matchSheetArea<T extends AreaLike>(
+  name: string,
+  areas: T[],
+): T | null {
+  const exact = findAreaByName(name, areas);
+  if (exact) return exact;
+  const key = areaNameKey(name);
+  if (!key) return null;
+  return (
+    areas
+      .filter((a) => a.active)
+      .map((a) => ({ a, k: areaNameKey(a.name) }))
+      .filter(({ k }) => k && key.startsWith(`${k} `))
+      .sort((x, y) => y.k.length - x.k.length)[0]?.a ?? null
+  );
+}
+
 /** A proposta de cada linha: cargo, área, funções, nível e o que conferir. */
 export function proposeTeamImport(
   rows: TeamImportLine[],
@@ -283,7 +323,8 @@ export function proposeTeamImport(
       review.push(`Cargo "${row.position}" não está cadastrado em Cargos`);
     if (position && !position.active)
       review.push(`Cargo "${position.name}" está desativado`);
-    const sheetArea = row.area ? findAreaByName(row.area, areas) : null;
+    if (row.emailNote) review.push(`${row.emailNote}: conferir o e-mail`);
+    const sheetArea = row.area ? matchSheetArea(row.area, areas) : null;
     if (row.area && !sheetArea)
       review.push(`Área "${row.area}" não está cadastrada em Áreas`);
     let areaId: string | null = null;
