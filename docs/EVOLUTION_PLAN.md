@@ -1714,6 +1714,14 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Aditivo:** tela e rota novas; nada removido. O ícone de mensagens e o sino passaram a usar a constante `HEADER_ICON`, com a mesma classe de antes. Sem mudança no banco nem nas permissões gravadas.
 - Testes: `tests/unit/training.test.ts` e `tests/e2e/training.spec.ts`.
 
+## Encomendas mais rápida, exportação e fila de Reposição sem o que virou pedido
+
+- **Pedido do dono** (16/11/2026): a exportação de Encomendas ainda trazia o que virou pedido; a tela estava lenta; a fila de Reposição listava as reposições já pedidas.
+- **Causa da lentidão:** a tela lia todas as solicitações (~16 mil, quase todas do histórico, já pedidas) e, para saber quais pedidos estavam cancelados, buscava cada pedido (~160 consultas em partes de 100), para depois esconder quase tudo. Os cartões de situação eram contados sobre essa lista inteira.
+- **Como ficou** (`src/lib/services/request-list-data.ts`): o banco devolve só as encomendas em andamento (`status` fora de pedido e excluída, índice `requests_by_status`); as encerradas (excluídas e com pedido cancelado) só ao abrir "Ver canceladas e excluídas", e o link conta sem trazer as linhas; o lote (`?group=`) lê só o lote; o selo "lote de N" lê só os lotes da página. Os cartões contam a lista já carregada (poucas linhas), sem consulta a mais. Exportação: a mesma leitura e o filtro de tipo (encomenda ou reposição), que a tela já mandava. Reposição: `listDemands` pede ao banco só as abertas.
+- **Aditivo:** nenhuma tela, rota, campo ou dado removido; sem mudança no banco.
+- Testes: `tests/unit/request-list-data.test.ts`.
+
 ## Nova solicitação (TS e Venda): revisão completa dos textos das programações
 
 - **Pedido do dono** (16/11/2026, com a foto da tela TS): deixar claro em todos os textos que cada programação é a data em que o cliente deve receber o pedido (não produção, embarque nem saída), com o padrão "Datas previstas de recebimento pelo cliente", "Data prevista do 1º recebimento", "Programação 1 — Recebimento previsto: 16/03/2027", "Quantidade de entregas programadas", "Intervalo entre recebimentos previstos" e a data prevista de recebimento no cabeçalho de cada coluna da Composição de containers.
