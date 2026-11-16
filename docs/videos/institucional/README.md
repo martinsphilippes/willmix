@@ -154,21 +154,21 @@ No vídeo **curto**, os balões de conversa da cena de comunicação são **ilus
 | 1:11  | Quem faz o quê        | Cliente                                                                                                    |
 | 1:24  |                       | Fornecedor                                                                                                 |
 | 1:41  |                       | Agência de arte (recebe da fábrica a faca e as fotos do produto; arquivos e pendências correm pelo portal) |
-| 2:01  |                       | Certificadora                                                                                              |
-| 2:12  |                       | Inspeção pelo celular: o fornecedor envia fotos e peso; a Wellmix vê no pedido                             |
-| 2:26  |                       | Agência de marketing na origem                                                                             |
-| 2:37  |                       | Agente de carga e companhia marítima (BL)                                                                  |
-| 2:49  |                       | Comex e despachante                                                                                        |
-| 2:59  |                       | Transportador (com o celular)                                                                              |
-| 3:09  |                       | Dentro da Wellmix: comprador, gerente de produto, planner, cadastro, designer, jurídico                    |
-| 3:28  |                       | Financeiro, qualidade, vendas, diretorias, administrador, comex interno                                    |
-| 3:50  | Uma conversa          | O chat no lugar dos e-mails: uma conversa por empresa, por pedido e por item, com fotos, vídeos e arquivos |
-| 4:08  |                       | Sino, pendências e quem deve a resposta (controladoria de mensagens)                                       |
+| 2:03  |                       | Certificadora                                                                                              |
+| 2:13  |                       | Inspeção pelo celular: o fornecedor envia fotos e peso; a Wellmix vê no pedido                             |
+| 2:28  |                       | Agência de marketing na origem                                                                             |
+| 2:38  |                       | Agente de carga e companhia marítima (BL)                                                                  |
+| 2:50  |                       | Comex e despachante                                                                                        |
+| 3:01  |                       | Transportador (com o celular)                                                                              |
+| 3:10  |                       | Dentro da Wellmix: comprador, gerente de produto, planner, cadastro, designer, jurídico                    |
+| 3:30  |                       | Financeiro, qualidade, vendas, diretorias, administrador, comex interno                                    |
+| 3:51  | Uma conversa          | O chat no lugar dos e-mails: uma conversa por empresa, por pedido e por item, com fotos, vídeos e arquivos |
+| 4:09  |                       | Sino, pendências e, para a Wellmix, quem deve a resposta (controladoria de mensagens)                      |
 | 4:17  | Feito para o controle | Três idiomas                                                                                               |
-| 4:21  |                       | Acesso por papel (o que cada um vê e o que fica oculto)                                                    |
+| 4:22  |                       | Acesso por papel (o que cada um vê e o que fica oculto)                                                    |
 | 4:32  |                       | Qualidade documentada: inspeção, carregamento, documentos                                                  |
 | 4:45  |                       | Control Tower, painel de SLA, painéis e auditoria                                                          |
-| 4:58  |                       | Qualquer tela, instala como aplicativo; feito para o ERP da Wellmix                                        |
+| 4:59  |                       | Qualquer tela, instala como aplicativo; feito para o ERP da Wellmix                                        |
 | 5:06  |                       | Assinatura                                                                                                 |
 
 O texto completo da narração e das legendas está em `scripts/video/script.mjs` (uma fala por linha, com pt e zh ao lado) e nos arquivos de [`legendas/`](legendas/).
