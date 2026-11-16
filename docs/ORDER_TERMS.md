@@ -200,7 +200,7 @@ WHERE P.ATIVO = 'S' AND P.CODPROD > <último> ORDER BY P.CODPROD
 
 - **Histórico de compras do cliente**: o cabeçalho (título, filtros e abas) fica fixo no topo do bloco e só a lista rola. Cada produto mostra à esquerda a foto principal do cadastro (`products.photoIds[0]`, por `/api/files`; sem foto, um quadro vazio) e o código é o **da Wellmix** (`products.sku`); o código do Sankhya só aparece quando o produto não está no catálogo do portal. A ligação é por `src/lib/services/product-faces.ts` (SKU e foto por id, em lotes de 200).
 - **Cliente** (busca no topo): ao escolher, logo abaixo aparece "Código X · Nome" (código do parceiro no Sankhya, `parties.sankhyaCode`; sem ele, "—").
-- **Transportador**: um campo de busca filtra a lista por nome, código (CODPARC) ou CNPJ, e abaixo do escolhido aparece "Código · CNPJ · Nome". O CNPJ vem de `TGFPAR.CGC_CPF` (Sankhya) ou de `parties.taxId` (portal); o código, de `CODPARC` ou `parties.sankhyaCode`. A lista mostra o código antes do nome.
+- **Transportador**: um campo de busca filtrava a lista por nome, código (CODPARC) ou CNPJ (saiu em 16/11/2026, seção 11.7), e abaixo do escolhido aparece "Código · CNPJ · Nome". O CNPJ vem de `TGFPAR.CGC_CPF` (Sankhya) ou de `parties.taxId` (portal); o código, de `CODPARC` ou `parties.sankhyaCode`. A lista mostra o código antes do nome.
 
 ### 11.5 Seletor de produtos pela lupa (dono, 16/11/2026)
 
@@ -225,6 +225,14 @@ Ao lado da busca de produto de cada linha, uma **lupa** abre o seletor (um só n
   - o **frete de entrega** total das Configurações (padrão R$ 8.000; vazio = pendente);
   - o RCA do cliente como vendedor e a data de hoje.
 - A tela mostra o preço do produto, o frete por peça, as referências com frete e WD e o aviso de frete pendente. Também diz o que foi enviado (formato, VIP, rota e frete).
+
+### 11.7 Produtos recolhidos, campos de texto fora e transportador sem busca (dono, 16/11/2026)
+
+- **Produtos no pedido**: ao clicar "+ Adicionar outro produto", os produtos que estavam abertos se recolhem numa tabela **"Produtos no pedido"**, abaixo da ficha nova (e do botão). Cada linha mostra nº, foto, produto (nome da ficha; fora do catálogo, o nome digitado), variação, quantidade, **Preenchimento** (Completo ✓ ou **Incompleto** em âmbar) e as ações **Abrir** e **Remover**. Aberta, a ficha volta ao lugar com tudo o que foi preenchido e tem **Recolher** no título. Recolhida, a ficha continua no formulário (escondida) e vai no envio.
+- Produtos acrescentados de uma vez (histórico de compras, seletor pela lupa) entram todos abertos; cada um se recolhe pelo próprio "Recolher". Rascunho com vários produtos: só o último abre.
+- **Incompleto** = sem produto escolhido (e não é fora do catálogo), sem quantidade ou com algum campo obrigatório inválido (variação, nome e descrição fora do catálogo, quantidade). A marca aparece também no título da ficha aberta. Ao enviar com uma ficha recolhida incompleta, ela se abre para mostrar o campo.
+- **Produto (Nome), Descrição e Especificação** saíram da tela do pedido (sobra da versão anterior), inclusive o quadro só de leitura do produto do catálogo. Os textos da ficha vão escondidos no formulário e o servidor grava os da ficha, como antes; ficha sem descrição usa o nome. **Fora do catálogo** os três campos continuam: não há ficha e eles são a única descrição do que se procura (encomenda B14).
+- **Transportador**: saiu o campo "Buscar por nome, código ou CNPJ"; fica só a lista "Escolha o transportador" (com o resumo Código · CNPJ · Nome abaixo). Com Wellmix chamando o transportador e Re-despacho = Sim, abre-se a segunda lista igual, do transportador do re-despacho (como na 11.6).
 
 ## 12. Em aberto (para o dono)
 
