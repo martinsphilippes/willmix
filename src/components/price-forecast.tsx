@@ -165,11 +165,19 @@ export function PriceForecast({
     shown.value.kind === "forecast"
       ? shown.value
       : null;
-  // Preço: com frete quando a Wellmix chama; o WD quando é o cliente.
+  // Preço na tela (dono, 16/11/2026): formato WD → PRECO_WD_COM_FRETE_
+  // REFERENCIA; Wellmix chamando o transportador → PRECO_COM_FRETE_
+  // REFERENCIA. Os dois com o "Valor do transporte (R$)" enviado na chamada.
+  // Fora disso (formato Wellmix e o cliente chama), o WD como antes.
+  const wd = terms?.saleFormat === "wd";
   const price = forecast
-    ? caller === "customer"
-      ? (forecast.wdPrice ?? null)
-      : (forecast.withFreight ?? forecast.productPrice ?? null)
+    ? wd
+      ? (forecast.wdWithFreight ?? null)
+      : caller === "wellmix"
+        ? (forecast.withFreight ?? null)
+        : caller === "customer"
+          ? (forecast.wdPrice ?? null)
+          : (forecast.withFreight ?? forecast.productPrice ?? null)
     : null;
   const total = price !== null && piecesOk ? price * pieces : null;
 

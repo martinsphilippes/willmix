@@ -209,7 +209,7 @@ Ao lado da busca de produto de cada linha, uma **lupa** abre o seletor (um só n
 - **Filtros**: Grupo, Sub grupo e Coleção do grupo, os três níveis da árvore de grupos do Sankhya logo abaixo da família (TGFGRU, de cima para baixo: família = GRAU 1, Grupo = 2º nível, Sub grupo = 3º, Coleção do grupo = 4º). O grupo de cada produto vem da consulta do técnico (`TGFPRO.CODGRUPOPROD`, coluna `COD_GRUPO`) ou, sem ela, do código da linha; sobe-se na árvore até a família. Mesmo nome no mesmo nível = uma opção só (como a família). Cada filtro mostra só as opções que sobram com os outros (com a contagem), e a lista acompanha; trocar um nível limpa os de baixo.
 - **Lista**: tabela paginada (12 por página, por nome) só com Foto (grande, 160 px) e Nome; o código Wellmix e as marcas "No pedido" e "Visto" ficam sob o nome.
 - **Acrescentar**: clique na foto ou no nome acrescenta ao pedido e o seletor continua aberto. O seletor à esquerda da foto (e "Selecionar todos desta página") acrescenta vários de uma vez. Produto que já está no pedido não entra de novo.
-- **Quantidade padrão** (peças): cada produto acrescentado entra com ela, nunca abaixo do pedido mínimo em caixas inteiras; vazia, o pedido mínimo como sempre.
+- **Quantidade padrão** (caixas master desde 16/11/2026, seção 11.9; antes em peças): cada produto acrescentado entra com caixas × peças por caixa, nunca abaixo do pedido mínimo em caixas inteiras; vazia, o pedido mínimo como sempre.
 - **Filtro visto**: "Marcar este filtro como visto" guarda a combinação atual (Grupo, Sub grupo, Coleção). As opções mostram "✓ … · visto" quando todos os produtos delas já entraram num filtro visto, ou "n/m vistos"; os produtos ganham a marca "Visto" e o rodapé diz "n de m produtos da família já vistos". Fica no navegador de quem usa (por cliente, país e família), não no banco.
 - Leitura: `GET /api/products/browse` (`browseOrigin` em `src/lib/services/product-origin.ts`), para quem busca no catálogo. Nome, SKU e foto vêm do índice de origem (10 minutos).
 
@@ -239,11 +239,18 @@ Ao lado da busca de produto de cada linha, uma **lupa** abre o seletor (um só n
 - **Quadro "Produto do catálogo Wellmix"** saiu da venda da Wellmix. Fica só um aviso para leitor de tela.
 - **Previsão de preço ao cliente final**:
   - **Sem o botão Calcular**: com o produto escolhido, a conta roda sozinha. Ela roda de novo (com espera de 0,6 s) sempre que muda algo que vai para a API: quantidade, cliente, formato, nível, quem chama o transportador ou valor do transporte.
-  - O quadro verde mostra só o **Preço** e o **Valor total** (preço × quantidade). O Preço é o "Preço com frete (referência)" (`PRECO_COM_FRETE_REFERENCIA`) quando a Wellmix chama o transportador, e o "Preço WD" (`PRECO_WD_REFERENCIA`) quando é o cliente.
+  - O quadro verde mostra só o **Preço** e o **Valor total** (preço × quantidade). O Preço é o "Preço com frete (referência)" (`PRECO_COM_FRETE_REFERENCIA`) quando a Wellmix chama o transportador, e o "Preço WD" (`PRECO_WD_REFERENCIA`) quando é o cliente (no formato WD, desde a 11.9, o WD com frete).
   - Saíram as demais linhas, a linha "Enviado" e a "Memória de cálculo do Sankhya (auditoria)". Os avisos de frete pendente, erro e modo manual continuam.
 - **Valor do transporte (R$)**: um campo logo abaixo do Transportador (quando a Wellmix chama). É o total da entrega, gravado em `orderTerms.deliveryFreightBrl`. Quando preenchido, vai em `@FRETE_ENTREGA_BRL` no lugar do frete padrão das Configurações; vazio, vale o padrão.
 - **Valor total** do pedido: ao lado de "Formato de venda", na mesma linha. É a soma do valor total de cada produto, inclusive dos recolhidos em "Produtos no pedido".
 - **Informar o preço de venda desejado** (preço máximo de compra): só aparece com "Compra para estoque (sem cliente)". Ao marcar a compra para estoque, o cliente sai da busca, que fica em branco.
+
+### 11.9 Lupa em caixas, produtos recolhidos e preço pelo formato (dono, 16/11/2026)
+
+- **Quantidade padrão da lupa em caixas master**: cada produto entra com caixas × peças por caixa (`masterCartonQty` da ficha), nunca abaixo do pedido mínimo em caixas inteiras. Produto sem peças por caixa não converte: entra com o mínimo e a ficha aberta.
+- **Recolhidos**: com a quantidade padrão, os produtos da lupa entram já recolhidos em "Produtos no pedido"; sem ela, abertos como antes. Com todos recolhidos, "+ Adicionar outro produto" abre a ficha nova, que tem a lupa.
+- **Correção**: com a ficha do produto demorando (Sankhya), acrescentar dois produtos seguidos pela lupa apagava o primeiro e as linhas ficavam sem a quantidade. As linhas agora são lidas no momento em que a ficha chega.
+- **Preço da previsão**: formato **WD** → `PRECO_WD_COM_FRETE_REFERENCIA`; **Wellmix chamando o transportador** (formato Wellmix) → `PRECO_COM_FRETE_REFERENCIA`; formato Wellmix com o cliente chamando → o Preço WD, como antes. No formato WD, o **Valor do transporte (R$)** aparece mesmo com o cliente chamando, vai em `@FRETE_ENTREGA_BRL` e é gravado em `orderTerms.deliveryFreightBrl`.
 
 ## 12. Em aberto (para o dono)
 

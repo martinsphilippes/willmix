@@ -192,7 +192,9 @@ export function RequestOrderTerms({
       carrierCaller: caller || null,
       // O valor do transporte digitado (Wellmix chama) vai no lugar do frete
       // padrão das Configurações (dono, 16/11/2026).
-      deliveryFreightBrl: caller === "wellmix" ? freightValue : null,
+      // No formato WD também (dono, 16/11/2026), mesmo com o cliente chamando.
+      deliveryFreightBrl:
+        caller === "wellmix" || format === "wd" ? freightValue : null,
     });
   }, [format, tier, caller, freightValue, setSaleTerms]);
   // Trocar o país ou a família com produto no pedido (dono, 15/11/2026): o
@@ -277,6 +279,26 @@ export function RequestOrderTerms({
   const orderTotal = totals.length ? totals.reduce((a, b) => a + b, 0) : null;
   const count = (n: number) =>
     labels.productsCount.replace("{n}", n.toLocaleString("pt-BR"));
+
+  // Valor do transporte (dono, 16/11/2026): o total da entrega; vai na
+  // previsão de preço no lugar do padrão. Com a Wellmix chamando, ao lado do
+  // transportador; no formato WD com o cliente chamando, sozinho.
+  const freightField = (
+    <Field
+      label={labels.freight ?? "Valor do transporte (R$)"}
+      hint={labels.freightHint}
+    >
+      <input
+        name="deliveryFreightBrl"
+        inputMode="decimal"
+        autoComplete="off"
+        value={freight}
+        onChange={(e) => setFreight(e.target.value)}
+        className="w-full rounded-lg border border-zinc-300 px-2.5 py-1.5 text-sm tabular-nums"
+        data-order-terms-freight
+      />
+    </Field>
+  );
 
   return (
     <section
@@ -459,7 +481,11 @@ export function RequestOrderTerms({
             </fieldset>
           </div>
           <div className="min-w-0 space-y-3">
-            {caller !== "wellmix" ? null : failed ? (
+            {caller !== "wellmix" ? (
+              format === "wd" ? (
+                freightField
+              ) : null
+            ) : failed ? (
               <p className="text-xs font-medium text-red-700">{labels.error}</p>
             ) : !options ? (
               <p className="text-xs text-zinc-500">{labels.loading}</p>
@@ -473,22 +499,7 @@ export function RequestOrderTerms({
                   labels={labels}
                   dataKey="carrier"
                 />
-                {/* Valor do transporte (dono, 16/11/2026): o total da
-                    entrega; vai na previsão de preço no lugar do padrão. */}
-                <Field
-                  label={labels.freight ?? "Valor do transporte (R$)"}
-                  hint={labels.freightHint}
-                >
-                  <input
-                    name="deliveryFreightBrl"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    value={freight}
-                    onChange={(e) => setFreight(e.target.value)}
-                    className="w-full rounded-lg border border-zinc-300 px-2.5 py-1.5 text-sm tabular-nums"
-                    data-order-terms-freight
-                  />
-                </Field>
+                {freightField}
                 {redispatch === "yes" ? (
                   <CarrierPicker
                     name="redispatchCarrier"
