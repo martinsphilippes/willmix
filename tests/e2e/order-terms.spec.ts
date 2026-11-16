@@ -358,3 +358,145 @@ test("Histórico do cliente → pedido: filtra pela família, acrescenta com um 
     ),
   ).toHaveValue("");
 });
+
+test("Lupa da busca de produto: seletor com Grupo, Sub grupo e Coleção, seleção, quantidade padrão e filtro visto", async ({
+  page,
+}) => {
+  // O seletor lê /api/products/browse; aqui a família com dois produtos
+  // em dois sub grupos (no modo memória não há a árvore do Sankhya).
+  type Combo = [string | null, string | null, string | null];
+  const catalog = [
+    {
+      id: "prod-boneca",
+      name: "Boneca articulada 30 cm",
+      sku: "BRQ-001",
+      photoId: null,
+      levels: ["lv:BRINQUEDOS", "lv:BONECAS", "lv:ARTICULADAS"] as Combo,
+    },
+    {
+      id: "prod-piscina",
+      name: "Piscina inflável 2.000 L",
+      sku: "INF-001",
+      photoId: null,
+      levels: ["lv:BRINQUEDOS", "lv:PISCINAS", "lv:INFLAVEIS"] as Combo,
+    },
+  ];
+  const names: Record<string, string> = {
+    "lv:BRINQUEDOS": "BRINQUEDOS",
+    "lv:BONECAS": "BONECAS",
+    "lv:PISCINAS": "PISCINAS",
+    "lv:ARTICULADAS": "ARTICULADAS",
+    "lv:INFLAVEIS": "INFLAVEIS",
+  };
+  const matches = (c: Combo, l: Combo) => c.every((v, i) => !v || l[i] === v);
+  await page.route("**/api/products/browse?**", async (route) => {
+    const url = new URL(route.request().url());
+    const filters = [1, 2, 3].map(
+      (i) => url.searchParams.get(`l${i}`) || null,
+    ) as Combo;
+    const seen = JSON.parse(url.searchParams.get("seen") || "[]") as Combo[];
+    const isSeen = (l: Combo) => seen.some((c) => matches(c, l));
+    const facets = [0, 1, 2].map((level) => {
+      const counts = new Map<string, { products: number; seen: number }>();
+      for (const p of catalog) {
+        if (!filters.every((v, i) => i === level || !v || p.levels[i] === v))
+          continue;
+        const key = p.levels[level]!;
+        const c = counts.get(key) ?? { products: 0, seen: 0 };
+        c.products++;
+        if (isSeen(p.levels)) c.seen++;
+        counts.set(key, c);
+      }
+      return [...counts].map(([key, c]) => ({ key, name: names[key], ...c }));
+    });
+    const items = catalog.filter((p) => matches(filters, p.levels));
+    await route.fulfill({
+      json: {
+        facets,
+        items: items.map((p) => ({ ...p, seen: isSeen(p.levels) })),
+        total: items.length,
+        page: 1,
+        pages: 1,
+        family: {
+          products: catalog.length,
+          seen: catalog.filter((p) => isSeen(p.levels)).length,
+        },
+      },
+    });
+  });
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/requests/new");
+  // Sem país e família, a lupa espera.
+  await expect(
+    page.locator("[data-product-browser-open]").first(),
+  ).toBeDisabled();
+  await chooseCustomer(page, "loja", "cliente-joao");
+  await chooseCustomerLogin(page, "joao@lojista.com");
+  await fillOrderTerms(page);
+  await page.locator("[data-product-browser-open]").first().click();
+  const browser = page.locator("[data-product-browser]");
+  await expect(browser).toBeVisible();
+  await expect(browser.locator("[data-product-browser-item]")).toHaveCount(2);
+  await browser.locator("[data-product-browser-qty]").fill("3000");
+
+  // Sub grupo BONECAS: só a boneca; a coleção acompanha. Marca como visto.
+  await browser
+    .locator('[data-product-browser-level="2"]')
+    .selectOption("lv:BONECAS");
+  await expect(browser.locator("[data-product-browser-item]")).toHaveCount(1);
+  await expect(
+    browser.locator('[data-product-browser-level="3"] option'),
+  ).toHaveText(["Todos", "ARTICULADAS (1)"]);
+  await browser.locator("[data-product-browser-seen]").click();
+  await expect(browser.locator("[data-product-browser-seen]")).toHaveAttribute(
+    "data-product-browser-seen",
+    "on",
+  );
+  await expect(browser.locator("[data-product-browser-progress]")).toHaveText(
+    "1 de 2 produtos da família já vistos",
+  );
+  // De volta a todos: BONECAS aparece como visto.
+  await browser.locator('[data-product-browser-level="2"]').selectOption("");
+  await expect(
+    browser.locator(
+      '[data-product-browser-level="2"] option[value="lv:BONECAS"]',
+    ),
+  ).toHaveAttribute("data-seen", "all");
+
+  // Clique na boneca: entra no pedido e o seletor continua aberto.
+  await browser.locator('[data-product-browser-add="prod-boneca"]').click();
+  await expect(
+    browser.locator('[data-product-browser-item="prod-boneca"]'),
+  ).toHaveAttribute("data-state", "in-order");
+  await expect(browser).toBeVisible();
+  // Selecionar todos (a boneca já está no pedido) e adicionar.
+  await browser.locator("[data-product-browser-select-all]").check();
+  await browser.locator("[data-product-browser-add-selected]").click();
+  await expect(browser.locator("[data-product-browser-added]")).toHaveText(
+    "1 produto(s) acrescentado(s) ao pedido.",
+  );
+  await expect(
+    browser.locator('[data-product-browser-item="prod-piscina"]'),
+  ).toHaveAttribute("data-state", "in-order");
+  await browser.locator("[data-product-browser-close]").click();
+  await expect(browser).toHaveCount(0);
+
+  // Os dois no pedido com a quantidade padrão (acima do mínimo de cada um).
+  const items = page.locator("[data-request-item]");
+  await expect(items).toHaveCount(2);
+  const inputs = page.locator(
+    '[data-request-item] [data-product-picker="catalog"] [data-product-picker-input]',
+  );
+  await expect(inputs.nth(0)).toHaveValue(/Boneca/);
+  await expect(inputs.nth(1)).toHaveValue(/Piscina/);
+  for (let i = 0; i < 2; i++)
+    await expect(
+      items.nth(i).locator('input[type="hidden"][name$=".quantity"]'),
+    ).toHaveValue("3000");
+
+  // Reabre: o filtro visto continua (no navegador).
+  await page.locator("[data-product-browser-open]").first().click();
+  await expect(browser.locator("[data-product-browser-progress]")).toHaveText(
+    "1 de 2 produtos da família já vistos",
+  );
+});

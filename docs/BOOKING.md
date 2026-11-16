@@ -90,6 +90,25 @@ Onde está: `src/lib/services/booking-partner.ts` (`launchPartnerBooking`, `setP
 
 Fica para o dono decidir: a Wellmix devolver o booking para o parceiro corrigir; o parceiro baixar um modelo de planilha; ser avisado quando um booking passa a ser dele ou é conferido; lembrete para o booking carregado e não enviado; a Wellmix enxergar (sem mexer) os bookings ainda em preenchimento.
 
+### Tabela dos itens: cabeçalho congelado e preenchimento em massa (dono, 16/11/2026)
+
+Vale para todo login que abre o Book: a tela da Wellmix (`/app/booking/lots/[id]`) e a do parceiro em "Meus books → Book" (a Trading, a Factory, o Supplier e o GP que lançam o book deles).
+
+- **Cabeçalho congelado**: os títulos das colunas e a linha de preenchimento ficam presos logo abaixo da barra vermelha enquanto a tabela passa; no fim da tabela saem junto com ela. Na rolagem para o lado, cada título e cada campo acompanham a coluna deles. A primeira coluna (a caixa, o número da linha e, no cabeçalho, "Carregar") fica presa à esquerda; na tela da Wellmix, a coluna das fotos também, logo depois dela (dono, 16/11/2026: ver qual é o item enquanto a tabela anda para o lado). Na tela da Wellmix, busca, ordem pelo título e páginas continuam como antes; na do parceiro continua sem elas. Também na tabela "Itens do book" do parceiro depois de enviado (só consulta).
+  - Como: `TableTools` com `stickyHead` (`src/components/table-tools.tsx`). O `<thead>` vai para uma tabela própria, presa com `position: sticky` dentro do quadro da tabela. As duas tabelas usam o mesmo `<colgroup>`, com `table-layout: fixed`, e a rolagem lateral de uma move a outra. A largura de cada coluna sai da largura do campo dela (`colRem`, `src/lib/booking-bulk-ui.ts`). Um campo levado à vista (a lista de pendências, o foco) para abaixo do cabeçalho: `scroll-margin-top` com a altura dele, `--wm-table-head`.
+- **Marcar linhas**: há uma caixa no início de cada linha. A caixa do cabeçalho, sem nenhuma linha marcada, marca todas as que a busca deixa à vista, em qualquer página; com alguma marcada, desmarca todas. A linha marcada fica destacada.
+- **Preencher em massa**: logo abaixo dos títulos há um campo, inicialmente vazio, acima de cada coluna editável. O tipo e as opções são os da coluna: listas em FOB/EXW e Moeda, número nos números, texto no resto, e a capacidade aceita letras.
+  - **"Carregar"** grava de uma vez os valores preenchidos nas linhas marcadas, numa coluna ou em várias. Cada valor troca o daquela coluna nas linhas marcadas. As linhas desmarcadas e as colunas com o campo vazio ficam como estão.
+  - **Validação**: "Carregar" só liga com pelo menos uma linha marcada e todo campo preenchido válido. Um valor que a célula recusaria fica apontado ("Valor inválido"); um campo preenchido e válido fica verde.
+  - **Depois de gravar**: o aviso diz quantos itens foram atualizados, os campos esvaziam e as linhas continuam marcadas. Na falha, o aviso diz quais linhas não gravaram e por quê ("linha 5 (Preço: …)") e oferece "Tentar de novo", que manda os mesmos valores só para elas.
+  - **O que dá para preencher**: na tela da Wellmix, no rascunho, as colunas do item (preço e moeda só com "Ver preço de compra") e o NCM. Fechado ou em andamento, só o NCM; cancelado, nada (sem caixas nem campos). Na tela do parceiro, todas as colunas enquanto ele preenche, antes de enviar.
+- **Regras**: as da célula, sem nada novo.
+  - **Leitura do valor**: `bookingItemPatch` (`src/lib/booking-lots.ts`), a mesma leitura de `setBookingItemField` e `setPartnerBookingItemField`.
+  - **Permissões**: a tela Booking, "Ver preço de compra", o rascunho e, no parceiro, o book dele antes de enviar.
+  - **NCM**: o mesmo serviço da célula, `setBookingItemsNcm`, que refaz a análise do book fechado.
+  - **Como grava**: cada item grava ou é recusado sozinho. Item de outro book fica de fora. A auditoria registra `booking_item.bulk`.
+  - **Código**: as ações são `bulkSetBookingItemsAction` e `bulkSetPartnerBookingItemsAction` (`src/app/app/actions/booking-lots.ts`); os serviços, `setBookingItemsFields` e `setPartnerBookingItemsFields`. A tela fica em `src/components/booking-bulk-fill.tsx`.
+
 ### Capacidade: mililitros ou tamanho (dono, 12/11/2026)
 
 Achado do dono: a planilha de porta-retratos trazia a coluna de capacidade preenchida e a tela mostrava o campo vazio.

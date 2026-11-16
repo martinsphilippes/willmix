@@ -237,6 +237,48 @@ describe("país de origem, grupo e entrega", () => {
     expect(origin.familyKey("Utilidades Domésticas")).toBe(
       "fm:UTILIDADES_DOMESTICAS",
     );
+    // Seletor de produtos (lupa; docs/ORDER_TERMS.md 11.5): Grupo, Sub
+    // grupo e Coleção do grupo abaixo da família, com as contas andando juntas.
+    const browse = (
+      filters: [string | null, string | null, string | null],
+      seen: Array<[string | null, string | null, string | null]> = [],
+    ) =>
+      origin.browseOrigin({
+        country: "CHINA",
+        family: "fm:BRINQUEDOS_GERAIS",
+        filters,
+        seen,
+        page: 1,
+        perPage: 12,
+      });
+    const all = await browse([null, null, null]);
+    expect(all.items.map((p) => p.id)).toEqual(
+      expect.arrayContaining(["prod-boneca", "prod-piscina"]),
+    );
+    expect(all.facets[0].map((o) => o.key)).toEqual(["lv:BRINQUEDOS_GERAIS"]);
+    expect(all.facets[1].map((o) => o.name).sort()).toEqual([
+      "BONECAS",
+      "PISCINAS",
+    ]);
+    expect(all.facets[2].map((o) => o.name).sort()).toEqual([
+      "BRINQUEDOS",
+      "INFLAVEIS",
+    ]);
+    // Sub grupo escolhido: a coleção e a lista acompanham.
+    const bonecas = await browse([null, "lv:BONECAS", null]);
+    expect(bonecas.items.map((p) => p.id)).toContain("prod-boneca");
+    expect(bonecas.items.map((p) => p.id)).not.toContain("prod-piscina");
+    expect(bonecas.facets[2].map((o) => o.key)).toEqual(["lv:BRINQUEDOS"]);
+    // O próprio nível continua com as outras opções (para trocar).
+    expect(bonecas.facets[1]).toHaveLength(2);
+    // Filtro visto: as bonecas contam como vistas; as piscinas, não.
+    const seen = await browse([null, null, null], [[null, "lv:BONECAS", null]]);
+    expect(seen.items.find((p) => p.id === "prod-boneca")?.seen).toBe(true);
+    expect(seen.items.find((p) => p.id === "prod-piscina")?.seen).toBe(false);
+    const sub = seen.facets[1].find((o) => o.key === "lv:BONECAS")!;
+    expect(sub.seen).toBe(sub.products);
+    expect(seen.family.seen).toBe(bonecas.total);
+    expect(seen.family.products).toBe(all.total);
     // Família do próprio produto pelo Sankhya (o 1º nível pela consulta do
     // técnico) vale por cima da linha; o histórico liga o código ao produto.
     await getStore().update("products", "prod-boneca", {

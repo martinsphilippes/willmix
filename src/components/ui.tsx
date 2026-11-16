@@ -510,6 +510,7 @@ export function Table({
   sortable = true,
   searchable = true,
   paginated = true,
+  stickyHead = false,
 }: {
   children: ReactNode;
   className?: string;
@@ -517,6 +518,11 @@ export function Table({
   sortable?: boolean;
   searchable?: boolean;
   paginated?: boolean;
+  /**
+   * Cabeçalho congelado abaixo da barra vermelha (TableTools `stickyHead`):
+   * os filhos são o <colgroup> com a largura das colunas, o <thead> e o <tbody>.
+   */
+  stickyHead?: boolean;
 }) {
   if (!tools) {
     return (
@@ -540,6 +546,7 @@ export function Table({
       sortable={sortable}
       searchable={searchable}
       paginated={paginated}
+      stickyHead={stickyHead}
     >
       {children}
     </TableTools>

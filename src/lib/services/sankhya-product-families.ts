@@ -90,6 +90,12 @@ export async function sankhyaProductGroups(): Promise<
 export interface ProductFamily {
   code: string;
   name: string;
+  /**
+   * O grupo do próprio produto (TGFPRO.CODGRUPOPROD, o último nível): de
+   * onde se sobe na árvore até a família para achar Grupo, Sub grupo e
+   * Coleção do grupo (seletor de produtos; docs/ORDER_TERMS.md 11.5).
+   */
+  group?: string | null;
 }
 
 let familiesCached: { at: number; map: Map<string, ProductFamily> } | null =
@@ -104,7 +110,7 @@ export function resetSankhyaFamiliesByProduct() {
 
 export const productFamiliesSql = (after: number) =>
   [
-    `SELECT TOP ${PAGE} P.CODPROD, F.CODGRUPOPROD AS COD_FAMILIA, RTRIM(F.DESCRGRUPOPROD) AS FAMILIA`,
+    `SELECT TOP ${PAGE} P.CODPROD, P.CODGRUPOPROD AS COD_GRUPO, F.CODGRUPOPROD AS COD_FAMILIA, RTRIM(F.DESCRGRUPOPROD) AS FAMILIA`,
     "FROM TGFPRO P",
     "JOIN TGFGRU G1 ON G1.CODGRUPOPROD = P.CODGRUPOPROD",
     "LEFT JOIN TGFGRU G2 ON G2.CODGRUPOPROD = G1.CODGRUPAI",
@@ -126,7 +132,12 @@ async function loadFamilies(): Promise<Map<string, ProductFamily>> {
       const prod = code(row.CODPROD);
       const family = code(row.COD_FAMILIA);
       const name = String(row.FAMILIA ?? "").trim();
-      if (prod && family) map.set(prod, { code: family, name: name || family });
+      if (prod && family)
+        map.set(prod, {
+          code: family,
+          name: name || family,
+          group: code(row.COD_GRUPO),
+        });
       if (prod && Number(prod) > after) after = Number(prod);
     }
     if (rows.length < PAGE) break;
