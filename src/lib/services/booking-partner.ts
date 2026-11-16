@@ -19,6 +19,7 @@ import {
   bookingItemPatch,
   type BookingItemField,
 } from "@/lib/booking-lots";
+import { listByIds } from "@/lib/db/lookup";
 import { audit } from "./audit";
 import type { BookingBulkResult } from "./booking-lots";
 import type { SheetSource } from "./product-sheet-import";
@@ -97,7 +98,24 @@ export type PartnerBookingItem = Pick<
   BookingItem,
   // `sizeText`: o tamanho que veio na coluna da capacidade ("8X10", "A4").
   "id" | "position" | "sizeText" | BookingItemField
->;
+> & {
+  /**
+   * Foto do item e cartão do fabricante que vieram na planilha: o parceiro
+   * vê as fotos dos itens dos books da empresa dele, também dos que a
+   * Wellmix carregou por ele (dono, 16/11/2026; o arquivo abre pela regra
+   * `partnerSeesBookingPhoto`). Nulo: sem foto.
+   */
+  photoDocumentId?: string | null;
+  cardDocumentId?: string | null;
+  /**
+   * Capacidade (ml) da tabela de consulta. Item com tamanho em texto ("A4")
+   * e mililitros ao mesmo tempo (porta-retrato com "0,5 ml": provável erro
+   * da planilha) vale o que o cadastro do produto diz (ficha mestre); sem
+   * produto ou com o campo em branco lá, nulo ("—"). Os demais, os
+   * mililitros do book (dono, 16/11/2026).
+   */
+  capacityMlShown?: number | null;
+};
 
 const itemView = (i: BookingItem): PartnerBookingItem => {
   const view = {
@@ -149,6 +167,40 @@ export async function listPartnerBookingLots(
     .map(lotView);
 }
 
+/**
+ * Foto do item e cartão do fabricante de um book da empresa de quem abre
+ * (dono, 16/11/2026: o parceiro vê as fotos dos itens dos books dele, também
+ * dos que a Wellmix carregou por ele). Só o login externo com a tela Booking
+ * e só os books pelos quais a empresa dele responde (`isOwnLot`, a regra da
+ * tela). Usado por `canAccessDocument` (src/lib/services/documents.ts).
+ */
+export async function partnerSeesBookingPhoto(
+  user: User,
+  documentId: string,
+): Promise<boolean> {
+  if (isWellmix(user) || !user.partyId || !canOpen(user, "booking"))
+    return false;
+  const store = getStore();
+  try {
+    const [byPhoto, byCard] = await Promise.all([
+      store.list("booking_items", {
+        filter: { photoDocumentId: documentId },
+        limit: 20,
+      }),
+      store.list("booking_items", {
+        filter: { cardDocumentId: documentId },
+        limit: 20,
+      }),
+    ]);
+    const lotIds = [...byPhoto, ...byCard].map((i) => i.lotId);
+    if (!lotIds.length) return false;
+    const lots = await listByIds(store, "booking_lots", lotIds);
+    return lots.some((lot) => isOwnLot(lot, user.partyId as string));
+  } catch {
+    return false;
+  }
+}
+
 /** Um booking da empresa de quem abre, com os itens; nulo se não é dela. */
 export async function getPartnerBookingLot(
   user: User,
@@ -175,9 +227,39 @@ export async function getPartnerBookingLot(
     : [];
   const nameOf = (id: string | null | undefined) =>
     (id && parties.find((p) => p.id === id)?.name) || null;
+  /* Capacidade suspeita (tamanho em texto e mililitros juntos): vale o
+     cadastro do produto ligado ao item (ficha mestre, `purchase_sheets` com
+     orderId = id do produto); em branco, "—". */
+  const suspicious = (i: BookingItem) =>
+    typeof i.capacityMl === "number" && !!i.sizeText?.trim();
+  const productIds = [
+    ...new Set(
+      items
+        .filter(suspicious)
+        .map((i) => i.productId)
+        .filter((id): id is string => !!id),
+    ),
+  ];
+  const masters = productIds.length
+    ? await store.list("purchase_sheets", { filter: { orderId: productIds } })
+    : [];
+  const registryMl = new Map(masters.map((m) => [m.orderId, m.capacityMl]));
+  const capacityShown = (i: BookingItem) => {
+    if (!suspicious(i)) return i.capacityMl ?? null;
+    const ml = i.productId ? registryMl.get(i.productId) : null;
+    return typeof ml === "number" && ml > 0 ? ml : null;
+  };
   return {
     lot: lotView(lot),
-    items: items.sort((a, b) => a.position - b.position).map(itemView),
+    items: items
+      .sort((a, b) => a.position - b.position)
+      .map((i) => ({
+        ...itemView(i),
+        // O parceiro vê as fotos dos itens dos books dele (dono, 16/11/2026).
+        photoDocumentId: i.photoDocumentId ?? null,
+        cardDocumentId: i.cardDocumentId ?? null,
+        capacityMlShown: capacityShown(i),
+      })),
     partnerName: nameOf(lot.partnerId),
     factoryName: nameOf(lot.supplierId),
   };
