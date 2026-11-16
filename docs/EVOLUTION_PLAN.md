@@ -1574,3 +1574,14 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Como ficou**: nos perfis externos a linha passou a se chamar "Início (Pendências do login)", "Início" ou "Início (vitrine ou solicitações)", com a dica "Na equipe Wellmix esta tela é o Control Tower" (docs/PARTNER_ACCESS.md).
 - **Não mudou**: a regra da tela (sempre aberta e travada), os acessos, o menu dos parceiros e o nome "Control Tower" na equipe Wellmix (Funções e acessos e o menu dela). Sem mudança no banco.
 - Testes: `tests/unit/access-home-label.test.ts` e `tests/e2e/team-partners-area.spec.ts`.
+
+## Vitrine (`/app/explore`) pelas caixas de acesso
+
+- **Pedido do dono** (16/11/2026): colocar a vitrine em Acessos externos, para o administrador configurar a caixa de acesso de qualquer perfil e da equipe, e deixá-la pré-configurada para os clientes.
+- **Por quê**: a vitrine já estava no catálogo de Acessos externos (módulo Cadastros, "Vitrine do cliente") e o perfil Cliente já a abria por padrão. Mas ela ficava fora do menu de todos no código (`MENU_HIDDEN`, 12/11/2026), então as caixas não mudavam o menu.
+- **Como ficou**: a vitrine saiu de `MENU_HIDDEN`, e o menu segue as caixas (docs/PARTNER_ACCESS.md):
+  - Cliente: "Explorar" no menu por padrão.
+  - Parceiros: pela caixa em Acessos externos.
+  - Equipe: por função, em Funções e acessos; as funções que já abriam a tela a veem em Cadastros.
+- **Não mudou**: quem abre a vitrine (o padrão do Cliente e das funções); os dados (em produção, nenhum perfil gravado mexia na vitrine e o Cliente segue o padrão). Sem mudança no banco.
+- Testes: `tests/unit/nav.test.ts` ("Vitrine pelas caixas de acesso") e `tests/e2e/team-partners-area.spec.ts`.

@@ -17,6 +17,11 @@ Pedido do dono (11/11/2026): administrar, em Cadastros → Outros parceiros, que
   - Embaixo, a dica "Na equipe Wellmix esta tela é o Control Tower".
   - Na visão por tela (todos os perfis) e nos painéis de comparar e copiar: "Início (página de entrada do login)".
   - A busca por "Control Tower" continua achando a linha. Só o nome mudou; a regra (sempre aberta e travada) é a mesma.
+- **Vitrine (`/app/explore`)** (dono, 16/11/2026): a vitrine do cliente ficava fora do menu de todos (`MENU_HIDDEN`, decisão de 12/11/2026, "a vitrine ainda não abriu"). Por isso as caixas "Abre" e "No menu" não mudavam o menu do cliente nem o da equipe. Agora quem vê a vitrine no menu é o que as caixas dizem:
+  - **Cliente:** já vem aberta e no menu ("Explorar"), pelo padrão do papel; o cliente também entra nela ao fazer login.
+  - **Parceiros externos** (Trading, Factory, Fornecedor…): a linha "Vitrine do cliente", no módulo Cadastros, de cada perfil.
+  - **Equipe Wellmix:** por função, em Equipe Acessos e Parceiros → Funções e acessos. As que já abriam a tela passam a ver "Vitrine do cliente" em Cadastros: administrador, GP, Catálogo, Designer e diretorias.
+  - Nada mudou em quem abre a vitrine; só o menu passou a seguir as caixas.
 - **"No menu" só com a tela aberta**: desmarcar "Abre" desmarca e trava "No menu"; marcar "Abre" volta a pôr no menu. O servidor ignora "No menu" de tela que não abre (`resolveProfile`).
 - **Salvar**: a barra de baixo mostra o perfil afetado (nome, tipo ou papel, logins ativos) e "Alterações não salvas"; a confirmação repete o perfil e quantos logins; o aviso de sucesso só aparece depois da gravação no servidor ("Acessos de … salvos no servidor"). A volta mantém a busca e o filtro.
 - **Origem da configuração** (só leitura, não concede nada): Padrão; Liberada à mão; Cópia de …; Tirada do menu à mão; Bloqueada fora do padrão (o padrão do perfil abre a tela e ela foi tirada). Tirar ou devolver uma tela ao menu conta como mudança à mão.
