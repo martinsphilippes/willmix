@@ -114,15 +114,27 @@ def main(path):
         parts = [cut(start, at_bar(OUT))] + [cut(at_bar(b), at_bar(OUT)) for b in loops] + [x[int(at_bar(OUT) * SR) :]]
         outro_at = video_time(n)
         desc = f"música inteira + {n} compassos repetidos (voltas a partir dos compassos {loops}), final"
-    y = join(parts)
     # Quando a marca demora a aparecer (narração mais longa antes da cena "hub"), a
     # música começaria vários segundos depois do vídeo, com a vinheta muda. Em vez
-    # desse silêncio, entram antes compassos inteiros do começo calmo da faixa (até 3),
-    # sem mexer na grade: a batida continua caindo com a marca.
-    pre_bars = min(3, int(lead // BAR)) if lead > 1.0 else 0
+    # desse silêncio, a música começa antes, do zero, e a introdução calma (compassos
+    # 0–2, antes da subida) ganha até 3 compassos: depois do compasso 2 repete-se a
+    # frase 1–2 (ou só o 2), na mesma grade, e a batida continua caindo com a marca.
+    # (Antes, compassos do começo vinham na frente e a faixa recomeçava do zero: 0,1 s
+    # de silêncio e uma queda de 10 dB no meio da vinheta.)
+    pre_bars = min(3, int(lead // BAR)) if lead > 1.0 and start == 0 else 0
     if pre_bars:
-        y = join([x[: int(pre_bars * BAR * SR) + int(XFADE * SR)], y])
+        ins = ([1, 2] * 3)[-pre_bars:]
+        first = parts[0]
+        split = int(at_bar(3) * SR)
+        parts = (
+            [first[: split + int(XFADE * SR)]]
+            + [cut(at_bar(k), at_bar(k + 1)) for k in ins]
+            + [first[split:]]
+            + parts[1:]
+        )
         lead -= pre_bars * BAR
+    y = join(parts)
+    if pre_bars:
         k = int(0.02 * SR)
         y[:k] *= np.linspace(0, 1, k)[:, None]
     if start > 0:
@@ -137,7 +149,7 @@ def main(path):
     sf.write(out, y, SR, subtype="PCM_16")
     end_of_music = outro_at + (len(x) / SR - at_bar(OUT))
     if pre_bars:
-        desc = f"{pre_bars} compassos do começo antes, " + desc
+        desc = f"introdução com {pre_bars} compasso(s) a mais (repete {ins}), " + desc
     print(f"{out}: {desc}")
     print(f"  batida com a marca em {hub:.2f} s; final da música começa em {outro_at:.2f} s (assinatura em {logo:.2f} s: diferença {outro_at - logo:+.2f} s)")
     print(f"  a música termina em {end_of_music:.2f} s; o vídeo tem {total:.2f} s (sobra {total - end_of_music:+.2f} s)")

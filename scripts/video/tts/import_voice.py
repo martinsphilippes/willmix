@@ -3,7 +3,7 @@ Traz para o vídeo a narração gerada em outro lugar (por exemplo, no ElevenLab
 
     python tts/import_voice.py out/<vídeo>.tts.json \
         --manifest out/<vídeo>.voice-parts.json --audio <pasta> [--out-dir <pasta>] \
-        [--fix id=arquivo ...]
+        [--fix id=arquivo ...] [--cache out/<vídeo>.whisper.json]
 
 Lê a lista de falas (a mesma de tts.py: [{"file": ..., "text": ...}]) e grava um
 WAV por fala (48 kHz, mono, PCM_16) no lugar onde o vídeo espera
@@ -109,17 +109,19 @@ def frames_db(x):
 
 
 def speech_bounds(x):
-    """Começo e fim da fala em `x` (amostras). Parte do primeiro e do último som alto e
-    anda pelos quadros acima do silêncio, atravessando até 30 ms quietos: assim entram
-    o "f" de "Fornecedores", o estalo do "c" de "Consulta" e o "s" final, que ficam
-    abaixo do som alto. Uma respiração separada da fala por 40 ms de silêncio fica de
-    fora. Nunca corta mais que a regra antiga (60 ms antes do primeiro som alto, 120 ms
-    depois do último)."""
-    loud = np.flatnonzero(np.abs(x) > LOUD)
+    """Começo e fim da fala em `x` (amostras). Parte do primeiro e do último quadro de
+    som alto (nível médio acima de −38 dBFS: vogais e consoantes fortes; respiração
+    fica abaixo) e anda pelos quadros acima do silêncio, atravessando até 30 ms
+    quietos: assim entram o "f" de "Fornecedores", o estalo do "c" de "Consulta" e o
+    "s" final, que ficam abaixo do som alto. Uma respiração separada da fala por 40 ms
+    de silêncio fica de fora. Folgas: 60 ms antes do primeiro som alto (ou 30 ms antes
+    do primeiro som de fala) e 120 ms depois do último (ou 30 ms depois do fim)."""
+    db = frames_db(x)
+    f = int(FRAME * SR)
+    loud = np.flatnonzero(db > 20 * np.log10(LOUD)) * f
     if len(loud) == 0:
         return 0, len(x)
-    act = frames_db(x) > SIL_DB
-    f = int(FRAME * SR)
+    act = db > SIL_DB
 
     def walk(k, step):
         edge, quiet = k, 0
@@ -133,10 +135,10 @@ def speech_bounds(x):
                     break
         return edge
 
-    first = walk(min(loud[0] // f, len(act) - 1), -1)
-    last = walk(min(loud[-1] // f, len(act) - 1), 1)
+    first = walk(loud[0] // f, -1)
+    last = walk(loud[-1] // f, 1)
     a = max(0, min(first * f - int(0.03 * SR), loud[0] - int(0.06 * SR)))
-    b = min(len(x), max((last + 1) * f + int(0.03 * SR), loud[-1] + int(0.12 * SR)))
+    b = min(len(x), max((last + 1) * f + int(0.03 * SR), loud[-1] + f + int(0.12 * SR)))
     return a, b
 
 
@@ -299,10 +301,10 @@ def split_part(x48, heard, lines):
     return clips
 
 
-def lost_speech(x48, bounds, floor_db=-45.0, min_len=0.03):
+def lost_speech(x48, bounds, floor_db=-42.0, min_len=0.03):
     """Som de fala (acima de `floor_db`, por `min_len` segundos ou mais) que ficou fora de
     todas as falas: entre uma e outra, antes da primeira e depois da última. Respirações
-    ficam abaixo de −45 dBFS e não contam. Devolve [(início, fim, nível)]."""
+    (−45 a −52 dBFS na narração do ElevenLabs) não contam. Devolve [(início, fim, nível)]."""
     db = frames_db(x48)
     keep = np.zeros(len(db), bool)
     for a, b in bounds:
@@ -336,6 +338,10 @@ def main():
     ap.add_argument("--audio", required=True)
     ap.add_argument("--out-dir")
     ap.add_argument("--fix", action="append", default=[], help="id=arquivo")
+    ap.add_argument(
+        "--cache",
+        help="JSON com as transcrições já feitas (pelo conteúdo do áudio): refazer o corte não transcreve de novo",
+    )
     args = ap.parse_args()
     items = json.load(open(args.list, encoding="utf-8"))
     ids = [os.path.basename(it["file"])[: -len(".wav")] for it in items]
@@ -377,10 +383,16 @@ def main():
         # Cada arquivo é transcrito uma vez; a parte dele é a que tem mais palavras em comum
         # com o que foi ouvido (o nome que o ElevenLabs dá ao arquivo não serve de guia).
         heard_of = {}
+        cache = json.load(open(args.cache, encoding="utf-8")) if args.cache and os.path.exists(args.cache) else {}
         for path in paths:
-            print(f"transcrevendo {os.path.basename(path)} …", flush=True)
             x = decode(path)
-            heard_of[path] = (x, transcribe(x))
+            key = hashlib.sha1(open(path, "rb").read()).hexdigest()
+            if key not in cache:
+                print(f"transcrevendo {os.path.basename(path)} …", flush=True)
+                cache[key] = transcribe(x)
+            heard_of[path] = (x, [tuple(w) for w in cache[key]])
+        if args.cache:
+            json.dump(cache, open(args.cache, "w", encoding="utf-8"))
         want = [bag(norm_tokens(" ".join(by_id[i]["text"] for i in p["ids"]))) for p in parts]
         score = {
             (path, k): overlap(want[k], bag([w[0] for w in heard_of[path][1]]))
