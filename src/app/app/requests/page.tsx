@@ -21,6 +21,13 @@ import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
 import { REQUEST_SCREEN } from "@/lib/request-screens";
 import { canDeleteRequest } from "@/lib/services/requests";
 import {
+  activeRequests,
+  closedRequestCount,
+  closedRequests,
+  groupRequests,
+  groupSizes,
+} from "@/lib/services/request-list-data";
+import {
   cancelledOrderIds,
   requestDisplayStatus,
   requestStatusTone,
@@ -116,12 +123,24 @@ export default async function RequestsPage({
   const customer = user.role === "customer";
   // Tudo numa rodada só: lista, parceiros, pendências e pedidos em andamento.
   const wellmix = isWellmix(user);
-  const [allRequests, tasks, inProgress, team] = await Promise.all([
-    store.list("requests", {
-      filter: customer ? { customerId: user.partyId! } : undefined,
-      orderBy: "createdAt",
-      direction: "desc",
-    }),
+  // Só o que ainda é encomenda (dono, 16/11/2026): o banco devolve as da
+  // etapa, não o histórico inteiro (src/lib/services/request-list-data.ts).
+  // As encerradas, só em "Ver canceladas e excluídas"; o lote (?group=), o
+  // lote todo, menos as encerradas.
+  const scope = { customerId: customer ? user.partyId! : null };
+  const [loaded, closedCount, tasks, inProgress, team] = await Promise.all([
+    showDeleted
+      ? closedRequests(scope)
+      : groupId
+        ? groupRequests(groupId, scope).then(async (rows) => ({
+            rows,
+            cancelled: await cancelledOrderIds(rows.map((r) => r.orderId)),
+          }))
+        : activeRequests(scope).then((rows) => ({
+            rows,
+            cancelled: new Set<string>(),
+          })),
+    showDeleted || groupId ? Promise.resolve(0) : closedRequestCount(scope),
     // Sem Pendências ou Pedidos no perfil (Gestão de telas), os blocos do
     // topo também não aparecem aqui.
     customer && canOpen(user, "tasks")
@@ -132,7 +151,8 @@ export default async function RequestsPage({
       : Promise.resolve([]),
     wellmix ? store.list("users") : Promise.resolve([]),
   ]);
-  const visible = allRequests.filter((r) => canViewRequest(user, r));
+  const { cancelled } = loaded;
+  const visible = loaded.rows.filter((r) => canViewRequest(user, r));
   // Só os clientes das solicitações (antes: todos, ~26 mil).
   const parties = (
     await listByIds(
@@ -141,22 +161,14 @@ export default async function RequestsPage({
       visible.map((r) => r.customerId),
     )
   ).filter((p) => p.type === "customer");
-  // Pedido cancelado: a solicitação segue ORDERED no banco, mas o selo mostra
-  // "Pedido cancelado" em vez de "Pedido criado".
-  const cancelled = await cancelledOrderIds(visible.map((r) => r.orderId));
-  // Encerradas num lugar só: excluídas (CANCELLED) e com pedido cancelado saem
-  // da lista principal e ficam juntas em "Ver canceladas e excluídas".
+  // Encerradas num lugar só: excluídas (CANCELLED) e com pedido cancelado
+  // ficam juntas em "Ver canceladas e excluídas".
   const closed = (r: (typeof visible)[number]) =>
     r.status === "CANCELLED" ||
     requestDisplayStatus(r, cancelled) === "ORDER_CANCELLED";
-  const deletedCount = visible.filter(closed).length;
-  // Encomenda que já virou pedido não é mais desta etapa (dono, 16/11/2026):
-  // segue no Pedido em diante (/app/orders). Fora da lista, dos contadores e
-  // dos filtros; o filtro de um lote (?group=) continua mostrando o lote todo.
-  const ordered = (r: (typeof visible)[number]) =>
-    !groupId && requestDisplayStatus(r, cancelled) === "ORDERED";
+  const deletedCount = showDeleted ? visible.length : closedCount;
   const byStatus = visible.filter((r) =>
-    showDeleted ? closed(r) : !closed(r) && !ordered(r),
+    showDeleted ? closed(r) : !closed(r),
   );
   // Wellmix: filtro por situação (cartões) e busca, como na ordem de venda.
   const situation: RequestSituation = (
@@ -270,11 +282,11 @@ export default async function RequestsPage({
     return str ? `?${str}` : "";
   };
   // Tamanho de cada lote (selo da linha que ficou sozinha nesta lista, ex.:
-  // o outro produto do lote foi excluído): tudo o que este usuário vê.
-  const groupSize = new Map<string, number>();
-  for (const r of visible)
-    if (r.groupId)
-      groupSize.set(r.groupId, (groupSize.get(r.groupId) ?? 0) + 1);
+  // o outro produto do lote foi excluído ou já virou pedido): o lote todo,
+  // lido só para os lotes desta lista.
+  const groupSize = await groupSizes(
+    visible.map((r) => r.groupId).filter((id): id is string => !!id),
+  );
   // Produtos pedidos juntos viram uma linha só (abre a página do lote). No
   // filtro de um lote (?group=, links antigos) cada produto segue numa linha.
   const entries: RequestListEntry<(typeof requests)[number]>[] = groupId

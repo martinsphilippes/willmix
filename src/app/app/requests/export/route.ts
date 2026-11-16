@@ -1,4 +1,4 @@
-import { listByIds } from "@/lib/db/lookup";
+import { listByIds, listColumns } from "@/lib/db/lookup";
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
@@ -6,12 +6,11 @@ import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
+import { requestDisplayStatus } from "@/lib/services/order-status";
+import { activeRequests } from "@/lib/services/request-list-data";
+import { demandKind, type DemandKind } from "@/lib/purchase-demand";
 import {
-  cancelledOrderIds,
-  requestDisplayStatus,
-} from "@/lib/services/order-status";
-import {
-  REQUEST_SITUATIONS,
+  LISTED_SITUATIONS,
   inSituation,
   matchesRequest,
   nextStepText,
@@ -29,8 +28,10 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * Solicitações em CSV ("tabela de fluxo"), com a mesma situação e busca da
- * tela. Só a Wellmix com a tela Solicitações. Canceladas e excluídas ficam fora, como na lista principal.
+ * Solicitações em CSV ("tabela de fluxo"), com a mesma situação, tipo e
+ * busca da tela. Só a Wellmix com a tela Solicitações. Como na lista
+ * principal (dono, 16/11/2026), só o que ainda é encomenda: canceladas,
+ * excluídas e as que já viraram pedido ficam fora.
  */
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
@@ -39,15 +40,20 @@ export async function GET(request: NextRequest) {
   const t = await getT();
   const sp = request.nextUrl.searchParams;
   const situation: RequestSituation = (
-    REQUEST_SITUATIONS as readonly string[]
+    LISTED_SITUATIONS as readonly string[]
   ).includes(sp.get("situ") ?? "")
     ? (sp.get("situ") as RequestSituation)
     : "all";
   const q = (sp.get("q") ?? "").slice(0, 120);
+  // Encomenda (B14) ou reposição (B10), o mesmo filtro da tela.
+  const kind = sp.get("kind");
+  const kindFilter: DemandKind | null =
+    kind === "order" || kind === "replenishment" ? kind : null;
   const store = getStore();
+  // Só as da etapa, pelo banco (src/lib/services/request-list-data.ts).
   const [all, users] = await Promise.all([
-    store.list("requests", { orderBy: "createdAt", direction: "desc" }),
-    store.list("users"),
+    activeRequests(),
+    listColumns(store, "users", ["name"]),
   ]);
   const visible = all.filter((r) => canViewRequest(user, r));
   // Só os clientes das solicitações (antes: todos, ~26 mil).
@@ -58,17 +64,17 @@ export async function GET(request: NextRequest) {
       visible.map((r) => r.customerId),
     )
   ).filter((p) => p.type === "customer");
-  const cancelled = await cancelledOrderIds(visible.map((r) => r.orderId));
+  // Nenhuma da etapa tem pedido: o selo é a situação gravada.
+  const cancelled = new Set<string>();
   const today = todayBrazil();
-  const name = (id: string) => parties.find((p) => p.id === id)?.name ?? "";
-  const rows = visible.filter((r) => {
-    const display = requestDisplayStatus(r, cancelled);
-    if (r.status === "CANCELLED" || display === "ORDER_CANCELLED") return false;
-    return (
-      inSituation(r, display, situation, today) &&
-      matchesRequest(r, name(r.customerId), q)
-    );
-  });
+  const partyById = new Map(parties.map((p) => [p.id, p]));
+  const name = (id: string) => partyById.get(id)?.name ?? "";
+  const rows = visible.filter(
+    (r) =>
+      inSituation(r, requestDisplayStatus(r, cancelled), situation, today) &&
+      (!kindFilter || demandKind(r) === kindFilter) &&
+      matchesRequest(r, name(r.customerId), q),
+  );
   const orderIds = rows.map((r) => r.orderId).filter(Boolean) as string[];
   const orders = orderIds.length
     ? await store.list("orders", { filter: { id: orderIds } })

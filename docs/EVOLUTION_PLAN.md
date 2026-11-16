@@ -1713,3 +1713,11 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Como ficou** (docs/TRAINING.md): rota `/app/training` que só exige o login (fora do controle de telas), `TrainingLink` no cabeçalho com a mesma classe do ícone de mensagens e do sino (`HEADER_ICON`) e os textos em `src/i18n/modules/training.ts`.
 - **Aditivo:** tela e rota novas; nada removido. O ícone de mensagens e o sino passaram a usar a constante `HEADER_ICON`, com a mesma classe de antes. Sem mudança no banco nem nas permissões gravadas.
 - Testes: `tests/unit/training.test.ts` e `tests/e2e/training.spec.ts`.
+
+## Encomendas mais rápida, exportação e fila de Reposição sem o que virou pedido
+
+- **Pedido do dono** (16/11/2026): a exportação de Encomendas ainda trazia o que virou pedido; a tela estava lenta; a fila de Reposição listava as reposições já pedidas.
+- **Causa da lentidão:** a tela lia todas as solicitações (~16 mil, quase todas do histórico, já pedidas) e, para saber quais pedidos estavam cancelados, buscava cada pedido (~160 consultas em partes de 100), para depois esconder quase tudo. Os cartões de situação eram contados sobre essa lista inteira.
+- **Como ficou** (`src/lib/services/request-list-data.ts`): o banco devolve só as encomendas em andamento (`status` fora de pedido e excluída, índice `requests_by_status`); as encerradas (excluídas e com pedido cancelado) só ao abrir "Ver canceladas e excluídas", e o link conta sem trazer as linhas; o lote (`?group=`) lê só o lote; o selo "lote de N" lê só os lotes da página. Os cartões contam a lista já carregada (poucas linhas), sem consulta a mais. Exportação: a mesma leitura e o filtro de tipo (encomenda ou reposição), que a tela já mandava. Reposição: `listDemands` pede ao banco só as abertas.
+- **Aditivo:** nenhuma tela, rota, campo ou dado removido; sem mudança no banco.
+- Testes: `tests/unit/request-list-data.test.ts`.
