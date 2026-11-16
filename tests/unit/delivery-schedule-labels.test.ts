@@ -10,6 +10,7 @@ import type { OrderPlanLabels } from "@/components/request-items";
 import type { ScheduleLabels } from "@/components/request-schedule";
 import type { ContainerCompositionLabels } from "@/components/container-composition";
 import { generateLabels } from "@/components/generate-labels";
+import { dictionaries } from "@/i18n/dictionaries";
 
 /*
  * Telas TS - Trading Sales e Venda - Encomenda (dono, 16/11/2026;
@@ -79,6 +80,39 @@ describe("textos das programações nas telas TS e Venda", () => {
       const p = deliveryPlanLabels(tl, plan);
       for (const v of [p.dates, p.firstDate, p.count, p.interval, p.receipt])
         expect(v && !v.startsWith("deliverySchedule.")).toBe(true);
+    }
+  });
+
+  /*
+   * Revisão completa (dono, 16/11/2026): nas telas TS e Venda, a recusa do
+   * envio vem de deliverySchedule.error.<código> quando existe. Toda recusa
+   * que fala de programação tem essa versão, nos três idiomas, e ela fala da
+   * entrega ou do recebimento pelo cliente.
+   */
+  it("toda recusa do envio que fala de programação tem a versão das entregas", () => {
+    const pt = dictionaries.pt as Record<string, string>;
+    const codes = Object.keys(pt)
+      .filter((k) => k.startsWith("reqBatch.error.") && /programa/i.test(pt[k]))
+      .map((k) => k.slice("reqBatch.error.".length));
+    expect(codes).toEqual(
+      expect.arrayContaining([
+        "after_create",
+        "schedule_too_soon",
+        "schedule_out_of_order",
+        "schedule_mismatch",
+        "schedule_product_changed",
+      ]),
+    );
+    for (const code of codes) {
+      const key = `deliverySchedule.error.${code}`;
+      for (const locale of ["pt", "en", "zh"] as const)
+        expect(
+          (dictionaries[locale] as Record<string, string>)[key],
+          `${locale}: ${key}`,
+        ).toBeTruthy();
+      expect(pt[key], key).toMatch(
+        /receb|entregas? programad|entrega prevista/i,
+      );
     }
   });
 });

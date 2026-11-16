@@ -341,3 +341,23 @@ test("TS e Venda: as programações falam do recebimento previsto pelo cliente; 
     page.locator('[data-composition-round="1"] [data-composition-round-date]'),
   ).toHaveText(new RegExp(`^${date.source}$`));
 });
+
+test("TS e Venda: a recusa depois de criar fala das entregas programadas; Encomendas com o texto de sempre", async ({
+  page,
+}) => {
+  // Revisão completa dos textos das programações (dono, 16/11/2026).
+  await login(page, "admin@wellmix.com");
+  for (const path of ["/app/new-request/ts", "/app/new-request/sale"]) {
+    await page.goto(`${path}?error=after_create`);
+    await expect(
+      page.getByText(
+        "As solicitações foram criadas, mas uma etapa seguinte falhou (anexo, foto da busca ou entregas programadas ao cliente).",
+        { exact: false },
+      ),
+    ).toBeVisible();
+  }
+  await page.goto("/app/requests/new?error=after_create");
+  await expect(
+    page.getByText("(anexo, foto da busca ou programação)", { exact: false }),
+  ).toBeVisible();
+});

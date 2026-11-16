@@ -99,6 +99,8 @@ export const pt = {
     "As programações dos produtos não batem: as datas previstas de recebimento são do pedido e precisam ser as mesmas em todos os produtos.",
   "deliverySchedule.error.schedule_product_changed":
     "As entregas programadas de um produto foram geradas para outro produto. Gere de novo e envie.",
+  "deliverySchedule.error.after_create":
+    "As solicitações foram criadas, mas uma etapa seguinte falhou (anexo, foto da busca ou entregas programadas ao cliente). Abra a solicitação e confira os anexos e as entregas programadas.",
 };
 
 export const en: typeof pt = {
@@ -188,6 +190,8 @@ export const en: typeof pt = {
     "The products' schedules do not match: the expected receipt dates belong to the order and must be the same for every product.",
   "deliverySchedule.error.schedule_product_changed":
     "A product's scheduled deliveries were generated for another product. Generate them again and send.",
+  "deliverySchedule.error.after_create":
+    "The requests were created, but a later step failed (attachment, lookup photo or the customer's scheduled deliveries). Open the request and check the attachments and the scheduled deliveries.",
 };
 
 export const zh: typeof pt = {
@@ -273,4 +277,6 @@ export const zh: typeof pt = {
     "各产品的计划不一致：预计收货日期属于订单，所有产品必须相同。",
   "deliverySchedule.error.schedule_product_changed":
     "某产品的计划交货是为另一个产品生成的。请重新生成后再提交。",
+  "deliverySchedule.error.after_create":
+    "需求已创建，但后续步骤失败（附件、搜索图片或客户计划交货）。请打开需求并检查附件和计划交货。",
 };
