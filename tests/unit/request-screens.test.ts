@@ -210,8 +210,11 @@ describe("acesso de cada tela (o controle de telas de sempre)", () => {
     expect(screens.screenOfPath("/app/requests/new")).toBe("requests");
     expect(screens.SCREEN_LABEL.requestTs).toBe("nav.requestTs");
     expect(screens.SCREEN_LABEL.requestSale).toBe("nav.requestSale");
-    const module = PERMISSION_MODULES.find((m) => m.key === "newProduct")!;
-    expect(module.screens.slice(0, 2)).toEqual(["requestTs", "requestSale"]);
+    const newProduct = PERMISSION_MODULES.find((m) => m.key === "newProduct")!;
+    expect(newProduct.screens.slice(0, 2)).toEqual([
+      "requestTs",
+      "requestSale",
+    ]);
     expect(REQUEST_SCREEN.ts.path).toBe("/app/new-request/ts");
     expect(REQUEST_SCREEN.sale.operation).toBe("sale");
   });
