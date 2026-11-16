@@ -189,7 +189,7 @@ test("Acesso: Comprador só TS; diretoria as duas; Vendas nenhuma; endereço dir
     "TS - Trading Sales",
   );
   await page.goto("/app/new-request/sale");
-  await page.waitForURL(/\/app\?denied=requestSale/);
+  await page.waitForURL(/[?&]denied=requestSale/);
 
   // Diretoria de compras (a "Liderança"): as duas.
   await login(page, "diretoria@wellmix.com");
@@ -210,10 +210,11 @@ test("Acesso: Comprador só TS; diretoria as duas; Vendas nenhuma; endereço dir
     sidebar(page).locator('[data-nav-link^="/app/new-request/"]'),
   ).toHaveCount(0);
   await page.goto("/app/new-request/ts");
-  await page.waitForURL(/\/app\?denied=requestTs/);
+  await page.waitForURL(/[?&]denied=requestTs/);
 
-  // O cliente também não abre (a tela é da Wellmix vendendo ao cliente).
+  // O cliente também não abre (a tela é da Wellmix vendendo ao cliente): a
+  // recusa leva à página inicial dele (a vitrine), com o aviso.
   await login(page, "joao@lojista.com");
   await page.goto("/app/new-request/ts");
-  await page.waitForURL(/\/app\?denied=requestTs/);
+  await page.waitForURL(/[?&]denied=requestTs/);
 });
