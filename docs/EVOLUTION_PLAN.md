@@ -1706,3 +1706,10 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Como ficou:** docs/REQUEST_SCREENS.md (seções 2 e 7) e docs/FLOW_MENU.md. Lista de Encomendas: `byStatus` sem as solicitações com pedido (`requestDisplayStatus` = ORDERED), cartões de situação sem "Viraram pedido" (`LISTED_SITUATIONS`).
 - **Aditivo:** nenhuma tela, rota, campo ou dado removido; as rotas e o acesso de TS e Venda seguem iguais (endereço direto); o menu só acende Encomendas e Reposição nelas. Quem não abre TS segue com a Nova solicitação de Encomendas pelo mesmo botão. `openReplenishment` segue no código. A exportação CSV de Encomendas não mudou (ainda leva as que viraram pedido). Sem mudança no banco.
 - Testes: `tests/unit/request-screens.test.ts`, `tests/unit/request-list.test.ts`, `tests/unit/nav.test.ts` e os E2E `request-screens`, `purchase-demand`, `purchase-strategy` e `purchase-quote`.
+
+## Treinamento do Portal: o capelo na barra vermelha
+
+- **Pedido do dono** (16/11/2026): uma tela "Treinamento do Portal" e um ícone de treinamento (capelo) na barra vermelha, entre o seletor de idiomas e o ícone de mensagens, com o mesmo tamanho, cor e espaçamento dos outros ícones e "Treinamento do Portal" como texto de ajuda e nome acessível; a tela aberta dentro do layout do portal para todo login (equipe, clientes, fornecedores e demais parceiros), também pelo endereço; nesta etapa, só o título, com a área de conteúdo em branco, em PT, EN e ZH. Mais adiante: vídeos, quizzes e provas por login.
+- **Como ficou** (docs/TRAINING.md): rota `/app/training` que só exige o login (fora do controle de telas), `TrainingLink` no cabeçalho com a mesma classe do ícone de mensagens e do sino (`HEADER_ICON`) e os textos em `src/i18n/modules/training.ts`.
+- **Aditivo:** tela e rota novas; nada removido. O ícone de mensagens e o sino passaram a usar a constante `HEADER_ICON`, com a mesma classe de antes. Sem mudança no banco nem nas permissões gravadas.
+- Testes: `tests/unit/training.test.ts` e `tests/e2e/training.spec.ts`.

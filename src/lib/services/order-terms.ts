@@ -132,7 +132,10 @@ export async function resolveOrderTerms(
     carrier: carrier ?? null,
     redispatch: redispatchCarrier ?? null,
     redispatchRequired,
-    deliveryFreightBrl: wellmixCalls ? raw.deliveryFreightBrl : null,
+    // Valor do transporte: quando a Wellmix chama e no formato WD (dono,
+    // 16/11/2026: a previsão WD com frete usa o valor digitado).
+    deliveryFreightBrl:
+      wellmixCalls || raw.saleFormat === "wd" ? raw.deliveryFreightBrl : null,
     originCountry: raw.originCountry,
     originCountryName: countryName,
     productFamily: raw.productFamily,

@@ -88,7 +88,11 @@ export interface SaleTerms {
 
 export interface AddRequest {
   productIds: string[];
-  /** Quantidade padrão (peças); nula = a de sempre (o pedido mínimo). */
+  /**
+   * Quantidade padrão em caixas master (dono, 16/11/2026: era em peças);
+   * nula = a de sempre (o pedido mínimo). Com ela, as linhas entram
+   * recolhidas em "Produtos no pedido".
+   */
   quantity: number | null;
   /** Rola até a linha nova (o clique no histórico). */
   scroll: boolean;
