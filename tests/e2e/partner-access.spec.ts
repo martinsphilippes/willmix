@@ -513,9 +513,11 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
   // Os títulos na ordem pedida, alinhados às colunas (mesmas larguras).
   const heads = page.locator("[data-book-head]");
   expect(
-    (await heads.evaluateAll((els) =>
-      els.map((e) => e.getAttribute("data-book-head")),
-    )).slice(0, 20),
+    (
+      await heads.evaluateAll((els) =>
+        els.map((e) => e.getAttribute("data-book-head")),
+      )
+    ).slice(0, 20),
   ).toEqual([
     "line",
     "photo",
@@ -544,15 +546,19 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
     expect(Math.abs((head?.x ?? 0) - (cell?.x ?? -99))).toBeLessThan(1);
     expect(Math.abs((head?.width ?? 0) - (cell?.width ?? -99))).toBeLessThan(1);
   }
-  // Cabeçalho preso logo abaixo da barra do Portal.
-  const stickyTop = await page
-    .locator("[data-sticky-head]")
+  // Cabeçalho preso logo abaixo da barra do Portal (o mesmo mecanismo das
+  // tabelas do Booking da Wellmix: TableTools stickyHead).
+  const frame = page
+    .locator("[data-table-frame]")
+    .filter({ has: page.locator("[data-partner-booking-items]") });
+  const stickyTop = await frame
+    .locator("[data-table-sticky-head]")
     .evaluate((el) => getComputedStyle(el).top);
   expect(stickyTop).toBe("56px");
   // iPad: as colunas rolam de lado dentro da tabela; títulos acompanham; o
   // nº da linha e a foto ficam parados.
   await page.setViewportSize({ width: 820, height: 1180 });
-  const body = page.locator("[data-sticky-body]");
+  const body = frame.locator("[data-table-sticky-body]");
   const photoBefore = await sentCell("photo").boundingBox();
   const priceBefore = await sentCell("price").boundingBox();
   await body.evaluate((el) => {
@@ -560,17 +566,23 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
   });
   await expect
     .poll(() =>
-      page
-        .locator("[data-sticky-head] > div")
+      frame
+        .locator("[data-table-sticky-scroll]")
         .evaluate((el) => el.scrollLeft),
     )
     .toBeGreaterThan(300);
   const photoAfter = await sentCell("photo").boundingBox();
   const priceAfter = await sentCell("price").boundingBox();
-  expect(Math.abs((photoAfter?.x ?? 0) - (photoBefore?.x ?? -99))).toBeLessThan(1);
+  expect(Math.abs((photoAfter?.x ?? 0) - (photoBefore?.x ?? -99))).toBeLessThan(
+    1,
+  );
   expect((priceBefore?.x ?? 0) - (priceAfter?.x ?? 0)).toBeGreaterThan(300);
-  const headPrice = await page.locator('[data-book-head="price"]').boundingBox();
-  expect(Math.abs((headPrice?.x ?? 0) - (priceAfter?.x ?? -99))).toBeLessThan(1);
+  const headPrice = await page
+    .locator('[data-book-head="price"]')
+    .boundingBox();
+  expect(Math.abs((headPrice?.x ?? 0) - (priceAfter?.x ?? -99))).toBeLessThan(
+    1,
+  );
   await page.setViewportSize({ width: 1280, height: 720 });
   // Na lista dele: o que a Wellmix pôs em nome dela e o que ela enviou.
   await page.goto("/app/booking");

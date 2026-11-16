@@ -209,3 +209,28 @@ test("sem Parceiros nem Equipe (Vendas): nenhum item da área e nenhuma das tela
   await page.goto("/app/team");
   await page.waitForURL(/\/app\?denied=team/);
 });
+
+test("Vitrine pelas caixas de acesso: Cliente com Explorar no menu; equipe e parceiros pela caixa", async ({
+  page,
+}) => {
+  await login(page, "admin@wellmix.com");
+  // Acessos externos, perfil Cliente: a vitrine aberta e no menu (padrão).
+  await page.goto("/app/parties/access?profile=role:customer&q=explore");
+  await expect(page.locator('[data-access-screen="explore"]')).toHaveAttribute(
+    "data-access-situation",
+    "open",
+  );
+  // Equipe: o administrador vê a vitrine do cliente em Cadastros.
+  await page.goto("/app/products");
+  await expect(
+    sidebar(page).locator('[data-nav-link="/app/explore"]'),
+  ).toHaveText(/Vitrine do cliente/);
+
+  // O cliente entra na vitrine e a tem no menu (Explorar).
+  await login(page, "joao@lojista.com");
+  await page.goto("/app");
+  await page.waitForURL(/\/app\/explore/);
+  const explore = sidebar(page).locator('[data-nav-link="/app/explore"]');
+  await expect(explore).toHaveText(/Explorar/);
+  await expect(explore).toHaveAttribute("aria-current", "page");
+});

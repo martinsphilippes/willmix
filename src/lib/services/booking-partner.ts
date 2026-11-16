@@ -16,12 +16,12 @@ import {
   bookingLotPreparing,
   bookingRecipientId,
   isBookingPartner,
-  readBookingCapacity,
-  readBookingItemValue,
+  bookingItemPatch,
   type BookingItemField,
 } from "@/lib/booking-lots";
 import { listByIds } from "@/lib/db/lookup";
 import { audit } from "./audit";
+import type { BookingBulkResult } from "./booking-lots";
 import type { SheetSource } from "./product-sheet-import";
 
 /*
@@ -100,13 +100,21 @@ export type PartnerBookingItem = Pick<
   "id" | "position" | "sizeText" | BookingItemField
 > & {
   /**
-   * Foto do item e cartão do fabricante que vieram na planilha, só quando
-   * o login já abre o arquivo (foi ele quem subiu a planilha): a tabela de
-   * consulta não abre acesso novo (dono, 16/11/2026). Nulo: sem foto ou
-   * sem acesso.
+   * Foto do item e cartão do fabricante que vieram na planilha: o parceiro
+   * vê as fotos dos itens dos books da empresa dele, também dos que a
+   * Wellmix carregou por ele (dono, 16/11/2026; o arquivo abre pela regra
+   * `partnerSeesBookingPhoto`). Nulo: sem foto.
    */
   photoDocumentId?: string | null;
   cardDocumentId?: string | null;
+  /**
+   * Capacidade (ml) da tabela de consulta. Item com tamanho em texto ("A4")
+   * e mililitros ao mesmo tempo (porta-retrato com "0,5 ml": provável erro
+   * da planilha) vale o que o cadastro do produto diz (ficha mestre); sem
+   * produto ou com o campo em branco lá, nulo ("—"). Os demais, os
+   * mililitros do book (dono, 16/11/2026).
+   */
+  capacityMlShown?: number | null;
 };
 
 const itemView = (i: BookingItem): PartnerBookingItem => {
@@ -159,6 +167,40 @@ export async function listPartnerBookingLots(
     .map(lotView);
 }
 
+/**
+ * Foto do item e cartão do fabricante de um book da empresa de quem abre
+ * (dono, 16/11/2026: o parceiro vê as fotos dos itens dos books dele, também
+ * dos que a Wellmix carregou por ele). Só o login externo com a tela Booking
+ * e só os books pelos quais a empresa dele responde (`isOwnLot`, a regra da
+ * tela). Usado por `canAccessDocument` (src/lib/services/documents.ts).
+ */
+export async function partnerSeesBookingPhoto(
+  user: User,
+  documentId: string,
+): Promise<boolean> {
+  if (isWellmix(user) || !user.partyId || !canOpen(user, "booking"))
+    return false;
+  const store = getStore();
+  try {
+    const [byPhoto, byCard] = await Promise.all([
+      store.list("booking_items", {
+        filter: { photoDocumentId: documentId },
+        limit: 20,
+      }),
+      store.list("booking_items", {
+        filter: { cardDocumentId: documentId },
+        limit: 20,
+      }),
+    ]);
+    const lotIds = [...byPhoto, ...byCard].map((i) => i.lotId);
+    if (!lotIds.length) return false;
+    const lots = await listByIds(store, "booking_lots", lotIds);
+    return lots.some((lot) => isOwnLot(lot, user.partyId as string));
+  } catch {
+    return false;
+  }
+}
+
 /** Um booking da empresa de quem abre, com os itens; nulo se não é dela. */
 export async function getPartnerBookingLot(
   user: User,
@@ -185,25 +227,38 @@ export async function getPartnerBookingLot(
     : [];
   const nameOf = (id: string | null | undefined) =>
     (id && parties.find((p) => p.id === id)?.name) || null;
-  /* Fotos da planilha: só as que este login subiu (o arquivo abre para ele
-     em /api/files); as que a Wellmix subiu por ele ficam de fora, sem abrir
-     acesso novo. */
-  const photoIds = items.flatMap((i) => [i.photoDocumentId, i.cardDocumentId]);
-  const ownDocs = new Set(
-    (await listByIds(store, "documents", photoIds))
-      .filter((d) => d.uploadedByUserId === user.id)
-      .map((d) => d.id),
-  );
-  const own = (id: string | null | undefined) =>
-    id && ownDocs.has(id) ? id : null;
+  /* Capacidade suspeita (tamanho em texto e mililitros juntos): vale o
+     cadastro do produto ligado ao item (ficha mestre, `purchase_sheets` com
+     orderId = id do produto); em branco, "—". */
+  const suspicious = (i: BookingItem) =>
+    typeof i.capacityMl === "number" && !!i.sizeText?.trim();
+  const productIds = [
+    ...new Set(
+      items
+        .filter(suspicious)
+        .map((i) => i.productId)
+        .filter((id): id is string => !!id),
+    ),
+  ];
+  const masters = productIds.length
+    ? await store.list("purchase_sheets", { filter: { orderId: productIds } })
+    : [];
+  const registryMl = new Map(masters.map((m) => [m.orderId, m.capacityMl]));
+  const capacityShown = (i: BookingItem) => {
+    if (!suspicious(i)) return i.capacityMl ?? null;
+    const ml = i.productId ? registryMl.get(i.productId) : null;
+    return typeof ml === "number" && ml > 0 ? ml : null;
+  };
   return {
     lot: lotView(lot),
     items: items
       .sort((a, b) => a.position - b.position)
       .map((i) => ({
         ...itemView(i),
-        photoDocumentId: own(i.photoDocumentId),
-        cardDocumentId: own(i.cardDocumentId),
+        // O parceiro vê as fotos dos itens dos books dele (dono, 16/11/2026).
+        photoDocumentId: i.photoDocumentId ?? null,
+        cardDocumentId: i.cardDocumentId ?? null,
+        capacityMlShown: capacityShown(i),
       })),
     partnerName: nameOf(lot.partnerId),
     factoryName: nameOf(lot.supplierId),
@@ -309,26 +364,35 @@ export async function setPartnerBookingItemField(
   const item = await store.get("booking_items", itemId);
   if (!item) throw new PartnerBookingError("not_found");
   await ownPreparingLot(user, item.lotId);
-  // Capacidade: mililitros ou o tamanho em texto (os dois campos juntos).
-  if (field === "capacityMl") {
-    const next = readBookingCapacity(raw, item);
-    if (
-      next.capacityMl === item.capacityMl &&
-      next.sizeText === (item.sizeText ?? null)
-    )
-      return;
-    await store.update("booking_items", item.id, {
-      ...next,
-      updatedByUserId: user.id,
-    });
-    return;
-  }
-  const value = readBookingItemValue(field, raw);
-  if (item[field] === value) return;
+  // A mesma regra da tela da Wellmix e do preenchimento em massa.
+  const patch = bookingItemPatch(item, field, raw);
+  if (!patch) return;
   await store.update("booking_items", item.id, {
-    [field]: value,
+    ...patch,
     updatedByUserId: user.id,
-  } as Partial<BookingItem>);
+  });
+}
+
+/**
+ * Preenchimento em massa do parceiro (dono, 16/11/2026): os valores
+ * digitados acima das colunas vão para os itens marcados, com as regras da
+ * célula (só o booking dele e só antes de enviar).
+ */
+export async function setPartnerBookingItemsFields(
+  user: User,
+  lotId: string,
+  itemIds: readonly string[],
+  values: ReadonlyArray<readonly [BookingItemField, string]>,
+): Promise<BookingBulkResult> {
+  await ownPreparingLot(user, lotId);
+  const { applyBookingItemsBulk } = await import("./booking-lots");
+  const { updated, failed } = await applyBookingItemsBulk(
+    user,
+    lotId,
+    itemIds,
+    values,
+  );
+  return { updated, failed };
 }
 
 /**

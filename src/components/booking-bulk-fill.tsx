@@ -1,0 +1,465 @@
+"use client";
+
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
+import { bulkValueValid, type BookingItemField } from "@/lib/booking-lots";
+import {
+  bulkSetBookingItemsAction,
+  bulkSetPartnerBookingItemsAction,
+  type BulkFillResult,
+} from "@/app/app/actions/booking-lots";
+import { cx, inputDenseClass } from "@/components/ui";
+
+/*
+ * Preenchimento em massa dos itens do Book (dono, 16/11/2026): uma caixa em
+ * cada linha (e a do cabeçalho, que marca ou desmarca todas), um campo vazio
+ * acima de cada coluna editável e "Carregar", que grava de uma vez os
+ * valores digitados nas linhas marcadas. Campo vazio deixa a coluna como
+ * está; as linhas desmarcadas não mudam. A gravação é a da célula (as
+ * mesmas regras no servidor). Os campos ficam no cabeçalho congelado da
+ * tabela (TableTools com stickyHead): dá para marcar linhas lá embaixo e
+ * carregar sem voltar ao topo.
+ */
+
+export type BulkField = BookingItemField | "ncm";
+
+/** Como o campo em massa é digitado: o mesmo tipo e as opções da coluna. */
+export type BulkFieldKind = "text" | "number" | "select";
+
+export interface BulkFillLabels {
+  /** Caixa do cabeçalho. */
+  selectAll: string;
+  /** Caixa da linha ("Marcar a linha {n}"). */
+  selectRow: string;
+  /** Campo acima da coluna ("{field} para as linhas marcadas"). */
+  field: string;
+  load: string;
+  loading: string;
+  /** "Marcados: {n}". */
+  selected: string;
+  /** Por que "Carregar" está desligado. */
+  disabled: string;
+  invalid: string;
+  /** "Itens atualizados: {n}." */
+  updated: string;
+  /** "Não foram salvos: {list}." */
+  failed: string;
+  /** "{rows} ({field}: {message})" */
+  failedGroup: string;
+  /** "linha {n}" */
+  row: string;
+  /** "Nada foi salvo: {message}" */
+  refused: string;
+  offline: string;
+  retry: string;
+  close: string;
+}
+
+type Status =
+  | { kind: "ok"; updated: number }
+  | {
+      kind: "partial";
+      updated: number;
+      groups: string[];
+      retry: { ids: string[]; values: Record<string, string> };
+    }
+  | {
+      kind: "refused";
+      message: string;
+      retry: { ids: string[]; values: Record<string, string> };
+    };
+
+interface BulkContext {
+  labels: BulkFillLabels;
+  selected: ReadonlySet<string>;
+  toggle: (id: string, on: boolean) => void;
+  toggleAll: () => void;
+  allState: "none" | "some" | "all";
+  values: Partial<Record<BulkField, string>>;
+  setValue: (field: BulkField, value: string) => void;
+  /** Os valores preenchidos estão todos legíveis (e há pelo menos um). */
+  ready: boolean;
+  pending: boolean;
+  load: () => void;
+  status: Status | null;
+  retry: () => void;
+  dismiss: () => void;
+  rowLabel: (id: string) => string;
+}
+
+const Ctx = createContext<BulkContext | null>(null);
+
+function useBulk() {
+  const ctx = useContext(Ctx);
+  if (!ctx) throw new Error("BookingBulkFill fora do provedor");
+  return ctx;
+}
+
+const fill = (text: string, values: Record<string, string | number>) =>
+  text.replace(/\{(\w+)\}/g, (all, key: string) =>
+    key in values ? String(values[key]) : all,
+  );
+
+/**
+ * Quem guarda as linhas marcadas e os valores. Envolve a tabela inteira
+ * (cabeçalho congelado, linhas e o aviso).
+ */
+export function BookingBulkProvider({
+  lotId,
+  mode,
+  itemIds,
+  rowLabels,
+  fieldLabels,
+  labels,
+  children,
+}: {
+  lotId: string;
+  /** Wellmix (a ação da tela da Wellmix) ou o parceiro que lança o booking. */
+  mode: "wellmix" | "partner";
+  /** Todos os itens do booking, na ordem da tabela. */
+  itemIds: string[];
+  /** Como cada linha é chamada no aviso (o número da linha). */
+  rowLabels: Record<string, string>;
+  /** Nome de cada coluna, para dizer qual campo não gravou. */
+  fieldLabels: Record<string, string>;
+  labels: BulkFillLabels;
+  children: ReactNode;
+}) {
+  const scope = useRef<HTMLDivElement>(null);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [values, setValues] = useState<Partial<Record<BulkField, string>>>({});
+  const [status, setStatus] = useState<Status | null>(null);
+  const [pending, start] = useTransition();
+
+  // Itens que saíram do booking (outra pessoa excluiu): saem da marcação.
+  const known = useMemo(() => new Set(itemIds), [itemIds]);
+  const marked = useMemo(
+    () => new Set([...selected].filter((id) => known.has(id))),
+    [selected, known],
+  );
+
+  const filled = Object.entries(values).filter(
+    ([, v]) => (v ?? "").trim() !== "",
+  ) as Array<[BulkField, string]>;
+  const ready =
+    filled.length > 0 && filled.every(([f, v]) => bulkValueValid(f, v));
+
+  const allState: BulkContext["allState"] =
+    marked.size === 0 ? "none" : marked.size >= itemIds.length ? "all" : "some";
+
+  const rowLabel = (id: string) =>
+    fill(labels.row, { n: rowLabels[id] ?? "?" });
+
+  /** As linhas que a busca da tabela deixa à vista (em qualquer página). */
+  const shownIds = () => {
+    const rows =
+      scope.current?.querySelectorAll<HTMLTableRowElement>(
+        "tr[data-bulk-row]:not([data-table-filtered])",
+      ) ?? [];
+    return Array.from(rows, (row) => row.dataset.bulkRow!).filter((id) =>
+      known.has(id),
+    );
+  };
+
+  const send = (ids: string[], sent: Record<string, string>) => {
+    setStatus(null);
+    start(async () => {
+      let result: BulkFillResult;
+      try {
+        result =
+          mode === "wellmix"
+            ? await bulkSetBookingItemsAction(lotId, ids, sent)
+            : await bulkSetPartnerBookingItemsAction(lotId, ids, sent);
+      } catch {
+        setStatus({
+          kind: "refused",
+          message: labels.offline,
+          retry: { ids, values: sent },
+        });
+        return;
+      }
+      if (!result.ok) {
+        setStatus({
+          kind: "refused",
+          message: fill(labels.refused, { message: result.message }),
+          retry: { ids, values: sent },
+        });
+        return;
+      }
+      if (!result.failed.length) {
+        setStatus({ kind: "ok", updated: result.updated });
+        // Tudo gravado: os campos esvaziam (as linhas continuam marcadas).
+        setValues({});
+        return;
+      }
+      // Os que não gravaram, juntos pelo motivo: "linhas 5, 8 (Preço: ...)".
+      const byReason = new Map<string, string[]>();
+      for (const f of result.failed) {
+        const reason = `${f.field ? (fieldLabels[f.field] ?? f.field) : ""}\u0000${f.message}`;
+        byReason.set(reason, [...(byReason.get(reason) ?? []), f.itemId]);
+      }
+      const groups = [...byReason].map(([reason, ids]) => {
+        const [field, message] = reason.split("\u0000");
+        return fill(labels.failedGroup, {
+          rows: ids.map(rowLabel).join(", "),
+          field: field || "—",
+          message,
+        });
+      });
+      setStatus({
+        kind: "partial",
+        updated: result.updated,
+        groups,
+        retry: {
+          ids: result.failed.map((f) => f.itemId),
+          values: sent,
+        },
+      });
+    });
+  };
+
+  const ctx: BulkContext = {
+    labels,
+    selected: marked,
+    toggle: (id, on) =>
+      setSelected((prev) => {
+        const next = new Set(prev);
+        if (on) next.add(id);
+        else next.delete(id);
+        return next;
+      }),
+    // Marcadas (todas ou algumas): desmarca tudo; nenhuma: marca as linhas
+    // que a busca deixa à vista.
+    toggleAll: () => setSelected(marked.size ? new Set() : new Set(shownIds())),
+    allState,
+    values,
+    setValue: (field, value) =>
+      setValues((prev) => ({ ...prev, [field]: value })),
+    ready,
+    pending,
+    load: () => {
+      if (!ready || !marked.size || pending) return;
+      send([...marked], Object.fromEntries(filled));
+    },
+    status,
+    retry: () => {
+      if (!status || status.kind === "ok" || pending) return;
+      send(status.retry.ids, status.retry.values);
+    },
+    dismiss: () => setStatus(null),
+    rowLabel,
+  };
+
+  return (
+    <Ctx.Provider value={ctx}>
+      <div ref={scope} data-bulk-scope={lotId}>
+        {children}
+      </div>
+    </Ctx.Provider>
+  );
+}
+
+/** Caixa do cabeçalho: marca as linhas (à vista pela busca) ou desmarca todas. */
+export function BulkSelectAll() {
+  const { allState, toggleAll, labels, pending } = useBulk();
+  return (
+    <input
+      type="checkbox"
+      checked={allState === "all"}
+      ref={(el) => {
+        if (el) el.indeterminate = allState === "some";
+      }}
+      onChange={toggleAll}
+      disabled={pending}
+      aria-label={labels.selectAll}
+      title={labels.selectAll}
+      className="h-5 w-5 cursor-pointer accent-brand-700"
+      data-bulk-select-all={allState}
+    />
+  );
+}
+
+/** Caixa da linha: a área toda da célula marca (dedo no iPad). */
+export function BulkRowCheck({ itemId, n }: { itemId: string; n: string }) {
+  const { selected, toggle, labels, pending } = useBulk();
+  const on = selected.has(itemId);
+  return (
+    <input
+      type="checkbox"
+      checked={on}
+      onChange={(e) => toggle(itemId, e.target.checked)}
+      disabled={pending}
+      aria-label={fill(labels.selectRow, { n })}
+      className="h-5 w-5 cursor-pointer accent-brand-700"
+      data-bulk-check={itemId}
+    />
+  );
+}
+
+/**
+ * Campo vazio acima da coluna: o mesmo tipo da coluna (lista com as mesmas
+ * opções em incoterm e moeda). Valor que a gravação não aceita fica
+ * apontado e "Carregar" não liga.
+ */
+export function BulkFieldInput({
+  field,
+  kind,
+  label,
+  options = [],
+}: {
+  field: BulkField;
+  kind: BulkFieldKind;
+  /** Nome da coluna. */
+  label: string;
+  /** Lista (incoterm, moeda): as opções das linhas. */
+  options?: readonly string[];
+}) {
+  const { values, setValue, labels, pending } = useBulk();
+  const value = values[field] ?? "";
+  const bad = value.trim() !== "" && !bulkValueValid(field, value);
+  const name = fill(labels.field, { field: label });
+  const common = {
+    "aria-label": name,
+    title: name,
+    disabled: pending,
+    "aria-invalid": bad || undefined,
+    "data-bulk-field": field,
+    className: cx(
+      inputDenseClass,
+      "w-full",
+      kind === "number" && "text-right",
+      // Preenchido e válido: verde (vai para as linhas marcadas).
+      value.trim() !== "" &&
+        !bad &&
+        "border-emerald-500 bg-emerald-50 hover:border-emerald-500",
+      bad && "border-red-500 bg-red-50 hover:border-red-500",
+    ),
+  } as const;
+  return (
+    <span className="block">
+      {kind === "select" ? (
+        <select
+          {...common}
+          value={value}
+          onChange={(e) => setValue(field, e.target.value)}
+        >
+          <option value="">—</option>
+          {options.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          {...common}
+          type="text"
+          value={value}
+          inputMode={kind === "number" ? "decimal" : undefined}
+          autoComplete="off"
+          onChange={(e) => setValue(field, e.target.value)}
+        />
+      )}
+      {bad ? (
+        <span
+          className="mt-0.5 block text-[11px] leading-tight font-normal normal-case tracking-normal text-red-700"
+          data-bulk-field-invalid={field}
+        >
+          {labels.invalid}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** "Carregar": grava os valores nas linhas marcadas; diz quantas estão marcadas. */
+export function BulkLoadButton() {
+  const { ready, selected, pending, load, labels } = useBulk();
+  const enabled = ready && selected.size > 0 && !pending;
+  return (
+    <span className="flex flex-col items-start gap-0.5">
+      <button
+        type="button"
+        onClick={load}
+        disabled={!enabled}
+        title={enabled ? undefined : labels.disabled}
+        className="inline-flex min-h-8 items-center justify-center rounded-md bg-brand-700 px-2.5 text-xs font-semibold normal-case tracking-normal text-white shadow-sm transition hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-600"
+        aria-busy={pending}
+        data-bulk-load
+      >
+        {pending ? labels.loading : labels.load}
+      </button>
+      <span
+        className="text-[11px] font-normal normal-case tracking-normal text-zinc-500 tabular-nums"
+        data-bulk-selected={selected.size}
+      >
+        {fill(labels.selected, { n: selected.size })}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * O resultado do último "Carregar", no cabeçalho congelado (à vista em
+ * qualquer ponto da tabela): quantos gravaram; os que não, com o motivo e
+ * "Tentar de novo".
+ */
+export function BulkStatus() {
+  const { status, labels, retry, dismiss, pending } = useBulk();
+  if (!status) return null;
+  const ok = status.kind === "ok";
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={cx(
+        "flex flex-wrap items-start gap-x-3 gap-y-1 border-b px-3 py-2 text-[13px]",
+        ok
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-red-200 bg-red-50 text-red-900",
+      )}
+      data-bulk-status={status.kind}
+    >
+      <span className="min-w-0 flex-1">
+        {status.kind === "refused" ? (
+          status.message
+        ) : (
+          <>
+            {fill(labels.updated, { n: status.updated })}
+            {status.kind === "partial" ? (
+              <> {fill(labels.failed, { list: status.groups.join("; ") })}</>
+            ) : null}
+          </>
+        )}
+      </span>
+      {status.kind !== "ok" ? (
+        <button
+          type="button"
+          onClick={retry}
+          disabled={pending}
+          className="rounded-md border border-red-300 bg-white px-2 py-0.5 text-xs font-semibold text-red-800 hover:bg-red-100 disabled:opacity-50"
+          data-bulk-retry
+        >
+          {pending ? labels.loading : labels.retry}
+        </button>
+      ) : null}
+      <button
+        type="button"
+        onClick={dismiss}
+        aria-label={labels.close}
+        title={labels.close}
+        className="rounded px-1 text-base leading-none opacity-70 hover:opacity-100"
+        data-bulk-dismiss
+      >
+        ×
+      </button>
+    </div>
+  );
+}

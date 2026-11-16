@@ -295,6 +295,19 @@ th[data-table-sort]:focus-visible {
     var(--color-zinc-100);
 }
 
+/* Book, preenchimento em massa (src/components/booking-bulk-fill.tsx): a
+   linha marcada fica destacada, inclusive a primeira coluna presa à esquerda. */
+tr[data-bulk-row]:has(input[data-bulk-check]:checked) > td {
+  background-color: color-mix(in oklab, var(--color-brand-50) 80%, white);
+}
+
+/* Tabela com cabeçalho congelado (TableTools `stickyHead`): um campo da
+   tabela que ganha o foco ou é levado à vista para logo abaixo do
+   cabeçalho, não embaixo dele (--wm-table-head é a altura do cabeçalho). */
+[data-table-sticky-body] :where(input, select, textarea, button, a) {
+  scroll-margin-top: calc(var(--wm-table-head, 0px) + 0.5rem);
+}
+
 /* Book: a célula do campo aberto pela lista de pendências do fechamento
    (src/components/booking-pending-list.tsx) fica destacada por alguns segundos. */
 td[data-booking-field-target] {

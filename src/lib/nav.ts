@@ -98,12 +98,15 @@ export function isNavGroup(entry: NavEntry): entry is NavGroup {
 
 /**
  * Fora do menu de todos por enquanto (decisão do dono, 12/11/2026): telas de
- * fora do fluxo de hoje (Booking → pedido de compra). A vitrine ainda não
- * abriu, então as telas do cliente final esperam. A tela continua abrindo
+ * fora do fluxo de hoje (Booking → pedido de compra). A tela continua abrindo
  * pelo endereço; para voltar ao menu, basta tirar daqui.
+ *
+ * A vitrine (/app/explore) voltou ao menu (dono, 16/11/2026): quem a vê é o
+ * que as caixas de acesso dizem. Cliente: aberta e no menu por padrão;
+ * parceiros externos: pela caixa em Acessos externos; equipe Wellmix: por
+ * função, em Funções e acessos.
  */
 export const MENU_HIDDEN: readonly string[] = [
-  "/app/explore",
   "/app/sourcing",
   "/app/marketing",
   "/app/after-sales",
@@ -344,15 +347,16 @@ export function navFor(
             },
           ],
           ["lines", { href: "/app/lines", key: "nav.lines" }],
-          // Fora do menu (MENU_HIDDEN): a vitrine como o cliente vê.
+          // A vitrine como o cliente vê (de volta ao menu em 16/11/2026):
+          // as funções que abrem a tela em Funções e acessos.
           ["explore", { href: "/app/explore", key: "nav.explorePreview" }],
         ]),
       ),
     ];
   }
   if (user.role === "customer")
-    // A vitrine ainda não abriu (Explorar, Orçamentos, Histórico e Marketing
-    // fora do menu): o cliente fica com os pedidos e o dia a dia.
+    // O cliente: a vitrine (Explorar, de volta ao menu em 16/11/2026), os
+    // pedidos e o dia a dia. Histórico e Marketing seguem fora do menu.
     return [
       ...pick(has, [
         [

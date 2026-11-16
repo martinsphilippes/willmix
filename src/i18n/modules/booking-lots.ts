@@ -264,6 +264,28 @@ export const pt = {
     "Só um book fechado tem análise para refazer.",
   "bookingLots.error.schema_outdated":
     "As tabelas do book ainda não foram publicadas no banco (npm run appwrite:push).",
+  // Preenchimento em massa (dono, 16/11/2026): as caixas das linhas, os
+  // campos acima das colunas e o "Carregar".
+  "bookingLots.bulk.hint":
+    "Para várias linhas de uma vez: marque as linhas, preencha o campo acima da coluna e aperte Carregar.",
+  "bookingLots.bulk.selectAll": "Marcar ou desmarcar todas as linhas",
+  "bookingLots.bulk.selectRow": "Marcar a linha {n}",
+  "bookingLots.bulk.field": "{field} para as linhas marcadas",
+  "bookingLots.bulk.load": "Carregar",
+  "bookingLots.bulk.loading": "Gravando…",
+  "bookingLots.bulk.selected": "Marcadas: {n}",
+  "bookingLots.bulk.disabled":
+    "Marque pelo menos uma linha e preencha um campo acima das colunas com um valor válido.",
+  "bookingLots.bulk.invalid": "Valor inválido",
+  "bookingLots.bulk.updated": "Itens atualizados: {n}.",
+  "bookingLots.bulk.failed": "Não foram salvos: {list}.",
+  "bookingLots.bulk.failedGroup": "{rows} ({field}: {message})",
+  "bookingLots.bulk.row": "linha {n}",
+  "bookingLots.bulk.refused": "Nada foi salvo: {message}",
+  "bookingLots.bulk.offline":
+    "Sem conexão com o portal: nada foi salvo. Tente de novo.",
+  "bookingLots.bulk.retry": "Tentar de novo",
+  "bookingLots.bulk.close": "Fechar o aviso",
   "bookingLots.error.not_found": "Book ou item não encontrado.",
 };
 
@@ -528,6 +550,26 @@ export const en: typeof pt = {
     "Only a closed book has an analysis to redo.",
   "bookingLots.error.schema_outdated":
     "The book tables are not published in the database yet (npm run appwrite:push).",
+  "bookingLots.bulk.hint":
+    "For several rows at once: tick the rows, fill in the field above the column and press Load.",
+  "bookingLots.bulk.selectAll": "Tick or untick all rows",
+  "bookingLots.bulk.selectRow": "Tick row {n}",
+  "bookingLots.bulk.field": "{field} for the ticked rows",
+  "bookingLots.bulk.load": "Load",
+  "bookingLots.bulk.loading": "Saving…",
+  "bookingLots.bulk.selected": "Ticked: {n}",
+  "bookingLots.bulk.disabled":
+    "Tick at least one row and fill in a field above the columns with a valid value.",
+  "bookingLots.bulk.invalid": "Invalid value",
+  "bookingLots.bulk.updated": "Items updated: {n}.",
+  "bookingLots.bulk.failed": "Not saved: {list}.",
+  "bookingLots.bulk.failedGroup": "{rows} ({field}: {message})",
+  "bookingLots.bulk.row": "row {n}",
+  "bookingLots.bulk.refused": "Nothing was saved: {message}",
+  "bookingLots.bulk.offline":
+    "No connection to the portal: nothing was saved. Try again.",
+  "bookingLots.bulk.retry": "Try again",
+  "bookingLots.bulk.close": "Close the message",
   "bookingLots.error.not_found": "Book or item not found.",
 };
 
@@ -782,5 +824,23 @@ export const zh: typeof pt = {
     "只有已关闭的 Book 才能重新分析。",
   "bookingLots.error.schema_outdated":
     "Book 数据表尚未发布到数据库（npm run appwrite:push）。",
+  "bookingLots.bulk.hint":
+    "一次填写多行：勾选各行，在列上方的字段中填写，然后点击“载入”。",
+  "bookingLots.bulk.selectAll": "勾选或取消全部行",
+  "bookingLots.bulk.selectRow": "勾选第 {n} 行",
+  "bookingLots.bulk.field": "勾选行的{field}",
+  "bookingLots.bulk.load": "载入",
+  "bookingLots.bulk.loading": "正在保存…",
+  "bookingLots.bulk.selected": "已勾选：{n}",
+  "bookingLots.bulk.disabled": "请至少勾选一行，并在列上方的字段中填写有效值。",
+  "bookingLots.bulk.invalid": "数值无效",
+  "bookingLots.bulk.updated": "已更新条目：{n}。",
+  "bookingLots.bulk.failed": "未保存：{list}。",
+  "bookingLots.bulk.failedGroup": "{rows}（{field}：{message}）",
+  "bookingLots.bulk.row": "第 {n} 行",
+  "bookingLots.bulk.refused": "未保存任何内容：{message}",
+  "bookingLots.bulk.offline": "无法连接门户：未保存任何内容。请重试。",
+  "bookingLots.bulk.retry": "重试",
+  "bookingLots.bulk.close": "关闭提示",
   "bookingLots.error.not_found": "未找到 Book 或条目。",
 };

@@ -115,7 +115,12 @@ describe("menu lateral", () => {
       // 15/11/2026).
       {
         group: "nav.group.registry",
-        items: ["/app/customers", "/app/products", "/app/lines"],
+        items: [
+          "/app/customers",
+          "/app/products",
+          "/app/lines",
+          "/app/explore",
+        ],
       },
     ]);
     expect(navFooterFor(ADMIN).map((l) => [l.href, l.key])).toEqual([
@@ -190,8 +195,8 @@ describe("menu lateral", () => {
   });
 
   it("telas fora do fluxo de hoje não aparecem no menu de ninguém", () => {
+    // A vitrine voltou ao menu (dono, 16/11/2026): vale a caixa de acesso.
     expect(MENU_HIDDEN).toEqual([
-      "/app/explore",
       "/app/sourcing",
       "/app/marketing",
       "/app/after-sales",
@@ -251,16 +256,26 @@ describe("menu lateral", () => {
       },
       { group: "nav.group.sales", items: SALES },
       { link: "/app/sla" },
-      { link: "/app/products" },
+      // Produtos e a vitrine do cliente (o designer abre as duas).
+      {
+        group: "nav.group.registry",
+        items: ["/app/products", "/app/explore"],
+      },
     ]);
   });
 
-  it("cliente: Pendências, Encomendas, Criar pedido e os pedidos (a vitrine ainda não abriu)", () => {
+  it("cliente: Pendências, a vitrine (Explorar), Encomendas, Criar pedido e os pedidos", () => {
+    // A vitrine voltou ao menu do cliente (dono, 16/11/2026).
     expect(view({ role: "customer" })).toEqual([
       { link: "/app/tasks" },
       {
         group: "nav.group.myOrders",
-        items: ["/app/requests", "/app/requests/new", "/app/orders"],
+        items: [
+          "/app/explore",
+          "/app/requests",
+          "/app/requests/new",
+          "/app/orders",
+        ],
       },
     ]);
   });
@@ -649,5 +664,40 @@ describe("Cadastros → Clientes", () => {
       expect(isActiveLink(link, path)).toBe(true);
     for (const path of ["/app/parties", "/app/suppliers", "/app/team"])
       expect(isActiveLink(link, path)).toBe(false);
+  });
+});
+
+/*
+ * Vitrine (/app/explore) de volta ao menu (dono, 16/11/2026): quem a vê é o
+ * que as caixas de acesso dizem. O cliente, por padrão, a tem aberta e no
+ * menu; a equipe Wellmix, pelas funções que abrem a tela; o parceiro externo,
+ * só quando a caixa dele é marcada em Acessos externos.
+ */
+describe("Vitrine pelas caixas de acesso", () => {
+  it("cliente: Explorar no menu, por padrão", () => {
+    const links = flattenNav(navFor({ role: "customer" }));
+    expect(links.find((l) => l.href === "/app/explore")?.key).toBe(
+      "nav.explore",
+    );
+  });
+
+  it("equipe: as funções que abrem a vitrine a veem em Cadastros; as outras, não", () => {
+    expect(hrefsOf(ADMIN)).toContain("/app/explore");
+    for (const fn of ["product_manager", "catalog", "designer"] as const)
+      expect(hrefsOf({ role: "operator", functions: [fn] })).toContain(
+        "/app/explore",
+      );
+    for (const fn of ["buyer", "planner", "sales", "finance"] as const) {
+      const who = { role: "operator" as const, functions: [fn] };
+      expect(canOpen(who, "explore")).toBe(false);
+      expect(hrefsOf(who)).not.toContain("/app/explore");
+    }
+  });
+
+  it("parceiro externo: só com a caixa marcada", () => {
+    for (const role of ROLES.filter(
+      (r) => r !== "admin" && r !== "operator" && r !== "customer",
+    ))
+      expect(hrefsOf({ role })).not.toContain("/app/explore");
   });
 });

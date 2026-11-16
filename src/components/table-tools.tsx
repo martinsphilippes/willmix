@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Children,
+  isValidElement,
   useCallback,
   useEffect,
   useRef,
@@ -41,6 +43,14 @@ import { twMerge } from "tailwind-merge";
  * de grupo com colSpan) ficam como estão. Com menos de MIN_ROWS linhas só a
  * ordenação aparece: busca e paginação em 3 linhas só ocupam espaço. Grade
  * de edição (tabela dentro de um <form> com campos nas linhas) não pagina.
+ *
+ * Cabeçalho congelado (`stickyHead`; dono, 16/11/2026, tabela de itens do
+ * Book): o <thead> vai para uma tabela própria, presa logo abaixo da barra
+ * vermelha enquanto a tabela passa e que sai junto com ela no fim. Na
+ * rolagem para o lado as duas partes andam juntas (cada título fica sobre a
+ * coluna dele). As duas usam o mesmo <colgroup> (obrigatório, com a largura
+ * de cada coluna) e `table-layout: fixed`. Com mais de uma linha no
+ * cabeçalho, a dos títulos (a que ordena) leva `data-table-sort-row`.
  */
 
 const MIN_ROWS = 6;
@@ -129,8 +139,27 @@ type Shape = {
   emptyRow: boolean;
 };
 
-/** Lê a forma da tabela; null quando ela não é uma lista simples de linhas. */
-function readShape(table: HTMLTableElement, sortable: boolean): Shape | null {
+/**
+ * Linha dos títulos (a que ordena): a marcada com `data-table-sort-row`
+ * (cabeçalho de mais de uma linha) ou a única.
+ */
+function titleRow(head: HTMLCollectionOf<HTMLTableRowElement> | undefined) {
+  if (!head?.length) return null;
+  const marked = Array.from(head).find(
+    (row) => row.dataset.tableSortRow !== undefined,
+  );
+  return marked ?? (head.length === 1 ? head[0] : null);
+}
+
+/**
+ * Lê a forma da tabela; null quando ela não é uma lista simples de linhas.
+ * `headTable`: o cabeçalho congelado, numa tabela à parte.
+ */
+function readShape(
+  table: HTMLTableElement,
+  sortable: boolean,
+  headTable: HTMLTableElement | null = null,
+): Shape | null {
   if (table.tBodies.length !== 1) return null;
   const body = table.tBodies[0];
   const rows = Array.from(body.rows);
@@ -146,8 +175,7 @@ function readShape(table: HTMLTableElement, sortable: boolean): Shape | null {
     }
   }
   const headers = new Map<number, HTMLTableCellElement>();
-  const head = table.tHead?.rows;
-  const headRow = head?.length === 1 ? head[0] : null;
+  const headRow = titleRow((headTable ?? table).tHead?.rows);
   const width = rows[0]?.cells.length ?? 0;
   if (
     sortable &&
@@ -177,6 +205,8 @@ export function TableTools({
   sortable = true,
   searchable = true,
   paginated = true,
+  stickyHead = false,
+  stickyBar,
   ...tableAttrs
 }: {
   children: ReactNode;
@@ -188,8 +218,20 @@ export function TableTools({
   /** Desliga a busca (tabelas que já têm filtro próprio). */
   searchable?: boolean;
   paginated?: boolean;
+  /**
+   * Cabeçalho congelado abaixo da barra vermelha (veja o comentário do
+   * arquivo). Os filhos são o <colgroup>, o <thead> e o <tbody>, direto.
+   */
+  stickyHead?: boolean;
+  /** Faixa no alto do cabeçalho congelado (ex.: o aviso do "Carregar"). */
+  stickyBar?: ReactNode;
 } & { [key: `data-${string}`]: string | undefined }) {
   const tableRef = useRef<HTMLTableElement>(null);
+  /** Cabeçalho congelado: a tabela dele, a moldura de cada parte e o quadro. */
+  const headTableRef = useRef<HTMLTableElement>(null);
+  const headScrollRef = useRef<HTMLDivElement>(null);
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
   const original = useRef(new WeakMap<HTMLTableRowElement, number>());
   const counter = useRef(0);
   const lang = useSyncExternalStore(
@@ -221,7 +263,7 @@ export function TableTools({
   const apply = useCallback(() => {
     const table = tableRef.current;
     if (!table) return;
-    const shape = readShape(table, sortable);
+    const shape = readShape(table, sortable, headTableRef.current);
     if (!shape) {
       setStats(null);
       return;
@@ -294,9 +336,15 @@ export function TableTools({
     const visible = new Set(
       paged ? matched.slice(start, start + pageSize) : matched,
     );
+    // Fora da busca (não só fora da página): quem marca "todas" as linhas
+    // (preenchimento em massa do Book) pula estas.
+    const kept = new Set(matched);
     for (const row of ordered) {
       const hide = !visible.has(row);
       if (row.hidden !== hide) row.hidden = hide;
+      const out = !kept.has(row);
+      if (row.hasAttribute("data-table-filtered") !== out)
+        row.toggleAttribute("data-table-filtered", out);
     }
     if (current !== page) setPage(current);
     setStats((prev) =>
@@ -346,15 +394,17 @@ export function TableTools({
     return () => observer.disconnect();
   }, [apply, version]);
 
-  // Clique e teclado nos cabeçalhos ordenáveis.
+  // Clique e teclado nos cabeçalhos ordenáveis (no congelado, a tabela dele).
   useEffect(() => {
     const table = tableRef.current;
     if (!table) return;
+    const head = headTableRef.current;
     const pick = (target: EventTarget | null) => {
       const cell = (target as HTMLElement | null)?.closest?.(
         "th[data-table-sort]",
       ) as HTMLTableCellElement | null;
-      if (!cell || cell.closest("table") !== table) return null;
+      const owner = cell?.closest("table");
+      if (!cell || (owner !== table && owner !== head)) return null;
       return cell.cellIndex;
     };
     const toggle = (column: number) => {
@@ -378,15 +428,53 @@ export function TableTools({
       event.preventDefault();
       toggle(column);
     };
-    table.addEventListener("click", onClick);
-    table.addEventListener("keydown", onKey);
+    const targets = head ? [table, head] : [table];
+    for (const el of targets) {
+      el.addEventListener("click", onClick);
+      el.addEventListener("keydown", onKey);
+    }
     return () => {
-      table.removeEventListener("click", onClick);
-      table.removeEventListener("keydown", onKey);
+      for (const el of targets) {
+        el.removeEventListener("click", onClick);
+        el.removeEventListener("keydown", onKey);
+      }
+    };
+  }, []);
+
+  // Cabeçalho congelado: as duas partes rolam juntas para o lado (arrastar
+  // a tabela ou o cabeçalho, o foco num campo fora da vista) e a altura dele
+  // fica em --wm-table-head (os campos da tabela não param embaixo dele).
+  useEffect(() => {
+    const sticky = headScrollRef.current;
+    const head = sticky?.querySelector<HTMLElement>(
+      "[data-table-sticky-scroll]",
+    );
+    const body = bodyScrollRef.current;
+    const frame = frameRef.current;
+    if (!sticky || !head || !body || !frame) return;
+    const follow = (from: HTMLElement, to: HTMLElement) => () => {
+      if (Math.abs(to.scrollLeft - from.scrollLeft) > 0.5)
+        to.scrollLeft = from.scrollLeft;
+    };
+    const fromBody = follow(body, head);
+    const fromHead = follow(head, body);
+    body.addEventListener("scroll", fromBody, { passive: true });
+    head.addEventListener("scroll", fromHead, { passive: true });
+    const size = () =>
+      frame.style.setProperty("--wm-table-head", `${sticky.offsetHeight}px`);
+    size();
+    const observer =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(size);
+    observer?.observe(sticky);
+    return () => {
+      body.removeEventListener("scroll", fromBody);
+      head.removeEventListener("scroll", fromHead);
+      observer?.disconnect();
     };
   }, []);
 
   const showTools = !!stats && stats.rows >= MIN_ROWS;
+  const parts = stickyHead ? splitTable(children) : null;
   const range = stats ? pageRange(page, pageSize, stats.matched) : null;
 
   return (
@@ -407,23 +495,70 @@ export function TableTools({
           />
         </div>
       ) : null}
-      <div
-        className={twMerge(
-          "relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border",
-          className,
-        )}
-      >
-        <table
-          ref={tableRef}
-          {...tableAttrs}
+      {stickyHead ? (
+        <div ref={frameRef} className="relative" data-table-frame>
+          <div
+            ref={headScrollRef}
+            className="sticky top-(--wm-header) z-20 -mx-4 overflow-hidden border-t border-zinc-200/80 bg-white sm:mx-0 sm:rounded-t-xl sm:border-x"
+            data-table-sticky-head
+          >
+            {stickyBar}
+            <div
+              className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              data-table-sticky-scroll
+            >
+              <table
+                ref={headTableRef}
+                className={twMerge(
+                  "w-full min-w-[32rem] table-fixed text-left text-sm",
+                  tableClassName,
+                )}
+              >
+                {parts?.colgroup}
+                {parts?.head}
+              </table>
+            </div>
+          </div>
+          <div
+            ref={bodyScrollRef}
+            className={twMerge(
+              "relative -mx-4 overflow-x-auto border-b border-zinc-200/80 bg-white sm:mx-0 sm:rounded-b-xl sm:border-x",
+              className,
+            )}
+            data-table-sticky-body
+          >
+            <table
+              ref={tableRef}
+              {...tableAttrs}
+              className={twMerge(
+                "w-full min-w-[32rem] table-fixed text-left text-sm",
+                tableClassName,
+              )}
+            >
+              {parts?.colgroup}
+              {parts?.rest}
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div
           className={twMerge(
-            "w-full min-w-[32rem] text-left text-sm",
-            tableClassName,
+            "relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border",
+            className,
           )}
         >
-          {children}
-        </table>
-      </div>
+          <table
+            ref={tableRef}
+            {...tableAttrs}
+            className={twMerge(
+              "w-full min-w-[32rem] text-left text-sm",
+              tableClassName,
+            )}
+          >
+            {children}
+          </table>
+        </div>
+      )}
       {showTools && stats.matched === 0 ? (
         <p className="mt-2 text-[13px] text-zinc-500" data-table-none>
           {labels["tableTools.none"]}
@@ -508,4 +643,17 @@ function PagerButton({
       {children}
     </button>
   );
+}
+
+/** Os filhos da tabela congelada: <colgroup>, <thead> e o resto (<tbody>). */
+function splitTable(children: ReactNode) {
+  let colgroup: ReactNode = null;
+  let head: ReactNode = null;
+  const rest: ReactNode[] = [];
+  Children.forEach(children, (child) => {
+    if (isValidElement(child) && child.type === "colgroup") colgroup = child;
+    else if (isValidElement(child) && child.type === "thead") head = child;
+    else rest.push(child);
+  });
+  return { colgroup, head, rest };
 }

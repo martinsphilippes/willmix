@@ -23,7 +23,8 @@ const { attachAccess } = await import("@/lib/auth/access-cache");
 const { externalAccessFor } = await import("@/lib/services/partner-access");
 const { flattenNav, navFor } = await import("@/lib/nav");
 const { ROLE_SCREENS } = await import("@/lib/auth/screens");
-const { uploadDocument } = await import("@/lib/services/documents");
+const { uploadDocument, canAccessDocument } =
+  await import("@/lib/services/documents");
 type User = import("@/lib/db").User;
 
 const HEADER = [
@@ -230,36 +231,111 @@ describe("tela Booking do Trading", () => {
     expect(detail.partnerName).toBeTruthy();
   });
 
-  it("fotos da tabela de consulta: só as que o login já abre (as dele)", async () => {
-    // A foto do item que ele subiu aparece; o cartão que a Wellmix subiu por
-    // ele não (nenhum acesso novo; dono, 16/11/2026).
+  it("fotos da tabela de consulta: as dos itens do book dele, também as que a Wellmix subiu", async () => {
+    // O parceiro vê as fotos (e o cartão do fabricante) dos itens dos books
+    // da empresa dele, também as que a Wellmix carregou por ele (dono,
+    // 16/11/2026). Outra empresa e a fábrica citada no book, não.
     const store = getStore();
     const png = (name: string) =>
       new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], name, {
         type: "image/png",
       });
     const own = await uploadDocument(trader, png("foto.png"), {
-      type: "attachment",
+      type: "photo",
       visibility: "internal",
     });
     const wellmix = await uploadDocument(admin, png("cartao.png"), {
-      type: "attachment",
+      type: "photo",
+      visibility: "internal",
+    });
+    const loose = await uploadDocument(admin, png("solta.png"), {
+      type: "photo",
       visibility: "internal",
     });
     const [item] = await store.list("booking_items", {
       filter: { lotId: mine },
     });
     await store.update("booking_items", item.id, {
-      photoDocumentId: own.id,
-      cardDocumentId: wellmix.id,
+      photoDocumentId: wellmix.id,
+      cardDocumentId: own.id,
     });
     const detail = (await svc.getPartnerBookingLot(trader, mine))!;
-    expect(detail.items[0].photoDocumentId).toBe(own.id);
-    expect(detail.items[0].cardDocumentId).toBeNull();
+    expect(detail.items[0].photoDocumentId).toBe(wellmix.id);
+    expect(detail.items[0].cardDocumentId).toBe(own.id);
+    // O arquivo abre para ele, também o que a Wellmix subiu...
+    expect(await canAccessDocument(trader, wellmix)).toBe(true);
+    expect(await svc.partnerSeesBookingPhoto(trader, wellmix.id)).toBe(true);
+    // ...e não para outra empresa, nem para a fábrica do book, nem foto
+    // solta (de book nenhum).
+    expect(await canAccessDocument(otherTrader, wellmix)).toBe(false);
+    expect(await canAccessDocument(supplier, wellmix)).toBe(false);
+    expect(await canAccessDocument(trader, loose)).toBe(false);
+    // Sem a tela Booking, a regra não abre (mesmo sendo da empresa).
+    const noScreen = { ...trader };
+    attachAccess(noScreen, {
+      screens: [],
+      actions: [],
+      external: [...ROLE_SCREENS.supplier],
+      menuHidden: [],
+    });
+    expect(await svc.partnerSeesBookingPhoto(noScreen, wellmix.id)).toBe(false);
+    expect(await svc.partnerSeesBookingPhoto(admin, wellmix.id)).toBe(false);
     await store.update("booking_items", item.id, {
       photoDocumentId: null,
       cardDocumentId: null,
     });
+  });
+
+  it("capacidade da consulta: tamanho em texto e ml juntos valem o cadastro do produto", async () => {
+    // Porta-retrato com "A4" e "0,5 ml" (provável erro da planilha): vale a
+    // capacidade do cadastro do produto (ficha mestre); em branco lá, "—".
+    // Sem tamanho em texto, os mililitros do book (dono, 16/11/2026).
+    const store = getStore();
+    const [item] = await store.list("booking_items", {
+      filter: { lotId: mine },
+    });
+    const before = {
+      productId: item.productId,
+      sizeText: item.sizeText ?? null,
+      capacityMl: item.capacityMl ?? null,
+    };
+    const [existing] = await store.list("purchase_sheets", {
+      filter: { orderId: "prod-jarra" },
+    });
+    const master =
+      existing ??
+      (await store.create("purchase_sheets", {
+        orderId: "prod-jarra",
+        capacityMl: null,
+      } as never));
+    const shown = async () =>
+      (await svc.getPartnerBookingLot(trader, mine))!.items[0].capacityMlShown;
+
+    await store.update("booking_items", item.id, {
+      sizeText: "A4",
+      capacityMl: 0.5,
+    });
+    await store.update("purchase_sheets", master.id, { capacityMl: null });
+    expect(await shown()).toBeNull();
+    await store.update("purchase_sheets", master.id, { capacityMl: 750 });
+    expect(await shown()).toBe(750);
+    // Sem produto ligado, nada a conferir: "—".
+    await store.update("booking_items", item.id, { productId: null });
+    expect(await shown()).toBeNull();
+    // Sem tamanho em texto, vale o que o book diz.
+    await store.update("booking_items", item.id, {
+      productId: before.productId,
+      sizeText: null,
+      capacityMl: 500,
+    });
+    expect(await shown()).toBe(500);
+
+    await store.update("booking_items", item.id, before);
+    if (existing)
+      await store.update("purchase_sheets", master.id, {
+        capacityMl: existing.capacityMl ?? null,
+      });
+    else await store.remove("purchase_sheets", master.id);
   });
 
   it("booking de outra empresa não abre", async () => {
@@ -466,6 +542,70 @@ describe("lançar booking pelo parceiro", () => {
       svc.discardPartnerBooking(otherTrader, lot.id),
     ).rejects.toThrow("not_found");
     expect((await store.get("booking_items", item.id))!.price).toBe(2.55);
+  });
+
+  it("Carregar (preenchimento em massa): os itens marcados, só o booking dele e antes de enviar", async () => {
+    const store = getStore();
+    const launched = await svc.launchPartnerBooking(
+      trader,
+      sheet("massa.xlsx", [
+        row("Fábrica M", "M-1", "1.00"),
+        row("Fábrica M", "M-2", "1.10"),
+        row("Fábrica M", "M-3", "1.20"),
+      ]),
+    );
+    const items = (await svc.getPartnerBookingLot(trader, launched.id))!.items;
+    const [first, second, third] = items;
+    const result = await svc.setPartnerBookingItemsFields(
+      trader,
+      launched.id,
+      [first.id, third.id],
+      [
+        ["currency", "RMB"],
+        ["material", "glass"],
+      ],
+    );
+    expect(result.updated.sort()).toEqual([first.id, third.id].sort());
+    expect(result.failed).toEqual([]);
+    const after = await Promise.all(
+      items.map(async (i) => (await store.get("booking_items", i.id))!),
+    );
+    expect(after.map((i) => [i.currency, i.material])).toEqual([
+      ["RMB", "glass"],
+      ["USD", null],
+      ["RMB", "glass"],
+    ]);
+    // O preço de cada linha ficou o dela.
+    expect(after.map((i) => i.price)).toEqual([1, 1.1, 1.2]);
+    expect(after[0].updatedByUserId).toBe(trader.id);
+    // Valor que não dá para ler: recusado em cada item, com o campo.
+    const bad = await svc.setPartnerBookingItemsFields(
+      trader,
+      launched.id,
+      [second.id],
+      [["price", "abc"]],
+    );
+    expect(bad.updated).toEqual([]);
+    expect(bad.failed[0]).toMatchObject({ itemId: second.id, field: "price" });
+    // Outra empresa e a Wellmix não mexem.
+    await expect(
+      svc.setPartnerBookingItemsFields(
+        otherTrader,
+        launched.id,
+        [second.id],
+        [["moq", "5"]],
+      ),
+    ).rejects.toThrow("not_found");
+    await expect(
+      svc.setPartnerBookingItemsFields(
+        admin,
+        launched.id,
+        [second.id],
+        [["moq", "5"]],
+      ),
+    ).rejects.toThrow();
+    // Descarta (o próximo teste envia o outro booking em preenchimento).
+    await svc.discardPartnerBooking(trader, launched.id);
   });
 
   it("Enviar para Wellmix Conferir: ganha o número, vira rascunho e a Wellmix é avisada", async () => {
