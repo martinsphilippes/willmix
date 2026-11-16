@@ -32,7 +32,8 @@ const ROLES = [
 ];
 
 const HANDOFFS = [
-  { icon: "factory", label: "Fornecedor" },
+  // À direita do ícone: abaixo dele, encostava em "Agência de arte".
+  { icon: "factory", label: "Fornecedor", pos: "right" },
   { icon: "pen-tool", label: "Agência de arte" },
   { icon: "badge-check", label: "Certificação" },
   { icon: "ship", label: "Frete" },
@@ -483,7 +484,10 @@ export const VIDEOS_BR = {
             {
               role: "Assessoria de comex",
               icon: "briefcase",
-              title: "Licenças, numerário e declaração de importação",
+              // Uma linha só, como o título do lado (com duas, a janela
+              // descia e a nota de baixo a cobria). DI/DUIMP é o nome do
+              // passo na própria tela.
+              title: "Licenças, numerário e DI/DUIMP",
               shot: "comex",
               oy: "40%",
               c: 0,
@@ -848,7 +852,7 @@ export const VIDEOS_BR = {
             },
             {
               icon: "container",
-              label: "Carregamento · fotos, lacre, número do container",
+              label: "Carregamento · fotos, lacre, nº do container",
               c: 2,
             },
             {

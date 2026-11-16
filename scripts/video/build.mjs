@@ -222,29 +222,32 @@ const enSubs = cues.map((c, k) => ({
   lines: [c[VOICE]],
 }));
 if (!def.noSubs) writeSrt("en", enSubs);
-writeFileSync(
-  join(out, `${video}.audio.json`),
-  JSON.stringify(
-    {
-      intro: INTRO,
-      duration: INTRO + duration,
-      logo: +(INTRO + logoAt).toFixed(3),
-      scenes: scenes.map((s) => ({
-        id: s.id,
-        type: s.type,
-        at: INTRO + s.start,
-        dur: s.dur,
-      })),
-      cues: cues.map((c) => ({
-        file: c.file,
-        at: +(INTRO + c.t0).toFixed(4),
-        dur: +(c.t1 - c.t0).toFixed(4),
-      })),
-    },
-    null,
-    1,
-  ),
+// Plano do áudio: só regrava quando muda. O mix.mjs para se a voz ou a
+// trilha forem mais antigas que ele; mudar só o texto da tela não mexe nos
+// tempos e não pede voz nem trilha novas.
+const plan = join(out, `${video}.audio.json`);
+const planJson = JSON.stringify(
+  {
+    intro: INTRO,
+    duration: INTRO + duration,
+    logo: +(INTRO + logoAt).toFixed(3),
+    scenes: scenes.map((s) => ({
+      id: s.id,
+      type: s.type,
+      at: INTRO + s.start,
+      dur: s.dur,
+    })),
+    cues: cues.map((c) => ({
+      file: c.file,
+      at: +(INTRO + c.t0).toFixed(4),
+      dur: +(c.t1 - c.t0).toFixed(4),
+    })),
+  },
+  null,
+  1,
 );
+if (!existsSync(plan) || readFileSync(plan, "utf8") !== planJson)
+  writeFileSync(plan, planJson);
 const mmss = (s) =>
   `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 console.log(

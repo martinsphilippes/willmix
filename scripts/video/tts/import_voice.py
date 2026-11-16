@@ -15,12 +15,19 @@ A pasta <audio> pode ter:
   - um arquivo por PARTE do roteiro (parte-1, parte-2, parte-3, em mp3, wav, m4a,
     flac...; o número da parte tem de estar no nome): o áudio é transcrito (Whisper
     local, em português), as palavras são alinhadas às do roteiro e o áudio é
-    cortado no meio da pausa entre uma fala e a seguinte.
+    cortado no meio do silêncio entre uma fala e a seguinte, medido no próprio som
+    (o tempo das palavras do Whisper só diz onde procurar).
 --fix id=arquivo troca uma fala por um arquivo só dela (a fala refeita).
+
+As pontas de cada fala saem pelo som: começa no primeiro som de fala (inclusive
+consoantes fracas como o "f" e o estalo do "c") e termina no último, sem as
+respirações separadas da fala.
 
 Depois das importações imprime uma tabela com, por fala, quanto do texto foi
 reconhecido, a duração e a velocidade de fala, e lista as falas a rever (texto
-reconhecido muito diferente do roteiro, fala curta ou longa demais). Nada sai da
+reconhecido muito diferente do roteiro, fala curta ou longa demais) e os avisos
+dos cortes (som de fala que ficou fora de todas as falas; corte sem silêncio
+claro por perto). Nada sai da
 máquina: o Whisper roda aqui (modelo "medium", baixado do Hugging Face na primeira
 vez; HF_HOME escolhe o cache).
 """
@@ -36,9 +43,12 @@ import unicodedata
 
 import numpy as np
 import soundfile as sf
-from scipy.signal import resample_poly
+from scipy.signal import butter, resample_poly, sosfiltfilt
 
 SR = 48000
+FRAME = 0.01  # quadro de 10 ms para medir o nível
+SIL_DB = -60.0  # abaixo disto é silêncio; f, s, ch e o estalo do c e do p ficam acima
+LOUD = 0.012  # amostra "alta" (−38 dBFS): o corpo da fala
 AUDIO_EXT = (".mp3", ".wav", ".m4a", ".flac", ".ogg", ".aac", ".opus", ".webm")
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -85,13 +95,67 @@ def level_db(x):
     return 20 * np.log10(np.sqrt((act**2).mean())) if len(act) else -90.0
 
 
-def trim_silence(x, floor=0.012, pad=0.06):
-    loud = np.where(np.abs(x) > floor)[0]
+_HP = butter(4, 150, "highpass", fs=SR, output="sos")
+
+
+def frames_db(x):
+    """Nível de cada quadro de 10 ms (dBFS), sem os graves abaixo de 150 Hz."""
+    y = sosfiltfilt(_HP, x.astype(np.float64)) if len(x) > 64 else x.astype(np.float64)
+    f = int(FRAME * SR)
+    n = len(y) // f
+    if n == 0:
+        return np.full(1, -120.0)
+    return 20 * np.log10(np.sqrt((y[: n * f].reshape(n, f) ** 2).mean(axis=1)) + 1e-12)
+
+
+def speech_bounds(x):
+    """Começo e fim da fala em `x` (amostras). Parte do primeiro e do último som alto e
+    anda pelos quadros acima do silêncio, atravessando até 30 ms quietos: assim entram
+    o "f" de "Fornecedores", o estalo do "c" de "Consulta" e o "s" final, que ficam
+    abaixo do som alto. Uma respiração separada da fala por 40 ms de silêncio fica de
+    fora. Nunca corta mais que a regra antiga (60 ms antes do primeiro som alto, 120 ms
+    depois do último)."""
+    loud = np.flatnonzero(np.abs(x) > LOUD)
     if len(loud) == 0:
-        return x
-    a = max(0, loud[0] - int(pad * SR))
-    b = min(len(x), loud[-1] + int(pad * 2 * SR))
+        return 0, len(x)
+    act = frames_db(x) > SIL_DB
+    f = int(FRAME * SR)
+
+    def walk(k, step):
+        edge, quiet = k, 0
+        while 0 <= k + step < len(act):
+            k += step
+            if act[k]:
+                edge, quiet = k, 0
+            else:
+                quiet += 1
+                if quiet >= 4:
+                    break
+        return edge
+
+    first = walk(min(loud[0] // f, len(act) - 1), -1)
+    last = walk(min(loud[-1] // f, len(act) - 1), 1)
+    a = max(0, min(first * f - int(0.03 * SR), loud[0] - int(0.06 * SR)))
+    b = min(len(x), max((last + 1) * f + int(0.03 * SR), loud[-1] + int(0.12 * SR)))
+    return a, b
+
+
+def trim_silence(x):
+    a, b = speech_bounds(x)
     return x[a:b]
+
+
+def silent_runs(db, lo, hi, min_len=0.08):
+    """Trechos de silêncio (quadros abaixo de SIL_DB) com pelo menos `min_len` segundos
+    entre `lo` e `hi` (segundos): [(início, fim)]."""
+    i0, i1 = max(0, int(lo / FRAME)), min(len(db), int(np.ceil(hi / FRAME)))
+    quiet = np.r_[False, db[i0:i1] < SIL_DB, False].astype(int)
+    edges = np.flatnonzero(np.diff(quiet))
+    return [
+        ((i0 + s) * FRAME, (i0 + e) * FRAME)
+        for s, e in zip(edges[::2], edges[1::2])
+        if (e - s) * FRAME >= min_len - 1e-9
+    ]
 
 
 def write_clip(path, x, source):
@@ -186,8 +250,15 @@ def split_part(x48, heard, lines):
     dur = len(x48) / SR
     t0 = [heard[first[k]][1] if first[k] is not None else None for k in range(len(lines))]
     t1 = [heard[last[k]][2] if last[k] is not None else None for k in range(len(lines))]
-    # ponto de corte entre falas seguidas: meio da maior pausa entre as palavras ouvidas
+    # Ponto de corte entre falas seguidas: no silêncio entre elas, medido no áudio. Os
+    # tempos do Whisper só dizem onde procurar: erram por décimos de segundo e, quando
+    # ele ouve errado a primeira palavra de uma fala ("Pega" por "Entrega"), apontam
+    # para a palavra seguinte. Entre o fim da fala anterior e o começo desta (com meio
+    # segundo de folga para cada lado), o corte vai para o meio do silêncio mais longo;
+    # empate: o mais perto do meio da pausa que o Whisper ouviu.
+    db = frames_db(x48)
     cut = [0.0]
+    doubtful = []  # cortes sem silêncio claro por perto: rever
     for k in range(len(lines) - 1):
         if last[k] is None or first[k + 1] is None:
             cut.append(None)
@@ -198,36 +269,51 @@ def split_part(x48, heard, lines):
             gap = heard[j + 1][1] - heard[j][2]
             if gap > best:
                 best, at = gap, (heard[j][2] + heard[j + 1][1]) / 2
-        cut.append(at if at is not None else (heard[a][2] + heard[b][1]) / 2)
+        guess = at if at is not None else (heard[a][2] + heard[b][1]) / 2
+        prev = next((c for c in reversed(cut) if c is not None), 0.0)
+        lo = max(prev + 0.05, heard[a][2] - 0.5)
+        hi = min(dur, heard[b][1] + 0.5)
+        runs = silent_runs(db, lo, hi)
+        if runs:
+            s, e = max(runs, key=lambda r: (r[1] - r[0]) - 0.3 * abs((r[0] + r[1]) / 2 - guess))
+            cut.append((s + e) / 2)
+        else:
+            # sem silêncio de 80 ms: o ponto mais quieto (40 ms) na mesma janela
+            w = int(0.04 * SR)
+            i0, i1 = int(lo * SR), max(int(lo * SR) + 1, int(hi * SR))
+            env = np.sqrt(np.convolve(x48[i0:i1].astype(np.float64) ** 2, np.ones(w) / w, mode="same"))
+            cut.append((i0 + int(np.argmin(env))) / SR)
+            doubtful.append(k + 1)
     cut.append(dur)
-    # Os tempos do Whisper erram por décimos de segundo: o corte vai para o ponto mais
-    # quieto (menor energia em 40 ms) entre o fim de uma fala e o começo da seguinte.
-    w = int(0.04 * SR)
-    env = np.sqrt(np.convolve(x48.astype(np.float64) ** 2, np.ones(w) / w, mode="same"))
-    for k in range(1, len(cut) - 1):
-        if cut[k] is None or last[k - 1] is None or first[k] is None:
-            continue
-        lo = max(0.0, heard[last[k - 1]][2] - 0.15)
-        hi = min(dur, heard[first[k]][1] + 0.15)
-        if hi - lo < 0.1:
-            continue
-        i0, i1 = int(lo * SR), int(hi * SR)
-        mid = (cut[k] * SR - i0) / max(1, i1 - i0)
-        seg = env[i0:i1]
-        score = seg + 1e-4 * np.abs(np.arange(len(seg)) / len(seg) - mid)  # empate: perto do meio
-        cut[k] = (i0 + int(np.argmin(score))) / SR
     clips = []
     for k in range(len(lines)):
         if t0[k] is None or t1[k] is None:
-            clips.append((None, 0.0))
+            clips.append((None, 0.0, None))
             continue
-        # O Whisper costuma marcar o fim da última palavra um pouco cedo: sobra folga nas
-        # pontas, limitada pelo meio da pausa até a fala vizinha (trim_silence apara o resto).
-        a = max(cut[k] if cut[k] is not None else 0.0, t0[k] - 0.3)
-        b = min(cut[k + 1] if cut[k + 1] is not None else dur, t1[k] + 0.6)
-        seg = x48[int(a * SR) : int(b * SR)]
-        clips.append((seg, hit[k] / max(1, cnt[k])))
+        # A fala vai de um corte ao outro; speech_bounds tira o silêncio das pontas pelo
+        # som (sem depender do tempo das palavras).
+        a = int((cut[k] if cut[k] is not None else 0.0) * SR)
+        b = int((cut[k + 1] if cut[k + 1] is not None else dur) * SR)
+        s, e = speech_bounds(x48[a:b])
+        clips.append((x48[a + s : a + e], hit[k] / max(1, cnt[k]), (a + s, a + e, k in doubtful)))
     return clips
+
+
+def lost_speech(x48, bounds, floor_db=-45.0, min_len=0.03):
+    """Som de fala (acima de `floor_db`, por `min_len` segundos ou mais) que ficou fora de
+    todas as falas: entre uma e outra, antes da primeira e depois da última. Respirações
+    ficam abaixo de −45 dBFS e não contam. Devolve [(início, fim, nível)]."""
+    db = frames_db(x48)
+    keep = np.zeros(len(db), bool)
+    for a, b in bounds:
+        keep[a // int(FRAME * SR) : -(-b // int(FRAME * SR))] = True
+    loud = np.r_[False, (db > floor_db) & ~keep, False].astype(int)
+    edges = np.flatnonzero(np.diff(loud))
+    return [
+        (s * FRAME, e * FRAME, float(db[s:e].max()))
+        for s, e in zip(edges[::2], edges[1::2])
+        if (e - s) * FRAME >= min_len - 1e-9
+    ]
 
 
 def bag(tokens):
@@ -257,9 +343,11 @@ def main():
     out_dir = args.out_dir or os.path.dirname(items[0]["file"])
     os.makedirs(out_dir, exist_ok=True)
     report = []  # (id, casamento, duração, cps)
+    notes = []  # avisos dos cortes (fala fora dos cortes, corte sem silêncio claro)
 
-    def put(i, x, match, source):
-        x = trim_silence(x)
+    def put(i, x, match, source, trimmed=False):
+        if not trimmed:
+            x = trim_silence(x)
         write_clip(os.path.join(out_dir, i + ".wav"), x, source)
         d = len(x) / SR
         cps = len(by_id[i]["text"]) / d if d else 0
@@ -317,11 +405,17 @@ def main():
             x = x * (10 ** ((-24 - level_db(x)) / 20))
             lines = [{"id": i, "text": by_id[i]["text"]} for i in part["ids"]]
             clips = split_part(x, heard, lines)
-            for ln, (seg, match) in zip(lines, clips):
+            bounds = []
+            for ln, (seg, match, where) in zip(lines, clips):
                 if seg is None or len(seg) < 0.2 * SR:
                     report.append((ln["id"], 0.0, 0.0, 0.0))
                     continue
-                put(ln["id"], seg, match, path)
+                put(ln["id"], seg, match, path, trimmed=True)
+                bounds.append(where[:2])
+                if where[2]:
+                    notes.append(f"{ln['id']}: corte sem silêncio claro antes da fala (em {where[0] / SR:.2f} s de {os.path.basename(path)})")
+            for s, e, lvl in lost_speech(x, bounds):
+                notes.append(f"{os.path.basename(path)} {s:.2f}–{e:.2f} s: som de fala ({lvl:.0f} dBFS) fora de todas as falas")
     for fx in args.fix:
         i, f = fx.split("=", 1)
         if i not in by_id:
@@ -342,6 +436,8 @@ def main():
     total = sum(r[2] for r in report)
     print(f"\n{len(report)} falas em {out_dir}, {total:.1f} s de fala")
     print("a rever: " + (", ".join(bad) if bad else "nenhuma"))
+    for n in notes:
+        print("  ! " + n)
 
 
 if __name__ == "__main__":

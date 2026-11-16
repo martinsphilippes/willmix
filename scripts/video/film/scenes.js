@@ -109,7 +109,10 @@ export const SCENES = {
       ${p.handoffs
         .map((h, i) => {
           const f = [14, 30, 46, 62, 78, 91][i];
-          return `<div class="handoff ${i % 2 ? "up" : ""} a a-pop" style="offset-path:path('${d}');offset-distance:${f}%;${at(hand + i * 0.42, 0.55)}"><span>${ctx.icon(h.icon)}</span><b>${ctx.esc(h.label)}</b></div>`;
+          // Rótulo abaixo e acima, alternando; `pos` (up, down, left, right)
+          // muda o lado quando um rótulo longo encosta no vizinho.
+          const side = h.pos ?? (i % 2 ? "up" : "");
+          return `<div class="handoff ${side} a a-pop" style="offset-path:path('${d}');offset-distance:${f}%;${at(hand + i * 0.42, 0.55)}"><span>${ctx.icon(h.icon)}</span><b>${ctx.esc(h.label)}</b></div>`;
         })
         .join("")}
       <div class="scrim"></div>
