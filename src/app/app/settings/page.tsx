@@ -333,6 +333,17 @@ export default async function SettingsPage({
                       defaultValue={s.salesTop ?? ""}
                     />
                   </Field>
+                  <Field
+                    label={t("settings.label.deliveryFreightDefaultBrl")}
+                    hint={t("settings.hint.deliveryFreightDefaultBrl")}
+                  >
+                    <Input
+                      name="deliveryFreightDefaultBrl"
+                      inputMode="decimal"
+                      defaultValue={s.deliveryFreightDefaultBrl ?? ""}
+                      data-settings-delivery-freight
+                    />
+                  </Field>
                   <Field label={t("settings.label.carrierItapoaName")}>
                     <Input
                       name="carrierItapoaName"

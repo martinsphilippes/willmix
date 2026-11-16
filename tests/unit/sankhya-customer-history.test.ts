@@ -439,13 +439,14 @@ describe("previsão de preço ao cliente final (SuperPlan, anexo 2)", () => {
       profitPercent: 24.1,
       goalPercent: 22,
     });
-    expect(sqls[0]).toContain("FN_AD_SUPERPLAN_WELL(");
+    // A ida agora é a cotação de encomenda V2 (dono, 16/11/2026).
+    expect(sqls[0]).toContain("FN_AD_ENC_COTACAO_V2_WELL(");
     const plain = await getPriceForecastAdapter(false, options).forecast(query);
     expect(plain).toMatchObject({ cost: null, profitPercent: null });
     // Memória de cálculo (auditoria): o enviado e todas as colunas devolvidas,
     // só para quem vê valores e margem.
     if (full.mode !== "api" || full.kind !== "forecast") throw new Error();
-    expect(full.audit?.fn).toBe("FN_AD_SUPERPLAN_WELL");
+    expect(full.audit?.fn).toBe("FN_AD_ENC_COTACAO_V2_WELL");
     expect(full.audit?.outputs.map(([k]) => k)).toContain("CUSTO_BASE_VENDA");
     expect(full.audit?.outputs.length).toBe(sale.columns.length);
     expect(full.audit?.inputs.every(([, v]) => v !== null)).toBe(true);
@@ -492,7 +493,7 @@ describe("previsão de preço ao cliente final (SuperPlan, anexo 2)", () => {
   it("produto nunca importado: pede o preço e a conta roda de novo com o do portal", async () => {
     const { getPriceForecastAdapter } = await pf();
     const { sqls, options } = fakeSankhya((sql) =>
-      args(sql)[5] === "DEFAULT"
+      args(sql)[5] === "CAST(NULL AS FLOAT)"
         ? {
             columns: ["OK", "MENSAGEM"],
             rows: [["N", "PRECO_ORIGEM obrigatorio (com CODPROD...)"]],
@@ -502,8 +503,8 @@ describe("previsão de preço ao cliente final (SuperPlan, anexo 2)", () => {
     const answer = await getPriceForecastAdapter(true, options).forecast(query);
     expect(answer).toMatchObject({ kind: "forecast", salePrice: 9.18 });
     expect(sqls).toHaveLength(2);
-    expect(args(sqls[1])[5]).toBe("23.5");
-    expect(args(sqls[1])[8]).toBe("'RMB'");
+    expect(args(sqls[1])[5]).toBe("CAST(23.5 AS FLOAT)");
+    expect(args(sqls[1])[8]).toBe("CAST('RMB' AS VARCHAR(5))");
   });
 
   it("mensagem da função e erro do Sankhya chegam à tela; sem Sankhya, manual", async () => {
@@ -519,10 +520,107 @@ describe("previsão de preço ao cliente final (SuperPlan, anexo 2)", () => {
       kind: "error",
       message: "meta inatingivel com estas despesas de venda",
       // A memória de cálculo vem também no erro (para a auditoria).
-      audit: expect.objectContaining({ fn: "FN_AD_SUPERPLAN_WELL" }),
+      audit: expect.objectContaining({ fn: "FN_AD_ENC_COTACAO_V2_WELL" }),
     });
     expect(
       await getPriceForecastAdapter(true, { config: null }).forecast(query),
     ).toEqual({ mode: "manual" });
+  });
+
+  it("cotação V2: 71 posições com CAST; VIP, rota, frete, vendedor e data nas posições da assinatura", async () => {
+    const { cotacaoV2Sql, COTACAO_V2_PARAMS, commercialInput } = await pf();
+    expect(COTACAO_V2_PARAMS).toHaveLength(71);
+    const sql = cotacaoV2Sql({
+      CODPROD: 21952,
+      QTD_PECAS: 1000,
+      ...commercialInput(
+        {
+          ...query,
+          vip: 5,
+          route: "PORTO_CLIENTE",
+          deliveryFreightBrl: 800,
+          sellerCode: 337,
+          dataRef: "20261115",
+        },
+        true,
+      ),
+    });
+    expect(sql).toMatch(/^SELECT \* FROM sankhya\.FN_AD_ENC_COTACAO_V2_WELL\(/);
+    const a = args(sql);
+    expect(a).toHaveLength(71);
+    expect(a[0]).toBe("CAST(NULL AS VARCHAR(10))"); // 1 NCM
+    expect(a[6]).toBe("CAST(1000 AS FLOAT)"); // 7 QTD_PECAS
+    expect(a[37]).toBe("CAST('20261115' AS DATE)"); // 38 DATA_REF
+    expect(a[41]).toBe("CAST(21952 AS INT)"); // 42 CODPROD
+    expect(a[50]).toBe("CAST(5 AS FLOAT)"); // 51 VIP
+    expect(a[57]).toBe("CAST(800 AS FLOAT)"); // 58 FRETE_ENTREGA_BRL
+    expect(a[69]).toBe("CAST(337 AS INT)"); // 70 CODVEND
+    expect(a[70]).toBe("CAST('PORTO_CLIENTE' AS VARCHAR(20))"); // 71 ROTA
+    // Frete zero vai como zero; sem frete, NULL (pendente).
+    expect(
+      args(
+        cotacaoV2Sql(
+          commercialInput({ ...query, deliveryFreightBrl: 0 }, true),
+        ),
+      )[57],
+    ).toBe("CAST(0 AS FLOAT)");
+    expect(
+      args(
+        cotacaoV2Sql(
+          commercialInput({ ...query, deliveryFreightBrl: null }, true),
+        ),
+      )[57],
+    ).toBe("CAST(NULL AS FLOAT)");
+    expect(() => cotacaoV2Sql({ ROTA_ENTREGA: "X'; DROP" })).toThrow(
+      "invalid_input",
+    );
+    expect(() => cotacaoV2Sql({ CODVEND: 1.5 })).toThrow("invalid_input");
+  });
+
+  it("cotação V2: a resposta (preço pelo markup, frete por peça, WD e meta)", async () => {
+    const { getPriceForecastAdapter } = await pf();
+    const { sqls, options } = fakeSankhya(() => ({
+      columns: [
+        "OK",
+        "MENSAGEM",
+        "STATUS_COTACAO",
+        "PRECO_PRODUTO_META",
+        "FRETE_UNITARIO",
+        "BASE_WD_VALOR",
+        "WD_PERC_REFERENCIA",
+        "PRECO_WD_REFERENCIA",
+        "PRECO_COM_FRETE_REFERENCIA",
+        "PRECO_WD_COM_FRETE_REFERENCIA",
+        "META_ATINGIDA",
+      ],
+      rows: [["S", null, "PRONTA", 9.2, 0.8, 9.2, 15.5, 10.63, 10, 11.43, "S"]],
+    }));
+    const v2 = {
+      ...query,
+      vip: 2,
+      route: "VIA_DEPOSITO",
+      deliveryFreightBrl: 8000,
+      sellerCode: null,
+      dataRef: "20261116",
+    };
+    const full = await getPriceForecastAdapter(true, options).forecast(v2);
+    expect(full).toMatchObject({
+      kind: "forecast",
+      status: "PRONTA",
+      productPrice: 9.2,
+      freightUnit: 0.8,
+      withFreight: 10,
+      wdBase: 9.2,
+      wdPercent: 15.5,
+      wdPrice: 10.63,
+      wdWithFreight: 11.43,
+      goalReached: true,
+      sent: { vip: 2, route: "VIA_DEPOSITO", deliveryFreightBrl: 8000 },
+    });
+    expect(args(sqls[0])[70]).toBe("CAST('VIA_DEPOSITO' AS VARCHAR(20))");
+    expect(args(sqls[0])[69]).toBe("CAST(NULL AS INT)");
+    // A meta de margem é conferência de margem: só com "Ver valores e margem".
+    const plain = await getPriceForecastAdapter(false, options).forecast(v2);
+    expect(plain).toMatchObject({ goalReached: null, productPrice: 9.2 });
   });
 });

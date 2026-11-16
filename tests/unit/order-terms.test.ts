@@ -112,6 +112,16 @@ describe("regras puras", () => {
     expect(terms.countryKey(null)).toBe("");
   });
 
+  it("VIP da cotação V2: WD = 5; Wellmix pelo nível; sem formato, nenhum", () => {
+    expect(terms.saleVip("wd", null)).toBe(5);
+    expect(terms.saleVip("wellmix", "hiper")).toBe(3);
+    expect(terms.saleVip("wellmix", "evo")).toBe(1.42857143);
+    expect(terms.saleVip("wellmix", null)).toBeNull();
+    expect(terms.saleVip(null, null)).toBeNull();
+    expect(terms.DELIVERY_ROUTE.customer).toBe("PORTO_CLIENTE");
+    expect(terms.DELIVERY_ROUTE.wellmix).toBe("VIA_DEPOSITO");
+  });
+
   it("transportadora: o valor do campo vai e volta", () => {
     const v = terms.carrierValue({ source: "sankhya", code: "812" });
     expect(terms.parseCarrierValue(v)).toEqual({
@@ -358,7 +368,9 @@ describe("país de origem, grupo e entrega", () => {
       operationType: "ts",
       saleFormat: "wellmix",
       wellmixTier: "mega",
+      carrierCaller: "wellmix",
       carrier: "portal:transportador",
+      redispatchCarrier: "portal:transportador",
       redispatch: "yes",
       originCountry: "CHINA",
       productFamily: "fm:BRINQUEDOS_GERAIS",
@@ -368,7 +380,10 @@ describe("país de origem, grupo e entrega", () => {
       operationType: "ts",
       saleFormat: "wellmix",
       wellmixTier: "mega",
+      carrierCaller: "wellmix",
       carrier: { source: "portal", name: "Trans Rodo" },
+      // A Wellmix chama, com re-despacho: as duas transportadoras.
+      redispatch: { source: "portal", name: "Trans Rodo" },
       redispatchRequired: true,
       originCountryName: "CHINA",
       productFamily: "fm:BRINQUEDOS_GERAIS",
@@ -392,6 +407,25 @@ describe("país de origem, grupo e entrega", () => {
     await fails({ originCountry: "BRASIL" }, "order_terms_country_disabled");
     await fails({ redispatch: "" }, "order_terms_redispatch");
     await fails({ carrier: "" }, "order_terms_carrier_required");
+    await fails({ carrierCaller: "" }, "order_terms_carrier_caller");
+    await fails(
+      { redispatchCarrier: "" },
+      "order_terms_redispatch_carrier_required",
+    );
+    // O cliente chama: nenhuma transportadora aqui (ele informa).
+    expect(
+      await orderTerms.resolveOrderTerms({
+        ...base,
+        carrierCaller: "customer",
+        carrier: "",
+        redispatchCarrier: "",
+      }),
+    ).toMatchObject({
+      carrierCaller: "customer",
+      carrier: null,
+      redispatch: null,
+      redispatchRequired: true,
+    });
     await fails({ wellmixTier: "" }, "order_terms_tier");
     await fails({ originCountry: "" }, "order_terms_origin");
     await fails({ productFamily: "sk:999" }, "order_terms_origin");
@@ -436,7 +470,9 @@ describe("confirmação do cliente e rascunho", () => {
       operationType: "ts",
       saleFormat: "wd",
       wellmixTier: "",
-      carrier: "portal:transportador",
+      // O cliente chama o transportador (16/11/2026): ele informa as duas.
+      carrierCaller: "customer",
+      carrier: "",
       redispatch: "yes",
       originCountry: "CHINA",
       productFamily: "fm:BRINQUEDOS_GERAIS",
@@ -478,14 +514,25 @@ describe("confirmação do cliente e rascunho", () => {
         accept: true,
         cnpj: "123",
         carrierName: "",
+        mainCnpj: "123",
       }),
     ).rejects.toThrow("cnpj_invalid");
+    // Sem a transportadora do pedido (o cliente chama): recusa.
+    await expect(
+      confirmation.confirmCustomerOrder(joao, request.id, {
+        accept: true,
+        cnpj: "11.222.333/0001-81",
+        carrierName: "Rodo Sul Transportes",
+      }),
+    ).rejects.toThrow("cnpj_required");
     // Modo memória: sem a consulta, o nome se digita; a transportadora é
     // cadastrada pelo CNPJ.
     const [done] = await confirmation.confirmCustomerOrder(joao, request.id, {
       accept: true,
       cnpj: "11.222.333/0001-81",
       carrierName: "Rodo Sul Transportes",
+      mainCnpj: "11.444.777/0001-61",
+      mainCarrierName: "Trans Norte Cargas",
     });
     expect(done.status).toBe("REQUESTED");
     expect(done.orderTerms?.confirmation).toMatchObject({
@@ -496,6 +543,7 @@ describe("confirmação do cliente e rascunho", () => {
         name: "Rodo Sul Transportes",
         source: "manual",
       },
+      carrier: { cnpj: "11444777000161", name: "Trans Norte Cargas" },
     });
     const carrier = await store.get(
       "parties",

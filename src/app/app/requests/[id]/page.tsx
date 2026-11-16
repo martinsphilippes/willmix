@@ -340,7 +340,14 @@ export default async function RequestDetailPage({
         <div className="mt-4">
           <CustomerOrderConfirm
             requestId={request.id}
-            redispatchRequired={!!request.orderTerms?.redispatchRequired}
+            // Quem chama o transportador (16/11/2026): o cliente informa a
+            // do pedido e, com re-despacho, a segunda; a Wellmix já as
+            // escolheu. Nas antigas, só a do re-despacho.
+            carrierRequired={request.orderTerms?.carrierCaller === "customer"}
+            redispatchRequired={
+              !!request.orderTerms?.redispatchRequired &&
+              request.orderTerms?.carrierCaller !== "wellmix"
+            }
             action={confirmCustomerOrderAction}
             labels={customerConfirmLabels(t)}
           />

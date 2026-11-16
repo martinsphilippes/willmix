@@ -5,6 +5,7 @@ import {
   OPERATION_TYPES,
   SALE_FORMATS,
   WELLMIX_TIERS,
+  CARRIER_CALLERS,
   countryAllowed,
   parseCarrierValue,
   type OrderTerms,
@@ -28,7 +29,11 @@ const RAW = z.object({
   operationType: z.enum(OPERATION_TYPES, { error: "order_terms_operation" }),
   saleFormat: z.enum(SALE_FORMATS, { error: "order_terms_format" }),
   wellmixTier: z.enum(WELLMIX_TIERS).nullable(),
-  carrier: z.string().min(1, { error: "order_terms_carrier_required" }).max(80),
+  carrierCaller: z.enum(CARRIER_CALLERS, {
+    error: "order_terms_carrier_caller",
+  }),
+  carrier: z.string().max(80).nullable(),
+  redispatchCarrier: z.string().max(80).nullable(),
   redispatch: z.enum(["yes", "no"], { error: "order_terms_redispatch" }),
   originCountry: z.string().min(1, { error: "order_terms_origin" }).max(80),
   productFamily: z
@@ -45,6 +50,8 @@ export async function resolveOrderTerms(
   const parsed = RAW.safeParse({
     ...input,
     wellmixTier: input.wellmixTier || null,
+    carrier: input.carrier || null,
+    redispatchCarrier: input.redispatchCarrier || null,
   });
   if (!parsed.success)
     throw new OrderTermsError(
@@ -61,19 +68,38 @@ export async function resolveOrderTerms(
   // TS é importação: BRASIL não vale como país de origem.
   if (!countryAllowed(raw.operationType, raw.originCountry))
     throw new OrderTermsError("order_terms_country_disabled");
-  const [carrier, family, countryName] = await Promise.all([
-    resolveCarrier(parseCarrierValue(raw.carrier)),
+  // Quem chama o transportador (dono, 16/11/2026): a Wellmix escolhe aqui
+  // a transportadora (e a do re-despacho, com Sim); o cliente informa as
+  // dele na confirmação do pedido.
+  const wellmixCalls = raw.carrierCaller === "wellmix";
+  const redispatchRequired = raw.redispatch === "yes";
+  if (wellmixCalls && !raw.carrier)
+    throw new OrderTermsError("order_terms_carrier_required");
+  if (wellmixCalls && redispatchRequired && !raw.redispatchCarrier)
+    throw new OrderTermsError("order_terms_redispatch_carrier_required");
+  const [carrier, redispatchCarrier, family, countryName] = await Promise.all([
+    wellmixCalls && raw.carrier
+      ? resolveCarrier(parseCarrierValue(raw.carrier))
+      : null,
+    wellmixCalls && redispatchRequired && raw.redispatchCarrier
+      ? resolveCarrier(parseCarrierValue(raw.redispatchCarrier))
+      : null,
     originFamily(raw.productFamily),
     originCountryName(raw.originCountry),
   ]);
-  if (!carrier) throw new OrderTermsError("order_terms_carrier");
+  if (wellmixCalls && !carrier)
+    throw new OrderTermsError("order_terms_carrier");
+  if (wellmixCalls && redispatchRequired && !redispatchCarrier)
+    throw new OrderTermsError("order_terms_carrier");
   if (!family) throw new OrderTermsError("order_terms_origin");
   return {
     operationType: raw.operationType,
     saleFormat: raw.saleFormat,
     wellmixTier: raw.saleFormat === "wellmix" ? raw.wellmixTier : null,
-    carrier,
-    redispatchRequired: raw.redispatch === "yes",
+    carrierCaller: raw.carrierCaller,
+    carrier: carrier ?? null,
+    redispatch: redispatchCarrier ?? null,
+    redispatchRequired,
     originCountry: raw.originCountry,
     originCountryName: countryName,
     productFamily: raw.productFamily,

@@ -281,7 +281,9 @@ export async function createRequestAction(form: FormData) {
           operationType: str(form, "operationType"),
           saleFormat: str(form, "saleFormat"),
           wellmixTier: str(form, "wellmixTier"),
+          carrierCaller: str(form, "carrierCaller"),
           carrier: str(form, "carrier"),
+          redispatchCarrier: str(form, "redispatchCarrier"),
           redispatch: str(form, "redispatch"),
           originCountry: str(form, "originCountry"),
           productFamily: str(form, "productFamily"),
@@ -1266,6 +1268,13 @@ export async function saveSettingsAction(form: FormData) {
         const n = Number(String(raw).replace(",", "."));
         if (!(Number.isFinite(n) && n >= 0 && n <= 1000))
           throw new Error("margin_invalid");
+        value = n;
+      } else if (key === "deliveryFreightDefaultBrl") {
+        // Frete de entrega padrão da cotação V2 (R$, total): vazio = pendente.
+        const text = String(raw).trim().replace(",", ".");
+        const n = text === "" ? null : Number(text);
+        if (n !== null && !(Number.isFinite(n) && n >= 0 && n <= 100_000_000))
+          throw new Error("freight_invalid");
         value = n;
       } else if (key === "freightPerCbm") {
         const text = String(raw).trim().replace(",", ".");
