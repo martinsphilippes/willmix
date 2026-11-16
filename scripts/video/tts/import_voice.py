@@ -122,6 +122,7 @@ def speech_bounds(x):
     loud = np.flatnonzero(db > 20 * np.log10(LOUD)) * f
     if len(loud) == 0:
         return 0, len(x)
+    peaks = np.flatnonzero(np.abs(x) > LOUD)  # amostras altas: a folga do fim conta delas
     act = db > SIL_DB
 
     def walk(k, step, bridge=0):
@@ -150,7 +151,11 @@ def speech_bounds(x):
     first = walk(loud[0] // f, -1)
     last = walk(loud[-1] // f, 1, bridge=12)
     a = max(0, min(first * f - int(0.03 * SR), loud[0] - int(0.06 * SR)))
-    b = min(len(x), max((last + 1) * f + int(0.03 * SR), loud[-1] + f + int(0.12 * SR)))
+    # Fim: 120 ms depois da última amostra alta da fala (a regra de sempre, que deixa o
+    # som morrer), sem contar uma respiração separada da fala depois dela.
+    inside = peaks[peaks < (last + 1) * f]
+    tail = inside[-1] if len(inside) else loud[-1] + f
+    b = min(len(x), max((last + 1) * f + int(0.03 * SR), tail + int(0.12 * SR)))
     return a, b
 
 

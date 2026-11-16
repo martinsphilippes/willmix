@@ -85,8 +85,8 @@ export const VIDEOS_BR = {
     noSubs: true,
     // Folga depois da última fala de cada cena (padrão 0,75 s): ajustada com
     // tts/track.py para o acorde final da música cair na marca com a narração do
-    // ElevenLabs (16/11/2026).
-    post: 0.6,
+    // ElevenLabs (16/11/2026; 0,595 depois do recorte das falas pelo som).
+    post: 0.595,
     lang: "pt",
     // Telas do portal em português (shots.mjs pt --out br, inspection/flow.mjs
     // com LANGUAGE=pt); a cena dos três idiomas usa as mesmas telas em pt, en e zh.
