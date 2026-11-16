@@ -340,3 +340,73 @@ describe("tipos de parceiro: mudar só o que veio", () => {
     ).rejects.toThrow("not_found");
   });
 });
+
+/*
+ * Ligação entre as abas (dono, 16/11/2026): "Configurar telas" (do tipo para
+ * o perfil), "Editar tipo" (do perfil para o tipo) e o aviso quando o
+ * endereço pede um perfil que não está na lista.
+ */
+describe("ligação entre Tipos de parceiro e Acessos externos", () => {
+  it("endereços dos dois links", () => {
+    expect(view.profileHref("type:trading")).toBe(
+      "/app/parties/access?profile=type%3Atrading",
+    );
+    expect(view.typeEditHref("trading")).toBe(
+      "/app/parties/types?panel=edit&type=trading",
+    );
+    expect(view.typeEditHref("custom:abc")).toBe(
+      "/app/parties/types?panel=edit&type=custom%3Aabc",
+    );
+  });
+
+  it("perfil pedido no endereço: avisa só quando não está na lista", () => {
+    const known = ["type:trading", "role:supplier"];
+    expect(view.missingProfile(undefined, known)).toBeNull();
+    expect(view.missingProfile("", known)).toBeNull();
+    expect(view.missingProfile("type:trading", known)).toBeNull();
+    expect(view.missingProfile("type:nao_existe", known)).toBe(
+      "type:nao_existe",
+    );
+    // Valor fora do formato também avisa (a página não o usa).
+    expect(view.missingProfile("qualquer coisa", known)).toBe("qualquer coisa");
+    expect(view.missingProfile("x".repeat(200), known)).toHaveLength(80);
+  });
+
+  it("cada perfil sabe o tipo de parceiro por trás dele (Cliente e Fornecedor, nenhum)", async () => {
+    const withLogin = await types.savePartnerType(admin, {
+      value: null,
+      name: "Vistoria Portuária",
+      nameEn: null,
+      nameZh: null,
+      description: null,
+      active: true,
+      allowLogin: true,
+    });
+    const noLogin = await types.savePartnerType(admin, {
+      value: null,
+      name: "Consultoria Externa",
+      nameEn: null,
+      nameZh: null,
+      description: null,
+      active: true,
+      allowLogin: false,
+    });
+    const profiles = await svc.listAccessProfiles();
+    const typeOf = (key: string) =>
+      profiles.find((p) => p.key === key)?.partnerType?.value ?? null;
+    // Tipo em destaque: o próprio tipo.
+    expect(typeOf("type:trading")).toBe("trading");
+    // Tipo antigo: o perfil é o do papel de mesmo nome.
+    expect(typeOf("role:agency")).toBe("agency");
+    // Cliente e Fornecedor não são tipos de parceiro.
+    expect(typeOf("role:supplier")).toBeNull();
+    expect(typeOf("role:customer")).toBeNull();
+    // Criado no painel com login: o próprio; sem login, nem aparece.
+    expect(withLogin.profileKey).toBeTruthy();
+    expect(typeOf(withLogin.profileKey!)).toBe(withLogin.value);
+    expect(noLogin.profileKey).toBeNull();
+    expect(profiles.some((p) => p.partnerType?.value === noLogin.value)).toBe(
+      false,
+    );
+  });
+});

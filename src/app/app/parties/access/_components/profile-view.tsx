@@ -1,9 +1,11 @@
+import Link from "next/link";
 import type { Translate } from "@/i18n";
 import { SCREEN_GROUPS, SCREEN_LABEL, type Screen } from "@/lib/auth/screens";
 import { GRANTABLE_SCREENS, isLimitedFor } from "@/lib/partner-access";
 import {
   ACCESS_BASE,
   ACCESS_STATES,
+  typeEditHref,
   type AccessUrlState,
 } from "@/lib/partner-access-view";
 import type { AccessProfileInfo } from "@/lib/services/partner-access";
@@ -179,7 +181,23 @@ export function ProfileView({
             {t("partnerAccess.users", { n: current.users })}
           </span>
         </span>
+        {/* Do perfil para o tipo (dono, 16/11/2026): nome, descrição,
+            situação e login do tipo ficam em Tipos de parceiro. */}
+        {current.partnerType ? (
+          <Link
+            href={typeEditHref(current.partnerType.value)}
+            className="text-sm font-medium text-brand-700 underline decoration-brand-200 underline-offset-2 hover:decoration-brand-600"
+            title={t("partnerAccess.editType.hint")}
+            data-access-edit-type={current.partnerType.key}
+          >
+            {t("partnerAccess.editType")}
+          </Link>
+        ) : null}
       </div>
+      {/* O que a contagem conta: logins, não cadastros de empresa. */}
+      <p className="mt-1 text-xs text-zinc-500" data-access-users-hint>
+        {t("partnerAccess.usersHint")}
+      </p>
 
       <form
         id="access-form"

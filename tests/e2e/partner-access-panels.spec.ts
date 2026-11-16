@@ -410,10 +410,41 @@ test("tipos de parceiro: novo, renomear sem perder tradução, inativar e reativ
     "page",
   );
 
+  // Ligação entre as abas (dono, 16/11/2026): a contagem do perfil é de
+  // logins; "Editar tipo" abre o painel do tipo, e o painel leva de volta.
+  await expect(page.locator("[data-access-users-hint]")).toBeVisible();
+  await page.locator('[data-access-edit-type="trading"]').click();
+  await page.waitForURL(/\/app\/parties\/types\?panel=edit&type=trading/);
+  const tradingPanel = page.locator('[data-partner-type-panel="edit"]');
+  await expect(tradingPanel).toBeVisible();
+  await tradingPanel
+    .locator('[data-partner-type-panel-access="trading"]')
+    .click();
+  await page.waitForURL(/\/app\/parties\/access\?profile=type%3Atrading/);
+  await expect(page.locator("[data-access-profile-select]")).toHaveValue(
+    "type:trading",
+  );
+  // Papel de um tipo antigo (Agência): também leva ao tipo; o Fornecedor,
+  // que não é tipo de parceiro, não tem o link.
+  await page.goto("/app/parties/access?profile=role:agency");
+  await expect(page.locator('[data-access-edit-type="agency"]')).toBeVisible();
+  await page.goto("/app/parties/access?profile=role:supplier");
+  await expect(page.locator("[data-access-edit-type]")).toHaveCount(0);
+  // Perfil que não existe no endereço: aviso, em vez de trocar em silêncio.
+  await page.goto("/app/parties/access?profile=type:nao_existe");
+  await expect(page.locator("[data-access-missing-profile]")).toBeVisible();
+  // Tipos de parceiro: a coluna Parceiros conta cadastros, não logins.
+  await page.goto("/app/parties/types");
+  await expect(page.locator("[data-partner-type-count-hint]")).toBeVisible();
+  await expect(page.locator("[data-partner-type-count-access]")).toBeVisible();
+
   // Quem não é administrador lê os tipos, sem o menu ⋯ e sem Acessos externos.
   await login(page, "operador@wellmix.com");
   const res = await page.goto("/app/parties/types");
   if (res?.url().includes("denied=")) return; // operador sem Cadastros
   await expect(page.locator("[data-partner-type-menu]")).toHaveCount(0);
   await expect(page.locator('[data-parties-tab="access"]')).toHaveCount(0);
+  // A explicação da contagem aparece, sem o link para Acessos externos.
+  await expect(page.locator("[data-partner-type-count-hint]")).toBeVisible();
+  await expect(page.locator("[data-partner-type-count-access]")).toHaveCount(0);
 });

@@ -99,6 +99,12 @@ export const pt = {
   "partnerTypes.activated": "Tipo de parceiro reativado.",
   "partnerTypes.deactivated":
     "Tipo de parceiro inativado: some dos novos cadastros e continua nos que já o usam.",
+  // Ligação com Acessos externos (dono, 16/11/2026).
+  "partnerTypes.countHint":
+    "Parceiros: quantos cadastros de empresa usam o tipo (não é o número de logins).",
+  "partnerTypes.countHint.access":
+    "Logins ativos e telas de cada tipo: Acessos externos.",
+  "partnerTypes.panel.access": "Telas e menu dos logins deste tipo:",
 };
 
 export const en: typeof pt = {
@@ -198,6 +204,11 @@ export const en: typeof pt = {
   "partnerTypes.activated": "Partner type reactivated.",
   "partnerTypes.deactivated":
     "Partner type deactivated: it leaves new records and stays on the ones that already use it.",
+  "partnerTypes.countHint":
+    "Partners: how many company records use the type (not the number of logins).",
+  "partnerTypes.countHint.access":
+    "Active logins and screens of each type: External access.",
+  "partnerTypes.panel.access": "Screens and menu of this type's logins:",
 };
 
 export const zh: typeof pt = {
@@ -290,4 +301,8 @@ export const zh: typeof pt = {
   "partnerTypes.activated": "合作方类型已重新启用。",
   "partnerTypes.deactivated":
     "合作方类型已停用：新档案不再出现，已使用它的档案保持不变。",
+  "partnerTypes.countHint":
+    "合作方数：使用该类型的公司档案数量（不是登录数）。",
+  "partnerTypes.countHint.access": "各类型的有效登录和页面：外部访问。",
+  "partnerTypes.panel.access": "此类型登录的页面和菜单：",
 };

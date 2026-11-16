@@ -184,6 +184,15 @@ export const pt = {
     "Os acessos do destino mudaram depois da prévia. Confira a prévia nova e aplique de novo.",
   "partnerAccess.copy.mode.hint":
     "Adicionar só acrescenta ao destino o que a origem abre. Substituir deixa cada tela escolhida igual à da origem, mesmo que tire acesso do destino.",
+  // Ligação com Tipos de parceiro (dono, 16/11/2026).
+  "partnerAccess.editType": "Editar tipo",
+  "partnerAccess.editType.hint":
+    "Nome, descrição, situação e login do tipo ficam em Tipos de parceiro.",
+  "partnerAccess.usersHint":
+    "Logins ativos: as pessoas que entram no portal com este perfil. A quantidade de cadastros de empresa de cada tipo está em Tipos de parceiro.",
+  "partnerAccess.missingProfile":
+    "O endereço pediu o perfil “{profile}”, que não existe ou não tem login. Mostrando {shown}. Para configurar as telas de um tipo, ele precisa permitir login em Tipos de parceiro.",
+  "partnerAccess.missingProfile.types": "Ver tipos de parceiro",
 };
 
 export const en: typeof pt = {
@@ -368,6 +377,14 @@ export const en: typeof pt = {
     "The target's access changed after the preview. Check the new preview and apply again.",
   "partnerAccess.copy.mode.hint":
     "Add only adds to the target what the source opens. Replace makes each chosen screen equal to the source, even if it removes access from the target.",
+  "partnerAccess.editType": "Edit type",
+  "partnerAccess.editType.hint":
+    "The type's name, description, status and login are in Partner types.",
+  "partnerAccess.usersHint":
+    "Active logins: the people who sign in to the portal with this profile. The number of company records of each type is in Partner types.",
+  "partnerAccess.missingProfile":
+    "The address asked for the profile “{profile}”, which does not exist or has no login. Showing {shown}. To configure a type's screens, the type must allow login in Partner types.",
+  "partnerAccess.missingProfile.types": "See partner types",
 };
 
 export const zh: typeof pt = {
@@ -541,4 +558,12 @@ export const zh: typeof pt = {
     "预览之后目标的访问权限已更改。请查看新的预览后再应用。",
   "partnerAccess.copy.mode.hint":
     "追加只把来源能打开的页面加到目标。替换让所选的每个页面与来源一致，即使会移除目标的访问权限。",
+  "partnerAccess.editType": "编辑类型",
+  "partnerAccess.editType.hint":
+    "类型的名称、说明、状态和登录设置在“合作方类型”中。",
+  "partnerAccess.usersHint":
+    "有效登录：使用此配置登录门户的人员。各类型的公司档案数量见“合作方类型”。",
+  "partnerAccess.missingProfile":
+    "地址请求的配置“{profile}”不存在或没有登录。现在显示 {shown}。要设置某个类型的页面，该类型需要在“合作方类型”中允许登录。",
+  "partnerAccess.missingProfile.types": "查看合作方类型",
 };
