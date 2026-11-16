@@ -235,18 +235,19 @@ body {
     transform: scaleX(0);
   }
 }
-/* Revela uma barra longa da esquerda para a direita, já desenhada inteira (com o
-   brilho): esticada a partir de largura zero (a-grow), o brilho ficava com menos
-   de 1 px e piscava nos primeiros quadros da linha da jornada. */
-.a-wipe {
-  animation-name: a-wipe;
+/* Barra longa que cresce pela largura (a linha da jornada). Esticada por
+   transform a partir de zero (a-grow), o navegador desenhava a barra e o brilho
+   em escala quase nula e eles piscavam nos primeiros quadros; pela largura, cada
+   quadro é desenhado no tamanho real, com o degradê e o brilho na ponta. */
+.a-wide {
+  animation-name: a-wide;
 }
-@keyframes a-wipe {
+@keyframes a-wide {
   from {
-    clip-path: inset(-40px 100% -40px 0);
+    width: 0;
   }
   to {
-    clip-path: inset(-40px -40px -40px 0);
+    width: 100%;
   }
 }
 .a-draw {
