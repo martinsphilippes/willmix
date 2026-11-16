@@ -79,7 +79,7 @@ const END = {
 
 export const VIDEOS_BR = {
   full_br: {
-    title: "Portal Wellmix · O que cada perfil faz",
+    title: "Portal Wellmix · O que cada papel faz",
     voice: "pt",
     noSubs: true,
     lang: "pt",
@@ -108,7 +108,7 @@ export const VIDEOS_BR = {
         pre: 1.0,
         props: {
           kicker: "O desafio",
-          title: "Uma importação.\nDezenas de *repasses.*",
+          title: "Uma importação.\nDezenas de *mãos.*",
           handoffs: HANDOFFS,
           handoffsC: 1,
         },
@@ -139,7 +139,7 @@ export const VIDEOS_BR = {
         props: {
           title: "Um portal. *Um fluxo.*",
           roles: ROLES,
-          note: "13 perfis de login · cada um vê só a sua parte",
+          note: "13 papéis de login · cada um vê só a sua parte",
           noteC: 2,
         },
         say: [
@@ -303,7 +303,7 @@ export const VIDEOS_BR = {
         props: {
           role: "Agência de arte",
           icon: "pen-tool",
-          title: "Briefing, arquivos e retorno em uma mesa",
+          title: "Briefing, arquivos e retorno em uma só mesa",
           shot: "agency",
           oy: "30%",
           bullets: [
@@ -360,7 +360,9 @@ export const VIDEOS_BR = {
           ],
         },
         say: [
-          { pt: "A certificadora tem uma fila única de certificados a emitir." },
+          {
+            pt: "A certificadora tem uma fila única de certificados a emitir.",
+          },
           {
             pt: "Consulta a ficha de compra e envia o memorial descritivo, o selo e o certificado.",
           },
@@ -560,7 +562,7 @@ export const VIDEOS_BR = {
             {
               icon: "database",
               name: "Cadastro",
-              text: "Valida classificação fiscal e dados mestres",
+              text: "Valida classificação fiscal e ficha mestre",
               c: 4,
             },
             {
@@ -653,7 +655,9 @@ export const VIDEOS_BR = {
           {
             pt: "Vendas registra ofertas, abre ordens de venda e agenda as entregas.",
           },
-          { pt: "A diretoria aprova a estratégia de compra e assina o contrato." },
+          {
+            pt: "A diretoria aprova a estratégia de compra e assina o contrato.",
+          },
           { pt: "E o administrador controla acessos, prazos e configurações." },
         ],
       },
@@ -682,7 +686,7 @@ export const VIDEOS_BR = {
           chips: [
             {
               icon: "messages-square",
-              label: "Um chat por empresa, com a Wellmix",
+              label: "Uma conversa por empresa, com a Wellmix",
               c: 2,
             },
             {
@@ -702,7 +706,7 @@ export const VIDEOS_BR = {
           { pt: "Toda a comunicação acontece dentro do portal." },
           { pt: "Os e-mails espalhados terminam aqui." },
           {
-            pt: "Cada empresa tem um só chat com a Wellmix, organizado por pedido e por item.",
+            pt: "Cada empresa tem uma só conversa com a Wellmix, organizada por pedido e por item.",
           },
           {
             pt: "Fotos, vídeos e arquivos ficam junto do assunto a que pertencem.",
@@ -717,7 +721,7 @@ export const VIDEOS_BR = {
         post: 0.75,
         props: {
           kicker: "Pendências e avisos",
-          title: "Todos sabem *o que está esperando*",
+          title: "Todos sabem *o que está pendente*",
           shots: [
             // Pendências do despachante: lista limpa (as internas ainda têm
             // rótulos sem tradução no portal).
@@ -768,7 +772,7 @@ export const VIDEOS_BR = {
         id: "access",
         type: "access",
         props: {
-          kicker: "Acesso por perfil",
+          kicker: "Acesso por papel",
           title: "Cada parceiro vê *os seus pedidos.*\nNada além disso.",
           views: [
             {
