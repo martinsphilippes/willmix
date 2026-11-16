@@ -79,7 +79,7 @@ Levantado dos documentos e do código em 15/11/2026. A coluna "Onde está" apont
 | 25  | **Containers**                                  | CBM, ocupação e regra de consolidação (produtos do mesmo cliente no container); comparativo das tabelas de frete das companhias                                                                                          | `src/lib/services/containers.ts`, `src/lib/services/freight-tariff.ts` |
 | 26  | **Pagamento do cliente e vendas**               | Formas de pagamento, parcelas e boletos; ordens de venda com reserva e agenda de entregas                                                                                                                                | `docs/CUSTOMER_PAYMENT.md`, `docs/SALES_ORDERS.md`                     |
 | 27  | **Aplicativo instalável**                       | Funciona no celular, no tablet e no computador e instala como aplicativo                                                                                                                                                 | `docs/PWA.md`                                                          |
-| 28  | **Feito para o ERP da empresa** (Sankhya)       | Cadastros e histórico carregados do ERP; envio de pedido e cadastro ao ERP                                                                                                                                               | `docs/SANKHYA.md`                                                      |
+| 28  | **Feito para o ERP da Wellmix** (Sankhya)       | Cadastros e histórico carregados do ERP; envio de pedido e cadastro ao ERP                                                                                                                                               | `docs/SANKHYA.md`                                                      |
 
 ### 1.3 O que os vídeos não prometem
 
@@ -88,10 +88,11 @@ Estas coisas **não** estão ditas nem mostradas, porque não é assim que o por
 - **E-mail e WhatsApp:** hoje só o sino do portal avisa (os dois são simulados).
 - **Rastreio automático e reserva automática de navio:** o rastreio é lançado todo dia pelo Comex interno.
 - **Pagamento on-line:** não há gateway; o boleto nasce no Sankhya e o portal só lê.
-- **Sincronia em tempo real com o ERP:** o vídeo diz "built to work with the company's ERP" (a escrita no ERP começa desligada, em simulação).
+- **Sincronia em tempo real com o ERP:** o vídeo diz "built to work with Wellmix's ERP" (a escrita no ERP começa desligada, em simulação).
 - **Chat direto entre parceiros:** não existe. Cada empresa conversa só com a Wellmix (`src/lib/services/messages.ts`); entre a agência de arte e o fornecedor o que passa são as pendências e os arquivos do pedido (`docs/PURCHASE_ORDER.md`).
 - **Tradução automática das mensagens:** só funciona com a IA ligada (`src/lib/services/message-translation.ts`); o vídeo não fala dela.
-- **Tela da Wellmix atualizando sozinha na inspeção:** a cena mostra a tela antes e depois do envio; a narração diz que a Wellmix vê cada item no pedido, não que é ao vivo.
+- **Tela da Wellmix atualizando sozinha na inspeção:** a cena mostra a tela antes e depois do envio; a narração diz que a Wellmix vê cada item no pedido, não que é ao vivo. Também não diz "pronto para aprovar": a aprovação de cada produto ainda pede o vídeo da produção e a declaração do fornecedor (`docs/PRODUCTION.md`).
+- **Quem deve a resposta:** a controladoria de mensagens é só da Wellmix; o vídeo diz "Wellmix sees who owes a reply".
 - **Assinatura digital certificada:** o pedido de compra é assinado enviando o PDF assinado e carimbado.
 - **Uso sem conexão**, **IA que decide sozinha** e a **vitrine do cliente** (escondida do menu).
 - **Fluxo antigo:** RFQ, cotação ao cliente, proposta e sinal saíram em 11/11/2026 (`docs/QUOTE_FLOW.md`).
@@ -104,15 +105,15 @@ Decisões do dono em 15/11/2026, depois de assistir à primeira versão:
 
 Pedidos do dono em 15/11/2026 para o vídeo **completo**, depois de assistir às versões finais (o curto não mudou):
 
-| Pedido                                          | Como ficou                                                                                                                                                                                                                                                         |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Telas em inglês                                 | Todas as telas do completo vêm do portal em inglês, com a base de demonstração em inglês (produtos, textos digitados). Nomes de pessoas e empresas fictícias continuam                                                                                             |
-| Etapa do financeiro                             | A jornada passou a ter seis blocos; o sexto é **Finance**: contas a pagar ao fornecedor, a receber do cliente, fluxo de caixa e comissões (menu Financeiro, `docs/FLOW_MENU.md`). Multas ficaram de fora do bloco                                                  |
-| Agência de arte no Brasil falando com a fábrica | Fala nova: "Agency in Brazil, factory abroad: the work flows through the portal's tasks and chat, with no e-mails." O portal **não tem chat direto** entre agência e fornecedor (cada um conversa com a Wellmix), então o vídeo não diz "diretamente"              |
-| Inspeção pelo celular                           | Cena nova antes do frete: o passo Produção > Inspeção com o login do fornecedor em um celular (telas reais: escolhe a foto, o portal salva na hora, digita o peso, envia) e, ao lado, o mesmo passo na tela da Wellmix                                             |
-| BL só abreviado                                 | Conferido: o portal em inglês escreve "BL" (sem barra) em 29 rótulos. A narração, a tela e as três legendas dizem "BL"                                                                                                                                             |
-| Sem o nome do Sankhya                           | Narração e tela dizem "the company's ERP". Nas capturas, onde o portal escreve o nome do ERP a tela do vídeo mostra "ERP" (`shots.mjs`, troca só do texto visível)                                                                                                 |
-| Foco nos chats: o e-mail acaba, sem bagunça     | Cena nova "E-mail threads end here.": a tela real de Mensagens com uma conversa por pedido (texto e foto), a mesma conversa no celular do fornecedor, e os canais antigos riscados. Fala: "The scattered e-mail threads end here." e "Nothing gets lost. No mess." |
+| Pedido                                          | Como ficou                                                                                                                                                                                                                                                              |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Telas em inglês                                 | Todas as telas do completo vêm do portal em inglês, com a base de demonstração em inglês (produtos, textos digitados). Nomes de pessoas e empresas fictícias continuam                                                                                                  |
+| Etapa do financeiro                             | A jornada passou a ter seis blocos; o sexto é **Finance**: contas a pagar ao fornecedor, a receber do cliente, fluxo de caixa e comissões (menu Financeiro, `docs/FLOW_MENU.md`). Multas ficaram de fora do bloco                                                       |
+| Agência de arte no Brasil falando com a fábrica | Fala nova: "Agency in Brazil, factory abroad: files and tasks flow through the portal, and each side chats with Wellmix. No e-mails." O portal **não tem chat direto** entre agência e fornecedor (cada um conversa com a Wellmix), então o vídeo não diz "diretamente" |
+| Inspeção pelo celular                           | Cena nova antes do frete: o passo Produção > Inspeção com o login do fornecedor em um celular (telas reais: escolhe a foto, o portal salva na hora, digita o peso, envia) e, ao lado, o mesmo passo na tela da Wellmix                                                  |
+| BL só abreviado                                 | Conferido: o portal em inglês escreve "BL" (sem barra) em 29 rótulos. A narração, a tela e as três legendas dizem "BL"                                                                                                                                                  |
+| Sem o nome do Sankhya                           | Narração e tela dizem "Wellmix's ERP" (o ERP é o da Wellmix, não o do parceiro). Nas capturas, onde o portal escreve o nome do ERP a tela do vídeo mostra "ERP" (`shots.mjs`, troca só do texto visível)                                                                |
+| Foco nos chats: o e-mail acaba, sem bagunça     | Cena nova "E-mail threads end here.": a tela real de Mensagens com uma conversa por pedido (texto e foto), a mesma conversa no celular do fornecedor, e os canais antigos riscados. Fala: "The scattered e-mail threads end here." e "Nothing gets lost. No mess."      |
 
 Limites que a revisão independente encontrou e o roteiro respeita:
 
@@ -152,7 +153,7 @@ No vídeo **curto**, os balões de conversa da cena de comunicação são **ilus
 | 0:37  | A jornada             | Os seis blocos: Book, Pedido, Produção, Entrega, Vendas e Financeiro                                       |
 | 1:11  | Quem faz o quê        | Cliente                                                                                                    |
 | 1:24  |                       | Fornecedor                                                                                                 |
-| 1:41  |                       | Agência de arte (recebe a faca e as fotos da fábrica; trabalha com ela pelas pendências e pelo chat)       |
+| 1:41  |                       | Agência de arte (recebe da fábrica a faca e as fotos do produto; arquivos e pendências correm pelo portal) |
 | 2:01  |                       | Certificadora                                                                                              |
 | 2:12  |                       | Inspeção pelo celular: o fornecedor envia fotos e peso; a Wellmix vê no pedido                             |
 | 2:26  |                       | Agência de marketing na origem                                                                             |
@@ -167,7 +168,7 @@ No vídeo **curto**, os balões de conversa da cena de comunicação são **ilus
 | 4:21  |                       | Acesso por papel (o que cada um vê e o que fica oculto)                                                    |
 | 4:32  |                       | Qualidade documentada: inspeção, carregamento, documentos                                                  |
 | 4:45  |                       | Control Tower, painel de SLA, painéis e auditoria                                                          |
-| 4:58  |                       | Qualquer tela, instala como aplicativo; feito para o ERP da empresa                                        |
+| 4:58  |                       | Qualquer tela, instala como aplicativo; feito para o ERP da Wellmix                                        |
 | 5:06  |                       | Assinatura                                                                                                 |
 
 O texto completo da narração e das legendas está em `scripts/video/script.mjs` (uma fala por linha, com pt e zh ao lado) e nos arquivos de [`legendas/`](legendas/).
@@ -243,7 +244,7 @@ Mudou o texto de uma fala? Só ela é gerada de novo, e a duração das cenas se
 4. **"Importação direta · desde 2010"** aparece desenhado na vinheta; a narração não repete a data.
 5. **Versão só em inglês** (sem legenda queimada) não foi pedida; as telas do completo já estão em inglês, então sai com mais uma renderização.
 6. **Onde publicar** (YouTube não listado, Vimeo, LinkedIn) e se o portal ganha um link para o vídeo completo.
-7. **Chat direto entre agência e fornecedor.** O dono pediu para o vídeo dizer que a agência de arte no Brasil fala direto com a fábrica pelo chat. Hoje o portal não permite: cada empresa conversa só com a Wellmix. O vídeo diz que o trabalho corre pelas pendências e pelo chat do portal, sem e-mails. Abrir conversa direta entre parceiros é decisão de produto (quem vê o quê, preço, quem responde).
+7. **Chat direto entre agência e fornecedor.** O dono pediu para o vídeo dizer que a agência de arte no Brasil fala direto com a fábrica pelo chat. Hoje o portal não permite: cada empresa conversa só com a Wellmix. O vídeo diz que arquivos e pendências correm pelo portal e que cada lado conversa com a Wellmix, sem e-mails. Abrir conversa direta entre parceiros é decisão de produto (quem vê o quê, preço, quem responde).
 8. **Curto com tela em inglês e sem o nome do ERP?** O curto não mudou: a narração dele já não cita BL nem o ERP, mas as telas continuam em pt ou zh e a Control Tower mostra, em letra pequena, o cartão "Sem nº Sankhya". Para deixar igual ao completo basta refazer as capturas (`shots.mjs` já troca o nome por "ERP") e renderizar de novo.
 9. **Pendências internas em inglês.** A lista de pendências dos logins da Wellmix ainda mostra rótulos sem tradução em inglês (`tasks.group.purchase_strategy`, títulos "Estratégia de compra: …"). Por isso a cena de pendências usa a lista do despachante. Vale corrigir no portal.
 10. **Tradução automática do chat.** Se a IA estiver ligada em produção, dá para acrescentar "cada um escreve no seu idioma" na cena do chat.
