@@ -115,6 +115,16 @@ def main(path):
         outro_at = video_time(n)
         desc = f"música inteira + {n} compassos repetidos (voltas a partir dos compassos {loops}), final"
     y = join(parts)
+    # Quando a marca demora a aparecer (narração mais longa antes da cena "hub"), a
+    # música começaria vários segundos depois do vídeo, com a vinheta muda. Em vez
+    # desse silêncio, entram antes compassos inteiros do começo calmo da faixa (até 3),
+    # sem mexer na grade: a batida continua caindo com a marca.
+    pre_bars = min(3, int(lead // BAR)) if lead > 1.0 else 0
+    if pre_bars:
+        y = join([x[: int(pre_bars * BAR * SR) + int(XFADE * SR)], y])
+        lead -= pre_bars * BAR
+        k = int(0.02 * SR)
+        y[:k] *= np.linspace(0, 1, k)[:, None]
     if start > 0:
         k = int(0.5 * SR)
         y[:k] *= np.linspace(0, 1, k)[:, None] ** 2
@@ -126,6 +136,8 @@ def main(path):
     out = os.path.join(os.path.dirname(os.path.abspath(path)), "audio", os.path.basename(path).replace(".audio.json", ".music.wav"))
     sf.write(out, y, SR, subtype="PCM_16")
     end_of_music = outro_at + (len(x) / SR - at_bar(OUT))
+    if pre_bars:
+        desc = f"{pre_bars} compassos do começo antes, " + desc
     print(f"{out}: {desc}")
     print(f"  batida com a marca em {hub:.2f} s; final da música começa em {outro_at:.2f} s (assinatura em {logo:.2f} s: diferença {outro_at - logo:+.2f} s)")
     print(f"  a música termina em {end_of_music:.2f} s; o vídeo tem {total:.2f} s (sobra {total - end_of_music:+.2f} s)")
