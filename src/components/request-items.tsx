@@ -994,6 +994,12 @@ export interface OrderPlanLabels {
   firstDate: string;
   /** "Programação {n}". */
   n: string;
+  /**
+   * "Recebimento previsto" ao lado de cada data (telas TS e Venda;
+   * docs/REQUEST_SCREENS.md, seção 6): "Programação 1 — Recebimento
+   * previsto: 16/03/2027". Sem ele, "Programação 1: 16/03/2027".
+   */
+  receipt?: string;
   dates: string;
   /** "Primeira data permitida: {date} (lançamento em {launch} + 120 dias)." */
   minDate: string;
@@ -1312,6 +1318,12 @@ function PlanDate({
     >
       <label className="relative cursor-pointer rounded-md px-2 py-1 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-500">
         <span className="font-semibold">{fillText(labels.n, { n })}</span>
+        {labels.receipt ? (
+          <>
+            {" — "}
+            <span data-order-plan-receipt>{labels.receipt}</span>
+          </>
+        ) : null}
         {": "}
         <span data-order-plan-date-text>{text}</span>
         <input

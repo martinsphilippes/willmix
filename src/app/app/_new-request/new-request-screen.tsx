@@ -86,6 +86,12 @@ import {
   REQUEST_SCREEN_FIELD,
   type RequestScreenMode,
 } from "@/lib/request-screens";
+import {
+  deliveryCompositionLabels,
+  deliveryGenerateLabels,
+  deliveryItemLabels,
+  deliveryPlanLabels,
+} from "@/components/delivery-schedule-labels";
 
 /** O formulário da solicitação (o bloco do cliente fica fora dele, ligado pelo `form`). */
 const FORM_ID = "new-request-form";
@@ -361,17 +367,28 @@ export async function renderNewRequest({
   const errorKey = `lookup.error.${typeof error === "string" ? error : ""}`;
   const accessKey = `access.error.${typeof error === "string" ? error : ""}`;
   const batchKey = `reqBatch.error.${typeof error === "string" ? error : ""}`;
+  // TS e Venda (docs/REQUEST_SCREENS.md, seção 6): as recusas das datas
+  // falam do recebimento previsto pelo cliente.
+  const deliveryKey = `deliverySchedule.error.${typeof error === "string" ? error : ""}`;
   const errorText =
-    typeof error === "string" && t(errorKey as DictionaryKey) !== errorKey
-      ? t(errorKey as DictionaryKey)
-      : typeof error === "string" && t(accessKey as DictionaryKey) !== accessKey
-        ? t(accessKey as DictionaryKey)
-        : typeof error === "string" && t(batchKey as DictionaryKey) !== batchKey
-          ? t(batchKey as DictionaryKey, {
-              // A 1ª data permitida (schedule_too_soon).
-              date: formatDate(minFirstDate(launchDate), t),
-            })
-          : t("common.error");
+    mode &&
+    typeof error === "string" &&
+    t(deliveryKey as DictionaryKey) !== deliveryKey
+      ? t(deliveryKey as DictionaryKey, {
+          date: formatDate(minFirstDate(launchDate), t),
+        })
+      : typeof error === "string" && t(errorKey as DictionaryKey) !== errorKey
+        ? t(errorKey as DictionaryKey)
+        : typeof error === "string" &&
+            t(accessKey as DictionaryKey) !== accessKey
+          ? t(accessKey as DictionaryKey)
+          : typeof error === "string" &&
+              t(batchKey as DictionaryKey) !== batchKey
+            ? t(batchKey as DictionaryKey, {
+                // A 1ª data permitida (schedule_too_soon).
+                date: formatDate(minFirstDate(launchDate), t),
+              })
+            : t("common.error");
   /* Ficha do produto que já chega escolhido (vitrine, busca por foto,
      programação de compra): preenche a primeira linha sem esperar a busca. */
   const presetProduct = productById.get(presetProductId);
@@ -462,6 +479,30 @@ export async function renderNewRequest({
   const referenceNote = found?.url
     ? `${t("lookup.referenceNote")} ${found.url}`
     : "";
+  // Telas de TS e de Venda (docs/REQUEST_SCREENS.md, seção 6): cada
+  // programação é uma entrega prevista ao cliente, com a data prevista de
+  // recebimento. Só os textos mudam; Encomendas segue com os de sempre.
+  const withDeliveryItem = <T extends Parameters<typeof deliveryItemLabels>[1]>(
+    base: T,
+  ): T => (mode ? { ...base, ...deliveryItemLabels(t, base) } : base);
+  const withDeliveryGenerate = <
+    T extends Parameters<typeof deliveryGenerateLabels>[1] & {
+      regenerate: string;
+      roundsFixed: string;
+    },
+  >(
+    base: T,
+  ): T =>
+    mode
+      ? {
+          ...deliveryGenerateLabels(t, base),
+          regenerate: t("deliverySchedule.gen.regenerate"),
+          roundsFixed: t("deliverySchedule.gen.roundsFixed"),
+        }
+      : base;
+  const withDeliveryPlan = <T extends Parameters<typeof deliveryPlanLabels>[1]>(
+    base: T,
+  ): T => (mode ? { ...base, ...deliveryPlanLabels(t, base) } : base);
   // Telas de TS e de Venda: o estoque não vale (sem cliente não há venda).
   const startsStock =
     !screenDef &&
@@ -1010,22 +1051,24 @@ export async function renderNewRequest({
                 // O bloco "Programação de compra" da Seleção de itens (dono,
                 // 14/11/2026): os mesmos textos; a explicação diz para onde a
                 // programação da solicitação vai.
-                schedule: purchaseScheduleLabels(
-                  t,
-                  t.intl,
-                  t("purchaseRounds.form.hintRequest"),
+                schedule: withDeliveryItem(
+                  purchaseScheduleLabels(
+                    t,
+                    t.intl,
+                    t("purchaseRounds.form.hintRequest"),
+                  ),
                 ),
                 // O card "Gerar programação pela quantidade" da Seleção de
                 // itens, com os textos do produto escolhido acima.
-                generate: {
+                generate: withDeliveryGenerate({
                   ...generateLabels(t, t("reqSchedule.gen.chooseProduct")),
                   noPieces: t("reqSchedule.gen.noPieces"),
                   noCarton: t("reqSchedule.gen.noCarton"),
                   noData: t("reqSchedule.gen.noData"),
                   regenerate: t("reqSchedule.gen.regenerate"),
                   roundsFixed: t("orderPlan.roundsFixed"),
-                },
-                plan: {
+                }),
+                plan: withDeliveryPlan({
                   title: t("orderPlan.title"),
                   hint: t("orderPlan.hint"),
                   count: t("orderPlan.count"),
@@ -1052,11 +1095,17 @@ export async function renderNewRequest({
                     prev: "{prev}",
                     date: "{date}",
                   }),
-                },
-                generateOutside: t("reqSchedule.gen.outside"),
+                }),
+                generateOutside: mode
+                  ? t("deliverySchedule.gen.outside")
+                  : t("reqSchedule.gen.outside"),
                 pieces: t("reqSchedule.pieces"),
-                piecesHint: t("reqSchedule.piecesHint"),
-                piecesScheduledHint: t("purchaseRounds.form.quantityOff"),
+                piecesHint: mode
+                  ? t("deliverySchedule.item.piecesHint")
+                  : t("reqSchedule.piecesHint"),
+                piecesScheduledHint: mode
+                  ? t("deliverySchedule.item.piecesScheduledHint")
+                  : t("purchaseRounds.form.quantityOff"),
                 fromCatalog: t("reqProduct.fromCatalog"),
                 inStock: t("reqProduct.inStock"),
                 noStock: t("reqProduct.noStock"),
@@ -1252,7 +1301,13 @@ export async function renderNewRequest({
               data-request-side-sticky
             >
               <div className="lg:max-h-[60%] lg:shrink-0 lg:overflow-y-auto">
-                <ContainerComposition labels={compositionLabels(t)} />
+                <ContainerComposition
+                  labels={
+                    mode
+                      ? deliveryCompositionLabels(t, compositionLabels(t))
+                      : compositionLabels(t)
+                  }
+                />
               </div>
               <div
                 className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain"

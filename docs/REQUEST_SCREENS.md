@@ -70,6 +70,31 @@ Padrão (pedido do dono), com os perfis que já existem no código:
 - Textos: `src/i18n/modules/request-screens.ts` (pt, en e zh).
 - Testes: `tests/unit/request-screens.test.ts`, `tests/unit/order-terms.test.ts` (o tipo da tela; Venda com BRASIL) e `tests/e2e/request-screens.spec.ts`.
 
+## 6. Programações = entregas previstas ao cliente (textos)
+
+Pedido do dono (16/11/2026): nas telas TS e Venda, a programação é a data em que o **cliente deve receber** o pedido, não a de produção, embarque ou saída da mercadoria. Só os textos mudam. O conceito de programação, os cálculos, os intervalos, as regras de datas, a distribuição das quantidades, a composição dos containers e os nomes técnicos (código e banco) ficam como estão.
+
+| Antes                                  | Nas telas TS e Venda                                                                                    |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Datas das programações                 | Datas previstas de recebimento pelo cliente                                                             |
+| Data da 1ª programação                 | Data prevista do 1º recebimento                                                                         |
+| Programação 1: 16/03/2027              | Programação 1 — Recebimento previsto: 16/03/2027                                                        |
+| Programações (número)                  | Quantidade de entregas programadas                                                                      |
+| Intervalo entre programações           | Intervalo entre recebimentos previstos                                                                  |
+| Programação de compra do pedido        | Programação de entregas ao cliente                                                                      |
+| Pedido em: 16/03/2027 (cartão)         | Recebimento previsto: 16/03/2027                                                                        |
+| Composição: Programação 1 / 16/03/2027 | Programação 1 / Recebimento previsto: / 16/03/2027 (três linhas curtas, para a coluna caber na lateral) |
+
+- **Onde:**
+  - o bloco do pedido: título, explicação, quantidade de entregas, intervalo, 1º recebimento, datas, primeira data permitida, troca e volta da data e avisos de ordem;
+  - os cartões de cada produto ("Recebimento previsto: data");
+  - o gerador pela quantidade: título, explicação, quantidade de entregas, containers por entrega, resultado, avisos de caixas e falta de dados;
+  - a Composição de containers: explicação e, em cada coluna, "Programação N" com "Recebimento previsto:" e a data embaixo, em linhas curtas para a coluna caber na lateral;
+  - as recusas do envio que falam das datas (`schedule_too_soon`, `schedule_out_of_order`, `schedule_mismatch`, `schedule_product_changed`).
+- **Como:** os textos ficam em `src/i18n/modules/delivery-schedule.ts` (pt, en e zh, chaves `deliverySchedule.*`). `src/components/delivery-schedule-labels.ts` troca, por cima dos rótulos de sempre, só os que falam das programações; `renderNewRequest` usa esses rótulos quando `mode` é "ts" ou "sale". Os componentes ganharam dois rótulos opcionais, que só as telas novas passam: `receipt` no bloco do pedido (`OrderPlanLabels`) e `roundDate` na Composição (`ContainerCompositionLabels`). Sem eles, a tela mostra o que mostrava.
+- **Não muda:** a Nova solicitação de Encomendas, a Seleção de itens, o pedido, a ficha de compra e as outras telas que falam de programação; ficam com os textos de antes.
+- **Testes:** `tests/unit/delivery-schedule-labels.test.ts` e `tests/e2e/request-screens.spec.ts`. O E2E confere o bloco do pedido, os chips "Programação N — Recebimento previsto", o cartão do produto e a Composição em TS e Venda, e os textos de sempre em Encomendas.
+
 ## 5. Fica para o dono decidir
 
 - O que fazer com a Nova solicitação de Encomendas (hoje igual a antes, com TS marcado e Venda "(em breve)").

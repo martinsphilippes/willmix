@@ -158,6 +158,7 @@ import * as requestOrderPlan from "./request-order-plan";
 import * as customerPayment from "./customer-payment";
 import * as orderSale from "./order-sale";
 import * as requestScreens from "./request-screens";
+import * as deliverySchedule from "./delivery-schedule";
 
 export const modulesPt = {
   ...messages.pt,
@@ -315,6 +316,7 @@ export const modulesPt = {
   ...customerPayment.pt,
   ...orderSale.pt,
   ...requestScreens.pt,
+  ...deliverySchedule.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...messages.en,
@@ -472,6 +474,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...customerPayment.en,
   ...orderSale.en,
   ...requestScreens.en,
+  ...deliverySchedule.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...messages.zh,
@@ -629,4 +632,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...customerPayment.zh,
   ...orderSale.zh,
   ...requestScreens.zh,
+  ...deliverySchedule.zh,
 };
