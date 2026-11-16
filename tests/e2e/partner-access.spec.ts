@@ -487,15 +487,110 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
   // Depois de enviado: só consulta, com o preço corrigido.
   await expect(page.locator("[data-partner-booking-edit]")).toHaveCount(0);
   await expect(page.locator("[data-partner-booking-send]")).toHaveCount(0);
-  await expect(page.locator("[data-partner-booking-items]")).toContainText(
-    `${code}-T`,
+  // Uma linha por item, um dado por coluna (dono, 16/11/2026): o preço, a
+  // moeda e o Incoterm em três células; a caixa master e a inner separadas;
+  // o tamanho só na coluna Tamanho (a capacidade em ml fica vazia).
+  const sentRow = page.locator("[data-partner-booking-items] tr").first();
+  const sentCell = (key: string) =>
+    sentRow.locator(`[data-book-cell="${key}"]`);
+  await expect(page.locator("[data-partner-booking-items] tr")).toHaveCount(1);
+  await expect(sentCell("line")).toHaveText("1");
+  await expect(sentCell("sku")).toHaveText(`${code}-T`);
+  await expect(sentCell("price")).toHaveText("1,4");
+  await expect(sentCell("currency")).toHaveText("USD");
+  await expect(sentCell("incoterm")).toHaveText("FOB");
+  await expect(sentCell("moq")).toHaveText("1.000");
+  await expect(sentCell("master")).toHaveText("48");
+  await expect(sentCell("inner")).toHaveText("12");
+  await expect(sentCell("cbm")).toHaveText("0,12");
+  await expect(sentCell("length")).toHaveText("10");
+  await expect(sentCell("width")).toHaveText("8");
+  await expect(sentCell("height")).toHaveText("20");
+  await expect(sentCell("capacity")).toHaveText("—");
+  await expect(sentCell("size")).toHaveText("8X10");
+  await expect(sentCell("material")).toHaveText("glass");
+  await expect(sentCell("package")).toHaveText("color box");
+  // Os títulos na ordem pedida, alinhados às colunas (mesmas larguras).
+  const heads = page.locator("[data-book-head]");
+  expect(
+    (
+      await heads.evaluateAll((els) =>
+        els.map((e) => e.getAttribute("data-book-head")),
+      )
+    ).slice(0, 20),
+  ).toEqual([
+    "line",
+    "photo",
+    "name",
+    "sku",
+    "itemNumber",
+    "price",
+    "currency",
+    "incoterm",
+    "moq",
+    "master",
+    "inner",
+    "cbm",
+    "length",
+    "width",
+    "height",
+    "capacity",
+    "size",
+    "colors",
+    "material",
+    "package",
+  ]);
+  for (const key of ["price", "material"]) {
+    const head = await page.locator(`[data-book-head="${key}"]`).boundingBox();
+    const cell = await sentCell(key).boundingBox();
+    expect(Math.abs((head?.x ?? 0) - (cell?.x ?? -99))).toBeLessThan(1);
+    expect(Math.abs((head?.width ?? 0) - (cell?.width ?? -99))).toBeLessThan(1);
+  }
+  // Cabeçalho preso logo abaixo da barra do Portal (o mesmo mecanismo das
+  // tabelas do Booking da Wellmix: TableTools stickyHead).
+  const frame = page
+    .locator("[data-table-frame]")
+    .filter({ has: page.locator("[data-partner-booking-items]") });
+  const stickyTop = await frame
+    .locator("[data-table-sticky-head]")
+    .evaluate((el) => getComputedStyle(el).top);
+  expect(stickyTop).toBe("56px");
+  // Bordas separadas: as divisórias continuam nas colunas congeladas (com
+  // as bordas "coladas", o fundo da célula presa cobre a borda da tabela).
+  expect(
+    await frame
+      .locator("[data-table-sticky-body] table")
+      .evaluate((el) => getComputedStyle(el).borderCollapse),
+  ).toBe("separate");
+  // iPad: as colunas rolam de lado dentro da tabela; títulos acompanham; o
+  // nº da linha e a foto ficam parados.
+  await page.setViewportSize({ width: 820, height: 1180 });
+  const body = frame.locator("[data-table-sticky-body]");
+  const photoBefore = await sentCell("photo").boundingBox();
+  const priceBefore = await sentCell("price").boundingBox();
+  await body.evaluate((el) => {
+    el.scrollLeft = 400;
+  });
+  await expect
+    .poll(() =>
+      frame
+        .locator("[data-table-sticky-scroll]")
+        .evaluate((el) => el.scrollLeft),
+    )
+    .toBeGreaterThan(300);
+  const photoAfter = await sentCell("photo").boundingBox();
+  const priceAfter = await sentCell("price").boundingBox();
+  expect(Math.abs((photoAfter?.x ?? 0) - (photoBefore?.x ?? -99))).toBeLessThan(
+    1,
   );
-  await expect(page.locator("[data-partner-booking-items]")).toContainText(
-    "1,4 USD FOB",
+  expect((priceBefore?.x ?? 0) - (priceAfter?.x ?? 0)).toBeGreaterThan(300);
+  const headPrice = await page
+    .locator('[data-book-head="price"]')
+    .boundingBox();
+  expect(Math.abs((headPrice?.x ?? 0) - (priceAfter?.x ?? -99))).toBeLessThan(
+    1,
   );
-  await expect(page.locator("[data-partner-booking-items]")).toContainText(
-    "8X10",
-  );
+  await page.setViewportSize({ width: 1280, height: 720 });
   // Na lista dele: o que a Wellmix pôs em nome dela e o que ela enviou.
   await page.goto("/app/booking");
   await expect(page.locator("[data-partner-booking]")).toHaveCount(2);

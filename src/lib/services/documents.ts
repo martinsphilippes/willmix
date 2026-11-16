@@ -420,6 +420,13 @@ export async function canAccessDocument(
       const { partnerSeesInvitePhoto } = await import("./booking-invites");
       if (await partnerSeesInvitePhoto(user, doc.id)) return true;
     }
+    // Foto e cartão do fabricante de um item de book da empresa (Meus books →
+    // Book; dono, 16/11/2026): o parceiro vê também os que a Wellmix carregou
+    // por ele. Só login externo com a tela Booking e só book da empresa dele.
+    if (user.partyId) {
+      const { partnerSeesBookingPhoto } = await import("./booking-partner");
+      if (await partnerSeesBookingPhoto(user, doc.id)) return true;
+    }
     // Foto de produto/sourcing: só a Wellmix, salvo quando marcada como pública ("all").
     if (doc.productId || doc.sourcingItemId) {
       if (doc.visibility !== "all" || !doc.productId) return false;
