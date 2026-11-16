@@ -49,6 +49,7 @@ SR = 48000
 FRAME = 0.01  # quadro de 10 ms para medir o nível
 SIL_DB = -60.0  # abaixo disto é silêncio; f, s, ch e o estalo do c e do p ficam acima
 LOUD = 0.012  # amostra "alta" (−38 dBFS): o corpo da fala
+BREATH_DB = -42.0  # respiração fica abaixo disto (−45 a −52 dBFS na narração do ElevenLabs)
 AUDIO_EXT = (".mp3", ".wav", ".m4a", ".flac", ".ogg", ".aac", ".opus", ".webm")
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -123,7 +124,11 @@ def speech_bounds(x):
         return 0, len(x)
     act = db > SIL_DB
 
-    def walk(k, step):
+    def walk(k, step, bridge=0):
+        """Anda de `k` na direção `step` pelos quadros acima do silêncio e para em 40 ms
+        quietos. Com `bridge` (quadros), atravessa um silêncio maior quando logo depois
+        vem som mais forte que respiração: no fim de "embarque" e de "frete", o "-que" e
+        o "-te" saem quase sem voz depois do silêncio do k e do t."""
         edge, quiet = k, 0
         while 0 <= k + step < len(act):
             k += step
@@ -132,11 +137,18 @@ def speech_bounds(x):
             else:
                 quiet += 1
                 if quiet >= 4:
-                    break
+                    ahead = [
+                        j
+                        for j in range(edge + step, edge + step * (bridge + 1), step)
+                        if 0 <= j < len(db) and db[j] > BREATH_DB
+                    ]
+                    if not ahead:
+                        break
+                    k, quiet = ahead[0] - step, 0
         return edge
 
     first = walk(loud[0] // f, -1)
-    last = walk(loud[-1] // f, 1)
+    last = walk(loud[-1] // f, 1, bridge=12)
     a = max(0, min(first * f - int(0.03 * SR), loud[0] - int(0.06 * SR)))
     b = min(len(x), max((last + 1) * f + int(0.03 * SR), loud[-1] + f + int(0.12 * SR)))
     return a, b
@@ -301,7 +313,7 @@ def split_part(x48, heard, lines):
     return clips
 
 
-def lost_speech(x48, bounds, floor_db=-42.0, min_len=0.03):
+def lost_speech(x48, bounds, floor_db=BREATH_DB, min_len=0.03):
     """Som de fala (acima de `floor_db`, por `min_len` segundos ou mais) que ficou fora de
     todas as falas: entre uma e outra, antes da primeira e depois da última. Respirações
     (−45 a −52 dBFS na narração do ElevenLabs) não contam. Devolve [(início, fim, nível)]."""
