@@ -670,6 +670,10 @@ export async function openReplenishment(
   await row
     .locator("[data-rounds-generator] [data-generate-total]")
     .fill(total);
+  // Produto sem peças por caixa master: as caixas não viram peças, e a
+  // quantidade (peças) é digitada.
+  const pieces = row.locator('input[name="p0.quantity"]');
+  if (!(await pieces.inputValue())) await pieces.fill(total);
   await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
   await page.waitForURL(/\/app\/replenishment\?opened=/);
   return new URL(page.url()).searchParams.get("opened")!;
