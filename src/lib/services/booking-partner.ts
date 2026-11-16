@@ -20,6 +20,7 @@ import {
   readBookingItemValue,
   type BookingItemField,
 } from "@/lib/booking-lots";
+import { listByIds } from "@/lib/db/lookup";
 import { audit } from "./audit";
 import type { SheetSource } from "./product-sheet-import";
 
@@ -97,7 +98,16 @@ export type PartnerBookingItem = Pick<
   BookingItem,
   // `sizeText`: o tamanho que veio na coluna da capacidade ("8X10", "A4").
   "id" | "position" | "sizeText" | BookingItemField
->;
+> & {
+  /**
+   * Foto do item e cartão do fabricante que vieram na planilha, só quando
+   * o login já abre o arquivo (foi ele quem subiu a planilha): a tabela de
+   * consulta não abre acesso novo (dono, 16/11/2026). Nulo: sem foto ou
+   * sem acesso.
+   */
+  photoDocumentId?: string | null;
+  cardDocumentId?: string | null;
+};
 
 const itemView = (i: BookingItem): PartnerBookingItem => {
   const view = {
@@ -175,9 +185,26 @@ export async function getPartnerBookingLot(
     : [];
   const nameOf = (id: string | null | undefined) =>
     (id && parties.find((p) => p.id === id)?.name) || null;
+  /* Fotos da planilha: só as que este login subiu (o arquivo abre para ele
+     em /api/files); as que a Wellmix subiu por ele ficam de fora, sem abrir
+     acesso novo. */
+  const photoIds = items.flatMap((i) => [i.photoDocumentId, i.cardDocumentId]);
+  const ownDocs = new Set(
+    (await listByIds(store, "documents", photoIds))
+      .filter((d) => d.uploadedByUserId === user.id)
+      .map((d) => d.id),
+  );
+  const own = (id: string | null | undefined) =>
+    id && ownDocs.has(id) ? id : null;
   return {
     lot: lotView(lot),
-    items: items.sort((a, b) => a.position - b.position).map(itemView),
+    items: items
+      .sort((a, b) => a.position - b.position)
+      .map((i) => ({
+        ...itemView(i),
+        photoDocumentId: own(i.photoDocumentId),
+        cardDocumentId: own(i.cardDocumentId),
+      })),
     partnerName: nameOf(lot.partnerId),
     factoryName: nameOf(lot.supplierId),
   };

@@ -230,6 +230,38 @@ describe("tela Booking do Trading", () => {
     expect(detail.partnerName).toBeTruthy();
   });
 
+  it("fotos da tabela de consulta: só as que o login já abre (as dele)", async () => {
+    // A foto do item que ele subiu aparece; o cartão que a Wellmix subiu por
+    // ele não (nenhum acesso novo; dono, 16/11/2026).
+    const store = getStore();
+    const png = (name: string) =>
+      new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], name, {
+        type: "image/png",
+      });
+    const own = await uploadDocument(trader, png("foto.png"), {
+      type: "attachment",
+      visibility: "internal",
+    });
+    const wellmix = await uploadDocument(admin, png("cartao.png"), {
+      type: "attachment",
+      visibility: "internal",
+    });
+    const [item] = await store.list("booking_items", {
+      filter: { lotId: mine },
+    });
+    await store.update("booking_items", item.id, {
+      photoDocumentId: own.id,
+      cardDocumentId: wellmix.id,
+    });
+    const detail = (await svc.getPartnerBookingLot(trader, mine))!;
+    expect(detail.items[0].photoDocumentId).toBe(own.id);
+    expect(detail.items[0].cardDocumentId).toBeNull();
+    await store.update("booking_items", item.id, {
+      photoDocumentId: null,
+      cardDocumentId: null,
+    });
+  });
+
   it("booking de outra empresa não abre", async () => {
     expect(await svc.getPartnerBookingLot(trader, foreign)).toBeNull();
     expect(await svc.getPartnerBookingLot(otherTrader, mine)).toBeNull();

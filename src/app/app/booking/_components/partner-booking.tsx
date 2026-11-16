@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -40,6 +41,7 @@ import {
   rowClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { StickyScrollTable } from "@/components/sticky-scroll-table";
 import { SheetFileInput } from "@/components/sheet-file-input";
 import {
   PartnerItemInput,
@@ -643,7 +645,31 @@ function PreparingItems({
   );
 }
 
-/** Já enviado: só para consultar, sem a análise da Wellmix. */
+/** Uma coluna da tabela de consulta (já enviado). */
+interface SentColumn {
+  key: string;
+  label: string;
+  /** Largura fixa em rem (título e célula alinhados nas duas tabelas). */
+  width: number;
+  align: "left" | "right" | "center";
+  /** Parada na rolagem lateral (nº da linha e foto). */
+  frozen?: boolean;
+  value: (item: PartnerBookingItem, index: number) => ReactNode;
+}
+
+/**
+ * Já enviado: só para consultar, sem a análise da Wellmix (dono,
+ * 16/11/2026). Uma tabela, uma linha por item, um dado por coluna, na ordem
+ * pedida; cada célula vem do seu campo do registro (preço, moeda e Incoterm;
+ * caixa master e inner; capacidade em ml e tamanho em texto; as três
+ * medidas), sem separar texto: "4 USD EXW" são três campos, "24 / 12" são a
+ * caixa master e a inner, "A4" é o tamanho. Os outros campos que o parceiro
+ * preencheu (descrição, pesos, energia, programação e quantidades) vêm
+ * depois, para nada da ficha se perder. Dado ausente: "—".
+ *
+ * Cabeçalho fixo abaixo da barra do Portal e rolagem lateral dentro da
+ * tabela (StickyScrollTable); nº da linha e foto congelados.
+ */
 function SentItems({
   t,
   items,
@@ -651,77 +677,189 @@ function SentItems({
   t: Translate;
   items: PartnerBookingItem[];
 }) {
-  const col = (k: string) =>
-    t(`supplierRequests.selection.col.${k}` as DictionaryKey);
+  const label = (k: string) =>
+    t(`bookingLots.partner.col.${k}` as DictionaryKey);
+  const field = (k: string) => t(`bookingLots.item.col.${k}` as DictionaryKey);
+  const missing = <span className="text-zinc-400">—</span>;
+  const text = (v: string | null | undefined) =>
+    v && v.trim() ? v.trim() : missing;
+  const number = (v: number | null | undefined, digits = 0) =>
+    v === null || v === undefined ? missing : num(t, v, digits);
+  const photos = (i: PartnerBookingItem) => {
+    const docs = [i.photoDocumentId, i.cardDocumentId].filter(
+      (d): d is string => !!d,
+    );
+    return docs.length ? (
+      <span className="flex gap-1">
+        {docs.map((doc) => (
+          <a
+            key={doc}
+            href={`/api/files/${doc}`}
+            target="_blank"
+            rel="noreferrer"
+            title={
+              doc === i.cardDocumentId
+                ? t("bookingLots.item.card")
+                : field("photo")
+            }
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+            <img
+              src={`/api/files/${doc}`}
+              alt=""
+              className="h-10 w-10 rounded border border-zinc-200 bg-white object-cover"
+              loading="lazy"
+            />
+          </a>
+        ))}
+      </span>
+    ) : (
+      missing
+    );
+  };
+  const columns: SentColumn[] = [
+    { key: "line", label: label("line"), width: 3.25, align: "right", frozen: true, value: (_, index) => index + 1 },
+    { key: "photo", label: field("photo"), width: 6.25, align: "left", frozen: true, value: photos },
+    {
+      key: "name",
+      label: label("name"),
+      width: 15,
+      align: "left",
+      value: (i) => (
+        <span className="font-medium text-zinc-900">
+          {text(i.productName ?? i.description)}
+        </span>
+      ),
+    },
+    { key: "sku", label: label("sku"), width: 9, align: "left", value: (i) => text(i.factoryItemCode) },
+    // Nº do item: campo próprio da planilha (nem o nº da linha, nem o SKU).
+    { key: "itemNumber", label: field("itemNumber"), width: 6, align: "left", value: (i) => text(i.itemNumber) },
+    { key: "price", label: label("price"), width: 6.5, align: "right", value: (i) => number(i.price, 4) },
+    { key: "currency", label: label("currency"), width: 5.5, align: "center", value: (i) => text(i.currency) },
+    { key: "incoterm", label: label("incoterm"), width: 5.75, align: "center", value: (i) => text(i.incoterm) },
+    { key: "moq", label: label("moq"), width: 6.5, align: "right", value: (i) => number(i.moq) },
+    { key: "master", label: label("master"), width: 7.5, align: "right", value: (i) => number(i.masterCartonQty) },
+    { key: "inner", label: label("inner"), width: 7.5, align: "right", value: (i) => number(i.innerQty) },
+    { key: "cbm", label: label("cbm"), width: 6.5, align: "right", value: (i) => number(i.cbmPerCarton, 4) },
+    { key: "length", label: label("length"), width: 7.5, align: "right", value: (i) => number(i.lengthCm, 2) },
+    { key: "width", label: label("width"), width: 7, align: "right", value: (i) => number(i.widthCm, 2) },
+    { key: "height", label: label("height"), width: 7, align: "right", value: (i) => number(i.heightCm, 2) },
+    // Só os mililitros; o tamanho em texto ("A4", "8X10") tem a coluna dele.
+    { key: "capacity", label: label("capacity"), width: 7.5, align: "right", value: (i) => number(i.capacityMl, 2) },
+    { key: "size", label: label("size"), width: 8.5, align: "left", value: (i) => text(i.sizeText) },
+    { key: "colors", label: label("colors"), width: 11, align: "left", value: (i) => text(i.colorAssortment) },
+    { key: "material", label: label("material"), width: 11, align: "left", value: (i) => text(i.material) },
+    { key: "package", label: label("package"), width: 11, align: "left", value: (i) => text(i.packageType) },
+    // Os demais campos da ficha que o parceiro preencheu.
+    {
+      key: "description",
+      label: field("description"),
+      width: 16,
+      align: "left",
+      // Sem nome, a descrição já aparece como nome do item.
+      value: (i) => (i.productName ? text(i.description) : missing),
+    },
+    { key: "netWeight", label: field("netWeightPcKg"), width: 7.5, align: "right", value: (i) => number(i.netWeightPcKg, 4) },
+    { key: "grossWeight", label: field("grossWeightPcKg"), width: 7.5, align: "right", value: (i) => number(i.grossWeightPcKg, 4) },
+    { key: "power", label: field("powerDetail"), width: 10, align: "left", value: (i) => text(i.powerDetail) },
+    { key: "schedule", label: field("purchaseSchedule"), width: 10, align: "left", value: (i) => text(i.purchaseSchedule) },
+    { key: "interval", label: field("departureIntervalDays"), width: 8, align: "left", value: (i) => text(i.departureIntervalDays) },
+    { key: "purchaseQty", label: field("purchaseQty"), width: 8, align: "right", value: (i) => number(i.purchaseQty) },
+    { key: "plannedQty", label: field("plannedQty"), width: 8.5, align: "right", value: (i) => number(i.plannedQty) },
+  ];
+  const total = columns.reduce((sum, c) => sum + c.width, 0);
+  // Colunas congeladas: cada uma parada depois das anteriores.
+  const leftOf = (index: number) =>
+    columns.slice(0, index).reduce((sum, c) => sum + c.width, 0);
+  const lastFrozen = columns.reduce(
+    (last, c, index) => (c.frozen ? index : last),
+    -1,
+  );
+  const alignClass = {
+    left: "text-left",
+    right: "text-right tabular-nums",
+    center: "text-center",
+  } as const;
+  const frozenStyle = (index: number) =>
+    columns[index].frozen
+      ? ({ position: "sticky", left: `${leftOf(index)}rem` } as const)
+      : undefined;
+  const edge = (index: number) =>
+    index === lastFrozen
+      ? "group-data-[scrolled=true]/sheet:shadow-[6px_0_8px_-6px_rgba(24,24,27,0.25)]"
+      : "";
+  const divider = (index: number) =>
+    index < columns.length - 1 ? "border-r border-zinc-200/70" : "";
+  const colgroup = (
+    <colgroup>
+      {columns.map((c) => (
+        <col key={c.key} style={{ width: `${c.width}rem` }} />
+      ))}
+    </colgroup>
+  );
+  const tableStyle = { width: `${total}rem`, minWidth: "100%" };
+  const tableClass = "table-fixed border-separate border-spacing-0 text-sm";
   return (
     <Card title={t("bookingLots.partner.items", { n: String(items.length) })}>
       {items.length ? (
-        <Table>
-          <thead>
-            <tr>
-              <Th className="w-10 text-right">#</Th>
-              <Th>{col("item")}</Th>
-              <Th className="text-right">{col("price")}</Th>
-              <Th className="text-right">{col("moq")}</Th>
-              <Th className="text-right">{col("box")}</Th>
-              <Th className="text-right">{col("cbm")}</Th>
-              <Th>{col("size")}</Th>
-              <Th className="text-right">{col("capacity")}</Th>
-              <Th>{col("material")}</Th>
-            </tr>
-          </thead>
-          <tbody data-partner-booking-items>
-            {items.map((i, index) => (
-              <tr key={i.id} className={rowClass}>
-                <Td className="text-right tabular-nums text-zinc-500">
-                  {index + 1}
-                </Td>
-                <Td className="min-w-56">
-                  <span className="font-medium text-zinc-900">
-                    {i.productName ?? i.description ?? "—"}
-                  </span>
-                  <span className="block text-xs text-zinc-500">
-                    {[i.itemNumber, i.factoryItemCode]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                </Td>
-                <Td className="whitespace-nowrap text-right tabular-nums">
-                  {i.price === null
-                    ? "—"
-                    : [num(t, i.price, 4), i.currency, i.incoterm]
-                        .filter(Boolean)
-                        .join(" ")}
-                </Td>
-                <Td className="text-right tabular-nums">{num(t, i.moq)}</Td>
-                <Td className="whitespace-nowrap text-right tabular-nums">
-                  {num(t, i.masterCartonQty)}
-                  {i.innerQty ? ` / ${num(t, i.innerQty)}` : ""}
-                </Td>
-                <Td className="text-right tabular-nums">
-                  {num(t, i.cbmPerCarton, 4)}
-                </Td>
-                <Td className="whitespace-nowrap tabular-nums">
-                  {[i.lengthCm, i.widthCm, i.heightCm].some((n) => n !== null)
-                    ? [i.lengthCm, i.widthCm, i.heightCm]
-                        .map((n) => num(t, n, 2))
-                        .join(" × ")
-                    : "—"}
-                </Td>
-                <Td className="text-right tabular-nums">
-                  {typeof bookingCapacityShown(i) === "string"
-                    ? bookingCapacityShown(i)
-                    : num(t, i.capacityMl)}
-                </Td>
-                <Td className="min-w-40">
-                  {[i.material, i.packageType, i.colorAssortment]
-                    .filter(Boolean)
-                    .join(" · ") || "—"}
-                </Td>
+        <StickyScrollTable
+          label={t("bookingLots.partner.items", { n: String(items.length) })}
+          data-partner-booking-sheet=""
+          head={
+            <table className={tableClass} style={tableStyle}>
+              {colgroup}
+              <thead>
+                <tr>
+                  {columns.map((c, index) => (
+                    <th
+                      key={c.key}
+                      className={`bg-zinc-50 px-2.5 py-2 align-bottom text-[11px] font-semibold uppercase leading-tight tracking-wide text-zinc-500 ${alignClass[c.align]} ${divider(index)} ${c.frozen ? "z-10" : ""} ${edge(index)}`}
+                      style={frozenStyle(index)}
+                      data-book-head={c.key}
+                    >
+                      {c.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+            </table>
+          }
+        >
+          <table className={tableClass} style={tableStyle}>
+            {colgroup}
+            {/* Os títulos de verdade, para leitores de tela (o visível é a
+                cópia presa no alto). */}
+            <thead>
+              <tr>
+                {columns.map((c) => (
+                  <th key={c.key} scope="col" className="h-0 border-0 p-0">
+                    <span className="sr-only">{c.label}</span>
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </Table>
+            </thead>
+            <tbody data-partner-booking-items>
+              {items.map((item, rowIndex) => (
+                <tr
+                  key={item.id}
+                  className="group/row"
+                  data-partner-booking-row={item.id}
+                >
+                  {columns.map((c, index) => (
+                    <td
+                      key={c.key}
+                      className={`border-b border-zinc-100 bg-white px-2.5 py-2 align-top text-[13px] text-zinc-800 break-words group-hover/row:bg-zinc-50 ${alignClass[c.align]} ${divider(index)} ${c.frozen ? "z-10" : ""} ${edge(index)}`}
+                      style={frozenStyle(index)}
+                      data-book-cell={c.key}
+                    >
+                      {c.value(item, rowIndex)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </StickyScrollTable>
       ) : (
         <Empty>{t("bookingLots.partner.noItems")}</Empty>
       )}
