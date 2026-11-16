@@ -15,8 +15,7 @@ import {
   isBookingPartner,
   matchSheetSupplier,
   mostCommon,
-  readBookingCapacity,
-  readBookingItemValue,
+  bookingItemPatch,
   supplierKey,
   type BookingItemField,
 } from "@/lib/booking-lots";
@@ -712,25 +711,152 @@ export async function setBookingItemField(
   const item = await withSchema(() => store.get("booking_items", itemId));
   if (!item) throw new BookingLotError("not_found");
   await editableLot(item.lotId);
-  // Capacidade: mililitros ou o tamanho em texto (os dois campos juntos).
-  if (field === "capacityMl") {
-    const next = readBookingCapacity(raw, item);
-    if (
-      next.capacityMl === item.capacityMl &&
-      next.sizeText === (item.sizeText ?? null)
-    )
-      return item;
-    return store.update("booking_items", item.id, {
-      ...next,
-      updatedByUserId: user.id,
-    });
-  }
-  const value = readBookingItemValue(field, raw);
-  if (item[field] === value) return item;
+  // A mesma regra do preenchimento em massa (bookingItemPatch).
+  const patch = bookingItemPatch(item, field, raw);
+  if (!patch) return item;
   return store.update("booking_items", item.id, {
-    [field]: value,
+    ...patch,
     updatedByUserId: user.id,
-  } as Partial<BookingItem>);
+  });
+}
+
+/* ------------------------------------------------------------------------ */
+/* Preenchimento em massa                                                    */
+/* ------------------------------------------------------------------------ */
+
+/** Campo do preenchimento em massa: os da célula e o NCM. */
+export type BookingBulkField = BookingItemField | "ncm";
+
+/**
+ * Resultado do preenchimento em massa: os itens gravados e os recusados,
+ * cada um com o campo e o erro (a ação traduz o motivo).
+ */
+export interface BookingBulkResult {
+  updated: string[];
+  failed: Array<{
+    itemId: string;
+    field: BookingBulkField | null;
+    error: unknown;
+  }>;
+}
+
+/**
+ * Grava os mesmos valores em vários itens do booking, item a item, com a
+ * regra da célula (bookingItemPatch). Item de outro booking fica de fora.
+ * Quem chama confere o login e se o booking aceita edição.
+ */
+export async function applyBookingItemsBulk(
+  user: User,
+  lotId: string,
+  itemIds: readonly string[],
+  values: ReadonlyArray<readonly [BookingItemField, string]>,
+): Promise<BookingBulkResult & { items: BookingItem[] }> {
+  const store = getStore();
+  const ids = [...new Set(itemIds)];
+  const found = ids.length
+    ? await withSchema(() =>
+        store.list("booking_items", { filter: { id: ids } }),
+      )
+    : [];
+  const byId = new Map(found.map((i) => [i.id, i]));
+  const result: BookingBulkResult & { items: BookingItem[] } = {
+    updated: [],
+    failed: [],
+    items: [],
+  };
+  for (const id of ids) {
+    const item = byId.get(id);
+    if (!item || item.lotId !== lotId) {
+      result.failed.push({
+        itemId: id,
+        field: null,
+        error: new BookingLotError("not_found"),
+      });
+      continue;
+    }
+    result.items.push(item);
+    // Campo a campo, para dizer qual não deu.
+    let field: BookingItemField | null = null;
+    try {
+      let current = item;
+      let patch: Partial<BookingItem> | null = null;
+      for (const [f, raw] of values) {
+        field = f;
+        const next = bookingItemPatch(current, f, raw);
+        if (!next) continue;
+        patch = { ...(patch ?? {}), ...next };
+        current = { ...current, ...next };
+      }
+      if (patch)
+        await store.update("booking_items", item.id, {
+          ...patch,
+          updatedByUserId: user.id,
+        });
+      result.updated.push(item.id);
+    } catch (error) {
+      result.failed.push({ itemId: id, field, error });
+    }
+  }
+  if (result.updated.length && values.length)
+    await audit(
+      user,
+      "booking_item.bulk",
+      "booking_lot",
+      lotId,
+      `Preenchimento em massa: ${values.map(([f]) => f).join(", ")} em ${result.updated.length} item(ns)`,
+      null,
+      { fields: Object.fromEntries(values), itemIds: result.updated },
+    );
+  return result;
+}
+
+/**
+ * Preenchimento em massa na tela da Wellmix (dono, 16/11/2026): os valores
+ * digitados acima das colunas vão para os itens marcados. As regras são as
+ * da célula: a tela Booking, o preço e a moeda só com "Ver preço de compra",
+ * os campos só no rascunho e o NCM em qualquer situação menos Cancelado (o
+ * mesmo serviço da célula do NCM, que refaz a análise do booking fechado).
+ */
+export async function setBookingItemsFields(
+  user: User,
+  lotId: string,
+  itemIds: readonly string[],
+  values: ReadonlyArray<readonly [BookingItemField, string]>,
+  ncm: string | null = null,
+): Promise<BookingBulkResult> {
+  assertBooking(user);
+  if (
+    values.some(([f]) => f === "price" || f === "currency") &&
+    !canSeePurchasePrice(user)
+  )
+    throw new BookingLotError("forbidden");
+  if (values.length) await editableLot(lotId);
+  else if (!(await wellmixLot(lotId))) throw new BookingLotError("not_found");
+  const { items, ...result } = await applyBookingItemsBulk(
+    user,
+    lotId,
+    itemIds,
+    values,
+  );
+  if (ncm === null || !ncm.trim()) return result;
+  // NCM: os itens do booking que gravaram os outros campos, de uma vez.
+  const failed = new Set(result.failed.map((f) => f.itemId));
+  const ncmIds = items.map((i) => i.id).filter((id) => !failed.has(id));
+  if (!ncmIds.length) return result;
+  const { setBookingItemsNcm } = await import("./booking-ncm");
+  // O serviço do NCM grava até 200 itens por vez.
+  for (let start = 0; start < ncmIds.length; start += 200) {
+    const chunk = ncmIds.slice(start, start + 200);
+    try {
+      await setBookingItemsNcm(user, chunk, ncm);
+    } catch (error) {
+      const refused = new Set(chunk);
+      result.updated = result.updated.filter((id) => !refused.has(id));
+      for (const itemId of chunk)
+        result.failed.push({ itemId, field: "ncm", error });
+    }
+  }
+  return result;
 }
 
 /* ------------------------------------------------------------------------ */
