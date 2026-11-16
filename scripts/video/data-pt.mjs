@@ -122,7 +122,9 @@ const tr = (s) => {
   }
   for (const [a, b] of RULES) {
     const key = String(a);
-    if (typeof a === "string" ? s.includes(a) : a.test((a.lastIndex = 0, s))) {
+    if (
+      typeof a === "string" ? s.includes(a) : a.test(((a.lastIndex = 0), s))
+    ) {
       count.set(key, (count.get(key) ?? 0) + 1);
       s = typeof a === "string" ? s.split(a).join(b) : s.replace(a, b);
     }

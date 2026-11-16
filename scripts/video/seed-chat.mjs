@@ -79,11 +79,7 @@ const CONVERSAS = {
       WELLMIX,
       "Olá, Li Wei. Pode nos enviar as fotos da amostra de produção deste pedido?",
     ],
-    [
-      FORNECEDOR,
-      "Olá! Fotos em anexo. A produção termina no dia 28.",
-      true,
-    ],
+    [FORNECEDOR, "Olá! Fotos em anexo. A produção termina no dia 28.", true],
     [WELLMIX, "Recebido, agradeço! Cor e posição do logotipo aprovadas."],
     [FORNECEDOR, "Ótimo. Vamos agendar a inspeção para a próxima semana."],
     [
@@ -177,10 +173,7 @@ async function desenharFoto(browser) {
     deviceScaleFactor: 1,
   });
   await page.setContent(`<body style="margin:0">${fotoSvg()}</body>`);
-  const arquivo = join(
-    mkdtempSync(join(tmpdir(), "seed-chat-")),
-    T.arquivo,
-  );
+  const arquivo = join(mkdtempSync(join(tmpdir(), "seed-chat-")), T.arquivo);
   await page
     .locator("svg")
     .screenshot({ path: arquivo, type: "jpeg", quality: 90 });
