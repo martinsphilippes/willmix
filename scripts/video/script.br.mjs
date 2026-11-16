@@ -43,17 +43,17 @@ const HANDOFFS = [
 /**
  * Como a voz deve ler o que o texto escreve de outro jeito. Cada par é
  * [expressão, leitura]; a ordem importa. As leituras foram escolhidas medindo
- * o que a voz fala (tts/tts_pt.py e a conferência por transcrição).
+ * o que a voz fala (tts/tts_pt.py e a conferência por transcrição do Whisper:
+ * "Uélmiks", "bê-éle", "érre-pê" e "ésse-éle-á" foram entendidos em todas as
+ * tentativas; "Control Tower", "Book" e "e-mail" saem bem como estão escritos
+ * ou com a leitura abaixo). Se a voz mudar, meça de novo.
  */
 const LEXICON = [
   [/Wellmix/g, "Uélmiks"],
   [/\bBL\b/g, "bê-éle"],
   [/\bERP\b/g, "érre-pê"],
   [/\bSLA\b/g, "ésse-éle-á"],
-  [/Control Tower/g, "Control Tower"],
-  [/\bPlanners?\b/g, "Planers"],
-  [/\bbooks?\b/gi, (m) => (m.toLowerCase().endsWith("s") ? "búques" : "búque")],
-  [/\bBook\b/g, "Búque"],
+  [/\bPlanners?\b/g, (m) => (m.endsWith("s") ? "Plânners" : "Plânner")],
   [/Packing list/g, "Pékin list"],
   [/\binvoice\b/g, "ínvóis"],
   [/e-mails?/g, (m) => (m.endsWith("s") ? "imeius" : "imeiu")],
