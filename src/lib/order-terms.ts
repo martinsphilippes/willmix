@@ -41,6 +41,35 @@ export const WELLMIX_TIERS = [
 ] as const;
 export type WellmixTier = (typeof WELLMIX_TIERS)[number];
 
+/**
+ * VIP de cada nível do formato Wellmix (dono, 16/11/2026): o divisor
+ * comercial que a cotação de encomenda V2 do Sankhya recebe em @VIP
+ * (107 Pleno, 108 Mega, 109 Hiper, 117 Ultra, 113 Evo, 115 Super).
+ */
+export const WELLMIX_TIER_VIP: Record<WellmixTier, number> = {
+  pleno: 1,
+  mega: 2,
+  hiper: 3,
+  ultra: 5,
+  evo: 1.42857143,
+  super: 4,
+};
+
+/**
+ * Quem chama o transportador (dono, 16/11/2026): o Cliente (ele informa a
+ * transportadora, ou as duas com re-despacho, na confirmação do pedido; a
+ * entrega vai do porto ao cliente) ou a Wellmix (o vendedor escolhe a(s)
+ * transportadora(s) na solicitação; a entrega passa pelo depósito).
+ */
+export const CARRIER_CALLERS = ["customer", "wellmix"] as const;
+export type CarrierCaller = (typeof CARRIER_CALLERS)[number];
+
+/** Rota da entrega na cotação V2 (@ROTA_ENTREGA) por quem chama. */
+export const DELIVERY_ROUTE: Record<CarrierCaller, string> = {
+  customer: "PORTO_CLIENTE",
+  wellmix: "VIA_DEPOSITO",
+};
+
 /** Transportadora escolhida: do cadastro do portal ou do Sankhya (TGFPAR). */
 export interface CarrierChoice {
   source: "portal" | "sankhya";
@@ -78,6 +107,8 @@ export interface CustomerConfirmation {
   userName: string;
   noReturnsAccepted: true;
   redispatchCarrier: RedispatchCarrier | null;
+  /** Quem chama = Cliente (16/11/2026): a transportadora informada por ele. */
+  carrier?: RedispatchCarrier | null;
 }
 
 /** Condições do pedido gravadas em cada solicitação do lote (`requests.orderTerms`). */
@@ -86,10 +117,21 @@ export interface OrderTerms {
   saleFormat: SaleFormat;
   /** Só com o formato Wellmix. */
   wellmixTier: WellmixTier | null;
-  /** Transportador (obrigatório desde 15/11/2026; nulo só nas antigas). */
+  /**
+   * Transportador escolhido pelo vendedor (quem chama = Wellmix); nulo
+   * quando quem chama é o cliente (ele informa na confirmação) e nas antigas.
+   */
   carrier: CarrierChoice | null;
-  /** Antes de 15/11/2026 (2ª rodada): transportadora do re-despacho. */
+  /**
+   * Transportadora do re-despacho escolhida pelo vendedor (quem chama =
+   * Wellmix, 16/11/2026; antes de 15/11/2026, a da 2ª rodada).
+   */
   redispatch?: CarrierChoice | null;
+  /**
+   * Quem chama o transportador (16/11/2026). Ausente nas antigas: o
+   * vendedor escolhia o transportador e o cliente informava o re-despacho.
+   */
+  carrierCaller?: CarrierCaller;
   /** Re-despacho: Sim ou Não (o cliente informa a transportadora na confirmação). */
   redispatchRequired?: boolean;
   /** País de origem (chave normalizada, ver `countryKey`). Produto sem país não é vendido. */

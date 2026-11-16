@@ -124,6 +124,75 @@ export type SuperplanInput = Partial<
 >;
 
 export const SUPERPLAN_FN = "FN_AD_SUPERPLAN_WELL";
+/**
+ * Cotação de encomenda V2 (dono, 16/11/2026; "Chamada da API de encomenda ·
+ * V2", 71 argumentos): substitui a ida da SuperPlan na previsão de preço. Os
+ * 69 de antes, na mesma ordem, mais @CODVEND (70) e @ROTA_ENTREGA (71); todo
+ * argumento vai como CAST(valor AS tipo) e o sem valor como CAST(NULL AS tipo).
+ */
+export const COTACAO_V2_FN = "FN_AD_ENC_COTACAO_V2_WELL";
+export const COTACAO_V2_PARAMS = [
+  ...SUPERPLAN_PARAMS,
+  "CODVEND",
+  "ROTA_ENTREGA",
+] as const;
+export type CotacaoV2Param = (typeof COTACAO_V2_PARAMS)[number];
+
+/** Tipo SQL de cada argumento da V2 (a assinatura publicada). */
+const V2_TEXT: Partial<Record<CotacaoV2Param, string>> = {
+  NCM: "VARCHAR(10)",
+  INCOTERM: "VARCHAR(5)",
+  MOEDA_ORIGEM: "VARCHAR(5)",
+  TIPO_RATEIO: "CHAR(1)",
+  EXIGE_INMETRO: "CHAR(1)",
+  DATA_REF: "DATE",
+  BASE_PRECO: "VARCHAR(20)",
+  ROTA_ENTREGA: "VARCHAR(20)",
+};
+const V2_INT = new Set<CotacaoV2Param>([
+  "PORTO_EMBARQUE",
+  "PORTO_DESEMBARQUE",
+  "EX_NCM",
+  "QTD_CONTAINERS",
+  "TIPO_CONTAINER",
+  "CODAGENTE",
+  "CODDESPACHANTE",
+  "CODPARC_FORN",
+  "CODEMP",
+  "PLUSCHARGE_MOEDA",
+  "DESP_ORIGEM_MOEDA",
+  "ID_PRECUSTO_BASE",
+  "CODPROD",
+  "CODVEND",
+]);
+export const v2Type = (name: CotacaoV2Param) =>
+  V2_TEXT[name] ?? (V2_INT.has(name) ? "INT" : "FLOAT");
+
+export type CotacaoV2Input = Partial<
+  Record<CotacaoV2Param, string | number | null>
+>;
+
+/** Um argumento da V2: CAST(valor AS tipo); erro = Error("invalid_input"). */
+function v2Arg(name: CotacaoV2Param, value: unknown): string {
+  const type = v2Type(name);
+  if (value === undefined || value === null || value === "")
+    return `CAST(NULL AS ${type})`;
+  if (V2_TEXT[name]) {
+    const text = String(value);
+    if (!/^[A-Za-z0-9._]{1,20}$/.test(text)) throw new Error("invalid_input");
+    return `CAST('${text}' AS ${type})`;
+  }
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) throw new Error("invalid_input");
+  if (type === "INT" && !Number.isInteger(n)) throw new Error("invalid_input");
+  return `CAST(${n} AS ${type})`;
+}
+
+/** SELECT da cotação V2, com as 71 posições na ordem. */
+export function cotacaoV2Sql(input: CotacaoV2Input): string {
+  const args = COTACAO_V2_PARAMS.map((k) => v2Arg(k, input[k]));
+  return `SELECT * FROM sankhya.${COTACAO_V2_FN}(${args.join(", ")})`;
+}
 export const SUPERPLAN_INVERSE_FN = "FN_AD_SUPERPLAN_INVERSA_WELL";
 
 /** Um argumento do SQL (a validação do anexo); erro = Error("invalid_input"). */
@@ -169,6 +238,17 @@ export interface PriceForecastQuery {
   cbmPerCarton?: number | null;
   price?: number | null;
   currency?: string | null;
+  /**
+   * Condições comerciais da cotação V2 (dono, 16/11/2026): VIP do nível do
+   * formato Wellmix, rota da entrega (quem chama o transportador), frete de
+   * entrega total em R$ (Configurações; nulo = pendente), vendedor (RCA do
+   * cliente, CODVEND) e a data de referência (AAAAMMDD).
+   */
+  vip?: number | null;
+  route?: string | null;
+  deliveryFreightBrl?: number | null;
+  sellerCode?: number | null;
+  dataRef?: string | null;
 }
 
 /** Preços de venda por peça (ida), em R$. */
@@ -186,6 +266,26 @@ export interface PriceForecastSale {
   cost: number | null;
   profitPercent: number | null;
   goalPercent: number | null;
+  /**
+   * Cotação V2 (16/11/2026): situação (PRONTA, FRETE_PENDENTE, PENDENTE),
+   * preço do produto pelo markup, frete por peça, referências WD e com
+   * frete, e se a meta de margem foi atingida (só com valores e margem).
+   */
+  status?: string | null;
+  productPrice?: number | null;
+  freightUnit?: number | null;
+  withFreight?: number | null;
+  wdBase?: number | null;
+  wdPercent?: number | null;
+  wdPrice?: number | null;
+  wdWithFreight?: number | null;
+  goalReached?: boolean | null;
+  /** O que foi enviado de condição comercial (VIP, rota e frete). */
+  sent?: {
+    vip: number | null;
+    route: string | null;
+    deliveryFreightBrl: number | null;
+  };
 }
 
 /**
@@ -305,17 +405,36 @@ export function saleOf(row: SankhyaRow, money: boolean): PriceForecastSale {
     cost: money ? num(row.CUSTO_BASE_VENDA) : null,
     profitPercent: money ? num(row.LUCRO_LIQUIDO_PERC) : null,
     goalPercent: money ? num(row.META_LUCRO_PERC) : null,
+    status: text(row.STATUS_COTACAO),
+    productPrice: num(row.PRECO_PRODUTO_META),
+    freightUnit: num(row.FRETE_UNITARIO),
+    withFreight: num(row.PRECO_COM_FRETE_REFERENCIA),
+    wdBase: num(row.BASE_WD_VALOR),
+    wdPercent: num(row.WD_PERC_REFERENCIA),
+    wdPrice: num(row.PRECO_WD_REFERENCIA),
+    wdWithFreight: num(row.PRECO_WD_COM_FRETE_REFERENCIA),
+    goalReached: money ? flag(row.META_ATINGIDA) : null,
   };
+}
+
+/** S/N (ou 1/0) do Sankhya → sim/não; outro valor = nulo. */
+function flag(v: unknown): boolean | null {
+  const s = text(v)?.toUpperCase();
+  if (s === "S" || s === "1" || s === "SIM" || s === "TRUE") return true;
+  if (s === "N" || s === "0" || s === "NAO" || s === "NÃO" || s === "FALSE")
+    return false;
+  return null;
 }
 
 /** Mensagem de erro da linha (OK = N, MENSAGEM_VENDA ou MENSAGEM_INVERSA ≠ ok). */
 export function rowProblem(
   row: SankhyaRow | undefined,
-  key: "MENSAGEM_VENDA" | "MENSAGEM_INVERSA",
+  key: "MENSAGEM_VENDA" | "MENSAGEM_INVERSA" | null,
 ): string | null {
   if (!row) return "sem resposta da função";
   if (text(row.OK)?.toUpperCase() === "N")
     return text(row.MENSAGEM) ?? "sem custo";
+  if (!key) return null;
   const m = text(row[key]);
   return m && m.toLowerCase() !== "ok" ? m : null;
 }
@@ -331,18 +450,22 @@ export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
 
   /** Roda a função; sem preço no Sankhya, tenta de novo com o do portal. */
   private async run(
-    fn: typeof SUPERPLAN_FN | typeof SUPERPLAN_INVERSE_FN,
+    fn:
+      typeof SUPERPLAN_FN | typeof SUPERPLAN_INVERSE_FN | typeof COTACAO_V2_FN,
     q: PriceForecastQuery,
-    extra: SuperplanInput,
+    extra: CotacaoV2Input,
   ): Promise<
     | { row: SankhyaRow | undefined; audit: SuperplanAudit | undefined }
     | "manual"
     | { error: string }
   > {
     try {
-      let input: SuperplanInput = { ...productInput(q), ...extra };
-      let row = (await executeQuery(superplanSql(fn, input), this.options))
-        .rows[0];
+      const sql = (input: CotacaoV2Input) =>
+        fn === COTACAO_V2_FN
+          ? cotacaoV2Sql(input)
+          : superplanSql(fn, input as SuperplanInput);
+      let input: CotacaoV2Input = { ...productInput(q), ...extra };
+      let row = (await executeQuery(sql(input), this.options)).rows[0];
       const needsPrice =
         text(row?.OK)?.toUpperCase() === "N" &&
         /PRECO_ORIGEM/i.test(String(row?.MENSAGEM ?? "")) &&
@@ -350,8 +473,7 @@ export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
         !!q.sankhyaCode;
       if (needsPrice) {
         input = { ...productInput(q, true), ...extra };
-        row = (await executeQuery(superplanSql(fn, input), this.options))
-          .rows[0];
+        row = (await executeQuery(sql(input), this.options)).rows[0];
       }
       return { row, audit: this.money ? auditOf(fn, input, row) : undefined };
     } catch (e) {
@@ -366,7 +488,8 @@ export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
   }
 
   async forecast(q: PriceForecastQuery): Promise<PriceForecastAnswer> {
-    const ran = await this.run(SUPERPLAN_FN, q, {});
+    // Cotação de encomenda V2 (dono, 16/11/2026) no lugar da SuperPlan.
+    const ran = await this.run(COTACAO_V2_FN, q, commercialInput(q, true));
     if (ran === "manual") return { mode: "manual" };
     if ("error" in ran)
       return { mode: "api", kind: "error", message: String(ran.error) };
@@ -377,6 +500,11 @@ export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
       mode: "api",
       kind: "forecast",
       ...saleOf(row!, this.money),
+      sent: {
+        vip: q.vip ?? null,
+        route: q.route ?? null,
+        deliveryFreightBrl: q.deliveryFreightBrl ?? null,
+      },
       audit,
     };
   }
@@ -384,7 +512,10 @@ export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
   async solve(
     q: PriceForecastQuery & { targetFinalPriceBrl: number },
   ): Promise<PriceForecastAnswer> {
+    // A volta continua na SuperPlan inversa (69): leva o VIP e o frete de
+    // entrega, que ela também tem; a rota e o vendedor são só da V2.
     const ran = await this.run(SUPERPLAN_INVERSE_FN, q, {
+      ...commercialInput(q, false),
       PRECO_VENDA_ALVO: q.targetFinalPriceBrl,
     });
     if (ran === "manual") return { mode: "manual" };
@@ -404,15 +535,47 @@ export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
   }
 }
 
-/** Entrada enviada (só com valor, na ordem dos 69) e a linha devolvida. */
+/**
+ * Condições comerciais da cotação (dono, 16/11/2026): VIP, frete de entrega
+ * e a data; na V2, também a rota e o vendedor.
+ */
+export function commercialInput(
+  q: PriceForecastQuery,
+  v2: boolean,
+): CotacaoV2Input {
+  const vip = q.vip !== null && q.vip !== undefined && q.vip > 0 ? q.vip : null;
+  const freight =
+    q.deliveryFreightBrl !== null &&
+    q.deliveryFreightBrl !== undefined &&
+    Number.isFinite(q.deliveryFreightBrl) &&
+    q.deliveryFreightBrl >= 0
+      ? q.deliveryFreightBrl
+      : null;
+  return {
+    VIP: vip,
+    FRETE_ENTREGA_BRL: freight,
+    DATA_REF: q.dataRef && /^\d{8}$/.test(q.dataRef) ? q.dataRef : null,
+    ...(v2
+      ? {
+          ROTA_ENTREGA: q.route ?? null,
+          CODVEND:
+            q.sellerCode && Number.isInteger(q.sellerCode) && q.sellerCode > 0
+              ? q.sellerCode
+              : null,
+        }
+      : {}),
+  };
+}
+
+/** Entrada enviada (só com valor, na ordem da função) e a linha devolvida. */
 export function auditOf(
   fn: string,
-  input: SuperplanInput,
+  input: CotacaoV2Input,
   row: SankhyaRow | undefined,
 ): SuperplanAudit {
   return {
     fn,
-    inputs: SUPERPLAN_PARAMS.flatMap((k) => {
+    inputs: COTACAO_V2_PARAMS.flatMap((k) => {
       const v = input[k];
       return v === undefined || v === null || v === "" ? [] : [[k, v]];
     }) as Array<[string, string | number]>,

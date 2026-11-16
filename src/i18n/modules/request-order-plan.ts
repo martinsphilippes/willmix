@@ -37,7 +37,7 @@ export const pt = {
     "As programações dos produtos não batem: as datas são do pedido e precisam ser as mesmas em todos os produtos.",
   "priceForecast.title": "Previsão de preço ao cliente final",
   "priceForecast.hint":
-    "Pela SuperPlan do Sankhya: veja os preços de venda previstos do produto ou informe o preço de venda desejado para encontrar o preço máximo de compra.",
+    "Pela cotação de encomenda do Sankhya (V2), com o formato de venda (VIP), quem chama o transportador (rota) e o frete de entrega padrão: veja o preço previsto do produto ou informe o preço de venda desejado para encontrar o preço máximo de compra.",
   "priceForecast.view": "Ver o preço previsto",
   "priceForecast.target": "Informar o preço de venda desejado",
   "priceForecast.calculate": "Calcular",
@@ -59,11 +59,11 @@ export const pt = {
   "priceForecast.profit": "Lucro líquido",
   "priceForecast.profitValue": "{profit}% (meta {goal}%)",
   "priceForecast.source":
-    "Valores por peça, da SuperPlan do Sankhya (consulta agora).",
+    "Valores por peça, da cotação de encomenda V2 do Sankhya (consulta agora).",
   "priceForecast.auditTitle": "Memória de cálculo do Sankhya (auditoria)",
   "priceForecast.auditInputs": "Enviado à função {fn}",
   "priceForecast.auditDefaults":
-    "Os parâmetros que não aparecem foram como DEFAULT (o padrão do Sankhya).",
+    "Os parâmetros que não aparecem foram como NULL (a cotação V2 resolve pelos cadastros do Sankhya); na volta (SuperPlan inversa), como DEFAULT.",
   "priceForecast.auditOutputs": "Devolvido pela função (todas as colunas)",
   "sankhyaHistory.source": "Do Sankhya, consultado agora",
   "sankhyaHistory.empty": "Nenhum pedido deste cliente no Sankhya.",
@@ -127,7 +127,7 @@ export const en: Record<keyof typeof pt, string> = {
     "The products' schedules do not match: the dates belong to the order and must be the same for every product.",
   "priceForecast.title": "End-customer price forecast",
   "priceForecast.hint":
-    "From Sankhya's SuperPlan: see the product's forecast sale prices or enter the desired sale price to find the maximum purchase price.",
+    "From Sankhya's order quote (V2), with the sale format (VIP), who calls the carrier (route) and the default delivery freight: see the product's forecast price or enter the desired sale price to find the maximum purchase price.",
   "priceForecast.view": "See the forecast price",
   "priceForecast.target": "Enter the desired sale price",
   "priceForecast.calculate": "Calculate",
@@ -149,11 +149,11 @@ export const en: Record<keyof typeof pt, string> = {
   "priceForecast.profit": "Net profit",
   "priceForecast.profitValue": "{profit}% (goal {goal}%)",
   "priceForecast.source":
-    "Per-piece values from Sankhya's SuperPlan (queried now).",
+    "Per-piece values from Sankhya's order quote V2 (queried now).",
   "priceForecast.auditTitle": "Sankhya calculation details (audit)",
   "priceForecast.auditInputs": "Sent to function {fn}",
   "priceForecast.auditDefaults":
-    "Parameters not listed were sent as DEFAULT (Sankhya's default).",
+    "Parameters not listed were sent as NULL (quote V2 resolves them from Sankhya's records); in the reverse calculation (inverse SuperPlan), as DEFAULT.",
   "priceForecast.auditOutputs": "Returned by the function (all columns)",
   "sankhyaHistory.source": "From Sankhya, queried now",
   "sankhyaHistory.empty": "No orders from this customer in Sankhya.",
@@ -220,7 +220,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "priceForecast.manual":
     "未配置 Sankhya：价格预测（SuperPlan）不可用。不估算任何价格。",
   "priceForecast.hint":
-    "来自 Sankhya 的 SuperPlan：查看产品的预测售价，或输入期望售价以求出最高采购价。",
+    "来自 Sankhya 订货报价（V2），包含销售形式（VIP）、由谁联系承运商（路线）和默认送货运费：查看产品的预测价格，或输入期望售价以求出最高采购价。",
   "priceForecast.targetField": "期望售价（每件 R$，含 IPI）",
   "priceForecast.error": "SuperPlan 未返回价格：",
   "priceForecast.sale": "售价（含 IPI）",
@@ -232,11 +232,11 @@ export const zh: Record<keyof typeof pt, string> = {
   "priceForecast.profit": "净利润",
   "priceForecast.profitValue": "{profit}%（目标 {goal}%）",
   "priceForecast.resultTarget": "若以每件 {target} 出售，最高采购价为",
-  "priceForecast.source": "每件数值，来自 Sankhya 的 SuperPlan（实时查询）。",
+  "priceForecast.source": "每件数值，来自 Sankhya 订货报价 V2（实时查询）。",
   "priceForecast.auditTitle": "Sankhya 计算明细（审计）",
   "priceForecast.auditInputs": "发送给函数 {fn}",
   "priceForecast.auditDefaults":
-    "未列出的参数以 DEFAULT（Sankhya 默认值）发送。",
+    "未列出的参数以 NULL 发送（报价 V2 根据 Sankhya 档案解析）；反向计算（SuperPlan 反算）以 DEFAULT 发送。",
   "priceForecast.auditOutputs": "函数返回（全部字段）",
   "sankhyaHistory.source": "来自 Sankhya，实时查询",
   "sankhyaHistory.empty": "Sankhya 中没有该客户的订单。",

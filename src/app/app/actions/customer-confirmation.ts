@@ -16,6 +16,8 @@ const INPUT = z.object({
   accept: z.boolean(),
   cnpj: z.string().max(30),
   carrierName: z.string().max(160),
+  mainCnpj: z.string().max(30),
+  mainCarrierName: z.string().max(160),
 });
 
 export async function confirmCustomerOrderAction(form: FormData) {
@@ -29,6 +31,8 @@ export async function confirmCustomerOrderAction(form: FormData) {
       accept: str(form, "accept") === "1",
       cnpj: str(form, "cnpj"),
       carrierName: str(form, "carrierName"),
+      mainCnpj: str(form, "mainCnpj"),
+      mainCarrierName: str(form, "mainCarrierName"),
     });
     await confirmCustomerOrder(user, input.requestId, input);
     return `${back}?confirmed=1`;

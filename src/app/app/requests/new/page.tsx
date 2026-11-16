@@ -1,3 +1,4 @@
+import { WELLMIX_TIERS } from "@/lib/order-terms";
 import { redirect } from "next/navigation";
 import {
   generateLabels,
@@ -793,6 +794,8 @@ export default async function NewRequestPage({
                   saleFormat: draftValue("saleFormat"),
                   wellmixTier: draftValue("wellmixTier"),
                   carrier: draftValue("carrier"),
+                  redispatchCarrier: draftValue("redispatchCarrier"),
+                  carrierCaller: draftValue("carrierCaller"),
                   redispatch: draftValue("redispatch"),
                   originCountry: draftValue("originCountry"),
                   productFamily: draftValue("productFamily"),
@@ -998,6 +1001,35 @@ export default async function NewRequestPage({
                         auditDefaults: t("priceForecast.auditDefaults"),
                         auditOutputs: t("priceForecast.auditOutputs"),
                         canSolve: canSeeMoney(user),
+                        productPrice: t("priceForecast.productPrice"),
+                        freightUnit: t("priceForecast.freightUnit"),
+                        withFreight: t("priceForecast.withFreight"),
+                        wdPrice: t("priceForecast.wdPrice"),
+                        wdWithFreight: t("priceForecast.wdWithFreight"),
+                        wdBase: t("priceForecast.wdBase"),
+                        wdPercent: t("priceForecast.wdPercent"),
+                        goalReached: t("priceForecast.goalReached"),
+                        goalYes: t("priceForecast.goalYes"),
+                        goalNo: t("priceForecast.goalNo"),
+                        freightPending: t("priceForecast.freightPending"),
+                        quotePending: t("priceForecast.quotePending"),
+                        sent: t("priceForecast.sent", {
+                          format: "{format}",
+                          vip: "{vip}",
+                          route: "{route}",
+                          freight: "{freight}",
+                        }),
+                        freightNull: t("priceForecast.freightNull"),
+                        formats: {
+                          wd: t("orderTerms.format.wd"),
+                          wellmix: t("orderTerms.format.wellmix"),
+                          ...Object.fromEntries(
+                            WELLMIX_TIERS.map((k) => [
+                              k,
+                              `${t("orderTerms.format.wellmix")} · ${t(`orderTerms.tier.${k}`)}`,
+                            ]),
+                          ),
+                        },
                       },
                     }
                   : {}),

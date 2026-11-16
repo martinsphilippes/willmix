@@ -9,6 +9,8 @@ import {
   SALE_FORMATS,
   WELLMIX_TIERS,
   carrierValue,
+  CARRIER_CALLERS,
+  type CarrierCaller,
   countryAllowed,
   formatCnpj,
   type OperationType,
@@ -38,6 +40,12 @@ export interface RequestOrderTermsLabels {
   carrierSankhya: string;
   carrierSankhyaOff: string;
   carrierSankhyaError: string;
+  /** Quem chama o transportador (16/11/2026): Cliente ou Wellmix. */
+  carrierCaller: string;
+  carrierCallers: Record<CarrierCaller, string>;
+  carrierCallerHint: Record<CarrierCaller, string>;
+  /** Transportador do re-despacho (quem chama = Wellmix, com Sim). */
+  redispatchCarrier: string;
   country: string;
   countryChoose: string;
   /** "(não vale no TS)" */
@@ -71,6 +79,8 @@ export interface OrderTermsInitial {
   saleFormat?: string;
   wellmixTier?: string;
   carrier?: string;
+  redispatchCarrier?: string;
+  carrierCaller?: string;
   redispatch?: string;
   originCountry?: string;
   productFamily?: string;
@@ -146,8 +156,27 @@ export function RequestOrderTerms({
   const setOrigin = shared?.setOrigin;
   // Transportador: busca por nome, código ou CNPJ (dono, 15/11/2026) e o
   // resumo do escolhido (código, CNPJ e nome) abaixo do campo.
-  const [carrierQuery, setCarrierQuery] = useState("");
-  const [carrierPick, setCarrierPick] = useState(initial.carrier ?? "");
+  const [tier, setTier] = useState(
+    (WELLMIX_TIERS as readonly string[]).includes(initial.wellmixTier ?? "")
+      ? (initial.wellmixTier as string)
+      : "",
+  );
+  const [redispatch, setRedispatch] = useState(initial.redispatch ?? "");
+  const [caller, setCaller] = useState<CarrierCaller | "">(
+    (CARRIER_CALLERS as readonly string[]).includes(initial.carrierCaller ?? "")
+      ? (initial.carrierCaller as CarrierCaller)
+      : "",
+  );
+  // A previsão de preço lê o formato, o nível e quem chama (VIP e rota da
+  // cotação V2 do Sankhya; dono, 16/11/2026).
+  const setSaleTerms = shared?.setSaleTerms;
+  useEffect(() => {
+    setSaleTerms?.({
+      saleFormat: format || null,
+      wellmixTier: format === "wellmix" && tier ? (tier as WellmixTier) : null,
+      carrierCaller: caller || null,
+    });
+  }, [format, tier, caller, setSaleTerms]);
   // Trocar o país ou a família com produto no pedido (dono, 15/11/2026): o
   // aviso recomenda terminar este pedido e começar outro; "trocar" limpa os
   // produtos.
@@ -228,8 +257,6 @@ export function RequestOrderTerms({
   const myGroups = groups && groups.key === country ? groups.list : null;
   const count = (n: number) =>
     labels.productsCount.replace("{n}", n.toLocaleString("pt-BR"));
-  const carrierLabel = (c: Carrier) =>
-    `${c.erpCode ? `${c.erpCode} · ` : ""}${c.name}${c.city ? ` · ${c.city}` : ""}${c.source === "sankhya" ? ` (${labels.carrierSankhya})` : ""}`;
 
   return (
     <section
@@ -299,13 +326,8 @@ export function RequestOrderTerms({
               <Select
                 name="wellmixTier"
                 required
-                defaultValue={
-                  (WELLMIX_TIERS as readonly string[]).includes(
-                    initial.wellmixTier ?? "",
-                  )
-                    ? initial.wellmixTier
-                    : ""
-                }
+                value={tier}
+                onChange={(e) => setTier(e.target.value)}
                 data-order-terms-tier
               >
                 <option value="" disabled>
@@ -328,111 +350,92 @@ export function RequestOrderTerms({
           {labels.delivery}
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="min-w-0">
-            {failed ? (
+          <div className="min-w-0 space-y-3">
+            <fieldset className="min-w-0 space-y-1" data-order-terms-redispatch>
+              <legend className="block text-xs font-medium leading-5 text-zinc-700">
+                {labels.redispatch}
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {(["yes", "no"] as const).map((v) => (
+                  <label key={v} className={radioClass}>
+                    <input
+                      type="radio"
+                      name="redispatch"
+                      value={v}
+                      required
+                      checked={redispatch === v}
+                      onChange={() => setRedispatch(v)}
+                      data-order-terms-redispatch-option={v}
+                    />
+                    {v === "yes" ? labels.redispatchYes : labels.redispatchNo}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-zinc-500">{labels.redispatchHint}</p>
+            </fieldset>
+            {/* Quem chama o transportador (dono, 16/11/2026): define quem
+                vincula a(s) transportadora(s) e a rota da entrega. */}
+            <fieldset
+              className="min-w-0 space-y-1"
+              data-order-terms-carrier-caller
+            >
+              <legend className="block text-xs font-medium leading-5 text-zinc-700">
+                {labels.carrierCaller}
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {CARRIER_CALLERS.map((v) => (
+                  <label key={v} className={radioClass}>
+                    <input
+                      type="radio"
+                      name="carrierCaller"
+                      value={v}
+                      required
+                      checked={caller === v}
+                      onChange={() => setCaller(v)}
+                      data-order-terms-carrier-caller-option={v}
+                    />
+                    {labels.carrierCallers[v]}
+                  </label>
+                ))}
+              </div>
+              {caller ? (
+                <p
+                  className="text-xs text-zinc-500"
+                  data-order-terms-carrier-caller-hint
+                >
+                  {labels.carrierCallerHint[caller]}
+                </p>
+              ) : null}
+            </fieldset>
+          </div>
+          <div className="min-w-0 space-y-3">
+            {caller !== "wellmix" ? null : failed ? (
               <p className="text-xs font-medium text-red-700">{labels.error}</p>
             ) : !options ? (
               <p className="text-xs text-zinc-500">{labels.loading}</p>
             ) : (
-              <div className="space-y-1">
-                <Field label={labels.carrier}>
-                  <input
-                    type="search"
-                    value={carrierQuery}
-                    onChange={(e) => setCarrierQuery(e.target.value)}
-                    placeholder={labels.carrierSearch}
-                    aria-label={labels.carrierSearch}
-                    className="mb-1 w-full rounded-lg border border-zinc-300 px-2.5 py-1.5 text-sm"
-                    data-order-terms-carrier-search
+              <>
+                <CarrierPicker
+                  name="carrier"
+                  label={labels.carrier}
+                  initial={initial.carrier ?? ""}
+                  carriers={options.carriers}
+                  labels={labels}
+                  dataKey="carrier"
+                />
+                {redispatch === "yes" ? (
+                  <CarrierPicker
+                    name="redispatchCarrier"
+                    label={labels.redispatchCarrier}
+                    initial={initial.redispatchCarrier ?? ""}
+                    carriers={options.carriers}
+                    labels={labels}
+                    dataKey="redispatch-carrier"
                   />
-                </Field>
-                {(() => {
-                  const q = foldText(carrierQuery.trim());
-                  const digits = carrierQuery.replace(/\D/g, "");
-                  const matches = (c: Carrier) =>
-                    !q ||
-                    foldText(c.name).includes(q) ||
-                    (!!digits &&
-                      (!!c.erpCode?.includes(digits) ||
-                        !!c.taxId?.includes(digits)));
-                  const value = options.carriers.some(
-                    (c) => carrierValue(c) === carrierPick,
-                  )
-                    ? carrierPick
-                    : "";
-                  const picked = options.carriers.find(
-                    (c) => carrierValue(c) === value,
-                  );
-                  return (
-                    <>
-                      <Select
-                        name="carrier"
-                        value={value}
-                        onChange={(e) => setCarrierPick(e.target.value)}
-                        required
-                        aria-label={labels.carrier}
-                        data-order-terms-carrier
-                      >
-                        <option value="" disabled>
-                          {labels.carrierNone}
-                        </option>
-                        {options.carriers
-                          .filter(
-                            (c) => carrierValue(c) === value || matches(c),
-                          )
-                          .map((c) => (
-                            <option
-                              key={carrierValue(c)}
-                              value={carrierValue(c)}
-                            >
-                              {carrierLabel(c)}
-                            </option>
-                          ))}
-                      </Select>
-                      {picked ? (
-                        <p
-                          className="text-xs text-zinc-600"
-                          data-order-terms-carrier-summary
-                        >
-                          <span className="font-medium text-zinc-800">
-                            {labels.summaryCode.replace(
-                              "{code}",
-                              picked.erpCode || "—",
-                            )}
-                          </span>
-                          {picked.taxId
-                            ? ` · ${labels.summaryCnpj.replace("{cnpj}", formatCnpj(picked.taxId))}`
-                            : ""}
-                          {` · ${picked.name}`}
-                        </p>
-                      ) : null}
-                    </>
-                  );
-                })()}
-              </div>
+                ) : null}
+              </>
             )}
           </div>
-          <fieldset className="min-w-0 space-y-1" data-order-terms-redispatch>
-            <legend className="block text-xs font-medium leading-5 text-zinc-700">
-              {labels.redispatch}
-            </legend>
-            <div className="flex flex-wrap gap-2">
-              {(["yes", "no"] as const).map((v) => (
-                <label key={v} className={radioClass}>
-                  <input
-                    type="radio"
-                    name="redispatch"
-                    value={v}
-                    required
-                    defaultChecked={initial.redispatch === v}
-                    data-order-terms-redispatch-option={v}
-                  />
-                  {v === "yes" ? labels.redispatchYes : labels.redispatchNo}
-                </label>
-              ))}
-            </div>
-            <p className="text-xs text-zinc-500">{labels.redispatchHint}</p>
-          </fieldset>
         </div>
         {options && options.sankhya !== "ok" ? (
           <p
@@ -558,5 +561,87 @@ export function RequestOrderTerms({
         {labels.confirmNote}
       </p>
     </section>
+  );
+}
+
+/**
+ * Uma transportadora (do portal ou do Sankhya): busca por nome, código ou
+ * CNPJ e, abaixo da escolhida, código · CNPJ · nome (dono, 15/11/2026).
+ */
+function CarrierPicker({
+  name,
+  label,
+  initial,
+  carriers,
+  labels,
+  dataKey,
+}: {
+  name: string;
+  label: string;
+  initial: string;
+  carriers: Carrier[];
+  labels: RequestOrderTermsLabels;
+  dataKey: "carrier" | "redispatch-carrier";
+}) {
+  const [query, setQuery] = useState("");
+  const [pick, setPick] = useState(initial);
+  const q = foldText(query.trim());
+  const digits = query.replace(/\D/g, "");
+  const matches = (c: Carrier) =>
+    !q ||
+    foldText(c.name).includes(q) ||
+    (!!digits &&
+      (!!c.erpCode?.includes(digits) || !!c.taxId?.includes(digits)));
+  const value = carriers.some((c) => carrierValue(c) === pick) ? pick : "";
+  const picked = carriers.find((c) => carrierValue(c) === value);
+  const carrierLabel = (c: Carrier) =>
+    `${c.erpCode ? `${c.erpCode} · ` : ""}${c.name}${c.city ? ` · ${c.city}` : ""}${c.source === "sankhya" ? ` (${labels.carrierSankhya})` : ""}`;
+  return (
+    <div className="space-y-1">
+      <Field label={label}>
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={labels.carrierSearch}
+          aria-label={`${label}: ${labels.carrierSearch}`}
+          className="mb-1 w-full rounded-lg border border-zinc-300 px-2.5 py-1.5 text-sm"
+          {...{ [`data-order-terms-${dataKey}-search`]: "" }}
+        />
+      </Field>
+      <Select
+        name={name}
+        value={value}
+        onChange={(e) => setPick(e.target.value)}
+        required
+        aria-label={label}
+        {...{ [`data-order-terms-${dataKey}`]: "" }}
+      >
+        <option value="" disabled>
+          {labels.carrierNone}
+        </option>
+        {carriers
+          .filter((c) => carrierValue(c) === value || matches(c))
+          .map((c) => (
+            <option key={carrierValue(c)} value={carrierValue(c)}>
+              {carrierLabel(c)}
+            </option>
+          ))}
+      </Select>
+      {picked ? (
+        <p
+          className="text-xs text-zinc-600"
+          {...{ [`data-order-terms-${dataKey}-summary`]: "" }}
+        >
+          <span className="font-medium text-zinc-800">
+            {labels.summaryCode.replace("{code}", picked.erpCode || "—")}
+          </span>
+          {picked.taxId
+            ? ` · ${labels.summaryCnpj.replace("{cnpj}", formatCnpj(picked.taxId))}`
+            : ""}
+          {` · ${picked.name}`}
+        </p>
+      ) : null}
+    </div>
   );
 }

@@ -25,14 +25,25 @@ export function RequestOrderTermsView({
       ? `${c.name}${c.source === "sankhya" ? ` (Sankhya ${c.code})` : ""}`
       : "—";
   const confirmation = terms.confirmation ?? null;
+  const caller = terms.carrierCaller;
+  const pending = t("orderTerms.view.carrierPending");
+  // Quem chama = Cliente (16/11/2026): as transportadoras vêm da confirmação.
+  const mainCarrier =
+    caller === "customer"
+      ? confirmation?.carrier
+        ? `${confirmation.carrier.name} (${formatCnpj(confirmation.carrier.cnpj)})`
+        : pending
+      : carrier(terms.carrier);
   const redispatch =
     terms.redispatchRequired === undefined
       ? carrier(terms.redispatch) // antes de 15/11/2026 (2ª rodada)
-      : terms.redispatchRequired
-        ? confirmation?.redispatchCarrier
-          ? `${t("orderTerms.redispatchYes")} · ${confirmation.redispatchCarrier.name} (${formatCnpj(confirmation.redispatchCarrier.cnpj)})`
-          : `${t("orderTerms.redispatchYes")} · ${t("orderTerms.view.redispatchPending")}`
-        : t("orderTerms.redispatchNo");
+      : terms.redispatchRequired && caller === "wellmix"
+        ? `${t("orderTerms.redispatchYes")} · ${carrier(terms.redispatch)}`
+        : terms.redispatchRequired
+          ? confirmation?.redispatchCarrier
+            ? `${t("orderTerms.redispatchYes")} · ${confirmation.redispatchCarrier.name} (${formatCnpj(confirmation.redispatchCarrier.cnpj)})`
+            : `${t("orderTerms.redispatchYes")} · ${t("orderTerms.view.redispatchPending")}`
+          : t("orderTerms.redispatchNo");
   const rows: Array<[string, string]> = [
     [
       t("orderTerms.operationType"),
@@ -44,7 +55,15 @@ export function RequestOrderTermsView({
         ? `${t("orderTerms.format.wellmix")} · ${t(`orderTerms.tier.${terms.wellmixTier}`)}`
         : t(`orderTerms.format.${terms.saleFormat}`),
     ],
-    [t("orderTerms.carrier"), carrier(terms.carrier)],
+    ...(caller
+      ? ([
+          [
+            t("orderTerms.view.carrierCaller"),
+            t(`orderTerms.carrierCaller.${caller}`),
+          ],
+        ] as Array<[string, string]>)
+      : []),
+    [t("orderTerms.carrier"), mainCarrier],
     [t("orderTerms.redispatch"), redispatch],
     [
       t("orderTerms.country"),

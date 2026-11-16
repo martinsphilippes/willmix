@@ -1,5 +1,6 @@
 import type { Translate } from "@/i18n";
 import {
+  CARRIER_CALLERS,
   CONTACT_ROLES,
   OPERATION_TYPES,
   SALE_FORMATS,
@@ -40,6 +41,14 @@ export function orderTermsLabels(t: Translate): RequestOrderTermsLabels {
     carrierSankhya: t("orderTerms.carrierSankhya"),
     carrierSankhyaOff: t("orderTerms.carrierSankhyaOff"),
     carrierSankhyaError: t("orderTerms.carrierSankhyaError"),
+    carrierCaller: t("orderTerms.carrierCaller"),
+    carrierCallers: record(CARRIER_CALLERS, (k) =>
+      t(`orderTerms.carrierCaller.${k}`),
+    ),
+    carrierCallerHint: record(CARRIER_CALLERS, (k) =>
+      t(`orderTerms.carrierCallerHint.${k}`),
+    ),
+    redispatchCarrier: t("orderTerms.redispatchCarrier"),
     country: t("orderTerms.country"),
     countryChoose: t("orderTerms.countryChoose"),
     countryDisabled: t("orderTerms.countryDisabled"),
@@ -75,6 +84,8 @@ export function customerConfirmLabels(
     accept: t("orderTerms.accept"),
     redispatchTitle: t("customerConfirm.redispatchTitle"),
     redispatchHint: t("customerConfirm.redispatchHint"),
+    carrierTitle: t("customerConfirm.carrierTitle"),
+    carrierHint: t("customerConfirm.carrierHint"),
     cnpj: t("customerConfirm.cnpj"),
     cnpjPlaceholder: t("customerConfirm.cnpjPlaceholder"),
     lookup: t("customerConfirm.lookup"),
