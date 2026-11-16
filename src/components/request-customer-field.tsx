@@ -44,6 +44,10 @@ export function RequestCustomerField({
 }) {
   const shared = useRequestCustomer();
   const [localStock, setLocalStock] = useState(initialStock);
+  // Compra para estoque tira o cliente da busca (dono, 16/11/2026): o campo
+  // volta em branco (nova montagem, sem o cliente de antes).
+  const [pickerKey, setPickerKey] = useState(0);
+  const [cleared, setCleared] = useState(false);
   const stock = allowStock && (shared ? shared.stock : localStock);
   return (
     <div className="space-y-1.5" data-request-customer>
@@ -51,12 +55,13 @@ export function RequestCustomerField({
         <input type="hidden" name="customerId" value={stockValue} />
       ) : null}
       <PartyPicker
+        key={pickerKey}
         name={stock ? undefined : "customerId"}
         type="customer"
         activeOnly
         required={!stock}
         disabled={stock}
-        initial={initial}
+        initial={cleared ? null : initial}
         ariaLabel={ariaLabel}
         labels={labels}
         onChoose={(option) => shared?.setCustomer(option)}
@@ -79,11 +84,16 @@ export function RequestCustomerField({
           <input
             type="checkbox"
             checked={stock}
-            onChange={(e) =>
-              shared
-                ? shared.setStock(e.target.checked)
-                : setLocalStock(e.target.checked)
-            }
+            onChange={(e) => {
+              const on = e.target.checked;
+              if (shared) shared.setStock(on);
+              else setLocalStock(on);
+              if (on) {
+                shared?.setCustomer(null);
+                setCleared(true);
+                setPickerKey((k) => k + 1);
+              }
+            }}
             className="h-4 w-4 shrink-0 accent-brand-600"
             data-stock-option
           />

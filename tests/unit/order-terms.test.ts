@@ -408,6 +408,17 @@ describe("país de origem, grupo e entrega", () => {
     await fails({ redispatch: "" }, "order_terms_redispatch");
     await fails({ carrier: "" }, "order_terms_carrier_required");
     await fails({ carrierCaller: "" }, "order_terms_carrier_caller");
+    // Valor do transporte digitado (Wellmix chama): grava em reais.
+    expect(
+      (
+        await orderTerms.resolveOrderTerms({
+          ...base,
+          deliveryFreightBrl: "1.500,50",
+        })
+      ).deliveryFreightBrl,
+    ).toBe(1500.5);
+    expect(resolved.deliveryFreightBrl).toBeNull();
+    await fails({ deliveryFreightBrl: "abc" }, "order_terms_freight");
     await fails(
       { redispatchCarrier: "" },
       "order_terms_redispatch_carrier_required",

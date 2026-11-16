@@ -582,27 +582,62 @@ test("Previsão de preço (cotação V2): manda formato, nível e quem chama; mo
   const forecast = page
     .locator('[data-request-item="0"] [data-price-forecast]')
     .first();
-  await forecast.locator("[data-price-forecast-submit]").click();
+  // Sem botão (dono, 16/11/2026): escolhido o produto, a conta roda sozinha.
+  await expect(forecast.locator("[data-price-forecast-submit]")).toHaveCount(0);
+  // Só "Preço" e "Valor total": o cliente chama, então o preço é o WD.
+  const priceLine = forecast.locator('[data-price-forecast-line="price"]');
+  await expect(priceLine).toHaveText(/10,63/);
   await expect(
-    forecast.locator('[data-price-forecast-line="product"]'),
-  ).toHaveText(/9,20/);
+    forecast.locator('[data-price-forecast-line="total"]'),
+  ).toHaveText(/R\$/);
+  for (const gone of ["product", "withFreight", "wd", "retail"])
+    await expect(
+      forecast.locator(`[data-price-forecast-line="${gone}"]`),
+    ).toHaveCount(0);
+  await expect(forecast.locator("[data-price-forecast-sent]")).toHaveCount(0);
+  await expect(forecast.getByText("Memória de cálculo")).toHaveCount(0);
+  // O preço de venda desejado só na compra para estoque.
   await expect(
-    forecast.locator('[data-price-forecast-line="withFreight"]'),
-  ).toHaveText(/10,00/);
-  await expect(forecast.locator('[data-price-forecast-line="wd"]')).toHaveText(
-    /10,63/,
-  );
-  // Sem valor na resposta, a linha não aparece (nada de "—" solto).
-  await expect(
-    forecast.locator('[data-price-forecast-line="retail"]'),
+    forecast.locator('[data-price-forecast-mode="target"]'),
   ).toHaveCount(0);
-  await expect(forecast.locator("[data-price-forecast-sent]")).toContainText(
-    "VIP 3",
+  // Valor total do pedido, ao lado do formato de venda: a soma das linhas.
+  const quantity = Number(
+    await page
+      .locator(
+        '[data-request-item="0"] input[type="hidden"][name$=".quantity"]',
+      )
+      .inputValue(),
   );
-  await expect(forecast.locator("[data-price-forecast-sent]")).toContainText(
-    "PORTO_CLIENTE",
+  await expect(page.locator("[data-order-terms-total]")).toHaveAttribute(
+    "data-order-terms-total",
+    (10.63 * quantity).toFixed(2),
   );
-  expect(asked[0].get("saleFormat")).toBe("wellmix");
-  expect(asked[0].get("tier")).toBe("hiper");
-  expect(asked[0].get("caller")).toBe("customer");
+  const last = () => asked[asked.length - 1];
+  expect(last().get("saleFormat")).toBe("wellmix");
+  expect(last().get("tier")).toBe("hiper");
+  expect(last().get("caller")).toBe("customer");
+  expect(last().get("freight")).toBeNull();
+
+  // A Wellmix chama: o preço é o com frete e o valor do transporte digitado
+  // vai no lugar do padrão; a conta roda de novo sozinha.
+  const terms = page.locator("[data-order-terms]");
+  await terms
+    .locator('[data-order-terms-carrier-caller-option="wellmix"]')
+    .check();
+  await terms
+    .locator("[data-order-terms-carrier]")
+    .selectOption("portal:transportador");
+  await terms.locator("[data-order-terms-freight]").fill("1.500,50");
+  await expect(priceLine).toHaveText(/10,00/);
+  await expect.poll(() => last().get("freight")).toBe("1500.5");
+  expect(last().get("caller")).toBe("wellmix");
+
+  // Compra para estoque: o cliente sai da busca e aparece o preço desejado.
+  await page.locator("[data-stock-option]").check();
+  await expect(
+    page.locator("[data-request-customer] [data-party-picker-input]"),
+  ).toHaveValue("");
+  await expect(
+    forecast.locator('[data-price-forecast-mode="target"]'),
+  ).toBeVisible();
 });

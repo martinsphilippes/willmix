@@ -260,8 +260,7 @@ async function createRequest(
         }
         // Os campos de texto saíram da tela do pedido (dono, 16/11/2026):
         // produto do catálogo cuja ficha não tem descrição usa o nome.
-        if (product && description.trim().length < 2)
-          description = productName;
+        if (product && description.trim().length < 2) description = productName;
         const parsed = requestItemSchema.parse({
           ...row,
           productName,
@@ -332,6 +331,7 @@ async function createRequest(
             carrierCaller: str(form, "carrierCaller"),
             carrier: str(form, "carrier"),
             redispatchCarrier: str(form, "redispatchCarrier"),
+            deliveryFreightBrl: str(form, "deliveryFreightBrl"),
             redispatch: str(form, "redispatch"),
             originCountry: str(form, "originCountry"),
             productFamily: str(form, "productFamily"),

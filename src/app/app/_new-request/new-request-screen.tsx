@@ -948,6 +948,7 @@ export async function renderNewRequest({
                   wellmixTier: draftValue("wellmixTier"),
                   carrier: draftValue("carrier"),
                   redispatchCarrier: draftValue("redispatchCarrier"),
+                  deliveryFreightBrl: draftValue("deliveryFreightBrl"),
                   carrierCaller: draftValue("carrierCaller"),
                   redispatch: draftValue("redispatch"),
                   originCountry: draftValue("originCountry"),
@@ -1196,6 +1197,9 @@ export async function renderNewRequest({
                           freight: "{freight}",
                         }),
                         freightNull: t("priceForecast.freightNull"),
+                        price: t("priceForecast.price"),
+                        rowTotal: t("priceForecast.rowTotal"),
+                        noQuantity: t("priceForecast.noQuantity"),
                         formats: {
                           wd: t("orderTerms.format.wd"),
                           wellmix: t("orderTerms.format.wellmix"),

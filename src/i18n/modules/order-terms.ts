@@ -222,6 +222,15 @@ export const pt = {
   "priceForecast.sent":
     "Enviado: {format} · VIP {vip} · rota {route} · frete de entrega {freight}",
   "priceForecast.freightNull": "pendente",
+  "orderTerms.freight": "Valor do transporte (R$)",
+  "orderTerms.freightHint":
+    "Total da entrega. Vai na previsão de preço; vazio, vale o frete padrão das Configurações.",
+  "orderTerms.orderTotal": "Valor total",
+  "priceForecast.price": "Preço",
+  "priceForecast.rowTotal": "Valor total",
+  "priceForecast.noQuantity": "informe a quantidade",
+  "reqBatch.error.order_terms_freight":
+    "Valor do transporte inválido: use um número em reais (ex.: 8000 ou 8.000,00).",
   "orderTerms.carrierSearch": "Buscar por nome, código ou CNPJ",
   "orderTerms.summaryCode": "Código {code}",
   "orderTerms.summaryCnpj": "CNPJ {cnpj}",
@@ -489,6 +498,15 @@ export const en: Record<keyof typeof pt, string> = {
   "priceForecast.sent":
     "Sent: {format} · VIP {vip} · route {route} · delivery freight {freight}",
   "priceForecast.freightNull": "pending",
+  "orderTerms.freight": "Transport cost (BRL)",
+  "orderTerms.freightHint":
+    "Total delivery cost. Used in the price forecast; empty uses the default freight from Settings.",
+  "orderTerms.orderTotal": "Total value",
+  "priceForecast.price": "Price",
+  "priceForecast.rowTotal": "Total value",
+  "priceForecast.noQuantity": "enter the quantity",
+  "reqBatch.error.order_terms_freight":
+    "Invalid transport cost: use an amount in BRL (e.g. 8000 or 8,000.00).",
   "orderTerms.carrierSearch": "Search by name, code or CNPJ",
   "orderTerms.summaryCode": "Code {code}",
   "orderTerms.summaryCnpj": "CNPJ {cnpj}",
@@ -740,6 +758,15 @@ export const zh: Record<keyof typeof pt, string> = {
   "priceForecast.sent":
     "已发送：{format} · VIP {vip} · 路线 {route} · 送货运费 {freight}",
   "priceForecast.freightNull": "待定",
+  "orderTerms.freight": "运输费用（雷亚尔）",
+  "orderTerms.freightHint":
+    "送货总费用。用于价格预测；留空则使用设置中的默认运费。",
+  "orderTerms.orderTotal": "总金额",
+  "priceForecast.price": "价格",
+  "priceForecast.rowTotal": "总金额",
+  "priceForecast.noQuantity": "请输入数量",
+  "reqBatch.error.order_terms_freight":
+    "运输费用无效：请输入雷亚尔金额（例如 8000）。",
   "orderTerms.carrierSearch": "按名称、代码或 CNPJ 搜索",
   "orderTerms.summaryCode": "代码 {code}",
   "orderTerms.summaryCnpj": "CNPJ {cnpj}",
