@@ -108,7 +108,12 @@ export async function createRequestBatch(
    * o id de cada solicitação, escolhido antes por quem chama, na ordem dos
    * produtos.
    */
-  internal: { ids?: string[]; cart?: boolean } = {},
+  internal: {
+    ids?: string[];
+    cart?: boolean;
+    /** Reposição aberta pela tela Venda (compra para estoque): a origem. */
+    origin?: RequestOrigin;
+  } = {},
 ): Promise<Request[]> {
   if (!items.length) throw new Error("no_products");
   const groupId = items.length > 1 ? randomUUID() : null;
@@ -132,11 +137,12 @@ export async function createRequestBatch(
           quantity: item.quantity,
           unit: item.unit,
           origin:
-            item.sourcingDemand && !item.productId
+            internal.origin ??
+            (item.sourcingDemand && !item.productId
               ? "sourcing_demand"
               : internal.cart
                 ? "cart"
-                : "manual",
+                : "manual"),
           groupId,
           schedule: item.schedule ?? null,
           number,

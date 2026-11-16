@@ -1699,6 +1699,14 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Aditivo:** nenhum cálculo, regra de data, distribuição, composição, nome técnico, tela, rota ou dado mudou; a Nova solicitação de Encomendas e as outras telas seguem com os textos de antes.
 - Testes: `tests/unit/delivery-schedule-labels.test.ts` e `tests/e2e/request-screens.spec.ts`.
 
+## Encomendas e Reposição: "+ Adicionar", TS e Venda fora do menu, lista só do que ainda é encomenda
+
+- **Pedido do dono** (16/11/2026): (1) TS - Trading Sales e Venda - Encomenda estavam no menu de forma equivocada; saem do menu e passam a abrir pelos botões "+ Adicionar" de Encomendas (`/app/requests`, TS) e de Reposição (`/app/replenishment`, Venda), respectivamente; (2) o bloco "Abrir reposição" da Reposição sai, e o caminho natural é o botão; (3) a lista de Encomendas tinha elementos demais: o que já virou pedido não é mais da etapa de encomenda, e sim do Pedido em diante.
+- **Decisões do dono ao pedir** (16/11/2026): a ordem do texto vale (Encomendas abre TS, Reposição abre Venda); a entrada da Reposição na tela Venda aceita compra para estoque e grava a origem reposição, para a solicitação cair na fila de Reposição.
+- **Como ficou:** docs/REQUEST_SCREENS.md (seções 2 e 7) e docs/FLOW_MENU.md. Lista de Encomendas: `byStatus` sem as solicitações com pedido (`requestDisplayStatus` = ORDERED), cartões de situação sem "Viraram pedido" (`LISTED_SITUATIONS`).
+- **Aditivo:** nenhuma tela, rota, campo ou dado removido; as rotas e o acesso de TS e Venda seguem iguais (endereço direto); o menu só acende Encomendas e Reposição nelas. Quem não abre TS segue com a Nova solicitação de Encomendas pelo mesmo botão. `openReplenishment` segue no código. A exportação CSV de Encomendas não mudou (ainda leva as que viraram pedido). Sem mudança no banco.
+- Testes: `tests/unit/request-screens.test.ts`, `tests/unit/request-list.test.ts`, `tests/unit/nav.test.ts` e os E2E `request-screens`, `purchase-demand`, `purchase-strategy` e `purchase-quote`.
+
 ## Treinamento do Portal: o capelo na barra vermelha
 
 - **Pedido do dono** (16/11/2026): uma tela "Treinamento do Portal" e um ícone de treinamento (capelo) na barra vermelha, entre o seletor de idiomas e o ícone de mensagens, com o mesmo tamanho, cor e espaçamento dos outros ícones e "Treinamento do Portal" como texto de ajuda e nome acessível; a tela aberta dentro do layout do portal para todo login (equipe, clientes, fornecedores e demais parceiros), também pelo endereço; nesta etapa, só o título, com a área de conteúdo em branco, em PT, EN e ZH. Mais adiante: vídeos, quizzes e provas por login.

@@ -8,7 +8,8 @@ import { STOCK_OPTION, isStockCustomer } from "@/lib/services/stock-party";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
-import { canSeeMoney } from "@/lib/auth/function-access";
+import { can, canSeeMoney } from "@/lib/auth/function-access";
+import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { listByIds } from "@/lib/db/lookup";
 import { getT } from "@/i18n/server";
@@ -82,8 +83,11 @@ import { launchDateOf, minFirstDate } from "@/lib/workflow/request-schedule";
 import { lookupProductAction } from "../actions/lookup";
 import { aiErrorText } from "@/i18n/ai-error";
 import {
+  REPLENISHMENT_FROM,
+  REPLENISHMENT_VALUE,
   REQUEST_SCREEN,
   REQUEST_SCREEN_FIELD,
+  isReplenishmentEntry,
   type RequestScreenMode,
 } from "@/lib/request-screens";
 import {
@@ -106,10 +110,13 @@ export type NewRequestQuery = Record<string, string | string[] | undefined>;
  * - `mode` nulo: a de Encomendas (/app/requests/new), como sempre: Wellmix e
  *   cliente, compra para estoque, "Adicionar produto" e o tipo de operação
  *   escolhido no formulário (hoje só TS).
- * - "ts" e "sale": TS - Trading Sales e Venda - Encomenda (menu Produto
- *   novo), só da Wellmix vendendo ao cliente. O tipo de operação é o da tela
- *   (o servidor grava o dela), sem compra para estoque nem "Adicionar
- *   produto"; os rascunhos são os da tela.
+ * - "ts" e "sale": TS - Trading Sales (botão "+ Adicionar" de Encomendas) e
+ *   Venda - Encomenda (de Reposição), só da Wellmix vendendo ao cliente. O
+ *   tipo de operação é o da tela (o servidor grava o dela), sem compra para
+ *   estoque nem "Adicionar produto"; os rascunhos são os da tela.
+ * - "sale" com `?from=replenishment` (o "+ Adicionar" de Reposição; dono,
+ *   16/11/2026): a mesma tela, que também aceita a compra para estoque (sem
+ *   cliente), gravada com a origem reposição. Sem rascunho nessa entrada.
  *
  * Função (e não componente) para a página manter o mesmo caminho de antes:
  * os `redirect` e `notFound` saem da própria página.
@@ -126,9 +133,19 @@ export async function renderNewRequest({
   const basePath = screenDef?.path ?? "/app/requests/new";
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  // Entrada da Reposição: quem abre a fila (tela Encomendas) e tem a ação
+  // "Abrir reposição" entra na tela Venda, mesmo sem a tela de Venda marcada.
+  const replenish =
+    mode === "sale" &&
+    isReplenishmentEntry(query[REPLENISHMENT_FROM]) &&
+    isWellmix(user) &&
+    can(user, "replenishment.open") &&
+    canOpen(user, "requests");
+  // Textos das programações: "recebimento previsto pelo cliente" só na venda.
+  const deliveryMode = replenish ? null : mode;
   if (screenDef) {
     // TS e Venda (docs/REQUEST_SCREENS.md): quem abre a tela, e só a Wellmix.
-    requireScreen(user, screenDef.screen);
+    if (!replenish) requireScreen(user, screenDef.screen);
     if (!isWellmix(user)) redirect("/app");
   } else {
     requireScreen(user, "requests");
@@ -156,6 +173,7 @@ export async function renderNewRequest({
   // Compra para estoque também (as telas de TS e de Venda vendem ao cliente).
   const customerId =
     screenDef &&
+    !replenish &&
     typeof customerIdParam === "string" &&
     (customerIdParam === STOCK_OPTION || isStockCustomer(customerIdParam))
       ? undefined
@@ -193,7 +211,7 @@ export async function renderNewRequest({
   // Rascunho do vendedor (docs/ORDER_TERMS.md seção 9): o formulário volta
   // como foi salvo. Só de quem criou; nada é conferido até o envio.
   const draft =
-    typeof draftParam === "string" && isWellmix(user) && !addTo
+    typeof draftParam === "string" && isWellmix(user) && !addTo && !replenish
       ? await getRequestDraft(user, draftParam, mode)
       : null;
   const draftFields = draft ? draftForm(draft) : null;
@@ -221,7 +239,10 @@ export async function renderNewRequest({
     }
   })();
   const scheduleCustomerId =
-    screenDef && schedule?.customerId && isStockCustomer(schedule.customerId)
+    screenDef &&
+    !replenish &&
+    schedule?.customerId &&
+    isStockCustomer(schedule.customerId)
       ? null
       : schedule?.customerId;
   const presetCustomerId =
@@ -371,7 +392,7 @@ export async function renderNewRequest({
   // falam do recebimento previsto pelo cliente.
   const deliveryKey = `deliverySchedule.error.${typeof error === "string" ? error : ""}`;
   const errorText =
-    mode &&
+    deliveryMode &&
     typeof error === "string" &&
     t(deliveryKey as DictionaryKey) !== deliveryKey
       ? t(deliveryKey as DictionaryKey, {
@@ -403,7 +424,9 @@ export async function renderNewRequest({
     : [];
   // Os rascunhos do vendedor (a lista no alto da tela).
   const drafts =
-    isWellmix(user) && !addToRequest ? await listRequestDrafts(user, mode) : [];
+    isWellmix(user) && !addToRequest && !replenish
+      ? await listRequestDrafts(user, mode)
+      : [];
 
   const renderMatches = (items: typeof matched) => (
     <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200">
@@ -484,7 +507,7 @@ export async function renderNewRequest({
   // recebimento. Só os textos mudam; Encomendas segue com os de sempre.
   const withDeliveryItem = <T extends Parameters<typeof deliveryItemLabels>[1]>(
     base: T,
-  ): T => (mode ? { ...base, ...deliveryItemLabels(t, base) } : base);
+  ): T => (deliveryMode ? { ...base, ...deliveryItemLabels(t, base) } : base);
   const withDeliveryGenerate = <
     T extends Parameters<typeof deliveryGenerateLabels>[1] & {
       regenerate: string;
@@ -493,7 +516,7 @@ export async function renderNewRequest({
   >(
     base: T,
   ): T =>
-    mode
+    deliveryMode
       ? {
           ...deliveryGenerateLabels(t, base),
           regenerate: t("deliverySchedule.gen.regenerate"),
@@ -502,11 +525,14 @@ export async function renderNewRequest({
       : base;
   const withDeliveryPlan = <T extends Parameters<typeof deliveryPlanLabels>[1]>(
     base: T,
-  ): T => (mode ? { ...base, ...deliveryPlanLabels(t, base) } : base);
-  // Telas de TS e de Venda: o estoque não vale (sem cliente não há venda).
-  const startsStock =
-    !screenDef &&
-    (isStockCustomer(initialCustomerId) || initialCustomerId === STOCK_OPTION);
+  ): T => (deliveryMode ? { ...base, ...deliveryPlanLabels(t, base) } : base);
+  // Telas de TS e de Venda: o estoque não vale (sem cliente não há venda). Na
+  // entrada da Reposição, a tela começa como compra para estoque.
+  const stockId =
+    isStockCustomer(initialCustomerId) || initialCustomerId === STOCK_OPTION;
+  const startsStock = replenish
+    ? stockId || !initialCustomerId
+    : !screenDef && stockId;
   const createdNumber =
     screenDef &&
     typeof createdParam === "string" &&
@@ -523,18 +549,25 @@ export async function renderNewRequest({
         }}
         t={t}
         title={
-          mode
-            ? t(`requestScreen.${mode}.title`)
-            : addToRequest
-              ? addToRequest.number
-                ? t("reqAdd.titleNumbered", { n: addToRequest.number })
-                : t("reqAdd.title")
-              : t("requests.new")
+          replenish
+            ? t("requestScreen.replenishment.title")
+            : mode
+              ? t(`requestScreen.${mode}.title`)
+              : addToRequest
+                ? addToRequest.number
+                  ? t("reqAdd.titleNumbered", { n: addToRequest.number })
+                  : t("reqAdd.title")
+                : t("requests.new")
         }
         subtitle={
           mode ? (
-            <span data-request-screen={mode}>
-              {t(`requestScreen.${mode}.subtitle`)}
+            <span
+              data-request-screen={mode}
+              data-request-replenishment={replenish ? "" : undefined}
+            >
+              {replenish
+                ? t("requestScreen.replenishment.subtitle")
+                : t(`requestScreen.${mode}.subtitle`)}
             </span>
           ) : undefined
         }
@@ -877,6 +910,14 @@ export async function renderNewRequest({
             {mode ? (
               <input type="hidden" name={REQUEST_SCREEN_FIELD} value={mode} />
             ) : null}
+            {/* Entrada da Reposição: o servidor confere a ação e a tela. */}
+            {replenish ? (
+              <input
+                type="hidden"
+                name={REPLENISHMENT_FROM}
+                value={REPLENISHMENT_VALUE}
+              />
+            ) : null}
             {found ? (
               <input type="hidden" name="lookupId" value={found.id} />
             ) : null}
@@ -907,7 +948,7 @@ export async function renderNewRequest({
                   <RequestCustomerField
                     stockValue={STOCK_OPTION}
                     stockLabel={t("purchaseFlow.stock.option")}
-                    allowStock={!screenDef}
+                    allowStock={!screenDef || replenish}
                     initial={initialCustomer}
                     initialStock={startsStock}
                     ariaLabel={t("common.customer")}
@@ -1097,14 +1138,14 @@ export async function renderNewRequest({
                     date: "{date}",
                   }),
                 }),
-                generateOutside: mode
+                generateOutside: deliveryMode
                   ? t("deliverySchedule.gen.outside")
                   : t("reqSchedule.gen.outside"),
                 pieces: t("reqSchedule.pieces"),
-                piecesHint: mode
+                piecesHint: deliveryMode
                   ? t("deliverySchedule.item.piecesHint")
                   : t("reqSchedule.piecesHint"),
-                piecesScheduledHint: mode
+                piecesScheduledHint: deliveryMode
                   ? t("deliverySchedule.item.piecesScheduledHint")
                   : t("purchaseRounds.form.quantityOff"),
                 fromCatalog: t("reqProduct.fromCatalog"),
@@ -1268,7 +1309,7 @@ export async function renderNewRequest({
                 </SubmitButton>
                 {/* Rascunho (dono, 15/11/2026): grava como está, sem
                     conferir; o vendedor completa depois. */}
-                {sellsToCustomer ? (
+                {sellsToCustomer && !replenish ? (
                   <button
                     type="submit"
                     formAction={
@@ -1307,7 +1348,7 @@ export async function renderNewRequest({
               <div className="lg:max-h-[60%] lg:shrink-0 lg:overflow-y-auto">
                 <ContainerComposition
                   labels={
-                    mode
+                    deliveryMode
                       ? deliveryCompositionLabels(t, compositionLabels(t))
                       : compositionLabels(t)
                   }

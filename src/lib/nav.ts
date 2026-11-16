@@ -1,5 +1,6 @@
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { REQUEST_SCREEN, REQUEST_SCREEN_MODES } from "@/lib/request-screens";
+import { REQUEST_SCREEN } from "@/lib/request-screens";
+
 import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen, menuScreensFor, type Screen } from "@/lib/auth/screens";
 import type { User } from "@/lib/db/schema";
@@ -183,30 +184,22 @@ function flowEntries(block: FlowBlock): Entry[] {
 
 /**
  * TS - Trading Sales e Venda - Encomenda (dono, 16/11/2026;
- * docs/REQUEST_SCREENS.md): no Produto novo, logo abaixo do Overview (no
- * topo, quando o bloco não tem Overview), nesta ordem. Cada uma com a sua
- * tela de acesso.
+ * docs/REQUEST_SCREENS.md) saíram do menu (dono, 16/11/2026, segunda
+ * decisão): abrem pelo botão "+ Adicionar" de Encomendas (TS) e de Reposição
+ * (Venda). Aqui o item do passo acende também na tela que ele abre, para o
+ * menu não ficar sem destaque.
  */
-const REQUEST_SCREEN_ENTRIES: Entry[] = REQUEST_SCREEN_MODES.map(
-  (mode): Entry => [
-    REQUEST_SCREEN[mode].screen,
-    {
-      href: REQUEST_SCREEN[mode].path,
-      key: mode === "ts" ? "nav.requestTs" : "nav.requestSale",
-    },
-  ],
-);
+const OPENS_FROM: Record<string, string> = {
+  "/app/requests": REQUEST_SCREEN.ts.path,
+  "/app/replenishment": REQUEST_SCREEN.sale.path,
+};
 
-function withRequestScreens(entries: Entry[]): Entry[] {
-  const overview = entries.findIndex(
-    ([, link]) => link.href === overviewHref("new-product"),
+function withOpenedScreens(links: NavLink[]): NavLink[] {
+  return links.map((link) =>
+    OPENS_FROM[link.href]
+      ? { ...link, match: [...(link.match ?? []), OPENS_FROM[link.href]] }
+      : link,
   );
-  const at = overview + 1;
-  return [
-    ...entries.slice(0, at),
-    ...REQUEST_SCREEN_ENTRIES,
-    ...entries.slice(at),
-  ];
 }
 
 /**
@@ -280,11 +273,13 @@ export function navFor(
       ...group(
         "nav.group.newProduct",
         "cart",
-        pick(has, [
-          ...withRequestScreens(flowEntries("new-product")),
-          // Fora do menu (MENU_HIDDEN): Sourcing.
-          ["sourcing", { href: "/app/sourcing", key: "nav.sourcing" }],
-        ]),
+        withOpenedScreens(
+          pick(has, [
+            ...flowEntries("new-product"),
+            // Fora do menu (MENU_HIDDEN): Sourcing.
+            ["sourcing", { href: "/app/sourcing", key: "nav.sourcing" }],
+          ]),
+        ),
       ),
       // Pedido: do pedido de compra ao contrato assinado.
       ...group("nav.group.order", "box", pick(has, flowEntries("order"))),
