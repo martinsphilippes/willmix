@@ -542,6 +542,8 @@ export async function fillOrderTerms(
      * Sales) ou Venda (a tela Venda - Encomenda; docs/REQUEST_SCREENS.md).
      */
     operation?: "ts" | "sale";
+    /** Forma de pagamento pelo nome; padrão: a primeira ativa. */
+    paymentPlan?: string;
   } = {},
 ) {
   const terms = page.locator("[data-order-terms]");
@@ -577,6 +579,19 @@ export async function fillOrderTerms(
         .locator("[data-order-terms-redispatch-carrier]")
         .selectOption("portal:transportador");
   }
+  // Forma de pagamento (obrigatória; dono, 16/11/2026): a 1ª da lista, salvo
+  // outra pedida pelo nome.
+  const plan = terms.locator("[data-order-terms-payment-plan]");
+  const planValue = options.paymentPlan
+    ? await plan
+        .locator("option", { hasText: options.paymentPlan })
+        .first()
+        .getAttribute("value")
+    : await plan
+        .locator("option:not([disabled])")
+        .first()
+        .getAttribute("value");
+  await plan.selectOption(planValue!);
   await chooseOrderOrigin(page, options.country, options.family);
 }
 

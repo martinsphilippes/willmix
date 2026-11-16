@@ -3,6 +3,16 @@
  * 15/11/2026; docs/ORDER_TERMS.md).
  */
 export const pt = {
+  "orderTerms.payment.plan": "Forma de pagamento",
+  "orderTerms.payment.choose": "Escolha a forma de pagamento",
+  "orderTerms.payment.none": "Nenhuma forma ativa em Configurações",
+  "orderTerms.payment.hint": "As formas ativas de Configurações → Formas de pagamento do cliente. O pedido nasce com ela; a escolha valendo (alçada e boletos) fica no pedido.",
+  "orderTerms.payment.preview": "Previsão de pagamento",
+  "orderTerms.payment.noCharge": "sem cobrança",
+  "orderTerms.payment.interest": "+ juros de {rate}% ao mês ({days} dias)",
+  "orderTerms.payment.needsApproval": "com aprovação por alçada",
+  "orderTerms.payment.noTotal": "Os valores aparecem com o valor total do pedido (produtos com preço previsto). As datas saem no pedido, quando cada evento acontece.",
+  "reqBatch.error.order_terms_payment_plan": "Escolha a forma de pagamento (uma das formas ativas em Configurações → Formas de pagamento do cliente).",
   "orderTerms.title": "Condições do pedido",
   "orderTerms.hint":
     "Valem para todos os produtos desta solicitação. Escolha o país e o grupo antes dos produtos.",
@@ -281,6 +291,16 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "orderTerms.payment.plan": "Payment terms",
+  "orderTerms.payment.choose": "Choose the payment terms",
+  "orderTerms.payment.none": "No active payment terms in Settings",
+  "orderTerms.payment.hint": "The active terms from Settings → Customer payment terms. The order starts with them; the binding choice (approval and bank slips) stays in the order.",
+  "orderTerms.payment.preview": "Payment forecast",
+  "orderTerms.payment.noCharge": "no charge",
+  "orderTerms.payment.interest": "+ {rate}% monthly interest ({days} days)",
+  "orderTerms.payment.needsApproval": "requires approval",
+  "orderTerms.payment.noTotal": "Amounts appear with the order total (products with a forecast price). Dates come in the order, as each event happens.",
+  "reqBatch.error.order_terms_payment_plan": "Choose the payment terms (one of the active terms in Settings → Customer payment terms).",
   "orderTerms.title": "Order terms",
   "orderTerms.hint":
     "They apply to every product in this request. Choose the country and the group before the products.",
@@ -556,6 +576,16 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "orderTerms.payment.plan": "付款方式",
+  "orderTerms.payment.choose": "选择付款方式",
+  "orderTerms.payment.none": "设置中没有启用的付款方式",
+  "orderTerms.payment.hint": "来自 设置 → 客户付款方式 中启用的方式。订单以此为初始值；正式选择（审批与付款单）在订单中进行。",
+  "orderTerms.payment.preview": "付款预估",
+  "orderTerms.payment.noCharge": "不收费",
+  "orderTerms.payment.interest": "+ 每月 {rate}% 利息（{days} 天）",
+  "orderTerms.payment.needsApproval": "需审批",
+  "orderTerms.payment.noTotal": "金额随订单总额（有预估价格的产品）显示。日期在订单中随各事件发生而确定。",
+  "reqBatch.error.order_terms_payment_plan": "请选择付款方式（设置 → 客户付款方式 中启用的方式之一）。",
   "orderTerms.title": "订单条件",
   "orderTerms.hint":
     "适用于本申请的所有产品。请先选择国家和产品组，再选择产品。",

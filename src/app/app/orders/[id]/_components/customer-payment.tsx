@@ -55,6 +55,13 @@ export async function CustomerPaymentGate({
   const nameOf = (id: string | null | undefined) =>
     (id && users.find((u) => u.id === id)?.name) || "—";
   const plan = view.plan;
+  // A forma escolhida na Nova solicitação (dono, 16/11/2026) já vem marcada
+  // enquanto o pedido não tem forma.
+  const requestPlanId =
+    !plan && view.canChoose && order.requestId
+      ? ((await store.get("requests", order.requestId))?.orderTerms?.paymentPlan
+          ?.planId ?? "")
+      : "";
   const money = (n: number | null) =>
     n === null
       ? "—"
@@ -473,7 +480,7 @@ export async function CustomerPaymentGate({
                 <Select
                   name="planId"
                   required
-                  defaultValue={plan?.planId ?? ""}
+                  defaultValue={plan?.planId ?? requestPlanId}
                 >
                   <option value="">{t("customerPayment.choosePlan")}</option>
                   {plans

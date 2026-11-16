@@ -150,6 +150,14 @@ export interface OrderTerms {
    * Wellmix; dono, 16/11/2026). Nulo = o frete padrão das Configurações.
    */
   deliveryFreightBrl?: number | null;
+  /**
+   * Forma de pagamento escolhida na Nova solicitação (dono, 16/11/2026):
+   * cópia da forma de Configurações → Formas de pagamento do cliente no
+   * momento da escolha. O pedido nasce com ela pré-escolhida (a escolha
+   * valendo, com alçada e boletos, continua no pedido;
+   * docs/CUSTOMER_PAYMENT.md). Ausente nas solicitações antigas.
+   */
+  paymentPlan?: RequestPaymentPlan | null;
   /** Re-despacho: Sim ou Não (o cliente informa a transportadora na confirmação). */
   redispatchRequired?: boolean;
   /** País de origem (chave normalizada, ver `countryKey`). Produto sem país não é vendido. */
@@ -357,4 +365,17 @@ export function readContacts(value: unknown): CustomerContacts | null {
     };
   }
   return out;
+}
+
+/** Forma de pagamento na solicitação (cópia; dono, 16/11/2026). */
+export interface RequestPaymentPlan {
+  planId: string;
+  name: string;
+  installments: Array<{
+    percent: number;
+    event: "order" | "shipment" | "cargo_presence" | "delivery";
+    days: number;
+  }>;
+  monthlyInterestPercent: number | null;
+  requiresApproval: boolean;
 }

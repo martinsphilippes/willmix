@@ -14,6 +14,7 @@ import {
   countryAllowed,
   formatCnpj,
   type OperationType,
+  type RequestPaymentPlan,
   type SaleFormat,
   type WellmixTier,
 } from "@/lib/order-terms";
@@ -55,6 +56,11 @@ export interface RequestOrderTermsLabels {
   freight?: string;
   freightHint?: string;
   orderTotal?: string;
+  /**
+   * Forma de pagamento e a previsão das parcelas (dono, 16/11/2026), logo
+   * abaixo do Valor total.
+   */
+  payment?: PaymentLabels;
   intl?: string;
   country: string;
   countryChoose: string;
@@ -83,6 +89,25 @@ export interface RequestOrderTermsLabels {
   switchConfirm: string;
 }
 
+/** Textos da forma de pagamento na Nova solicitação. */
+export interface PaymentLabels {
+  plan: string;
+  choose: string;
+  hint: string;
+  preview: string;
+  /** Rótulo de cada evento (No pedido, No embarque…). */
+  events: Record<RequestPaymentPlan["installments"][number]["event"], string>;
+  /** "{event} + {days} dias". */
+  eventDays: string;
+  noCharge: string;
+  /** "+ juros de {rate}% ao mês ({days} dias)". */
+  interest: string;
+  needsApproval: string;
+  /** Sem valor total ainda (sem preço previsto). */
+  noTotal: string;
+  none: string;
+}
+
 /** Valores já escolhidos (rascunho). */
 export interface OrderTermsInitial {
   operationType?: string;
@@ -95,6 +120,7 @@ export interface OrderTermsInitial {
   redispatch?: string;
   originCountry?: string;
   productFamily?: string;
+  paymentPlanId?: string;
 }
 
 interface Country {
@@ -139,9 +165,15 @@ export function RequestOrderTerms({
   labels,
   initial = {},
   fixedOperation,
+  paymentPlans = [],
 }: {
   labels: RequestOrderTermsLabels;
   initial?: OrderTermsInitial;
+  /**
+   * Formas de pagamento ativas de Configurações → Formas de pagamento do
+   * cliente (dono, 16/11/2026), na ordem da lista.
+   */
+  paymentPlans?: RequestPaymentPlan[];
   /**
    * Tipo de operação fixo pela tela (TS - Trading Sales ou Venda -
    * Encomenda; docs/REQUEST_SCREENS.md): só ele aparece, já marcado, e o
@@ -175,6 +207,11 @@ export function RequestOrderTerms({
       : "",
   );
   const [redispatch, setRedispatch] = useState(initial.redispatch ?? "");
+  const [planId, setPlanId] = useState(() =>
+    paymentPlans.some((p) => p.planId === initial.paymentPlanId)
+      ? (initial.paymentPlanId ?? "")
+      : "",
+  );
   const [caller, setCaller] = useState<CarrierCaller | "">(
     (CARRIER_CALLERS as readonly string[]).includes(initial.carrierCaller ?? "")
       ? (initial.carrierCaller as CarrierCaller)
@@ -415,6 +452,20 @@ export function RequestOrderTerms({
           </p>
         </div>
       </div>
+
+      {/* Forma de pagamento (dono, 16/11/2026): logo abaixo do Valor total,
+          uma das formas ativas das Configurações, com a previsão das
+          parcelas pelo valor total do pedido. */}
+      {labels.payment ? (
+        <PaymentPlanField
+          labels={labels.payment}
+          intl={labels.intl ?? "pt-BR"}
+          plans={paymentPlans}
+          value={planId}
+          onChange={setPlanId}
+          total={orderTotal}
+        />
+      ) : null}
 
       {/* Entrega: Transportador (obrigatório) e Re-despacho Sim/Não */}
       <div className="space-y-1" data-order-terms-delivery>
@@ -717,4 +768,129 @@ function parseMoney(text: string): number | null {
   const normal = t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : t;
   const n = Number(normal);
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
+}
+
+/** Centavo, meio para cima (a mesma conta das parcelas do pedido). */
+const cents = (n: number) =>
+  Math.round(Number((n * 100).toPrecision(12))) / 100;
+
+/**
+ * Forma de pagamento e a previsão das parcelas (dono, 16/11/2026): cada
+ * parcela com o percentual, o momento (evento + dias) e o valor previsto
+ * (valor total × %, mais os juros compostos ao mês depois da entrega, como
+ * no pedido; docs/CUSTOMER_PAYMENT.md). As datas saem no pedido, quando os
+ * eventos acontecem.
+ */
+function PaymentPlanField({
+  labels,
+  intl,
+  plans,
+  value,
+  onChange,
+  total,
+}: {
+  labels: PaymentLabels;
+  intl: string;
+  plans: RequestPaymentPlan[];
+  value: string;
+  onChange: (id: string) => void;
+  total: number | null;
+}) {
+  const plan = plans.find((p) => p.planId === value) ?? null;
+  const money = (n: number) =>
+    n.toLocaleString(intl, { style: "currency", currency: "BRL" });
+  const when = (i: RequestPaymentPlan["installments"][number]) =>
+    i.days > 0
+      ? labels.eventDays
+          .replace("{event}", labels.events[i.event])
+          .replace("{days}", String(i.days))
+      : labels.events[i.event];
+  return (
+    <div className="grid gap-3 sm:grid-cols-2" data-order-terms-payment>
+      <Field label={labels.plan} hint={labels.hint}>
+        <Select
+          name="paymentPlanId"
+          required
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          data-order-terms-payment-plan
+        >
+          <option value="" disabled>
+            {plans.length ? labels.choose : labels.none}
+          </option>
+          {plans.map((p) => (
+            <option key={p.planId} value={p.planId}>
+              {p.name}
+              {p.requiresApproval ? ` (${labels.needsApproval})` : ""}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      {plan ? (
+        <div className="min-w-0 space-y-1" data-order-terms-payment-preview>
+          <p className="text-xs font-medium leading-5 text-zinc-700">
+            {labels.preview}
+          </p>
+          <ol className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 bg-white text-sm">
+            {plan.installments.map((i, k) => {
+              const base =
+                total === null ? null : cents((total * i.percent) / 100);
+              const late =
+                i.event === "delivery" &&
+                i.days > 0 &&
+                !!plan.monthlyInterestPercent &&
+                plan.monthlyInterestPercent > 0;
+              const amount =
+                base === null
+                  ? null
+                  : late
+                    ? cents(
+                        base *
+                          Math.pow(
+                            1 + plan.monthlyInterestPercent! / 100,
+                            i.days / 30,
+                          ),
+                      )
+                    : base;
+              return (
+                <li
+                  key={k}
+                  className="flex items-start justify-between gap-3 px-2.5 py-1.5"
+                  data-order-terms-payment-row={k + 1}
+                  data-amount={amount === null ? "" : amount.toFixed(2)}
+                >
+                  <span className="min-w-0">
+                    <span className="font-semibold tabular-nums text-zinc-900">
+                      {i.percent.toLocaleString(intl)}%
+                    </span>{" "}
+                    <span className="text-zinc-700">{when(i)}</span>
+                    {late ? (
+                      <span className="block text-xs text-zinc-500">
+                        {labels.interest
+                          .replace(
+                            "{rate}",
+                            plan.monthlyInterestPercent!.toLocaleString(intl),
+                          )
+                          .replace("{days}", String(i.days))}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="shrink-0 text-right tabular-nums text-zinc-900">
+                    {i.percent <= 0
+                      ? labels.noCharge
+                      : amount === null
+                        ? "—"
+                        : money(amount)}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+          {total === null ? (
+            <p className="text-xs text-zinc-500">{labels.noTotal}</p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }

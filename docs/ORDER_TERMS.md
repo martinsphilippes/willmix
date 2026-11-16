@@ -252,6 +252,14 @@ Ao lado da busca de produto de cada linha, uma **lupa** abre o seletor (um só n
 - **Correção**: com a ficha do produto demorando (Sankhya), acrescentar dois produtos seguidos pela lupa apagava o primeiro e as linhas ficavam sem a quantidade. As linhas agora são lidas no momento em que a ficha chega.
 - **Preço da previsão**: formato **WD** → `PRECO_WD_COM_FRETE_REFERENCIA`; **Wellmix chamando o transportador** (formato Wellmix) → `PRECO_COM_FRETE_REFERENCIA`; formato Wellmix com o cliente chamando → também `PRECO_COM_FRETE_REFERENCIA` (o preço é sempre com frete; sem valor digitado, o frete padrão das Configurações). No formato WD, o **Valor do transporte (R$)** aparece mesmo com o cliente chamando, vai em `@FRETE_ENTREGA_BRL` e é gravado em `orderTerms.deliveryFreightBrl`.
 
+### 11.10 Forma de pagamento e previsão de pagamento (dono, 16/11/2026)
+
+- **Onde**: nas condições do pedido, logo abaixo da linha do **Valor total**. O campo é **Forma de pagamento**, obrigatório na venda ao cliente pela Wellmix, com as formas **ativas** de Configurações → Formas de pagamento do cliente (`/app/settings/payment-plans`), na ordem da lista. A forma com alçada aparece com "(com aprovação por alçada)".
+- **Previsão de pagamento**: ao escolher, aparece cada parcela com o percentual, o momento (evento + dias: No pedido, No embarque, Na Presença de Carga, Na entrega) e o valor previsto. O valor é o Valor total do pedido × o percentual, mais os juros compostos ao mês nas parcelas depois da entrega, a mesma conta do pedido (docs/CUSTOMER_PAYMENT.md). Parcela de 0% mostra "sem cobrança". Sem Valor total (produtos sem preço previsto), os valores ficam "—". As datas não aparecem aqui: saem no pedido, quando cada evento acontece.
+- **Gravação**: a solicitação guarda uma cópia da forma em `orderTerms.paymentPlan` (id, nome, parcelas, juros e alçada; sem coluna nova). O servidor recusa sem forma ou com forma inativa ou inexistente (`order_terms_payment_plan`). O rascunho guarda a escolha.
+- **No pedido**: a seção "Pagamento do cliente" já vem com a forma da solicitação marcada. A escolha que vale, com alçada, vendedor, NUNOTA e boletos, continua sendo feita lá.
+- Código: `PaymentPlanField` em `src/components/request-order-terms.tsx`, `resolveRequestPaymentPlan` em `src/lib/services/order-terms.ts`, o tipo `RequestPaymentPlan` em `src/lib/order-terms.ts`.
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

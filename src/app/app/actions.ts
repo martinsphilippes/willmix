@@ -347,8 +347,11 @@ async function createRequest(
       // atualizou). Conferido antes de criar qualquer solicitação.
       let orderTerms: OrderTerms | null = null;
       if (isWellmix(user) && !forStock) {
-        const { resolveOrderTerms, assertProductsMatchOrigin } =
-          await import("@/lib/services/order-terms");
+        const {
+          resolveOrderTerms,
+          assertProductsMatchOrigin,
+          resolveRequestPaymentPlan,
+        } = await import("@/lib/services/order-terms");
         orderTerms = await resolveOrderTerms(
           {
             operationType: str(form, "operationType"),
@@ -364,6 +367,10 @@ async function createRequest(
           },
           // TS e Venda: o tipo de operação é o da tela.
           screenDef ? { operationType: screenDef.operation } : {},
+        );
+        // Forma de pagamento (dono, 16/11/2026): uma das formas ativas.
+        orderTerms.paymentPlan = await resolveRequestPaymentPlan(
+          str(form, "paymentPlanId"),
         );
         // O login do cliente com acesso é obrigatório na venda: é ele quem
         // confirma o pedido (dono, 15/11/2026).

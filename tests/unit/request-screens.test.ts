@@ -345,6 +345,13 @@ describe("rascunhos por tela", () => {
 });
 
 describe("enviar: o tipo de operação é o da tela", () => {
+  // Forma de pagamento (obrigatória na venda; dono, 16/11/2026).
+  let planId = "";
+  beforeAll(async () => {
+    const { listPaymentPlans } =
+      await import("@/lib/services/customer-payment");
+    planId = (await listPaymentPlans())[0].id;
+  });
   const sale = (extra: Record<string, string> = {}) => {
     const f = new FormData();
     const fields: Record<string, string> = {
@@ -356,6 +363,7 @@ describe("enviar: o tipo de operação é o da tela", () => {
       redispatch: "no",
       originCountry: "CHINA",
       productFamily: "fm:UTILIDADES",
+      paymentPlanId: planId,
       contactsEdit: "1",
       "contact.partner.phone": "(47) 99999-0001",
       "contact.partner.email": "socio@loja.com",
