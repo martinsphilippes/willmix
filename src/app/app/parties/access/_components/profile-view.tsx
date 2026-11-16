@@ -1,5 +1,5 @@
 import type { Translate } from "@/i18n";
-import { SCREEN_GROUPS, type Screen } from "@/lib/auth/screens";
+import { SCREEN_GROUPS, SCREEN_LABEL, type Screen } from "@/lib/auth/screens";
 import { GRANTABLE_SCREENS, isLimitedFor } from "@/lib/partner-access";
 import {
   ACCESS_BASE,
@@ -97,7 +97,9 @@ export function ProfileView({
   const q = url.q.toLowerCase();
   const shown = (s: Screen) =>
     (!q ||
-      screenName(t, s).toLowerCase().includes(q) ||
+      screenName(t, s, current).toLowerCase().includes(q) ||
+      // A busca pelo nome da Wellmix (Control Tower) também acha o Início.
+      t(SCREEN_LABEL[s]).toLowerCase().includes(q) ||
       routesOf(s).some((r) => r.includes(q))) &&
     matchesState(stateOf(access, s), url.state);
   const filtering = !!(url.q || url.state);
@@ -269,7 +271,7 @@ export function ProfileView({
                       const focus = url.focus === s;
                       const limited = isLimitedFor(s, current.key);
                       const source = sourceText(t, profiles, current, s);
-                      const label = screenName(t, s);
+                      const label = screenName(t, s, current);
                       const openControl =
                         state === "internal" ? (
                           <span className="text-zinc-400">—</span>
@@ -358,9 +360,20 @@ export function ProfileView({
                           data-access-focus={focus ? "1" : undefined}
                         >
                           <td className="border-b border-zinc-100 px-2.5 py-2 align-middle text-[13px] text-zinc-800">
-                            <span className="block font-medium text-zinc-900">
+                            <span
+                              className="block font-medium text-zinc-900"
+                              data-access-screen-name={s}
+                            >
                               {label}
                             </span>
+                            {s === "home" ? (
+                              <span
+                                className="mt-0.5 block text-xs text-zinc-500"
+                                data-access-home-hint
+                              >
+                                {t("partnerAccess.home.hint")}
+                              </span>
+                            ) : null}
                             <span className="mt-1 block sm:hidden">
                               <StateBadge t={t} state={state} />
                             </span>

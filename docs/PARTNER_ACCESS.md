@@ -10,6 +10,13 @@ Pedido do dono (11/11/2026): administrar, em Cadastros → Outros parceiros, que
 
 - **Duas visões no mesmo quadro**: "Por tipo ou perfil" e "Por tela" (`?view=screen`). Nas listas, os perfis vêm separados em **Tipos de parceiro** (Trading, Factory, Supplier, GP e os criados no painel) e **Papéis de login** (Fornecedor, Cliente, Agência…): "Supplier" é um tipo; "Fornecedor" é um papel; cada um tem as suas telas.
 - **Por tipo ou perfil**: uma busca só (nome ou endereço da tela), o filtro de situação (Liberada, Fora do menu, Bloqueada, Interna da Wellmix) e as telas em **módulos recolhíveis** (Início, Pedidos, Cadastros, Gestão; abre o primeiro, o da tela em destaque e, com filtro, todos). Cada linha: Tela, Situação, Abre, No menu e Origem; o detalhe da linha (seta) traz "Feita para", os endereços e os avisos (abre sem dados, fora do menu, bloqueada, interna). As internas, as bloqueadas e a sempre aberta continuam no catálogo, cada uma só com o controle que permite (interna: nenhum; sempre aberta: travada).
+- **A tela de entrada nos perfis externos** (dono, 15/11/2026): a tela sempre aberta é a de entrada (`/app`). Na equipe Wellmix ela é o Control Tower; o login externo nunca vê o Control Tower, e sim a página de entrada dele. Por isso, nos perfis externos, a linha leva o nome do que o login vê ali, como o menu dele:
+  - "Início (Pendências do login)": o perfil abre Pendências.
+  - "Início": o perfil não abre Pendências; fica só a saudação.
+  - "Início (vitrine ou solicitações)": perfil Cliente.
+  - Embaixo, a dica "Na equipe Wellmix esta tela é o Control Tower".
+  - Na visão por tela (todos os perfis) e nos painéis de comparar e copiar: "Início (página de entrada do login)".
+  - A busca por "Control Tower" continua achando a linha. Só o nome mudou; a regra (sempre aberta e travada) é a mesma.
 - **"No menu" só com a tela aberta**: desmarcar "Abre" desmarca e trava "No menu"; marcar "Abre" volta a pôr no menu. O servidor ignora "No menu" de tela que não abre (`resolveProfile`).
 - **Salvar**: a barra de baixo mostra o perfil afetado (nome, tipo ou papel, logins ativos) e "Alterações não salvas"; a confirmação repete o perfil e quantos logins; o aviso de sucesso só aparece depois da gravação no servidor ("Acessos de … salvos no servidor"). A volta mantém a busca e o filtro.
 - **Origem da configuração** (só leitura, não concede nada): Padrão; Liberada à mão; Cópia de …; Tirada do menu à mão; Bloqueada fora do padrão (o padrão do perfil abre a tela e ela foi tirada). Tirar ou devolver uma tela ao menu conta como mudança à mão.

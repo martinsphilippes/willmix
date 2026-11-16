@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth/screens";
 import {
   ALWAYS_OPEN,
+  baseRoleOf,
   blockedFromDefault,
   isAdaptedInternal,
   isGrantable,
@@ -25,8 +26,27 @@ import { Badge, cx } from "@/components/ui";
  * perfil separadas em tipos de parceiro e papéis de login.
  */
 
-export const screenName = (t: Translate, screen: Screen) =>
-  t(SCREEN_LABEL[screen]);
+/**
+ * Nome da tela no gerenciador. A tela de entrada (/app, "home") tem o nome da
+ * Wellmix (Control Tower), mas o login externo nunca vê o Control Tower: no
+ * perfil externo ela é o Início dele (dono, 15/11/2026). Com o perfil, o nome
+ * diz o que o login vê ali (como o menu dele): as Pendências, se o perfil abre
+ * Pendências; no cliente, a vitrine ou as solicitações. Sem perfil (a tela
+ * vista em todos os perfis), "Início (página de entrada do login)".
+ */
+export function screenName(
+  t: Translate,
+  screen: Screen,
+  profile?: { key: string; access: ProfileAccess },
+) {
+  if (screen !== "home") return t(SCREEN_LABEL[screen]);
+  if (!profile) return t("partnerAccess.home.any");
+  if (baseRoleOf(profile.key) === "customer")
+    return t("partnerAccess.home.customer");
+  return profile.access.screens.includes("tasks")
+    ? t("partnerAccess.home.partner")
+    : t("partnerAccess.home.plain");
+}
 
 export const routesOf = (screen: Screen) =>
   SCREEN_ROUTES.filter(([, s]) => s === screen).map(([route]) => route);

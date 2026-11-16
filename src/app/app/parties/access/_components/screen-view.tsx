@@ -81,6 +81,11 @@ export function ScreenView({
         <p className="mt-0.5 break-all font-mono text-xs text-zinc-500">
           {routesOf(screen).join(" · ")}
         </p>
+        {screen === "home" ? (
+          <p className="mt-1 text-sm text-zinc-600" data-access-home-hint>
+            {t("partnerAccess.home.hint")}
+          </p>
+        ) : null}
       </div>
       {grantable ? null : (
         <div className="mt-3">

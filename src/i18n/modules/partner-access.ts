@@ -132,6 +132,14 @@ export const pt = {
   "partnerAccess.module.count": "{open} de {n} abrem",
   "partnerAccess.locked":
     "Sempre aberta: não pode ser bloqueada nem tirada do menu",
+  // A tela de entrada (/app) nos perfis externos (dono, 15/11/2026): na
+  // Wellmix é o Control Tower; no login externo, a página de entrada dele.
+  "partnerAccess.home.partner": "Início (Pendências do login)",
+  "partnerAccess.home.plain": "Início",
+  "partnerAccess.home.customer": "Início (vitrine ou solicitações)",
+  "partnerAccess.home.any": "Início (página de entrada do login)",
+  "partnerAccess.home.hint":
+    "Na equipe Wellmix esta tela é o Control Tower; o login externo não vê o Control Tower.",
   "partnerAccess.menuNeedsOpen": "Só aparece no menu se a tela abrir",
   "partnerAccess.hiddenNote":
     "Abre pelo endereço direto (e pelos links das outras telas), mas não tem atalho no menu.",
@@ -310,6 +318,12 @@ export const en: typeof pt = {
   "partnerAccess.module.count": "{open} of {n} open",
   "partnerAccess.locked":
     "Always open: cannot be blocked or taken off the menu",
+  "partnerAccess.home.partner": "Home (the login's tasks)",
+  "partnerAccess.home.plain": "Home",
+  "partnerAccess.home.customer": "Home (storefront or requests)",
+  "partnerAccess.home.any": "Home (the login's start page)",
+  "partnerAccess.home.hint":
+    "For the Wellmix team this screen is the Control Tower; external logins never see the Control Tower.",
   "partnerAccess.menuNeedsOpen": "Only shows in the menu if the screen opens",
   "partnerAccess.hiddenNote":
     "Opens by direct address (and by links from other screens), but has no menu shortcut.",
@@ -481,6 +495,12 @@ export const zh: typeof pt = {
   "partnerAccess.row.routes": "地址",
   "partnerAccess.module.count": "{n} 个中开放 {open} 个",
   "partnerAccess.locked": "始终开放：不能屏蔽，也不能移出菜单",
+  "partnerAccess.home.partner": "首页（该账号的待办）",
+  "partnerAccess.home.plain": "首页",
+  "partnerAccess.home.customer": "首页（商品橱窗或申请）",
+  "partnerAccess.home.any": "首页（账号的入口页）",
+  "partnerAccess.home.hint":
+    "对 Wellmix 团队来说此页面是控制塔；外部账号看不到控制塔。",
   "partnerAccess.menuNeedsOpen": "页面开放后才会出现在菜单中",
   "partnerAccess.hiddenNote":
     "可通过直接地址（以及其他页面的链接）打开，但菜单中没有快捷方式。",
