@@ -72,8 +72,9 @@ let t = 0;
 const scenes = [];
 const cues = [];
 for (const s of def.scenes) {
-  const pre = s.pre ?? PRE;
-  const post = s.post ?? POST;
+  // Folgas padrão do vídeo (def.pre, def.post) valem onde a cena não define as suas.
+  const pre = s.pre ?? def.pre ?? PRE;
+  const post = s.post ?? def.post ?? POST;
   let local = pre;
   const cue = [];
   const cueDur = [];
