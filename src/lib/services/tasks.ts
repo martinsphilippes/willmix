@@ -91,7 +91,9 @@ export type TaskKind =
   /** Conferência da qualidade no CD (mapa E19). */
   | "quality_check"
   /** Amostras a conferir no show room do Brasil (docs/SAMPLE_FLOW.md). */
-  | "showroom_receive";
+  | "showroom_receive"
+  /** Produto novo a aprovar ou recusar (docs/NEW_PRODUCT.md). */
+  | "product_approve";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -353,6 +355,7 @@ export function requirementWaiting(
 }
 const KIND_ORDER: string[] = [
   "booking_invite",
+  "product_approve",
   "new_request",
   "replenishment_request",
   "purchase_strategy",
@@ -1008,6 +1011,14 @@ export async function pendingTasksFor(
         await (
           await import("./purchase-strategy")
         ).strategyTaskDrafts(newRequests)
+      ).map((draft) => finish(draft, now)),
+    );
+  // Produto novo a aprovar (docs/NEW_PRODUCT.md): o administrador vê todos;
+  // o superior, os de quem responde a ele.
+  if (wellmix)
+    tasks.push(
+      ...(
+        await (await import("./product-approval")).approvalTaskDrafts(user)
       ).map((draft) => finish(draft, now)),
     );
   // Cotação de compra (docs/PURCHASE_DEMAND.md): o fornecedor responde; a

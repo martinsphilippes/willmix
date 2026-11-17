@@ -1829,3 +1829,9 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Pedido do dono** (17/11/2026; docs/EQUIPE_ACESSOS.md, seção 11, D11).
 - **Aditivo:** tabela nova `form_drafts`; o formulário guarda sozinho e recupera com "Descartar"; o cookie de 5 minutos continua lido. Nada é apagado nem muda de lugar.
 - Testes: `tests/unit/form-drafts.test.ts` e `tests/e2e/party-draft.spec.ts`.
+
+## Novo produto pela ficha em branco, com aprovação
+
+- **Pedido do dono** (17/11/2026; docs/NEW_PRODUCT.md): o quadro curto "Novo produto" da lista saiu; "+ Novo produto" abre a ficha completa em branco (`/app/products/new`), e o produto criado vai para as Pendências do administrador ou do superior (o "Responde a"), que aprova ou recusa.
+- **Aditivo:** rota nova e colunas novas e opcionais em `products` (`approvalStatus`, `approvalRequestedByUserId`, `approvalRequestedAt`, `approvalDecidedByUserId`, `approvalDecidedAt`, `approvalNote`), com o índice parcial `products_by_approval`. Produto de antes fica com a aprovação vazia e segue igual; a ficha do produto usa os mesmos campos (agora num componente só). A ação curta antiga continua, criando pela mesma regra. Nada é apagado.
+- Testes: `tests/unit/product-approval.test.ts` e `tests/e2e/new-product.spec.ts`.

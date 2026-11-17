@@ -12,7 +12,7 @@ export const pt = {
   "catalog.source.sourcing": "Sourcing",
   "catalog.source.import": "Importação",
   "help.catalog.products.steps":
-    "Abrir ficha: clique no nome para ver e editar a ficha completa (fornecedor, preço, MOQ, medidas, caixa, fotos e programação de compra).\nNovo produto: nome e linha bastam; o resto vem depois na ficha.\nImportar: use a planilha do sistema chinês em Importação para criar ou atualizar vários produtos de uma vez.",
+    'Abrir ficha: clique no nome para ver e editar a ficha completa (fornecedor, preço, MOQ, medidas, caixa, fotos e programação de compra).\nNovo produto: abre a ficha completa em branco; criado, o produto fica inativo até o administrador ou o seu superior aprovar (Pendências). Os aguardando ficam em "Aguardando aprovação".\nImportar: use a planilha do sistema chinês em Importação para criar ou atualizar vários produtos de uma vez.',
 
   /* Ficha */
   "catalog.section.identification": "Identificação",
@@ -309,7 +309,7 @@ export const en: Record<keyof typeof pt, string> = {
   "catalog.source.sourcing": "Sourcing",
   "catalog.source.import": "Import",
   "help.catalog.products.steps":
-    "Open sheet: click the name to view and edit the full sheet (supplier, price, MOQ, dimensions, carton, photos and purchase schedule).\nNew product: name and line are enough; the rest comes later on the sheet.\nImport: use the Chinese system spreadsheet in Import to create or update many products at once.",
+    'Open sheet: click the name to view and edit the full sheet (supplier, price, MOQ, dimensions, carton, photos and purchase schedule).\nNew product: opens the full blank sheet; once created, the product stays inactive until the administrator or your manager approves it (Tasks). Those waiting are under "Awaiting approval".\nImport: use the Chinese system spreadsheet in Import to create or update many products at once.',
 
   "catalog.section.identification": "Identification",
   "catalog.section.supplier": "Supplier and negotiation",
@@ -595,7 +595,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "catalog.source.sourcing": "采购考察",
   "catalog.source.import": "表格导入",
   "help.catalog.products.steps":
-    "打开档案：点击产品名称查看并编辑完整档案（供应商、价格、起订量、尺寸、外箱、照片和采购计划）。\n新建产品：只需填写名称和产品线，其余信息稍后在档案中补充。\n导入：在“导入”页面使用中国系统导出的表格，一次创建或更新多个产品。",
+    "打开档案：点击产品名称查看并编辑完整档案（供应商、价格、起订量、尺寸、外箱、照片和采购计划）。\n新增产品：打开空白的完整档案；创建后产品保持停用，直到管理员或您的上级批准（待办）。等待中的产品在“等待审批”中。\n导入：在“导入”页面使用中国系统导出的表格，一次创建或更新多个产品。",
 
   "catalog.section.identification": "基本信息",
   "catalog.section.supplier": "供应商与谈判",

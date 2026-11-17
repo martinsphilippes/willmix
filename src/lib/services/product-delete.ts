@@ -2,6 +2,7 @@ import "server-only";
 
 import { getStore, type User } from "@/lib/db";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { awaitingApproval } from "@/lib/product-approval";
 import { audit } from "./audit";
 
 /*
@@ -27,6 +28,9 @@ export async function setProductsActive(
   let changed = 0;
   for (const product of rows) {
     if (product.active === active) continue;
+    // Produto novo aguardando a aprovação (ou recusado) só fica ativo pela
+    // aprovação (docs/NEW_PRODUCT.md): "Restaurar" não passa por cima dela.
+    if (active && awaitingApproval(product)) continue;
     await store.update("products", product.id, { active });
     await audit(
       user,
