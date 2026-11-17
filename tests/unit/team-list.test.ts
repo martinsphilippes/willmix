@@ -11,6 +11,7 @@ import {
 } from "@/lib/team-list";
 import {
   directReports,
+  hierarchyIssues,
   levelInversions,
   managerChain,
 } from "@/lib/team-hierarchy";
@@ -200,5 +201,31 @@ describe("hierarquia pelo Responde a", () => {
     expect(
       levelInversions(team).map((p) => `${p.manager.id}>${p.member.id}`),
     ).toEqual(["bia>ana"]);
+  });
+
+  it("relatório da árvore: si mesmo, inexistente, quem saiu, ciclo e nível", () => {
+    const active = [
+      { id: "a", name: "A", managerUserId: "a" },
+      { id: "b", name: "B", managerUserId: "nunca-existiu" },
+      { id: "c", name: "C", managerUserId: "saiu" },
+      { id: "d", name: "D", managerUserId: "e" },
+      { id: "e", name: "E", managerUserId: "d" },
+      { id: "f", name: "F", managerUserId: "d" },
+      { id: "g", name: "G", managerUserId: "h", jobLevel: "director" },
+      { id: "h", name: "H", managerUserId: null, jobLevel: "analyst" },
+    ];
+    const all = [...active, { id: "saiu", name: "Saiu" }];
+    const issues = hierarchyIssues(active, all).map(
+      (i) => `${i.kind}:${i.memberId}`,
+    );
+    expect(issues).toEqual([
+      "self:a",
+      "missing:b",
+      "inactive:c",
+      "cycle:d",
+      "cycle:e",
+      // F responde a quem está num ciclo, mas não faz parte dele.
+      "level:g",
+    ]);
   });
 });

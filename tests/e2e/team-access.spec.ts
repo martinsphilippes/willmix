@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { PASSWORD, login } from "./helpers";
+import { PASSWORD, login, saveFunction } from "./helpers";
 
 /*
  * Equipe e acessos (dono, 14/11/2026; docs/ACCESS.md):
@@ -110,7 +110,21 @@ test("Designer: tela do Início e ação salvas valem no painel, no login e com 
     "data-fn-status",
     "dirty",
   );
+  // Antes de gravar, a prévia de impacto (R1): a Desi perde o Painel de SLA
+  // e ganha "Ver valores e margem"; nada foi gravado ainda.
   await fn.locator("[data-fn-save]").click();
+  const desiImpact = fn.locator(`[data-fn-impact-person="${desiId}"]`);
+  await expect(
+    desiImpact.locator("[data-fn-impact-lose-screens]"),
+  ).toContainText("SLA");
+  await expect(
+    desiImpact.locator("[data-fn-impact-gain-actions]"),
+  ).toContainText("valores");
+  await expect(fn.locator("[data-fn-status]")).toHaveAttribute(
+    "data-fn-status",
+    "impact",
+  );
+  await fn.locator("[data-fn-impact-confirm]").click();
   await expect(fn.locator("[data-fn-saved]")).toBeVisible();
   // Recarregada a tela, as duas mudanças continuam gravadas.
   await page.reload();
@@ -190,8 +204,7 @@ test("Designer: tela do Início e ação salvas valem no painel, no login e com 
   await fn.locator('[data-fn-view="actions"]').click();
   await fn.locator("[data-fn-search]").fill("valores");
   await fn.locator('[data-fn-action="values.view"]').uncheck();
-  await fn.locator("[data-fn-save]").click();
-  await expect(fn.locator("[data-fn-saved]")).toBeVisible();
+  await saveFunction(fn);
   await designer
     .locator('[data-sidebar-nav] [data-nav-link="/app/tasks"]:visible')
     .first()

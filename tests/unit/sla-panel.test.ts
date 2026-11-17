@@ -310,3 +310,79 @@ describe("painel de SLA por divisão", () => {
     expect(item(await slaBoardFor(admin, ALL))).toBeUndefined();
   });
 });
+
+describe("SLA: cargo, nível, função, área e divisão; saúde da árvore; mudanças de acesso (R9, D2)", () => {
+  it("o administrador vê a saúde da árvore; o gestor, não", async () => {
+    const boss = await wellmixUser("lia.lider@wellmix.com", "Lia Líder");
+    const sub = await wellmixUser("rui.sub@wellmix.com", "Rui Sub");
+    const gone = await wellmixUser("ivo.saiu@wellmix.com", "Ivo Saiu");
+    const orphan = await wellmixUser("eli.orfa@wellmix.com", "Eli Órfã");
+    await team.setTeamMember(admin, boss.id, {
+      jobLevel: "analyst",
+      managerUserId: null,
+      division: null,
+    });
+    await team.setTeamMember(admin, sub.id, {
+      jobLevel: "director",
+      managerUserId: boss.id,
+      division: null,
+    });
+    await team.setTeamMember(admin, orphan.id, {
+      jobLevel: null,
+      managerUserId: gone.id,
+      division: null,
+    });
+    // Ivo sai (login desativado): a Eli fica respondendo a quem saiu.
+    await getStore().update("users", gone.id, { active: false });
+
+    const board = await slaBoardFor(admin, ALL);
+    const issues = board.issues.map((i) => `${i.kind}:${i.memberId}`);
+    expect(issues).toContain(`level:${sub.id}`);
+    expect(issues).toContain(`inactive:${orphan.id}`);
+    // O gestor não vê o relatório (só o administrador).
+    expect((await slaBoardFor(await reload(boss), ALL)).issues).toEqual([]);
+  });
+
+  it("cada pessoa com cargo, área e funções; o gestor vê as mudanças de acesso da equipe dele", async () => {
+    await team.setTeamMember(admin, analyst.id, {
+      jobLevel: "analyst",
+      managerUserId: coordinator.id,
+      division: "wellmix",
+      functions: ["buyer"],
+    });
+    const { setFunctionPermissions, loadFunctionDefs } =
+      await import("@/lib/services/team-functions");
+    const { WELLMIX_BASE } = await import("@/lib/auth/screens");
+    const buyer = (await loadFunctionDefs()).find((d) => d.key === "buyer")!;
+    await setFunctionPermissions(
+      admin,
+      "buyer",
+      [
+        ...WELLMIX_BASE.filter((s) => !buyer.baseOff.includes(s)),
+        ...buyer.screens.filter((s) => s !== "reviews"),
+      ],
+      [...buyer.actions],
+    );
+
+    const board = await slaBoardFor(await reload(coordinator), ALL);
+    const ana = board.people.find((p) => p.id === analyst.id)!;
+    expect(ana.functions).toEqual(["buyer"]);
+    const changes = board.accessChanges.filter(
+      (c) => c.personId === analyst.id,
+    );
+    // O cadastro (este e os de antes, no mesmo arquivo) e a regra da função.
+    expect(new Set(changes.map((c) => c.kind))).toEqual(
+      new Set(["function", "member"]),
+    );
+    expect(changes.find((c) => c.kind === "function")).toMatchObject({
+      fnKey: "buyer",
+      lostScreens: ["reviews"],
+    });
+    // Fora da equipe do coordenador: não aparece para ele.
+    expect(board.accessChanges.some((c) => c.personId === kids.id)).toBe(false);
+    // Quem não tem equipe não vê a lista.
+    expect(
+      (await slaBoardFor(await reload(analyst2), null)).accessChanges,
+    ).toEqual([]);
+  });
+});

@@ -204,6 +204,13 @@ export async function setFunctionPermissions(
     baseOff: def.baseOff,
     actions: def.actions,
   };
+  // Quem ganha ou perde com a mudança (a mesma prévia mostrada antes de
+  // salvar): vai para a Auditoria (dono, 17/11/2026; R1).
+  const team = await getStore().list("users", {
+    filter: { role: ["admin", "operator"], active: true },
+  });
+  const { functionImpact } = await import("@/lib/access-impact");
+  const impact = functionImpact(team, defs, key, { screens, actions });
   def.screens = SCREENS.filter(
     (s) => screens.includes(s) && !WELLMIX_BASE.includes(s),
   );
@@ -219,9 +226,20 @@ export async function setFunctionPermissions(
     user.id,
     `Função ${key}: telas ${def.screens.join(", ") || "(só o Início)"}${
       def.baseOff.length ? ` · Início sem: ${def.baseOff.join(", ")}` : ""
-    } · ações ${def.actions.filter((a) => !isRetiredAction(a)).join(", ") || "(nenhuma)"}`,
+    } · ações ${def.actions.filter((a) => !isRetiredAction(a)).join(", ") || "(nenhuma)"}${
+      impact.rows.length
+        ? ` · afetados: ${impact.rows.map((r) => r.name).join(", ")}`
+        : ""
+    }`,
     before,
-    { screens: def.screens, baseOff: def.baseOff, actions: def.actions },
+    {
+      key,
+      screens: def.screens,
+      baseOff: def.baseOff,
+      actions: def.actions,
+      holders: impact.holders,
+      impact: impact.rows,
+    },
   );
 }
 

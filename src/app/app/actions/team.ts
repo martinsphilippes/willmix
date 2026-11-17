@@ -802,6 +802,48 @@ export async function saveFunctionActionsAction(form: FormData) {
  * da função numa gravação só. Fica na mesma tela; o aviso de salvo aparece
  * depois que o servidor terminou.
  */
+/**
+ * Prévia de impacto antes de salvar uma função (dono, 17/11/2026;
+ * docs/EQUIPE_ACESSOS.md, R1 e etapa 5b): quem tem a função e o que cada
+ * pessoa ganha ou perde em telas e ações com o rascunho. Só calcula, não
+ * grava nada; só o administrador (quem grava acessos).
+ */
+export async function previewFunctionImpactAction(input: {
+  key: string;
+  screens: string[];
+  actions: string[];
+}): Promise<
+  | { ok: true; impact: import("@/lib/access-impact").FunctionImpact }
+  | { ok: false }
+> {
+  const user = await requireUser();
+  try {
+    assertRole(user, ["admin"]);
+    const key = FN_KEY.parse(input.key);
+    const screens = z
+      .array(z.enum(SCREENS))
+      .max(SCREENS.length)
+      .parse(input.screens);
+    const actions = z
+      .array(z.enum(ACTION_KEYS as [string, ...string[]]))
+      .max(ACTION_KEYS.length)
+      .parse(input.actions);
+    const [{ functionImpact }, { wellmixTeam }, { loadFunctionDefs }] =
+      await Promise.all([
+        import("@/lib/access-impact"),
+        import("@/lib/services/team"),
+        import("@/lib/services/team-functions"),
+      ]);
+    const [team, defs] = await Promise.all([wellmixTeam(), loadFunctionDefs()]);
+    return {
+      ok: true,
+      impact: functionImpact(team, defs, key, { screens, actions }),
+    };
+  } catch {
+    return { ok: false };
+  }
+}
+
 export async function saveFunctionPermissionsAction(
   _prev: TeamSaveState,
   form: FormData,

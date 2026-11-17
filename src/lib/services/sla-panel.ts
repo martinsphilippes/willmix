@@ -30,6 +30,7 @@ import {
   type TaskKind,
 } from "./tasks";
 import { visibleTeamIds, wellmixTeam } from "./team";
+import { hierarchyIssues, type HierarchyIssue } from "@/lib/team-hierarchy";
 
 /*
  * Painel de SLA (docs/SLA_PANEL.md). Cada pendência da Wellmix cai no painel
@@ -83,6 +84,10 @@ export interface SlaPerson {
   id: string;
   name: string;
   jobLevel: JobLevel | null;
+  /** Cargo, área e funções (R9): o painel mostra tudo da pessoa. */
+  positionId: string | null;
+  areaId: string | null;
+  functions: string[];
   managerUserId: string | null;
   /** Profundidade na árvore do que o login vê (0 = topo). */
   depth: number;
@@ -135,6 +140,34 @@ export interface SlaBoard {
    * (fora dos marcos) no fim. Só marcos com algum número.
    */
   byMilestone: SlaMilestoneRow[];
+  /**
+   * Saúde da árvore do "Responde a" (R9): referências inválidas, ciclos e o
+   * aviso de nível. Só o administrador (vazio para os demais).
+   */
+  issues: HierarchyIssue[];
+  /**
+   * Mudanças de acesso na equipe que o login vê, nos últimos 30 dias (R1 e
+   * D2): o Gestor vê o impacto na própria equipe; o administrador, em todos.
+   * Vazio para quem não tem equipe.
+   */
+  accessChanges: SlaAccessChange[];
+}
+
+/** Uma mudança de acesso de alguém da equipe (Auditoria). */
+export interface SlaAccessChange {
+  id: string;
+  at: string;
+  /** Quem mudou (o administrador). */
+  byName: string;
+  personId: string;
+  personName: string;
+  /** Mudou a regra de uma função (com o que a pessoa ganhou e perdeu) ou o cadastro da pessoa. */
+  kind: "function" | "member";
+  fnKey: string | null;
+  gainedScreens: string[];
+  lostScreens: string[];
+  gainedActions: string[];
+  lostActions: string[];
 }
 
 export interface SlaMilestoneRow {
@@ -335,6 +368,9 @@ export async function slaBoardFor(
       id: user.id,
       name: user.name,
       jobLevel: user.jobLevel ?? null,
+      positionId: user.positionId ?? null,
+      areaId: user.areaId ?? null,
+      functions: [...(user.functions ?? [])],
       managerUserId: user.managerUserId ?? null,
       depth,
       division: user.division ?? null,
@@ -347,6 +383,9 @@ export async function slaBoardFor(
         id: UNASSIGNED,
         name: "",
         jobLevel: null,
+        positionId: null,
+        areaId: null,
+        functions: [],
         managerUserId: null,
         depth: 0,
         division: null,
@@ -404,7 +443,93 @@ export async function slaBoardFor(
     recentDone: stageRows,
     manages,
     byMilestone: groupByMilestone(items, stageRows),
+    issues: admin ? await teamIssues(team) : [],
+    accessChanges: manages ? await accessChangesFor(visible, now) : [],
   };
+}
+
+/**
+ * Saúde da árvore (R9): com os logins desativados, para separar quem saiu de
+ * quem não existe.
+ */
+async function teamIssues(team: User[]): Promise<HierarchyIssue[]> {
+  const all = await getStore().list("users", {
+    filter: { role: WELLMIX_ROLES },
+  });
+  return hierarchyIssues(team, all);
+}
+
+/**
+ * Mudanças de acesso dos últimos 30 dias de quem o login vê (R1 e D2): a
+ * regra de uma função (com o que cada pessoa ganhou e perdeu, gravado na
+ * Auditoria ao salvar) e o cadastro da pessoa (funções, telas, cargo...).
+ */
+async function accessChangesFor(
+  visible: Set<string>,
+  now: Date,
+): Promise<SlaAccessChange[]> {
+  const since = new Date(now.getTime() - 30 * 86_400_000).toISOString();
+  const store = getStore();
+  const log = await store.list("audit_log", {
+    filter: { action: ["team.function_permissions", "team.member"] },
+    orderBy: "createdAt",
+    direction: "desc",
+    limit: 300,
+  });
+  const recent = log.filter((e) => e.createdAt >= since);
+  const users = await listByIds(store, "users", [
+    ...new Set(recent.flatMap((e) => [e.userId, e.entityId]).filter(Boolean)),
+  ] as string[]);
+  const nameOf = (id: string | null | undefined) =>
+    (id && users.find((u) => u.id === id)?.name) || "—";
+  const out: SlaAccessChange[] = [];
+  for (const e of recent) {
+    if (e.action === "team.member") {
+      if (!visible.has(e.entityId)) continue;
+      out.push({
+        id: e.id,
+        at: e.createdAt,
+        byName: nameOf(e.userId),
+        personId: e.entityId,
+        personName: nameOf(e.entityId),
+        kind: "member",
+        fnKey: null,
+        gainedScreens: [],
+        lostScreens: [],
+        gainedActions: [],
+        lostActions: [],
+      });
+      continue;
+    }
+    const after = (e.after ?? {}) as {
+      key?: string;
+      impact?: Array<{
+        id: string;
+        name: string;
+        gainedScreens?: string[];
+        lostScreens?: string[];
+        gainedActions?: string[];
+        lostActions?: string[];
+      }>;
+    };
+    for (const row of after.impact ?? []) {
+      if (!visible.has(row.id)) continue;
+      out.push({
+        id: `${e.id}:${row.id}`,
+        at: e.createdAt,
+        byName: nameOf(e.userId),
+        personId: row.id,
+        personName: row.name,
+        kind: "function",
+        fnKey: after.key ?? null,
+        gainedScreens: row.gainedScreens ?? [],
+        lostScreens: row.lostScreens ?? [],
+        gainedActions: row.gainedActions ?? [],
+        lostActions: row.lostActions ?? [],
+      });
+    }
+  }
+  return out.slice(0, 50);
 }
 
 /**

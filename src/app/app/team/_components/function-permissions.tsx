@@ -5,15 +5,18 @@ import {
   useEffect,
   useRef,
   useState,
+  useTransition,
   type FormEvent,
 } from "react";
 import {
   archiveFunctionAction,
+  previewFunctionImpactAction,
   renameFunctionAction,
   resetFunctionAction,
   saveFunctionPermissionsAction,
   type TeamSaveState,
 } from "@/app/app/actions/team";
+import type { FunctionImpact } from "@/lib/access-impact";
 import { Alert, Badge, Button, Input, cx } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PermissionList, type PermissionGroup } from "./permission-list";
@@ -25,6 +28,12 @@ import { PermissionList, type PermissionGroup } from "./permission-list";
  * por módulo do portal, com busca, e um botão só, "Salvar permissões", que
  * grava as duas abas. Trocar de aba não perde o que foi marcado; o aviso de
  * salvo aparece depois que o servidor terminou.
+ *
+ * Prévia de impacto (dono, 17/11/2026; docs/EQUIPE_ACESSOS.md, R1): ao
+ * salvar, o servidor calcula, sem gravar, quem tem a função e o que cada
+ * pessoa ganha ou perde em telas e ações. Se alguém é afetado, a lista
+ * aparece com "Confirmar e salvar"; só então grava. Ninguém afetado: grava
+ * direto.
  */
 
 export interface FunctionView {
@@ -67,6 +76,17 @@ export interface FunctionTexts {
   actionsHint: string;
   adminNote: string;
   intl: string;
+  impactChecking: string;
+  impactTitle: string;
+  impactSummary: string;
+  gainScreens: string;
+  loseScreens: string;
+  gainActions: string;
+  loseActions: string;
+  impactConfirm: string;
+  impactCancel: string;
+  impactError: string;
+  saveAnyway: string;
 }
 
 const INITIAL: TeamSaveState = {
@@ -115,8 +135,63 @@ export function FunctionPermissions({
     INITIAL,
   );
   const menuRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  // Prévia de impacto: calculada ao salvar; confirmada, o envio segue. Vale
+  // só para o que está marcado agora e até a próxima gravação.
+  const [preview, setPreview] = useState<{
+    sig: string;
+    at: string | null;
+    impact: FunctionImpact | null;
+  } | null>(null);
+  const [checking, startChecking] = useTransition();
+  const confirmed = useRef(false);
   const dirty =
     !same(screens, initialScreens) || !same(actions, initialActions);
+  const signature = `${[...screens].sort().join(",")}|${[...actions]
+    .sort()
+    .join(",")}`;
+  const current =
+    preview && preview.sig === signature && preview.at === state.savedAt
+      ? preview
+      : null;
+  const impact = current?.impact ?? null;
+  const impactFailed = !!current && !current.impact;
+
+  const submitNow = () => {
+    confirmed.current = true;
+    formRef.current?.requestSubmit();
+  };
+  const onSave = (e: FormEvent<HTMLFormElement>) => {
+    if (confirmed.current) {
+      confirmed.current = false;
+      return;
+    }
+    e.preventDefault();
+    startChecking(async () => {
+      const result = await previewFunctionImpactAction({
+        key: fn.key,
+        screens: [...screens],
+        actions: [...actions],
+      }).catch(() => ({ ok: false as const }));
+      if (!result.ok) {
+        setPreview({ sig: signature, at: state.savedAt, impact: null });
+        return;
+      }
+      if (!result.impact.rows.length) {
+        submitNow();
+        return;
+      }
+      setPreview({ sig: signature, at: state.savedAt, impact: result.impact });
+    });
+  };
+  const labelOf = (groups: PermissionGroup[]) => {
+    const map = new Map(
+      groups.flatMap((g) => g.items.map((i) => [i.key, i.label] as const)),
+    );
+    return (keys: string[]) => keys.map((k) => map.get(k) ?? k).join(", ");
+  };
+  const screenNames = labelOf(screenGroups);
+  const actionNames = labelOf(actionGroups);
 
   // Menu ⋯: fecha ao tocar fora ou com Esc.
   useEffect(() => {
@@ -358,7 +433,13 @@ export function FunctionPermissions({
         )}
       </div>
 
-      <form action={formAction} className="mt-3" data-fn-form={fn.key}>
+      <form
+        ref={formRef}
+        action={formAction}
+        onSubmit={onSave}
+        className="mt-3"
+        data-fn-form={fn.key}
+      >
         <input type="hidden" name="key" value={fn.key} />
         {[...screens].map((s) => (
           <input key={`s-${s}`} type="hidden" name="screens" value={s} />
@@ -431,6 +512,107 @@ export function FunctionPermissions({
 
         <p className="mt-3 text-xs text-zinc-500">{texts.adminNote}</p>
 
+        {impact ? (
+          <div
+            className="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3"
+            role="region"
+            aria-label={texts.impactTitle}
+            data-fn-impact={impact.rows.length}
+          >
+            <h3 className="text-sm font-semibold text-zinc-900">
+              {texts.impactTitle}
+            </h3>
+            <p className="mt-0.5 text-xs text-zinc-600">
+              {texts.impactSummary
+                .replace("{n}", String(impact.holders))
+                .replace("{m}", String(impact.rows.length))}
+            </p>
+            <ul className="mt-2 divide-y divide-amber-100 text-sm">
+              {impact.rows.map((row) => (
+                <li
+                  key={row.id}
+                  className="py-1.5"
+                  data-fn-impact-person={row.id}
+                >
+                  <span className="font-medium text-zinc-900">{row.name}</span>
+                  <span className="mt-0.5 block space-y-0.5 text-xs">
+                    {row.gainedScreens.length ? (
+                      <span
+                        className="block text-emerald-800"
+                        data-fn-impact-gain-screens
+                      >
+                        {texts.gainScreens.replace(
+                          "{list}",
+                          screenNames(row.gainedScreens),
+                        )}
+                      </span>
+                    ) : null}
+                    {row.lostScreens.length ? (
+                      <span
+                        className="block text-red-700"
+                        data-fn-impact-lose-screens
+                      >
+                        {texts.loseScreens.replace(
+                          "{list}",
+                          screenNames(row.lostScreens),
+                        )}
+                      </span>
+                    ) : null}
+                    {row.gainedActions.length ? (
+                      <span
+                        className="block text-emerald-800"
+                        data-fn-impact-gain-actions
+                      >
+                        {texts.gainActions.replace(
+                          "{list}",
+                          actionNames(row.gainedActions),
+                        )}
+                      </span>
+                    ) : null}
+                    {row.lostActions.length ? (
+                      <span
+                        className="block text-red-700"
+                        data-fn-impact-lose-actions
+                      >
+                        {texts.loseActions.replace(
+                          "{list}",
+                          actionNames(row.lostActions),
+                        )}
+                      </span>
+                    ) : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                onClick={submitNow}
+                disabled={pending}
+                data-fn-impact-confirm
+              >
+                {texts.impactConfirm}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setPreview(null)}
+                data-fn-impact-cancel
+              >
+                {texts.impactCancel}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+        {impactFailed ? (
+          <div className="mt-3 space-y-2" data-fn-impact-error>
+            <Alert tone="warning">{texts.impactError}</Alert>
+            <Button type="button" variant="secondary" onClick={submitNow}>
+              {texts.saveAnyway}
+            </Button>
+          </div>
+        ) : null}
+
         {/* Um botão só para as duas abas, sempre à vista no fim do painel. */}
         <div className="sticky bottom-0 z-10 -mx-3.5 mt-3 flex flex-wrap items-center justify-end gap-3 border-t border-zinc-200 bg-white/95 px-3.5 py-3 backdrop-blur sm:-mx-4 sm:px-4">
           <span
@@ -440,17 +622,23 @@ export function FunctionPermissions({
             data-fn-status={
               pending
                 ? "saving"
-                : dirty
-                  ? "dirty"
-                  : state.ok
-                    ? "saved"
-                    : state.error
-                      ? "error"
-                      : "idle"
+                : checking
+                  ? "checking"
+                  : impact
+                    ? "impact"
+                    : dirty
+                      ? "dirty"
+                      : state.ok
+                        ? "saved"
+                        : state.error
+                          ? "error"
+                          : "idle"
             }
           >
             {pending ? (
               <span className="text-zinc-500">{texts.saving}</span>
+            ) : checking ? (
+              <span className="text-zinc-500">{texts.impactChecking}</span>
             ) : dirty ? (
               <span className="text-amber-700">{texts.dirty}</span>
             ) : state.ok ? (

@@ -6,6 +6,45 @@
  * função" e "Por tela".
  */
 export const pt = {
+  "sla.col.position": "Cargo",
+  "sla.col.functions": "Função",
+  "sla.col.area": "Área",
+  "sla.health.title": "Saúde da hierarquia",
+  "sla.health.hint":
+    'A árvore do "Responde a" com problema (só o administrador vê). Corrija pelo cadastro da pessoa.',
+  "sla.health.self": "{name} responde a si mesmo.",
+  "sla.health.missing": "{name} responde a alguém que não existe no portal.",
+  "sla.health.inactive":
+    "{name} responde a {manager}, que saiu (login desativado).",
+  "sla.health.cycle":
+    '{name} está num ciclo: a cadeia do "Responde a" volta para a própria pessoa.',
+  "sla.health.level": "{name} responde a {manager}, de nível menor (só aviso).",
+  "sla.health.fix": "Corrigir",
+  "sla.access.title": "Mudanças de acesso na equipe",
+  "sla.access.hint":
+    'Os últimos 30 dias, só de quem está abaixo de você no "Responde a". Só consulta: quem grava acessos é o administrador.',
+  "sla.access.hintAdmin":
+    "Os últimos 30 dias, de toda a equipe (o Gestor vê só a equipe dele).",
+  "sla.access.member":
+    "O cadastro mudou (funções, telas, cargo, área ou gestor). Detalhes na Auditoria.",
+  "sla.access.function": "A função {name} mudou:",
+  "access.positionSuggestion": "Sugestão do cargo: {functions} · Nível {level}",
+  "access.positionSuggestion.apply": "Aplicar sugestão",
+  "access.positionSuggestion.note":
+    "O cargo não libera nada sozinho: aplicar acrescenta as funções e ajusta o nível aqui, e vale ao salvar.",
+  "fn.impact.checking": "Calculando quem é afetado…",
+  "fn.impact.title": "Antes de salvar: quem é afetado",
+  "fn.impact.summary":
+    "{n} pessoa(s) têm esta função; {m} ganham ou perdem acesso com a mudança. Nada foi gravado ainda.",
+  "fn.impact.gainScreens": "Ganha telas: {list}",
+  "fn.impact.loseScreens": "Perde telas: {list}",
+  "fn.impact.gainActions": "Ganha ações: {list}",
+  "fn.impact.loseActions": "Perde ações: {list}",
+  "fn.impact.confirm": "Confirmar e salvar",
+  "fn.impact.cancel": "Voltar e ajustar",
+  "fn.impact.error":
+    "Não foi possível calcular a prévia agora. Você pode salvar mesmo assim.",
+  "fn.impact.saveAnyway": "Salvar mesmo assim",
   "internalTeam.nav": "Equipe Interna",
   "internalTeam.tabs": "Seções da Equipe Interna",
   "internalTeam.tab.team": "Equipe",
@@ -55,6 +94,8 @@ export const pt = {
   "internalTeam.position.note":
     "O cargo não libera telas nem ações sozinho: elas vêm das funções de cada pessoa. O cargo leva a área para quem o tem.",
   "internalTeam.position.edit": "Renomear, mudar a área ou desativar",
+  "internalTeam.position.suggests": "Sugere",
+  "internalTeam.position.suggestion": "Funções: {functions} · Nível: {level}",
   "internalTeam.area.title": "Área",
   "internalTeam.area.positions": "Cargos da área ({n})",
   "internalTeam.area.positions.none": "Nenhum cargo nesta área.",
@@ -146,6 +187,48 @@ export const pt = {
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
+  "sla.col.position": "Job title",
+  "sla.col.functions": "Function",
+  "sla.col.area": "Area",
+  "sla.health.title": "Hierarchy health",
+  "sla.health.hint":
+    'Problems in the "Reports to" tree (only the admin sees this). Fix them on the person\'s record.',
+  "sla.health.self": "{name} reports to themselves.",
+  "sla.health.missing":
+    "{name} reports to someone who does not exist in the portal.",
+  "sla.health.inactive":
+    "{name} reports to {manager}, who left (login disabled).",
+  "sla.health.cycle":
+    '{name} is in a cycle: the "Reports to" chain comes back to them.',
+  "sla.health.level":
+    "{name} reports to {manager}, who has a lower level (warning only).",
+  "sla.health.fix": "Fix",
+  "sla.access.title": "Access changes in the team",
+  "sla.access.hint":
+    'The last 30 days, only for people below you in "Reports to". View only: the admin saves access.',
+  "sla.access.hintAdmin":
+    "The last 30 days, for the whole team (a manager sees only their team).",
+  "sla.access.member":
+    "The record changed (functions, screens, job title, area or manager). Details in the Audit log.",
+  "sla.access.function": "The function {name} changed:",
+  "access.positionSuggestion":
+    "Job title suggests: {functions} · Level {level}",
+  "access.positionSuggestion.apply": "Apply suggestion",
+  "access.positionSuggestion.note":
+    "A job title grants nothing on its own: applying adds the functions and sets the level here, and takes effect when you save.",
+  "fn.impact.checking": "Working out who is affected…",
+  "fn.impact.title": "Before saving: who is affected",
+  "fn.impact.summary":
+    "{n} person(s) have this function; {m} gain or lose access with the change. Nothing has been saved yet.",
+  "fn.impact.gainScreens": "Gains screens: {list}",
+  "fn.impact.loseScreens": "Loses screens: {list}",
+  "fn.impact.gainActions": "Gains actions: {list}",
+  "fn.impact.loseActions": "Loses actions: {list}",
+  "fn.impact.confirm": "Confirm and save",
+  "fn.impact.cancel": "Go back and adjust",
+  "fn.impact.error":
+    "Could not work out the preview right now. You can save anyway.",
+  "fn.impact.saveAnyway": "Save anyway",
   "internalTeam.nav": "Internal team",
   "internalTeam.tabs": "Internal team sections",
   "internalTeam.tab.team": "Team",
@@ -195,6 +278,8 @@ export const en: Record<keyof typeof pt, string> = {
   "internalTeam.position.note":
     "A job title grants no screens or actions on its own: they come from each person's functions. The job title carries its area to whoever holds it.",
   "internalTeam.position.edit": "Rename, change area or disable",
+  "internalTeam.position.suggests": "Suggests",
+  "internalTeam.position.suggestion": "Functions: {functions} · Level: {level}",
   "internalTeam.area.title": "Area",
   "internalTeam.area.positions": "Job titles in the area ({n})",
   "internalTeam.area.positions.none": "No job titles in this area.",
@@ -287,6 +372,41 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "sla.col.position": "职位",
+  "sla.col.functions": "职能",
+  "sla.col.area": "部门",
+  "sla.health.title": "层级健康状况",
+  "sla.health.hint":
+    "“汇报给”树中存在的问题（仅管理员可见）。请在人员档案中修正。",
+  "sla.health.self": "{name} 汇报给自己。",
+  "sla.health.missing": "{name} 汇报给门户中不存在的人。",
+  "sla.health.inactive": "{name} 汇报给已离开的 {manager}（登录已停用）。",
+  "sla.health.cycle": "{name} 处于循环中：“汇报给”链又回到了此人。",
+  "sla.health.level": "{name} 汇报给级别更低的 {manager}（仅提示）。",
+  "sla.health.fix": "修正",
+  "sla.access.title": "团队的权限变更",
+  "sla.access.hint":
+    "最近 30 天，仅限在“汇报给”中位于您下级的人员。仅供查看：权限由管理员保存。",
+  "sla.access.hintAdmin": "最近 30 天，整个团队（上级只能看到自己的团队）。",
+  "sla.access.member":
+    "档案已变更（职能、页面、职位、部门或上级）。详情见审计日志。",
+  "sla.access.function": "职能 {name} 已变更：",
+  "access.positionSuggestion": "职位建议：{functions} · 级别 {level}",
+  "access.positionSuggestion.apply": "应用建议",
+  "access.positionSuggestion.note":
+    "职位本身不开放任何内容：应用后会在此添加职能并调整级别，保存后生效。",
+  "fn.impact.checking": "正在计算受影响的人员…",
+  "fn.impact.title": "保存前：受影响的人员",
+  "fn.impact.summary":
+    "{n} 人拥有此职能；其中 {m} 人会因此变更获得或失去权限。尚未保存任何内容。",
+  "fn.impact.gainScreens": "获得页面：{list}",
+  "fn.impact.loseScreens": "失去页面：{list}",
+  "fn.impact.gainActions": "获得操作：{list}",
+  "fn.impact.loseActions": "失去操作：{list}",
+  "fn.impact.confirm": "确认并保存",
+  "fn.impact.cancel": "返回调整",
+  "fn.impact.error": "暂时无法计算预览。您仍可直接保存。",
+  "fn.impact.saveAnyway": "仍然保存",
   "internalTeam.nav": "内部团队",
   "internalTeam.tabs": "内部团队栏目",
   "internalTeam.tab.team": "团队",
@@ -334,6 +454,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "internalTeam.position.note":
     "职位本身不开放任何页面或操作：这些来自每个人的职能。职位会把所属部门带给担任该职位的人。",
   "internalTeam.position.edit": "重命名、更改部门或停用",
+  "internalTeam.position.suggests": "建议",
+  "internalTeam.position.suggestion": "职能：{functions} · 级别：{level}",
   "internalTeam.area.title": "部门",
   "internalTeam.area.positions": "该部门的职位（{n}）",
   "internalTeam.area.positions.none": "该部门没有职位。",

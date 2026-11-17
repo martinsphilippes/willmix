@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { PASSWORD, login } from "./helpers";
+import { PASSWORD, login, saveFunction } from "./helpers";
 
 /*
  * Telas do Início por função (Equipe e acessos → Funções → Telas e links,
@@ -43,8 +43,7 @@ async function saveScreens(
     await expect(box).toBeEnabled();
     await box.setChecked(on);
   }
-  await editor.locator("[data-fn-save]").click();
-  await expect(editor.locator("[data-fn-saved]")).toBeVisible();
+  await saveFunction(editor);
 }
 
 async function createLogin(
