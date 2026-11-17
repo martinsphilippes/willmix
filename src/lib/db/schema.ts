@@ -3590,6 +3590,33 @@ export interface TeamPosition extends BaseRow {
   updatedByUserId: string | null;
 }
 
+/** Situação de quem aguarda e-mail (Equipe → "Aguardando e-mail"). */
+export const TEAM_PENDING_STATUSES = ["waiting", "created", "removed"] as const;
+export type TeamPendingStatus = (typeof TEAM_PENDING_STATUSES)[number];
+
+/**
+ * Pessoa da equipe aguardando e-mail (Equipe → "Aguardando e-mail"; dono,
+ * 17/11/2026): veio da planilha sem e-mail. O cargo, a área, as funções e o
+ * nível sugeridos ficam guardados até o administrador pôr o e-mail e criar o
+ * login. Não se apaga: criado ou tirado da lista, fica o registro.
+ */
+export interface TeamPending extends BaseRow {
+  name: string;
+  status: TeamPendingStatus;
+  positionId: string | null;
+  areaId: string | null;
+  jobLevel: JobLevel | null;
+  functions: string[] | null;
+  /** O "a conferir" que o login vai ter. */
+  reviewNote: string | null;
+  /** De onde veio (ex.: "Importação da planilha, linha 27"). */
+  source: string | null;
+  /** O login criado depois (situação "created"). */
+  userId: string | null;
+  createdByUserId: string | null;
+  updatedByUserId: string | null;
+}
+
 export interface PartnerType extends BaseRow {
   /** Identificador estável (não muda ao renomear). */
   key: string;
@@ -3746,6 +3773,7 @@ export interface Tables {
   partner_types: PartnerType;
   team_areas: TeamArea;
   team_positions: TeamPosition;
+  team_pending: TeamPending;
   users: User;
   parties: Party;
   product_lines: ProductLine;
@@ -5903,6 +5931,23 @@ export const TABLES: Record<TableName, TableDef> = {
       updatedByUserId: id(false),
     },
     indexes: [{ key: "by_area", type: "key", columns: ["areaId"] }],
+  },
+  team_pending: {
+    label: "Equipe aguardando e-mail (o login é criado depois)",
+    columns: {
+      name: str(120, true),
+      status: enumOf(TEAM_PENDING_STATUSES),
+      positionId: id(false),
+      areaId: id(false),
+      jobLevel: enumOf(JOB_LEVELS, false),
+      functions: json(),
+      reviewNote: str(500),
+      source: str(200),
+      userId: id(false),
+      createdByUserId: id(false),
+      updatedByUserId: id(false),
+    },
+    indexes: [{ key: "by_status", type: "key", columns: ["status"] }],
   },
   partner_types: {
     label: "Tipos de parceiro (catálogo administrável)",

@@ -91,6 +91,10 @@ export default async function TeamImportPage() {
           review: t("teamImport.review"),
           noReview: t("teamImport.noReview"),
           keep: t("teamImport.keep"),
+          pendingTitle: t("teamImport.pending.title"),
+          pendingHint: t("teamImport.pending.hint"),
+          pendingAlready: t("teamImport.pending.already"),
+          pendingDone: t("teamImport.pendingDone"),
         }}
       />
     </>

@@ -27,6 +27,7 @@ const INITIAL: TeamImportState = {
   rows: [],
   invalid: [],
   repeated: [],
+  pending: [],
   result: null,
   doneAt: null,
 };
@@ -65,6 +66,10 @@ export interface TeamImportTexts {
   noReview: string;
   /** Funções de quem já tem login: a importação não muda. */
   keep: string;
+  pendingTitle: string;
+  pendingHint: string;
+  pendingAlready: string;
+  pendingDone: string;
 }
 
 const fill = (text: string, values: Record<string, string | number>) =>
@@ -159,7 +164,11 @@ export function TeamImport({
             <Button
               type="submit"
               value="run"
-              disabled={pending || password.length < 8 || !state.rows.length}
+              disabled={
+                pending ||
+                password.length < 8 ||
+                (!state.rows.length && !state.pending.length)
+              }
               data-team-import-run
             >
               {pending && intent === "run" ? texts.working : texts.run}
@@ -186,6 +195,11 @@ export function TeamImport({
                 review: result.created.filter((c) => c.review).length,
               })}
             </span>
+            {result.pending.length ? (
+              <span className="mt-1 block" data-team-import-pending-done>
+                {fill(texts.pendingDone, { n: result.pending.length })}
+              </span>
+            ) : null}
             {result.remaining ? (
               <span
                 className="mt-1 block font-semibold"
@@ -221,7 +235,7 @@ export function TeamImport({
         </div>
       ) : null}
 
-      {state.ok && state.rows.length ? (
+      {state.ok && (state.rows.length || state.pending.length) ? (
         <Card
           title={fill(texts.previewDone, {
             n: state.rows.length,
@@ -251,6 +265,28 @@ export function TeamImport({
                   {state.repeated.map((r) => (
                     <li key={`r${r.line}`}>
                       {fill(texts.repeated, { line: r.line, email: r.email })}
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            </div>
+          ) : null}
+          {state.pending.length ? (
+            <div className="mb-3" data-team-import-pending>
+              <Alert tone="info">
+                <span className="block font-semibold">
+                  {fill(texts.pendingTitle, { n: state.pending.length })}
+                </span>
+                <span className="block text-xs">{texts.pendingHint}</span>
+                <ul className="mt-1 list-disc pl-5">
+                  {state.pending.map((p) => (
+                    <li
+                      key={`p${p.line}`}
+                      data-team-import-pending-row={p.name}
+                    >
+                      {p.name} · {p.position || texts.none} ·{" "}
+                      {p.area ?? texts.none}
+                      {p.already ? ` (${texts.pendingAlready})` : ""}
                     </li>
                   ))}
                 </ul>

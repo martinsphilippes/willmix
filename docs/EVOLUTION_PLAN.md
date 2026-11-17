@@ -1842,3 +1842,10 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Pedido do dono** (17/11/2026; docs/NEW_PRODUCT.md): o quadro curto "Novo produto" da lista saiu; "+ Novo produto" abre a ficha completa em branco (`/app/products/new`), e o produto criado vai para as Pendências do administrador ou do superior (o "Responde a"), que aprova ou recusa. Criado pelo administrador, nasce ativo, sem aprovação (D2).
 - **Aditivo:** rota nova e colunas novas e opcionais em `products` (`approvalStatus`, `approvalRequestedByUserId`, `approvalRequestedAt`, `approvalDecidedByUserId`, `approvalDecidedAt`, `approvalNote`), com o índice parcial `products_by_approval`. Produto de antes fica com a aprovação vazia e segue igual; a ficha do produto usa os mesmos campos (agora num componente só). A ação curta antiga continua, criando pela mesma regra. Nada é apagado.
 - Testes: `tests/unit/product-approval.test.ts` e `tests/e2e/new-product.spec.ts`.
+
+## Equipe: "Aguardando e-mail" para quem veio da planilha sem e-mail
+
+- **Pedido do dono** (17/11/2026), depois de criar os 54 logins da planilha: deixar as 4 pessoas sem e-mail aguardando, com a possibilidade de pôr o e-mail à mão pelo portal.
+- **Como ficou**: a importação guarda quem vem com nome e sem e-mail em "Aguardando e-mail" (cargo, área, funções, nível e o "a conferir" sugeridos); na Equipe Interna, o atalho "N aguardando e-mail" abre o painel com "E-mail ou nome de usuário", "Senha provisória" e "Criar login", e "Tirar da lista" (docs/ACCESS.md, "Importar equipe").
+- **Aditivo:** tabela nova `team_pending`; nada muda nos logins existentes nem nas telas de antes (o painel novo entra na lista de painéis da Equipe Interna).
+- Testes: `tests/unit/team-import.test.ts` e `tests/e2e/team-pending.spec.ts`.

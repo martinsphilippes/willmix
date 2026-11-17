@@ -3,6 +3,7 @@ import "server-only";
 import { getStore, type User } from "@/lib/db";
 import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
 import {
+  areaNameKey,
   parseTeamImport,
   proposeTeamImport,
   reviewNoteOf,
@@ -13,6 +14,7 @@ import { createPortalLogin, PORTAL_MIN_PASSWORD } from "./portal-access";
 import { setTeamMember } from "./team";
 import { listTeamAreas } from "./team-areas";
 import { listTeamPositions } from "./team-positions";
+import { addTeamPending, listTeamPending } from "./team-pending";
 
 /*
  * Importar equipe (Equipe → "Importar da planilha"; dono, 16/11/2026;
@@ -54,6 +56,11 @@ export interface TeamImportPreview {
   header: string | null;
   invalid: { line: number; text: string; reason: "name" | "email" }[];
   repeated: { line: number; email: string }[];
+  /**
+   * Sem e-mail na planilha: ficam "Aguardando e-mail" ao criar os logins
+   * (`already` = já estava na lista).
+   */
+  pending: (TeamImportProposal & { already: boolean })[];
 }
 
 function assertAdmin(user: User) {
@@ -67,14 +74,19 @@ export async function previewTeamImport(
 ): Promise<TeamImportPreview> {
   assertAdmin(user);
   const parsed = parseTeamImport(text);
-  if (!parsed.rows.length && !parsed.invalid.length)
+  if (!parsed.rows.length && !parsed.invalid.length && !parsed.noEmail.length)
     throw new TeamImportError("import_empty");
-  if (parsed.rows.length + parsed.invalid.length > TEAM_IMPORT_MAX_ROWS)
+  if (
+    parsed.rows.length + parsed.invalid.length + parsed.noEmail.length >
+    TEAM_IMPORT_MAX_ROWS
+  )
     throw new TeamImportError("import_too_many");
-  const [positions, areas] = await Promise.all([
+  const [positions, areas, waiting] = await Promise.all([
     listTeamPositions(),
     listTeamAreas(),
+    listTeamPending(),
   ]);
+  const waitingKeys = new Set(waiting.map((w) => areaNameKey(w.name)));
   const proposals = proposeTeamImport(parsed.rows, positions, areas);
   const emails = proposals.map((p) => p.email);
   const users = emails.length
@@ -85,6 +97,10 @@ export async function previewTeamImport(
     header: parsed.header,
     invalid: parsed.invalid,
     repeated: parsed.repeated,
+    pending: proposeTeamImport(parsed.noEmail, positions, areas).map((p) => ({
+      ...p,
+      already: waitingKeys.has(areaNameKey(p.name)),
+    })),
     rows: proposals.map((p) => {
       const found = byEmail.get(p.email) ?? null;
       const status: TeamImportStatus = !found
@@ -118,6 +134,8 @@ export interface TeamImportResult {
   failed: { name: string; email: string; error: string }[];
   /** Logins novos que ficaram para a próxima rodada (limite por clique). */
   remaining: number;
+  /** Sem e-mail: guardados em "Aguardando e-mail" nesta rodada. */
+  pending: string[];
 }
 
 const codeOf = (error: unknown) =>
@@ -147,7 +165,25 @@ export async function runTeamImport(
     skipped: [],
     failed: [],
     remaining: 0,
+    pending: [],
   };
+  // Sem e-mail: ficam "Aguardando e-mail" com o que foi sugerido.
+  const fresh = preview.pending.filter((p) => !p.already);
+  if (fresh.length) {
+    const added = await addTeamPending(
+      user,
+      fresh.map((p) => ({
+        name: p.name,
+        positionId: p.positionId,
+        areaId: p.areaId,
+        jobLevel: p.level,
+        functions: p.functions,
+        reviewNote: reviewNoteOf(p.review),
+        source: `Importação da planilha, linha ${p.line}`,
+      })),
+    );
+    result.pending = added.added;
+  }
   const store = getStore();
   for (const row of preview.rows) {
     const who = { name: row.name, email: row.email };
@@ -213,7 +249,7 @@ export async function runTeamImport(
     "team.import",
     "user",
     user.id,
-    `Importação da equipe: ${result.created.length} login(s) criado(s), ${result.linked.length} ligado(s), ${result.failed.length} com erro, ${result.remaining} para a próxima rodada`,
+    `Importação da equipe: ${result.created.length} login(s) criado(s), ${result.linked.length} ligado(s), ${result.failed.length} com erro, ${result.remaining} para a próxima rodada${result.pending.length ? `, ${result.pending.length} aguardando e-mail` : ""}`,
     null,
     {
       created: result.created.map((c) => c.email),
@@ -221,6 +257,7 @@ export async function runTeamImport(
       skipped: result.skipped,
       failed: result.failed,
       remaining: result.remaining,
+      pending: result.pending,
     },
   );
   return result;
