@@ -26,6 +26,7 @@ import {
 } from "@/components/ui";
 import { ActionError } from "@/components/action-error";
 import { REQUEST_SCREEN, REPLENISHMENT_QUERY } from "@/lib/request-screens";
+import { listDraftsForList } from "@/lib/services/request-drafts";
 
 /*
  * Reposição (mapa B10; dono, 15/11/2026; docs/PURCHASE_DEMAND.md): a fila do
@@ -45,9 +46,12 @@ export default async function ReplenishmentPage({
   if (!isWellmix(user)) redirect("/app/requests");
   const { error, opened } = await searchParams;
   const t = await getT();
-  const [rows, settings] = await Promise.all([
+  // Rascunhos da entrada da Reposição de quem está vendo (dono, 17/11/2026):
+  // no alto da fila, com a situação "Rascunho".
+  const [rows, settings, drafts] = await Promise.all([
     listDemands("replenishment"),
     getSettings(),
+    listDraftsForList(user, "replenishment"),
   ]);
   // "+ Adicionar": a compra para estoque (ação "Abrir reposição") ou, sem ela,
   // a tela Venda - Encomenda de sempre para quem a abre.
@@ -86,7 +90,7 @@ export default async function ReplenishmentPage({
         </p>
       ) : null}
       <Card title={t("demand.replenishment.queue", { n: open.length })}>
-        {rows.length ? (
+        {rows.length || drafts.length ? (
           <Table>
             <thead>
               <tr>
@@ -99,6 +103,37 @@ export default async function ReplenishmentPage({
               </tr>
             </thead>
             <tbody>
+              {drafts.map(({ draft, href }) => (
+                <tr
+                  key={`draft-${draft.id}`}
+                  className={`${rowClass} bg-amber-50/40`}
+                  data-replenishment-draft={draft.id}
+                >
+                  <Td>
+                    <Link href={href} className={linkClass}>
+                      {t("requestDraft.resume")}
+                    </Link>
+                  </Td>
+                  <Td>
+                    {draft.title}
+                    <span className="block text-xs text-zinc-500">
+                      {t("requestDraft.listHint")}
+                    </span>
+                  </Td>
+                  <Td className="whitespace-nowrap tabular-nums">
+                    {t("reqBatch.count", { n: draft.itemCount })}
+                  </Td>
+                  <Td>
+                    <Badge tone="neutral">{t("demand.source.planner")}</Badge>
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    {formatDate(draft.updatedAt, t)}
+                  </Td>
+                  <Td>
+                    <Badge tone="neutral">{t("requestDraft.status")}</Badge>
+                  </Td>
+                </tr>
+              ))}
               {rows.map((r) => (
                 <tr
                   key={r.id}

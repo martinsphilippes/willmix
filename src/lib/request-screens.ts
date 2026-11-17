@@ -63,3 +63,28 @@ export const REPLENISHMENT_QUERY = `${REPLENISHMENT_FROM}=${REPLENISHMENT_VALUE}
 /** O valor de `from` (URL ou campo do formulário) é a entrada da Reposição? */
 export const isReplenishmentEntry = (v: unknown): boolean =>
   v === REPLENISHMENT_VALUE;
+
+/**
+ * O rascunho é da entrada da Reposição (dono, 17/11/2026)? O formulário
+ * dessa entrada leva o campo `from=replenishment`, que fica no rascunho; a
+ * Reposição (/app/replenishment) lista esses, Encomendas os demais.
+ */
+export function draftIsReplenishment(
+  payload: ReadonlyArray<readonly [string, string]> | null | undefined,
+): boolean {
+  return (payload ?? []).some(
+    ([k, v]) => k === REPLENISHMENT_FROM && isReplenishmentEntry(v),
+  );
+}
+
+/** Endereço para continuar o rascunho na tela de onde ele veio. */
+export function draftResumeHref(
+  draftId: string,
+  payload: ReadonlyArray<readonly [string, string]> | null | undefined,
+): string {
+  const screen = draftScreenOf(payload);
+  const id = encodeURIComponent(draftId);
+  if (screen === "sale" && draftIsReplenishment(payload))
+    return `${REQUEST_SCREEN.sale.path}?${REPLENISHMENT_QUERY}&draft=${id}`;
+  return `${screen ? REQUEST_SCREEN[screen].path : "/app/requests/new"}?draft=${id}`;
+}

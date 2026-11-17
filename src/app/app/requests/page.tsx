@@ -89,6 +89,7 @@ import { productPhotoList } from "@/lib/services/product-list";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { galleryProps } from "@/components/photo-gallery-props";
 import { DemandTags } from "@/components/demand-tags";
+import { listDraftsForList } from "@/lib/services/request-drafts";
 import { demandKind, type DemandKind } from "@/lib/purchase-demand";
 import {
   requestComposition,
@@ -386,6 +387,23 @@ export default async function RequestsPage({
     decimalComma: t.locale === "pt",
   });
   const sortValue = sort ? `${sort.desc ? "-" : ""}${sort.key}` : null;
+  /* Rascunhos de quem está vendo (dono, 17/11/2026): no alto da lista, com a
+     situação "Rascunho", na primeira página e sem filtro de situação (a
+     busca vale pelo título e pelo cliente). Os da Reposição ficam na fila de
+     Reposição. */
+  const draftRows =
+    filtering &&
+    situation === "all" &&
+    (!kindFilter || kindFilter === "order") &&
+    paged.page === 0
+      ? (await listDraftsForList(user, "requests")).filter(
+          ({ draft }) =>
+            !q ||
+            `${draft.title} ${draft.customerName ?? ""}`
+              .toLocaleLowerCase()
+              .includes(q.toLocaleLowerCase()),
+        )
+      : [];
   /* Encomendas, composição do pedido de cada linha (dono, 16/11/2026): os
      produtos, as fotos e a soma das peças pelos itens do pedido, não pelo
      produto da solicitação. Lidos só para as linhas da página: a lista
@@ -935,7 +953,7 @@ export default async function RequestsPage({
           }}
         />
       ) : null}
-      {requests.length === 0 ? (
+      {requests.length === 0 && draftRows.length === 0 ? (
         <Empty>
           {customer
             ? t("customerHome.requests.empty")
@@ -979,6 +997,44 @@ export default async function RequestsPage({
             </tr>
           </thead>
           <tbody>
+            {draftRows.map(({ draft, href }) => (
+              <tr
+                key={`draft-${draft.id}`}
+                className={cx(rowClass, "bg-amber-50/40")}
+                data-request-list-draft={draft.id}
+              >
+                {!showDeleted && anyDeletable ? <Td /> : null}
+                <Td className="tabular-nums text-zinc-400">—</Td>
+                <Td />
+                <Td className="text-zinc-400">—</Td>
+                <Td className="min-w-40">
+                  <TextLink href={href}>{draft.title}</TextLink>
+                  <span className="block text-xs text-zinc-500">
+                    {t("requestDraft.listHint")}
+                  </span>
+                </Td>
+                <Td className="whitespace-nowrap tabular-nums">
+                  {t("reqBatch.count", { n: draft.itemCount })}
+                </Td>
+                <Td className="min-w-32">
+                  {draft.customerName ?? t("requestDraft.noCustomer")}
+                </Td>
+                <Td className="whitespace-nowrap">
+                  <Badge tone="neutral">{t("requestDraft.status")}</Badge>
+                </Td>
+                <Td className="text-zinc-400">—</Td>
+                <Td className="text-zinc-400">—</Td>
+                <Td className="whitespace-nowrap">{user.name}</Td>
+                <Td className="whitespace-nowrap tabular-nums">
+                  {formatDate(draft.updatedAt, t)}
+                </Td>
+                <Td className="text-right">
+                  <TextLink href={href} data-request-list-draft-open>
+                    {t("requestDraft.resume")}
+                  </TextLink>
+                </Td>
+              </tr>
+            ))}
             {paged.rows.map((entry) => {
               if (entry.kind === "batch") {
                 // Na ordem em que foram pedidos (igual à página do lote).

@@ -423,9 +423,6 @@ export function SankhyaPurchaseHistory({
         key &&
         result?.state === "ok" ? (
           <>
-            <p className="mb-1 text-xs leading-relaxed text-zinc-500">
-              {labels.hint}
-            </p>
             <ul className="divide-y divide-zinc-100">
               {result.orders.map((o) => (
                 <OrderRow

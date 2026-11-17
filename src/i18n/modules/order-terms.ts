@@ -6,13 +6,16 @@ export const pt = {
   "orderTerms.payment.plan": "Forma de pagamento",
   "orderTerms.payment.choose": "Escolha a forma de pagamento",
   "orderTerms.payment.none": "Nenhuma forma ativa em Configurações",
-  "orderTerms.payment.hint": "As formas ativas de Configurações → Formas de pagamento do cliente. O pedido nasce com ela; a escolha valendo (alçada e boletos) fica no pedido.",
+  "orderTerms.payment.hint":
+    "As formas ativas de Configurações → Formas de pagamento do cliente. O pedido nasce com ela; a escolha valendo (alçada e boletos) fica no pedido.",
   "orderTerms.payment.preview": "Previsão de pagamento",
   "orderTerms.payment.noCharge": "sem cobrança",
   "orderTerms.payment.interest": "+ juros de {rate}% ao mês ({days} dias)",
   "orderTerms.payment.needsApproval": "com aprovação por alçada",
-  "orderTerms.payment.noTotal": "Os valores aparecem com o valor total do pedido (produtos com preço previsto). As datas saem no pedido, quando cada evento acontece.",
-  "reqBatch.error.order_terms_payment_plan": "Escolha a forma de pagamento (uma das formas ativas em Configurações → Formas de pagamento do cliente).",
+  "orderTerms.payment.noTotal":
+    "Os valores aparecem com o valor total do pedido (produtos com preço previsto). As datas saem no pedido, quando cada evento acontece.",
+  "reqBatch.error.order_terms_payment_plan":
+    "Escolha a forma de pagamento (uma das formas ativas em Configurações → Formas de pagamento do cliente).",
   "orderTerms.title": "Condições do pedido",
   "orderTerms.hint":
     "Valem para todos os produtos desta solicitação. Escolha o país e o grupo antes dos produtos.",
@@ -178,7 +181,7 @@ export const pt = {
   "productBrowser.progress": "{n} de {m} produtos da família já vistos",
   "productBrowser.defaultQty": "Quantidade padrão (caixas)",
   "productBrowser.defaultQtyHint":
-    "Cada produto acrescentado entra no pedido com estas caixas master (caixas × peças por caixa, nunca abaixo do pedido mínimo) e já recolhido em \"Produtos no pedido\". Vazio: o pedido mínimo, com a ficha aberta.",
+    'Cada produto acrescentado entra no pedido com estas caixas master (caixas × peças por caixa, nunca abaixo do pedido mínimo) e já recolhido em "Produtos no pedido". Vazio: o pedido mínimo, com a ficha aberta.',
   "productBrowser.selectAll": "Selecionar todos desta página",
   "productBrowser.select": "Selecionar {name}",
   "productBrowser.photo": "Foto",
@@ -295,19 +298,25 @@ export const pt = {
   "customerContacts.saved": "Dados do cliente salvos.",
   "customerContacts.saveFailed": "Não deu para salvar os dados do cliente.",
   "requestDraft.autosaved": "Rascunho salvo automaticamente às {time}",
+  "requestDraft.status": "Rascunho",
+  "requestDraft.listHint":
+    "Salvo por você; só você vê. Continue de onde parou.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
   "orderTerms.payment.plan": "Payment terms",
   "orderTerms.payment.choose": "Choose the payment terms",
   "orderTerms.payment.none": "No active payment terms in Settings",
-  "orderTerms.payment.hint": "The active terms from Settings → Customer payment terms. The order starts with them; the binding choice (approval and bank slips) stays in the order.",
+  "orderTerms.payment.hint":
+    "The active terms from Settings → Customer payment terms. The order starts with them; the binding choice (approval and bank slips) stays in the order.",
   "orderTerms.payment.preview": "Payment forecast",
   "orderTerms.payment.noCharge": "no charge",
   "orderTerms.payment.interest": "+ {rate}% monthly interest ({days} days)",
   "orderTerms.payment.needsApproval": "requires approval",
-  "orderTerms.payment.noTotal": "Amounts appear with the order total (products with a forecast price). Dates come in the order, as each event happens.",
-  "reqBatch.error.order_terms_payment_plan": "Choose the payment terms (one of the active terms in Settings → Customer payment terms).",
+  "orderTerms.payment.noTotal":
+    "Amounts appear with the order total (products with a forecast price). Dates come in the order, as each event happens.",
+  "reqBatch.error.order_terms_payment_plan":
+    "Choose the payment terms (one of the active terms in Settings → Customer payment terms).",
   "orderTerms.title": "Order terms",
   "orderTerms.hint":
     "They apply to every product in this request. Choose the country and the group before the products.",
@@ -471,7 +480,7 @@ export const en: Record<keyof typeof pt, string> = {
   "productBrowser.progress": "{n} of {m} products in the family already seen",
   "productBrowser.defaultQty": "Default quantity (cartons)",
   "productBrowser.defaultQtyHint":
-    "Each product added goes into the order with these master cartons (cartons × pieces per carton, never below the minimum order), already collapsed in \"Products in the order\". Empty: the minimum order, with the sheet open.",
+    'Each product added goes into the order with these master cartons (cartons × pieces per carton, never below the minimum order), already collapsed in "Products in the order". Empty: the minimum order, with the sheet open.',
   "productBrowser.selectAll": "Select all on this page",
   "productBrowser.select": "Select {name}",
   "productBrowser.photo": "Photo",
@@ -587,19 +596,25 @@ export const en: Record<keyof typeof pt, string> = {
   "customerContacts.saved": "Customer data saved.",
   "customerContacts.saveFailed": "Could not save the customer data.",
   "requestDraft.autosaved": "Draft saved automatically at {time}",
+  "requestDraft.status": "Draft",
+  "requestDraft.listHint":
+    "Saved by you; only you see it. Continue where you left off.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
   "orderTerms.payment.plan": "付款方式",
   "orderTerms.payment.choose": "选择付款方式",
   "orderTerms.payment.none": "设置中没有启用的付款方式",
-  "orderTerms.payment.hint": "来自 设置 → 客户付款方式 中启用的方式。订单以此为初始值；正式选择（审批与付款单）在订单中进行。",
+  "orderTerms.payment.hint":
+    "来自 设置 → 客户付款方式 中启用的方式。订单以此为初始值；正式选择（审批与付款单）在订单中进行。",
   "orderTerms.payment.preview": "付款预估",
   "orderTerms.payment.noCharge": "不收费",
   "orderTerms.payment.interest": "+ 每月 {rate}% 利息（{days} 天）",
   "orderTerms.payment.needsApproval": "需审批",
-  "orderTerms.payment.noTotal": "金额随订单总额（有预估价格的产品）显示。日期在订单中随各事件发生而确定。",
-  "reqBatch.error.order_terms_payment_plan": "请选择付款方式（设置 → 客户付款方式 中启用的方式之一）。",
+  "orderTerms.payment.noTotal":
+    "金额随订单总额（有预估价格的产品）显示。日期在订单中随各事件发生而确定。",
+  "reqBatch.error.order_terms_payment_plan":
+    "请选择付款方式（设置 → 客户付款方式 中启用的方式之一）。",
   "orderTerms.title": "订单条件",
   "orderTerms.hint":
     "适用于本申请的所有产品。请先选择国家和产品组，再选择产品。",
@@ -858,4 +873,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "customerContacts.saved": "客户资料已保存。",
   "customerContacts.saveFailed": "无法保存客户资料。",
   "requestDraft.autosaved": "草稿已于 {time} 自动保存",
+  "requestDraft.status": "草稿",
+  "requestDraft.listHint": "由您保存，仅您可见。从上次中断处继续。",
 };

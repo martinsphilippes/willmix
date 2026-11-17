@@ -89,6 +89,13 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await page.waitForURL(/[?&]draftSaved=1/);
   const draftId = new URL(page.url()).searchParams.get("draft")!;
   await expect(page.locator(`[data-request-draft="${draftId}"]`)).toBeVisible();
+  // O rascunho também fica em Encomendas, com a situação "Rascunho"
+  // (dono, 17/11/2026), e "Continuar" volta a ele.
+  await page.goto("/app/requests");
+  const listed = page.locator(`[data-request-list-draft="${draftId}"]`);
+  await expect(listed).toContainText(/Rascunho|Draft/);
+  await listed.locator("[data-request-list-draft-open]").click();
+  await page.waitForURL(new RegExp(`/app/requests/new\\?draft=${draftId}`));
   await expect(
     terms.locator('[data-order-terms-format-option="wellmix"]'),
   ).toBeChecked();
