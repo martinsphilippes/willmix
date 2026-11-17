@@ -1,0 +1,134 @@
+/**
+ * Equipe Externa (dono, 17/11/2026; docs/EQUIPE_ACESSOS.md): a lista de
+ * parceiros com filtro em cada coluna, a busca em toda a tabela e o painel
+ * de logins de cada parceiro. Gerar e alterar login é só do administrador.
+ */
+export const pt = {
+  "externalTeam.nav": "Equipe Externa",
+  "externalTeam.subtitle":
+    "Parceiros com acesso ao portal: fornecedores, Trading, Factory, GP, agências, despachantes e os demais tipos. Os clientes ficam em Cadastros → Clientes.",
+  "externalTeam.col.name": "Nome",
+  "externalTeam.col.type": "Tipo",
+  "externalTeam.col.status": "Situação",
+  "externalTeam.col.logins": "Login de Acesso",
+  "externalTeam.col.country": "País",
+  "externalTeam.col.email": "E-mail",
+  "externalTeam.filter.by": "Filtrar por {col}",
+  "externalTeam.filter.all": "Todos",
+  "externalTeam.filter.text": "Contém…",
+  "externalTeam.search": "Buscar em toda a tabela",
+  "externalTeam.search.placeholder":
+    "Nome, tipo, situação, login, país ou e-mail",
+  "externalTeam.search.placeholderAdmin":
+    "Nome, tipo, situação, login (e-mail ou usuário), país ou e-mail",
+  "externalTeam.clear": "Limpar filtros",
+  "externalTeam.count": "{n} parceiro(s)",
+  "externalTeam.empty": "Nenhum parceiro com esses filtros.",
+  "externalTeam.status.active": "Ativo",
+  "externalTeam.status.inactive": "Inativo",
+  "externalTeam.logins.none": "Sem login",
+  "externalTeam.logins.count": "{n} login(s)",
+  "externalTeam.logins.inactive": "{n} desativado(s)",
+  "externalTeam.country.none": "Sem país",
+  "externalTeam.suppliers": "Conta de fornecedores",
+  "externalTeam.panel.title": "Logins de acesso",
+  "externalTeam.panel.subtitle": "{name} · {type} · cadastro {status}",
+  "externalTeam.panel.empty": "Este parceiro não tem login.",
+  "externalTeam.panel.state.active": "Ativo",
+  "externalTeam.panel.state.inactive": "Desativado",
+  "externalTeam.panel.state.provisional": "Senha provisória",
+  "externalTeam.panel.create": "Gerar login no cadastro",
+  "externalTeam.panel.openParty": "Abrir o cadastro",
+  "externalTeam.panel.adminOnly":
+    "Só o administrador gera e altera logins de acesso.",
+  "externalTeam.panel.close": "Fechar",
+  "portalAccess.party.noneAsk":
+    "Este cadastro ainda não tem acesso ao portal. Só o administrador cria o login.",
+  "portalAccess.adminOnly":
+    "Só o administrador cria logins de acesso ao portal.",
+};
+
+export const en: typeof pt = {
+  "externalTeam.nav": "External Team",
+  "externalTeam.subtitle":
+    "Partners with portal access: suppliers, Trading, Factory, GP, agencies, customs brokers and the other types. Customers are in Registers → Customers.",
+  "externalTeam.col.name": "Name",
+  "externalTeam.col.type": "Type",
+  "externalTeam.col.status": "Status",
+  "externalTeam.col.logins": "Access login",
+  "externalTeam.col.country": "Country",
+  "externalTeam.col.email": "Email",
+  "externalTeam.filter.by": "Filter by {col}",
+  "externalTeam.filter.all": "All",
+  "externalTeam.filter.text": "Contains…",
+  "externalTeam.search": "Search the whole table",
+  "externalTeam.search.placeholder":
+    "Name, type, status, login, country or email",
+  "externalTeam.search.placeholderAdmin":
+    "Name, type, status, login (email or username), country or email",
+  "externalTeam.clear": "Clear filters",
+  "externalTeam.count": "{n} partner(s)",
+  "externalTeam.empty": "No partner with these filters.",
+  "externalTeam.status.active": "Active",
+  "externalTeam.status.inactive": "Inactive",
+  "externalTeam.logins.none": "No login",
+  "externalTeam.logins.count": "{n} login(s)",
+  "externalTeam.logins.inactive": "{n} deactivated",
+  "externalTeam.country.none": "No country",
+  "externalTeam.suppliers": "Supplier accounts",
+  "externalTeam.panel.title": "Access logins",
+  "externalTeam.panel.subtitle": "{name} · {type} · record {status}",
+  "externalTeam.panel.empty": "This partner has no login.",
+  "externalTeam.panel.state.active": "Active",
+  "externalTeam.panel.state.inactive": "Deactivated",
+  "externalTeam.panel.state.provisional": "Temporary password",
+  "externalTeam.panel.create": "Create login in the record",
+  "externalTeam.panel.openParty": "Open the record",
+  "externalTeam.panel.adminOnly":
+    "Only the administrator creates and changes access logins.",
+  "externalTeam.panel.close": "Close",
+  "portalAccess.party.noneAsk":
+    "This record has no portal access yet. Only the administrator creates the login.",
+  "portalAccess.adminOnly": "Only the administrator creates portal logins.",
+};
+
+export const zh: typeof pt = {
+  "externalTeam.nav": "外部团队",
+  "externalTeam.subtitle":
+    "可以使用门户的合作伙伴：供应商、贸易商、工厂、GP、代理、报关行及其他类型。客户在“登记 → 客户”中。",
+  "externalTeam.col.name": "名称",
+  "externalTeam.col.type": "类型",
+  "externalTeam.col.status": "状态",
+  "externalTeam.col.logins": "登录账号",
+  "externalTeam.col.country": "国家",
+  "externalTeam.col.email": "邮箱",
+  "externalTeam.filter.by": "按{col}筛选",
+  "externalTeam.filter.all": "全部",
+  "externalTeam.filter.text": "包含…",
+  "externalTeam.search": "在整个表格中搜索",
+  "externalTeam.search.placeholder": "名称、类型、状态、登录账号、国家或邮箱",
+  "externalTeam.search.placeholderAdmin":
+    "名称、类型、状态、登录账号（邮箱或用户名）、国家或邮箱",
+  "externalTeam.clear": "清除筛选",
+  "externalTeam.count": "{n} 个合作伙伴",
+  "externalTeam.empty": "没有符合这些筛选条件的合作伙伴。",
+  "externalTeam.status.active": "启用",
+  "externalTeam.status.inactive": "停用",
+  "externalTeam.logins.none": "无账号",
+  "externalTeam.logins.count": "{n} 个账号",
+  "externalTeam.logins.inactive": "{n} 个已停用",
+  "externalTeam.country.none": "无国家",
+  "externalTeam.suppliers": "供应商账户",
+  "externalTeam.panel.title": "登录账号",
+  "externalTeam.panel.subtitle": "{name} · {type} · 档案{status}",
+  "externalTeam.panel.empty": "该合作伙伴没有登录账号。",
+  "externalTeam.panel.state.active": "启用",
+  "externalTeam.panel.state.inactive": "已停用",
+  "externalTeam.panel.state.provisional": "临时密码",
+  "externalTeam.panel.create": "在档案中创建登录账号",
+  "externalTeam.panel.openParty": "打开档案",
+  "externalTeam.panel.adminOnly": "只有管理员可以创建和修改登录账号。",
+  "externalTeam.panel.close": "关闭",
+  "portalAccess.party.noneAsk": "该档案还没有门户账号。只有管理员可以创建。",
+  "portalAccess.adminOnly": "只有管理员可以创建门户登录账号。",
+};

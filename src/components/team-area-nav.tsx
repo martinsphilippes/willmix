@@ -56,9 +56,11 @@ const SECTIONS: {
     screen: "team",
   },
   {
+    // Equipe Externa (dono, 17/11/2026; docs/EQUIPE_ACESSOS.md): os
+    // parceiros com acesso ao portal, a antiga seção Parceiros.
     key: "partners",
     href: "/app/parties",
-    label: "nav.parties",
+    label: "externalTeam.nav",
     screen: "parties",
   },
 ];

@@ -42,7 +42,7 @@ export const pt = {
   "portalAccess.booking.hint":
     "Toque no nome para criar o acesso. Ele fica preso ao cadastro do fornecedor, e o que já foi enviado aparece para ele assim que entrar.",
   "portalAccess.booking.noScreen":
-    "Peça a quem cuida de Cadastros para criar o acesso destes fornecedores.",
+    "Só o administrador cria o acesso ao portal. Peça a ele o destes fornecedores.",
   "portalAccess.create": "Criar acesso",
   "portalAccess.party.none":
     "Este cadastro ainda não tem acesso ao portal. Crie abaixo.",
@@ -101,7 +101,7 @@ export const en: Record<keyof typeof pt, string> = {
   "portalAccess.booking.hint":
     "Tap the name to create the access. It stays tied to the supplier record, and what was already sent shows up as soon as they sign in.",
   "portalAccess.booking.noScreen":
-    "Ask whoever manages Records to create the access for these suppliers.",
+    "Only the administrator creates portal access. Ask them to create it for these suppliers.",
   "portalAccess.create": "Create access",
   "portalAccess.party.none":
     "This record has no portal access yet. Create it below.",
@@ -156,7 +156,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "Book 中的供应商没有门户账号：无法查看，也无法回复。",
   "portalAccess.booking.hint":
     "点击名称创建账号。账号绑定在该供应商的档案上，登录后即可看到已发送的内容。",
-  "portalAccess.booking.noScreen": "请让负责档案的同事为这些供应商创建账号。",
+  "portalAccess.booking.noScreen":
+    "只有管理员可以创建门户账号。请让管理员为这些供应商创建。",
   "portalAccess.create": "创建账号",
   "portalAccess.party.none": "该档案还没有门户账号。请在下方创建。",
   "portalAccess.party.linked":

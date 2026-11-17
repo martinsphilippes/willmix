@@ -1,6 +1,6 @@
 import { EntityTimelineCard } from "@/components/entity-timeline-card";
 import { bookTimeline } from "@/lib/services/entity-timeline";
-import { isWellmix } from "@/lib/auth/permissions";
+import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { PartnerBookingLotView } from "../../_components/partner-booking";
 import { notFound, redirect } from "next/navigation";
@@ -48,7 +48,6 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { SupplierNoLoginAlert } from "@/components/supplier-no-login";
-import { canOpen } from "@/lib/auth/screens";
 import { partiesWithoutLogin } from "@/lib/services/portal-access";
 import {
   BookingItemInput,
@@ -802,7 +801,7 @@ export default async function BookingLotPage({
       <div className="mb-3 space-y-2" data-booking-lot-notices>
         <SupplierNoLoginAlert
           suppliers={noLogin}
-          canParties={canOpen(user, "parties")}
+          canCreate={isAdmin(user)}
           t={t}
         />
         {itemsBlocked && editable ? (
