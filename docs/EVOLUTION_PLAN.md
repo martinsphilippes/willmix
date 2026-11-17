@@ -1792,3 +1792,10 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Como ficou**: as abas Tipos de parceiro e Acessos externos viraram uma aba Tipos e acessos com duas partes; a lista de tipos mostra o perfil de login de cada tipo; o botão Tipos e acessos na Equipe Externa.
 - **Aditivo:** mesmos endereços, telas, painéis e permissões; a ligação tipo → perfil não mudou. Sem mudança no banco.
 - Testes: `tests/e2e/external-team.spec.ts` e os das abas atualizados.
+
+## Clientes com telas próprias em Cadastros (etapa 4)
+
+- **Pedido do dono** (17/11/2026; docs/EQUIPE_ACESSOS.md, R4): clientes com as próprias telas, sem passar por Parceiros.
+- **Como ficou**: Novo cliente em `/app/customers/new` e o cadastro em `/app/customers/<id>/edit` (o mesmo cadastro de antes, agora em Clientes); desativar e reativar login na ficha; Acessos dos clientes para o administrador.
+- **Aditivo:** os endereços de antes levam para os novos, com os parâmetros; as permissões e os dados são os mesmos. Sem mudança no banco.
+- Testes: `tests/e2e/customer-screens.spec.ts` e os ajustes nos testes que criavam cliente.

@@ -14,10 +14,15 @@ import { requireUser, run, str, withQuery } from "./helpers";
  * para a Equipe Externa como estava (busca, filtros e o painel aberto).
  */
 
-/** Volta só para a lista da Equipe Externa, com os parâmetros dela. */
+/** Volta só para a Equipe Externa ou para a ficha do cliente/fornecedor. */
 function backOf(form: FormData): string {
   const back = str(form, "back");
-  return /^\/app\/parties(\?[^#\s]*)?$/.test(back) ? back : "/app/parties";
+  // A lista da Equipe Externa ou a ficha do cliente ou do fornecedor.
+  return /^\/app\/(parties|customers\/[A-Za-z0-9_-]{1,64}|suppliers\/[A-Za-z0-9_-]{1,64})(\?[^#\s]*)?$/.test(
+    back,
+  )
+    ? back
+    : "/app/parties";
 }
 
 export async function setPartnerLoginActiveAction(form: FormData) {

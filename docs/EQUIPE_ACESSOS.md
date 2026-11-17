@@ -25,7 +25,7 @@ Pedido do dono (16 e 17/11/2026): reorganizar o módulo "Equipe Acessos e Parcei
 | 1     | Equipe Externa: colunas, filtros por coluna, busca, painel de logins, gerar login só do administrador (R5, R8)              | Entregue (seção 3)                                      |
 | 2     | Estados de cadastro e login: desativar e reativar, entrada e sessão (R7)                                                    | Entregue (seção 4)                                      |
 | 3     | Tipos e acessos: tipos, perfis e os modos "Por tipo ou perfil" e "Por tela" (R6)                                            | Entregue (seção 5)                                      |
-| 4     | Clientes com telas próprias (R4)                                                                                            | A fazer                                                 |
+| 4     | Clientes com telas próprias (R4)                                                                                            | Entregue (seção 6)                                      |
 | 5     | Equipe Interna: lista, painéis, Gestão de telas, regras por dimensão, endereços antigos, distribuição, SLA (R1, R3, R4, R9) | Depois da outra frente (Áreas, Cargos, Importar equipe) |
 
 ## 3. Equipe Externa (etapa 1)
@@ -69,3 +69,23 @@ O cadastro (da empresa parceira ou cliente, `parties.active`) e o login (`users.
 - **Tipo e perfil, coisas diferentes** (R6): o tipo diz o que a empresa é; o perfil de login diz as telas que os logins dela abrem. A lista de tipos ganhou a coluna **Perfil de login**: "Perfil próprio do tipo" (Trading, Factory, Supplier, GP e os criados no painel), "Perfil do papel X" (os tipos de antes, como Agência e Despachante) ou "Sem login" (tipo sem classe de login), com o atalho "Configurar telas" para o administrador. A ligação não mudou (cada tipo usa o perfil de sempre): deixar um tipo usar o perfil de outro é decisão futura do dono, quando ele trouxer os tipos novos.
 - **Peças**: `src/app/app/parties/_components/parties-header.tsx` (abas e subabas), a coluna em `src/app/app/parties/types/page.tsx` e os textos em `src/i18n/modules/external-team.ts`.
 - **Testes**: `tests/e2e/external-team.spec.ts` (a aba única, o perfil de cada tipo e os dois modos) e os testes das abas atualizados (`team-partners-area`, `customers-registry`, `partner-access`, `partner-access-panels`).
+
+## 6. Clientes com telas próprias (etapa 4)
+
+Cadastros → Clientes passou a ter as telas do cliente, sem passar por Parceiros. A permissão é a de sempre (quem abre Parceiros: administrador, Comprador, Catálogo e diretorias).
+
+| Tela                                         | Endereço                   | Antes                            |
+| -------------------------------------------- | -------------------------- | -------------------------------- |
+| Lista                                        | `/app/customers`           | igual                            |
+| Ficha (conta, logins, pedidos)               | `/app/customers/<id>`      | igual                            |
+| **Novo cliente**                             | `/app/customers/new`       | `/app/parties/new?type=customer` |
+| **Cadastro** (edição, RCA, quadro de acesso) | `/app/customers/<id>/edit` | `/app/parties/<id>`              |
+
+- **Endereços de antes**: `/app/parties/<id>` de um cliente e `/app/parties/new?type=customer` levam para as telas novas, com os parâmetros (avisos, erros, RCA). Notificações, a Auditoria e links salvos continuam abrindo. O cadastro de quem não é cliente segue em `/app/parties/<id>` (e o endereço de cliente com um parceiro volta para lá).
+- **Gravar**: salvar o cadastro, o RCA e gerar login voltam para o cadastro em Clientes.
+- **Logins do cliente**: na ficha (aba de informações), com Desativar e Reativar para o administrador (a mesma regra da Equipe Externa, R7); gerar login, só o administrador (R5).
+- **Acessos dos clientes** (só o administrador): o botão na lista leva ao perfil de telas dos logins de cliente (Tipos e acessos → Perfis de login e telas, perfil Cliente).
+- **Menu**: o cadastro e o novo cliente acendem Cadastros → Clientes (antes, o cadastro acendia Equipe Acessos e Parceiros).
+- **Dados de cada cliente**: o login de cliente continua vendo só o que é dele (as solicitações e os pedidos do próprio login, nem os de outros logins da mesma empresa: `canViewRequest` e `canViewOrder` em `src/lib/auth/permissions.ts`); nada mudou nessa regra.
+- **Peças**: o cadastro e o novo cadastro saíram das páginas para `src/app/app/parties/_record/party-record.tsx` e `new-party.tsx`, chamados pelas páginas de Parceiros e de Clientes; os endereços em `src/lib/customer-routes.ts`.
+- **Testes**: `tests/e2e/customer-screens.spec.ts` (novo cliente, cadastro e login em Clientes, endereços de antes, Acessos dos clientes, desativar e reativar na ficha; quem não é administrador sem esses botões) e os testes que criavam cliente pelo endereço de antes, atualizados.

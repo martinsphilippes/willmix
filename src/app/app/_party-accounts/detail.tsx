@@ -39,6 +39,7 @@ import { accountBase, accountLabels } from "./labels";
 import { STOCK_OPTION } from "@/lib/services/stock-party";
 import { ChatOpenButton } from "@/components/chat-open-button";
 import { createUserAction } from "../actions";
+import { setPartnerLoginActiveAction } from "../actions/access-state";
 import { Alert, Field, Input, Select } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { catalogError } from "../products/_components/shared";
@@ -175,7 +176,13 @@ export async function PartyAccountDetail({
           </span>
         }
         actions={
-          <LinkButton href={`/app/parties/${party.id}`}>
+          <LinkButton
+            href={
+              party.type === "customer"
+                ? `/app/customers/${party.id}/edit`
+                : `/app/parties/${party.id}`
+            }
+          >
             {L("detail.edit")}
           </LinkButton>
         }
@@ -490,6 +497,19 @@ export async function PartyAccountDetail({
               </span>
             }
           >
+            {param(sp.saved) === "login_off" ||
+            param(sp.saved) === "login_on" ? (
+              <div className="mb-3" data-account-login-saved={param(sp.saved)}>
+                <Alert tone="success">
+                  {t(
+                    param(sp.saved) === "login_off"
+                      ? "access.login.saved.off"
+                      : "access.login.saved.on",
+                    { name: (param(sp.login) ?? "").slice(0, 120) },
+                  )}
+                </Alert>
+              </div>
+            ) : null}
             {param(sp.saved) === "user" ? (
               <div className="mb-3" data-login-created>
                 <Alert tone="success">
@@ -522,9 +542,48 @@ export async function PartyAccountDetail({
                         {u.email}
                       </span>
                     </span>
-                    <Badge tone={u.active ? "success" : "neutral"}>
-                      {u.active ? L("yes") : L("no")}
-                    </Badge>
+                    <span
+                      className="flex items-center gap-2"
+                      data-account-login={u.id}
+                      data-account-login-state={
+                        u.active ? "active" : "inactive"
+                      }
+                    >
+                      <Badge tone={u.active ? "success" : "neutral"}>
+                        {u.active ? L("yes") : L("no")}
+                      </Badge>
+                      {/* Desativar e reativar o login: só o administrador
+                          (docs/EQUIPE_ACESSOS.md, R7). */}
+                      {isAdmin(user) ? (
+                        <form action={setPartnerLoginActiveAction}>
+                          <input type="hidden" name="userId" value={u.id} />
+                          <input
+                            type="hidden"
+                            name="active"
+                            value={u.active ? "0" : "1"}
+                          />
+                          <input
+                            type="hidden"
+                            name="back"
+                            value={`${accountBase(side)}/${party.id}?tab=info`}
+                          />
+                          <SubmitButton
+                            variant="secondary"
+                            className="px-2.5 py-1 text-xs"
+                            confirmText={
+                              u.active
+                                ? t("access.login.confirmOff", { name: u.name })
+                                : undefined
+                            }
+                            data-account-login-toggle={u.active ? "off" : "on"}
+                          >
+                            {u.active
+                              ? t("access.login.deactivate")
+                              : t("access.login.reactivate")}
+                          </SubmitButton>
+                        </form>
+                      ) : null}
+                    </span>
                   </li>
                 ))}
               </ul>

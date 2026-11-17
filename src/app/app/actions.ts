@@ -1092,7 +1092,10 @@ export async function savePartyAction(form: FormData) {
         await setCustomerRca(user, id, rcaCode);
       }
       await syncSoon(user, "party", id);
-      return `/app/parties/${id}`;
+      // Cliente: o cadastro em Cadastros → Clientes (etapa 4).
+      return resolved.type === "customer"
+        ? `/app/customers/${id}/edit`
+        : `/app/parties/${id}`;
     }
     const party = await store.create("parties", {
       ...PARTY_EXTRA_DEFAULTS,
@@ -1101,7 +1104,9 @@ export async function savePartyAction(form: FormData) {
     await audit(user, "party.create", "party", party.id, parsed.name);
     await syncSoon(user, "party", party.id);
     // Cadastro novo: abre já no quadro de acesso, para gerar o login.
-    return `/app/parties/${party.id}#access`;
+    return resolved.type === "customer"
+      ? `/app/customers/${party.id}/edit#access`
+      : `/app/parties/${party.id}#access`;
   });
 }
 

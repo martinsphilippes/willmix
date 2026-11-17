@@ -19,7 +19,8 @@ const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 export async function refreshRcaListAction(form: FormData) {
   const user = await requireUser();
   const id = str(form, "id").slice(0, 64);
-  const back = `/app/parties/${encodeURIComponent(id)}`;
+  // O RCA fica no cadastro do cliente, em Cadastros → Clientes (etapa 4).
+  const back = `/app/customers/${encodeURIComponent(id)}/edit`;
   await run(`${back}#party-rca`, async () => {
     assertWellmix(user);
     assertScreen(user, "parties");

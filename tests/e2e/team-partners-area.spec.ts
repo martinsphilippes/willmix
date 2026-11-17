@@ -147,12 +147,10 @@ test("links antigos de Parceiros abrem a mesma tela, com os filtros e os parâme
 
   // Tipos, cadastro novo, ficha do parceiro e a lista de Fornecedores
   // (Clientes é de Cadastros: tests/e2e/customers-registry.spec.ts).
-  for (const path of [
-    "/app/parties/types",
-    "/app/parties/new?type=customer",
-    "/app/parties/cliente-joao",
-    "/app/suppliers",
-  ]) {
+  // O cadastro de cliente e o novo cliente passaram para Cadastros →
+  // Clientes (etapa 4; os endereços de antes levam para lá: ver
+  // tests/e2e/customers-registry.spec.ts).
+  for (const path of ["/app/parties/types", "/app/suppliers"]) {
     const res = await page.goto(path);
     expect(res?.status(), path).toBe(200);
     expect(page.url(), path).toContain(path.split("?")[0]);

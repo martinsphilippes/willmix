@@ -67,15 +67,16 @@ test("Cadastros → Clientes: página própria, só clientes, busca e ações", 
   expect(await customerNames(page)).toEqual(["Loja do João Ltda"]);
 
   // Ações: novo cliente, ficha, editar o cadastro e o login de acesso.
+  // Telas próprias de Clientes (docs/EQUIPE_ACESSOS.md, etapa 4).
   await expect(page.locator("[data-customers-new]")).toHaveAttribute(
     "href",
-    "/app/parties/new?type=customer",
+    "/app/customers/new",
   );
   await expect(page.locator("[data-customers-import]")).toBeVisible();
   const joao = page.locator('[data-customer-row="cliente-joao"]');
   await expect(joao.locator("[data-party-logins]")).toHaveText("1 login(s)");
   await joao.locator("[data-party-logins]").click();
-  await page.waitForURL(/\/app\/parties\/cliente-joao#access$/);
+  await page.waitForURL(/\/app\/customers\/cliente-joao\/edit#access$/);
   await expect(page.locator("[data-party-access]")).toBeVisible();
   await expect(page.locator("[data-party-access]")).toContainText(
     "joao@lojista.com",

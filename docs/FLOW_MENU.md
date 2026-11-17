@@ -44,7 +44,7 @@ Pedido do dono (15/11/2026): os clientes saíram de Equipe Acessos e Parceiros �
 
 - **Página**: `/app/customers`, a tela Clientes que já existia (só clientes; antes fora do menu, com o link no subtítulo de Parceiros). Tem a busca (nome, CNPJ, telefone, e-mail, cidade), o filtro Ativos/Inativos/Todos, a operação em lote e a exportação, a conta de cada cliente (só para quem vê valores) e os atalhos de cada linha (nova solicitação, ficha, editar o cadastro, conversa).
 - **Vindo de Parceiros**: o Login de acesso de cada cliente (os logins ativos, com o link para o quadro de acesso do cadastro, `/app/parties/<id>#access`), embaixo do nome para a tabela seguir cabendo em 1366 px, e o botão Importar CSV.
-- **Ficha e cadastro**: os de sempre. A ficha (`/app/customers/<id>`) tem a conta e os logins; o cadastro (`/app/parties/<id>`) tem a edição, o RCA e o quadro de acesso.
+- **Ficha e cadastro**: a ficha (`/app/customers/<id>`) tem a conta e os logins; o cadastro tem a edição, o RCA e o quadro de acesso. Desde 17/11/2026 o cadastro é `/app/customers/<id>/edit` e o novo cliente `/app/customers/new` (docs/EQUIPE_ACESSOS.md, seção 6); os endereços de antes (`/app/parties/<id>` e `/app/parties/new?type=customer`) levam para lá.
 - **Parceiros**: sem clientes na lista, nem em "Todos os tipos". O filtro não tem mais Clientes e o subtítulo não leva mais à lista de clientes. Fornecedores e os demais tipos seguem lá, com as três abas.
 - **Endereço antigo**: `/app/parties?type=customer` leva a `/app/customers`.
   - Leva junto a busca (`q`) e a ordem por nome (`sort=name` ou `-name`), a única coluna que existe nas duas listas.

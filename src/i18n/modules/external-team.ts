@@ -4,6 +4,7 @@
  * de logins de cada parceiro. Gerar e alterar login é só do administrador.
  */
 export const pt = {
+  "customers.accessProfile": "Acessos dos clientes",
   "externalTeam.typesAccess": "Tipos e acessos",
   "parties.tab.typesAccess": "Tipos e acessos",
   "parties.subtab.types": "Tipos de parceiro",
@@ -57,6 +58,7 @@ export const pt = {
 };
 
 export const en: typeof pt = {
+  "customers.accessProfile": "Customer access",
   "externalTeam.typesAccess": "Types and access",
   "parties.tab.typesAccess": "Types and access",
   "parties.subtab.types": "Partner types",
@@ -109,6 +111,7 @@ export const en: typeof pt = {
 };
 
 export const zh: typeof pt = {
+  "customers.accessProfile": "客户权限",
   "externalTeam.typesAccess": "类型与权限",
   "parties.tab.typesAccess": "类型与权限",
   "parties.subtab.types": "合作伙伴类型",
