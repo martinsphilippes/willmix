@@ -15,8 +15,18 @@ import { legacyTeamHash } from "@/lib/team-list";
 export function LegacyTeamHash() {
   const router = useRouter();
   useEffect(() => {
-    const target = legacyTeamHash(window.location.hash, window.location.search);
-    if (target) router.replace(target, { scroll: !target.includes("panel=") });
+    const convert = () => {
+      const target = legacyTeamHash(
+        window.location.hash,
+        window.location.search,
+      );
+      if (target)
+        router.replace(target, { scroll: !target.includes("panel=") });
+    };
+    convert();
+    // Já na lista, um link com "#" só troca o "#" (sem carregar a página).
+    window.addEventListener("hashchange", convert);
+    return () => window.removeEventListener("hashchange", convert);
   }, [router]);
   return null;
 }

@@ -129,10 +129,14 @@ test("Excluir acesso: confirmação, lista, sessão aberta e Auditoria", async (
   await expect(row).toContainText("Ana Admin");
 
   // O próprio acesso: botão desligado, com o motivo.
+  // (O nome na lista abre o painel da pessoa desde 17/11/2026; a página da
+  // pessoa, com o Excluir acesso, segue no endereço de sempre.)
   await page.goto("/app/team");
-  const self = page.locator("[data-team-member]", { hasText: "Ana Admin" });
-  await self.getByRole("link", { name: "Ana Admin" }).click();
-  await page.waitForURL(/\/app\/team\/[^/?]+$/);
+  const selfId = (await page
+    .locator('tr[data-team-member]:has-text("admin@wellmix.com")')
+    .first()
+    .getAttribute("data-team-member"))!;
+  await page.goto(`/app/team/${selfId}`);
   await expect(page.locator("[data-team-delete]")).toHaveAttribute(
     "data-team-delete",
     "blocked",
