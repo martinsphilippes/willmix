@@ -388,12 +388,11 @@ export default async function RequestsPage({
   });
   const sortValue = sort ? `${sort.desc ? "-" : ""}${sort.key}` : null;
   /* Rascunhos de quem está vendo (dono, 17/11/2026): no alto da lista, com a
-     situação "Rascunho", na primeira página e sem filtro de situação (a
-     busca vale pelo título e pelo cliente). Os da Reposição ficam na fila de
-     Reposição. */
+     situação "Rascunho", na primeira página, com qualquer filtro de situação
+     (a busca vale pelo título e pelo cliente). Os da Reposição ficam na fila
+     de Reposição. */
   const draftRows =
     filtering &&
-    situation === "all" &&
     (!kindFilter || kindFilter === "order") &&
     paged.page === 0
       ? (await listDraftsForList(user, "requests")).filter(

@@ -94,6 +94,9 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await page.goto("/app/requests");
   const listed = page.locator(`[data-request-list-draft="${draftId}"]`);
   await expect(listed).toContainText(/Rascunho|Draft/);
+  // Também com filtro de situação (dono, 17/11/2026).
+  await page.goto("/app/requests?situ=late");
+  await expect(listed).toBeVisible();
   await listed.locator("[data-request-list-draft-open]").click();
   await page.waitForURL(new RegExp(`/app/requests/new\\?draft=${draftId}`));
   await expect(

@@ -273,7 +273,7 @@ Vale para as três telas (Encomendas, TS e Venda), que usam o mesmo código (`sr
 ## 11.12 Rascunhos nas listas (dono, 17/11/2026)
 
 - **Onde ficam:** além do quadro "Seus rascunhos" na própria tela, os rascunhos aparecem no alto das listas, com a situação **Rascunho** e "Continuar": em **Encomendas** (`/app/requests`) os da Nova solicitação, de TS e de Venda; em **Reposição** (`/app/replenishment`) os da entrada da Reposição (`/app/new-request/sale?from=replenishment`). Só de quem criou, das telas que a pessoa abre (`listDraftsForList`, `draftResumeHref`).
-- Em Encomendas, os rascunhos aparecem na primeira página, sem filtro de situação e com o tipo "Todos" ou "Encomenda"; a busca vale pelo título e pelo cliente do rascunho.
+- Em Encomendas, os rascunhos aparecem na primeira página, com qualquer filtro de situação e com o tipo "Todos" ou "Encomenda"; a busca vale pelo título e pelo cliente do rascunho.
 - **Entrada da Reposição com rascunho:** antes ela não tinha rascunho. Agora tem o mesmo de sempre ("Salvar rascunho", o automático e a lista no alto), marcado pelo campo `from=replenishment` do formulário; vale para quem abre a fila (ação "Abrir reposição" e tela Encomendas), mesmo sem a tela de Venda. O rascunho da Reposição só abre nessa entrada, e o da Venda comum só na Venda.
 - O histórico de compras perdeu a explicação "Pedidos de venda do cliente no Sankhya, do mais recente para o mais antigo…".
 
