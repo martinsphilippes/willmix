@@ -40,6 +40,7 @@ import {
 import { CustomerPurchaseHistory } from "@/components/customer-purchase-history";
 import { RequestCustomerContacts } from "@/components/request-customer-contacts";
 import { RequestOrderTerms } from "@/components/request-order-terms";
+import { RequestDraftAutosave } from "@/components/request-draft-autosave";
 import {
   compositionLabels,
   customerContactsLabels,
@@ -940,7 +941,11 @@ export async function renderNewRequest({
             {found ? (
               <input type="hidden" name="lookupId" value={found.id} />
             ) : null}
-            {draft ? (
+            {/* O rascunho aberto e o automático (dono, 17/11/2026): o
+                componente guarda o id (o do rascunho aberto ou o que ele
+                criar) para o envio apagar e o "Salvar rascunho" gravar por
+                cima. */}
+            {sellsToCustomer && !replenish ? null : draft ? (
               <input type="hidden" name="draftId" value={draft.id} />
             ) : null}
             {addToRequest ? (
@@ -1344,6 +1349,16 @@ export async function renderNewRequest({
                   >
                     {t("requestDraft.save")}
                   </button>
+                ) : null}
+                {sellsToCustomer && !replenish ? (
+                  <RequestDraftAutosave
+                    formId={FORM_ID}
+                    mode={mode}
+                    initialDraftId={draft?.id ?? null}
+                    savedText={t("requestDraft.autosaved", {
+                      time: "{time}",
+                    })}
+                  />
                 ) : null}
               </div>
             </div>
