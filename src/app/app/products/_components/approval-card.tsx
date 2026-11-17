@@ -119,6 +119,23 @@ export function ApprovalCard({
               {t("productApproval.onlyApprovers")}
             </p>
           ) : null}
+          {/* Administrador num recusado: aprova direto (o pedido dele não
+              passa pela aprovação, D2). */}
+          {!pending && approval.adminApproves ? (
+            <form
+              action={decideProductApprovalAction}
+              className="flex flex-wrap items-center gap-3 pt-1"
+            >
+              <input type="hidden" name="productId" value={productId} />
+              <input type="hidden" name="decision" value="approve" />
+              <SubmitButton data-product-approve>
+                {t("productApproval.approve")}
+              </SubmitButton>
+              <span className="text-xs text-zinc-500">
+                {t("productApproval.adminApproveHint")}
+              </span>
+            </form>
+          ) : null}
           {!pending && approval.canResubmit ? (
             <form
               action={resubmitProductApprovalAction}

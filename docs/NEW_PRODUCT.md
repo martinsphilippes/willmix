@@ -23,9 +23,10 @@ Fotos, medições, fornecedores, variações, ficha de compra mestre, NCM, certi
 ## 2. Regras
 
 1. **Criar.** O produto nasce **inativo** e aguardando aprovação (`products.approvalStatus = "pending"`). Também ficam gravados quem pediu e quando (`approvalRequestedByUserId`, `approvalRequestedAt`). Nome e linha são obrigatórios, como sempre. O nome de exemplo ("XPTO") é recusado.
+   - **Criado pelo administrador** (D2): não passa pela aprovação. Nasce ativo, aprovado por ele mesmo (`approvalStatus = "approved"`, decidido por ele), e vai para o Sankhya na hora, como antes. Não gera pendência nem aviso.
 2. **Quem aprova.** O **administrador** (sempre) ou um **superior** de quem pediu: a cadeia do "Responde a" da Equipe (`users.managerUserId`), do superior direto ao topo, a mesma árvore do Painel de SLA.
    - Quem saiu da equipe ou está com o login suspenso não aprova; a cadeia continua acima dele.
-   - Quem pediu nunca aprova o próprio produto, a não ser que seja administrador.
+   - Quem pediu nunca aprova o próprio produto.
    - Quem aprova precisa abrir a tela Produtos, onde fica o quadro da aprovação.
 3. **Pendência e aviso.**
    - O administrador vê todas as aprovações em Pendências. O superior vê as de quem está abaixo dele.
@@ -40,11 +41,12 @@ Fotos, medições, fornecedores, variações, ficha de compra mestre, NCM, certi
 5. **Aprovar.** O produto fica ativo (`approvalStatus = "approved"`) e segue para o Sankhya como qualquer produto novo. Quem pediu é avisado.
 6. **Recusar.** Exige o motivo. O produto continua inativo (`approvalStatus = "rejected"`, com o motivo em `approvalNote`), e quem pediu é avisado com o motivo. Recusado não é pendência de ninguém.
 7. **Reenviar.** Depois de corrigir, quem abre Produtos aperta "Reenviar para aprovação". O pedido volta para "pending", com quem reenviou como quem pediu (o superior dele aprova). A recusa anterior continua à vista de quem decide.
+   - O **administrador** não reenvia: num produto recusado, ele vê "Aprovar produto" e aprova direto (D2). O superior não aprova um recusado; espera o reenvio.
 8. **Nada é apagado.** Cada passo vai para a Auditoria: `product.create`, `product.approve`, `product.reject` e `product.approval.resubmit`.
 
 ## 3. O que não passa pela aprovação
 
-Hoje, só o produto criado à mão pela equipe (a tela Novo produto e a ação curta antiga, que não tem mais botão) passa pela aprovação. Ficam como estavam:
+Hoje, só o produto criado à mão pela equipe (a tela Novo produto e a ação curta antiga, que não tem mais botão), por quem não é administrador, passa pela aprovação. Ficam como estavam:
 
 - A carga do Sankhya: o ERP é a origem do produto.
 - A importação de planilha (CSV e ficha técnica).
@@ -53,15 +55,15 @@ Hoje, só o produto criado à mão pela equipe (a tela Novo produto e a ação c
 
 Um produto aguardando aprovação que a carga do Sankhya ligue pelo SKU a um produto já existente lá deixa de aguardar se o ERP o ativar.
 
-## 4. Decisões tomadas sem confirmação do dono (a conferir)
+## 4. Decisões do dono (17/11/2026)
 
-O pedido dizia "no painel Adm ou do superior". Estas leituras foram feitas no código e podem ser mudadas:
+O pedido dizia "no painel Adm ou do superior". As leituras propostas foram conferidas pelo dono:
 
-- **D1.** "Superior" é a cadeia inteira do "Responde a" (o direto e os acima), não só o direto. O aviso vai só para o direto.
-- **D2.** O administrador também passa pela aprovação quando ele mesmo cria o produto (pode aprovar o próprio na hora).
-- **D3.** Quem aprova precisa abrir a tela Produtos (a aprovação é feita na ficha). Um superior sem essa tela não recebe a pendência; o administrador recebe.
-- **D4.** Só o cadastro manual passa pela aprovação (seção 3).
-- **D5.** Enquanto aguarda, o produto não vai para o Sankhya; vai ao ser aprovado.
+- **D1 (sim).** "Superior" é a cadeia inteira do "Responde a" (o direto e os acima), não só o direto. O aviso vai só para o direto.
+- **D2 (não; mudou).** O administrador **não** passa pela aprovação: o produto que ele cria nasce ativo, e num recusado ele aprova direto (regras 1 e 7).
+- **D3 (sim).** Quem aprova precisa abrir a tela Produtos (a aprovação é feita na ficha). Um superior sem essa tela não recebe a pendência; o administrador recebe.
+- **D4 (sim).** Só o cadastro manual passa pela aprovação (seção 3).
+- **D5 (sim).** Enquanto aguarda, o produto não vai para o Sankhya; vai ao ser aprovado.
 
 ## 5. Esquema (aditivo)
 

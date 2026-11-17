@@ -151,8 +151,10 @@ async function assertLineAndSupplier(input: {
 
 /**
  * Cria o produto da tela "Novo produto": inativo, origem manual e
- * aguardando aprovação. Não vai para o Sankhya agora (só depois de
- * aprovado).
+ * aguardando aprovação; não vai para o Sankhya agora (só depois de
+ * aprovado). Criado pelo administrador (dono, 17/11/2026, D2): não passa
+ * pela aprovação; nasce ativo, aprovado por ele mesmo, e segue para o
+ * Sankhya na hora, como antes.
  */
 export async function createProductForApproval(
   user: User,
@@ -162,18 +164,19 @@ export async function createProductForApproval(
   assertScreen(user, "products");
   await assertLineAndSupplier(input);
   const now = new Date().toISOString();
+  const byAdmin = isAdmin(user);
   const product = await getStore().create("products", {
     ...PRODUCT_EXTRA_DEFAULTS,
     sku: null,
     specification: null,
     source: "manual",
     ...input,
-    active: false,
-    approvalStatus: "pending",
+    active: byAdmin,
+    approvalStatus: byAdmin ? "approved" : "pending",
     approvalRequestedByUserId: user.id,
     approvalRequestedAt: now,
-    approvalDecidedByUserId: null,
-    approvalDecidedAt: null,
+    approvalDecidedByUserId: byAdmin ? user.id : null,
+    approvalDecidedAt: byAdmin ? now : null,
     approvalNote: null,
   });
   if (product.supplierId) {
@@ -191,18 +194,29 @@ export async function createProductForApproval(
     "product.create",
     "product",
     product.id,
-    `Produto novo (aguarda aprovação): ${product.name}`,
+    byAdmin
+      ? `Produto novo criado pelo administrador (sem aprovação): ${product.name}`
+      : `Produto novo (aguarda aprovação): ${product.name}`,
     null,
-    { ...input, active: false, approvalStatus: "pending" },
+    {
+      ...input,
+      active: product.active,
+      approvalStatus: product.approvalStatus,
+    },
   );
-  await notifyApprovers(user, product, false);
+  if (byAdmin) {
+    // Produto novo vai para o Sankhya (fase 3), como antes da aprovação.
+    const { syncSoon } = await import("@/lib/integrations/sankhya-sync");
+    await syncSoon(user, "product", product.id);
+  } else await notifyApprovers(user, product, false);
   return product;
 }
 
 /**
  * Aprova (ativa e manda para o Sankhya) ou recusa (com o motivo; continua
  * inativo). Só o administrador ou um superior de quem pediu, com a tela
- * Produtos.
+ * Produtos. O administrador também aprova direto um produto recusado (sem
+ * reenviar: o pedido dele não passa pela aprovação, D2).
  */
 export async function decideProductApproval(
   user: User,
@@ -214,7 +228,12 @@ export async function decideProductApproval(
   const store = getStore();
   const product = await store.get("products", productId);
   if (!product) throw new ProductApprovalError("product_not_found");
-  if (!pendingApproval(product))
+  const adminApprovesRejected =
+    input.approve &&
+    isAdmin(user) &&
+    awaitingApproval(product) &&
+    product.approvalStatus === "rejected";
+  if (!pendingApproval(product) && !adminApprovesRejected)
     throw new ProductApprovalError("approval_not_pending");
   const team = await approvalTeam();
   if (!canDecideApproval(user, product.approvalRequestedByUserId, team))
@@ -282,7 +301,7 @@ export async function decideProductApproval(
 /**
  * Recusado e corrigido: volta para a aprovação. Quem reenvia passa a ser
  * quem pediu (o superior dele aprova). A recusa anterior fica (quem decide
- * vê o motivo dela).
+ * vê o motivo dela). Reenviado pelo administrador: aprovado na hora (D2).
  */
 export async function resubmitProductApproval(
   user: User,
@@ -295,6 +314,11 @@ export async function resubmitProductApproval(
   if (!product) throw new ProductApprovalError("product_not_found");
   if (!awaitingApproval(product) || product.approvalStatus !== "rejected")
     throw new ProductApprovalError("approval_not_rejected");
+  if (isAdmin(user))
+    return decideProductApproval(user, productId, {
+      approve: true,
+      note: null,
+    });
   const saved = await store.update("products", productId, {
     approvalStatus: "pending",
     approvalRequestedByUserId: user.id,
@@ -342,6 +366,8 @@ export interface ProductApprovalView {
   canDecide: boolean;
   /** Quem vê pode reenviar (recusado). */
   canResubmit: boolean;
+  /** Recusado e quem vê é o administrador: aprova direto, sem reenviar (D2). */
+  adminApproves: boolean;
   /** Quem recebe a pendência: o superior de quem pediu (nulo: administradores). */
   superiorName: string | null;
 }
@@ -371,7 +397,8 @@ export async function productApprovalView(
       pending &&
       canOpen(user, "products") &&
       canDecideApproval(user, product.approvalRequestedByUserId, team),
-    canResubmit: !pending && canOpen(user, "products"),
+    canResubmit: !pending && canOpen(user, "products") && !isAdmin(user),
+    adminApproves: !pending && isAdmin(user),
     superiorName: superior?.name ?? null,
   };
 }

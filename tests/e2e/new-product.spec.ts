@@ -112,3 +112,37 @@ test("novo produto: ficha em branco, aprovação nas Pendências, recusa e reenv
     page.locator(`[data-task-row] a[href="${productPath}#approval"]`),
   ).toHaveCount(0);
 });
+
+test("administrador: o produto novo dele nasce ativo, sem aprovação nem pendência", async ({
+  page,
+}) => {
+  const name = `Bandeja inox E2E ${Date.now()}`;
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/products/new");
+  await expect(
+    page.locator('[data-new-product-approver="self"]'),
+  ).toBeVisible();
+  await expect(
+    page.locator('[data-new-product-status="active"]'),
+  ).toBeVisible();
+  const form = page.locator("[data-new-product-form]");
+  await form.locator('input[name="name"]').fill(name);
+  await form.locator('select[name="lineId"]').selectOption({ index: 1 });
+  await page.locator("[data-new-product-submit]").click();
+  await page.waitForURL(/\/app\/products\/[^/?]+\?created=1/);
+  const productPath = new URL(page.url()).pathname;
+  await expect(page.locator('[data-product-created="active"]')).toBeVisible();
+  await expect(page.locator("[data-product-approval]")).toHaveCount(0);
+  await expect(
+    page.locator('#product-form input[type="checkbox"][name="active"]'),
+  ).toBeChecked();
+  // Já está na lista principal e não é pendência de ninguém.
+  await page.goto(`/app/products?q=${encodeURIComponent(name)}`);
+  await expect(
+    page.locator(`[data-product-row] a[href="${productPath}"]`).first(),
+  ).toBeVisible();
+  await page.goto("/app/tasks?type=product_approve");
+  await expect(
+    page.locator(`[data-task-row] a[href="${productPath}#approval"]`),
+  ).toHaveCount(0);
+});

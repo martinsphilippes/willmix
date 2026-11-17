@@ -8,20 +8,29 @@ export const pt = {
   "newProduct.title": "Novo produto",
   "newProduct.subtitle":
     "Preencha a ficha do produto. Ao criar, ele vai para a aprovação do administrador ou do seu superior.",
+  "newProduct.subtitle.admin":
+    "Preencha a ficha do produto. Criado pelo administrador, ele já nasce ativo, sem aprovação.",
   "newProduct.create": "Criar produto e enviar para aprovação",
+  "newProduct.create.admin": "Criar produto",
   "newProduct.status":
     "Nasce inativo e aguardando aprovação: fica ativo quando o administrador ou o seu superior aprovar.",
+  "newProduct.status.admin":
+    "Nasce ativo: o produto criado pelo administrador não passa pela aprovação e segue para o Sankhya.",
   "newProduct.approver":
     "Quem aprova: {name} (seu superior) ou o administrador.",
   "newProduct.approver.admins":
     'Quem aprova: o administrador (você não tem um superior no "Responde a" que abra a tela Produtos).',
+  "newProduct.approver.self":
+    "Você é administrador: o produto que você cria não passa pela aprovação.",
   "newProduct.after.title": "Depois de criar",
   "newProduct.after.body":
     "Nesta mesma ficha ficam liberados os fornecedores, as variações, a ficha de compra mestre, as fotos, as medições, o NCM, as certificações, os atributos e a IA.",
   "newProduct.created":
     "Produto criado e enviado para aprovação. Ele fica inativo até ser aprovado; complete aqui as fotos, as medições e o resto da ficha.",
+  "newProduct.createdActive":
+    "Produto criado e ativo (criado pelo administrador, sem aprovação). Complete aqui as fotos, as medições e o resto da ficha.",
   "help.newProduct.body":
-    'Cadastro de um produto novo com a ficha completa: os mesmos campos da tela do produto. O produto nasce inativo e vai para as Pendências do administrador e do seu superior (o "Responde a" da Equipe), que aprovam ou recusam.',
+    'Cadastro de um produto novo com a ficha completa: os mesmos campos da tela do produto. O produto nasce inativo e vai para as Pendências do administrador e do seu superior (o "Responde a" da Equipe), que aprovam ou recusam. Criado pelo administrador, já nasce ativo, sem aprovação.',
   "help.newProduct.steps":
     "Preencha o nome e a linha (obrigatórios) e o que já souber da ficha.\nCrie o produto: ele vai para a aprovação e abre na tela do produto, onde você completa fotos, medições e o resto.\nAprovado, fica ativo no catálogo e segue para o Sankhya. Recusado, aparece o motivo: corrija e reenvie.",
 
@@ -48,6 +57,8 @@ export const pt = {
   "productApproval.resubmit": "Reenviar para aprovação",
   "productApproval.resubmitHint":
     "Corrija a ficha e reenvie: a aprovação volta para o seu superior (ou para o administrador).",
+  "productApproval.adminApproveHint":
+    "Administrador: aprova direto, sem reenviar; o produto fica ativo e segue para o Sankhya.",
   "productApproval.activeLocked": "fica ativo na aprovação",
   "productApproval.done.approved":
     "Produto aprovado: está ativo no catálogo e segue para o Sankhya.",
@@ -90,20 +101,29 @@ export const en: Record<keyof typeof pt, string> = {
   "newProduct.title": "New product",
   "newProduct.subtitle":
     "Fill in the product sheet. Once created, it goes to the administrator or your manager for approval.",
+  "newProduct.subtitle.admin":
+    "Fill in the product sheet. Created by the administrator, it starts active, without approval.",
   "newProduct.create": "Create product and send for approval",
+  "newProduct.create.admin": "Create product",
   "newProduct.status":
     "Starts inactive and awaiting approval: it becomes active when the administrator or your manager approves it.",
+  "newProduct.status.admin":
+    "Starts active: a product created by the administrator skips approval and goes to Sankhya.",
   "newProduct.approver":
     "Approved by: {name} (your manager) or the administrator.",
   "newProduct.approver.admins":
     'Approved by: the administrator (you have no manager in "Reports to" who opens the Products screen).',
+  "newProduct.approver.self":
+    "You are the administrator: products you create skip approval.",
   "newProduct.after.title": "After creating",
   "newProduct.after.body":
     "This same sheet then unlocks suppliers, variants, the master purchase sheet, photos, measurements, NCM, certifications, attributes and AI.",
   "newProduct.created":
     "Product created and sent for approval. It stays inactive until approved; complete the photos, measurements and the rest of the sheet here.",
+  "newProduct.createdActive":
+    "Product created and active (created by the administrator, without approval). Complete the photos, measurements and the rest of the sheet here.",
   "help.newProduct.body":
-    'Register a new product with the full sheet: the same fields as the product screen. The product starts inactive and goes to the tasks of the administrator and your manager (Team "Reports to"), who approve or reject it.',
+    'Register a new product with the full sheet: the same fields as the product screen. The product starts inactive and goes to the tasks of the administrator and your manager (Team "Reports to"), who approve or reject it. Created by the administrator, it starts active, without approval.',
   "help.newProduct.steps":
     "Fill in the name and the line (required) and whatever you already know of the sheet.\nCreate the product: it goes for approval and opens on the product screen, where you complete photos, measurements and the rest.\nOnce approved, it is active in the catalog and goes to Sankhya. If rejected, the reason shows: fix it and resubmit.",
 
@@ -129,6 +149,8 @@ export const en: Record<keyof typeof pt, string> = {
   "productApproval.resubmit": "Resubmit for approval",
   "productApproval.resubmitHint":
     "Fix the sheet and resubmit: the approval goes back to your manager (or the administrator).",
+  "productApproval.adminApproveHint":
+    "Administrator: approve directly, without resubmitting; the product becomes active and goes to Sankhya.",
   "productApproval.activeLocked": "becomes active on approval",
   "productApproval.done.approved":
     "Product approved: it is active in the catalog and goes to Sankhya.",
@@ -167,19 +189,27 @@ export const en: Record<keyof typeof pt, string> = {
 export const zh: Record<keyof typeof pt, string> = {
   "newProduct.title": "新增产品",
   "newProduct.subtitle": "填写产品档案。创建后将提交给管理员或您的上级审批。",
+  "newProduct.subtitle.admin":
+    "填写产品档案。管理员创建的产品直接启用，无需审批。",
   "newProduct.create": "创建产品并提交审批",
+  "newProduct.create.admin": "创建产品",
   "newProduct.status":
     "创建后为停用状态并等待审批：管理员或您的上级批准后即启用。",
+  "newProduct.status.admin":
+    "直接启用：管理员创建的产品无需审批，并同步到 Sankhya。",
   "newProduct.approver": "审批人：{name}（您的上级）或管理员。",
   "newProduct.approver.admins":
     "审批人：管理员（您在“汇报对象”中没有可打开产品页面的上级）。",
+  "newProduct.approver.self": "您是管理员：您创建的产品无需审批。",
   "newProduct.after.title": "创建之后",
   "newProduct.after.body":
     "在同一档案中即可填写供应商、规格变体、采购主档、照片、测量、NCM、认证、属性和 AI。",
   "newProduct.created":
     "产品已创建并提交审批。批准前保持停用；请在此补充照片、测量和档案的其余部分。",
+  "newProduct.createdActive":
+    "产品已创建并启用（管理员创建，无需审批）。请在此补充照片、测量和档案的其余部分。",
   "help.newProduct.body":
-    "使用完整档案登记新产品：与产品页面相同的字段。产品创建后为停用状态，并进入管理员和您的上级（团队中的“汇报对象”）的待办，由他们批准或拒绝。",
+    "使用完整档案登记新产品：与产品页面相同的字段。产品创建后为停用状态，并进入管理员和您的上级（团队中的“汇报对象”）的待办，由他们批准或拒绝。管理员创建的产品直接启用，无需审批。",
   "help.newProduct.steps":
     "填写名称和产品线（必填）以及已知的档案信息。\n创建产品：提交审批并打开产品页面，在那里补充照片、测量和其余内容。\n批准后在目录中启用并同步到 Sankhya。被拒绝时会显示原因：修改后重新提交。",
 
@@ -202,6 +232,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "productApproval.resubmit": "重新提交审批",
   "productApproval.resubmitHint":
     "修改档案后重新提交：审批将回到您的上级（或管理员）。",
+  "productApproval.adminApproveHint":
+    "管理员：直接批准，无需重新提交；产品将启用并同步到 Sankhya。",
   "productApproval.activeLocked": "批准后启用",
   "productApproval.done.approved":
     "产品已批准：已在目录中启用并同步到 Sankhya。",

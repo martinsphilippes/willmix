@@ -399,8 +399,11 @@ export default async function ProductSheetPage({
             storageKey={NEW_PRODUCT_DRAFT_KEY}
             token={product.id}
           />
-          <div data-product-created>
-            <Alert tone="success">{t("newProduct.created")}</Alert>
+          <div data-product-created={approval ? "pending" : "active"}>
+            <Alert tone="success">
+              {/* Criado pelo administrador: já ativo, sem aprovação (D2). */}
+              {t(approval ? "newProduct.created" : "newProduct.createdActive")}
+            </Alert>
           </div>
         </>
       ) : null}

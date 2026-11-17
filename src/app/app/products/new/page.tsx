@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { canSeePurchasePrice } from "@/lib/auth/function-access";
+import { isAdmin } from "@/lib/auth/permissions";
 import { getStore, PRODUCT_EXTRA_DEFAULTS, type Product } from "@/lib/db";
 import { listColumns } from "@/lib/db/lookup";
 import { autoProductSpec } from "@/lib/services/product-sheet";
@@ -59,11 +60,14 @@ export default async function NewProductPage({
   const { error, at: saveToken, fields: invalidFields } = await searchParams;
   const t = await getT();
   const store = getStore();
+  // Administrador: o produto que ele cria não passa pela aprovação (dono,
+  // 17/11/2026, D2); nasce ativo e segue para o Sankhya.
+  const byAdmin = isAdmin(user);
   const [lines, superior] = await Promise.all([
     // Só o nome das linhas (a linha tem prompts e requisitos que a lista não usa).
     listColumns(store, "product_lines", ["name"], { orderBy: "name" }),
     // Quem aprova: o superior no "Responde a" que abre Produtos (o aviso da tela).
-    productApproverFor(user.id),
+    byAdmin ? null : productApproverFor(user.id),
   ]);
   const product = blankProduct();
   // Campos que a ficha mestre também usa: a âncora e o asterisco (ainda nada
@@ -84,7 +88,9 @@ export default async function NewProductPage({
         }}
         t={t}
         title={t("newProduct.title")}
-        subtitle={t("newProduct.subtitle")}
+        subtitle={t(
+          byAdmin ? "newProduct.subtitle.admin" : "newProduct.subtitle",
+        )}
       />
       <ActionError
         t={t}
@@ -93,11 +99,18 @@ export default async function NewProductPage({
         fields={invalidFields}
         token={saveToken}
       />
-      <div className="mt-4" data-new-product-approver>
+      <div
+        className="mt-4"
+        data-new-product-approver={
+          byAdmin ? "self" : superior ? "superior" : "admins"
+        }
+      >
         <Alert tone="info">
-          {superior
-            ? t("newProduct.approver", { name: superior.name })
-            : t("newProduct.approver.admins")}
+          {byAdmin
+            ? t("newProduct.approver.self")
+            : superior
+              ? t("newProduct.approver", { name: superior.name })
+              : t("newProduct.approver.admins")}
         </Alert>
       </div>
       <FormDraftGuard
@@ -151,10 +164,14 @@ export default async function NewProductPage({
           }
           status={
             <p
-              className="text-[13px] font-medium text-amber-800"
-              data-new-product-status
+              className={
+                byAdmin
+                  ? "text-[13px] font-medium text-emerald-800"
+                  : "text-[13px] font-medium text-amber-800"
+              }
+              data-new-product-status={byAdmin ? "active" : "pending"}
             >
-              {t("newProduct.status")}
+              {t(byAdmin ? "newProduct.status.admin" : "newProduct.status")}
             </p>
           }
           sourcing={null}
@@ -169,7 +186,7 @@ export default async function NewProductPage({
             className="w-full py-3 sm:w-auto sm:py-2"
             data-new-product-submit
           >
-            {t("newProduct.create")}
+            {t(byAdmin ? "newProduct.create.admin" : "newProduct.create")}
           </SubmitButton>
         </div>
       </form>

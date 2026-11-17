@@ -300,12 +300,14 @@ describe("fluxo do produto novo", () => {
     expect(view).toMatchObject({
       status: "rejected",
       canResubmit: true,
+      adminApproves: false,
       canDecide: false,
       note: "Falta a medida da caixa master",
     });
-    // Decidido não se decide de novo.
+    // Decidido não se decide de novo (só o administrador aprova direto um
+    // recusado; o superior espera o reenvio).
     await expect(
-      approval.decideProductApproval(admin, product.id, {
+      approval.decideProductApproval(director, product.id, {
         approve: true,
         note: null,
       }),
@@ -377,6 +379,94 @@ describe("fluxo do produto novo", () => {
       id: director.id,
       name: director.name,
     });
+  });
+
+  it("o administrador cria: nasce ativo e aprovado, sem pendência nem aviso, e vai para o Sankhya (D2)", async () => {
+    h.current = admin;
+    h.redirects = [];
+    const form = new FormData();
+    form.set("name", "Bandeja inox 40 cm");
+    form.set("lineId", lineId);
+    await catalog.createProductSheetAction(form);
+    const id = h.redirects[0]?.match(
+      /^\/app\/products\/([^/?]+)\?created=1$/,
+    )?.[1];
+    expect(id).toBeTruthy();
+    const created = (await getStore().get("products", id!))!;
+    expect(created).toMatchObject({
+      active: true,
+      approvalStatus: "approved",
+      approvalRequestedByUserId: admin.id,
+      approvalDecidedByUserId: admin.id,
+    });
+    expect(await approval.productApprovalView(admin, created)).toBeNull();
+    expect(
+      (await pendingTasksFor(admin)).filter((t) => t.link.includes(id!)),
+    ).toHaveLength(0);
+    // Ninguém é avisado para aprovar.
+    for (const who of [director, sales, buyer])
+      expect((await notesFor(who.id)).some((n) => n.link?.includes(id!))).toBe(
+        false,
+      );
+    // Entra na sincronização com o Sankhya como qualquer produto novo.
+    const sync = await listPendingSync({
+      syncSince: "2000-01-01T00:00:00.000Z",
+    } as never);
+    expect(sync.products.map((p) => p.row.id)).toContain(id);
+    const audits = await getStore().list("audit_log", {
+      filter: { entityId: id! },
+    });
+    expect(audits.map((a) => a.summary).join(" ")).toContain("sem aprovação");
+  });
+
+  it("o administrador aprova direto um recusado (sem reenviar); o superior, não", async () => {
+    const store = getStore();
+    const first = await approval.createProductForApproval(buyer, {
+      name: "Pote hermético 1 L",
+      lineId,
+    });
+    await approval.decideProductApproval(director, first.id, {
+      approve: false,
+      note: "Foto da tampa fora de foco",
+    });
+    await expect(
+      approval.decideProductApproval(director, first.id, {
+        approve: true,
+        note: null,
+      }),
+    ).rejects.toThrow("approval_not_pending");
+    const rejected = (await store.get("products", first.id))!;
+    expect(await approval.productApprovalView(admin, rejected)).toMatchObject({
+      status: "rejected",
+      adminApproves: true,
+      canResubmit: false,
+    });
+    const approved = await approval.decideProductApproval(admin, first.id, {
+      approve: true,
+      note: null,
+    });
+    expect(approved).toMatchObject({
+      active: true,
+      approvalStatus: "approved",
+      approvalDecidedByUserId: admin.id,
+    });
+    expect(
+      (await notesFor(buyer.id)).some(
+        (n) => n.link === `/app/products/${first.id}` && n.kind === "done",
+      ),
+    ).toBe(true);
+    // "Reenviar" pelo administrador também aprova na hora.
+    const second = await approval.createProductForApproval(buyer, {
+      name: "Pote hermético 2 L",
+      lineId,
+    });
+    await approval.decideProductApproval(director, second.id, {
+      approve: false,
+      note: "Falta o MOQ",
+    });
+    expect(
+      await approval.resubmitProductApproval(admin, second.id),
+    ).toMatchObject({ active: true, approvalStatus: "approved" });
   });
 
   it("linha ou fornecedor inexistente: recusa sem criar", async () => {

@@ -1832,6 +1832,6 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 
 ## Novo produto pela ficha em branco, com aprovação
 
-- **Pedido do dono** (17/11/2026; docs/NEW_PRODUCT.md): o quadro curto "Novo produto" da lista saiu; "+ Novo produto" abre a ficha completa em branco (`/app/products/new`), e o produto criado vai para as Pendências do administrador ou do superior (o "Responde a"), que aprova ou recusa.
+- **Pedido do dono** (17/11/2026; docs/NEW_PRODUCT.md): o quadro curto "Novo produto" da lista saiu; "+ Novo produto" abre a ficha completa em branco (`/app/products/new`), e o produto criado vai para as Pendências do administrador ou do superior (o "Responde a"), que aprova ou recusa. Criado pelo administrador, nasce ativo, sem aprovação (D2).
 - **Aditivo:** rota nova e colunas novas e opcionais em `products` (`approvalStatus`, `approvalRequestedByUserId`, `approvalRequestedAt`, `approvalDecidedByUserId`, `approvalDecidedAt`, `approvalNote`), com o índice parcial `products_by_approval`. Produto de antes fica com a aprovação vazia e segue igual; a ficha do produto usa os mesmos campos (agora num componente só). A ação curta antiga continua, criando pela mesma regra. Nada é apagado.
 - Testes: `tests/unit/product-approval.test.ts` e `tests/e2e/new-product.spec.ts`.
