@@ -1,5 +1,5 @@
 import type { ColorPlan } from "@/lib/db/schema";
-import { isWellmix } from "@/lib/auth/permissions";
+import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { LiveSearch } from "@/components/live-search";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -829,7 +829,7 @@ export default async function BookingSelectionPage({
         <div className="mb-3">
           <SupplierNoLoginAlert
             suppliers={noLogin}
-            canParties={canOpen(user, "parties")}
+            canCreate={isAdmin(user)}
             t={t}
             title="supplierRequests.noLogin.selection"
           />

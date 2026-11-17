@@ -4,32 +4,45 @@ import { login } from "./helpers";
 /*
  * Padrão das tabelas (src/components/table-tools.tsx): ordenar pelo
  * cabeçalho, buscar ao digitar em todas as colunas e paginar em 15/25/50.
+ * Desde 17/11/2026 a lista de parceiros (Equipe Externa) filtra no servidor,
+ * com filtro em cada coluna; a tabela padrão é conferida na Auditoria, com os
+ * registros que o próprio teste cria (um por cadastro novo).
  */
 test("tabela padrão: ordena, busca e pagina", async ({ page }) => {
+  test.setTimeout(120_000);
   await login(page, "admin@wellmix.com");
-  await page.goto("/app/parties");
+  const tag = `tt${Date.now().toString(36)}`;
+  for (let i = 1; i <= 7; i++) {
+    await page.goto("/app/parties/new?type=carrier");
+    await page.fill('input[name="name"]', `Tabela ${tag}-${i}`);
+    await page.getByRole("button", { name: "Salvar" }).first().click();
+    await page.waitForURL(/\/app\/parties\/[^/?#]+(#access)?$/);
+  }
+  await page.goto(`/app/audit?q=${tag}`);
 
   const tools = page.locator("[data-table-tools]").first();
   const rows = tools.locator("tbody tr:visible");
-  const firstName = () => rows.first().locator("td").first().innerText();
-  // Outros testes também cadastram parceiros: a página mostra até 15.
+  const whatCell = () => rows.first().locator("td").nth(3).innerText();
   const total = await tools.locator("tbody tr").count();
   const firstPage = Math.min(total, 15);
-  expect(total).toBeGreaterThanOrEqual(6);
+  expect(total).toBeGreaterThanOrEqual(7);
   await expect(rows).toHaveCount(firstPage);
 
-  const name = tools.locator("th[data-table-sort]").first();
-  await name.click();
-  await expect(name).toHaveAttribute("aria-sort", "ascending");
-  const asc = await firstName();
-  await name.click();
-  await expect(name).toHaveAttribute("aria-sort", "descending");
-  expect(await firstName()).not.toBe(asc);
+  // Ordem pela coluna "O que" (o nome de cada cadastro).
+  const what = tools.locator("th[data-table-sort]").nth(3);
+  await what.click();
+  await expect(what).toHaveAttribute("aria-sort", "ascending");
+  const asc = await whatCell();
+  await what.click();
+  await expect(what).toHaveAttribute("aria-sort", "descending");
+  expect(await whatCell()).not.toBe(asc);
 
-  // Busca em qualquer coluna (aqui o e-mail), sem acento nem caixa.
-  await tools.locator("[data-table-search]").fill("TRANSPORTADORA@RODO");
+  // Busca em qualquer coluna, sem acento nem caixa.
+  // (uma palavra só: a busca acha todas as palavras em qualquer coluna, e
+  // "3" sozinho também aparece nas datas)
+  await tools.locator("[data-table-search]").fill(`${tag.toUpperCase()}-3`);
   await expect(rows).toHaveCount(1);
-  await expect(rows.first()).toContainText("Trans Rodo");
+  await expect(rows.first()).toContainText(`Tabela ${tag}-3`);
   await tools.locator("[data-table-search]").fill("nada-assim-xyz");
   await expect(rows).toHaveCount(0);
   await expect(tools.locator("[data-table-none]")).toBeVisible();
@@ -39,7 +52,6 @@ test("tabela padrão: ordena, busca e pagina", async ({ page }) => {
   // Paginação: 15, 25 ou 50 linhas.
   const size = tools.locator("[data-table-page-size]");
   await expect(size.locator("option")).toHaveText(["15", "25", "50"]);
-  // "1–15 de 17": a faixa vai até o fim da primeira página, não do total.
   await expect(tools.locator("[data-table-range]")).toContainText(
     `1–${firstPage} de ${total}`,
   );

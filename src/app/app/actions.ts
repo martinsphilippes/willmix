@@ -17,6 +17,7 @@ import {
   ForbiddenError,
   assertRole,
   assertWellmix,
+  isAdmin,
   isWellmix,
 } from "@/lib/auth/permissions";
 import { assertAnyScreen, assertScreen, canOpen } from "@/lib/auth/screens";
@@ -1122,6 +1123,9 @@ export async function createUserAction(form: FormData) {
   await run(`${back}#access`, async () => {
     assertWellmix(user);
     assertScreen(user, "parties");
+    // Gerar login de parceiro ou de cliente é dar acesso ao portal: só o
+    // administrador (dono, 17/11/2026; docs/EQUIPE_ACESSOS.md, R5).
+    if (!isAdmin(user)) throw new ForbiddenError();
     const parsed = z
       .object({
         // Nome de usuário ou e-mail: o formato é conferido no serviço.

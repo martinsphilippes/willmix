@@ -37,7 +37,8 @@ export const pt = {
     "Só este login do cliente verá a solicitação e o pedido; outros logins da mesma empresa não veem. Sem login escolhido, só a Wellmix vê.",
   "requestPeople.accessNone": "Nenhum (só a Wellmix vê)",
   "requestPeople.accessPick": "Escolha o cliente primeiro.",
-  "requestPeople.accessNoLogins": "Este cliente não tem login no portal.",
+  "requestPeople.accessNoLogins":
+    "Este cliente não tem login no portal. Só o administrador cria o login (Cadastros → Clientes).",
   "requestPeople.accessStock": "Compra para estoque: sem acesso de cliente.",
   "requestPeople.self": "O seu login: você vê a solicitação e o pedido.",
 } as const;
@@ -77,7 +78,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Only this customer login will see the request and the order; other logins of the same company do not. With no login chosen, only Wellmix sees it.",
   "requestPeople.accessNone": "None (only Wellmix sees it)",
   "requestPeople.accessPick": "Choose the customer first.",
-  "requestPeople.accessNoLogins": "This customer has no portal login.",
+  "requestPeople.accessNoLogins":
+    "This customer has no portal login. Only the administrator creates logins (Registers → Customers).",
   "requestPeople.accessStock": "Stock purchase: no customer access.",
   "requestPeople.self": "Your login: you see the request and the order.",
 };
@@ -112,7 +114,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "只有该客户账号可以查看申请和订单；同公司的其他账号看不到。未选择账号时，仅 Wellmix 可见。",
   "requestPeople.accessNone": "无（仅 Wellmix 可见）",
   "requestPeople.accessPick": "请先选择客户。",
-  "requestPeople.accessNoLogins": "该客户没有门户账号。",
+  "requestPeople.accessNoLogins":
+    "该客户没有门户账号。只有管理员可以创建（登记 → 客户）。",
   "requestPeople.accessStock": "库存采购：无客户访问。",
   "requestPeople.self": "您的账号：您可以查看申请和订单。",
 };

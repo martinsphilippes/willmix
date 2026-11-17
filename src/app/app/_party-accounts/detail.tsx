@@ -3,7 +3,7 @@ import { orderMilestoneText } from "@/lib/milestones";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
-import { isWellmix } from "@/lib/auth/permissions";
+import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { loadSupplierScores } from "@/lib/services/supplier-score-load";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
@@ -532,7 +532,14 @@ export async function PartyAccountDetail({
             {/* Criar o acesso deste cadastro ao portal: e-mail (ou nome de
                 usuário) e senha. Só a Wellmix; o login nasce preso a este
                 fornecedor/cliente e só vê o que é dele. */}
-            {isWellmix(user) ? (
+            {isWellmix(user) && !isAdmin(user) ? (
+              // Gerar login é dar acesso ao portal: só o administrador
+              // (dono, 17/11/2026; docs/EQUIPE_ACESSOS.md, R5).
+              <div className="mt-4" data-account-login-admin-only>
+                <Alert tone="info">{t("portalAccess.adminOnly")}</Alert>
+              </div>
+            ) : null}
+            {isAdmin(user) ? (
               <form
                 action={createUserAction}
                 className="mt-4 space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3"

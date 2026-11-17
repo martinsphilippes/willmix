@@ -1771,3 +1771,10 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Como ficou**: Equipe → "Importar da planilha" (`/app/team/import`) com "Conferir" (prévia sem gravar) e "Criar os logins" (lotes de 25, continua de onde parou); funções e nível sugeridos pelo cargo; "a conferir" gravado no login com o motivo, selo e filtro na lista e "Conferido" em Editar acessos (docs/ACCESS.md, "Importar equipe").
 - **Aditivo:** coluna nova `users.reviewNote` (opcional); nenhum login existente perde nada (quem já tem login só recebe cargo e área se não tinha; funções e telas ficam).
 - Testes: `tests/unit/team-import.test.ts` e `tests/e2e/team-import.spec.ts`.
+
+## Equipe Externa: lista com filtro em cada coluna, busca e logins (etapa 1 da reorganização)
+
+- **Pedido do dono** (16 e 17/11/2026; docs/EQUIPE_ACESSOS.md): reorganizar Equipe Acessos e Parceiros em Equipe Interna e Equipe Externa; o dono autorizou começar pela Equipe Externa. Colunas Nome | Tipo | Situação | Login de Acesso | País | E-mail, filtro em cada coluna (texto em Nome e E-mail, opções dos dados no resto), busca em toda a tabela com os logins só para o administrador, filtros antes da paginação, Limpar filtros, painel dos logins de cada parceiro com o estado de cada um, e gerar login só do administrador.
+- **Como ficou**: `/app/parties` com a busca, os filtros, a ordem e a página sempre no servidor; painel `?panel=logins&party=…` que fecha voltando à lista como estava; `createUserAction` só para o administrador; os avisos de fornecedor sem acesso e o da Nova solicitação pedem ao administrador.
+- **Aditivo:** mesma rota e mesma permissão para abrir; os parâmetros de antes (`type`, `q`, `sort`, `page`) continuam. Muda, por decisão do dono, quem gera login: só o administrador (o Comprador, o Catálogo e as diretorias deixam de gerar; os logins existentes ficam). Sem mudança no banco.
+- Testes: `tests/unit/partners-list.test.ts`, `tests/unit/partner-login-admin.test.ts`, `tests/e2e/external-team.spec.ts` e `tests/e2e/table-tools.spec.ts` (na Auditoria).

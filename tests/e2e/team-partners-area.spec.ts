@@ -62,13 +62,14 @@ test("administrador: Parceiros dentro de Equipe Acessos e Parceiros, as três ab
     "Cargos",
     "Funções e acessos",
     "Linha de produto e divisão",
-    "Parceiros",
+    // A seção Parceiros virou Equipe Externa (dono, 17/11/2026).
+    "Equipe Externa",
   ]);
 
   // Seção Parceiros → aba Cadastros (a lista de sempre, com filtro e ações).
-  await sections(page).filter({ hasText: "Parceiros" }).click();
+  await sections(page).filter({ hasText: "Equipe Externa" }).click();
   await page.waitForURL(/\/app\/parties$/);
-  await expectArea(page, "Parceiros");
+  await expectArea(page, "Equipe Externa");
   expect(await texts(partiesTabs(page))).toEqual([
     "Cadastros",
     "Tipos de parceiro",
@@ -86,7 +87,7 @@ test("administrador: Parceiros dentro de Equipe Acessos e Parceiros, as três ab
   // Aba Tipos de parceiro: o catálogo, com o menu ⋯ do administrador.
   await page.locator('[data-parties-tab="types"]').click();
   await page.waitForURL(/\/app\/parties\/types$/);
-  await expectArea(page, "Parceiros");
+  await expectArea(page, "Equipe Externa");
   await expect(
     page.locator('[data-parties-tab="types"][aria-current="page"]'),
   ).toBeVisible();
@@ -95,7 +96,7 @@ test("administrador: Parceiros dentro de Equipe Acessos e Parceiros, as três ab
   // Aba Acessos externos: o perfil e os painéis de sempre.
   await page.locator('[data-parties-tab="access"]').click();
   await page.waitForURL(/\/app\/parties\/access$/);
-  await expectArea(page, "Parceiros");
+  await expectArea(page, "Equipe Externa");
   await expect(page.locator("[data-access-profile-select]")).toBeVisible();
 
   // Volta para a Equipe pela seção.
@@ -114,7 +115,7 @@ test("links antigos de Parceiros abrem a mesma tela, com os filtros e os parâme
   expect(new URL(page.url()).pathname).toBe("/app/parties");
   expect(new URL(page.url()).searchParams.get("type")).toBe("supplier");
   expect(new URL(page.url()).searchParams.get("q")).toBe("shenzhen");
-  await expectArea(page, "Parceiros");
+  await expectArea(page, "Equipe Externa");
   await expect(page.locator("main")).toContainText("Shenzhen Supplier A");
   // O filtro de tipo vale (a busca curta fica na tabela, no navegador).
   await expect(page.locator("main")).not.toContainText("Agência Criativa");
@@ -124,7 +125,7 @@ test("links antigos de Parceiros abrem a mesma tela, com os filtros e os parâme
   await expect(page.locator("[data-access-profile-select]")).toHaveValue(
     "type:trading",
   );
-  await expectArea(page, "Parceiros");
+  await expectArea(page, "Equipe Externa");
   // A tela de entrada (/app) no perfil externo (dono, 15/11/2026): o nome diz
   // o que o login vê ali (as Pendências dele, se o perfil abre Pendências),
   // nunca "Control Tower", que é só da equipe Wellmix.
@@ -177,9 +178,9 @@ test("comprador: entra em Parceiros pelo novo item, só com as seções que já 
   ).toHaveCount(0);
   await footerItem(page).click();
   await page.waitForURL(/\/app\/parties$/);
-  await expectArea(page, "Parceiros");
+  await expectArea(page, "Equipe Externa");
   // Só a seção Parceiros; sem Acessos externos.
-  expect(await texts(sections(page))).toEqual(["Parceiros"]);
+  expect(await texts(sections(page))).toEqual(["Equipe Externa"]);
   expect(await texts(partiesTabs(page))).toEqual([
     "Cadastros",
     "Tipos de parceiro",

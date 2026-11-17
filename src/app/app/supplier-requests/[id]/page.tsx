@@ -12,7 +12,7 @@ import { BookingItemSuperplan } from "@/components/booking-item-superplan";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
-import { isWellmix } from "@/lib/auth/permissions";
+import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
 import {
   pendingProposal,
@@ -222,7 +222,7 @@ export default async function SupplierRequestPage({
     <div className="mb-3 space-y-2" data-supplier-request-notices>
       <SupplierNoLoginAlert
         suppliers={noLogin}
-        canParties={canOpen(user, "parties")}
+        canCreate={isAdmin(user)}
         t={t}
         title="supplierRequests.noLogin.request"
         hint="supplierRequests.noLogin.requestHint"

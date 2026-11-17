@@ -388,7 +388,11 @@ export default async function PartyPage({
               ) : null}
               {!users.some((u) => u.active) ? (
                 <div className="mb-3" data-party-no-access>
-                  <Alert tone="warning">{t("portalAccess.party.none")}</Alert>
+                  <Alert tone="warning">
+                    {isAdmin(user)
+                      ? t("portalAccess.party.none")
+                      : t("portalAccess.party.noneAsk")}
+                  </Alert>
                 </div>
               ) : null}
               <p className="mb-3 text-xs text-zinc-500">
@@ -442,7 +446,13 @@ export default async function PartyPage({
                   </li>
                 ) : null}
               </ul>
-              {!loginRole ? (
+              {!isAdmin(user) ? (
+                // Gerar login é dar acesso ao portal: só o administrador
+                // (dono, 17/11/2026; docs/EQUIPE_ACESSOS.md, R5).
+                <div data-party-access-admin-only>
+                  <Alert tone="info">{t("portalAccess.adminOnly")}</Alert>
+                </div>
+              ) : !loginRole ? (
                 // Tipo criado no painel: ainda sem classe de login (a criação
                 // do acesso recusaria; docs/PARTNER_TYPES.md).
                 <div data-party-no-login-class>
