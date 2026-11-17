@@ -73,6 +73,81 @@ describe("aba Todos no passo, paginada", () => {
     await summary.rebuildOrderSummaries(NOW);
   });
 
+  it("a busca acha o pedido em todo o passo, não só na página", async () => {
+    // Dono, 17/11/2026: a busca da aba olha todos os pedidos do passo (nº,
+    // fornecedor, cliente e produto), antes de dividir em páginas.
+    const all = await flow.flowAllFor(admin);
+    const step = progressSteps.find(
+      (s) => (all.get(stepId(s)) ?? []).length >= 2,
+    )!;
+    const list = all.get(stepId(step))!;
+    const target = list.at(-1)!.order;
+    const total = (await flow.flowStepEntities(admin, step)).total;
+
+    const byNumber = await flow.flowStepEntities(admin, step, {
+      q: `#${target.number}`,
+    });
+    expect(byNumber.total).toBe(total);
+    expect(byNumber.matched).toBe(byNumber.entities.length);
+    expect(byNumber.entities.map((e) => e.order.id)).toContain(target.id);
+    expect(
+      byNumber.entities.every((e) =>
+        String(e.order.number).includes(String(target.number)),
+      ),
+    ).toBe(true);
+
+    const supplier = await getStore().get("parties", target.supplierId);
+    expect(supplier).toBeTruthy();
+    const bySupplier = await flow.flowStepEntities(admin, step, {
+      q: supplier!.name.toUpperCase(),
+    });
+    expect(bySupplier.entities.map((e) => e.order.id)).toContain(target.id);
+
+    const none = await flow.flowStepEntities(admin, step, {
+      q: "zz-nenhum-pedido-zz",
+    });
+    expect(none).toMatchObject({ entities: [], matched: 0, total, pages: 1 });
+  });
+
+  it("sem os resumos, a busca usa o número e o cadastro", async () => {
+    const all = await flow.flowAllFor(admin);
+    const step = progressSteps.find(
+      (s) => (all.get(stepId(s)) ?? []).length >= 2,
+    )!;
+    const target = all.get(stepId(step))!.at(-1)!.order;
+    const store = getStore();
+    const [marker] = await store.list("settings", {
+      filter: { key: summary.SUMMARY_SETTING_KEY },
+      limit: 1,
+    });
+    expect(marker).toBeTruthy();
+    // Resumos "fora do ar": a aba lê os pedidos das tabelas.
+    await store.update("settings", marker.id, { value: {} });
+    try {
+      expect(await summary.summariesReady()).toBe(false);
+      const supplier = await store.get("parties", target.supplierId);
+      const found = await flow.flowStepEntities(admin, step, {
+        q: `${target.number} ${supplier!.name}`,
+      });
+      expect(found.entities.map((e) => e.order.id)).toContain(target.id);
+      expect(found.matched).toBeLessThanOrEqual(found.total);
+    } finally {
+      await store.update("settings", marker.id, { value: marker.value });
+    }
+    expect(await summary.summariesReady()).toBe(true);
+  });
+
+  it("texto da busca: número, fornecedor, cliente e produto", () => {
+    expect(
+      flow.flowSearchText({
+        number: 1234,
+        supplier: "Ningbo Toys",
+        customer: null,
+        product: "Boneca",
+      }),
+    ).toBe("#1234 Ningbo Toys Boneca");
+  });
+
   it("fora da Wellmix, nada", async () => {
     const got = await flow.flowStepEntities(
       { ...admin, role: "supplier" },

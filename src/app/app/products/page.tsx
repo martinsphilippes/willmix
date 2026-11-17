@@ -1,4 +1,5 @@
 import { LiveSearch } from "@/components/live-search";
+import { AutoSubmit } from "@/components/auto-submit";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -54,6 +55,8 @@ import {
   productPage,
   productPhotoList,
   readProductFilter,
+  readProductOrder,
+  sortProducts,
 } from "@/lib/services/product-list";
 
 const BULK_FORM = "products-bulk";
@@ -76,6 +79,8 @@ export default async function ProductsPage({
   const sp = await searchParams;
   const { error, view, deleted, restored, purged, blocked } = sp;
   const filter = readProductFilter(sp);
+  // Ordem da lista inteira (nome ou mais recentes primeiro), antes das páginas.
+  const order = readProductOrder(sp);
   const filtering = !!(filter.q || filter.lineId || filter.supplierId);
   const showDeleted = view === "deleted";
   const t = await getT();
@@ -106,14 +111,18 @@ export default async function ProductsPage({
     filter.supplierId ? [filter.supplierId] : [],
   );
   const noSupplier: ReadonlySet<string> = new Set();
-  // Busca e filtros (linha, fornecedor principal ou vinculado) pela URL.
-  const products = listed.filter(
-    (p) =>
-      inProductFilter(
-        p,
-        filter,
-        linkedToFilter.has(p.id) ? filterSupplier : noSupplier,
-      ) && matchesProduct(p, supplierName(p.supplierId), filter.q),
+  // Busca e filtros (linha, fornecedor principal ou vinculado) pela URL, no
+  // catálogo inteiro; depois a ordem pedida.
+  const products = sortProducts(
+    listed.filter(
+      (p) =>
+        inProductFilter(
+          p,
+          filter,
+          linkedToFilter.has(p.id) ? filterSupplier : noSupplier,
+        ) && matchesProduct(p, supplierName(p.supplierId), filter.q),
+    ),
+    order,
   );
   // Uma página por vez: ficha, fotos, variações e vínculos só dos produtos
   // mostrados (o cadastro tem dezenas de milhares de produtos).
@@ -130,14 +139,23 @@ export default async function ProductsPage({
     const out = q.toString();
     return out ? `?${out}` : "";
   };
-  /** Endereço de outra página, com a busca, os filtros e "Ver excluídos". */
+  /** Endereço de outra página, com a busca, os filtros, a ordem e "Ver excluídos". */
   const pageHref = (n: number) => {
     const q = new URLSearchParams(listQuery());
+    if (order !== "name") q.set("order", order);
     if (showDeleted) q.set("view", "deleted");
     if (n > 1) q.set("page", String(n));
     const out = q.toString();
     return `/app/products${out ? `?${out}` : ""}`;
   };
+  /** "Limpar": tira a busca e os filtros; a ordem escolhida fica. */
+  const clearHref = (() => {
+    const q = new URLSearchParams();
+    if (showDeleted) q.set("view", "deleted");
+    if (order !== "name") q.set("order", order);
+    const out = q.toString();
+    return `/app/products${out ? `?${out}` : ""}`;
+  })();
   // Ficha mestre de cada produto (uma consulta): completa, parcial ou sem ficha.
   const masters = visibleIds.length
     ? await store.list("purchase_sheets", {
@@ -247,22 +265,43 @@ export default async function ProductsPage({
         ) : null}
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
+        {/* Até o notebook (iPad, celular) a busca ocupa a linha inteira e o
+            total e o "Exportar" descem; antes ela ficava espremida ao lado. */}
         <form
           method="get"
           action="/app/products"
-          className="flex min-w-0 flex-1 flex-wrap items-center gap-2"
+          className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto lg:flex-1"
           data-product-search
         >
           {showDeleted ? (
             <input type="hidden" name="view" value="deleted" />
           ) : null}
-          <Input
-            name="q"
-            defaultValue={filter.q}
-            placeholder={t("prodList.search")}
-            aria-label={t("prodList.search")}
-            className="w-full max-w-md"
-          />
+          {/* A busca da tela (dono, 17/11/2026): procura no catálogo inteiro,
+              não só na página; a tabela não tem outra caixa de busca. */}
+          <span className="relative w-full max-w-md">
+            <svg
+              aria-hidden
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
+            >
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="m20 20-4.2-4.2" />
+            </svg>
+            <Input
+              type="search"
+              name="q"
+              defaultValue={filter.q}
+              placeholder={t("prodList.search")}
+              aria-label={t("prodList.search")}
+              className="w-full border-zinc-400 pl-8"
+              data-product-search-input
+            />
+          </span>
           <LiveSearch />
           <Select
             name="line"
@@ -296,17 +335,26 @@ export default async function ProductsPage({
             }}
             className="w-full sm:w-64"
           />
+          {/* Ordem da lista inteira; trocar já aplica (o "Buscar" também vale). */}
+          <Select
+            name="order"
+            // A de sempre (nome) vai vazia: o endereço fica como antes.
+            defaultValue={order === "name" ? "" : order}
+            aria-label={t("prodList.order.label")}
+            title={t("prodList.order.label")}
+            className="w-auto"
+            data-auto-submit
+            data-product-order
+          >
+            <option value="">{t("prodList.order.name")}</option>
+            <option value="recent">{t("prodList.order.recent")}</option>
+          </Select>
+          <AutoSubmit />
           <Button type="submit" variant="primary">
             {t("prodList.searchButton")}
           </Button>
           {filtering ? (
-            <TextLink
-              href={
-                showDeleted ? "/app/products?view=deleted" : "/app/products"
-              }
-            >
-              {t("prodList.clear")}
-            </TextLink>
+            <TextLink href={clearHref}>{t("prodList.clear")}</TextLink>
           ) : null}
         </form>
         <span className="text-sm text-zinc-500" data-product-total>
@@ -399,7 +447,11 @@ export default async function ProductsPage({
           {products.length === 0 ? (
             <Empty>{filtering ? t("prodList.empty") : t("common.none")}</Empty>
           ) : (
-            <Table>
+            // Uma página do catálogo (50): a busca e as páginas são as da
+            // tela, no catálogo inteiro. Sem a busca e as páginas da tabela,
+            // que só olhavam os 50 desta página (dono, 17/11/2026). Clicar no
+            // cabeçalho continua ordenando a página, como antes.
+            <Table searchable={false} paginated={false}>
               <thead>
                 <tr>
                   <Th className="w-10">

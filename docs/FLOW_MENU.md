@@ -105,6 +105,7 @@ Compra por demanda (docs/PURCHASE_DEMAND.md): dois passos novos no bloco Produto
 
 - Com o histórico do Sankhya são milhares de pedidos em alguns passos (4.974 em Pedidos), e a tela do passo estourava a memória lendo etapas e itens de todos. Agora a contagem da aba vem da contribuição de cada pedido (`order_summaries.kpi.f`) e a aba "Todos no passo" lê só os 50 pedidos da página (`?tab=all&page=N`, `flowStepEntities`): os em andamento primeiro, depois o histórico em espera, cada grupo pelo número.
 - Sem os resumos em uso, ou num passo fora de Pedido, Produção e Entrega, a lista vem das tabelas sem o histórico em espera (que não tem pendência).
+- **Busca em todo o passo** (dono, 17/11/2026): a aba tem a busca dela (`?tab=all&q=…`, ao digitar), pelo nº do pedido, fornecedor, cliente e produto, em todos os pedidos do passo antes de dividir em páginas (`flowStepEntities` com `q`; o texto de cada pedido vem de `order_summaries.facts`, só as chaves `supplier`, `customer` e `product`, e, sem os resumos, do número e do cadastro). A tabela da Wellmix ficou sem a busca e as páginas de 15 dela, que só olhavam os 50 da página; o parceiro, que vê a lista inteira dele, segue com a tabela de sempre. A aba mostra "N de M pedido(s) do passo" e as páginas guardam a busca.
 
 ## O pedido na tela do passo (14/11/2026)
 

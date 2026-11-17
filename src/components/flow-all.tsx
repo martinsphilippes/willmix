@@ -28,16 +28,27 @@ export async function FlowAll({
   entities,
   t,
   partner = false,
+  paged = false,
+  emptyText,
   now = new Date(),
 }: {
   step: FlowStep;
   /** Parceiro: os pedidos dele, sem a coluna do fornecedor. */
   partner?: boolean;
+  /**
+   * Uma página da lista (Wellmix, 50 por página): a busca e as páginas são
+   * as da tela, em todos os pedidos do passo; a tabela fica sem a busca e as
+   * páginas dela, que só olhavam esta página (dono, 17/11/2026).
+   */
+  paged?: boolean;
+  /** Texto de "nada" no lugar do padrão (ex.: a busca não achou). */
+  emptyText?: string;
   entities: FlowEntity[];
   t: Translate;
   now?: Date;
 }) {
-  if (!entities.length) return <Empty>{t("flow.all.empty")}</Empty>;
+  if (!entities.length)
+    return <Empty>{emptyText ?? t("flow.all.empty")}</Empty>;
   const supplierIds = [
     ...new Set(entities.map((e) => e.order.supplierId).filter(Boolean)),
   ];
@@ -51,7 +62,7 @@ export async function FlowAll({
       <p className="mb-2 text-sm text-zinc-600">
         {t(partner ? "flow.all.hint.partner" : "flow.all.hint")}
       </p>
-      <Table>
+      <Table searchable={!paged} paginated={!paged}>
         <thead>
           <tr>
             <Th>{t("flow.all.order")}</Th>
