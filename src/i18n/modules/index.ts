@@ -164,6 +164,7 @@ import * as deliverySchedule from "./delivery-schedule";
 import * as training from "./training";
 import * as externalTeam from "./external-team";
 import * as accessState from "./access-state";
+import * as internalTeam from "./internal-team";
 
 export const modulesPt = {
   ...messages.pt,
@@ -327,6 +328,7 @@ export const modulesPt = {
   ...training.pt,
   ...externalTeam.pt,
   ...accessState.pt,
+  ...internalTeam.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...messages.en,
@@ -490,6 +492,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...training.en,
   ...externalTeam.en,
   ...accessState.en,
+  ...internalTeam.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...messages.zh,
@@ -653,4 +656,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...training.zh,
   ...externalTeam.zh,
   ...accessState.zh,
+  ...internalTeam.zh,
 };

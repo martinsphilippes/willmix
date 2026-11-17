@@ -68,10 +68,8 @@ export async function grantTeamScreen(
   name: string,
   screen: string,
 ) {
-  await page.goto("/app/team");
-  // Com a busca da tabela à vista (lista longa), filtra pela pessoa.
-  const search = page.locator("[data-table-search]").first();
-  if (await search.count()) await search.fill(name);
+  // A lista busca no servidor (Equipe Interna, 50 por página): pela pessoa.
+  await page.goto(`/app/team?q=${encodeURIComponent(name)}`);
   await page.locator(`[data-team-edit="${id}"]`).click();
   const drawer = page.locator(`[data-team-drawer-panel="${id}"]`);
   await expect(drawer).toBeVisible();

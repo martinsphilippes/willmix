@@ -47,9 +47,10 @@ async function expandAll(panel: Locator) {
 async function openDrawer(page: Page, id: string, name: string) {
   if (!/\/app\/team(\?tab=team)?$/.test(page.url()))
     await page.goto("/app/team");
-  // Com a busca da tabela à vista (lista longa), filtra pela pessoa.
-  const search = page.locator("[data-table-search]").first();
-  if (await search.count()) await search.fill(name);
+  // A lista busca no servidor (Equipe Interna, 50 por página): fora da
+  // primeira página, pela pessoa.
+  if (!(await page.locator(`[data-team-edit="${id}"]`).count()))
+    await page.goto(`/app/team?q=${encodeURIComponent(name)}`);
   await page.locator(`[data-team-edit="${id}"]`).click();
   const drawer = page.locator(`[data-team-drawer-panel="${id}"]`);
   await expect(drawer).toBeVisible();
@@ -123,7 +124,10 @@ test("Designer: tela do Início e ação salvas valem no painel, no login e com 
   // 3. Editar acessos no painel lateral: a lista fica por baixo.
   await page.goto("/app/team");
   const drawer = await openDrawer(page, desiId, `Desi ${tag}`);
-  await expect(page).toHaveURL(/\/app\/team$/);
+  // O painel fica no endereço (Equipe Interna, 17/11/2026); a lista continua
+  // por baixo.
+  await expect(page).toHaveURL(new RegExp(`[?&]panel=person&id=${desiId}`));
+  await expect(page.locator(`tr[data-team-member="${desiId}"]`)).toBeAttached();
   await expect(drawer.locator('[data-team-screen="sla"]')).not.toBeChecked();
   await expect(drawer.locator('[data-perm-row="tasks"]')).toContainText(
     "Herdado de Designer",

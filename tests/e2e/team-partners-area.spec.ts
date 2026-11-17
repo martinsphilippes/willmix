@@ -20,8 +20,14 @@ const footerItem = (page: Page) =>
   sidebar(page).locator("[data-sidebar-footer] [data-nav-link]", {
     hasText: AREA,
   });
+// As duas telas da área (dono, 17/11/2026; docs/EQUIPE_ACESSOS.md, etapa
+// 5): Equipe Interna e Equipe Externa.
 const sections = (page: Page) =>
-  page.locator("[data-team-area-nav] [data-team-tab]");
+  page.locator("[data-team-area-nav] [data-team-area]");
+// As seções da Equipe Interna (Equipe; Cargos, áreas e funções; Linhas e
+// divisões) e, dentro da segunda, Cargos, Áreas e Funções e acessos.
+const teamSections = (page: Page) =>
+  page.locator("[data-team-tabs] [data-team-section]");
 const partiesTabs = (page: Page) =>
   page.locator("[data-parties-tabs] [data-parties-tab]");
 
@@ -55,16 +61,26 @@ test("administrador: Parceiros dentro de Equipe Acessos e Parceiros, as três ab
   // 16/11/2026).
   await footerItem(page).click();
   await page.waitForURL(/\/app\/team$/);
-  await expectArea(page, "Equipe");
+  await expectArea(page, "Equipe Interna");
+  // Duas telas (dono, 17/11/2026): a seção Parceiros virou Equipe Externa, e
+  // as seções da equipe ficaram dentro da Equipe Interna.
   expect(await texts(sections(page))).toEqual([
-    "Equipe",
-    "Áreas",
-    "Cargos",
-    "Funções e acessos",
-    "Linha de produto e divisão",
-    // A seção Parceiros virou Equipe Externa (dono, 17/11/2026).
+    "Equipe Interna",
     "Equipe Externa",
   ]);
+  expect(await texts(teamSections(page))).toEqual([
+    "Equipe",
+    "Cargos, áreas e funções",
+    "Linhas e divisões",
+  ]);
+  await teamSections(page)
+    .filter({ hasText: "Cargos, áreas e funções" })
+    .click();
+  await page.waitForURL(/\/app\/team\?tab=positions$/);
+  await expectArea(page, "Equipe Interna");
+  expect(
+    await texts(page.locator("[data-team-subtabs] [data-team-tab]")),
+  ).toEqual(["Cargos", "Áreas", "Funções e acessos"]);
 
   // Seção Parceiros → aba Cadastros (a lista de sempre, com filtro e ações).
   await sections(page).filter({ hasText: "Equipe Externa" }).click();
@@ -101,10 +117,16 @@ test("administrador: Parceiros dentro de Equipe Acessos e Parceiros, as três ab
   await expectArea(page, "Equipe Externa");
   await expect(page.locator("[data-access-profile-select]")).toBeVisible();
 
-  // Volta para a Equipe pela seção.
-  await sections(page).filter({ hasText: "Funções e acessos" }).click();
+  // Volta para a Equipe Interna pela área, e Funções e acessos dentro de
+  // Cargos, áreas e funções.
+  await sections(page).filter({ hasText: "Equipe Interna" }).click();
+  await page.waitForURL(/\/app\/team$/);
+  await teamSections(page)
+    .filter({ hasText: "Cargos, áreas e funções" })
+    .click();
+  await page.locator('[data-team-subtabs] [data-team-tab="functions"]').click();
   await page.waitForURL(/\/app\/team\?tab=functions$/);
-  await expectArea(page, "Funções e acessos");
+  await expectArea(page, "Equipe Interna");
 });
 
 test("links antigos de Parceiros abrem a mesma tela, com os filtros e os parâmetros", async ({

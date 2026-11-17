@@ -19,7 +19,9 @@ export const ASSIGN_HREF: Record<
   certifier: (orderId) => `/app/orders/${orderId}#order-partners`,
   // Designer do pedido: cartão Artes.
   designer: (orderId) => `/app/orders/${orderId}#artwork`,
-  // Analista do pedido: sai da divisão da linha (Equipe e acessos →
-  // "Distribuir agora").
-  analyst: () => "/app/team#distribute",
+  // Analista do pedido: sai da divisão da linha (Equipe Interna → Linhas e
+  // divisões → "Distribuir agora"; antes, "/app/team#distribute" abria a aba
+  // Equipe, sem a distribuição). O link só aparece para quem abre a Equipe
+  // (src/components/distribute-link.tsx).
+  analyst: () => "/app/team?tab=lines#distribute",
 };

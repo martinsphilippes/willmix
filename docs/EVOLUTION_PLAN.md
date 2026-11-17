@@ -1799,3 +1799,9 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Como ficou**: Novo cliente em `/app/customers/new` e o cadastro em `/app/customers/<id>/edit` (o mesmo cadastro de antes, agora em Clientes); desativar e reativar login na ficha; Acessos dos clientes para o administrador.
 - **Aditivo:** os endereços de antes levam para os novos, com os parâmetros; as permissões e os dados são os mesmos. Sem mudança no banco.
 - Testes: `tests/e2e/customer-screens.spec.ts` e os ajustes nos testes que criavam cliente.
+
+## Equipe Interna: lista, atalhos, painéis e Gestão de telas (etapa 5a)
+
+- **Pedido do dono** (17/11/2026; docs/EQUIPE_ACESSOS.md, seção 7): duas telas na área (Equipe Interna e Equipe Externa), a lista Nome | Cargo | Área | Função | Responde a | Telas com o atalho de cada informação, a Gestão de telas nos dois modos e o "#" resolvido.
+- **Aditivo:** as seções, as telas, os endereços (`/app/team?tab=…`, `/app/team/<id>`) e as permissões são os de sempre; o painel da pessoa é o Editar acessos de antes, agora pelo endereço. Os "#" antigos são convertidos ao chegar. Sem mudança no banco.
+- Testes: `tests/unit/team-list.test.ts`, `tests/unit/screen-origin.test.ts` e `tests/e2e/internal-team.spec.ts`.

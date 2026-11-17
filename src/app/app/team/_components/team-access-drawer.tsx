@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Alert } from "@/components/ui";
 import type { PermissionGroup } from "./permission-list";
 import {
@@ -20,6 +21,12 @@ import {
  * fica como estava (busca, ordem, página e rolagem). No celular o painel
  * ocupa a largura toda. Salvar atualiza a lista no lugar e fecha o painel com
  * o aviso.
+ *
+ * Equipe Interna (dono, 17/11/2026; docs/EQUIPE_ACESSOS.md, etapa 5): o
+ * painel aberto fica no endereço (?panel=person&id=…), sem depender do "#":
+ * o endereço pode ser copiado, abre o painel ao chegar, e o Voltar do
+ * navegador fecha. Abrir e fechar não recarregam a página (History API, que
+ * o roteador do Next acompanha).
  */
 export function TeamAccessDrawer({
   members,
@@ -41,25 +48,46 @@ export function TeamAccessDrawer({
   /** "Acessos de {name} salvos." */
   savedText: string;
 }) {
-  const [openId, setOpenId] = useState<string | null>(null);
+  const params = useSearchParams();
+  const pathname = usePathname();
+  const urlId = params.get("panel") === "person" ? params.get("id") : null;
+  const openId = urlId && members.some((m) => m.id === urlId) ? urlId : null;
   const [toast, setToast] = useState<string | null>(null);
   const dirty = useRef(false);
   const trigger = useRef<HTMLElement | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const member = members.find((m) => m.id === openId) ?? null;
 
+  /** O endereço de agora com o painel da pessoa (ou sem painel). */
+  const hrefFor = useCallback(
+    (id: string | null) => {
+      const next = new URLSearchParams(window.location.search);
+      if (id) {
+        next.set("panel", "person");
+        next.set("id", id);
+      } else {
+        next.delete("panel");
+        next.delete("id");
+      }
+      const query = next.toString();
+      return query ? `${pathname}?${query}` : pathname;
+    },
+    [pathname],
+  );
+
   const close = useCallback(
     (force = false) => {
       if (!force && dirty.current && !window.confirm(texts.discard)) return;
       dirty.current = false;
-      setOpenId(null);
+      // Sem o painel no endereço; a lista fica como estava.
+      window.history.replaceState(null, "", hrefFor(null));
       // Volta o foco a quem abriu (a lista fica onde estava).
       window.setTimeout(
         () => trigger.current?.focus({ preventScroll: true }),
         0,
       );
     },
-    [texts.discard],
+    [texts.discard, hrefFor],
   );
 
   // Os links da lista abrem o painel (o endereço continua para abrir em nova
@@ -79,11 +107,12 @@ export function TeamAccessDrawer({
       trigger.current = link;
       dirty.current = false;
       setToast(null);
-      setOpenId(id);
+      // Entrada nova no histórico: o Voltar do navegador fecha o painel.
+      window.history.pushState(null, "", hrefFor(id));
     };
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
-  }, [members]);
+  }, [members, hrefFor]);
 
   // Aberto: a página de baixo não rola (a posição da lista fica), Esc fecha
   // e o foco vai para o título do painel.

@@ -1,8 +1,17 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isAdmin } from "@/lib/auth/permissions";
 import { WELLMIX_BASE, hasCustomScreens, screensFor } from "@/lib/auth/screens";
+import { screenCountOf } from "@/lib/auth/screen-origin";
+import {
+  isTeamPanel,
+  parseTeamFilters,
+  teamListHref,
+  TEAM_FILTERS,
+  type TeamHrefPatch,
+} from "@/lib/team-list";
 import {
   accessFromFunctions,
   functionDescription,
@@ -16,7 +25,6 @@ import {
   type TeamPosition,
   type User,
 } from "@/lib/db";
-import { loginLabel } from "@/lib/auth/login-id";
 import { DIVISIONS, JOB_LEVELS } from "@/lib/db/schema";
 import {
   PORTAL_MIN_PASSWORD,
@@ -32,7 +40,6 @@ import {
   Field,
   Input,
   LinkButton,
-  PageHeader,
   Select,
   Table,
   Td,
@@ -42,7 +49,6 @@ import {
 } from "@/components/ui";
 import { listTeamAreas } from "@/lib/services/team-areas";
 import { listTeamPositions } from "@/lib/services/team-positions";
-import { TeamAreaNav } from "@/components/team-area-nav";
 import { SubmitButton } from "@/components/submit-button";
 import { wellmixTeam } from "@/lib/services/team";
 import { loadFunctionDefs } from "@/lib/services/team-functions";
@@ -63,6 +69,21 @@ import { TeamBulkForm } from "./_components/team-bulk-form";
 import { FunctionList } from "./_components/function-list";
 import { FunctionPermissions } from "./_components/function-permissions";
 import { TeamAccessDrawer } from "./_components/team-access-drawer";
+import { TeamHeader } from "./_components/team-header";
+import { TeamMembers, teamRows } from "./_components/team-members";
+import {
+  AreaPanel,
+  FunctionPanel,
+  ManagerPanel,
+  PositionPanel,
+  type PanelLinks,
+} from "./_components/team-panels";
+import {
+  ScreensPanel,
+  parseScreensState,
+  type ScreensState,
+} from "./_components/screens-panel";
+import { LegacyTeamHash } from "./_components/legacy-hash";
 import {
   editorFunctions,
   editorMember,
@@ -175,13 +196,19 @@ export default async function TeamPage({
       {/* Equipe Acessos e Parceiros (dono, 15/11/2026): o nome da área no
           título; as seções Equipe, Funções e acessos, Linha de produto e
           divisão e Parceiros (src/components/team-area-nav.tsx). */}
-      <PageHeader
+      <TeamHeader
         t={t}
-        title={t("nav.teamAccess")}
-        subtitle={t("team.intro")}
-        actions={<TextLink href="/app/sla">{t("nav.sla")}</TextLink>}
+        user={user}
+        active={tab}
+        subtitle={tab === "team" ? t("internalTeam.subtitle") : t("team.intro")}
+        actions={
+          tab === "team" ? (
+            <TeamActions t={t} admin={isAdmin(user)} sp={sp} />
+          ) : (
+            <TextLink href="/app/sla">{t("nav.sla")}</TextLink>
+          )
+        }
       />
-      <TeamAreaNav t={t} user={user} active={tab} />
       {errorText && !(tab === "team" && one("new")) ? (
         <div className="mb-3">
           <Alert tone="danger">{errorText}</Alert>
@@ -237,8 +264,8 @@ export default async function TeamPage({
           areas={areas}
           positions={positions}
           label={label}
-          canCreate={isAdmin(user)}
-          onlyReview={one("review") === "1"}
+          admin={isAdmin(user)}
+          sp={sp}
           modalOpen={one("new") === "1"}
           modalError={one("new") === "1" ? errorText : null}
         />
@@ -272,6 +299,60 @@ export default async function TeamPage({
 
 /* ---------------- Equipe ---------------- */
 
+/** Ações no alto da Equipe Interna (dono, 17/11/2026; docs/EQUIPE_ACESSOS.md). */
+function TeamActions({
+  t,
+  admin,
+  sp,
+}: {
+  t: Translate;
+  admin: boolean;
+  sp: Record<string, string | string[] | undefined>;
+}) {
+  const filters = parseTeamFilters(sp);
+  const one = (k: string) =>
+    typeof sp[k] === "string" ? (sp[k] as string) : null;
+  return (
+    <>
+      <TextLink href="/app/sla" className="self-center text-sm">
+        {t("nav.sla")}
+      </TextLink>
+      <LinkButton
+        href={teamListHref(filters, {
+          sort: one("sort"),
+          page: one("page"),
+          panel: "screens",
+        })}
+        scroll={false}
+        data-team-screens-open
+      >
+        {t("internalTeam.btn.screens")}
+      </LinkButton>
+      <LinkButton href="/app/team?tab=positions" data-team-structure-open>
+        {t("internalTeam.btn.structure")}
+      </LinkButton>
+      <LinkButton href="/app/team?tab=lines" data-team-lines-open>
+        {t("internalTeam.btn.lines")}
+      </LinkButton>
+      {admin ? (
+        <>
+          {/* Importar da planilha (dono, 16/11/2026). */}
+          <LinkButton href="/app/team/import" data-team-import-open>
+            {t("teamImport.open")}
+          </LinkButton>
+          <LinkButton
+            href="/app/team?tab=team&new=1"
+            variant="primary"
+            data-team-new-user
+          >
+            + {t("team.newUser")}
+          </LinkButton>
+        </>
+      ) : null}
+    </>
+  );
+}
+
 function TeamTab({
   t,
   team,
@@ -279,8 +360,8 @@ function TeamTab({
   areas,
   positions,
   label,
-  canCreate,
-  onlyReview,
+  admin,
+  sp,
   modalOpen,
   modalError,
 }: {
@@ -290,25 +371,23 @@ function TeamTab({
   areas: TeamArea[];
   positions: TeamPosition[];
   label: (key: string) => string;
-  canCreate: boolean;
-  /** Só os logins "a conferir" (?review=1). */
-  onlyReview: boolean;
+  admin: boolean;
+  sp: Record<string, string | string[] | undefined>;
   modalOpen: boolean;
   modalError: string | null;
 }) {
-  const toReview = team.filter((m) => m.reviewNote);
-  const shown = onlyReview ? toReview : team;
-  const nameOf = (id: string | null | undefined) =>
-    (id && team.find((m) => m.id === id)?.name) || t("team.none");
-  const areaOf = (id: string | null | undefined) =>
-    (id && areas.find((a) => a.id === id)?.name) || t("team.none");
-  const positionOf = (id: string | null | undefined) =>
-    (id && positions.find((p) => p.id === id)?.name) || t("team.none");
+  const one = (k: string) =>
+    typeof sp[k] === "string" ? (sp[k] as string) : null;
+  const filters = parseTeamFilters(sp);
   const accessOf = (m: User) => accessFromFunctions(m.functions, defs);
-  // Telas além do básico (as que de fato dependem de função ou de liberação).
-  const extraScreens = (m: User) =>
-    [...screensFor(m, accessOf(m))].filter((s) => !WELLMIX_BASE.includes(s))
-      .length;
+  const activeKeys = new Set(defs.filter((d) => !d.archived).map((d) => d.key));
+  const rows = teamRows(team, {
+    position: (id) => positions.find((p) => p.id === id)?.name ?? null,
+    area: (id) => areas.find((a) => a.id === id)?.name ?? null,
+    functionLabel: label,
+    activeFunction: (key) => activeKeys.has(key),
+    screens: (m) => screenCountOf(m, defs),
+  });
   const noFunction = team.filter(
     (m) =>
       !isAdmin(m) &&
@@ -316,20 +395,62 @@ function TeamTab({
       [...screensFor(m, accessOf(m))].every((s) => WELLMIX_BASE.includes(s)),
   );
   const groups = permissionGroups(t);
+
+  // Endereços: a lista como está (filtros, ordem e página) com o painel.
+  const base = (patch: TeamHrefPatch = {}) =>
+    teamListHref(filters, { sort: one("sort"), page: one("page"), ...patch });
+  const links: PanelLinks = {
+    closeHref: base(),
+    person: (id) => base({ panel: "person", id }),
+    position: (id) => base({ panel: "position", id }),
+    area: (id) => base({ panel: "area", id }),
+    fn: (key) => base({ panel: "function", id: key }),
+    manager: (id, of) => base({ panel: "manager", id, of: of ?? null }),
+    screens: (scope, id) =>
+      base({ panel: "screens", mode: "scope", scope, id }),
+  };
+  const panel = isTeamPanel(one("panel")) ? one("panel") : null;
+  const id = one("id");
+  const screensState = parseScreensState(sp);
+  const screensHref = (
+    patch: Partial<ScreensState> & { id?: string | null },
+  ) => {
+    const next = { ...screensState, ...patch };
+    return base({
+      panel: "screens",
+      mode: next.mode,
+      scope: next.mode === "scope" ? next.scope : null,
+      id: next.mode === "scope" ? (next.id ?? null) : null,
+      screen: next.mode === "screen" ? next.screen : null,
+    });
+  };
+  // Os parâmetros da lista nos formulários do painel (voltam iguais).
+  const list: Record<string, string> = {};
+  for (const key of ["q", ...TEAM_FILTERS, "sort", "page"] as const) {
+    const value = one(key);
+    if (value) list[key] = value;
+  }
+  if (filters.review) list.review = "1";
+  const functionDef =
+    panel === "function" ? defs.find((d) => d.key === id) : null;
+
   return (
     <>
       {/* Editar acessos em painel lateral, por cima da lista (dono,
-          14/11/2026). */}
-      <TeamAccessDrawer
-        members={team.map((m) => editorMember(m, team, defs))}
-        functions={editorFunctions(defs, t)}
-        screenGroups={groups.screens}
-        actionGroups={groups.actions}
-        base={[...WELLMIX_BASE]}
-        options={editorOptions(team, t, areas, positions)}
-        texts={editorTexts(t)}
-        savedText={t("access.savedFor")}
-      />
+          14/11/2026); aberto pelo endereço (?panel=person&id=…). */}
+      <Suspense fallback={null}>
+        <TeamAccessDrawer
+          members={team.map((m) => editorMember(m, team, defs))}
+          functions={editorFunctions(defs, t)}
+          screenGroups={groups.screens}
+          actionGroups={groups.actions}
+          base={[...WELLMIX_BASE]}
+          options={editorOptions(team, t, areas, positions)}
+          texts={editorTexts(t)}
+          savedText={t("access.savedFor")}
+        />
+      </Suspense>
+      <LegacyTeamHash />
       {noFunction.length > 0 ? (
         <div className="mb-3" data-team-no-function>
           <Alert tone="warning">
@@ -337,163 +458,8 @@ function TeamTab({
           </Alert>
         </div>
       ) : null}
-      <Card
-        title={t("team.members")}
-        actions={
-          canCreate ? (
-            <div className="flex flex-wrap gap-2">
-              {/* Importar da planilha (dono, 16/11/2026). */}
-              <LinkButton
-                href="/app/team/import"
-                variant="secondary"
-                data-team-import-open
-              >
-                {t("teamImport.open")}
-              </LinkButton>
-              <LinkButton
-                href="/app/team?tab=team&new=1"
-                variant="primary"
-                data-team-new-user
-              >
-                + {t("team.newUser")}
-              </LinkButton>
-            </div>
-          ) : undefined
-        }
-      >
-        <p className="mb-2 text-xs text-zinc-500">{t("team.screens.hint")}</p>
-        {/* "A conferir": os logins com cargo, área ou funções para conferir à mão. */}
-        {toReview.length || onlyReview ? (
-          <div className="mb-2" data-team-review-filter>
-            <Alert tone="warning">
-              {onlyReview ? (
-                <>
-                  {t("team.review.only", { n: toReview.length })}{" "}
-                  <TextLink href="/app/team?tab=team">
-                    {t("team.review.all")}
-                  </TextLink>
-                </>
-              ) : (
-                <>
-                  {t("team.review.notice", { n: toReview.length })}{" "}
-                  <TextLink href="/app/team?tab=team&review=1">
-                    {t("team.review.show")}
-                  </TextLink>
-                </>
-              )}
-            </Alert>
-          </div>
-        ) : null}
-        <Table>
-          <thead>
-            <tr>
-              <Th>{t("team.col.name")}</Th>
-              <Th>{t("team.col.position")}</Th>
-              <Th>{t("team.col.level")}</Th>
-              <Th>{t("team.col.area")}</Th>
-              <Th>{t("team.col.division")}</Th>
-              <Th>{t("team.col.manager")}</Th>
-              <Th>{t("team.col.functions")}</Th>
-              <Th>{t("team.col.screens")}</Th>
-              <Th className="text-right">
-                <span className="sr-only">{t("team.edit")}</span>
-              </Th>
-            </tr>
-          </thead>
-          <tbody>
-            {shown.map((member) => (
-              <tr
-                key={member.id}
-                id={`u-${member.id}`}
-                className={rowClass}
-                data-team-member={member.id}
-              >
-                <Td>
-                  <TextLink
-                    href={`/app/team/${member.id}`}
-                    className="font-semibold"
-                  >
-                    {member.name}
-                  </TextLink>
-                  <div className="text-xs text-zinc-500">
-                    {t(`role.${member.role}` as DictionaryKey)} ·{" "}
-                    {loginLabel(member.email)}
-                  </div>
-                  {member.reviewNote ? (
-                    <span
-                      className="mt-0.5 inline-block"
-                      title={member.reviewNote}
-                      data-team-member-review={member.id}
-                    >
-                      <Badge tone="warning">{t("team.review.badge")}</Badge>
-                    </span>
-                  ) : null}
-                </Td>
-                <Td
-                  className="whitespace-nowrap"
-                  data-team-member-position={member.id}
-                >
-                  {positionOf(member.positionId)}
-                </Td>
-                <Td className="whitespace-nowrap">
-                  {member.jobLevel
-                    ? t(`level.${member.jobLevel}` as DictionaryKey)
-                    : t("team.none")}
-                </Td>
-                <Td
-                  className="whitespace-nowrap"
-                  data-team-member-area={member.id}
-                >
-                  {areaOf(member.areaId)}
-                </Td>
-                <Td className="whitespace-nowrap">
-                  {member.division
-                    ? t(`division.${member.division}` as DictionaryKey)
-                    : t("team.none")}
-                </Td>
-                <Td className="whitespace-nowrap">
-                  {nameOf(member.managerUserId)}
-                </Td>
-                <Td>
-                  <div className="flex flex-wrap gap-1">
-                    {(member.functions ?? []).length ? (
-                      (member.functions ?? []).map((f) => (
-                        <Badge key={f}>{label(f)}</Badge>
-                      ))
-                    ) : (
-                      <span className="text-zinc-400">{t("team.none")}</span>
-                    )}
-                  </div>
-                </Td>
-                <Td className="whitespace-nowrap text-zinc-700">
-                  <span data-team-screens={member.id}>
-                    {isAdmin(member)
-                      ? t("team.screens.all")
-                      : hasCustomScreens(member)
-                        ? t("team.screens.custom", { n: extraScreens(member) })
-                        : extraScreens(member) === 0
-                          ? t("team.screens.base")
-                          : t("team.screens.default", {
-                              n: extraScreens(member),
-                            })}
-                  </span>
-                </Td>
-                <Td className="whitespace-nowrap text-right">
-                  <TextLink
-                    href={`/app/team/${member.id}`}
-                    className="text-xs"
-                    data-team-edit={member.id}
-                    data-team-open={member.id}
-                  >
-                    {t("team.edit")}
-                  </TextLink>
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </Card>
-      {canCreate && modalOpen ? (
+      <TeamMembers t={t} team={team} rows={rows} filters={filters} sp={sp} />
+      {admin && modalOpen ? (
         <NewUserModal
           t={t}
           team={team}
@@ -502,6 +468,72 @@ function TeamTab({
           positions={positions}
           label={label}
           error={modalError}
+        />
+      ) : null}
+      {panel === "position" ? (
+        <PositionPanel
+          t={t}
+          position={positions.find((p) => p.id === id) ?? null}
+          areas={areas}
+          team={team}
+          links={links}
+          admin={admin}
+        />
+      ) : null}
+      {panel === "area" ? (
+        <AreaPanel
+          t={t}
+          area={areas.find((a) => a.id === id) ?? null}
+          positions={positions}
+          team={team}
+          links={links}
+          admin={admin}
+        />
+      ) : null}
+      {panel === "function" ? (
+        <FunctionPanel
+          t={t}
+          def={functionDef ?? null}
+          label={functionDef ? label(functionDef.key) : ""}
+          description={
+            functionDef?.builtin
+              ? functionDescription(functionDef.key, (k) =>
+                  t(k as DictionaryKey),
+                )
+              : null
+          }
+          team={team}
+          links={links}
+          admin={admin}
+        />
+      ) : null}
+      {panel === "manager" ? (
+        <ManagerPanel
+          t={t}
+          manager={
+            id && id !== one("of")
+              ? (team.find((m) => m.id === id) ?? null)
+              : null
+          }
+          member={team.find((m) => m.id === one("of")) ?? null}
+          team={team}
+          links={links}
+          admin={admin}
+        />
+      ) : null}
+      {panel === "screens" ? (
+        <ScreensPanel
+          t={t}
+          state={screensState}
+          team={team}
+          defs={defs}
+          positions={positions}
+          areas={areas}
+          label={label}
+          links={links}
+          admin={admin}
+          href={screensHref}
+          list={list}
         />
       ) : null}
     </>

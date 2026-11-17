@@ -20,13 +20,17 @@ Pedido do dono (16 e 17/11/2026): reorganizar o módulo "Equipe Acessos e Parcei
 
 ## 2. Etapas
 
-| Etapa | O que                                                                                                                       | Situação                                                |
-| ----- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| 1     | Equipe Externa: colunas, filtros por coluna, busca, painel de logins, gerar login só do administrador (R5, R8)              | Entregue (seção 3)                                      |
-| 2     | Estados de cadastro e login: desativar e reativar, entrada e sessão (R7)                                                    | Entregue (seção 4)                                      |
-| 3     | Tipos e acessos: tipos, perfis e os modos "Por tipo ou perfil" e "Por tela" (R6)                                            | Entregue (seção 5)                                      |
-| 4     | Clientes com telas próprias (R4)                                                                                            | Entregue (seção 6)                                      |
-| 5     | Equipe Interna: lista, painéis, Gestão de telas, regras por dimensão, endereços antigos, distribuição, SLA (R1, R3, R4, R9) | Depois da outra frente (Áreas, Cargos, Importar equipe) |
+| Etapa | O que                                                                                                                    | Situação           |
+| ----- | ------------------------------------------------------------------------------------------------------------------------ | ------------------ |
+| 1     | Equipe Externa: colunas, filtros por coluna, busca, painel de logins, gerar login só do administrador (R5, R8)           | Entregue (seção 3) |
+| 2     | Estados de cadastro e login: desativar e reativar, entrada e sessão (R7)                                                 | Entregue (seção 4) |
+| 3     | Tipos e acessos: tipos, perfis e os modos "Por tipo ou perfil" e "Por tela" (R6)                                         | Entregue (seção 5) |
+| 4     | Clientes com telas próprias (R4)                                                                                         | Entregue (seção 6) |
+| 5a    | Equipe Interna: lista, atalhos e painéis pelo endereço, Gestão de telas (dois modos), "#" antigos, distribuição (R3, R4) | Entregue (seção 7) |
+| 5b    | Prévia de impacto antes de salvar uma regra, consulta do Gestor, Cargo que sugere Funções e Nível (R1, D2, D13)          | A fazer            |
+| 5c    | Painel de SLA com Cargo, Nível, Função, Área e Divisão e a saúde da hierarquia (R9, D5)                                  | A fazer            |
+| 5d    | Login da equipe interna separado de "estar na equipe", desativar e reativar (D8, R7)                                     | A fazer            |
+| 5e    | Rascunho do Novo parceiro no banco (D11)                                                                                 | A fazer            |
 
 ## 3. Equipe Externa (etapa 1)
 
@@ -89,3 +93,26 @@ Cadastros → Clientes passou a ter as telas do cliente, sem passar por Parceiro
 - **Dados de cada cliente**: o login de cliente continua vendo só o que é dele (as solicitações e os pedidos do próprio login, nem os de outros logins da mesma empresa: `canViewRequest` e `canViewOrder` em `src/lib/auth/permissions.ts`); nada mudou nessa regra.
 - **Peças**: o cadastro e o novo cadastro saíram das páginas para `src/app/app/parties/_record/party-record.tsx` e `new-party.tsx`, chamados pelas páginas de Parceiros e de Clientes; os endereços em `src/lib/customer-routes.ts`.
 - **Testes**: `tests/e2e/customer-screens.spec.ts` (novo cliente, cadastro e login em Clientes, endereços de antes, Acessos dos clientes, desativar e reativar na ficha; quem não é administrador sem esses botões) e os testes que criavam cliente pelo endereço de antes, atualizados.
+
+## 7. Equipe Interna (etapa 5a)
+
+A área ficou com **duas telas**: **Equipe Interna** (`/app/team`, quem abre Equipe: o administrador) e **Equipe Externa** (`/app/parties`). Dentro da Equipe Interna, as seções de sempre: Equipe; **Cargos, áreas e funções** (Cargos, Áreas e Funções e acessos); **Linhas e divisões**. Endereços e permissões de sempre.
+
+- **Lista**: uma linha por pessoa, **Nome | Cargo | Área | Função | Responde a | Telas**, com um filtro em cada coluna (texto no Nome, que acha também pelo login; opções tiradas dos dados no Cargo, na Área, na Função e no Responde a, com "Sem cargo", "Sem área", "Sem função" e "Sem gestor"), **Buscar em toda a tabela**, Limpar filtros e o "A conferir" da importação. Busca, filtros, ordem e página no servidor (50 por página). Campo vazio: "—".
+- **Atalhos de cada linha** (o painel abre pelo endereço, `?panel=…&id=…`; fechar com ✕, Esc ou fora volta à lista como estava: busca, filtros, ordem, página e rolagem):
+  - **Nome** → o painel da pessoa (Editar acessos: cargo, nível, área, divisão, responde a, funções e telas). Só o administrador grava; o servidor recusa ciclo no "Responde a".
+  - **Cargo** e **Área** → o detalhe (área do cargo, cargos da área, situação), as pessoas ligadas e "Gerenciar telas neste escopo". O cargo e a área não liberam telas sozinhos (D13): o painel diz isso.
+  - **Função** (um link por função quando há várias) → o detalhe, as telas e as ações que libera, as pessoas e "Editar telas e ações" (Funções e acessos).
+  - **Responde a** → o gestor na hierarquia: a cadeia de reporte até o topo, os subordinados diretos, o aviso de gestor com nível menor que o do subordinado (D5, aviso e não bloqueio), o alerta de ciclo ou de gestor fora da equipe e "Editar o vínculo".
+  - **Telas** → quantas telas a pessoa abre ("Todas" no administrador; "Personalizado (N telas)" com ajuste individual), abrindo a Gestão de telas já na pessoa, com os atalhos para o Cargo, a Área e as Funções dela.
+- **Ações no alto**: Painel de SLA, **Gestão de telas**, **Cargos, áreas e funções**, **Linhas e divisões**, Importar da planilha e **+ Novo usuário** (os dois últimos, do administrador).
+- **Gestão de telas** (o painel, `?panel=screens`), no modelo da Equipe Externa, em dois modos:
+  - **Por usuário, cargo, área ou função**: escolhidos o escopo e o registro, as telas com **Tela, Situação, Abre, No menu e Origem**. Na pessoa, o acesso efetivo (consulta) e as ações com a função que libera cada uma; na função, a regra (o que ela libera para quem a tem); no cargo e na área, quantas pessoas do escopo abrem cada tela e por quê.
+  - **Por tela**: as funções que liberam a tela, cada pessoa (com cargo, área, se abre e a origem) e o resumo por cargo e por área. Tela protegida (Financeiro, Contas a pagar, Conta corrente, Configurações, Equipe e Superplan) aparece como **Protegida**.
+  - **Origem**: Administrador (abre tudo), Início (padrão do portal), Função (as que liberam), Ajuste individual (marcada ou desmarcada) e Lista individual antiga. A conta é a mesma de cada requisição (`src/lib/auth/screen-origin.ts`, sobre `screensFor` e `accessFromFunctions`): o que o painel mostra é o que o menu, as páginas e as Server Actions deixam.
+  - **No menu** da equipe interna é só consulta e acompanha "Abre" (R3); nos perfis externos continua editável.
+  - **Gravar** continua no painel da pessoa e em Funções e acessos, só o administrador. A prévia de quem ganha e perde antes de salvar uma regra coletiva é a etapa 5b.
+- **Endereços antigos com "#"** (o navegador converte ao chegar; `src/lib/team-list.ts`, `legacyTeamHash`): `/app/team#u-<id>` abre o painel da pessoa (depois de salvar na página da pessoa, o "#" só rola até a linha, com o aviso); `/app/team#distribute` vai para Linhas e divisões, na distribuição. As âncoras das abas (`#a-` área, `#p-` cargo, `#l-` linha) e o `#access` dos cadastros continuam rolando até o bloco.
+- **"Distribuir agora"** (pedido, cartões de Artes e de importação, quando falta o analista): o link leva a `/app/team?tab=lines#distribute` (antes, `/app/team#distribute` abria a aba Equipe, sem a distribuição) e só aparece para quem abre a Equipe; os demais leem "Peça ao administrador para distribuir" (`src/components/distribute-link.tsx`).
+- **Peças**: regras puras em `src/lib/team-list.ts` (filtros, endereço e "#" antigos), `src/lib/team-hierarchy.ts` (cadeia, subordinados e o aviso de nível) e `src/lib/auth/screen-origin.ts` (acesso efetivo com a origem); a tela em `src/app/app/team/page.tsx` com `_components/team-header.tsx`, `team-members.tsx`, `team-panels.tsx`, `screens-panel.tsx` e `legacy-hash.tsx`; o painel da pessoa (`team-access-drawer.tsx`) abre e fecha pelo endereço (History API, que o roteador do Next acompanha); textos em `src/i18n/modules/internal-team.ts` (pt, en e zh). Sem mudança no banco.
+- **Testes**: `tests/unit/team-list.test.ts` (filtros, opções, endereço, "#" antigos, cadeia, ciclo e o aviso de nível), `tests/unit/screen-origin.test.ts` (o mesmo cálculo das requisições para vários perfis, administrador, sem função, várias funções, ajuste individual, lista antiga e as ações iguais a `can`), `tests/e2e/internal-team.spec.ts` (colunas, cada atalho, os dois modos da Gestão de telas, várias funções, ajuste individual em tela protegida, campos vazios, filtro e Limpar filtros, administrador com "Todas", "#" antigos, o painel pelo endereço e o Voltar) e os testes da área atualizados (`team-partners-area`, `team-areas`, `team-positions`, `team-access`).
