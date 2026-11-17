@@ -77,6 +77,7 @@ import {
 } from "@/lib/services/portal-access";
 import { importCsv } from "@/lib/services/import";
 import { confirmSupplierPaymentReceipt } from "@/lib/services/acknowledgements";
+import { customerEditHref } from "@/lib/customer-routes";
 
 /* Helpers compartilhados com src/app/app/actions/*.ts */
 import {
@@ -1092,7 +1093,10 @@ export async function savePartyAction(form: FormData) {
         await setCustomerRca(user, id, rcaCode);
       }
       await syncSoon(user, "party", id);
-      return `/app/parties/${id}`;
+      // Cliente: o cadastro em Cadastros → Clientes (etapa 4).
+      return resolved.type === "customer"
+        ? `/app/customers/${id}/edit`
+        : `/app/parties/${id}`;
     }
     const party = await store.create("parties", {
       ...PARTY_EXTRA_DEFAULTS,
@@ -1101,7 +1105,9 @@ export async function savePartyAction(form: FormData) {
     await audit(user, "party.create", "party", party.id, parsed.name);
     await syncSoon(user, "party", party.id);
     // Cadastro novo: abre já no quadro de acesso, para gerar o login.
-    return `/app/parties/${party.id}#access`;
+    return resolved.type === "customer"
+      ? `/app/customers/${party.id}/edit#access`
+      : `/app/parties/${party.id}#access`;
   });
 }
 
@@ -1115,10 +1121,18 @@ export async function createUserAction(form: FormData) {
     /^\/app\/(suppliers|customers)\/[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(from)
       ? from
       : null;
+  // Cadastro de cliente: volta para o cadastro em Cadastros → Clientes
+  // (etapa 4); o de parceiro, para o de sempre.
+  const party =
+    !account && partyId && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(partyId)
+      ? await getStore().get("parties", partyId)
+      : null;
   const back = account
     ? `${account}?tab=info`
     : partyId
-      ? `/app/parties/${partyId}`
+      ? party?.type === "customer"
+        ? customerEditHref(partyId)
+        : `/app/parties/${partyId}`
       : "/app/parties";
   await run(`${back}#access`, async () => {
     assertWellmix(user);

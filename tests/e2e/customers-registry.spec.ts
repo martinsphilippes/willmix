@@ -20,10 +20,13 @@ const rows = (page: Page) => page.locator("[data-customer-row]");
 
 /** Nomes das linhas da lista de Clientes. */
 async function customerNames(page: Page) {
-  // Só o link do nome (embaixo dele fica o link do login de acesso).
+  // Só o link do nome (embaixo dele fica o link do login de acesso, que
+  // leva ao cadastro do cliente: /app/customers/<id>/edit#access).
   return (
     await rows(page)
-      .locator('td:nth-child(2) a[href^="/app/customers/"]')
+      .locator(
+        'td:nth-child(2) a[href^="/app/customers/"]:not([href$="#access"])',
+      )
       .allInnerTexts()
   ).map((n) => n.trim());
 }
@@ -67,15 +70,16 @@ test("Cadastros → Clientes: página própria, só clientes, busca e ações", 
   expect(await customerNames(page)).toEqual(["Loja do João Ltda"]);
 
   // Ações: novo cliente, ficha, editar o cadastro e o login de acesso.
+  // Telas próprias de Clientes (docs/EQUIPE_ACESSOS.md, etapa 4).
   await expect(page.locator("[data-customers-new]")).toHaveAttribute(
     "href",
-    "/app/parties/new?type=customer",
+    "/app/customers/new",
   );
   await expect(page.locator("[data-customers-import]")).toBeVisible();
   const joao = page.locator('[data-customer-row="cliente-joao"]');
   await expect(joao.locator("[data-party-logins]")).toHaveText("1 login(s)");
   await joao.locator("[data-party-logins]").click();
-  await page.waitForURL(/\/app\/parties\/cliente-joao#access$/);
+  await page.waitForURL(/\/app\/customers\/cliente-joao\/edit#access$/);
   await expect(page.locator("[data-party-access]")).toBeVisible();
   await expect(page.locator("[data-party-access]")).toContainText(
     "joao@lojista.com",
@@ -85,8 +89,9 @@ test("Cadastros → Clientes: página própria, só clientes, busca e ações", 
   await page.waitForURL(/\/app\/customers\/cliente-joao$/);
   await expect(customersLink(page)).toHaveAttribute("aria-current", "page");
   await page.goto("/app/customers?q=loja");
+  // Editar o cadastro: em Clientes (etapa 4).
   await expect(
-    joao.locator('a[href="/app/parties/cliente-joao"]'),
+    joao.locator('a[href="/app/customers/cliente-joao/edit"]'),
   ).toBeVisible();
 });
 
@@ -114,10 +119,11 @@ test("Parceiros sem clientes, também em Todos os tipos; o endereço antigo leva
   await expect(
     page.locator('[data-parties-all] a[href="/app/customers"]'),
   ).toHaveCount(0);
-  // As três abas continuam.
+  // Cadastros e Tipos e acessos (as antigas Tipos de parceiro e Acessos
+  // externos, juntas desde 17/11/2026).
   await expect(
     page.locator("[data-parties-tabs] [data-parties-tab]"),
-  ).toHaveCount(3);
+  ).toHaveCount(2);
 
   // Endereço antigo: Clientes, com a busca e a ordem que valem lá.
   await page.goto("/app/parties?type=customer&q=loja&sort=-name&page=2");

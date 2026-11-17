@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { WellmixLogo } from "@/components/brand";
 import { LoginForm } from "@/components/login-form";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser, sessionBlock } from "@/lib/auth/session";
 import { dataMode } from "@/lib/env";
 import {
   DEMO_PASSWORD,
@@ -24,6 +24,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const target =
     typeof next === "string" && next.startsWith("/") ? next : "/app";
   if (await getCurrentUser()) redirect(target);
+  const blocked = await sessionBlock();
   const t = await getT();
 
   const memory = dataMode() === "memory";
@@ -69,6 +70,17 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             {t("login.title")}
           </h2>
           <p className="mb-5 mt-1 text-sm text-zinc-600">{t("app.name")}</p>
+          {/* Sessão que caiu porque o login ou o cadastro foi desativado
+              (docs/EQUIPE_ACESSOS.md, R7): o motivo, antes de entrar de novo. */}
+          {blocked ? (
+            <p
+              role="alert"
+              className="mb-4 rounded-lg border-l-4 border-amber-500 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+              data-login-session-blocked={blocked}
+            >
+              {t("access.session.ended")} {t(`access.block.${blocked}`)}
+            </p>
+          ) : null}
           <LoginForm
             next={target}
             labels={{
@@ -79,6 +91,11 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
               invalid: t("login.invalid"),
               unavailable: t("login.unavailable"),
               paused: t("login.paused"),
+              blocked: {
+                login_inactive: t("access.block.login_inactive"),
+                party_inactive: t("access.block.party_inactive"),
+                blocked_both: t("access.block.blocked_both"),
+              },
               demoTitle: t("help.login.demo"),
               demoHint: t("help.login.demoHint", { password: DEMO_PASSWORD }),
             }}

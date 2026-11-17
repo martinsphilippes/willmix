@@ -48,11 +48,12 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await login(page, "admin@wellmix.com");
   // Um cliente novo (sem contatos pelo portal e sem login).
   const tag = Date.now().toString(36);
-  await page.goto("/app/parties/new?type=customer");
+  // Novo cliente em Cadastros → Clientes (docs/EQUIPE_ACESSOS.md, etapa 4).
+  await page.goto("/app/customers/new");
   await page.fill('input[name="name"]', `Mercado ${tag}`);
   await page.getByRole("button", { name: "Salvar" }).first().click();
-  await page.waitForURL(/\/app\/parties\/[^/?]+$/);
-  const newCustomer = new URL(page.url()).pathname.split("/").pop()!;
+  await page.waitForURL(/\/app\/customers\/[^/?#]+\/edit(#access)?$/);
+  const newCustomer = new URL(page.url()).pathname.split("/").at(-2)!;
 
   await page.goto("/app/requests/new");
   // O bloco do cliente no lugar da busca por foto ou link.

@@ -14,6 +14,7 @@ import {
 import { getPartnerTypeCatalog } from "@/lib/services/partner-types";
 import { getT } from "@/i18n/server";
 import {
+  Alert,
   Badge,
   Card,
   Input,
@@ -31,6 +32,11 @@ import { FilterCombobox } from "@/components/filter-combobox";
 import { ServerPager, SortTh } from "@/components/server-table";
 import { PartiesHeader } from "./_components/parties-header";
 import { PartyLoginsPanel } from "./_components/logins-panel";
+import { AccessRulePanel } from "./_components/access-rule-panel";
+import {
+  inactivePartyLogins,
+  loadAccessRules,
+} from "@/lib/services/access-state";
 import {
   parseServerPage,
   parseServerSort,
@@ -83,10 +89,13 @@ export default async function PartiesPage({
   const t = await getT();
   const store = getStore();
   const admin = isAdmin(user);
-  const [allParties, catalog, users] = await Promise.all([
+  const [allParties, catalog, users, rules, affected] = await Promise.all([
     store.list("parties", { orderBy: "name" }),
     getPartnerTypeCatalog(),
     store.list("users"),
+    // Regra "cadastro e login ativos" (R7) e quem ela bloqueia ou bloquearia.
+    loadAccessRules(),
+    admin ? inactivePartyLogins() : Promise.resolve([]),
   ]);
   const parties = allParties.filter((p) => p.type !== "customer");
   // Logins de cada cadastro (ativos e desativados).
@@ -207,6 +216,52 @@ export default async function PartiesPage({
     one(sp.panel) === "logins"
       ? rows.find((r) => r.id === one(sp.party))
       : undefined;
+  const rulePanel = admin && one(sp.panel) === "access-rule";
+  const ruleHref = partnerListHref(filters, {
+    sort: sortValue,
+    page: pageValue,
+    panel: "access-rule",
+  });
+  // Aviso da última ação (desativar ou reativar login, ligar ou desligar a
+  // regra) e o erro, quando houver.
+  const saved = one(sp.saved);
+  const savedLogin = (one(sp.login) ?? "").slice(0, 120);
+  const errorParam = one(sp.error);
+  const errorText = errorParam
+    ? errorParam === "not_found"
+      ? t("access.error.not_found")
+      : t("common.error")
+    : null;
+  const loginNotice =
+    saved === "login_off" || saved === "login_on"
+      ? {
+          tone: "success" as const,
+          text: t(
+            saved === "login_off"
+              ? "access.login.saved.off"
+              : "access.login.saved.on",
+            { name: savedLogin },
+          ),
+        }
+      : errorText && panelRow
+        ? { tone: "danger" as const, text: errorText }
+        : null;
+  const ruleNotice =
+    saved === "rule_on"
+      ? t("access.rule.saved.on", { n: Number(one(sp.n)) || 0 })
+      : saved === "rule_off"
+        ? t("access.rule.saved.off")
+        : null;
+  const ruleWhen = rules.changedAt
+    ? new Date(rules.changedAt).toLocaleString(t.intl, {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "America/Sao_Paulo",
+      })
+    : "—";
 
   const header = (label: string, column: string) => (
     <SortTh label={label} column={column} sort={sort} href={sortHref} t={t} />
@@ -227,6 +282,9 @@ export default async function PartiesPage({
             <LinkButton href="/app/suppliers" data-parties-suppliers>
               {t("externalTeam.suppliers")}
             </LinkButton>
+            <LinkButton href="/app/parties/types" data-parties-types-access>
+              {t("externalTeam.typesAccess")}
+            </LinkButton>
             <LinkButton href="/app/import?entity=parties">
               {t("parties.import")}
             </LinkButton>
@@ -245,6 +303,51 @@ export default async function PartiesPage({
           </>
         }
       />
+      {ruleNotice ? (
+        <div className="mb-3" data-access-rule-saved={saved}>
+          <Alert tone="success">{ruleNotice}</Alert>
+        </div>
+      ) : null}
+      {errorText && !panelRow ? (
+        <div className="mb-3">
+          <Alert tone="danger">{errorText}</Alert>
+        </div>
+      ) : null}
+      {admin ? (
+        // Regra "cadastro e login ativos" (R7): o estado e quem ela bloqueia
+        // ou bloquearia; o painel mostra a lista e liga ou desliga.
+        <div
+          className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+          data-access-rule={rules.requireActiveParty ? "on" : "off"}
+        >
+          <span className="font-semibold text-zinc-900">
+            {t("access.rule.title")}
+          </span>
+          <span className="text-zinc-600">
+            {rules.requireActiveParty
+              ? t("access.rule.on", {
+                  date: ruleWhen,
+                  name: rules.changedBy ?? "—",
+                })
+              : t("access.rule.off")}
+          </span>
+          {affected.length ? (
+            <Badge tone={rules.requireActiveParty ? "danger" : "warning"}>
+              <span data-access-rule-count={affected.length}>
+                {affected.length}
+              </span>
+            </Badge>
+          ) : null}
+          <Link
+            href={ruleHref}
+            scroll={false}
+            className="font-medium text-brand-700 underline"
+            data-access-rule-review
+          >
+            {t("access.rule.review")}
+          </Link>
+        </div>
+      ) : null}
       <form method="get" action="/app/parties" data-parties-filter>
         {sortValue ? (
           <input type="hidden" name="sort" value={sortValue} />
@@ -414,6 +517,24 @@ export default async function PartiesPage({
                         {statusLabel(r)}
                       </Badge>
                     </span>
+                    {/* Cadastro inativo com login ativo (R7): entra com a
+                        regra desligada; com ela ligada, fica bloqueado. */}
+                    {!r.active && r.logins > 0 ? (
+                      <span
+                        className="ml-1"
+                        data-party-access-warning={
+                          rules.requireActiveParty ? "blocked" : "login-active"
+                        }
+                      >
+                        <Badge
+                          tone={rules.requireActiveParty ? "danger" : "warning"}
+                        >
+                          {rules.requireActiveParty
+                            ? t("access.badge.blocked")
+                            : t("access.badge.inactiveLoginActive")}
+                        </Badge>
+                      </span>
+                    ) : null}
                   </Td>
                   <Td>
                     <Link
@@ -471,6 +592,18 @@ export default async function PartiesPage({
           logins={loginsOf.get(panelRow.id) ?? []}
           admin={admin}
           closeHref={listHref}
+          selfHref={loginsHref(panelRow.id)}
+          requireActiveParty={rules.requireActiveParty}
+          notice={loginNotice}
+        />
+      ) : null}
+      {rulePanel ? (
+        <AccessRulePanel
+          t={t}
+          rules={rules}
+          affected={affected}
+          closeHref={listHref}
+          when={ruleWhen}
         />
       ) : null}
     </>

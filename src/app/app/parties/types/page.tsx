@@ -94,6 +94,16 @@ export default async function PartnerTypesPage({
     activated: "partnerTypes.activated",
     deactivated: "partnerTypes.deactivated",
   };
+  // Perfil de login de cada tipo (R6): o próprio do tipo, o do papel (tipos
+  // de antes) ou nenhum (tipo sem classe de login).
+  const profileText = (key: string | null) =>
+    !key
+      ? t("partnerTypes.profile.none")
+      : key.startsWith("type:")
+        ? t("partnerTypes.profile.own")
+        : t("partnerTypes.profile.role", {
+            role: t(`role.${key.slice(5)}` as DictionaryKey),
+          });
   const optional = (label: string) =>
     `${label} (${t("partnerTypes.optional")})`;
 
@@ -254,17 +264,16 @@ export default async function PartnerTypesPage({
                     {t("partnerTypes.col.login")}
                   </Th>
                   <Th className="text-right">{t("partnerTypes.parties")}</Th>
+                  {/* Tipo e perfil de login são coisas diferentes (dono,
+                      17/11/2026; docs/EQUIPE_ACESSOS.md, R6): o perfil que
+                      os logins do tipo usam, com o atalho para as telas. */}
+                  <Th className="hidden md:table-cell">
+                    {t("partnerTypes.col.profile")}
+                  </Th>
                   {admin ? (
-                    <>
-                      <Th className="hidden md:table-cell">
-                        <span className="sr-only">
-                          {t("partnerAccess.configure")}
-                        </span>
-                      </Th>
-                      <Th className="w-10">
-                        <span className="sr-only">{t("common.actions")}</span>
-                      </Th>
-                    </>
+                    <Th className="w-10">
+                      <span className="sr-only">{t("common.actions")}</span>
+                    </Th>
                   ) : null}
                 </tr>
               </thead>
@@ -344,15 +353,17 @@ export default async function PartnerTypesPage({
                       >
                         {used}
                       </Td>
+                      <Td
+                        className="hidden md:table-cell"
+                        data-partner-type-profile={entry.profileKey ?? ""}
+                      >
+                        <span className="block text-sm text-zinc-800">
+                          {profileText(entry.profileKey)}
+                        </span>
+                        {configure}
+                      </Td>
                       {admin ? (
                         <>
-                          <Td className="hidden md:table-cell">
-                            {configure ?? (
-                              <span className="text-xs text-zinc-500">
-                                {t("partnerTypes.login.no")}
-                              </span>
-                            )}
-                          </Td>
                           <Td className="text-right">
                             <RowMenu
                               label={t("partnerTypes.menu", { name })}

@@ -79,8 +79,10 @@ test("novo parceiro: cria o tipo pelo atalho, mantém o digitado e o tipo vira f
   await expect(row).toBeVisible();
   await expect(row.locator("[data-partner-type-count]")).toHaveText("1");
 
-  // Novo cliente continua vindo com Cliente marcado.
+  // Novo cliente: Cadastros → Clientes, com Cliente marcado; o endereço de
+  // antes leva para lá (docs/EQUIPE_ACESSOS.md, etapa 4).
   await page.goto("/app/parties/new?type=customer");
+  await page.waitForURL(/\/app\/customers\/new$/);
   await expect(page.locator("[data-party-type]")).toHaveValue("customer");
 
   // Quem não é administrador não cria tipo.

@@ -50,7 +50,7 @@ export async function signIn(email: string, password: string): Promise<User> {
     filter: { email: normalized },
     limit: 1,
   });
-  if (!user || !user.active) throw new AuthError("invalid");
+  if (!user) throw new AuthError("invalid");
 
   const jar = await cookies();
   const secure = process.env.NODE_ENV === "production";
@@ -65,6 +65,12 @@ export async function signIn(email: string, password: string): Promise<User> {
         throw new AuthError("invalid");
     } else if (!verifyPassword(password, user.passwordHash))
       throw new AuthError("invalid");
+    // Senha certa: só agora o motivo do bloqueio aparece (login desativado
+    // ou cadastro inativo; docs/EQUIPE_ACESSOS.md, R7). Com a senha errada,
+    // a resposta é a mesma de sempre, sem revelar que a conta existe.
+    const { accessBlockFor } = await import("@/lib/services/access-state");
+    const block = await accessBlockFor(user);
+    if (block) throw new AuthError(block);
     const exp = Date.now() + SESSION_DAYS * 86_400_000;
     jar.set(
       MEMORY_COOKIE,
@@ -80,6 +86,9 @@ export async function signIn(email: string, password: string): Promise<User> {
     return user;
   }
 
+  // Appwrite (fora de uso desde 11/11/2026): login desativado não entra,
+  // como antes (sem conferir a senha).
+  if (!user.active) throw new AuthError("invalid");
   // O Appwrite só aceita senha com 8+ caracteres: abaixo disso responde
   // "argumento inválido", que viraria "banco fora" na tela. É senha errada.
   if (password.length < APPWRITE_MIN_PASSWORD) throw new AuthError("invalid");
@@ -207,6 +216,43 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
   return user;
 });
 
+/**
+ * O login ainda entra? Login ativo e, para o login de parceiro com a regra
+ * "cadastro e login ativos" ligada, o cadastro da empresa ativo também
+ * (docs/EQUIPE_ACESSOS.md, R7). Relido a cada requisição: desativar vale na
+ * próxima página.
+ */
+async function canEnter(user: User): Promise<boolean> {
+  if (!user.active) return false;
+  if (!user.partyId) return true;
+  const { accessBlockFor } = await import("@/lib/services/access-state");
+  return (await accessBlockFor(user)) === null;
+}
+
+/**
+ * Por que a sessão deste navegador não vale mais (login desativado ou
+ * cadastro inativo), para a tela de entrada explicar. Nulo sem sessão, com a
+ * sessão expirada ou com o login liberado.
+ */
+export async function sessionBlock(): Promise<
+  import("@/lib/access-state").AccessBlock | null
+> {
+  if (dataMode() !== "memory" && dataMode() !== "supabase") return null;
+  try {
+    const payload = verifyToken(
+      (await cookies()).get(MEMORY_COOKIE)?.value,
+      sessionSecret(),
+    );
+    if (!payload) return null;
+    const user = await getStore().get("users", payload.userId);
+    if (!user) return null;
+    const { accessBlockFor } = await import("@/lib/services/access-state");
+    return await accessBlockFor(user);
+  } catch {
+    return null;
+  }
+}
+
 async function loadCurrentUser(): Promise<User | null> {
   try {
     const store = getStore();
@@ -218,7 +264,7 @@ async function loadCurrentUser(): Promise<User | null> {
       );
       if (!payload) return null;
       const user = await store.get("users", payload.userId);
-      return user && user.active ? user : null;
+      return user && (await canEnter(user)) ? user : null;
     }
     const { createSessionClient, sessionCookieName } =
       await import("@/lib/appwrite/server");
@@ -236,7 +282,7 @@ async function loadCurrentUser(): Promise<User | null> {
       filter: { email: account.email.toLowerCase() },
       limit: 1,
     });
-    const valid = user && user.active ? user : null;
+    const valid = user && (await canEnter(user)) ? user : null;
     if (valid) rememberSession(key, valid);
     return valid;
   } catch {

@@ -2,7 +2,7 @@ import { LiveSearch } from "@/components/live-search";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
-import { isWellmix } from "@/lib/auth/permissions";
+import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -232,6 +232,16 @@ export async function PartyAccountList({
                 {t("score.link")}
               </LinkButton>
             ) : null}
+            {/* Telas dos logins de cliente (o perfil do papel Cliente), só o
+                administrador (docs/EQUIPE_ACESSOS.md, etapa 4). */}
+            {customers && isAdmin(user) ? (
+              <LinkButton
+                href="/app/parties/access?profile=role%3Acustomer"
+                data-customers-access
+              >
+                {t("customers.accessProfile")}
+              </LinkButton>
+            ) : null}
             {customers ? (
               <LinkButton
                 href="/app/import?entity=parties"
@@ -241,7 +251,12 @@ export async function PartyAccountList({
               </LinkButton>
             ) : null}
             <LinkButton
-              href={`/app/parties/new?type=${side}`}
+              // Cliente: o cadastro novo em Cadastros → Clientes (etapa 4).
+              href={
+                customers
+                  ? "/app/customers/new"
+                  : `/app/parties/new?type=${side}`
+              }
               variant="primary"
               data-customers-new
             >
@@ -407,7 +422,7 @@ export async function PartyAccountList({
                           nome, sem coluna nova (a tabela segue cabendo). */}
                       {customers ? (
                         <TextLink
-                          href={`/app/parties/${party.id}#access`}
+                          href={`/app/customers/${party.id}/edit#access`}
                           title={t("partnerAccess.login.col")}
                         >
                           <span data-party-logins={logins.get(party.id) ?? 0}>
@@ -498,7 +513,11 @@ export async function PartyAccountList({
                         label={L("action.view")}
                       />
                       <IconLink
-                        href={`/app/parties/${party.id}`}
+                        href={
+                          customers
+                            ? `/app/customers/${party.id}/edit`
+                            : `/app/parties/${party.id}`
+                        }
                         icon="pencil"
                         label={L("action.edit")}
                       />

@@ -80,7 +80,7 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   ]);
   expect(values).not.toContain("customer");
   await input.press("Escape");
-  await expect(page.locator('[data-parties-tab="access"]')).toBeVisible();
+  await expect(page.locator('[data-parties-tab="types-access"]')).toBeVisible();
 
   // Novo parceiro a partir do filtro Factory: o tipo já vem marcado.
   await chooseType(page, "fact", "factory");

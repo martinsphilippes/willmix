@@ -405,7 +405,7 @@ test("tipos de parceiro: novo, renomear sem perder tradução, inativar e reativ
   await expect(page.locator("[data-access-profile-select]")).toHaveValue(
     "type:trading",
   );
-  await expect(page.locator('[data-parties-tab="access"]')).toHaveAttribute(
+  await expect(page.locator('[data-parties-subtab="access"]')).toHaveAttribute(
     "aria-current",
     "page",
   );
@@ -443,7 +443,7 @@ test("tipos de parceiro: novo, renomear sem perder tradução, inativar e reativ
   const res = await page.goto("/app/parties/types");
   if (res?.url().includes("denied=")) return; // operador sem Cadastros
   await expect(page.locator("[data-partner-type-menu]")).toHaveCount(0);
-  await expect(page.locator('[data-parties-tab="access"]')).toHaveCount(0);
+  await expect(page.locator('[data-parties-subtab="access"]')).toHaveCount(0);
   // A explicação da contagem aparece, sem o link para Acessos externos.
   await expect(page.locator("[data-partner-type-count-hint]")).toBeVisible();
   await expect(page.locator("[data-partner-type-count-access]")).toHaveCount(0);

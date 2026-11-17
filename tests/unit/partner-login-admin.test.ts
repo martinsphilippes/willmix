@@ -43,12 +43,16 @@ async function as(email: string) {
   await session.signIn(email, DEMO_PASSWORD);
 }
 
-async function createLogin(login: string) {
+async function createLogin(
+  login: string,
+  partyId = "fornecedor-a",
+  role = "supplier",
+) {
   const form = new FormData();
-  form.set("partyId", "fornecedor-a");
+  form.set("partyId", partyId);
   form.set("name", "Pessoa da fábrica");
   form.set("login", login);
-  form.set("role", "supplier");
+  form.set("role", role);
   form.set("locale", "zh");
   form.set("password", "senha-forte-123");
   redirects.length = 0;
@@ -78,5 +82,21 @@ describe("gerar login de parceiro: só o administrador", () => {
     });
     expect(user?.partyId).toBe("fornecedor-a");
     expect(user?.role).toBe("supplier");
+  });
+
+  it("cliente: volta para o cadastro em Cadastros → Clientes; parceiro, para o de sempre", async () => {
+    await as("admin@wellmix.com");
+    const customer = await createLogin(
+      "compras@lojista.com",
+      "cliente-joao",
+      "customer",
+    );
+    expect(customer).toMatch(
+      /^\/app\/customers\/cliente-joao\/edit\?saved=user&login=[^#]+#access$/,
+    );
+    const supplier = await createLogin("mais.uma@fabrica.cn");
+    expect(supplier).toMatch(
+      /^\/app\/parties\/fornecedor-a\?saved=user&login=[^#]+#access$/,
+    );
   });
 });

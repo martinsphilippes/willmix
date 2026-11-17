@@ -2,14 +2,17 @@ import type { Translate } from "@/i18n";
 import type { Party, User } from "@/lib/db";
 import { loginLabel } from "@/lib/auth/login-id";
 import { SidePanel } from "@/components/side-panel";
+import { SubmitButton } from "@/components/submit-button";
 import { Alert, Badge, LinkButton } from "@/components/ui";
+import { setPartnerLoginActiveAction } from "@/app/app/actions/access-state";
 
 /*
  * Login de Acesso de um parceiro (Equipe Externa, dono, 17/11/2026;
  * docs/EQUIPE_ACESSOS.md): os logins ligados ao cadastro, cada um com o
  * estado (ativo, desativado, senha provisória). Abre por cima da lista, pelo
  * endereço (?panel=logins&party=…); fechar volta à lista como estava (busca,
- * filtros, página e rolagem). Gerar e alterar login é só do administrador.
+ * filtros, página e rolagem). Gerar, desativar e reativar login é só do
+ * administrador (R5, R7).
  */
 export function PartyLoginsPanel({
   t,
@@ -18,6 +21,9 @@ export function PartyLoginsPanel({
   logins,
   admin,
   closeHref,
+  selfHref,
+  requireActiveParty,
+  notice,
 }: {
   t: Translate;
   party: Pick<Party, "id" | "name" | "active">;
@@ -28,10 +34,17 @@ export function PartyLoginsPanel({
   >[];
   admin: boolean;
   closeHref: string;
+  /** O endereço deste painel (a volta de desativar e reativar). */
+  selfHref: string;
+  /** A regra "cadastro e login ativos" está ligada. */
+  requireActiveParty: boolean;
+  /** Aviso da última ação (salvo ou erro). */
+  notice?: { tone: "success" | "danger"; text: string } | null;
 }) {
   const status = party.active
     ? t("externalTeam.status.active")
     : t("externalTeam.status.inactive");
+  const blockedByParty = requireActiveParty && !party.active;
   return (
     <SidePanel
       title={t("externalTeam.panel.title")}
@@ -60,6 +73,11 @@ export function PartyLoginsPanel({
         </>
       }
     >
+      {notice ? (
+        <div className="mb-3" data-party-logins-notice={notice.tone}>
+          <Alert tone={notice.tone}>{notice.text}</Alert>
+        </div>
+      ) : null}
       {!admin ? (
         <div className="mb-3" data-party-logins-admin-only>
           <Alert tone="info">{t("externalTeam.panel.adminOnly")}</Alert>
@@ -74,26 +92,61 @@ export function PartyLoginsPanel({
           {logins.map((u) => (
             <li
               key={u.id}
-              className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+              className="px-3 py-2"
               data-party-login={u.id}
               data-party-login-state={u.active ? "active" : "inactive"}
             >
-              <span className="min-w-0 break-words">
-                <span className="font-medium text-zinc-900">{u.name}</span>{" "}
-                <span className="text-zinc-500">· {loginLabel(u.email)}</span>
-              </span>
-              <span className="flex shrink-0 flex-wrap items-center gap-1">
-                <Badge tone={u.active ? "success" : "neutral"}>
-                  {u.active
-                    ? t("externalTeam.panel.state.active")
-                    : t("externalTeam.panel.state.inactive")}
-                </Badge>
-                {u.mustChangePassword ? (
-                  <Badge tone="warning">
-                    {t("externalTeam.panel.state.provisional")}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="min-w-0 break-words">
+                  <span className="font-medium text-zinc-900">{u.name}</span>{" "}
+                  <span className="text-zinc-500">· {loginLabel(u.email)}</span>
+                </span>
+                <span className="flex shrink-0 flex-wrap items-center gap-1">
+                  <Badge tone={u.active ? "success" : "neutral"}>
+                    {u.active
+                      ? t("externalTeam.panel.state.active")
+                      : t("externalTeam.panel.state.inactive")}
                   </Badge>
-                ) : null}
-              </span>
+                  {u.mustChangePassword ? (
+                    <Badge tone="warning">
+                      {t("externalTeam.panel.state.provisional")}
+                    </Badge>
+                  ) : null}
+                  {admin ? (
+                    <form action={setPartnerLoginActiveAction}>
+                      <input type="hidden" name="userId" value={u.id} />
+                      <input
+                        type="hidden"
+                        name="active"
+                        value={u.active ? "0" : "1"}
+                      />
+                      <input type="hidden" name="back" value={selfHref} />
+                      <SubmitButton
+                        variant="secondary"
+                        className="px-2.5 py-1 text-xs"
+                        confirmText={
+                          u.active
+                            ? t("access.login.confirmOff", { name: u.name })
+                            : undefined
+                        }
+                        data-party-login-toggle={u.active ? "off" : "on"}
+                      >
+                        {u.active
+                          ? t("access.login.deactivate")
+                          : t("access.login.reactivate")}
+                      </SubmitButton>
+                    </form>
+                  ) : null}
+                </span>
+              </div>
+              {u.active && blockedByParty ? (
+                <p
+                  className="mt-1 text-xs text-red-700"
+                  data-party-login-blocked-by-party
+                >
+                  {t("access.login.blockedByParty")}
+                </p>
+              ) : null}
             </li>
           ))}
         </ul>

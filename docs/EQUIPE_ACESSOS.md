@@ -23,9 +23,9 @@ Pedido do dono (16 e 17/11/2026): reorganizar o módulo "Equipe Acessos e Parcei
 | Etapa | O que                                                                                                                       | Situação                                                |
 | ----- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | 1     | Equipe Externa: colunas, filtros por coluna, busca, painel de logins, gerar login só do administrador (R5, R8)              | Entregue (seção 3)                                      |
-| 2     | Estados de cadastro e login: desativar e reativar, entrada e sessão (R7)                                                    | A fazer                                                 |
-| 3     | Tipos e acessos: tipos, perfis e os modos "Por tipo ou perfil" e "Por tela" (R6)                                            | A fazer                                                 |
-| 4     | Clientes com telas próprias (R4)                                                                                            | A fazer                                                 |
+| 2     | Estados de cadastro e login: desativar e reativar, entrada e sessão (R7)                                                    | Entregue (seção 4)                                      |
+| 3     | Tipos e acessos: tipos, perfis e os modos "Por tipo ou perfil" e "Por tela" (R6)                                            | Entregue (seção 5)                                      |
+| 4     | Clientes com telas próprias (R4)                                                                                            | Entregue (seção 6)                                      |
 | 5     | Equipe Interna: lista, painéis, Gestão de telas, regras por dimensão, endereços antigos, distribuição, SLA (R1, R3, R4, R9) | Depois da outra frente (Áreas, Cargos, Importar equipe) |
 
 ## 3. Equipe Externa (etapa 1)
@@ -42,3 +42,50 @@ A antiga seção Parceiros, em `/app/parties` (mesmo endereço, mesma permissão
 - **Gerar login só do administrador** (R5): a Server Action `createUserAction` recusa quem não é administrador (`forbidden`), mesmo chamada direto; o formulário de login some do cadastro do parceiro e da ficha de cliente e fornecedor para os demais, com o aviso no lugar. Os avisos de "fornecedor sem acesso" (Book, Seleção de itens, Solicitação ao fornecedor) só levam ao quadro de acesso para o administrador; os demais leem "Peça ao administrador". Na Nova solicitação, cliente sem login: "Só o administrador cria o login". Os logins que já existem não mudam (em produção, os 12 logins de parceiros foram criados por administradores).
 - **Peças**: regras puras em `src/lib/partners-list.ts` (`parsePartnerFilters`, `applyPartnerFilters`, `partnerFilterOptions`, `partnerListHref`), a página `src/app/app/parties/page.tsx`, o painel `src/app/app/parties/_components/logins-panel.tsx` e os textos em `src/i18n/modules/external-team.ts` (pt, en e zh). Sem mudança no banco.
 - **Testes**: `tests/unit/partners-list.test.ts` (cada filtro, filtros combinados, opções pelos dados, endereço), `tests/unit/partner-login-admin.test.ts` (o Comprador é recusado no servidor e nada é criado; o administrador cria) e `tests/e2e/external-team.spec.ts` (colunas, cada filtro, filtros combinados, Limpar filtros, busca pelas colunas e pelo login só para o administrador, parceiros com zero, um e vários logins, a rolagem ao fechar o painel e o Comprador sem gerar login). A tabela padrão (`tests/e2e/table-tools.spec.ts`) passou a ser conferida na Auditoria.
+
+## 4. Estados de cadastro e login (etapa 2)
+
+O cadastro (da empresa parceira ou cliente, `parties.active`) e o login (`users.active`) têm estados próprios. A pessoa só entra com o **login ativo** e, com a regra ligada, com o **cadastro ativo** também; as telas e as ações seguem as permissões de sempre.
+
+| Cadastro | Login   | Entra?                        | O que a pessoa vê (só com a senha certa)                                                    |
+| -------- | ------- | ----------------------------- | ------------------------------------------------------------------------------------------- |
+| Ativo    | Ativo   | Sim (se as permissões deixam) | —                                                                                           |
+| Ativo    | Inativo | Não                           | "Seu login está desativado. Fale com o administrador do portal."                            |
+| Inativo  | Ativo   | Só com a regra desligada      | Com a regra ligada: "O cadastro da sua empresa está inativo no portal. Fale com a Wellmix." |
+| Inativo  | Inativo | Não                           | "Seu login está desativado e o cadastro da sua empresa está inativo. Fale com a Wellmix."   |
+
+- **Senha errada**: a resposta de sempre ("Credenciais inválidas"), sem dizer se a conta existe ou está desativada. O motivo só aparece depois da senha conferida.
+- **Sessão aberta**: a sessão relê o login e o cadastro a cada página; bloqueada, cai na próxima página e a tela de entrada diz o motivo ("Sua sessão foi encerrada. …").
+- **Reativar só um dos dois**: continua bloqueado pelo outro; o administrador vê qual falta (no painel de logins, "Login ativo, mas o cadastro está inativo"; na lista, o selo ao lado da Situação).
+- **Desativar e reativar login** (só o administrador; parceiros e clientes): no painel Login de Acesso da Equipe Externa, com a confirmação antes de desativar. Nada é apagado (histórico, autoria). Auditoria `user.deactivate` e `user.activate`. O login da equipe Wellmix (separar o login do "estar na equipe", D8) entra na etapa 5, na Equipe Interna.
+- **Regra "cadastro e login ativos"** (`settings.accessRules`, sem mudança no banco): começa **desligada**, como era (o login ativo entrava mesmo com o cadastro inativo). O quadro no alto da Equipe Externa (só o administrador) mostra o estado e quantos parceiros têm o cadastro inativo e login ativo; "Revisar a regra" abre o painel com a lista (cada parceiro e os logins dele) e o botão **Ligar a regra**. Ligada, esses logins deixam de entrar e as sessões abertas deles caem na próxima página; para liberar um, reative o cadastro dele. "Desligar a regra" volta ao de antes. Auditoria `access.rule_on` (com a lista dos bloqueados) e `access.rule_off`. Em produção (17/11/2026), a lista tem a agência e a certificadora: o administrador decide antes de ligar (D9).
+- **Na lista**: cadastro inativo com login ativo ganha o selo "Login ativo" (regra desligada: entra) ou "Bloqueado" (regra ligada).
+- **Peças**: regra pura em `src/lib/access-state.ts` (`accessBlockOf`), serviço em `src/lib/services/access-state.ts` (`accessBlockFor`, `inactivePartyLogins`, `setRequireActiveParty`, `setPartnerLoginActive`), a entrada e a sessão em `src/lib/auth/session.ts` (`signIn` confere a senha antes do motivo; `canEnter`; `sessionBlock` para a tela de entrada), a resposta 403 com o motivo em `src/app/api/auth/session/route.ts`, as ações em `src/app/app/actions/access-state.ts`, o painel da regra em `src/app/app/parties/_components/access-rule-panel.tsx` e os textos em `src/i18n/modules/access-state.ts` (pt, en e zh). O Appwrite (fora de uso desde 11/11/2026) segue como antes.
+- **Testes**: `tests/unit/access-state.test.ts` (os quatro cenários, a regra desligada como antes, o login da equipe sem cadastro, só o administrador, a sessão que cai, o motivo com a senha certa e a resposta de sempre com a errada, reativar só um dos dois, a Auditoria) e `tests/e2e/access-states.spec.ts` (desativar e reativar pelo painel, a sessão aberta caindo com o motivo, a regra ligada pelo painel com a lista e desligada no fim).
+
+## 5. Tipos e acessos (etapa 3)
+
+- **Uma aba só**: as antigas abas Tipos de parceiro e Acessos externos viraram **Tipos e acessos**, com duas partes dentro: **Tipos de parceiro** (`/app/parties/types`; quem abre a Equipe Externa lê, só o administrador cria e altera) e **Perfis de login e telas** (`/app/parties/access`, só o administrador, com os modos de sempre **Por tipo ou perfil** e **Por tela**, comparar e copiar). Os endereços e os painéis não mudaram. Na lista da Equipe Externa, o botão **Tipos e acessos** leva para lá.
+- **Tipo e perfil, coisas diferentes** (R6): o tipo diz o que a empresa é; o perfil de login diz as telas que os logins dela abrem. A lista de tipos ganhou a coluna **Perfil de login**: "Perfil próprio do tipo" (Trading, Factory, Supplier, GP e os criados no painel), "Perfil do papel X" (os tipos de antes, como Agência e Despachante) ou "Sem login" (tipo sem classe de login), com o atalho "Configurar telas" para o administrador. A ligação não mudou (cada tipo usa o perfil de sempre): deixar um tipo usar o perfil de outro é decisão futura do dono, quando ele trouxer os tipos novos.
+- **Peças**: `src/app/app/parties/_components/parties-header.tsx` (abas e subabas), a coluna em `src/app/app/parties/types/page.tsx` e os textos em `src/i18n/modules/external-team.ts`.
+- **Testes**: `tests/e2e/external-team.spec.ts` (a aba única, o perfil de cada tipo e os dois modos) e os testes das abas atualizados (`team-partners-area`, `customers-registry`, `partner-access`, `partner-access-panels`).
+
+## 6. Clientes com telas próprias (etapa 4)
+
+Cadastros → Clientes passou a ter as telas do cliente, sem passar por Parceiros. A permissão é a de sempre (quem abre Parceiros: administrador, Comprador, Catálogo e diretorias).
+
+| Tela                                         | Endereço                   | Antes                            |
+| -------------------------------------------- | -------------------------- | -------------------------------- |
+| Lista                                        | `/app/customers`           | igual                            |
+| Ficha (conta, logins, pedidos)               | `/app/customers/<id>`      | igual                            |
+| **Novo cliente**                             | `/app/customers/new`       | `/app/parties/new?type=customer` |
+| **Cadastro** (edição, RCA, quadro de acesso) | `/app/customers/<id>/edit` | `/app/parties/<id>`              |
+
+- **Endereços de antes**: `/app/parties/<id>` de um cliente e `/app/parties/new?type=customer` levam para as telas novas, com os parâmetros (avisos, erros, RCA). Notificações, a Auditoria e links salvos continuam abrindo. O cadastro de quem não é cliente segue em `/app/parties/<id>` (e o endereço de cliente com um parceiro volta para lá).
+- **Gravar**: salvar o cadastro, o RCA e gerar login voltam para o cadastro em Clientes.
+- **Logins do cliente**: na ficha (aba de informações), com Desativar e Reativar para o administrador (a mesma regra da Equipe Externa, R7); gerar login, só o administrador (R5).
+- **Acessos dos clientes** (só o administrador): o botão na lista leva ao perfil de telas dos logins de cliente (Tipos e acessos → Perfis de login e telas, perfil Cliente).
+- **Menu**: o cadastro e o novo cliente acendem Cadastros → Clientes (antes, o cadastro acendia Equipe Acessos e Parceiros).
+- **Dados de cada cliente**: o login de cliente continua vendo só o que é dele (as solicitações e os pedidos do próprio login, nem os de outros logins da mesma empresa: `canViewRequest` e `canViewOrder` em `src/lib/auth/permissions.ts`); nada mudou nessa regra.
+- **Peças**: o cadastro e o novo cadastro saíram das páginas para `src/app/app/parties/_record/party-record.tsx` e `new-party.tsx`, chamados pelas páginas de Parceiros e de Clientes; os endereços em `src/lib/customer-routes.ts`.
+- **Testes**: `tests/e2e/customer-screens.spec.ts` (novo cliente, cadastro e login em Clientes, endereços de antes, Acessos dos clientes, desativar e reativar na ficha; quem não é administrador sem esses botões) e os testes que criavam cliente pelo endereço de antes, atualizados.
