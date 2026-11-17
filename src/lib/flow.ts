@@ -312,6 +312,8 @@ const KIND_STEP: Partial<Record<string, Ref>> = {
   supplier_payment: "finance/finance",
   invoice_due: "finance/finance",
   ncm_classify: "registry/products",
+  // Produto novo a aprovar (docs/NEW_PRODUCT.md): Cadastros → Produtos.
+  product_approve: "registry/products",
   // Encomenda do cliente e reposição (docs/PURCHASE_DEMAND.md).
   new_request: "new-product/demands",
   replenishment_request: "new-product/replenishment",

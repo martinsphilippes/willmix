@@ -165,6 +165,7 @@ import * as training from "./training";
 import * as externalTeam from "./external-team";
 import * as accessState from "./access-state";
 import * as internalTeam from "./internal-team";
+import * as newProduct from "./new-product";
 
 export const modulesPt = {
   ...messages.pt,
@@ -329,6 +330,7 @@ export const modulesPt = {
   ...externalTeam.pt,
   ...accessState.pt,
   ...internalTeam.pt,
+  ...newProduct.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...messages.en,
@@ -493,6 +495,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...externalTeam.en,
   ...accessState.en,
   ...internalTeam.en,
+  ...newProduct.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...messages.zh,
@@ -657,4 +660,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...externalTeam.zh,
   ...accessState.zh,
   ...internalTeam.zh,
+  ...newProduct.zh,
 };

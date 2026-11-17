@@ -151,6 +151,13 @@ export function RequestCustomerContacts({
     | { kind: "error"; text: string }
   >({ kind: "idle" });
   const boxRef = useRef<HTMLDivElement>(null);
+  // Outro cliente: as linhas extras e o aviso do anterior saem.
+  const [extrasFor, setExtrasFor] = useState(customerId);
+  if (extrasFor !== customerId) {
+    setExtrasFor(customerId);
+    setExtras(extraIdsFrom({}));
+    setSaveState({ kind: "idle" });
+  }
 
   /** Ao abrir para editar contatos já gravados, uma linha por contato extra. */
   function startEdit(contacts: CustomerContacts | null) {

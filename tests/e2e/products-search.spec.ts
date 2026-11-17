@@ -18,13 +18,18 @@ const VIEWPORTS = [
   { name: "celular", width: 390, height: 844 },
 ] as const;
 
+/**
+ * "+ Novo produto" abre a ficha em branco (dono, 17/11/2026;
+ * docs/NEW_PRODUCT.md); criado pelo administrador, o produto já nasce ativo.
+ */
 async function createProduct(page: Page, name: string): Promise<string> {
   await page.goto("/app/products");
-  await page.locator("[data-product-new] summary").click();
-  const form = page.locator("[data-product-new] form");
+  await page.locator("a[data-product-new]").click();
+  await page.waitForURL(/\/app\/products\/new$/);
+  const form = page.locator("[data-new-product-form]");
   await form.locator('input[name="name"]').fill(name);
   await form.locator('select[name="lineId"]').selectOption({ index: 1 });
-  await form.getByRole("button", { name: /^(salvar|save|保存)$/i }).click();
+  await page.locator("[data-new-product-submit]").click();
   await page.waitForURL(/\/app\/products\/[^/?]+\?created=1$/);
   return new URL(page.url()).pathname.split("/").pop()!;
 }

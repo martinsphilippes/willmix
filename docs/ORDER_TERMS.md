@@ -260,6 +260,16 @@ Ao lado da busca de produto de cada linha, uma **lupa** abre o seletor (um só n
 - **No pedido**: a seção "Pagamento do cliente" já vem com a forma da solicitação marcada. A escolha que vale, com alçada, vendedor, NUNOTA e boletos, continua sendo feita lá.
 - Código: `PaymentPlanField` em `src/components/request-order-terms.tsx`, `resolveRequestPaymentPlan` em `src/lib/services/order-terms.ts`, o tipo `RequestPaymentPlan` em `src/lib/order-terms.ts`.
 
+## 11.11 Sétima rodada (dono, 17/11/2026)
+
+Vale para as três telas (Encomendas, TS e Venda), que usam o mesmo código (`src/app/app/_new-request/new-request-screen.tsx`; as páginas só passam o `mode`).
+
+- **Mais de um contato por área:** no bloco Cliente, o "+" ao lado de Sócio, Comprador, Financeiro e Fiscal e Logística acrescenta mais uma linha de telefone e e-mail (até 5 extras por área), com a lixeira para tirar. O primeiro de cada área continua obrigatório; cada extra acrescentado também precisa de telefone e e-mail válidos e diferentes dos do vendedor. Campos `contact.<área>.<n>.phone|email`; gravados no mesmo JSON `parties.customerContacts`, em `more` (aditivo; o JSON antigo segue valendo).
+- **Salvar dados do cliente:** botão no bloco Cliente que grava os contatos na hora, sem enviar o pedido (`saveCustomerContactsAction`, mesmas regras e auditoria do envio). Gravado, o bloco volta para a visão com "Editar".
+- **Rascunho automático:** a tela grava o pedido sozinha a cada pausa (digitação, escolha, produto que entra ou sai pela lupa ou pelo histórico), sem recarregar (`autosaveRequestDraftAction`, `src/components/request-draft-autosave.tsx`). Abrir a tela não cria rascunho; o primeiro salvamento cria e põe `?draft=` no endereço, os seguintes gravam por cima. O "Salvar rascunho" continua; o envio apaga o rascunho como antes. Fora da entrada da Reposição (sem rascunho) e do login do cliente.
+- O histórico de compras perdeu o texto "Do Sankhya, consultado agora".
+- "+ Adicionar outro produto" rola a tela até o produto novo.
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

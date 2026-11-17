@@ -30,6 +30,7 @@ import {
   uploadedPhotoKeys,
 } from "./helpers";
 import { parseCurrency } from "@/lib/currencies";
+import { awaitingApproval } from "@/lib/product-approval";
 
 /*
  * Ficha de produto, fotos, medições, programação de compra e dados extras do
@@ -86,6 +87,150 @@ const sheetSchema = z.object({
   notesToEcommerce: z.boolean().nullable(),
 });
 
+type SheetInput = z.infer<typeof sheetSchema>;
+
+/**
+ * Campos da ficha no envio do formulário (tela do produto e "Novo produto").
+ * `before`: o produto gravado, para os campos que o formulário não manda
+ * (fica como estava); no produto novo, nulo.
+ */
+function readSheetForm(
+  form: FormData,
+  before: { brand?: string | null; notesToEcommerce?: boolean | null } | null,
+): SheetInput {
+  return sheetSchema.parse({
+    name: str(form, "name"),
+    lineId: str(form, "lineId"),
+    sku: str(form, "sku") || null,
+    category: str(form, "category") || null,
+    specification: str(form, "specification") || null,
+    // O formulário envia o hidden "off" antes do checkbox "on"; form.get() devolveria sempre "off".
+    active: form.getAll("active").includes("on"),
+    supplierId: str(form, "supplierId") || null,
+    supplierSku: str(form, "supplierSku") || null,
+    price: num(form, "price"),
+    currency: str(form, "currency")
+      ? parseCurrency(str(form, "currency"))
+      : null,
+    moq: num(form, "moq"),
+    negotiatedAt: dateToIso(str(form, "negotiatedAt")),
+    material: str(form, "material") || null,
+    // Marca (TGFPRO.MARCA): sem o campo no envio, fica como estava.
+    brand: form.has("brand")
+      ? str(form, "brand") || null
+      : (before?.brand ?? null),
+    color: str(form, "color") || null,
+    pantone: str(form, "pantone") || null,
+    lengthCm: num(form, "lengthCm"),
+    widthCm: num(form, "widthCm"),
+    heightCm: num(form, "heightCm"),
+    netWeightKg: num(form, "netWeightKg"),
+    grossWeightKg: num(form, "grossWeightKg"),
+    masterBoxQty: num(form, "masterBoxQty"),
+    innerBoxQty: num(form, "innerBoxQty"),
+    boxLengthCm: num(form, "boxLengthCm"),
+    boxWidthCm: num(form, "boxWidthCm"),
+    boxHeightCm: num(form, "boxHeightCm"),
+    cbm: num(form, "cbm"),
+    notes: str(form, "notes") || null,
+    // Hidden "off" antes do checkbox "on" (como em `active`). Formulário
+    // sem o campo: fica como estava.
+    notesToEcommerce: form.has("notesToEcommerce")
+      ? form.getAll("notesToEcommerce").includes("on")
+      : (before?.notesToEcommerce ?? null),
+  });
+}
+
+/** CBM, cores Pantone e cor calculados do envio (o que é gravado). */
+function sheetValues(form: FormData, parsed: SheetInput) {
+  // CBM por caixa: das dimensões da caixa master quando existem; senão o informado.
+  const cbm =
+    cbmFromDimensions(
+      parsed.boxLengthCm,
+      parsed.boxWidthCm,
+      parsed.boxHeightCm,
+    ) ?? (parsed.cbm && parsed.cbm > 0 ? parsed.cbm : null);
+  // Cores Pantone do seletor: só entram quando o campo veio (cores ou usuário
+  // mexeu); o texto "pantone" e a cor (se vazia) ganham os códigos.
+  const pantoneField = form.has("colorPantones")
+    ? { colorPantones: parsePantoneRefs(str(form, "colorPantones")) }
+    : {};
+  const codes = pantoneField.colorPantones?.map((c) => c.code) ?? [];
+  const pantoneText = form.has("colorPantones")
+    ? codes.length
+      ? cutAtSeparator(codes.join(" / "), 40)
+      : null
+    : parsed.pantone;
+  const color =
+    parsed.color ??
+    (codes.length
+      ? cutAtSeparator(codes.map((c) => `PANTONE ${c}`).join(" / "), 60)
+      : null);
+  return {
+    ...parsed,
+    pantone: pantoneText,
+    color,
+    cbm,
+    ...pantoneField,
+  };
+}
+
+/**
+ * Novo produto (dono, 17/11/2026; docs/NEW_PRODUCT.md): a ficha em branco,
+ * com os mesmos campos da tela do produto. O produto nasce inativo e vai
+ * para a aprovação do administrador ou do superior de quem criou; abre na
+ * tela dele, onde fotos, medições e o resto da ficha são completados.
+ */
+export async function createProductSheetAction(form: FormData) {
+  const user = await requireUser();
+  await run("/app/products/new", async () => {
+    assertWellmix(user);
+    assertScreen(user, "products");
+    // "XPTO" é texto de exemplo, não nome (docs/PURCHASE_ORDER.md).
+    const { assertRealProductName } = await import("@/lib/placeholder-name");
+    assertRealProductName(str(form, "name"));
+    const parsed = readSheetForm(form, null);
+    // Preço de compra: quem não vê não grava (docs/LINHA_DE_VISAO.md).
+    if (!canSeePurchasePrice(user)) {
+      parsed.price = null;
+      parsed.currency = null;
+    }
+    // A situação não vem do formulário: o produto nasce inativo e só a
+    // aprovação o ativa.
+    const values: Partial<ReturnType<typeof sheetValues>> &
+      Omit<ReturnType<typeof sheetValues>, "active"> = sheetValues(
+      form,
+      parsed,
+    );
+    delete values.active;
+    // Formulário sem a caixa do e-commerce: a coluna não é gravada.
+    if (values.notesToEcommerce === null)
+      delete (values as { notesToEcommerce?: boolean | null }).notesToEcommerce;
+    // Especificação vazia ou ainda a automática: montada com os dados.
+    if (str(form, "specificationAuto") === "1" || !parsed.specification) {
+      const { autoProductSpec } = await import("@/lib/services/product-sheet");
+      const { PRODUCT_EXTRA_DEFAULTS } = await import("@/lib/db");
+      const now = new Date().toISOString();
+      values.specification =
+        autoProductSpec(
+          {
+            ...PRODUCT_EXTRA_DEFAULTS,
+            ...values,
+            id: "",
+            createdAt: now,
+            updatedAt: now,
+            active: false,
+          },
+          null,
+        ) || null;
+    }
+    const { createProductForApproval } =
+      await import("@/lib/services/product-approval");
+    const product = await createProductForApproval(user, values);
+    return `/app/products/${product.id}?created=1`;
+  });
+}
+
 export async function updateProductSheetAction(form: FormData) {
   const user = await requireUser();
   const id = str(form, "id");
@@ -98,47 +243,7 @@ export async function updateProductSheetAction(form: FormData) {
     // "XPTO" é texto de exemplo, não nome (docs/PURCHASE_ORDER.md).
     const { assertRealProductName } = await import("@/lib/placeholder-name");
     assertRealProductName(str(form, "name"));
-    const parsed = sheetSchema.parse({
-      name: str(form, "name"),
-      lineId: str(form, "lineId"),
-      sku: str(form, "sku") || null,
-      category: str(form, "category") || null,
-      specification: str(form, "specification") || null,
-      // O formulário envia o hidden "off" antes do checkbox "on"; form.get() devolveria sempre "off".
-      active: form.getAll("active").includes("on"),
-      supplierId: str(form, "supplierId") || null,
-      supplierSku: str(form, "supplierSku") || null,
-      price: num(form, "price"),
-      currency: str(form, "currency")
-        ? parseCurrency(str(form, "currency"))
-        : null,
-      moq: num(form, "moq"),
-      negotiatedAt: dateToIso(str(form, "negotiatedAt")),
-      material: str(form, "material") || null,
-      // Marca (TGFPRO.MARCA): sem o campo no envio, fica como estava.
-      brand: form.has("brand")
-        ? str(form, "brand") || null
-        : (product.brand ?? null),
-      color: str(form, "color") || null,
-      pantone: str(form, "pantone") || null,
-      lengthCm: num(form, "lengthCm"),
-      widthCm: num(form, "widthCm"),
-      heightCm: num(form, "heightCm"),
-      netWeightKg: num(form, "netWeightKg"),
-      grossWeightKg: num(form, "grossWeightKg"),
-      masterBoxQty: num(form, "masterBoxQty"),
-      innerBoxQty: num(form, "innerBoxQty"),
-      boxLengthCm: num(form, "boxLengthCm"),
-      boxWidthCm: num(form, "boxWidthCm"),
-      boxHeightCm: num(form, "boxHeightCm"),
-      cbm: num(form, "cbm"),
-      notes: str(form, "notes") || null,
-      // Hidden "off" antes do checkbox "on" (como em `active`). Formulário
-      // sem o campo: fica como estava.
-      notesToEcommerce: form.has("notesToEcommerce")
-        ? form.getAll("notesToEcommerce").includes("on")
-        : (product.notesToEcommerce ?? null),
-    });
+    const parsed = readSheetForm(form, product);
     // Preço de compra: quem não vê não edita (dono, 15/11/2026;
     // docs/LINHA_DE_VISAO.md). Os campos não vêm no formulário dele; sem isto
     // o envio apagaria o preço e a moeda gravados.
@@ -146,6 +251,9 @@ export async function updateProductSheetAction(form: FormData) {
       parsed.price = product.price;
       parsed.currency = product.currency;
     }
+    // Produto novo aguardando a aprovação (ou recusado): fica inativo até ser
+    // aprovado (docs/NEW_PRODUCT.md); a caixa "Produto ativo" não o ativa.
+    if (awaitingApproval(product)) parsed.active = false;
     if (!(await store.get("product_lines", parsed.lineId)))
       throw new Error("line_not_found");
     if (parsed.supplierId) {
@@ -153,36 +261,8 @@ export async function updateProductSheetAction(form: FormData) {
       if (!supplier || supplier.type !== "supplier")
         throw new Error("supplier_not_found");
     }
-    // CBM por caixa: das dimensões da caixa master quando existem; senão o informado.
-    const cbm =
-      cbmFromDimensions(
-        parsed.boxLengthCm,
-        parsed.boxWidthCm,
-        parsed.boxHeightCm,
-      ) ?? (parsed.cbm && parsed.cbm > 0 ? parsed.cbm : null);
-    // Cores Pantone do seletor: só entram quando o campo veio (cores ou usuário
-    // mexeu); o texto "pantone" e a cor (se vazia) ganham os códigos.
-    const pantoneField = form.has("colorPantones")
-      ? { colorPantones: parsePantoneRefs(str(form, "colorPantones")) }
-      : {};
-    const codes = pantoneField.colorPantones?.map((c) => c.code) ?? [];
-    const pantoneText = form.has("colorPantones")
-      ? codes.length
-        ? cutAtSeparator(codes.join(" / "), 40)
-        : null
-      : parsed.pantone;
-    const color =
-      parsed.color ??
-      (codes.length
-        ? cutAtSeparator(codes.map((c) => `PANTONE ${c}`).join(" / "), 60)
-        : null);
-    const next = {
-      ...parsed,
-      pantone: pantoneText,
-      color,
-      cbm,
-      ...pantoneField,
-    };
+    const next = sheetValues(form, parsed);
+    const cbm = next.cbm;
     // Formulário sem a caixa e produto que nunca a teve: a coluna não é gravada.
     if (next.notesToEcommerce === null)
       delete (next as { notesToEcommerce?: boolean | null }).notesToEcommerce;

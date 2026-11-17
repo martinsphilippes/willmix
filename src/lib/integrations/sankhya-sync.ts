@@ -15,6 +15,7 @@ import {
   executeQuery,
 } from "./sankhya-client";
 import { sqlTerm } from "./sankhya-dictionary";
+import { awaitingApproval } from "@/lib/product-approval";
 import {
   getSankhyaErpSettings,
   type SankhyaErpSettings,
@@ -489,7 +490,10 @@ export async function listPendingSync(
       )
       .map((row) => ({ row, kind: pendingKind(row, since) }))
       .filter((p): p is { row: Party; kind: SyncKind } => p.kind !== null),
+    // Produto novo aguardando a aprovação (ou recusado): fica no portal até
+    // ser aprovado (docs/NEW_PRODUCT.md); aprovado, entra como os outros.
     products: products
+      .filter((row) => !awaitingApproval(row))
       .map((row) => ({ row, kind: pendingKind(row, since) }))
       .filter((p): p is { row: Product; kind: SyncKind } => p.kind !== null),
     orders: orders.filter(
@@ -552,7 +556,7 @@ export async function syncSoon(
       if (kind) await syncParty(user, row, erp, kind);
     } else {
       const row = await store.get("products", id);
-      if (!row) return;
+      if (!row || awaitingApproval(row)) return;
       const kind = pendingKind(row, erp.syncSince);
       if (kind) await syncProduct(user, row, erp, kind);
     }

@@ -1837,6 +1837,12 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Aditivo:** nenhuma tela, rota, campo ou dado sai; a ordem de sempre (nome) e a busca de cima continuam; o que sai é a caixa e as páginas da tabela que só olhavam a página, nessas três listas. Sem mudança no banco.
 - Testes: `tests/unit/product-list.test.ts`, `tests/unit/flow-step-page.test.ts`, `tests/e2e/products-search.spec.ts` e `tests/e2e/happy-path.spec.ts` (busca da aba "Todos no passo").
 
+## Novo produto pela ficha em branco, com aprovação
+
+- **Pedido do dono** (17/11/2026; docs/NEW_PRODUCT.md): o quadro curto "Novo produto" da lista saiu; "+ Novo produto" abre a ficha completa em branco (`/app/products/new`), e o produto criado vai para as Pendências do administrador ou do superior (o "Responde a"), que aprova ou recusa. Criado pelo administrador, nasce ativo, sem aprovação (D2).
+- **Aditivo:** rota nova e colunas novas e opcionais em `products` (`approvalStatus`, `approvalRequestedByUserId`, `approvalRequestedAt`, `approvalDecidedByUserId`, `approvalDecidedAt`, `approvalNote`), com o índice parcial `products_by_approval`. Produto de antes fica com a aprovação vazia e segue igual; a ficha do produto usa os mesmos campos (agora num componente só). A ação curta antiga continua, criando pela mesma regra. Nada é apagado.
+- Testes: `tests/unit/product-approval.test.ts` e `tests/e2e/new-product.spec.ts`.
+
 ## Equipe: "Aguardando e-mail" para quem veio da planilha sem e-mail
 
 - **Pedido do dono** (17/11/2026), depois de criar os 54 logins da planilha: deixar as 4 pessoas sem e-mail aguardando, com a possibilidade de pôr o e-mail à mão pelo portal.

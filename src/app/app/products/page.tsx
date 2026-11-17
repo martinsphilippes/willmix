@@ -22,9 +22,7 @@ import {
   Alert,
   Badge,
   Button,
-  Card,
   Empty,
-  Field,
   Input,
   LinkButton,
   PageHeader,
@@ -32,13 +30,10 @@ import {
   Table,
   Td,
   TextLink,
-  Textarea,
   Th,
   formatMoney,
   rowClass,
 } from "@/components/ui";
-import { SubmitButton } from "@/components/submit-button";
-import { saveProductAction } from "../actions";
 import {
   deleteProductsAction,
   purgeProductsAction,
@@ -58,6 +53,7 @@ import {
   readProductOrder,
   sortProducts,
 } from "@/lib/services/product-list";
+import { awaitingApproval } from "@/lib/product-approval";
 
 const BULK_FORM = "products-bulk";
 
@@ -83,6 +79,10 @@ export default async function ProductsPage({
   const order = readProductOrder(sp);
   const filtering = !!(filter.q || filter.lineId || filter.supplierId);
   const showDeleted = view === "deleted";
+  // Produtos novos aguardando a aprovação (ou recusados): lista à parte, nem
+  // ativos nem excluídos (docs/NEW_PRODUCT.md).
+  const showApproval = view === "approval";
+  const viewParam = showDeleted ? "deleted" : showApproval ? "approval" : null;
   const t = await getT();
   const store = getStore();
   const [allProducts, lines, suppliers] = await Promise.all([
@@ -92,10 +92,18 @@ export default async function ProductsPage({
     // escolhe por busca (~5,7 mil fornecedores não cabem numa lista).
     listColumns(store, "parties", ["name"], { filter: { type: "supplier" } }),
   ]);
-  // Excluídos (inativos) ficam fora da lista, em "Ver excluídos".
-  const deletedCount = allProducts.filter((p) => !p.active).length;
+  // Excluídos (inativos) ficam fora da lista, em "Ver excluídos"; os novos
+  // aguardando a aprovação, em "Aguardando aprovação".
+  const deletedCount = allProducts.filter(
+    (p) => !p.active && !awaitingApproval(p),
+  ).length;
+  const approvalCount = allProducts.filter((p) => awaitingApproval(p)).length;
   const listed = allProducts.filter((p) =>
-    showDeleted ? !p.active : p.active,
+    showApproval
+      ? awaitingApproval(p)
+      : showDeleted
+        ? !p.active && !awaitingApproval(p)
+        : p.active,
   );
   const supplierNames = new Map(suppliers.map((s) => [s.id, s.name]));
   const supplierName = (id: string | null) =>
@@ -143,15 +151,15 @@ export default async function ProductsPage({
   const pageHref = (n: number) => {
     const q = new URLSearchParams(listQuery());
     if (order !== "name") q.set("order", order);
-    if (showDeleted) q.set("view", "deleted");
+    if (viewParam) q.set("view", viewParam);
     if (n > 1) q.set("page", String(n));
     const out = q.toString();
     return `/app/products${out ? `?${out}` : ""}`;
   };
-  /** "Limpar": tira a busca e os filtros; a ordem escolhida fica. */
+  /** "Limpar": tira a busca e os filtros; a ordem e a lista escolhidas ficam. */
   const clearHref = (() => {
     const q = new URLSearchParams();
-    if (showDeleted) q.set("view", "deleted");
+    if (viewParam) q.set("view", viewParam);
     if (order !== "name") q.set("order", order);
     const out = q.toString();
     return `/app/products${out ? `?${out}` : ""}`;
@@ -199,6 +207,14 @@ export default async function ProductsPage({
         title={t("products.title")}
         actions={
           <div className="flex flex-wrap gap-2">
+            {/* Novo produto: a ficha completa em branco (dono, 17/11/2026). */}
+            <LinkButton
+              href="/app/products/new"
+              variant="primary"
+              data-product-new
+            >
+              + {t("prodList.new")}
+            </LinkButton>
             <LinkButton href="/app/import?entity=products">
               {t("parties.import")}
             </LinkButton>
@@ -245,24 +261,37 @@ export default async function ProductsPage({
         </Alert>
       ) : null}
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        {showDeleted ? (
+        {showDeleted || showApproval ? (
           <>
             <h2 className="text-base font-semibold text-zinc-900">
-              {t("productDelete.deletedTitle")}
+              {showApproval
+                ? t("productApproval.listTitle")
+                : t("productDelete.deletedTitle")}
             </h2>
             <TextLink href="/app/products" className="ml-auto">
               {t("productDelete.showActive")}
             </TextLink>
           </>
-        ) : deletedCount > 0 ? (
-          <TextLink
-            href="/app/products?view=deleted"
-            className="ml-auto"
-            data-products-show-deleted
-          >
-            {t("productDelete.showDeleted", { n: deletedCount })}
-          </TextLink>
-        ) : null}
+        ) : (
+          <span className="ml-auto flex flex-wrap items-center gap-3">
+            {approvalCount > 0 ? (
+              <TextLink
+                href="/app/products?view=approval"
+                data-products-show-approval
+              >
+                {t("productApproval.showList", { n: approvalCount })}
+              </TextLink>
+            ) : null}
+            {deletedCount > 0 ? (
+              <TextLink
+                href="/app/products?view=deleted"
+                data-products-show-deleted
+              >
+                {t("productDelete.showDeleted", { n: deletedCount })}
+              </TextLink>
+            ) : null}
+          </span>
+        )}
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {/* Até o notebook (iPad, celular) a busca ocupa a linha inteira e o
@@ -273,8 +302,8 @@ export default async function ProductsPage({
           className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto lg:flex-1"
           data-product-search
         >
-          {showDeleted ? (
-            <input type="hidden" name="view" value="deleted" />
+          {viewParam ? (
+            <input type="hidden" name="view" value={viewParam} />
           ) : null}
           {/* A busca da tela (dono, 17/11/2026): procura no catálogo inteiro,
               não só na página; a tabela não tem outra caixa de busca. */}
@@ -360,7 +389,7 @@ export default async function ProductsPage({
         <span className="text-sm text-zinc-500" data-product-total>
           {t("prodList.total", { n: products.length })}
         </span>
-        {!showDeleted ? (
+        {!viewParam ? (
           <LinkButton
             href={`/app/products/export${listQuery()}`}
             data-product-export
@@ -369,53 +398,11 @@ export default async function ProductsPage({
           </LinkButton>
         ) : null}
       </div>
-      {/* Novo produto: formulário curto que abre sob o botão; a tabela usa a largura toda. */}
-      <details
-        className="mt-3 rounded-2xl border border-zinc-200/80 bg-white shadow-sm [&[open]>summary]:border-b [&[open]>summary]:border-zinc-200/80"
-        data-product-new
-      >
-        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-brand-700">
-          + {t("prodList.new")}
-        </summary>
-        <div className="p-4">
-          <Card
-            title={`${t("common.new")} ${t("common.product").toLowerCase()}`}
-          >
-            <form
-              action={saveProductAction}
-              className="grid gap-2 md:grid-cols-4 md:items-end"
-            >
-              <Field label={t("common.name")}>
-                <Input name="name" required />
-              </Field>
-              <Field label="SKU">
-                <Input name="sku" />
-              </Field>
-              <Field label={t("nav.lines")}>
-                <Select name="lineId" required defaultValue="">
-                  <option value="" disabled>
-                    {t("common.select")}
-                  </option>
-                  {lines.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label={t("requests.specification")}>
-                <Textarea name="specification" rows={1} />
-              </Field>
-              <div className="md:col-span-4">
-                <SubmitButton>{t("common.save")}</SubmitButton>
-              </div>
-            </form>
-          </Card>
-        </div>
-      </details>
       <div className="mt-4">
         <div className="min-w-0">
-          {products.length > 0 ? (
+          {/* Aguardando aprovação: nada a excluir ou restaurar em lote (a
+              aprovação é na ficha de cada um). */}
+          {products.length > 0 && !showApproval ? (
             <BulkDeleteBar
               formId={BULK_FORM}
               action={
@@ -483,15 +470,17 @@ export default async function ProductsPage({
                 {visible.map((p) => (
                   <tr key={p.id} className={rowClass} data-product-row={p.id}>
                     <Td className="w-10">
-                      <input
-                        type="checkbox"
-                        name="ids"
-                        value={p.id}
-                        form={BULK_FORM}
-                        aria-label={`${t("productDelete.selectOne")}: ${productNameText(t, p.name)}`}
-                        className="h-4 w-4 accent-brand-600"
-                        data-product-select={p.id}
-                      />
+                      {showApproval ? null : (
+                        <input
+                          type="checkbox"
+                          name="ids"
+                          value={p.id}
+                          form={BULK_FORM}
+                          aria-label={`${t("productDelete.selectOne")}: ${productNameText(t, p.name)}`}
+                          className="h-4 w-4 accent-brand-600"
+                          data-product-select={p.id}
+                        />
+                      )}
                     </Td>
                     <Td className="w-14">
                       <PhotoGallery
@@ -515,6 +504,26 @@ export default async function ProductsPage({
                       >
                         {productNameText(t, p.name)}
                       </TextLink>
+                      {awaitingApproval(p) ? (
+                        <span
+                          className="ml-1.5 align-middle"
+                          data-product-approval-badge={p.approvalStatus ?? ""}
+                        >
+                          <Badge
+                            tone={
+                              p.approvalStatus === "rejected"
+                                ? "danger"
+                                : "warning"
+                            }
+                          >
+                            {t(
+                              p.approvalStatus === "rejected"
+                                ? "productApproval.badge.rejected"
+                                : "productApproval.badge.pending",
+                            )}
+                          </Badge>
+                        </span>
+                      ) : null}
                       {(variants.get(p.id)?.length ?? 0) > 0 ? (
                         <span
                           className="ml-1.5 align-middle"
