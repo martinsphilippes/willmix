@@ -282,6 +282,9 @@ export default async function PartiesPage({
             <LinkButton href="/app/suppliers" data-parties-suppliers>
               {t("externalTeam.suppliers")}
             </LinkButton>
+            <LinkButton href="/app/parties/types" data-parties-types-access>
+              {t("externalTeam.typesAccess")}
+            </LinkButton>
             <LinkButton href="/app/import?entity=parties">
               {t("parties.import")}
             </LinkButton>

@@ -114,10 +114,11 @@ test("Parceiros sem clientes, também em Todos os tipos; o endereço antigo leva
   await expect(
     page.locator('[data-parties-all] a[href="/app/customers"]'),
   ).toHaveCount(0);
-  // As três abas continuam.
+  // Cadastros e Tipos e acessos (as antigas Tipos de parceiro e Acessos
+  // externos, juntas desde 17/11/2026).
   await expect(
     page.locator("[data-parties-tabs] [data-parties-tab]"),
-  ).toHaveCount(3);
+  ).toHaveCount(2);
 
   // Endereço antigo: Clientes, com a busca e a ordem que valem lá.
   await page.goto("/app/parties?type=customer&q=loja&sort=-name&page=2");

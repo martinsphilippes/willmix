@@ -269,4 +269,33 @@ test.describe("Equipe Externa", () => {
       "Só o administrador cria o login.",
     );
   });
+
+  test("Tipos e acessos: o tipo com o perfil de login e os perfis com as telas", async ({
+    page,
+  }) => {
+    await login(page, ADMIN);
+    await page.goto("/app/parties");
+    await page.locator("[data-parties-types-access]").click();
+    await page.waitForURL(/\/app\/parties\/types$/);
+    await expect(
+      page.locator('[data-parties-tab="types-access"][aria-current="page"]'),
+    ).toBeVisible();
+    // Tipo e perfil, coisas diferentes: a Trading usa o perfil próprio; a
+    // Agência (tipo de antes), o do papel.
+    await expect(
+      page.locator(
+        '[data-partner-type="trading"] [data-partner-type-profile="type:trading"]',
+      ),
+    ).toContainText("Perfil próprio do tipo");
+    await expect(
+      page.locator(
+        '[data-partner-type="agency"] [data-partner-type-profile="role:agency"]',
+      ),
+    ).toContainText("Perfil do papel Agência");
+    // Perfis de login e telas: os modos "Por tipo ou perfil" e "Por tela".
+    await page.locator('[data-parties-subtab="access"]').click();
+    await page.waitForURL(/\/app\/parties\/access$/);
+    await expect(page.locator('[data-access-tab="profile"]')).toBeVisible();
+    await expect(page.locator('[data-access-tab="screen"]')).toBeVisible();
+  });
 });

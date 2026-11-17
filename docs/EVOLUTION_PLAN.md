@@ -1785,3 +1785,10 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Como ficou**: desativar e reativar login de parceiro e cliente no painel Login de Acesso (só o administrador, com a Auditoria); a entrada confere a senha antes de dizer o motivo; a sessão aberta cai na próxima página com o motivo na tela de entrada; a regra "cadastro e login ativos" começa desligada e só vale depois que o administrador a liga, vendo antes a lista de quem deixa de entrar.
 - **Aditivo:** nada muda na implantação (a regra começa desligada; os logins continuam como estão). A entrada de um login desativado passa a mostrar o motivo depois da senha certa (antes, "Credenciais inválidas"). Sem mudança no banco (a regra fica em `settings`).
 - Testes: `tests/unit/access-state.test.ts` e `tests/e2e/access-states.spec.ts`.
+
+## Tipos e acessos: uma aba com os tipos e os perfis de login (etapa 3)
+
+- **Pedido do dono** (17/11/2026; docs/EQUIPE_ACESSOS.md, R6): reunir cadastro e edição de tipos, regras de login e os modos "Por tipo ou perfil" e "Por tela" em "Tipos e acessos", com Tipo de parceiro e Perfil de login como coisas diferentes.
+- **Como ficou**: as abas Tipos de parceiro e Acessos externos viraram uma aba Tipos e acessos com duas partes; a lista de tipos mostra o perfil de login de cada tipo; o botão Tipos e acessos na Equipe Externa.
+- **Aditivo:** mesmos endereços, telas, painéis e permissões; a ligação tipo → perfil não mudou. Sem mudança no banco.
+- Testes: `tests/e2e/external-team.spec.ts` e os das abas atualizados.

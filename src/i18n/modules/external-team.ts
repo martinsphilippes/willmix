@@ -4,6 +4,14 @@
  * de logins de cada parceiro. Gerar e alterar login é só do administrador.
  */
 export const pt = {
+  "externalTeam.typesAccess": "Tipos e acessos",
+  "parties.tab.typesAccess": "Tipos e acessos",
+  "parties.subtab.types": "Tipos de parceiro",
+  "parties.subtab.access": "Perfis de login e telas",
+  "partnerTypes.col.profile": "Perfil de login",
+  "partnerTypes.profile.own": "Perfil próprio do tipo",
+  "partnerTypes.profile.role": "Perfil do papel {role}",
+  "partnerTypes.profile.none": "Sem login (o tipo não tem classe de login)",
   "externalTeam.nav": "Equipe Externa",
   "externalTeam.subtitle":
     "Parceiros com acesso ao portal: fornecedores, Trading, Factory, GP, agências, despachantes e os demais tipos. Os clientes ficam em Cadastros → Clientes.",
@@ -49,6 +57,14 @@ export const pt = {
 };
 
 export const en: typeof pt = {
+  "externalTeam.typesAccess": "Types and access",
+  "parties.tab.typesAccess": "Types and access",
+  "parties.subtab.types": "Partner types",
+  "parties.subtab.access": "Login profiles and screens",
+  "partnerTypes.col.profile": "Login profile",
+  "partnerTypes.profile.own": "The type's own profile",
+  "partnerTypes.profile.role": "{role} role profile",
+  "partnerTypes.profile.none": "No login (the type has no login class)",
   "externalTeam.nav": "External Team",
   "externalTeam.subtitle":
     "Partners with portal access: suppliers, Trading, Factory, GP, agencies, customs brokers and the other types. Customers are in Registers → Customers.",
@@ -93,6 +109,14 @@ export const en: typeof pt = {
 };
 
 export const zh: typeof pt = {
+  "externalTeam.typesAccess": "类型与权限",
+  "parties.tab.typesAccess": "类型与权限",
+  "parties.subtab.types": "合作伙伴类型",
+  "parties.subtab.access": "账号配置与页面",
+  "partnerTypes.col.profile": "账号配置",
+  "partnerTypes.profile.own": "该类型专属配置",
+  "partnerTypes.profile.role": "{role}角色配置",
+  "partnerTypes.profile.none": "无账号（该类型没有账号类别）",
   "externalTeam.nav": "外部团队",
   "externalTeam.subtitle":
     "可以使用门户的合作伙伴：供应商、贸易商、工厂、GP、代理、报关行及其他类型。客户在“登记 → 客户”中。",

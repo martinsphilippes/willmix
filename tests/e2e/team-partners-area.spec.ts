@@ -70,10 +70,11 @@ test("administrador: Parceiros dentro de Equipe Acessos e Parceiros, as três ab
   await sections(page).filter({ hasText: "Equipe Externa" }).click();
   await page.waitForURL(/\/app\/parties$/);
   await expectArea(page, "Equipe Externa");
+  // Tipos de parceiro e Acessos externos viraram "Tipos e acessos" (dono,
+  // 17/11/2026), com as duas partes dentro.
   expect(await texts(partiesTabs(page))).toEqual([
     "Cadastros",
-    "Tipos de parceiro",
-    "Acessos externos",
+    "Tipos e acessos",
   ]);
   await expect(
     page.locator('[data-parties-tab="registry"][aria-current="page"]'),
@@ -84,17 +85,18 @@ test("administrador: Parceiros dentro de Equipe Acessos e Parceiros, as três ab
   await expect(page.locator("main")).toContainText("Shenzhen Supplier A");
   await expect(page.locator("main")).not.toContainText("Loja do João Ltda");
 
-  // Aba Tipos de parceiro: o catálogo, com o menu ⋯ do administrador.
-  await page.locator('[data-parties-tab="types"]').click();
+  // Tipos e acessos → Tipos de parceiro: o catálogo, com o menu ⋯ do
+  // administrador.
+  await page.locator('[data-parties-tab="types-access"]').click();
   await page.waitForURL(/\/app\/parties\/types$/);
   await expectArea(page, "Equipe Externa");
   await expect(
-    page.locator('[data-parties-tab="types"][aria-current="page"]'),
+    page.locator('[data-parties-subtab="types"][aria-current="page"]'),
   ).toBeVisible();
   await expect(page.locator("[data-partner-type-menu]").first()).toBeVisible();
 
-  // Aba Acessos externos: o perfil e os painéis de sempre.
-  await page.locator('[data-parties-tab="access"]').click();
+  // Perfis de login e telas: o perfil e os painéis de sempre.
+  await page.locator('[data-parties-subtab="access"]').click();
   await page.waitForURL(/\/app\/parties\/access$/);
   await expectArea(page, "Equipe Externa");
   await expect(page.locator("[data-access-profile-select]")).toBeVisible();
@@ -183,10 +185,13 @@ test("comprador: entra em Parceiros pelo novo item, só com as seções que já 
   expect(await texts(sections(page))).toEqual(["Equipe Externa"]);
   expect(await texts(partiesTabs(page))).toEqual([
     "Cadastros",
-    "Tipos de parceiro",
+    "Tipos e acessos",
   ]);
-  await page.locator('[data-parties-tab="types"]').click();
+  await page.locator('[data-parties-tab="types-access"]').click();
   await page.waitForURL(/\/app\/parties\/types$/);
+  // Só os tipos: os perfis de login e telas são do administrador.
+  await expect(page.locator("[data-parties-subtab]")).toHaveCount(1);
+  await expect(page.locator('[data-parties-subtab="access"]')).toHaveCount(0);
   await expect(page.locator("[data-partner-type-menu]")).toHaveCount(0);
 
   // Pela URL: a Equipe continua só do administrador; Acessos externos
