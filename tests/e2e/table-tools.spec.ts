@@ -14,7 +14,7 @@ test("tabela padrão: ordena, busca e pagina", async ({ page }) => {
   const tag = `tt${Date.now().toString(36)}`;
   for (let i = 1; i <= 7; i++) {
     await page.goto("/app/parties/new?type=carrier");
-    await page.fill('input[name="name"]', `Tabela ${tag} ${i}`);
+    await page.fill('input[name="name"]', `Tabela ${tag}-${i}`);
     await page.getByRole("button", { name: "Salvar" }).first().click();
     await page.waitForURL(/\/app\/parties\/[^/?#]+(#access)?$/);
   }
@@ -38,9 +38,11 @@ test("tabela padrão: ordena, busca e pagina", async ({ page }) => {
   expect(await whatCell()).not.toBe(asc);
 
   // Busca em qualquer coluna, sem acento nem caixa.
-  await tools.locator("[data-table-search]").fill(`TABELA ${tag} 3`);
+  // (uma palavra só: a busca acha todas as palavras em qualquer coluna, e
+  // "3" sozinho também aparece nas datas)
+  await tools.locator("[data-table-search]").fill(`${tag.toUpperCase()}-3`);
   await expect(rows).toHaveCount(1);
-  await expect(rows.first()).toContainText(`Tabela ${tag} 3`);
+  await expect(rows.first()).toContainText(`Tabela ${tag}-3`);
   await tools.locator("[data-table-search]").fill("nada-assim-xyz");
   await expect(rows).toHaveCount(0);
   await expect(tools.locator("[data-table-none]")).toBeVisible();

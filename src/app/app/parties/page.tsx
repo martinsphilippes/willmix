@@ -24,7 +24,9 @@ import {
   TextLink,
   rowClass,
 } from "@/components/ui";
+import { Suspense } from "react";
 import { AutoApply } from "@/components/auto-apply";
+import { FormUrlSync } from "@/components/form-url-sync";
 import { FilterCombobox } from "@/components/filter-combobox";
 import { ServerPager, SortTh } from "@/components/server-table";
 import { PartiesHeader } from "./_components/parties-header";
@@ -37,6 +39,7 @@ import {
 } from "@/lib/server-table";
 import {
   NO_COUNTRY,
+  PARTNER_FILTERS,
   activeFilterCount,
   applyPartnerFilters,
   parsePartnerFilters,
@@ -455,6 +458,9 @@ export default async function PartiesPage({
           </tbody>
         </Table>
         <AutoApply />
+        <Suspense fallback={null}>
+          <FormUrlSync names={["q", ...PARTNER_FILTERS]} />
+        </Suspense>
       </form>
       <ServerPager page={shown} href={pageHref} t={t} />
       {panelRow ? (

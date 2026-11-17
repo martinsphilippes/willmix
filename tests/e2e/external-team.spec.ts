@@ -42,25 +42,36 @@ async function chooseType(page: Page, text: string, value: string) {
   await page.waitForURL(new RegExp(`type=${encodeURIComponent(value)}`));
 }
 
-test.describe("Equipe Externa", () => {
+/**
+ * Os três parceiros do teste (zero, um e dois logins), criados uma vez por
+ * processo: se um teste falha, o Playwright recomeça o processo e o próximo
+ * teste cria os dele, sem depender do anterior.
+ */
+let created: { tag: string; many: string; one: string; none: string } | null =
+  null;
+async function partners(page: Page) {
+  if (created) return created;
   const tag = `ext${Date.now().toString(36)}`;
-  let many = "";
-  let one = "";
-  let none = "";
+  await login(page, ADMIN);
+  const many = await partnerWithLogins(page, `Externa ${tag} Muitos`, [
+    `m1-${tag}@login.com`,
+    `m2-${tag}@login.com`,
+  ]);
+  const one = await partnerWithLogins(page, `Externa ${tag} Um`, [
+    `u1-${tag}@login.com`,
+  ]);
+  const none = await partnerWithLogins(page, `Externa ${tag} Zero`, []);
+  created = { tag, many, one, none };
+  return created;
+}
 
+test.describe("Equipe Externa", () => {
   test("colunas na ordem, filtro em cada coluna, filtros combinados e Limpar filtros", async ({
     page,
   }) => {
     test.setTimeout(180_000);
+    const { tag, many, none } = await partners(page);
     await login(page, ADMIN);
-    many = await partnerWithLogins(page, `Externa ${tag} Muitos`, [
-      `m1-${tag}@login.com`,
-      `m2-${tag}@login.com`,
-    ]);
-    one = await partnerWithLogins(page, `Externa ${tag} Um`, [
-      `u1-${tag}@login.com`,
-    ]);
-    none = await partnerWithLogins(page, `Externa ${tag} Zero`, []);
 
     await page.goto("/app/parties");
     // A seção com o nome novo e as colunas na ordem pedida.
@@ -108,7 +119,7 @@ test.describe("Equipe Externa", () => {
     // Limpar filtros volta à lista inteira.
     await page.locator("[data-parties-clear]").click();
     await page.waitForURL(/\/app\/parties$/);
-    expect(await rows(page).count()).toBeGreaterThan(3);
+    await expect.poll(() => rows(page).count()).toBeGreaterThan(3);
 
     // Tipo + Situação + País, juntos: só fornecedores ativos da China.
     await chooseType(page, "Fornec", "supplier");
@@ -116,14 +127,25 @@ test.describe("Equipe Externa", () => {
     await page.waitForURL(/status=active/);
     await page.locator("[data-parties-filter-country]").selectOption("CN");
     await page.waitForURL(/country=CN/);
-    const shown = await rows(page).count();
-    expect(shown).toBeGreaterThanOrEqual(3);
-    for (let i = 0; i < shown; i++) {
-      const cells = rows(page).nth(i).locator("td");
-      await expect(cells.nth(1)).toHaveText("Fornecedor");
-      await expect(cells.nth(2)).toHaveText("Ativo");
-      await expect(cells.nth(4)).toHaveText("CN");
-    }
+    // Espera a lista do servidor com os três filtros: toda linha é um
+    // fornecedor ativo da China, e há pelo menos os três da demonstração.
+    const cells = (col: number) =>
+      rows(page).locator(`td:nth-child(${col})`).allInnerTexts();
+    await expect
+      .poll(async () => {
+        const [types, statuses, countries] = await Promise.all([
+          cells(2),
+          cells(3),
+          cells(5),
+        ]);
+        return (
+          types.length >= 3 &&
+          types.every((v) => v.trim() === "Fornecedor") &&
+          statuses.every((v) => v.trim() === "Ativo") &&
+          countries.every((v) => v.trim() === "CN")
+        );
+      })
+      .toBe(true);
     await expect(page.locator("main")).toContainText("Ningbo Supplier C");
     await expect(page.locator("main")).not.toContainText(`Externa ${tag}`);
 
@@ -136,6 +158,8 @@ test.describe("Equipe Externa", () => {
   test("buscar em toda a tabela: as seis colunas e, para o administrador, o login", async ({
     page,
   }) => {
+    test.setTimeout(180_000);
+    const { tag, one } = await partners(page);
     await login(page, ADMIN);
     await page.goto("/app/parties");
     const search = page.locator("[data-parties-search]");
@@ -160,6 +184,8 @@ test.describe("Equipe Externa", () => {
   test("Login de Acesso: o painel com zero, um e vários logins, e a lista como estava ao fechar", async ({
     page,
   }) => {
+    test.setTimeout(180_000);
+    const { tag, many, one, none } = await partners(page);
     await login(page, ADMIN);
     await page.goto(`/app/parties?name=${tag}`);
     // Vários logins: cada um com o estado.
@@ -214,6 +240,8 @@ test.describe("Equipe Externa", () => {
   test("Comprador: vê a lista, não acha pelo login e não gera login", async ({
     page,
   }) => {
+    test.setTimeout(180_000);
+    const { tag, one, none } = await partners(page);
     await login(page, BUYER);
     await page.goto("/app/parties");
     const search = page.locator("[data-parties-search]");
