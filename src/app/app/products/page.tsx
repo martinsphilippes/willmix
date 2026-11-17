@@ -265,10 +265,12 @@ export default async function ProductsPage({
         ) : null}
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
+        {/* Até o notebook (iPad, celular) a busca ocupa a linha inteira e o
+            total e o "Exportar" descem; antes ela ficava espremida ao lado. */}
         <form
           method="get"
           action="/app/products"
-          className="flex min-w-0 flex-1 flex-wrap items-center gap-2"
+          className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto lg:flex-1"
           data-product-search
         >
           {showDeleted ? (
