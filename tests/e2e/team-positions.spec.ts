@@ -29,12 +29,10 @@ test("Cargos: cadastro em massa com a área, cargo da pessoa e área que acompan
   );
 
   // A seção Cargos, logo depois de Áreas.
-  await page
-    .locator('[data-team-area-nav] [data-team-tab="positions"]')
-    .click();
+  await page.locator('[data-team-subtabs] [data-team-tab="positions"]').click();
   await page.waitForURL(/\/app\/team\?tab=positions$/);
   await expect(
-    page.locator('[data-team-area-nav] [aria-current="page"]'),
+    page.locator('[data-team-subtabs] [aria-current="page"]'),
   ).toHaveText("Cargos");
 
   // Colado da planilha: título, área depois da tabulação, área desconhecida.

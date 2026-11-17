@@ -21,8 +21,7 @@ import {
 } from "./ui";
 import { SubmitButton } from "./submit-button";
 import type { getT } from "@/i18n/server";
-import Link from "next/link";
-import { ASSIGN_HREF } from "@/lib/assign-href";
+import { DistributeLink } from "@/components/distribute-link";
 
 /*
  * Artes do pedido (Fase F): designer, não conformidade por SKU com a volta ao
@@ -147,12 +146,7 @@ export function ArtworkCard({
                         data-artwork-missing="analyst"
                       >
                         {t("certFlow.missing.analyst")}{" "}
-                        <Link
-                          href={ASSIGN_HREF.analyst(order.id)}
-                          className="text-brand-700 underline"
-                        >
-                          {t("certFlow.assign.analyst")}
-                        </Link>
+                        <DistributeLink t={t} />
                       </span>
                     ) : null}
                   </form>

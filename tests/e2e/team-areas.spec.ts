@@ -35,11 +35,13 @@ test("Áreas: cadastro em massa só das que faltam, área da pessoa e desativar"
   await login(page, "admin@wellmix.com");
 
   // A seção Áreas, logo depois da Equipe.
+  // Equipe Interna → Cargos, áreas e funções → Áreas (dono, 17/11/2026).
   await page.goto("/app/team");
-  await page.locator('[data-team-area-nav] [data-team-tab="areas"]').click();
+  await page.locator('[data-team-section="structure"]').click();
+  await page.locator('[data-team-subtabs] [data-team-tab="areas"]').click();
   await page.waitForURL(/\/app\/team\?tab=areas$/);
   await expect(
-    page.locator('[data-team-area-nav] [aria-current="page"]'),
+    page.locator('[data-team-subtabs] [aria-current="page"]'),
   ).toHaveText("Áreas");
 
   // Duas já cadastradas antes, uma com a grafia "Processos/Projetos".

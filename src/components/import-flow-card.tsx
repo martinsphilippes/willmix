@@ -10,6 +10,7 @@ import {
 } from "@/lib/services/import-flow";
 import Link from "next/link";
 import { ASSIGN_HREF } from "@/lib/assign-href";
+import { DistributeLink } from "@/components/distribute-link";
 import {
   submitImportStepAction,
   validateImportStepAction,
@@ -113,12 +114,16 @@ export function ImportFlowCard({
           data-import-missing={a.missing}
         >
           {t(`certFlow.missing.${a.missing}` as DictionaryKey)}{" "}
-          <Link
-            href={ASSIGN_HREF[a.missing](order.id)}
-            className="text-brand-700 underline"
-          >
-            {t(`certFlow.assign.${a.missing}` as DictionaryKey)}
-          </Link>
+          {a.missing === "analyst" ? (
+            <DistributeLink t={t} />
+          ) : (
+            <Link
+              href={ASSIGN_HREF[a.missing](order.id)}
+              className="text-brand-700 underline"
+            >
+              {t(`certFlow.assign.${a.missing}` as DictionaryKey)}
+            </Link>
+          )}
         </span>
       ) : null}
     </span>

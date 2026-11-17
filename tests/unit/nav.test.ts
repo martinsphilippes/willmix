@@ -568,15 +568,10 @@ describe("Equipe Acessos e Parceiros", () => {
       "/app/customers/cliente-joao",
     ])
       expect(isActiveLink(link, path)).toBe(false);
-    // Áreas e Cargos (dono, 16/11/2026) logo depois da Equipe.
-    expect(teamAreaSections(ADMIN as never)).toEqual([
-      "team",
-      "areas",
-      "positions",
-      "functions",
-      "lines",
-      "partners",
-    ]);
+    // Duas telas na área (dono, 17/11/2026; docs/EQUIPE_ACESSOS.md, etapa
+    // 5): Equipe Interna (com Cargos, áreas e funções e Linhas e divisões
+    // dentro) e Equipe Externa.
+    expect(teamAreaSections(ADMIN as never)).toEqual(["team", "partners"]);
   });
 
   it("quem só abre Parceiros (comprador, catálogo, diretoria): o item leva a Parceiros", () => {

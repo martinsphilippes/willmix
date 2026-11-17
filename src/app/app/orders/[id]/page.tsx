@@ -68,6 +68,7 @@ import {
   seesLaneTask,
 } from "@/lib/services/cert-art-routing";
 import { ASSIGN_HREF, type MissingAssignment } from "@/lib/assign-href";
+import { DistributeLink } from "@/components/distribute-link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { sheetSummaryWithoutPrice } from "@/lib/services/purchase-sheet-calc";
@@ -3386,9 +3387,7 @@ export default async function OrderPage({
               ? [
                   <span key="no-analyst" data-cert-missing="analyst">
                     {t("certFlow.missingHint.analyst")}{" "}
-                    <TextLink href="/app/team#distribute">
-                      {t("certFlow.assign.analyst")}
-                    </TextLink>
+                    <DistributeLink t={t} />
                   </span>,
                 ]
               : []),
