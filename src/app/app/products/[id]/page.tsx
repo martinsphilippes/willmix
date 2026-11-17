@@ -177,6 +177,7 @@ export default async function ProductSheetPage({
     fields: invalidFields,
     ai: aiNotice,
     board,
+    created,
   } = await searchParams;
   const sheet = await loadProductSheet(id);
   if (!sheet) notFound();
@@ -387,6 +388,12 @@ export default async function ProductSheetPage({
         }
       />
       {saved ? <Alert tone="success">{t("catalog.saved")}</Alert> : null}
+      {/* Acabou de ser criado pelo "+ Novo produto" da lista. */}
+      {created === "1" ? (
+        <div data-product-created>
+          <Alert tone="success">{t("catalog.created")}</Alert>
+        </div>
+      ) : null}
       <ActionError
         t={t}
         // Erro da sugestão da IA aparece na própria seção (lá embaixo).

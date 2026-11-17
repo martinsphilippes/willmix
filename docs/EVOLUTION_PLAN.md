@@ -1829,3 +1829,10 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Pedido do dono** (17/11/2026; docs/EQUIPE_ACESSOS.md, seção 11, D11).
 - **Aditivo:** tabela nova `form_drafts`; o formulário guarda sozinho e recupera com "Descartar"; o cookie de 5 minutos continua lido. Nada é apagado nem muda de lugar.
 - Testes: `tests/unit/form-drafts.test.ts` e `tests/e2e/party-draft.spec.ts`.
+
+## Busca nas listas grandes e o produto novo na ficha (17/11/2026)
+
+- **Pedido do dono** (17/11/2026, opções 1 a 4): o produto "Teste AGORA" não aparecia no "Buscar na tabela" de Produtos, que só olhava os 50 produtos da página. (1) Produtos com uma busca só, a da tela, no catálogo inteiro; (2) o "+ Novo produto" abre a ficha do produto criado com o aviso; (3) ordem "Mais recentes primeiro"; (4) a mesma regra nas outras listas divididas em páginas (docs/ARQUITETURA.md, "Lista paginada no servidor sem a busca da página").
+- **Conferido em cada lista que divide em páginas no servidor:** Solicitações, Equipe Externa, Equipe Interna, Clientes, Fornecedores, Histórico comercial, Financeiro, Contas a pagar, Tabela de preços, Scorecard de fornecedores, Pedidos e a Vitrine não têm a busca que só olha a página (a busca é no servidor, na lista inteira, ou a lista curta vem inteira na tabela). No Fluxo de caixa a tabela é por semana, com todas as semanas na tela. Corrigidas: Produtos, Auditoria (com mais de uma página) e "Todos no passo" (busca própria em todo o passo, docs/FLOW_MENU.md). Notificações (as 100 últimas do login) e Importações (os 50 últimos lotes) mostram só as recentes, de propósito, e ficaram como estavam.
+- **Aditivo:** nenhuma tela, rota, campo ou dado sai; a ordem de sempre (nome) e a busca de cima continuam; o que sai é a caixa e as páginas da tabela que só olhavam a página, nessas três listas. Sem mudança no banco.
+- Testes: `tests/unit/product-list.test.ts`, `tests/unit/flow-step-page.test.ts`, `tests/e2e/products-search.spec.ts` e `tests/e2e/happy-path.spec.ts` (busca da aba "Todos no passo").

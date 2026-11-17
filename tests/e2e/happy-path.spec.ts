@@ -778,6 +778,25 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
       .locator(`[data-flow-all-order="${allOrderId}"] [data-flow-all-view]`)
       .first(),
   ).toHaveAttribute("href", `/app/flow/order/art/${allOrderId}`);
+  // Busca da aba (dono, 17/11/2026): em todos os pedidos do passo, não só
+  // na página; a tabela não tem a busca que só olhava a página.
+  await expect(page.locator("[data-flow-all-search]")).toBeVisible();
+  await expect(page.locator("[data-table-search]")).toHaveCount(0);
+  const allOrderNumber = (
+    await page
+      .locator(`[data-flow-all-order="${allOrderId}"] td`)
+      .first()
+      .innerText()
+  ).trim();
+  expect(allOrderNumber).toMatch(/^#\d+$/);
+  const allSearch = page.locator('[data-flow-all-search] input[name="q"]');
+  await allSearch.fill(allOrderNumber);
+  await allSearch.press("Enter");
+  await page.waitForURL(/[?&]q=/);
+  await expect(
+    page.locator(`[data-flow-all-order="${allOrderId}"]`),
+  ).toBeVisible();
+  await expect(page.locator("[data-flow-all-found]")).toBeVisible();
   // O pedido na tela do passo: tudo do passo para ele (feito e aberto).
   await page
     .locator(`[data-flow-all-order="${allOrderId}"] [data-flow-all-view]`)

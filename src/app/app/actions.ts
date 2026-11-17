@@ -1212,6 +1212,10 @@ export async function saveProductAction(form: FormData) {
     // Produto novo ou alterado vai para o Sankhya (fase 3).
     const { syncSoon } = await import("@/lib/integrations/sankhya-sync");
     await syncSoon(user, "product", saved.id);
+    // Produto novo abre na própria ficha, com o aviso "Produto criado" (dono,
+    // 17/11/2026): antes voltava à página 1 da lista e o produto sumia entre
+    // os milhares do catálogo. Alteração continua voltando à lista.
+    if (!id) return `/app/products/${saved.id}?created=1`;
   });
 }
 

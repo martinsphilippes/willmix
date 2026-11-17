@@ -39,6 +39,8 @@ export const pt = {
   "catalog.cbmHint": "Informe só quando não houver dimensões da caixa",
   "catalog.active": "Produto ativo",
   "catalog.saved": "Dados salvos.",
+  "catalog.created":
+    "Produto criado. Esta é a ficha dele; na lista de Produtos, use a busca ou a ordem “Mais recentes primeiro”.",
   "catalog.saveSheet": "Salvar ficha",
   "catalog.noSupplier": "Sem fornecedor",
   "catalog.sourcingOrigin": "Item de sourcing de origem",
@@ -335,6 +337,8 @@ export const en: Record<keyof typeof pt, string> = {
   "catalog.cbmHint": "Fill in only when carton dimensions are unknown",
   "catalog.active": "Active product",
   "catalog.saved": "Saved.",
+  "catalog.created":
+    "Product created. This is its sheet; in the Products list, use the search or the “Newest first” order.",
   "catalog.saveSheet": "Save sheet",
   "catalog.noSupplier": "No supplier",
   "catalog.sourcingOrigin": "Origin sourcing item",
@@ -621,6 +625,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "catalog.cbmHint": "仅在没有外箱尺寸时填写",
   "catalog.active": "产品启用",
   "catalog.saved": "已保存。",
+  "catalog.created":
+    "产品已创建。这是它的资料页；在产品列表中，可使用搜索或“最新优先”排序找到它。",
   "catalog.saveSheet": "保存档案",
   "catalog.noSupplier": "无供应商",
   "catalog.sourcingOrigin": "来源采购项目",
