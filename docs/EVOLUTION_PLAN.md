@@ -1778,3 +1778,10 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Como ficou**: `/app/parties` com a busca, os filtros, a ordem e a página sempre no servidor; painel `?panel=logins&party=…` que fecha voltando à lista como estava; `createUserAction` só para o administrador; os avisos de fornecedor sem acesso e o da Nova solicitação pedem ao administrador.
 - **Aditivo:** mesma rota e mesma permissão para abrir; os parâmetros de antes (`type`, `q`, `sort`, `page`) continuam. Muda, por decisão do dono, quem gera login: só o administrador (o Comprador, o Catálogo e as diretorias deixam de gerar; os logins existentes ficam). Sem mudança no banco.
 - Testes: `tests/unit/partners-list.test.ts`, `tests/unit/partner-login-admin.test.ts`, `tests/e2e/external-team.spec.ts` e `tests/e2e/table-tools.spec.ts` (na Auditoria).
+
+## Estados de cadastro e login: desativar, reativar e a regra "cadastro e login ativos" (etapa 2)
+
+- **Pedido do dono** (17/11/2026; docs/EQUIPE_ACESSOS.md, R7): desativar e reativar; o acesso só com o cadastro e o login ativos; o administrador vê qual está inativo e a pessoa recebe a mensagem ao tentar entrar.
+- **Como ficou**: desativar e reativar login de parceiro e cliente no painel Login de Acesso (só o administrador, com a Auditoria); a entrada confere a senha antes de dizer o motivo; a sessão aberta cai na próxima página com o motivo na tela de entrada; a regra "cadastro e login ativos" começa desligada e só vale depois que o administrador a liga, vendo antes a lista de quem deixa de entrar.
+- **Aditivo:** nada muda na implantação (a regra começa desligada; os logins continuam como estão). A entrada de um login desativado passa a mostrar o motivo depois da senha certa (antes, "Credenciais inválidas"). Sem mudança no banco (a regra fica em `settings`).
+- Testes: `tests/unit/access-state.test.ts` e `tests/e2e/access-states.spec.ts`.

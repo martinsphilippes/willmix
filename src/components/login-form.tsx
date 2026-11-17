@@ -11,6 +11,8 @@ interface Labels {
   invalid: string;
   unavailable: string;
   paused: string;
+  /** Senha certa, mas o acesso está bloqueado (docs/EQUIPE_ACESSOS.md, R7). */
+  blocked: Record<"login_inactive" | "party_inactive" | "blocked_both", string>;
   demoTitle: string;
   demoHint: string;
 }
@@ -58,11 +60,15 @@ export function LoginForm({
       .then((body: { code?: unknown }) => body?.code)
       .catch(() => null);
     setError(
-      response && response.status !== 503 && response.status < 500
-        ? labels.invalid
-        : code === "paused"
-          ? labels.paused
-          : labels.unavailable,
+      response?.status === 403 &&
+        typeof code === "string" &&
+        code in labels.blocked
+        ? labels.blocked[code as keyof Labels["blocked"]]
+        : response && response.status !== 503 && response.status < 500
+          ? labels.invalid
+          : code === "paused"
+            ? labels.paused
+            : labels.unavailable,
     );
     setPending(false);
   }
@@ -112,6 +118,7 @@ export function LoginForm({
           <p
             role="alert"
             className="rounded-lg border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-800"
+            data-login-error
           >
             {error}
           </p>

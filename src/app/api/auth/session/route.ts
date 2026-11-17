@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { AuthError, signIn, signOut } from "@/lib/auth/session";
+import { isAccessBlock } from "@/lib/access-state";
 import {
   classifyLoginError,
   isProjectPaused,
@@ -27,6 +28,14 @@ export async function POST(request: Request) {
     const user = await signIn(parsed.data.email, parsed.data.password);
     return NextResponse.json({ ok: true, userId: user.id, role: user.role });
   } catch (error) {
+    // Senha certa, mas o login ou o cadastro está desativado: a tela diz
+    // qual (docs/EQUIPE_ACESSOS.md, R7).
+    if (error instanceof AuthError && isAccessBlock(error.message)) {
+      return NextResponse.json(
+        { error: "Acesso bloqueado", code: error.message },
+        { status: 403 },
+      );
+    }
     if (error instanceof AuthError || classifyLoginError(error) === "invalid") {
       return NextResponse.json(
         { error: "Credenciais inválidas" },

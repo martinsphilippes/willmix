@@ -163,6 +163,7 @@ import * as requestScreens from "./request-screens";
 import * as deliverySchedule from "./delivery-schedule";
 import * as training from "./training";
 import * as externalTeam from "./external-team";
+import * as accessState from "./access-state";
 
 export const modulesPt = {
   ...messages.pt,
@@ -325,6 +326,7 @@ export const modulesPt = {
   ...deliverySchedule.pt,
   ...training.pt,
   ...externalTeam.pt,
+  ...accessState.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...messages.en,
@@ -487,6 +489,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...deliverySchedule.en,
   ...training.en,
   ...externalTeam.en,
+  ...accessState.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...messages.zh,
@@ -649,4 +652,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...deliverySchedule.zh,
   ...training.zh,
   ...externalTeam.zh,
+  ...accessState.zh,
 };
