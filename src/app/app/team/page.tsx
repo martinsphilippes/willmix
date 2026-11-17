@@ -73,11 +73,13 @@ import { TeamHeader } from "./_components/team-header";
 import { TeamMembers, teamRows } from "./_components/team-members";
 import {
   AreaPanel,
+  FormerPanel,
   FunctionPanel,
   ManagerPanel,
   PositionPanel,
   type PanelLinks,
 } from "./_components/team-panels";
+import { formerTeamMembers } from "@/lib/services/access-state";
 import {
   ScreensPanel,
   parseScreensState,
@@ -136,7 +138,7 @@ export default async function TeamPage({
     : "team";
   const saved = one("saved");
   const error = one("error");
-  const [team, lines, defs, areas, positions] = await Promise.all([
+  const [team, lines, defs, areas, positions, former] = await Promise.all([
     wellmixTeam(),
     getStore().list("product_lines", {
       filter: { active: true },
@@ -145,6 +147,8 @@ export default async function TeamPage({
     loadFunctionDefs(),
     listTeamAreas(),
     listTeamPositions(),
+    // Quem saiu da equipe (Excluir acesso): o painel para reativar.
+    tab === "team" ? formerTeamMembers() : Promise.resolve([]),
   ]);
   const errorKey = `team.error.${error ?? ""}`;
   const errorText = error
@@ -267,6 +271,7 @@ export default async function TeamPage({
           label={label}
           admin={isAdmin(user)}
           sp={sp}
+          former={former}
           modalOpen={one("new") === "1"}
           modalError={one("new") === "1" ? errorText : null}
         />
@@ -363,6 +368,7 @@ function TeamTab({
   label,
   admin,
   sp,
+  former,
   modalOpen,
   modalError,
 }: {
@@ -374,6 +380,8 @@ function TeamTab({
   label: (key: string) => string;
   admin: boolean;
   sp: Record<string, string | string[] | undefined>;
+  /** Quem saiu da equipe (o painel para reativar). */
+  former: User[];
   modalOpen: boolean;
   modalError: string | null;
 }) {
@@ -468,7 +476,14 @@ function TeamTab({
           </Alert>
         </div>
       ) : null}
-      <TeamMembers t={t} team={team} rows={rows} filters={filters} sp={sp} />
+      <TeamMembers
+        t={t}
+        team={team}
+        rows={rows}
+        filters={filters}
+        sp={sp}
+        formerCount={former.length}
+      />
       {admin && modalOpen ? (
         <NewUserModal
           t={t}
@@ -532,6 +547,22 @@ function TeamTab({
           team={team}
           links={links}
           admin={admin}
+        />
+      ) : null}
+      {panel === "former" ? (
+        <FormerPanel
+          t={t}
+          former={former}
+          links={links}
+          admin={admin}
+          selfHref={base({ panel: "former" })}
+          notice={
+            one("saved") === "reactivated"
+              ? t("team.former.saved", {
+                  name: (one("login") ?? "").slice(0, 120),
+                })
+              : null
+          }
         />
       ) : null}
       {panel === "screens" ? (

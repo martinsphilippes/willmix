@@ -752,6 +752,14 @@ export interface User extends BaseRow {
    */
   mustChangePassword?: boolean | null;
   /**
+   * Login suspenso (equipe da Wellmix; dono, 17/11/2026;
+   * docs/EQUIPE_ACESSOS.md, D8): a pessoa não entra, mas continua na equipe
+   * (árvore do "Responde a", Painel de SLA e distribuição). Diferente de
+   * `active` falso, que é ter saído da equipe ("Excluir acesso"). Ausente ou
+   * falso: o login entra.
+   */
+  loginSuspended?: boolean | null;
+  /**
    * Telas liberadas uma a uma pelo administrador (docs/ACCESS.md). Nula ou
    * ausente: o login abre o padrão das funções. Guarda chaves de
    * src/lib/auth/screens.ts (validadas ao salvar e ao ler).
@@ -1973,6 +1981,20 @@ export interface RequestDraft extends BaseRow {
   title: string;
   itemCount: number;
   payload: Array<[string, string]>;
+}
+
+/**
+ * Rascunho de um formulário, por login (dono, 17/11/2026;
+ * docs/EQUIPE_ACESSOS.md, D11): o Novo parceiro guarda o que foi digitado
+ * enquanto a pessoa preenche (sem o limite de 5 minutos do cookie de antes).
+ * Um por login e formulário (`form`, ex.: "party-new:partner"); some ao
+ * salvar o cadastro ou em "Descartar rascunho".
+ */
+export interface FormDraft extends BaseRow {
+  userId: string;
+  form: string;
+  /** Os campos de texto do formulário (nome → valor). */
+  payload: Record<string, string>;
 }
 
 export interface CartItem extends BaseRow {
@@ -3737,6 +3759,7 @@ export interface Tables {
   manufacturer_cards: ManufacturerCard;
   cart_items: CartItem;
   request_drafts: RequestDraft;
+  form_drafts: FormDraft;
   freight_tariffs: FreightTariff;
   product_variants: ProductVariant;
   conversations: Conversation;
@@ -3878,6 +3901,7 @@ export const TABLES: Record<TableName, TableDef> = {
       screens: json(),
       mustChangePassword: bool(),
       screenExceptions: json(),
+      loginSuspended: bool(),
     },
     indexes: [
       { key: "email_unique", type: "unique", columns: ["email"] },
@@ -4937,6 +4961,17 @@ export const TABLES: Record<TableName, TableDef> = {
       payload: jsonLarge(),
     },
     indexes: [{ key: "by_user", type: "key", columns: ["userId"] }],
+  },
+  form_drafts: {
+    label: "Rascunhos de formulários",
+    columns: {
+      userId: id(),
+      form: str(60, true),
+      payload: json(),
+    },
+    indexes: [
+      { key: "by_user_form", type: "unique", columns: ["userId", "form"] },
+    ],
   },
   cart_items: {
     label: "Carrinho da vitrine",

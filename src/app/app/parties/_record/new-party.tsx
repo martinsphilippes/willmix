@@ -10,6 +10,8 @@ import { PartyForm } from "@/components/party-form";
 import { PARTY_DRAFT_COOKIE, parsePartyDraft } from "@/lib/party-draft";
 import { partnerTypeName } from "@/lib/partner-types";
 import { getPartnerTypeCatalog } from "@/lib/services/partner-types";
+import { loadFormDraft, partyDraftKey } from "@/lib/services/form-drafts";
+import { discardPartyDraftAction } from "@/app/app/actions/form-drafts";
 
 /*
  * Novo parceiro (docs/PARTNER_TYPES.md). Aberto por "Outros parceiros": só os
@@ -37,10 +39,22 @@ export async function renderNewParty({
         .filter((e) => e.active)
         .map((e) => ({ value: e.value, label: partnerTypeName(e, t.locale) }));
   const selected = own ?? (types.some((o) => o.value === wanted) ? wanted : "");
-  // Voltando do atalho "+ Novo tipo": o que já estava digitado.
-  const draft = one("draft")
+  // Rascunho no banco, por login (D11): o que a pessoa digitou antes (fechou
+  // a aba, perdeu a conexão, criou um tipo pelo atalho). O cookie de antes
+  // (5 minutos) ainda vale na volta do atalho, para quem estava no meio.
+  const draftForm = partyDraftKey(own);
+  const stored = await loadFormDraft(user, draftForm);
+  const cookieDraft = one("draft")
     ? parsePartyDraft((await cookies()).get(PARTY_DRAFT_COOKIE)?.value)
-    : undefined;
+    : {};
+  const draft =
+    stored || Object.keys(cookieDraft).length
+      ? { ...cookieDraft, ...(stored?.payload ?? {}) }
+      : undefined;
+  const backHref =
+    own === "customer"
+      ? "/app/customers/new"
+      : `/app/parties/new${own ? `?type=${own}` : ""}`;
   const error = one("error");
   const errorKey = `partnerTypes.error.${error}`;
   return (
@@ -59,13 +73,45 @@ export async function renderNewParty({
       ) : one("typeCreated") ? (
         <Alert tone="success">{t("partnerTypes.quick.done")}</Alert>
       ) : null}
+      {stored ? (
+        <div className="mt-3 max-w-2xl" data-party-draft-restored>
+          <Alert tone="info">
+            <span className="flex flex-wrap items-center justify-between gap-2">
+              <span>
+                {t("formDraft.restored", {
+                  time: new Date(stored.updatedAt).toLocaleString(t.intl, {
+                    day: "2-digit",
+                    month: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZone: "America/Sao_Paulo",
+                  }),
+                })}
+              </span>
+              <form action={discardPartyDraftAction}>
+                <input type="hidden" name="form" value={draftForm} />
+                <input type="hidden" name="back" value={backHref} />
+                <button
+                  type="submit"
+                  className="text-sm font-semibold text-brand-700 underline"
+                  data-party-draft-discard
+                >
+                  {t("formDraft.discard")}
+                </button>
+              </form>
+            </span>
+          </Alert>
+        </div>
+      ) : null}
       <Card className="mt-3 max-w-2xl">
         <PartyForm
+          key={stored?.updatedAt ?? "new"}
           t={t}
           types={types}
           selected={selected}
           draft={draft}
           quickType={!own && isAdmin(user)}
+          autosave={{ form: draftForm, savedText: t("formDraft.saved") }}
         />
       </Card>
     </>

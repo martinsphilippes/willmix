@@ -33,7 +33,7 @@ export const loadAccessRules = cache(async (): Promise<AccessRules> => {
 
 /** Por que este login não entra agora (nulo: entra, se as permissões deixarem). */
 export async function accessBlockFor(
-  user: Pick<User, "active" | "partyId">,
+  user: Pick<User, "active" | "partyId" | "loginSuspended">,
 ): Promise<AccessBlock | null> {
   const rules = await loadAccessRules();
   const party =
@@ -157,4 +157,92 @@ export async function setPartnerLoginActive(
     { active },
   );
   return updated;
+}
+
+/**
+ * Login da equipe da Wellmix (dono, 17/11/2026; docs/EQUIPE_ACESSOS.md, D8 e
+ * R7): suspender e reativar o login sem tirar a pessoa da equipe (ela segue
+ * na árvore do "Responde a", no Painel de SLA e na distribuição). Só o
+ * administrador; o próprio login não (para ninguém se trancar fora).
+ */
+export async function setTeamLoginActive(
+  user: User,
+  userId: string,
+  active: boolean,
+): Promise<User> {
+  if (!isAdmin(user)) throw new ForbiddenError();
+  const store = getStore();
+  const target = await store.get("users", userId);
+  if (
+    !target ||
+    !target.active ||
+    (target.role !== "admin" && target.role !== "operator")
+  )
+    throw new AccessStateError("not_found");
+  if (target.id === user.id) throw new AccessStateError("self");
+  const suspended = !active;
+  if ((target.loginSuspended === true) === suspended) return target;
+  const updated = await store.update("users", target.id, {
+    loginSuspended: suspended,
+  });
+  if (suspended) {
+    const { forgetUserSessions } = await import("@/lib/auth/session");
+    forgetUserSessions(target.id);
+  }
+  await audit(
+    user,
+    active ? "team.login_on" : "team.login_off",
+    "user",
+    target.id,
+    `${active ? "Login reativado" : "Login suspenso"} (segue na equipe): ${target.name} (${loginLabel(target.email)})`,
+    { loginSuspended: target.loginSuspended === true },
+    { loginSuspended: suspended },
+  );
+  return updated;
+}
+
+/**
+ * Volta para a equipe quem saiu ("Excluir acesso"; D8 e R7): o cadastro fica
+ * ativo de novo, com as funções e as telas de antes; o gestor de antes só
+ * volta se ainda está na equipe (senão, sem gestor). Só o administrador.
+ */
+export async function reactivateTeamMember(
+  user: User,
+  userId: string,
+): Promise<User> {
+  if (!isAdmin(user)) throw new ForbiddenError();
+  const store = getStore();
+  const target = await store.get("users", userId);
+  if (
+    !target ||
+    target.active ||
+    (target.role !== "admin" && target.role !== "operator")
+  )
+    throw new AccessStateError("not_found");
+  const manager = target.managerUserId
+    ? await store.get("users", target.managerUserId)
+    : null;
+  const managerUserId = manager?.active ? manager.id : null;
+  const updated = await store.update("users", target.id, {
+    active: true,
+    managerUserId,
+  });
+  await audit(
+    user,
+    "team.member.reactivate",
+    "user",
+    target.id,
+    `Acesso reativado: ${target.name} (${loginLabel(target.email)})`,
+    { active: false, managerUserId: target.managerUserId ?? null },
+    { active: true, managerUserId },
+  );
+  return updated;
+}
+
+/** Quem saiu da equipe (Excluir acesso), por nome: a lista para reativar. */
+export async function formerTeamMembers(): Promise<User[]> {
+  return getStore().list("users", {
+    filter: { role: ["admin", "operator"], active: false },
+    orderBy: "name",
+  });
 }

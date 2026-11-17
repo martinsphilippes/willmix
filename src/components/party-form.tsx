@@ -2,9 +2,10 @@ import type { Party } from "@/lib/db";
 import type { Translate } from "@/i18n";
 import { savePartyAction } from "@/app/app/actions";
 import { quickPartnerTypeAction } from "@/app/app/actions/partner-types";
+import { FormDraftAutosave } from "@/components/form-draft-autosave";
 import { refreshRcaListAction } from "@/app/app/actions/customer-rca";
 import type { RcaSeller } from "@/lib/services/rca";
-import type { PartyDraft } from "@/lib/party-draft";
+import { PARTY_DRAFT_FIELDS, type PartyDraft } from "@/lib/party-draft";
 import { Field, Input, Select, Textarea } from "./ui";
 import { SubmitButton } from "./submit-button";
 
@@ -37,6 +38,7 @@ export function PartyForm({
   draft,
   quickType,
   rca,
+  autosave,
 }: {
   party?: Party | null;
   t: Translate;
@@ -50,6 +52,11 @@ export function PartyForm({
   quickType?: boolean;
   /** Só no cadastro de cliente: o campo "RCA responsável". */
   rca?: PartyRcaField;
+  /**
+   * Cadastro novo: o rascunho no banco, por login (D11), guardado sozinho
+   * enquanto a pessoa digita.
+   */
+  autosave?: { form: string; savedText: string };
 }) {
   const value = (field: keyof PartyDraft, saved: string | null | undefined) =>
     draft?.[field] ?? saved ?? "";
@@ -223,6 +230,18 @@ export function PartyForm({
           </label>
         ) : null}
         <SubmitButton>{t("common.save")}</SubmitButton>
+        {autosave && !party ? (
+          <>
+            {/* O tipo escolhido decide qual rascunho (cliente, fornecedor
+                ou parceiro); cada um guarda o dele. */}
+            <input type="hidden" name="draftForm" value={autosave.form} />
+            <FormDraftAutosave
+              form={autosave.form}
+              fields={PARTY_DRAFT_FIELDS}
+              savedText={autosave.savedText}
+            />
+          </>
+        ) : null}
       </div>
     </form>
   );

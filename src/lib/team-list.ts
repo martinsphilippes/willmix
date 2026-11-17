@@ -62,6 +62,8 @@ export const TEAM_PANELS = [
   "function",
   "manager",
   "screens",
+  // Quem saiu da equipe, para reativar (D8 e R7).
+  "former",
 ] as const;
 export type TeamPanel = (typeof TEAM_PANELS)[number];
 

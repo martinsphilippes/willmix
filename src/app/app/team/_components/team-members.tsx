@@ -57,6 +57,7 @@ export function TeamMembers({
   rows,
   filters,
   sp,
+  formerCount = 0,
 }: {
   t: Translate;
   /** A equipe ativa (as linhas saem dela). */
@@ -64,6 +65,8 @@ export function TeamMembers({
   rows: TeamRow[];
   filters: TeamFilters;
   sp: Record<string, string | string[] | undefined>;
+  /** Quantos saíram da equipe (o painel para reativar). */
+  formerCount?: number;
 }) {
   const one = (key: string) =>
     typeof sp[key] === "string" ? (sp[key] as string) : undefined;
@@ -191,10 +194,20 @@ export function TeamMembers({
             ) : null}
           </div>
           <p
-            className="mt-2 text-xs text-zinc-500"
+            className="mt-2 flex flex-wrap gap-x-3 text-xs text-zinc-500"
             data-team-count={shown.matched}
           >
-            {t("internalTeam.count", { n: shown.matched })}
+            <span>{t("internalTeam.count", { n: shown.matched })}</span>
+            {formerCount ? (
+              <Link
+                href={panelHref({ panel: "former" })}
+                scroll={false}
+                className="font-medium text-brand-700 underline"
+                data-team-former-open
+              >
+                {t("team.former.open", { n: formerCount })}
+              </Link>
+            ) : null}
           </p>
         </Card>
         <Table tools={false}>
@@ -309,6 +322,16 @@ export function TeamMembers({
                         data-team-member-review={r.id}
                       >
                         <Badge tone="warning">{t("team.review.badge")}</Badge>
+                      </span>
+                    ) : null}
+                    {member?.loginSuspended ? (
+                      <span
+                        className="ml-1 mt-0.5 inline-block"
+                        data-team-login-suspended={r.id}
+                      >
+                        <Badge tone="warning">
+                          {t("team.login.suspended")}
+                        </Badge>
                       </span>
                     ) : null}
                   </Td>

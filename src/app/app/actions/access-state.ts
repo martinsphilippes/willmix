@@ -2,8 +2,10 @@
 
 import { z } from "zod";
 import {
+  reactivateTeamMember,
   setPartnerLoginActive,
   setRequireActiveParty,
+  setTeamLoginActive,
 } from "@/lib/services/access-state";
 import { requireUser, run, str, withQuery } from "./helpers";
 
@@ -48,5 +50,48 @@ export async function setAccessRuleAction(form: FormData) {
     const { blockedLogins } = await setRequireActiveParty(user, on);
     const saved = withQuery(back, "saved", on ? "rule_on" : "rule_off");
     return on ? withQuery(saved, "n", String(blockedLogins)) : saved;
+  });
+}
+
+/** Volta só para a Equipe Interna ou para a página da pessoa. */
+function teamBackOf(form: FormData): string {
+  const back = str(form, "back");
+  return /^\/app\/team(\/[A-Za-z0-9_-]{1,64})?(\?[^#\s]*)?$/.test(back)
+    ? back
+    : "/app/team";
+}
+
+/**
+ * Suspender e reativar o login da equipe da Wellmix (dono, 17/11/2026;
+ * docs/EQUIPE_ACESSOS.md, D8): a pessoa segue na equipe. Só o
+ * administrador, e não o próprio login (o serviço confere).
+ */
+export async function setTeamLoginActiveAction(form: FormData) {
+  const user = await requireUser();
+  const back = teamBackOf(form);
+  await run(back, async () => {
+    const userId = z.string().min(1).max(100).parse(str(form, "userId"));
+    const active = str(form, "active") === "1";
+    const target = await setTeamLoginActive(user, userId, active);
+    return withQuery(
+      withQuery(back, "saved", active ? "login_on" : "login_off"),
+      "login",
+      target.name.slice(0, 120),
+    );
+  });
+}
+
+/** Trazer de volta para a equipe quem saiu (Excluir acesso). Só o administrador. */
+export async function reactivateTeamMemberAction(form: FormData) {
+  const user = await requireUser();
+  const back = teamBackOf(form);
+  await run(back, async () => {
+    const userId = z.string().min(1).max(100).parse(str(form, "userId"));
+    const target = await reactivateTeamMember(user, userId);
+    return withQuery(
+      withQuery(back, "saved", "reactivated"),
+      "login",
+      target.name.slice(0, 120),
+    );
   });
 }

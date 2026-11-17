@@ -14,6 +14,8 @@ import {
 } from "@/lib/team-hierarchy";
 import { Alert, Badge } from "@/components/ui";
 import { SidePanel } from "@/components/side-panel";
+import { SubmitButton } from "@/components/submit-button";
+import { reactivateTeamMemberAction } from "../../actions/access-state";
 
 /*
  * Painéis da Equipe Interna (dono, 17/11/2026; docs/EQUIPE_ACESSOS.md, etapa
@@ -585,6 +587,84 @@ export function ManagerPanel({
             </p>
           )}
         </Section>
+      </div>
+    </SidePanel>
+  );
+}
+
+/* --------------------------- Quem saiu --------------------------- */
+
+/**
+ * Quem saiu da equipe (Excluir acesso), com "Reativar" (D8 e R7; só o
+ * administrador): volta com as funções e as telas de antes.
+ */
+export function FormerPanel({
+  t,
+  former,
+  links,
+  admin,
+  selfHref,
+  notice,
+}: {
+  t: Translate;
+  former: User[];
+  links: PanelLinks;
+  admin: boolean;
+  /** O endereço deste painel (a volta do Reativar). */
+  selfHref: string;
+  notice: string | null;
+}) {
+  return (
+    <SidePanel
+      title={t("team.former.title")}
+      subtitle={t("internalTeam.nav")}
+      closeHref={links.closeHref}
+      closeLabel={t("internalTeam.panel.close")}
+      data-team-panel="former"
+    >
+      <div className="space-y-3">
+        {notice ? (
+          <div data-team-former-saved>
+            <Alert tone="success">{notice}</Alert>
+          </div>
+        ) : null}
+        <p className="text-xs text-zinc-500">{t("team.former.hint")}</p>
+        {former.length ? (
+          <ul className="divide-y divide-zinc-100 rounded-lg border border-zinc-200">
+            {former.map((m) => (
+              <li
+                key={m.id}
+                className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
+                data-team-former={m.id}
+              >
+                <span>
+                  <span className="font-medium text-zinc-900">{m.name}</span>{" "}
+                  <span className="text-xs text-zinc-500">
+                    · {loginLabel(m.email)}
+                  </span>
+                </span>
+                {admin ? (
+                  <form action={reactivateTeamMemberAction}>
+                    <input type="hidden" name="userId" value={m.id} />
+                    <input type="hidden" name="back" value={selfHref} />
+                    <SubmitButton
+                      variant="secondary"
+                      className="px-2.5 py-1 text-xs"
+                      data-team-former-reactivate={m.id}
+                    >
+                      {t("team.former.reactivate")}
+                    </SubmitButton>
+                  </form>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-zinc-500">{t("team.former.none")}</p>
+        )}
+        {!admin ? (
+          <p className="text-xs text-zinc-500">{t("team.former.adminOnly")}</p>
+        ) : null}
       </div>
     </SidePanel>
   );

@@ -1104,6 +1104,15 @@ export async function savePartyAction(form: FormData) {
     });
     await audit(user, "party.create", "party", party.id, parsed.name);
     await syncSoon(user, "party", party.id);
+    // O rascunho do Novo parceiro (D11) some com o cadastro salvo.
+    {
+      const { clearFormDraft, isFormDraftKey, partyDraftKey } =
+        await import("@/lib/services/form-drafts");
+      const sent = str(form, "draftForm");
+      await clearFormDraft(user, partyDraftKey(resolved.type));
+      if (isFormDraftKey(sent) && sent !== partyDraftKey(resolved.type))
+        await clearFormDraft(user, sent);
+    }
     // Cadastro novo: abre já no quadro de acesso, para gerar o login.
     return resolved.type === "customer"
       ? `/app/customers/${party.id}/edit#access`

@@ -186,6 +186,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "loginSuspended",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
         }
       ],
       "indexes": [
@@ -7106,6 +7113,53 @@
             "userId"
           ],
           "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "form_drafts",
+      "databaseId": "willmix",
+      "name": "Rascunhos de formulários",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "userId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "form",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "payload",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_user_form",
+          "type": "unique",
+          "columns": [
+            "userId",
+            "form"
+          ],
+          "orders": [
+            "ASC",
             "ASC"
           ]
         }
