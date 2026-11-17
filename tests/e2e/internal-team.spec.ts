@@ -316,3 +316,59 @@ test("Cargo sugere funções e nível: aplicar só preenche, e vale ao salvar", 
     page.locator('[data-team-panel="position"] [data-team-panel-suggestion]'),
   ).toHaveText("Funções: Comprador · Nível: Coordenador");
 });
+
+test("Painel de SLA: cargo, função e área de cada pessoa; o gestor vê as mudanças da equipe; o administrador, a saúde da árvore", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const tag = Date.now().toString(36).toUpperCase();
+  await login(page, "admin@wellmix.com");
+  const bossEmail = `gestora-${tag.toLowerCase()}@wellmix.com`;
+  const bossId = await createTeamLogin(page, `Gestora ${tag}`, bossEmail, [
+    "planner",
+  ]);
+  const subId = await createTeamLogin(
+    page,
+    `Sub ${tag}`,
+    `sub-${tag.toLowerCase()}@wellmix.com`,
+    ["designer"],
+  );
+  await page.goto(`/app/team/${bossId}`);
+  await page.locator("[data-team-level]").selectOption("analyst");
+  await page.locator("[data-team-save]").click();
+  await expect(page.locator("[data-team-saved]")).toBeVisible();
+  // A Sub responde à Gestora, com nível maior (aviso de nível, D5).
+  await page.goto(`/app/team/${subId}`);
+  await page.locator("[data-team-level]").selectOption("director");
+  await page
+    .locator("[data-team-manager]")
+    .selectOption({ label: `Gestora ${tag}` });
+  await page.locator("[data-team-save]").click();
+  await expect(page.locator("[data-team-saved]")).toBeVisible();
+
+  // O administrador: a saúde da árvore com o aviso e o atalho para corrigir.
+  await page.goto("/app/sla?u=all");
+  const issue = page.locator(
+    `[data-sla-hierarchy] [data-sla-issue="level"][data-sla-issue-member="${subId}"]`,
+  );
+  await expect(issue).toBeVisible();
+  await expect(issue.getByRole("link")).toHaveAttribute(
+    "href",
+    `/app/team?panel=person&id=${subId}`,
+  );
+
+  // A Gestora: a equipe com a função de cada um e a mudança de acesso da Sub;
+  // sem o relatório da árvore (só o administrador).
+  await login(page, bossEmail);
+  await page.goto("/app/sla");
+  await expect(page.locator(`[data-sla-functions="${subId}"]`)).toHaveText(
+    "Designer",
+  );
+  await expect(page.locator(`[data-sla-area="${subId}"]`)).toHaveText("—");
+  await expect(
+    page
+      .locator(`[data-sla-access-changes] [data-sla-access-change="${subId}"]`)
+      .first(),
+  ).toBeVisible();
+  await expect(page.locator("[data-sla-hierarchy]")).toHaveCount(0);
+});

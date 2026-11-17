@@ -75,3 +75,45 @@ export function levelInversions<N extends HierarchyNode>(
   }
   return out;
 }
+
+/** Problema na árvore do "Responde a" (relatório do administrador, R9). */
+export type HierarchyIssue =
+  | { kind: "self"; memberId: string }
+  | { kind: "missing"; memberId: string; managerId: string }
+  | { kind: "inactive"; memberId: string; managerId: string }
+  | { kind: "cycle"; memberId: string }
+  | { kind: "level"; memberId: string; managerId: string };
+
+/**
+ * Referências inválidas e ciclos na árvore da equipe ativa (R9): responde a
+ * si mesmo, a quem não existe, a quem saiu (login desativado) ou faz parte de
+ * um ciclo; e o aviso de gestor com nível menor que o do subordinado (D5).
+ * `all` traz também os logins desativados, para separar "saiu" de "não
+ * existe". Uma entrada por pessoa e problema.
+ */
+export function hierarchyIssues<N extends HierarchyNode>(
+  active: readonly N[],
+  all: readonly HierarchyNode[],
+): HierarchyIssue[] {
+  const activeIds = new Set(active.map((n) => n.id));
+  const allIds = new Set(all.map((n) => n.id));
+  const out: HierarchyIssue[] = [];
+  for (const m of active) {
+    const manager = m.managerUserId;
+    if (!manager) continue;
+    if (manager === m.id) out.push({ kind: "self", memberId: m.id });
+    else if (!allIds.has(manager))
+      out.push({ kind: "missing", memberId: m.id, managerId: manager });
+    else if (!activeIds.has(manager))
+      out.push({ kind: "inactive", memberId: m.id, managerId: manager });
+    else if (managerChain(m.id, active).cycle) {
+      // Só quem está dentro do ciclo (a cadeia volta para a própria pessoa).
+      const chain = managerChain(m.id, active).chain;
+      if (chain.length && chain[chain.length - 1].managerUserId === m.id)
+        out.push({ kind: "cycle", memberId: m.id });
+    }
+  }
+  for (const { manager, member } of levelInversions(active))
+    out.push({ kind: "level", memberId: member.id, managerId: manager.id });
+  return out;
+}

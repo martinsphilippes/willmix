@@ -233,6 +233,7 @@ export async function setFunctionPermissions(
     }`,
     before,
     {
+      key,
       screens: def.screens,
       baseOff: def.baseOff,
       actions: def.actions,

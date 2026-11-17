@@ -6,6 +6,28 @@
  * função" e "Por tela".
  */
 export const pt = {
+  "sla.col.position": "Cargo",
+  "sla.col.functions": "Função",
+  "sla.col.area": "Área",
+  "sla.health.title": "Saúde da hierarquia",
+  "sla.health.hint":
+    'A árvore do "Responde a" com problema (só o administrador vê). Corrija pelo cadastro da pessoa.',
+  "sla.health.self": "{name} responde a si mesmo.",
+  "sla.health.missing": "{name} responde a alguém que não existe no portal.",
+  "sla.health.inactive":
+    "{name} responde a {manager}, que saiu (login desativado).",
+  "sla.health.cycle":
+    '{name} está num ciclo: a cadeia do "Responde a" volta para a própria pessoa.',
+  "sla.health.level": "{name} responde a {manager}, de nível menor (só aviso).",
+  "sla.health.fix": "Corrigir",
+  "sla.access.title": "Mudanças de acesso na equipe",
+  "sla.access.hint":
+    'Os últimos 30 dias, só de quem está abaixo de você no "Responde a". Só consulta: quem grava acessos é o administrador.',
+  "sla.access.hintAdmin":
+    "Os últimos 30 dias, de toda a equipe (o Gestor vê só a equipe dele).",
+  "sla.access.member":
+    "O cadastro mudou (funções, telas, cargo, área ou gestor). Detalhes na Auditoria.",
+  "sla.access.function": "A função {name} mudou:",
   "access.positionSuggestion": "Sugestão do cargo: {functions} · Nível {level}",
   "access.positionSuggestion.apply": "Aplicar sugestão",
   "access.positionSuggestion.note":
@@ -165,6 +187,30 @@ export const pt = {
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
+  "sla.col.position": "Job title",
+  "sla.col.functions": "Function",
+  "sla.col.area": "Area",
+  "sla.health.title": "Hierarchy health",
+  "sla.health.hint":
+    'Problems in the "Reports to" tree (only the admin sees this). Fix them on the person\'s record.',
+  "sla.health.self": "{name} reports to themselves.",
+  "sla.health.missing":
+    "{name} reports to someone who does not exist in the portal.",
+  "sla.health.inactive":
+    "{name} reports to {manager}, who left (login disabled).",
+  "sla.health.cycle":
+    '{name} is in a cycle: the "Reports to" chain comes back to them.',
+  "sla.health.level":
+    "{name} reports to {manager}, who has a lower level (warning only).",
+  "sla.health.fix": "Fix",
+  "sla.access.title": "Access changes in the team",
+  "sla.access.hint":
+    'The last 30 days, only for people below you in "Reports to". View only: the admin saves access.',
+  "sla.access.hintAdmin":
+    "The last 30 days, for the whole team (a manager sees only their team).",
+  "sla.access.member":
+    "The record changed (functions, screens, job title, area or manager). Details in the Audit log.",
+  "sla.access.function": "The function {name} changed:",
   "access.positionSuggestion":
     "Job title suggests: {functions} · Level {level}",
   "access.positionSuggestion.apply": "Apply suggestion",
@@ -326,6 +372,25 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "sla.col.position": "职位",
+  "sla.col.functions": "职能",
+  "sla.col.area": "部门",
+  "sla.health.title": "层级健康状况",
+  "sla.health.hint":
+    "“汇报给”树中存在的问题（仅管理员可见）。请在人员档案中修正。",
+  "sla.health.self": "{name} 汇报给自己。",
+  "sla.health.missing": "{name} 汇报给门户中不存在的人。",
+  "sla.health.inactive": "{name} 汇报给已离开的 {manager}（登录已停用）。",
+  "sla.health.cycle": "{name} 处于循环中：“汇报给”链又回到了此人。",
+  "sla.health.level": "{name} 汇报给级别更低的 {manager}（仅提示）。",
+  "sla.health.fix": "修正",
+  "sla.access.title": "团队的权限变更",
+  "sla.access.hint":
+    "最近 30 天，仅限在“汇报给”中位于您下级的人员。仅供查看：权限由管理员保存。",
+  "sla.access.hintAdmin": "最近 30 天，整个团队（上级只能看到自己的团队）。",
+  "sla.access.member":
+    "档案已变更（职能、页面、职位、部门或上级）。详情见审计日志。",
+  "sla.access.function": "职能 {name} 已变更：",
   "access.positionSuggestion": "职位建议：{functions} · 级别 {level}",
   "access.positionSuggestion.apply": "应用建议",
   "access.positionSuggestion.note":

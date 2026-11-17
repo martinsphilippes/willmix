@@ -33,6 +33,12 @@ import {
   type SlaPerson,
 } from "@/lib/services/sla-panel";
 import { milestoneTitle, type MilestoneKey } from "@/lib/milestones";
+import { listTeamAreas } from "@/lib/services/team-areas";
+import { listTeamPositions } from "@/lib/services/team-positions";
+import { loadFunctionDefs } from "@/lib/services/team-functions";
+import { functionLabel } from "@/lib/auth/function-access";
+import { SCREEN_LABEL, isScreen } from "@/lib/auth/screens";
+import type { HierarchyIssue } from "@/lib/team-hierarchy";
 
 /*
  * Painel de SLA (docs/SLA_PANEL.md): o que cada operador deve, pelo prazo, na
@@ -362,14 +368,78 @@ function StagesTable({
   );
 }
 
+/** Saúde da árvore do "Responde a" (R9): só o administrador. */
+function HierarchyHealth({
+  t,
+  issues,
+  nameOf,
+}: {
+  t: Translate;
+  issues: HierarchyIssue[];
+  nameOf: (id: string) => string;
+}) {
+  return (
+    <div data-sla-hierarchy={String(issues.length)}>
+      <Card title={t("sla.health.title")} className="mb-4">
+        <p className="mb-2 text-xs text-zinc-500">{t("sla.health.hint")}</p>
+        <ul className="space-y-1.5 text-sm">
+          {issues.map((issue) => (
+            <li
+              key={`${issue.kind}:${issue.memberId}`}
+              className="flex flex-wrap items-baseline justify-between gap-2"
+              data-sla-issue={issue.kind}
+              data-sla-issue-member={issue.memberId}
+            >
+              <span
+                className={
+                  issue.kind === "level" ? "text-amber-800" : "text-red-700"
+                }
+              >
+                {t(`sla.health.${issue.kind}` as DictionaryKey, {
+                  name: nameOf(issue.memberId),
+                  manager: "managerId" in issue ? nameOf(issue.managerId) : "",
+                })}
+              </span>
+              <Link
+                href={`/app/team?panel=person&id=${encodeURIComponent(issue.memberId)}`}
+                className="text-xs font-medium text-brand-700 underline"
+              >
+                {t("sla.health.fix")}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
 export default async function SlaPage({ searchParams }: PageProps<"/app/sla">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "sla");
   const t = await getT();
   const { u, show: showParam } = await searchParams;
-  const board = await slaBoardFor(user, typeof u === "string" ? u : null);
+  const [board, positions, areas, defs] = await Promise.all([
+    slaBoardFor(user, typeof u === "string" ? u : null),
+    listTeamPositions(),
+    listTeamAreas(),
+    loadFunctionDefs(),
+  ]);
   const admin = isAdmin(user);
+  // Cargo, área e funções de cada pessoa (R9), pelos cadastros.
+  const positionName = (id: string | null) =>
+    (id && positions.find((p) => p.id === id)?.name) || "—";
+  const areaName = (id: string | null) =>
+    (id && areas.find((a) => a.id === id)?.name) || "—";
+  const fnLabel = (key: string) =>
+    functionLabel(key, defs, (k) => t(k as DictionaryKey));
+  const activeFn = new Set(defs.filter((d) => !d.archived).map((d) => d.key));
+  const functionsText = (keys: string[]) =>
+    keys
+      .filter((k) => activeFn.has(k))
+      .map(fnLabel)
+      .join(", ") || "—";
   const show: Show = (SHOW as readonly string[]).includes(
     typeof showParam === "string" ? showParam : "",
   )
@@ -465,7 +535,10 @@ export default async function SlaPage({ searchParams }: PageProps<"/app/sla">) {
             <thead>
               <tr>
                 <Th>{t("sla.col.person")}</Th>
+                <Th>{t("sla.col.position")}</Th>
                 <Th>{t("sla.col.level")}</Th>
+                <Th>{t("sla.col.functions")}</Th>
+                <Th>{t("sla.col.area")}</Th>
                 <Th>{t("sla.col.customers")}</Th>
                 <Th className="text-right">{t("sla.col.overdue")}</Th>
                 <Th className="text-right">{t("sla.col.today")}</Th>
@@ -494,10 +567,19 @@ export default async function SlaPage({ searchParams }: PageProps<"/app/sla">) {
                       {p.id === UNASSIGNED ? t("sla.unassigned") : p.name}
                     </Link>
                   </Td>
+                  <Td className="text-zinc-600" data-sla-position={p.id}>
+                    {p.id === UNASSIGNED ? "—" : positionName(p.positionId)}
+                  </Td>
                   <Td className="text-zinc-600">
                     {p.jobLevel
                       ? t(`level.${p.jobLevel}` as DictionaryKey)
                       : "—"}
+                  </Td>
+                  <Td className="text-zinc-600" data-sla-functions={p.id}>
+                    {functionsText(p.functions)}
+                  </Td>
+                  <Td className="text-zinc-600" data-sla-area={p.id}>
+                    {p.id === UNASSIGNED ? "—" : areaName(p.areaId)}
                   </Td>
                   <Td className="text-zinc-600">
                     {p.division
@@ -546,6 +628,91 @@ export default async function SlaPage({ searchParams }: PageProps<"/app/sla">) {
             ) : null}
           </div>
         </Card>
+      ) : null}
+
+      {admin && board.issues.length ? (
+        <HierarchyHealth
+          t={t}
+          issues={board.issues}
+          nameOf={(id) => board.people.find((p) => p.id === id)?.name ?? id}
+        />
+      ) : null}
+      {board.manages && board.accessChanges.length ? (
+        <div data-sla-access-changes={String(board.accessChanges.length)}>
+          <Card title={t("sla.access.title")} className="mb-4">
+            <p className="mb-2 text-xs text-zinc-500">
+              {admin ? t("sla.access.hintAdmin") : t("sla.access.hint")}
+            </p>
+            <ul className="divide-y divide-zinc-100 text-sm">
+              {board.accessChanges.map((c) => {
+                const screens = (keys: string[]) =>
+                  keys
+                    .filter(isScreen)
+                    .map((k) => t(SCREEN_LABEL[k]))
+                    .join(", ");
+                const actions = (keys: string[]) =>
+                  keys.map((k) => t(`action.${k}` as DictionaryKey)).join(", ");
+                return (
+                  <li
+                    key={c.id}
+                    className="py-2"
+                    data-sla-access-change={c.personId}
+                  >
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="font-medium text-zinc-900">
+                        {c.personName}
+                      </span>
+                      <span className="text-xs text-zinc-500">
+                        {formatDate(c.at, t)} · {c.byName}
+                      </span>
+                    </div>
+                    {c.kind === "member" ? (
+                      <p className="text-xs text-zinc-600">
+                        {t("sla.access.member")}
+                      </p>
+                    ) : (
+                      <div className="space-y-0.5 text-xs">
+                        <p className="text-zinc-600">
+                          {t("sla.access.function", {
+                            name: c.fnKey ? fnLabel(c.fnKey) : "—",
+                          })}
+                        </p>
+                        {c.gainedScreens.length ? (
+                          <p className="text-emerald-800">
+                            {t("fn.impact.gainScreens", {
+                              list: screens(c.gainedScreens),
+                            })}
+                          </p>
+                        ) : null}
+                        {c.lostScreens.length ? (
+                          <p className="text-red-700">
+                            {t("fn.impact.loseScreens", {
+                              list: screens(c.lostScreens),
+                            })}
+                          </p>
+                        ) : null}
+                        {c.gainedActions.length ? (
+                          <p className="text-emerald-800">
+                            {t("fn.impact.gainActions", {
+                              list: actions(c.gainedActions),
+                            })}
+                          </p>
+                        ) : null}
+                        {c.lostActions.length ? (
+                          <p className="text-red-700">
+                            {t("fn.impact.loseActions", {
+                              list: actions(c.lostActions),
+                            })}
+                          </p>
+                        ) : null}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+        </div>
       ) : null}
 
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
