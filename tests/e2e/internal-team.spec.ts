@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createTeamLogin, grantTeamScreen, login } from "./helpers";
+import { PASSWORD, createTeamLogin, grantTeamScreen, login } from "./helpers";
 
 /*
  * Equipe Interna (dono, 17/11/2026; docs/EQUIPE_ACESSOS.md, etapa 5): a
@@ -371,4 +371,82 @@ test("Painel de SLA: cargo, função e área de cada pessoa; o gestor vê as mud
       .first(),
   ).toBeVisible();
   await expect(page.locator("[data-sla-hierarchy]")).toHaveCount(0);
+});
+
+test("Login da equipe: suspender e reativar sem tirar da equipe; quem saiu volta com Reativar", async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(180_000);
+  const tag = Date.now().toString(36).toUpperCase();
+  await login(page, "admin@wellmix.com");
+  const pauseEmail = `pausa-${tag.toLowerCase()}@wellmix.com`;
+  const pauseId = await createTeamLogin(page, `Pausa ${tag}`, pauseEmail, [
+    "planner",
+  ]);
+  const leftId = await createTeamLogin(
+    page,
+    `Saiu ${tag}`,
+    `saiu-${tag.toLowerCase()}@wellmix.com`,
+    ["planner"],
+  );
+  const other = await browser.newContext({
+    baseURL: test.info().project.use.baseURL,
+  });
+  const person = await other.newPage();
+  const tryLogin = async () => {
+    await person.context().clearCookies();
+    await person.goto("/login");
+    await person.getByLabel(/e-mail|email|邮箱/i).fill(pauseEmail);
+    await person.getByLabel(/senha|password|密码/i).fill(PASSWORD);
+    await person.getByRole("button", { name: /entrar|sign in|登录/i }).click();
+  };
+
+  // Suspender o login (com a confirmação): a pessoa não entra, mas continua
+  // na lista da equipe com o selo.
+  await page.goto(`/app/team/${pauseId}`);
+  await expect(page.locator("[data-team-login]")).toHaveAttribute(
+    "data-team-login",
+    "active",
+  );
+  page.once("dialog", (d) => void d.accept());
+  await page.locator('[data-team-login-toggle="off"]').click();
+  await page.waitForURL(/saved=login_off/);
+  await expect(page.locator("[data-team-login]")).toHaveAttribute(
+    "data-team-login",
+    "suspended",
+  );
+  await page.goto(`/app/team?q=${tag}`);
+  await expect(
+    page.locator(`[data-team-login-suspended="${pauseId}"]`),
+  ).toBeVisible();
+  await tryLogin();
+  await expect(person.locator("[data-login-error]")).toContainText(
+    "desativado",
+  );
+
+  // Reativar: entra de novo.
+  await page.goto(`/app/team/${pauseId}`);
+  await page.locator('[data-team-login-toggle="on"]').click();
+  await page.waitForURL(/saved=login_on/);
+  await tryLogin();
+  await person.waitForURL(/\/app/);
+  await other.close();
+
+  // Excluir acesso e, depois, Reativar pelo painel "Quem saiu da equipe".
+  await page.goto(`/app/team/${leftId}`);
+  await page.locator("[data-team-delete-open]").click();
+  await page.locator("[data-team-delete-confirm]").click();
+  await page.waitForURL(/saved=deleted/);
+  await page.goto(`/app/team?q=${tag}`);
+  await expect(page.locator(`tr[data-team-member="${leftId}"]`)).toHaveCount(0);
+  await page.locator("[data-team-former-open]").click();
+  const former = page.locator('[data-team-panel="former"]');
+  await former.locator(`[data-team-former-reactivate="${leftId}"]`).click();
+  await page.waitForURL(/saved=reactivated/);
+  await expect(former.locator("[data-team-former-saved]")).toContainText(
+    `Saiu ${tag}`,
+  );
+  await page.keyboard.press("Escape");
+  await expect(page.locator(`tr[data-team-member="${leftId}"]`)).toBeVisible();
 });

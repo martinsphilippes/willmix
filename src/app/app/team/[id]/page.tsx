@@ -9,8 +9,9 @@ import { listTeamAreas } from "@/lib/services/team-areas";
 import { listTeamPositions } from "@/lib/services/team-positions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { Alert, Button, PageHeader, TextLink } from "@/components/ui";
+import { Alert, Badge, Button, PageHeader, TextLink } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { setTeamLoginActiveAction } from "../../actions/access-state";
 import { QuickDialog } from "@/components/quick-dialog";
 import { teamMemberRemoval, wellmixTeam } from "@/lib/services/team";
 import { removeTeamMemberAction } from "../../actions/team";
@@ -45,7 +46,7 @@ export default async function TeamMemberPage({
   requireScreen(user, "team");
   const t = await getT();
   const { id } = await params;
-  const { error, created } = await searchParams;
+  const { error, created, saved, login } = await searchParams;
   const [team, defs, areas, positions] = await Promise.all([
     wellmixTeam(),
     loadFunctionDefs(),
@@ -205,6 +206,72 @@ export default async function TeamMemberPage({
       {errorText ? (
         <div className="mb-3">
           <Alert tone="danger">{errorText}</Alert>
+        </div>
+      ) : null}
+      {saved === "login_off" || saved === "login_on" ? (
+        <div className="mb-3" data-team-login-saved={saved}>
+          <Alert tone="success">
+            {t(
+              saved === "login_off"
+                ? "team.login.saved.off"
+                : "team.login.saved.on",
+              {
+                name:
+                  typeof login === "string" ? login.slice(0, 120) : member.name,
+              },
+            )}
+          </Alert>
+        </div>
+      ) : null}
+      {/* Login da pessoa (D8): suspender e reativar sem tirar da equipe. Só
+          o administrador; o próprio login, não. */}
+      {isAdmin(user) ? (
+        <div
+          className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+          data-team-login={member.loginSuspended ? "suspended" : "active"}
+        >
+          <span className="font-semibold text-zinc-900">
+            {t("team.login.title")}
+          </span>
+          <Badge tone={member.loginSuspended ? "warning" : "success"}>
+            {member.loginSuspended
+              ? t("team.login.suspended")
+              : t("team.login.active")}
+          </Badge>
+          {member.id === user.id ? (
+            <span className="text-xs text-zinc-500" data-team-login-self>
+              {t("team.login.self")}
+            </span>
+          ) : (
+            <form action={setTeamLoginActiveAction}>
+              <input type="hidden" name="userId" value={member.id} />
+              <input
+                type="hidden"
+                name="active"
+                value={member.loginSuspended ? "1" : "0"}
+              />
+              <input
+                type="hidden"
+                name="back"
+                value={`/app/team/${member.id}`}
+              />
+              <SubmitButton
+                variant="secondary"
+                className="px-2.5 py-1 text-xs"
+                confirmText={
+                  member.loginSuspended ? undefined : t("team.login.confirmOff")
+                }
+                data-team-login-toggle={member.loginSuspended ? "on" : "off"}
+              >
+                {member.loginSuspended
+                  ? t("team.login.reactivate")
+                  : t("team.login.suspend")}
+              </SubmitButton>
+            </form>
+          )}
+          <span className="basis-full text-xs text-zinc-500">
+            {t("team.login.hint")}
+          </span>
         </div>
       ) : null}
       {typeof created === "string" && created ? (

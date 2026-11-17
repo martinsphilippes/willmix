@@ -752,6 +752,14 @@ export interface User extends BaseRow {
    */
   mustChangePassword?: boolean | null;
   /**
+   * Login suspenso (equipe da Wellmix; dono, 17/11/2026;
+   * docs/EQUIPE_ACESSOS.md, D8): a pessoa não entra, mas continua na equipe
+   * (árvore do "Responde a", Painel de SLA e distribuição). Diferente de
+   * `active` falso, que é ter saído da equipe ("Excluir acesso"). Ausente ou
+   * falso: o login entra.
+   */
+  loginSuspended?: boolean | null;
+  /**
    * Telas liberadas uma a uma pelo administrador (docs/ACCESS.md). Nula ou
    * ausente: o login abre o padrão das funções. Guarda chaves de
    * src/lib/auth/screens.ts (validadas ao salvar e ao ler).
@@ -3878,6 +3886,7 @@ export const TABLES: Record<TableName, TableDef> = {
       screens: json(),
       mustChangePassword: bool(),
       screenExceptions: json(),
+      loginSuspended: bool(),
     },
     indexes: [
       { key: "email_unique", type: "unique", columns: ["email"] },

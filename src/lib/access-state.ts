@@ -50,16 +50,21 @@ export function parseAccessRules(value: unknown): AccessRules {
 
 /**
  * Por que o login não entra (nulo: entra, se as permissões deixarem).
- * - login desativado: sempre bloqueia;
+ * - login desativado (ou suspenso, na equipe da Wellmix): sempre bloqueia;
  * - cadastro inativo: bloqueia só com a regra ligada e só login de parceiro
  *   (com cadastro); cadastro que não foi achado não bloqueia (como antes).
  */
 export function accessBlockOf(
-  user: { active: boolean; partyId: string | null },
+  user: {
+    active: boolean;
+    partyId: string | null;
+    /** Login da equipe suspenso (D8): não entra, mas segue na equipe. */
+    loginSuspended?: boolean | null;
+  },
   party: { active: boolean } | null,
   rules: Pick<AccessRules, "requireActiveParty">,
 ): AccessBlock | null {
-  const loginOff = !user.active;
+  const loginOff = !user.active || user.loginSuspended === true;
   const partyOff =
     rules.requireActiveParty && !!user.partyId && !!party && !party.active;
   if (loginOff && partyOff) return "blocked_both";

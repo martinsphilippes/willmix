@@ -6,6 +6,27 @@
  * função" e "Por tela".
  */
 export const pt = {
+  "team.login.title": "Login",
+  "team.login.active": "Login ativo",
+  "team.login.suspended": "Login suspenso",
+  "team.login.suspend": "Suspender login",
+  "team.login.reactivate": "Reativar login",
+  "team.login.confirmOff":
+    "Suspender o login? A pessoa não entra até alguém reativar, mas continua na equipe (Responde a, Painel de SLA e distribuição).",
+  "team.login.self": "Você não pode suspender o próprio login.",
+  "team.login.saved.off":
+    "Login de {name} suspenso. A pessoa continua na equipe.",
+  "team.login.saved.on": "Login de {name} reativado.",
+  "team.login.hint":
+    "Suspender o login não tira a pessoa da equipe; Excluir acesso, sim.",
+  "team.former.open": "Quem saiu da equipe ({n})",
+  "team.former.title": "Quem saiu da equipe",
+  "team.former.hint":
+    "Reativar traz a pessoa de volta com as funções e as telas de antes; o gestor de antes volta se ainda está na equipe.",
+  "team.former.reactivate": "Reativar",
+  "team.former.none": "Ninguém saiu da equipe.",
+  "team.former.saved": "{name} voltou para a equipe.",
+  "team.former.adminOnly": "Só o administrador reativa.",
   "sla.col.position": "Cargo",
   "sla.col.functions": "Função",
   "sla.col.area": "Área",
@@ -187,6 +208,27 @@ export const pt = {
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
+  "team.login.title": "Login",
+  "team.login.active": "Login active",
+  "team.login.suspended": "Login suspended",
+  "team.login.suspend": "Suspend login",
+  "team.login.reactivate": "Reactivate login",
+  "team.login.confirmOff":
+    "Suspend the login? The person cannot sign in until someone reactivates it, but stays on the team (Reports to, SLA panel and distribution).",
+  "team.login.self": "You cannot suspend your own login.",
+  "team.login.saved.off":
+    "{name}'s login suspended. The person stays on the team.",
+  "team.login.saved.on": "{name}'s login reactivated.",
+  "team.login.hint":
+    "Suspending the login keeps the person on the team; Remove access does not.",
+  "team.former.open": "Who left the team ({n})",
+  "team.former.title": "Who left the team",
+  "team.former.hint":
+    "Reactivating brings the person back with the same functions and screens; the previous manager comes back if still on the team.",
+  "team.former.reactivate": "Reactivate",
+  "team.former.none": "No one has left the team.",
+  "team.former.saved": "{name} is back on the team.",
+  "team.former.adminOnly": "Only the admin reactivates.",
   "sla.col.position": "Job title",
   "sla.col.functions": "Function",
   "sla.col.area": "Area",
@@ -372,6 +414,25 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "team.login.title": "登录",
+  "team.login.active": "登录已启用",
+  "team.login.suspended": "登录已暂停",
+  "team.login.suspend": "暂停登录",
+  "team.login.reactivate": "重新启用登录",
+  "team.login.confirmOff":
+    "暂停此登录？在重新启用前此人无法登录，但仍留在团队中（汇报关系、SLA 面板和分配）。",
+  "team.login.self": "您不能暂停自己的登录。",
+  "team.login.saved.off": "{name} 的登录已暂停。此人仍在团队中。",
+  "team.login.saved.on": "{name} 的登录已重新启用。",
+  "team.login.hint": "暂停登录不会将此人移出团队；删除权限则会。",
+  "team.former.open": "已离开团队的人员（{n}）",
+  "team.former.title": "已离开团队的人员",
+  "team.former.hint":
+    "重新启用会让此人带着原来的职能和页面回到团队；原上级若仍在团队中则恢复。",
+  "team.former.reactivate": "重新启用",
+  "team.former.none": "没有人离开团队。",
+  "team.former.saved": "{name} 已回到团队。",
+  "team.former.adminOnly": "仅管理员可重新启用。",
   "sla.col.position": "职位",
   "sla.col.functions": "职能",
   "sla.col.area": "部门",

@@ -199,3 +199,72 @@ describe("regra cadastro e login ativos (ligada pelo administrador)", () => {
     await getStore().update("parties", login.partyId!, { active: true });
   });
 });
+
+describe("login da equipe da Wellmix (D8): suspender sem tirar da equipe, e reativar quem saiu", () => {
+  it("login suspenso não entra (motivo só com a senha certa), mas segue na equipe", async () => {
+    const { wellmixTeam } = await import("@/lib/services/team");
+    expect(await signInCode("operador@wellmix.com")).toBe("ok");
+    await access.setTeamLoginActive(admin, buyer.id, false);
+    expect(await signInCode("operador@wellmix.com")).toBe("login_inactive");
+    expect(await signInCode("operador@wellmix.com", "senha-errada-123")).toBe(
+      "invalid",
+    );
+    // Continua na equipe (árvore, SLA e distribuição leem daqui).
+    expect((await wellmixTeam()).some((u) => u.id === buyer.id)).toBe(true);
+    const [log] = await getStore().list("audit_log", {
+      filter: { entityId: buyer.id, action: "team.login_off" },
+    });
+    expect(log?.userId).toBe(admin.id);
+    await access.setTeamLoginActive(admin, buyer.id, true);
+    expect(await signInCode("operador@wellmix.com")).toBe("ok");
+  });
+
+  it("só o administrador; o próprio login não; parceiro não é da equipe", async () => {
+    await expect(
+      access.setTeamLoginActive(buyer, admin.id, false),
+    ).rejects.toThrow();
+    await expect(
+      access.setTeamLoginActive(admin, admin.id, false),
+    ).rejects.toThrow("self");
+    const supplier = await userOf("supplier.a@china.com");
+    await expect(
+      access.setTeamLoginActive(admin, supplier.id, false),
+    ).rejects.toThrow("not_found");
+  });
+
+  it("quem saiu volta para a equipe; o gestor de antes, só se ainda está", async () => {
+    const store = getStore();
+    const make = (email: string, name: string) =>
+      store.create("users", {
+        email,
+        name,
+        role: "operator",
+        partyId: null,
+        locale: "pt",
+        passwordHash: null,
+        active: true,
+        importerId: null,
+      });
+    const boss = await make("chefe.saiu@wellmix.com", "Chefe Saiu");
+    const person = await make("volta@wellmix.com", "Pessoa Volta");
+    await store.update("users", person.id, {
+      managerUserId: boss.id,
+      active: false,
+    });
+    await store.update("users", boss.id, { active: false });
+    expect((await access.formerTeamMembers()).map((u) => u.id)).toContain(
+      person.id,
+    );
+    await expect(
+      access.reactivateTeamMember(buyer, person.id),
+    ).rejects.toThrow();
+    const back = await access.reactivateTeamMember(admin, person.id);
+    expect(back.active).toBe(true);
+    // O gestor de antes saiu: volta sem gestor.
+    expect(back.managerUserId).toBeNull();
+    // Quem já está na equipe não "volta".
+    await expect(access.reactivateTeamMember(admin, person.id)).rejects.toThrow(
+      "not_found",
+    );
+  });
+});

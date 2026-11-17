@@ -20,17 +20,17 @@ Pedido do dono (16 e 17/11/2026): reorganizar o módulo "Equipe Acessos e Parcei
 
 ## 2. Etapas
 
-| Etapa | O que                                                                                                                    | Situação           |
-| ----- | ------------------------------------------------------------------------------------------------------------------------ | ------------------ |
-| 1     | Equipe Externa: colunas, filtros por coluna, busca, painel de logins, gerar login só do administrador (R5, R8)           | Entregue (seção 3) |
-| 2     | Estados de cadastro e login: desativar e reativar, entrada e sessão (R7)                                                 | Entregue (seção 4) |
-| 3     | Tipos e acessos: tipos, perfis e os modos "Por tipo ou perfil" e "Por tela" (R6)                                         | Entregue (seção 5) |
-| 4     | Clientes com telas próprias (R4)                                                                                         | Entregue (seção 6) |
-| 5a    | Equipe Interna: lista, atalhos e painéis pelo endereço, Gestão de telas (dois modos), "#" antigos, distribuição (R3, R4) | Entregue (seção 7) |
-| 5b    | Prévia de impacto antes de salvar uma regra, consulta do Gestor, Cargo que sugere Funções e Nível (R1, D2, D13)          | Entregue (seção 8) |
-| 5c    | Painel de SLA com Cargo, Nível, Função, Área e Divisão e a saúde da hierarquia (R9, D5)                                  | Entregue (seção 9) |
-| 5d    | Login da equipe interna separado de "estar na equipe", desativar e reativar (D8, R7)                                     | A fazer            |
-| 5e    | Rascunho do Novo parceiro no banco (D11)                                                                                 | A fazer            |
+| Etapa | O que                                                                                                                    | Situação            |
+| ----- | ------------------------------------------------------------------------------------------------------------------------ | ------------------- |
+| 1     | Equipe Externa: colunas, filtros por coluna, busca, painel de logins, gerar login só do administrador (R5, R8)           | Entregue (seção 3)  |
+| 2     | Estados de cadastro e login: desativar e reativar, entrada e sessão (R7)                                                 | Entregue (seção 4)  |
+| 3     | Tipos e acessos: tipos, perfis e os modos "Por tipo ou perfil" e "Por tela" (R6)                                         | Entregue (seção 5)  |
+| 4     | Clientes com telas próprias (R4)                                                                                         | Entregue (seção 6)  |
+| 5a    | Equipe Interna: lista, atalhos e painéis pelo endereço, Gestão de telas (dois modos), "#" antigos, distribuição (R3, R4) | Entregue (seção 7)  |
+| 5b    | Prévia de impacto antes de salvar uma regra, consulta do Gestor, Cargo que sugere Funções e Nível (R1, D2, D13)          | Entregue (seção 8)  |
+| 5c    | Painel de SLA com Cargo, Nível, Função, Área e Divisão e a saúde da hierarquia (R9, D5)                                  | Entregue (seção 9)  |
+| 5d    | Login da equipe interna separado de "estar na equipe", desativar e reativar (D8, R7)                                     | Entregue (seção 10) |
+| 5e    | Rascunho do Novo parceiro no banco (D11)                                                                                 | A fazer             |
 
 ## 3. Equipe Externa (etapa 1)
 
@@ -138,3 +138,19 @@ A área ficou com **duas telas**: **Equipe Interna** (`/app/team`, quem abre Equ
 - **Comportamento** (R9): trocar o gestor muda a árvore na próxima abertura e as pendências continuam com a pessoa; sem gestor, a pessoa é topo; pessoa desativada sai da árvore e quem respondia a ela aparece no relatório ("responde a quem saiu") até o administrador corrigir.
 - **Peças**: `src/lib/services/sla-panel.ts` (as informações de cada pessoa, `issues` e `accessChanges`), `src/app/app/sla/page.tsx` e os textos em `src/i18n/modules/internal-team.ts`. A Auditoria de `team.function_permissions` passou a guardar também a chave da função. Sem mudança no banco.
 - **Testes**: `tests/unit/team-list.test.ts` (o relatório: si mesmo, inexistente, quem saiu, ciclo e nível), `tests/unit/sla-panel.test.ts` (o administrador vê a saúde da árvore e o gestor não; as funções de cada pessoa; o gestor vê as mudanças da própria equipe; quem não tem equipe, nada) e `tests/e2e/internal-team.spec.ts` (o aviso de nível com o Corrigir para o administrador; para a Gestora, a função da Sub e a mudança de acesso, sem o relatório).
+
+## 10. Login da equipe separado de "estar na equipe" (etapa 5d)
+
+Na equipe da Wellmix, o **cadastro na equipe** (`users.active`) e o **login** (`users.loginSuspended`, campo novo) têm estados próprios (D8 e R7). Só entra quem está na equipe **e** com o login ativo; as telas e as ações seguem as permissões de sempre.
+
+| Na equipe | Login    | Entra? | Onde fica                                                              |
+| --------- | -------- | ------ | ---------------------------------------------------------------------- |
+| Sim       | Ativo    | Sim    | Na árvore do "Responde a", no Painel de SLA e na distribuição          |
+| Sim       | Suspenso | Não    | Continua na árvore, no SLA e na distribuição (férias, afastamento)     |
+| Saiu      | —        | Não    | Fora da árvore; as pendências foram redistribuídas no "Excluir acesso" |
+
+- **Suspender e reativar o login** (só o administrador; o próprio login, não): na página da pessoa (`/app/team/<id>`), o quadro Login com o estado e o botão, com a confirmação antes de suspender. A sessão aberta cai na próxima página; ao tentar entrar com a senha certa, a pessoa lê "Seu login está desativado. Fale com o administrador do portal." (com a errada, a resposta de sempre). Na lista, o selo **Login suspenso** ao lado do nome. Auditoria `team.login_off` e `team.login_on`.
+- **Quem saiu da equipe** (Excluir acesso): o link "Quem saiu da equipe (N)" na lista abre o painel com cada pessoa e **Reativar** (só o administrador): volta com as funções e as telas de antes; o gestor de antes só volta se ainda está na equipe (senão, sem gestor). Auditoria `team.member.reactivate`.
+- **Banco**: coluna nova `users.loginSuspended` (booleano; vazio = login ativo), só acrescentada. Publicar no Supabase logo depois do merge (docs/SUPABASE.md, "Publicar o esquema"). Antes de publicar, ler continua funcionando (a coluna vazia vale "ativo"); só suspender um login depende da coluna.
+- **Peças**: a regra em `src/lib/access-state.ts` (`accessBlockOf` com o login suspenso), os serviços em `src/lib/services/access-state.ts` (`setTeamLoginActive`, `reactivateTeamMember`, `formerTeamMembers`), as ações em `src/app/app/actions/access-state.ts`, a página da pessoa, a lista e o painel `FormerPanel` (`src/app/app/team/_components/team-panels.tsx`); textos em `src/i18n/modules/internal-team.ts`.
+- **Testes**: `tests/unit/access-state.test.ts` (login suspenso não entra e segue na equipe, o motivo só com a senha certa, só o administrador, o próprio login não, parceiro fora; quem saiu volta e o gestor de antes só se ainda está) e `tests/e2e/internal-team.spec.ts` (suspender com a confirmação, o selo na lista, a entrada recusada com o motivo, reativar e entrar; excluir e reativar pelo painel).
