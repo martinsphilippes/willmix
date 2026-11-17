@@ -1,9 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { ProductSpecField } from "@/components/product-spec-field";
-import { productSpecLabels, sameSpec } from "@/lib/product-spec";
-import { productNameText, translator } from "@/i18n";
-import { realName } from "@/lib/placeholder-name";
-import type { ComponentProps } from "react";
+import { productNameText } from "@/i18n";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { canSeePurchasePrice } from "@/lib/auth/function-access";
@@ -29,11 +25,9 @@ import {
 } from "@/lib/services/product-sheet";
 import { planSheet } from "@/lib/services/purchase-sheet-calc";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
-import { PantonePicker } from "@/components/pantone-picker";
 import { SheetSafety } from "@/components/sheet-safety";
-import { FormDraftGuard } from "@/components/form-draft-guard";
+import { ClearDraft, FormDraftGuard } from "@/components/form-draft-guard";
 import { ActionError } from "@/components/action-error";
-import { MAX_PANTONE_PER_SHEET } from "@/lib/pantone";
 import {
   ncmChipsView,
   ncmSuggestionsFor,
@@ -68,8 +62,6 @@ import {
   Input,
   LinkButton,
   PageHeader,
-  FieldRow,
-  FoldCard,
   Select,
   Table,
   Td,
@@ -82,7 +74,6 @@ import {
   linkClass,
   rowClass,
 } from "@/components/ui";
-import { CurrencySelect } from "@/components/currency-select";
 import { PhotoInput } from "@/components/photo-input";
 import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
 import {
@@ -100,6 +91,13 @@ import {
   visionError,
 } from "../_components/ai-section";
 import { CycleCard } from "../_components/cycle-card";
+import { ApprovalCard } from "../_components/approval-card";
+import {
+  NEW_PRODUCT_DRAFT_KEY,
+  NumberInput,
+  ProductFormCards,
+} from "../_components/product-form-cards";
+import { productApprovalView } from "@/lib/services/product-approval";
 import { entityLinkAccess } from "@/lib/services/entity-links";
 import { SuppliersCard } from "../_components/suppliers-card";
 import { VariantsCard } from "../_components/variants-card";
@@ -111,34 +109,12 @@ import { FoldMemory } from "@/components/fold-memory";
 import { missingFieldsView } from "@/components/missing-fields-view";
 import { productSuppliersView } from "@/lib/services/product-suppliers";
 import { unifiedProductNotes } from "@/lib/sheet-registration";
-import { MoneyInput } from "@/components/money-input";
-import { CartonSizeWarning, InnerQtyHints } from "@/components/carton-hints";
-import { cartonSizeTexts, innerQtyTexts } from "@/components/carton-texts";
 
-/* Campos maiores para uso no celular (fábrica/feira): py-2.5 em vez de py-2. */
 const sourceTone = {
   manual: "neutral",
   sourcing: "brand",
   import: "info",
 } as const;
-
-function NumberInput({
-  integer = false,
-  className,
-  ...props
-}: ComponentProps<"input"> & { integer?: boolean }) {
-  return (
-    <Input
-      type="number"
-      step={integer ? 1 : "any"}
-      min={0}
-      inputMode={integer ? "numeric" : "decimal"}
-      className={className}
-      dense
-      {...props}
-    />
-  );
-}
 
 /** Miniatura de foto do produto (download controlado por /api/files). */
 function Thumb({ photo, alt }: { photo: ProductPhoto; alt: string }) {
@@ -178,6 +154,7 @@ export default async function ProductSheetPage({
     ai: aiNotice,
     board,
     created,
+    approval: approvalDone,
   } = await searchParams;
   const sheet = await loadProductSheet(id);
   if (!sheet) notFound();
@@ -339,6 +316,15 @@ export default async function ProductSheetPage({
   })();
   const errorText =
     visionError(t, error) ?? sheetErrorText ?? catalogError(t, error);
+  // Produto novo aguardando a aprovação, ou recusado (docs/NEW_PRODUCT.md):
+  // o quadro da aprovação no alto e a caixa "Produto ativo" travada.
+  const approval = await productApprovalView(user, product);
+  const approvalNotice =
+    approvalDone === "approved" ||
+    approvalDone === "rejected" ||
+    approvalDone === "resubmitted"
+      ? approvalDone
+      : null;
 
   return (
     <>
@@ -373,25 +359,60 @@ export default async function ProductSheetPage({
             {!product.active ? (
               <Badge tone="warning">{t("common.no")}</Badge>
             ) : null}
+            {approval ? (
+              <span data-product-approval-badge={approval.status}>
+                <Badge
+                  tone={approval.status === "pending" ? "warning" : "danger"}
+                >
+                  {t(
+                    approval.status === "pending"
+                      ? "productApproval.badge.pending"
+                      : "productApproval.badge.rejected",
+                  )}
+                </Badge>
+              </span>
+            ) : null}
           </span>
         }
         actions={
           <>
             <LinkButton href="/app/products">{t("common.back")}</LinkButton>
-            <LinkButton
-              href={`/app/requests/new?productId=${product.id}`}
-              variant="primary"
-            >
-              + {t("requests.new")}
-            </LinkButton>
+            {/* Aguardando a aprovação: o produto ainda não está no catálogo
+                (docs/NEW_PRODUCT.md), então não há solicitação dele. */}
+            {approval ? null : (
+              <LinkButton
+                href={`/app/requests/new?productId=${product.id}`}
+                variant="primary"
+              >
+                + {t("requests.new")}
+              </LinkButton>
+            )}
           </>
         }
       />
       {saved ? <Alert tone="success">{t("catalog.saved")}</Alert> : null}
-      {/* Acabou de ser criado pelo "+ Novo produto" da lista. */}
+      {/* Criado pela tela Novo produto: o rascunho de lá não volta mais. */}
       {created === "1" ? (
-        <div data-product-created>
-          <Alert tone="success">{t("catalog.created")}</Alert>
+        <>
+          <ClearDraft
+            userId={user.id}
+            storageKey={NEW_PRODUCT_DRAFT_KEY}
+            token={product.id}
+          />
+          <div data-product-created={approval ? "pending" : "active"}>
+            <Alert tone="success">
+              {/* Criado pelo administrador: já ativo, sem aprovação (D2); o
+                  aviso de sempre do produto criado. */}
+              {t(approval ? "newProduct.created" : "catalog.created")}
+            </Alert>
+          </div>
+        </>
+      ) : null}
+      {approvalNotice ? (
+        <div data-product-approval-done={approvalNotice}>
+          <Alert tone={approvalNotice === "rejected" ? "warning" : "success"}>
+            {t(`productApproval.done.${approvalNotice}`)}
+          </Alert>
         </div>
       ) : null}
       <ActionError
@@ -402,6 +423,10 @@ export default async function ProductSheetPage({
         fields={invalidFields}
         token={saveToken}
       />
+
+      {approval ? (
+        <ApprovalCard t={t} productId={product.id} approval={approval} />
+      ) : null}
 
       {/* ---- Ficha (um formulário, seções em cards) ---- */}
       <div id="sheet" className="scroll-mt-4" />
@@ -429,484 +454,72 @@ export default async function ProductSheetPage({
         <input type="hidden" name="id" value={product.id} />
         {/* Cadastro em quadros recolhidos (linha fina; um toque abre ou fecha),
             com letra menor. Identificação e produto são um quadro só. */}
-        <div className="grid items-start gap-2 lg:grid-cols-2">
-          <FoldCard title={t("catalog.section.product")} fold="product">
-            <div className="space-y-2">
-              <FieldRow
-                label={t("common.name")}
-                size="full"
-                required
-                // Nome de exemplo ("Produto novo XPTO") não é nome: o campo
-                // vem vazio, com a dica, e o nome real é pedido ao salvar.
-                missing={!realName(product.name)}
-                hint={
-                  realName(product.name) ? undefined : (
-                    <span data-product-name-unnamed>
-                      {t("productName.unnamedHint")}
-                    </span>
-                  )
-                }
+        <ProductFormCards
+          t={t}
+          product={product}
+          lines={lines}
+          seesPrice={seesPrice}
+          autoSpec={autoSpec}
+          specExtras={{
+            capacityMl: masterView.capacityMl ?? null,
+            packageType: masterView.packageType ?? null,
+            powerSource: masterView.powerSource ?? null,
+            powerDetail: masterView.powerDetail ?? null,
+          }}
+          pantones={product.colorPantones ?? masterSheet?.colorPantones ?? []}
+          notesView={notesView}
+          cbmComputed={cbmComputed}
+          cbmShown={cbmShown}
+          sheetField={sheetField}
+          sheetRequired={sheetRequired}
+          supplier={supplier}
+          supplierControl={
+            <Select
+              name="supplierId"
+              defaultValue={product.supplierId ?? ""}
+              dense
+            >
+              <option value="">{t("catalog.noSupplier")}</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </Select>
+          }
+          status={
+            approval ? (
+              // Aguardando a aprovação (ou recusado): só a aprovação ativa
+              // o produto (docs/NEW_PRODUCT.md); a caixa fica travada.
+              <label
+                className="inline-flex min-h-8 cursor-not-allowed items-center gap-2 text-[13px] font-medium text-zinc-500"
+                data-product-active-locked
               >
-                <Input
-                  name="name"
-                  maxLength={160}
-                  required
-                  minLength={2}
-                  defaultValue={realName(product.name) ?? ""}
-                  dense
-                />
-              </FieldRow>
-              <FieldRow label="SKU" size="sm">
-                <Input
-                  name="sku"
-                  maxLength={60}
-                  defaultValue={product.sku ?? ""}
-                  dense
-                />
-              </FieldRow>
-              <FieldRow label={t("catalog.line")} size="md" required>
-                <Select
-                  name="lineId"
-                  required
-                  defaultValue={product.lineId}
-                  dense
-                >
-                  {lines.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.name}
-                    </option>
-                  ))}
-                </Select>
-              </FieldRow>
-              <FieldRow label={t("catalog.category")} size="md">
-                <Input
-                  name="category"
-                  maxLength={80}
-                  defaultValue={product.category ?? ""}
-                  dense
-                />
-              </FieldRow>
-              <FieldRow label={t("common.status")} size="full">
-                <label className="inline-flex min-h-8 cursor-pointer items-center gap-2 text-[13px] font-medium text-zinc-800">
-                  <input type="hidden" name="active" value="off" />
-                  <input
-                    type="checkbox"
-                    name="active"
-                    value="on"
-                    defaultChecked={product.active}
-                    className="h-4 w-4 cursor-pointer accent-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-                  />
-                  {t("catalog.active")}
-                </label>
-              </FieldRow>
-              <FieldRow label={t("requests.specification")} size="full">
-                <ProductSpecField
-                  name="specification"
-                  defaultValue={
-                    product.specification?.trim()
-                      ? product.specification
-                      : autoSpec
-                  }
-                  initialAuto={
-                    !product.specification?.trim() ||
-                    sameSpec(product.specification, autoSpec)
-                  }
-                  extras={{
-                    capacityMl: masterView.capacityMl ?? null,
-                    packageType: masterView.packageType ?? null,
-                    powerSource: masterView.powerSource ?? null,
-                    powerDetail: masterView.powerDetail ?? null,
-                  }}
-                  labels={productSpecLabels(translator("pt"))}
-                  texts={{
-                    auto: t("productSpec.hint.auto"),
-                    manual: t("productSpec.hint.manual"),
-                    rebuild: t("productSpec.rebuild"),
-                    empty: t("productSpec.empty"),
-                  }}
-                />
-              </FieldRow>
-              <FieldRow
-                label={t("catalog.material")}
-                size="md"
-                {...sheetRequired("material")}
-              >
-                <Input
-                  name="material"
-                  maxLength={120}
-                  defaultValue={product.material ?? ""}
-                  dense
-                />
-              </FieldRow>
-              <FieldRow label={t("catalog.brand")} size="md">
-                <Input
-                  name="brand"
-                  maxLength={80}
-                  defaultValue={product.brand ?? ""}
-                  dense
-                />
-              </FieldRow>
-              <FieldRow
-                label={t("catalog.pantone")}
-                size="full"
-                hint={t("pantone.productHint")}
-              >
-                <PantonePicker
-                  name="colorPantones"
-                  initial={
-                    product.colorPantones ?? masterSheet?.colorPantones ?? []
-                  }
-                  max={MAX_PANTONE_PER_SHEET}
-                  syncName="color"
-                  syncMax={60}
-                  labels={{
-                    search: t("pantone.search"),
-                    scaleAll: t("pantone.scale.all"),
-                    scales: {
-                      C: t("pantone.scale.C"),
-                      U: t("pantone.scale.U"),
-                      M: t("pantone.scale.M"),
-                      P: t("pantone.scale.P"),
-                      TCX: t("pantone.scale.TCX"),
-                    },
-                    loading: t("pantone.loading"),
-                    none: t("pantone.none"),
-                    more: t("pantone.more"),
-                    remove: t("pantone.remove"),
-                    max: t("pantone.max"),
-                    empty: t("pantone.empty"),
-                  }}
-                />
-              </FieldRow>
-              {/* Cor depois do Pantone: as cores escolhidas já entram no texto. */}
-              <FieldRow
-                label={t("catalog.color")}
-                size="md"
-                {...sheetRequired("colorAssortment")}
-              >
-                <Input
-                  name="color"
-                  maxLength={60}
-                  defaultValue={product.color ?? ""}
-                  dense
-                />
-              </FieldRow>
-              <FieldRow label={t("catalog.dimensions")} size="full">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-                  <span>{t("catalog.length")}</span>
-                  <NumberInput
-                    name="lengthCm"
-                    defaultValue={product.lengthCm ?? ""}
-                    aria-label={t("catalog.length")}
-                    className="w-16"
-                  />
-                  <span aria-hidden>×</span>
-                  <span>{t("catalog.width")}</span>
-                  <NumberInput
-                    name="widthCm"
-                    defaultValue={product.widthCm ?? ""}
-                    aria-label={t("catalog.width")}
-                    className="w-16"
-                  />
-                  <span aria-hidden>×</span>
-                  <span>{t("catalog.height")}</span>
-                  <NumberInput
-                    name="heightCm"
-                    defaultValue={product.heightCm ?? ""}
-                    aria-label={t("catalog.height")}
-                    className="w-16"
-                  />
-                </div>
-              </FieldRow>
-              <FieldRow
-                label={t("catalog.netWeight")}
-                size="xs"
-                {...sheetRequired("netWeightPcKg")}
-              >
-                <NumberInput
-                  name="netWeightKg"
-                  defaultValue={product.netWeightKg ?? ""}
-                />
-              </FieldRow>
-              <FieldRow
-                label={t("catalog.grossWeight")}
-                size="xs"
-                {...sheetRequired("grossWeightPcKg")}
-              >
-                <NumberInput
-                  name="grossWeightKg"
-                  defaultValue={product.grossWeightKg ?? ""}
-                />
-              </FieldRow>
-            </div>
-          </FoldCard>
-
-          <FoldCard title={t("catalog.section.supplier")} fold="supplier">
-            <div className="space-y-2">
-              <FieldRow
-                label={t("common.supplier")}
-                size="lg"
-                {...sheetRequired("supplierName")}
-                hint={
-                  supplier ? (
-                    <TextLink href={`/app/parties/${supplier.id}`}>
-                      {t("catalog.openSupplier")}
-                    </TextLink>
-                  ) : undefined
-                }
-              >
-                <Select
-                  name="supplierId"
-                  defaultValue={product.supplierId ?? ""}
-                  dense
-                >
-                  <option value="">{t("catalog.noSupplier")}</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </Select>
-              </FieldRow>
-              <FieldRow
-                label={t("catalog.supplierSku")}
-                size="md"
-                {...sheetField("factoryItemCode")}
-              >
-                <Input
-                  name="supplierSku"
-                  maxLength={60}
-                  defaultValue={product.supplierSku ?? ""}
-                  dense
-                />
-              </FieldRow>
-              <FieldRow
-                label={t("catalog.moq")}
-                size="sm"
-                {...sheetRequired("moq")}
-              >
-                <NumberInput
-                  name="moq"
-                  integer
-                  defaultValue={product.moq ?? ""}
-                />
-              </FieldRow>
-              {seesPrice ? (
-                <>
-                  <FieldRow
-                    label={t("common.price")}
-                    size="md"
-                    {...sheetRequired("price")}
-                  >
-                    <MoneyInput
-                      locale={t.intl}
-                      name="price"
-                      watchField="currency"
-                      defaultAmount={product.price ?? null}
-                      decimals={4}
-                      size="sm"
-                    />
-                  </FieldRow>
-                  <FieldRow
-                    label={t("common.currency")}
-                    size="sm"
-                    {...sheetRequired("currency")}
-                  >
-                    <CurrencySelect
-                      name="currency"
-                      value={product.currency}
-                      t={t}
-                      allowEmpty
-                      dense
-                    />
-                  </FieldRow>
-                </>
-              ) : null}
-              <FieldRow label={t("catalog.negotiatedAt")} size="sm">
-                <Input
-                  name="negotiatedAt"
-                  type="date"
-                  defaultValue={product.negotiatedAt?.slice(0, 10) ?? ""}
-                  dense
-                />
-              </FieldRow>
-              <FieldRow
-                label={t("catalog.source")}
-                size="md"
-                hint={t("catalog.readOnly")}
-              >
-                <Input
-                  readOnly
-                  value={
-                    product.source
-                      ? t(`catalog.source.${product.source}` as DictionaryKey)
-                      : "—"
-                  }
-                  className="bg-zinc-50 text-zinc-600"
-                  dense
-                />
-              </FieldRow>
-              {product.sourcingItemId ? (
-                <p className="pt-1 text-xs text-zinc-600">
-                  <span className="font-semibold uppercase tracking-wide text-zinc-500">
-                    {t("catalog.sourcingOrigin")}
-                  </span>{" "}
-                  <TextLink
-                    href={`/app/sourcing/items/${product.sourcingItemId}`}
-                  >
-                    {sourcing?.name ?? t("catalog.openSourcing")}
-                  </TextLink>
-                  {sourcing?.foundAt
-                    ? ` · ${formatDate(sourcing.foundAt, t)}`
-                    : ""}
-                </p>
-              ) : null}
-            </div>
-          </FoldCard>
-
-          <FoldCard title={t("catalog.section.packaging")} fold="packaging">
-            <div className="space-y-2">
-              <FieldRow
-                label={t("catalog.masterBoxQty")}
-                size="xs"
-                {...sheetRequired("masterCartonQty")}
-              >
-                <NumberInput
-                  name="masterBoxQty"
-                  integer
-                  defaultValue={product.masterBoxQty ?? ""}
-                />
-              </FieldRow>
-              <FieldRow
-                label={t("catalog.innerBoxQty")}
-                size="xs"
-                {...sheetField("innerQty")}
-                hint={
-                  <InnerQtyHints
-                    masterName="masterBoxQty"
-                    innerName="innerBoxQty"
-                    initialMaster={product.masterBoxQty ?? null}
-                    initialInner={product.innerBoxQty ?? null}
-                    intl={t.intl}
-                    texts={innerQtyTexts(t)}
-                  />
-                }
-              >
-                <NumberInput
-                  name="innerBoxQty"
-                  integer
-                  defaultValue={product.innerBoxQty ?? ""}
-                />
-              </FieldRow>
-              <FieldRow
-                label={t("catalog.boxDimensions")}
-                size="full"
-                {...sheetRequired("heightCm", "widthCm", "lengthCm")}
-                hint={
-                  <CartonSizeWarning
-                    sideNames={["boxLengthCm", "boxWidthCm", "boxHeightCm"]}
-                    cbmName="cbm"
-                    initialSides={[
-                      product.boxLengthCm,
-                      product.boxWidthCm,
-                      product.boxHeightCm,
-                    ]}
-                    // CBM desabilitado (vem das medidas salvas) não vai no envio.
-                    initialCbm={
-                      cbmComputed !== null ? null : (product.cbm ?? null)
-                    }
-                    cbmIgnoreDisabled
-                    intl={t.intl}
-                    texts={cartonSizeTexts(t)}
-                  />
-                }
-              >
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-                  <span>{t("catalog.length")}</span>
-                  <NumberInput
-                    name="boxLengthCm"
-                    defaultValue={product.boxLengthCm ?? ""}
-                    aria-label={t("catalog.length")}
-                    className="w-16"
-                  />
-                  <span aria-hidden>×</span>
-                  <span>{t("catalog.width")}</span>
-                  <NumberInput
-                    name="boxWidthCm"
-                    defaultValue={product.boxWidthCm ?? ""}
-                    aria-label={t("catalog.width")}
-                    className="w-16"
-                  />
-                  <span aria-hidden>×</span>
-                  <span>{t("catalog.height")}</span>
-                  <NumberInput
-                    name="boxHeightCm"
-                    defaultValue={product.boxHeightCm ?? ""}
-                    aria-label={t("catalog.height")}
-                    className="w-16"
-                  />
-                </div>
-              </FieldRow>
-              <FieldRow
-                label={t("catalog.cbmPerBox")}
-                size="xs"
-                {...sheetRequired("cbmPerCarton")}
-                hint={
-                  <>
-                    <strong className="text-zinc-800">
-                      {cbmShown !== null
-                        ? `${cbmShown.toLocaleString(t.intl, { maximumFractionDigits: 4 })} m³`
-                        : "—"}
-                    </strong>
-                    {cbmComputed !== null
-                      ? ` · ${t("catalog.cbmComputed")}`
-                      : ` · ${t("catalog.cbmHint")}`}
-                  </>
-                }
-              >
-                <NumberInput
-                  name="cbm"
-                  defaultValue={product.cbm ?? ""}
-                  disabled={cbmComputed !== null}
-                  className={cbmComputed !== null ? "bg-zinc-50" : undefined}
-                />
-              </FieldRow>
-            </div>
-          </FoldCard>
-
-          {/* Um texto só: as observações do cadastro, as da ficha mestre e a
-                descrição para e-commerce (a caixa diz se vai para lá). */}
-          <FoldCard title={t("catalog.section.notes")} fold="notes">
-            <div data-field-anchor="notes ecommerceDescription">
-              <Textarea
-                name="notes"
-                rows={4}
-                maxLength={4000}
-                defaultValue={notesView.text}
-                dense
-              />
-              <label className="mt-2 flex items-start gap-2 text-sm text-zinc-800">
-                <input type="hidden" name="notesToEcommerce" value="off" />
+                <input type="hidden" name="active" value="off" />
                 <input
                   type="checkbox"
-                  name="notesToEcommerce"
-                  value="on"
-                  defaultChecked={notesView.toEcommerce}
-                  className="mt-0.5 h-4 w-4 accent-brand-600"
-                  data-notes-ecommerce
+                  disabled
+                  defaultChecked={false}
+                  className="h-4 w-4 accent-brand-600"
                 />
-                <span>
-                  <span className="font-medium">
-                    {t("catalog.notes.ecommerce")}
-                  </span>
-                  <span className="block text-xs text-zinc-500">
-                    {t("catalog.notes.ecommerceHint")}
-                  </span>
-                </span>
+                {t("catalog.active")} · {t("productApproval.activeLocked")}
               </label>
-            </div>
-          </FoldCard>
-        </div>
+            ) : (
+              <label className="inline-flex min-h-8 cursor-pointer items-center gap-2 text-[13px] font-medium text-zinc-800">
+                <input type="hidden" name="active" value="off" />
+                <input
+                  type="checkbox"
+                  name="active"
+                  value="on"
+                  defaultChecked={product.active}
+                  className="h-4 w-4 cursor-pointer accent-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                />
+                {t("catalog.active")}
+              </label>
+            )
+          }
+          sourcing={sourcing}
+        />
 
         {/* Botão principal no fim, fixo ao alcance do polegar no celular. */}
         <div className="sticky bottom-0 z-10 -mx-4 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">

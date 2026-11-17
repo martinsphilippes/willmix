@@ -35,7 +35,6 @@ import {
   PARTY_EXTRA_DEFAULTS,
   PAYMENT_EXTRA_DEFAULTS,
   LINE_EXTRA_DEFAULTS,
-  PRODUCT_EXTRA_DEFAULTS,
   ROLES,
   LOCALES,
   type DocumentType,
@@ -1189,27 +1188,27 @@ export async function saveProductAction(form: FormData) {
     const { assertRealProductName } = await import("@/lib/placeholder-name");
     assertRealProductName(parsed.name);
     const id = str(form, "id");
-    const store = getStore();
-    const saved = id
-      ? await store.update("products", id, parsed)
-      : await store.create("products", {
-          ...PRODUCT_EXTRA_DEFAULTS,
-          ...parsed,
-          active: true,
-        });
-    // O nome chega aos pedidos e às tarefas que estavam sem ele.
-    if (id) {
-      const { fillProductNameCopies } =
-        await import("@/lib/services/product-name-copies");
-      await fillProductNameCopies(user, saved);
+    if (!id) {
+      // Produto novo (dono, 17/11/2026; docs/NEW_PRODUCT.md): nasce inativo
+      // e vai para a aprovação (o do administrador nasce ativo); só vai para
+      // o Sankhya depois de aprovado. Abre na própria ficha, com o aviso
+      // "Produto criado" (antes voltava à lista e sumia entre os milhares do
+      // catálogo). A tela é a de Novo produto (/app/products/new); este
+      // caminho curto não tem mais botão, mas segue a mesma regra.
+      const { createProductForApproval } =
+        await import("@/lib/services/product-approval");
+      const created = await createProductForApproval(user, parsed);
+      return `/app/products/${created.id}?created=1`;
     }
-    // Produto novo ou alterado vai para o Sankhya (fase 3).
+    const store = getStore();
+    const saved = await store.update("products", id, parsed);
+    // O nome chega aos pedidos e às tarefas que estavam sem ele.
+    const { fillProductNameCopies } =
+      await import("@/lib/services/product-name-copies");
+    await fillProductNameCopies(user, saved);
+    // Produto alterado vai para o Sankhya (fase 3).
     const { syncSoon } = await import("@/lib/integrations/sankhya-sync");
     await syncSoon(user, "product", saved.id);
-    // Produto novo abre na própria ficha, com o aviso "Produto criado" (dono,
-    // 17/11/2026): antes voltava à página 1 da lista e o produto sumia entre
-    // os milhares do catálogo. Alteração continua voltando à lista.
-    if (!id) return `/app/products/${saved.id}?created=1`;
   });
 }
 

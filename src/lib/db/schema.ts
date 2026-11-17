@@ -240,6 +240,21 @@ export type ErpSyncStatus = (typeof ERP_SYNC_STATUSES)[number];
 export const PRODUCT_SOURCES = ["manual", "sourcing", "import"] as const;
 export type ProductSource = (typeof PRODUCT_SOURCES)[number];
 
+/**
+ * Aprovação do produto novo (dono, 17/11/2026; docs/NEW_PRODUCT.md): o
+ * produto criado pela tela "Novo produto" nasce inativo e "pending"; o
+ * administrador ou o superior de quem criou (o "Responde a") aprova (ativa)
+ * ou recusa (com o motivo; corrigido, volta a "pending"). Nulo: produto que
+ * não passou pela aprovação (os de antes, os do Sankhya, das planilhas e do
+ * Booking).
+ */
+export const PRODUCT_APPROVAL_STATUSES = [
+  "pending",
+  "approved",
+  "rejected",
+] as const;
+export type ProductApprovalStatus = (typeof PRODUCT_APPROVAL_STATUSES)[number];
+
 export const VISIT_STATUSES = ["planned", "done"] as const;
 export type VisitStatus = (typeof VISIT_STATUSES)[number];
 
@@ -956,6 +971,20 @@ export interface Product extends BaseRow {
   sankhyaSyncedAt?: string | null;
   /** Fotos que vieram do Sankhya (TGFPRO.IMAGEM e AD_IMAGEM*): versão e foto de cada coluna. */
   sankhyaImages?: SankhyaImagesState | null;
+  /**
+   * Aprovação do produto novo (docs/NEW_PRODUCT.md): "pending" e "rejected"
+   * deixam o produto inativo e fora do Sankhya até a aprovação. Nulo: não
+   * passou pela aprovação.
+   */
+  approvalStatus?: ProductApprovalStatus | null;
+  /** Quem pediu a aprovação (criou o produto ou o reenviou corrigido). */
+  approvalRequestedByUserId?: string | null;
+  approvalRequestedAt?: string | null;
+  /** Quem decidiu por último (aprovou ou recusou) e quando. */
+  approvalDecidedByUserId?: string | null;
+  approvalDecidedAt?: string | null;
+  /** Motivo da recusa (ou observação da aprovação) da última decisão. */
+  approvalNote?: string | null;
 }
 
 /** Fotos do Sankhya de um produto: NUVERSAOIMG lido e a foto (product_photos.id) de cada coluna. */
@@ -4013,11 +4042,24 @@ export const TABLES: Record<TableName, TableDef> = {
       ean: str(20),
       sankhyaSyncedAt: datetime(),
       sankhyaImages: json(),
+      approvalStatus: enumOf(PRODUCT_APPROVAL_STATUSES, false),
+      approvalRequestedByUserId: id(false),
+      approvalRequestedAt: datetime(),
+      approvalDecidedByUserId: id(false),
+      approvalDecidedAt: datetime(),
+      approvalNote: str(1000),
     },
     indexes: [
       { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
       { key: "by_line", type: "key", columns: ["lineId"] },
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
+      // Só os que passaram pela aprovação (os outros ficam com nulo).
+      {
+        key: "by_approval",
+        type: "key",
+        columns: ["approvalStatus"],
+        where: `"approvalStatus" is not null`,
+      },
     ],
   },
   requests: {

@@ -105,6 +105,10 @@ export function kindGate(
       return { action: "purchaseQuote.approve" };
     case "review":
       return { screen: "reviews" };
+    // Produto novo a aprovar: já vem só para o administrador e os superiores
+    // de quem pediu (docs/NEW_PRODUCT.md); a aprovação é na tela Produtos.
+    case "product_approve":
+      return { screen: "products" };
     case "sourcing_demand":
       return { screen: "sourcing" };
     case "sampling":
