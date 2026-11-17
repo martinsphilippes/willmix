@@ -61,6 +61,46 @@ export function readProductFilter(sp: {
   return { q: one(sp.q), lineId: one(sp.line), supplierId: one(sp.supplier) };
 }
 
+/**
+ * Ordem da lista de Produtos (dono, 17/11/2026): pelo nome (A–Z, a de
+ * sempre) ou os mais recentes primeiro (pela data de cadastro), para quem
+ * acabou de cadastrar ver o produto no topo. Vale para o catálogo inteiro,
+ * antes de dividir em páginas.
+ */
+export const PRODUCT_ORDERS = ["name", "recent"] as const;
+export type ProductOrder = (typeof PRODUCT_ORDERS)[number];
+
+/** Lê a ordem da URL (`?order=recent`); qualquer outro valor é a de sempre. */
+export function readProductOrder(sp: {
+  order?: string | string[];
+}): ProductOrder {
+  const raw = Array.isArray(sp.order) ? sp.order[0] : sp.order;
+  return raw === "recent" ? "recent" : "name";
+}
+
+/**
+ * A lista na ordem pedida. "name" devolve como veio (o banco já ordena pelo
+ * nome); "recent" põe os cadastrados por último no topo, e quem tem a mesma
+ * data fica na ordem de antes (pelo nome).
+ */
+export function sortProducts<T extends Pick<Product, "createdAt">>(
+  products: readonly T[],
+  order: ProductOrder,
+): T[] {
+  if (order !== "recent") return [...products];
+  return products
+    .map((p, i) => ({ p, i }))
+    .sort(
+      (a, b) =>
+        (a.p.createdAt < b.p.createdAt
+          ? 1
+          : a.p.createdAt > b.p.createdAt
+            ? -1
+            : 0) || a.i - b.i,
+    )
+    .map(({ p }) => p);
+}
+
 /** Produtos por página na tela Produtos. */
 export const PRODUCT_PAGE_SIZE = 50;
 

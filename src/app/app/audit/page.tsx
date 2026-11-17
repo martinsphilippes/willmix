@@ -147,7 +147,11 @@ export default async function AuditPage({
           <div className="flex items-end gap-2 sm:col-span-3 lg:col-span-6">
             <SubmitButton variant="secondary">{t("audit.filter")}</SubmitButton>
             <LinkButton href="/app/audit">{t("audit.clear")}</LinkButton>
-            <span className="text-sm text-zinc-500" data-audit-total>
+            <span
+              className="text-sm text-zinc-500"
+              data-audit-total
+              data-audit-pages={result.pages}
+            >
               {t("audit.total", { n: String(result.total) })}
             </span>
           </div>
@@ -158,7 +162,12 @@ export default async function AuditPage({
         {!result.rows.length ? (
           <Empty>{t("audit.empty")}</Empty>
         ) : (
-          <Table>
+          // Resultado em mais de uma página (100 por página): o filtro
+          // "Texto" e as páginas de baixo valem para a auditoria inteira, e a
+          // tabela fica sem a busca e as páginas dela, que só olhavam os 100
+          // desta página (dono, 17/11/2026). Numa página só, a tabela tem o
+          // resultado inteiro e segue com a busca e as páginas de sempre.
+          <Table searchable={result.pages <= 1} paginated={result.pages <= 1}>
             <thead>
               <tr>
                 <Th>{t("audit.when")}</Th>

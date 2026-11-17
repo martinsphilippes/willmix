@@ -339,9 +339,6 @@ export function SankhyaPurchaseHistory({
           <h2 className="mb-3 text-base font-semibold tracking-tight text-zinc-900">
             {labels.title}
           </h2>
-          <p className="-mt-1 mb-2 text-[11px] font-medium uppercase tracking-wide text-emerald-700">
-            {labels.source}
-          </p>
           {/* Pedido | Produto (dono, 15/11/2026): uma visão por vez, aqui
             embaixo, no mesmo card. */}
           <div

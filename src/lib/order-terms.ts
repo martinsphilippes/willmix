@@ -276,7 +276,17 @@ export interface ContactEntry {
   email: string;
 }
 
-export type CustomerContacts = Record<ContactRole, ContactEntry>;
+/** Mais contatos por área além do primeiro (dono, 17/11/2026): até 5 por área. */
+export const MAX_EXTRA_CONTACTS = 5;
+
+/**
+ * O primeiro contato de cada área (como sempre) e, em `more`, os demais que o
+ * vendedor acrescentou pelo "+" (dono, 17/11/2026). Aditivo: o JSON gravado
+ * antes não tem `more`.
+ */
+export type CustomerContacts = Record<ContactRole, ContactEntry> & {
+  more?: Partial<Record<ContactRole, ContactEntry[]>>;
+};
 
 /** Só os dígitos do telefone (para comparar "(47) 9999-0000" com "4799990000"). */
 export const phoneDigits = (phone: string | null | undefined) =>
@@ -295,11 +305,15 @@ const emailComparable = (email: string | null | undefined) =>
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-export type ContactIssue =
+export type ContactIssue = (
   | { role: ContactRole; field: "phone" | "email"; code: "required" }
   | { role: ContactRole; field: "phone"; code: "invalid_phone" }
   | { role: ContactRole; field: "email"; code: "invalid_email" }
-  | { role: ContactRole; field: "phone" | "email"; code: "same_as_seller" };
+  | { role: ContactRole; field: "phone" | "email"; code: "same_as_seller" }
+) & {
+  /** Posição do contato extra (0 = o segundo da área); ausente = o primeiro. */
+  index?: number;
+};
 
 /** Contato de quem não pode aparecer como contato do cliente (representante, vendedor). */
 export interface SellerContact {
@@ -322,20 +336,24 @@ export function contactIssues(
     sellers.map((s) => phoneComparable(s.phone)).filter((p) => p.length >= 8),
   );
   const issues: ContactIssue[] = [];
-  for (const role of CONTACT_ROLES) {
-    const entry = contacts[role];
+  const check = (role: ContactRole, entry: ContactEntry, index?: number) => {
+    const at = index === undefined ? {} : { index };
     const phone = phoneDigits(entry.phone);
     const email = emailComparable(entry.email);
-    if (!phone) issues.push({ role, field: "phone", code: "required" });
+    if (!phone) issues.push({ role, field: "phone", code: "required", ...at });
     else if (phone.length < 10 || phone.length > 13)
-      issues.push({ role, field: "phone", code: "invalid_phone" });
+      issues.push({ role, field: "phone", code: "invalid_phone", ...at });
     else if (phones.has(phoneComparable(entry.phone)))
-      issues.push({ role, field: "phone", code: "same_as_seller" });
-    if (!email) issues.push({ role, field: "email", code: "required" });
+      issues.push({ role, field: "phone", code: "same_as_seller", ...at });
+    if (!email) issues.push({ role, field: "email", code: "required", ...at });
     else if (!EMAIL_RE.test(email) || email.length > 160)
-      issues.push({ role, field: "email", code: "invalid_email" });
+      issues.push({ role, field: "email", code: "invalid_email", ...at });
     else if (emails.has(email))
-      issues.push({ role, field: "email", code: "same_as_seller" });
+      issues.push({ role, field: "email", code: "same_as_seller", ...at });
+  };
+  for (const role of CONTACT_ROLES) {
+    check(role, contacts[role]);
+    (contacts.more?.[role] ?? []).forEach((entry, i) => check(role, entry, i));
   }
   return issues;
 }
@@ -343,11 +361,19 @@ export function contactIssues(
 /** Os contatos limpos para gravar (telefone como digitado, e-mail em minúsculas). */
 export function cleanContacts(contacts: CustomerContacts): CustomerContacts {
   const out = {} as CustomerContacts;
-  for (const role of CONTACT_ROLES)
-    out[role] = {
-      phone: contacts[role].phone.replace(/\s+/g, " ").trim().slice(0, 40),
-      email: emailComparable(contacts[role].email),
-    };
+  const clean = (entry: ContactEntry): ContactEntry => ({
+    phone: entry.phone.replace(/\s+/g, " ").trim().slice(0, 40),
+    email: emailComparable(entry.email),
+  });
+  const more: Partial<Record<ContactRole, ContactEntry[]>> = {};
+  for (const role of CONTACT_ROLES) {
+    out[role] = clean(contacts[role]);
+    const extra = (contacts.more?.[role] ?? [])
+      .slice(0, MAX_EXTRA_CONTACTS)
+      .map(clean);
+    if (extra.length) more[role] = extra;
+  }
+  if (Object.keys(more).length) out.more = more;
   return out;
 }
 
@@ -364,6 +390,61 @@ export function readContacts(value: unknown): CustomerContacts | null {
       email: typeof email === "string" ? email : "",
     };
   }
+  const rawMore = (value as Record<string, unknown>).more;
+  if (rawMore && typeof rawMore === "object") {
+    const more: Partial<Record<ContactRole, ContactEntry[]>> = {};
+    for (const role of CONTACT_ROLES) {
+      const list = (rawMore as Record<string, unknown>)[role];
+      if (!Array.isArray(list)) continue;
+      const entries = list
+        .filter(
+          (e): e is Record<string, unknown> => !!e && typeof e === "object",
+        )
+        .slice(0, MAX_EXTRA_CONTACTS)
+        .map((e) => ({
+          phone: typeof e.phone === "string" ? e.phone : "",
+          email: typeof e.email === "string" ? e.email : "",
+        }));
+      if (entries.length) more[role] = entries;
+    }
+    if (Object.keys(more).length) out.more = more;
+  }
+  return out;
+}
+
+/**
+ * Os contatos do bloco "Cliente" a partir dos campos: o primeiro de cada área
+ * em `contact.<área>.<campo>` e os demais em `contact.<área>.<n>.<campo>`
+ * (n = 1, 2…, na ordem do número).
+ */
+export function contactsFromEntries(
+  get: (key: string) => string,
+  keys: Iterable<string>,
+): CustomerContacts {
+  const out = {} as CustomerContacts;
+  const more: Partial<Record<ContactRole, ContactEntry[]>> = {};
+  const all = [...keys];
+  for (const role of CONTACT_ROLES) {
+    out[role] = {
+      phone: get(`contact.${role}.phone`),
+      email: get(`contact.${role}.email`),
+    };
+    const re = new RegExp(`^contact\\.${role}\\.(\\d{1,3})\\.(phone|email)$`);
+    const ids = [
+      ...new Set(
+        all.map((k) => re.exec(k)?.[1]).filter((v): v is string => !!v),
+      ),
+    ].sort((a, b) => Number(a) - Number(b));
+    const extra = ids
+      .map((n) => ({
+        phone: get(`contact.${role}.${n}.phone`),
+        email: get(`contact.${role}.${n}.email`),
+      }))
+      .filter((e) => e.phone.trim() || e.email.trim())
+      .slice(0, MAX_EXTRA_CONTACTS);
+    if (extra.length) more[role] = extra;
+  }
+  if (Object.keys(more).length) out.more = more;
   return out;
 }
 

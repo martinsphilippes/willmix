@@ -288,6 +288,13 @@ export const pt = {
   "customerContacts.role.buyer": "Comprador",
   "customerContacts.role.finance": "Financeiro e Fiscal",
   "customerContacts.role.logistics": "Logística",
+  "customerContacts.add": "Adicionar mais um contato",
+  "customerContacts.remove": "Remover este contato",
+  "customerContacts.save": "Salvar dados do cliente",
+  "customerContacts.saving": "Salvando…",
+  "customerContacts.saved": "Dados do cliente salvos.",
+  "customerContacts.saveFailed": "Não deu para salvar os dados do cliente.",
+  "requestDraft.autosaved": "Rascunho salvo automaticamente às {time}",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -573,6 +580,13 @@ export const en: Record<keyof typeof pt, string> = {
   "customerContacts.role.buyer": "Buyer",
   "customerContacts.role.finance": "Finance and Tax",
   "customerContacts.role.logistics": "Logistics",
+  "customerContacts.add": "Add another contact",
+  "customerContacts.remove": "Remove this contact",
+  "customerContacts.save": "Save customer data",
+  "customerContacts.saving": "Saving…",
+  "customerContacts.saved": "Customer data saved.",
+  "customerContacts.saveFailed": "Could not save the customer data.",
+  "requestDraft.autosaved": "Draft saved automatically at {time}",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -837,4 +851,11 @@ export const zh: Record<keyof typeof pt, string> = {
   "customerContacts.role.buyer": "采购",
   "customerContacts.role.finance": "财务和税务",
   "customerContacts.role.logistics": "物流",
+  "customerContacts.add": "再添加一个联系人",
+  "customerContacts.remove": "删除此联系人",
+  "customerContacts.save": "保存客户资料",
+  "customerContacts.saving": "保存中…",
+  "customerContacts.saved": "客户资料已保存。",
+  "customerContacts.saveFailed": "无法保存客户资料。",
+  "requestDraft.autosaved": "草稿已于 {time} 自动保存",
 };

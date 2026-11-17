@@ -92,7 +92,7 @@ import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
 import { itemIdOf } from "@/lib/purchase-lanes";
 import { assertSameSchedule, parseRequestItems } from "./actions/request-items";
 import {
-  CONTACT_ROLES,
+  contactsFromEntries,
   type CustomerContacts,
   type OrderTerms,
 } from "@/lib/order-terms";
@@ -147,13 +147,7 @@ const requestItemSchema = z.object({
 
 /** Os contatos do cliente do bloco "Cliente" da Nova solicitação (`contact.<área>.*`). */
 function contactsFromForm(form: FormData): CustomerContacts {
-  const out = {} as CustomerContacts;
-  for (const role of CONTACT_ROLES)
-    out[role] = {
-      phone: str(form, `contact.${role}.phone`),
-      email: str(form, `contact.${role}.email`),
-    };
-  return out;
+  return contactsFromEntries((k) => str(form, k), form.keys());
 }
 
 /**
@@ -1212,6 +1206,10 @@ export async function saveProductAction(form: FormData) {
     // Produto novo ou alterado vai para o Sankhya (fase 3).
     const { syncSoon } = await import("@/lib/integrations/sankhya-sync");
     await syncSoon(user, "product", saved.id);
+    // Produto novo abre na própria ficha, com o aviso "Produto criado" (dono,
+    // 17/11/2026): antes voltava à página 1 da lista e o produto sumia entre
+    // os milhares do catálogo. Alteração continua voltando à lista.
+    if (!id) return `/app/products/${saved.id}?created=1`;
   });
 }
 

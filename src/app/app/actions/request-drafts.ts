@@ -1,5 +1,6 @@
 "use server";
 
+import { z } from "zod";
 import { ForbiddenError, assertWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
 import {
@@ -86,4 +87,38 @@ export async function deleteScreenRequestDraftAction(form: FormData) {
     if (ID.test(id)) await deleteRequestDraft(user, id, mode);
     return `${REQUEST_SCREEN[mode].path}?draftDeleted=1`;
   });
+}
+
+/*
+ * Rascunho automático da Nova solicitação (dono, 17/11/2026): a tela grava o
+ * formulário sozinha, a cada pausa (sobretudo ao entrar produto), sem
+ * recarregar a página. Mesmo rascunho do "Salvar rascunho" (o primeiro
+ * cria; os seguintes gravam por cima), da tela de onde veio.
+ */
+const AUTOSAVE = z.object({
+  mode: z.enum(["ts", "sale"]).nullable(),
+  draftId: z.string().regex(ID).nullable(),
+  entries: z
+    .array(z.tuple([z.string().max(120), z.string().max(10_000)]))
+    .max(2000),
+});
+
+export async function autosaveRequestDraftAction(input: {
+  mode: string | null;
+  draftId: string | null;
+  entries: Array<[string, string]>;
+}): Promise<{ ok: true; draftId: string; savedAt: string } | { ok: false }> {
+  const user = await requireUser();
+  try {
+    const { mode, draftId, entries } = AUTOSAVE.parse(input);
+    assertWellmix(user);
+    if (mode && !isRequestScreenMode(mode)) throw new ForbiddenError();
+    assertScreen(user, mode ? REQUEST_SCREEN[mode].screen : "requests");
+    const form = new FormData();
+    for (const [k, v] of entries) form.append(k, v);
+    const draft = await saveRequestDraft(user, form, draftId, mode);
+    return { ok: true, draftId: draft.id, savedAt: draft.updatedAt };
+  } catch {
+    return { ok: false };
+  }
 }

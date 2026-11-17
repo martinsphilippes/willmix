@@ -2,6 +2,8 @@ import { cache } from "react";
 import { isOrderOpen } from "@/lib/order-status";
 import type { User } from "@/lib/db/schema";
 import { getStore } from "@/lib/db";
+import { listByIds, listColumns } from "@/lib/db/lookup";
+import { matchesQuery } from "@/lib/table-tools";
 import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
 import { pendingTasksFor, type Task } from "./tasks";
@@ -567,6 +569,86 @@ async function loadFlowAll(
 export const FLOW_STEP_PAGE = 50;
 
 /**
+ * Texto da busca de um pedido no "Todos no passo" (dono, 17/11/2026): o
+ * número (#1234), o fornecedor, o cliente e o produto. A busca vale para
+ * todos os pedidos do passo, não só para os 50 da página.
+ */
+export function flowSearchText(parts: {
+  number: number;
+  supplier?: string | null;
+  customer?: string | null;
+  product?: string | null;
+}): string {
+  return [`#${parts.number}`, parts.supplier, parts.customer, parts.product]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/**
+ * Texto da busca de cada pedido em andamento, pelos resumos: uma leitura só
+ * das chaves curtas de `order_summaries.facts` (nomes do fornecedor, do
+ * cliente e do primeiro produto). Só quando há o que buscar.
+ */
+async function summarySearchTexts(): Promise<Map<string, string>> {
+  const rows = await listColumns(
+    getStore(),
+    "order_summaries",
+    ["number", "facts"],
+    {
+      filter: { live: true },
+      jsonKeys: { facts: ["supplier", "customer", "product"] },
+    },
+  );
+  return new Map(
+    rows.map((r) => {
+      const facts = (r.facts ?? {}) as {
+        supplier?: string | null;
+        customer?: string | null;
+        product?: string | null;
+      };
+      return [r.id, flowSearchText({ number: r.number, ...facts })];
+    }),
+  );
+}
+
+/**
+ * Os pedidos lidos inteiros (sem os resumos) que passam na busca: o texto
+ * dos resumos quando estão prontos; senão (ou pedido sem resumo), o número
+ * e os nomes do fornecedor e do cliente pelo cadastro.
+ */
+async function searchEntities(
+  all: FlowEntity[],
+  query: string,
+): Promise<FlowEntity[]> {
+  const { summariesReady } = await import("./order-summary");
+  const texts = (await summariesReady()) ? await summarySearchTexts() : null;
+  const missing = all.filter((e) => !texts?.has(e.order.id));
+  const names = new Map<string, string>();
+  if (missing.length) {
+    const partyIds = [
+      ...new Set(
+        missing
+          .flatMap((e) => [e.order.supplierId, e.order.customerId])
+          .filter((x): x is string => !!x),
+      ),
+    ];
+    for (const party of await listByIds(getStore(), "parties", partyIds))
+      names.set(party.id, party.name);
+  }
+  return all.filter((e) =>
+    matchesQuery(
+      texts?.get(e.order.id) ??
+        flowSearchText({
+          number: e.order.number,
+          supplier: names.get(e.order.supplierId) ?? null,
+          customer: names.get(e.order.customerId) ?? null,
+        }),
+      query,
+    ),
+  );
+}
+
+/**
  * Aba "Todos no passo" da Wellmix, paginada (dono, 15/11/2026: a tela do
  * passo Pedidos não abria). Os pedidos do passo vêm da contribuição de cada
  * pedido (`order_summaries.kpi.f`, docs/RESUMOS.md): os em andamento de
@@ -574,20 +656,29 @@ export const FLOW_STEP_PAGE = 50;
  * número; só os da página são lidos das tabelas. Sem os resumos (ou num
  * passo fora de Pedido, Produção e Entrega), a leitura das tabelas sem o
  * histórico em espera, que não tem pendência. `load: false` só conta.
+ * `q` (dono, 17/11/2026): a busca da aba, em todos os pedidos do passo
+ * (`flowSearchText`), antes de dividir em páginas; `total` continua sendo
+ * todos os do passo e `matched`, os que a busca achou.
  */
 export async function flowStepEntities(
   user: User,
   step: Pick<FlowStep, "block" | "key">,
-  { page = 1, load = true }: { page?: number; load?: boolean } = {},
+  {
+    page = 1,
+    load = true,
+    q = "",
+  }: { page?: number; load?: boolean; q?: string } = {},
 ): Promise<{
   entities: FlowEntity[];
   total: number;
+  matched: number;
   page: number;
   pages: number;
 }> {
   const id = stepId(step);
-  const none = { entities: [], total: 0, page: 1, pages: 1 };
+  const none = { entities: [], total: 0, matched: 0, page: 1, pages: 1 };
   if (!isWellmix(user)) return none;
+  const query = q.trim();
   let ids: string[] | null = null;
   if (isProgressBlock(step.block)) {
     const { summariesReady } = await import("./order-summary");
@@ -614,24 +705,32 @@ export async function flowStepEntities(
           live.map((o) => o.id),
         )
       ).entities.get(id) ?? [];
-    const pages = Math.max(1, Math.ceil(all.length / FLOW_STEP_PAGE));
+    const found = query ? await searchEntities(all, query) : all;
+    const pages = Math.max(1, Math.ceil(found.length / FLOW_STEP_PAGE));
     const at = Math.min(Math.max(1, page), pages);
     return {
-      entities: all.slice((at - 1) * FLOW_STEP_PAGE, at * FLOW_STEP_PAGE),
+      entities: found.slice((at - 1) * FLOW_STEP_PAGE, at * FLOW_STEP_PAGE),
       total: all.length,
+      matched: found.length,
       page: at,
       pages,
     };
   }
+  const total = ids.length;
+  if (query) {
+    const texts = await summarySearchTexts();
+    ids = ids.filter((x) => matchesQuery(texts.get(x) ?? "", query));
+  }
   const pages = Math.max(1, Math.ceil(ids.length / FLOW_STEP_PAGE));
   const at = Math.min(Math.max(1, page), pages);
-  if (!load) return { entities: [], total: ids.length, page: at, pages };
+  if (!load)
+    return { entities: [], total, matched: ids.length, page: at, pages };
   const slice = ids.slice((at - 1) * FLOW_STEP_PAGE, at * FLOW_STEP_PAGE);
   const rank = new Map(slice.map((x, i) => [x, i]));
   const entities = (
     (await loadFlowAll(user, slice)).entities.get(id) ?? []
   ).sort((a, b) => (rank.get(a.order.id) ?? 0) - (rank.get(b.order.id) ?? 0));
-  return { entities, total: ids.length, page: at, pages };
+  return { entities, total, matched: ids.length, page: at, pages };
 }
 
 /** Pedido que está no bloco: os passos em que está, desde quando e a completude. */
