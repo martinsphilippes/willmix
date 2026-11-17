@@ -6,6 +6,10 @@
  * função" e "Por tela".
  */
 export const pt = {
+  "formDraft.restored":
+    "Rascunho recuperado (guardado em {time}): o que você tinha digitado voltou para o formulário.",
+  "formDraft.discard": "Descartar rascunho",
+  "formDraft.saved": "Rascunho guardado às {time}",
   "team.login.title": "Login",
   "team.login.active": "Login ativo",
   "team.login.suspended": "Login suspenso",
@@ -208,6 +212,10 @@ export const pt = {
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
+  "formDraft.restored":
+    "Draft restored (saved on {time}): what you had typed is back in the form.",
+  "formDraft.discard": "Discard draft",
+  "formDraft.saved": "Draft saved at {time}",
   "team.login.title": "Login",
   "team.login.active": "Login active",
   "team.login.suspended": "Login suspended",
@@ -414,6 +422,10 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "formDraft.restored":
+    "已恢复草稿（保存于 {time}）：您之前输入的内容已回到表单中。",
+  "formDraft.discard": "丢弃草稿",
+  "formDraft.saved": "草稿已于 {time} 保存",
   "team.login.title": "登录",
   "team.login.active": "登录已启用",
   "team.login.suspended": "登录已暂停",

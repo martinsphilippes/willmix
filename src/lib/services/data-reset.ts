@@ -50,6 +50,7 @@ const SALES_TABLES = [
   "ai_suggestions",
   "cart_items",
   "request_drafts",
+  "form_drafts",
   // Mensagens (chat): conversas, assuntos, mensagens e leituras de teste.
   "messages",
   "message_reads",

@@ -1983,6 +1983,20 @@ export interface RequestDraft extends BaseRow {
   payload: Array<[string, string]>;
 }
 
+/**
+ * Rascunho de um formulário, por login (dono, 17/11/2026;
+ * docs/EQUIPE_ACESSOS.md, D11): o Novo parceiro guarda o que foi digitado
+ * enquanto a pessoa preenche (sem o limite de 5 minutos do cookie de antes).
+ * Um por login e formulário (`form`, ex.: "party-new:partner"); some ao
+ * salvar o cadastro ou em "Descartar rascunho".
+ */
+export interface FormDraft extends BaseRow {
+  userId: string;
+  form: string;
+  /** Os campos de texto do formulário (nome → valor). */
+  payload: Record<string, string>;
+}
+
 export interface CartItem extends BaseRow {
   userId: string;
   customerId: string;
@@ -3745,6 +3759,7 @@ export interface Tables {
   manufacturer_cards: ManufacturerCard;
   cart_items: CartItem;
   request_drafts: RequestDraft;
+  form_drafts: FormDraft;
   freight_tariffs: FreightTariff;
   product_variants: ProductVariant;
   conversations: Conversation;
@@ -4946,6 +4961,17 @@ export const TABLES: Record<TableName, TableDef> = {
       payload: jsonLarge(),
     },
     indexes: [{ key: "by_user", type: "key", columns: ["userId"] }],
+  },
+  form_drafts: {
+    label: "Rascunhos de formulários",
+    columns: {
+      userId: id(),
+      form: str(60, true),
+      payload: json(),
+    },
+    indexes: [
+      { key: "by_user_form", type: "unique", columns: ["userId", "form"] },
+    ],
   },
   cart_items: {
     label: "Carrinho da vitrine",

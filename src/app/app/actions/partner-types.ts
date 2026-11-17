@@ -112,8 +112,9 @@ export async function setPartnerTypeActiveAction(form: FormData) {
 
 /**
  * Do formulário "Novo parceiro": cria o tipo e volta ao formulário com ele
- * selecionado e com o que já estava digitado (guardado por 5 minutos num
- * cookie do servidor; e-mail e telefone não vão para o endereço).
+ * selecionado e com o que já estava digitado (desde 17/11/2026 no rascunho do
+ * banco, por login; o cookie do servidor de 5 minutos continua; e-mail e
+ * telefone não vão para o endereço).
  */
 export async function quickPartnerTypeAction(form: FormData) {
   const user = await requireUser();
@@ -121,6 +122,12 @@ export async function quickPartnerTypeAction(form: FormData) {
   for (const field of PARTY_DRAFT_FIELDS) {
     const value = str(form, field).slice(0, field === "notes" ? 2000 : 255);
     if (value) draft[field] = value;
+  }
+  // O rascunho fica no banco, por login, sem prazo (D11); o cookie de antes
+  // continua para quem volta no meio do caminho.
+  {
+    const { saveFormDraft } = await import("@/lib/services/form-drafts");
+    await saveFormDraft(user, "party-new:partner", draft).catch(() => null);
   }
   const jar = await cookies();
   jar.set(PARTY_DRAFT_COOKIE, JSON.stringify(draft), {

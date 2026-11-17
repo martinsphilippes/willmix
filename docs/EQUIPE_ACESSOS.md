@@ -30,7 +30,7 @@ Pedido do dono (16 e 17/11/2026): reorganizar o módulo "Equipe Acessos e Parcei
 | 5b    | Prévia de impacto antes de salvar uma regra, consulta do Gestor, Cargo que sugere Funções e Nível (R1, D2, D13)          | Entregue (seção 8)  |
 | 5c    | Painel de SLA com Cargo, Nível, Função, Área e Divisão e a saúde da hierarquia (R9, D5)                                  | Entregue (seção 9)  |
 | 5d    | Login da equipe interna separado de "estar na equipe", desativar e reativar (D8, R7)                                     | Entregue (seção 10) |
-| 5e    | Rascunho do Novo parceiro no banco (D11)                                                                                 | A fazer             |
+| 5e    | Rascunho do Novo parceiro no banco (D11)                                                                                 | Entregue (seção 11) |
 
 ## 3. Equipe Externa (etapa 1)
 
@@ -154,3 +154,14 @@ Na equipe da Wellmix, o **cadastro na equipe** (`users.active`) e o **login** (`
 - **Banco**: coluna nova `users.loginSuspended` (booleano; vazio = login ativo), só acrescentada. Publicar no Supabase logo depois do merge (docs/SUPABASE.md, "Publicar o esquema"). Antes de publicar, ler continua funcionando (a coluna vazia vale "ativo"); só suspender um login depende da coluna.
 - **Peças**: a regra em `src/lib/access-state.ts` (`accessBlockOf` com o login suspenso), os serviços em `src/lib/services/access-state.ts` (`setTeamLoginActive`, `reactivateTeamMember`, `formerTeamMembers`), as ações em `src/app/app/actions/access-state.ts`, a página da pessoa, a lista e o painel `FormerPanel` (`src/app/app/team/_components/team-panels.tsx`); textos em `src/i18n/modules/internal-team.ts`.
 - **Testes**: `tests/unit/access-state.test.ts` (login suspenso não entra e segue na equipe, o motivo só com a senha certa, só o administrador, o próprio login não, parceiro fora; quem saiu volta e o gestor de antes só se ainda está) e `tests/e2e/internal-team.spec.ts` (suspender com a confirmação, o selo na lista, a entrada recusada com o motivo, reativar e entrar; excluir e reativar pelo painel).
+
+## 11. Rascunho do Novo parceiro no banco (etapa 5e)
+
+- **O que muda** (D11): o Novo parceiro (e o Novo cliente, em Cadastros → Clientes) guarda sozinho, a cada pausa da digitação, os campos de texto do cadastro (nome, país, e-mail, telefone, CNPJ e observações) num rascunho **no banco, por login** (tabela nova `form_drafts`, um por login e formulário: `party-new:partner`, `party-new:customer` e `party-new:supplier`). "Rascunho guardado às HH:MM" aparece ao lado do Salvar.
+- **Ao voltar** (recarregou, fechou a aba, perdeu a conexão, voltou do atalho "+ Novo tipo"): "Rascunho recuperado (guardado em …)" com **Descartar rascunho**, e o formulário preenchido. Salvar o cadastro apaga o rascunho.
+- **Acabou o limite de 5 minutos**: o atalho "+ Novo tipo" passa a guardar no rascunho do banco; o cookie de antes continua lido, para quem estava no meio do caminho.
+- **Quem**: quem abre Parceiros (o mesmo de criar o cadastro); cada login só lê e apaga o próprio rascunho. Senha e campos de arquivo nunca entram.
+- **Banco**: tabela nova `form_drafts` (`userId`, `form`, `payload`), só acrescentada; publicar no Supabase logo depois do merge. Os resets de dados de teste apagam os rascunhos.
+- **O documento** (a outra metade da D11): `docs/FLOW_MENU.md` traz a área em duas telas (Equipe Interna e Equipe Externa) e as seções novas; este documento é o registro das etapas.
+- **Peças**: `src/lib/services/form-drafts.ts`, `src/app/app/actions/form-drafts.ts`, `src/components/form-draft-autosave.tsx`, o formulário (`src/components/party-form.tsx`) e a página (`src/app/app/parties/_record/new-party.tsx`); textos em `src/i18n/modules/internal-team.ts`.
+- **Testes**: `tests/unit/form-drafts.test.ts` (só os campos do cadastro, cada login o dele, vazio apaga, quem não abre Parceiros não grava, Descartar e salvar limpam) e `tests/e2e/party-draft.spec.ts` (digitar, recarregar e recuperar, descartar e salvar).

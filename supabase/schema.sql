@@ -1157,6 +1157,19 @@ create index if not exists "request_drafts_by_user" on public."request_drafts" (
 create index if not exists "request_drafts_created" on public."request_drafts" ("createdAt");
 create index if not exists "request_drafts_created_id" on public."request_drafts" ("createdAt", "id");
 
+create table if not exists public."form_drafts" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."form_drafts" enable row level security;
+alter table public."form_drafts" add column if not exists "userId" text;
+alter table public."form_drafts" add column if not exists "form" text;
+alter table public."form_drafts" add column if not exists "payload" jsonb;
+create unique index if not exists "form_drafts_by_user_form" on public."form_drafts" ("userId", "form");
+create index if not exists "form_drafts_created" on public."form_drafts" ("createdAt");
+create index if not exists "form_drafts_created_id" on public."form_drafts" ("createdAt", "id");
+
 create table if not exists public."cart_items" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),

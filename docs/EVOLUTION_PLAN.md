@@ -1823,3 +1823,9 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Pedido do dono** (17/11/2026; docs/EQUIPE_ACESSOS.md, seção 10, D8 e R7).
 - **Aditivo:** coluna nova `users.loginSuspended` (vazia = login ativo, o de sempre); suspender o login não tira a pessoa da equipe; quem saiu pode voltar. Nada é apagado.
 - Testes: `tests/unit/access-state.test.ts` e `tests/e2e/internal-team.spec.ts`.
+
+## Rascunho do Novo parceiro no banco (etapa 5e)
+
+- **Pedido do dono** (17/11/2026; docs/EQUIPE_ACESSOS.md, seção 11, D11).
+- **Aditivo:** tabela nova `form_drafts`; o formulário guarda sozinho e recupera com "Descartar"; o cookie de 5 minutos continua lido. Nada é apagado nem muda de lugar.
+- Testes: `tests/unit/form-drafts.test.ts` e `tests/e2e/party-draft.spec.ts`.
