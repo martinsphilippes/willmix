@@ -20,10 +20,13 @@ const rows = (page: Page) => page.locator("[data-customer-row]");
 
 /** Nomes das linhas da lista de Clientes. */
 async function customerNames(page: Page) {
-  // Só o link do nome (embaixo dele fica o link do login de acesso).
+  // Só o link do nome (embaixo dele fica o link do login de acesso, que
+  // leva ao cadastro do cliente: /app/customers/<id>/edit#access).
   return (
     await rows(page)
-      .locator('td:nth-child(2) a[href^="/app/customers/"]')
+      .locator(
+        'td:nth-child(2) a[href^="/app/customers/"]:not([href$="#access"])',
+      )
       .allInnerTexts()
   ).map((n) => n.trim());
 }
@@ -86,8 +89,9 @@ test("Cadastros → Clientes: página própria, só clientes, busca e ações", 
   await page.waitForURL(/\/app\/customers\/cliente-joao$/);
   await expect(customersLink(page)).toHaveAttribute("aria-current", "page");
   await page.goto("/app/customers?q=loja");
+  // Editar o cadastro: em Clientes (etapa 4).
   await expect(
-    joao.locator('a[href="/app/parties/cliente-joao"]'),
+    joao.locator('a[href="/app/customers/cliente-joao/edit"]'),
   ).toBeVisible();
 });
 
