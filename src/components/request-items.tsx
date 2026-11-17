@@ -375,7 +375,21 @@ export function RequestItems({
     });
     setRows((r) => [...r, next]);
     setNext((n) => n + 1);
+    scrollToRow.current = next;
   }
+  // "+ Adicionar outro produto" (dono, 17/11/2026): a tela rola até o
+  // produto novo, para o preenchimento ficar à vista.
+  const scrollToRow = useRef<number | null>(null);
+  useEffect(() => {
+    const index = scrollToRow.current;
+    if (index === null) return;
+    const box = document.querySelector<HTMLElement>(
+      `[data-request-item="${index}"]`,
+    );
+    if (!box) return;
+    scrollToRow.current = null;
+    box.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 
   // Histórico de compras → pedido (dono, 15/11/2026; docs/ORDER_TERMS.md
   // seção 10): o produto clicado no histórico entra como mais uma linha (a
@@ -635,7 +649,7 @@ export function RequestItems({
               data-request-item={index}
               data-request-item-collapsed={collapsed[index] ? "" : undefined}
               hidden={!!collapsed[index]}
-              className="min-w-0 max-w-full rounded-xl border border-zinc-200 bg-zinc-50/40 p-3"
+              className="min-w-0 max-w-full scroll-mt-24 rounded-xl border border-zinc-200 bg-zinc-50/40 p-3"
             >
               <legend className="flex w-full items-center justify-between gap-2 px-1">
                 <span className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-zinc-800">

@@ -92,7 +92,7 @@ import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
 import { itemIdOf } from "@/lib/purchase-lanes";
 import { assertSameSchedule, parseRequestItems } from "./actions/request-items";
 import {
-  CONTACT_ROLES,
+  contactsFromEntries,
   type CustomerContacts,
   type OrderTerms,
 } from "@/lib/order-terms";
@@ -147,13 +147,7 @@ const requestItemSchema = z.object({
 
 /** Os contatos do cliente do bloco "Cliente" da Nova solicitação (`contact.<área>.*`). */
 function contactsFromForm(form: FormData): CustomerContacts {
-  const out = {} as CustomerContacts;
-  for (const role of CONTACT_ROLES)
-    out[role] = {
-      phone: str(form, `contact.${role}.phone`),
-      email: str(form, `contact.${role}.email`),
-    };
-  return out;
+  return contactsFromEntries((k) => str(form, k), form.keys());
 }
 
 /**
