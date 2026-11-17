@@ -2133,6 +2133,28 @@ create index if not exists "team_positions_created" on public."team_positions" (
 create index if not exists "team_positions_created_id" on public."team_positions" ("createdAt", "id");
 create index if not exists "team_positions_name_id" on public."team_positions" ("name", "id");
 
+create table if not exists public."team_pending" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."team_pending" enable row level security;
+alter table public."team_pending" add column if not exists "name" text;
+alter table public."team_pending" add column if not exists "status" text;
+alter table public."team_pending" add column if not exists "positionId" text;
+alter table public."team_pending" add column if not exists "areaId" text;
+alter table public."team_pending" add column if not exists "jobLevel" text;
+alter table public."team_pending" add column if not exists "functions" jsonb;
+alter table public."team_pending" add column if not exists "reviewNote" text;
+alter table public."team_pending" add column if not exists "source" text;
+alter table public."team_pending" add column if not exists "userId" text;
+alter table public."team_pending" add column if not exists "createdByUserId" text;
+alter table public."team_pending" add column if not exists "updatedByUserId" text;
+create index if not exists "team_pending_by_status" on public."team_pending" ("status");
+create index if not exists "team_pending_created" on public."team_pending" ("createdAt");
+create index if not exists "team_pending_created_id" on public."team_pending" ("createdAt", "id");
+create index if not exists "team_pending_name_id" on public."team_pending" ("name", "id");
+
 create table if not exists public."partner_types" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),

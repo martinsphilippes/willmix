@@ -634,12 +634,21 @@ export interface TeamImportState {
   rows: TeamImportViewRow[];
   invalid: { line: number; text: string; reason: string }[];
   repeated: { line: number; email: string }[];
+  /** Sem e-mail: ficam "Aguardando e-mail" ao criar os logins. */
+  pending: {
+    line: number;
+    name: string;
+    position: string;
+    area: string | null;
+    already: boolean;
+  }[];
   result: {
     created: { name: string; email: string; review: boolean }[];
     linked: { name: string; email: string }[];
     skipped: { name: string; email: string; reason: string }[];
     failed: { name: string; email: string; error: string; message: string }[];
     remaining: number;
+    pending: string[];
   } | null;
   doneAt: string | null;
 }
@@ -664,6 +673,7 @@ export async function teamImportAction(
     rows: [],
     invalid: [],
     repeated: [],
+    pending: [],
     result: null,
     doneAt: new Date().toISOString(),
   };
@@ -696,6 +706,13 @@ export async function teamImportAction(
       header: preview.header,
       invalid: preview.invalid,
       repeated: preview.repeated,
+      pending: preview.pending.map((p) => ({
+        line: p.line,
+        name: p.name,
+        position: p.positionName,
+        area: p.areaName,
+        already: p.already,
+      })),
       rows: preview.rows.map((r) => ({
         line: r.line,
         name: r.name,
@@ -719,6 +736,59 @@ export async function teamImportAction(
       message: errorTextFor(t, code, ["team.error"]),
     };
   }
+}
+
+/* ---- Aguardando e-mail (Equipe → "Aguardando e-mail"; só o administrador) ---- */
+
+const PENDING_BACK = "/app/team?panel=pending";
+
+/**
+ * Cria o login de quem aguardava e-mail: o e-mail (ou nome de usuário) e a
+ * senha provisória da tela; cargo, área, funções e o "a conferir" guardados.
+ */
+export async function createPendingLoginAction(form: FormData) {
+  const user = await requireUser();
+  await run(PENDING_BACK, async () => {
+    assertRole(user, ["admin"]);
+    const { PORTAL_MIN_PASSWORD } =
+      await import("@/lib/services/portal-access");
+    const password = z
+      .string()
+      .max(128)
+      .parse(form.get("password") ?? "");
+    if (password.length < PORTAL_MIN_PASSWORD)
+      throw new Error("user_password_short");
+    const { createLoginFromPending } =
+      await import("@/lib/services/team-pending");
+    const created = await createLoginFromPending(
+      user,
+      ID.parse(str(form, "pendingId")),
+      z.string().min(3).max(254).parse(str(form, "login").toLowerCase()),
+      password,
+    );
+    const done = new URLSearchParams({
+      panel: "pending",
+      saved: "pending_created",
+      login: created.name.slice(0, 120),
+    });
+    return `/app/team?${done.toString()}`;
+  });
+}
+
+/** Tira da lista quem não vai ter login (o registro fica). */
+export async function removePendingAction(form: FormData) {
+  const user = await requireUser();
+  await run(PENDING_BACK, async () => {
+    assertRole(user, ["admin"]);
+    const { removeTeamPending } = await import("@/lib/services/team-pending");
+    const row = await removeTeamPending(user, ID.parse(str(form, "pendingId")));
+    const done = new URLSearchParams({
+      panel: "pending",
+      saved: "pending_removed",
+      login: row.name.slice(0, 120),
+    });
+    return `/app/team?${done.toString()}`;
+  });
 }
 
 /* ---- Funções e acessos (Equipe → Funções e acessos; só o administrador) ---- */

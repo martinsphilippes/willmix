@@ -37,9 +37,15 @@ export interface TeamImportLine {
 export interface TeamImportParse {
   rows: TeamImportLine[];
   header: string | null;
-  /** Linhas recusadas: sem nome, sem e-mail válido ou repetidas. */
+  /** Linhas recusadas: sem nome. */
   invalid: { line: number; text: string; reason: "name" | "email" }[];
   repeated: { line: number; email: string }[];
+  /**
+   * Com nome e sem e-mail válido ("não localizado"): ficam "Aguardando
+   * e-mail" na Equipe, com cargo e área, para o login ser criado depois
+   * (dono, 17/11/2026). O e-mail vem vazio.
+   */
+  noEmail: TeamImportLine[];
 }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -69,6 +75,7 @@ export function parseTeamImport(text: string): TeamImportParse {
     header: null,
     invalid: [],
     repeated: [],
+    noEmail: [],
   };
   const lines = text.split(/\r?\n/);
   let order = DEFAULT_ORDER;
@@ -77,7 +84,12 @@ export function parseTeamImport(text: string): TeamImportParse {
     if (!raw.trim()) return;
     const parts = cells(raw);
     // Títulos: a primeira linha com palavras de título (Nome, Cargo...).
-    if (!out.header && !out.rows.length && !out.invalid.length) {
+    if (
+      !out.header &&
+      !out.rows.length &&
+      !out.invalid.length &&
+      !out.noEmail.length
+    ) {
       const titles = parts.map(columnOf);
       if (
         titles.filter(Boolean).length >= 2 ||
@@ -119,7 +131,7 @@ export function parseTeamImport(text: string): TeamImportParse {
       return;
     }
     if (!EMAIL.test(row.email)) {
-      out.invalid.push({ line: row.line, text: raw.trim(), reason: "email" });
+      out.noEmail.push({ ...row, email: "" });
       return;
     }
     if (seen.has(row.email)) {

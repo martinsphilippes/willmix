@@ -64,6 +64,8 @@ export const TEAM_PANELS = [
   "screens",
   // Quem saiu da equipe, para reativar (D8 e R7).
   "former",
+  // Quem veio da planilha sem e-mail, para criar o login depois (dono, 17/11/2026).
+  "pending",
 ] as const;
 export type TeamPanel = (typeof TEAM_PANELS)[number];
 

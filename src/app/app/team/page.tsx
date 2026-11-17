@@ -22,6 +22,7 @@ import {
   getStore,
   type ProductLine,
   type TeamArea,
+  type TeamPending,
   type TeamPosition,
   type User,
 } from "@/lib/db";
@@ -49,6 +50,7 @@ import {
 } from "@/components/ui";
 import { listTeamAreas } from "@/lib/services/team-areas";
 import { listTeamPositions } from "@/lib/services/team-positions";
+import { listTeamPending } from "@/lib/services/team-pending";
 import { SubmitButton } from "@/components/submit-button";
 import { wellmixTeam } from "@/lib/services/team";
 import { loadFunctionDefs } from "@/lib/services/team-functions";
@@ -74,6 +76,7 @@ import { TeamMembers, teamRows } from "./_components/team-members";
 import {
   AreaPanel,
   FormerPanel,
+  PendingPanel,
   FunctionPanel,
   ManagerPanel,
   PositionPanel,
@@ -138,18 +141,21 @@ export default async function TeamPage({
     : "team";
   const saved = one("saved");
   const error = one("error");
-  const [team, lines, defs, areas, positions, former] = await Promise.all([
-    wellmixTeam(),
-    getStore().list("product_lines", {
-      filter: { active: true },
-      orderBy: "name",
-    }),
-    loadFunctionDefs(),
-    listTeamAreas(),
-    listTeamPositions(),
-    // Quem saiu da equipe (Excluir acesso): o painel para reativar.
-    tab === "team" ? formerTeamMembers() : Promise.resolve([]),
-  ]);
+  const [team, lines, defs, areas, positions, former, pending] =
+    await Promise.all([
+      wellmixTeam(),
+      getStore().list("product_lines", {
+        filter: { active: true },
+        orderBy: "name",
+      }),
+      loadFunctionDefs(),
+      listTeamAreas(),
+      listTeamPositions(),
+      // Quem saiu da equipe (Excluir acesso): o painel para reativar.
+      tab === "team" ? formerTeamMembers() : Promise.resolve([]),
+      // Quem veio da planilha sem e-mail: o painel para criar o login depois.
+      tab === "team" ? listTeamPending() : Promise.resolve([]),
+    ]);
   const errorKey = `team.error.${error ?? ""}`;
   const errorText = error
     ? t(errorKey as DictionaryKey) !== errorKey
@@ -272,6 +278,7 @@ export default async function TeamPage({
           admin={isAdmin(user)}
           sp={sp}
           former={former}
+          pending={pending}
           modalOpen={one("new") === "1"}
           modalError={one("new") === "1" ? errorText : null}
         />
@@ -369,6 +376,7 @@ function TeamTab({
   admin,
   sp,
   former,
+  pending,
   modalOpen,
   modalError,
 }: {
@@ -382,6 +390,8 @@ function TeamTab({
   sp: Record<string, string | string[] | undefined>;
   /** Quem saiu da equipe (o painel para reativar). */
   former: User[];
+  /** Quem aguarda e-mail (o painel para criar o login). */
+  pending: TeamPending[];
   modalOpen: boolean;
   modalError: string | null;
 }) {
@@ -483,6 +493,7 @@ function TeamTab({
         filters={filters}
         sp={sp}
         formerCount={former.length}
+        pendingCount={pending.length}
       />
       {admin && modalOpen ? (
         <NewUserModal
@@ -561,6 +572,28 @@ function TeamTab({
               ? t("team.former.saved", {
                   name: (one("login") ?? "").slice(0, 120),
                 })
+              : null
+          }
+        />
+      ) : null}
+      {panel === "pending" ? (
+        <PendingPanel
+          t={t}
+          pending={pending}
+          positions={positions}
+          areas={areas}
+          label={label}
+          links={links}
+          admin={admin}
+          notice={
+            one("saved") === "pending_created" ||
+            one("saved") === "pending_removed"
+              ? t(
+                  `team.pending.saved.${one("saved") === "pending_created" ? "created" : "removed"}`,
+                  {
+                    name: (one("login") ?? "").slice(0, 120),
+                  },
+                )
               : null
           }
         />

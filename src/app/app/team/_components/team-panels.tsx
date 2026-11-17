@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import type { TeamArea, TeamPosition, User } from "@/lib/db";
+import type { TeamArea, TeamPending, TeamPosition, User } from "@/lib/db";
 import { SCREEN_LABEL, WELLMIX_BASE } from "@/lib/auth/screens";
 import type { FunctionDef } from "@/lib/auth/function-access";
 import { isRetiredAction } from "@/lib/auth/permission-modules";
@@ -16,6 +16,10 @@ import { Alert, Badge } from "@/components/ui";
 import { SidePanel } from "@/components/side-panel";
 import { SubmitButton } from "@/components/submit-button";
 import { reactivateTeamMemberAction } from "../../actions/access-state";
+import {
+  createPendingLoginAction,
+  removePendingAction,
+} from "../../actions/team";
 
 /*
  * Painéis da Equipe Interna (dono, 17/11/2026; docs/EQUIPE_ACESSOS.md, etapa
@@ -664,6 +668,156 @@ export function FormerPanel({
         )}
         {!admin ? (
           <p className="text-xs text-zinc-500">{t("team.former.adminOnly")}</p>
+        ) : null}
+      </div>
+    </SidePanel>
+  );
+}
+
+/**
+ * Aguardando e-mail (dono, 17/11/2026; docs/ACCESS.md, "Importar equipe"):
+ * quem veio da planilha sem e-mail, com o cargo, a área e as funções
+ * sugeridas guardados. O administrador põe o e-mail (ou um nome de usuário) e
+ * a senha provisória e cria o login; quem não vai ter login sai da lista.
+ */
+export function PendingPanel({
+  t,
+  pending,
+  positions,
+  areas,
+  label,
+  links,
+  admin,
+  notice,
+}: {
+  t: Translate;
+  pending: TeamPending[];
+  positions: TeamPosition[];
+  areas: TeamArea[];
+  label: (key: string) => string;
+  links: PanelLinks;
+  admin: boolean;
+  notice: string | null;
+}) {
+  const positionOf = (id: string | null) =>
+    (id && positions.find((p) => p.id === id)?.name) || t("team.none");
+  const areaOf = (p: TeamPending) => {
+    const position = positions.find((x) => x.id === p.positionId);
+    const id = position?.areaId ?? p.areaId;
+    return (id && areas.find((a) => a.id === id)?.name) || t("team.none");
+  };
+  return (
+    <SidePanel
+      title={t("team.pending.title")}
+      subtitle={t("internalTeam.nav")}
+      closeHref={links.closeHref}
+      closeLabel={t("internalTeam.panel.close")}
+      data-team-panel="pending"
+    >
+      <div className="space-y-3">
+        {notice ? (
+          <div data-team-pending-saved>
+            <Alert tone="success">{notice}</Alert>
+          </div>
+        ) : null}
+        <p className="text-xs text-zinc-500">{t("team.pending.hint")}</p>
+        {pending.length ? (
+          <ul className="space-y-3">
+            {pending.map((p) => (
+              <li
+                key={p.id}
+                className="rounded-lg border border-zinc-200 p-3 text-sm"
+                data-team-pending={p.id}
+                data-team-pending-name={p.name}
+              >
+                <p className="font-semibold text-zinc-900">{p.name}</p>
+                <p className="text-xs text-zinc-600">
+                  {positionOf(p.positionId)} · {areaOf(p)}
+                </p>
+                <p className="mt-1 text-xs text-zinc-600">
+                  {p.functions?.length
+                    ? t("team.pending.functions", {
+                        list: p.functions.map(label).join(", "),
+                      })
+                    : t("team.pending.noFunctions")}
+                </p>
+                {p.reviewNote ? (
+                  <p className="mt-1 text-xs text-amber-800">
+                    <Badge tone="warning">{t("team.review.badge")}</Badge>{" "}
+                    {p.reviewNote}
+                  </p>
+                ) : null}
+                {p.source ? (
+                  <p className="mt-1 text-[11px] text-zinc-400">{p.source}</p>
+                ) : null}
+                {admin ? (
+                  <div className="mt-2 space-y-2">
+                    <form
+                      action={createPendingLoginAction}
+                      className="grid gap-2 sm:grid-cols-[1fr_10rem_auto] sm:items-end"
+                    >
+                      <input type="hidden" name="pendingId" value={p.id} />
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-zinc-700">
+                          {t("team.pending.email")}
+                        </span>
+                        <input
+                          name="login"
+                          required
+                          minLength={3}
+                          maxLength={254}
+                          autoComplete="off"
+                          autoCapitalize="none"
+                          className="block min-h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-[13px] text-zinc-900 shadow-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                          data-team-pending-login={p.id}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-zinc-700">
+                          {t("team.pending.password")}
+                        </span>
+                        <input
+                          name="password"
+                          required
+                          minLength={8}
+                          maxLength={128}
+                          autoComplete="off"
+                          className="block min-h-8 w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-[13px] text-zinc-900 shadow-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                          data-team-pending-password={p.id}
+                        />
+                      </label>
+                      <SubmitButton
+                        className="px-3 py-1.5 text-xs"
+                        data-team-pending-create={p.id}
+                      >
+                        {t("team.pending.create")}
+                      </SubmitButton>
+                    </form>
+                    <form action={removePendingAction}>
+                      <input type="hidden" name="pendingId" value={p.id} />
+                      <SubmitButton
+                        variant="secondary"
+                        className="px-2.5 py-1 text-xs"
+                        confirmText={t("team.pending.removeConfirm", {
+                          name: p.name,
+                        })}
+                        data-team-pending-remove={p.id}
+                      >
+                        {t("team.pending.remove")}
+                      </SubmitButton>
+                    </form>
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-zinc-500" data-team-pending-none>
+            {t("team.pending.none")}
+          </p>
+        )}
+        {!admin ? (
+          <p className="text-xs text-zinc-500">{t("team.pending.adminOnly")}</p>
         ) : null}
       </div>
     </SidePanel>

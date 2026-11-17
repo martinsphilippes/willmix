@@ -58,6 +58,7 @@ export function TeamMembers({
   filters,
   sp,
   formerCount = 0,
+  pendingCount = 0,
 }: {
   t: Translate;
   /** A equipe ativa (as linhas saem dela). */
@@ -67,6 +68,8 @@ export function TeamMembers({
   sp: Record<string, string | string[] | undefined>;
   /** Quantos saíram da equipe (o painel para reativar). */
   formerCount?: number;
+  /** Quem veio da planilha sem e-mail (o painel "Aguardando e-mail"). */
+  pendingCount?: number;
 }) {
   const one = (key: string) =>
     typeof sp[key] === "string" ? (sp[key] as string) : undefined;
@@ -206,6 +209,16 @@ export function TeamMembers({
                 data-team-former-open
               >
                 {t("team.former.open", { n: formerCount })}
+              </Link>
+            ) : null}
+            {pendingCount ? (
+              <Link
+                href={panelHref({ panel: "pending" })}
+                scroll={false}
+                className="font-medium text-amber-700 underline"
+                data-team-pending-open
+              >
+                {t("team.pending.open", { n: pendingCount })}
               </Link>
             ) : null}
           </p>

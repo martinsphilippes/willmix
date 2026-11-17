@@ -54,6 +54,30 @@ export const pt = {
   "team.error.import_empty":
     "Cole ao menos uma linha da planilha (Nome, Cargo, Área, Email).",
   "team.error.import_too_many": "Cole no máximo 400 linhas por vez.",
+  "team.pending.open": "{n} aguardando e-mail",
+  "team.pending.title": "Aguardando e-mail",
+  "team.pending.hint":
+    "Quem veio da planilha sem e-mail. O cargo, a área e as funções sugeridas já estão guardados: ponha o e-mail (ou um nome de usuário) e a senha provisória e clique em “Criar login”; o portal pede a troca da senha no primeiro acesso. Quem não vai ter login pode sair da lista.",
+  "team.pending.none": "Ninguém aguardando e-mail.",
+  "team.pending.email": "E-mail ou nome de usuário",
+  "team.pending.password": "Senha provisória",
+  "team.pending.create": "Criar login",
+  "team.pending.remove": "Tirar da lista",
+  "team.pending.removeConfirm":
+    "Tirar {name} da lista de quem aguarda e-mail? O registro fica guardado.",
+  "team.pending.functions": "Funções sugeridas: {list}",
+  "team.pending.noFunctions": "Sem função sugerida",
+  "team.pending.saved.created": "Login criado para {name}.",
+  "team.pending.saved.removed": "{name} saiu da lista.",
+  "team.pending.adminOnly": "Só o administrador cria os logins.",
+  "team.error.pending_not_found":
+    "Essa pessoa não está mais aguardando e-mail.",
+  "teamImport.pending.title": "Aguardando e-mail ({n})",
+  "teamImport.pending.hint":
+    "Sem e-mail na planilha: ao criar os logins, ficam na Equipe em “Aguardando e-mail”, com o cargo, a área e as funções, para pôr o e-mail depois.",
+  "teamImport.pending.already": "já está aguardando",
+  "teamImport.pendingDone":
+    "{n} pessoa(s) sem e-mail ficaram em “Aguardando e-mail” na Equipe.",
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
@@ -109,6 +133,30 @@ export const en: Record<keyof typeof pt, string> = {
   "team.error.import_empty":
     "Paste at least one spreadsheet row (Name, Job title, Area, Email).",
   "team.error.import_too_many": "Paste at most 400 rows at a time.",
+  "team.pending.open": "{n} waiting for an email",
+  "team.pending.title": "Waiting for an email",
+  "team.pending.hint":
+    "People who came from the spreadsheet without an email. The job title, area and suggested functions are already saved: enter the email (or a username) and the temporary password and click “Create login”; the portal asks for a new password on first access. Whoever will not have a login can leave the list.",
+  "team.pending.none": "Nobody waiting for an email.",
+  "team.pending.email": "Email or username",
+  "team.pending.password": "Temporary password",
+  "team.pending.create": "Create login",
+  "team.pending.remove": "Remove from the list",
+  "team.pending.removeConfirm":
+    "Remove {name} from the list of people waiting for an email? The record is kept.",
+  "team.pending.functions": "Suggested functions: {list}",
+  "team.pending.noFunctions": "No suggested function",
+  "team.pending.saved.created": "Login created for {name}.",
+  "team.pending.saved.removed": "{name} left the list.",
+  "team.pending.adminOnly": "Only the administrator creates the logins.",
+  "team.error.pending_not_found":
+    "This person is no longer waiting for an email.",
+  "teamImport.pending.title": "Waiting for an email ({n})",
+  "teamImport.pending.hint":
+    "No email in the spreadsheet: when the logins are created, they stay in the Team under “Waiting for an email”, with the job title, area and functions, so the email can be added later.",
+  "teamImport.pending.already": "already waiting",
+  "teamImport.pendingDone":
+    "{n} person(s) without an email are now in “Waiting for an email” in the Team.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -160,4 +208,26 @@ export const zh: Record<keyof typeof pt, string> = {
   "team.error.import_empty":
     "请至少粘贴一行表格数据（姓名、职位、部门、邮箱）。",
   "team.error.import_too_many": "每次最多粘贴 400 行。",
+  "team.pending.open": "{n} 人等待邮箱",
+  "team.pending.title": "等待邮箱",
+  "team.pending.hint":
+    "表格中没有邮箱的人员。职位、部门和建议的职能已保存：输入邮箱（或用户名）和临时密码，然后点击“创建账号”；首次登录时系统会要求更改密码。不需要账号的人可以从列表中移除。",
+  "team.pending.none": "没有人等待邮箱。",
+  "team.pending.email": "邮箱或用户名",
+  "team.pending.password": "临时密码",
+  "team.pending.create": "创建账号",
+  "team.pending.remove": "从列表中移除",
+  "team.pending.removeConfirm":
+    "将 {name} 从等待邮箱的列表中移除？记录会保留。",
+  "team.pending.functions": "建议的职能：{list}",
+  "team.pending.noFunctions": "没有建议的职能",
+  "team.pending.saved.created": "已为 {name} 创建账号。",
+  "team.pending.saved.removed": "{name} 已从列表中移除。",
+  "team.pending.adminOnly": "只有管理员可以创建账号。",
+  "team.error.pending_not_found": "此人已不在等待邮箱的列表中。",
+  "teamImport.pending.title": "等待邮箱（{n}）",
+  "teamImport.pending.hint":
+    "表格中没有邮箱：创建账号时，这些人员会进入团队的“等待邮箱”，保留职位、部门和职能，以便之后补上邮箱。",
+  "teamImport.pending.already": "已在等待",
+  "teamImport.pendingDone": "{n} 名没有邮箱的人员已进入团队的“等待邮箱”。",
 };

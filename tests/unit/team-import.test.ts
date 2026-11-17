@@ -135,7 +135,10 @@ describe("leitura da planilha (sem banco)", () => {
     });
     expect(parsed.invalid.map((i) => [i.line, i.reason])).toEqual([
       [5, "name"],
-      [6, "email"],
+    ]);
+    // Com nome e sem e-mail: fica aguardando e-mail (dono, 17/11/2026).
+    expect(parsed.noEmail.map((r) => [r.line, r.name, r.email])).toEqual([
+      [6, "Carla Dias", ""],
     ]);
     expect(parsed.repeated).toEqual([{ line: 7, email: "ana@empresa.com.br" }]);
   });
@@ -501,6 +504,7 @@ describe("criar os logins", () => {
       rows: [],
       invalid: [],
       repeated: [],
+      pending: [],
       result: null,
       doneAt: null,
     };
@@ -519,5 +523,134 @@ describe("criar os logins", () => {
     expect(
       run.rows.find((r) => r.email === "dani.rocha@wellmix.com")?.status,
     ).toBe("existing");
+  });
+});
+
+describe("aguardando e-mail", () => {
+  const pending = async () => import("@/lib/services/team-pending");
+  const sheet = [
+    "Nome;Cargo;Area;E-mail",
+    "Luzia Rocha;Vendedora Sênior;Comercial;Não localizado",
+    "Marta Lima;Analista de Contas a Receber Sr;Financeiro;",
+  ].join("\n");
+
+  it("a importação guarda quem vem sem e-mail, uma vez só", async () => {
+    const service = await pending();
+    const preview = await importing.previewTeamImport(admin, sheet);
+    expect(preview.rows).toEqual([]);
+    expect(preview.pending.map((p) => [p.name, p.already])).toEqual([
+      ["Luzia Rocha", false],
+      ["Marta Lima", false],
+    ]);
+    const before = (await getStore().list("users")).length;
+    const run = await importing.runTeamImport(admin, sheet, SHARED);
+    expect(run.pending).toEqual(["Luzia Rocha", "Marta Lima"]);
+    expect(run.created).toEqual([]);
+    expect((await getStore().list("users")).length).toBe(before);
+    const waiting = await service.listTeamPending();
+    expect(waiting.map((w) => w.name)).toEqual(["Luzia Rocha", "Marta Lima"]);
+    const marta = waiting.find((w) => w.name === "Marta Lima")!;
+    expect(marta).toMatchObject({
+      status: "waiting",
+      functions: ["finance"],
+      jobLevel: "analyst",
+      source: "Importação da planilha, linha 3",
+    });
+    expect(marta.reviewNote).toContain("Função: Financeiro; conferir");
+    // De novo: já estão aguardando, ninguém entra outra vez.
+    const again = await importing.previewTeamImport(admin, sheet);
+    expect(again.pending.every((p) => p.already)).toBe(true);
+    const run2 = await importing.runTeamImport(admin, sheet, SHARED);
+    expect(run2.pending).toEqual([]);
+    expect(await service.listTeamPending()).toHaveLength(2);
+  });
+
+  it("criar o login com o e-mail: cargo, área, funções e o a conferir guardados", async () => {
+    const service = await pending();
+    const store = getStore();
+    const waiting = await service.listTeamPending();
+    const luzia = waiting.find((w) => w.name === "Luzia Rocha")!;
+    expect(
+      await code(() =>
+        service.createLoginFromPending(
+          operator,
+          luzia.id,
+          "luzia@wellmix.com",
+          SHARED,
+        ),
+      ),
+    ).toBe("forbidden");
+    // E-mail já usado: nada muda, ela continua aguardando.
+    expect(
+      await code(() =>
+        service.createLoginFromPending(
+          admin,
+          luzia.id,
+          "admin@wellmix.com",
+          SHARED,
+        ),
+      ),
+    ).toBe("user_email_taken");
+    expect((await store.get("team_pending", luzia.id))?.status).toBe("waiting");
+
+    const created = await service.createLoginFromPending(
+      admin,
+      luzia.id,
+      "Luzia.Rocha@Wellmix.com",
+      SHARED,
+    );
+    const user = (await store.get("users", created.id))!;
+    const positionList = await positions.listTeamPositions();
+    const areaList = await areas.listTeamAreas();
+    expect(user).toMatchObject({
+      email: "luzia.rocha@wellmix.com",
+      name: "Luzia Rocha",
+      role: "operator",
+      mustChangePassword: true,
+      functions: ["sales"],
+      jobLevel: "analyst",
+    });
+    expect(positionList.find((p) => p.id === user.positionId)?.name).toBe(
+      "Vendedora Sênior",
+    );
+    expect(areaList.find((a) => a.id === user.areaId)?.name).toBe("Comercial");
+    const row = (await store.get("team_pending", luzia.id))!;
+    expect(row).toMatchObject({ status: "created", userId: created.id });
+    expect((await service.listTeamPending()).map((w) => w.name)).toEqual([
+      "Marta Lima",
+    ]);
+    // Já criado: não cria de novo.
+    expect(
+      await code(() =>
+        service.createLoginFromPending(
+          admin,
+          luzia.id,
+          "outra@wellmix.com",
+          SHARED,
+        ),
+      ),
+    ).toBe("pending_not_found");
+    jar.clear();
+    expect(
+      (await session.signIn("luzia.rocha@wellmix.com", SHARED))
+        .mustChangePassword,
+    ).toBe(true);
+  });
+
+  it("tirar da lista: o registro fica, ninguém é criado", async () => {
+    const service = await pending();
+    const [marta] = await service.listTeamPending();
+    await service.removeTeamPending(admin, marta.id);
+    expect(await service.listTeamPending()).toEqual([]);
+    expect((await getStore().get("team_pending", marta.id))?.status).toBe(
+      "removed",
+    );
+    const log = await getStore().list("audit_log", {
+      filter: { entityId: marta.id },
+    });
+    expect(log.map((e) => e.action).sort()).toEqual([
+      "team.pending_add",
+      "team.pending_remove",
+    ]);
   });
 });

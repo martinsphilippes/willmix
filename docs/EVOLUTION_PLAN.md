@@ -1829,3 +1829,10 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Pedido do dono** (17/11/2026; docs/EQUIPE_ACESSOS.md, seção 11, D11).
 - **Aditivo:** tabela nova `form_drafts`; o formulário guarda sozinho e recupera com "Descartar"; o cookie de 5 minutos continua lido. Nada é apagado nem muda de lugar.
 - Testes: `tests/unit/form-drafts.test.ts` e `tests/e2e/party-draft.spec.ts`.
+
+## Equipe: "Aguardando e-mail" para quem veio da planilha sem e-mail
+
+- **Pedido do dono** (17/11/2026), depois de criar os 54 logins da planilha: deixar as 4 pessoas sem e-mail aguardando, com a possibilidade de pôr o e-mail à mão pelo portal.
+- **Como ficou**: a importação guarda quem vem com nome e sem e-mail em "Aguardando e-mail" (cargo, área, funções, nível e o "a conferir" sugeridos); na Equipe Interna, o atalho "N aguardando e-mail" abre o painel com "E-mail ou nome de usuário", "Senha provisória" e "Criar login", e "Tirar da lista" (docs/ACCESS.md, "Importar equipe").
+- **Aditivo:** tabela nova `team_pending`; nada muda nos logins existentes nem nas telas de antes (o painel novo entra na lista de painéis da Equipe Interna).
+- Testes: `tests/unit/team-import.test.ts` e `tests/e2e/team-pending.spec.ts`.
