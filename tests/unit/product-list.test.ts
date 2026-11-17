@@ -9,6 +9,8 @@ import {
   productPage,
   productThumbId,
   readProductFilter,
+  readProductOrder,
+  sortProducts,
 } from "@/lib/services/product-list";
 
 const base = {
@@ -167,5 +169,40 @@ describe("páginas da lista de produtos", () => {
       start: 0,
       end: 50,
     });
+  });
+});
+
+describe("ordem da lista de produtos", () => {
+  it("lê a ordem da URL: só ?order=recent muda a de sempre", () => {
+    expect(readProductOrder({})).toBe("name");
+    expect(readProductOrder({ order: "" })).toBe("name");
+    expect(readProductOrder({ order: "name" })).toBe("name");
+    expect(readProductOrder({ order: "recent" })).toBe("recent");
+    expect(readProductOrder({ order: ["recent", "name"] })).toBe("recent");
+    expect(readProductOrder({ order: "x" })).toBe("name");
+  });
+
+  it("mais recentes primeiro; mesma data fica na ordem do nome", () => {
+    // Como vem do banco: pelo nome.
+    const byName = [
+      { id: "a", createdAt: "2026-11-11T10:00:00.000Z" },
+      { id: "b", createdAt: "2026-11-17T21:04:30.812Z" },
+      { id: "c", createdAt: "2026-11-11T10:00:00.000Z" },
+      { id: "d", createdAt: "2026-11-12T08:00:00.000Z" },
+    ];
+    expect(sortProducts(byName, "recent").map((p) => p.id)).toEqual([
+      "b",
+      "d",
+      "a",
+      "c",
+    ]);
+    // A de sempre não mexe (e não altera a lista recebida).
+    expect(sortProducts(byName, "name").map((p) => p.id)).toEqual([
+      "a",
+      "b",
+      "c",
+      "d",
+    ]);
+    expect(byName.map((p) => p.id)).toEqual(["a", "b", "c", "d"]);
   });
 });

@@ -401,8 +401,9 @@ export default async function ProductSheetPage({
           />
           <div data-product-created={approval ? "pending" : "active"}>
             <Alert tone="success">
-              {/* Criado pelo administrador: já ativo, sem aprovação (D2). */}
-              {t(approval ? "newProduct.created" : "newProduct.createdActive")}
+              {/* Criado pelo administrador: já ativo, sem aprovação (D2); o
+                  aviso de sempre do produto criado. */}
+              {t(approval ? "newProduct.created" : "catalog.created")}
             </Alert>
           </div>
         </>

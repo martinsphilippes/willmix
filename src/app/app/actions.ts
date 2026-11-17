@@ -91,7 +91,7 @@ import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
 import { itemIdOf } from "@/lib/purchase-lanes";
 import { assertSameSchedule, parseRequestItems } from "./actions/request-items";
 import {
-  CONTACT_ROLES,
+  contactsFromEntries,
   type CustomerContacts,
   type OrderTerms,
 } from "@/lib/order-terms";
@@ -146,13 +146,7 @@ const requestItemSchema = z.object({
 
 /** Os contatos do cliente do bloco "Cliente" da Nova solicitação (`contact.<área>.*`). */
 function contactsFromForm(form: FormData): CustomerContacts {
-  const out = {} as CustomerContacts;
-  for (const role of CONTACT_ROLES)
-    out[role] = {
-      phone: str(form, `contact.${role}.phone`),
-      email: str(form, `contact.${role}.email`),
-    };
-  return out;
+  return contactsFromEntries((k) => str(form, k), form.keys());
 }
 
 /**
@@ -1196,9 +1190,11 @@ export async function saveProductAction(form: FormData) {
     const id = str(form, "id");
     if (!id) {
       // Produto novo (dono, 17/11/2026; docs/NEW_PRODUCT.md): nasce inativo
-      // e vai para a aprovação; só vai para o Sankhya depois de aprovado. A
-      // tela é a de Novo produto (/app/products/new); este caminho curto não
-      // tem mais botão, mas segue a mesma regra.
+      // e vai para a aprovação (o do administrador nasce ativo); só vai para
+      // o Sankhya depois de aprovado. Abre na própria ficha, com o aviso
+      // "Produto criado" (antes voltava à lista e sumia entre os milhares do
+      // catálogo). A tela é a de Novo produto (/app/products/new); este
+      // caminho curto não tem mais botão, mas segue a mesma regra.
       const { createProductForApproval } =
         await import("@/lib/services/product-approval");
       const created = await createProductForApproval(user, parsed);

@@ -26,9 +26,7 @@ export const pt = {
   "newProduct.after.body":
     "Nesta mesma ficha ficam liberados os fornecedores, as variações, a ficha de compra mestre, as fotos, as medições, o NCM, as certificações, os atributos e a IA.",
   "newProduct.created":
-    "Produto criado e enviado para aprovação. Ele fica inativo até ser aprovado; complete aqui as fotos, as medições e o resto da ficha.",
-  "newProduct.createdActive":
-    "Produto criado e ativo (criado pelo administrador, sem aprovação). Complete aqui as fotos, as medições e o resto da ficha.",
+    "Produto criado e enviado para aprovação. Ele fica inativo até ser aprovado (na lista de Produtos, em “Aguardando aprovação”); complete aqui as fotos, as medições e o resto da ficha.",
   "help.newProduct.body":
     'Cadastro de um produto novo com a ficha completa: os mesmos campos da tela do produto. O produto nasce inativo e vai para as Pendências do administrador e do seu superior (o "Responde a" da Equipe), que aprovam ou recusam. Criado pelo administrador, já nasce ativo, sem aprovação.',
   "help.newProduct.steps":
@@ -119,9 +117,7 @@ export const en: Record<keyof typeof pt, string> = {
   "newProduct.after.body":
     "This same sheet then unlocks suppliers, variants, the master purchase sheet, photos, measurements, NCM, certifications, attributes and AI.",
   "newProduct.created":
-    "Product created and sent for approval. It stays inactive until approved; complete the photos, measurements and the rest of the sheet here.",
-  "newProduct.createdActive":
-    "Product created and active (created by the administrator, without approval). Complete the photos, measurements and the rest of the sheet here.",
+    "Product created and sent for approval. It stays inactive until approved (in the Products list, under “Awaiting approval”); complete the photos, measurements and the rest of the sheet here.",
   "help.newProduct.body":
     'Register a new product with the full sheet: the same fields as the product screen. The product starts inactive and goes to the tasks of the administrator and your manager (Team "Reports to"), who approve or reject it. Created by the administrator, it starts active, without approval.',
   "help.newProduct.steps":
@@ -205,9 +201,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "newProduct.after.body":
     "在同一档案中即可填写供应商、规格变体、采购主档、照片、测量、NCM、认证、属性和 AI。",
   "newProduct.created":
-    "产品已创建并提交审批。批准前保持停用；请在此补充照片、测量和档案的其余部分。",
-  "newProduct.createdActive":
-    "产品已创建并启用（管理员创建，无需审批）。请在此补充照片、测量和档案的其余部分。",
+    "产品已创建并提交审批。批准前保持停用（在产品列表的“等待审批”中）；请在此补充照片、测量和档案的其余部分。",
   "help.newProduct.body":
     "使用完整档案登记新产品：与产品页面相同的字段。产品创建后为停用状态，并进入管理员和您的上级（团队中的“汇报对象”）的待办，由他们批准或拒绝。管理员创建的产品直接启用，无需审批。",
   "help.newProduct.steps":

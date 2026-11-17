@@ -31,9 +31,10 @@ import {
   FlowRequirementWork,
   FlowSalesWork,
 } from "@/components/flow-step-forms";
-import { Alert } from "@/components/ui";
+import { Alert, Button, Input } from "@/components/ui";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { PageHeader, TextLink } from "@/components/ui";
+import { LiveSearch } from "@/components/live-search";
 
 /*
  * Tela de um passo do fluxo (dono, 14/11/2026; docs/FLOW_MENU.md): o que
@@ -72,6 +73,7 @@ export default async function FlowStepPage({
   const {
     tab,
     page,
+    q: rawQuery,
     due,
     importStep,
     certStep,
@@ -104,10 +106,17 @@ export default async function FlowStepPage({
   // milhares de pedidos no passo); na aba Pendências, só a contagem.
   const pageNumber =
     typeof page === "string" && /^\d{1,5}$/.test(page) ? Number(page) : 1;
+  // Busca da aba (dono, 17/11/2026): em todos os pedidos do passo, não só
+  // na página (a tabela não tem outra caixa de busca).
+  const query =
+    showAll && typeof rawQuery === "string"
+      ? rawQuery.trim().slice(0, 120)
+      : "";
   const stepAll = wellmix
     ? await flowStepEntities(user, step, {
         page: pageNumber,
         load: showAll,
+        q: query,
       })
     : null;
   const entities = stepAll
@@ -168,17 +177,65 @@ export default async function FlowStepPage({
           actions={headerActions}
         />
         {tabs}
-        <FlowAll step={step} entities={entities} t={t} partner={!wellmix} />
+        {stepAll ? (
+          // Busca (GET, ao digitar): o resultado fica no endereço.
+          <form
+            method="get"
+            action={base}
+            className="mb-3 flex flex-wrap items-center gap-2"
+            data-flow-all-search
+          >
+            <input type="hidden" name="tab" value="all" />
+            <Input
+              type="search"
+              name="q"
+              defaultValue={query}
+              placeholder={t("flow.all.search")}
+              aria-label={t("flow.all.search")}
+              className="w-full max-w-md"
+            />
+            <LiveSearch />
+            <Button type="submit" variant="primary">
+              {t("flow.all.searchButton")}
+            </Button>
+            {query ? (
+              <>
+                <TextLink href={`${base}?tab=all`}>
+                  {t("flow.all.clear")}
+                </TextLink>
+                <span className="text-sm text-zinc-500" data-flow-all-found>
+                  {t("flow.all.found", {
+                    n: stepAll.matched,
+                    total: stepAll.total,
+                  })}
+                </span>
+              </>
+            ) : null}
+          </form>
+        ) : null}
+        <FlowAll
+          step={step}
+          entities={entities}
+          t={t}
+          partner={!wellmix}
+          paged={!!stepAll}
+          emptyText={query ? t("flow.all.searchEmpty") : undefined}
+        />
         {stepAll && stepAll.pages > 1 ? (
           <ServerPager
             page={{
               page: stepAll.page - 1,
               pages: stepAll.pages,
               from: (stepAll.page - 1) * FLOW_STEP_PAGE + 1,
-              to: Math.min(stepAll.total, stepAll.page * FLOW_STEP_PAGE),
-              matched: stepAll.total,
+              to: Math.min(stepAll.matched, stepAll.page * FLOW_STEP_PAGE),
+              matched: stepAll.matched,
             }}
-            href={(n) => `${base}?tab=all${n ? `&page=${n + 1}` : ""}`}
+            href={(n) => {
+              const params = new URLSearchParams({ tab: "all" });
+              if (query) params.set("q", query);
+              if (n) params.set("page", String(n + 1));
+              return `${base}?${params.toString()}`;
+            }}
             t={t}
           />
         ) : null}

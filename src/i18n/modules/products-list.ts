@@ -5,7 +5,7 @@
  */
 export const pt = {
   "prodList.search":
-    "Buscar por nome, SKU, código do fornecedor, categoria ou observação",
+    "Buscar no catálogo inteiro: nome, SKU, código do fornecedor, categoria ou observação",
   "prodList.searchButton": "Buscar",
   "prodList.allLines": "Todas as linhas",
   "prodList.allSuppliers": "Todos os fornecedores",
@@ -39,10 +39,14 @@ export const pt = {
   "prodList.page.of": "Página {page} de {pages}",
   "prodList.page.prev": "Anterior",
   "prodList.page.next": "Próxima",
+  "prodList.order.label": "Ordem da lista",
+  "prodList.order.name": "Nome (A–Z)",
+  "prodList.order.recent": "Mais recentes primeiro",
 };
 
 export const en: Record<keyof typeof pt, string> = {
-  "prodList.search": "Search by name, SKU, supplier code, category or note",
+  "prodList.search":
+    "Search the whole catalog: name, SKU, supplier code, category or note",
   "prodList.searchButton": "Search",
   "prodList.allLines": "All lines",
   "prodList.allSuppliers": "All suppliers",
@@ -76,10 +80,13 @@ export const en: Record<keyof typeof pt, string> = {
   "prodList.page.of": "Page {page} of {pages}",
   "prodList.page.prev": "Previous",
   "prodList.page.next": "Next",
+  "prodList.order.label": "List order",
+  "prodList.order.name": "Name (A–Z)",
+  "prodList.order.recent": "Newest first",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
-  "prodList.search": "按名称、SKU、工厂货号、分类或备注搜索",
+  "prodList.search": "在整个目录中搜索：名称、SKU、工厂货号、分类或备注",
   "prodList.searchButton": "搜索",
   "prodList.allLines": "全部产品线",
   "prodList.allSuppliers": "全部供应商",
@@ -113,4 +120,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "prodList.page.of": "第 {page} 页，共 {pages} 页",
   "prodList.page.prev": "上一页",
   "prodList.page.next": "下一页",
+  "prodList.order.label": "列表排序",
+  "prodList.order.name": "名称（A–Z）",
+  "prodList.order.recent": "最新优先",
 };

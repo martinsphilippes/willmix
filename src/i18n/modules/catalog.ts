@@ -12,7 +12,7 @@ export const pt = {
   "catalog.source.sourcing": "Sourcing",
   "catalog.source.import": "Importação",
   "help.catalog.products.steps":
-    'Abrir ficha: clique no nome para ver e editar a ficha completa (fornecedor, preço, MOQ, medidas, caixa, fotos e programação de compra).\nNovo produto: abre a ficha completa em branco; criado, o produto fica inativo até o administrador ou o seu superior aprovar (Pendências); criado pelo administrador, já nasce ativo. Os aguardando ficam em "Aguardando aprovação".\nImportar: use a planilha do sistema chinês em Importação para criar ou atualizar vários produtos de uma vez.',
+    'Abrir ficha: clique no nome para ver e editar a ficha completa (fornecedor, preço, MOQ, medidas, caixa, fotos e programação de compra).\nNovo produto: abre a ficha completa em branco; criado, o produto fica inativo até o administrador ou o seu superior aprovar (Pendências); criado pelo administrador, já nasce ativo. Os aguardando ficam em "Aguardando aprovação".\nBuscar: a busca de cima procura no catálogo inteiro (todas as páginas); a ordem “Mais recentes primeiro” põe no topo os cadastrados por último.\nImportar: use a planilha do sistema chinês em Importação para criar ou atualizar vários produtos de uma vez.',
 
   /* Ficha */
   "catalog.section.identification": "Identificação",
@@ -39,6 +39,8 @@ export const pt = {
   "catalog.cbmHint": "Informe só quando não houver dimensões da caixa",
   "catalog.active": "Produto ativo",
   "catalog.saved": "Dados salvos.",
+  "catalog.created":
+    "Produto criado. Esta é a ficha dele; na lista de Produtos, use a busca ou a ordem “Mais recentes primeiro”.",
   "catalog.saveSheet": "Salvar ficha",
   "catalog.noSupplier": "Sem fornecedor",
   "catalog.sourcingOrigin": "Item de sourcing de origem",
@@ -309,7 +311,7 @@ export const en: Record<keyof typeof pt, string> = {
   "catalog.source.sourcing": "Sourcing",
   "catalog.source.import": "Import",
   "help.catalog.products.steps":
-    'Open sheet: click the name to view and edit the full sheet (supplier, price, MOQ, dimensions, carton, photos and purchase schedule).\nNew product: opens the full blank sheet; once created, the product stays inactive until the administrator or your manager approves it (Tasks); created by the administrator, it starts active. Those waiting are under "Awaiting approval".\nImport: use the Chinese system spreadsheet in Import to create or update many products at once.',
+    'Open sheet: click the name to view and edit the full sheet (supplier, price, MOQ, dimensions, carton, photos and purchase schedule).\nNew product: opens the full blank sheet; once created, the product stays inactive until the administrator or your manager approves it (Tasks); created by the administrator, it starts active. Those waiting are under "Awaiting approval".\nSearch: the search at the top looks in the whole catalog (all pages); the “Newest first” order puts the latest registered products on top.\nImport: use the Chinese system spreadsheet in Import to create or update many products at once.',
 
   "catalog.section.identification": "Identification",
   "catalog.section.supplier": "Supplier and negotiation",
@@ -335,6 +337,8 @@ export const en: Record<keyof typeof pt, string> = {
   "catalog.cbmHint": "Fill in only when carton dimensions are unknown",
   "catalog.active": "Active product",
   "catalog.saved": "Saved.",
+  "catalog.created":
+    "Product created. This is its sheet; in the Products list, use the search or the “Newest first” order.",
   "catalog.saveSheet": "Save sheet",
   "catalog.noSupplier": "No supplier",
   "catalog.sourcingOrigin": "Origin sourcing item",
@@ -595,7 +599,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "catalog.source.sourcing": "采购考察",
   "catalog.source.import": "表格导入",
   "help.catalog.products.steps":
-    "打开档案：点击产品名称查看并编辑完整档案（供应商、价格、起订量、尺寸、外箱、照片和采购计划）。\n新增产品：打开空白的完整档案；创建后产品保持停用，直到管理员或您的上级批准（待办）；管理员创建的产品直接启用。等待中的产品在“等待审批”中。\n导入：在“导入”页面使用中国系统导出的表格，一次创建或更新多个产品。",
+    "打开档案：点击产品名称查看并编辑完整档案（供应商、价格、起订量、尺寸、外箱、照片和采购计划）。\n新增产品：打开空白的完整档案；创建后产品保持停用，直到管理员或您的上级批准（待办）；管理员创建的产品直接启用。等待中的产品在“等待审批”中。\n搜索：顶部的搜索会在整个目录（所有页）中查找；“最新优先”排序会把最近登记的产品放在最前面。\n导入：在“导入”页面使用中国系统导出的表格，一次创建或更新多个产品。",
 
   "catalog.section.identification": "基本信息",
   "catalog.section.supplier": "供应商与谈判",
@@ -621,6 +625,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "catalog.cbmHint": "仅在没有外箱尺寸时填写",
   "catalog.active": "产品启用",
   "catalog.saved": "已保存。",
+  "catalog.created":
+    "产品已创建。这是它的资料页；在产品列表中，可使用搜索或“最新优先”排序找到它。",
   "catalog.saveSheet": "保存档案",
   "catalog.noSupplier": "无供应商",
   "catalog.sourcingOrigin": "来源采购项目",

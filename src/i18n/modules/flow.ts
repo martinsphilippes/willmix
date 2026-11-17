@@ -50,6 +50,12 @@ export const pt = {
   "flow.all.open": "Aberto neste passo",
   "flow.all.since": "No passo há",
   "flow.all.view": "Ver o pedido",
+  "flow.all.search":
+    "Buscar em todo o passo: nº do pedido, fornecedor, cliente ou produto",
+  "flow.all.searchButton": "Buscar",
+  "flow.all.clear": "Limpar",
+  "flow.all.found": "{n} de {total} pedido(s) do passo",
+  "flow.all.searchEmpty": "Nenhum pedido do passo com essa busca.",
   "flow.all.hint":
     "Todos os pedidos que estão neste passo agora, de qualquer responsável. Clique para ver o detalhe.",
   "flow.entities.subtitle":
@@ -337,6 +343,12 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.all.open": "Open in this step",
   "flow.all.since": "In the step for",
   "flow.all.view": "View order",
+  "flow.all.search":
+    "Search the whole step: order no., supplier, customer or product",
+  "flow.all.searchButton": "Search",
+  "flow.all.clear": "Clear",
+  "flow.all.found": "{n} of {total} order(s) in the step",
+  "flow.all.searchEmpty": "No order in this step matches the search.",
   "flow.all.hint":
     "Every order in this step right now, whoever is responsible. Click to see the details.",
   "flow.entities.subtitle":
@@ -620,6 +632,11 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.all.open": "本环节未完成",
   "flow.all.since": "已在本环节",
   "flow.all.view": "查看订单",
+  "flow.all.search": "在整个环节中搜索：订单号、供应商、客户或产品",
+  "flow.all.searchButton": "搜索",
+  "flow.all.clear": "清除",
+  "flow.all.found": "本环节 {total} 个订单中找到 {n} 个",
+  "flow.all.searchEmpty": "本环节没有符合搜索的订单。",
   "flow.all.hint": "目前处于本环节的所有订单，不论由谁负责。点击查看详情。",
   "flow.entities.subtitle":
     "本阶段当前 {n} 个订单，{late} 个延误；{tasks} 项待办等待处理。",
