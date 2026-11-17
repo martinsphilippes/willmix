@@ -73,6 +73,9 @@ export interface EditorOptions {
     label: string;
     active: boolean;
     areaId: string;
+    /** O cargo sugere funções e nível (D13); sozinho, não libera nada. */
+    suggestedFunctions?: string[];
+    suggestedLevel?: string;
   }>;
   divisions: Array<{ value: string; label: string }>;
   managers: Array<{ value: string; label: string }>;
@@ -87,6 +90,10 @@ export interface EditorTexts {
   inactiveSuffix: string;
   position: string;
   positionNote: string;
+  /** "Sugestão do cargo: {functions} · Nível {level}". */
+  suggestion: string;
+  suggestionApply: string;
+  suggestionNote: string;
   positionInactiveSuffix: string;
   areaFromPosition: string;
   noArea: string;
@@ -202,6 +209,24 @@ export function TeamAccessEditor({
   const [division, setDivision] = useState(member.division);
   const [manager, setManager] = useState(member.managerUserId);
   const [selected, setSelected] = useState(member.functions);
+  // Sugestão do cargo escolhido (D13): só aparece se falta alguma função
+  // sugerida ou se o nível é outro.
+  const suggestion = (() => {
+    const position = options.positions.find((p) => p.value === positionId);
+    const fns = (position?.suggestedFunctions ?? []).filter((k) =>
+      functions.some((f) => f.key === k),
+    );
+    const level = position?.suggestedLevel ?? "";
+    if (!position || (!fns.length && !level)) return null;
+    const missing = fns.some((k) => !selected.includes(k));
+    if (!missing && (!level || level === jobLevel)) return null;
+    return {
+      functions: fns,
+      level,
+      levelLabel:
+        options.levels.find((l) => l.value === level)?.label ?? texts.none,
+    };
+  })();
   const [custom, setCustom] = useState(member.custom);
   const [exceptions, setExceptions] = useState<ScreenExceptions>(
     member.exceptions,
@@ -502,6 +527,46 @@ export function TeamAccessEditor({
             <span className="mt-1 block text-[11px] text-zinc-500">
               {texts.positionNote}
             </span>
+            {suggestion ? (
+              // O cargo sugere funções e nível (D13): aplicar só preenche;
+              // vale ao salvar.
+              <span
+                className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-brand-50/60 px-2 py-1.5 text-[11px] text-zinc-700"
+                data-team-position-suggestion={positionId}
+              >
+                <span>
+                  {texts.suggestion
+                    .replace(
+                      "{functions}",
+                      suggestion.functions
+                        .map(
+                          (k) => functions.find((f) => f.key === k)?.label ?? k,
+                        )
+                        .join(", ") || texts.none,
+                    )
+                    .replace("{level}", suggestion.levelLabel)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelected((current) => [
+                      ...current,
+                      ...suggestion.functions.filter(
+                        (k) => !current.includes(k),
+                      ),
+                    ]);
+                    if (suggestion.level) setJobLevel(suggestion.level);
+                  }}
+                  className="font-semibold text-brand-700 underline"
+                  data-team-position-suggestion-apply
+                >
+                  {texts.suggestionApply}
+                </button>
+                <span className="basis-full text-zinc-500">
+                  {texts.suggestionNote}
+                </span>
+              </span>
+            ) : null}
           </label>
           {/* Área (dono, 16/11/2026): linha própria, sem mexer nos outros. */}
           <label className="block sm:col-span-2">

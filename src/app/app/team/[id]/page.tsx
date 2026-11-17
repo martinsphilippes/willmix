@@ -225,7 +225,7 @@ export default async function TeamMemberPage({
           screenGroups={groups.screens}
           actionGroups={groups.actions}
           base={[...WELLMIX_BASE]}
-          options={editorOptions(team, t, areas, positions)}
+          options={editorOptions(team, t, areas, positions, defs)}
           texts={editorTexts(t)}
           mode="page"
         />

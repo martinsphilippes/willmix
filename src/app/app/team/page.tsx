@@ -84,6 +84,7 @@ import {
   type ScreensState,
 } from "./_components/screens-panel";
 import { LegacyTeamHash } from "./_components/legacy-hash";
+import { suggestFromPosition } from "@/lib/team-import";
 import {
   editorFunctions,
   editorMember,
@@ -433,6 +434,15 @@ function TeamTab({
   if (filters.review) list.review = "1";
   const functionDef =
     panel === "function" ? defs.find((d) => d.key === id) : null;
+  // O que o cargo sugere (D13; as regras da importação), só as funções ativas.
+  const positionSuggestion = (name: string | null) => {
+    if (!name) return null;
+    const s = suggestFromPosition(name);
+    return {
+      functions: s.functions.filter((f) => activeKeys.has(f)).map(label),
+      level: t(`level.${s.level}` as DictionaryKey),
+    };
+  };
 
   return (
     <>
@@ -445,7 +455,7 @@ function TeamTab({
           screenGroups={groups.screens}
           actionGroups={groups.actions}
           base={[...WELLMIX_BASE]}
-          options={editorOptions(team, t, areas, positions)}
+          options={editorOptions(team, t, areas, positions, defs)}
           texts={editorTexts(t)}
           savedText={t("access.savedFor")}
         />
@@ -478,6 +488,9 @@ function TeamTab({
           team={team}
           links={links}
           admin={admin}
+          suggestion={positionSuggestion(
+            positions.find((p) => p.id === id)?.name ?? null,
+          )}
         />
       ) : null}
       {panel === "area" ? (
@@ -826,6 +839,17 @@ function FunctionsTab({
               actionsHint: t("fn.actions.hint"),
               adminNote: t("fn.adminNote"),
               intl: t.intl,
+              impactChecking: t("fn.impact.checking"),
+              impactTitle: t("fn.impact.title"),
+              impactSummary: t("fn.impact.summary"),
+              gainScreens: t("fn.impact.gainScreens"),
+              loseScreens: t("fn.impact.loseScreens"),
+              gainActions: t("fn.impact.gainActions"),
+              loseActions: t("fn.impact.loseActions"),
+              impactConfirm: t("fn.impact.confirm"),
+              impactCancel: t("fn.impact.cancel"),
+              impactError: t("fn.impact.error"),
+              saveAnyway: t("fn.impact.saveAnyway"),
             }}
           />
         )}

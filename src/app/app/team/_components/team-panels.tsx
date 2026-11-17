@@ -136,6 +136,7 @@ export function PositionPanel({
   team,
   links,
   admin,
+  suggestion = null,
 }: {
   t: Translate;
   position: TeamPosition | null;
@@ -143,6 +144,8 @@ export function PositionPanel({
   team: User[];
   links: PanelLinks;
   admin: boolean;
+  /** O que o cargo sugere (D13): funções (nomes) e nível; não libera nada. */
+  suggestion?: { functions: string[]; level: string } | null;
 }) {
   if (!position)
     return (
@@ -195,6 +198,19 @@ export function PositionPanel({
           <dd>
             <Status t={t} active={position.active} />
           </dd>
+          {suggestion ? (
+            <>
+              <dt className="text-zinc-500">
+                {t("internalTeam.position.suggests")}
+              </dt>
+              <dd data-team-panel-suggestion>
+                {t("internalTeam.position.suggestion", {
+                  functions: suggestion.functions.join(", ") || "—",
+                  level: suggestion.level,
+                })}
+              </dd>
+            </>
+          ) : null}
         </dl>
         <p className="text-xs text-zinc-500">
           {t("internalTeam.position.note")}

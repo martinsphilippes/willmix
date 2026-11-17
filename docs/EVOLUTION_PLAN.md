@@ -1805,3 +1805,9 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Pedido do dono** (17/11/2026; docs/EQUIPE_ACESSOS.md, seção 7): duas telas na área (Equipe Interna e Equipe Externa), a lista Nome | Cargo | Área | Função | Responde a | Telas com o atalho de cada informação, a Gestão de telas nos dois modos e o "#" resolvido.
 - **Aditivo:** as seções, as telas, os endereços (`/app/team?tab=…`, `/app/team/<id>`) e as permissões são os de sempre; o painel da pessoa é o Editar acessos de antes, agora pelo endereço. Os "#" antigos são convertidos ao chegar. Sem mudança no banco.
 - Testes: `tests/unit/team-list.test.ts`, `tests/unit/screen-origin.test.ts` e `tests/e2e/internal-team.spec.ts`.
+
+## Equipe Interna: prévia de impacto e sugestão do cargo (etapa 5b)
+
+- **Pedido do dono** (17/11/2026; docs/EQUIPE_ACESSOS.md, seção 8, R1 e D13): antes de salvar uma função, quem ganha e perde telas e ações; o cargo sugere funções e nível.
+- **Aditivo:** salvar uma função passa por uma confirmação quando alguém é afetado; as regras, as telas e os dados são os de sempre. A Auditoria ganha o impacto no "depois" de `team.function_permissions`. Sem mudança no banco.
+- Testes: `tests/unit/access-impact.test.ts`, `tests/unit/function-impact-action.test.ts`, `tests/e2e/team-access.spec.ts` e `tests/e2e/internal-team.spec.ts`.

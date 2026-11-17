@@ -26,6 +26,7 @@ import {
 } from "@/lib/auth/permission-modules";
 import { exceptionsOf, inheritedScreens } from "@/lib/auth/screen-picker";
 import { descendantsOf } from "@/lib/services/team";
+import { suggestFromPosition } from "@/lib/team-import";
 import type { PermissionGroup } from "./permission-list";
 import type {
   EditorFunction,
@@ -155,7 +156,11 @@ export function editorOptions(
   t: Translate,
   areas: TeamArea[] = [],
   positions: TeamPosition[] = [],
+  defs: FunctionDef[] = [],
 ): EditorOptions {
+  // O cargo sugere funções e nível (D13; as mesmas regras da importação da
+  // planilha): só as funções ativas.
+  const active = new Set(defs.filter((d) => !d.archived).map((d) => d.key));
   return {
     levels: JOB_LEVELS.map((l) => ({
       value: l,
@@ -171,12 +176,17 @@ export function editorOptions(
     // Cargos (Equipe Acessos e Parceiros → Cargos), com a área de cada um:
     // escolhido o cargo, a área vem junto. O desativado só aparece em quem
     // já está nele (o editor filtra).
-    positions: positions.map((p) => ({
-      value: p.id,
-      label: p.name,
-      active: p.active,
-      areaId: p.areaId ?? "",
-    })),
+    positions: positions.map((p) => {
+      const suggestion = suggestFromPosition(p.name);
+      return {
+        value: p.id,
+        label: p.name,
+        active: p.active,
+        areaId: p.areaId ?? "",
+        suggestedFunctions: suggestion.functions.filter((f) => active.has(f)),
+        suggestedLevel: suggestion.level,
+      };
+    }),
     divisions: DIVISIONS.map((d) => ({
       value: d,
       label: t(`division.${d}` as DictionaryKey),
@@ -195,6 +205,9 @@ export function editorTexts(t: Translate): EditorTexts {
     inactiveSuffix: t("area.inactiveSuffix"),
     position: t("team.col.position"),
     positionNote: t("access.positionNote"),
+    suggestion: t("access.positionSuggestion"),
+    suggestionApply: t("access.positionSuggestion.apply"),
+    suggestionNote: t("access.positionSuggestion.note"),
     positionInactiveSuffix: t("position.inactiveSuffix"),
     areaFromPosition: t("access.areaFromPosition"),
     noArea: t("position.noArea"),

@@ -269,3 +269,50 @@ test("Equipe Interna: endereços antigos com # e o painel da pessoa pelo endere�
   await page.waitForURL(/\/app\/team\?tab=lines#distribute$/);
   await expect(page.locator("[data-team-distribute]")).toBeVisible();
 });
+
+test("Cargo sugere funções e nível: aplicar só preenche, e vale ao salvar", async ({
+  page,
+}) => {
+  const tag = Date.now().toString(36).toUpperCase();
+  const position = `Coordenador de Compras ${tag}`;
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/team?tab=positions");
+  const form = page.locator("[data-position-new]");
+  await form.locator('input[name="name"]').fill(position);
+  await form.locator('button[type="submit"]').click();
+  await page.waitForURL(/saved=position_created/);
+  const id = await createTeamLogin(
+    page,
+    `Sug ${tag}`,
+    `sug-${tag.toLowerCase()}@wellmix.com`,
+    [],
+  );
+
+  // Escolhido o cargo, a sugestão aparece (D13: o cargo não libera nada).
+  await page.goto(`/app/team/${id}`);
+  await page.locator("[data-team-position]").selectOption({ label: position });
+  const suggestion = page.locator("[data-team-position-suggestion]");
+  await expect(suggestion).toContainText("Comprador");
+  await expect(suggestion).toContainText("Coordenador");
+  await expect(page.locator('[data-team-function-remove="buyer"]')).toHaveCount(
+    0,
+  );
+  // Aplicar preenche as funções e o nível; nada gravado ainda.
+  await suggestion.locator("[data-team-position-suggestion-apply]").click();
+  await expect(
+    page.locator('[data-team-function-remove="buyer"]'),
+  ).toBeVisible();
+  await expect(page.locator("[data-team-level]")).toHaveValue("coordinator");
+  await expect(suggestion).toHaveCount(0);
+  await page.locator("[data-team-save]").click();
+  await expect(page.locator("[data-team-saved]")).toBeVisible();
+
+  // Na lista: a função gravada; no painel do cargo, o que ele sugere.
+  await page.goto(`/app/team?q=${tag}`);
+  const row = page.locator(`tr[data-team-member="${id}"]`);
+  await expect(row.locator('[data-team-function-link="buyer"]')).toBeVisible();
+  await row.locator("[data-team-position-link]").click();
+  await expect(
+    page.locator('[data-team-panel="position"] [data-team-panel-suggestion]'),
+  ).toHaveText("Funções: Comprador · Nível: Coordenador");
+});

@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { xlsxBytes } from "../unit/xlsx-fixture";
 
 /*
@@ -80,6 +80,22 @@ export async function grantTeamScreen(
   await drawer.locator(`[data-team-screen="${screen}"]`).check();
   await drawer.locator("[data-team-save]").click();
   await expect(page.locator("[data-team-saved-toast]")).toContainText(name);
+}
+
+/**
+ * Salva as permissões da função aberta em Funções e acessos. Com alguém
+ * ganhando ou perdendo acesso, a prévia de impacto aparece antes de gravar
+ * (docs/EQUIPE_ACESSOS.md, R1): confirma e grava. Devolve se houve prévia.
+ */
+export async function saveFunction(fn: Locator): Promise<boolean> {
+  await fn.locator("[data-fn-save]").click();
+  const confirm = fn.locator("[data-fn-impact-confirm]");
+  const saved = fn.locator("[data-fn-saved]");
+  await expect(confirm.or(saved)).toBeVisible();
+  const previewed = await confirm.isVisible();
+  if (previewed) await confirm.click();
+  await expect(saved).toBeVisible();
+  return previewed;
 }
 
 /**

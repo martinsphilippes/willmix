@@ -6,6 +6,23 @@
  * função" e "Por tela".
  */
 export const pt = {
+  "access.positionSuggestion": "Sugestão do cargo: {functions} · Nível {level}",
+  "access.positionSuggestion.apply": "Aplicar sugestão",
+  "access.positionSuggestion.note":
+    "O cargo não libera nada sozinho: aplicar acrescenta as funções e ajusta o nível aqui, e vale ao salvar.",
+  "fn.impact.checking": "Calculando quem é afetado…",
+  "fn.impact.title": "Antes de salvar: quem é afetado",
+  "fn.impact.summary":
+    "{n} pessoa(s) têm esta função; {m} ganham ou perdem acesso com a mudança. Nada foi gravado ainda.",
+  "fn.impact.gainScreens": "Ganha telas: {list}",
+  "fn.impact.loseScreens": "Perde telas: {list}",
+  "fn.impact.gainActions": "Ganha ações: {list}",
+  "fn.impact.loseActions": "Perde ações: {list}",
+  "fn.impact.confirm": "Confirmar e salvar",
+  "fn.impact.cancel": "Voltar e ajustar",
+  "fn.impact.error":
+    "Não foi possível calcular a prévia agora. Você pode salvar mesmo assim.",
+  "fn.impact.saveAnyway": "Salvar mesmo assim",
   "internalTeam.nav": "Equipe Interna",
   "internalTeam.tabs": "Seções da Equipe Interna",
   "internalTeam.tab.team": "Equipe",
@@ -55,6 +72,8 @@ export const pt = {
   "internalTeam.position.note":
     "O cargo não libera telas nem ações sozinho: elas vêm das funções de cada pessoa. O cargo leva a área para quem o tem.",
   "internalTeam.position.edit": "Renomear, mudar a área ou desativar",
+  "internalTeam.position.suggests": "Sugere",
+  "internalTeam.position.suggestion": "Funções: {functions} · Nível: {level}",
   "internalTeam.area.title": "Área",
   "internalTeam.area.positions": "Cargos da área ({n})",
   "internalTeam.area.positions.none": "Nenhum cargo nesta área.",
@@ -146,6 +165,24 @@ export const pt = {
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
+  "access.positionSuggestion":
+    "Job title suggests: {functions} · Level {level}",
+  "access.positionSuggestion.apply": "Apply suggestion",
+  "access.positionSuggestion.note":
+    "A job title grants nothing on its own: applying adds the functions and sets the level here, and takes effect when you save.",
+  "fn.impact.checking": "Working out who is affected…",
+  "fn.impact.title": "Before saving: who is affected",
+  "fn.impact.summary":
+    "{n} person(s) have this function; {m} gain or lose access with the change. Nothing has been saved yet.",
+  "fn.impact.gainScreens": "Gains screens: {list}",
+  "fn.impact.loseScreens": "Loses screens: {list}",
+  "fn.impact.gainActions": "Gains actions: {list}",
+  "fn.impact.loseActions": "Loses actions: {list}",
+  "fn.impact.confirm": "Confirm and save",
+  "fn.impact.cancel": "Go back and adjust",
+  "fn.impact.error":
+    "Could not work out the preview right now. You can save anyway.",
+  "fn.impact.saveAnyway": "Save anyway",
   "internalTeam.nav": "Internal team",
   "internalTeam.tabs": "Internal team sections",
   "internalTeam.tab.team": "Team",
@@ -195,6 +232,8 @@ export const en: Record<keyof typeof pt, string> = {
   "internalTeam.position.note":
     "A job title grants no screens or actions on its own: they come from each person's functions. The job title carries its area to whoever holds it.",
   "internalTeam.position.edit": "Rename, change area or disable",
+  "internalTeam.position.suggests": "Suggests",
+  "internalTeam.position.suggestion": "Functions: {functions} · Level: {level}",
   "internalTeam.area.title": "Area",
   "internalTeam.area.positions": "Job titles in the area ({n})",
   "internalTeam.area.positions.none": "No job titles in this area.",
@@ -287,6 +326,22 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "access.positionSuggestion": "职位建议：{functions} · 级别 {level}",
+  "access.positionSuggestion.apply": "应用建议",
+  "access.positionSuggestion.note":
+    "职位本身不开放任何内容：应用后会在此添加职能并调整级别，保存后生效。",
+  "fn.impact.checking": "正在计算受影响的人员…",
+  "fn.impact.title": "保存前：受影响的人员",
+  "fn.impact.summary":
+    "{n} 人拥有此职能；其中 {m} 人会因此变更获得或失去权限。尚未保存任何内容。",
+  "fn.impact.gainScreens": "获得页面：{list}",
+  "fn.impact.loseScreens": "失去页面：{list}",
+  "fn.impact.gainActions": "获得操作：{list}",
+  "fn.impact.loseActions": "失去操作：{list}",
+  "fn.impact.confirm": "确认并保存",
+  "fn.impact.cancel": "返回调整",
+  "fn.impact.error": "暂时无法计算预览。您仍可直接保存。",
+  "fn.impact.saveAnyway": "仍然保存",
   "internalTeam.nav": "内部团队",
   "internalTeam.tabs": "内部团队栏目",
   "internalTeam.tab.team": "团队",
@@ -334,6 +389,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "internalTeam.position.note":
     "职位本身不开放任何页面或操作：这些来自每个人的职能。职位会把所属部门带给担任该职位的人。",
   "internalTeam.position.edit": "重命名、更改部门或停用",
+  "internalTeam.position.suggests": "建议",
+  "internalTeam.position.suggestion": "职能：{functions} · 级别：{level}",
   "internalTeam.area.title": "部门",
   "internalTeam.area.positions": "该部门的职位（{n}）",
   "internalTeam.area.positions.none": "该部门没有职位。",
