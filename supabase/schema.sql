@@ -1314,8 +1314,12 @@ alter table public."conversations" add column if not exists "userId" text;
 alter table public."conversations" add column if not exists "lastMessageAt" timestamptz;
 alter table public."conversations" add column if not exists "lastMessagePreview" text;
 alter table public."conversations" add column if not exists "status" text;
+alter table public."conversations" add column if not exists "wellmixUserId" text;
+alter table public."conversations" add column if not exists "externalUserId" text;
 create index if not exists "conversations_by_party" on public."conversations" ("partyId");
 create index if not exists "conversations_by_user" on public."conversations" ("userId");
+create index if not exists "conversations_by_wellmix_user" on public."conversations" ("wellmixUserId");
+create index if not exists "conversations_by_external_user" on public."conversations" ("externalUserId");
 create index if not exists "conversations_created" on public."conversations" ("createdAt");
 create index if not exists "conversations_created_id" on public."conversations" ("createdAt", "id");
 

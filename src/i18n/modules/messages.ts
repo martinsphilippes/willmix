@@ -8,9 +8,9 @@ export const pt = {
   "nav.messages": "Mensagens",
   "messages.title": "Mensagens",
   "messages.subtitle.wellmix":
-    "Conversas com clientes, fornecedores e parceiros. Cada empresa tem uma conversa, com um assunto Geral e um por solicitação ou pedido.",
+    "Conversas com clientes, fornecedores e parceiros. Cada conversa é privada entre você e uma pessoa de fora, com um assunto Geral e um por solicitação, pedido ou produto.",
   "messages.subtitle.external":
-    "Fale com a equipe Wellmix. Todos os logins da sua empresa veem esta conversa.",
+    "Fale com a sua pessoa de contato na Wellmix. Cada conversa é privada entre vocês dois.",
   "messages.conversations": "Conversas",
   "messages.topics": "Assuntos",
   "messages.topic.general": "Geral",
@@ -129,6 +129,52 @@ export const pt = {
   "messages.bar.many": "{n} mensagens novas",
   "messages.bar.open": "Abrir e responder",
   "messages.bar.all": "Ver todas",
+  "chat.identity.sendingAs": "Enviando como",
+  "chat.identity.recipient": "Destinatário",
+  "chat.identity.participants": "Participantes",
+  "chat.identity.login": "Login: {login}",
+  "chat.identity.inactive": "login desativado",
+  "chat.identity.choose": "Escolher conversa",
+  "chat.identity.chooseHint":
+    "Escolha com quem conversar. A conversa é privada: só vocês dois leem e escrevem; o administrador da Wellmix pode ler.",
+  "chat.identity.pickFirst": "Escolha o destinatário para começar a conversa.",
+  "chat.identity.noPeers":
+    "Ninguém com login ativo pode receber mensagens sobre este assunto. A mensagem não teria quem lesse.",
+  "chat.identity.existing": "conversa aberta",
+  "chat.identity.new": "nova conversa",
+  "chat.identity.all": "Todas",
+  "chat.identity.owner": "Responsável",
+  "chat.identity.sendingTo": "Enviando para",
+  "chat.identity.to": "Para",
+  "chat.identity.unknownRecipient":
+    "Destinatário não identificado no histórico",
+  "chat.identity.private": "Conversa privada entre {a} e {b}.",
+  "chat.identity.readOnly.legacy":
+    "Conversa antiga da empresa, só leitura. Para escrever, abra uma conversa com a pessoa.",
+  "chat.identity.readOnly.observer":
+    "Você está lendo como administrador. Só {a} e {b} escrevem nesta conversa.",
+  "chat.identity.readOnly.peer_inactive":
+    "{name} está com o login desativado. A conversa fica só para leitura.",
+  "chat.identity.showList": "Ver lista",
+  "chat.identity.hideList": "Fechar lista",
+  "messages.notify.fromPerson": "Nova mensagem de {name} ({company})",
+  "messages.notify.fromPersonWellmix": "Nova mensagem de {name} (Wellmix)",
+  "messages.error.choose_login":
+    "Esta empresa tem mais de um login. Escolha com quem conversar.",
+  "messages.error.no_login":
+    "Ninguém desta empresa tem login ativo para conversar.",
+  "messages.error.no_contact":
+    "Não há ninguém da Wellmix disponível para esta conversa.",
+  "messages.error.peer_inactive":
+    "O login da outra pessoa está desativado. A mensagem não foi enviada.",
+  "messages.error.read_only": "Esta conversa é só leitura.",
+  "messages.error.conversation_changed":
+    "A conversa mudou antes do envio. Confira o destinatário e envie de novo.",
+  "messages.new.pickLogin": "Pessoa (nome, e-mail ou empresa)",
+  "messages.new.chooseLogin": "Escolha a pessoa…",
+  "messages.new.external": "Falar com a Wellmix",
+  "messages.new.externalPick": "Pessoa da Wellmix",
+  "messages.legacy": "antiga",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -136,9 +182,9 @@ export const en: Record<keyof typeof pt, string> = {
   "nav.messages": "Messages",
   "messages.title": "Messages",
   "messages.subtitle.wellmix":
-    "Conversations with customers, suppliers and partners. Each company has one conversation, with a General topic and one per request or order.",
+    "Conversations with customers, suppliers and partners. Each conversation is private between you and one outside person, with a General topic and one per request, order or product.",
   "messages.subtitle.external":
-    "Talk to the Wellmix team. Every login of your company sees this conversation.",
+    "Talk to your contact person at Wellmix. Each conversation is private between the two of you.",
   "messages.conversations": "Conversations",
   "messages.topics": "Topics",
   "messages.topic.general": "General",
@@ -255,6 +301,51 @@ export const en: Record<keyof typeof pt, string> = {
   "messages.bar.many": "{n} new messages",
   "messages.bar.open": "Open and reply",
   "messages.bar.all": "See all",
+  "chat.identity.sendingAs": "Sending as",
+  "chat.identity.recipient": "Recipient",
+  "chat.identity.participants": "Participants",
+  "chat.identity.login": "Login: {login}",
+  "chat.identity.inactive": "login deactivated",
+  "chat.identity.choose": "Choose conversation",
+  "chat.identity.chooseHint":
+    "Choose who to talk to. The conversation is private: only the two of you read and write; the Wellmix administrator can read it.",
+  "chat.identity.pickFirst": "Choose the recipient to start the conversation.",
+  "chat.identity.noPeers":
+    "Nobody with an active login can receive messages about this. The message would have no reader.",
+  "chat.identity.existing": "open conversation",
+  "chat.identity.new": "new conversation",
+  "chat.identity.all": "All",
+  "chat.identity.owner": "Owner",
+  "chat.identity.sendingTo": "Sending to",
+  "chat.identity.to": "To",
+  "chat.identity.unknownRecipient": "Recipient not identified in the history",
+  "chat.identity.private": "Private conversation between {a} and {b}.",
+  "chat.identity.readOnly.legacy":
+    "Old company conversation, read only. To write, open a conversation with the person.",
+  "chat.identity.readOnly.observer":
+    "You are reading as administrator. Only {a} and {b} write in this conversation.",
+  "chat.identity.readOnly.peer_inactive":
+    "{name}'s login is deactivated. The conversation is read only.",
+  "chat.identity.showList": "Show list",
+  "chat.identity.hideList": "Hide list",
+  "messages.notify.fromPerson": "New message from {name} ({company})",
+  "messages.notify.fromPersonWellmix": "New message from {name} (Wellmix)",
+  "messages.error.choose_login":
+    "This company has more than one login. Choose who to talk to.",
+  "messages.error.no_login":
+    "Nobody at this company has an active login to talk to.",
+  "messages.error.no_contact":
+    "There is nobody at Wellmix available for this conversation.",
+  "messages.error.peer_inactive":
+    "The other person's login is deactivated. The message was not sent.",
+  "messages.error.read_only": "This conversation is read only.",
+  "messages.error.conversation_changed":
+    "The conversation changed before sending. Check the recipient and send again.",
+  "messages.new.pickLogin": "Person (name, e-mail or company)",
+  "messages.new.chooseLogin": "Choose the person…",
+  "messages.new.external": "Talk to Wellmix",
+  "messages.new.externalPick": "Wellmix person",
+  "messages.legacy": "old",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -262,9 +353,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "nav.messages": "消息",
   "messages.title": "消息",
   "messages.subtitle.wellmix":
-    "与客户、供应商和合作方的对话。每家公司一个对话，包含“综合”话题以及每个询价或订单的话题。",
+    "与客户、供应商和合作伙伴的对话。每个对话都是你与一位外部人员之间的私密对话，包含“常规”主题以及每个询价、订单或产品的主题。",
   "messages.subtitle.external":
-    "与 Wellmix 团队沟通。贵公司的所有账号都能看到此对话。",
+    "与你在 Wellmix 的联系人沟通。每个对话仅限你们两人。",
   "messages.conversations": "对话",
   "messages.topics": "话题",
   "messages.topic.general": "综合",
@@ -374,4 +465,43 @@ export const zh: Record<keyof typeof pt, string> = {
   "messages.bar.many": "{n} 条新消息",
   "messages.bar.open": "打开并回复",
   "messages.bar.all": "查看全部",
+  "chat.identity.sendingAs": "发送身份",
+  "chat.identity.recipient": "收件人",
+  "chat.identity.participants": "参与者",
+  "chat.identity.login": "登录：{login}",
+  "chat.identity.inactive": "登录已停用",
+  "chat.identity.choose": "选择对话",
+  "chat.identity.chooseHint":
+    "选择对话对象。对话为私密：只有你们两人可以阅读和发送；Wellmix 管理员可以查看。",
+  "chat.identity.pickFirst": "请先选择收件人再开始对话。",
+  "chat.identity.noPeers": "没有可接收此事项消息的有效登录，消息将无人阅读。",
+  "chat.identity.existing": "已有对话",
+  "chat.identity.new": "新对话",
+  "chat.identity.all": "全部",
+  "chat.identity.owner": "负责人",
+  "chat.identity.sendingTo": "发送给",
+  "chat.identity.to": "致",
+  "chat.identity.unknownRecipient": "历史记录中未识别收件人",
+  "chat.identity.private": "{a} 与 {b} 之间的私密对话。",
+  "chat.identity.readOnly.legacy":
+    "公司旧对话，仅供查看。如需发送，请与具体人员开启对话。",
+  "chat.identity.readOnly.observer":
+    "你正以管理员身份查看。只有 {a} 和 {b} 可在此对话中发送。",
+  "chat.identity.readOnly.peer_inactive": "{name} 的登录已停用，对话仅供查看。",
+  "chat.identity.showList": "查看列表",
+  "chat.identity.hideList": "收起列表",
+  "messages.notify.fromPerson": "来自 {name}（{company}）的新消息",
+  "messages.notify.fromPersonWellmix": "来自 {name}（Wellmix）的新消息",
+  "messages.error.choose_login": "该公司有多个登录，请选择对话对象。",
+  "messages.error.no_login": "该公司没有可对话的有效登录。",
+  "messages.error.no_contact": "目前没有可对话的 Wellmix 人员。",
+  "messages.error.peer_inactive": "对方的登录已停用，消息未发送。",
+  "messages.error.read_only": "此对话仅供查看。",
+  "messages.error.conversation_changed":
+    "发送前对话已切换，请确认收件人后重新发送。",
+  "messages.new.pickLogin": "人员（姓名、邮箱或公司）",
+  "messages.new.chooseLogin": "选择人员…",
+  "messages.new.external": "联系 Wellmix",
+  "messages.new.externalPick": "Wellmix 人员",
+  "messages.legacy": "旧",
 };

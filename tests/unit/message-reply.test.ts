@@ -42,9 +42,10 @@ beforeAll(async () => {
   const by = (email: string) => users.find((u) => u.email === email)!;
   admin = by("admin@wellmix.com");
   joao = by("joao@lojista.com");
-  const [own] = await msg.listConversationsFor(joao);
-  joaoConversation = own.id;
-  joaoTopic = (await msg.getConversationView(joao, own.id))!.topic.id;
+  // Conversa privada entre a Ana (Wellmix) e o João (docs/CHAT_IDENTITY.md).
+  const own = await msg.openTopic(admin, { peerUserId: joao.id });
+  joaoConversation = own.conversationId;
+  joaoTopic = own.topicId;
   const opened = await msg.openTopic(admin, { partyId: "fornecedor-a" });
   supplierTopic = opened.topicId;
 });

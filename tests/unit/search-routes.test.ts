@@ -25,6 +25,7 @@ const parties = await import("@/app/api/parties/search/route");
 const products = await import("@/app/api/products/search/route");
 const fill = await import("@/app/api/products/fill/route");
 const targets = await import("@/app/api/messages/targets/route");
+const { getStore: storeOf } = await import("@/lib/db");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -293,13 +294,18 @@ describe("/api/products/search e /api/products/fill", () => {
 });
 
 describe("/api/messages/targets", () => {
-  it("só a Wellmix; empresa com o tipo ao lado", async () => {
+  it("só a Wellmix; o login da pessoa com a empresa e o e-mail ao lado", async () => {
     const res = await get(targets, "/api/messages/targets?q=trans", admin);
     expect(res.status).toBe(200);
+    const carrier = (
+      await storeOf().list("users", {
+        filter: { email: "transportadora@rodo.com" },
+      })
+    )[0];
     expect(res.body.options).toContainEqual({
-      id: "party:transportador",
+      id: `user:${carrier.id}`,
       name: "Trans Rodo",
-      hint: "Transportador",
+      hint: "Trans Rodo · transportadora@rodo.com",
     });
     expect(
       (await get(targets, "/api/messages/targets?q=trans", joao)).status,

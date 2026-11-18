@@ -27,8 +27,10 @@ import { topicHref } from "./messages";
  * por produto: cada assunto de item, pedido ou solicitação aponta para os
  * produtos envolvidos.
  *
- * Operador vê os assuntos em que escreveu e os que ninguém da Wellmix
- * assumiu ainda; administrador vê todos (e pode filtrar "só os meus").
+ * Operador vê os assuntos das conversas privadas dele (e, nas antigas, os em
+ * que escreveu e os que ninguém assumiu); administrador vê todos (e pode
+ * filtrar "só os meus"). Conversa privada (docs/CHAT_IDENTITY.md): o
+ * analista é a pessoa da Wellmix dela.
  * Banco sem as tabelas (esquema não publicado): tudo vazio, sem derrubar.
  */
 
@@ -63,8 +65,13 @@ export interface MessageControlRow {
   /** Prazo de resposta (1 dia útil depois da última mensagem). */
   dueAt: string;
   overdue: boolean;
-  /** Analista: último login da Wellmix que escreveu no assunto (nulo: ninguém ainda). */
+  /**
+   * Analista: na conversa privada, a pessoa da Wellmix dela; na antiga, o
+   * último login da Wellmix que escreveu no assunto (nulo: ninguém ainda).
+   */
   analystId: string | null;
+  /** Login de fora da conversa privada (abre a conversa com ele); nulo na antiga. */
+  peerUserId: string | null;
   analystName: string | null;
   /** Cliente da solicitação/do pedido (ou a própria empresa, se é cliente): painel de SLA. */
   customerId: string | null;
@@ -197,7 +204,11 @@ async function loadAll(now: Date): Promise<Loaded> {
       ...new Set(conversations.map((c) => c.partyId).filter(Boolean)),
     ] as string[];
     const authorIds = new Set(messages.map((m) => m.authorUserId));
-    for (const c of conversations) if (c.userId) authorIds.add(c.userId);
+    for (const c of conversations) {
+      if (c.userId) authorIds.add(c.userId);
+      if (c.wellmixUserId) authorIds.add(c.wellmixUserId);
+      if (c.externalUserId) authorIds.add(c.externalUserId);
+    }
     const requestIds = [
       ...new Set(active.map((t) => t.requestId).filter(Boolean)),
     ] as string[];
@@ -263,13 +274,21 @@ async function loadAll(now: Date): Promise<Loaded> {
         businessDeadline(last.createdAt, MESSAGE_SLA_BUSINESS_DAYS) ??
         last.createdAt;
       const productIds = productIdsOf(topic);
-      const analystId = analystOf(thread);
+      const analystId = conv?.wellmixUserId ?? analystOf(thread);
+      const external = conv?.externalUserId
+        ? users.find((u) => u.id === conv.externalUserId)
+        : null;
       rows.push({
         topicId: topic.id,
         conversationId: topic.conversationId,
         href: topicHref(topic.conversationId, topic.id),
         partyId: conv?.partyId ?? null,
-        partyName: party?.name ?? owner ?? "—",
+        partyName:
+          (external && party
+            ? `${external.name} · ${party.name}`
+            : (external?.name ?? party?.name)) ??
+          owner ??
+          "—",
         partyType:
           party?.type ??
           (conv && !conv.partyId
@@ -297,6 +316,7 @@ async function loadAll(now: Date): Promise<Loaded> {
         overdue: now.getTime() > time(dueAt),
         analystId,
         analystName: userName(analystId),
+        peerUserId: conv?.externalUserId ?? null,
         customerId:
           (topic.requestId
             ? requests.find((r) => r.id === topic.requestId)?.customerId

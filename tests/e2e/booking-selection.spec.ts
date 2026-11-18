@@ -208,6 +208,18 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(
     draftRow.locator('[data-selection-lot-status="draft"]'),
   ).toBeVisible();
+  // Medidas em três colunas (dono, 18/11/2026), cada uma do seu campo da
+  // planilha: SIZE(CM) LENGTH 10, WIDTH 8 e HEIGHT 20.
+  await expect(page.locator("thead th[data-selection-dim]")).toHaveText([
+    "Comprimento (cm)",
+    "Largura (cm)",
+    "Altura (cm)",
+  ]);
+  await expect(draftRow.locator("td[data-selection-dim]")).toHaveText([
+    "10",
+    "8",
+    "20",
+  ]);
   // Os fechados mostram o custo por peça do Superplan (R$), com a explicação.
   await expect(page.locator("[data-selection-cost-hint]")).toBeVisible();
   for (const code of [`${TAG}-A`, `${TAG}-B`])
