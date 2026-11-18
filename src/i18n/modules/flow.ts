@@ -285,6 +285,9 @@ export const pt = {
     "Oferta ativa aos clientes: o produto com a venda ativada (foto real aprovada), a oferecer a um cliente, com o registro de a quem foi oferecido.",
   "flow.step.sales.sale": "Venda",
   "flow.help.sales.sale": "Pedidos de clientes, ordem de venda e pós-venda.",
+  "flow.step.sales.portfolio": "Carteira e atendimento",
+  "flow.help.sales.portfolio":
+    "Clientes acompanhados, dias sem atendimento confirmado e o prazo; registrar o atendimento e mandar o link para o cliente confirmar.",
   "flow.step.finance.finance": "Financeiro",
   "flow.help.finance.finance":
     "Sinal ao fornecedor, pagamentos e faturas a vencer.",
@@ -575,6 +578,9 @@ export const en: Record<keyof typeof pt, string> = {
     "Active offers to customers: products with the sale activated (real photo approved), to offer to a customer, recording to whom.",
   "flow.step.sales.sale": "Sale",
   "flow.help.sales.sale": "Customer requests, sales order and after-sales.",
+  "flow.step.sales.portfolio": "Accounts and customer service",
+  "flow.help.sales.portfolio":
+    "Followed customers, days without a confirmed contact and the deadline; record a contact and send the link for the customer to confirm.",
   "flow.step.finance.finance": "Finance",
   "flow.help.finance.finance":
     "Supplier down payment, payments and invoices due.",
@@ -843,6 +849,9 @@ export const zh: Record<keyof typeof pt, string> = {
     "主动向客户推荐：已开始销售的产品（实拍照片已批准），向客户推荐并记录推荐给谁。",
   "flow.step.sales.sale": "销售",
   "flow.help.sales.sale": "客户需求、销售订单和售后。",
+  "flow.step.sales.portfolio": "客户组合与拜访",
+  "flow.help.sales.portfolio":
+    "跟进的客户、未确认拜访的天数和期限；登记拜访并发送链接给客户确认。",
   "flow.step.finance.finance": "财务",
   "flow.help.finance.finance": "供应商定金、付款和到期发票。",
   "flow.step.registry.products": "产品",

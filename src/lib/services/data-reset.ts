@@ -51,6 +51,8 @@ const SALES_TABLES = [
   "cart_items",
   "request_drafts",
   "form_drafts",
+  // Atendimentos ao cliente (carteira; docs/TRADE_COMERCIAL.md).
+  "customer_attendances",
   // Mensagens (chat): conversas, assuntos, mensagens e leituras de teste.
   "messages",
   "message_reads",

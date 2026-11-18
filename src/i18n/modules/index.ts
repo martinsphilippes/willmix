@@ -168,6 +168,7 @@ import * as accessState from "./access-state";
 import * as internalTeam from "./internal-team";
 import * as newProduct from "./new-product";
 import * as partyFamilies from "./party-families";
+import * as portfolio from "./portfolio";
 
 export const modulesPt = {
   ...messages.pt,
@@ -335,6 +336,7 @@ export const modulesPt = {
   ...internalTeam.pt,
   ...newProduct.pt,
   ...partyFamilies.pt,
+  ...portfolio.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...messages.en,
@@ -502,6 +504,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...internalTeam.en,
   ...newProduct.en,
   ...partyFamilies.en,
+  ...portfolio.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...messages.zh,
@@ -669,4 +672,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...internalTeam.zh,
   ...newProduct.zh,
   ...partyFamilies.zh,
+  ...portfolio.zh,
 };

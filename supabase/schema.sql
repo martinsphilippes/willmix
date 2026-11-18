@@ -26,6 +26,7 @@ alter table public."users" add column if not exists "screens" jsonb;
 alter table public."users" add column if not exists "mustChangePassword" boolean;
 alter table public."users" add column if not exists "screenExceptions" jsonb;
 alter table public."users" add column if not exists "loginSuspended" boolean;
+alter table public."users" add column if not exists "sellerCode" text;
 create unique index if not exists "users_email_unique" on public."users" ("email");
 create index if not exists "users_by_manager" on public."users" ("managerUserId");
 create index if not exists "users_created" on public."users" ("createdAt");
@@ -74,9 +75,11 @@ alter table public."parties" add column if not exists "sankhyaRefs" jsonb;
 alter table public."parties" add column if not exists "customerContacts" jsonb;
 alter table public."parties" add column if not exists "customerContactsUpdatedAt" timestamptz;
 alter table public."parties" add column if not exists "customerContactsUpdatedByUserId" text;
+alter table public."parties" add column if not exists "customerGroupId" text;
 create index if not exists "parties_by_type" on public."parties" ("type");
 create index if not exists "parties_by_owner" on public."parties" ("ownerUserId");
 create index if not exists "parties_by_sankhya" on public."parties" ("sankhyaCode");
+create index if not exists "parties_by_customer_group" on public."parties" ("customerGroupId");
 create index if not exists "parties_created" on public."parties" ("createdAt");
 create index if not exists "parties_created_id" on public."parties" ("createdAt", "id");
 create index if not exists "parties_name_id" on public."parties" ("name", "id");
@@ -1180,6 +1183,49 @@ alter table public."form_drafts" add column if not exists "payload" jsonb;
 create unique index if not exists "form_drafts_by_user_form" on public."form_drafts" ("userId", "form");
 create index if not exists "form_drafts_created" on public."form_drafts" ("createdAt");
 create index if not exists "form_drafts_created_id" on public."form_drafts" ("createdAt", "id");
+
+create table if not exists public."customer_groups" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."customer_groups" enable row level security;
+alter table public."customer_groups" add column if not exists "name" text;
+alter table public."customer_groups" add column if not exists "notes" text;
+alter table public."customer_groups" add column if not exists "ownerUserId" text;
+alter table public."customer_groups" add column if not exists "archivedAt" timestamptz;
+alter table public."customer_groups" add column if not exists "createdByUserId" text;
+create index if not exists "customer_groups_by_owner" on public."customer_groups" ("ownerUserId");
+create index if not exists "customer_groups_created" on public."customer_groups" ("createdAt");
+create index if not exists "customer_groups_created_id" on public."customer_groups" ("createdAt", "id");
+create index if not exists "customer_groups_name_id" on public."customer_groups" ("name", "id");
+
+create table if not exists public."customer_attendances" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."customer_attendances" enable row level security;
+alter table public."customer_attendances" add column if not exists "customerId" text;
+alter table public."customer_attendances" add column if not exists "attendedByUserId" text;
+alter table public."customer_attendances" add column if not exists "channel" text;
+alter table public."customer_attendances" add column if not exists "occurredAt" timestamptz;
+alter table public."customer_attendances" add column if not exists "summary" text;
+alter table public."customer_attendances" add column if not exists "nextStep" text;
+alter table public."customer_attendances" add column if not exists "documentIds" jsonb;
+alter table public."customer_attendances" add column if not exists "status" text;
+alter table public."customer_attendances" add column if not exists "linkNonce" text;
+alter table public."customer_attendances" add column if not exists "linkExpiresAt" timestamptz;
+alter table public."customer_attendances" add column if not exists "customerAnsweredAt" timestamptz;
+alter table public."customer_attendances" add column if not exists "customerName" text;
+alter table public."customer_attendances" add column if not exists "customerNote" text;
+alter table public."customer_attendances" add column if not exists "cancelledAt" timestamptz;
+alter table public."customer_attendances" add column if not exists "cancelledByUserId" text;
+create index if not exists "customer_attendances_by_customer" on public."customer_attendances" ("customerId");
+create index if not exists "customer_attendances_by_attendant" on public."customer_attendances" ("attendedByUserId");
+create index if not exists "customer_attendances_by_status" on public."customer_attendances" ("status");
+create index if not exists "customer_attendances_created" on public."customer_attendances" ("createdAt");
+create index if not exists "customer_attendances_created_id" on public."customer_attendances" ("createdAt", "id");
 
 create table if not exists public."cart_items" (
   "id" text primary key,

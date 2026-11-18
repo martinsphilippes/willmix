@@ -79,8 +79,12 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
   {
     key: "sales",
     label: "nav.group.sales",
-    screens: ["requests", "afterSales"],
-    actions: ["purchaseOrder.salesNotice", "demand.createForCustomer"],
+    screens: ["requests", "afterSales", "portfolio"],
+    actions: [
+      "purchaseOrder.salesNotice",
+      "demand.createForCustomer",
+      "trade.manage",
+    ],
   },
   {
     key: "finance",

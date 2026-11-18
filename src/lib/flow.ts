@@ -98,6 +98,9 @@ export const FLOW_STEPS: FlowStep[] = [
   s("sales", "samples", "products"),
   s("sales", "offers", "products"),
   s("sales", "sale", "products"),
+  // Carteira e atendimento ao cliente (dono, 18/11/2026;
+  // docs/TRADE_COMERCIAL.md): dias sem atendimento e o prazo.
+  s("sales", "portfolio", "portfolio", "/app/portfolio"),
   // Só o contador, no item que já existe.
   s("finance", "finance", "finance", "/app/finance", true),
   s("registry", "products", "products", "/app/products", true),
@@ -315,6 +318,10 @@ const KIND_STEP: Partial<Record<string, Ref>> = {
   ncm_classify: "registry/products",
   // Produto novo a aprovar (docs/NEW_PRODUCT.md): Cadastros → Produtos.
   product_approve: "registry/products",
+  // Carteira (docs/TRADE_COMERCIAL.md): atender o cliente atrasado e cobrar
+  // a confirmação do atendimento.
+  customer_attendance: "sales/portfolio",
+  attendance_confirm: "sales/portfolio",
   // Encomenda do cliente e reposição (docs/PURCHASE_DEMAND.md).
   new_request: "new-product/demands",
   replenishment_request: "new-product/replenishment",

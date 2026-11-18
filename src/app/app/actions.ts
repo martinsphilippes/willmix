@@ -1460,6 +1460,12 @@ export async function saveSettingsAction(form: FormData) {
         if (!Number.isInteger(n) || n < 1 || n > 30)
           throw new Error("sampling_sla_invalid");
         value = n;
+      } else if (key === "attendanceSlaDays") {
+        // Prazo de atendimento ao cliente (docs/TRADE_COMERCIAL.md).
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n < 1 || n > 365)
+          throw new Error("attendance_sla_invalid");
+        value = n;
       } else if (key === "supplierRequestSlaMinutes") {
         const n = Number(raw);
         if (

@@ -775,6 +775,12 @@ export interface User extends BaseRow {
    */
   loginSuspended?: boolean | null;
   /**
+   * Código do vendedor no Sankhya (TGFVEN.CODVEND) deste login: liga a
+   * carteira dos clientes daquele RCA à pessoa (docs/TRADE_COMERCIAL.md).
+   * Só o administrador grava. Opcional.
+   */
+  sellerCode?: string | null;
+  /**
    * Telas liberadas uma a uma pelo administrador (docs/ACCESS.md). Nula ou
    * ausente: o login abre o padrão das funções. Guarda chaves de
    * src/lib/auth/screens.ts (validadas ao salvar e ao ler).
@@ -836,6 +842,11 @@ export interface Party extends BaseRow {
    * (solicitações, pedidos, etapas) cai no painel de SLA dele. Opcional.
    */
   ownerUserId?: string | null;
+  /**
+   * Cliente: grupo econômico da carteira (customer_groups;
+   * docs/TRADE_COMERCIAL.md). Um grupo por cliente. Opcional.
+   */
+  customerGroupId?: string | null;
   /**
    * Cliente: RCA responsável, o código do vendedor no Sankhya (TGFVEN.CODVEND;
    * docs/CUSTOMER_RCA.md). "0" = sem RCA. Nulo = nunca gravado: vale o
@@ -2037,6 +2048,72 @@ export interface FormDraft extends BaseRow {
   form: string;
   /** Os campos de texto do formulário (nome → valor). */
   payload: Record<string, string>;
+}
+
+/**
+ * Grupo econômico da carteira (docs/TRADE_COMERCIAL.md): lista montada à mão
+ * pelo administrador ou por quem tem "Gerir carteira e trade" (dono,
+ * 18/11/2026). O cliente entra pelo `parties.customerGroupId`.
+ */
+export interface CustomerGroup extends BaseRow {
+  name: string;
+  notes: string | null;
+  /** Responsável pelos clientes do grupo que não têm responsável próprio. */
+  ownerUserId: string | null;
+  archivedAt: string | null;
+  createdByUserId: string | null;
+}
+
+/** Canal do atendimento ao cliente (docs/TRADE_COMERCIAL.md). */
+export const ATTENDANCE_CHANNELS = [
+  "visit",
+  "call",
+  "whatsapp",
+  "email",
+  "video",
+  "other",
+] as const;
+export type AttendanceChannel = (typeof ATTENDANCE_CHANNELS)[number];
+
+/**
+ * Situação do atendimento. Só o confirmado pelos dois lados (quem atendeu
+ * registra; o cliente confirma pelo link) zera os dias sem atendimento
+ * (dono, 18/11/2026).
+ */
+export const ATTENDANCE_STATUSES = [
+  "pending_customer",
+  "confirmed",
+  "disputed",
+  "cancelled",
+] as const;
+export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
+
+/** Atendimento ao cliente (docs/TRADE_COMERCIAL.md). */
+export interface CustomerAttendance extends BaseRow {
+  customerId: string;
+  /** Quem atendeu (login da Wellmix): registrar é a confirmação dele. */
+  attendedByUserId: string;
+  channel: AttendanceChannel;
+  /** Quando o atendimento aconteceu (ISO). */
+  occurredAt: string;
+  summary: string;
+  nextStep: string | null;
+  /** Fotos ou arquivos do atendimento (documents). */
+  documentIds: string[] | null;
+  status: AttendanceStatus;
+  /**
+   * Parte secreta do link de confirmação: o link é assinado pelo servidor
+   * com ela, que não é o link. Trocar invalida o link anterior. Uso único
+   * pela situação: respondido ou cancelado, o link só mostra o resultado.
+   */
+  linkNonce: string | null;
+  linkExpiresAt: string | null;
+  /** Resposta do cliente pelo link: quando, quem (nome digitado) e o motivo de "Não aconteceu". */
+  customerAnsweredAt: string | null;
+  customerName: string | null;
+  customerNote: string | null;
+  cancelledAt: string | null;
+  cancelledByUserId: string | null;
 }
 
 export interface CartItem extends BaseRow {
@@ -3950,6 +4027,8 @@ export interface Tables {
   cart_items: CartItem;
   request_drafts: RequestDraft;
   form_drafts: FormDraft;
+  customer_groups: CustomerGroup;
+  customer_attendances: CustomerAttendance;
   freight_tariffs: FreightTariff;
   product_variants: ProductVariant;
   conversations: Conversation;
@@ -4095,6 +4174,7 @@ export const TABLES: Record<TableName, TableDef> = {
       mustChangePassword: bool(),
       screenExceptions: json(),
       loginSuspended: bool(),
+      sellerCode: str(20),
     },
     indexes: [
       { key: "email_unique", type: "unique", columns: ["email"] },
@@ -4140,11 +4220,13 @@ export const TABLES: Record<TableName, TableDef> = {
       customerContacts: json(),
       customerContactsUpdatedAt: datetime(),
       customerContactsUpdatedByUserId: id(false),
+      customerGroupId: id(false),
     },
     indexes: [
       { key: "by_type", type: "key", columns: ["type"] },
       { key: "by_owner", type: "key", columns: ["ownerUserId"] },
       { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
+      { key: "by_customer_group", type: "key", columns: ["customerGroupId"] },
     ],
   },
   product_lines: {
@@ -5184,6 +5266,42 @@ export const TABLES: Record<TableName, TableDef> = {
     },
     indexes: [
       { key: "by_user_form", type: "unique", columns: ["userId", "form"] },
+    ],
+  },
+  customer_groups: {
+    label: "Grupos econômicos (carteira)",
+    columns: {
+      name: str(160, true),
+      notes: text(),
+      ownerUserId: id(false),
+      archivedAt: datetime(),
+      createdByUserId: id(false),
+    },
+    indexes: [{ key: "by_owner", type: "key", columns: ["ownerUserId"] }],
+  },
+  customer_attendances: {
+    label: "Atendimentos ao cliente (carteira)",
+    columns: {
+      customerId: id(),
+      attendedByUserId: id(),
+      channel: enumOf(ATTENDANCE_CHANNELS),
+      occurredAt: datetime(true),
+      summary: text(true),
+      nextStep: text(),
+      documentIds: json(),
+      status: enumOf(ATTENDANCE_STATUSES),
+      linkNonce: str(64),
+      linkExpiresAt: datetime(),
+      customerAnsweredAt: datetime(),
+      customerName: str(160),
+      customerNote: text(),
+      cancelledAt: datetime(),
+      cancelledByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_customer", type: "key", columns: ["customerId"] },
+      { key: "by_attendant", type: "key", columns: ["attendedByUserId"] },
+      { key: "by_status", type: "key", columns: ["status"] },
     ],
   },
   cart_items: {

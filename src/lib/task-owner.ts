@@ -111,6 +111,11 @@ export function kindGate(
     // de quem pediu (docs/NEW_PRODUCT.md); a aprovação é na tela Produtos.
     case "product_approve":
       return { screen: "products" };
+    // Carteira e atendimento (docs/TRADE_COMERCIAL.md): o dono da pendência
+    // é decidido em tasksForFunctions; aqui, só a tela.
+    case "customer_attendance":
+    case "attendance_confirm":
+      return { screen: "portfolio" };
     case "sourcing_demand":
       return { screen: "sourcing" };
     case "sampling":
@@ -200,6 +205,21 @@ export function tasksForFunctions<T extends Filterable>(
     // Mensagem: de quem cuida da conversa (ou de todos, sem analista).
     if (task.kind === "message_reply") {
       if (!task.ownerUserId || task.ownerUserId === user.id) out.push(task);
+      continue;
+    }
+    // Carteira: o responsável pelo cliente (ou quem atendeu, na cobrança da
+    // confirmação); cliente sem responsável fica com quem gere a carteira.
+    if (
+      task.kind === "customer_attendance" ||
+      task.kind === "attendance_confirm"
+    ) {
+      if (!canOpen(user, "portfolio")) continue;
+      if (
+        task.ownerUserId
+          ? task.ownerUserId === user.id
+          : can(user, "trade.manage")
+      )
+        out.push(task);
       continue;
     }
     const gate = kindGate(task.kind, task.stepKey);

@@ -513,6 +513,23 @@ export default async function SettingsPage({
                       data-setting-purchase-quote-hours
                     />
                   </Field>
+                  {/* Carteira: prazo único de atendimento ao cliente
+                      (docs/TRADE_COMERCIAL.md). */}
+                  <Field
+                    label={t("portfolio.settings.sla")}
+                    hint={t("portfolio.settings.slaHint")}
+                  >
+                    <Input
+                      name="attendanceSlaDays"
+                      type="number"
+                      min={1}
+                      max={365}
+                      step={1}
+                      required
+                      defaultValue={s.attendanceSlaDays}
+                      data-setting-attendance-sla
+                    />
+                  </Field>
                   <Field
                     label={t("bookingInvites.settings.sla")}
                     hint={t("bookingInvites.settings.slaHint")}

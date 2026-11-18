@@ -95,7 +95,14 @@ export type TaskKind =
   /** Amostras a conferir no show room do Brasil (docs/SAMPLE_FLOW.md). */
   | "showroom_receive"
   /** Produto novo a aprovar ou recusar (docs/NEW_PRODUCT.md). */
-  | "product_approve";
+  | "product_approve"
+  /**
+   * Carteira (docs/TRADE_COMERCIAL.md): cliente acompanhado passou do prazo
+   * sem atendimento confirmado (responsável), e atendimento esperando a
+   * confirmação do cliente há 3 dias ou mais (quem atendeu).
+   */
+  | "customer_attendance"
+  | "attendance_confirm";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -352,6 +359,8 @@ export function requirementWaiting(
 const KIND_ORDER: string[] = [
   "booking_invite",
   "product_approve",
+  "customer_attendance",
+  "attendance_confirm",
   "new_request",
   "replenishment_request",
   "purchase_strategy",
@@ -1045,6 +1054,17 @@ export async function pendingTasksFor(
     tasks.push(
       ...(
         await (await import("./product-approval")).approvalTaskDrafts(user)
+      ).map((draft) => finish(draft, now)),
+    );
+  // Carteira e atendimento (docs/TRADE_COMERCIAL.md): atender o cliente
+  // acompanhado atrasado ou nunca atendido e cobrar a confirmação parada. De
+  // quem é cada uma decide src/lib/task-owner.ts (e o Painel de SLA).
+  if (wellmix)
+    tasks.push(
+      ...(
+        await (await import("./portfolio"))
+          .portfolioTaskDrafts(now)
+          .catch(() => [])
       ).map((draft) => finish(draft, now)),
     );
   // Cotação de compra (docs/PURCHASE_DEMAND.md): o fornecedor responde; a

@@ -86,6 +86,12 @@ export const ACTION_GROUPS = [
     // docs/LINHA_DE_VISAO.md, seção 7).
     actions: ["purchasePrice.view", "values.view", "sale.record"],
   },
+  {
+    key: "sales",
+    // Carteira e trade (dono, 18/11/2026; docs/TRADE_COMERCIAL.md): grupos
+    // econômicos, responsável pela carteira e atividades de trade.
+    actions: ["trade.manage"],
+  },
 ] as const;
 
 export type ActionKey = (typeof ACTION_GROUPS)[number]["actions"][number];
@@ -197,6 +203,10 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
     case "order.cancel":
     case "values.view":
     case "sale.record":
+    // Gerir carteira e trade (dono, 18/11/2026; docs/TRADE_COMERCIAL.md): só
+    // o administrador por padrão; ele libera, por exemplo, para a
+    // coordenadora de trade.
+    case "trade.manage":
       return [];
   }
 }
