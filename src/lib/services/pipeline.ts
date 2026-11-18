@@ -6,6 +6,7 @@ import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 import {
   getStore,
   type OrderItem,
+  type Role,
   type StageKey,
   type User,
   type VariantSnapshot,
@@ -23,6 +24,7 @@ import {
   type JourneyStep,
 } from "./journey";
 import type { OrderFacts } from "./order-summary";
+import { partyOfRole, type TurnParty } from "@/lib/turn";
 import {
   milestoneBlockedOf,
   milestoneDueOf,
@@ -91,6 +93,12 @@ export interface PipelineRow {
   journey: JourneyStep | null;
   dueAt: string | null;
   updatedAt: string;
+  /**
+   * Quem está com a vez (dono, 18/11/2026; docs/TURNS.md): no pedido, o
+   * papel do próximo item obrigatório do marco atual (`resp` do resumo); na
+   * solicitação, a regra das Encomendas. Nulo no encerrado e no cancelado.
+   */
+  turn: TurnParty | null;
   /** Itens do pedido (ou o produto da solicitação). */
   items: PipelineItem[];
   /**
@@ -159,6 +167,8 @@ const PIPELINE_FACTS = [
   "product",
   "itemCount",
   "m",
+  // Quem age agora no pedido (docs/TURNS.md).
+  "resp",
 ] as const;
 
 /**
@@ -424,6 +434,59 @@ export async function pipelineFor(
             .map((r) => r.id),
         ),
   );
+  // De quem é a vez (dono, 18/11/2026; docs/TURNS.md). Pedido: o papel do
+  // próximo item obrigatório do marco atual (`resp` do resumo; sem resumo,
+  // pelos itens). Solicitação: a regra das Encomendas, só para a Wellmix
+  // (a compra e a estratégia são internas).
+  const liveOrders = visibleOrders.filter(
+    (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
+  );
+  const respOf = new Map<string, Role | null>();
+  if (facts)
+    for (const o of liveOrders) respOf.set(o.id, facts.get(o.id)?.resp ?? null);
+  else if (liveOrders.length) {
+    const { orderNextInfoOf } = await import("./request-export");
+    for (const [id, info] of await orderNextInfoOf(liveOrders))
+      respOf.set(id, info.responsibleRole);
+  }
+  const orderTurn = (o: (typeof visibleOrders)[number]): TurnParty | null => {
+    if (o.status === "CLOSED" || o.status === "CANCELLED") return null;
+    const party = partyOfRole(respOf.get(o.id) ?? null, {
+      trading: parties.get(o.supplierId)?.type === "trading",
+    });
+    // Para o cliente, a contraparte é a Wellmix.
+    return user.role === "customer" && party && party !== "customer"
+      ? "wellmix"
+      : party;
+  };
+  const requestTurn = new Map<string, TurnParty | null>();
+  if (wellmix) {
+    const { activeRequests } = await import("./request-list-data");
+    const { requestTurnContext } = await import("./request-turns");
+    const { awaitingStrategySend, inStrategyQueue } =
+      await import("./purchase-strategy");
+    const { requestNextStep, todayBrazil } = await import("./request-list");
+    const active = await activeRequests();
+    const ctx = await requestTurnContext(active);
+    const today = todayBrazil();
+    for (const r of active)
+      requestTurn.set(
+        r.id,
+        requestNextStep({
+          status: r.status,
+          display: r.status,
+          strategy: awaitingStrategySend(r)
+            ? "send"
+            : inStrategyQueue(r)
+              ? "queue"
+              : null,
+          purchase: ctx.purchaseOf(r),
+          customerLogin: ctx.customerLoginOf(r),
+          order: null,
+          today,
+        }).who,
+      );
+  }
   const rows: PipelineRow[] = [];
 
   for (const o of visibleOrders) {
@@ -493,6 +556,7 @@ export async function pipelineFor(
       journey: journey.orderStep(o, now.key),
       dueAt: cancelled || closed ? null : (milestoneDueOf(now.m) ?? null),
       updatedAt: o.updatedAt,
+      turn: orderTurn(o),
     });
   }
 
@@ -532,6 +596,7 @@ export async function pipelineFor(
       journey: journey.requestStep(r),
       dueAt: r.status === "CANCELLED" ? null : r.deadline,
       updatedAt: r.updatedAt,
+      turn: requestTurn.get(r.id) ?? null,
     });
   }
 

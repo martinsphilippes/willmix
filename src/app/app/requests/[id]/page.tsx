@@ -14,6 +14,9 @@ import { hasFiscalTable } from "@/lib/services/fiscal";
 import { RequestNcmCard } from "@/components/request-ncm-card";
 import { RequestOrderTermsView } from "@/components/request-order-terms-view";
 import { CustomerOrderConfirm } from "@/components/customer-order-confirm";
+import { requestStepFor } from "@/lib/services/request-turns";
+import { nextStepText } from "@/lib/services/request-list";
+import { turnTone, turnWaitingKey } from "@/lib/turn";
 import { customerConfirmLabels } from "@/components/order-terms-labels";
 import { canConfirm } from "@/lib/services/customer-confirmation";
 import { confirmCustomerOrderAction } from "../../actions/customer-confirmation";
@@ -104,6 +107,9 @@ export default async function RequestDetailPage({
     request,
     new Set(order && orderCancelled ? [order.id] : []),
   );
+  // De quem é a vez e o Próximo passo (dono, 18/11/2026; docs/TURNS.md): a
+  // mesma regra da lista de Encomendas.
+  const step = await requestStepFor(user, request, order);
   /* Segunda Onda: origem (recompra, nova proposta, sourcing sob demanda) e link ao
      pedido de origem só para quem pode abri-lo (mesmo isolamento por papel). */
   const origin =
@@ -185,9 +191,35 @@ export default async function RequestDetailPage({
                 {t("requests.numbered", { n: request.number })}
               </span>
             ) : null}
-            <Badge tone={requestStatusTone(displayStatus)}>
-              {t(`reqStatusLabel.${displayStatus}`)}
-            </Badge>
+            {step.who ? (
+              <span
+                className="inline-flex flex-wrap items-center gap-2"
+                data-request-turn={step.who}
+              >
+                <span title={t(`reqStatusLabel.${displayStatus}`)}>
+                  <Badge tone={turnTone(step.who)}>
+                    {user.role === "customer" && step.who === "customer"
+                      ? t("turn.waiting.you")
+                      : t(turnWaitingKey(step.who))}
+                  </Badge>
+                </span>
+                {step.key !== "none" ? (
+                  <span
+                    className="text-sm text-zinc-700"
+                    data-request-next={step.key}
+                  >
+                    {t("reqList.col.next")}:{" "}
+                    <span className="font-medium text-zinc-900">
+                      {nextStepText(t, step)}
+                    </span>
+                  </span>
+                ) : null}
+              </span>
+            ) : (
+              <Badge tone={requestStatusTone(displayStatus)}>
+                {t(`reqStatusLabel.${displayStatus}`)}
+              </Badge>
+            )}
             {wellmix ? (
               <span className="font-medium text-zinc-700">
                 {customer?.name}

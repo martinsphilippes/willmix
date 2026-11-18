@@ -102,7 +102,11 @@ export type TaskKind =
    * confirmação do cliente há 3 dias ou mais (quem atendeu).
    */
   | "customer_attendance"
-  | "attendance_confirm";
+  | "attendance_confirm"
+  /** Venda aguardando o cliente: o login dele confirma (docs/TURNS.md). */
+  | "customer_confirm"
+  /** Venda aguardando o cliente sem login que possa confirmar (administrador). */
+  | "customer_login";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -357,6 +361,8 @@ export function requirementWaiting(
   return options.purchase && blockedBy(r.key, stage.all).length > 0;
 }
 const KIND_ORDER: string[] = [
+  "customer_confirm",
+  "customer_login",
   "booking_invite",
   "product_approve",
   "customer_attendance",
@@ -1040,6 +1046,17 @@ export async function pendingTasksFor(
       ),
     );
   }
+  // De quem é a vez (dono, 18/11/2026; docs/TURNS.md): a venda aguardando o
+  // cliente é "Confirmar pedido" do login que pode confirmar; sem nenhum, o
+  // caso vai ao administrador, com o que falta resolver.
+  if (customer || isAdmin(user))
+    tasks.push(
+      ...(
+        await (
+          await import("./request-turns")
+        ).turnTaskDrafts(user, translator("pt"))
+      ).map((draft) => finish(draft, now)),
+    );
   if (wellmix)
     tasks.push(
       ...(
@@ -1080,6 +1097,10 @@ export async function pendingTasksFor(
       ).map((draft) => finish(draft, now)),
     );
   if (supplier) tasks.push(...(await supplierRequestTasks(user, now)));
+  // Fornecedor respondeu (dono, 18/11/2026; docs/TURNS.md): a vez é da
+  // Wellmix decidir; a pendência vai a quem decide (supplierRequest.decide,
+  // kindGate). A mesma regra de quem está com a vez (`negotiationTurn`).
+  if (wellmix) tasks.push(...(await supplierRequestDecideTasks(now)));
   // Amostragem: o responsável envia; a Wellmix (com a ação) valida.
   if (supplier || (wellmix && can(user, "sampling.validate")))
     tasks.push(...(await samplingTasks(user, supplier, now)));
@@ -2183,6 +2204,59 @@ async function supplierRequestTasks(user: User, now: Date): Promise<Task[]> {
           sinceAt: proposal?.at ?? r.createdAt,
           loadedAt: r.createdAt,
           supplierStep: "request",
+        },
+        now,
+      );
+    });
+}
+
+/**
+ * Solicitações ao fornecedor com a vez da Wellmix (respondidas, sem
+ * contraproposta esperando o fornecedor): "Decidir a resposta do
+ * fornecedor", no prazo da negociação.
+ */
+async function supplierRequestDecideTasks(now: Date): Promise<Task[]> {
+  let rows;
+  try {
+    rows = await getStore().list("supplier_requests", {
+      filter: { status: "answered" },
+    });
+  } catch (error) {
+    const { isSchemaMissing } = await import("@/lib/db/errors");
+    if (isSchemaMissing(error)) return [];
+    throw error;
+  }
+  if (!rows.length) return [];
+  const { negotiationTurn, supplierRequestSlaDue } =
+    await import("@/lib/supplier-requests");
+  const { supplierRequestSlaMinutes } =
+    await import("./supplier-request-negotiation");
+  const minutes = await supplierRequestSlaMinutes();
+  const ptText = translator("pt");
+  return rows
+    .filter((r) => negotiationTurn(r) === "wellmix")
+    .sort((a, b) => a.number - b.number)
+    .map((r) => {
+      const product =
+        r.item.description ??
+        r.item.productName ??
+        r.item.factoryItemCode ??
+        "—";
+      const values = { n: r.number, product };
+      return finish(
+        {
+          kind: "supplier_request",
+          title: ptText("turn.task.decide.title", values),
+          detail: ptText("turn.task.decide.detail", values),
+          text: {
+            title: "turn.task.decide.title",
+            detail: "turn.task.decide.detail",
+            values,
+          },
+          link: `/app/supplier-requests/${r.id}`,
+          dueAt: supplierRequestSlaDue(r, minutes),
+          sinceAt: r.respondedAt ?? r.createdAt,
+          ownerUserId: r.createdByUserId,
         },
         now,
       );

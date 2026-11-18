@@ -39,7 +39,6 @@ import {
 import {
   earliestDeadline,
   groupRequestRows,
-  statusCounts,
   type RequestListEntry,
 } from "@/lib/services/request-groups";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
@@ -95,6 +94,15 @@ import { containersText, requestRounds } from "@/lib/request-rounds";
 import { DemandTags } from "@/components/demand-tags";
 import { listDraftsForList } from "@/lib/services/request-drafts";
 import { demandKind, type DemandKind } from "@/lib/purchase-demand";
+import { requestTurnContext } from "@/lib/services/request-turns";
+import {
+  turnCounts,
+  turnFilterOf,
+  turnNameKey,
+  turnTone,
+  turnWaitingKey,
+  type TurnParty,
+} from "@/lib/turn";
 import {
   requestComposition,
   type Composition,
@@ -199,14 +207,45 @@ export default async function RequestsPage({
     ]),
   ) as Record<RequestSituation, number>;
   const filtering = wellmix && !showDeleted && !groupId;
+  // De quem é a vez (dono, 18/11/2026; docs/TURNS.md): a compra de cada
+  // encomenda (estratégia, cotação, solicitação ao fornecedor) e, na venda
+  // aguardando o cliente, se há login que possa confirmar. O cliente vê só
+  // se é a vez dele ou da Wellmix (a compra é interna).
+  const turnCtx = wellmix ? await requestTurnContext(byStatus) : null;
+  const strategyOf = (r: (typeof byStatus)[number]) =>
+    wellmix
+      ? awaitingStrategySend(r)
+        ? ("send" as const)
+        : inStrategyQueue(r)
+          ? ("queue" as const)
+          : null
+      : null;
+  /** Quem está com a vez na encomenda (sem o pedido: a lista não tem pedidos). */
+  const turnOf = (r: (typeof byStatus)[number]): TurnParty | null =>
+    requestNextStep({
+      status: r.status,
+      display: requestDisplayStatus(r, cancelled),
+      strategy: strategyOf(r),
+      purchase: turnCtx?.purchaseOf(r) ?? null,
+      customerLogin: turnCtx?.customerLoginOf(r) ?? null,
+      order: null,
+      today,
+    }).who;
+  const turnFilter = filtering ? turnFilterOf(sp.vez) : null;
+  const matchesOthers = (r: (typeof byStatus)[number]) =>
+    inSituation(r, requestDisplayStatus(r, cancelled), situation, today) &&
+    (!kindFilter || demandKind(r) === kindFilter) &&
+    matchesRequest(r, customerName(r.customerId), q);
+  // Contagem por quem está com a vez, com os outros filtros aplicados.
+  const turnChips = filtering
+    ? turnCounts(byStatus.filter(matchesOthers).map(turnOf))
+    : [];
   const requests = byStatus
     .filter((r) => !groupId || r.groupId === groupId)
     .filter(
       (r) =>
         !filtering ||
-        (inSituation(r, requestDisplayStatus(r, cancelled), situation, today) &&
-          (!kindFilter || demandKind(r) === kindFilter) &&
-          matchesRequest(r, customerName(r.customerId), q)),
+        (matchesOthers(r) && (!turnFilter || turnOf(r) === turnFilter)),
     );
   const orderIds = [
     ...new Set(requests.map((r) => r.orderId).filter(Boolean)),
@@ -216,6 +255,18 @@ export default async function RequestsPage({
       ? await store.list("orders", { filter: { id: orderIds } })
       : [];
   const orderById = indexBy(orders, "id");
+  // Fornecedor do pedido do tipo Trading: a vez aparece como Trading.
+  const tradingIds = new Set(
+    (
+      await listByIds(
+        store,
+        "parties",
+        orders.map((o) => o.supplierId),
+      )
+    )
+      .filter((p) => p.type === "trading")
+      .map((p) => p.id),
+  );
   const orderNumber = (id: string | null) =>
     id ? (orderById.get(id)?.number ?? null) : null;
   /* Wellmix: quem age e o prazo de cada pedido pelos marcos (fase 5g). As
@@ -234,18 +285,15 @@ export default async function RequestsPage({
       status: r.status,
       display: requestDisplayStatus(r, cancelled),
       // Encomenda a enviar para cotação, ou já na Estratégia de Compra.
-      strategy: wellmix
-        ? awaitingStrategySend(r)
-          ? "send"
-          : inStrategyQueue(r)
-            ? "queue"
-            : null
-        : null,
+      strategy: strategyOf(r),
+      purchase: turnCtx?.purchaseOf(r) ?? null,
+      customerLogin: turnCtx?.customerLoginOf(r) ?? null,
       order: order
         ? {
             status: order.status,
             responsibleRole: info?.responsibleRole ?? null,
             dueAt: info?.dueAt ?? null,
+            trading: tradingIds.has(order.supplierId),
           }
         : null,
       today,
@@ -279,6 +327,54 @@ export default async function RequestsPage({
         ) : null}
       </span>
     );
+  /**
+   * Situação (dono, 18/11/2026; docs/TURNS.md): quem está com a vez
+   * ("Aguardando cliente"; para o próprio cliente, "Aguardando você"), com a
+   * situação gravada na dica. Sem vez (excluída, pedido cancelado ou
+   * encerrado), a situação gravada.
+   */
+  const situationCell = (list: (typeof requests)[number][]) => {
+    const parts = new Map<
+      string,
+      {
+        party: TurnParty | null;
+        status: ReturnType<typeof requestDisplayStatus>;
+        count: number;
+      }
+    >();
+    for (const r of list) {
+      const status = requestDisplayStatus(r, cancelled);
+      const party = nextOf(r).who;
+      const key = party ?? `status:${status}`;
+      const cur = parts.get(key);
+      parts.set(key, {
+        party,
+        status: cur?.status ?? status,
+        count: (cur?.count ?? 0) + 1,
+      });
+    }
+    return [...parts.values()].map(({ party, status, count: n }) =>
+      party ? (
+        <span
+          key={party}
+          title={t(`reqStatusLabel.${status}`)}
+          data-request-turn={party}
+        >
+          <Badge tone={turnTone(party)}>
+            {customer && party === "customer"
+              ? t("turn.waiting.you")
+              : t(turnWaitingKey(party))}
+            {n > 1 ? ` ×${n}` : ""}
+          </Badge>
+        </span>
+      ) : (
+        <Badge key={status} tone={requestStatusTone(status)}>
+          {t(`reqStatusLabel.${status}`)}
+          {n > 1 ? ` ×${n}` : ""}
+        </Badge>
+      ),
+    );
+  };
   const ownerName = (id: string | null | undefined) =>
     id ? (teamById.get(id)?.name ?? "—") : "—";
   const listQuery = (patch: Record<string, string | null>) => {
@@ -287,6 +383,7 @@ export default async function RequestsPage({
       situ: situation === "all" ? null : situation,
       q: q || null,
       kind: kindFilter,
+      vez: turnFilter,
       ...patch,
     };
     for (const [k, v] of Object.entries(merged)) if (v) p.set(k, v);
@@ -339,7 +436,12 @@ export default async function RequestsPage({
       key: "status",
       text: (e) =>
         rowsOf(e)
-          .map((r) => t(`reqStatusLabel.${requestDisplayStatus(r, cancelled)}`))
+          .map((r) => {
+            const party = nextOf(r).who;
+            return party
+              ? t(turnWaitingKey(party))
+              : t(`reqStatusLabel.${requestDisplayStatus(r, cancelled)}`);
+          })
           .join(" "),
     },
     ...(wellmix
@@ -874,6 +976,45 @@ export default async function RequestsPage({
               </a>
             ))}
           </nav>
+          {/* Com quem está a vez (dono, 18/11/2026; docs/TURNS.md). */}
+          {turnChips.length || turnFilter ? (
+            <nav
+              className="flex flex-wrap items-center gap-2 text-sm"
+              aria-label={t("turn.filter.title")}
+              title={t("turn.filter.hint")}
+              data-turn-filter
+            >
+              <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                {t("turn.filter.title")}
+              </span>
+              {(
+                [
+                  { party: null, count: null },
+                  ...turnChips,
+                  ...(turnFilter &&
+                  !turnChips.some((c) => c.party === turnFilter)
+                    ? [{ party: turnFilter, count: 0 }]
+                    : []),
+                ] as { party: TurnParty | null; count: number | null }[]
+              ).map(({ party, count: n }) => (
+                <a
+                  key={party ?? "all"}
+                  href={`/app/requests${listQuery({ vez: party })}`}
+                  aria-current={turnFilter === party ? "page" : undefined}
+                  data-turn={party ?? "all"}
+                  className={cx(
+                    "rounded-full border px-3 py-1",
+                    turnFilter === party
+                      ? "border-brand-600 bg-brand-50 font-semibold text-brand-700"
+                      : "border-zinc-200 text-zinc-700 hover:bg-zinc-50",
+                  )}
+                >
+                  {party ? t(turnNameKey(party)) : t("turn.filter.all")}
+                  {n !== null ? ` · ${n}` : ""}
+                </a>
+              ))}
+            </nav>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2">
             <form
               method="get"
@@ -886,6 +1027,9 @@ export default async function RequestsPage({
               ) : null}
               {kindFilter ? (
                 <input type="hidden" name="kind" value={kindFilter} />
+              ) : null}
+              {turnFilter ? (
+                <input type="hidden" name="vez" value={turnFilter} />
               ) : null}
               <Input
                 name="q"
@@ -1100,13 +1244,11 @@ export default async function RequestsPage({
                   ) : null}
                   <Td className="text-right">{skusCell(entry)}</Td>
                   <Td>
-                    <span className="flex flex-wrap gap-1">
-                      {statusCounts(statuses).map(({ status, count: n }) => (
-                        <Badge key={status} tone={requestStatusTone(status)}>
-                          {t(`reqStatusLabel.${status}`)}
-                          {n > 1 ? ` ×${n}` : ""}
-                        </Badge>
-                      ))}
+                    <span
+                      className="flex flex-wrap gap-1"
+                      data-request-situation
+                    >
+                      {situationCell(rows)}
                     </span>
                   </Td>
                   <Td className="text-right">{containersCell(entry)}</Td>

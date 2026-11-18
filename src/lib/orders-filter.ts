@@ -11,8 +11,9 @@ import { milestoneOfStatus } from "@/lib/milestones";
 
 export type OrdersRowState = "active" | "blocked" | "done" | "cancelled";
 
+/** `w`: com quem está a vez (docs/TURNS.md). */
 export type OrdersFilterKey =
-  "n" | "p" | "c" | "s" | "ph" | "st" | "pr" | "d" | "u";
+  "n" | "p" | "c" | "s" | "ph" | "st" | "pr" | "d" | "u" | "w";
 export type OrdersFilters = Record<OrdersFilterKey, string>;
 export type OrdersSortKey =
   | "number"
@@ -36,6 +37,7 @@ export const ORDERS_FILTER_KEYS: OrdersFilterKey[] = [
   "pr",
   "d",
   "u",
+  "w",
 ];
 export const ORDERS_SORT_KEYS: readonly OrdersSortKey[] = [
   "number",
@@ -71,6 +73,8 @@ export interface OrdersFilterRow {
   step: string | null;
   due: string;
   updated: string;
+  /** Quem está com a vez (src/lib/turn.ts); vazio quando ninguém. */
+  turn: string;
   items: Array<{
     name: string;
     variant: string | null;
@@ -124,6 +128,7 @@ export function filterOrderRows<T extends OrdersFilterRow>(
     if (showSupplier && !has(r.supplier, f("s"))) return false;
     if (f("ph") && r.phaseKey !== f("ph")) return false;
     if (f("st") && r.state !== f("st")) return false;
+    if (f("w") && r.turn !== f("w")) return false;
     if (pr === "cancelled" && r.state !== "cancelled") return false;
     // Links antigos (?pr=none|partial|full) continuam valendo pelo percentual.
     if (pr === "none" && r.progress !== 0) return false;

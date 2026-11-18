@@ -9,11 +9,13 @@ import {
   currentMilestone,
   milestoneOfImportKey,
   compactMilestones,
+  responsibleOfItems,
   stepOfItem,
   milestoneTitle,
   MILESTONE_KEYS,
   type MilestoneKey,
 } from "@/lib/milestones";
+import { partyOfRole, turnTone, turnWaitingKey } from "@/lib/turn";
 import { milestonesOf } from "@/lib/services/milestones";
 import {
   milestoneOfItem,
@@ -1205,6 +1207,23 @@ export default async function OrderPage({
     ? milestoneRows.find((r) => r.key === headMilestone)
     : undefined;
   const headBlocked = blockedRows[0] ?? null;
+  // Quem está com a vez no pedido (dono, 18/11/2026; docs/TURNS.md): o papel
+  // do próximo item obrigatório do marco atual, a regra da lista de Pedidos.
+  // O cliente vê só se a vez é dele ou da Wellmix.
+  const headTurn = (() => {
+    if (!isOrderOpen(order.status) || isCancelled) return null;
+    const party = partyOfRole(responsibleOfItems(headMilestone, requirements), {
+      trading: known.get(order.supplierId)?.type === "trading",
+    });
+    if (!party) return null;
+    if (user.role === "customer" && party !== "customer") return "wellmix";
+    return party;
+  })();
+  const headTurnMine =
+    !!headTurn &&
+    ((user.role === "customer" && headTurn === "customer") ||
+      (user.role === "supplier" &&
+        (headTurn === "supplier" || headTurn === "trading")));
   const overdue =
     isOrderOpen(order.status) &&
     isOverdue(
@@ -2118,6 +2137,15 @@ export default async function OrderPage({
             {overdue ? (
               <Badge tone="danger">{t("common.overdue")}</Badge>
             ) : null}
+            {headTurn ? (
+              <span data-order-turn={headTurn}>
+                <Badge tone={turnTone(headTurn)}>
+                  {headTurnMine
+                    ? t("turn.waiting.you")
+                    : t(turnWaitingKey(headTurn))}
+                </Badge>
+              </span>
+            ) : null}
             {sourceRequest?.number ? (
               canViewRequest(user, sourceRequest) ? (
                 <TextLink
@@ -2453,9 +2481,7 @@ export default async function OrderPage({
             <div className="mb-3" data-order-item-focus={focusItem.id}>
               <Alert tone="info">
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span>
-                    {t("orderView.focus", { name: focusItem.name })}
-                  </span>
+                  <span>{t("orderView.focus", { name: focusItem.name })}</span>
                   <ChatOpenButton
                     target={{ orderId: order.id, orderItemId: focusItem.id }}
                     label={`${t("chat.openItem")}: ${focusItem.name}`}

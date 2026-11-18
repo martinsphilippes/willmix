@@ -5,7 +5,6 @@ import {
   type Request,
   type User,
 } from "@/lib/db";
-import { forAllCustomerLogins } from "@/lib/auth/permissions";
 import { dataMode } from "@/lib/env";
 import {
   cnpjDigits,
@@ -17,6 +16,7 @@ import {
 import { audit } from "./audit";
 import { notifyWellmix } from "./notifications";
 import { releaseRequest } from "./requests";
+import { canConfirmAs } from "./request-turns";
 
 /*
  * Confirmação do pedido pelo cliente (dono, 15/11/2026; docs/ORDER_TERMS.md
@@ -114,13 +114,9 @@ async function batchOf(request: Request): Promise<Request[]> {
  * login escolhido, qualquer login daquele cliente (dono, 18/11/2026).
  */
 export function canConfirm(user: User, request: Request): boolean {
-  return (
-    user.role === "customer" &&
-    request.status === "AWAITING_CUSTOMER" &&
-    request.customerId === user.partyId &&
-    (request.requestedForUserId === user.id || forAllCustomerLogins(request)) &&
-    !!request.orderTerms
-  );
+  // A mesma regra das Pendências e da lista (quem está com a vez,
+  // src/lib/services/request-turns.ts).
+  return canConfirmAs(user, request);
 }
 
 /**

@@ -324,6 +324,8 @@ const KIND_STEP: Partial<Record<string, Ref>> = {
   attendance_confirm: "sales/portfolio",
   // Encomenda do cliente e reposição (docs/PURCHASE_DEMAND.md).
   new_request: "new-product/demands",
+  // Venda aguardando o cliente sem login que possa confirmar (docs/TURNS.md).
+  customer_login: "new-product/demands",
   replenishment_request: "new-product/replenishment",
   purchase_strategy: "new-product/strategy",
   purchase_strategy_approve: "new-product/strategy",

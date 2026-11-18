@@ -32,7 +32,8 @@ describe("próximo passo da solicitação", () => {
     });
     // Fase 4d: o marco da etapa atual (Preparação → 1. Pedido novo).
     expect(nextStepText(t, n)).toBe("Pedido em 1. Pedido novo");
-    expect(nextStepWho(t, n)).toBe("com: Fornecedor");
+    // De quem é a vez (docs/TURNS.md): o mesmo texto em todas as telas.
+    expect(nextStepWho(t, n)).toBe("com o fornecedor");
     expect(
       requestNextStep({
         ...base,
@@ -51,5 +52,21 @@ describe("próximo passo da solicitação", () => {
         }),
       ),
     ).toBe("Pedido encerrado");
+  });
+
+  it("fornecedor do tipo Trading: a vez aparece como Trading", () => {
+    const n = requestNextStep({
+      ...base,
+      status: "ORDERED",
+      display: "ORDERED" as never,
+      order: {
+        status: "INSPECTION",
+        responsibleRole: "supplier",
+        dueAt: null,
+        trading: true,
+      },
+    });
+    expect(n.who).toBe("trading");
+    expect(nextStepWho(t, n)).toBe("com a Trading");
   });
 });

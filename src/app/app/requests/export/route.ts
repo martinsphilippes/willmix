@@ -28,6 +28,8 @@ import {
   orderMilestonesOf,
   orderNextInfoOf,
 } from "@/lib/services/request-export";
+import { requestTurnContext } from "@/lib/services/request-turns";
+import { turnFilterOf } from "@/lib/turn";
 
 export const dynamic = "force-dynamic";
 
@@ -73,11 +75,33 @@ export async function GET(request: NextRequest) {
   const today = todayBrazil();
   const partyById = new Map(parties.map((p) => [p.id, p]));
   const name = (id: string) => partyById.get(id)?.name ?? "";
+  // De quem é a vez (docs/TURNS.md): a mesma regra e o mesmo filtro da tela.
+  const wellmix = isWellmix(user);
+  const turnCtx = wellmix ? await requestTurnContext(visible) : null;
+  const strategyOf = (r: (typeof visible)[number]) =>
+    wellmix
+      ? awaitingStrategySend(r)
+        ? ("send" as const)
+        : inStrategyQueue(r)
+          ? ("queue" as const)
+          : null
+      : null;
+  const turnFilter = wellmix ? turnFilterOf(sp.get("vez")) : null;
   const rows = visible.filter(
     (r) =>
       inSituation(r, requestDisplayStatus(r, cancelled), situation, today) &&
       (!kindFilter || demandKind(r) === kindFilter) &&
-      matchesRequest(r, name(r.customerId), q),
+      matchesRequest(r, name(r.customerId), q) &&
+      (!turnFilter ||
+        requestNextStep({
+          status: r.status,
+          display: requestDisplayStatus(r, cancelled),
+          strategy: strategyOf(r),
+          purchase: turnCtx?.purchaseOf(r) ?? null,
+          customerLogin: turnCtx?.customerLoginOf(r) ?? null,
+          order: null,
+          today,
+        }).who === turnFilter),
   );
   const orderIds = rows.map((r) => r.orderId).filter(Boolean) as string[];
   const orders = orderIds.length
@@ -118,14 +142,11 @@ export async function GET(request: NextRequest) {
           const next = requestNextStep({
             status: r.status,
             display: requestDisplayStatus(r, cancelled),
-            // Como na tela: a enviar para cotação ou já na Estratégia de Compra.
-            strategy: isWellmix(user!)
-              ? awaitingStrategySend(r)
-                ? "send"
-                : inStrategyQueue(r)
-                  ? "queue"
-                  : null
-              : null,
+            // Como na tela: a enviar para cotação ou já na Estratégia de
+            // Compra, a compra da encomenda e o login que confirma.
+            strategy: strategyOf(r),
+            purchase: turnCtx?.purchaseOf(r) ?? null,
+            customerLogin: turnCtx?.customerLoginOf(r) ?? null,
             order: order
               ? {
                   status: order.status,

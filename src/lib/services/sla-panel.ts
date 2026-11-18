@@ -645,6 +645,9 @@ async function partnerDelays(
       if (!supplierRequestLate(r, minutes, now)) continue;
       const dueAt = supplierRequestSlaDue(r, minutes);
       const waiting = negotiationTurn(r) === "supplier";
+      // A vez da Wellmix já é pendência ("Decidir a resposta do
+      // fornecedor", docs/TURNS.md) e entra pelas Pendências da equipe.
+      if (!waiting) continue;
       out.push({
         source: waiting ? "partner" : "task",
         kind: "supplier_request",
@@ -664,6 +667,39 @@ async function partnerDelays(
               waitingParty: name(r.supplierId),
             }
           : {}),
+      });
+    }
+  }
+
+  // Venda aguardando o cliente confirmar, com o prazo vencido (dono,
+  // 18/11/2026; docs/TURNS.md): a vez é do cliente; a Wellmix acompanha.
+  const awaiting = (
+    await store
+      .list("requests", { filter: { status: "AWAITING_CUSTOMER" } })
+      .catch(() => [])
+  ).filter((r) => r.deadline && daysUntil(r.deadline, now)! < 0);
+  if (awaiting.length) {
+    await loadNames(awaiting.map((r) => r.customerId));
+    const seen = new Set<string>();
+    for (const r of awaiting) {
+      // Uma linha por encomenda (o lote confirma junto).
+      const key = r.groupId ?? r.id;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        source: "partner",
+        kind: "customer_confirm",
+        title: `Encomenda nº ${r.number ?? "—"}: confirmar pedido`,
+        detail: r.productName,
+        link: `/app/requests/${r.id}`,
+        dueAt: r.deadline,
+        due: "overdue",
+        daysLeft: daysUntil(r.deadline, now),
+        customerId: r.customerId,
+        ownerUserId: r.ownerUserId ?? null,
+        milestone: null,
+        waitingOn: ["customer" as Role],
+        waitingParty: name(r.customerId),
       });
     }
   }

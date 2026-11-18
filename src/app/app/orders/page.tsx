@@ -7,6 +7,13 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import { REQUEST_STATUSES } from "@/lib/db/schema";
 import { blockLabelKey } from "@/lib/flow";
 import { MILESTONES, milestoneRank, milestoneTitle } from "@/lib/milestones";
+import {
+  turnCounts,
+  turnNameKey,
+  turnTone,
+  turnWaitingKey,
+  type TurnParty,
+} from "@/lib/turn";
 import { getStore, type Product, type ProductPhoto } from "@/lib/db";
 import {
   loadPipelineItems,
@@ -340,6 +347,17 @@ export default async function OrdersPage({
       phase: phaseLabel(lead),
       phaseKey: phaseKeyOf(lead),
       phaseRank: rank(lead),
+      // Quem está com a vez (docs/TURNS.md): a do produto que segura o
+      // grupo; para quem vê, "Aguardando você" quando é a vez dele.
+      turn: lead.turn ?? "",
+      turnLabel: lead.turn
+        ? (user.role === "customer" && lead.turn === "customer") ||
+          (user.role === "supplier" &&
+            (lead.turn === "supplier" || lead.turn === "trading"))
+          ? t("turn.waiting.you")
+          : t(turnWaitingKey(lead.turn))
+        : "",
+      turnTone: lead.turn ? turnTone(lead.turn) : "neutral",
       state,
       progress: stepPercent(journeyLead.journey),
       step: journeyLead.journey,
@@ -455,6 +473,10 @@ export default async function OrdersPage({
   const stateOptions = (
     ["blocked", "active", "done", "cancelled"] as const
   ).filter((st) => entries.some((e) => e.row.state === st));
+  // Com quem está a vez (docs/TURNS.md): as partes presentes, na ordem.
+  const turnOptions = turnCounts(
+    entries.map((e) => (e.row.turn || null) as TurnParty | null),
+  ).map(({ party }) => [party, t(turnNameKey(party))] as [string, string]);
   return (
     <>
       <PageHeader
@@ -478,6 +500,7 @@ export default async function OrdersPage({
             total: entries.length,
             phases: phaseOptions,
             states: [...stateOptions],
+            turns: turnOptions,
           }}
           initial={{
             n: one(params.n),
@@ -489,6 +512,7 @@ export default async function OrdersPage({
             pr: one(params.pr),
             d: one(params.d),
             u: one(params.u),
+            w: one(params.w),
             sort: one(params.sort),
           }}
           labels={{
@@ -499,6 +523,7 @@ export default async function OrdersPage({
             supplier: t("common.supplier"),
             phase: t("milestone.current"),
             state: t("common.status"),
+            turn: t("turn.filter.title"),
             progress: t("common.progress"),
             due: t("common.due"),
             updated: t("orders.panel.updated"),
