@@ -188,105 +188,103 @@ export const pt = {
   "flow.block.registry": "Cadastros",
   "flow.step.new-product.books": "Books",
   "flow.help.new-product.books":
-    "Books recebidos do GP, da Wellmix, da trading ou do fornecedor (B1, B2, B11).",
+    "Books recebidos do GP, da Wellmix, da trading ou do fornecedor.",
   "flow.step.new-product.selection": "Seleção de itens",
   "flow.help.new-product.selection":
-    "Itens dos books comparados e escolhidos, com o produto filho (B4).",
+    "Itens dos books comparados e escolhidos, com o produto filho.",
   "flow.step.new-product.quotes": "Convites de book",
   "flow.help.new-product.quotes":
-    "Convites de book concorrente: o parceiro manda o book do item (B5). A cotação de preço é a Cotação de compra (B13).",
+    "Convites de book concorrente: o parceiro manda o book do item. A cotação de preço é a Cotação de compra.",
   "flow.step.new-product.demands": "Encomendas",
   "flow.help.new-product.demands":
-    "Encomendas do cliente pela vitrine, pela tela dele ou lançadas por Vendas ou por um operador em nome dele (B14). Seguem para a estratégia de compra.",
+    "Encomendas do cliente pela vitrine, pela tela dele ou lançadas por Vendas ou por um operador em nome dele. Seguem para a estratégia de compra.",
   "flow.step.new-product.replenishment": "Reposição",
   "flow.help.new-product.replenishment":
-    "Reposição de produto ativo aberta pelo Planner ou vinda do pós-venda (B10). Segue para a estratégia de compra.",
+    "Reposição de produto ativo aberta pelo Planner ou vinda do pós-venda. Segue para a estratégia de compra.",
   "flow.step.new-product.strategy": "Estratégia de compra",
   "flow.help.new-product.strategy":
-    "Reposições e encomendas: repetir o fornecedor da última compra ou cotar entre fornecedores, com a aprovação da Diretoria de compras (B10?).",
+    "Reposições e encomendas: repetir o fornecedor da última compra ou cotar entre fornecedores, com a aprovação da Diretoria de compras.",
   "flow.step.new-product.purchase-quotes": "Cotação de compra",
   "flow.help.new-product.purchase-quotes":
-    "Cotação de preço aberta pelo sistema com os fornecedores das linhas, 24 h para cada um responder; o Comprador escolhe e a Diretoria de compras aprova (B13).",
+    "Cotação de preço aberta pelo sistema com os fornecedores das linhas, 24 h para cada um responder; o Comprador escolhe e a Diretoria de compras aprova.",
   "flow.step.new-product.negotiations": "Negociações",
   "flow.help.new-product.negotiations":
-    "Solicitações ao fornecedor: análise, negociação e amostragem até a aprovação da amostra (B7 a B9).",
+    "Solicitações ao fornecedor: análise, negociação e amostragem até a aprovação da amostra.",
   "flow.step.order.orders": "Pedidos",
   "flow.help.order.orders":
-    "Pedidos de compra: confirmação, programação de compra e ficha do pedido (P2, P3).",
+    "Pedidos de compra: confirmação, programação de compra e ficha do pedido.",
   "flow.step.order.certification": "Certificação",
   "flow.help.order.certification":
-    "Certificação com o OCP e o selo, quando a linha exige (P6, P8, P15).",
+    "Certificação com o OCP e o selo, quando a linha exige.",
   "flow.step.order.art-material": "Material de arte",
   "flow.help.order.art-material":
-    "Die cut e foto em alta do fornecedor, com pedido mínimo e prazo (P4).",
+    "Die cut e foto em alta do fornecedor, com pedido mínimo e prazo.",
   "flow.step.order.art": "Arte",
-  "flow.help.order.art":
-    "Arte, validação da Wellmix e arte final com o selo (P5, P5?, P7).",
+  "flow.help.order.art": "Arte, validação da Wellmix e arte final com o selo.",
   "flow.step.order.review": "Revisão",
   "flow.help.order.review": "Pedidos na fila de revisão.",
   "flow.step.order.contract": "Contrato",
   "flow.help.order.contract":
-    "Documento do pedido, contratos de amostras e as duas assinaturas (P10, P11, P17).",
+    "Documento do pedido, contratos de amostras e as duas assinaturas.",
   "flow.step.production.pre-production": "Pré-produção",
   "flow.help.production.pre-production":
     "Do sinal pago ao início da produção: pedidos de compra sem os dados da produção e o ETD.",
   "flow.step.production.inspection": "Inspeção",
   "flow.help.production.inspection":
-    "Fotos, peso e vídeo da produção, conformidade e aprovação dos SKUs (R3, R4?, R10).",
+    "Fotos, peso e vídeo da produção, conformidade e aprovação dos SKUs.",
   "flow.step.production.sample": "Amostra",
   "flow.help.production.sample":
-    "Retirada e envio das amostras ao Brasil e à agência na China, fotos reais e devolução (R12 a R16).",
+    "Retirada e envio das amostras ao Brasil e à agência na China, fotos reais e devolução.",
   "flow.step.production.production": "Produção",
   "flow.help.production.production":
-    "Acompanhamento da produção: follows 5/15/25 e ETD (R1, R11).",
+    "Acompanhamento da produção: follows 5/15/25 e ETD.",
   "flow.step.production.booking": "Booking",
-  "flow.help.production.booking": "Booking com a marítima (R8).",
+  "flow.help.production.booking": "Booking com a marítima.",
   "flow.step.production.logistics": "Logística",
   "flow.help.production.logistics":
-    "Transportadora, cotação de frete e container no depósito da fábrica (R17, R19).",
+    "Transportadora, cotação de frete e container no depósito da fábrica.",
   "flow.step.production.loading": "Carregamento",
   "flow.help.production.loading":
-    "Fotos e vídeos do container, carregamento, lacre e número (R20, R7, R25).",
+    "Fotos e vídeos do container, carregamento, lacre e número.",
   "flow.step.production.cargo-docs": "Documentos de carga",
   "flow.help.production.cargo-docs":
-    "Check list, packing list, invoice e BL conferidos linha a linha (R21 a R23?).",
+    "Check list, packing list, invoice e BL conferidos linha a linha.",
   "flow.step.production.shipment": "Embarque",
   "flow.help.production.shipment":
-    "Container de volta ao porto, rastreio e embarque (R26, R27).",
+    "Container de volta ao porto, rastreio e embarque.",
   "flow.step.delivery.lpco": "LPCO",
   "flow.help.delivery.lpco":
-    "LPCO da importação (E5, E5?): o comex registra o pedido da licença e a Wellmix marca deferida ou indeferida. Só no pedido com produto de NCM que exige (Configurações).",
+    "LPCO da importação: o comex registra o pedido da licença e a Wellmix marca deferida ou indeferida. Só no pedido com produto de NCM que exige (Configurações).",
   "flow.step.delivery.cargo-presence": "Presença de carga",
   "flow.help.delivery.cargo-presence":
-    "Presença de carga, numerário, DI, despacho e liberação (E6, E7).",
+    "Presença de carga, numerário, DI, despacho e liberação.",
   "flow.step.delivery.channel": "Canal cinza ou vermelho",
   "flow.help.delivery.channel":
-    "Canal de parametrização e o alerta de canal cinza ou vermelho (E7?, E11).",
+    "Canal de parametrização e o alerta de canal cinza ou vermelho.",
   "flow.step.delivery.logistics": "Logística",
   "flow.help.delivery.logistics":
-    "Transportadora do porto de chegada e programação da entrega (E12 a E15).",
+    "Transportadora do porto de chegada e programação da entrega.",
   "flow.step.delivery.invoice": "Nota fiscal",
-  "flow.help.delivery.invoice": "Emissão da nota fiscal (E16).",
+  "flow.help.delivery.invoice": "Emissão da nota fiscal.",
   "flow.step.delivery.delivery": "Entrega",
   "flow.help.delivery.delivery":
-    "Entrega no CD da Wellmix ou do comprador e confirmação do recebimento (E9, E18).",
+    "Entrega no CD da Wellmix ou do comprador e confirmação do recebimento.",
   "flow.step.delivery.return": "Retorno",
   "flow.help.delivery.return":
-    "RIC da transportadora, devolução do container e fechamento do recebimento (E19, E20).",
+    "RIC da transportadora, devolução do container e fechamento do recebimento.",
   "flow.step.delivery.storage": "Armazenagem",
   "flow.help.delivery.storage":
-    "Descarga no CD, lacre, fotos, checklist e contagem por SKU, antes do lote e do armazenamento (E21, E22).",
+    "Descarga no CD, lacre, fotos, checklist e contagem por SKU, antes do lote e do armazenamento.",
   "flow.step.sales.stock": "Estoque",
   "flow.help.sales.stock": "Estoque em produção, em trânsito e no Brasil.",
   "flow.step.sales.samples": "Amostras",
   "flow.help.sales.samples":
-    "Oferta de amostras aos clientes (E23): a amostra que chegou ao Brasil, a oferecer a um cliente, com o registro de a quem foi oferecida.",
+    "Oferta de amostras aos clientes: a amostra que chegou ao Brasil, a oferecer a um cliente, com o registro de a quem foi oferecida.",
   "flow.step.sales.offers": "Ofertas",
   "flow.help.sales.offers":
-    "Oferta ativa aos clientes (V2): o produto com a venda ativada (foto real aprovada, R5), a oferecer a um cliente, com o registro de a quem foi oferecido.",
+    "Oferta ativa aos clientes: o produto com a venda ativada (foto real aprovada), a oferecer a um cliente, com o registro de a quem foi oferecido.",
   "flow.step.sales.sale": "Venda",
-  "flow.help.sales.sale":
-    "Pedidos de clientes, ordem de venda e pós-venda (V6, V7, E10).",
+  "flow.help.sales.sale": "Pedidos de clientes, ordem de venda e pós-venda.",
   "flow.step.finance.finance": "Financeiro",
   "flow.help.finance.finance":
     "Sinal ao fornecedor, pagamentos e faturas a vencer.",
@@ -480,105 +478,103 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.block.registry": "Master data",
   "flow.step.new-product.books": "Books",
   "flow.help.new-product.books":
-    "Books received from the PM, Wellmix, trading company or supplier (B1, B2, B11).",
+    "Books received from the PM, Wellmix, trading company or supplier.",
   "flow.step.new-product.selection": "Item selection",
   "flow.help.new-product.selection":
-    "Book items compared and chosen, with the child product (B4).",
+    "Book items compared and chosen, with the child product.",
   "flow.step.new-product.quotes": "Book invites",
   "flow.help.new-product.quotes":
-    "Competing book invitations: the partner sends the item's book (B5). Price quotes are in Purchase quote (B13).",
+    "Competing book invitations: the partner sends the item's book. Price quotes are in Purchase quote.",
   "flow.step.new-product.demands": "Customer orders",
   "flow.help.new-product.demands":
-    "Customer orders from the storefront, from the customer's own screen, or placed by Sales or an operator on the customer's behalf (B14). They go to the purchase strategy.",
+    "Customer orders from the storefront, from the customer's own screen, or placed by Sales or an operator on the customer's behalf. They go to the purchase strategy.",
   "flow.step.new-product.replenishment": "Replenishment",
   "flow.help.new-product.replenishment":
-    "Replenishment of an active product opened by the Planner or coming from after-sales (B10). It goes to the purchase strategy.",
+    "Replenishment of an active product opened by the Planner or coming from after-sales. It goes to the purchase strategy.",
   "flow.step.new-product.strategy": "Purchase strategy",
   "flow.help.new-product.strategy":
-    "Replenishments and customer orders: repeat the last purchase's supplier or quote among suppliers, approved by the Purchasing board (B10?).",
+    "Replenishments and customer orders: repeat the last purchase's supplier or quote among suppliers, approved by the Purchasing board.",
   "flow.step.new-product.purchase-quotes": "Purchase quote",
   "flow.help.new-product.purchase-quotes":
-    "Price quote opened by the system with the lines' suppliers, 24 h for each to answer; the Buyer picks and the Purchasing board approves (B13).",
+    "Price quote opened by the system with the lines' suppliers, 24 h for each to answer; the Buyer picks and the Purchasing board approves.",
   "flow.step.new-product.negotiations": "Negotiations",
   "flow.help.new-product.negotiations":
-    "Supplier requests: review, negotiation and sampling up to sample approval (B7 to B9).",
+    "Supplier requests: review, negotiation and sampling up to sample approval.",
   "flow.step.order.orders": "Orders",
   "flow.help.order.orders":
-    "Purchase orders: confirmation, purchase schedule and order sheet (P2, P3).",
+    "Purchase orders: confirmation, purchase schedule and order sheet.",
   "flow.step.order.certification": "Certification",
   "flow.help.order.certification":
-    "Certification with the body and seal, when the line requires it (P6, P8, P15).",
+    "Certification with the body and seal, when the line requires it.",
   "flow.step.order.art-material": "Art material",
   "flow.help.order.art-material":
-    "Supplier die cut and high-res photo, with minimum order and lead time (P4).",
+    "Supplier die cut and high-res photo, with minimum order and lead time.",
   "flow.step.order.art": "Artwork",
-  "flow.help.order.art":
-    "Artwork, Wellmix review and final art with the seal (P5, P5?, P7).",
+  "flow.help.order.art": "Artwork, Wellmix review and final art with the seal.",
   "flow.step.order.review": "Review",
   "flow.help.order.review": "Orders in the review queue.",
   "flow.step.order.contract": "Contract",
   "flow.help.order.contract":
-    "Order document, sample contracts and both signatures (P10, P11, P17).",
+    "Order document, sample contracts and both signatures.",
   "flow.step.production.pre-production": "Pre-production",
   "flow.help.production.pre-production":
     "From the down payment to the start of production: purchase orders without production data and ETD.",
   "flow.step.production.inspection": "Inspection",
   "flow.help.production.inspection":
-    "Production photos, weight and video, conformity and SKU approval (R3, R4?, R10).",
+    "Production photos, weight and video, conformity and SKU approval.",
   "flow.step.production.sample": "Sample",
   "flow.help.production.sample":
-    "Sample pickup, shipping to Brazil and to the agency in China, real photos and return (R12 to R16).",
+    "Sample pickup, shipping to Brazil and to the agency in China, real photos and return.",
   "flow.step.production.production": "Production",
   "flow.help.production.production":
-    "Production follow-up: 5/15/25 follows and ETD (R1, R11).",
+    "Production follow-up: 5/15/25 follows and ETD.",
   "flow.step.production.booking": "Booking",
-  "flow.help.production.booking": "Booking with the shipping line (R8).",
+  "flow.help.production.booking": "Booking with the shipping line.",
   "flow.step.production.logistics": "Logistics",
   "flow.help.production.logistics":
-    "Carrier, freight quote and container at the factory yard (R17, R19).",
+    "Carrier, freight quote and container at the factory yard.",
   "flow.step.production.loading": "Loading",
   "flow.help.production.loading":
-    "Container photos and videos, loading, seal and number (R20, R7, R25).",
+    "Container photos and videos, loading, seal and number.",
   "flow.step.production.cargo-docs": "Cargo documents",
   "flow.help.production.cargo-docs":
-    "Check list, packing list, invoice and BL checked line by line (R21 to R23?).",
+    "Check list, packing list, invoice and BL checked line by line.",
   "flow.step.production.shipment": "Shipment",
   "flow.help.production.shipment":
-    "Container back at the port, tracking and shipment (R26, R27).",
+    "Container back at the port, tracking and shipment.",
   "flow.step.delivery.lpco": "LPCO",
   "flow.help.delivery.lpco":
-    "Import LPCO (E5, E5?): comex records the licence request and Wellmix marks it granted or rejected. Only on orders with a product whose NCM requires it (Settings).",
+    "Import LPCO: comex records the licence request and Wellmix marks it granted or rejected. Only on orders with a product whose NCM requires it (Settings).",
   "flow.step.delivery.cargo-presence": "Cargo presence",
   "flow.help.delivery.cargo-presence":
-    "Cargo presence, customs advance, import declaration, clearance and release (E6, E7).",
+    "Cargo presence, customs advance, import declaration, clearance and release.",
   "flow.step.delivery.channel": "Grey or red channel",
   "flow.help.delivery.channel":
-    "Customs channel and the grey or red channel alert (E7?, E11).",
+    "Customs channel and the grey or red channel alert.",
   "flow.step.delivery.logistics": "Logistics",
   "flow.help.delivery.logistics":
-    "Carrier from the arrival port and delivery scheduling (E12 to E15).",
+    "Carrier from the arrival port and delivery scheduling.",
   "flow.step.delivery.invoice": "Invoice (NF)",
-  "flow.help.delivery.invoice": "Issuing the invoice (E16).",
+  "flow.help.delivery.invoice": "Issuing the invoice.",
   "flow.step.delivery.delivery": "Delivery",
   "flow.help.delivery.delivery":
-    "Delivery to the Wellmix or buyer DC and receipt confirmation (E9, E18).",
+    "Delivery to the Wellmix or buyer DC and receipt confirmation.",
   "flow.step.delivery.return": "Return",
   "flow.help.delivery.return":
-    "Carrier container receipt, container return and closing the receiving (E19, E20).",
+    "Carrier container receipt, container return and closing the receiving.",
   "flow.step.delivery.storage": "Storage",
   "flow.help.delivery.storage":
-    "Unloading at the DC, seal, photos, checklist and count per SKU, before lot and storage (E21, E22).",
+    "Unloading at the DC, seal, photos, checklist and count per SKU, before lot and storage.",
   "flow.step.sales.stock": "Inventory",
   "flow.help.sales.stock": "Inventory in production, in transit and in Brazil.",
   "flow.step.sales.samples": "Samples",
   "flow.help.sales.samples":
-    "Offering samples to customers (E23): samples that reached Brazil, to offer to a customer, recording to whom.",
+    "Offering samples to customers: samples that reached Brazil, to offer to a customer, recording to whom.",
   "flow.step.sales.offers": "Offers",
   "flow.help.sales.offers":
-    "Active offers to customers (V2): products with the sale activated (real photo approved, R5), to offer to a customer, recording to whom.",
+    "Active offers to customers: products with the sale activated (real photo approved), to offer to a customer, recording to whom.",
   "flow.step.sales.sale": "Sale",
-  "flow.help.sales.sale":
-    "Customer requests, sales order and after-sales (V6, V7, E10).",
+  "flow.help.sales.sale": "Customer requests, sales order and after-sales.",
   "flow.step.finance.finance": "Finance",
   "flow.help.finance.finance":
     "Supplier down payment, payments and invoices due.",
@@ -764,97 +760,89 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.block.registry": "档案",
   "flow.step.new-product.books": "Book",
   "flow.help.new-product.books":
-    "来自产品经理、Wellmix、贸易商或供应商的 Book（B1、B2、B11）。",
+    "来自产品经理、Wellmix、贸易商或供应商的 Book。",
   "flow.step.new-product.selection": "选品",
-  "flow.help.new-product.selection": "比较并选定 Book 中的商品及子商品（B4）。",
+  "flow.help.new-product.selection": "比较并选定 Book 中的商品及子商品。",
   "flow.step.new-product.quotes": "Book 邀请",
   "flow.help.new-product.quotes":
-    "竞争 Book 邀请：合作方提交商品的 Book（B5）。价格报价见采购询价（B13）。",
+    "竞争 Book 邀请：合作方提交商品的 Book。价格报价见采购询价。",
   "flow.step.new-product.demands": "客户订货",
   "flow.help.new-product.demands":
-    "客户通过橱窗、自己的页面下的订货，或由销售或运营人员代客户录入（B14）。之后进入采购策略。",
+    "客户通过橱窗、自己的页面下的订货，或由销售或运营人员代客户录入。之后进入采购策略。",
   "flow.step.new-product.replenishment": "补货",
   "flow.help.new-product.replenishment":
-    "由计划员发起或来自售后的在售产品补货（B10）。之后进入采购策略。",
+    "由计划员发起或来自售后的在售产品补货。之后进入采购策略。",
   "flow.step.new-product.strategy": "采购策略",
   "flow.help.new-product.strategy":
-    "补货和客户订货：沿用上次采购的供应商或在供应商之间询价，由采购总监批准（B10?）。",
+    "补货和客户订货：沿用上次采购的供应商或在供应商之间询价，由采购总监批准。",
   "flow.step.new-product.purchase-quotes": "采购询价",
   "flow.help.new-product.purchase-quotes":
-    "系统向产品线的供应商发起询价，每家 24 小时内回复；采购员选择，采购总监批准（B13）。",
+    "系统向产品线的供应商发起询价，每家 24 小时内回复；采购员选择，采购总监批准。",
   "flow.step.new-product.negotiations": "谈判",
   "flow.help.new-product.negotiations":
-    "供应商请求：分析、谈判和打样，直到样品批准（B7–B9）。",
+    "供应商请求：分析、谈判和打样，直到样品批准。",
   "flow.step.order.orders": "订单",
-  "flow.help.order.orders": "采购订单：确认、采购排期和订单表（P2、P3）。",
+  "flow.help.order.orders": "采购订单：确认、采购排期和订单表。",
   "flow.step.order.certification": "认证",
-  "flow.help.order.certification":
-    "产品线需要时，由认证机构认证并加贴标志（P6、P8、P15）。",
+  "flow.help.order.certification": "产品线需要时，由认证机构认证并加贴标志。",
   "flow.step.order.art-material": "设计素材",
-  "flow.help.order.art-material":
-    "供应商刀模图和高清照片，以及起订量和交期（P4）。",
+  "flow.help.order.art-material": "供应商刀模图和高清照片，以及起订量和交期。",
   "flow.step.order.art": "设计稿",
-  "flow.help.order.art": "设计稿、Wellmix 审核和带标志的终稿（P5、P5?、P7）。",
+  "flow.help.order.art": "设计稿、Wellmix 审核和带标志的终稿。",
   "flow.step.order.review": "审核",
   "flow.help.order.review": "待审核的订单。",
   "flow.step.order.contract": "合同",
-  "flow.help.order.contract": "订单文件、样品合同和双方签字（P10、P11、P17）。",
+  "flow.help.order.contract": "订单文件、样品合同和双方签字。",
   "flow.step.production.pre-production": "产前",
   "flow.help.production.pre-production":
     "从支付定金到开始生产：尚未填写生产信息和 ETD 的采购订单。",
   "flow.step.production.inspection": "验货",
   "flow.help.production.inspection":
-    "生产照片、重量和视频，合规声明及 SKU 批准（R3、R4?、R10）。",
+    "生产照片、重量和视频，合规声明及 SKU 批准。",
   "flow.step.production.sample": "样品",
   "flow.help.production.sample":
-    "样品提取、寄往巴西和中国代理、实拍照片及退回（R12–R16）。",
+    "样品提取、寄往巴西和中国代理、实拍照片及退回。",
   "flow.step.production.production": "生产",
-  "flow.help.production.production":
-    "生产跟进：5/15/25 跟单和 ETD（R1、R11）。",
+  "flow.help.production.production": "生产跟进：5/15/25 跟单和 ETD。",
   "flow.step.production.booking": "订舱",
-  "flow.help.production.booking": "向船公司订舱（R8）。",
+  "flow.help.production.booking": "向船公司订舱。",
   "flow.step.production.logistics": "物流",
-  "flow.help.production.logistics":
-    "承运商、运费报价和工厂堆场的集装箱（R17、R19）。",
+  "flow.help.production.logistics": "承运商、运费报价和工厂堆场的集装箱。",
   "flow.step.production.loading": "装柜",
-  "flow.help.production.loading":
-    "集装箱照片和视频、装柜、铅封和柜号（R20、R7、R25）。",
+  "flow.help.production.loading": "集装箱照片和视频、装柜、铅封和柜号。",
   "flow.step.production.cargo-docs": "货运单据",
-  "flow.help.production.cargo-docs":
-    "逐行核对检查表、装箱单、发票和提单（R21–R23?）。",
+  "flow.help.production.cargo-docs": "逐行核对检查表、装箱单、发票和提单。",
   "flow.step.production.shipment": "装船",
-  "flow.help.production.shipment": "集装箱返港、跟踪和装船（R26、R27）。",
+  "flow.help.production.shipment": "集装箱返港、跟踪和装船。",
   "flow.step.delivery.lpco": "LPCO",
   "flow.help.delivery.lpco":
-    "进口 LPCO（E5、E5?）：清关代理登记许可申请，Wellmix 标记批准或驳回。仅限含需要许可的 NCM 产品的订单（设置）。",
+    "进口 LPCO：清关代理登记许可申请，Wellmix 标记批准或驳回。仅限含需要许可的 NCM 产品的订单（设置）。",
   "flow.step.delivery.cargo-presence": "货物到港",
   "flow.help.delivery.cargo-presence":
-    "货物到港、清关预付款、进口申报、清关和放行（E6、E7）。",
+    "货物到港、清关预付款、进口申报、清关和放行。",
   "flow.step.delivery.channel": "灰色或红色通道",
-  "flow.help.delivery.channel":
-    "海关查验通道及灰色或红色通道警报（E7?、E11）。",
+  "flow.help.delivery.channel": "海关查验通道及灰色或红色通道警报。",
   "flow.step.delivery.logistics": "物流",
-  "flow.help.delivery.logistics": "到港承运商和送货排期（E12–E15）。",
+  "flow.help.delivery.logistics": "到港承运商和送货排期。",
   "flow.step.delivery.invoice": "发票（NF）",
-  "flow.help.delivery.invoice": "开具发票（E16）。",
+  "flow.help.delivery.invoice": "开具发票。",
   "flow.step.delivery.delivery": "交付",
-  "flow.help.delivery.delivery":
-    "送达 Wellmix 或买家配送中心并确认收货（E9、E18）。",
+  "flow.help.delivery.delivery": "送达 Wellmix 或买家配送中心并确认收货。",
   "flow.step.delivery.return": "返回",
-  "flow.help.delivery.return": "承运商设备交接单、还柜和收货结单（E19、E20）。",
+  "flow.help.delivery.return": "承运商设备交接单、还柜和收货结单。",
   "flow.step.delivery.storage": "仓储",
   "flow.help.delivery.storage":
-    "配送中心卸货、铅封、照片、检查表和按 SKU 清点，之后入批次和仓储（E21、E22）。",
+    "配送中心卸货、铅封、照片、检查表和按 SKU 清点，之后入批次和仓储。",
   "flow.step.sales.stock": "库存",
   "flow.help.sales.stock": "生产中、在途和巴西的库存。",
   "flow.step.sales.samples": "样品",
   "flow.help.sales.samples":
-    "向客户提供样品（E23）：已到巴西的样品，向客户提供并记录提供给谁。",
+    "向客户提供样品：已到巴西的样品，向客户提供并记录提供给谁。",
   "flow.step.sales.offers": "报价推广",
   "flow.help.sales.offers":
-    "主动向客户推荐（V2）：已开始销售的产品（实拍照片已批准，R5），向客户推荐并记录推荐给谁。",
+    "主动向客户推荐：已开始销售的产品（实拍照片已批准），向客户推荐并记录推荐给谁。",
   "flow.step.sales.sale": "销售",
-  "flow.help.sales.sale": "客户需求、销售订单和售后（V6、V7、E10）。",
+  "flow.help.sales.sale": "客户需求、销售订单和售后。",
   "flow.step.finance.finance": "财务",
   "flow.help.finance.finance": "供应商定金、付款和到期发票。",
   "flow.step.registry.products": "产品",
