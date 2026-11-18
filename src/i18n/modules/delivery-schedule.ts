@@ -12,7 +12,7 @@ export const pt = {
   "deliverySchedule.plan.title": "Programação de entregas ao cliente",
   "deliverySchedule.plan.hint":
     "Cada programação é uma entrega prevista ao cliente. As datas são as previstas de recebimento pelo cliente (não as de produção, embarque ou saída da mercadoria) e valem para todos os produtos do pedido; em cada produto, reparta a quantidade dele nessas entregas.",
-  "deliverySchedule.plan.count": "Quantidade de entregas programadas",
+  "deliverySchedule.plan.count": "# Entregas",
   "deliverySchedule.plan.countHint":
     "1 = entrega única (o cliente recebe tudo de uma vez). Mudar a quantidade de entregas programadas reparte de novo a quantidade de cada produto.",
   "deliverySchedule.plan.single":
@@ -50,8 +50,8 @@ export const pt = {
   "deliverySchedule.gen.title": "Gerar as entregas programadas pela quantidade",
   "deliverySchedule.gen.hint":
     "Digite o total de caixas e a quantidade de entregas programadas: o total é dividido igualmente entre as entregas previstas ao cliente, em caixas master inteiras. Os containers de cada programação saem dessa conta. Em cada programação, + Aumentar ou − Diminuir ajusta as peças para fechar o container (com 95% ou mais ele conta como cheio).",
-  "deliverySchedule.gen.rounds": "Quantidade de entregas programadas",
-  "deliverySchedule.gen.perRound": "Containers por entrega programada",
+  "deliverySchedule.gen.rounds": "# Entregas",
+  "deliverySchedule.gen.perRound": "Containers/Entrega",
   "deliverySchedule.gen.perRoundHint":
     "Informativo: quantos containers cada entrega programada precisa. Sai das peças de cada programação e muda quando uma programação aumenta ou diminui.",
   "deliverySchedule.gen.totalFieldHint":
@@ -107,7 +107,7 @@ export const en: typeof pt = {
   "deliverySchedule.plan.title": "Customer delivery schedule",
   "deliverySchedule.plan.hint":
     "Each schedule is a planned delivery to the customer. The dates are the customer's expected receipt dates (not production, shipment or dispatch dates) and apply to every product in the order; in each product, split its quantity across these deliveries.",
-  "deliverySchedule.plan.count": "Number of scheduled deliveries",
+  "deliverySchedule.plan.count": "# Deliveries",
   "deliverySchedule.plan.countHint":
     "1 = single delivery (the customer receives everything at once). Changing the number of scheduled deliveries splits each product's quantity again.",
   "deliverySchedule.plan.single":
@@ -144,8 +144,8 @@ export const en: typeof pt = {
     "Generate the scheduled deliveries from the quantity",
   "deliverySchedule.gen.hint":
     "Type the total cartons and the number of scheduled deliveries: the total is split evenly across the deliveries expected by the customer, in whole master cartons. Each schedule's containers come from this calculation. In each schedule, + Increase or − Decrease adjusts the pieces to fill the container (95% or more counts as full).",
-  "deliverySchedule.gen.rounds": "Number of scheduled deliveries",
-  "deliverySchedule.gen.perRound": "Containers per scheduled delivery",
+  "deliverySchedule.gen.rounds": "# Deliveries",
+  "deliverySchedule.gen.perRound": "Containers/Delivery",
   "deliverySchedule.gen.perRoundHint":
     "For information: how many containers each scheduled delivery needs. It comes from each schedule's pieces and changes when a schedule increases or decreases.",
   "deliverySchedule.gen.totalFieldHint":
@@ -198,7 +198,7 @@ export const zh: typeof pt = {
   "deliverySchedule.plan.title": "客户交货计划",
   "deliverySchedule.plan.hint":
     "每个计划是一次向客户的预计交货。日期为客户的预计收货日期（不是生产、装运或发货日期），适用于订单中的所有产品；在每个产品中，把其数量分配到这些交货中。",
-  "deliverySchedule.plan.count": "计划交货次数",
+  "deliverySchedule.plan.count": "交货次数",
   "deliverySchedule.plan.countHint":
     "1 = 一次交货（客户一次收到全部）。修改计划交货次数会重新分配每个产品的数量。",
   "deliverySchedule.plan.single":
@@ -232,8 +232,8 @@ export const zh: typeof pt = {
   "deliverySchedule.gen.title": "按数量生成计划交货",
   "deliverySchedule.gen.hint":
     "输入总箱数和计划交货次数：总数按整外箱平均分配到客户预计的各次交货。每个计划的集装箱由此计算。在每个计划中，+ 增加 或 − 减少 会调整件数以装满集装箱（95% 及以上视为装满）。",
-  "deliverySchedule.gen.rounds": "计划交货次数",
-  "deliverySchedule.gen.perRound": "每次计划交货的集装箱",
+  "deliverySchedule.gen.rounds": "交货次数",
+  "deliverySchedule.gen.perRound": "集装箱/交货",
   "deliverySchedule.gen.perRoundHint":
     "仅供参考：每次计划交货需要多少集装箱。由每个计划的件数得出，计划增减时随之变化。",
   "deliverySchedule.gen.totalFieldHint":

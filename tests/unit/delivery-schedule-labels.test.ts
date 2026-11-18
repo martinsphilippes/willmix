@@ -38,7 +38,7 @@ describe("textos das programações nas telas TS e Venda", () => {
     const p = deliveryPlanLabels(t, plan);
     expect(p.dates).toBe("Datas previstas de recebimento pelo cliente");
     expect(p.firstDate).toBe("Data prevista do 1º recebimento");
-    expect(p.count).toBe("Quantidade de entregas programadas");
+    expect(p.count).toBe("# Entregas");
     expect(p.interval).toBe("Intervalo entre recebimentos previstos");
     // "Programação 1 — Recebimento previsto: 16/03/2027" (o chip junta).
     expect(p.n.replace("{n}", "1")).toBe("Programação 1");
@@ -57,8 +57,8 @@ describe("textos das programações nas telas TS e Venda", () => {
     expect(i.interval).toBe("Intervalo entre recebimentos previstos");
     expect(i.quantity).toBe("Peças");
     const g = deliveryGenerateLabels(t, generateLabels(t));
-    expect(g.rounds).toBe("Quantidade de entregas programadas");
-    expect(g.perRound).toBe("Containers por entrega programada");
+    expect(g.rounds).toBe("# Entregas");
+    expect(g.perRound).toBe("Containers/Entrega");
     expect(g.res.title).toBe("Resultado das entregas programadas");
     // O resto do gerador continua (caixas, container, ocupação).
     expect(g.total).toBe(generateLabels(t).total);

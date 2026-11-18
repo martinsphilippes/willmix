@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { PriceForecastAnswer } from "@/lib/integrations/price-forecast";
+import { containersPerRound } from "@/lib/purchase-rounds";
 import { useRequestCustomer } from "./request-customer-context";
 import { cx, inputDenseClass } from "./ui";
 
@@ -108,6 +109,17 @@ export function PriceForecast({
   const targetNumber = Number(target.replace(",", "."));
   const targetOk = Number.isFinite(targetNumber) && targetNumber > 0;
   const terms = stock ? null : (shared?.saleTerms ?? null);
+  // "Containers/Entrega" da linha (dono, 18/11/2026): o mesmo número do
+  // gerador, das peças de cada programação; com entregas diferentes, a maior.
+  const load = rowKey ? shared?.loads[rowKey] : undefined;
+  const containers = load
+    ? (containersPerRound(
+        load.pieces,
+        load.masterCartonQty,
+        load.cbmPerCarton,
+        load.capacityCbm,
+      )?.needed.max ?? null)
+    : null;
 
   // O que vai para a API: quando muda, a conta roda de novo.
   // (Uma string: o efeito abaixo só roda quando ela muda.)
@@ -115,6 +127,8 @@ export function PriceForecast({
     if (!productId || (mode === "target" && !targetOk)) return null;
     const params = new URLSearchParams({ productId });
     if (piecesOk) params.set("quantity", String(pieces));
+    if (containers && containers > 0)
+      params.set("containers", String(containers));
     const customerId = shared?.customer?.id;
     if (!stock && customerId) params.set("customerId", customerId);
     if (terms?.saleFormat) params.set("saleFormat", terms.saleFormat);

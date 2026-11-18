@@ -296,6 +296,11 @@ Vale para as três telas (Encomendas, TS e Venda), que usam o mesmo código (`sr
 - **Login do cliente com acesso não se escolhe mais** na Nova solicitação (Encomendas, TS e Venda): o campo só mostra "Todos os logins do cliente (N)". A venda da Wellmix sem login escolhido (`requestedForUserId` nulo, com as condições do pedido) vai para **todos os logins daquele cliente**: qualquer um vê a solicitação, confirma o pedido e recebe o aviso de confirmar (`forAllCustomerLogins` em src/lib/auth/permissions.ts, `canConfirm` e `notifyCustomerToConfirm`). As solicitações antigas sem as condições do pedido e as com um login escolhido seguem como antes. O pedido (depois da confirmação) segue a regra de antes para o cliente.
 - **Valor do transporte (R$) também quando o cliente chama o transportador:** só a escolha da transportadora sai; o valor aparece, entra na previsão de preço e é gravado em `orderTerms.deliveryFreightBrl` (antes, só quando a Wellmix chamava ou no formato WD).
 
+## 11.16 Rótulos curtos e containers na cotação (dono, 18/11/2026)
+
+- **Rótulos curtos** no bloco do pedido e no gerador de cada produto (TS e Venda): "Quantidade de entregas programadas" virou **"# Entregas"** e "Containers por entrega programada" virou **"Containers/Entrega"** (en "# Deliveries" e "Containers/Delivery"; zh "交货次数" e "集装箱/交货"). As explicações longas continuam nas dicas.
+- **Containers/Entrega vai para a cotação V2** como `QTD_CONTAINERS` (antes ia como nulo, o padrão do Sankhya): o mesmo número do gerador da linha (das peças de cada programação, da caixa master, do CBM e do container escolhido); com entregas de tamanhos diferentes, o maior. Sem caixa ou CBM, continua nulo. Caminho: `PriceForecast` (lê a carga da linha) → `/api/price-forecast?containers=` → `productInput` (src/lib/integrations/price-forecast.ts). Aparece na memória de cálculo de quem vê valores e margem.
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

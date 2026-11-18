@@ -224,6 +224,11 @@ export interface PriceForecastQuery {
   sku: string | null;
   /** Quantidade em peças da linha (nula sem quantidade). */
   quantity: number | null;
+  /**
+   * Containers por entrega programada da linha ("Containers/Entrega", dono,
+   * 18/11/2026) → QTD_CONTAINERS; nulo = DEFAULT do Sankhya.
+   */
+  containers?: number | null;
   /** Cliente do portal e o código dele no Sankhya, quando escolhido. */
   customerId: string | null;
   customerSankhyaCode: string | null;
@@ -362,6 +367,11 @@ export function productInput(
     ? Number(q.sankhyaCode)
     : null;
   const pieces = positive(q.quantity);
+  const containers = positive(q.containers);
+  const containerInput: SuperplanInput =
+    containers !== null && Number.isInteger(containers)
+      ? { QTD_CONTAINERS: containers }
+      : {};
   const price: SuperplanInput = {
     PRECO_ORIGEM: positive(q.price),
     MOEDA_ORIGEM: originCurrency(q.currency),
@@ -370,6 +380,7 @@ export function productInput(
     return {
       CODPROD: code,
       QTD_PECAS: pieces ? Math.round(pieces) : null,
+      ...containerInput,
       ...(withPrice ? price : {}),
     };
   const ncm = String(q.ncm ?? "").replace(/\D/g, "");
@@ -380,6 +391,7 @@ export function productInput(
     PECAS_CAIXA: positive(q.masterBoxQty),
     CBM_CAIXA: positive(q.cbmPerCarton),
     QTD_PECAS: pieces ? Math.round(pieces) : null,
+    ...containerInput,
     ...price,
   };
 }

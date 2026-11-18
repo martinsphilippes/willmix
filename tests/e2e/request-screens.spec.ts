@@ -276,7 +276,7 @@ test("TS e Venda: as programações falam do recebimento previsto pelo cliente; 
   const plan = page.locator("[data-order-plan]");
   for (const text of [
     "Programação de entregas ao cliente",
-    "Quantidade de entregas programadas",
+    "# Entregas",
     "Intervalo entre recebimentos previstos",
     "Data prevista do 1º recebimento",
     "Datas previstas de recebimento pelo cliente",

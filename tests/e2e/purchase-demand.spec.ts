@@ -58,6 +58,8 @@ test("encomenda lançada pelo vendedor e pelo operador em nome do cliente", asyn
   // Vendas abre Encomendas (no menu, bloco Produto novo).
   await page.goto("/app/requests");
   await expect(page.locator("h1")).toContainText("Encomendas");
+  // Sem os chips Todas / Encomendas / Reposições (dono, 18/11/2026).
+  await expect(page.locator("[data-demand-kind-filter]")).toHaveCount(0);
   await orderForJoao(page, `Pote ${tag} V`);
   await login(page, "operador@wellmix.com");
   await orderForJoao(page, `Pote ${tag} O`);

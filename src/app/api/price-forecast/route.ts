@@ -28,6 +28,13 @@ const QUERY = z.object({
     .regex(/^\d{1,9}$/)
     .transform(Number)
     .optional(),
+  // "Containers/Entrega" da linha (dono, 18/11/2026) → QTD_CONTAINERS.
+  containers: z
+    .string()
+    .regex(/^\d{1,4}$/)
+    .transform(Number)
+    .refine((n) => n > 0)
+    .optional(),
   // Preço de venda desejado ao cliente final, por peça (R$).
   target: z
     .string()
@@ -65,6 +72,7 @@ export async function GET(request: Request) {
     productId: params.get("productId") ?? undefined,
     customerId: params.get("customerId") || undefined,
     quantity: params.get("quantity") || undefined,
+    containers: params.get("containers") || undefined,
     target: params.get("target") || undefined,
     saleFormat: params.get("saleFormat") || undefined,
     tier: params.get("tier") || undefined,
@@ -77,6 +85,7 @@ export async function GET(request: Request) {
     productId,
     customerId,
     quantity,
+    containers,
     target,
     saleFormat,
     tier,
@@ -99,6 +108,7 @@ export async function GET(request: Request) {
     sankhyaCode: product.sankhyaCode ?? null,
     sku: product.sku ?? null,
     quantity: quantity ?? null,
+    containers: containers ?? null,
     customerId: customer?.type === "customer" ? customer.id : null,
     customerSankhyaCode:
       customer?.type === "customer" ? (customer.sankhyaCode ?? null) : null,
