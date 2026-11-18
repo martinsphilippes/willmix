@@ -16,8 +16,8 @@ import { assertCan, can, holdersOf } from "@/lib/auth/function-access";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { listColumns } from "@/lib/db/lookup";
 import { getSettings } from "@/lib/settings";
-import { canWinQuote, receivesQuote } from "@/lib/purchase-recipients";
 import { audit } from "./audit";
+import { servesFamilies } from "@/lib/party-families";
 import { notify } from "./notifications";
 
 /*
@@ -81,10 +81,15 @@ export function quoteEmpty(
 }
 
 /**
- * Fornecedores ativos que atendem as linhas: o vínculo fornecedor × linha
- * cadastrado (`supplier_lines`) e, enquanto o cadastro não está completo, o
- * fornecedor principal dos produtos da linha e os fornecedores ligados aos
- * produtos cotados (`product_suppliers`).
+ * Parceiros ativos que atendem as linhas da cotação, cada um uma vez só:
+ * - os que marcaram a família de alguma das linhas ("Grupo de produto
+ *   (família)" no cadastro; dono, 18/11/2026; docs/PARTNER_FAMILIES.md);
+ * - os vínculos antigos fornecedor × linha (`supplier_lines`, "Linhas
+ *   atendidas") ainda não convertidos em família; o convertido segue a
+ *   família (desmarcada, o parceiro sai);
+ * - o fornecedor principal dos produtos da linha e os fornecedores ligados
+ *   aos produtos cotados (`product_suppliers`), como sempre.
+ * Entram Fornecedor, Trading, Supplier e Factory (antes, só o Fornecedor).
  */
 export async function supplierIdsForLines(
   lineIds: readonly string[],
@@ -94,16 +99,24 @@ export async function supplierIdsForLines(
   const lines = [...new Set(lineIds.filter(Boolean))];
   const ids = new Set<string>();
   if (lines.length) {
-    const [explicit, products] = await Promise.all([
+    const { familyCodesForLines } = await import("./product-families");
+    const [explicit, products, families] = await Promise.all([
       store
         .list("supplier_lines", { filter: { lineId: lines } })
         .catch(() => []),
       listColumns(store, "products", ["supplierId", "lineId"], {
         filter: { lineId: lines, active: true },
       }),
+      familyCodesForLines(lines).catch(() => [] as string[]),
     ]);
-    for (const l of explicit) ids.add(l.supplierId);
+    for (const l of explicit) if (!l.familyConvertedAt) ids.add(l.supplierId);
     for (const p of products) if (p.supplierId) ids.add(p.supplierId);
+    if (families.length) {
+      const links = await store
+        .list("party_families", { filter: { familyCode: families } })
+        .catch(() => []);
+      for (const l of links) ids.add(l.partyId);
+    }
   }
   if (productIds.length) {
     const links = await store
@@ -114,7 +127,7 @@ export async function supplierIdsForLines(
   if (!ids.size) return [];
   const parties = await store.list("parties", { filter: { id: [...ids] } });
   return parties
-    .filter((p) => p.type === "supplier" && p.active)
+    .filter((p) => servesFamilies(p.type) && p.active)
     .map((p) => p.id)
     .sort();
 }
@@ -633,11 +646,6 @@ export async function chooseWinner(
   const winner = responses.find((r) => r.id === responseId);
   if (!winner || winner.status !== "answered")
     throw new PurchaseQuoteError("quote_winner_invalid");
-  // Trading, Supplier e Factory cotam, mas o pedido de compra, a assinatura
-  // e a fatura só aceitam o Fornecedor (dono, 18/11/2026, D4).
-  const party = await getStore().get("parties", winner.supplierId);
-  if (!party || !canWinQuote(party.type))
-    throw new PurchaseQuoteError("quote_winner_not_supplier");
   const updated = await getStore().update("purchase_quotes", quote.id, {
     status: "chosen",
     winnerResponseId: winner.id,
@@ -895,9 +903,9 @@ export async function inviteMore(
         filter: { id: [...new Set(supplierIds)] },
       })
     : [];
-  // Fornecedor, Trading, Supplier e Factory recebem cotação (dono, 18/11/2026).
+  // Fornecedor, Trading, Supplier e Factory (dono, 18/11/2026).
   const fresh = parties
-    .filter((p) => receivesQuote(p.type) && p.active && !already.has(p.id))
+    .filter((p) => servesFamilies(p.type) && p.active && !already.has(p.id))
     .map((p) => p.id);
   if (!fresh.length) throw new PurchaseQuoteError("quote_invite_none");
   await inviteSuppliers(quote, fresh, now);

@@ -33,9 +33,7 @@ import {
 import { AccountBar, IconLink, TabLink } from "@/components/customer-account";
 import { describeTerms } from "@/components/supplier-terms-text";
 import { parseTerms } from "@/lib/supplier-terms";
-import { supplierLineIds } from "@/lib/services/purchase-quote";
-import { setSupplierLinesAction } from "../actions/purchase-demand";
-import { PartnerFamiliesCard } from "../_components/partner-families-card";
+import { PartyFamiliesCard } from "@/components/party-families-card";
 import { accountBase, accountLabels } from "./labels";
 import { STOCK_OPTION } from "@/lib/services/stock-party";
 import { ChatOpenButton } from "@/components/chat-open-button";
@@ -686,75 +684,20 @@ export async function PartyAccountDetail({
           </Card>
         </section>
       ) : null}
-      {/* Linhas que o fornecedor atende (docs/PURCHASE_DEMAND.md): quem entra
-          na cotação de compra de cada linha. */}
+      {/* Grupo de produto (família) que o fornecedor atende (dono,
+          18/11/2026; docs/PARTNER_FAMILIES.md), no lugar das "Linhas
+          atendidas": quem entra na cotação de compra das linhas da família. */}
       {supplier && tab === "info" && isWellmix(user) ? (
-        <SupplierLinesCard
-          supplierId={party.id}
-          t={t}
-          saved={param(sp.lines) === "saved"}
-        />
-      ) : null}
-      {/* Famílias atendidas (Estratégia de Compra; dono, 18/11/2026). */}
-      {supplier && tab === "info" && isWellmix(user) ? (
-        <PartnerFamiliesCard
+        <PartyFamiliesCard
           partyId={party.id}
-          back={`/app/suppliers/${party.id}?tab=info`}
-          saved={param(sp.families) === "saved"}
+          screen="suppliers"
           t={t}
+          admin={isAdmin(user)}
+          notice={param(sp.families) ?? null}
+          error={param(sp.error) ?? null}
+          synced={param(sp.n) ?? null}
         />
       ) : null}
     </>
-  );
-}
-
-async function SupplierLinesCard({
-  supplierId,
-  t,
-  saved,
-}: {
-  supplierId: string;
-  t: Awaited<ReturnType<typeof getT>>;
-  saved: boolean;
-}) {
-  const store = getStore();
-  const [lines, mine] = await Promise.all([
-    store.list("product_lines", { filter: { active: true }, orderBy: "name" }),
-    supplierLineIds(supplierId),
-  ]);
-  return (
-    <section className="mt-4" data-supplier-lines={mine.length}>
-      <Card title={t("quote.lines.title")}>
-        <p className="mb-2 text-xs text-zinc-600">{t("quote.lines.hint")}</p>
-        {saved ? (
-          <p
-            className="mb-2 text-xs font-medium text-emerald-700"
-            role="status"
-          >
-            {t("quote.lines.saved")}
-          </p>
-        ) : null}
-        <form action={setSupplierLinesAction} className="space-y-2">
-          <input type="hidden" name="supplierId" value={supplierId} />
-          <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
-            {lines.map((l) => (
-              <label key={l.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  name="lineId"
-                  value={l.id}
-                  defaultChecked={mine.includes(l.id)}
-                  data-supplier-line={l.id}
-                />
-                {l.name}
-              </label>
-            ))}
-          </div>
-          <SubmitButton data-supplier-lines-save>
-            {t("quote.lines.save")}
-          </SubmitButton>
-        </form>
-      </Card>
-    </section>
   );
 }

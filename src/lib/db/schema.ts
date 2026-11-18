@@ -895,6 +895,12 @@ export interface ProductLine extends BaseRow {
   sankhyaCode?: string | null;
   /** Agência de arte da linha: os pedidos da linha a herdam (src/lib/services/line-agency.ts). */
   agencyId?: string | null;
+  /**
+   * Família da linha (docs/PARTNER_FAMILIES.md): o código do grupo do 1º
+   * nível da árvore do Sankhya (TGFGRU) acima do grupo da linha, a mesma
+   * família da Nova solicitação. Nulo enquanto não foi calculada.
+   */
+  familyCode?: string | null;
 }
 
 /** Configuração de IA e de validação por linha de produto. Tudo opcional; nulo = só o prompt base. */
@@ -3244,6 +3250,41 @@ export interface SupplierLine extends BaseRow {
   supplierId: string;
   lineId: string;
   createdByUserId: string | null;
+  /**
+   * Quando o vínculo antigo ("Linhas atendidas") virou a família da linha
+   * em `party_families` (dono, 18/11/2026; docs/PARTNER_FAMILIES.md). Depois
+   * disso, quem manda é a família: desmarcá-la tira o parceiro da cotação.
+   * Vazio: ainda não convertido, e o vínculo vale na cotação como antes.
+   */
+  familyConvertedAt?: string | null;
+}
+
+/**
+ * Grupo de produto (família) do cadastro do portal (dono, 18/11/2026;
+ * docs/PARTNER_FAMILIES.md): o 1º nível da árvore de grupos do Sankhya
+ * (TGFGRU), a mesma família da Nova solicitação, gravada com o código.
+ * Família que sumiu do Sankhya fica inativa (não se apaga).
+ */
+export interface ProductFamilyRow extends BaseRow {
+  /** CODGRUPOPROD do grupo do 1º nível no Sankhya (identificador). */
+  code: string;
+  name: string;
+  /** Chave pelo nome, a mesma da Nova solicitação ("fm:<NOME>"). */
+  nameKey: string | null;
+  active: boolean;
+  /** Última vez que veio do Sankhya. */
+  syncedAt: string | null;
+}
+
+/**
+ * Família atendida por um parceiro (Fornecedor, Trading, Supplier ou
+ * Factory): quem entra na cotação de compra das linhas da família.
+ */
+export interface PartyFamily extends BaseRow {
+  partyId: string;
+  /** Código da família (`product_families.code`). */
+  familyCode: string;
+  createdByUserId: string | null;
 }
 
 /**
@@ -3950,6 +3991,8 @@ export interface Tables {
   purchase_quotes: PurchaseQuote;
   purchase_quote_responses: PurchaseQuoteResponse;
   supplier_lines: SupplierLine;
+  product_families: ProductFamilyRow;
+  party_families: PartyFamily;
   selection_groups: SelectionGroup;
   payment_conditions: PaymentCondition;
   payment_plans: PaymentPlan;
@@ -4126,8 +4169,12 @@ export const TABLES: Record<TableName, TableDef> = {
       division: enumOf(DIVISIONS, false),
       sankhyaCode: str(40),
       agencyId: id(false),
+      familyCode: str(40),
     },
-    indexes: [{ key: "by_sankhya", type: "key", columns: ["sankhyaCode"] }],
+    indexes: [
+      { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
+      { key: "by_family", type: "key", columns: ["familyCode"] },
+    ],
   },
   products: {
     label: "Produtos",
@@ -5792,10 +5839,34 @@ export const TABLES: Record<TableName, TableDef> = {
       supplierId: id(),
       lineId: id(),
       createdByUserId: id(false),
+      familyConvertedAt: datetime(),
     },
     indexes: [
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
       { key: "by_line", type: "key", columns: ["lineId"] },
+    ],
+  },
+  product_families: {
+    label: "Grupos de produto (famílias)",
+    columns: {
+      code: str(40, true),
+      name: str(160, true),
+      nameKey: str(80),
+      active: bool(),
+      syncedAt: datetime(),
+    },
+    indexes: [{ key: "by_code", type: "unique", columns: ["code"] }],
+  },
+  party_families: {
+    label: "Famílias atendidas por parceiro",
+    columns: {
+      partyId: id(),
+      familyCode: str(40, true),
+      createdByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_party", type: "key", columns: ["partyId"] },
+      { key: "by_family", type: "key", columns: ["familyCode"] },
     ],
   },
   purchase_decisions: {

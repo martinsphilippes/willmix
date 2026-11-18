@@ -5,6 +5,8 @@ import { requireScreen } from "@/lib/auth/guard";
 import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { canOpen } from "@/lib/auth/screens";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
+import { servesFamilies } from "@/lib/party-families";
+import { PartyFamiliesCard } from "@/components/party-families-card";
 import {
   getStore,
   LOCALES,
@@ -72,8 +74,6 @@ import { saveCustomerOperationAction } from "../../actions/vision";
 import { CertificationsSection } from "../../products/_components/certifications-section";
 import { listSupplierProducts } from "@/lib/services/product-suppliers";
 import { catalogError } from "../../products/_components/shared";
-import { receivesQuote } from "@/lib/purchase-recipients";
-import { PartnerFamiliesCard } from "../../_components/partner-families-card";
 
 /**
  * Visão de Produto (módulo operações): erros de saveCustomerOperationAction
@@ -213,8 +213,13 @@ export async function renderPartyRecord({
   const termsError = typeof error === "string" && error.startsWith("terms_");
   /* Erros da criação do login aparecem no quadro de acesso (âncora #access). */
   const userError = typeof error === "string" && error.startsWith("user_");
+  /* Erros do Grupo de produto (família) aparecem na seção dela (#families). */
+  const familyError =
+    typeof error === "string" &&
+    (error.startsWith("family_") || error.startsWith("families_"));
   const accessError = userError ? partyError(t, error) : null;
-  const errorText = termsError || userError ? null : partyError(t, error);
+  const errorText =
+    termsError || userError || familyError ? null : partyError(t, error);
   const currentTerms = isSupplier
     ? parseTerms(party.paymentTerms ?? null)
     : null;
@@ -1044,6 +1049,21 @@ export async function renderPartyRecord({
         </div>
       ) : null}
 
+      {/* Grupo de produto (família) que o parceiro atende (dono, 18/11/2026;
+          docs/PARTNER_FAMILIES.md): Fornecedor, Trading, Supplier e Factory
+          entram na cotação de compra das linhas das famílias marcadas. */}
+      {servesFamilies(party.type) && isWellmix(user) ? (
+        <PartyFamiliesCard
+          partyId={party.id}
+          screen="parties"
+          t={t}
+          admin={isAdmin(user)}
+          notice={typeof query.families === "string" ? query.families : null}
+          error={typeof error === "string" ? error : null}
+          synced={typeof query.n === "string" ? query.n : null}
+        />
+      ) : null}
+
       {/* Segunda Onda: certificações da fábrica (ISO, BSCI, auditorias). */}
       {isSupplier ? (
         <Card title={t("catalog.cert.party.title")} className="mt-4">
@@ -1056,17 +1076,6 @@ export async function renderPartyRecord({
             t={t}
           />
         </Card>
-      ) : null}
-
-      {/* Famílias atendidas (Estratégia de Compra; dono, 18/11/2026): quem
-          cota os produtos de cada família. */}
-      {isWellmix(user) && receivesQuote(party.type) ? (
-        <PartnerFamiliesCard
-          partyId={party.id}
-          back={`/app/parties/${party.id}`}
-          saved={query.families === "saved"}
-          t={t}
-        />
       ) : null}
     </>
   );

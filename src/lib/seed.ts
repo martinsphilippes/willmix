@@ -334,6 +334,33 @@ export async function seedDemo(): Promise<{
       requiredCertifications: ["Inmetro"],
     },
   ];
+  // Grupo de produto (família) da demonstração (docs/PARTNER_FAMILIES.md):
+  // em produção o cadastro vem do Sankhya (1º nível da árvore de grupos).
+  // Duas famílias com o mesmo nome e códigos diferentes, como há no Sankhya:
+  // a tela mostra o código para distinguir.
+  const families = [
+    { code: "20000000", name: "UTILIDADES DOMESTICAS" },
+    { code: "10000000", name: "BRINQUEDOS" },
+    { code: "110000000", name: "BRINQUEDOS" },
+    { code: "40000000", name: "DECORACAO" },
+  ];
+  // Sem data de atualização: na demonstração as famílias não vieram do
+  // Sankhya, e a tela não deve dizer que vieram.
+  for (const f of families)
+    await store
+      .create("product_families", {
+        code: f.code,
+        name: f.name,
+        nameKey: `fm:${f.name.replace(/[^A-Z0-9]+/g, "_")}`,
+        active: true,
+        syncedAt: null,
+      })
+      .catch(() => undefined);
+  const lineFamily: Record<string, string> = {
+    "linha-utilidades": "20000000",
+    "linha-brinquedos": "10000000",
+    "linha-inflaveis": "110000000",
+  };
   for (const line of lines) {
     await store.create("product_lines", {
       ...LINE_EXTRA_DEFAULTS,
@@ -344,6 +371,7 @@ export async function seedDemo(): Promise<{
       requiredCertifications: line.requiredCertifications ?? null,
       prompts: line.prompts ?? null,
       active: true,
+      familyCode: lineFamily[line.id] ?? null,
     });
   }
   // A jarra fica sem ficha completa de propósito: o E2E usa esse produto e a

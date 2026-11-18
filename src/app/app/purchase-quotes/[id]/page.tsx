@@ -44,9 +44,6 @@ import {
   quoteNoAnswerAction,
 } from "../../actions/purchase-demand";
 import { QuoteDeadline } from "../_time";
-import { canWinQuote } from "@/lib/purchase-recipients";
-import { partyTypeLabel } from "@/lib/partner-types";
-import { getPartnerTypeCatalog } from "@/lib/services/partner-types";
 
 /*
  * Uma cotação de compra (mapa B13; docs/PURCHASE_DEMAND.md).
@@ -285,7 +282,6 @@ export default async function PurchaseQuotePage({
   ]);
   const supplierName = (sid: string) =>
     suppliers.find((p) => p.id === sid)?.name ?? sid;
-  const typeCatalog = await getPartnerTypeCatalog();
   const closed = quoteClosed(responses, now);
   const empty = quoteEmpty(responses, now);
   const canChoose = can(user, "purchaseQuote.choose");
@@ -441,38 +437,18 @@ export default async function PurchaseQuotePage({
             <input type="hidden" name="quoteId" value={quote.id} />
             {responses
               .filter((r) => r.status === "answered")
-              .map((r) => {
-                // Trading, Supplier e Factory cotam, mas ainda não vencem: o
-                // pedido de compra só aceita o Fornecedor (dono, 18/11/2026).
-                const party = suppliers.find((p) => p.id === r.supplierId);
-                const wins = canWinQuote(party?.type);
-                return (
-                  <label
-                    key={r.id}
-                    className={`flex flex-wrap items-center gap-2 text-sm ${wins ? "" : "text-zinc-400"}`}
-                  >
-                    <input
-                      type="radio"
-                      name="responseId"
-                      value={r.id}
-                      required
-                      disabled={!wins}
-                      data-quote-winner-option={r.supplierId}
-                    />
-                    {supplierName(r.supplierId)}
-                    {!wins && party ? (
-                      <span
-                        className="basis-full pl-6 text-xs text-amber-800"
-                        data-quote-winner-blocked={r.supplierId}
-                      >
-                        {t("quote.winner.notSupplier", {
-                          type: partyTypeLabel(party, typeCatalog, t),
-                        })}
-                      </span>
-                    ) : null}
-                  </label>
-                );
-              })}
+              .map((r) => (
+                <label key={r.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="responseId"
+                    value={r.id}
+                    required
+                    data-quote-winner-option={r.supplierId}
+                  />
+                  {supplierName(r.supplierId)}
+                </label>
+              ))}
             <Field label={t("demand.notes")}>
               <Textarea name="note" rows={2} />
             </Field>
@@ -561,9 +537,11 @@ export default async function PurchaseQuotePage({
             <form action={quoteNoAnswerAction} className="space-y-2">
               <input type="hidden" name="quoteId" value={quote.id} />
               <input type="hidden" name="what" value="invite" />
+              {/* Fornecedor, Trading, Supplier e Factory (dono, 18/11/2026). */}
               <PartyPicker
                 name="supplierId"
-                type="quote"
+                type="supplier"
+                alsoTypes={["trading", "supplier_partner", "factory"]}
                 required
                 activeOnly
                 labels={partyPickerLabels(t)}

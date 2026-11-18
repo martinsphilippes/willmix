@@ -24,12 +24,16 @@ async function setQuoteHours(page: Page, hours: string) {
   await page.waitForURL(/\/app\/settings\?ok=1/);
 }
 
-/** Os fornecedores B e C passam a atender a linha de utilidades (cadastro). */
+/**
+ * Os fornecedores B e C passam a atender a família de utilidades (Grupo de
+ * produto (família) no cadastro; docs/PARTNER_FAMILIES.md): entram na
+ * cotação das linhas dela.
+ */
 async function serveUtilities(page: Page, supplierId: string) {
   await page.goto(`/app/suppliers/${supplierId}?tab=info`);
-  await page.locator('[data-supplier-line="linha-utilidades"]').check();
-  await page.locator("[data-supplier-lines-save]").click();
-  await page.waitForURL(/[?&]lines=saved/);
+  await page.locator('[data-party-family="20000000"]').check();
+  await page.locator("[data-party-families-save]").click();
+  await page.waitForURL(/[?&]families=saved/);
 }
 
 /**
