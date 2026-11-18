@@ -30,6 +30,7 @@ import {
 } from "@/lib/supplier-terms";
 import { audit } from "./audit";
 import { notify } from "./notifications";
+import { servesFamilies } from "@/lib/party-families";
 
 /*
  * Condição de pagamento ao fornecedor: configurada no cadastro dele (só a
@@ -68,7 +69,10 @@ export async function saveSupplierPaymentTerms(
   const store = getStore();
   const party = await store.get("parties", partyId);
   if (!party) throw new SupplierTermsError("not_found");
-  if (party.type !== "supplier") throw new SupplierTermsError("not_supplier");
+  // Fornecedor, Trading, Supplier e Factory: quem pode vencer a cotação de
+  // compra vira o fornecedor do pedido (docs/PARTNER_FAMILIES.md, decisão 1).
+  if (!servesFamilies(party.type))
+    throw new SupplierTermsError("not_supplier");
   if (input.terms.length > MAX_TERM_INSTALLMENTS)
     throw new SupplierTermsError("terms_too_many");
   for (const term of input.terms)

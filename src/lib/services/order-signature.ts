@@ -27,6 +27,7 @@ import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
 import { DOWN_PAYMENT_KEY, SAMPLE_ORDER_KEY } from "@/lib/purchase-lanes";
 import { audit } from "./audit";
 import { notify, notifyWellmix } from "./notifications";
+import { servesFamilies } from "@/lib/party-families";
 
 /*
  * Documento do pedido com duas assinaturas (docs/ORDER_SIGNATURE.md): a
@@ -810,7 +811,8 @@ export async function setSupplierProductionStartDays(
 ) {
   if (!isAdmin(user)) throw new ForbiddenError();
   const supplier = await getStore().get("parties", supplierId);
-  if (!supplier || supplier.type !== "supplier")
+  // Os quatro tipos que podem ser o fornecedor do pedido (docs/PARTNER_FAMILIES.md).
+  if (!supplier || !servesFamilies(supplier.type))
     throw new OrderSignatureError("order_not_found");
   if (days !== null && (!Number.isInteger(days) || days < 0 || days > 365))
     throw new OrderSignatureError("production_days_invalid");

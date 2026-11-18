@@ -1862,6 +1862,13 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Muda:** o que a tela mostra: a seção antiga sai da ficha do Fornecedor, a pedido do dono.
 - Testes: `tests/unit/party-families.test.ts`, `tests/e2e/party-families.spec.ts` e `tests/e2e/purchase-quote.spec.ts`.
 
+## Condição de pagamento, início da produção e fatura da Trading, do Supplier e da Factory (dono, 18/11/2026)
+
+- **Pedido do dono**: a Trading, o Supplier e a Factory vencem a cotação de compra e viram o fornecedor do pedido, mas os três quadros do fornecedor na ficha só aceitavam o Fornecedor. Sem a condição de pagamento, o pedido ficava parado esperando o sinal ou a conta corrente.
+- **Como ficou**: a ficha (`/app/parties/<id>`) mostra os três quadros para os quatro tipos, e o servidor aceita os quatro (`servesFamilies`). Os outros tipos continuam recusados. Detalhes em docs/PARTNER_FAMILIES.md, "Condição de pagamento, início da produção e fatura".
+- **Aditivo:** nenhuma coluna nova; nada sai nem muda para o Fornecedor.
+- Testes: `tests/unit/supplier-settings-types.test.ts` e `tests/e2e/partner-order-settings.spec.ts`.
+
 ## Estratégia de Compra por produto (dono, 18/11/2026)
 
 - **Pedido do dono**: depois de Encomendas, a Estratégia de Compra com um produto por linha, a escolha e os destinatários de cada produto (última compra ou outros parceiros: Fornecedor, Trading, Supplier e Factory da família), o resumo, o envio aos parceiros pelo portal e o resultado por destinatário com reenvio sem duplicar. Decisões D1 a D7 em docs/PURCHASE_DEMAND.md, "Estratégia de Compra por produto".
