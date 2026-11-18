@@ -16,7 +16,18 @@ import {
   chatThreadAction,
   chatTranslateAction,
 } from "@/app/app/actions/chat";
-import type { ChatContext, ConversationView } from "@/lib/services/messages";
+import type {
+  ChatContext,
+  ChatPeerOption,
+  ConversationView,
+} from "@/lib/services/messages";
+import {
+  ChatIdentityHeader,
+  ChatMessageMeta,
+  ChatSendingTo,
+  PersonSub,
+  type ChatIdentityLabels,
+} from "./chat-identity";
 import { ChatIcon } from "./chat-open-button";
 import { MessageTranslationNote } from "./message-translation-note";
 import { ChatAttachmentView } from "./chat-attachment";
@@ -59,6 +70,14 @@ import { cx } from "./ui";
  * Cada mensagem do outro lado aparece no idioma de quem lê (tradução
  * automática, com "Ver original").
  *
+ * Quem envia e quem recebe (dono, 18/11/2026; docs/CHAT_IDENTITY.md): a
+ * conversa é privada entre dois logins. No topo, "Enviando como" e
+ * "Destinatário"; "Escolher conversa" lista as pessoas com quem dá para
+ * conversar neste pedido ou solicitação (Wellmix: os logins das empresas;
+ * de fora: o responsável e a lista curta). Trocar de conversa troca juntos o
+ * cabeçalho, o histórico, o destino e o rascunho (um por conversa); o envio
+ * leva a conversa mostrada e o servidor recusa se o assunto não é dela.
+ *
  * Caixa flutuante (`floating` no evento; botão "Conversar com a empresa" da
  * solicitação, dono, 14/11/2026): a mesma conversa num quadro no canto
  * inferior direito, sem fundo escuro, com a tela de baixo usável (endereço,
@@ -92,6 +111,10 @@ export interface ChatDrawerLabels {
   reply: ChatReplyLabels;
   /** "Baixar vídeo". */
   videoDownload: string;
+  /** Quem envia e quem recebe. */
+  identity: ChatIdentityLabels;
+  /** Motivo de recusa do servidor (código → texto). */
+  errors: Record<string, string>;
 }
 
 const REFRESH_MS = 20_000;
@@ -149,8 +172,15 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
     noKeyboard,
   );
   const [ctx, setCtx] = useState<ChatContext | null>(null);
-  const [partyId, setPartyId] = useState<string | null>(null);
+  /** A outra pessoa da conversa (o login). */
+  const [peerId, setPeerId] = useState<string | null>(null);
+  /** Wellmix: filtro da lista por empresa (nulo: todas). */
+  const [partyFilter, setPartyFilter] = useState<string | null>(null);
+  /** Lista "Escolher conversa" aberta. */
+  const [picking, setPicking] = useState(false);
   const [itemId, setItemId] = useState<string | null>(null);
+  /** Rascunho de cada conversa (pessoa + assunto), para não ir para outra. */
+  const drafts = useRef(new Map<string, string>());
   const [topic, setTopic] = useState<{
     conversationId: string;
     topicId: string;
@@ -173,11 +203,16 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
   /** Assunto aberto agora (o envio de arquivos recarrega este). */
   const topicRef = useRef<string | null>(null);
 
+  const errorText = useCallback(
+    (code: string) => labels.errors[code] ?? labels.error,
+    [labels.errors, labels.error],
+  );
+
   const loadThread = useCallback(
     async (topicId: string) => {
       const res = await chatThreadAction(topicId);
       if (!res.ok) {
-        setError(labels.error);
+        setError(errorText(res.error));
         return;
       }
       setView(res.data);
@@ -188,7 +223,7 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
         void chatReadAction(topicId);
       }
     },
-    [labels.error],
+    [errorText],
   );
 
   const upload = useChatUpload({
@@ -207,7 +242,7 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
     },
   });
   const sendFiles = (files: File[], photo: boolean) => {
-    if (!topic) return;
+    if (!topic || !view?.identity.canWrite) return;
     void upload.send(topic.topicId, files, {
       caption: body,
       photo,
@@ -227,12 +262,15 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
     topicRef.current = topic?.topicId ?? null;
   }, [topic]);
 
-  // Abre (ou acha) o assunto da escolha atual e carrega as mensagens.
+  // Abre (ou acha) o assunto da escolha atual e carrega as mensagens. Sem
+  // pessoa escolhida: a lista "Escolher conversa" fica aberta.
   const openTopic = useCallback(
-    async (c: ChatContext, party: string | null, item: string | null) => {
-      if (!c.own && !party) {
-        setTopic(null);
-        setView(null);
+    async (c: ChatContext, peer: string | null, item: string | null) => {
+      setTopic(null);
+      setView(null);
+      setReplyTo(null);
+      if (!peer) {
+        setPicking(true);
         return;
       }
       setLoading(true);
@@ -241,19 +279,18 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
         orderId: c.kind === "order" ? c.id : null,
         requestId: c.kind === "request" ? c.id : null,
         orderItemId: c.kind === "order" ? item : null,
-        partyId: c.own ? null : party,
+        peerUserId: peer,
       });
       if (!res.ok) {
-        setError(labels.error);
+        setError(errorText(res.error));
         setLoading(false);
         return;
       }
       setTopic(res.data);
-      setReplyTo(null);
       await loadThread(res.data.topicId);
       setLoading(false);
     },
-    [labels.error, loadThread],
+    [errorText, loadThread],
   );
 
   // Ícone tocado em alguma linha: abre o painel com aquele pedido/solicitação/item.
@@ -297,19 +334,25 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
       }
       const c = res.data;
       setCtx(c);
-      const party =
-        detail.partyId ??
-        (c.participants.some((p) => p.partyId === detail.partyId)
+      drafts.current.clear();
+      const filter =
+        !c.own && c.participants.some((p) => p.partyId === detail.partyId)
           ? detail.partyId!
-          : (c.participants[0]?.partyId ?? null));
+          : null;
+      const peer = defaultPeer(c, detail.peerUserId ?? null, filter);
       const item = detail.orderItemId ?? null;
-      setPartyId(party);
+      setPartyFilter(filter);
+      setPicking(!peer);
+      setPeerId(peer);
       setItemId(item);
-      await openTopic(c, party, item);
+      await openTopic(c, peer, item);
     };
     window.addEventListener(CHAT_EVENT, onOpen);
     return () => window.removeEventListener(CHAT_EVENT, onOpen);
   }, [labels.error, openTopic]);
+  // Rascunho guardado por conversa (pessoa + assunto).
+  const draftKey = (peer: string | null, item: string | null) =>
+    `${peer ?? ""}|${item ?? ""}`;
 
   // Atualiza sozinho enquanto está aberto (sem websocket).
   useEffect(() => {
@@ -367,20 +410,38 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
     setOpen(false);
   };
 
-  const choose = (party: string | null, item: string | null) => {
-    setPartyId(party);
+  // Troca de conversa: guarda o que foi digitado nesta e traz o da outra; o
+  // destino some até a nova carregar (nada vai para a anterior).
+  const choose = (peer: string | null, item: string | null) => {
+    if (peer === peerId && item === itemId) {
+      setPicking(false);
+      return;
+    }
+    drafts.current.set(draftKey(peerId, itemId), body);
+    setBody(drafts.current.get(draftKey(peer, item)) ?? draft);
+    setPeerId(peer);
     setItemId(item);
-    if (ctx) void openTopic(ctx, party, item);
+    if (peer) setPicking(false);
+    if (ctx) void openTopic(ctx, peer, item);
   };
+  // Escreve só com a conversa carregada e aberta para quem vê (nem a antiga,
+  // nem o administrador lendo a de outros, nem com a outra pessoa sem login).
+  const writable = !!topic && !!view?.identity.canWrite;
   // Só o começo já escrito (sem nada digitado depois) não conta como mensagem.
   const typed = !!body.trim() && body.trim() !== draft.trim();
   const send = async () => {
-    if (!topic || !typed || busy) return;
+    if (!topic || !writable || !typed || busy) return;
     setBusy(true);
     setError(null);
-    const res = await chatSendAction(topic.topicId, body, replyTo?.id ?? null);
-    if (!res.ok) setError(labels.error);
+    const res = await chatSendAction(
+      topic.topicId,
+      body,
+      replyTo?.id ?? null,
+      topic.conversationId,
+    );
+    if (!res.ok) setError(errorText(res.error));
     else {
+      drafts.current.delete(draftKey(peerId, itemId));
       setBody("");
       setDraft("");
       setReplyTo(null);
@@ -392,7 +453,7 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
     if (!topic || translating) return;
     setTranslating(messageId);
     const res = await chatTranslateAction(messageId);
-    if (!res.ok) setError(labels.error);
+    if (!res.ok) setError(errorText(res.error));
     await loadThread(topic.topicId);
     setTranslating(null);
   };
@@ -415,9 +476,6 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
           </div>
           <div className="truncate text-xs text-zinc-500" data-chat-context>
             {ctx?.title ?? (target ? labels.loading : "")}
-            {view?.conversation.name && !ctx?.own
-              ? ` · ${view.conversation.name}`
-              : ""}
           </div>
         </div>
         <button
@@ -431,31 +489,53 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
       </header>
 
       {ctx ? (
-        <div className="space-y-2 border-b border-zinc-100 px-4 py-2">
-          {/* Com quem: as empresas do pedido/da solicitação (só a Wellmix escolhe). */}
-          {!ctx.own ? (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                {labels.with}
-              </span>
-              {ctx.participants.length ? (
-                ctx.participants.map((p) => (
-                  <button
-                    key={p.partyId}
-                    type="button"
-                    onClick={() => choose(p.partyId, itemId)}
-                    className={chip(partyId === p.partyId)}
-                    data-chat-party={p.partyId}
-                  >
-                    {p.name}
-                  </button>
-                ))
-              ) : (
-                <span className="text-xs text-zinc-500">
-                  {labels.noParticipants}
-                </span>
-              )}
-            </div>
+        <div className="max-h-[50%] shrink-0 space-y-2 overflow-y-auto border-b border-zinc-100 px-4 py-2">
+          {/* Quem envia e quem recebe; "Escolher conversa" troca a pessoa. */}
+          <ChatIdentityHeader
+            identity={
+              view?.identity ?? {
+                mode: "pair",
+                me: ctx.me,
+                peer: null,
+                members: [],
+                canWrite: false,
+                readOnly: null,
+              }
+            }
+            labels={labels.identity}
+            recipientFallback={
+              <p className="mt-0.5 text-sm text-zinc-500">
+                {loading && peerId
+                  ? labels.loading
+                  : ctx.peers.length
+                    ? labels.identity.pickFirst
+                    : labels.identity.noPeers}
+              </p>
+            }
+            action={
+              ctx.peers.length > 1 || (ctx.peers.length === 1 && !peerId) ? (
+                <button
+                  type="button"
+                  onClick={() => setPicking((v) => !v)}
+                  aria-expanded={picking}
+                  className={chip(picking)}
+                  data-chat-choose
+                >
+                  {labels.identity.choose} ({ctx.peers.length})
+                </button>
+              ) : null
+            }
+          />
+          {picking ? (
+            <PeerPicker
+              ctx={ctx}
+              peerId={peerId}
+              partyFilter={partyFilter}
+              onFilter={setPartyFilter}
+              onPick={(id) => choose(id, itemId)}
+              labels={labels.identity}
+              chip={chip}
+            />
           ) : null}
           {/* Sobre: o pedido inteiro ou um item (a conversa desce até o produto). */}
           {ctx.kind === "order" && ctx.items.length ? (
@@ -465,7 +545,7 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
               </span>
               <button
                 type="button"
-                onClick={() => choose(partyId, null)}
+                onClick={() => choose(peerId, null)}
                 className={chip(itemId === null)}
                 data-chat-item="order"
               >
@@ -475,7 +555,7 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
                 <button
                   key={i.id}
                   type="button"
-                  onClick={() => choose(partyId, i.id)}
+                  onClick={() => choose(peerId, i.id)}
                   className={chip(itemId === i.id)}
                   data-chat-item={i.id}
                   title={i.name}
@@ -530,21 +610,13 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
                         : "border border-zinc-200 bg-white text-zinc-900",
                     )}
                   >
-                    <div
-                      className={cx(
-                        "mb-0.5 text-[11px]",
-                        m.mine ? "text-white/80" : "text-zinc-500",
-                      )}
-                    >
-                      <span className="font-semibold">
-                        {m.mine ? labels.you : m.authorName}
-                      </span>{" "}
-                      ·{" "}
-                      {m.authorSide === "wellmix"
-                        ? labels.wellmix
-                        : (view.conversation.name ?? "")}{" "}
-                      · {when(m.createdAt, labels.intl)}
-                    </div>
+                    <ChatMessageMeta
+                      author={m.author}
+                      recipients={m.recipients}
+                      mine={m.mine}
+                      when={when(m.createdAt, labels.intl)}
+                      labels={labels.identity}
+                    />
                     {m.replyTo ? (
                       <ReplyQuote
                         quote={m.replyTo}
@@ -607,6 +679,9 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
         }}
         data-chat-composer
       >
+        {view?.identity.canWrite ? (
+          <ChatSendingTo peer={view.identity.peer} labels={labels.identity} />
+        ) : null}
         {replyTo ? (
           <ReplyPreview
             target={replyTo}
@@ -635,18 +710,18 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
           rows={2}
           maxLength={4000}
           placeholder={labels.placeholder}
-          disabled={!topic || busy}
+          disabled={!writable || busy}
           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-zinc-50"
         />
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
           <ChatAttachButtons
             labels={labels.attach}
-            disabled={!topic || upload.busy}
+            disabled={!writable || upload.busy}
             onFiles={sendFiles}
           />
           <button
             type="submit"
-            disabled={!topic || busy || !typed}
+            disabled={!writable || busy || !typed}
             className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-50"
             data-chat-send
           >
@@ -724,6 +799,129 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
       >
         {content}
       </aside>
+    </div>
+  );
+}
+
+/** Pessoa já escolhida ao abrir: a pedida, a única, ou a da última conversa. */
+function defaultPeer(
+  c: ChatContext,
+  wanted: string | null,
+  partyFilter: string | null,
+): string | null {
+  if (wanted && c.peers.some((p) => p.userId === wanted)) return wanted;
+  if (c.own) return c.defaultPeerId;
+  const pool = partyFilter
+    ? c.peers.filter((p) => p.partyId === partyFilter)
+    : c.peers;
+  if (pool.length === 1) return pool[0].userId;
+  const recent = pool
+    .filter((p) => p.conversationId)
+    .sort((a, b) =>
+      (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""),
+    );
+  return recent[0]?.userId ?? null;
+}
+
+/**
+ * "Escolher conversa": as pessoas com quem dá para conversar neste pedido ou
+ * solicitação, com o login e a empresa (Wellmix: filtro por empresa); a
+ * que já tem conversa aberta aparece marcada.
+ */
+function PeerPicker({
+  ctx,
+  peerId,
+  partyFilter,
+  onFilter,
+  onPick,
+  labels,
+  chip,
+}: {
+  ctx: ChatContext;
+  peerId: string | null;
+  partyFilter: string | null;
+  onFilter: (id: string | null) => void;
+  onPick: (id: string) => void;
+  labels: ChatIdentityLabels;
+  chip: (active: boolean) => string;
+}) {
+  const companies = ctx.own
+    ? []
+    : ctx.participants.filter((p) =>
+        ctx.peers.some((x) => x.partyId === p.partyId),
+      );
+  const list: ChatPeerOption[] = partyFilter
+    ? ctx.peers.filter((p) => p.partyId === partyFilter)
+    : ctx.peers;
+  return (
+    <div
+      className="space-y-1.5 rounded-xl border border-zinc-200 bg-white p-2"
+      data-chat-picker
+    >
+      <p className="text-xs text-zinc-500">{labels.chooseHint}</p>
+      {companies.length > 1 ? (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => onFilter(null)}
+            className={chip(partyFilter === null)}
+          >
+            {labels.all}
+          </button>
+          {companies.map((p) => (
+            <button
+              key={p.partyId}
+              type="button"
+              onClick={() => onFilter(p.partyId)}
+              className={chip(partyFilter === p.partyId)}
+              data-chat-party={p.partyId}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {list.length ? (
+        <ul className="max-h-56 space-y-1 overflow-y-auto">
+          {list.map((p) => (
+            <li key={p.userId}>
+              <button
+                type="button"
+                onClick={() => onPick(p.userId)}
+                aria-current={p.userId === peerId ? "true" : undefined}
+                className={cx(
+                  "block w-full rounded-lg border px-2.5 py-1.5 text-left transition",
+                  p.userId === peerId
+                    ? "border-brand-600 bg-brand-50"
+                    : "border-zinc-200 hover:border-brand-300 hover:bg-brand-50",
+                )}
+                data-chat-peer={p.userId}
+              >
+                <span className="flex flex-wrap items-baseline gap-x-1.5 text-sm">
+                  <span className="break-words font-semibold text-zinc-900">
+                    {p.name}
+                  </span>
+                  {p.isOwner ? (
+                    <span className="text-[11px] text-brand-700">
+                      {labels.owner}
+                    </span>
+                  ) : null}
+                  <span className="text-[11px] text-zinc-500">
+                    {p.conversationId ? labels.existing : labels.fresh}
+                  </span>
+                </span>
+                <PersonSub
+                  person={p}
+                  labels={labels}
+                  className="text-zinc-500"
+                />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-zinc-500">{labels.noPeers}</p>
+      )}
     </div>
   );
 }

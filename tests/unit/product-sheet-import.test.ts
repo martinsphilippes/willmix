@@ -530,7 +530,7 @@ describe("leitura do modelo", () => {
     expect([g.lengthCm, g.widthCm, g.heightCm]).toEqual([10, 8, 6]);
   });
 
-  it("coluna \"RMB/USD\" é a moeda da linha: a escolhida na tela só completa a linha sem moeda", () => {
+  it('coluna "RMB/USD" é a moeda da linha: a escolhida na tela só completa a linha sem moeda', () => {
     // Planilha de booking de Yiwu (YIWU_B3-6604): "FOB / EXW", "RMB/USD" e
     // "PRICE" em colunas separadas. Antes, "RMB/USD" virava coluna extra e a
     // moeda da tela (USD) entrava em todos os preços.
@@ -539,7 +539,15 @@ describe("leitura do modelo", () => {
         {
           name: "SUPPLIER INFO",
           cells: [
-            ["SUPPLIER NAME", "SKU/FACTORY ITEM CODE", "FOB / EXW", "RMB/USD", "PRICE", "QTY/BOX", "MOQ"],
+            [
+              "SUPPLIER NAME",
+              "SKU/FACTORY ITEM CODE",
+              "FOB / EXW",
+              "RMB/USD",
+              "PRICE",
+              "QTY/BOX",
+              "MOQ",
+            ],
             ["YI WEI", "6604-1", "EXW", "RMB", "9.4", "36", "540"],
             ["YI WEI", "6604-2", "EXW", "USD", "1.2", "36", "540"],
             ["YI WEI", "6604-3", "EXW", "", "7.7", "48", "540"],
@@ -550,7 +558,9 @@ describe("leitura do modelo", () => {
     );
     expect(parsed.columns.currency).toBe(3);
     expect(parsed.extraHeaders).not.toContain("RMB/USD");
-    expect(parsed.groups.map((g) => [g.reading.price, g.reading.currency])).toEqual([
+    expect(
+      parsed.groups.map((g) => [g.reading.price, g.reading.currency]),
+    ).toEqual([
       [9.4, "RMB"],
       [1.2, "USD"],
       [7.7, "USD"],

@@ -37,7 +37,10 @@ describe("anexo no chat", () => {
   let topicId: string;
 
   it("cliente envia só o arquivo: vira mensagem com o nome do arquivo", async () => {
-    const [own] = await msg.listConversationsFor(joao);
+    // Conversa privada entre a Ana (Wellmix) e o João (docs/CHAT_IDENTITY.md).
+    const own = {
+      id: (await msg.openTopic(admin, { peerUserId: joao.id })).conversationId,
+    };
     const view = (await msg.getConversationView(joao, own.id))!;
     topicId = view.topic.id;
     const m = await msg.postMessage(joao, topicId, "   ", pdf());

@@ -173,14 +173,19 @@ test("Containers e Mensagens: cliente e destinatário pela busca", async ({
   await page.goto("/app/messages");
   const target = page.locator('[data-chat-target="new"]');
   await target.locator("[data-chat-target-input]").fill("trans");
-  const option = target.locator(
-    '[data-chat-target-option="party:transportador"]',
-  );
-  // Ao lado do nome, o tipo da empresa.
-  await expect(option).toContainText(/Transportador|Carrier|承运商/);
+  // A conversa é com o login da pessoa (docs/CHAT_IDENTITY.md): ao lado do
+  // nome, a empresa e o e-mail.
+  const option = target.locator('[data-chat-target-option^="user:"]', {
+    hasText: "transportadora@rodo.com",
+  });
+  await expect(option).toContainText("Trans Rodo");
   await option.click();
   await page
     .getByRole("button", { name: /abrir conversa|open conversation|打开对话/i })
     .click();
   await page.waitForURL(/\/app\/messages\?c=/);
+  // Destinatário: a pessoa escolhida, com o login.
+  await expect(
+    page.locator('[data-chat-identity-block="recipient"]'),
+  ).toContainText("transportadora@rodo.com");
 });

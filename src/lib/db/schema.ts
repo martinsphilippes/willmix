@@ -2323,6 +2323,15 @@ export interface Conversation extends BaseRow {
   /** Começo da última mensagem (lista de conversas). */
   lastMessagePreview: string | null;
   status: ConversationStatus;
+  /*
+   * Conversa privada entre dois logins (dono, 18/11/2026; docs/CHAT_IDENTITY.md):
+   * a pessoa da Wellmix e a pessoa de fora. Só os dois escrevem e são
+   * avisados; o administrador lê tudo, sem escrever. Nulos: conversa antiga
+   * da empresa inteira (só leitura). `partyId` continua sendo a empresa de
+   * quem é de fora.
+   */
+  wellmixUserId?: string | null;
+  externalUserId?: string | null;
 }
 
 /**
@@ -5407,10 +5416,14 @@ export const TABLES: Record<TableName, TableDef> = {
       lastMessageAt: datetime(),
       lastMessagePreview: str(200),
       status: enumOf(CONVERSATION_STATUSES),
+      wellmixUserId: id(false),
+      externalUserId: id(false),
     },
     indexes: [
       { key: "by_party", type: "key", columns: ["partyId"] },
       { key: "by_user", type: "key", columns: ["userId"] },
+      { key: "by_wellmix_user", type: "key", columns: ["wellmixUserId"] },
+      { key: "by_external_user", type: "key", columns: ["externalUserId"] },
     ],
   },
   conversation_topics: {

@@ -136,13 +136,19 @@ export default async function MessageControlPage({
     },
   ];
   const csvHref = `/app/messages/control/export${href({}).replace("/app/messages/control", "")}`;
+  // Abre a conversa com a pessoa de fora da conversa privada (o painel
+  // precisa do pedido também no item).
   const chatTarget = (r: MessageControlRow) =>
-    r.orderItemId
-      ? { orderItemId: r.orderItemId }
+    r.orderItemId && r.orderId
+      ? {
+          orderId: r.orderId,
+          orderItemId: r.orderItemId,
+          peerUserId: r.peerUserId,
+        }
       : r.orderId
-        ? { orderId: r.orderId }
+        ? { orderId: r.orderId, peerUserId: r.peerUserId }
         : r.requestId
-          ? { requestId: r.requestId }
+          ? { requestId: r.requestId, peerUserId: r.peerUserId }
           : null;
 
   return (

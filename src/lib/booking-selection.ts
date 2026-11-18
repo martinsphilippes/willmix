@@ -81,6 +81,48 @@ export const SELECTION_TABS = [
 ] as const;
 export type SelectionTab = (typeof SELECTION_TABS)[number];
 
+/**
+ * Medidas do item na tabela, uma coluna cada (dono, 18/11/2026;
+ * docs/SUPPLIER_REQUESTS.md, "Medidas em três colunas"), na ordem da
+ * planilha do Book (SIZE (CM) LENGTH, WIDTH, HEIGHT) e do cadastro do
+ * produto: Comprimento = `lengthCm`, Largura = `widthCm`, Altura =
+ * `heightCm`. Cada coluna lê o seu campo; nada é separado de texto.
+ */
+export const SELECTION_DIMENSIONS = [
+  { key: "length", field: "lengthCm" },
+  { key: "width", field: "widthCm" },
+  { key: "height", field: "heightCm" },
+] as const satisfies ReadonlyArray<{
+  key: string;
+  field: keyof Pick<BookingItem, "lengthCm" | "widthCm" | "heightCm">;
+}>;
+
+/**
+ * Medida em cm com as casas gravadas (8,3; 20,125; 7), no separador decimal
+ * do idioma da tela (vírgula em português). Sem valor: "—", que a ordenação
+ * da tabela deixa sempre no fim.
+ */
+export function formatMeasure(
+  value: number | null | undefined,
+  intl: string,
+): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return value.toLocaleString(intl, {
+    maximumFractionDigits: storedDecimals(value),
+  });
+}
+
+/**
+ * Casas decimais do número como foi gravado (a escrita mais curta dele, que
+ * é a digitada: "8.3" → 1). Teto de 10 casas: além disso, em cm, é resto de
+ * conta com ponto flutuante (0,1 + 0,2), não precisão digitada.
+ */
+export function storedDecimals(value: number): number {
+  const [digits, exponent = "0"] = String(Math.abs(value)).split("e");
+  const decimals = (digits.split(".")[1] ?? "").length - Number(exponent);
+  return Math.min(10, Math.max(0, decimals));
+}
+
 /** A aba do endereço (`tab=`); sem ela, ou com um valor que não existe, Itens. */
 export function parseSelectionTab(
   v: string | string[] | undefined,

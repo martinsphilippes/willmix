@@ -9,9 +9,9 @@ export const dynamic = "force-dynamic";
 
 /**
  * Busca de quem chamar numa conversa nova de Mensagens (só a Wellmix, como o
- * formulário): empresas ativas e logins sem empresa, pelo nome. O valor é o
- * mesmo da lista antiga (`party:<id>` ou `user:<id>`); ao lado do nome, o
- * tipo da empresa ou o papel do login.
+ * formulário): o login da pessoa de fora (a conversa é privada entre os
+ * dois), pelo nome, e-mail ou empresa. O valor é `user:<id>`; ao lado do
+ * nome, a empresa e o login.
  */
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -24,7 +24,11 @@ export async function GET(request: Request) {
       options: targets.map((target) => ({
         id: target.id,
         name: target.name,
-        hint: chatTypeLabel(t, target.type) || null,
+        // Empresa (ou tipo) e o login: duas pessoas de mesmo nome se distinguem.
+        hint:
+          [target.org ?? chatTypeLabel(t, target.type), target.login]
+            .filter(Boolean)
+            .join(" · ") || null,
       })),
     },
     { headers: { "Cache-Control": "private, no-store" } },
