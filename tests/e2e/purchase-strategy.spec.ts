@@ -5,6 +5,7 @@ import {
   login,
   openReplenishment,
   selectAndOpenSupplierRequest,
+  createdRequestId,
 } from "./helpers";
 
 /*
@@ -188,7 +189,7 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   // Produto do catálogo: a quantidade já vem no pedido mínimo (em caixas).
   await expect(item.locator("[data-selection-quantity]")).not.toHaveValue("");
   await page.getByRole("button", { name: /enviar|send/i }).click();
-  await page.waitForURL(/\/app\/requests\/(?!new|batch)[^/?]+/);
+  await createdRequestId(page);
   const encomenda = new URL(page.url()).pathname.split("/").pop()!;
   // O cliente não vê fornecedor nem custo na encomenda.
   await expect(page.locator("main")).not.toContainText("Shenzhen");

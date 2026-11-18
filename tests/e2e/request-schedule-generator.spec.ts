@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { login } from "./helpers";
+import { login, createdRequestId } from "./helpers";
 
 /*
  * Nova solicitação com a programação de compra DO PEDIDO (dono, 15/11/2026):
@@ -179,7 +179,7 @@ test("Nova solicitação: programação do pedido, produto só para leitura, ger
       )
       .first()
       .click();
-    await page.waitForURL(/\/app\/requests\/(?!new|batch)[^/?]+$/);
+    await createdRequestId(page);
     return page.locator("[data-request-schedule-table]");
   };
   for (const [name, values] of [

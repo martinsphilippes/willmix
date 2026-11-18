@@ -1,5 +1,10 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { fillCustomerContacts, fillOrderTerms, login } from "./helpers";
+import {
+  fillCustomerContacts,
+  fillOrderTerms,
+  login,
+  createdRequestId,
+} from "./helpers";
 
 /*
  * RCA do cliente (dono, 15/11/2026; docs/CUSTOMER_RCA.md). No cadastro do
@@ -64,7 +69,7 @@ async function sendDoll(page: Page) {
   await gen.locator("[data-generate-total]").fill("100");
   await expect(gen.locator("[data-generate-submit]")).toBeHidden();
   await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
-  await page.waitForURL(/\/app\/requests\/(?!new|batch)[^/?]+$/);
+  await createdRequestId(page);
   return new URL(page.url()).pathname.split("/").pop()!;
 }
 

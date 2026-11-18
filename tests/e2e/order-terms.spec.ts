@@ -5,6 +5,7 @@ import {
   fillCustomerContacts,
   fillOrderTerms,
   login,
+  createdRequestId,
 } from "./helpers";
 
 /*
@@ -38,7 +39,7 @@ async function pickDoll(page: Page) {
 
 async function send(page: Page) {
   await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
-  await page.waitForURL(/\/app\/requests\/(?!new|batch)[^/?]+$/);
+  await createdRequestId(page);
   return new URL(page.url()).pathname.split("/").pop()!;
 }
 

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { login } from "./helpers";
+import { login, createdRequestId } from "./helpers";
 
 /*
  * Ficha completa da solicitação (dono, 15/11/2026; docs/REQUEST_SHEET.md e
@@ -93,7 +93,7 @@ test("Solicitações: uma linha por produto, ficha completa em linha horizontal,
     )
     .first()
     .click();
-  await page.waitForURL(/\/app\/requests\/(?!new|batch)[^/?]+$/);
+  await createdRequestId(page);
   const url = page.url();
 
   // 2. Cliente: as duas linhas; a desta solicitação com o total da

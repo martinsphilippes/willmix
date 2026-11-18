@@ -420,9 +420,9 @@ async function createRequest(
           : // TS e Venda: quem não abre Encomendas volta à tela com o aviso.
             screenDef && !canOpen(user, "requests")
             ? `${screenDef.path}?created=${first.number ? String(first.number) : "ok"}`
-            : created.length === 1
-              ? `/app/requests/${first.id}`
-              : `/app/requests/batch/${encodeURIComponent(first.groupId ?? "")}?created=${created.length}`;
+            : // Sempre a página da solicitação, também com um produto só
+              // (dono, 18/11/2026; docs/ORDER_LEVEL_LISTS.md).
+              `/app/requests/batch/${encodeURIComponent(first.groupId ?? first.id)}?created=${created.length}`;
       // Só a linha 0 recebe a busca por foto/link e a programação de compra; se
       // o usuário a removeu, não há a que ligar.
       const presetPos = rows.findIndex((r) => r.index === 0);

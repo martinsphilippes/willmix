@@ -16,6 +16,7 @@ Um pedido pode ter milhares de produtos, então as listas não mostram foto, nom
 
 ## 2. Abrir é sempre o nível do pedido
 
+- Depois de **Enviar** (Nova solicitação, carrinho e "Solicitar orçamento agora"), a tela também cai na página da solicitação, com "Solicitação enviada." quando é um produto só.
 - A linha de Encomendas abre `/app/requests/batch/<groupId>`. A solicitação criada sozinha (sem lote) abre o mesmo endereço pelo id dela, como pedido de um produto só. O id de uma solicitação de lote redireciona para o lote.
 - Na página do pedido, o produto abre a tela dele naquele pedido: `/app/requests/<id>` na solicitação, com "← Voltar ao pedido" (`data-back-to-order`). No pedido, abre `/app/orders/<id>?item=<item>`, que mostra só aquele item na tabela de itens, com a conversa do item e o link "Ver o pedido inteiro".
 

@@ -23,6 +23,7 @@ export const pt = {
   "reqBatch.hint":
     "Pode pedir vários produtos de uma vez. Cada produto vira uma solicitação própria (fornecedor, preço e ficha podem ser diferentes), e todas nascem juntas, num lote.",
   "reqBatch.created": "{n} solicitações criadas num lote.",
+  "reqBatch.createdOne": "Solicitação enviada.",
   "reqBatch.badge": "Lote · {n} produtos",
   "reqBatch.filter": "Mostrando só o lote ({n} produtos).",
   "reqBatch.all": "Ver todas",
@@ -114,6 +115,7 @@ export const en: Record<keyof typeof pt, string> = {
   "reqBatch.hint":
     "You can request several products at once. Each product becomes its own request (supplier, price and sheet may differ), and they are created together as a batch.",
   "reqBatch.created": "{n} requests created as a batch.",
+  "reqBatch.createdOne": "Request sent.",
   "reqBatch.badge": "Batch · {n} products",
   "reqBatch.filter": "Showing only this batch ({n} products).",
   "reqBatch.all": "Show all",
@@ -206,6 +208,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqBatch.hint":
     "可以一次申请多个产品。每个产品会成为独立的需求（供应商、价格和采购单可以不同），并作为同一批次一起创建。",
   "reqBatch.created": "已创建 {n} 个需求（同一批次）。",
+  "reqBatch.createdOne": "需求已发送。",
   "reqBatch.badge": "批次 · {n} 个产品",
   "reqBatch.filter": "仅显示该批次（{n} 个产品）。",
   "reqBatch.all": "查看全部",

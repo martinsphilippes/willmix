@@ -2009,9 +2009,10 @@ test("vitrine: busca, página do produto, carrinho e pedido de orçamento", asyn
   await page.goto("/app/explore/prod-piscina");
   await page.fill("[data-quantity-input]", "400");
   await page.locator("[data-explore-buy-now]").click();
-  await page.waitForURL(/\/app\/requests\/[^/]+\?fromCart=1/);
+  // A página da solicitação, também com um produto só.
+  await page.waitForURL(/\/app\/requests\/batch\/[^/]+\?created=1&fromCart=1/);
   await expect(page.locator("[data-cart-sent]")).toBeVisible();
-  await expect(page.locator("h1")).toContainText("Piscina");
+  await expect(page.locator("[data-batch-item]")).toContainText("Piscina");
 
   // Wellmix vê a vitrine como o cliente, sem carrinho, e o que falta no preço.
   await login(page, "admin@wellmix.com");
