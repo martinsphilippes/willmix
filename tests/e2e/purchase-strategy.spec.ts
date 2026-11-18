@@ -258,7 +258,7 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   ).toBeVisible();
   await login(page, "supplier.a@china.com");
   await page.goto("/app/purchase-quotes");
-  await page.locator(`[data-quote-invite="${quoteId}"] a`).click();
+  await page.locator(`[data-quote-invite="${quoteId}"] a`).first().click();
   await page.waitForURL(new RegExp(`/app/purchase-quotes/${quoteId}`));
   await expect(page.locator("[data-quote-answer-form]")).toBeVisible();
   await expect(page.locator("main")).not.toContainText("Loja do João");
