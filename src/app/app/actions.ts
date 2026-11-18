@@ -407,8 +407,8 @@ async function createRequest(
       if (draftId && isWellmix(user)) {
         const { deleteRequestDraft } =
           await import("@/lib/services/request-drafts");
-        await deleteRequestDraft(user, draftId, screenMode).catch((error) =>
-          console.error("[action] rascunho enviado", error),
+        await deleteRequestDraft(user, draftId, screenMode, replenish).catch(
+          (error) => console.error("[action] rascunho enviado", error),
         );
       }
       const first = created[0];

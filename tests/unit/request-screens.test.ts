@@ -76,7 +76,8 @@ const { navFor, flattenNav, isActiveLink } = await import("@/lib/nav");
 const { PERMISSION_MODULES } = await import("@/lib/auth/permission-modules");
 const { isGrantable } = await import("@/lib/partner-access");
 const drafts = await import("@/lib/services/request-drafts");
-const { REQUEST_SCREEN, draftScreenOf } = await import("@/lib/request-screens");
+const { REQUEST_SCREEN, draftIsReplenishment, draftResumeHref, draftScreenOf } =
+  await import("@/lib/request-screens");
 const actions = await import("@/app/app/actions");
 const draftActions = await import("@/app/app/actions/request-drafts");
 type User = import("@/lib/db").User;
@@ -341,6 +342,106 @@ describe("rascunhos por tela", () => {
     await draftActions.saveScreenRequestDraftAction(f);
     expect(h.redirects.at(-1)).toMatch(/\?error=/);
     await drafts.deleteRequestDraft(buyer, saved.id, "ts");
+  });
+});
+
+describe("rascunhos nas listas (dono, 17/11/2026)", () => {
+  const form = (name: string, extra: Record<string, string> = {}) => {
+    const f = new FormData();
+    f.append("p0.productName", name);
+    f.append("p0.quantity", "10");
+    for (const [k, v] of Object.entries(extra)) f.append(k, v);
+    return f;
+  };
+
+  it("a entrada da Reposição tem rascunho próprio, listado na fila de Reposição", async () => {
+    // Planner: sem a tela Venda, mas com "Abrir reposição".
+    const rep = await drafts.saveRequestDraft(
+      planner,
+      form("Balde", { from: "replenishment" }),
+      null,
+      "sale",
+    );
+    expect(draftIsReplenishment(rep.payload)).toBe(true);
+    expect(draftResumeHref(rep.id, rep.payload)).toBe(
+      `/app/new-request/sale?from=replenishment&draft=${rep.id}`,
+    );
+    // Sem a entrada da Reposição, o Planner não grava rascunho de Venda.
+    await expect(
+      drafts.saveRequestDraft(planner, form("Balde"), null, "sale"),
+    ).rejects.toThrow();
+    // Abre só na entrada da Reposição.
+    expect(await drafts.getRequestDraft(planner, rep.id, "sale")).toBeNull();
+    expect(
+      (await drafts.getRequestDraft(planner, rep.id, "sale", true))?.id,
+    ).toBe(rep.id);
+    const listed = (list: "requests" | "replenishment", u = planner) =>
+      drafts.listDraftsForList(u, list).then((r) => r.map((d) => d.draft.id));
+    expect(await listed("replenishment")).toEqual([rep.id]);
+    expect(await listed("requests")).not.toContain(rep.id);
+    await drafts.deleteRequestDraft(planner, rep.id, "sale", true);
+    expect(await listed("replenishment")).toEqual([]);
+  });
+
+  it("Encomendas lista os de Encomendas, TS e Venda, com o endereço de cada tela", async () => {
+    const legacy = await drafts.saveRequestDraft(admin, form("Copo"), null);
+    const ts = await drafts.saveRequestDraft(admin, form("Jarra"), null, "ts");
+    // O campo da Reposição fora da tela Venda não vale.
+    const odd = await drafts.saveRequestDraft(
+      admin,
+      form("Pote", { from: "replenishment" }),
+      null,
+      "ts",
+    );
+    expect(draftIsReplenishment(odd.payload)).toBe(false);
+    const listed = await drafts.listDraftsForList(admin, "requests");
+    const hrefOf = (id: string) => listed.find((d) => d.draft.id === id)?.href;
+    expect(hrefOf(legacy.id)).toBe(`/app/requests/new?draft=${legacy.id}`);
+    expect(hrefOf(ts.id)).toBe(`/app/new-request/ts?draft=${ts.id}`);
+    expect(hrefOf(odd.id)).toBe(`/app/new-request/ts?draft=${odd.id}`);
+    // Só de quem criou.
+    expect(
+      (await drafts.listDraftsForList(buyer, "requests")).map(
+        (d) => d.draft.id,
+      ),
+    ).not.toContain(legacy.id);
+    for (const [d, screen] of [
+      [legacy, null],
+      [ts, "ts"],
+      [odd, "ts"],
+    ] as const)
+      await drafts.deleteRequestDraft(admin, d.id, screen);
+  });
+
+  it("o rascunho automático e o Salvar rascunho da Reposição voltam à entrada dela", async () => {
+    h.current = planner;
+    const auto = await draftActions.autosaveRequestDraftAction({
+      mode: "sale",
+      draftId: null,
+      entries: [
+        ["from", "replenishment"],
+        ["p0.productName", "Regador"],
+      ],
+    });
+    expect(auto.ok).toBe(true);
+    const id = auto.ok ? auto.draftId : "";
+    const f = form("Regador 2", {
+      requestScreen: "sale",
+      from: "replenishment",
+      draftId: id,
+    });
+    await draftActions.saveScreenRequestDraftAction(f);
+    expect(h.redirects.at(-1)).toBe(
+      `/app/new-request/sale?from=replenishment&draft=${id}&draftSaved=1`,
+    );
+    // Sem a entrada, a tela Venda segue recusada para o Planner.
+    const denied = await draftActions.autosaveRequestDraftAction({
+      mode: "sale",
+      draftId: null,
+      entries: [["p0.productName", "Regador"]],
+    });
+    expect(denied.ok).toBe(false);
+    await drafts.deleteRequestDraft(planner, id, "sale", true);
   });
 });
 

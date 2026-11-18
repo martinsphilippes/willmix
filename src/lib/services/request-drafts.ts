@@ -2,9 +2,13 @@ import "server-only";
 import { getStore, type RequestDraft, type User } from "@/lib/db";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
+import { can } from "@/lib/auth/function-access";
 import {
+  REPLENISHMENT_FROM,
   REQUEST_SCREEN,
   REQUEST_SCREEN_FIELD,
+  draftIsReplenishment,
+  draftResumeHref,
   draftScreenOf,
   type RequestScreenMode,
 } from "@/lib/request-screens";
@@ -31,9 +35,31 @@ export type DraftScreen = RequestScreenMode | null;
 const MAX_FIELDS = 2000;
 const MAX_VALUE = 10_000;
 
-const canDraft = (user: User, screen: DraftScreen = null) =>
+/**
+ * Quem tem rascunho na tela. A entrada da Reposição (tela Venda com
+ * `?from=replenishment`; dono, 17/11/2026) vale para quem abre a fila: a
+ * ação "Abrir reposição" e a tela Encomendas, como a própria entrada.
+ */
+export const canDraft = (
+  user: User,
+  screen: DraftScreen = null,
+  replenish = false,
+) =>
   isWellmix(user) &&
-  canOpen(user, screen ? REQUEST_SCREEN[screen].screen : "requests");
+  (replenish
+    ? screen === "sale" &&
+      can(user, "replenishment.open") &&
+      canOpen(user, "requests")
+    : canOpen(user, screen ? REQUEST_SCREEN[screen].screen : "requests"));
+
+/** O rascunho é desta tela (e desta entrada: Reposição ou não)? */
+const sameEntry = (
+  draft: Pick<RequestDraft, "payload">,
+  screen: DraftScreen,
+  replenish: boolean,
+) =>
+  draftScreenOf(draft.payload) === screen &&
+  draftIsReplenishment(draft.payload) === replenish;
 
 /** Os campos do formulário que vão para o rascunho. */
 export function draftPayload(form: FormData): Array<[string, string]> {
@@ -88,9 +114,15 @@ export async function saveRequestDraft(
   draftId: string | null,
   screen: DraftScreen = null,
 ): Promise<RequestDraft> {
-  if (!canDraft(user, screen)) throw new ForbiddenError();
   const store = getStore();
   const payload = draftPayload(form);
+  // Entrada da Reposição: o campo do formulário diz; a permissão confere.
+  const replenish = screen === "sale" && draftIsReplenishment(payload);
+  if (!canDraft(user, screen, replenish)) throw new ForbiddenError();
+  // Fora da tela Venda, o campo da Reposição não vale no rascunho.
+  if (!replenish)
+    for (let i = payload.length - 1; i >= 0; i--)
+      if (payload[i][0] === REPLENISHMENT_FROM) payload.splice(i, 1);
   // A tela de TS ou de Venda fica marcada no rascunho (a de Encomendas, não).
   if (screen) payload.push([REQUEST_SCREEN_FIELD, screen]);
   const customerId =
@@ -111,7 +143,7 @@ export async function saveRequestDraft(
     if (
       !current ||
       current.userId !== user.id ||
-      draftScreenOf(current.payload) !== screen
+      !sameEntry(current, screen, replenish)
     )
       throw new DraftError("draft_not_found");
     return store.update("request_drafts", draftId, data);
@@ -132,12 +164,14 @@ export async function getRequestDraft(
   user: User,
   id: string,
   screen: DraftScreen = null,
+  replenish = false,
 ): Promise<RequestDraft | null> {
-  if (!canDraft(user, screen) || !/^[A-Za-z0-9_-]{1,64}$/.test(id)) return null;
+  if (!canDraft(user, screen, replenish) || !/^[A-Za-z0-9_-]{1,64}$/.test(id))
+    return null;
   const draft = await getStore().get("request_drafts", id);
   return draft &&
     draft.userId === user.id &&
-    draftScreenOf(draft.payload) === screen
+    sameEntry(draft, screen, replenish)
     ? draft
     : null;
 }
@@ -146,8 +180,9 @@ export async function getRequestDraft(
 export async function listRequestDrafts(
   user: User,
   screen: DraftScreen = null,
+  replenish = false,
 ): Promise<RequestDraft[]> {
-  if (!canDraft(user, screen)) return [];
+  if (!canDraft(user, screen, replenish)) return [];
   const rows = await getStore().list("request_drafts", {
     filter: { userId: user.id },
     orderBy: "updatedAt",
@@ -155,7 +190,7 @@ export async function listRequestDrafts(
     // Folga para os rascunhos das outras telas (o filtro é pelo conteúdo).
     limit: 60,
   });
-  return rows.filter((d) => draftScreenOf(d.payload) === screen).slice(0, 20);
+  return rows.filter((d) => sameEntry(d, screen, replenish)).slice(0, 20);
 }
 
 /** Apaga o rascunho (só o de quem pede, desta tela). */
@@ -163,8 +198,46 @@ export async function deleteRequestDraft(
   user: User,
   id: string,
   screen: DraftScreen = null,
+  replenish = false,
 ): Promise<void> {
-  const draft = await getRequestDraft(user, id, screen);
+  const draft = await getRequestDraft(user, id, screen, replenish);
   if (!draft) return;
   await getStore().remove("request_drafts", draft.id);
+}
+
+/** Um rascunho na lista de Encomendas ou de Reposição, com o endereço para continuar. */
+export interface ListedDraft {
+  draft: RequestDraft;
+  href: string;
+}
+
+/**
+ * Os rascunhos de quem pede nas listas (dono, 17/11/2026): Encomendas
+ * (/app/requests) mostra os da Nova solicitação, de TS e de Venda; Reposição
+ * (/app/replenishment), os da entrada da Reposição. Só os das telas que a
+ * pessoa abre, o mais recente primeiro.
+ */
+export async function listDraftsForList(
+  user: User,
+  list: "requests" | "replenishment",
+): Promise<ListedDraft[]> {
+  if (!isWellmix(user)) return [];
+  const rows = await getStore().list("request_drafts", {
+    filter: { userId: user.id },
+    orderBy: "updatedAt",
+    direction: "desc",
+    limit: 60,
+  });
+  return rows
+    .filter((d) => {
+      const screen = draftScreenOf(d.payload);
+      const replenish = screen === "sale" && draftIsReplenishment(d.payload);
+      if ((list === "replenishment") !== replenish) return false;
+      return canDraft(user, screen, replenish);
+    })
+    .slice(0, 20)
+    .map((draft) => ({
+      draft,
+      href: draftResumeHref(draft.id, draft.payload),
+    }));
 }

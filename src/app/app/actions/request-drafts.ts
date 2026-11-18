@@ -4,13 +4,18 @@ import { z } from "zod";
 import { ForbiddenError, assertWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
 import {
+  canDraft,
   deleteRequestDraft,
   saveRequestDraft,
 } from "@/lib/services/request-drafts";
 import {
+  REPLENISHMENT_FROM,
+  REPLENISHMENT_QUERY,
   REQUEST_SCREEN,
   REQUEST_SCREEN_FIELD,
+  isReplenishmentEntry,
   isRequestScreenMode,
+  type RequestScreenMode,
 } from "@/lib/request-screens";
 import { requireUser, run, str } from "./helpers";
 
@@ -60,18 +65,46 @@ function screenOf(form: FormData) {
   return mode;
 }
 
+/**
+ * Entrada da Reposição (tela Venda com `?from=replenishment`; dono,
+ * 17/11/2026): o rascunho vale para quem abre a fila, mesmo sem a tela de
+ * Venda marcada, e a tela volta com o `from`.
+ */
+const replenishOf = (form: FormData, mode: RequestScreenMode | null) =>
+  mode === "sale" && isReplenishmentEntry(str(form, REPLENISHMENT_FROM));
+
+function screenBase(mode: RequestScreenMode, replenish: boolean) {
+  return replenish
+    ? `${REQUEST_SCREEN[mode].path}?${REPLENISHMENT_QUERY}&`
+    : `${REQUEST_SCREEN[mode].path}?`;
+}
+
+function assertDraftScreen(
+  user: Parameters<typeof canDraft>[0],
+  mode: RequestScreenMode,
+  replenish: boolean,
+) {
+  if (replenish) {
+    if (!canDraft(user, mode, true)) throw new ForbiddenError();
+  } else assertScreen(user, REQUEST_SCREEN[mode].screen);
+}
+
 export async function saveScreenRequestDraftAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, REQUEST_SCREEN_FIELD);
   const base = isRequestScreenMode(raw) ? REQUEST_SCREEN[raw].path : "/app";
   const current = str(form, "draftId");
   const draftId = ID.test(current) ? current : null;
-  await run(`${base}${draftId ? `?draft=${draftId}` : ""}`, async () => {
+  const back = isRequestScreenMode(raw)
+    ? screenBase(raw, replenishOf(form, raw))
+    : `${base}?`;
+  await run(`${back}${draftId ? `draft=${draftId}` : ""}`, async () => {
     assertWellmix(user);
     const mode = screenOf(form);
-    assertScreen(user, REQUEST_SCREEN[mode].screen);
+    const replenish = replenishOf(form, mode);
+    assertDraftScreen(user, mode, replenish);
     const draft = await saveRequestDraft(user, form, draftId, mode);
-    return `${REQUEST_SCREEN[mode].path}?draft=${encodeURIComponent(draft.id)}&draftSaved=1`;
+    return `${screenBase(mode, replenish)}draft=${encodeURIComponent(draft.id)}&draftSaved=1`;
   });
 }
 
@@ -83,9 +116,10 @@ export async function deleteScreenRequestDraftAction(form: FormData) {
   await run(base, async () => {
     assertWellmix(user);
     const mode = screenOf(form);
-    assertScreen(user, REQUEST_SCREEN[mode].screen);
-    if (ID.test(id)) await deleteRequestDraft(user, id, mode);
-    return `${REQUEST_SCREEN[mode].path}?draftDeleted=1`;
+    const replenish = replenishOf(form, mode);
+    assertDraftScreen(user, mode, replenish);
+    if (ID.test(id)) await deleteRequestDraft(user, id, mode, replenish);
+    return `${screenBase(mode, replenish)}draftDeleted=1`;
   });
 }
 
@@ -113,9 +147,10 @@ export async function autosaveRequestDraftAction(input: {
     const { mode, draftId, entries } = AUTOSAVE.parse(input);
     assertWellmix(user);
     if (mode && !isRequestScreenMode(mode)) throw new ForbiddenError();
-    assertScreen(user, mode ? REQUEST_SCREEN[mode].screen : "requests");
     const form = new FormData();
     for (const [k, v] of entries) form.append(k, v);
+    if (mode) assertDraftScreen(user, mode, replenishOf(form, mode));
+    else assertScreen(user, "requests");
     const draft = await saveRequestDraft(user, form, draftId, mode);
     return { ok: true, draftId: draft.id, savedAt: draft.updatedAt };
   } catch {

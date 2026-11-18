@@ -90,6 +90,7 @@ import {
   REPLENISHMENT_VALUE,
   REQUEST_SCREEN,
   REQUEST_SCREEN_FIELD,
+  draftResumeHref,
   isReplenishmentEntry,
   type RequestScreenMode,
 } from "@/lib/request-screens";
@@ -119,7 +120,8 @@ export type NewRequestQuery = Record<string, string | string[] | undefined>;
  *   estoque nem "Adicionar produto"; os rascunhos são os da tela.
  * - "sale" com `?from=replenishment` (o "+ Adicionar" de Reposição; dono,
  *   16/11/2026): a mesma tela, que também aceita a compra para estoque (sem
- *   cliente), gravada com a origem reposição. Sem rascunho nessa entrada.
+ *   cliente), gravada com a origem reposição. O rascunho dessa entrada fica
+ *   na fila de Reposição (dono, 17/11/2026).
  *
  * Função (e não componente) para a página manter o mesmo caminho de antes:
  * os `redirect` e `notFound` saem da própria página.
@@ -213,9 +215,11 @@ export async function renderNewRequest({
     schedule?.quantity ?? (typeof quantity === "string" ? quantity : "");
   // Rascunho do vendedor (docs/ORDER_TERMS.md seção 9): o formulário volta
   // como foi salvo. Só de quem criou; nada é conferido até o envio.
+  // Também na entrada da Reposição (dono, 17/11/2026): o rascunho dela fica
+  // na fila de Reposição.
   const draft =
-    typeof draftParam === "string" && isWellmix(user) && !addTo && !replenish
-      ? await getRequestDraft(user, draftParam, mode)
+    typeof draftParam === "string" && isWellmix(user) && !addTo
+      ? await getRequestDraft(user, draftParam, mode, replenish)
       : null;
   const draftFields = draft ? draftForm(draft) : null;
   const draftValue = (key: string) => {
@@ -427,8 +431,8 @@ export async function renderNewRequest({
     : [];
   // Os rascunhos do vendedor (a lista no alto da tela).
   const drafts =
-    isWellmix(user) && !addToRequest && !replenish
-      ? await listRequestDrafts(user, mode)
+    isWellmix(user) && !addToRequest
+      ? await listRequestDrafts(user, mode, replenish)
       : [];
 
   const renderMatches = (items: typeof matched) => (
@@ -641,7 +645,7 @@ export async function renderNewRequest({
                       <Badge tone="info">{t("requestDraft.open")}</Badge>
                     ) : (
                       <LinkButton
-                        href={`${basePath}?draft=${encodeURIComponent(d.id)}`}
+                        href={draftResumeHref(d.id, d.payload)}
                         variant="secondary"
                         data-request-draft-open
                       >
@@ -656,6 +660,13 @@ export async function renderNewRequest({
                       }
                     >
                       <input type="hidden" name="draftId" value={d.id} />
+                      {replenish ? (
+                        <input
+                          type="hidden"
+                          name={REPLENISHMENT_FROM}
+                          value={REPLENISHMENT_VALUE}
+                        />
+                      ) : null}
                       {mode ? (
                         <input
                           type="hidden"
@@ -945,7 +956,7 @@ export async function renderNewRequest({
                 componente guarda o id (o do rascunho aberto ou o que ele
                 criar) para o envio apagar e o "Salvar rascunho" gravar por
                 cima. */}
-            {sellsToCustomer && !replenish ? null : draft ? (
+            {sellsToCustomer ? null : draft ? (
               <input type="hidden" name="draftId" value={draft.id} />
             ) : null}
             {addToRequest ? (
@@ -1335,7 +1346,7 @@ export async function renderNewRequest({
                 </SubmitButton>
                 {/* Rascunho (dono, 15/11/2026): grava como está, sem
                     conferir; o vendedor completa depois. */}
-                {sellsToCustomer && !replenish ? (
+                {sellsToCustomer ? (
                   <button
                     type="submit"
                     formAction={
@@ -1350,7 +1361,7 @@ export async function renderNewRequest({
                     {t("requestDraft.save")}
                   </button>
                 ) : null}
-                {sellsToCustomer && !replenish ? (
+                {sellsToCustomer ? (
                   <RequestDraftAutosave
                     formId={FORM_ID}
                     mode={mode}
