@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { canOpen } from "@/lib/auth/screens";
-import { isAdmin } from "@/lib/auth/permissions";
+import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import {
   getStore,
   LOCALES,
@@ -72,6 +72,8 @@ import { saveCustomerOperationAction } from "../../actions/vision";
 import { CertificationsSection } from "../../products/_components/certifications-section";
 import { listSupplierProducts } from "@/lib/services/product-suppliers";
 import { catalogError } from "../../products/_components/shared";
+import { receivesQuote } from "@/lib/purchase-recipients";
+import { PartnerFamiliesCard } from "../../_components/partner-families-card";
 
 /**
  * Visão de Produto (módulo operações): erros de saveCustomerOperationAction
@@ -1054,6 +1056,17 @@ export async function renderPartyRecord({
             t={t}
           />
         </Card>
+      ) : null}
+
+      {/* Famílias atendidas (Estratégia de Compra; dono, 18/11/2026): quem
+          cota os produtos de cada família. */}
+      {isWellmix(user) && receivesQuote(party.type) ? (
+        <PartnerFamiliesCard
+          partyId={party.id}
+          back={`/app/parties/${party.id}`}
+          saved={query.families === "saved"}
+          t={t}
+        />
       ) : null}
     </>
   );

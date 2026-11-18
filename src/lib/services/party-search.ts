@@ -67,7 +67,8 @@ export function formatTaxId(taxId: string | null | undefined): {
  *   dado pessoal).
  */
 export async function searchParties(input: {
-  type: PartyType;
+  /** Um tipo ou vários (ex.: os que recebem a cotação de compra). */
+  type: PartyType | readonly PartyType[];
   q: string;
   /** Ids que não entram (ex.: o "estoque" nas reservas). */
   exclude?: string[];
@@ -81,7 +82,7 @@ export async function searchParties(input: {
   const exclude = new Set(input.exclude ?? []);
   const store = getStore();
   const filter = {
-    type: input.type,
+    type: typeof input.type === "string" ? input.type : [...input.type],
     ...(input.activeOnly ? { active: true } : {}),
   };
   const limit = PARTY_SEARCH_LIMIT + exclude.size;

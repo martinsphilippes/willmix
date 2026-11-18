@@ -1,11 +1,16 @@
 "use server";
 
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { assertScreen } from "@/lib/auth/screens";
 import { canSeePurchasePrice } from "@/lib/auth/function-access";
 import { parseNumberInput } from "@/lib/number-input";
 import { getStore } from "@/lib/db";
-import { field, requireUser, run, str } from "./helpers";
+import { STRATEGY_LINE_CHOICES } from "@/lib/purchase-recipients";
+import { getT } from "@/i18n/server";
+import { errorTextFor } from "@/i18n/error-text";
+import { errorCode, field, requireUser, run, str } from "./helpers";
 
 /*
  * Compra por demanda (mapa B10 e B14; docs/PURCHASE_DEMAND.md). Aqui só o
@@ -50,7 +55,7 @@ const CHOICE = z.enum(["last_supplier", "quote"]);
 export async function chooseStrategyAction(form: FormData) {
   const user = await requireUser();
   await run("/app/purchase-strategy", async () => {
-    assertScreen(user, "quotes");
+    assertScreen(user, "purchaseStrategy");
     const demandIds = z
       .array(ID)
       .min(1)
@@ -68,7 +73,7 @@ export async function chooseStrategyAction(form: FormData) {
 export async function decideStrategyAction(form: FormData) {
   const user = await requireUser();
   await run("/app/purchase-strategy", async () => {
-    assertScreen(user, "quotes");
+    assertScreen(user, "purchaseStrategy");
     const id = ID.parse(str(form, "id"));
     const approve = z.enum(["approve", "reject"]).parse(str(form, "decision"));
     const note = field(form, "note", z.string().trim().max(2000)) || null;
@@ -88,7 +93,7 @@ export async function decideStrategyAction(form: FormData) {
 export async function orderFromStrategyAction(form: FormData) {
   const user = await requireUser();
   await run("/app/purchase-strategy", async () => {
-    assertScreen(user, "quotes");
+    assertScreen(user, "purchaseStrategy");
     assertScreen(user, "orders");
     const id = ID.parse(str(form, "id"));
     const quantity = z
@@ -267,5 +272,143 @@ export async function setSupplierLinesAction(form: FormData) {
     const { setSupplierLines } = await import("@/lib/services/purchase-quote");
     await setSupplierLines(user, ID.parse(supplierId), lineIds);
     return `${back}&lines=saved`;
+  });
+}
+
+/* Estratégia de Compra por produto (dono, 18/11/2026; docs/PURCHASE_DEMAND.md). */
+
+const FAMILY_KEY = z.string().regex(/^(fm|ln):[A-Za-z0-9_-]{1,80}$/);
+
+/** Volta do quadro "Famílias atendidas": o cadastro de onde veio. */
+const familyBack = (back: string, partyId: string) =>
+  /^\/app\/(parties|suppliers)\/[A-Za-z0-9][A-Za-z0-9_.-]{0,63}(\?tab=info)?$/.test(
+    back,
+  )
+    ? back
+    : `/app/parties/${partyId}`;
+
+/** Famílias de produto que o parceiro atende (cadastro → "Famílias atendidas"). */
+export async function setPartnerFamiliesAction(form: FormData) {
+  const user = await requireUser();
+  const partyId = str(form, "partyId");
+  const back = ID.safeParse(partyId).success
+    ? familyBack(str(form, "back"), partyId)
+    : "/app/parties";
+  const join = back.includes("?") ? "&" : "?";
+  await run(back, async () => {
+    assertScreen(user, "parties");
+    const keys = z
+      .array(FAMILY_KEY)
+      .max(500)
+      .parse(form.getAll("familyKey").map(String));
+    const { setPartnerFamilies } =
+      await import("@/lib/services/partner-families");
+    await setPartnerFamilies(user, ID.parse(partyId), keys);
+    return `${back}${join}families=saved#partner-families`;
+  });
+}
+
+/**
+ * Encomendas → "Enviar para cotação" (dono, 18/11/2026): as encomendas
+ * marcadas (produtos soltos ou o lote) entram na Estratégia de Compra.
+ */
+export async function sendToStrategyAction(form: FormData) {
+  const user = await requireUser();
+  const group = str(form, "groupId");
+  const back = ID.safeParse(group).success
+    ? `/app/requests/batch/${encodeURIComponent(group)}`
+    : "/app/requests";
+  await run(back, async () => {
+    assertScreen(user, "requests");
+    const ids = z
+      .array(ID)
+      .min(1)
+      .max(500)
+      .parse(form.getAll("ids").map(String));
+    const { sendToStrategy } = await import("@/lib/services/purchase-strategy");
+    const { sent, skipped } = await sendToStrategy(user, ids);
+    if (!sent.length) throw new Error("nothing_sent");
+    return `${back}?strategySent=${sent.length}${skipped ? `&strategySkipped=${skipped}` : ""}`;
+  });
+}
+
+/** Resposta da confirmação do envio (a tela guarda as escolhas se der erro). */
+export interface StrategySendState {
+  ok: boolean;
+  error: string | null;
+  message: string | null;
+  at: string | null;
+}
+
+const STRATEGY_PAYLOAD = z.object({
+  lines: z
+    .array(
+      z.object({
+        demandId: ID,
+        choice: z.enum(STRATEGY_LINE_CHOICES),
+        recipientIds: z.array(ID).max(30),
+      }),
+    )
+    .min(1)
+    .max(200),
+  note: z.string().trim().max(2000).nullable(),
+});
+
+/**
+ * Estratégia de Compra → resumo → "Confirmar o envio": por produto, a
+ * escolha e os destinatários. Deu certo: o resultado por destinatário.
+ */
+export async function sendStrategyAction(
+  _prev: StrategySendState,
+  form: FormData,
+): Promise<StrategySendState> {
+  const user = await requireUser();
+  let target: string;
+  try {
+    assertScreen(user, "purchaseStrategy");
+    const raw = form.get("payload");
+    const payload = STRATEGY_PAYLOAD.parse(
+      JSON.parse(typeof raw === "string" && raw ? raw : "{}"),
+    );
+    const { sendStrategy } = await import("@/lib/services/purchase-strategy");
+    const send = await sendStrategy(
+      user,
+      { lines: payload.lines, note: payload.note || null },
+      await getT(),
+    );
+    target = `/app/purchase-strategy/sends/${send.id}?done=1`;
+  } catch (error) {
+    const code =
+      error instanceof SyntaxError
+        ? "invalid_input"
+        : errorCode("/app/purchase-strategy", error);
+    return {
+      ok: false,
+      error: code,
+      message: errorTextFor(await getT(), code, ["strategy.error"]),
+      at: new Date().toISOString(),
+    };
+  }
+  revalidatePath("/app", "layout");
+  redirect(target);
+}
+
+/** Resultado do envio → "Tentar de novo": só quem ficou de fora ou deu erro. */
+export async function retryStrategySendAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "sendId");
+  const back = ID.safeParse(id).success
+    ? `/app/purchase-strategy/sends/${id}`
+    : "/app/purchase-strategy";
+  await run(back, async () => {
+    assertScreen(user, "purchaseStrategy");
+    const { retryStrategySend } =
+      await import("@/lib/services/purchase-strategy");
+    const { sentNow } = await retryStrategySend(
+      user,
+      ID.parse(id),
+      await getT(),
+    );
+    return `${back}?retried=${sentNow}`;
   });
 }

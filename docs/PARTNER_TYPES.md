@@ -56,6 +56,7 @@ O seletor **DEMO** do cabeçalho não é simulação: faz um **login de verdade*
 ## O que ficou para as próximas etapas
 
 - **Vínculo com a operação**: como Trading, Factory, Supplier e GP são ligados a um pedido (hoje nenhum fluxo os escolhe; as telas deles abrem vazias).
+  - **Cotação de compra** (dono, 18/11/2026; docs/PURCHASE_DEMAND.md, "Estratégia de Compra por produto"): Trading, Supplier e Factory (não o GP) passam a **receber e responder** a cotação de compra pela Estratégia de Compra, com as "Famílias atendidas" no cadastro. **Ainda não vencem**: o pedido de compra, a assinatura, os termos e a fatura só aceitam o Fornecedor; a decisão de como eles viram pedido continua pendente.
 - **Acesso** (docs/PARTNER_ACCESS.md, "Ainda não"): ações por tela, escopo por registro, campos protegidos, exceções por empresa e por usuário, herança, vigência, vínculo de um login com mais de uma empresa, delegação, simulação.
 - **Acordos comerciais e comissões**: não construído. Levantamento do que existe para base e gatilho:
   - Valores do pedido: custo (`fobTotal`) e venda (`sellPrice`), com moeda e câmbio; item com quantidade e preço unitário. A linha de produto está no pedido; por item, só pelo produto.

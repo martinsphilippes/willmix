@@ -75,6 +75,11 @@ interface OriginIndex {
   faces: Map<string, ProductFace>;
   /** chave do nível → nome */
   levelNames: Map<string, string>;
+  /**
+   * família → quem já forneceu produtos dela (o fornecedor do cadastro ou o
+   * do Sankhya de cada produto; Estratégia de Compra, dono, 18/11/2026)
+   */
+  familySuppliers: Map<string, Map<string, number>>;
 }
 
 const TTL_MS = 10 * 60 * 1000;
@@ -169,6 +174,11 @@ async function buildIndex(): Promise<OriginIndex> {
   const supplierCountry = new Map<string, string>();
   const bySankhya = new Map<string, string>();
   const countryNames = new Map<string, string>();
+  // Parceiro de cada código do Sankhya (quem forneceu o produto, para a
+  // Estratégia de Compra), com ou sem país.
+  const partyBySankhya = new Map<string, string>();
+  for (const s of suppliers)
+    if (s.sankhyaCode) partyBySankhya.set(String(s.sankhyaCode), s.id);
   for (const s of suppliers) {
     const key = countryKey(s.country);
     if (!key) continue;
@@ -177,6 +187,7 @@ async function buildIndex(): Promise<OriginIndex> {
     if (s.sankhyaCode) bySankhya.set(String(s.sankhyaCode), key);
   }
   const byProduct = new Map<string, ProductOrigin>();
+  const familySuppliers = new Map<string, Map<string, number>>();
   // Sem fornecedor no portal: o fornecedor do produto no Sankhya
   // (TGFPRO.CODPARCFORN), lido pela API enquanto a carga não grava no banco
   // (dono, 15/11/2026). Sem o Sankhya, esses produtos ficam sem país.
@@ -209,6 +220,8 @@ async function buildIndex(): Promise<OriginIndex> {
       },
     );
     for (const o of others) {
+      if (o.sankhyaCode && !partyBySankhya.has(String(o.sankhyaCode)))
+        partyBySankhya.set(String(o.sankhyaCode), o.id);
       const key = countryKey(o.country);
       if (!key || !o.sankhyaCode) continue;
       if (!countryNames.has(key)) countryNames.set(key, countryName(o.country));
@@ -224,7 +237,16 @@ async function buildIndex(): Promise<OriginIndex> {
       (p.supplierId ? supplierCountry.get(p.supplierId) : undefined) ??
       (forn != null ? bySankhya.get(String(forn)) : undefined) ??
       "";
-    byProduct.set(p.id, { country, lineId: p.lineId, family: familyOf(p) });
+    const family = familyOf(p);
+    byProduct.set(p.id, { country, lineId: p.lineId, family });
+    const supplierId =
+      p.supplierId ??
+      (forn != null ? partyBySankhya.get(String(forn)) : undefined);
+    if (supplierId) {
+      const counts = familySuppliers.get(family) ?? new Map<string, number>();
+      counts.set(supplierId, (counts.get(supplierId) ?? 0) + 1);
+      familySuppliers.set(family, counts);
+    }
   }
   // Grupo, Sub grupo e Coleção do grupo de cada produto (seletor de
   // produtos; docs/ORDER_TERMS.md 11.5): sobe na árvore do grupo do produto
@@ -275,6 +297,7 @@ async function buildIndex(): Promise<OriginIndex> {
     byCode,
     faces,
     levelNames,
+    familySuppliers,
   };
 }
 
@@ -525,4 +548,60 @@ export async function browseOrigin(input: {
     pages,
     family: { products: inFamily.length, seen: seenIds.size },
   };
+}
+
+/* ------------------------------------------------------------------------ */
+/* Famílias para a Estratégia de Compra (dono, 18/11/2026)                  */
+/* ------------------------------------------------------------------------ */
+
+export interface FamilyEntry {
+  key: string;
+  name: string;
+  /** Produtos do catálogo na família. */
+  products: number;
+}
+
+/**
+ * As famílias do catálogo, pelo nome (cadastro do parceiro → "Famílias
+ * atendidas"). Família sem nome (linha sem árvore) fica de fora.
+ */
+export async function familyCatalog(): Promise<FamilyEntry[]> {
+  const index = await originIndex();
+  const counts = new Map<string, number>();
+  for (const o of index.byProduct.values())
+    counts.set(o.family, (counts.get(o.family) ?? 0) + 1);
+  return [...index.families.entries()]
+    .filter(([, f]) => f.name.trim())
+    .map(([key, f]) => ({ key, name: f.name, products: counts.get(key) ?? 0 }))
+    .sort((a, b) => a.name.localeCompare(b.name, "pt"));
+}
+
+/** A família (chave e nome) de cada produto; fora do catálogo, pela linha. */
+export async function familiesOfProducts(
+  productIds: readonly string[],
+): Promise<Map<string, { key: string; name: string }>> {
+  const index = await originIndex();
+  const out = new Map<string, { key: string; name: string }>();
+  for (const id of new Set(productIds)) {
+    const origin = await productOrigin(id);
+    if (!origin) continue;
+    const name =
+      index.families.get(origin.family)?.name ||
+      index.lineFamily.get(origin.lineId)?.name ||
+      "";
+    out.set(id, { key: origin.family, name });
+  }
+  return out;
+}
+
+/**
+ * Quem já forneceu produtos da família: o fornecedor do cadastro (ou o do
+ * Sankhya) de cada produto, quem tem mais produtos na família primeiro. A
+ * Estratégia de Compra sugere estes parceiros (marcados "sem vínculo").
+ */
+export async function familySupplierIds(key: string): Promise<string[]> {
+  const index = await originIndex();
+  return [...(index.familySuppliers.get(key) ?? new Map<string, number>())]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([id]) => id);
 }

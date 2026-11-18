@@ -1370,6 +1370,21 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "strategySentAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "strategySentByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -11069,6 +11084,18 @@
           "orders": [
             "ASC"
           ]
+        },
+        {
+          "key": "quote_supplier_unique",
+          "type": "unique",
+          "columns": [
+            "quoteId",
+            "supplierId"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
         }
       ]
     },
@@ -11182,7 +11209,8 @@
           "format": "enum",
           "elements": [
             "last_supplier",
-            "quote"
+            "quote",
+            "quote_last"
           ]
         },
         {
@@ -11265,6 +11293,21 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "recipientIds",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "sendId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -11285,6 +11328,162 @@
             "productId"
           ],
           "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "purchase_strategy_sends",
+      "databaseId": "willmix",
+      "name": "Envios da Estratégia de Compra (resultado por destinatário)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "number",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "ok",
+            "failures"
+          ]
+        },
+        {
+          "key": "lines",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "longtext"
+        },
+        {
+          "key": "createdByUserId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "lastRunAt",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "runs",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_status",
+          "type": "key",
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_creator",
+          "type": "key",
+          "columns": [
+            "createdByUserId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "partner_families",
+      "databaseId": "willmix",
+      "name": "Famílias de produto atendidas por parceiro (cotação de compra)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "partyId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "familyKey",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "familyName",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 200
+        },
+        {
+          "key": "createdByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_party",
+          "type": "key",
+          "columns": [
+            "partyId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_family",
+          "type": "key",
+          "columns": [
+            "familyKey"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "party_family_unique",
+          "type": "unique",
+          "columns": [
+            "partyId",
+            "familyKey"
+          ],
+          "orders": [
+            "ASC",
             "ASC"
           ]
         }

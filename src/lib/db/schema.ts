@@ -1068,6 +1068,13 @@ export interface Request extends BaseRow {
   /** Estratégia de compra em que a demanda está (docs/PURCHASE_DEMAND.md). */
   purchaseDecisionId?: string | null;
   /**
+   * Encomenda enviada para a cotação (Encomendas → "Enviar para cotação";
+   * dono, 18/11/2026): só então entra na Estratégia de Compra. A reposição
+   * entra sozinha. Nulo = ainda não enviada.
+   */
+  strategySentAt?: string | null;
+  strategySentByUserId?: string | null;
+  /**
    * Condições do pedido escolhidas na Nova solicitação (docs/ORDER_TERMS.md):
    * tipo de operação, formato de venda, entrega, país e grupo. As mesmas em
    * todo o lote. Nulo nas antigas, na compra para estoque e na do cliente.
@@ -3079,7 +3086,18 @@ export interface SupplierRequestEvent {
  * mesmo produto ou da mesma linha, entre o fornecedor da última compra e a
  * cotação entre fornecedores; a Diretoria de compras aprova.
  */
-export const PURCHASE_DECISION_CHOICES = ["last_supplier", "quote"] as const;
+/*
+ * Estratégia de Compra por produto (dono, 18/11/2026; docs/PURCHASE_DEMAND.md,
+ * "Estratégia de Compra por produto"): "quote_last" cota só com o fornecedor
+ * da última compra; "quote" cota com os parceiros escolhidos (nas antigas,
+ * os fornecedores da linha); "last_supplier" é o pedido direto, sem cotação,
+ * com a aprovação da Diretoria de compras.
+ */
+export const PURCHASE_DECISION_CHOICES = [
+  "last_supplier",
+  "quote",
+  "quote_last",
+] as const;
 export type PurchaseDecisionChoice = (typeof PURCHASE_DECISION_CHOICES)[number];
 export const PURCHASE_DECISION_STATUSES = [
   "pending",
@@ -3127,6 +3145,13 @@ export interface PurchaseDecision extends BaseRow {
   orderId: string | null;
   /** Cotação de compra aberta (cotar entre fornecedores; docs/PURCHASE_DEMAND.md). */
   quoteId: string | null;
+  /**
+   * Parceiros escolhidos na Estratégia de Compra (dono, 18/11/2026): quem
+   * recebe a cotação. Nulo nas antigas (os fornecedores da linha, sozinho).
+   */
+  recipientIds?: string[] | null;
+  /** Envio da Estratégia de Compra em que a decisão nasceu (nulo nas antigas). */
+  sendId?: string | null;
 }
 
 /*
@@ -3156,6 +3181,14 @@ export interface PurchaseQuoteItem {
   name: string;
   quantity: number;
   unit: string;
+  /*
+   * O que o parceiro vê para cotar (dono, 18/11/2026): a especificação, a
+   * programação de entrega e a data desejada da demanda, nunca o cliente.
+   * Nulos nas cotações antigas.
+   */
+  specification?: string | null;
+  schedule?: RequestSchedule | null;
+  desiredAt?: string | null;
 }
 
 export interface PurchaseQuote extends BaseRow {
@@ -3211,6 +3244,74 @@ export interface SupplierLine extends BaseRow {
   supplierId: string;
   lineId: string;
   createdByUserId: string | null;
+}
+
+/**
+ * Parceiro × família de produto (cadastro → "Famílias atendidas"; dono,
+ * 18/11/2026): Fornecedor, Trading, Supplier e Factory que podem receber a
+ * cotação dos produtos da família na Estratégia de Compra.
+ */
+export interface PartnerFamily extends BaseRow {
+  partyId: string;
+  /** Chave da família ("fm:<NOME>"; familyKey em services/product-origin.ts). */
+  familyKey: string;
+  /** Nome da família quando foi marcada (a lista do Sankhya pode mudar). */
+  familyName: string;
+  createdByUserId: string | null;
+}
+
+/*
+ * Envio da Estratégia de Compra (dono, 18/11/2026; docs/PURCHASE_DEMAND.md):
+ * cada confirmação grava, por produto, a escolha, os destinatários e o que
+ * aconteceu com cada um. "Tentar de novo" refaz só quem ficou de fora, sem
+ * convidar duas vezes quem já recebeu.
+ */
+export const STRATEGY_SEND_STATUSES = ["ok", "failures"] as const;
+export type StrategySendStatus = (typeof STRATEGY_SEND_STATUSES)[number];
+/** Por destinatário: recebeu, já tinha recebido, ficou de fora (pendência) ou deu erro. */
+export const STRATEGY_RECIPIENT_STATUSES = [
+  "sent",
+  "already",
+  "blocked",
+  "failed",
+] as const;
+export type StrategyRecipientStatus =
+  (typeof STRATEGY_RECIPIENT_STATUSES)[number];
+
+export interface StrategySendRecipient {
+  partyId: string;
+  status: StrategyRecipientStatus;
+  /** Pendências que impedem receber ou responder (códigos, ex.: "no_login"). */
+  reasons: string[];
+  /** Mensagem do erro (situação "failed"). */
+  error: string | null;
+  /** Logins avisados no portal. */
+  logins: number;
+  at: string;
+}
+
+export interface StrategySendLine {
+  /** A demanda (encomenda ou reposição): um produto. */
+  demandId: string;
+  productId: string;
+  choice: PurchaseDecisionChoice;
+  /** Parceiros escolhidos (vazio no pedido direto). */
+  recipientIds: string[];
+  decisionId: string | null;
+  quoteId: string | null;
+  /** Erro da linha antes de convidar (ex.: a demanda já foi para outra estratégia). */
+  error: string | null;
+  recipients: StrategySendRecipient[];
+}
+
+export interface PurchaseStrategySend extends BaseRow {
+  number: number;
+  status: StrategySendStatus;
+  lines: StrategySendLine[];
+  createdByUserId: string;
+  /** Última tentativa: o envio ou o "Tentar de novo". */
+  lastRunAt: string;
+  runs: number;
 }
 
 export interface BookingInvite extends BaseRow {
@@ -3844,6 +3945,8 @@ export interface Tables {
   supplier_requests: SupplierRequest;
   booking_invites: BookingInvite;
   purchase_decisions: PurchaseDecision;
+  purchase_strategy_sends: PurchaseStrategySend;
+  partner_families: PartnerFamily;
   purchase_quotes: PurchaseQuote;
   purchase_quote_responses: PurchaseQuoteResponse;
   supplier_lines: SupplierLine;
@@ -4129,6 +4232,9 @@ export const TABLES: Record<TableName, TableDef> = {
       desiredAt: datetime(),
       purchaseDecisionId: id(false),
       orderTerms: json(),
+      // Enviada para a cotação (Encomendas; dono, 18/11/2026).
+      strategySentAt: datetime(),
+      strategySentByUserId: id(false),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
@@ -5671,6 +5777,13 @@ export const TABLES: Record<TableName, TableDef> = {
     indexes: [
       { key: "by_quote", type: "key", columns: ["quoteId"] },
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
+      // Um convite por parceiro em cada cotação (o "Tentar de novo" da
+      // Estratégia de Compra e o clique duplo não duplicam; 18/11/2026).
+      {
+        key: "quote_supplier_unique",
+        type: "unique",
+        columns: ["quoteId", "supplierId"],
+      },
     ],
   },
   supplier_lines: {
@@ -5704,10 +5817,46 @@ export const TABLES: Record<TableName, TableDef> = {
       approvalNote: text(),
       orderId: id(false),
       quoteId: id(false),
+      // Estratégia de Compra por produto (dono, 18/11/2026).
+      recipientIds: json(),
+      sendId: id(false),
     },
     indexes: [
       { key: "by_status", type: "key", columns: ["status"] },
       { key: "by_product", type: "key", columns: ["productId"] },
+    ],
+  },
+  purchase_strategy_sends: {
+    label: "Envios da Estratégia de Compra (resultado por destinatário)",
+    columns: {
+      number: int(true),
+      status: enumOf(STRATEGY_SEND_STATUSES),
+      lines: jsonLarge(),
+      createdByUserId: id(),
+      lastRunAt: datetime(true),
+      runs: int(true),
+    },
+    indexes: [
+      { key: "by_status", type: "key", columns: ["status"] },
+      { key: "by_creator", type: "key", columns: ["createdByUserId"] },
+    ],
+  },
+  partner_families: {
+    label: "Famílias de produto atendidas por parceiro (cotação de compra)",
+    columns: {
+      partyId: id(),
+      familyKey: str(80, true),
+      familyName: str(200, true),
+      createdByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_party", type: "key", columns: ["partyId"] },
+      { key: "by_family", type: "key", columns: ["familyKey"] },
+      {
+        key: "party_family_unique",
+        type: "unique",
+        columns: ["partyId", "familyKey"],
+      },
     ],
   },
   booking_invites: {

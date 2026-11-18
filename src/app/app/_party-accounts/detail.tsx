@@ -35,6 +35,7 @@ import { describeTerms } from "@/components/supplier-terms-text";
 import { parseTerms } from "@/lib/supplier-terms";
 import { supplierLineIds } from "@/lib/services/purchase-quote";
 import { setSupplierLinesAction } from "../actions/purchase-demand";
+import { PartnerFamiliesCard } from "../_components/partner-families-card";
 import { accountBase, accountLabels } from "./labels";
 import { STOCK_OPTION } from "@/lib/services/stock-party";
 import { ChatOpenButton } from "@/components/chat-open-button";
@@ -692,6 +693,15 @@ export async function PartyAccountDetail({
           supplierId={party.id}
           t={t}
           saved={param(sp.lines) === "saved"}
+        />
+      ) : null}
+      {/* Famílias atendidas (Estratégia de Compra; dono, 18/11/2026). */}
+      {supplier && tab === "info" && isWellmix(user) ? (
+        <PartnerFamiliesCard
+          partyId={party.id}
+          back={`/app/suppliers/${party.id}?tab=info`}
+          saved={param(sp.families) === "saved"}
+          t={t}
         />
       ) : null}
     </>

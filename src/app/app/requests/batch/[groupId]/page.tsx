@@ -29,6 +29,9 @@ import {
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { SubmitButton } from "@/components/submit-button";
 import { deleteRequestsAction } from "../../../actions/requests";
+import { sendToStrategyAction } from "../../../actions/purchase-demand";
+import { awaitingStrategySend } from "@/lib/services/purchase-strategy";
+import { canOpen } from "@/lib/auth/screens";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 
 /*
@@ -42,8 +45,17 @@ export default async function RequestBatchPage({
   searchParams,
 }: PageProps<"/app/requests/batch/[groupId]">) {
   const { groupId } = await params;
-  const { created, deleted, skipped, error, fromCart, added, sale } =
-    await searchParams;
+  const {
+    created,
+    deleted,
+    skipped,
+    error,
+    fromCart,
+    added,
+    sale,
+    strategySent,
+    strategySkipped,
+  } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "requests");
@@ -70,6 +82,11 @@ export default async function RequestBatchPage({
       : Promise.resolve(null),
   ]);
   const deletable = rows.filter((r) => canDeleteRequest(user, r));
+  // Enviar para cotação (dono, 18/11/2026): os produtos Solicitado ainda não
+  // enviados entram na Estratégia de Compra, um a um ou todos.
+  const sendable = isWellmix(user)
+    ? rows.filter((r) => awaitingStrategySend(r))
+    : [];
   const number = rows.find((r) => r.number)?.number ?? null;
 
   const count = (v: string | string[] | undefined) =>
@@ -137,6 +154,42 @@ export default async function RequestBatchPage({
               : ""}
           </Alert>
         </div>
+      ) : null}
+      {count(strategySent) > 0 ? (
+        <div
+          className="mb-3"
+          role="status"
+          data-strategy-sent={count(strategySent)}
+        >
+          <Alert tone="success">
+            {t("reqSend.done", { n: count(strategySent) })}
+            {count(strategySkipped) > 0
+              ? ` ${t("reqSend.skipped", { n: count(strategySkipped) })}`
+              : ""}{" "}
+            {canOpen(user, "purchaseStrategy") ? (
+              <TextLink href="/app/purchase-strategy">
+                {t("reqSend.open")}
+              </TextLink>
+            ) : null}
+          </Alert>
+        </div>
+      ) : null}
+      {sendable.length > 1 ? (
+        <form action={sendToStrategyAction} className="mb-3">
+          {sendable.map((r) => (
+            <input key={r.id} type="hidden" name="ids" value={r.id} />
+          ))}
+          <input type="hidden" name="groupId" value={groupId} />
+          <SubmitButton
+            confirmText={t("reqSend.confirm").replace(
+              "{n}",
+              String(sendable.length),
+            )}
+            data-batch-send-all
+          >
+            {t("reqSend.all", { n: sendable.length })}
+          </SubmitButton>
+        </form>
       ) : null}
       {count(added) > 0 ? (
         <div className="mb-3" data-batch-added>
@@ -209,6 +262,27 @@ export default async function RequestBatchPage({
                     <TextLink href={`/app/requests/${r.id}`}>
                       {t("tasks.open")}
                     </TextLink>
+                    {sendable.includes(r) ? (
+                      <form action={sendToStrategyAction}>
+                        <input type="hidden" name="ids" value={r.id} />
+                        <input type="hidden" name="groupId" value={groupId} />
+                        <SubmitButton
+                          variant="secondary"
+                          data-batch-send={r.id}
+                        >
+                          {t("reqSend.button")}
+                        </SubmitButton>
+                      </form>
+                    ) : r.strategySentAt && isWellmix(user) ? (
+                      <span
+                        className="text-xs text-zinc-500"
+                        data-batch-sent={r.id}
+                      >
+                        {t("reqSend.sentAt", {
+                          date: formatDate(r.strategySentAt, t),
+                        })}
+                      </span>
+                    ) : null}
                     {canDeleteRequest(user, r) ? (
                       <form action={deleteRequestsAction}>
                         <input type="hidden" name="ids" value={r.id} />

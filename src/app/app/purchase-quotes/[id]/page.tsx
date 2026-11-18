@@ -29,6 +29,7 @@ import {
   Td,
   Textarea,
   Th,
+  formatDate,
   linkClass,
   rowClass,
 } from "@/components/ui";
@@ -43,6 +44,9 @@ import {
   quoteNoAnswerAction,
 } from "../../actions/purchase-demand";
 import { QuoteDeadline } from "../_time";
+import { canWinQuote } from "@/lib/purchase-recipients";
+import { partyTypeLabel } from "@/lib/partner-types";
+import { getPartnerTypeCatalog } from "@/lib/services/partner-types";
 
 /*
  * Uma cotação de compra (mapa B13; docs/PURCHASE_DEMAND.md).
@@ -118,7 +122,43 @@ export default async function PurchaseQuotePage({
                 <tbody>
                   {quote.items.map((item) => (
                     <tr key={item.productId} className={rowClass}>
-                      <Td>{productNameText(t, item.name)}</Td>
+                      <Td>
+                        {productNameText(t, item.name)}
+                        {/* O que o parceiro precisa para cotar (dono,
+                            18/11/2026): especificação, programação e data
+                            desejada; nunca o cliente. */}
+                        {item.specification ? (
+                          <span
+                            className="block whitespace-pre-line text-xs text-zinc-600"
+                            data-quote-item-spec
+                          >
+                            {t("quote.item.spec")}: {item.specification}
+                          </span>
+                        ) : null}
+                        {item.schedule?.items?.length ? (
+                          <span
+                            className="block text-xs text-zinc-600"
+                            data-quote-item-schedule
+                          >
+                            {t("quote.item.schedule")}:{" "}
+                            {item.schedule.items
+                              .map((i) =>
+                                t("strategy.line.scheduleItem", {
+                                  index: i.index,
+                                  quantity: i.quantity.toLocaleString(t.intl),
+                                  date: formatDate(i.expectedAt, t),
+                                }),
+                              )
+                              .join(" · ")}
+                          </span>
+                        ) : null}
+                        {item.desiredAt ? (
+                          <span className="block text-xs text-zinc-600">
+                            {t("quote.item.desiredAt")}:{" "}
+                            {formatDate(item.desiredAt, t)}
+                          </span>
+                        ) : null}
+                      </Td>
                       <Td className="tabular-nums">
                         {item.quantity.toLocaleString(t.intl)} {item.unit}
                       </Td>
@@ -245,6 +285,7 @@ export default async function PurchaseQuotePage({
   ]);
   const supplierName = (sid: string) =>
     suppliers.find((p) => p.id === sid)?.name ?? sid;
+  const typeCatalog = await getPartnerTypeCatalog();
   const closed = quoteClosed(responses, now);
   const empty = quoteEmpty(responses, now);
   const canChoose = can(user, "purchaseQuote.choose");
@@ -400,18 +441,38 @@ export default async function PurchaseQuotePage({
             <input type="hidden" name="quoteId" value={quote.id} />
             {responses
               .filter((r) => r.status === "answered")
-              .map((r) => (
-                <label key={r.id} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="responseId"
-                    value={r.id}
-                    required
-                    data-quote-winner-option={r.supplierId}
-                  />
-                  {supplierName(r.supplierId)}
-                </label>
-              ))}
+              .map((r) => {
+                // Trading, Supplier e Factory cotam, mas ainda não vencem: o
+                // pedido de compra só aceita o Fornecedor (dono, 18/11/2026).
+                const party = suppliers.find((p) => p.id === r.supplierId);
+                const wins = canWinQuote(party?.type);
+                return (
+                  <label
+                    key={r.id}
+                    className={`flex flex-wrap items-center gap-2 text-sm ${wins ? "" : "text-zinc-400"}`}
+                  >
+                    <input
+                      type="radio"
+                      name="responseId"
+                      value={r.id}
+                      required
+                      disabled={!wins}
+                      data-quote-winner-option={r.supplierId}
+                    />
+                    {supplierName(r.supplierId)}
+                    {!wins && party ? (
+                      <span
+                        className="basis-full pl-6 text-xs text-amber-800"
+                        data-quote-winner-blocked={r.supplierId}
+                      >
+                        {t("quote.winner.notSupplier", {
+                          type: partyTypeLabel(party, typeCatalog, t),
+                        })}
+                      </span>
+                    ) : null}
+                  </label>
+                );
+              })}
             <Field label={t("demand.notes")}>
               <Textarea name="note" rows={2} />
             </Field>
@@ -502,7 +563,7 @@ export default async function PurchaseQuotePage({
               <input type="hidden" name="what" value="invite" />
               <PartyPicker
                 name="supplierId"
-                type="supplier"
+                type="quote"
                 required
                 activeOnly
                 labels={partyPickerLabels(t)}

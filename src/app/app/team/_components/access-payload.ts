@@ -46,6 +46,7 @@ import type {
 const SCREEN_NOTE: Partial<Record<Screen, DictionaryKey>> = {
   booking: "perm.note.booking",
   quotes: "perm.note.quotes",
+  purchaseStrategy: "perm.note.purchaseStrategy",
   products: "perm.note.products",
   finance: "perm.note.finance",
 };

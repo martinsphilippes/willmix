@@ -35,7 +35,8 @@ export function PartyPicker({
   onDeselect,
 }: {
   name?: string;
-  type: "customer" | "supplier";
+  /** "quote": Fornecedor, Trading, Supplier e Factory (cotação de compra). */
+  type: "customer" | "supplier" | "quote";
   initial?: SearchOption | null;
   required?: boolean;
   disabled?: boolean;

@@ -16,6 +16,7 @@ import { isOrderDocumentKey } from "@/lib/workflow/templates";
 import { dieCutHref } from "@/lib/die-cut-step";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { itemsInStep, stepId, type FlowStep } from "@/lib/flow";
+import { taskTextValues } from "@/lib/task-text";
 import { RequirementForm } from "./requirement-form";
 import { ProductionCard } from "./production-card";
 import { ReceivingCard } from "./receiving-card";
@@ -546,7 +547,9 @@ export async function FlowSalesWork({
                 data-flow-sales-case={c.orderId ?? c.productId ?? ""}
               >
                 <div className="text-sm font-medium text-zinc-900">
-                  {c.text ? t(c.text.title, c.text.values) : c.title}
+                  {c.text
+                    ? t(c.text.title, taskTextValues(t, c.text))
+                    : c.title}
                 </div>
                 <form
                   action={recordSalesOfferAction}
