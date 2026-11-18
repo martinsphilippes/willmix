@@ -1849,3 +1849,15 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Como ficou**: a importação guarda quem vem com nome e sem e-mail em "Aguardando e-mail" (cargo, área, funções, nível e o "a conferir" sugeridos); na Equipe Interna, o atalho "N aguardando e-mail" abre o painel com "E-mail ou nome de usuário", "Senha provisória" e "Criar login", e "Tirar da lista" (docs/ACCESS.md, "Importar equipe").
 - **Aditivo:** tabela nova `team_pending`; nada muda nos logins existentes nem nas telas de antes (o painel novo entra na lista de painéis da Equipe Interna).
 - Testes: `tests/unit/team-import.test.ts` e `tests/e2e/team-pending.spec.ts`.
+
+## Grupo de produto (família) no cadastro do parceiro (18/11/2026)
+
+- **Pedido do dono** (18/11/2026; docs/PARTNER_FAMILIES.md, decisões 1 a 3): a seção "Linhas atendidas" do Fornecedor dá lugar a "Grupo de produto (família)". A seção também aparece na Trading, no Supplier e na Factory. As famílias marcadas convidam o parceiro para a cotação de compra das linhas delas, e a vencedora de qualquer um dos quatro tipos vira o fornecedor da solicitação.
+- **Aditivo:**
+  - tabelas novas `product_families` (o 1º nível da árvore de grupos do Sankhya, pelo código) e `party_families`;
+  - colunas novas `product_lines.familyCode` e `supplier_lines.familyConvertedAt`;
+  - os vínculos antigos viram famílias uma vez só e ficam no banco, junto com a ação e o serviço antigos;
+  - o fornecedor principal e os fornecedores dos produtos continuam na cotação;
+  - nada é apagado.
+- **Muda:** o que a tela mostra: a seção antiga sai da ficha do Fornecedor, a pedido do dono.
+- Testes: `tests/unit/party-families.test.ts`, `tests/e2e/party-families.spec.ts` e `tests/e2e/purchase-quote.spec.ts`.
