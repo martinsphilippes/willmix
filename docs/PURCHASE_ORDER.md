@@ -12,7 +12,7 @@ A solicitação do cliente (vitrine, tabela `requests`) e a reposição pedida p
 
 ## 1. Gerar o pedido
 
-- **Onde:** em Solicitações ao fornecedor, no quadro **"Gerar pedido de compra"**. Só a Wellmix vê, e é preciso abrir a tela Pedidos.
+- **Onde (dono, 18/11/2026):** em Solicitações ao fornecedor, aba **Encerradas**. O quadro **"Gerar pedido de compra"** saiu da aba Em negociação (parecia haver pedidos numa tela de negociação) e fica no alto da aba Encerradas, como antes: um formulário por fornecedor, com os produtos aprovados, cadastrados, com amostra aprovada e fora de pedido, para marcar vários (de solicitações diferentes do mesmo fornecedor) e ajustar a quantidade. Na linha da solicitação, o botão **"Gerar pedido"** (só quando todos os produtos aprovados dela estão cadastrados e com a amostra aprovada; senão a linha diz o que falta) leva ao quadro com só os produtos dela marcados e o fornecedor dela em destaque (`?tab=closed&pick=<ids>`). Só a Wellmix vê, e é preciso abrir a tela Pedidos.
 - **Quais produtos entram:** os aprovados com produto cadastrado e ainda fora de pedido, agrupados por fornecedor.
 - **Um pedido por fornecedor:** marque os produtos, ajuste a quantidade (vem a da solicitação) e gere.
 - **Valores negociados:** preço, moeda, MOQ e prazo vêm da resposta do fornecedor. Todos os produtos precisam estar na mesma moeda (`purchase_order_currency_mixed`).
@@ -222,7 +222,7 @@ Com o sinal pago (ou a conta corrente) a produção começa (seção 1a); as out
 | Raias (regras puras: itens, ordem, prazos) | `src/lib/purchase-lanes.ts`                                                                                         |
 | Gerar o pedido, avisos das raias, SLA      | `src/lib/services/purchase-order.ts`                                                                                |
 | Itens conferidos pelo sistema              | `src/lib/services/purchase-gates.ts` (NCM, ficha, certificação válida, sinal)                                       |
-| Etapas do pedido de compra                 | `src/lib/workflow/templates.ts` (`isPurchaseFlow`, `PURCHASE_CONTRACT_REQUIREMENTS`), `src/lib/workflow/engine.ts`     |
+| Etapas do pedido de compra                 | `src/lib/workflow/templates.ts` (`isPurchaseFlow`, `PURCHASE_CONTRACT_REQUIREMENTS`), `src/lib/workflow/engine.ts`  |
 | Contrato                                   | `src/lib/services/order-signature.ts` (`finalArts`, arquivo obrigatório), `src/app/app/orders/[id]/purchase-order/` |
 | Ação                                       | `src/app/app/actions/purchase-order.ts`                                                                             |
 | Tela                                       | `src/app/app/supplier-requests/_components/purchase-order.tsx`                                                      |

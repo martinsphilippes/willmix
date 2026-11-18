@@ -91,6 +91,7 @@ import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
 import { itemIdOf } from "@/lib/purchase-lanes";
 import { assertSameSchedule, parseRequestItems } from "./actions/request-items";
 import {
+  allContactsBlank,
   contactsFromEntries,
   type CustomerContacts,
   type OrderTerms,
@@ -367,23 +368,23 @@ async function createRequest(
         orderTerms.paymentPlan = await resolveRequestPaymentPlan(
           str(form, "paymentPlanId"),
         );
-        // O login do cliente com acesso é obrigatório na venda: é ele quem
-        // confirma o pedido (dono, 15/11/2026).
-        if (!str(form, "requestedForUserId"))
-          throw new Error("access_required");
+        // Login do cliente com acesso: não é mais obrigatório (dono,
+        // 18/11/2026). Sem ele, a solicitação vai para todos os logins do
+        // cliente (veem, confirmam e recebem o aviso; forAllCustomerLogins).
         await assertProductsMatchOrigin(
           items.map((i) => i.productId),
           orderTerms,
         );
-        const { saveCustomerContacts, hasPortalContacts } =
+        const { saveCustomerContacts, hasPortalContacts, contactsOptionalFor } =
           await import("@/lib/services/customer-contacts");
-        if (str(form, "contactsEdit") === "1")
-          await saveCustomerContacts(
-            user,
-            base.customerId,
-            contactsFromForm(form),
-          );
-        else if (!(await hasPortalContacts(base.customerId)))
+        // Solicitante da equipe interna (dono, 18/11/2026): os contatos são
+        // opcionais; o que for preenchido continua conferido e gravado.
+        const optional = contactsOptionalFor(user);
+        const contacts = contactsFromForm(form);
+        if (str(form, "contactsEdit") === "1") {
+          if (!optional || !allContactsBlank(contacts))
+            await saveCustomerContacts(user, base.customerId, contacts);
+        } else if (!optional && !(await hasPortalContacts(base.customerId)))
           throw new Error("contacts_required");
       }
       const created = await createRequestBatch(

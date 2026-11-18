@@ -647,6 +647,14 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "familyCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
         }
       ],
       "indexes": [
@@ -655,6 +663,16 @@
           "type": "key",
           "columns": [
             "sankhyaCode"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_family",
+          "type": "key",
+          "columns": [
+            "familyCode"
           ],
           "orders": [
             "ASC"
@@ -11103,6 +11121,13 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "familyConvertedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
         }
       ],
       "indexes": [
@@ -11121,6 +11146,122 @@
           "type": "key",
           "columns": [
             "lineId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "product_families",
+      "databaseId": "willmix",
+      "name": "Grupos de produto (famílias)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "code",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "nameKey",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "active",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "syncedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_code",
+          "type": "unique",
+          "columns": [
+            "code"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "party_families",
+      "databaseId": "willmix",
+      "name": "Famílias atendidas por parceiro",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "partyId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "familyCode",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "createdByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_party",
+          "type": "key",
+          "columns": [
+            "partyId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_family",
+          "type": "key",
+          "columns": [
+            "familyCode"
           ],
           "orders": [
             "ASC"

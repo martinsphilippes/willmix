@@ -203,6 +203,12 @@ export const pt = {
   "salesFreight.proof": "Comprovante",
   "salesFreight.pay": "Marcar como pago",
   "salesFreight.done": "Frete marcado como pago.",
+  "finance.salesFreight.title": "Frete das ordens de venda (no custo)",
+  "finance.salesFreight.hint":
+    "Frete das ordens de venda expedidas ligadas a este pedido, já somado ao custo e descontado da margem, pago ou não.",
+  "finance.salesFreight.order": "Ordem de venda #{n}",
+  "finance.salesFreight.paid": "pago",
+  "finance.salesFreight.open": "a pagar",
   "settings.label.salesTop":
     "TOP de venda no Sankhya (pedido de venda da ordem de venda; vazio: lançar à mão)",
 };
@@ -407,6 +413,12 @@ export const en: Record<keyof typeof pt, string> = {
   "salesFreight.proof": "Proof",
   "salesFreight.pay": "Mark as paid",
   "salesFreight.done": "Freight marked as paid.",
+  "finance.salesFreight.title": "Sales order freight (in the cost)",
+  "finance.salesFreight.hint":
+    "Freight of the shipped sales orders linked to this order, already added to the cost and taken off the margin, paid or not.",
+  "finance.salesFreight.order": "Sales order #{n}",
+  "finance.salesFreight.paid": "paid",
+  "finance.salesFreight.open": "to pay",
   "settings.label.salesTop":
     "Sales TOP in Sankhya (sales order of the sales order; empty: post by hand)",
 };
@@ -591,6 +603,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "salesFreight.proof": "凭证",
   "salesFreight.pay": "标记为已付",
   "salesFreight.done": "运费已标记为已付。",
+  "finance.salesFreight.title": "销售订单运费（已计入成本）",
+  "finance.salesFreight.hint":
+    "与本订单关联的已发货销售订单运费，无论是否已付，均已计入成本并从毛利中扣除。",
+  "finance.salesFreight.order": "销售订单 #{n}",
+  "finance.salesFreight.paid": "已付",
+  "finance.salesFreight.open": "待付",
   "settings.label.salesTop":
     "Sankhya 销售 TOP（销售订单的销售单；留空：手工录入）",
 };

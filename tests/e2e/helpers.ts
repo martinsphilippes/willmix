@@ -611,6 +611,13 @@ export async function fillOrderTerms(
 
 /** O login do cliente com acesso (obrigatório na venda pela Wellmix). */
 export async function chooseCustomerLogin(page: Page, email: string) {
+  // Venda da Wellmix ao cliente (dono, 18/11/2026): o login não se escolhe
+  // mais; a solicitação vai para todos os logins do cliente.
+  const all = page.locator("[data-request-people] [data-request-access-all]");
+  if (await all.count()) {
+    await expect(all).toHaveValue(/\(\d+\)/);
+    return;
+  }
   const access = page.locator(
     '[data-request-people] select[name="requestedForUserId"]',
   );
