@@ -146,9 +146,9 @@ describe("convite para booking concorrente", () => {
     ).rejects.toThrow("booking_invite_exists");
 
     // O convidado vê só o dele e tem a pendência com o prazo.
-    expect((await inv.listInvitesFor(tradingUser))!.map((i) => i.id)).toEqual([
-      mine.id,
-    ]);
+    expect((await inv.listInvitesFor(tradingUser))!.map((i) => i.id)).toEqual(
+      [mine.id],
+    );
     expect(await inv.getInvite(supplierA, mine.id)).toBeNull();
     const tasks = await pendingTasksFor(tradingUser);
     const task = tasks.find((x) => x.kind === "booking_invite");

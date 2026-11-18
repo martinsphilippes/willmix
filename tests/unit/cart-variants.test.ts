@@ -341,7 +341,11 @@ describe("carrinho com variações", () => {
     await cart.updateCartItem(joao, line.id, 600, null);
     const {
       requests: [created],
-    } = await cart.checkoutCart(joao, { deadline: null, notes: null }, t);
+    } = await cart.checkoutCart(
+      joao,
+      { deadline: null, notes: null },
+      t,
+    );
     expect(created.productName).toBe("Jogo de panelas antiaderentes 5 pçs");
     expect(created.variantId ?? null).toBeNull();
     expect(created.quantity).toBe(600);
