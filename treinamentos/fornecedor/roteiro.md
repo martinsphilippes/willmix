@@ -227,7 +227,7 @@ Conta usada na gravação: `supplier.a@china.com` (conta de demonstração, dado
 
 - **Passo 1** (clica) Você também chega às solicitações pelo menu. Abra o grupo "Meus books".
 - **Passo 2** (clica) E clique em "Solicitações ao fornecedor".
-- *(mostra na tela)* A lista mostra as solicitações em negociação: o número, a situação, quantos produtos, a quantidade, as programações e a sua resposta. A número 1 já aparece como "Respondida". As aprovadas e as recusadas passam para a aba "Encerradas".
+- *(mostra na tela)* A lista mostra as solicitações em negociação: o número, a situação, quantos produtos, a quantidade, as programações e a sua resposta. A número 1 já aparece como "Respondida". Quando a Wellmix aprova ou recusa todos os produtos, a solicitação passa para a aba "Encerradas".
 - **Passo 3** (clica) Abra a solicitação número 2, do copo de 350 mililitros. É só clicar no número.
 - *(clica)* Na coluna "Ações", o ícone do meio é o "Renegociar". Ele abre as condições em vigor, para você mudar e enviar uma contraproposta.
 - *(mostra na tela)* Dá para mudar o preço, a moeda, o pedido mínimo e a modalidade de entrega. O prazo de produção não aparece aqui: para informar o prazo, use a tela do produto.
@@ -557,7 +557,7 @@ Conta usada na gravação: `supplier.a@china.com` (conta de demonstração, dado
 - *(fala)* Agora: o pedido de amostras.
 
 - *(mostra na tela)* Com a arte e o certificado prontos, a Wellmix gera o pedido de amostras e assina o contrato. Chegam duas pendências para você.
-- **Passo 1** (clica) Atenção: hoje as duas aparecem com o mesmo título, "Assinar o pedido", e o mesmo texto. Uma leva ao documento do pedido, para a assinatura. A outra leva à página do pedido, onde está o aceite das amostras. Comece por ela: use o ícone de abrir dessa linha.
+- **Passo 1** (clica) Atenção: hoje as duas aparecem com o mesmo título, "Assinar o pedido", e o mesmo texto. Uma abre o documento do pedido, para a assinatura. A outra abre a página do pedido, onde está o aceite das amostras. Comece por ela: use o ícone de abrir dessa linha.
 - *(mostra na tela)* O pedido abre no marco "Contrato". Há dois itens esperando você: comece pelo "Pedido de amostras aceito pelo fornecedor".
 - **Passo 2** (clica) Nesse item, clique em "Pedido de amostras".
 - *(mostra na tela)* É um contrato separado do pedido de compra: amostras para o show room no Brasil e para a agência de marketing na China. A regra é de quinze peças por variante de cada produto.

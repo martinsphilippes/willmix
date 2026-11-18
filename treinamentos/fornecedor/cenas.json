@@ -1351,7 +1351,7 @@
     },
     {
      "id": "p3",
-     "fala": "A lista mostra as solicitações em negociação: o número, a situação, quantos produtos, a quantidade, as programações e a sua resposta. A número 1 já aparece como \"Respondida\". As aprovadas e as recusadas passam para a aba \"Encerradas\".",
+     "fala": "A lista mostra as solicitações em negociação: o número, a situação, quantos produtos, a quantidade, as programações e a sua resposta. A número 1 já aparece como \"Respondida\". Quando a Wellmix aprova ou recusa todos os produtos, a solicitação passa para a aba \"Encerradas\".",
      "alvo": {
       "seletor": "main table"
      },
@@ -3098,7 +3098,7 @@
     },
     {
      "id": "p2",
-     "fala": "Atenção: hoje as duas aparecem com o mesmo título, \"Assinar o pedido\", e o mesmo texto. Uma leva ao documento do pedido, para a assinatura. A outra leva à página do pedido, onde está o aceite das amostras. Comece por ela: use o ícone de abrir dessa linha.",
+     "fala": "Atenção: hoje as duas aparecem com o mesmo título, \"Assinar o pedido\", e o mesmo texto. Uma abre o documento do pedido, para a assinatura. A outra abre a página do pedido, onde está o aceite das amostras. Comece por ela: use o ícone de abrir dessa linha.",
      "alvo": {
       "seletor": "a[data-open-link]",
       "dentro": {

@@ -97,7 +97,7 @@ acima(sel("[data-supplier-table-confirm]"), 1), rotulo="Aprovar · Renegociar ·
         clicar("p2", 'E clique em "Solicitações ao fornecedor".', "aside a[href='/app/supplier-requests']",
                rotulo="Solicitações ao fornecedor", resumo='Clique em "Solicitações ao fornecedor"',
                espera={"url": "/app/supplier-requests$", "rede": True}),
-        mostrar("p3", 'A lista mostra as solicitações em negociação: o número, a situação, quantos produtos, a quantidade, as programações e a sua resposta. A número 1 já aparece como "Respondida". As aprovadas e as recusadas passam para a aba "Encerradas".',
+        mostrar("p3", 'A lista mostra as solicitações em negociação: o número, a situação, quantos produtos, a quantidade, as programações e a sua resposta. A número 1 já aparece como "Respondida". Quando a Wellmix aprova ou recusa todos os produtos, a solicitação passa para a aba "Encerradas".',
                 "main table", foco=False),
         clicar("p4", 'Abra a solicitação número 2, do copo de 350 mililitros. É só clicar no número.', numero_da_solicitacao(2),
                alvo_visual=linha_solicitacao(2), resumo="Abra a solicitação nº 2, clicando no número",

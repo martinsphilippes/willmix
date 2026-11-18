@@ -80,7 +80,7 @@ cenas = [
     tela("m4-c2-amostras", C2, "forn-m4-contrato", salvar="forn-m4-s2", tarefa="Aceitar o pedido de amostras", passos=[
         mostrar("p1", 'Com a arte e o certificado prontos, a Wellmix gera o pedido de amostras e assina o contrato. Chegam duas pendências para você.',
                 "main table tbody", foco=False),
-        clicar("p2", 'Atenção: hoje as duas aparecem com o mesmo título, "Assinar o pedido", e o mesmo texto. Uma leva ao documento do pedido, para a assinatura. A outra leva à página do pedido, onde está o aceite das amostras. Comece por ela: use o ícone de abrir dessa linha.',
+        clicar("p2", 'Atenção: hoje as duas aparecem com o mesmo título, "Assinar o pedido", e o mesmo texto. Uma abre o documento do pedido, para a assinatura. A outra abre a página do pedido, onde está o aceite das amostras. Comece por ela: use o ícone de abrir dessa linha.',
                ABRIR_AMOSTRAS, alvo_visual=LINHA_AMOSTRAS, 
                resumo='Em Pendências, abra a linha "Assinar o pedido" que leva à página do pedido', destaque_em={"em": "outra"},
                espera={"url": "/app/orders/[^/?#]+$", "rede": True}),
