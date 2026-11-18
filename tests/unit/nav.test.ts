@@ -87,6 +87,7 @@ const SALES = [
   "/app/flow/sales/samples",
   "/app/flow/sales/offers",
   "/app/flow/sales/sale",
+  "/app/portfolio",
 ];
 
 describe("menu lateral", () => {
@@ -256,7 +257,11 @@ describe("menu lateral", () => {
         group: "nav.group.order",
         items: ORDER.filter((h) => h !== "/app/reviews"),
       },
-      { group: "nav.group.sales", items: SALES },
+      // Carteira e atendimento: só com a tela (função Vendas ou exceção).
+      {
+        group: "nav.group.sales",
+        items: SALES.filter((h) => h !== "/app/portfolio"),
+      },
       { link: "/app/sla" },
       // Produtos e a vitrine do cliente (o designer abre as duas).
       {

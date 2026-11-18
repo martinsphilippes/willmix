@@ -9,12 +9,20 @@ import { listTeamAreas } from "@/lib/services/team-areas";
 import { listTeamPositions } from "@/lib/services/team-positions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { Alert, Badge, Button, PageHeader, TextLink } from "@/components/ui";
+import {
+  Alert,
+  Badge,
+  Button,
+  Input,
+  PageHeader,
+  TextLink,
+} from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { setTeamLoginActiveAction } from "../../actions/access-state";
 import { QuickDialog } from "@/components/quick-dialog";
 import { teamMemberRemoval, wellmixTeam } from "@/lib/services/team";
 import { removeTeamMemberAction } from "../../actions/team";
+import { saveSellerCodeAction } from "../../actions/portfolio";
 import { TeamAccessEditor } from "../_components/team-access-editor";
 import {
   editorFunctions,
@@ -62,12 +70,14 @@ export default async function TeamMemberPage({
     notFound();
   }
   const groups = permissionGroups(t);
-  const errorKey = `team.error.${typeof error === "string" ? error : ""}`;
+  // Erro da equipe; o do código do vendedor vem da carteira (portfolio.error.*).
   const errorText =
     typeof error === "string" && error
-      ? t(errorKey as DictionaryKey) !== errorKey
-        ? t(errorKey as DictionaryKey)
-        : t("common.error")
+      ? ([`team.error.${error}`, `portfolio.error.${error}`]
+          .map((k) =>
+            t(k as DictionaryKey) !== k ? t(k as DictionaryKey) : null,
+          )
+          .find(Boolean) ?? t("common.error"))
       : null;
   // Excluir acesso: só o administrador vê; o próprio acesso e o último
   // administrador ativo aparecem desligados, com o motivo.
@@ -223,6 +233,11 @@ export default async function TeamMemberPage({
           </Alert>
         </div>
       ) : null}
+      {saved === "seller_code" ? (
+        <div className="mb-3" data-team-seller-saved>
+          <Alert tone="success">{t("portfolio.seller.saved")}</Alert>
+        </div>
+      ) : null}
       {/* Login da pessoa (D8): suspender e reativar sem tirar da equipe. Só
           o administrador; o próprio login, não. */}
       {isAdmin(user) ? (
@@ -273,6 +288,42 @@ export default async function TeamMemberPage({
             {t("team.login.hint")}
           </span>
         </div>
+      ) : null}
+      {/* Código do vendedor no Sankhya (CODVEND): liga a carteira dos
+          clientes desse RCA à pessoa (docs/TRADE_COMERCIAL.md). Só o
+          administrador. */}
+      {isAdmin(user) ? (
+        <form
+          action={saveSellerCodeAction}
+          id="seller"
+          className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+          data-team-seller
+        >
+          <input type="hidden" name="userId" value={member.id} />
+          <span className="font-semibold text-zinc-900">
+            {t("portfolio.seller.title")}
+          </span>
+          <Input
+            name="sellerCode"
+            defaultValue={member.sellerCode ?? ""}
+            inputMode="numeric"
+            pattern="[0-9]{1,10}"
+            maxLength={10}
+            className="w-28"
+            aria-label={t("portfolio.seller.title")}
+            data-team-seller-code
+          />
+          <SubmitButton
+            variant="secondary"
+            className="px-2.5 py-1 text-xs"
+            data-team-seller-save
+          >
+            {t("portfolio.seller.save")}
+          </SubmitButton>
+          <span className="basis-full text-xs text-zinc-500">
+            {t("portfolio.seller.hint")}
+          </span>
+        </form>
       ) : null}
       {typeof created === "string" && created ? (
         <div className="mb-3" data-team-created>

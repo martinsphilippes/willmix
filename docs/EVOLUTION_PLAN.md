@@ -1849,3 +1849,9 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Como ficou**: a importação guarda quem vem com nome e sem e-mail em "Aguardando e-mail" (cargo, área, funções, nível e o "a conferir" sugeridos); na Equipe Interna, o atalho "N aguardando e-mail" abre o painel com "E-mail ou nome de usuário", "Senha provisória" e "Criar login", e "Tirar da lista" (docs/ACCESS.md, "Importar equipe").
 - **Aditivo:** tabela nova `team_pending`; nada muda nos logins existentes nem nas telas de antes (o painel novo entra na lista de painéis da Equipe Interna).
 - Testes: `tests/unit/team-import.test.ts` e `tests/e2e/team-pending.spec.ts`.
+
+## Carteira e atendimento ao cliente (Trade e Comercial, PR 1)
+
+- **Pedido do dono** (17 e 18/11/2026; docs/TRADE_COMERCIAL.md): levar o painel do Projeto Campineira para o portal, começando pelo controle de dias de cliente sem atendimento. Decisões: o atendimento só vale confirmado por quem atendeu e por quem foi atendido; prazo único (30 dias) que o administrador muda; pendência só dos clientes acompanhados; grupos montados à mão; "Gerir carteira e trade" só do administrador por padrão.
+- **Aditivo:** tabelas novas `customer_groups` e `customer_attendances`; colunas novas e opcionais `parties.customerGroupId` (com índice) e `users.sellerCode`; `parties.ownerUserId` (que já existia, sem uso) passa a ser o responsável escolhido; configuração nova `attendanceSlaDays`; telas novas (`/app/portfolio`, a ficha do cliente na carteira, os grupos e a página pública `/atendimento/<código>`); tela nova `portfolio` (padrão da função Vendas) e ação nova `trade.manage`; dois tipos novos de pendência. Nada é apagado; nenhuma tela, rota ou campo muda de lugar. Antes de o esquema ser publicado, as leituras novas voltam vazias (sem quebrar as telas de hoje).
+- Testes: `tests/unit/portfolio.test.ts` e `tests/e2e/portfolio.spec.ts`.

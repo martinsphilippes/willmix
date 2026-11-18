@@ -1030,6 +1030,17 @@ export async function pendingTasksFor(
         await (await import("./product-approval")).approvalTaskDrafts(user)
       ).map((draft) => finish(draft, now)),
     );
+  // Carteira e atendimento (docs/TRADE_COMERCIAL.md): atender o cliente
+  // acompanhado atrasado ou nunca atendido e cobrar a confirmação parada. De
+  // quem é cada uma decide src/lib/task-owner.ts (e o Painel de SLA).
+  if (wellmix)
+    tasks.push(
+      ...(
+        await (await import("./portfolio"))
+          .portfolioTaskDrafts(now)
+          .catch(() => [])
+      ).map((draft) => finish(draft, now)),
+    );
   // Cotação de compra (docs/PURCHASE_DEMAND.md): o fornecedor responde; a
   // Wellmix escolhe, decide sem resposta ou aprova.
   if (supplier || wellmix)

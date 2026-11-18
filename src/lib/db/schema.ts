@@ -2090,8 +2090,8 @@ export interface CustomerAttendance extends BaseRow {
   status: AttendanceStatus;
   /**
    * Parte secreta do link de confirmação: o link é assinado pelo servidor
-   * com ela, que não é o link. Trocar invalida o link anterior; respondido,
-   * fica nula (uso único).
+   * com ela, que não é o link. Trocar invalida o link anterior. Uso único
+   * pela situação: respondido ou cancelado, o link só mostra o resultado.
    */
   linkNonce: string | null;
   linkExpiresAt: string | null;

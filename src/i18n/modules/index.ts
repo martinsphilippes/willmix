@@ -166,6 +166,7 @@ import * as externalTeam from "./external-team";
 import * as accessState from "./access-state";
 import * as internalTeam from "./internal-team";
 import * as newProduct from "./new-product";
+import * as portfolio from "./portfolio";
 
 export const modulesPt = {
   ...messages.pt,
@@ -331,6 +332,7 @@ export const modulesPt = {
   ...accessState.pt,
   ...internalTeam.pt,
   ...newProduct.pt,
+  ...portfolio.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...messages.en,
@@ -496,6 +498,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...accessState.en,
   ...internalTeam.en,
   ...newProduct.en,
+  ...portfolio.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...messages.zh,
@@ -661,4 +664,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...accessState.zh,
   ...internalTeam.zh,
   ...newProduct.zh,
+  ...portfolio.zh,
 };
