@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRequestCustomer } from "./request-customer-context";
+import { ProductPicker } from "./product-picker";
+import type { SearchPickerLabels } from "./search-picker";
 
 /** Textos do seletor de produtos (no idioma de quem vê). */
 export interface ProductBrowserLabels {
@@ -21,6 +23,9 @@ export interface ProductBrowserLabels {
   progress: string;
   defaultQty: string;
   defaultQtyHint: string;
+  /** Rótulo do buscador por nome ou código (o mesmo da página). */
+  search: string;
+  picker: SearchPickerLabels;
   selectAll: string;
   /** "Selecionar {name}" */
   select: string;
@@ -185,6 +190,8 @@ function ProductBrowserDialog({
   const [selected, setSelected] = useState<string[]>([]);
   const [defaultQty, setDefaultQty] = useState("");
   const [added, setAdded] = useState(0);
+  // Remonta o buscador depois de cada escolha (o campo volta vazio).
+  const [pickerKey, setPickerKey] = useState(0);
 
   useEffect(() => {
     const d = dialog.current;
@@ -283,6 +290,29 @@ function ProductBrowserDialog({
           </button>
         </div>
         <div className="space-y-3 border-b border-zinc-200 px-5 py-3">
+          {/* O mesmo buscador ao lado da lupa (nome ou código, no país e na
+              família do pedido): escolher acrescenta o produto ao pedido. */}
+          <div className="space-y-1" data-product-browser-search>
+            <label
+              htmlFor="product-browser-search"
+              className="block text-xs font-medium text-zinc-700"
+            >
+              {labels.search}
+            </label>
+            <ProductPicker
+              key={pickerKey}
+              scope="catalog"
+              query={new URLSearchParams({ country, family }).toString()}
+              inputId="product-browser-search"
+              ariaLabel={labels.search}
+              labels={labels.picker}
+              onChoose={(option) => {
+                if (!option) return;
+                add([option.id]);
+                setPickerKey((k) => k + 1);
+              }}
+            />
+          </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {labels.levels.map((label, level) => (
               <label
