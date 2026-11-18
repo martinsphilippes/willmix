@@ -3318,8 +3318,13 @@ export interface StrategySendRecipient {
 }
 
 export interface StrategySendLine {
-  /** A demanda (encomenda ou reposição): um produto. */
+  /** A demanda (encomenda ou reposição): a 1ª da solicitação. */
   demandId: string;
+  /**
+   * Todas as demandas da solicitação (a estratégia é da solicitação
+   * inteira; dono, 18/11/2026). Ausente nos envios de antes: só `demandId`.
+   */
+  demandIds?: string[];
   productId: string;
   choice: PurchaseDecisionChoice;
   /** Parceiros escolhidos (vazio no pedido direto). */

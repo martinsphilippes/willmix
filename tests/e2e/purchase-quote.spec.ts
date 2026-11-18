@@ -76,6 +76,12 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
     await expect(
       line.locator(`[data-strategy-recipient-box="${id}"]`),
     ).toBeChecked();
+  // A lista do País × Família vem marcada; o Comprador pode desmarcar e
+  // marcar de novo (dono, 18/11/2026).
+  const boxC = line.locator('[data-strategy-recipient-box="fornecedor-c"]');
+  await boxC.uncheck();
+  await expect(boxC).not.toBeChecked();
+  await boxC.check();
   await page.locator("[data-strategy-review]").click();
   await expect(
     page.locator(`[data-strategy-summary-line="${demandId}"]`),

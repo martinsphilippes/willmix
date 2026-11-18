@@ -30,7 +30,7 @@ export const pt = {
     'Regularize o parceiro ou escolha outro e use "Tentar de novo".',
   "strategy.toSend": "{n} encomenda(s) ainda não enviada(s) para cotação.",
   "strategy.toSendLink": "Abrir Encomendas",
-  "strategy.queue.title": "Produtos esperando a estratégia ({n})",
+  "strategy.queue.title": "Solicitações esperando a estratégia ({n})",
   "strategy.queue.empty":
     'Nenhum produto esperando a estratégia. Envie produtos pela tela Encomendas ("Enviar para cotação").',
   "strategy.line.order": "Encomenda nº {n}",
@@ -56,6 +56,10 @@ export const pt = {
   "strategy.recipients.linked": "Marcaram a família {family}",
   "strategy.recipients.suggested":
     "Já forneceram produtos da família (sem vínculo no cadastro)",
+  "strategy.recipients.origin":
+    "Fornecedores de {origin} (marcados para receber; desmarque quem não deve receber)",
+  "strategy.recipients.originNone":
+    "Nenhum fornecedor ativo de {origin}. Marque a família no cadastro do parceiro (Grupo de produto (família)) ou busque abaixo.",
   "strategy.recipients.none":
     "Nenhum parceiro marcou a família {family}. Marque no cadastro do parceiro (Grupo de produto (família)) ou busque abaixo.",
   "strategy.recipients.search":
@@ -171,7 +175,7 @@ export const en: Record<keyof typeof pt, string> = {
     'Fix the partner or choose another one and use "Try again".',
   "strategy.toSend": "{n} customer order(s) not sent to quotation yet.",
   "strategy.toSendLink": "Open Customer orders",
-  "strategy.queue.title": "Products waiting for the strategy ({n})",
+  "strategy.queue.title": "Requests waiting for the strategy ({n})",
   "strategy.queue.empty":
     'No product waiting for the strategy. Send products from the Customer orders screen ("Send to quotation").',
   "strategy.line.order": "Customer order no. {n}",
@@ -197,6 +201,10 @@ export const en: Record<keyof typeof pt, string> = {
   "strategy.recipients.linked": "Have the {family} family ticked",
   "strategy.recipients.suggested":
     "Already supplied products of the family (not linked in the record)",
+  "strategy.recipients.origin":
+    "Suppliers of {origin} (checked to receive; uncheck who should not)",
+  "strategy.recipients.originNone":
+    "No active supplier of {origin}. Tick the family in the partner record (Product group (family)) or search below.",
   "strategy.recipients.none":
     "No partner has the {family} family. Tick it in the partner record (Product group (family)) or search below.",
   "strategy.recipients.search":
@@ -312,7 +320,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "请处理该合作伙伴的问题或另选一个，然后点击“重试”。",
   "strategy.toSend": "{n} 个客户订货尚未发送询价。",
   "strategy.toSendLink": "打开客户订货",
-  "strategy.queue.title": "等待采购策略的产品（{n}）",
+  "strategy.queue.title": "等待采购策略的申请（{n}）",
   "strategy.queue.empty":
     "没有等待采购策略的产品。请在客户订货页面发送产品（“发送询价”）。",
   "strategy.line.order": "客户订货第 {n} 号",
@@ -335,6 +343,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.option.noHistory": "该产品没有以前的采购：请选择其他合作伙伴。",
   "strategy.recipients.linked": "已勾选 {family} 系列",
   "strategy.recipients.suggested": "曾供应该系列产品（档案中未关联）",
+  "strategy.recipients.origin":
+    "{origin} 的供应商（已勾选接收；取消勾选不应接收的）",
+  "strategy.recipients.originNone":
+    "{origin} 没有有效供应商。请在合作伙伴档案中勾选系列（产品组（系列）），或在下方搜索。",
   "strategy.recipients.none":
     "没有合作伙伴勾选 {family} 系列。请在合作伙伴档案中勾选（产品组（系列）），或在下方搜索。",
   "strategy.recipients.search":

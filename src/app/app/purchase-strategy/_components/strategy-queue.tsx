@@ -30,12 +30,14 @@ import {
 } from "../../actions/purchase-demand";
 
 /*
- * Estratégia de Compra por produto (dono, 18/11/2026; docs/PURCHASE_DEMAND.md,
- * "Estratégia de Compra por produto"). Um produto por linha: a encomenda de
- * origem, o cliente, a quantidade, a especificação, a programação de entrega
- * e a última compra; a escolha (cotar com a última compra, cotar com outros
- * parceiros, pedido direto ou não enviar agora) e, para cotar, os
- * destinatários com o que falta a quem não pode receber. "Revisar o envio"
+ * Estratégia de Compra (dono, 18/11/2026; docs/PURCHASE_DEMAND.md,
+ * "Estratégia de Compra por produto" e "Estratégia por solicitação"). Um
+ * cartão por solicitação, com todos os produtos dela (a encomenda de origem,
+ * o cliente, a quantidade, a especificação, a programação de entrega e a
+ * última compra de cada um); uma escolha só para a solicitação inteira
+ * (cotar com a última compra, cotar com outros parceiros, pedido direto ou
+ * não enviar agora) e, para cotar, os destinatários do País × Família,
+ * marcados, com o que falta a quem não pode receber. "Revisar o envio"
  * mostra o resumo; "Confirmar o envio" grava e leva ao resultado. As escolhas
  * ficam na tela entre um passo e outro (e se o servidor recusar).
  */
@@ -71,7 +73,29 @@ export interface StrategyLineData {
   blocked: string | null;
 }
 
+/** Uma solicitação da fila: a escolha e os destinatários são dela inteira. */
+export interface StrategyGroupData {
+  key: string;
+  /** "Solicitação nº 12" ou "Reposição nº 3", já no idioma. */
+  title: string;
+  customerName: string | null;
+  /** "China › UTILIDADES DOMESTICAS", já montado; nulo = sem país e família. */
+  origin: string | null;
+  demandIds: string[];
+  /** A última compra comum (todos do mesmo fornecedor); nula = não vale. */
+  last: StrategyLineData["last"];
+  /** Por que a última compra não vale (algum sem compra, fornecedores diferentes). */
+  lastReason: string | null;
+  linkedIds: string[];
+  suggestedIds: string[];
+  /** Algum produto fora do catálogo: a solicitação espera. */
+  blocked: string | null;
+}
+
 export interface StrategyTexts {
+  /** Lista do País × Família ("Fornecedores de {origin}"). */
+  originList: string;
+  originNone: string;
   queueTitle: string;
   queueEmpty: string;
   customer: string;
@@ -153,11 +177,13 @@ const recordHref = (check: RecipientCheck) =>
 
 export function StrategyQueue({
   lines,
+  groups,
   checks: initialChecks,
   texts,
   canChoose,
 }: {
   lines: StrategyLineData[];
+  groups: StrategyGroupData[];
   checks: Record<string, RecipientCheck>;
   texts: StrategyTexts;
   canChoose: boolean;
@@ -172,13 +198,13 @@ export function StrategyQueue({
   const [reviewing, setReviewing] = useState(false);
   const [byLine, setByLine] = useState<Record<string, LineState>>(() =>
     Object.fromEntries(
-      lines.map((l) => [
-        l.demandId,
+      groups.map((g) => [
+        g.key,
         {
           choice: "skip" as Choice,
-          // Os vinculados à família e aptos já vêm marcados para "cotar com
-          // outros" (o cadastro já diz que atendem a família).
-          recipients: l.linkedIds.filter((id) => initialChecks[id]?.ok),
+          // Os do País × Família e aptos já vêm marcados para "cotar com
+          // outros" (dono, 18/11/2026): o Comprador desmarca quem não recebe.
+          recipients: g.linkedIds.filter((id) => initialChecks[id]?.ok),
           extra: [],
         },
       ]),
@@ -186,13 +212,17 @@ export function StrategyQueue({
   );
   const set = (id: string, patch: Partial<LineState>) =>
     setByLine((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+  const linesOf = (group: StrategyGroupData) =>
+    group.demandIds
+      .map((id) => lines.find((l) => l.demandId === id))
+      .filter((l): l is StrategyLineData => !!l);
 
-  const chosen = lines.filter(
-    (l) => !l.blocked && byLine[l.demandId]?.choice !== "skip",
+  const chosen = groups.filter(
+    (g) => !g.blocked && byLine[g.key]?.choice !== "skip",
   );
 
-  /** Destinatários de uma linha: a última compra ou os marcados. */
-  const recipientsOf = (line: StrategyLineData, s: LineState): string[] =>
+  /** Destinatários de uma solicitação: a última compra ou os marcados. */
+  const recipientsOf = (line: StrategyGroupData, s: LineState): string[] =>
     s.choice === "quote_last"
       ? line.last
         ? [line.last.supplierId]
@@ -202,7 +232,7 @@ export function StrategyQueue({
         : [];
 
   const summary = chosen.map((line) => {
-    const s = byLine[line.demandId];
+    const s = byLine[line.key];
     const ids = recipientsOf(line, s);
     const ok = ids.filter((id) => checks[id]?.ok);
     const out = ids.filter((id) => !checks[id]?.ok);
@@ -229,9 +259,9 @@ export function StrategyQueue({
       "payload",
       JSON.stringify({
         lines: chosen.map((line) => {
-          const s = byLine[line.demandId];
+          const s = byLine[line.key];
           return {
-            demandId: line.demandId,
+            demandIds: line.demandIds,
             choice: s.choice,
             recipientIds: s.choice === "quote" ? s.recipients : [],
           };
@@ -268,7 +298,7 @@ export function StrategyQueue({
   };
 
   const recipientRow = (
-    line: StrategyLineData,
+    line: StrategyGroupData,
     id: string,
     s: LineState,
     selectable: boolean,
@@ -287,7 +317,7 @@ export function StrategyQueue({
             type="checkbox"
             checked={marked}
             onChange={(e) =>
-              set(line.demandId, {
+              set(line.key, {
                 recipients: e.target.checked
                   ? [...s.recipients, id]
                   : s.recipients.filter((x) => x !== id),
@@ -412,7 +442,7 @@ export function StrategyQueue({
     );
 
   const option = (
-    line: StrategyLineData,
+    line: StrategyGroupData,
     s: LineState,
     value: Choice,
     disabled = false,
@@ -425,12 +455,12 @@ export function StrategyQueue({
     >
       <input
         type="radio"
-        name={`choice-${line.demandId}`}
+        name={`choice-${line.key}`}
         value={value}
         checked={s.choice === value}
         disabled={disabled || !canChoose}
         onChange={() => {
-          set(line.demandId, { choice: value });
+          set(line.key, { choice: value });
           setReviewing(false);
         }}
         className="h-4 w-4 accent-brand-600"
@@ -440,64 +470,104 @@ export function StrategyQueue({
     </label>
   );
 
-  const lineCard = (line: StrategyLineData) => {
-    const s = byLine[line.demandId];
+  /** Um produto da solicitação: a encomenda de origem, os dados e a última compra. */
+  const productBlock = (line: StrategyLineData) => (
+    <div
+      key={line.demandId}
+      className="border-t border-zinc-100 pt-2 first:border-t-0 first:pt-0"
+      data-strategy-product={line.demandId}
+    >
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h4 className="text-sm font-semibold text-zinc-900">
+          {line.productHref ? (
+            <Link
+              href={line.productHref}
+              className="text-zinc-900 hover:underline"
+            >
+              {line.productName}
+            </Link>
+          ) : (
+            line.productName
+          )}
+        </h4>
+        <Link href={line.demandHref} className={cx(linkClass, "text-xs")}>
+          {line.origin}
+        </Link>
+      </div>
+      {details(line)}
+      {line.blocked ? (
+        <p className="mt-2 text-xs font-medium text-amber-800">
+          {line.blocked}
+        </p>
+      ) : (
+        lastBox(line)
+      )}
+    </div>
+  );
+
+  const lineCard = (line: StrategyGroupData) => {
+    const s = byLine[line.key];
     const lastCheck = line.last ? checks[line.last.supplierId] : undefined;
     const listed = new Set([...line.linkedIds, ...line.suggestedIds]);
     const extra = s.extra.filter((id) => !listed.has(id));
     const all = [...line.linkedIds, ...line.suggestedIds, ...extra];
+    const members = linesOf(line);
+    const batch = members.find((m) => m.batch)?.batch ?? null;
     return (
       <section
-        key={line.demandId}
+        key={line.key}
         className={cx(
           "rounded-2xl border p-3",
           s.choice !== "skip"
             ? "border-brand-300 bg-brand-50/30"
             : "border-zinc-200",
         )}
-        data-strategy-line={line.demandId}
+        data-strategy-group={line.key}
+        data-strategy-line={line.demandIds[0]}
+        data-strategy-lines={line.demandIds.join(" ")}
         data-strategy-line-choice={s.choice}
       >
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h3 className="text-sm font-semibold text-zinc-900">
-            {line.productHref ? (
-              <Link
-                href={line.productHref}
-                className="text-zinc-900 hover:underline"
-              >
-                {line.productName}
-              </Link>
-            ) : (
-              line.productName
-            )}
-          </h3>
-          <Link href={line.demandHref} className={cx(linkClass, "text-xs")}>
-            {line.origin}
-          </Link>
-          {line.batch ? (
+          <h3 className="text-sm font-semibold text-zinc-900">{line.title}</h3>
+          {line.customerName ? (
+            <span className="text-xs text-zinc-600">{line.customerName}</span>
+          ) : null}
+          {line.origin ? (
+            <Badge tone="neutral">
+              <span data-strategy-origin>{line.origin}</span>
+            </Badge>
+          ) : null}
+          {batch ? (
             <Link
-              href={line.batch.href}
+              href={batch.href}
               className={cx(linkClass, "text-xs")}
               data-strategy-batch
             >
-              {line.batch.label}
+              {batch.label}
             </Link>
           ) : null}
         </div>
-        {details(line)}
+        <div className="mt-2 space-y-2">{members.map(productBlock)}</div>
         {line.blocked ? (
           <p className="mt-2 text-xs font-medium text-amber-800">
             {line.blocked}
           </p>
         ) : (
           <>
-            {lastBox(line)}
             {canChoose ? (
               <fieldset className="mt-3 space-y-1 border-t border-zinc-100 pt-2">
                 <legend className="mb-1 text-xs font-medium text-zinc-600">
                   {texts.choose}
                 </legend>
                 {option(line, s, "skip")}
+                {!line.last && line.lastReason ? (
+                  <p
+                    className="pl-6 text-xs text-zinc-500"
+                    data-strategy-last-reason
+                  >
+                    {line.lastReason}
+                  </p>
+                ) : null}
                 {option(line, s, "quote_last", !line.last)}
                 {s.choice === "quote_last" && line.last ? (
                   <div className="pl-6">
@@ -519,7 +589,7 @@ export function StrategyQueue({
                         type="button"
                         className={linkClass}
                         onClick={() =>
-                          set(line.demandId, {
+                          set(line.key, {
                             recipients: all.filter((id) => checks[id]?.ok),
                           })
                         }
@@ -530,15 +600,15 @@ export function StrategyQueue({
                       <button
                         type="button"
                         className={linkClass}
-                        onClick={() => set(line.demandId, { recipients: [] })}
+                        onClick={() => set(line.key, { recipients: [] })}
                       >
                         {texts.clear}
                       </button>
                     </div>
                     <div>
                       <p className="text-xs font-medium text-zinc-700">
-                        {fill(texts.linked, {
-                          family: line.family?.name || texts.noFamily,
+                        {fill(texts.originList, {
+                          origin: line.origin || texts.noFamily,
                         })}
                       </p>
                       {line.linkedIds.length ? (
@@ -552,8 +622,8 @@ export function StrategyQueue({
                           className="text-xs text-zinc-500"
                           data-strategy-no-linked
                         >
-                          {fill(texts.none, {
-                            family: line.family?.name || texts.noFamily,
+                          {fill(texts.originNone, {
+                            origin: line.origin || texts.noFamily,
                           })}
                         </p>
                       )}
@@ -592,7 +662,7 @@ export function StrategyQueue({
                         labels={texts.picker}
                         ariaLabel={texts.search}
                         onChoose={(o) => {
-                          if (o) void addFromSearch(line.demandId, o.id);
+                          if (o) void addFromSearch(line.key, o.id);
                         }}
                       />
                     </div>
@@ -615,8 +685,8 @@ export function StrategyQueue({
   return (
     <div className="space-y-4" data-strategy-queue={lines.length}>
       <Card title={texts.queueTitle}>
-        {lines.length ? (
-          <div className="space-y-3">{lines.map(lineCard)}</div>
+        {groups.length ? (
+          <div className="space-y-3">{groups.map(lineCard)}</div>
         ) : (
           <p className="text-sm text-zinc-500" data-strategy-queue-empty>
             {texts.queueEmpty}
@@ -644,15 +714,21 @@ export function StrategyQueue({
               <ul className="max-h-72 space-y-2 overflow-y-auto pr-1">
                 {summary.map(({ line, choice, ok, out, problem }) => (
                   <li
-                    key={line.demandId}
+                    key={line.key}
                     className="rounded-lg border border-zinc-200 px-3 py-2 text-sm"
-                    data-strategy-summary-line={line.demandId}
+                    data-strategy-summary-line={line.demandIds[0]}
+                    data-strategy-summary-lines={line.demandIds.join(" ")}
                   >
                     <p className="font-medium text-zinc-900">
-                      {line.productName}{" "}
+                      {line.title}{" "}
                       <span className="text-xs font-normal text-zinc-500">
-                        · {line.origin} · {texts.choices[choice]}
+                        · {texts.choices[choice]}
                       </span>
+                    </p>
+                    <p className="text-xs text-zinc-600">
+                      {linesOf(line)
+                        .map((m) => m.productName)
+                        .join(", ")}
                     </p>
                     {choice === "last_supplier" ? (
                       <p className="text-xs text-zinc-600">{texts.direct}</p>

@@ -71,7 +71,7 @@ export default async function StrategySendPage({
     listByIds(
       store,
       "requests",
-      send.lines.map((l) => l.demandId),
+      send.lines.flatMap((l) => l.demandIds ?? [l.demandId]),
     ),
     listByIds(store, "parties", partyIds),
     listByIds(
@@ -123,6 +123,11 @@ export default async function StrategySendPage({
       <div className="space-y-3">
         {send.lines.map((line) => {
           const demand = demands.find((d) => d.id === line.demandId);
+          // A solicitação inteira (dono, 18/11/2026): todos os produtos dela.
+          const names = (line.demandIds ?? [line.demandId])
+            .map((id) => demands.find((d) => d.id === id)?.productName)
+            .filter((n): n is string => !!n)
+            .map((n) => productNameText(t, n));
           const quote = line.quoteId
             ? quotes.find((q) => q.id === line.quoteId)
             : null;
@@ -131,7 +136,7 @@ export default async function StrategySendPage({
               <section data-strategy-send-line={line.demandId}>
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <h2 className="text-sm font-semibold text-zinc-900">
-                    {productNameText(t, demand?.productName ?? "")}
+                    {names.join(", ") || "—"}
                   </h2>
                   {demand ? (
                     <Link

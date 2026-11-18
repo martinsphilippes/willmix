@@ -120,6 +120,16 @@ export const pt = {
   "strategy.last.leadTime": "Prazo de produção",
   "strategy.last.incoterm": "Incoterm",
   "strategy.last.moq": "Pedido mínimo",
+  "strategy.lastSameSupplier":
+    "Fornecedor da última compra: os produtos desta solicitação tiveram fornecedores diferentes na última compra; só dá para cotar com outros fornecedores.",
+  "strategy.lastAllProducts":
+    "Fornecedor da última compra: algum produto desta solicitação não tem compra anterior; só dá para cotar com outros fornecedores.",
+  "strategy.error.strategy_last_same_supplier":
+    '"Fornecedor da última compra" vale quando todos os produtos da solicitação tiveram o mesmo fornecedor na última compra.',
+  "strategy.error.strategy_same_request":
+    "A estratégia é de uma solicitação só.",
+  "strategy.error.strategy_whole_request":
+    "A estratégia vale para a solicitação inteira: inclua todos os produtos dela.",
   "strategy.error.forbidden": "Seu acesso não permite esta ação.",
   "strategy.error.not_found": "Demanda ou estratégia não encontrada.",
   "strategy.error.strategy_choose_demands": "Marque ao menos uma demanda.",
@@ -375,6 +385,16 @@ export const en: Record<keyof typeof pt, string> = {
   "strategy.last.leadTime": "Production lead time",
   "strategy.last.incoterm": "Incoterm",
   "strategy.last.moq": "Minimum order",
+  "strategy.lastSameSupplier":
+    "Last purchase's supplier: the products of this request had different suppliers in their last purchase; only quoting with other suppliers is possible.",
+  "strategy.lastAllProducts":
+    "Last purchase's supplier: a product of this request has no previous purchase; only quoting with other suppliers is possible.",
+  "strategy.error.strategy_last_same_supplier":
+    '"Last purchase\'s supplier" applies when all products of the request had the same supplier in their last purchase.',
+  "strategy.error.strategy_same_request":
+    "The strategy covers a single request.",
+  "strategy.error.strategy_whole_request":
+    "The strategy applies to the whole request: include all of its products.",
   "strategy.error.forbidden": "Your access does not allow this action.",
   "strategy.error.not_found": "Demand or strategy not found.",
   "strategy.error.strategy_choose_demands": "Select at least one demand.",
@@ -617,6 +637,15 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.last.leadTime": "生产周期",
   "strategy.last.incoterm": "贸易术语",
   "strategy.last.moq": "最小起订量",
+  "strategy.lastSameSupplier":
+    "上次采购的供应商：本申请的产品上次采购的供应商不同，只能向其他供应商询价。",
+  "strategy.lastAllProducts":
+    "上次采购的供应商：本申请有产品没有采购记录，只能向其他供应商询价。",
+  "strategy.error.strategy_last_same_supplier":
+    "申请的所有产品上次采购的供应商相同时，才能选择“上次采购的供应商”。",
+  "strategy.error.strategy_same_request": "策略只针对一个申请。",
+  "strategy.error.strategy_whole_request":
+    "策略适用于整个申请：请包含其全部产品。",
   "strategy.error.forbidden": "您的权限不允许此操作。",
   "strategy.error.not_found": "未找到需求或策略。",
   "strategy.error.strategy_choose_demands": "请至少勾选一个需求。",

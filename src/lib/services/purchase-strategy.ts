@@ -34,11 +34,14 @@ import { taskTextValues, type TaskText } from "@/lib/task-text";
 import { audit } from "./audit";
 import { notify } from "./notifications";
 import { isStockCustomer } from "./stock-party";
+import { countryKey } from "@/lib/order-terms";
+import { servesFamilies } from "@/lib/party-families";
 
 /*
  * Estratégia de compra (mapa B10?, dono 15/11/2026; docs/PURCHASE_DEMAND.md).
- * Uma fila só do Comprador, com reposições e encomendas. Para uma ou mais
- * demandas do mesmo produto ou da mesma linha, ele escolhe:
+ * Uma fila só do Comprador, com reposições e encomendas. A estratégia é da
+ * solicitação inteira, com todos os produtos dela juntos (dono, 18/11/2026);
+ * ele escolhe:
  *
  * - "Fornecedor da última compra": aprovada pela Diretoria de compras, gera
  *   o pedido de compra direto (P2) com as condições da última compra,
@@ -163,6 +166,144 @@ export async function openDecisions(): Promise<PurchaseDecision[]> {
   );
 }
 
+/**
+ * A solicitação de uma demanda: os produtos do mesmo lote (`groupId`, mesmo
+ * número) são uma solicitação só; sem lote, a própria demanda. A estratégia
+ * é da solicitação inteira (dono, 18/11/2026).
+ */
+export const requestKey = (r: Pick<Request, "id" | "groupId" | "number">) =>
+  r.groupId ? `g:${r.groupId}` : r.number ? `n:${r.number}` : `r:${r.id}`;
+
+/**
+ * "Fornecedor da última compra" para a solicitação: todos os produtos com
+ * compra anterior, e todas do mesmo fornecedor (dono, 18/11/2026).
+ */
+export function sameLastSupplier(
+  productIds: readonly string[],
+  references: ReadonlyMap<string, Pick<LastPurchase, "supplierId">>,
+): boolean {
+  if (!productIds.length) return false;
+  const suppliers = new Set(
+    productIds.map((id) => references.get(id)?.supplierId ?? null),
+  );
+  return suppliers.size === 1 && !suppliers.has(null);
+}
+
+/**
+ * A solicitação vai inteira: as demandas são de uma solicitação só e trazem
+ * todas as dela que estão na fila (dono, 18/11/2026).
+ */
+async function assertWholeRequest(demands: readonly Request[]) {
+  const keys = new Set(demands.map(requestKey));
+  if (keys.size > 1) throw new PurchaseStrategyError("strategy_same_request");
+  const [key] = keys;
+  const ids = new Set(demands.map((d) => d.id));
+  const left = (await waitingDemands()).filter(
+    (r) => requestKey(r) === key && !ids.has(r.id),
+  );
+  if (left.length) throw new PurchaseStrategyError("strategy_whole_request");
+}
+
+export interface StrategyOrigin {
+  /** País de origem (chave de `countryKey`); "" = não informado. */
+  country: string;
+  countryName: string;
+  /** Família ("fm:<NOME>" ou "ln:<linha>"); nula = sem família. */
+  family: string | null;
+  familyName: string | null;
+  /** Parceiros do País × Família, por nome. */
+  supplierIds: string[];
+}
+
+/**
+ * Os fornecedores do País × Família da solicitação (dono, 18/11/2026), a
+ * lista que a tela mostra marcada para "cotar com outros fornecedores",
+ * cada um uma vez só:
+ * - quem marcou a família no cadastro ("Grupo de produto (família)",
+ *   `party_families`; docs/PARTNER_FAMILIES.md);
+ * - o fornecedor principal dos produtos ativos da família e os ligados aos
+ *   produtos da solicitação (`product_suppliers`).
+ * Só os ativos dos quatro tipos (Fornecedor, Trading, Supplier e Factory) e
+ * do país de origem. País e família vêm das condições do pedido
+ * (`orderTerms`); sem elas (reposição, antigas), do produto do catálogo.
+ */
+export async function strategySuppliers(
+  demands: readonly Request[],
+): Promise<StrategyOrigin> {
+  const store = getStore();
+  const origin = await import("./product-origin");
+  const terms = demands.find((d) => d.orderTerms?.originCountry)?.orderTerms;
+  const productIds = unique(demands.map((d) => d.productId));
+  const fromProduct = productIds[0]
+    ? await origin.productOrigin(productIds[0]).catch(() => null)
+    : null;
+  const country = terms?.originCountry || fromProduct?.country || "";
+  const family = terms
+    ? terms.productFamily || null
+    : (fromProduct?.family ?? null);
+  const familyInfo = family
+    ? await origin.originFamily(family).catch(() => null)
+    : null;
+  const countryName =
+    terms?.originCountryName ||
+    (await origin.originCountryName(country).catch(() => country));
+  const familyName =
+    terms?.productFamilyName ||
+    familyInfo?.name ||
+    terms?.productLineName ||
+    null;
+  const products = productIds.length
+    ? await listColumns(store, "products", ["id", "lineId"], {
+        filter: { id: productIds },
+      })
+    : [];
+  const lineIds = unique<string>([
+    ...(familyInfo?.lineIds ?? []),
+    ...products.map((p) => p.lineId),
+    terms?.productLineId,
+  ]);
+  const ids = new Set<string>();
+  const { familyCodesForLines } = await import("./product-families");
+  const codes = new Set(await familyCodesForLines(lineIds).catch(() => []));
+  if (family?.startsWith("fm:")) {
+    const named = await store
+      .list("product_families", { filter: { nameKey: family } })
+      .catch(() => []);
+    for (const f of named) codes.add(f.code);
+  }
+  if (codes.size) {
+    const links = await store
+      .list("party_families", { filter: { familyCode: [...codes] } })
+      .catch(() => []);
+    for (const l of links) ids.add(l.partyId);
+  }
+  if (lineIds.length) {
+    const ofFamily = await listColumns(store, "products", ["supplierId"], {
+      filter: { lineId: lineIds, active: true },
+    }).catch(() => []);
+    for (const p of ofFamily) if (p.supplierId) ids.add(p.supplierId);
+  }
+  if (productIds.length) {
+    const links = await store
+      .list("product_suppliers", { filter: { productId: productIds } })
+      .catch(() => []);
+    for (const l of links) ids.add(l.supplierId);
+  }
+  const parties = ids.size
+    ? await store.list("parties", { filter: { id: [...ids] } })
+    : [];
+  const supplierIds = parties
+    .filter(
+      (p) =>
+        p.active &&
+        servesFamilies(p.type) &&
+        (!country || countryKey(p.country) === country),
+    )
+    .sort((a, b) => a.name.localeCompare(b.name, "pt"))
+    .map((p) => p.id);
+  return { country, countryName, family, familyName, supplierIds };
+}
+
 async function teamHolders(action: Parameters<typeof can>[1]) {
   const users = (
     await getStore().list("users", { filter: { active: true } })
@@ -206,20 +347,20 @@ export async function chooseStrategy(
     filter: { id: productIds },
   });
   const lineIds = [...new Set(products.map((p) => p.lineId ?? null))];
-  if (productIds.length > 1 && (lineIds.length > 1 || !lineIds[0]))
-    throw new PurchaseStrategyError("strategy_same_line");
+  // Uma solicitação só, com todos os produtos dela (dono, 18/11/2026).
+  await assertWholeRequest(demands);
   const references = await lastPurchases(productIds);
   if (input.choice === "last_supplier") {
-    if (productIds.length > 1)
-      throw new PurchaseStrategyError("strategy_last_one_product");
-    if (!references.get(productIds[0]))
+    if (productIds.some((id) => !references.get(id)))
       throw new PurchaseStrategyError("strategy_no_last_purchase");
+    if (!sameLastSupplier(productIds, references))
+      throw new PurchaseStrategyError("strategy_last_same_supplier");
   }
   const now = new Date().toISOString();
   const decision = await store.create("purchase_decisions", {
     number: await store.nextNumber("purchase_decision_number"),
     productId: productIds.length === 1 ? productIds[0] : null,
-    lineId: lineIds[0] ?? null,
+    lineId: lineIds.length === 1 ? lineIds[0] : null,
     demandIds: ids,
     quantity: demands.reduce((sum, d) => sum + d.quantity, 0),
     choice: input.choice,
@@ -328,11 +469,18 @@ export async function orderFromStrategy(
   user: User,
   decisionId: string,
   input: {
-    unitPrice: number | null;
     currency: string;
-    quantity: number;
     leadTimeDays: number | null;
     incoterm: "EXW" | "FOB" | null;
+    /** Um produto (estratégias de um produto só): quantidade e preço. */
+    unitPrice?: number | null;
+    quantity?: number;
+    /** Vários produtos: quantidade e preço de cada um (ausente = o somado e o da última compra). */
+    lines?: Array<{
+      productId: string;
+      quantity: number;
+      unitPrice: number | null;
+    }>;
   },
 ): Promise<Order> {
   if (!isWellmix(user)) throw new PurchaseStrategyError("forbidden");
@@ -345,34 +493,46 @@ export async function orderFromStrategy(
     decision.orderId
   )
     throw new PurchaseStrategyError("strategy_not_ready");
-  const reference = decision.reference?.[0];
-  if (!reference || !decision.productId)
-    throw new PurchaseStrategyError("strategy_no_last_purchase");
-  // Sem "Ver preço de compra" (dono, 15/11/2026; docs/LINHA_DE_VISAO.md,
-  // seção 7): o pedido sai com o preço e a moeda da última compra gravados
-  // na decisão; o que vier no formulário é ignorado.
-  if (!canSeePurchasePrice(user))
-    input = {
-      ...input,
-      unitPrice: reference.unitPrice,
-      currency: reference.currency ?? "USD",
-    };
   const demands = await store.list("requests", {
     filter: { id: decision.demandIds },
   });
+  const productIds = [
+    ...new Set(demands.map((d) => d.productId).filter(Boolean)),
+  ] as string[];
+  const refs = new Map(
+    (decision.reference ?? []).map((r) => [r.productId, r] as const),
+  );
+  if (!productIds.length || !sameLastSupplier(productIds, refs))
+    throw new PurchaseStrategyError("strategy_no_last_purchase");
+  const reference = refs.get(productIds[0])!;
+  // Sem "Ver preço de compra" (dono, 15/11/2026; docs/LINHA_DE_VISAO.md,
+  // seção 7): o pedido sai com o preço e a moeda da última compra gravados
+  // na decisão; o que vier no formulário é ignorado.
+  const seesPrice = canSeePurchasePrice(user);
+  const single = productIds.length === 1;
+  const lines = productIds.map((productId) => {
+    const ref = refs.get(productId)!;
+    const sent = input.lines?.find((l) => l.productId === productId);
+    const summed = demands
+      .filter((d) => d.productId === productId)
+      .reduce((sum, d) => sum + d.quantity, 0);
+    const quantity =
+      sent?.quantity ?? (single ? input.quantity : undefined) ?? summed;
+    const typed = sent ? sent.unitPrice : single ? input.unitPrice : undefined;
+    return {
+      productId,
+      quantity,
+      unitPrice: seesPrice && typed !== undefined ? typed : ref.unitPrice,
+    };
+  });
+  const currency = seesPrice ? input.currency : (reference.currency ?? "USD");
   const { createDirectPurchaseOrder } = await import("./purchase-order");
   const order = await createDirectPurchaseOrder(user, {
     supplierId: reference.supplierId,
-    currency: input.currency,
+    currency,
     incoterm: input.incoterm,
     leadTimeDays: input.leadTimeDays,
-    lines: [
-      {
-        productId: decision.productId,
-        quantity: input.quantity,
-        unitPrice: input.unitPrice,
-      },
-    ],
+    lines,
     demandIds: decision.demandIds,
     summary: `estratégia nº ${decision.number}, demandas ${demands.map((d) => `nº ${d.number ?? "—"}`).join(", ")}`,
   });
@@ -631,6 +791,8 @@ export async function sendToStrategy(
 /** Uma linha da Estratégia de Compra: um produto de uma demanda. */
 export interface StrategyLine {
   demand: Request;
+  /** A solicitação da demanda (`requestKey`): a estratégia é dela inteira. */
+  groupKey: string;
   kind: "order" | "replenishment";
   customerName: string | null;
   /** Produtos do mesmo lote (encomenda com vários produtos). */
@@ -643,6 +805,28 @@ export interface StrategyLine {
   /** Sugeridos pelo histórico (sem vínculo): a última compra, o fornecedor do produto e quem mais forneceu a família. */
   suggestedIds: string[];
 }
+
+/**
+ * Uma solicitação da fila (dono, 18/11/2026): todos os produtos dela, a
+ * escolha é uma só e os destinatários são os do País × Família.
+ */
+export interface StrategyGroup {
+  key: string;
+  demandIds: string[];
+  countryName: string;
+  familyName: string | null;
+  /** A última compra comum (todos os produtos do mesmo fornecedor); nula = não vale. */
+  last: LastPurchase | null;
+  /** Algum produto sem compra anterior (o motivo de não valer a última compra). */
+  missingLast: boolean;
+  /** Os parceiros do País × Família (`strategySuppliers`), marcados quando aptos. */
+  linkedIds: string[];
+  /** Sugeridos pelo histórico, fora da lista do País × Família. */
+  suggestedIds: string[];
+}
+
+/** Destinatários por solicitação (a lista do País × Família pode ser longa). */
+export const MAX_RECIPIENTS = 200;
 
 /** Quantos sugeridos do histórico da família cada linha mostra (o resto, pela busca). */
 const FAMILY_SUGGESTIONS = 8;
@@ -692,7 +876,10 @@ async function familiesForLines(lineIds: readonly string[]): Promise<{
     }).catch(() => [] as Array<{ id: string; familyCode?: string | null }>),
   ]);
   for (const l of links)
-    out.linked.set(l.familyCode, unique([...(out.linked.get(l.familyCode) ?? []), l.partyId]));
+    out.linked.set(
+      l.familyCode,
+      unique([...(out.linked.get(l.familyCode) ?? []), l.partyId]),
+    );
   // Quem mais forneceu a família: o fornecedor dos produtos ativos das linhas dela.
   const lineFamily = new Map(
     familyLines.map((l) => [l.id, l.familyCode ?? null] as const),
@@ -728,6 +915,7 @@ async function familiesForLines(lineIds: readonly string[]): Promise<{
  */
 export async function strategyBoard(t: Translate): Promise<{
   lines: StrategyLine[];
+  groups: StrategyGroup[];
   checks: Map<string, RecipientCheck>;
   toSend: number;
 }> {
@@ -771,14 +959,12 @@ export async function strategyBoard(t: Translate): Promise<{
         .filter((l) => l.productId === d.productId)
         .map((l) => l.supplierId),
       ...(family
-        ? (families.history.get(family.key) ?? []).slice(
-            0,
-            FAMILY_SUGGESTIONS,
-          )
+        ? (families.history.get(family.key) ?? []).slice(0, FAMILY_SUGGESTIONS)
         : []),
     ]).filter((id) => !linkedIds.includes(id));
     return {
       demand: d,
+      groupKey: requestKey(d),
       kind: demandKind(d) === "replenishment" ? "replenishment" : "order",
       customerName: customers.find((c) => c.id === d.customerId)?.name ?? null,
       batchSize: d.groupId
@@ -790,9 +976,43 @@ export async function strategyBoard(t: Translate): Promise<{
       suggestedIds,
     };
   });
+  // Por solicitação (dono, 18/11/2026): os produtos juntos, a última compra
+  // comum e os parceiros do País × Família.
+  const byKey = new Map<string, StrategyLine[]>();
+  for (const line of lines)
+    byKey.set(line.groupKey, [...(byKey.get(line.groupKey) ?? []), line]);
+  const groups: StrategyGroup[] = await Promise.all(
+    [...byKey.entries()].map(async ([key, members]) => {
+      const demands = members.map((m) => m.demand);
+      const productIdsHere = unique(demands.map((d) => d.productId));
+      const origin = demands.every((d) => d.productId)
+        ? await strategySuppliers(demands).catch(() => null)
+        : null;
+      const linkedIds = origin?.supplierIds ?? [];
+      const same = sameLastSupplier(productIdsHere, references);
+      return {
+        key,
+        demandIds: demands.map((d) => d.id),
+        countryName: origin?.countryName ?? "",
+        familyName:
+          origin?.familyName ??
+          members.find((m) => m.family)?.family?.name ??
+          null,
+        last: same ? (references.get(productIdsHere[0]) ?? null) : null,
+        missingLast: productIdsHere.some((id) => !references.get(id)),
+        linkedIds,
+        suggestedIds: unique(
+          members.flatMap((m) => [...m.linkedIds, ...m.suggestedIds]),
+        ).filter((id) => !linkedIds.includes(id)),
+      };
+    }),
+  );
   const { checkRecipients } = await import("./purchase-recipients");
   const checks = await checkRecipients(
-    unique(lines.flatMap((l) => [...l.linkedIds, ...l.suggestedIds])),
+    unique([
+      ...lines.flatMap((l) => [...l.linkedIds, ...l.suggestedIds]),
+      ...groups.flatMap((g) => [...g.linkedIds, ...g.suggestedIds]),
+    ]),
     t,
   );
   // Sugestão só de quem cota (o fornecedor do produto pode ser de outro tipo).
@@ -800,12 +1020,19 @@ export async function strategyBoard(t: Translate): Promise<{
     line.suggestedIds = line.suggestedIds.filter((id) =>
       receivesQuote(checks.get(id)?.type),
     );
-  return { lines, checks, toSend };
+  for (const group of groups)
+    group.suggestedIds = group.suggestedIds.filter((id) =>
+      receivesQuote(checks.get(id)?.type),
+    );
+  return { lines, groups, checks, toSend };
 }
 
 export interface StrategySendInput {
   lines: Array<{
-    demandId: string;
+    /** As demandas da solicitação (todas; dono, 18/11/2026). */
+    demandIds?: string[];
+    /** Antes: uma demanda por linha (vale como solicitação de um produto). */
+    demandId?: string;
     choice: StrategyLineChoice;
     recipientIds: string[];
   }>;
@@ -889,26 +1116,33 @@ async function runLine(
   sendId: string,
   sendNumber: number,
   line: StrategySendLine,
-  demand: Request,
-  reference: LastPurchase | null,
+  demands: readonly Request[],
+  references: ReadonlyMap<string, LastPurchase>,
   checks: Map<string, RecipientCheck>,
   note: string | null,
 ): Promise<StrategySendLine> {
   const store = getStore();
   const now = new Date();
   const at = now.toISOString();
-  const product = demand.productId
-    ? await store.get("products", demand.productId)
-    : null;
+  // A solicitação inteira numa estratégia só (dono, 18/11/2026).
+  const productIds = unique(demands.map((d) => d.productId));
+  const products = productIds.length
+    ? await store.list("products", { filter: { id: productIds } })
+    : [];
+  const lineIds = unique(products.map((p) => p.lineId));
+  const first = demands[0];
+  const reference = productIds
+    .map((id) => references.get(id))
+    .filter((r): r is LastPurchase => !!r);
   const quotes = choiceQuotes(line.choice);
   const decision = await store.create("purchase_decisions", {
     number: await store.nextNumber("purchase_decision_number"),
-    productId: demand.productId,
-    lineId: product?.lineId ?? null,
-    demandIds: [demand.id],
-    quantity: demand.quantity,
+    productId: productIds.length === 1 ? productIds[0] : null,
+    lineId: lineIds.length === 1 ? lineIds[0] : null,
+    demandIds: demands.map((d) => d.id),
+    quantity: demands.reduce((sum, d) => sum + d.quantity, 0),
     choice: line.choice,
-    reference: reference ? [reference] : [],
+    reference,
     note,
     // Cotar não passa mais pela aprovação (D2): a Diretoria aprova a
     // vencedora. O pedido direto continua com a aprovação de antes.
@@ -925,15 +1159,16 @@ async function runLine(
     recipientIds: quotes ? line.recipientIds : null,
     sendId,
   });
-  await store.update("requests", demand.id, {
-    purchaseDecisionId: decision.id,
-  });
+  for (const d of demands)
+    await store.update("requests", d.id, {
+      purchaseDecisionId: decision.id,
+    });
   await audit(
     user,
     "purchase_strategy.choose",
     "purchase_decision",
     decision.id,
-    `Estratégia nº ${decision.number}: ${choiceLabel(line.choice)} para a demanda nº ${demand.number ?? demand.id} (envio nº ${sendNumber})`,
+    `Estratégia nº ${decision.number}: ${choiceLabel(line.choice)} para a solicitação nº ${first.number ?? first.id}, ${demands.length} produto(s) (envio nº ${sendNumber})`,
   );
   if (!quotes) {
     const approvers = await teamHolders("purchaseStrategy.approve");
@@ -944,7 +1179,7 @@ async function runLine(
           kind: "action",
           link: `/app/purchase-strategy#decision-${decision.id}`,
           subject: `Aprovar estratégia de compra nº ${decision.number}`,
-          body: `Pedido direto com o fornecedor da última compra: ${demand.productName}.`,
+          body: `Pedido direto com o fornecedor da última compra: ${demands.map((d) => d.productName).join(", ")}.`,
         },
       );
     return { ...line, decisionId: decision.id, error: null, recipients: [] };
@@ -1013,7 +1248,10 @@ export async function sendStrategy(
   assertScreen(user, "purchaseStrategy");
   if (!input.lines.length)
     throw new PurchaseStrategyError("strategy_send_empty");
-  const demandIds = input.lines.map((l) => l.demandId);
+  const idsOf = (l: StrategySendInput["lines"][number]) =>
+    unique(l.demandIds?.length ? l.demandIds : [l.demandId]);
+  const demandIds = input.lines.flatMap(idsOf);
+  if (!demandIds.length) throw new PurchaseStrategyError("strategy_send_empty");
   if (new Set(demandIds).size !== demandIds.length)
     throw new PurchaseStrategyError("strategy_line_duplicated");
   const store = getStore();
@@ -1031,30 +1269,41 @@ export async function sendStrategy(
   const references = await lastPurchases(
     unique(demands.map((d) => d.productId)),
   );
-  const lines: StrategySendLine[] = input.lines.map((l) => {
-    const demand = demands.find((d) => d.id === l.demandId)!;
-    const ref = references.get(demand.productId!) ?? null;
-    if ((l.choice === "quote_last" || l.choice === "last_supplier") && !ref)
-      throw new PurchaseStrategyError("strategy_no_last_purchase");
+  const demandsOf = (ids: readonly string[]) =>
+    ids.map((id) => demands.find((d) => d.id === id)!);
+  const lines: StrategySendLine[] = [];
+  for (const l of input.lines) {
+    const mine = demandsOf(idsOf(l));
+    // A solicitação vai inteira, numa escolha só (dono, 18/11/2026).
+    await assertWholeRequest(mine);
+    const productIds = unique(mine.map((d) => d.productId));
+    if (l.choice === "quote_last" || l.choice === "last_supplier") {
+      if (productIds.some((id) => !references.get(id)))
+        throw new PurchaseStrategyError("strategy_no_last_purchase");
+      if (!sameLastSupplier(productIds, references))
+        throw new PurchaseStrategyError("strategy_last_same_supplier");
+    }
+    const ref = references.get(productIds[0]) ?? null;
     const recipientIds =
       l.choice === "quote_last"
         ? [ref!.supplierId]
         : l.choice === "quote"
-          ? unique(l.recipientIds).slice(0, 30)
+          ? unique(l.recipientIds).slice(0, MAX_RECIPIENTS)
           : [];
     if (l.choice === "quote" && !recipientIds.length)
       throw new PurchaseStrategyError("strategy_send_recipients");
-    return {
-      demandId: demand.id,
-      productId: demand.productId!,
+    lines.push({
+      demandId: mine[0].id,
+      demandIds: mine.map((d) => d.id),
+      productId: productIds[0],
       choice: l.choice,
       recipientIds,
       decisionId: null,
       quoteId: null,
       error: null,
       recipients: [],
-    };
-  });
+    });
+  }
   const { checkRecipients } = await import("./purchase-recipients");
   const checks = await checkRecipients(
     unique(lines.flatMap((l) => l.recipientIds)),
@@ -1078,7 +1327,6 @@ export async function sendStrategy(
   });
   const done: StrategySendLine[] = [];
   for (const line of lines) {
-    const demand = demands.find((d) => d.id === line.demandId)!;
     try {
       done.push(
         await runLine(
@@ -1086,8 +1334,8 @@ export async function sendStrategy(
           send.id,
           send.number,
           line,
-          demand,
-          references.get(line.productId) ?? null,
+          demandsOf(line.demandIds ?? [line.demandId]),
+          references,
           checks,
           input.note,
         ),
@@ -1118,7 +1366,7 @@ export async function sendStrategy(
     "purchase_strategy.send",
     "purchase_strategy_send",
     send.id,
-    `Envio nº ${send.number} da Estratégia de Compra: ${done.length} produto(s), ${sentCount} convite(s) enviado(s), ${pendingRecipients(saved)} parceiro(s) sem receber`,
+    `Envio nº ${send.number} da Estratégia de Compra: ${done.length} solicitação(ões), ${demandIds.length} produto(s), ${sentCount} convite(s) enviado(s), ${pendingRecipients(saved)} parceiro(s) sem receber`,
   );
   return saved;
 }
@@ -1224,22 +1472,26 @@ export async function retryStrategySend(
   const lines: StrategySendLine[] = [];
   for (const line of send.lines) {
     if (lineRetryable(line)) {
-      // A linha não chegou a virar estratégia: refaz, se a demanda ainda espera.
-      const demand = await store.get("requests", line.demandId);
-      if (!demand || !inStrategyQueue(demand)) {
+      // A linha não chegou a virar estratégia: refaz, se as demandas da
+      // solicitação ainda esperam.
+      const ids = line.demandIds ?? [line.demandId];
+      const demands = await store.list("requests", { filter: { id: ids } });
+      if (
+        demands.length !== ids.length ||
+        demands.some((d) => !inStrategyQueue(d))
+      ) {
         lines.push({ ...line, error: "strategy_demand_taken" });
         continue;
       }
-      const ref =
-        (await lastPurchases([line.productId])).get(line.productId) ?? null;
+      const refs = await lastPurchases(unique(demands.map((d) => d.productId)));
       try {
         const fresh = await runLine(
           user,
           send.id,
           send.number,
           { ...line, error: null },
-          demand,
-          ref,
+          ids.map((id) => demands.find((d) => d.id === id)!),
+          refs,
           checks,
           null,
         );

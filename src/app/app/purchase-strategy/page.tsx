@@ -46,6 +46,7 @@ import {
 } from "../actions/purchase-demand";
 import {
   StrategyQueue,
+  type StrategyGroupData,
   type StrategyLineData,
   type StrategyTexts,
 } from "./_components/strategy-queue";
@@ -158,8 +159,38 @@ export default async function PurchaseStrategyPage({
         : `${t("strategy.noProduct")}: ${t("strategy.noProductHint")}`,
     };
   });
+  // Por solicitação (dono, 18/11/2026): uma escolha para todos os produtos.
+  const groups: StrategyGroupData[] = board.groups.map((g) => {
+    const members = g.demandIds
+      .map((id) => lines.find((l) => l.demandId === id))
+      .filter((l): l is StrategyLineData => !!l);
+    const first = members[0];
+    return {
+      key: g.key,
+      title: first?.origin ?? "—",
+      customerName: first?.customerName ?? null,
+      origin:
+        g.countryName || g.familyName
+          ? `${g.countryName || "—"} › ${g.familyName || "—"}`
+          : null,
+      demandIds: g.demandIds,
+      last: g.last ? (first?.last ?? null) : null,
+      lastReason: g.last
+        ? null
+        : g.missingLast
+          ? t("strategy.lastAllProducts")
+          : t("strategy.lastSameSupplier"),
+      linkedIds: g.linkedIds,
+      suggestedIds: g.suggestedIds,
+      blocked: members.some((m) => m.blocked)
+        ? `${t("strategy.noProduct")}: ${t("strategy.noProductHint")}`
+        : null,
+    };
+  });
   const texts: StrategyTexts = {
-    queueTitle: t("strategy.queue.title", { n: lines.length }),
+    originList: t("strategy.recipients.origin"),
+    originNone: t("strategy.recipients.originNone"),
+    queueTitle: t("strategy.queue.title", { n: board.groups.length }),
     queueEmpty: t("strategy.queue.empty"),
     customer: t("strategy.line.customer"),
     quantity: t("strategy.line.quantity"),
@@ -347,6 +378,7 @@ export default async function PurchaseStrategyPage({
 
       <StrategyQueue
         lines={lines}
+        groups={groups}
         checks={Object.fromEntries(board.checks)}
         texts={texts}
         canChoose={canChoose}
@@ -361,6 +393,21 @@ export default async function PurchaseStrategyPage({
                 d.demandIds.includes(r.id),
               );
               const ref = d.reference?.[0];
+              // Uma linha por produto da solicitação, com a quantidade somada
+              // e a última compra de cada um (todos do mesmo fornecedor).
+              const orderLines = [
+                ...new Set(demands.map((r) => r.productId).filter(Boolean)),
+              ].map((productId) => ({
+                productId: productId as string,
+                quantity: demands
+                  .filter((r) => r.productId === productId)
+                  .reduce((sum, r) => sum + r.quantity, 0),
+                ref: d.reference?.find((x) => x.productId === productId),
+              }));
+              const leadTimes = orderLines
+                .map((l) => l.ref?.leadTimeDays)
+                .filter((n): n is number => typeof n === "number");
+              const leadTime = leadTimes.length ? Math.max(...leadTimes) : null;
               return (
                 <section
                   key={d.id}
@@ -373,7 +420,9 @@ export default async function PurchaseStrategyPage({
                     <h3 className="text-sm font-semibold text-zinc-900">
                       {t("strategy.decision", { n: d.number })}
                     </h3>
-                    <Badge tone={d.status === "pending" ? "warning" : "success"}>
+                    <Badge
+                      tone={d.status === "pending" ? "warning" : "success"}
+                    >
                       {t(`strategy.status.${d.status}` as DictionaryKey)}
                     </Badge>
                     <Badge tone="neutral">
@@ -386,9 +435,23 @@ export default async function PurchaseStrategyPage({
                   <ul className="mt-2 divide-y divide-zinc-100">
                     {demands.map((r) => demandRow(r, false))}
                   </ul>
-                  {d.choice === "last_supplier" ? (
-                    <div className="mt-2">{reference(ref)}</div>
-                  ) : null}
+                  {d.choice === "last_supplier"
+                    ? orderLines.map((line) => (
+                        <div key={line.productId} className="mt-2 space-y-0.5">
+                          {orderLines.length > 1 ? (
+                            <p className="text-xs font-medium text-zinc-800">
+                              {productNameText(
+                                t,
+                                demands.find(
+                                  (r) => r.productId === line.productId,
+                                )?.productName ?? "",
+                              )}
+                            </p>
+                          ) : null}
+                          {reference(line.ref)}
+                        </div>
+                      ))
+                    : null}
                   {d.status === "pending" && canApprove ? (
                     <form
                       action={decideStrategyAction}
@@ -432,46 +495,65 @@ export default async function PurchaseStrategyPage({
                         data-strategy-order-form
                       >
                         <input type="hidden" name="id" value={d.id} />
-                        <Field label={t("common.quantity")}>
-                          <Input
-                            name="quantity"
-                            inputMode="numeric"
-                            defaultValue={String(d.quantity)}
-                            required
-                          />
-                        </Field>
-                        {seesPrice ? (
-                          <>
-                            <Field label={t("strategy.last.price")}>
+                        {orderLines.map((line) => (
+                          <div
+                            key={line.productId}
+                            className="grid gap-2 sm:col-span-5 sm:grid-cols-5"
+                            data-strategy-order-line={line.productId}
+                          >
+                            <input
+                              type="hidden"
+                              name="productIds"
+                              value={line.productId}
+                            />
+                            <p className="self-end pb-2 text-sm font-medium text-zinc-800 sm:col-span-2">
+                              {productNameText(
+                                t,
+                                demands.find(
+                                  (r) => r.productId === line.productId,
+                                )?.productName ?? "",
+                              )}
+                            </p>
+                            <Field label={t("common.quantity")}>
                               <Input
-                                name="unitPrice"
-                                inputMode="decimal"
-                                defaultValue={
-                                  ref.unitPrice !== null
-                                    ? String(ref.unitPrice)
-                                    : ""
-                                }
-                                data-strategy-order-price
-                              />
-                            </Field>
-                            <Field label={t("strategy.currency")}>
-                              <Input
-                                name="currency"
-                                defaultValue={ref.currency ?? "USD"}
-                                maxLength={3}
+                                name={`quantity__${line.productId}`}
+                                inputMode="numeric"
+                                defaultValue={String(line.quantity)}
                                 required
                               />
                             </Field>
-                          </>
+                            {seesPrice ? (
+                              <Field label={t("strategy.last.price")}>
+                                <Input
+                                  name={`unitPrice__${line.productId}`}
+                                  inputMode="decimal"
+                                  defaultValue={
+                                    line.ref?.unitPrice != null
+                                      ? String(line.ref.unitPrice)
+                                      : ""
+                                  }
+                                  data-strategy-order-price
+                                />
+                              </Field>
+                            ) : null}
+                          </div>
+                        ))}
+                        {seesPrice ? (
+                          <Field label={t("strategy.currency")}>
+                            <Input
+                              name="currency"
+                              defaultValue={ref.currency ?? "USD"}
+                              maxLength={3}
+                              required
+                            />
+                          </Field>
                         ) : null}
                         <Field label={t("strategy.last.leadTime")}>
                           <Input
                             name="leadTimeDays"
                             inputMode="numeric"
                             defaultValue={
-                              ref.leadTimeDays !== null
-                                ? String(ref.leadTimeDays)
-                                : ""
+                              leadTime !== null ? String(leadTime) : ""
                             }
                           />
                         </Field>

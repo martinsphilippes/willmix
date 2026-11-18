@@ -93,21 +93,31 @@ export async function decideStrategyAction(form: FormData) {
 export async function orderFromStrategyAction(form: FormData) {
   const user = await requireUser();
   await run("/app/purchase-strategy", async () => {
-    assertScreen(user, "purchaseStrategy");
+    assertScreen(user, "quotes");
     assertScreen(user, "orders");
     const id = ID.parse(str(form, "id"));
-    const quantity = z
-      .number()
-      .positive()
-      .max(1e9)
-      .parse(parseNumberInput(str(form, "quantity")));
     // Sem "Ver preço de compra" a tela não tem preço nem moeda: o serviço
     // usa os da última compra gravados na decisão (dono, 15/11/2026).
     const seesPrice = canSeePurchasePrice(user);
-    const priceRaw = seesPrice ? str(form, "unitPrice") : "";
-    const unitPrice = priceRaw
-      ? z.number().nonnegative().max(1e9).parse(parseNumberInput(priceRaw))
-      : null;
+    const QTY = z.number().positive().max(1e9);
+    const price = (raw: string) =>
+      raw
+        ? z.number().nonnegative().max(1e9).parse(parseNumberInput(raw))
+        : null;
+    // Uma linha por produto da solicitação (todos do mesmo fornecedor da
+    // última compra; dono, 18/11/2026).
+    const productIds = z
+      .array(ID)
+      .min(1)
+      .max(200)
+      .parse(form.getAll("productIds").map(String));
+    const lines = productIds.map((productId) => ({
+      productId,
+      quantity: QTY.parse(
+        parseNumberInput(str(form, `quantity__${productId}`)),
+      ),
+      unitPrice: seesPrice ? price(str(form, `unitPrice__${productId}`)) : null,
+    }));
     const currency = seesPrice
       ? z
           .string()
@@ -131,11 +141,10 @@ export async function orderFromStrategyAction(form: FormData) {
     const { orderFromStrategy } =
       await import("@/lib/services/purchase-strategy");
     const order = await orderFromStrategy(user, id, {
-      unitPrice,
       currency,
-      quantity,
       leadTimeDays,
       incoterm,
+      lines,
     });
     return `/app/orders/${order.id}?created=1`;
   });
@@ -312,11 +321,15 @@ export interface StrategySendState {
 const STRATEGY_PAYLOAD = z.object({
   lines: z
     .array(
-      z.object({
-        demandId: ID,
-        choice: z.enum(STRATEGY_LINE_CHOICES),
-        recipientIds: z.array(ID).max(30),
-      }),
+      z
+        .object({
+          // A solicitação inteira (dono, 18/11/2026); `demandId` = de antes.
+          demandIds: z.array(ID).min(1).max(200).optional(),
+          demandId: ID.optional(),
+          choice: z.enum(STRATEGY_LINE_CHOICES),
+          recipientIds: z.array(ID).max(200),
+        })
+        .refine((l) => !!l.demandIds?.length || !!l.demandId),
     )
     .min(1)
     .max(200),

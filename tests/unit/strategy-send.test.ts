@@ -285,6 +285,109 @@ describe("Grupo de produto (família) do cadastro (docs/PARTNER_FAMILIES.md)", (
   });
 });
 
+describe("por solicitação (dono, 18/11/2026)", () => {
+  it("a fila junta os produtos da solicitação, lista o País × Família e envia uma cotação só com todos eles", async () => {
+    const store = getStore();
+    await productFamilies.setPartyFamilies(admin, traderParty, ["20000000"]);
+    const { countryKey } = await import("@/lib/order-terms");
+    // Uma solicitação com dois produtos, da China, utilidades domésticas.
+    const lot = await requests.createRequestBatch(
+      joao,
+      {
+        customerId: "cliente-joao",
+        orderTerms: {
+          originCountry: countryKey("CN"),
+          originCountryName: "China",
+          productFamily: "fm:UTILIDADES_DOMESTICAS",
+          productFamilyName: "UTILIDADES DOMESTICAS",
+        } as never,
+      },
+      [
+        ["prod-panela", 800],
+        ["prod-jarra", 600],
+      ].map(([productId, quantity]) => ({
+        productId: productId as string,
+        productName: productId as string,
+        description: "Encomenda",
+        specification: null,
+        quantity: quantity as number,
+        unit: "un",
+        sourcingDemand: false,
+      })),
+    );
+    for (const r of lot)
+      await store.update("requests", r.id, { status: "REQUESTED" });
+    await strategy.sendToStrategy(
+      admin,
+      lot.map((r) => r.id),
+    );
+    const ids = lot.map((r) => r.id);
+    const board = await strategy.strategyBoard(t);
+    const group = board.groups.find((g) => g.demandIds.includes(ids[0]))!;
+    expect([...group.demandIds].sort()).toEqual([...ids].sort());
+    expect(group).toMatchObject({
+      countryName: "China",
+      familyName: "UTILIDADES DOMESTICAS",
+      // A jarra não tem compra anterior: a última compra não vale.
+      last: null,
+      missingLast: true,
+    });
+    // A Trading marcou a família; o A fornece a panela. A Fábrica (sem a
+    // família) e o GP (tipo que não cota) ficam de fora.
+    expect(group.linkedIds).toEqual(
+      expect.arrayContaining([traderParty, "fornecedor-a"]),
+    );
+    expect(group.linkedIds).not.toContain(factoryParty);
+    expect(group.linkedIds).not.toContain(gpParty);
+    // Só uma parte da solicitação: recusado.
+    await expect(
+      strategy.sendStrategy(
+        buyer,
+        {
+          lines: [
+            {
+              demandIds: [ids[0]],
+              choice: "quote",
+              recipientIds: [traderParty],
+            },
+          ],
+          note: null,
+        },
+        t,
+      ),
+    ).rejects.toThrow("strategy_whole_request");
+    // Inteira, para a Trading (o Comprador desmarcou o A).
+    const send = await strategy.sendStrategy(
+      buyer,
+      {
+        lines: [
+          { demandIds: ids, choice: "quote", recipientIds: [traderParty] },
+        ],
+        note: null,
+      },
+      t,
+    );
+    expect(send.lines).toHaveLength(1);
+    const [line] = send.lines;
+    const decision = (await store.get("purchase_decisions", line.decisionId!))!;
+    expect([...decision.demandIds].sort()).toEqual([...ids].sort());
+    expect(decision.quantity).toBe(1400);
+    const quote = (await store.get("purchase_quotes", line.quoteId!))!;
+    expect(quote.items.map((i) => i.productId).sort()).toEqual([
+      "prod-jarra",
+      "prod-panela",
+    ]);
+    const responses = await store.list("purchase_quote_responses", {
+      filter: { quoteId: quote.id },
+    });
+    expect(responses.map((r) => r.supplierId)).toEqual([traderParty]);
+    for (const id of ids)
+      expect((await store.get("requests", id))!.purchaseDecisionId).toBe(
+        decision.id,
+      );
+  });
+});
+
 describe("envio da Estratégia de Compra", () => {
   it("cotar com o fornecedor da última compra: sem aprovação, só ele recebe, com especificação e programação e sem o cliente", async () => {
     const d = await encomenda("prod-panela", {

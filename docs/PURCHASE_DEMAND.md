@@ -140,6 +140,17 @@ Pedido do dono: depois de Encomendas, a "Estratégia de Compra" com um produto p
 - **Testes**: `tests/unit/strategy-send.test.ts` (envio na Encomenda, fila, pendências, conferência dos parceiros, a família do cadastro na fila, as três escolhas, recusas, reenvio sem duplicar, cotação encerrada, Trading vencendo, o que o parceiro vê, tela própria sem perda de acesso) e as E2E `tests/e2e/purchase-strategy.spec.ts` (envio pela Encomenda, pedido direto e cotar com a última compra até o fornecedor responder) e `tests/e2e/purchase-quote.spec.ts` (Grupo de produto (família) no cadastro, cotar com outros, resultado por destinatário).
 - **Fica para depois**: a assinatura, os termos e a fatura do fornecedor ainda conferem o tipo Fornecedor (o pedido de uma Trading, Supplier ou Factory vencedora pode parar nesses passos); juntar o mesmo produto de encomendas diferentes numa cotação só (volume); convite por e-mail para quem não tem login (depende do provedor de e-mail).
 
+## Estratégia por solicitação (dono, 18/11/2026)
+
+Pedido do dono, depois da Estratégia de Compra por produto: a estratégia é da **solicitação**, não do produto; e "não dá mais para juntar demandas de solicitações diferentes numa estratégia só" (confirmado).
+
+- **Fila por solicitação**: um cartão por solicitação (o lote da Nova solicitação, mesmo `groupId` e número; sem lote, a própria demanda; `requestKey`), com o cliente, o selo **País › Família** e todos os produtos dela, cada um com os dados de antes (encomenda de origem, quantidade, especificação, programação, última compra). **Uma escolha só** para a solicitação inteira; o resumo e o envio também são por solicitação.
+- **O servidor confere** (`sendStrategy` e `chooseStrategy`): uma solicitação só por escolha (`strategy_same_request`) e todas as demandas dela que estão na fila (`strategy_whole_request`). Juntar demandas de solicitações diferentes (antes, "mesma linha") saiu.
+- **Cotar com outros fornecedores**: os destinatários vêm da lista do **País × Família** da solicitação (`strategySuppliers`), já marcados quando aptos: os parceiros ativos dos quatro tipos, do país de origem, que marcaram a família no cadastro (`party_families`) ou fornecem produto da família (`products.supplierId`, `product_suppliers`). O Comprador desmarca quem não deve receber e pode marcar de novo; os sugeridos do histórico fora dessa lista e a busca continuam. País e família vêm das condições do pedido (`orderTerms.originCountry` e `productFamily`); sem elas (reposição, antigas), do produto do catálogo. Até 200 destinatários por solicitação.
+- **Fornecedor da última compra** (cotar com ele ou pedido direto): vale quando **todos os produtos têm compra anterior do mesmo fornecedor** (`sameLastSupplier`); senão a tela diz o motivo (algum sem compra anterior, ou fornecedores diferentes; `strategy_no_last_purchase`, `strategy_last_same_supplier`). O pedido direto sai com uma linha por produto (quantidade somada e preço da última compra de cada um, editáveis; o prazo vem com o maior).
+- **Uma estratégia e uma cotação por solicitação**, com todos os produtos (os itens da cotação somados por produto; a vencedora é da solicitação). O envio guarda as demandas de cada linha (`purchase_strategy_sends.lines[].demandIds`, dentro do JSON; os envios de antes ficam com `demandId`), e o "Tentar de novo" refaz a solicitação inteira.
+- **Testes**: `tests/unit/strategy-send.test.ts` ("por solicitação": a fila junta o lote, a lista do País × Família, a recusa da solicitação pela metade e uma cotação com os dois produtos) e `tests/unit/purchase-strategy.test.ts` (solicitação inteira; última compra com vários produtos do mesmo fornecedor e com fornecedores diferentes); a E2E `purchase-quote` desmarca e marca de novo um fornecedor da lista.
+
 ## Andamento
 
 | PR  | Entrega                                                                                       | Situação |
@@ -150,3 +161,4 @@ Pedido do dono: depois de Encomendas, a "Estratégia de Compra" com um produto p
 | 4   | Cotação de compra: fornecedor × linha, 24 h, isolamento, quadro comparativo                   | feito    |
 | 5   | Limpeza dos restos da RFQ                                                                     | feito    |
 | 6   | Estratégia de Compra por produto: envio pela Encomenda, destinatários, resultado e reenvio    | feito    |
+| 7   | Estratégia por solicitação: uma escolha para todos os produtos, lista do País × Família       | feito    |
