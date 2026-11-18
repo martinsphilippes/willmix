@@ -1,0 +1,172 @@
+# Trade e Comercial no portal (Projeto Campineira)
+
+Pedido do dono (17/11/2026): levar para o portal o painel "Projeto Campineira — Etapa 1" (HTML feito com IA para a coordenadora de trade, apresentado ao Wellington), com os dados vindo da base do portal e do Sankhya, para a área de trade e para o comercial. Prioridades do dono: **controle das atividades com SLA das pessoas envolvidas**, **dias de cliente sem atendimento** e, depois, **sugestão de mix de produtos com IA** e **as abas do painel**.
+
+Situação: **especificação para aprovação** (18/11/2026). Nada disto está no código ainda. Os pontos marcados "a confirmar" têm a recomendação ao lado.
+
+## 1. Problema
+
+- O painel de hoje é um HTML parado, com uma planilha extraída à mão: 4.549 linhas "produto × cliente" do grupo Campineira (5 códigos de parceiro: 7197, 3295, 4286, 4094 e 5901), 752 SKUs, 701.934 peças, 10 grupos de produto, última compra de 12/2024 a 10/2026 e o estoque por SKU.
+- A planilha só tem a **última compra** e a quantidade acumulada: não tem pedidos, meses nem valores. O próprio painel avisa que recompra, vendas por período e 2025 × 2026 não são calculáveis com ela (mostra só a data da última compra).
+- Não existe registro de atendimento ao cliente nem prazo para atender: ninguém sabe há quantos dias um cliente está sem atendimento, nem quem deveria ter atendido.
+- As ações do plano de trade não têm dono, prazo nem acompanhamento.
+- O portal não tem o conceito de **grupo econômico** (vários CNPJs de um mesmo grupo, como a Campineira).
+
+## 2. Objetivo
+
+1. Cada cliente acompanhado tem um responsável, e todo mundo vê há quantos dias ele está sem atendimento, contra um prazo único que o administrador muda.
+2. Atendimento só vale quando **quem atendeu e quem foi atendido confirmam** (decisão do dono).
+3. As ações de trade viram atividades com responsável, prazo, evidência e cumprimento do SLA, nas Pendências e no Painel de SLA.
+4. As abas do painel passam a ler dados reais do Sankhya (pedidos com data, produto, quantidade e valor), por cliente e por grupo econômico.
+5. O portal sugere um mix de produtos por cliente (só sugestão, decisão do dono), com a IA explicando o porquê.
+
+## 3. Requisitos funcionais
+
+**Fase 1 (prioridade do dono)**
+
+- Grupos econômicos: lista montada à mão (decisão do dono): criar, renomear, arquivar, incluir e tirar clientes. Um cliente fica em no máximo um grupo.
+- Responsável pela carteira: por cliente, a pessoa da Wellmix que atende. Padrão: o login ligado ao vendedor do Sankhya do cliente (RCA, `CODVEND`); o administrador pode escolher outra pessoa no cliente ou no grupo.
+- Registrar atendimento: cliente, data e hora, canal (visita, ligação, WhatsApp, e-mail, videochamada, outro), resumo, próximo passo e fotos opcionais. Quem registra é quem atendeu e, ao registrar, já confirma o lado dele.
+- Confirmação do cliente: por um link (não precisa de login; só 2 clientes têm login no portal). O link vai por e-mail quando o provedor de e-mail existir; até lá, quem atendeu copia o link e manda pelo WhatsApp ou pelo e-mail dele. No link, o cliente vê o resumo e escolhe "Confirmo" ou "Não aconteceu" (com o nome de quem confirma e, no segundo caso, o motivo).
+- Tela "Carteira e atendimento": clientes com responsável, grupo, último atendimento confirmado, dias sem atendimento, situação do prazo (em dia, vence em 7 dias, atrasado, nunca atendido) e atendimentos aguardando o cliente. Filtros por responsável, grupo e situação; ordem padrão pelo mais atrasado.
+- Histórico de atendimentos na ficha do cliente e do grupo.
+- Prazo único de atendimento em Configurações (decisão do dono), só o administrador muda.
+
+**Fase 1b**
+
+- Atividades de trade (o "Plano de ação Trade" do painel): título, descrição, cliente ou grupo, responsável, prazo, situação (aberta, em andamento, concluída, cancelada), evidência ao concluir (foto ou arquivo) e observação.
+- Cada atividade aberta é pendência do responsável e entra no Painel de SLA (cumprimento no prazo).
+
+**Fase 0 (base de vendas, antes da Fase 2)**
+
+- Carga do Sankhya (DbExplorer, view `VW_AD_PEDCLIENTE_ITEM_WELL`, a mesma do histórico da Nova solicitação, docs/PURCHASE_HISTORY.md seção 9) gravada numa tabela resumida: mês × cliente × produto (peças pedidas e entregues, valor, número de pedidos, última data).
+- Com ela, na carteira: **dias sem compra** ao lado de dias sem atendimento.
+
+**Fase 2 (as abas do painel, por cliente ou grupo)**
+
+Visão executiva, ranking, curva ABC (por peças; por valor só para o administrador), frequência por SKU, venda por mês, 2025 × 2026 (agora com venda real), mix e categorias, estoque e disponibilidade, ciclo de vida, grupo, diagnóstico e plano de ação. Cada aba com exportação CSV, como no HTML.
+
+**Fase 3 (sugestão de mix com IA)**
+
+- Por cliente: itens que clientes parecidos compram e ele não; itens fortes do grupo de produto que faltam nele; itens com estoque disponível; sem itens sem estoque ou parados.
+- As regras escolhem os itens com os dados reais; a IA só ordena e escreve o porquê (nada inventado). O vendedor ajusta e leva a sugestão (não vira oferta, decisão do dono).
+
+## 4. Regras de negócio
+
+1. **Atendimento válido** = confirmado pelos dois lados. **A confirmar:** só ele zera o contador de dias sem atendimento; o registrado e não confirmado aparece como "aguardando o cliente" e não zera (recomendado, pela decisão "os dois confirmam").
+2. **Prazo:** o mesmo para todos os clientes (decisão do dono), em dias, em Configurações; só o administrador muda. **A confirmar:** valor inicial de 30 dias.
+3. **Situação do cliente:** em dia (dias sem atendimento ≤ prazo − 7), vence em 7 dias, atrasado (> prazo) ou nunca atendido.
+4. **Quem recebe pendência:** **a confirmar:** só os clientes acompanhados (num grupo econômico ou com responsável escolhido pelo administrador) geram a pendência "Atender {cliente}" para o responsável quando passam do prazo; os outros aparecem só na tela da carteira (evita milhares de pendências: 2.336 clientes têm vendedor no Sankhya).
+5. **Responsável:** o escolhido pelo administrador no cliente; senão o do grupo; senão o login ligado ao vendedor do Sankhya do cliente; senão "Sem responsável".
+6. **Link de confirmação:** vale 14 dias e uma vez só; vencido, quem atendeu gera outro. "Não aconteceu" marca o atendimento como contestado, avisa quem atendeu e o responsável, e não conta.
+7. **Valores em R$:** só o administrador (decisão do dono; "Ver valores e margem"). Trade e comercial veem peças, SKUs, clientes e datas.
+8. **Sugestão de mix:** só sugestão, sem preço nem desconto (decisão do dono).
+9. **Grupo econômico:** lista à mão (decisão do dono). **A confirmar:** quem mantém grupos, responsáveis e atividades: o administrador e quem ele liberar pela ação nova "Gerir carteira e trade" (Funções e acessos), por exemplo a coordenadora de trade.
+
+## 5. Casos especiais
+
+- Cliente sem e-mail: o link é copiado e enviado pelo WhatsApp (botão "Copiar link").
+- Cliente com dois cadastros com o mesmo código do Sankhya (hoje o 7197): os números saem em dobro. **A confirmar:** unificar, mantendo o cadastro mais antigo (os dois estão sem solicitações e pedidos).
+- Atendimento registrado por quem não é o responsável: vale (o cliente foi atendido); aparece com o nome de quem atendeu.
+- Atendimento no mesmo dia, mais de um: conta o último confirmado.
+- Pessoa sai da empresa: os clientes dela ficam "Sem responsável" até o administrador escolher outro; o histórico fica.
+- Cliente que muda de grupo: os atendimentos e as atividades antigas continuam com o cliente; o grupo novo passa a vê-los.
+- Sem o Sankhya configurado: Fases 0, 2 e 3 mostram o aviso e nada inventado; Fase 1 funciona.
+
+## 6. Fluxo do usuário
+
+1. O administrador (ou quem tem "Gerir carteira e trade") monta o grupo Campineira com os 5 clientes e escolhe o responsável.
+2. O vendedor abre "Carteira e atendimento", vê os clientes atrasados no topo e registra o atendimento depois da visita ou da ligação.
+3. O portal mostra o link de confirmação; o vendedor manda ao cliente pelo WhatsApp (ou o e-mail sai sozinho quando houver provedor).
+4. O cliente abre o link e confirma; o contador zera e o cliente volta para "em dia".
+5. Passou do prazo: o responsável recebe a pendência "Atender {cliente}"; a equipe acima dele vê no Painel de SLA.
+6. A coordenadora de trade cria as atividades do plano de ação, com responsável e prazo; o responsável conclui com a foto ou o arquivo de evidência.
+
+## 7. Papéis e permissões
+
+| Quem | Vê | Faz |
+| --- | --- | --- |
+| Administrador | tudo, inclusive valores em R$ | tudo; muda o prazo; unifica clientes |
+| Com "Gerir carteira e trade" (padrão: ninguém além do administrador) | todos os clientes e atividades | grupos, responsáveis, atividades |
+| Vendedor, promotor, coordenadora (login com a tela nova) | os clientes da própria carteira e os da equipe abaixo dele (a mesma árvore do Painel de SLA) | registra atendimento; conclui as atividades dele |
+| Cliente (sem login) | só o atendimento do link | confirma ou diz que não aconteceu |
+
+As pessoas da demanda terão login no portal (decisão do dono).
+
+## 8. Estrutura do banco de dados (só aditiva)
+
+| Tabela / coluna | O quê |
+| --- | --- |
+| `customer_groups` | grupo econômico: nome, observação, responsável (opcional), arquivado em, criado por |
+| `parties.customerGroupId` | grupo do cliente (opcional; índice) |
+| `parties.ownerUserId` | já existe, sem uso: passa a ser o responsável escolhido pelo administrador |
+| `users.sellerCode` | código do vendedor no Sankhya (`CODVEND`) do login, para a carteira automática |
+| `customer_attendances` | cliente, quem atendeu, canal, data e hora, resumo, próximo passo, fotos, situação (aguardando o cliente, confirmado, contestado, cancelado), confirmação do cliente (data, nome, por link ou login), motivo da contestação, hash do link e validade |
+| `trade_activities` | título, descrição, cliente ou grupo, responsável, prazo, situação, concluída em, evidência, observação, criada por |
+| `settings.attendanceSlaDays` | prazo de atendimento em dias |
+| `customer_sales_monthly` (Fase 0) | mês × cliente × produto: peças pedidas e entregues, valor, pedidos, última data, carregado em |
+
+Indicadores seguem docs/RESUMOS.md: telas de indicador leem tabelas resumidas, nunca pedido a pedido.
+
+## 9. APIs e integrações
+
+- **Sankhya (DbExplorer):** `VW_AD_PEDCLIENTE_ITEM_WELL` (pedidos do cliente: data, produto, quantidade pedida e entregue, preço, desconto). Fase 0 depende de o usuário do portal ter acesso a ela em produção (conferir pelo card "Do Sankhya, consultado agora" na Nova solicitação).
+- **E-mail e WhatsApp:** em simulação hoje (docs/INTEGRATIONS.md, itens 4 e 5). O link de confirmação funciona sem eles (copiar e mandar); com o provedor, o e-mail sai sozinho.
+- **IA:** a mesma do portal (docs/INTEGRATIONS.md, item 7), só para ordenar e explicar a sugestão de mix.
+
+## 10. Automações
+
+- Todo dia: recalcula a situação dos clientes, abre a pendência "Atender {cliente}" dos acompanhados atrasados e fecha a de quem foi atendido.
+- Atendimento aguardando o cliente há 3 dias: lembrete para quem atendeu reenviar o link.
+- Atividade de trade vencida: atrasada no Painel de SLA do responsável e da equipe acima.
+- Fase 0: carga noturna das vendas do Sankhya (e "Atualizar agora" para o administrador).
+
+## 11. Relatórios
+
+CSV em cada tela: carteira (cliente, responsável, grupo, último atendimento, dias sem atendimento, situação), atendimentos (período, pessoa, canal, situação), atividades (responsável, prazo, situação, no prazo ou não) e as abas da Fase 2, como no HTML.
+
+## 12. Dashboards
+
+- Fase 1: topo da "Carteira e atendimento" com os totais por situação e por responsável.
+- Fase 2: "Painel do cliente e do grupo" com as abas do HTML, agora com venda real por mês (recompra, período e 2025 × 2026 deixam de ser só "data da última compra").
+
+## 13. Indicadores
+
+- % de clientes acompanhados em dia; média de dias sem atendimento.
+- Atendimentos confirmados por pessoa no mês; taxa de confirmação pelo cliente; contestados.
+- Atividades de trade concluídas no prazo (%); tempo médio para concluir.
+- Fase 0 em diante: dias sem compra, recompra, curva ABC, frequência por SKU, cobertura do mix.
+
+## 14. Auditoria
+
+Tudo no histórico (Auditoria): grupo criado, alterado, arquivado; cliente incluído ou retirado do grupo; responsável alterado; atendimento registrado, confirmado, contestado, cancelado, link gerado de novo; atividade criada, alterada, concluída; prazo alterado; clientes unificados.
+
+## 15. Segurança
+
+- Link de confirmação: código aleatório longo, guardado só o hash, validade de 14 dias e uso único; a página mostra só o necessário (nome do cliente, primeiro nome de quem atendeu, data, canal e resumo) e não abre nada do portal.
+- Leitura e permissões no servidor; quem não vê um cliente não o recebe nem por endereço.
+- Valores em R$ só para o administrador.
+- Dados de contato do cliente (LGPD): só para quem atende o cliente.
+
+## 16. Melhorias futuras
+
+- E-mail e WhatsApp automáticos (provedor e chave).
+- Check-in da visita com localização e foto obrigatória.
+- Prazo por classe de cliente (A, B, C) e roteiro de visitas.
+- Metas por pessoa e por grupo; ranking de atendimento.
+- Sugestão de mix aprendendo com o que virou pedido.
+
+## Plano de entrega (um PR por linha)
+
+| PR | Conteúdo | Depende de |
+| --- | --- | --- |
+| 1 | Grupos econômicos, responsável pela carteira, atendimentos com confirmação dos dois lados, prazo em Configurações, "Carteira e atendimento" e a pendência "Atender {cliente}" | confirmação dos pontos "a confirmar" |
+| 2 | Atividades de trade com SLA (Pendências e Painel de SLA) | PR 1 |
+| 3 | Fase 0: base de vendas do Sankhya e "dias sem compra" na carteira | acesso à view no Sankhya |
+| 4 | Fase 2: painel do cliente e do grupo com as abas | PR 3 |
+| 5 | Fase 3: sugestão de mix com IA | PR 3 |
+
+## Dados de produção (17 e 18/11/2026, leitura)
+
+- Os 5 clientes do grupo estão no portal, com e-mail e telefone, todos com o vendedor 101 no Sankhya e nenhum com login. O 7197 está cadastrado duas vezes.
+- No portal: 26.688 clientes, 24.579 com e-mail, 2.336 com vendedor do Sankhya (118 vendedores); 2 clientes com login; 58 logins da Wellmix.
