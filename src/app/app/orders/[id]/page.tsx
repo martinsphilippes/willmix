@@ -37,6 +37,7 @@ import {
 import { ArtworkCard } from "@/components/artwork-card";
 import { ReceivingCard } from "@/components/receiving-card";
 import { OrderDivergenceLots } from "./_components/divergence-lots";
+import { SalesFreightLine } from "./_components/sales-freight-line";
 import { ImportFlowCard } from "@/components/import-flow-card";
 import { ProductionCard } from "@/components/production-card";
 import {
@@ -3386,8 +3387,7 @@ export default async function OrderPage({
             ...(certMissingAnalyst && !certNotNeeded
               ? [
                   <span key="no-analyst" data-cert-missing="analyst">
-                    {t("certFlow.missingHint.analyst")}{" "}
-                    <DistributeLink t={t} />
+                    {t("certFlow.missingHint.analyst")} <DistributeLink t={t} />
                   </span>,
                 ]
               : []),
@@ -3695,6 +3695,8 @@ export default async function OrderPage({
               </tr>
             </tbody>
           </Table>
+          {/* Frete das ordens de venda ligadas: linha própria (já no custo). */}
+          <SalesFreightLine order={order} finance={finance} t={t} />
           {/* Pagamento ao fornecedor feito sem o câmbio do banco: o campo de
               informar fica na tabela de pagamentos, logo abaixo. */}
           {!isCancelled && missingFxText(t, finance) ? (
