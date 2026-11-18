@@ -406,6 +406,21 @@ describe("previsão de preço ao cliente final (SuperPlan, anexo 2)", () => {
     });
   });
 
+  it("Containers/Entrega da linha vai como QTD_CONTAINERS (dono, 18/11/2026)", async () => {
+    const { productInput, cotacaoV2Sql } = await pf();
+    const input = productInput({ ...query, containers: 2 });
+    expect(input).toEqual({
+      CODPROD: 21952,
+      QTD_PECAS: 6192,
+      QTD_CONTAINERS: 2,
+    });
+    expect(cotacaoV2Sql(input)).toContain("CAST(2 AS INT)");
+    // Sem containers (ou fração), fica o padrão do Sankhya.
+    expect(productInput({ ...query, containers: 1.5 })).not.toHaveProperty(
+      "QTD_CONTAINERS",
+    );
+  });
+
   const sale = {
     columns: [
       "OK",

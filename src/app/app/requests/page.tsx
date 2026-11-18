@@ -1034,28 +1034,8 @@ export default async function RequestsPage({
               />
             ))}
           </div>
-          <nav
-            className="flex flex-wrap gap-2 text-sm"
-            aria-label={t("demand.filter.kind")}
-            data-demand-kind-filter
-          >
-            {([null, "order", "replenishment"] as const).map((k) => (
-              <a
-                key={k ?? "all"}
-                href={`/app/requests${listQuery({ kind: k })}`}
-                aria-current={kindFilter === k ? "page" : undefined}
-                data-demand-kind={k ?? "all"}
-                className={cx(
-                  "rounded-full border px-3 py-1",
-                  kindFilter === k
-                    ? "border-brand-600 bg-brand-50 font-semibold text-brand-700"
-                    : "border-zinc-200 text-zinc-700 hover:bg-zinc-50",
-                )}
-              >
-                {t(k ? `demand.kind.${k}` : "demand.kind.all")}
-              </a>
-            ))}
-          </nav>
+          {/* Os chips Todas / Encomendas / Reposições saíram (dono, 18/11/2026):
+              a Reposição tem tela própria. O ?kind= dos links antigos vale. */}
           {/* Com quem está a vez (dono, 18/11/2026; docs/TURNS.md). */}
           {turnChips.length || turnFilter ? (
             <nav

@@ -41,6 +41,8 @@ export function forecastQuery(input: {
   customer: Party | null;
   /** Peças da linha (nulo sem quantidade). */
   quantity: number | null;
+  /** Containers/Entrega da linha (dono, 18/11/2026); nulo = padrão do Sankhya. */
+  containers?: number | null;
   saleFormat?: SaleFormat | null;
   tier?: WellmixTier | null;
   caller?: CarrierCaller | null;
@@ -60,6 +62,7 @@ export function forecastQuery(input: {
     sankhyaCode: product.sankhyaCode ?? null,
     sku: product.sku ?? null,
     quantity: input.quantity ?? null,
+    containers: input.containers ?? null,
     customerId: isCustomer && customer ? customer.id : null,
     customerSankhyaCode:
       isCustomer && customer ? (customer.sankhyaCode ?? null) : null,

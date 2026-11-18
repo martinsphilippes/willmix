@@ -303,6 +303,11 @@ Vale para as três telas (Encomendas, TS e Venda), que usam o mesmo código (`sr
 - Sem o Sankhya, ou com a cotação sem resposta, a solicitação nasce igual e fica sem previsão ("—" na lista). As solicitações de antes de 18/11/2026 não têm previsão.
 - Coluna nova `requests.priceForecast` (JSON, aditiva; publicada no Supabase).
 
+## 11.17 Rótulos curtos e containers na cotação (dono, 18/11/2026)
+
+- **Rótulos curtos** no bloco do pedido e no gerador de cada produto (TS e Venda): "Quantidade de entregas programadas" virou **"# Entregas"** e "Containers por entrega programada" virou **"Containers/Entrega"** (en "# Deliveries" e "Containers/Delivery"; zh "交货次数" e "集装箱/交货"). As explicações longas continuam nas dicas.
+- **Containers/Entrega vai para a cotação V2** como `QTD_CONTAINERS` (antes ia como nulo, o padrão do Sankhya): o mesmo número do gerador da linha (das peças de cada programação, da caixa master, do CBM e do container escolhido); com entregas de tamanhos diferentes, o maior. Sem caixa ou CBM, continua nulo. Caminho: `PriceForecast` (lê a carga da linha) → `/api/price-forecast?containers=` → `productInput` (src/lib/integrations/price-forecast.ts). Aparece na memória de cálculo de quem vê valores e margem. A previsão gravada no envio (11.16) ainda vai sem os containers: o container escolhido no gerador não fica gravado na solicitação.
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.
