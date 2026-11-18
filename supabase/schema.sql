@@ -209,6 +209,7 @@ alter table public."requests" add column if not exists "purchaseDecisionId" text
 alter table public."requests" add column if not exists "orderTerms" jsonb;
 alter table public."requests" add column if not exists "strategySentAt" timestamptz;
 alter table public."requests" add column if not exists "strategySentByUserId" text;
+alter table public."requests" add column if not exists "priceForecast" jsonb;
 create index if not exists "requests_by_customer" on public."requests" ("customerId");
 create index if not exists "requests_by_status" on public."requests" ("status");
 create index if not exists "requests_by_origin" on public."requests" ("origin");
