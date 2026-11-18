@@ -78,14 +78,14 @@ cenas = [
                 LINHA, foco=False),
         mostrar("p8", 'Embaixo da data, o portal diz em quantos dias a pendência vence. A lista já vem com o mais urgente primeiro.',
                 'main table tbody tr td:has(span:has-text("vence em"))', cursor=False),
-        mostrar("p9", 'E o botão vermelho "Abrir", no fim da linha, leva você direto ao pedido.', ABRIR, rotulo="Abrir", rotulo_lado="esquerda",
+        mostrar("p9", 'E o ícone de abrir, no fim da linha, leva você direto ao pedido.', ABRIR, rotulo="Abrir", rotulo_lado="esquerda",
                 destaque_em={"em": "botão"}, pausa=0.6),
     ]),
     sua_vez("m1-c1-suavez", C1, "Suas pendências", [
         'Entre no portal e veja "Minhas pendências"',
         "Clique numa etapa para filtrar a lista",
         'Volte com "Todas as etapas"',
-        'Ache o botão "Abrir" da pendência mais urgente',
+        'Ache o ícone de abrir da pendência mais urgente',
     ], "Agora é com você: pause o vídeo e ache as suas pendências."),
 
     # -------------------------------------------------- 3 · Enviar a arte do produto
@@ -94,7 +94,7 @@ cenas = [
     tela("m1-c2-arte", C2, "arte-base", salvar="arte-s1", tarefa="Enviar a arte de um produto", passos=[
         mostrar("p1", 'A arte aparece para você quando o material está pronto: o fornecedor enviou a faca da caixa e a foto do produto, e a Wellmix aprovou. Aí a pendência entra na sua lista.',
                 LINHA),
-        clicar("p2", 'Na linha da arte, clique em "Abrir".', ABRIR, alvo_visual=LINHA, resumo='Em Pendências, clique em "Abrir" na linha da arte',
+        clicar("p2", 'Na linha da arte, clique no ícone de abrir, à direita.', ABRIR, alvo_visual=LINHA, resumo='Em Pendências, clique no ícone de abrir na linha da arte',
                espera=NO_PEDIDO),
         mostrar("p3", 'Você está no pedido número 1: o pote de vidro, duas mil e quatrocentas peças.', {"papel": "heading", "nome": "Pedido #1", "acima": 1}, foco=False),
         mostrar("p4", 'Mais abaixo estão os marcos do pedido. São as etapas em que a agência atua, e as que ela só acompanha.',
@@ -127,7 +127,7 @@ cenas = [
         mostrar("p3", 'O portal avisa que o formato não é aceito, e nada é enviado. Salve a arte em PDF e mande outra vez.', texto("Formato não aceito", exato=False), pausa=0.6),
     ]),
     sua_vez("m1-c2-suavez", C2, "Enviar a arte do produto", [
-        'Em Pendências, clique em "Abrir" na linha da arte',
+        'Em Pendências, clique no ícone de abrir na linha da arte',
         'No marco "Material de arte", baixe a faca e a foto em alta',
         'No marco "Arte", clique em "Escolher arquivo" e selecione a arte',
         'Veja a linha passar para "Concluído"',
@@ -181,7 +181,7 @@ perguntas = [
            'No marco "Material de arte", o nome do arquivo da faca é o link para baixar.'),
     ordenar("q5", "Passos para enviar a arte", (A, "p2"),
             'Ponha em ordem os passos para enviar a arte de um produto.',
-            ['Em Pendências, clicar em "Abrir" na linha da arte', 'Baixar a faca e a foto em alta, no marco "Material de arte"',
+            ['Em Pendências, clicar no ícone de abrir na linha da arte', 'Baixar a faca e a foto em alta, no marco "Material de arte"',
              'No marco "Arte", clicar em "Escolher arquivo" e selecionar a arte', 'Ver a linha passar para "Concluído"'],
             'Abra a pendência, baixe o material do fornecedor, suba a arte na linha do produto e veja a situação mudar.'),
     cenario("q6", "Depois de escolher o arquivo", (A, "p10"),

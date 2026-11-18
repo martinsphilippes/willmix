@@ -46,8 +46,8 @@ cenas = [
     tela("m6-c1-amostras", C1, "forn-m6-amostras", salvar="forn-m6-s1", tarefa="Registrar a retirada e os envios das amostras", passos=[
         mostrar("p1", 'Com a inspeção aprovada, é hora das amostras do pedido: as peças do pedido de amostras que você aceitou junto com o contrato.',
                 linha("Retirada das amostras")),
-        clicar("p2", 'Na linha "Retirada das amostras", clique em "Abrir".', abrir_na_linha("Retirada das amostras"),
-               resumo='Em Pendências, clique em "Abrir" na linha "Retirada das amostras"', **abre("Retirada das amostras", A + "samples_picked")),
+        clicar("p2", 'Na linha "Retirada das amostras", clique no ícone de abrir, à direita.', abrir_na_linha("Retirada das amostras"),
+               resumo='Em Pendências, clique no ícone de abrir na linha "Retirada das amostras"', **abre("Retirada das amostras", A + "samples_picked")),
         mostrar("p3", 'O cartão "Amostras" mostra a divisão por produto: quantas peças vão para o show room no Brasil e quantas para a agência de marketing na China.',
                 sel("main table", "Agência (China)")),
         data("p4", 'Na tabela de passos, comece pela retirada: informe a data em que as amostras foram separadas.', campo(A + "samples_picked"), 0,
@@ -71,7 +71,7 @@ cenas = [
                 A + "samples_returned", cursor=False, pausa=0.6),
     ]),
     sua_vez("m6-c1-suavez", C1, "Registrar as amostras do pedido", [
-        'Em Pendências, clique em "Abrir" na linha "Retirada das amostras"',
+        'Em Pendências, clique no ícone de abrir na linha "Retirada das amostras"',
         "Informe a data da retirada e envie",
         "No envio ao Brasil, digite o rastreio, escolha o comprovante e envie",
         "Faça o mesmo no envio à China",
@@ -83,8 +83,8 @@ cenas = [
     tela("m6-c2-devolucao", C2, "forn-m6-devolucao", salvar="forn-m6-s2", tarefa="Validar a devolução da amostra", passos=[
         mostrar("p1", 'A agência de marketing fez as fotos e registrou a devolução da amostra. Falta você confirmar que ela chegou de volta.',
                 linha("Validar Devolução da amostra")),
-        clicar("p2", 'Na linha dela, clique em "Abrir".', abrir_na_linha("Validar Devolução da amostra"),
-               resumo='Em Pendências, clique em "Abrir" na linha da devolução da amostra', **abre("Validar Devolução da amostra", A + "samples_returned")),
+        clicar("p2", 'Na linha dela, clique no ícone de abrir, à direita.', abrir_na_linha("Validar Devolução da amostra"),
+               resumo='Em Pendências, clique no ícone de abrir na linha da devolução da amostra', **abre("Validar Devolução da amostra", A + "samples_returned")),
         mostrar("p3", 'A linha da devolução mostra "Enviado, aguardando validação". Quem valida é você, a trading.', A + "samples_returned"),
         mostrar("p4", 'Se a amostra não chegou, ou chegou errada, escreva o motivo neste campo e use "Recusar".', A + 'samples_returned input[name="reason"]',
                 rotulo="Motivo (obrigatório para recusar)", rotulo_lado="esquerda"),
@@ -93,7 +93,7 @@ cenas = [
         mostrar("p6", 'Validado. Esse passo é importante: o container só pode ser carregado depois que essa amostra volta.', A + "samples_returned", pausa=0.6),
     ]),
     sua_vez("m6-c2-suavez", C2, "Validar a devolução da amostra", [
-        'Em Pendências, clique em "Abrir" na linha da devolução da amostra',
+        'Em Pendências, clique no ícone de abrir na linha da devolução da amostra',
         "Confira se a amostra chegou de volta",
         'Se chegou, clique em "Validar"',
         'Se não chegou, escreva o motivo e clique em "Recusar"',
@@ -105,8 +105,8 @@ cenas = [
     tela("m6-c3-vazio", C3, "forn-m6-container", salvar="forn-m6-s3", tarefa="Registrar o container vazio na fábrica", passos=[
         mostrar("p1", 'Com a reserva no navio confirmada, o container vazio vai para a sua fábrica. O portal acompanha cada passo, até ele voltar lacrado ao porto.',
                 linha("Container vazio na fábrica")),
-        clicar("p2", 'Na linha "Container vazio na fábrica", clique em "Abrir".', abrir_na_linha("Container vazio na fábrica"),
-               resumo='Em Pendências, clique em "Abrir" na linha "Container vazio na fábrica"', **abre("Container vazio na fábrica", K + "container_at_factory")),
+        clicar("p2", 'Na linha "Container vazio na fábrica", clique no ícone de abrir, à direita.', abrir_na_linha("Container vazio na fábrica"),
+               resumo='Em Pendências, clique no ícone de abrir na linha "Container vazio na fábrica"', **abre("Container vazio na fábrica", K + "container_at_factory")),
         mostrar("p3", 'O cartão "Container na origem" tem cinco passos, em ordem. Cada um só abre depois do anterior.',
                 "tbody[data-import-flow]:has(#container-origin-step-container_at_factory)", foco=False),
         data("p4", 'O primeiro passo pede a data em que o container vazio chegou ao depósito da fábrica.', campo(K + "container_at_factory"), 0,
@@ -122,7 +122,7 @@ cenas = [
                 rotulo="Documentos do embarque", rotulo_lado="esquerda", pausa=0.6),
     ]),
     sua_vez("m6-c3-suavez", C3, "Registrar o container vazio", [
-        'Em Pendências, clique em "Abrir" na linha "Container vazio na fábrica"',
+        'Em Pendências, clique no ícone de abrir na linha "Container vazio na fábrica"',
         "Informe a data de chegada do container e envie",
         "Escolha a foto, o vídeo ou o PDF do container vazio",
         'Clique em "Enviar"',
@@ -133,8 +133,8 @@ cenas = [
              "Por fim: carregamento, lacre e porto."),
     tela("m6-c4-carregamento", C4, "forn-m7-base", tarefa="Registrar o carregamento do container", passos=[
         mostrar("p1", 'Na hora de carregar, aparecem duas pendências: o check list de carga, que você preenche durante o carregamento e aprende no próximo módulo, e o carregamento do container.', "main table tbody", cursor=False),
-        clicar("p2", 'Na linha do carregamento, clique em "Abrir".', abrir_na_linha("Carregamento do container"),
-               resumo='Em Pendências, clique em "Abrir" na linha "Carregamento do container"', **abre("Carregamento do container", K + "container_loaded")),
+        clicar("p2", 'Na linha do carregamento, clique no ícone de abrir, à direita.', abrir_na_linha("Carregamento do container"),
+               resumo='Em Pendências, clique no ícone de abrir na linha "Carregamento do container"', **abre("Carregamento do container", K + "container_loaded")),
         {**digitar("p3", 'Em seguida, escreva o resumo do carregamento no campo do check de carga: quantas caixas subiram, se houve danos e as observações.', campo(K + "container_loaded"),
                    "200 caixas, sem avarias.", rotulo="Check de carga", rotulo_lado="esquerda", resumo="Escreva o check de carga: caixas, danos e observações", acao_em={"apos": "carregamento:"}), "sim": False},
         anexar("p4", 'Escolha a foto ou o vídeo do carregamento.', arquivo(K + "container_loaded"), "container-carregamento.jpg", rotulo="Escolher arquivo", rotulo_lado="esquerda",
@@ -158,8 +158,8 @@ cenas = [
     ]),
     tela("m6-c4-lacre", C4, "forn-m6-lacre", salvar="forn-m6-s4", tarefa="Registrar o lacre e a chegada ao porto", passos=[
         mostrar("p1", 'Com o carregamento validado, falta fechar o container. A pendência agora é a do lacre e do número do container.', linha("Lacre e número do container")),
-        clicar("p2", 'Na linha dela, clique em "Abrir".', abrir_na_linha("Lacre e número do container"),
-               resumo='Em Pendências, clique em "Abrir" na linha do lacre', **abre("Lacre e número do container", K + "container_sealed")),
+        clicar("p2", 'Na linha dela, clique no ícone de abrir, à direita.', abrir_na_linha("Lacre e número do container"),
+               resumo='Em Pendências, clique no ícone de abrir na linha do lacre', **abre("Lacre e número do container", K + "container_sealed")),
         digitar("p3", 'No passo do lacre, digite o número do container.', campo(K + "container_sealed"), "WMXU4829135", rotulo="Nº do container", rotulo_lado="esquerda",
                 resumo="Digite o número do container"),
         anexar("p4", 'Escolha a foto do lacre.', arquivo(K + "container_sealed"), "container-lacre.jpg", rotulo="Escolher arquivo", rotulo_lado="esquerda",

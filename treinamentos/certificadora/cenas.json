@@ -250,7 +250,7 @@
     },
     {
      "id": "p3",
-     "fala": "As outras duas valem para o pedido inteiro: enviar o memorial descritivo e gerar o selo de certificação.",
+     "fala": "As outras duas valem para o pedido inteiro: esta, enviar o memorial descritivo, e a de baixo, gerar o selo de certificação.",
      "alvo": {
       "seletor": "main table tbody tr",
       "contem": "Enviar o memorial descritivo"
@@ -294,10 +294,9 @@
     },
     {
      "id": "p6",
-     "fala": "E o botão vermelho \"Abrir\", no fim de cada linha, leva você ao pedido daquela tarefa.",
+     "fala": "E o ícone de abrir, no fim de cada linha, leva você ao pedido daquela tarefa.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Certificado (Inmetro)"
@@ -328,7 +327,7 @@
      "Entre no portal e veja \"Minhas pendências\"",
      "Ache a linha do certificado de um produto e o prazo dela",
      "Ache as linhas do memorial descritivo e do selo",
-     "Ache o botão \"Abrir\" de cada linha"
+     "Ache o ícone de abrir de cada linha"
     ]
    },
    "passos": [
@@ -368,10 +367,9 @@
    "passos": [
     {
      "id": "p1",
-     "fala": "Antes de certificar, você precisa conhecer o produto. Na linha do certificado, clique em \"Abrir\".",
+     "fala": "Antes de certificar, você precisa conhecer o produto. Na linha do certificado, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Certificado (Inmetro)"
@@ -382,7 +380,7 @@
       "seletor": "main table tbody tr",
       "contem": "Certificado (Inmetro)"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha do certificado",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha do certificado",
      "espera": {
       "url": "/app/orders/[^/?#]+$",
       "rede": true
@@ -401,7 +399,7 @@
     },
     {
      "id": "p3",
-     "fala": "O quadro \"Itens do pedido\" traz os produtos, com a foto, o código e a quantidade. Aqui, um pote de vidro, duas mil e quatrocentas peças.",
+     "fala": "O quadro \"Itens do pedido\" traz os produtos, com a foto, o código, as peças por caixa, a quantidade e as caixas. Aqui, um pote de vidro: duas mil e quatrocentas peças, em duzentas caixas.",
      "alvo": {
       "papel": "heading",
       "nome": "Itens do pedido",
@@ -486,19 +484,6 @@
       "url": "/app/orders/[^/?#]+$",
       "rede": true
      }
-    },
-    {
-     "id": "p9",
-     "fala": "Ainda no resumo, \"Abrir o documento\" mostra o documento do pedido, com o que a Wellmix e o fornecedor combinaram. Quem assina são eles dois: a certificadora só lê.",
-     "alvo": {
-      "seletor": "main a",
-      "contem": "Abrir o documento"
-     },
-     "acao": "passar",
-     "rotulo": "Abrir o documento",
-     "rotulo_lado": "esquerda",
-     "conta_passo": false,
-     "sim": false
     }
    ],
    "tarefa": "Ler o pedido antes de certificar",
@@ -514,7 +499,7 @@
     "tipo": "suavez",
     "titulo": "Ler o pedido",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha do certificado",
+     "Em Pendências, clique no ícone de abrir na linha do certificado",
      "Leia o resumo e os itens do pedido, com as fotos",
      "Clique em \"Ver ficha de compra\" e leia os dados do produto",
      "Volte com \"Voltar ao pedido\""
@@ -557,8 +542,7 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "contem": "Abrir",
+       "seletor": "a[data-open-link]",
        "dentro": {
         "seletor": "main table tbody tr",
         "contem": "Certificado (Inmetro)"
@@ -653,8 +637,7 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "contem": "Abrir",
+       "seletor": "a[data-open-link]",
        "dentro": {
         "seletor": "main table tbody tr",
         "contem": "Certificado (Inmetro)"
@@ -830,10 +813,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha \"Gerar o selo de certificação\", clique em \"Abrir\".",
+     "fala": "Na linha \"Gerar o selo de certificação\", clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Gerar o selo de certificação"
@@ -844,7 +826,7 @@
       "seletor": "main table tbody tr",
       "contem": "Gerar o selo de certificação"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Gerar o selo de certificação\"",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Gerar o selo de certificação\"",
      "espera": {
       "url": "/app/orders/[^/?#]+",
       "rede": true
@@ -938,7 +920,7 @@
     "tipo": "suavez",
     "titulo": "Enviar o selo",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha \"Gerar o selo de certificação\"",
+     "Em Pendências, clique no ícone de abrir na linha \"Gerar o selo de certificação\"",
      "No quadro \"Selo\", digite o número do selo, se houver",
      "Clique em \"Escolher arquivo\" e selecione o selo",
      "Clique em \"Enviar\""
@@ -990,10 +972,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha do memorial, clique em \"Abrir\".",
+     "fala": "Na linha do memorial, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Enviar o memorial descritivo"
@@ -1004,7 +985,7 @@
       "seletor": "main table tbody tr",
       "contem": "Enviar o memorial descritivo"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Enviar o memorial descritivo\"",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Enviar o memorial descritivo\"",
      "espera": {
       "url": "/app/orders/[^/?#]+",
       "rede": true
@@ -1074,7 +1055,7 @@
     "tipo": "suavez",
     "titulo": "Enviar o memorial descritivo",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha \"Enviar o memorial descritivo\"",
+     "Em Pendências, clique no ícone de abrir na linha \"Enviar o memorial descritivo\"",
      "No quadro \"Memorial descritivo\", clique em \"Escolher arquivo\" e selecione o PDF",
      "Clique em \"Enviar\""
     ]
@@ -1415,10 +1396,9 @@
     },
     {
      "id": "p10",
-     "fala": "Em cada linha, \"Abrir\" leva ao pedido.",
+     "fala": "Em cada linha, o ícone de abrir leva ao pedido.",
      "alvo": {
-      "seletor": "main a",
-      "contem": "Abrir"
+      "seletor": "main a[data-open-link]"
      },
      "acao": "mostrar",
      "rotulo": "Abrir",

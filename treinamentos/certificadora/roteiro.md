@@ -36,17 +36,17 @@ Conta usada na gravação: `ocp@certifica.com` (conta de demonstração, dados f
 
 - *(fala)* Todo dia, comece por aqui. Esta tela mostra tudo o que depende da certificadora. O mais urgente vem primeiro.
 - *(mostra na tela)* Cada pedido de produto com certificação traz três tarefas. A primeira é o certificado do produto, uma linha para cada produto do pedido.
-- *(mostra na tela)* As outras duas valem para o pedido inteiro: enviar o memorial descritivo e gerar o selo de certificação.
+- *(mostra na tela)* As outras duas valem para o pedido inteiro: esta, enviar o memorial descritivo, e a de baixo, gerar o selo de certificação.
 - *(mostra na tela)* A coluna "Prazo" mostra a data e em quantos dias vence. O certificado tem prazo. O memorial e o selo aparecem sem data.
 - *(mostra na tela)* Acima da lista, os filtros de prazo e de tipo mostram só uma parte das pendências.
-- *(mostra na tela)* E o botão vermelho "Abrir", no fim de cada linha, leva você ao pedido daquela tarefa.
+- *(mostra na tela)* E o ícone de abrir, no fim de cada linha, leva você ao pedido daquela tarefa.
 
 **Cartão (suavez):** Suas pendências
 
 - Entre no portal e veja "Minhas pendências"
 - Ache a linha do certificado de um produto e o prazo dela
 - Ache as linhas do memorial descritivo e do selo
-- Ache o botão "Abrir" de cada linha
+- Ache o ícone de abrir de cada linha
 
 - *(fala)* Agora é com você: pause o vídeo e ache as suas pendências.
 
@@ -56,20 +56,19 @@ Conta usada na gravação: `ocp@certifica.com` (conta de demonstração, dados f
 
 - *(fala)* Agora: como ler o pedido antes de certificar.
 
-- **Passo 1** (clica) Antes de certificar, você precisa conhecer o produto. Na linha do certificado, clique em "Abrir".
+- **Passo 1** (clica) Antes de certificar, você precisa conhecer o produto. Na linha do certificado, clique no ícone de abrir, à direita.
 - *(mostra na tela)* Você abre o pedido número 1. O resumo traz o cliente, o fornecedor e a data.
-- *(mostra na tela)* O quadro "Itens do pedido" traz os produtos, com a foto, o código e a quantidade. Aqui, um pote de vidro, duas mil e quatrocentas peças.
+- *(mostra na tela)* O quadro "Itens do pedido" traz os produtos, com a foto, o código, as peças por caixa, a quantidade e as caixas. Aqui, um pote de vidro: duas mil e quatrocentas peças, em duzentas caixas.
 - *(mostra na tela)* A miniatura mostra a foto do produto, e o número sobre ela diz quantas fotos há. Um clique abre todas.
 - **Passo 2** (clica) Para os dados técnicos, clique em "Ver ficha de compra", no resumo.
 - *(mostra na tela)* A ficha de compra abre só para leitura. Ela traz os dados do fornecedor, do produto e da caixa.
 - *(mostra na tela)* No bloco "Produto" estão o peso por peça, a capacidade, o material e a cor.
 - *(mostra na tela)* Mais abaixo, o bloco "Caixa e embalagem" traz as peças por caixa e o tipo de embalagem.
 - **Passo 3** (clica) Para voltar, use "Voltar ao pedido".
-- *(aponta)* Ainda no resumo, "Abrir o documento" mostra o documento do pedido, com o que a Wellmix e o fornecedor combinaram. Quem assina são eles dois: a certificadora só lê.
 
 **Cartão (suavez):** Ler o pedido
 
-- Em Pendências, clique em "Abrir" na linha do certificado
+- Em Pendências, clique no ícone de abrir na linha do certificado
 - Leia o resumo e os itens do pedido, com as fotos
 - Clique em "Ver ficha de compra" e leia os dados do produto
 - Volte com "Voltar ao pedido"
@@ -126,7 +125,7 @@ Conta usada na gravação: `ocp@certifica.com` (conta de demonstração, dados f
    - D) Só o selo
    - Retorno: São três: o certificado, uma linha por produto, e, para o pedido inteiro, o memorial descritivo e o selo.
 3. *(clique no lugar certo)* Você quer ir direto ao lugar onde se envia o certificado do produto. Clique no lugar certo.
-   - Retorno: O botão "Abrir", no fim da linha, leva você ao pedido daquela tarefa.
+   - Retorno: O ícone de abrir, no fim da linha, leva você ao pedido daquela tarefa.
 4. *(cenário)* Para certificar, você precisa do peso, do material e da embalagem do produto. Onde eles estão?
    - **A) Na ficha de compra, que abre por "Ver ficha de compra", só para leitura** (certa)
    - B) No cartão "Artes"
@@ -135,14 +134,14 @@ Conta usada na gravação: `ocp@certifica.com` (conta de demonstração, dados f
    - Retorno: A ficha de compra traz os dados do fornecedor, do produto e da caixa. A certificadora vê tudo, sem editar.
 5. *(clique no lugar certo)* Você está no pedido e quer os dados técnicos do produto. Clique no lugar certo.
    - Retorno: "Ver ficha de compra", no resumo do pedido, abre a ficha só para leitura.
-6. *(cenário)* Você abriu o documento do pedido para conferir o que foi combinado. A certificadora precisa assinar?
-   - A) Sim, depois da Wellmix
-   - **B) Não: quem assina são a Wellmix e o fornecedor; a certificadora só lê** (certa)
-   - C) Sim, antes do fornecedor
-   - D) Só se o pedido tiver selo
-   - Retorno: O documento do pedido é assinado pela Wellmix e pelo fornecedor. Para a certificadora, ele é só leitura.
+6. *(cenário)* Você quer ver o documento do pedido, o contrato entre a Wellmix e o fornecedor. O que acontece?
+   - A) A certificadora assina depois da Wellmix
+   - **B) Ele não abre para a certificadora: traz o preço de compra. Os dados para certificar estão na ficha de compra** (certa)
+   - C) A certificadora assina antes do fornecedor
+   - D) Ele abre só se o pedido tiver selo
+   - Retorno: O documento do pedido traz o preço de compra e é assinado só pela Wellmix e pelo fornecedor. A certificadora não o abre: o que ela precisa está na ficha de compra.
 7. *(ordene os passos)* Ponha em ordem os passos para enviar o certificado de um produto.
-   - 1º Em Pendências, clicar em "Abrir" na linha do certificado
+   - 1º Em Pendências, clicar no ícone de abrir na linha do certificado
    - 2º No marco "Certificação", achar a linha do certificado do produto
    - 3º Clicar em "Escolher arquivo" e selecionar o PDF
    - 4º Ver a linha passar para "Concluído"
@@ -182,7 +181,7 @@ Conta usada na gravação: `ocp@certifica.com` (conta de demonstração, dados f
 - *(fala)* Para começar: o selo.
 
 - *(mostra na tela)* Com o certificado do produto enviado, ficam as duas tarefas do pedido: o selo e o memorial descritivo.
-- **Passo 1** (clica) Na linha "Gerar o selo de certificação", clique em "Abrir".
+- **Passo 1** (clica) Na linha "Gerar o selo de certificação", clique no ícone de abrir, à direita.
 - *(mostra na tela)* Você cai no cartão "Certificação" do pedido. O primeiro quadro é o seu. É ali que você envia o selo e o memorial.
 - **Passo 2** (digita: `SELO-2026-0115`) No quadro "Selo", digite o número do selo ou do registro, se houver. Este campo é opcional.
 - **Passo 3** (anexa o arquivo) Depois, use "Escolher arquivo" e selecione o arquivo do selo.
@@ -192,7 +191,7 @@ Conta usada na gravação: `ocp@certifica.com` (conta de demonstração, dados f
 
 **Cartão (suavez):** Enviar o selo
 
-- Em Pendências, clique em "Abrir" na linha "Gerar o selo de certificação"
+- Em Pendências, clique no ícone de abrir na linha "Gerar o selo de certificação"
 - No quadro "Selo", digite o número do selo, se houver
 - Clique em "Escolher arquivo" e selecione o selo
 - Clique em "Enviar"
@@ -206,7 +205,7 @@ Conta usada na gravação: `ocp@certifica.com` (conta de demonstração, dados f
 - *(fala)* Agora: o memorial descritivo.
 
 - *(mostra na tela)* Agora só falta o memorial descritivo. O portal pede esse arquivo em PDF.
-- **Passo 1** (clica) Na linha do memorial, clique em "Abrir".
+- **Passo 1** (clica) Na linha do memorial, clique no ícone de abrir, à direita.
 - *(mostra na tela)* É o mesmo quadro do alto. O selo já está concluído. Ao lado dele, o memorial descritivo, ainda pendente.
 - **Passo 2** (anexa o arquivo) Use "Escolher arquivo" e selecione o PDF do memorial.
 - **Passo 3** (clica) E clique em "Enviar".
@@ -214,7 +213,7 @@ Conta usada na gravação: `ocp@certifica.com` (conta de demonstração, dados f
 
 **Cartão (suavez):** Enviar o memorial descritivo
 
-- Em Pendências, clique em "Abrir" na linha "Enviar o memorial descritivo"
+- Em Pendências, clique no ícone de abrir na linha "Enviar o memorial descritivo"
 - No quadro "Memorial descritivo", clique em "Escolher arquivo" e selecione o PDF
 - Clique em "Enviar"
 
@@ -261,7 +260,7 @@ Conta usada na gravação: `ocp@certifica.com` (conta de demonstração, dados f
 - **Passo 6** (clica) Use um filtro de prazo, como "Todas", mesmo que já apareça marcado.
 - **Passo 7** (clica) Com isso aparece o botão "Mesa de trabalho". Clique nele.
 - *(mostra na tela)* A mesa mostra a fila "Certificados a emitir": um produto por linha, com o pedido e o prazo.
-- *(mostra na tela)* Em cada linha, "Abrir" leva ao pedido.
+- *(mostra na tela)* Em cada linha, o ícone de abrir leva ao pedido.
 
 **Cartão (suavez):** A tela Certificação e a mesa de trabalho
 
@@ -317,7 +316,7 @@ Conta usada na gravação: `ocp@certifica.com` (conta de demonstração, dados f
    - D) Só com a aprovação da Wellmix
    - Retorno: O campo "Nº do selo ou do registro" é opcional: selecione o arquivo do selo e envie.
 3. *(ordene os passos)* Ponha em ordem os passos para enviar o selo de um pedido.
-   - 1º Em Pendências, clicar em "Abrir" na linha "Gerar o selo de certificação"
+   - 1º Em Pendências, clicar no ícone de abrir na linha "Gerar o selo de certificação"
    - 2º Digitar o número do selo, se houver
    - 3º Clicar em "Escolher arquivo" e selecionar o selo
    - 4º Clicar em "Enviar"

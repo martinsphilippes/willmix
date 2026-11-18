@@ -29,8 +29,8 @@ cenas = [
     tela("m7-c1-checklist", C1, "forn-m7-base", salvar="forn-m7-s1", tarefa="Fazer o check list de carga", passos=[
         mostrar("p1", 'Com o container vazio registrado, abrem os documentos do embarque. São quatro, em ordem. A pendência do primeiro é o check list de carga. A linha de cima, do carregamento, continua aberta enquanto você faz os documentos.',
                 linha("Check list de carga")),
-        clicar("p2", 'Na linha do check list, clique em "Abrir".', abrir_na_linha("Check list de carga"), alvo_visual=linha("Check list de carga"), 
-               resumo='Em Pendências, clique em "Abrir" na linha "Check list de carga"', espera=NOS_DOCS),
+        clicar("p2", 'Na linha do check list, clique no ícone de abrir, à direita.', abrir_na_linha("Check list de carga"), alvo_visual=linha("Check list de carga"), 
+               resumo='Em Pendências, clique no ícone de abrir na linha "Check list de carga"', espera=NOS_DOCS),
         mostrar("p3", 'Esta tela reúne os quatro documentos. O check list é a contagem das caixas que subiram no container, item por item.', DOC("load"), foco=False),
         mostrar("p4", 'A tabela mostra as caixas do pedido, as carregadas e as que faltam. Aqui, o total do pedido é 200.', "[data-load-line]"),
         digitar("p5", 'Em "Subiram agora", digite quantas caixas subiram neste lançamento. Não precisa ser tudo de uma vez.', CAIXAS, "120", rotulo="Subiram agora",
@@ -46,7 +46,7 @@ cenas = [
                 texto("Carga completa"), pausa=0.6),
     ]),
     sua_vez("m7-c1-suavez", C1, "Fazer o check list de carga", [
-        'Em Pendências, clique em "Abrir" na linha "Check list de carga"',
+        'Em Pendências, clique no ícone de abrir na linha "Check list de carga"',
         'Em "Subiram agora", digite as caixas que subiram',
         'Clique em "Registrar as caixas"',
         'Repita até a tela mostrar "Carga completa"',
@@ -57,8 +57,8 @@ cenas = [
              "Agora: o packing list."),
     tela("m7-c2-packing", C2, "forn-m7-s1", salvar="forn-m7-s2", tarefa="Enviar o packing list", passos=[
         mostrar("p1", 'Com a carga completa, a pendência passa a ser o packing list.', linha("Packing list: pedido #1")),
-        clicar("p2", 'Na linha dela, clique em "Abrir".', ABRIR_PACKING, alvo_visual=linha("Packing list: pedido #1"), 
-               resumo='Em Pendências, clique em "Abrir" na linha "Packing list"', espera=NOS_DOCS),
+        clicar("p2", 'Na linha dela, clique no ícone de abrir, à direita.', ABRIR_PACKING, alvo_visual=linha("Packing list: pedido #1"), 
+               resumo='Em Pendências, clique no ícone de abrir na linha "Packing list"', espera=NOS_DOCS),
         mostrar("p3", 'O packing list é a lista da carga: caixas, peças e pesos de cada item. As caixas já vêm do check list.', DOC("packing_list"), foco=False),
         mostrar("p4", 'Confira as peças, o peso líquido e o peso bruto. Os campos já vêm preenchidos pelo portal. Corrija, se a carga real for diferente.',
                 PL + "[data-doc-line]"),
@@ -69,7 +69,7 @@ cenas = [
         mostrar("p7", 'O packing list foi conferido com o check list. Agora abre a invoice.', DOC("packing_list") + " [data-shipping-status]", pausa=0.6),
     ]),
     sua_vez("m7-c2-suavez", C2, "Enviar o packing list", [
-        'Em Pendências, clique em "Abrir" na linha "Packing list"',
+        'Em Pendências, clique no ícone de abrir na linha "Packing list"',
         "Confira as peças, o peso líquido e o peso bruto de cada item",
         "Se quiser, escolha o arquivo do packing list",
         'Clique em "Enviar o packing list"',
@@ -80,8 +80,8 @@ cenas = [
              "Por fim: a invoice."),
     tela("m7-c3-invoice", C3, "forn-m7-s2", salvar="forn-m7-s3", tarefa="Enviar a invoice", passos=[
         mostrar("p1", 'Com o packing list conferido, chega a pendência da invoice. A linha do packing list continua na lista até a invoice ser enviada, mas ele já está conferido.', linha("Invoice: pedido #1")),
-        clicar("p2", 'Na linha dela, clique em "Abrir".', ABRIR_INVOICE, alvo_visual=linha("Invoice: pedido #1"), 
-               resumo='Em Pendências, clique em "Abrir" na linha "Invoice"', espera=NOS_DOCS),
+        clicar("p2", 'Na linha dela, clique no ícone de abrir, à direita.', ABRIR_INVOICE, alvo_visual=linha("Invoice: pedido #1"), 
+               resumo='Em Pendências, clique no ícone de abrir na linha "Invoice"', espera=NOS_DOCS),
         mostrar("p3", 'A invoice é a fatura comercial da carga. Na tela, ela aparece como "Invoice (trading)": a trading é você, que entra com o login do fornecedor. A invoice precisa bater com o packing list, linha por linha.', DOC("invoice"), foco=False),
         mostrar("p4", 'Veja se as caixas, as peças, os pesos e o preço por peça estão certos.', INV + "[data-doc-line]"),
         digitar("p5", 'Digite o número da invoice.', INV + "input[name=number]", "INV-2026-0115", rotulo="Nº da invoice", rotulo_lado="acima",
@@ -109,7 +109,7 @@ cenas = [
                 acima(texto("Diferenças encontradas"), 1), pausa=0.8),
     ]),
     sua_vez("m7-c3-suavez", C3, "Enviar a invoice", [
-        'Em Pendências, clique em "Abrir" na linha "Invoice"',
+        'Em Pendências, clique no ícone de abrir na linha "Invoice"',
         "Confira caixas, peças, pesos e preço por peça",
         "Digite o número da invoice e escolha o arquivo do documento",
         'Clique em "Enviar a invoice"',

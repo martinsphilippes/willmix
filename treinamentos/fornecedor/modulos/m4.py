@@ -12,8 +12,12 @@ FACA = '[data-die-cut-item="dieline"] '
 FOTO = '[data-die-cut-item="hd"] '
 TERMOS = '[data-die-cut-item="terms"] '
 ABRIR_DIECUT = abrir_na_linha("Die Cut:")
-ABRIR_AMOSTRAS = abrir_na_linha("Pedido #1: Aprovar a arte")
-ABRIR_CONTRATO = abrir_na_linha("Pedido #1: Assinar o pedido")
+# Desde 18/11/2026 o aceite do pedido de amostras chega com o mesmo título e texto da assinatura
+# ("Pedido #1: Assinar o pedido"); muda só o destino: a página do pedido (aceite) ou o documento.
+LINHA_AMOSTRAS = sel('main table tbody tr:has(a[data-open-link]:not([href*="purchase-order"]))', "Pedido #1: Assinar o pedido")
+LINHA_CONTRATO = sel('main table tbody tr:has(a[data-open-link][href$="/purchase-order"])', "Pedido #1: Assinar o pedido")
+ABRIR_AMOSTRAS = sel("a[data-open-link]", dentro=LINHA_AMOSTRAS)
+ABRIR_CONTRATO = sel("a[data-open-link]", dentro=LINHA_CONTRATO)
 ABRIR_RECEBIMENTO = abrir_na_linha("Confirmar recebimento: pedido #1")
 ACEITE = "form[data-sample-order-accept] "
 ASSINAR = "[data-order-sign-file] "
@@ -30,8 +34,8 @@ cenas = [
     tela("m4-c1-diecut", C1, "forn-m4-diecut", salvar="forn-m4-s1", tarefa="Fazer o Die Cut do pedido", passos=[
         mostrar("p1", 'A primeira tarefa do pedido é o Die Cut: a faca da caixa e a foto do produto em alta. Sem elas, a agência não começa a arte.',
                 linha("Die Cut:")),
-        clicar("p2", 'Na linha do Die Cut, clique em "Abrir".', ABRIR_DIECUT, alvo_visual=linha("Die Cut:"), 
-               resumo='Em Pendências, clique em "Abrir" na linha do Die Cut', espera={"url": "/die-cut", "rede": True}),
+        clicar("p2", 'Na linha do Die Cut, clique no ícone de abrir, à direita.', ABRIR_DIECUT, alvo_visual=linha("Die Cut:"), 
+               resumo='Em Pendências, clique no ícone de abrir na linha do Die Cut', espera={"url": "/die-cut", "rede": True}),
         mostrar("p3", 'O quadro tem um cartão por produto e avisa o que falta. Aqui faltam os quatro itens.', texto("Falta:"), rotulo="O que falta", rotulo_lado="acima"),
         anexar("p4", 'No item "Die Cut", envie a faca da caixa. Para um PDF, use "Escolher arquivo". Para uma imagem, "Tirar ou escolher foto". O envio é automático.',
                FACA + 'input[aria-label="Escolher arquivo"]', "faca-caixa-pote-1500ml.pdf", alvo_visual=FACA + "[data-file-button]",
@@ -64,7 +68,7 @@ cenas = [
                 texto("Prazo inválido"), pausa=0.6),
     ]),
     sua_vez("m4-c1-suavez", C1, "Fazer o Die Cut", [
-        'Em Pendências, clique em "Abrir" na linha do Die Cut',
+        'Em Pendências, clique no ícone de abrir na linha do Die Cut',
         'Envie a faca no item "Die Cut" e a foto em "Foto em alta"',
         "Confira o pedido mínimo e o prazo de entrega",
         'Clique em "Confirmar pedido mínimo e prazo"',
@@ -76,11 +80,11 @@ cenas = [
     tela("m4-c2-amostras", C2, "forn-m4-contrato", salvar="forn-m4-s2", tarefa="Aceitar o pedido de amostras", passos=[
         mostrar("p1", 'Com a arte e o certificado prontos, a Wellmix gera o pedido de amostras e assina o contrato. Chegam duas pendências para você.',
                 "main table tbody", foco=False),
-        clicar("p2", 'A primeira é o aceite do pedido de amostras. Atenção: hoje ela aparece na lista com o título "Aprovar a arte", e o texto dela fala da arte da embalagem. Mesmo assim, é essa linha que leva ao aceite. Use o botão "Abrir" dessa linha.',
-               ABRIR_AMOSTRAS, alvo_visual=linha("Pedido #1: Aprovar a arte"), 
-               resumo='Em Pendências, clique em "Abrir" na linha "Aprovar a arte"', destaque_em={"em": "primeira"},
+        clicar("p2", 'Atenção: hoje as duas aparecem com o mesmo título, "Assinar o pedido", e o mesmo texto. Uma leva ao documento do pedido, para a assinatura. A outra leva à página do pedido, onde está o aceite das amostras. Comece por ela: use o ícone de abrir dessa linha.',
+               ABRIR_AMOSTRAS, alvo_visual=LINHA_AMOSTRAS, 
+               resumo='Em Pendências, abra a linha "Assinar o pedido" que leva à página do pedido', destaque_em={"em": "outra"},
                espera={"url": "/app/orders/[^/?#]+$", "rede": True}),
-        mostrar("p3", 'O pedido abre na etapa "Contrato e assinaturas". O item pendente é o pedido de amostras aceito pelo fornecedor.',
+        mostrar("p3", 'O pedido abre no marco "Contrato". Há dois itens esperando você: comece pelo "Pedido de amostras aceito pelo fornecedor".',
                 sel("main li", "Pedido de amostras aceito pelo fornecedor")),
         clicar("p4", 'Nesse item, clique em "Pedido de amostras".', 'a[data-sample-order-link="sample_order_supplier"]', rotulo="Pedido de amostras",
                rotulo_lado="acima", resumo='No item do aceite, clique no botão vermelho "Pedido de amostras"', espera={"url": "/samples", "rede": True}, zoom=1.3),
@@ -95,7 +99,7 @@ cenas = [
         mostrar("p9", 'Pedido de amostras aceito. Essas amostras voltam mais adiante, depois da inspeção.', texto("Pedido de amostras aceito."), pausa=0.6),
     ]),
     sua_vez("m4-c2-suavez", C2, "Aceitar o pedido de amostras", [
-        'Em Pendências, abra a linha "Aprovar a arte" do pedido',
+        'Em Pendências, abra a linha "Assinar o pedido" que leva à página do pedido (não ao documento)',
         'No item "Pedido de amostras aceito pelo fornecedor", clique no botão vermelho "Pedido de amostras"',
         'Escreva o nome completo e marque a caixinha "Li o pedido de amostras e concordo…"',
         'Clique em "Aceitar o pedido de amostras"',
@@ -106,9 +110,9 @@ cenas = [
              "Agora: a assinatura do contrato."),
     tela("m4-c3-contrato", C3, "forn-m4-s2", salvar="forn-m4-s3", tarefa="Assinar o contrato do pedido", passos=[
         mostrar("p1", 'A outra pendência é a assinatura. A Wellmix assina primeiro e você assina em seguida. O pedido só segue com as duas assinaturas.',
-                linha("Pedido #1: Assinar o pedido")),
-        clicar("p2", 'Na linha "Assinar o pedido", clique em "Abrir".', ABRIR_CONTRATO, alvo_visual=linha("Pedido #1: Assinar o pedido"), 
-               resumo='Em Pendências, clique em "Abrir" na linha "Assinar o pedido"', espera={"url": "/purchase-order", "rede": True}),
+                LINHA_CONTRATO),
+        clicar("p2", 'Na linha "Assinar o pedido", clique no ícone de abrir, à direita.', ABRIR_CONTRATO, alvo_visual=LINHA_CONTRATO, 
+               resumo='Em Pendências, clique no ícone de abrir na linha "Assinar o pedido"', espera={"url": "/purchase-order", "rede": True}),
         mostrar("p3", 'Este é o documento do pedido. O selo mostra que ele foi enviado a você e espera a sua assinatura.', "[data-order-document-status]"),
         mostrar("p4", 'Confira o que foi combinado: o produto, a quantidade, o preço por unidade, o total e a condição de pagamento. Hoje, o pedido mínimo e o prazo aparecem em branco nesta tela: os números são os que você confirmou no Die Cut.',
                 "section[data-order-document]", rotulo="O que foi combinado", rotulo_lado="acima"),
@@ -136,7 +140,7 @@ cenas = [
                 texto("A Wellmix ainda não assinou"), pausa=0.6),
     ]),
     sua_vez("m4-c3-suavez", C3, "Assinar o contrato", [
-        'Em Pendências, clique em "Abrir" na linha "Assinar o pedido"',
+        'Em Pendências, clique no ícone de abrir na linha "Assinar o pedido"',
         "Confira o documento e baixe o PDF",
         "Imprima, assine e carimbe",
         'Use "Enviar o documento assinado" para subir o arquivo',
@@ -148,8 +152,8 @@ cenas = [
     tela("m4-c4-sinal", C4, "forn-m4-pagamento", salvar="forn-m4-s4", tarefa="Confirmar o recebimento de um pagamento", passos=[
         mostrar("p1", 'Com o contrato assinado, a Wellmix paga o sinal, que é a primeira parcela. Quando ela registra o pagamento, chega a pendência "Confirmar recebimento".',
                 linha("Confirmar recebimento: pedido #1")),
-        clicar("p2", 'Na linha dela, clique em "Abrir".', ABRIR_RECEBIMENTO, alvo_visual=linha("Confirmar recebimento: pedido #1"), 
-               resumo='Em Pendências, clique em "Abrir" na linha "Confirmar recebimento"', espera={"url": "/app/account", "rede": True}),
+        clicar("p2", 'Na linha dela, clique no ícone de abrir, à direita.', ABRIR_RECEBIMENTO, alvo_visual=linha("Confirmar recebimento: pedido #1"), 
+               resumo='Em Pendências, clique no ícone de abrir na linha "Confirmar recebimento"', espera={"url": "/app/account", "rede": True}),
         mostrar("p3", 'Esta é a Conta corrente. No alto, o total dos pedidos, o que você já recebeu e o saldo.', 'div:has(> div > div:text-is("Total")):has(> div > div:text-is("Saldo"))', foco=False),
         mostrar("p4", 'A previsão mostra as parcelas pela condição combinada. Aqui, trinta por cento na data do pedido. O restante, noventa dias após a entrega ao cliente.',
                 "section:has(#forecast)"),
@@ -161,7 +165,7 @@ cenas = [
                 'div:has(> div:text-is("Recebido"))', rotulo="Recebido", rotulo_lado="abaixo", pausa=0.6),
     ]),
     sua_vez("m4-c4-suavez", C4, "Confirmar um recebimento", [
-        'Em Pendências, clique em "Abrir" na linha "Confirmar recebimento"',
+        'Em Pendências, clique no ícone de abrir na linha "Confirmar recebimento"',
         "Confira a parcela na Conta corrente",
         "Confira no seu banco se o dinheiro chegou",
         'Clique em "Confirmar recebimento"',
@@ -192,8 +196,8 @@ perguntas = [
             'O prazo de entrega é um número inteiro de dias, de 1 a 720.'),
     cenario("q5", "Onde aceitar o pedido de amostras", (AM, "p2"),
             'Chegou a hora de aceitar o pedido de amostras. Como você chega até ele hoje?',
-            ['Pela Conta corrente', 'Pela pendência do pedido com o título "Aprovar a arte" e, no pedido, pelo botão "Pedido de amostras"', 'Pelo menu "Convites de book"', 'Pela conversa da solicitação'], 1,
-            'Hoje o aceite aparece em Pendências com o título "Aprovar a arte". Ela abre o pedido; no item pendente, o botão "Pedido de amostras" leva ao aceite.'),
+            ['Pela Conta corrente', 'Pela pendência "Assinar o pedido" que abre a página do pedido e, nela, pelo botão "Pedido de amostras"', 'Pelo menu "Convites de book"', 'Pela conversa da solicitação'], 1,
+            'Hoje o aceite aparece em Pendências com o mesmo título da assinatura, "Assinar o pedido". A linha do aceite abre a página do pedido; no item pendente, o botão "Pedido de amostras" leva ao aceite.'),
     ordenar("q6", "Passos para aceitar o pedido de amostras", (AM, "p4"),
             'Ponha em ordem os passos para aceitar o pedido de amostras.',
             ['Abrir o pedido pela pendência', 'Clicar em "Pedido de amostras" no item pendente',

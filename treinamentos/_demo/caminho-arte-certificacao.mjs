@@ -61,35 +61,9 @@ async function devolverArte(page, pedido, motivo) {
   await P.pararSeErro(page, "devolver a arte");
 }
 
-/** Linha de um passo do cartão Certificação, como a tela mostra. */
-async function passoDaCertificacao(page, pedido, chave) {
-  await P.abrir(page, `${pedido}#certification`);
-  const linha = page.locator(`#certification-step-${chave}`);
-  if (!(await linha.count())) return null;
-  return { situacao: await linha.getAttribute("data-import-status"), texto: (await linha.innerText()).replace(/\s+/g, " ").trim() };
-}
-
-/** Quem faz a arte: envia a arte com o selo aplicado (passo "Selo aplicado na arte"). */
-async function enviarSeloAplicado(page, pedido, arquivo) {
-  await P.abrir(page, `${pedido}#certification`);
-  const linha = page.locator("#certification-step-cert_seal_art");
-  const botao = linha.locator('[data-import-submit="cert_seal_art"]');
-  if (!(await botao.count())) throw new Error(`selo aplicado na arte: este login não tem o "Enviar" (na tela: ${(await passoDaCertificacao(page, pedido, "cert_seal_art"))?.texto ?? "o passo não aparece"})`);
-  await linha.locator("input[type=file]").setInputFiles(P.arquivo(arquivo));
-  await P.concluir(page, /[?&]certStep=submitted/, "enviar a arte com o selo aplicado", () => botao.click());
-  return passoDaCertificacao(page, pedido, "cert_seal_art");
-}
-
-/** Wellmix: valida ou recusa (com o motivo) a arte com o selo aplicado. */
-async function decidirSeloAplicado(page, pedido, { valida, motivo = null }) {
-  await P.abrir(page, `${pedido}#certification`);
-  const linha = page.locator("#certification-step-cert_seal_art");
-  const botao = linha.locator(valida ? '[data-import-validate="cert_seal_art"]' : '[data-import-reject="cert_seal_art"]');
-  if (!(await botao.count())) throw new Error(`selo aplicado na arte: este login não tem o botão de ${valida ? "validar" : "recusar"} (na tela: ${(await passoDaCertificacao(page, pedido, "cert_seal_art"))?.texto})`);
-  if (!valida) await linha.locator('input[name="reason"]').fill(motivo);
-  await P.concluir(page, /[?&]certStep=/, `${valida ? "validar" : "recusar"} a arte com o selo`, () => botao.click());
-  return passoDaCertificacao(page, pedido, "cert_seal_art");
-}
+// Passo "Selo aplicado na arte" do cartão Certificação: em `preparo-pedido.mjs` (também no
+// caminho do Fornecedor, porque o marco Certificação só conclui com ele).
+const { passoDaCertificacao, enviarSeloAplicado, decidirSeloAplicado } = P;
 
 /** Wellmix: aponta uma não conformidade da arte num item do pedido (cartão Artes). */
 async function apontarNaoConformidade(page, pedido, nota) {

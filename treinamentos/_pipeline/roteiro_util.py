@@ -38,8 +38,23 @@ def linha(contem: str) -> dict:
     return sel("main table tbody tr", contem)
 
 
-def abrir_na_linha(contem: str, botao: str = "Abrir") -> dict:
-    return sel("a", botao, dentro=linha(contem))
+def linha_solicitacao(numero: int) -> dict:
+    """A linha da lista "Solicitações ao fornecedor" pelo número (a lista é no nível do pedido
+    desde o PR #561, 18/11/2026: sem o nome do produto)."""
+    return sel(f'[data-supplier-request-row]:has(td:first-child a:text-is("{numero}"))')
+
+
+def numero_da_solicitacao(numero: int) -> dict:
+    """O número (link) da solicitação na lista "Solicitações ao fornecedor"."""
+    return sel(f'[data-supplier-request-row] td:first-child a:text-is("{numero}")')
+
+
+def abrir_na_linha(contem: str, botao: str | None = None) -> dict:
+    """O ícone de abrir no fim da linha (`OpenLink`, PR #561 de 18/11/2026): sem texto,
+    só o nome acessível "Abrir: <título>". `botao` fica para um link com texto."""
+    if botao:
+        return sel("a", botao, dentro=linha(contem))
+    return sel("a[data-open-link]", dentro=linha(contem))
 
 
 # ------------------------------------------------------------------ passos --

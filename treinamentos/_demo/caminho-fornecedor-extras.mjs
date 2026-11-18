@@ -161,6 +161,8 @@ async function concluirPreparacao(page, pedido, h) {
   await entrar(page, QUEM_GERA_O_PEDIDO);
   const fiscal = await P.validarNcmDoProduto(page, pedido, o.ncm);
   if (fiscal.feito) await P.completarFichaMestre(page, fiscal.produto, o.fichaMestre);
+  // Aprovações do mapa (GP: cadastro e fiscal; Comprador: material de arte): sem elas a Arte não abre.
+  console.log(`  aprovações da Wellmix: ${(await P.confirmarAprovacoes(page, pedido)).join(" · ") || "nenhuma liberada"}`);
   // Agência de arte: a arte (sobre a faca e a foto em alta). Wellmix: valida a arte.
   await entrar(page, AGENCIA_DE_ARTE);
   await mostrar("agência de arte", P.preencherItensDoPedido(page, pedido, (r) => (/^Arte ·/.test(r) ? { arquivo: o.arte } : null)));
@@ -172,14 +174,22 @@ async function concluirPreparacao(page, pedido, h) {
   if (certificados.length) {
     const docs = await P.enviarDocumentosDaCertificacao(page, pedido, { cert_memorial: { arquivo: o.memorial }, cert_seal: { arquivo: o.selo.arquivo, valor: o.selo.numero } });
     console.log(`  certificação: ${docs.join(" · ")}`);
+    // GP aprova a certificação (libera o selo na arte).
+    await entrar(page, QUEM_GERA_O_PEDIDO);
+    console.log(`  aprovações da Wellmix: ${(await P.confirmarAprovacoes(page, pedido)).join(" · ") || "nenhuma liberada"}`);
     await entrar(page, AGENCIA_DE_ARTE);
     await mostrar("agência de arte", P.preencherItensDoPedido(page, pedido, (r) => (/Arte final com o selo/.test(r) ? { arquivo: o.arteFinal } : null)));
+    // Arte com o selo aplicado (cartão Certificação): o marco Certificação só conclui com ela.
+    console.log(`  selo aplicado na arte: ${(await P.enviarSeloAplicado(page, pedido, o.arteFinal))?.texto}`);
+    await entrar(page, QUEM_GERA_O_PEDIDO);
+    console.log(`  selo aplicado na arte, depois da Wellmix: ${(await P.decidirSeloAplicado(page, pedido, { valida: true }))?.texto}`);
   } else console.log("  certificação: a linha do produto não exige certificado (sem a raia da certificadora nem a arte final com o selo)");
 }
 
 /** Wellmix: gera o pedido de amostras e sobe o contrato assinado por ela (a vez passa ao fornecedor). */
 async function amostrasEContratoDaWellmix(page, pedido) {
   await entrar(page, QUEM_GERA_O_PEDIDO);
+  console.log(`  aprovações da Wellmix: ${(await P.confirmarAprovacoes(page, pedido)).join(" · ") || "nenhuma liberada"}`);
   console.log(`  pedido de amostras gerado: ${await P.gerarPedidoDeAmostras(page, pedido)} peças`);
   console.log(`  contrato depois da assinatura da Wellmix: ${await P.assinarContrato(page, pedido, "wellmix", { arquivo: HISTORIA.outrosPapeis.contratoWellmix })}`);
 }
@@ -330,6 +340,10 @@ export const ETAPAS = [
       console.log(`  sinal: condição "${sinal.condicao}" · parcela 1 ficou "${sinal.situacao}"`);
       await entrar(page, FORNECEDOR);
       await P.confirmarRecebimento(page, await P.numeroDoPedido(page, pedido));
+      // Sinal (Diretoria de compras) e pré-produção (Planner): sem elas a Inspeção não abre.
+      await entrar(page, QUEM_GERA_O_PEDIDO);
+      console.log(`  aprovações da Wellmix: ${(await P.confirmarAprovacoes(page, pedido)).join(" · ") || "nenhuma liberada"}`);
+      await entrar(page, FORNECEDOR);
       const producao = await P.salvarProducao(page, pedido, { tipo: "factory", inicio: P.dataEmDias(HISTORIA.producao.inicioEmDias), etd: P.dataEmDias(Number(h.resposta.prazoDias)) });
       console.log(`  produção: início ${producao.antes.inicioAutomatico ? "automático (campo fechado)" : "digitado"} ${producao.depois.inicio} · ETD ${producao.depois.etd} · ${producao.depois.tipo}`);
       const respostas = [

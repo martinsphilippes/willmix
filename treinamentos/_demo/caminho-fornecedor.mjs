@@ -221,6 +221,8 @@ export const ETAPAS = [
       await entrar(page, QUEM_GERA_O_PEDIDO);
       const fiscal = await P.validarNcmDoProduto(page, pedido, o.ncm);
       if (fiscal.feito) await P.completarFichaMestre(page, fiscal.produto, o.fichaMestre);
+      // Aprovações do mapa (GP: cadastro e fiscal; Comprador: material de arte): sem elas a Arte não abre.
+      console.log(`  aprovações da Wellmix: ${(await P.confirmarAprovacoes(page, pedido)).join(" · ") || "nenhuma liberada"}`);
       // Agência de arte: a arte (sobre a faca e a foto em alta).
       await entrar(page, AGENCIA_DE_ARTE);
       await mostrar("agência de arte", P.preencherItensDoPedido(page, pedido, (r) => (/^Arte ·/.test(r) ? { arquivo: o.arte } : null)));
@@ -234,11 +236,19 @@ export const ETAPAS = [
         const docs = await P.enviarDocumentosDaCertificacao(page, pedido, { cert_memorial: { arquivo: o.memorial }, cert_seal: { arquivo: o.selo.arquivo, valor: o.selo.numero } });
         console.log(`  certificação: ${docs.join(" · ")}`);
       } else console.log("  certificação: a linha do produto não exige certificado; memorial e selo não foram enviados");
+      // GP aprova a certificação (libera o selo na arte).
+      await entrar(page, QUEM_GERA_O_PEDIDO);
+      console.log(`  aprovações da Wellmix: ${(await P.confirmarAprovacoes(page, pedido)).join(" · ") || "nenhuma liberada"}`);
       // Agência de arte: a arte final com o selo.
       await entrar(page, AGENCIA_DE_ARTE);
       await mostrar("agência de arte", P.preencherItensDoPedido(page, pedido, (r) => (/Arte final com o selo/.test(r) ? { arquivo: o.arteFinal } : null)));
+      // Agência de arte: a arte com o selo aplicado (cartão Certificação); a Wellmix valida. Desde a
+      // Fase 5g dos marcos o marco Certificação só conclui com esse passo, e o contrato espera por ele.
+      console.log(`  selo aplicado na arte: ${(await P.enviarSeloAplicado(page, pedido, o.arteFinal))?.texto}`);
       // Wellmix: pedido de amostras e a assinatura dela no contrato.
       await entrar(page, QUEM_GERA_O_PEDIDO);
+      console.log(`  selo aplicado na arte, depois da Wellmix: ${(await P.decidirSeloAplicado(page, pedido, { valida: true }))?.texto}`);
+      console.log(`  aprovações da Wellmix: ${(await P.confirmarAprovacoes(page, pedido)).join(" · ") || "nenhuma liberada"}`);
       console.log(`  pedido de amostras gerado: ${await P.gerarPedidoDeAmostras(page, pedido)} peças`);
       console.log(`  contrato depois da assinatura da Wellmix: ${await P.assinarContrato(page, pedido, "wellmix", { arquivo: o.contratoWellmix })}`);
     } },
@@ -254,14 +264,19 @@ export const ETAPAS = [
       await entrar(page, QUEM_GERA_O_PEDIDO);
       const sinal = await P.registrarPagamentoDoSinal(page, pedido);
       console.log(`  sinal: condição "${sinal.condicao}" · parcela 1 ficou "${sinal.situacao}"`);
+      console.log(`  aprovações da Wellmix: ${(await P.confirmarAprovacoes(page, pedido)).join(" · ") || "nenhuma liberada"}`);
     } },
   { nome: "m5-base", de: "forn-m4-pagamento", salva: "forn-m5-base",
-    // O fornecedor confirma o recebimento do sinal. Ponto: Inspeção aberta para ele (fotos,
-    // peso, vídeo, declaração) e o cartão Produção por preencher.
+    // O fornecedor confirma o recebimento do sinal; a Wellmix confirma as aprovações liberadas: o
+    // sinal (Diretoria de compras) e a pré-produção (Planner). Desde a Fase 5g dos marcos, sem elas
+    // a Inspeção não abre; a do Planner não espera dado nenhum do fornecedor. Ponto: a pendência
+    // "Inspeção" do fornecedor e o cartão Produção por preencher.
     async faz(page) {
       await entrar(page, FORNECEDOR);
       const pedido = await P.pedidoUnico(page);
       await P.confirmarRecebimento(page, await P.numeroDoPedido(page, pedido));
+      await entrar(page, QUEM_GERA_O_PEDIDO);
+      console.log(`  aprovações da Wellmix: ${(await P.confirmarAprovacoes(page, pedido)).join(" · ") || "nenhuma liberada"}`);
     } },
   { nome: "m5-enviado", de: "forn-m5-base", salva: "forn-m5-enviado",
     // Módulo 5 (ponto intermediário, sem cena): o fornecedor preenche o cartão Produção, envia

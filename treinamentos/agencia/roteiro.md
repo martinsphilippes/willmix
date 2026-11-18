@@ -42,14 +42,14 @@ Conta usada na gravação: `agencia@design.com` (conta de demonstração, dados 
 - **Passo 2** (clica) Para voltar a ver tudo, escolha "Todas as etapas".
 - *(mostra na tela)* Cada linha traz o pedido, o detalhe e o prazo. A coluna "Detalhe" diz o que falta: aqui, a arte do pote de vidro do pedido número 1.
 - *(mostra na tela)* Embaixo da data, o portal diz em quantos dias a pendência vence. A lista já vem com o mais urgente primeiro.
-- *(mostra na tela)* E o botão vermelho "Abrir", no fim da linha, leva você direto ao pedido.
+- *(mostra na tela)* E o ícone de abrir, no fim da linha, leva você direto ao pedido.
 
 **Cartão (suavez):** Suas pendências
 
 - Entre no portal e veja "Minhas pendências"
 - Clique numa etapa para filtrar a lista
 - Volte com "Todas as etapas"
-- Ache o botão "Abrir" da pendência mais urgente
+- Ache o ícone de abrir da pendência mais urgente
 
 - *(fala)* Agora é com você: pause o vídeo e ache as suas pendências.
 
@@ -60,7 +60,7 @@ Conta usada na gravação: `agencia@design.com` (conta de demonstração, dados 
 - *(fala)* Agora, a tarefa principal: enviar a arte.
 
 - *(mostra na tela)* A arte aparece para você quando o material está pronto: o fornecedor enviou a faca da caixa e a foto do produto, e a Wellmix aprovou. Aí a pendência entra na sua lista.
-- **Passo 1** (clica) Na linha da arte, clique em "Abrir".
+- **Passo 1** (clica) Na linha da arte, clique no ícone de abrir, à direita.
 - *(mostra na tela)* Você está no pedido número 1: o pote de vidro, duas mil e quatrocentas peças.
 - *(mostra na tela)* Mais abaixo estão os marcos do pedido. São as etapas em que a agência atua, e as que ela só acompanha.
 - *(mostra na tela)* No marco "Material de arte" está o que o fornecedor enviou. A faca é o desenho da caixa aberta, com as medidas e as dobras.
@@ -79,7 +79,7 @@ Conta usada na gravação: `agencia@design.com` (conta de demonstração, dados 
 
 **Cartão (suavez):** Enviar a arte do produto
 
-- Em Pendências, clique em "Abrir" na linha da arte
+- Em Pendências, clique no ícone de abrir na linha da arte
 - No marco "Material de arte", baixe a faca e a foto em alta
 - No marco "Arte", clique em "Escolher arquivo" e selecione a arte
 - Veja a linha passar para "Concluído"
@@ -134,7 +134,7 @@ Conta usada na gravação: `agencia@design.com` (conta de demonstração, dados 
 4. *(clique no lugar certo)* Você está no pedido e precisa da faca da caixa para montar a arte. Clique no lugar certo.
    - Retorno: No marco "Material de arte", o nome do arquivo da faca é o link para baixar.
 5. *(ordene os passos)* Ponha em ordem os passos para enviar a arte de um produto.
-   - 1º Em Pendências, clicar em "Abrir" na linha da arte
+   - 1º Em Pendências, clicar no ícone de abrir na linha da arte
    - 2º Baixar a faca e a foto em alta, no marco "Material de arte"
    - 3º No marco "Arte", clicar em "Escolher arquivo" e selecionar a arte
    - 4º Ver a linha passar para "Concluído"
@@ -177,7 +177,7 @@ Conta usada na gravação: `agencia@design.com` (conta de demonstração, dados 
 
 - *(mostra na tela)* A Wellmix validou a sua arte, e a certificadora enviou o certificado e o selo do produto. Com isso, chegam duas pendências novas.
 - *(mostra na tela)* Comece por esta: aplicar o selo de certificação na arte. Ela fica na etapa "Selo na arte".
-- **Passo 1** (clica) Na linha dela, clique em "Abrir".
+- **Passo 1** (clica) Na linha dela, clique no ícone de abrir, à direita.
 - *(mostra na tela)* Você cai no cartão "Certificação" do pedido. A primeira linha é o selo: a certificadora já enviou, e o número dele aparece ao lado.
 - *(mostra na tela)* A segunda linha é a sua: "Selo aplicado na arte". A agência faz, e a Wellmix valida.
 - **Passo 2** (aponta) Use o link "Baixar o selo" para pegar o arquivo do selo.
@@ -189,7 +189,7 @@ Conta usada na gravação: `agencia@design.com` (conta de demonstração, dados 
 
 **Cartão (suavez):** Aplicar o selo na arte
 
-- Em Pendências, clique em "Abrir" na linha "Aplicar o selo de certificação na arte"
+- Em Pendências, clique no ícone de abrir na linha "Aplicar o selo de certificação na arte"
 - No cartão "Certificação", clique em "Baixar o selo"
 - Aplique o selo na arte e selecione o arquivo em "Escolher arquivo"
 - Clique em "Enviar"
@@ -203,7 +203,7 @@ Conta usada na gravação: `agencia@design.com` (conta de demonstração, dados 
 - *(fala)* Agora: a arte final, no marco da arte.
 
 - *(mostra na tela)* Falta a outra pendência: a arte final com o selo. Hoje o portal pede a arte com o selo em dois lugares. Um é o cartão da certificação, que você acabou de ver. O outro é a linha "Arte final com o selo", no marco da arte.
-- **Passo 1** (clica) Na linha dessa pendência, clique em "Abrir".
+- **Passo 1** (clica) Na linha dessa pendência, clique no ícone de abrir, à direita.
 - *(mostra na tela)* Mais abaixo, no marco da arte, a arte final com o selo já pode ser enviada. Essa linha traz dois arquivos de apoio.
 - *(aponta)* O primeiro é a arte que a Wellmix validou.
 - *(aponta)* O segundo é o certificado do produto. Os dois abrem pelo nome do arquivo.
@@ -213,7 +213,7 @@ Conta usada na gravação: `agencia@design.com` (conta de demonstração, dados 
 
 **Cartão (suavez):** Enviar a arte final com o selo
 
-- Em Pendências, clique em "Abrir" na linha da arte final com o selo
+- Em Pendências, clique no ícone de abrir na linha da arte final com o selo
 - No marco "Arte", clique em "Escolher arquivo" e selecione a arte final
 - Veja o marco "Arte" fechar como "Concluído"
 
@@ -260,7 +260,7 @@ Conta usada na gravação: `agencia@design.com` (conta de demonstração, dados 
 2. *(clique no lugar certo)* Você está no cartão "Certificação" e precisa do arquivo do selo. Clique no lugar certo.
    - Retorno: Na linha "Selo aplicado na arte", o link "Baixar o selo" traz o arquivo enviado pela certificadora.
 3. *(ordene os passos)* Ponha em ordem os passos para enviar a arte com o selo aplicado.
-   - 1º Em Pendências, clicar em "Abrir" na linha "Aplicar o selo de certificação na arte"
+   - 1º Em Pendências, clicar no ícone de abrir na linha "Aplicar o selo de certificação na arte"
    - 2º Clicar em "Baixar o selo"
    - 3º Selecionar a arte com o selo em "Escolher arquivo"
    - 4º Clicar em "Enviar"
@@ -310,7 +310,7 @@ Conta usada na gravação: `agencia@design.com` (conta de demonstração, dados 
 - *(fala)* Para começar: o ajuste de arte.
 
 - *(mostra na tela)* Mesmo depois da entrega, a Wellmix pode apontar um problema na arte de um produto. Chega uma pendência nova, pedindo a correção da arte.
-- **Passo 1** (clica) Na linha dela, clique em "Abrir".
+- **Passo 1** (clica) Na linha dela, clique no ícone de abrir, à direita.
 - *(mostra na tela)* Você cai no cartão das artes do pedido, direto na linha do produto. A situação é "Não conforme", e ao lado vem o que a Wellmix apontou.
 - **Passo 2** (digita: `Margem branca do código de barras ajustada dos dois lados.`) Ajuste a arte. Depois, no campo "O que foi corrigido", escreva em poucas palavras o que mudou.
 - **Passo 3** (anexa o arquivo) Escolha o arquivo da arte ajustada.
@@ -320,7 +320,7 @@ Conta usada na gravação: `agencia@design.com` (conta de demonstração, dados 
 
 **Cartão (suavez):** Enviar a correção de uma arte
 
-- Em Pendências, clique em "Abrir" na linha "Corrigir a arte"
+- Em Pendências, clique no ícone de abrir na linha "Corrigir a arte"
 - Leia o que a Wellmix apontou, na linha "Não conforme"
 - Escreva o que mudou e escolha o arquivo da arte ajustada
 - Clique em "Enviar correção"
@@ -337,7 +337,7 @@ Conta usada na gravação: `agencia@design.com` (conta de demonstração, dados 
 - **Passo 2** (clica) E clique em "Arte".
 - *(mostra na tela)* Esta tela junta só o passo da arte. A aba "Pendências" lista o que espera por você, com o prazo e há quantos dias está aberto.
 - **Passo 3** (clica) A aba "Todos no passo" mostra todos os seus pedidos que estão na arte, mesmo sem nada pendente. Abra essa aba.
-- *(mostra na tela)* Cada linha é um pedido, com a etapa em que ele está e o que continua aberto neste passo.
+- *(mostra na tela)* Cada linha é um pedido, com o que continua aberto neste passo e há quantos dias.
 - **Passo 4** (clica) Volte para a aba "Pendências".
 - **Passo 5** (clica) Na linha da pendência, clique em "Resolver".
 - *(mostra na tela)* Abre só o produto daquela linha, com as duas linhas da arte. Dá para enviar o arquivo daqui mesmo, sem abrir o pedido inteiro.
@@ -345,7 +345,7 @@ Conta usada na gravação: `agencia@design.com` (conta de demonstração, dados 
 - **Passo 7** (clica) Use o filtro "Todas as etapas", mesmo que já apareça marcado.
 - **Passo 8** (clica) Com isso aparece o botão "Mesa de trabalho". Clique nele.
 - *(mostra na tela)* A mesa separa o trabalho em duas filas, por prazo: as artes a fazer e as artes finais com o selo. Aqui, uma arte final espera por você.
-- *(mostra na tela)* Em cada linha, "Abrir" leva ao pedido.
+- *(mostra na tela)* Em cada linha, o ícone de abrir leva ao pedido.
 
 **Cartão (suavez):** A tela Arte e a mesa de trabalho
 
@@ -401,7 +401,7 @@ Conta usada na gravação: `agencia@design.com` (conta de demonstração, dados 
    - D) No cartão "Certificação"
    - Retorno: O cartão "Artes" traz, por produto, a situação e o texto da não conformidade.
 3. *(ordene os passos)* Ponha em ordem os passos para enviar a correção de uma arte.
-   - 1º Em Pendências, clicar em "Abrir" na linha "Corrigir a arte"
+   - 1º Em Pendências, clicar no ícone de abrir na linha "Corrigir a arte"
    - 2º Ler o que a Wellmix apontou
    - 3º Escrever o que mudou e escolher o arquivo da arte ajustada
    - 4º Clicar em "Enviar correção"

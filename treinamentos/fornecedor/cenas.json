@@ -280,7 +280,7 @@
    "passos": [
     {
      "id": "p1",
-     "fala": "Todo dia, comece por aqui. Esta tela junta tudo o que a Wellmix espera de você, do book até o embarque."
+     "fala": "Todo dia, comece por aqui. Esta tela junta tudo o que a Wellmix espera de você, do book até a invoice. Depois da invoice, nada mais depende de você."
     },
     {
      "id": "p2",
@@ -378,10 +378,9 @@
     },
     {
      "id": "p9",
-     "fala": "E o botão vermelho \"Abrir\", no fim da linha, leva você direto para a tela onde se resolve.",
+     "fala": "E o ícone de abrir, no fim da linha, leva você direto para a tela onde se resolve.",
      "alvo": {
-      "seletor": "main table tbody tr a",
-      "contem": "Abrir"
+      "seletor": "main table tbody tr a[data-open-link]"
      },
      "rotulo": "Abrir",
      "rotulo_lado": "esquerda",
@@ -414,7 +413,7 @@
      "Entre no portal e veja \"Minhas pendências\"",
      "Clique numa etapa para filtrar a lista",
      "Volte com \"Todas as etapas\"",
-     "Ache o botão \"Abrir\" da pendência mais urgente"
+     "Ache o ícone de abrir da pendência mais urgente"
     ]
    },
    "passos": [
@@ -459,10 +458,9 @@
     },
     {
      "id": "p2",
-     "fala": "O convite chega nas pendências, com o nome \"Enviar book concorrente\". Na linha dele, clique em \"Abrir\".",
+     "fala": "O convite chega nas pendências, com o nome \"Enviar book concorrente\". Na linha dele, clique no ícone de abrir.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Enviar book concorrente"
@@ -626,8 +624,7 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "contem": "Abrir",
+       "seletor": "a[data-open-link]",
        "dentro": {
         "seletor": "main table tbody tr",
         "contem": "Enviar book concorrente"
@@ -701,7 +698,7 @@
     "tipo": "suavez",
     "titulo": "Enviar o book de um convite",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha \"Enviar book concorrente\"",
+     "Em Pendências, clique no ícone de abrir na linha \"Enviar book concorrente\"",
      "Leia o que a Wellmix procura e o que ela precisa",
      "Em \"Arquivo\", escolha a planilha do seu book, no modelo",
      "Confira a moeda e clique em \"Enviar book\""
@@ -947,10 +944,9 @@
     },
     {
      "id": "p2",
-     "fala": "A solicitação aparece nas pendências. Na linha da solicitação número 1, clique em \"Abrir\".",
+     "fala": "A solicitação aparece nas pendências. Na linha da solicitação número 1, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Solicitação nº 1"
@@ -961,7 +957,7 @@
       "seletor": "main table tbody tr",
       "contem": "Solicitação nº 1"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha da solicitação",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha da solicitação",
      "destaque_em": {
       "em": "linha"
      },
@@ -1195,8 +1191,7 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "contem": "Abrir",
+       "seletor": "a[data-open-link]",
        "dentro": {
         "seletor": "main table tbody tr",
         "contem": "Solicitação nº 1"
@@ -1285,7 +1280,7 @@
     "tipo": "suavez",
     "titulo": "Responder a uma solicitação",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha da solicitação",
+     "Em Pendências, clique no ícone de abrir na linha da solicitação",
      "Clique no ícone \"Abrir produto\"",
      "Escolha \"Sim, faço\" e preencha preço, pedido mínimo e prazo",
      "Clique em \"Enviar resposta\""
@@ -1356,7 +1351,7 @@
     },
     {
      "id": "p3",
-     "fala": "A lista mostra todas as solicitações: o número, a situação, o item, a quantidade e a sua resposta. A número 1 já aparece como \"Respondida\".",
+     "fala": "A lista mostra as solicitações em negociação: o número, a situação, quantos produtos, a quantidade, as programações e a sua resposta. A número 1 já aparece como \"Respondida\". As aprovadas e as recusadas passam para a aba \"Encerradas\".",
      "alvo": {
       "seletor": "main table"
      },
@@ -1367,17 +1362,11 @@
      "id": "p4",
      "fala": "Abra a solicitação número 2, do copo de 350 mililitros. É só clicar no número.",
      "alvo": {
-      "seletor": "a",
-      "dentro": {
-       "seletor": "main table tbody tr",
-       "contem": "Glass cup 350ml"
-      },
-      "n": 0
+      "seletor": "[data-supplier-request-row] td:first-child a:text-is(\"2\")"
      },
      "acao": "clicar",
      "alvo_visual": {
-      "seletor": "main table tbody tr",
-      "contem": "Glass cup 350ml"
+      "seletor": "[data-supplier-request-row]:has(td:first-child a:text-is(\"2\"))"
      },
      "resumo": "Abra a solicitação nº 2, clicando no número",
      "destaque_em": {
@@ -1500,17 +1489,11 @@
      "id": "p13",
      "fala": "Em seguida, abra a solicitação número 3, da tigela.",
      "alvo": {
-      "seletor": "a",
-      "dentro": {
-       "seletor": "main table tbody tr",
-       "contem": "Glass bowl 500ml"
-      },
-      "n": 0
+      "seletor": "[data-supplier-request-row] td:first-child a:text-is(\"3\")"
      },
      "acao": "clicar",
      "alvo_visual": {
-      "seletor": "main table tbody tr",
-      "contem": "Glass bowl 500ml"
+      "seletor": "[data-supplier-request-row]:has(td:first-child a:text-is(\"3\"))"
      },
      "resumo": "Abra a solicitação nº 3",
      "espera": {
@@ -1628,12 +1611,7 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "dentro": {
-        "seletor": "main table tbody tr",
-        "contem": "Glass jar"
-       },
-       "n": 0
+       "seletor": "[data-supplier-request-row] td:first-child a:text-is(\"1\")"
       },
       "espera": {
        "url": "/app/supplier-requests/[^/?]+$",
@@ -1801,12 +1779,7 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "dentro": {
-        "seletor": "main table tbody tr",
-        "contem": "Glass jar"
-       },
-       "n": 0
+       "seletor": "[data-supplier-request-row] td:first-child a:text-is(\"1\")"
       },
       "espera": {
        "url": "/app/supplier-requests/[^/?]+$",
@@ -1951,10 +1924,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha dela, clique em \"Abrir\".",
+     "fala": "Na linha dela, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Solicitação nº 1"
@@ -1965,7 +1937,7 @@
       "seletor": "main table tbody tr",
       "contem": "Solicitação nº 1"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na solicitação com a contraproposta",
+     "resumo": "Em Pendências, clique no ícone de abrir na solicitação com a contraproposta",
      "espera": {
       "url": "/app/supplier-requests/",
       "rede": true
@@ -2114,8 +2086,7 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "contem": "Abrir",
+       "seletor": "a[data-open-link]",
        "dentro": {
         "seletor": "main table tbody tr",
         "contem": "Solicitação nº 1"
@@ -2204,7 +2175,7 @@
     "tipo": "suavez",
     "titulo": "Responder a uma contraproposta",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na solicitação com a contraproposta",
+     "Em Pendências, clique no ícone de abrir na solicitação com a contraproposta",
      "Clique no ícone \"Abrir produto\"",
      "Confira os valores em \"Responder à contraproposta\"",
      "Clique em \"Aceitar\", \"Enviar nova proposta\" ou \"Recusar\""
@@ -2299,10 +2270,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha da amostragem da solicitação número 1, clique em \"Abrir\".",
+     "fala": "Na linha da amostragem da solicitação número 1, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Amostragem da solicitação nº 1"
@@ -2313,7 +2283,7 @@
       "seletor": "main table tbody tr",
       "contem": "Amostragem da solicitação nº 1"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha da amostragem",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha da amostragem",
      "espera": {
       "url": "/app/supplier-requests/",
       "seletor": "#amostragem",
@@ -2480,8 +2450,7 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "contem": "Abrir",
+       "seletor": "a[data-open-link]",
        "dentro": {
         "seletor": "main table tbody tr",
         "contem": "Amostragem da solicitação nº 2"
@@ -2561,7 +2530,7 @@
     "tipo": "suavez",
     "titulo": "Enviar a amostragem",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha da amostragem",
+     "Em Pendências, clique no ícone de abrir na linha da amostragem",
      "Clique em \"Adicionar foto ou vídeo\" e escolha um arquivo de cada vez",
      "Confira a lista da rodada",
      "Clique em \"Enviar para a validação\""
@@ -2613,10 +2582,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha dela, clique em \"Abrir\".",
+     "fala": "Na linha dela, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Amostragem da solicitação nº 2"
@@ -2627,7 +2595,7 @@
       "seletor": "main table tbody tr",
       "contem": "Amostragem da solicitação nº 2"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na amostragem reprovada",
+     "resumo": "Em Pendências, clique no ícone de abrir na amostragem reprovada",
      "espera": {
       "url": "/app/supplier-requests/",
       "seletor": "#amostragem",
@@ -2756,7 +2724,7 @@
     "tipo": "suavez",
     "titulo": "Enviar a nova rodada",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na amostragem reprovada",
+     "Em Pendências, clique no ícone de abrir na amostragem reprovada",
      "Leia o motivo no cartão",
      "Adicione os arquivos que faltaram em \"Adicionar foto ou vídeo\"",
      "Clique em \"Enviar para a validação\""
@@ -2851,10 +2819,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha do Die Cut, clique em \"Abrir\".",
+     "fala": "Na linha do Die Cut, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Die Cut:"
@@ -2865,7 +2832,7 @@
       "seletor": "main table tbody tr",
       "contem": "Die Cut:"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha do Die Cut",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha do Die Cut",
      "espera": {
       "url": "/die-cut",
       "rede": true
@@ -3001,8 +2968,7 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "contem": "Abrir",
+       "seletor": "a[data-open-link]",
        "dentro": {
         "seletor": "main table tbody tr",
         "contem": "Die Cut:"
@@ -3080,7 +3046,7 @@
     "tipo": "suavez",
     "titulo": "Fazer o Die Cut",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha do Die Cut",
+     "Em Pendências, clique no ícone de abrir na linha do Die Cut",
      "Envie a faca no item \"Die Cut\" e a foto em \"Foto em alta\"",
      "Confira o pedido mínimo e o prazo de entrega",
      "Clique em \"Confirmar pedido mínimo e prazo\""
@@ -3132,23 +3098,22 @@
     },
     {
      "id": "p2",
-     "fala": "A primeira é o aceite do pedido de amostras. Atenção: hoje ela aparece na lista com o título \"Aprovar a arte\", e o texto dela fala da arte da embalagem. Mesmo assim, é essa linha que leva ao aceite. Use o botão \"Abrir\" dessa linha.",
+     "fala": "Atenção: hoje as duas aparecem com o mesmo título, \"Assinar o pedido\", e o mesmo texto. Uma leva ao documento do pedido, para a assinatura. A outra leva à página do pedido, onde está o aceite das amostras. Comece por ela: use o ícone de abrir dessa linha.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
-       "seletor": "main table tbody tr",
-       "contem": "Pedido #1: Aprovar a arte"
+       "seletor": "main table tbody tr:has(a[data-open-link]:not([href*=\"purchase-order\"]))",
+       "contem": "Pedido #1: Assinar o pedido"
       }
      },
      "acao": "clicar",
      "alvo_visual": {
-      "seletor": "main table tbody tr",
-      "contem": "Pedido #1: Aprovar a arte"
+      "seletor": "main table tbody tr:has(a[data-open-link]:not([href*=\"purchase-order\"]))",
+      "contem": "Pedido #1: Assinar o pedido"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Aprovar a arte\"",
+     "resumo": "Em Pendências, abra a linha \"Assinar o pedido\" que leva à página do pedido",
      "destaque_em": {
-      "em": "primeira"
+      "em": "outra"
      },
      "espera": {
       "url": "/app/orders/[^/?#]+$",
@@ -3157,7 +3122,7 @@
     },
     {
      "id": "p3",
-     "fala": "O pedido abre na etapa \"Contrato e assinaturas\". O item pendente é o pedido de amostras aceito pelo fornecedor.",
+     "fala": "O pedido abre no marco \"Contrato\". Há dois itens esperando você: comece pelo \"Pedido de amostras aceito pelo fornecedor\".",
      "alvo": {
       "seletor": "main li",
       "contem": "Pedido de amostras aceito pelo fornecedor"
@@ -3254,7 +3219,7 @@
     "tipo": "suavez",
     "titulo": "Aceitar o pedido de amostras",
     "itens": [
-     "Em Pendências, abra a linha \"Aprovar a arte\" do pedido",
+     "Em Pendências, abra a linha \"Assinar o pedido\" que leva à página do pedido (não ao documento)",
      "No item \"Pedido de amostras aceito pelo fornecedor\", clique no botão vermelho \"Pedido de amostras\"",
      "Escreva o nome completo e marque a caixinha \"Li o pedido de amostras e concordo…\"",
      "Clique em \"Aceitar o pedido de amostras\""
@@ -3299,28 +3264,27 @@
      "id": "p1",
      "fala": "A outra pendência é a assinatura. A Wellmix assina primeiro e você assina em seguida. O pedido só segue com as duas assinaturas.",
      "alvo": {
-      "seletor": "main table tbody tr",
+      "seletor": "main table tbody tr:has(a[data-open-link][href$=\"/purchase-order\"])",
       "contem": "Pedido #1: Assinar o pedido"
      },
      "acao": "mostrar"
     },
     {
      "id": "p2",
-     "fala": "Na linha \"Assinar o pedido\", clique em \"Abrir\".",
+     "fala": "Na linha \"Assinar o pedido\", clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
-       "seletor": "main table tbody tr",
+       "seletor": "main table tbody tr:has(a[data-open-link][href$=\"/purchase-order\"])",
        "contem": "Pedido #1: Assinar o pedido"
       }
      },
      "acao": "clicar",
      "alvo_visual": {
-      "seletor": "main table tbody tr",
+      "seletor": "main table tbody tr:has(a[data-open-link][href$=\"/purchase-order\"])",
       "contem": "Pedido #1: Assinar o pedido"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Assinar o pedido\"",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Assinar o pedido\"",
      "espera": {
       "url": "/purchase-order",
       "rede": true
@@ -3508,7 +3472,7 @@
     "tipo": "suavez",
     "titulo": "Assinar o contrato",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha \"Assinar o pedido\"",
+     "Em Pendências, clique no ícone de abrir na linha \"Assinar o pedido\"",
      "Confira o documento e baixe o PDF",
      "Imprima, assine e carimbe",
      "Use \"Enviar o documento assinado\" para subir o arquivo"
@@ -3560,10 +3524,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha dela, clique em \"Abrir\".",
+     "fala": "Na linha dela, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Confirmar recebimento: pedido #1"
@@ -3574,7 +3537,7 @@
       "seletor": "main table tbody tr",
       "contem": "Confirmar recebimento: pedido #1"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Confirmar recebimento\"",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Confirmar recebimento\"",
      "espera": {
       "url": "/app/account",
       "rede": true
@@ -3648,7 +3611,7 @@
     "tipo": "suavez",
     "titulo": "Confirmar um recebimento",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha \"Confirmar recebimento\"",
+     "Em Pendências, clique no ícone de abrir na linha \"Confirmar recebimento\"",
      "Confira a parcela na Conta corrente",
      "Confira no seu banco se o dinheiro chegou",
      "Clique em \"Confirmar recebimento\""
@@ -3734,30 +3697,29 @@
    "passos": [
     {
      "id": "p1",
-     "fala": "Com a produção liberada, a pendência do pedido passa a se chamar \"Produção e inspeção\".",
+     "fala": "Com o sinal aprovado pela Wellmix, chega a pendência do pedido: \"Inspeção\". Antes dela, você informa a produção e a data de saída.",
      "alvo": {
       "seletor": "main table tbody tr",
-      "contem": "Pedido #1: Produção e inspeção"
+      "contem": "Pedido #1: Inspeção"
      },
      "acao": "mostrar"
     },
     {
      "id": "p2",
-     "fala": "Na linha dela, clique em \"Abrir\".",
+     "fala": "Na linha dela, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
-       "contem": "Pedido #1: Produção e inspeção"
+       "contem": "Pedido #1: Inspeção"
       }
      },
      "acao": "clicar",
      "alvo_visual": {
       "seletor": "main table tbody tr",
-      "contem": "Pedido #1: Produção e inspeção"
+      "contem": "Pedido #1: Inspeção"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Produção e inspeção\"",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Inspeção\"",
      "espera": {
       "url": "/app/orders/[^/?#]+",
       "rede": true
@@ -3765,20 +3727,18 @@
     },
     {
      "id": "p3",
-     "fala": "Esta é a tela do pedido. A tabela mostra as etapas. A primeira, que junta o Die Cut, a arte e a certificação, e a do contrato já estão concluídas. A inspeção está em andamento.",
+     "fala": "Esta é a tela do pedido. Em \"Marcos do pedido\", cada etapa em que você atua aparece numa faixa. A pré-produção já está concluída, com o sinal verde, e a inspeção está em andamento.",
      "alvo": {
-      "seletor": "#order-stages table",
-      "n": 0
+      "seletor": "#order-stages"
      },
      "acao": "mostrar",
      "foco": false
     },
     {
      "id": "p3b",
-     "fala": "A linha \"Ficha de compra\" aparece em andamento, mas ela não gera pendência para você.",
+     "fala": "Mais abaixo, a linha \"Ficha de compra\" aparece em andamento, mas ela não gera pendência para você.",
      "alvo": {
-      "seletor": "#order-stages table tbody tr",
-      "contem": "Ficha de compra"
+      "seletor": "[data-order-part=\"sheet\"]"
      },
      "acao": "mostrar"
     },
@@ -3876,11 +3836,10 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "contem": "Abrir",
+       "seletor": "a[data-open-link]",
        "dentro": {
         "seletor": "main table tbody tr",
-        "contem": "Pedido #1: Produção e inspeção"
+        "contem": "Pedido #1: Inspeção"
        }
       },
       "espera": {
@@ -3967,7 +3926,7 @@
     "tipo": "suavez",
     "titulo": "Informar o ETD",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha \"Produção e inspeção\"",
+     "Em Pendências, clique no ícone de abrir na linha \"Inspeção\"",
      "Desça até o cartão \"Produção\"",
      "Escolha \"Fábrica\" ou \"Trade\" e informe o ETD",
      "Clique em \"Salvar produção\""
@@ -4010,11 +3969,10 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "contem": "Abrir",
+       "seletor": "a[data-open-link]",
        "dentro": {
         "seletor": "main table tbody tr",
-        "contem": "Pedido #1: Produção e inspeção"
+        "contem": "Pedido #1: Inspeção"
        }
       },
       "espera": {
@@ -4202,11 +4160,10 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "contem": "Abrir",
+       "seletor": "a[data-open-link]",
        "dentro": {
         "seletor": "main table tbody tr",
-        "contem": "Pedido #1: Produção e inspeção"
+        "contem": "Pedido #1: Inspeção"
        }
       },
       "espera": {
@@ -4361,10 +4318,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha dela, clique em \"Abrir\".",
+     "fala": "Na linha dela, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Corrigir SKU reprovado"
@@ -4375,7 +4331,7 @@
       "seletor": "main table tbody tr",
       "contem": "Corrigir SKU reprovado"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Corrigir SKU reprovado\"",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Corrigir SKU reprovado\"",
      "espera": {
       "url": "/app/orders/[^/?#]+",
       "rede": true
@@ -4461,7 +4417,7 @@
     "tipo": "suavez",
     "titulo": "Corrigir um SKU reprovado",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha \"Corrigir SKU reprovado\"",
+     "Em Pendências, clique no ícone de abrir na linha \"Corrigir SKU reprovado\"",
      "Leia a observação em \"Inspeção por SKU\"",
      "Descreva a correção em \"O que foi corrigido\" e clique em \"Enviar correção\"",
      "Envie de novo as fotos, o peso, o vídeo e a declaração"
@@ -4556,17 +4512,16 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha \"Retirada das amostras\", clique em \"Abrir\".",
+     "fala": "Na linha \"Retirada das amostras\", clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Retirada das amostras"
       }
      },
      "acao": "clicar",
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Retirada das amostras\"",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Retirada das amostras\"",
      "alvo_visual": {
       "seletor": "main table tbody tr",
       "contem": "Retirada das amostras"
@@ -4736,7 +4691,7 @@
     "tipo": "suavez",
     "titulo": "Registrar as amostras do pedido",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha \"Retirada das amostras\"",
+     "Em Pendências, clique no ícone de abrir na linha \"Retirada das amostras\"",
      "Informe a data da retirada e envie",
      "No envio ao Brasil, digite o rastreio, escolha o comprovante e envie",
      "Faça o mesmo no envio à China"
@@ -4788,17 +4743,16 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha dela, clique em \"Abrir\".",
+     "fala": "Na linha dela, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Validar Devolução da amostra"
       }
      },
      "acao": "clicar",
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha da devolução da amostra",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha da devolução da amostra",
      "alvo_visual": {
       "seletor": "main table tbody tr",
       "contem": "Validar Devolução da amostra"
@@ -4866,7 +4820,7 @@
     "tipo": "suavez",
     "titulo": "Validar a devolução da amostra",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha da devolução da amostra",
+     "Em Pendências, clique no ícone de abrir na linha da devolução da amostra",
      "Confira se a amostra chegou de volta",
      "Se chegou, clique em \"Validar\"",
      "Se não chegou, escreva o motivo e clique em \"Recusar\""
@@ -4918,17 +4872,16 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha \"Container vazio na fábrica\", clique em \"Abrir\".",
+     "fala": "Na linha \"Container vazio na fábrica\", clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Container vazio na fábrica"
       }
      },
      "acao": "clicar",
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Container vazio na fábrica\"",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Container vazio na fábrica\"",
      "alvo_visual": {
       "seletor": "main table tbody tr",
       "contem": "Container vazio na fábrica"
@@ -5037,7 +4990,7 @@
     "tipo": "suavez",
     "titulo": "Registrar o container vazio",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha \"Container vazio na fábrica\"",
+     "Em Pendências, clique no ícone de abrir na linha \"Container vazio na fábrica\"",
      "Informe a data de chegada do container e envie",
      "Escolha a foto, o vídeo ou o PDF do container vazio",
      "Clique em \"Enviar\""
@@ -5089,17 +5042,16 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha do carregamento, clique em \"Abrir\".",
+     "fala": "Na linha do carregamento, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Carregamento do container"
       }
      },
      "acao": "clicar",
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Carregamento do container\"",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Carregamento do container\"",
      "alvo_visual": {
       "seletor": "main table tbody tr",
       "contem": "Carregamento do container"
@@ -5188,8 +5140,7 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "contem": "Abrir",
+       "seletor": "a[data-open-link]",
        "dentro": {
         "seletor": "main table tbody tr",
         "contem": "Carregamento do container"
@@ -5263,17 +5214,16 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha dela, clique em \"Abrir\".",
+     "fala": "Na linha dela, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Lacre e número do container"
       }
      },
      "acao": "clicar",
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha do lacre",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha do lacre",
      "alvo_visual": {
       "seletor": "main table tbody tr",
       "contem": "Lacre e número do container"
@@ -5475,10 +5425,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha do check list, clique em \"Abrir\".",
+     "fala": "Na linha do check list, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Check list de carga"
@@ -5489,7 +5438,7 @@
       "seletor": "main table tbody tr",
       "contem": "Check list de carga"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Check list de carga\"",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Check list de carga\"",
      "espera": {
       "url": "/shipping-docs",
       "rede": true
@@ -5602,7 +5551,7 @@
     "tipo": "suavez",
     "titulo": "Fazer o check list de carga",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha \"Check list de carga\"",
+     "Em Pendências, clique no ícone de abrir na linha \"Check list de carga\"",
      "Em \"Subiram agora\", digite as caixas que subiram",
      "Clique em \"Registrar as caixas\"",
      "Repita até a tela mostrar \"Carga completa\""
@@ -5654,10 +5603,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha dela, clique em \"Abrir\".",
+     "fala": "Na linha dela, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Packing list: pedido #1"
@@ -5668,7 +5616,7 @@
       "seletor": "main table tbody tr",
       "contem": "Packing list: pedido #1"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Packing list\"",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Packing list\"",
      "espera": {
       "url": "/shipping-docs",
       "rede": true
@@ -5743,7 +5691,7 @@
     "tipo": "suavez",
     "titulo": "Enviar o packing list",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha \"Packing list\"",
+     "Em Pendências, clique no ícone de abrir na linha \"Packing list\"",
      "Confira as peças, o peso líquido e o peso bruto de cada item",
      "Se quiser, escolha o arquivo do packing list",
      "Clique em \"Enviar o packing list\""
@@ -5795,10 +5743,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha dela, clique em \"Abrir\".",
+     "fala": "Na linha dela, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Invoice: pedido #1"
@@ -5809,7 +5756,7 @@
       "seletor": "main table tbody tr",
       "contem": "Invoice: pedido #1"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Invoice\"",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Invoice\"",
      "espera": {
       "url": "/shipping-docs",
       "rede": true
@@ -5915,8 +5862,7 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "contem": "Abrir",
+       "seletor": "a[data-open-link]",
        "dentro": {
         "seletor": "main table tbody tr",
         "contem": "Invoice: pedido #1"
@@ -6020,7 +5966,7 @@
     "tipo": "suavez",
     "titulo": "Enviar a invoice",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha \"Invoice\"",
+     "Em Pendências, clique no ícone de abrir na linha \"Invoice\"",
      "Confira caixas, peças, pesos e preço por peça",
      "Digite o número da invoice e escolha o arquivo do documento",
      "Clique em \"Enviar a invoice\""
@@ -6144,7 +6090,7 @@
     },
     {
      "id": "p4",
-     "fala": "A lista mostra todos os seus pedidos: o produto, a etapa, a situação, o progresso e o prazo.",
+     "fala": "A lista mostra todos os seus pedidos: quantos produtos cada um tem, o marco atual, a situação, com quem está a vez, o progresso e o prazo.",
      "alvo": {
       "seletor": "main table tbody tr",
       "contem": "#1"
@@ -6154,12 +6100,12 @@
     },
     {
      "id": "p5",
-     "fala": "Com muitos pedidos, use os filtros do cabeçalho: por número, por produto, por etapa, por situação ou por prazo.",
+     "fala": "Com muitos pedidos, use os filtros do cabeçalho: por número, por produto, por marco, por situação ou por prazo.",
      "alvo": {
       "seletor": "[data-orders-filter=\"ph\"]"
      },
      "acao": "mostrar",
-     "rotulo": "Filtro por etapa",
+     "rotulo": "Filtro por marco",
      "rotulo_lado": "abaixo"
     },
     {
@@ -6210,44 +6156,49 @@
     },
     {
      "id": "p9",
-     "fala": "A tabela de etapas mostra onde o pedido está. Aqui, o contrato, a produção e a inspeção estão concluídos. A Ficha de compra segue em andamento, como você viu no módulo 5.",
+     "fala": "Em \"Marcos do pedido\", cada etapa em que você atua ou acompanha tem uma faixa. A inspeção já está concluída, com o sinal verde. Mais abaixo, o embarque segue em andamento, com a companhia marítima.",
      "alvo": {
-      "seletor": "#order-stages table",
-      "n": 0
+      "seletor": "#order-stages"
      },
      "acao": "mostrar",
      "foco": false
     },
     {
      "id": "p9b",
-     "fala": "Embaixo da tabela aparece a etapa em andamento: o embarque, que está com a companhia marítima.",
+     "fala": "Mais abaixo ficam as partes do pedido com tela própria. A Ficha de compra segue em andamento, como você viu no módulo 5.",
      "alvo": {
-      "seletor": "#order-stages section",
-      "contem": "Companhia marítima (ou a Wellmix"
+      "seletor": "[data-order-parts]"
      },
      "acao": "mostrar"
     },
     {
      "id": "p10",
-     "fala": "Numa etapa concluída, como a inspeção, \"Ver detalhes\" mostra o que foi enviado.",
+     "fala": "Numa etapa concluída e fechada, como o contrato, \"Ver detalhes\" mostra o que foi feito nela.",
      "alvo": {
-      "seletor": "[data-stage-open=\"INSPECTION\"]"
+      "seletor": "[data-milestone-details=\"contract\"] > summary"
      },
      "acao": "clicar",
      "rotulo": "Ver detalhes",
      "rotulo_lado": "esquerda",
      "resumo": "Numa etapa concluída, clique em \"Ver detalhes\"",
      "espera": {
-      "url": "stage=INSPECTION",
-      "rede": true
+      "seletor": "[data-milestone-details=\"contract\"][open]"
      }
     },
     {
      "id": "p10b",
-     "fala": "A etapa abre logo abaixo da tabela, com tudo o que foi enviado nela. Os itens opcionais que não foram preenchidos continuam como \"Pendente\".",
+     "fala": "A etapa abre ali mesmo, com cada item, quem fez e quando.",
      "alvo": {
-      "seletor": "#order-stages section",
-      "contem": "Foto sem embalagem"
+      "seletor": "[data-milestone=\"contract\"]"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p10c",
+     "fala": "A inspeção, mesmo concluída, continua aberta enquanto tiver campos opcionais. Tudo o que você enviou está nela, e os opcionais que não foram preenchidos continuam como \"Pendente\".",
+     "alvo": {
+      "seletor": "[data-milestone=\"inspection\"]"
      },
      "acao": "mostrar",
      "foco": false
@@ -6576,10 +6527,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha da solicitação, clique em \"Abrir\".",
+     "fala": "Na linha da solicitação, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Solicitação nº 1"
@@ -6590,7 +6540,7 @@
       "seletor": "main table tbody tr",
       "contem": "Solicitação nº 1"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha da solicitação",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha da solicitação",
      "espera": {
       "url": "/app/supplier-requests/",
       "rede": true
@@ -6723,10 +6673,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha dela, clique em \"Abrir\".",
+     "fala": "Na linha dela, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Transportadora na origem (EXW)"
@@ -6737,7 +6686,7 @@
       "seletor": "main table tbody tr",
       "contem": "Transportadora na origem (EXW)"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Transportadora na origem (EXW)\"",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Transportadora na origem (EXW)\"",
      "espera": {
       "url": "/app/orders/",
       "seletor": "#container-origin-step-origin_carrier",
@@ -6942,10 +6891,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha da solicitação, clique em \"Abrir\".",
+     "fala": "Na linha da solicitação, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Solicitação nº 1"
@@ -6956,7 +6904,7 @@
       "seletor": "main table tbody tr",
       "contem": "Solicitação nº 1"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha da solicitação",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha da solicitação",
      "espera": {
       "url": "/app/supplier-requests/",
       "rede": true
@@ -7028,7 +6976,7 @@
     "tipo": "suavez",
     "titulo": "Ler a programação na solicitação",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha da solicitação",
+     "Em Pendências, clique no ícone de abrir na linha da solicitação",
      "Na tabela, veja \"Programações\" e \"Peças por programação\"",
      "Abra o produto e leia o quadro \"Programação de compra\"",
      "Responda uma vez só, para o total"
@@ -7080,7 +7028,7 @@
     },
     {
      "id": "p2",
-     "fala": "O pedido filho chega com as pendências que você já conhece. Aqui, as duas são do pedido número 2. A primeira aparece como \"Aprovar a arte\": é nela que você aceita o pedido de amostras. A segunda é a assinatura do contrato.",
+     "fala": "O pedido filho chega com as pendências que você já conhece. Aqui, as duas são do pedido número 2. As duas aparecem como \"Assinar o pedido\": a que abre a página do pedido é o aceite do pedido de amostras; a outra, a assinatura do contrato.",
      "alvo": {
       "seletor": "main table tbody"
      },
@@ -7089,21 +7037,20 @@
     },
     {
      "id": "p3",
-     "fala": "Use o botão \"Abrir\" da primeira linha.",
+     "fala": "Use o ícone de abrir da linha que leva à página do pedido.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
-       "seletor": "main table tbody tr",
-       "contem": "Pedido #2: Aprovar a arte"
+       "seletor": "main table tbody tr:has(a[data-open-link]:not([href*=\"purchase-order\"]))",
+       "contem": "Pedido #2"
       }
      },
      "acao": "clicar",
      "alvo_visual": {
-      "seletor": "main table tbody tr",
-      "contem": "Pedido #2: Aprovar a arte"
+      "seletor": "main table tbody tr:has(a[data-open-link]:not([href*=\"purchase-order\"]))",
+      "contem": "Pedido #2"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" numa linha do pedido filho",
+     "resumo": "Em Pendências, clique no ícone de abrir numa linha do pedido filho",
      "espera": {
       "url": "/app/orders/[^/?#]+$",
       "seletor": "[data-order-round-of]",
@@ -7164,7 +7111,7 @@
     "tipo": "suavez",
     "titulo": "Pedido pai e pedidos filhos",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" numa linha do pedido filho",
+     "Em Pendências, clique no ícone de abrir numa linha do pedido filho",
      "Veja na faixa do alto de qual programação ele é",
      "Clique em \"Abrir o pedido pai\"",
      "Leia o cartão \"Programação de compra\""

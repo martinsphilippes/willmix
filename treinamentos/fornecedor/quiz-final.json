@@ -31,12 +31,12 @@
    "enunciado": "Você entra no portal de manhã com três pedidos em andamento. Como saber o que fazer primeiro?",
    "alternativas": [
     "Esperar um e-mail da Wellmix",
-    "Olhar \"Minhas pendências\" e usar \"Abrir\" na linha de cada tarefa",
+    "Olhar \"Minhas pendências\" e usar o ícone de abrir na linha de cada tarefa",
     "Abrir a Conta corrente",
     "Abrir cada pedido e procurar o que falta"
    ],
    "correta": 1,
-   "feedback": "Tudo o que depende de você aparece em \"Minhas pendências\", com o prazo. O botão \"Abrir\" leva direto ao lugar da tarefa."
+   "feedback": "Tudo o que depende de você aparece em \"Minhas pendências\", com o prazo. O ícone de abrir leva direto ao lugar da tarefa."
   },
   {
    "id": "f3",
@@ -245,7 +245,7 @@
     "Em \"Meus books\", \"Pedidos\": abra o pedido e veja \"Etapas e pendências do pedido\""
    ],
    "correta": 3,
-   "feedback": "A lista \"Pedidos\" mostra todos os pedidos, com a etapa e o progresso. Dentro do pedido, a tabela de etapas mostra onde ele está."
+   "feedback": "A lista \"Pedidos\" mostra todos os pedidos, com a etapa e o progresso. Dentro do pedido, \"Marcos do pedido\" mostra onde ele está."
   },
   {
    "id": "f15",

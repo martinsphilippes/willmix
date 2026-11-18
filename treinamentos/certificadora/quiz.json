@@ -52,7 +52,7 @@
      "cena": "m1-c1-pendencias",
      "passo": "p6"
     },
-    "feedback": "O botão \"Abrir\", no fim da linha, leva você ao pedido daquela tarefa."
+    "feedback": "O ícone de abrir, no fim da linha, leva você ao pedido daquela tarefa."
    },
    {
     "id": "q4",
@@ -93,17 +93,17 @@
     "tema": "O documento do pedido",
     "rever": {
      "cena": "m1-c2-pedido",
-     "passo": "p9"
+     "passo": "p2"
     },
-    "enunciado": "Você abriu o documento do pedido para conferir o que foi combinado. A certificadora precisa assinar?",
+    "enunciado": "Você quer ver o documento do pedido, o contrato entre a Wellmix e o fornecedor. O que acontece?",
     "alternativas": [
-     "Sim, depois da Wellmix",
-     "Não: quem assina são a Wellmix e o fornecedor; a certificadora só lê",
-     "Sim, antes do fornecedor",
-     "Só se o pedido tiver selo"
+     "A certificadora assina depois da Wellmix",
+     "Ele não abre para a certificadora: traz o preço de compra. Os dados para certificar estão na ficha de compra",
+     "A certificadora assina antes do fornecedor",
+     "Ele abre só se o pedido tiver selo"
     ],
     "correta": 1,
-    "feedback": "O documento do pedido é assinado pela Wellmix e pelo fornecedor. Para a certificadora, ele é só leitura."
+    "feedback": "O documento do pedido traz o preço de compra e é assinado só pela Wellmix e pelo fornecedor. A certificadora não o abre: o que ela precisa está na ficha de compra."
    },
    {
     "id": "q7",
@@ -115,7 +115,7 @@
     },
     "enunciado": "Ponha em ordem os passos para enviar o certificado de um produto.",
     "itens": [
-     "Em Pendências, clicar em \"Abrir\" na linha do certificado",
+     "Em Pendências, clicar no ícone de abrir na linha do certificado",
      "No marco \"Certificação\", achar a linha do certificado do produto",
      "Clicar em \"Escolher arquivo\" e selecionar o PDF",
      "Ver a linha passar para \"Concluído\""
@@ -228,7 +228,7 @@
     },
     "enunciado": "Ponha em ordem os passos para enviar o selo de um pedido.",
     "itens": [
-     "Em Pendências, clicar em \"Abrir\" na linha \"Gerar o selo de certificação\"",
+     "Em Pendências, clicar no ícone de abrir na linha \"Gerar o selo de certificação\"",
      "Digitar o número do selo, se houver",
      "Clicar em \"Escolher arquivo\" e selecionar o selo",
      "Clicar em \"Enviar\""

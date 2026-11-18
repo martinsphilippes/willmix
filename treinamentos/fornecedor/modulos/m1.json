@@ -236,7 +236,7 @@
    "passos": [
     {
      "id": "p1",
-     "fala": "Todo dia, comece por aqui. Esta tela junta tudo o que a Wellmix espera de você, do book até o embarque."
+     "fala": "Todo dia, comece por aqui. Esta tela junta tudo o que a Wellmix espera de você, do book até a invoice. Depois da invoice, nada mais depende de você."
     },
     {
      "id": "p2",
@@ -334,10 +334,9 @@
     },
     {
      "id": "p9",
-     "fala": "E o botão vermelho \"Abrir\", no fim da linha, leva você direto para a tela onde se resolve.",
+     "fala": "E o ícone de abrir, no fim da linha, leva você direto para a tela onde se resolve.",
      "alvo": {
-      "seletor": "main table tbody tr a",
-      "contem": "Abrir"
+      "seletor": "main table tbody tr a[data-open-link]"
      },
      "rotulo": "Abrir",
      "rotulo_lado": "esquerda",
@@ -369,7 +368,7 @@
      "Entre no portal e veja \"Minhas pendências\"",
      "Clique numa etapa para filtrar a lista",
      "Volte com \"Todas as etapas\"",
-     "Ache o botão \"Abrir\" da pendência mais urgente"
+     "Ache o ícone de abrir da pendência mais urgente"
     ]
    },
    "passos": [
@@ -412,10 +411,9 @@
     },
     {
      "id": "p2",
-     "fala": "O convite chega nas pendências, com o nome \"Enviar book concorrente\". Na linha dele, clique em \"Abrir\".",
+     "fala": "O convite chega nas pendências, com o nome \"Enviar book concorrente\". Na linha dele, clique no ícone de abrir.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Enviar book concorrente"
@@ -578,8 +576,7 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "contem": "Abrir",
+       "seletor": "a[data-open-link]",
        "dentro": {
         "seletor": "main table tbody tr",
         "contem": "Enviar book concorrente"
@@ -652,7 +649,7 @@
     "tipo": "suavez",
     "titulo": "Enviar o book de um convite",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha \"Enviar book concorrente\"",
+     "Em Pendências, clique no ícone de abrir na linha \"Enviar book concorrente\"",
      "Leia o que a Wellmix procura e o que ela precisa",
      "Em \"Arquivo\", escolha a planilha do seu book, no modelo",
      "Confira a moeda e clique em \"Enviar book\""
@@ -853,7 +850,7 @@
      "Mandando uma mensagem para a Wellmix e esperando a resposta"
     ],
     "correta": 1,
-    "feedback": "\"Minhas pendências\" junta tudo o que depende de você, do book até o embarque, com o mais urgente primeiro."
+    "feedback": "\"Minhas pendências\" junta tudo o que depende de você, do book até a invoice, com o mais urgente primeiro."
    },
    {
     "id": "q2",
@@ -916,7 +913,7 @@
     },
     "enunciado": "Ponha em ordem os passos para enviar o book de um convite.",
     "itens": [
-     "Em Pendências, clicar em \"Abrir\" na linha \"Enviar book concorrente\"",
+     "Em Pendências, clicar no ícone de abrir na linha \"Enviar book concorrente\"",
      "Ler o que a Wellmix procura e o que ela precisa",
      "Em \"Arquivo\", escolher a planilha do book",
      "Conferir a moeda e clicar em \"Enviar book\""

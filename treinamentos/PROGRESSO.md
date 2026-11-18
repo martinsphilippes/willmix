@@ -2,6 +2,30 @@
 
 Ao retomar uma sessão, leia este arquivo primeiro. Depois, `00-mapa-de-papeis.md`.
 
+## Revisão de 18/11/2026: roteiros acertados para o portal de hoje
+
+Pedido do dono (18/11/2026): "corrija e reflita tudo" para as telas de hoje. Base: `wellmix` em 7f6352b (PR #565). Feito nos roteiros e no caminho de dados do Fornecedor (9 módulos), da Agência de arte (3) e da Certificadora (2); as fontes estão no repositório (PR deste ramo, que substitui o rascunho #535). **Os vídeos, as legendas e as páginas publicadas ainda são os de 15 a 17/11**: falta narrar, regravar, montar, auditar e empacotar de novo (quem tem as gravações e as vozes: as sessões que publicaram as páginas).
+
+O que mudou no portal e como ficou o treinamento:
+
+| Mudança no portal | Onde | O que mudou aqui |
+| --- | --- | --- |
+| "Abrir" virou ícone sem texto (`OpenLink`, `a[data-open-link]`, PR #561) | Pendências, Mesa de trabalho, todas as tabelas | `abrir_na_linha` aponta para o ícone; falas, resumos, "Sua vez" e quizzes dizem "ícone de abrir" (48 cenas) |
+| Solicitações ao fornecedor sem o nome do produto e com as abas "Em negociação" e "Encerradas" (PRs #561 e #559) | Fornecedor M2; preparo de dados | cenas acham a linha pelo número (`linha_solicitacao`, `numero_da_solicitacao`); fala da lista com Produtos, Programações e as abas; o preparo procura nas duas abas e gera o pedido de compra na aba "Encerradas" |
+| Pedidos com Produtos (contagem) e "Com quem está" (PRs #561 e #565) | Fornecedor M8 | fala da lista |
+| Marcos do pedido no lugar da tabela "Etapas do pedido" | Fornecedor M5 e M8 | falas e alvos por `#order-stages`, `[data-order-part]`, `[data-milestone-details]` |
+| Aprovações do mapa travam o marco seguinte e o marco Certificação exige o "Selo aplicado na arte" (Fase 5g) | caminho de dados do Fornecedor e dos extras | `confirmarAprovacoes`, `enviarSeloAplicado`, `decidirSeloAplicado` (`_demo/preparo-pedido.mjs`); problema 026 |
+| Aceite do pedido de amostras chega como uma segunda linha "Assinar o pedido" | Fornecedor M4 e M9 | alvo pelo destino da linha; falas, "Sua vez" e quiz; problema 003 |
+| Depois do sinal a pendência é "Inspeção" (não "Produção e inspeção") e o cartão Produção não gera pendência | Fornecedor M5 | falas e alvo; problema 025 |
+| Inspeção por SKU só no cartão Produção do pedido (a tela do passo virou lista com "Resolver") | preparo de dados | `inspecionarSku` usa a página do pedido |
+| A certificadora não abre o documento do pedido (dono, 15/11/2026: tem o preço de compra) | Certificadora M1 | saiu o passo "Abrir o documento"; quiz q6 e f5 refeitos |
+| Pendências do fornecedor "do Book até a Invoice" | Fornecedor M1 | fala de abertura das Pendências e retorno do quiz |
+| Itens do pedido com peças por caixa e caixas | Certificadora M1 | fala do quadro "Itens do pedido" |
+
+Conferência: `gravar.mjs --so-ensaio` em todas as cenas dos três papéis contra o portal de 7f6352b, com os dados refeitos do zero (`preparar-fornecedor-m1.mjs`, `caminho-fornecedor.mjs`, `caminho-fornecedor-extras.mjs exw` e `prog`, `caminho-arte-certificacao.mjs`).
+
+Próximos passos, na sessão que tem as gravações: `juntar_cenas.py` → `narrar.py` → `gravar.mjs` → `montar.py` → `auditar.py` → `empacotar.py --artefato` (gera de novo `index.html`, `assets/dados.js` e `guia-rapido.html`) → `testar_pacote.mjs` → publicar na mesma página. Rodar os caminhos de dados no dia da gravação (as datas são do dia).
+
 ## Onde estamos
 
 **Fornecedor: Módulo 1 aprovado ("do treinamento gostei"); em produção os módulos 2 a 7 e o avançado, tudo de uma vez, com parada só no fim do papel (decisão do dono, 15/11/2026).** Voz: Piper · Faber. Segue aberta a pergunta sobre guardar o trabalho (commit e push só com a palavra do dono).

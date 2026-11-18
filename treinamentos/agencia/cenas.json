@@ -338,10 +338,9 @@
     },
     {
      "id": "p9",
-     "fala": "E o botão vermelho \"Abrir\", no fim da linha, leva você direto ao pedido.",
+     "fala": "E o ícone de abrir, no fim da linha, leva você direto ao pedido.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Arte · Glass jar"
@@ -372,7 +371,7 @@
      "Entre no portal e veja \"Minhas pendências\"",
      "Clique numa etapa para filtrar a lista",
      "Volte com \"Todas as etapas\"",
-     "Ache o botão \"Abrir\" da pendência mais urgente"
+     "Ache o ícone de abrir da pendência mais urgente"
     ]
    },
    "passos": [
@@ -421,10 +420,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha da arte, clique em \"Abrir\".",
+     "fala": "Na linha da arte, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Arte · Glass jar"
@@ -435,7 +433,7 @@
       "seletor": "main table tbody tr",
       "contem": "Arte · Glass jar"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha da arte",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha da arte",
      "espera": {
       "url": "/app/orders/[^/?#]+",
       "rede": true
@@ -565,8 +563,7 @@
      {
       "acao": "clicar",
       "alvo": {
-       "seletor": "a",
-       "contem": "Abrir",
+       "seletor": "a[data-open-link]",
        "dentro": {
         "seletor": "main table tbody tr",
         "contem": "Arte · Glass jar"
@@ -634,7 +631,7 @@
     "tipo": "suavez",
     "titulo": "Enviar a arte do produto",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha da arte",
+     "Em Pendências, clique no ícone de abrir na linha da arte",
      "No marco \"Material de arte\", baixe a faca e a foto em alta",
      "No marco \"Arte\", clique em \"Escolher arquivo\" e selecione a arte",
      "Veja a linha passar para \"Concluído\""
@@ -875,10 +872,9 @@
     },
     {
      "id": "p3",
-     "fala": "Na linha dela, clique em \"Abrir\".",
+     "fala": "Na linha dela, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Aplicar o selo de certificação na arte"
@@ -889,7 +885,7 @@
       "seletor": "main table tbody tr",
       "contem": "Aplicar o selo de certificação na arte"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Aplicar o selo de certificação na arte\"",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Aplicar o selo de certificação na arte\"",
      "espera": {
       "url": "/app/orders/[^/?#]+",
       "rede": true
@@ -990,7 +986,7 @@
     "tipo": "suavez",
     "titulo": "Aplicar o selo na arte",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha \"Aplicar o selo de certificação na arte\"",
+     "Em Pendências, clique no ícone de abrir na linha \"Aplicar o selo de certificação na arte\"",
      "No cartão \"Certificação\", clique em \"Baixar o selo\"",
      "Aplique o selo na arte e selecione o arquivo em \"Escolher arquivo\"",
      "Clique em \"Enviar\""
@@ -1042,10 +1038,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha dessa pendência, clique em \"Abrir\".",
+     "fala": "Na linha dessa pendência, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Arte final com o selo"
@@ -1056,7 +1051,7 @@
       "seletor": "main table tbody tr",
       "contem": "Arte final com o selo"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha da arte final com o selo",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha da arte final com o selo",
      "espera": {
       "url": "/app/orders/[^/?#]+",
       "rede": true
@@ -1146,7 +1141,7 @@
     "tipo": "suavez",
     "titulo": "Enviar a arte final com o selo",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha da arte final com o selo",
+     "Em Pendências, clique no ícone de abrir na linha da arte final com o selo",
      "No marco \"Arte\", clique em \"Escolher arquivo\" e selecione a arte final",
      "Veja o marco \"Arte\" fechar como \"Concluído\""
     ]
@@ -1390,10 +1385,9 @@
     },
     {
      "id": "p2",
-     "fala": "Na linha dela, clique em \"Abrir\".",
+     "fala": "Na linha dela, clique no ícone de abrir, à direita.",
      "alvo": {
-      "seletor": "a",
-      "contem": "Abrir",
+      "seletor": "a[data-open-link]",
       "dentro": {
        "seletor": "main table tbody tr",
        "contem": "Corrigir a arte de Glass jar"
@@ -1404,7 +1398,7 @@
       "seletor": "main table tbody tr",
       "contem": "Corrigir a arte de Glass jar"
      },
-     "resumo": "Em Pendências, clique em \"Abrir\" na linha \"Corrigir a arte\"",
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Corrigir a arte\"",
      "espera": {
       "url": "/app/orders/[^/?#]+",
       "rede": true
@@ -1502,7 +1496,7 @@
     "tipo": "suavez",
     "titulo": "Enviar a correção de uma arte",
     "itens": [
-     "Em Pendências, clique em \"Abrir\" na linha \"Corrigir a arte\"",
+     "Em Pendências, clique no ícone de abrir na linha \"Corrigir a arte\"",
      "Leia o que a Wellmix apontou, na linha \"Não conforme\"",
      "Escreva o que mudou e escolha o arquivo da arte ajustada",
      "Clique em \"Enviar correção\""
@@ -1599,7 +1593,7 @@
     },
     {
      "id": "p4b",
-     "fala": "Cada linha é um pedido, com a etapa em que ele está e o que continua aberto neste passo.",
+     "fala": "Cada linha é um pedido, com o que continua aberto neste passo e há quantos dias.",
      "alvo": {
       "seletor": "main table tbody tr"
      },
@@ -1705,10 +1699,9 @@
     },
     {
      "id": "p11",
-     "fala": "Em cada linha, \"Abrir\" leva ao pedido.",
+     "fala": "Em cada linha, o ícone de abrir leva ao pedido.",
      "alvo": {
-      "seletor": "main a",
-      "contem": "Abrir"
+      "seletor": "main a[data-open-link]"
      },
      "acao": "mostrar",
      "rotulo": "Abrir",

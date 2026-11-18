@@ -29,12 +29,12 @@
    "enunciado": "Você entra no portal com vários pedidos em andamento. Como saber o que fazer primeiro?",
    "alternativas": [
     "Esperar a Wellmix ligar",
-    "Olhar \"Minhas pendências\", que já vem com o mais urgente primeiro, e usar \"Abrir\"",
+    "Olhar \"Minhas pendências\", que já vem com o mais urgente primeiro, e usar o ícone de abrir",
     "Abrir o cartão \"Certificação\" de cada pedido",
     "Abrir cada pedido e procurar o que falta"
    ],
    "correta": 1,
-   "feedback": "Tudo o que depende da agência aparece em \"Minhas pendências\", por prazo. O botão \"Abrir\" leva direto ao lugar da tarefa."
+   "feedback": "Tudo o que depende da agência aparece em \"Minhas pendências\", por prazo. O ícone de abrir leva direto ao lugar da tarefa."
   },
   {
    "id": "f3",

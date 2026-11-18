@@ -36,8 +36,8 @@ cenas = [
     tela("m2-c1-selo", C1, "cert-s1", salvar="cert-s2", tarefa="Enviar o selo de certificação", passos=[
         mostrar("p1", 'Com o certificado do produto enviado, ficam as duas tarefas do pedido: o selo e o memorial descritivo.', LINHA_SELO, foco=False,
                 destaques=[{"alvo": LINHA_MEMORIAL, "em": {"em": "memorial"}, "foco": False}]),
-        clicar("p2", 'Na linha "Gerar o selo de certificação", clique em "Abrir".', ABRIR_SELO, alvo_visual=LINHA_SELO,
-               resumo='Em Pendências, clique em "Abrir" na linha "Gerar o selo de certificação"', espera=NO_PEDIDO),
+        clicar("p2", 'Na linha "Gerar o selo de certificação", clique no ícone de abrir, à direita.', ABRIR_SELO, alvo_visual=LINHA_SELO,
+               resumo='Em Pendências, clique no ícone de abrir na linha "Gerar o selo de certificação"', espera=NO_PEDIDO),
         mostrar("p3", 'Você cai no cartão "Certificação" do pedido. O primeiro quadro é o seu. É ali que você envia o selo e o memorial.', ALTO, foco=False),
         digitar("p4", 'No quadro "Selo", digite o número do selo ou do registro, se houver. Este campo é opcional.', SELO + " input[name=value]", NUMERO,
                 rotulo="Nº do selo ou do registro", rotulo_lado="abaixo", resumo="Digite o número do selo ou do registro (opcional)", acao_em={"apos": "digite"}, pausa=0.4),
@@ -50,7 +50,7 @@ cenas = [
                 "#certification-step-cert_seal_art", pausa=0.6),
     ]),
     sua_vez("m2-c1-suavez", C1, "Enviar o selo", [
-        'Em Pendências, clique em "Abrir" na linha "Gerar o selo de certificação"',
+        'Em Pendências, clique no ícone de abrir na linha "Gerar o selo de certificação"',
         'No quadro "Selo", digite o número do selo, se houver',
         'Clique em "Escolher arquivo" e selecione o selo',
         'Clique em "Enviar"',
@@ -61,8 +61,8 @@ cenas = [
              "Agora: o memorial descritivo."),
     tela("m2-c2-memorial", C2, "cert-s2", salvar="cert-s3", tarefa="Enviar o memorial descritivo", passos=[
         mostrar("p1", 'Agora só falta o memorial descritivo. O portal pede esse arquivo em PDF.', LINHA_MEMORIAL),
-        clicar("p2", 'Na linha do memorial, clique em "Abrir".', ABRIR_MEMORIAL, alvo_visual=LINHA_MEMORIAL,
-               resumo='Em Pendências, clique em "Abrir" na linha "Enviar o memorial descritivo"', espera=NO_PEDIDO),
+        clicar("p2", 'Na linha do memorial, clique no ícone de abrir, à direita.', ABRIR_MEMORIAL, alvo_visual=LINHA_MEMORIAL,
+               resumo='Em Pendências, clique no ícone de abrir na linha "Enviar o memorial descritivo"', espera=NO_PEDIDO),
         mostrar("p3", 'É o mesmo quadro do alto. O selo já está concluído. Ao lado dele, o memorial descritivo, ainda pendente.', MEMORIAL),
         anexar("p4", 'Use "Escolher arquivo" e selecione o PDF do memorial.', MEMORIAL + " input[type=file]", "memorial-descritivo-pote-1500ml.pdf",
                rotulo="Escolher arquivo", rotulo_lado="abaixo", resumo='Clique em "Escolher arquivo" e selecione o PDF do memorial', acao_em="fim", espera={"ms": 600}),
@@ -71,7 +71,7 @@ cenas = [
         mostrar("p6", 'Pronto: selo e memorial concluídos. Da parte da certificadora, o pedido está completo.', ALTO, foco=False, pausa=0.6),
     ]),
     sua_vez("m2-c2-suavez", C2, "Enviar o memorial descritivo", [
-        'Em Pendências, clique em "Abrir" na linha "Enviar o memorial descritivo"',
+        'Em Pendências, clique no ícone de abrir na linha "Enviar o memorial descritivo"',
         'No quadro "Memorial descritivo", clique em "Escolher arquivo" e selecione o PDF',
         'Clique em "Enviar"',
     ], "Sua vez. Pause o vídeo e envie o memorial descritivo de um pedido."),
@@ -127,7 +127,7 @@ cenas = [
                resumo='Clique em "Mesa de trabalho"', espera={"url": "/app/tasks/desk", "rede": True}),
         mostrar("p9", 'A mesa mostra a fila "Certificados a emitir": um produto por linha, com o pedido e o prazo.',
                 {"papel": "heading", "nome": "Certificados a emitir", "acima": 2}, foco=False),
-        mostrar("p10", 'Em cada linha, "Abrir" leva ao pedido.', sel("main a", "Abrir"), rotulo="Abrir", rotulo_lado="esquerda", pausa=0.6),
+        mostrar("p10", 'Em cada linha, o ícone de abrir leva ao pedido.', sel("main a[data-open-link]"), rotulo="Abrir", rotulo_lado="esquerda", pausa=0.6),
     ]),
     sua_vez("m2-c4-suavez", C4, "A tela Certificação e a mesa de trabalho", [
         'No menu, clique em "Certificação"',
@@ -180,7 +180,7 @@ perguntas = [
             'O campo "Nº do selo ou do registro" é opcional: selecione o arquivo do selo e envie.'),
     ordenar("q3", "Passos para enviar o selo", (S, "p2"),
             'Ponha em ordem os passos para enviar o selo de um pedido.',
-            ['Em Pendências, clicar em "Abrir" na linha "Gerar o selo de certificação"', 'Digitar o número do selo, se houver',
+            ['Em Pendências, clicar no ícone de abrir na linha "Gerar o selo de certificação"', 'Digitar o número do selo, se houver',
              'Clicar em "Escolher arquivo" e selecionar o selo', 'Clicar em "Enviar"'],
             'Abra a pendência, digite o número (se houver), selecione o arquivo e clique em "Enviar".'),
     clique("q4", "Enviar o selo", (S, "p6"),

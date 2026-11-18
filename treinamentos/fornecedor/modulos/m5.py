@@ -8,7 +8,7 @@ C2 = "2 · Inspeção"
 C3 = "3 · SKU reprovado"
 
 PLANO = "[data-production-plan] "
-ABRIR = abrir_na_linha("Pedido #1: Produção e inspeção")
+ABRIR = abrir_na_linha("Pedido #1: Inspeção")
 ABRIR_SKU = abrir_na_linha("Corrigir SKU reprovado")
 NO_PEDIDO = {"url": "/app/orders/[^/?#]+", "rede": True}
 ENVIADO = lambda rotulo: {"some": item(rotulo) + "form:has(input[name=requirementId]):not([data-requirement-clear])", "rede": True}  # noqa: E731
@@ -24,13 +24,13 @@ cenas = [
     capitulo("m5-c1-cartao", C1, 1, 3, "Produção e ETD", "A data prevista de saída da carga",
              "Para começar: a produção e a data de saída."),
     tela("m5-c1-producao", C1, "forn-m5-base", salvar="forn-m5-s1", tarefa="Informar a produção e o ETD", passos=[
-        mostrar("p1", 'Com a produção liberada, a pendência do pedido passa a se chamar "Produção e inspeção".', linha("Pedido #1: Produção e inspeção")),
-        clicar("p2", 'Na linha dela, clique em "Abrir".', ABRIR, alvo_visual=linha("Pedido #1: Produção e inspeção"), 
-               resumo='Em Pendências, clique em "Abrir" na linha "Produção e inspeção"', espera=NO_PEDIDO),
-        mostrar("p3", 'Esta é a tela do pedido. A tabela mostra as etapas. A primeira, que junta o Die Cut, a arte e a certificação, e a do contrato já estão concluídas. A inspeção está em andamento.',
-                sel("#order-stages table", n=0), foco=False),
-        mostrar("p3b", 'A linha "Ficha de compra" aparece em andamento, mas ela não gera pendência para você.',
-                sel("#order-stages table tbody tr", "Ficha de compra")),
+        mostrar("p1", 'Com o sinal aprovado pela Wellmix, chega a pendência do pedido: "Inspeção". Antes dela, você informa a produção e a data de saída.', linha("Pedido #1: Inspeção")),
+        clicar("p2", 'Na linha dela, clique no ícone de abrir, à direita.', ABRIR, alvo_visual=linha("Pedido #1: Inspeção"), 
+               resumo='Em Pendências, clique no ícone de abrir na linha "Inspeção"', espera=NO_PEDIDO),
+        mostrar("p3", 'Esta é a tela do pedido. Em "Marcos do pedido", cada etapa em que você atua aparece numa faixa. A pré-produção já está concluída, com o sinal verde, e a inspeção está em andamento.',
+                "#order-stages", foco=False),
+        mostrar("p3b", 'Mais abaixo, a linha "Ficha de compra" aparece em andamento, mas ela não gera pendência para você.',
+                '[data-order-part="sheet"]'),
         mostrar("p4", 'Mais abaixo fica o cartão "Produção". É nele que você informa a data prevista de saída da carga, o ETD.', PLANO.strip(), foco=False),
         escolher("p5", 'Em "Fornecedor é", diga se você é a fábrica ou uma revenda. Sendo revenda, informe também a fábrica e o endereço dela, porque a inspeção acontece lá.',
                  PLANO + 'select[name="mode"]', "Fábrica", rotulo="Fornecedor é", rotulo_lado="acima", resumo='Em "Fornecedor é", escolha "Fábrica" ou "Trade (revenda)"',
@@ -56,7 +56,7 @@ cenas = [
                 rotulo="Motivo da mudança do ETD", rotulo_lado="abaixo", pausa=0.6),
     ]),
     sua_vez("m5-c1-suavez", C1, "Informar o ETD", [
-        'Em Pendências, clique em "Abrir" na linha "Produção e inspeção"',
+        'Em Pendências, clique no ícone de abrir na linha "Inspeção"',
         'Desça até o cartão "Produção"',
         'Escolha "Fábrica" ou "Trade" e informe o ETD',
         'Clique em "Salvar produção"',
@@ -123,8 +123,8 @@ cenas = [
     tela("m5-c3-reprovado", C3, "forn-m5-reprovado", tarefa="Corrigir um SKU reprovado", passos=[
         mostrar("p1", 'A Wellmix inspeciona cada item do pedido, que o portal chama de SKU. Se ela reprova um, chega a pendência "Corrigir SKU reprovado", já com o motivo.',
                 linha("Corrigir SKU reprovado")),
-        clicar("p2", 'Na linha dela, clique em "Abrir".', ABRIR_SKU, alvo_visual=linha("Corrigir SKU reprovado"), 
-               resumo='Em Pendências, clique em "Abrir" na linha "Corrigir SKU reprovado"', espera=NO_PEDIDO),
+        clicar("p2", 'Na linha dela, clique no ícone de abrir, à direita.', ABRIR_SKU, alvo_visual=linha("Corrigir SKU reprovado"), 
+               resumo='Em Pendências, clique no ícone de abrir na linha "Corrigir SKU reprovado"', espera=NO_PEDIDO),
         mostrar("p3", 'Você cai no cartão "Produção". Em "Inspeção por SKU", o resultado aparece como "Reprovado", com a observação da Wellmix.',
                 "[data-sku-item]"),
         {**digitar("p4", 'Primeiro, resolva o problema na fábrica. Depois, no campo "O que foi corrigido", descreva o que foi feito.',
@@ -137,7 +137,7 @@ cenas = [
         mostrar("p8", 'Agora, o ETD: a cada reprovação, o portal adia a data em um dia. A tela mostra o primeiro ETD, para comparar.', texto("Primeiro ETD"), pausa=0.6),
     ]),
     sua_vez("m5-c3-suavez", C3, "Corrigir um SKU reprovado", [
-        'Em Pendências, clique em "Abrir" na linha "Corrigir SKU reprovado"',
+        'Em Pendências, clique no ícone de abrir na linha "Corrigir SKU reprovado"',
         'Leia a observação em "Inspeção por SKU"',
         'Descreva a correção em "O que foi corrigido" e clique em "Enviar correção"',
         "Envie de novo as fotos, o peso, o vídeo e a declaração",

@@ -29,12 +29,12 @@
    "enunciado": "Você entra no portal com vários pedidos em andamento. Como saber o que fazer primeiro?",
    "alternativas": [
     "Esperar a Wellmix ligar",
-    "Olhar \"Minhas pendências\", que já vem com o mais urgente primeiro, e usar \"Abrir\"",
+    "Olhar \"Minhas pendências\", que já vem com o mais urgente primeiro, e usar o ícone de abrir",
     "Abrir a ficha de compra de cada pedido",
     "Abrir cada pedido e procurar o que falta"
    ],
    "correta": 1,
-   "feedback": "Tudo o que depende da certificadora aparece em \"Minhas pendências\", por prazo. O botão \"Abrir\" leva direto ao lugar da tarefa."
+   "feedback": "Tudo o que depende da certificadora aparece em \"Minhas pendências\", por prazo. O ícone de abrir leva direto ao lugar da tarefa."
   },
   {
    "id": "f3",
@@ -80,15 +80,15 @@
     "cena": "m1-c2-pedido",
     "passo": "p6"
    },
-   "enunciado": "No pedido, você vê a ficha de compra e o documento do pedido. O que dá para fazer com eles?",
+   "enunciado": "No pedido, você vê a ficha de compra. O que dá para fazer com ela?",
    "alternativas": [
-    "Editar a ficha e assinar o documento",
-    "Só ler: a ficha abre sem edição, e o documento é assinado pela Wellmix e pelo fornecedor",
+    "Editar a ficha e assinar o pedido",
+    "Só ler: a ficha abre sem edição",
     "Aprovar o preço",
-    "Apagar os dois"
+    "Apagar a ficha"
    ],
    "correta": 1,
-   "feedback": "A certificadora vê o pedido completo para certificar, mas só lê. O que ela envia é o certificado, o selo e o memorial."
+   "feedback": "A certificadora vê os dados do produto para certificar, mas só lê. O documento do pedido, com o preço de compra, não abre para ela. O que ela envia é o certificado, o selo e o memorial."
   },
   {
    "id": "f6",

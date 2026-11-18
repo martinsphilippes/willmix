@@ -84,22 +84,37 @@ export async function linhasDePendencias(page) {
 
 /** Endereços das solicitações (por número) e dos pedidos que o usuário logado enxerga. */
 export async function enderecos(page) {
-  await abrir(page, "/app/supplier-requests");
-  const solicitacoes = Object.fromEntries(await page.locator("[data-supplier-request-row]").evaluateAll((linhas) =>
-    linhas.map((tr) => { const a = tr.querySelector("td a"); return [a.textContent.trim(), a.getAttribute("href")]; })));
+  // Duas abas desde o PR #559 (18/11/2026): "Em negociação" e "Encerradas" (?tab=closed).
+  const solicitacoes = {};
+  for (const aba of LISTAS_DE_SOLICITACOES) {
+    await abrir(page, aba);
+    Object.assign(solicitacoes, Object.fromEntries(await page.locator("[data-supplier-request-row]").evaluateAll((linhas) =>
+      linhas.map((tr) => { const a = tr.querySelector("td a"); return [a.textContent.trim(), a.getAttribute("href")]; }))));
+  }
   await abrir(page, "/app/orders");
   const pedidos = await page.locator('main a[href^="/app/orders/"]').evaluateAll((links) =>
     [...new Set(links.map((a) => a.getAttribute("href").match(/^\/app\/orders\/[^/?#]+/)?.[0]).filter(Boolean))]);
   return { solicitacoes, pedidos };
 }
 
+/**
+ * Solicitações ao fornecedor em duas abas (PR #559, 18/11/2026): "Em negociação" e "Encerradas"
+ * (aprovadas ou recusadas, com o quadro "Gerar pedido de compra" para a Wellmix).
+ */
+export const LISTA_ENCERRADAS = "/app/supplier-requests?tab=closed";
+export const LISTAS_DE_SOLICITACOES = ["/app/supplier-requests", LISTA_ENCERRADAS];
+
 // ------------------------------------------------ solicitação ao fornecedor --
 
 /** Lista de solicitações → clica no número. Fica na tabela dos produtos; devolve o endereço. */
 export async function abrirSolicitacaoNumero(page, numero) {
-  await abrir(page, "/app/supplier-requests");
   const link = page.locator("[data-supplier-request-row] td:first-child a", { hasText: new RegExp(`^\\s*${numero}\\s*$`) });
-  if ((await link.count()) !== 1) throw new Error(`solicitação nº ${numero}: esperava 1 linha na lista, achei ${await link.count()}`);
+  // A solicitação aprovada (amostragem, pedido) fica na aba "Encerradas" (PR #559).
+  for (const aba of LISTAS_DE_SOLICITACOES) {
+    await abrir(page, aba);
+    if ((await link.count()) > 0) break;
+  }
+  if ((await link.count()) !== 1) throw new Error(`solicitação nº ${numero}: esperava 1 linha nas abas da lista, achei ${await link.count()}`);
   await Promise.all([page.waitForURL(/\/app\/supplier-requests\/[^/?]+$/), link.click()]);
   await page.locator("[data-supplier-table-row]").first().waitFor();
   return semBusca(page.url());
@@ -272,7 +287,7 @@ export async function criarProdutoDaSolicitacao(page, numero, { nome = null, lin
  * mostrar (preço, MOQ, prazo). Devolve o endereço e o número do pedido.
  */
 export async function gerarPedidoDeCompra(page, numeros, { confere = {}, quantidades = {} } = {}) {
-  await abrir(page, "/app/supplier-requests");
+  await abrir(page, LISTA_ENCERRADAS);
   const linhaDe = (n) => page.locator("[data-purchase-candidate]").filter({ has: page.locator("td:nth-child(2)", { hasText: new RegExp(`^\\s*${n}\\s*$`) }) });
   if ((await linhaDe(numeros[0]).count()) !== 1)
     throw new Error(`pedido de compra: a solicitação nº ${numeros[0]} não está entre as candidatas (na tela: ${(await page.locator("[data-purchase-candidate]").allInnerTexts()).join(" / ") || "nenhuma candidata"})`);
@@ -481,6 +496,18 @@ export async function completarFichaMestre(page, produtoUrl, { fotos, cor }) {
   await concluir(page, /[?&]saved=1/, "salvar a ficha do produto", () => page.locator("#product-form button[type=submit]").last().click());
 }
 
+/**
+ * Wellmix: confirma as aprovações do mapa que já estão liberadas no pedido ("Cadastro e fiscal
+ * aprovados pelo GP", "Material de arte aprovado pelo Comprador", "Certificação aprovada pelo GP",
+ * "Pré-produção … aprovada pelo Planner", "Sinal aprovado pela Diretoria de compras"). Desde a
+ * Fase 5g dos marcos (15/11/2026) o marco seguinte só abre depois delas. Precisa de um login com
+ * as ações de aprovação (o administrador tem todas).
+ */
+export async function confirmarAprovacoes(page, pedidoUrl, so = /\baprovad[oa]s? pel[oa]\b/i) {
+  const r = await preencherItensDoPedido(page, pedidoUrl, (rotulo) => (so.test(rotulo) ? {} : null));
+  return r.feitos ?? [];
+}
+
 // --------------------------------------------------------- raia da arte (Wellmix) --
 
 /** Wellmix: aprova a arte enviada (item "Validação da arte pela Wellmix" do pedido). */
@@ -495,6 +522,37 @@ export async function validarArte(page, pedidoUrl) {
 }
 
 // ------------------------------------------------- certificação (certificadora) --
+
+/** Linha de um passo do cartão Certificação, como a tela mostra. */
+export async function passoDaCertificacao(page, pedido, chave) {
+  await abrir(page, `${pedido}#certification`);
+  const linha = page.locator(`#certification-step-${chave}`);
+  if (!(await linha.count())) return null;
+  return { situacao: await linha.getAttribute("data-import-status"), texto: (await linha.innerText()).replace(/\s+/g, " ").trim() };
+}
+
+/** Quem faz a arte: envia a arte com o selo aplicado (passo "Selo aplicado na arte"). */
+export async function enviarSeloAplicado(page, pedido, nomeDoArquivo) {
+  await abrir(page, `${pedido}#certification`);
+  const linha = page.locator("#certification-step-cert_seal_art");
+  const botao = linha.locator('[data-import-submit="cert_seal_art"]');
+  if (!(await botao.count())) throw new Error(`selo aplicado na arte: este login não tem o "Enviar" (na tela: ${(await passoDaCertificacao(page, pedido, "cert_seal_art"))?.texto ?? "o passo não aparece"})`);
+  await linha.locator("input[type=file]").setInputFiles(arquivo(nomeDoArquivo));
+  await concluir(page, /[?&]certStep=submitted/, "enviar a arte com o selo aplicado", () => botao.click());
+  return passoDaCertificacao(page, pedido, "cert_seal_art");
+}
+
+/** Wellmix: valida ou recusa (com o motivo) a arte com o selo aplicado. */
+export async function decidirSeloAplicado(page, pedido, { valida, motivo = null }) {
+  await abrir(page, `${pedido}#certification`);
+  const linha = page.locator("#certification-step-cert_seal_art");
+  const botao = linha.locator(valida ? '[data-import-validate="cert_seal_art"]' : '[data-import-reject="cert_seal_art"]');
+  if (!(await botao.count())) throw new Error(`selo aplicado na arte: este login não tem o botão de ${valida ? "validar" : "recusar"} (na tela: ${(await passoDaCertificacao(page, pedido, "cert_seal_art"))?.texto})`);
+  if (!valida) await linha.locator('input[name="reason"]').fill(motivo);
+  await concluir(page, /[?&]certStep=/, `${valida ? "validar" : "recusar"} a arte com o selo`, () => botao.click());
+  return passoDaCertificacao(page, pedido, "cert_seal_art");
+}
+
 
 /**
  * Certificadora (OCP): os documentos do quadro do alto do cartão Certificação (memorial e selo).
@@ -619,11 +677,11 @@ export async function salvarProducao(page, pedidoUrl, { tipo, inicio = null, etd
  * `resultado` = "approved" ou "rejected" (reprovar pede a observação).
  */
 export async function inspecionarSku(page, pedidoUrl, resultado, observacao = null) {
-  const id = semBusca(pedidoUrl).split("/").pop();
-  await abrir(page, "/app/flow/production/inspection");
-  const cartao = page.locator(`[data-flow-production-order="${id}"]`);
-  if (!(await cartao.count())) throw new Error(`Produção → Inspeção: o pedido ${id} não aparece no passo (na tela: ${(await page.locator("main").innerText()).replace(/\s+/g, " ").slice(0, 400)})`);
-  const sku = cartao.locator("[data-sku-item]").first();
+  // A tela do passo (Produção → Inspeção) virou uma lista com "Resolver" (motor dos marcos, 15/11/2026):
+  // a inspeção por SKU fica no cartão Produção da página do pedido.
+  await abrir(page, `${semBusca(pedidoUrl)}#production`);
+  const sku = page.locator("[data-sku-item]").first();
+  if (!(await sku.count())) throw new Error(`inspeção do SKU: o cartão Produção do pedido não mostra a inspeção por SKU (na tela: ${(await page.locator("main").innerText()).replace(/\s+/g, " ").slice(0, 400)})`);
   const antes = await sku.getAttribute("data-sku-status");
   const botao = sku.locator(resultado === "approved" ? "[data-sku-approve]" : "[data-sku-reject]");
   if (!(await botao.count())) throw new Error(`inspeção do SKU: sem o botão (situação "${antes}", na tela: ${(await sku.innerText()).replace(/\s+/g, " ")})`);
@@ -844,7 +902,7 @@ export async function abrirSolicitacaoComQuantidade(page, { busca, codigo, preci
  * campo de quantidade. `confere` são trechos que a linha da candidata tem de mostrar.
  */
 export async function gerarPedidoPai(page, numero, { confere = [] } = {}) {
-  await abrir(page, "/app/supplier-requests");
+  await abrir(page, LISTA_ENCERRADAS);
   const linhaDe = (n) => page.locator("[data-purchase-candidate]").filter({ has: page.locator("td:nth-child(2)", { hasText: new RegExp(`^\\s*${n}\\s*$`) }) });
   const linha = linhaDe(numero);
   if ((await linha.count()) !== 1)

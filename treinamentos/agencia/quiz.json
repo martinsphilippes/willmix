@@ -79,7 +79,7 @@
     },
     "enunciado": "Ponha em ordem os passos para enviar a arte de um produto.",
     "itens": [
-     "Em Pendências, clicar em \"Abrir\" na linha da arte",
+     "Em Pendências, clicar no ícone de abrir na linha da arte",
      "Baixar a faca e a foto em alta, no marco \"Material de arte\"",
      "No marco \"Arte\", clicar em \"Escolher arquivo\" e selecionar a arte",
      "Ver a linha passar para \"Concluído\""
@@ -204,7 +204,7 @@
     },
     "enunciado": "Ponha em ordem os passos para enviar a arte com o selo aplicado.",
     "itens": [
-     "Em Pendências, clicar em \"Abrir\" na linha \"Aplicar o selo de certificação na arte\"",
+     "Em Pendências, clicar no ícone de abrir na linha \"Aplicar o selo de certificação na arte\"",
      "Clicar em \"Baixar o selo\"",
      "Selecionar a arte com o selo em \"Escolher arquivo\"",
      "Clicar em \"Enviar\""
@@ -365,7 +365,7 @@
     },
     "enunciado": "Ponha em ordem os passos para enviar a correção de uma arte.",
     "itens": [
-     "Em Pendências, clicar em \"Abrir\" na linha \"Corrigir a arte\"",
+     "Em Pendências, clicar no ícone de abrir na linha \"Corrigir a arte\"",
      "Ler o que a Wellmix apontou",
      "Escrever o que mudou e escolher o arquivo da arte ajustada",
      "Clicar em \"Enviar correção\""

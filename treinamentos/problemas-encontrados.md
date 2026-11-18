@@ -22,7 +22,15 @@ Nenhum fluxo quebrou até agora. Nada foi disfarçado em gravação. Os itens ab
 - **Efeito no treinamento:** nenhum disfarce. A cena dos avisos (capítulo 4) foi gravada antes do envio do book, quando os dois avisos de fato dependem do fornecedor. O vídeo ensina a começar por Pendências, que é a lista que bate.
 - **Captura:** `_problemas/002-aviso-do-convite-continua-sua-vez.png`
 
-## 003 · O aceite do pedido de amostras aparece em Pendências como "Aprovar a arte"
+## 003 · O aceite do pedido de amostras aparece em Pendências com o título de outra tarefa
+
+- **Onde:** Minhas pendências do fornecedor, depois que a Wellmix gera o pedido de amostras.
+- **Passos:** ponto `forn-m4-contrato` (`node _demo/caminho-fornecedor.mjs m4-contrato`), entrar como `supplier.a@china.com`, abrir `/app`.
+- **O que acontece hoje (18/11/2026, `wellmix` 7f6352b):** chegam duas linhas iguais, "Pedido #1: Assinar o pedido", com o mesmo detalhe ("Assine o documento do pedido no portal ou envie o PDF assinado.") e a mesma etapa. Só o destino muda: uma abre a página do pedido (onde está o item "Pedido de amostras aceito pelo fornecedor", com o botão "Pedido de amostras"), a outra abre o documento do pedido. No pedido filho da compra programada acontece o mesmo.
+- **Antes (15/11/2026):** a linha do aceite vinha como "Pedido #1: Aprovar a arte", com o texto da arte da embalagem.
+- **Efeito no treinamento:** o Módulo 4 (`m4-c2-amostras`) e o Módulo 9 (`m9-c3-pai`) dizem com todas as letras que as duas linhas têm o mesmo título e que a do aceite é a que abre a página do pedido. Se o título for corrigido, regravar essas duas cenas e trocar o alvo (`LINHA_AMOSTRAS` em `fornecedor/modulos/m4.py`, `LINHA_FILHO` em `m9.py`).
+
+### 003 (registro de 15/11/2026)
 
 - **Onde:** Minhas pendências do fornecedor, depois que a Wellmix gera o pedido de amostras.
 - **Passos:** ponto `forn-m4-contrato` (`node _demo/caminho-fornecedor.mjs m4-contrato`), entrar como `supplier.a@china.com`, abrir `/app`.
@@ -213,3 +221,25 @@ Nenhum fluxo quebrou até agora. Nada foi disfarçado em gravação. Os itens ab
 
 - Igual ao problema 002 do fornecedor: o aviso só sai de "Precisa de você" quando a pessoa clica em "Resolver", "Excluir" ou marca tudo como lido, e não quando a tarefa é feita por outro caminho. Na primeira gravação, a tela de Notificações da agência chegou a mostrar cinco avisos "Sua vez", quatro deles de tarefas já feitas.
 - **Efeito no treinamento:** o caminho de dados passou a marcar os avisos como lidos depois de cada tarefa (`lerAvisos`, o botão "✓ N" da tela), como faz quem usa o sino no dia a dia. As cenas mostram só os avisos do momento.
+
+## 025 · O cartão Produção (ETD) não gera pendência, e o Planner aprova a pré-produção antes dele
+
+- **Onde:** pedido de compra, depois do sinal (Fase 5g dos marcos, motor sem etapas).
+- **Passos:** ponto `forn-m4-pagamento`; o fornecedor confirma o recebimento do sinal; a Wellmix (administrador) abre o pedido.
+- **O que acontece:** o marco "Pré-produção" tem um item só, "Pré-produção (dados e ETD) aprovada pelo Planner", que fica liberado na hora: nada nele espera os dados e o ETD do fornecedor (`MILESTONE_APPROVALS.preProduction.requires` vazio em `src/lib/purchase-lanes.ts`). O fornecedor não recebe pendência para o cartão Produção; a primeira pendência dele depois do sinal é "Pedido #1: Inspeção", que só chega depois da aprovação do Planner. Antes da Fase 5g a pendência se chamava "Produção e inspeção".
+- **Visto também:** com o sinal aprovado e a pré-produção ainda não, a lista "Pedidos" do fornecedor mostrou o pedido em "8. Inspeção · Aguardando você", enquanto a página do pedido mostrava "7. Pré-produção · Aguardando Wellmix".
+- **Decisão do dono:** a aprovação do Planner deve esperar os dados e o ETD do fornecedor? O cartão Produção deve gerar pendência para o fornecedor?
+- **Efeito no treinamento:** o caminho de dados confirma as duas aprovações (sinal e pré-produção) logo depois do sinal; o Módulo 5 parte da pendência "Inspeção" e ensina a preencher o cartão Produção antes da inspeção.
+
+## 026 · O marco seguinte só abre com as aprovações do mapa e com o selo aplicado na arte
+
+- **Onde:** pedido de compra, Fase 5g dos marcos (15/11/2026).
+- **O que mudou:** "Cadastro e fiscal aprovados pelo GP", "Material de arte aprovado pelo Comprador", "Certificação aprovada pelo GP", "Sinal aprovado pela Diretoria de compras" e "Pré-produção aprovada pelo Planner" travam o marco seguinte; o marco "Certificação" só conclui com o passo "Selo aplicado na arte" validado. Sem isso o pedido de amostras não é gerado ("O pedido de amostras é definido quando o pedido chega ao contrato").
+- **Efeito no treinamento:** não é problema da tela; é a regra nova. O caminho de dados (`confirmarAprovacoes`, `enviarSeloAplicado` e `decidirSeloAplicado` em `_demo/preparo-pedido.mjs`) passou a fazer esses passos como a Wellmix e a agência fariam. As falas da Agência ("a pendência entra na sua lista quando ... a Wellmix aprovou") continuam certas.
+
+
+## 027 · Pendências da agência: a coluna "Tipo" mostra a chave sem tradução
+
+- **Onde:** Minhas pendências da agência de arte (`agencia@design.com`), ponto `arte-base`, em 18/11/2026 (`wellmix` 7f6352b).
+- **O que aparece:** na coluna "Tipo", o texto `stage.agency.art`. A tela monta a chave `stage.<grupo>` (`src/components/task-list.tsx`), e só existe `tasks.group.agency.art` nos textos.
+- **Efeito no treinamento:** a narração não cita a coluna "Tipo"; aparece no vídeo porque está na tela.

@@ -24,6 +24,9 @@ def feito(chave: str) -> dict:
     return {"seletor": f'{K}{chave}[data-import-status="submitted"]', "rede": True}
 
 
+# Aceite do pedido de amostras do filho: mesma linha "Assinar o pedido", mas abre a página do pedido.
+LINHA_FILHO = sel('main table tbody tr:has(a[data-open-link]:not([href*="purchase-order"]))', "Pedido #2")
+
 cenas = [
     abertura("m9-a0-abertura", "Fornecedor", "EXW e compra programada", 9, [
         'Você já conhece o caminho do pedido. Este último módulo mostra dois casos que mudam esse caminho: a compra EXW e a compra programada.',
@@ -36,8 +39,8 @@ cenas = [
     tela("m9-c1-modalidade", C1, "forn-exw-solicitacao", tarefa="Responder a uma solicitação na modalidade EXW", passos=[
         mostrar("p1", 'O exemplo aqui é outro pedido, de um copo. Na modalidade EXW, o transporte da fábrica até o porto fica fora do seu preço. Ela é combinada logo na resposta da solicitação.',
                 linha("Solicitação nº 1")),
-        clicar("p2", 'Na linha da solicitação, clique em "Abrir".', ABRIR_1, alvo_visual=linha("Solicitação nº 1"), 
-               resumo='Em Pendências, clique em "Abrir" na linha da solicitação', espera=NA_SOLICITACAO),
+        clicar("p2", 'Na linha da solicitação, clique no ícone de abrir, à direita.', ABRIR_1, alvo_visual=linha("Solicitação nº 1"), 
+               resumo='Em Pendências, clique no ícone de abrir na linha da solicitação', espera=NA_SOLICITACAO),
         clicar("p3", 'Para responder com todos os dados, use o ícone "Abrir produto".', "[data-supplier-table-open]", rotulo="Abrir produto",
                rotulo_lado="acima", resumo='Clique no ícone "Abrir produto"', espera=VAI_PRODUTO, zoom=1.4),
         escolher("p4", 'Na pergunta "Faz o que foi pedido?", a resposta é "Sim, faço".', "[data-supplier-answer-cando]", "Sim, faço", rotulo="Faz o que foi pedido?",
@@ -56,8 +59,8 @@ cenas = [
     tela("m9-c1-origem", C1, "forn-exw-base", salvar="forn-m9-s1", tarefa="Registrar o transporte na origem (EXW)", passos=[
         mostrar("p1", 'Depois da reserva no navio, a compra EXW traz uma pendência que a outra modalidade não tem: a transportadora na origem.',
                 linha("Transportadora na origem (EXW)")),
-        clicar("p2", 'Na linha dela, clique em "Abrir".', abrir_na_linha("Transportadora na origem (EXW)"), alvo_visual=linha("Transportadora na origem (EXW)"),
-               resumo='Em Pendências, clique em "Abrir" na linha "Transportadora na origem (EXW)"',
+        clicar("p2", 'Na linha dela, clique no ícone de abrir, à direita.', abrir_na_linha("Transportadora na origem (EXW)"), alvo_visual=linha("Transportadora na origem (EXW)"),
+               resumo='Em Pendências, clique no ícone de abrir na linha "Transportadora na origem (EXW)"',
                espera={"url": "/app/orders/", "seletor": K + "origin_carrier", "rede": True}),
         mostrar("p3", 'No cartão "Container na origem", a compra EXW tem oito passos. Os três primeiros são do transporte da fábrica até o porto.',
                 "tbody[data-import-flow]:has(#container-origin-step-origin_carrier)", foco=False),
@@ -96,8 +99,8 @@ cenas = [
     tela("m9-c2-solicitacao", C2, "forn-prog-solicitacao", tarefa="Ler a programação de compra na solicitação", passos=[
         mostrar("p1", 'Agora, outro exemplo, com outro produto: uma tigela. Na compra programada, a Wellmix divide a quantidade em várias programações, cada uma com a sua data. Você vê isso desde a solicitação.',
                 linha("Solicitação nº 1")),
-        clicar("p2", 'Na linha da solicitação, clique em "Abrir".', ABRIR_1, alvo_visual=linha("Solicitação nº 1"), 
-               resumo='Em Pendências, clique em "Abrir" na linha da solicitação', espera=NA_SOLICITACAO),
+        clicar("p2", 'Na linha da solicitação, clique no ícone de abrir, à direita.', ABRIR_1, alvo_visual=linha("Solicitação nº 1"), 
+               resumo='Em Pendências, clique no ícone de abrir na linha da solicitação', espera=NA_SOLICITACAO),
         mostrar("p3", 'A tabela é larga. Do lado direito, a coluna "Programações" mostra quantas são. Aqui, duas.', "[data-supplier-table-rounds]", zoom=1.3),
         mostrar("p3b", 'E a coluna "Peças por programação" mostra as peças de cada uma: 1.800 e 1.800.', "[data-supplier-table-per-round]", zoom=1.3),
         clicar("p4", 'Para ver as datas, use o ícone "Abrir produto".', "[data-supplier-table-open]", rotulo="Abrir produto", rotulo_lado="acima",
@@ -107,7 +110,7 @@ cenas = [
                 "[data-supplier-answer-form]", foco=False, pausa=0.6),
     ]),
     sua_vez("m9-c2-suavez", C2, "Ler a programação na solicitação", [
-        'Em Pendências, clique em "Abrir" na linha da solicitação',
+        'Em Pendências, clique no ícone de abrir na linha da solicitação',
         'Na tabela, veja "Programações" e "Peças por programação"',
         'Abra o produto e leia o quadro "Programação de compra"',
         "Responda uma vez só, para o total",
@@ -119,10 +122,10 @@ cenas = [
     tela("m9-c3-pai", C3, "forn-prog-filhos", tarefa="Acompanhar o pedido pai e os pedidos filhos", passos=[
         mostrar("p1", 'Fechada a negociação, o pedido de compra nasce como pedido pai. Nele, o Die Cut é feito uma vez só. Na data combinada, cada programação vira um pedido filho.',
                 "main table tbody", foco=False),
-        mostrar("p2", 'O pedido filho chega com as pendências que você já conhece. Aqui, as duas são do pedido número 2. A primeira aparece como "Aprovar a arte": é nela que você aceita o pedido de amostras. A segunda é a assinatura do contrato.',
+        mostrar("p2", 'O pedido filho chega com as pendências que você já conhece. Aqui, as duas são do pedido número 2. As duas aparecem como "Assinar o pedido": a que abre a página do pedido é o aceite do pedido de amostras; a outra, a assinatura do contrato.',
                 "main table tbody", cursor=False),
-        clicar("p3", 'Use o botão "Abrir" da primeira linha.', abrir_na_linha("Pedido #2: Aprovar a arte"), alvo_visual=linha("Pedido #2: Aprovar a arte"),
-               resumo='Em Pendências, clique em "Abrir" numa linha do pedido filho',
+        clicar("p3", 'Use o ícone de abrir da linha que leva à página do pedido.', sel("a[data-open-link]", dentro=LINHA_FILHO), alvo_visual=LINHA_FILHO,
+               resumo='Em Pendências, clique no ícone de abrir numa linha do pedido filho',
                espera={"url": "/app/orders/[^/?#]+$", "seletor": "[data-order-round-of]", "rede": True}),
         mostrar("p4", 'No alto do pedido filho, a faixa mostra de onde ele vem: a primeira de duas programações do pedido pai.', "[data-order-round-of]"),
         clicar("p5", 'Para ver o pai, use o link "Abrir o pedido pai".', "[data-order-round-of] a", rotulo="Abrir o pedido pai #1", rotulo_lado="abaixo",
@@ -133,7 +136,7 @@ cenas = [
                 "[data-order-rounds]", pausa=0.6),
     ]),
     sua_vez("m9-c3-suavez", C3, "Pedido pai e pedidos filhos", [
-        'Em Pendências, clique em "Abrir" numa linha do pedido filho',
+        'Em Pendências, clique no ícone de abrir numa linha do pedido filho',
         "Veja na faixa do alto de qual programação ele é",
         'Clique em "Abrir o pedido pai"',
         'Leia o cartão "Programação de compra"',
