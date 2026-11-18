@@ -59,6 +59,24 @@ test("solicitação: Conversar com a empresa abre o chat na caixa flutuante", as
   await expect(
     box.locator("[data-chat-message]", { hasText: `pote ${tag}` }),
   ).toHaveCount(1);
+  // Quem envia e quem recebe (docs/CHAT_IDENTITY.md): a sessão e o login
+  // do cliente que pediu; em cada mensagem, o autor e para quem foi.
+  await expect(box.locator('[data-chat-identity-block="me"]')).toContainText(
+    "admin@wellmix.com",
+  );
+  await expect(
+    box.locator('[data-chat-identity-block="recipient"]'),
+  ).toContainText("joao@lojista.com");
+  await expect(box.locator("[data-chat-sending-to]")).toContainText(
+    "joao@lojista.com",
+  );
+  const sent = box.locator("[data-chat-message]", { hasText: `pote ${tag}` });
+  await expect(sent.locator("[data-chat-author-login]")).toContainText(
+    "admin@wellmix.com",
+  );
+  await expect(sent.locator("[data-chat-recipient]")).toContainText(
+    "joao@lojista.com",
+  );
   // Aberta de novo na mesma conversa: só vem para frente, com o rascunho.
   await field.fill("rascunho da próxima");
   await press();
@@ -96,4 +114,27 @@ test("solicitação: Conversar com a empresa abre o chat na caixa flutuante", as
   await expect(
     phoneBox.locator("[data-chat-composer] textarea"),
   ).toBeInViewport();
+
+  // O outro lado: o cliente abre "Conversar com a Wellmix" na mesma
+  // solicitação e cai na conversa com a Ana, com os dois logins à vista.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await login(page, "joao@lojista.com");
+  await page.goto(requestPath);
+  await page.locator("[data-chat-floating-open]").click();
+  const theirs = page.locator("[data-chat-floating]");
+  await expect(
+    theirs.locator('[data-chat-identity-block="me"]'),
+  ).toContainText("joao@lojista.com");
+  await expect(
+    theirs.locator('[data-chat-identity-block="recipient"]'),
+  ).toContainText("admin@wellmix.com");
+  const received = theirs.locator("[data-chat-message]", {
+    hasText: `pote ${tag}`,
+  });
+  await expect(received.locator("[data-chat-author]")).toContainText(
+    "Ana Admin",
+  );
+  await expect(received.locator("[data-chat-recipient]")).toContainText(
+    "joao@lojista.com",
+  );
 });

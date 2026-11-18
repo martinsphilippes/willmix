@@ -41,6 +41,8 @@ import { accessStamp } from "@/lib/auth/access-stamp";
 import { ChatDrawer } from "@/components/chat-drawer";
 import { ChatAccess } from "@/components/chat-access";
 import {
+  chatErrorLabels,
+  chatIdentityLabels,
   chatReplyLabels,
   chatUploadLabels,
 } from "@/components/chat-upload-labels";
@@ -591,6 +593,8 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
             attach: chatUploadLabels(t),
             reply: chatReplyLabels(t),
             videoDownload: t("messages.video.download"),
+            identity: chatIdentityLabels(t),
+            errors: chatErrorLabels(t),
           }}
         />
       ) : null}

@@ -55,18 +55,24 @@ describe("prazo em dias úteis", () => {
 
 describe("controladoria", () => {
   it("bola, prazo, analista, produto e pendência", async () => {
-    // Cliente escreve sobre a solicitação: bola na Wellmix, sem analista.
+    // Cliente escreve sobre a solicitação: fala com o responsável (o
+    // operador, docs/CHAT_IDENTITY.md); bola na Wellmix, analista = ele.
+    const { getStore } = await import("@/lib/db");
+    await getStore().update("requests", requestId, {
+      ownerUserId: operator.id,
+    });
     const topic = await msg.openTopic(joao, { requestId });
     await msg.postMessage(joao, topic.topicId, "Qual a quantidade?");
     let view = await ctl.messageControlFor(admin);
     let row = view.rows.find((r) => r.topicId === topic.topicId)!;
     expect(row.ball).toBe("wellmix");
-    expect(row.analystId).toBeNull();
+    expect(row.analystId).toBe(operator.id);
+    expect(row.peerUserId).toBe(joao.id);
     expect(row.overdue).toBe(false);
     expect(row.productIds).toEqual(["prod-jarra"]);
     expect(row.customerId).toBe(joao.partyId);
     expect(view.stats.withWellmix).toBeGreaterThanOrEqual(1);
-    // Operador vê (ninguém assumiu); vira pendência "Responder".
+    // Operador vê (a conversa é dele); vira pendência "Responder".
     const forOperator = await ctl.messageControlFor(operator);
     expect(forOperator.scope).toBe("mine");
     expect(forOperator.rows.some((r) => r.topicId === topic.topicId)).toBe(
@@ -77,7 +83,11 @@ describe("controladoria", () => {
       (t) => t.kind === "message_reply" && t.link === row.href,
     )!;
     expect(task).toBeTruthy();
-    expect(task.chat).toEqual({ orderId: null, requestId });
+    expect(task.chat).toEqual({
+      orderId: null,
+      requestId,
+      peerUserId: joao.id,
+    });
     expect(task.group).toBe("message_reply");
 
     // Passado o prazo: atrasada (e conta no indicador).
@@ -118,7 +128,7 @@ describe("controladoria", () => {
 
   it("operador só vê os seus e os sem analista; admin pode pedir só os seus", async () => {
     const topic = await msg.openTopic(admin, {
-      partyId: supplierA.partyId!,
+      peerUserId: supplierA.id,
     });
     await msg.postMessage(admin, topic.topicId, "Mensagem do admin.");
     const forOperator = await ctl.messageControlFor(operator, { scope: "all" });

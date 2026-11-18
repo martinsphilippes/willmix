@@ -15,7 +15,8 @@ const { PRODUCT_EXTRA_DEFAULTS, REQUEST_EXTRA_DEFAULTS } =
   await import("@/lib/db/schema");
 const rs = await import("@/lib/services/request-sheet");
 const { orderFromRequest } = await import("./helpers/order");
-const { parseRequestSpec, normLabel } = await import("@/lib/request-spec-parse");
+const { parseRequestSpec, normLabel } =
+  await import("@/lib/request-spec-parse");
 const { translator } = await import("@/i18n");
 type User = import("@/lib/db").User;
 type Request = import("@/lib/db").Request;
@@ -226,22 +227,24 @@ describe("Solicitação nº 1: bastão lança-bolhas, sem preço negociado", () 
     });
     expect(shown(fieldOf(row, "product", "brand")).value).toBe("WELLKIDS");
     const spec = row.groups[0].sections.find((s) => s.key === "spec")!;
-    expect(spec.fields.map((f) => [f.label, f.value, f.source?.label])).toEqual([
+    expect(spec.fields.map((f) => [f.label, f.value, f.source?.label])).toEqual(
       [
-        "Especificação",
-        "Bastão Lança Bolhas Sereia Estela Sortimento de Cor 14,5cm\n3 Sortimentos de cores",
-        "Solicitação",
+        [
+          "Especificação",
+          "Bastão Lança Bolhas Sereia Estela Sortimento de Cor 14,5cm\n3 Sortimentos de cores",
+          "Solicitação",
+        ],
+        [
+          "Composição",
+          "Plástico polipropileno / PET (Polietileno tereftalato)",
+          "Solicitação",
+        ],
+        ["Faixa etária", "3 anos", "Solicitação"],
+        ["Cores", "Azul / Rosa / Roxo", "Solicitação"],
+        ["Contém", "1 Peça", "Solicitação"],
+        ["País de origem", "China", "Solicitação"],
       ],
-      [
-        "Composição",
-        "Plástico polipropileno / PET (Polietileno tereftalato)",
-        "Solicitação",
-      ],
-      ["Faixa etária", "3 anos", "Solicitação"],
-      ["Cores", "Azul / Rosa / Roxo", "Solicitação"],
-      ["Contém", "1 Peça", "Solicitação"],
-      ["País de origem", "China", "Solicitação"],
-    ]);
+    );
     // Medida da peça com os eixos (a ficha atual não substitui a gravada).
     expect(shown(fieldOf(row, "product", "measure.0"))).toEqual({
       value: "Altura 14,5 cm · Largura 3,5 cm · Profundidade 2,5 cm",
@@ -292,7 +295,13 @@ describe("Solicitação nº 1: bastão lança-bolhas, sem preço negociado", () 
       value: "Guangzhou Supplier B",
       source: "Ficha atual",
     });
-    for (const key of ["terms", "method", "deposit", "saleDeposit", "saleTerms"])
+    for (const key of [
+      "terms",
+      "method",
+      "deposit",
+      "saleDeposit",
+      "saleTerms",
+    ])
       expect(fieldOf(row, "payment", key).value).toBeNull();
   });
 
@@ -341,11 +350,21 @@ describe("Solicitação nº 1: bastão lança-bolhas, sem preço negociado", () 
     expect(shown(fieldOf(mine, "product", "measure.0")).value).toBe(
       "Altura 14,5 cm · Largura 3,5 cm · Profundidade 2,5 cm",
     );
-    expect(mine.groups.find((g) => g.key === "values")!.sections.map((s) => s.key)).toEqual(["sale"]);
-    expect(mine.groups.find((g) => g.key === "payment")!.sections.map((s) => s.key)).toEqual(["customerPay"]);
+    expect(
+      mine.groups.find((g) => g.key === "values")!.sections.map((s) => s.key),
+    ).toEqual(["sale"]);
+    expect(
+      mine.groups.find((g) => g.key === "payment")!.sections.map((s) => s.key),
+    ).toEqual(["customerPay"]);
     // Sem o id da solicitação: um UUID aleatório pode conter "192".
     const json = JSON.stringify({ ...mine, requestId: "" });
-    for (const secret of ["WB12112", "0,0809", "Guangzhou", "Ficha atual", "192"])
+    for (const secret of [
+      "WB12112",
+      "0,0809",
+      "Guangzhou",
+      "Ficha atual",
+      "192",
+    ])
       expect(json).not.toContain(secret);
   });
 });
@@ -463,7 +482,9 @@ describe("com negociação, Book, venda e condição do fornecedor", () => {
       source: "Superplan (Book nº 77)",
     });
     // Venda gravada na solicitação (total) e o unitário calculado.
-    expect(shown(fieldOf(row, "values", "saleTotal")).source).toBe("Solicitação");
+    expect(shown(fieldOf(row, "values", "saleTotal")).source).toBe(
+      "Solicitação",
+    );
     expect(fieldOf(row, "values", "saleTotal").value).toMatch(/1\.000,00/);
     expect(shown(fieldOf(row, "values", "saleUnit")).source).toBe("Calculado");
     expect(fieldOf(row, "values", "saleUnit").value).toMatch(/0,50/);
@@ -483,7 +504,9 @@ describe("com negociação, Book, venda e condição do fornecedor", () => {
       value: "30% na data do pedido + 70% 90 dias após a entrega ao cliente",
       source: "Cadastro do fornecedor",
     });
-    expect(fieldOf(row, "payment", "deposit").value).toBe("30% na data do pedido");
+    expect(fieldOf(row, "payment", "deposit").value).toBe(
+      "30% na data do pedido",
+    );
     expect(fieldOf(row, "payment", "deposit").note).toMatch(/45,00/);
     expect(fieldOf(row, "payment", "installments").value).toBe("2 parcela(s)");
     expect(fieldOf(row, "payment", "leadTime").value).toBe("45 dias");
@@ -504,7 +527,9 @@ describe("com negociação, Book, venda e condição do fornecedor", () => {
     // O cliente vê a venda e o sinal dele, nunca a compra nem o fornecedor.
     const [mine] = (await sheetOf(joao, r)).rows;
     expect(fieldOf(mine, "values", "saleTotal").value).toMatch(/1\.000,00/);
-    expect(JSON.stringify(mine)).not.toMatch(/0,075|0,08\b|Shenzhen|Negociação/);
+    expect(JSON.stringify(mine)).not.toMatch(
+      /0,075|0,08\b|Shenzhen|Negociação/,
+    );
   });
 });
 
@@ -617,6 +642,8 @@ describe("forma de pagamento do cliente no pedido (docs/CUSTOMER_PAYMENT.md)", (
     ).toEqual(["supplierPay"]);
     // Sem "Ver preço de compra" (Vendas): o pagamento todo fechado.
     const [noPrice] = (await sheetOf(sales, fresh)).rows;
-    expect(noPrice.groups.find((g) => g.key === "payment")!.sections).toEqual([]);
+    expect(noPrice.groups.find((g) => g.key === "payment")!.sections).toEqual(
+      [],
+    );
   });
 });

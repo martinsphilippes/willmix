@@ -7984,6 +7984,22 @@
             "open",
             "closed"
           ]
+        },
+        {
+          "key": "wellmixUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "externalUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -8002,6 +8018,26 @@
           "type": "key",
           "columns": [
             "userId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_wellmix_user",
+          "type": "key",
+          "columns": [
+            "wellmixUserId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_external_user",
+          "type": "key",
+          "columns": [
+            "externalUserId"
           ],
           "orders": [
             "ASC"

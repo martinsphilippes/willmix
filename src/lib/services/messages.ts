@@ -20,9 +20,9 @@ import {
 } from "@/lib/db";
 import {
   ForbiddenError,
-  WELLMIX_ROLES,
   canViewOrder,
   canViewRequest,
+  isAdmin,
   isWellmix,
 } from "@/lib/auth/permissions";
 import type { Translate } from "@/i18n";
@@ -34,6 +34,7 @@ import {
 } from "@/lib/message-translation";
 import { isSchemaMissing } from "@/lib/db/errors";
 import { listColumns } from "@/lib/db/lookup";
+import { canOpen } from "@/lib/auth/screens";
 import { searchText } from "@/lib/db/store";
 import { isPlayableVideo, isPreviewImage } from "@/lib/file-kinds";
 import { notify } from "./notifications";
@@ -44,21 +45,28 @@ import {
 } from "./message-translation";
 
 /*
- * Mensagens: chat interno da Wellmix com as empresas parceiras (cliente,
- * fornecedor, agência, despachante, companhia marítima, transportador e
- * jurídico). Uma conversa por EMPRESA (`partyId`): todos os logins dela veem
- * e respondem a mesma; login sem empresa tem uma conversa só dele (`userId`).
- * A Wellmix (admin e operadores) vê todas; quem é de fora, só a da própria
- * empresa (isolamento conferido aqui, não na tela).
+ * Mensagens: chat da Wellmix com as empresas parceiras (cliente, fornecedor,
+ * agência, despachante, companhia marítima, transportador e jurídico).
  *
- * Cada conversa tem assuntos: "Geral" e, quando preciso, um por solicitação
- * ou pedido de que a empresa participa. Quem é de fora só abre (e escreve
- * em) assuntos de solicitações e pedidos que ele mesmo pode ver.
+ * Conversa privada entre dois logins (dono, 18/11/2026; docs/CHAT_IDENTITY.md):
+ * uma pessoa da Wellmix e uma pessoa de fora. Só os dois leem, escrevem e são
+ * avisados; o administrador lê todas, sem escrever (auditoria, Controladoria
+ * e SLA). Quem é de fora fala, num pedido ou numa solicitação, com o
+ * responsável dele (`ownerUserId`); sem responsável, escolhe numa lista curta
+ * (quem criou, com quem já conversa ou, sem ninguém, os administradores).
+ * A Wellmix escolhe o login da empresa ("Escolher conversa").
  *
- * Aviso de mensagem nova só no sino do portal (sem e-mail nem WhatsApp) e no
- * máximo um aviso não lido por assunto e destinatário, até ele ler. Quem é de
- * fora também vê, em toda tela, a faixa "Nova mensagem da Wellmix" com o
- * texto (unreadDigest).
+ * Conversas antigas (antes de 18/11/2026: uma por EMPRESA, `partyId`, ou por
+ * login sem empresa, `userId`) continuam visíveis como antes, só para leitura.
+ *
+ * Cada conversa tem assuntos: "Geral" e, quando preciso, um por solicitação,
+ * pedido ou produto do pedido. Quem é de fora só abre (e escreve em) assuntos
+ * de solicitações e pedidos que ele mesmo pode ver.
+ *
+ * Aviso de mensagem nova só no sino do portal (sem e-mail nem WhatsApp), só
+ * para o outro login da conversa e no máximo um aviso não lido por assunto,
+ * até ele ler. Quem é de fora também vê, em toda tela, a faixa "Nova mensagem
+ * da Wellmix" com o texto (unreadDigest).
  *
  * Tradução automática: depois do envio, a mensagem é traduzida para os
  * idiomas do portal (message-translation.ts); cada um lê no próprio idioma,
@@ -118,15 +126,45 @@ const previewOf = (body: string, size = 200) =>
 /* Acesso                                                                  */
 /* ---------------------------------------------------------------------- */
 
-/** O login é da empresa da conversa (ou é o dono da conversa sem empresa)? */
+/** Conversa privada entre dois logins (as novas); falso: antiga, da empresa. */
+export const isPair = (
+  c: Pick<Conversation, "wellmixUserId" | "externalUserId">,
+): boolean => !!c.wellmixUserId && !!c.externalUserId;
+
+/** O login é um dos dois da conversa privada? */
 function isMember(user: User, conversation: Conversation): boolean {
-  if (isWellmix(user)) return false;
+  return (
+    isPair(conversation) &&
+    (conversation.wellmixUserId === user.id ||
+      conversation.externalUserId === user.id)
+  );
+}
+
+/** Conversa antiga da empresa do login (ou do próprio login sem empresa). */
+function inLegacyCompany(user: User, conversation: Conversation): boolean {
+  if (isWellmix(user) || isPair(conversation)) return false;
   if (user.partyId) return conversation.partyId === user.partyId;
   return !conversation.partyId && conversation.userId === user.id;
 }
 
+/**
+ * Quem lê: a conversa privada, os dois e o administrador; a antiga, como
+ * antes (a Wellmix e os logins da empresa).
+ */
 const canAccessConversation = (user: User, conversation: Conversation) =>
-  isWellmix(user) || isMember(user, conversation);
+  isPair(conversation)
+    ? isMember(user, conversation) || isAdmin(user)
+    : isWellmix(user) || inLegacyCompany(user, conversation);
+
+/** Quem escreve: só os dois da conversa privada (a antiga é só leitura). */
+const canWriteConversation = (user: User, conversation: Conversation) =>
+  isMember(user, conversation);
+
+/** O outro login da conversa privada, visto por um dos dois. */
+const peerIdOf = (user: User, conversation: Conversation) =>
+  conversation.wellmixUserId === user.id
+    ? conversation.externalUserId!
+    : conversation.wellmixUserId!;
 
 /** Quem pode ver a solicitação: as regras de sempre (cliente: o login solicitante). */
 async function canSeeRequest(user: User, request: Request): Promise<boolean> {
@@ -149,8 +187,13 @@ function orderParties(order: Order): string[] {
   ].filter((id): id is string => !!id);
 }
 
-/** Dono de uma conversa sem empresa (login avulso). */
+/**
+ * Login de fora da conversa: o da conversa privada ou, na antiga sem
+ * empresa, o dono dela.
+ */
 async function conversationOwner(conversation: Conversation) {
+  if (isPair(conversation))
+    return getStore().get("users", conversation.externalUserId!);
   if (conversation.partyId || !conversation.userId) return null;
   return getStore().get("users", conversation.userId);
 }
@@ -160,7 +203,8 @@ async function companyInRequest(
   conversation: Conversation,
   request: Request,
 ): Promise<boolean> {
-  if (conversation.partyId) return request.customerId === conversation.partyId;
+  if (!isPair(conversation) && conversation.partyId)
+    return request.customerId === conversation.partyId;
   const owner = await conversationOwner(conversation);
   return !!owner && (await canSeeRequest(owner, request));
 }
@@ -170,7 +214,7 @@ async function companyInOrder(
   conversation: Conversation,
   order: Order,
 ): Promise<boolean> {
-  if (conversation.partyId)
+  if (!isPair(conversation) && conversation.partyId)
     return orderParties(order).includes(conversation.partyId);
   const owner = await conversationOwner(conversation);
   return !!owner && canViewOrder(owner, order);
@@ -197,8 +241,15 @@ async function canSeeTopic(
   return false;
 }
 
-/** Conversa e assunto que o login pode abrir; senão ForbiddenError. */
-async function loadTopicFor(user: User, topicId: string) {
+/**
+ * Conversa e assunto que o login pode abrir (`write`: e escrever); senão
+ * ForbiddenError. Conversa antiga, ao escrever: "read_only".
+ */
+async function loadTopicFor(
+  user: User,
+  topicId: string,
+  mode: "read" | "write" = "read",
+) {
   const store = getStore();
   const topic = await store.get("conversation_topics", topicId);
   if (!topic) throw new MessageError("not_found");
@@ -209,6 +260,10 @@ async function loadTopicFor(user: User, topicId: string) {
     !(await canSeeTopic(user, topic))
   )
     throw new ForbiddenError();
+  if (mode === "write" && !canWriteConversation(user, conversation)) {
+    if (!isPair(conversation)) throw new MessageError("read_only");
+    throw new ForbiddenError();
+  }
   return { topic, conversation };
 }
 
@@ -229,45 +284,69 @@ export async function canOpenTopic(
 /* Conversas e assuntos (encontrar ou criar)                               */
 /* ---------------------------------------------------------------------- */
 
-/** Conversa da empresa (ou do login sem empresa), sem criar. */
-async function findConversation(key: {
-  partyId: string | null;
-  userId: string | null;
-}): Promise<Conversation | null> {
-  const filter = key.partyId
-    ? { partyId: key.partyId }
-    : { userId: key.userId, partyId: null };
-  if (!key.partyId && !key.userId) return null;
-  // Duas criadas ao mesmo tempo: vale sempre a mais antiga.
+/** Conversa privada entre os dois logins, sem criar (duas ao mesmo tempo: vale a mais antiga). */
+async function findPair(
+  wellmixUserId: string,
+  externalUserId: string,
+): Promise<Conversation | null> {
   const [found] = await getStore().list("conversations", {
-    filter,
+    filter: { wellmixUserId, externalUserId },
     orderBy: "createdAt",
     limit: 1,
   });
   return found ?? null;
 }
 
-/** Conversa da empresa (ou do login sem empresa), criada na primeira vez. */
-async function conversationFor(key: {
-  partyId: string | null;
-  userId: string | null;
-}): Promise<Conversation> {
-  const found = await findConversation(key);
+/** Conversa privada entre a pessoa da Wellmix e a de fora, criada na primeira vez. */
+async function pairFor(wellmixUser: User, externalUser: User) {
+  if (!isWellmix(wellmixUser) || isWellmix(externalUser))
+    throw new MessageError("not_participant");
+  const found = await findPair(wellmixUser.id, externalUser.id);
   if (found) return found;
   return getStore().create("conversations", {
-    partyId: key.partyId,
-    userId: key.partyId ? null : key.userId,
+    partyId: externalUser.partyId,
+    userId: null,
+    wellmixUserId: wellmixUser.id,
+    externalUserId: externalUser.id,
     lastMessageAt: null,
     lastMessagePreview: null,
     status: "open",
   });
 }
 
-/** Chave da conversa de quem é de fora: a empresa ou, sem ela, o próprio login. */
-const ownKey = (user: User) => ({
-  partyId: user.partyId,
-  userId: user.partyId ? null : user.id,
-});
+/**
+ * Conversas do login: as privadas dele e as antigas que ele lê (Wellmix: as
+ * antigas de todas as empresas; de fora: a antiga da própria empresa).
+ * Administrador: todas. Não cria nada.
+ */
+async function conversationsOf(user: User): Promise<Conversation[]> {
+  const store = getStore();
+  if (isAdmin(user)) return store.list("conversations");
+  if (isWellmix(user)) {
+    const all = await store.list("conversations");
+    return all.filter((c) => !isPair(c) || c.wellmixUserId === user.id);
+  }
+  const [mine, legacy] = await Promise.all([
+    store.list("conversations", { filter: { externalUserId: user.id } }),
+    store.list("conversations", {
+      filter: user.partyId ? { partyId: user.partyId } : { userId: user.id },
+    }),
+  ]);
+  return [
+    ...mine.filter((c) => isMember(user, c)),
+    ...legacy.filter((c) => inLegacyCompany(user, c)),
+  ];
+}
+
+/** Conversas em que o login escreve (as privadas dele): não lidas e avisos. */
+async function memberConversations(user: User): Promise<Conversation[]> {
+  const rows = await getStore().list("conversations", {
+    filter: isWellmix(user)
+      ? { wellmixUserId: user.id }
+      : { externalUserId: user.id },
+  });
+  return rows.filter((c) => isMember(user, c));
+}
 
 async function findTopic(
   conversationId: string,
@@ -361,17 +440,82 @@ async function unreadByTopic(
 /* Leitura                                                                 */
 /* ---------------------------------------------------------------------- */
 
+/** Uma pessoa da conversa: nome, login (e-mail) e empresa ou equipe. */
+export interface ChatPerson {
+  userId: string;
+  name: string;
+  /** Login (e-mail). Nulo: não aparece para quem vê (lista de escolha de quem é de fora). */
+  login: string | null;
+  side: MessageSide;
+  /** Empresa de quem é de fora (nulo na Wellmix ou no login sem empresa). */
+  org: string | null;
+  /** Tipo da empresa ou papel do login (rótulo "Cliente", "Fornecedor"…). */
+  type: PartyType | Role | null;
+  /** Login ativo (nem desativado nem suspenso). */
+  active: boolean;
+}
+
+/** Pessoas pelos ids, com a empresa de cada uma. */
+async function peopleOf(ids: string[]): Promise<Map<string, ChatPerson>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  const result = new Map<string, ChatPerson>();
+  if (!unique.length) return result;
+  const store = getStore();
+  const users = await store.list("users", { filter: { id: unique } });
+  const partyIds = [
+    ...new Set(users.map((u) => u.partyId).filter(Boolean)),
+  ] as string[];
+  const parties = partyIds.length
+    ? await store.list("parties", { filter: { id: partyIds } })
+    : [];
+  for (const u of users) result.set(u.id, personOf(u, parties));
+  return result;
+}
+
+function personOf(u: User, parties: Party[]): ChatPerson {
+  const wellmix = isWellmix(u);
+  const party = u.partyId ? parties.find((p) => p.id === u.partyId) : null;
+  return {
+    userId: u.id,
+    name: u.name,
+    login: u.email,
+    side: wellmix ? "wellmix" : "external",
+    org: wellmix ? null : (party?.name ?? null),
+    type: wellmix ? null : (party?.type ?? u.role),
+    active: u.active !== false && !u.loginSuspended,
+  };
+}
+
+/** Pessoa que não está mais no banco (mensagem antiga de login apagado). */
+const unknownPerson = (userId: string, side: MessageSide): ChatPerson => ({
+  userId,
+  name: "—",
+  login: null,
+  side,
+  org: null,
+  type: null,
+  active: false,
+});
+
 export interface ConversationSummary {
   id: string;
   partyId: string | null;
   userId: string | null;
-  /** Nome da empresa (ou do login sem empresa). */
+  /** Nome na lista: a outra pessoa; admin lendo: "A ↔ B"; antiga: a empresa. */
   name: string;
   /** Tipo da empresa (ou papel do login sem empresa). */
   type: PartyType | Role | null;
   lastMessageAt: string | null;
   lastMessagePreview: string | null;
   unread: number;
+  /** Privada entre dois logins ou antiga da empresa (só leitura). */
+  mode: "pair" | "legacy";
+  /** Quem vê não escreve (antiga, ou o administrador lendo a conversa de outros). */
+  readOnly: boolean;
+  /** A outra pessoa (quem vê é um dos dois) ou, para o administrador, a de fora. */
+  peer: ChatPerson | null;
+  /** Os dois da conversa privada (Wellmix primeiro); vazio na antiga. */
+  members: ChatPerson[];
 }
 
 /** Nome e tipo da empresa de cada conversa. */
@@ -401,6 +545,56 @@ async function companiesOf(conversations: Conversation[]) {
   };
 }
 
+/** Resumo das conversas para quem vê: nome, a outra pessoa e se escreve. */
+async function summariesOf(user: User, conversations: Conversation[]) {
+  const company = await companiesOf(conversations);
+  const people = await peopleOf(
+    conversations.flatMap((c) =>
+      isPair(c) ? [c.wellmixUserId!, c.externalUserId!] : [],
+    ),
+  );
+  return (c: Conversation, unread: number): ConversationSummary => {
+    const base = {
+      id: c.id,
+      partyId: c.partyId,
+      userId: c.userId,
+      lastMessageAt: c.lastMessageAt,
+      lastMessagePreview: c.lastMessagePreview,
+      unread,
+    };
+    if (!isPair(c))
+      return {
+        ...base,
+        ...company(c),
+        mode: "legacy",
+        readOnly: true,
+        peer: null,
+        members: [],
+      };
+    const wellmix =
+      people.get(c.wellmixUserId!) ??
+      unknownPerson(c.wellmixUserId!, "wellmix");
+    const external =
+      people.get(c.externalUserId!) ??
+      unknownPerson(c.externalUserId!, "external");
+    const member = isMember(user, c);
+    const peer = !member
+      ? external
+      : peerIdOf(user, c) === wellmix.userId
+        ? wellmix
+        : external;
+    return {
+      ...base,
+      name: member ? peer.name : `${wellmix.name} ↔ ${external.name}`,
+      type: external.type,
+      mode: "pair",
+      readOnly: !member,
+      peer,
+      members: [wellmix, external],
+    };
+  };
+}
+
 const byRecent = (a: ConversationSummary, b: ConversationSummary) =>
   time(b.lastMessageAt) - time(a.lastMessageAt);
 
@@ -411,37 +605,40 @@ async function visibleTopics(user: User, topics: ConversationTopic[]) {
 }
 
 /**
- * Conversas do login. Wellmix: todas, a mais recente primeiro. Quem é de
- * fora: só a da própria empresa, criada na primeira vez.
+ * Conversas do login, a mais recente primeiro: as privadas dele e as antigas
+ * que ele lê; o administrador, todas. Não lidas só nas conversas em que ele
+ * escreve. Não cria nada.
  */
 export async function listConversationsFor(
   user: User,
 ): Promise<ConversationSummary[]> {
   return safe(async () => {
     const store = getStore();
-    const wellmix = isWellmix(user);
-    const conversations = wellmix
-      ? await store.list("conversations")
-      : [await conversationFor(ownKey(user))];
+    const conversations = await conversationsOf(user);
     if (!conversations.length) return [];
     const allTopics = await store.list("conversation_topics", {
       filter: { conversationId: conversations.map((c) => c.id) },
     });
-    const topics = wellmix ? allTopics : await visibleTopics(user, allTopics);
-    const unread = await unreadByTopic(user, topics);
-    const company = await companiesOf(conversations);
+    const topics = isWellmix(user)
+      ? allTopics
+      : await visibleTopics(user, allTopics);
+    const memberIds = new Set(
+      conversations.filter((c) => isMember(user, c)).map((c) => c.id),
+    );
+    const unread = await unreadByTopic(
+      user,
+      topics.filter((t) => memberIds.has(t.conversationId)),
+    );
+    const summary = await summariesOf(user, conversations);
     return conversations
-      .map((c) => ({
-        id: c.id,
-        partyId: c.partyId,
-        userId: c.userId,
-        ...company(c),
-        lastMessageAt: c.lastMessageAt,
-        lastMessagePreview: c.lastMessagePreview,
-        unread: topics
-          .filter((t) => t.conversationId === c.id)
-          .reduce((sum, t) => sum + (unread.get(t.id) ?? 0), 0),
-      }))
+      .map((c) =>
+        summary(
+          c,
+          topics
+            .filter((t) => t.conversationId === c.id)
+            .reduce((sum, t) => sum + (unread.get(t.id) ?? 0), 0),
+        ),
+      )
       .sort(byRecent);
   }, []);
 }
@@ -590,6 +787,13 @@ export interface MessageView {
   createdAt: string;
   authorName: string;
   authorSide: MessageSide;
+  /** Quem escreveu: nome, login e empresa ou equipe. */
+  author: ChatPerson;
+  /**
+   * Para quem foi: a outra pessoa da conversa privada. Nulo: conversa antiga
+   * (destinatário não identificado no histórico).
+   */
+  recipients: ChatPerson[] | null;
   mine: boolean;
   /**
    * Arquivo anexado (abre por /api/files, que confere o acesso). `isImage`:
@@ -623,7 +827,23 @@ export interface MessageQuote {
   attachment: { name: string; isImage: boolean; isVideo: boolean } | null;
 }
 
+/** Quem envia e quem recebe na conversa aberta (cabeçalho e campo de envio). */
+export interface ChatIdentity {
+  mode: "pair" | "legacy";
+  /** Quem vê ("Enviando como"). */
+  me: ChatPerson;
+  /** Destinatário de quem vê; nulo na antiga e para o administrador lendo. */
+  peer: ChatPerson | null;
+  /** Os dois da conversa privada (Wellmix primeiro); vazio na antiga. */
+  members: ChatPerson[];
+  /** Quem vê pode escrever agora. */
+  canWrite: boolean;
+  /** Por que não escreve: antiga, administrador lendo ou a outra pessoa sem login ativo. */
+  readOnly: null | "legacy" | "observer" | "peer_inactive";
+}
+
 export interface ConversationView {
+  identity: ChatIdentity;
   conversation: ConversationSummary;
   topics: TopicSummary[];
   topic: TopicSummary;
@@ -663,7 +883,10 @@ export async function getConversationView(
   const topics = await visibleTopics(user, all);
   if (topicId && !topics.some((t) => t.id === topicId))
     throw new ForbiddenError();
-  const unread = await unreadByTopic(user, topics);
+  // Não lidas só para os dois da conversa (o administrador lendo não acumula).
+  const unread = isMember(user, conversation)
+    ? await unreadByTopic(user, topics)
+    : new Map<string, number>();
   // Sem assunto escolhido: abre onde há mensagem nova (a mais recente) ou,
   // sem nada novo, o assunto da última mensagem; Geral só se não houver nada.
   const byRecent = [...topics].sort(
@@ -719,6 +942,15 @@ export async function getConversationView(
   const authors = authorIds.length
     ? await store.list("users", { filter: { id: authorIds } })
     : [];
+  const people = await peopleOf([
+    user.id,
+    ...authorIds,
+    ...(isPair(conversation)
+      ? [conversation.wellmixUserId!, conversation.externalUserId!]
+      : []),
+  ]);
+  const person = (id: string, side: MessageSide) =>
+    people.get(id) ?? unknownPerson(id, side);
   const attachmentIds = [...rows, ...older]
     .map((m) => m.attachmentDocumentId)
     .filter((id): id is string => !!id);
@@ -737,7 +969,7 @@ export async function getConversationView(
         }
       : null;
   };
-  const company = await companiesOf([conversation]);
+  const summaryOf = await summariesOf(user, [conversation]);
   const translationOf = await translationReader(
     user,
     conversation,
@@ -763,16 +995,43 @@ export async function getConversationView(
         : null,
     };
   };
+  const pair = isPair(conversation);
+  const member = isMember(user, conversation);
+  const members = pair
+    ? [
+        person(conversation.wellmixUserId!, "wellmix"),
+        person(conversation.externalUserId!, "external"),
+      ]
+    : [];
+  const peer = member
+    ? (members.find((p) => p.userId !== user.id) ?? null)
+    : null;
+  const readOnly: ChatIdentity["readOnly"] = !pair
+    ? "legacy"
+    : !member
+      ? "observer"
+      : peer && !peer.active
+        ? "peer_inactive"
+        : null;
+  /** Para quem foi a mensagem: o outro da conversa privada. */
+  const recipientsOf = (m: Message): ChatPerson[] | null => {
+    if (!pair) return null;
+    const other = members.filter((p) => p.userId !== m.authorUserId);
+    return other.length === 1 ? other : null;
+  };
   return {
-    conversation: {
-      id: conversation.id,
-      partyId: conversation.partyId,
-      userId: conversation.userId,
-      ...company(conversation),
-      lastMessageAt: conversation.lastMessageAt,
-      lastMessagePreview: conversation.lastMessagePreview,
-      unread: [...unread.values()].reduce((a, b) => a + b, 0),
+    identity: {
+      mode: pair ? "pair" : "legacy",
+      me: person(user.id, sideOf(user)),
+      peer,
+      members,
+      canWrite: readOnly === null,
+      readOnly,
     },
+    conversation: summaryOf(
+      conversation,
+      member ? [...unread.values()].reduce((a, b) => a + b, 0) : 0,
+    ),
     topics: ordered.map(summary),
     topic: summary(selected),
     messages: rows.map((m: Message) => ({
@@ -781,6 +1040,8 @@ export async function getConversationView(
       createdAt: m.createdAt,
       authorName: authorName(m),
       authorSide: m.authorSide,
+      author: person(m.authorUserId, m.authorSide),
+      recipients: recipientsOf(m),
       mine: m.authorUserId === user.id,
       attachment: attachmentOf(m),
       translation: translationOf(m),
@@ -804,11 +1065,13 @@ async function translationReader(
   const aiOn = await translationOn();
   let counterpartLocales: Locale[] = [WELLMIX_LOCALE];
   if (isWellmix(user)) {
-    const logins = conversation.partyId
-      ? await getStore().list("users", {
-          filter: { partyId: conversation.partyId, active: true },
-        })
-      : await conversationOwner(conversation).then((u) => (u ? [u] : []));
+    const logins = isPair(conversation)
+      ? await conversationOwner(conversation).then((u) => (u ? [u] : []))
+      : conversation.partyId
+        ? await getStore().list("users", {
+            filter: { partyId: conversation.partyId, active: true },
+          })
+        : await conversationOwner(conversation).then((u) => (u ? [u] : []));
     counterpartLocales = [
       ...new Set(
         logins.filter((u) => !isWellmix(u)).map((u) => u.locale ?? "pt"),
@@ -848,16 +1111,11 @@ export async function ownConversationId(user: User): Promise<string | null> {
 export async function unreadCountFor(user: User): Promise<number> {
   return safe(async () => {
     const store = getStore();
-    let topics: ConversationTopic[];
-    if (isWellmix(user)) {
-      topics = await store.list("conversation_topics");
-    } else {
-      const own = await findConversation(ownKey(user));
-      if (!own) return 0;
-      topics = await store.list("conversation_topics", {
-        filter: { conversationId: own.id },
-      });
-    }
+    const own = await memberConversations(user);
+    if (!own.length) return 0;
+    const topics = await store.list("conversation_topics", {
+      filter: { conversationId: own.map((c) => c.id) },
+    });
     const unread = await unreadByTopic(user, topics);
     if (!unread.size) return 0;
     // Quem é de fora: só conta assuntos que ele vê (só os com novidade são conferidos).
@@ -900,10 +1158,10 @@ export async function unreadDigest(
   if (isWellmix(user)) return empty;
   return safe(async () => {
     const store = getStore();
-    const own = await findConversation(ownKey(user));
-    if (!own) return empty;
+    const own = await memberConversations(user);
+    if (!own.length) return empty;
     const topics = await store.list("conversation_topics", {
-      filter: { conversationId: own.id },
+      filter: { conversationId: own.map((c) => c.id) },
     });
     const unread = await unreadByTopic(user, topics);
     if (!unread.size) return empty;
@@ -937,7 +1195,7 @@ export async function unreadDigest(
       total,
       topics: withNews.length,
       latest: {
-        href: topicHref(own.id, newest.id),
+        href: topicHref(newest.conversationId, newest.id),
         topic: { kind: newest.kind, title: newest.title },
         authorName: author?.name ?? "—",
         authorSide: message.authorSide,
@@ -994,19 +1252,33 @@ export function chatTypeLabel(
 export const CHAT_TARGET_LIMIT = 20;
 
 export interface ChatTarget {
-  /** O valor do campo `target` da conversa nova: `party:<id>` ou `user:<id>`. */
+  /** O valor do campo `target` da conversa nova: `user:<id>` (o login). */
   id: string;
   name: string;
   /** Tipo da empresa ou papel do login sem empresa (para o rótulo). */
   type: PartyType | Role;
+  /** Login (e-mail) da pessoa. */
+  login: string;
+  /** Empresa da pessoa (nulo: login sem empresa). */
+  org: string | null;
 }
 
+/** O login de fora tem a tela Mensagens no perfil (Gestão de telas)? */
+async function hasMessagesScreen(user: User): Promise<boolean> {
+  if (isWellmix(user)) return canOpen(user, "messages");
+  const { externalAccessFor } = await import("./partner-access");
+  const access = await externalAccessFor(user);
+  return !access || access.screens.includes("messages");
+}
+
+/** Login que entra no portal (nem desativado nem suspenso). */
+const loginActive = (u: User) => u.active !== false && !u.loginSuspended;
+
 /**
- * Busca de quem a Wellmix chama numa conversa nova (auditoria de
- * performance, 14/11/2026): as mesmas empresas e logins do chatDirectory
- * (empresas ativas dos tipos da conversa e logins ativos sem empresa, fora da
- * Wellmix), pelo nome, a partir de 2 letras. A lista inteira (~32 mil
- * empresas) deixava a tela de Mensagens com 8,9 MB.
+ * Busca de com quem a Wellmix abre uma conversa nova: o LOGIN da pessoa de
+ * fora (a conversa é privada entre os dois). Acha pelo nome da pessoa, pelo
+ * e-mail ou pelo nome da empresa (empresas ativas dos tipos da conversa), a
+ * partir de 2 letras. Só logins ativos de fora da Wellmix.
  */
 export async function searchChatTargets(
   user: User,
@@ -1016,30 +1288,56 @@ export async function searchChatTargets(
   const text = searchText(q).slice(0, 80);
   if (text.length < 2) return [];
   const store = getStore();
-  const [parties, users] = await Promise.all([
+  const [parties, byName, byEmail] = await Promise.all([
     listColumns(store, "parties", ["name", "type"], {
       filter: { active: true, type: CHAT_PARTY_TYPES },
       search: { column: "name", text },
       orderBy: "name",
       limit: CHAT_TARGET_LIMIT,
     }),
-    // Logins são poucos: os que acham o nome, sem limite.
-    listColumns(store, "users", ["name", "role", "partyId"], {
+    store.list("users", {
       filter: { active: true },
       search: { column: "name", text },
       orderBy: "name",
+      limit: CHAT_TARGET_LIMIT,
+    }),
+    store.list("users", {
+      filter: { active: true },
+      search: { column: "email", text },
+      orderBy: "name",
+      limit: CHAT_TARGET_LIMIT,
     }),
   ]);
-  return [
-    ...parties.map((p) => ({
-      id: `party:${p.id}`,
-      name: p.name,
-      type: p.type,
-    })),
-    ...users
-      .filter((u) => !u.partyId && !isWellmix(u))
-      .map((u) => ({ id: `user:${u.id}`, name: u.name, type: u.role })),
-  ];
+  const ofParties = parties.length
+    ? await store.list("users", {
+        filter: { active: true, partyId: parties.map((p) => p.id) },
+        orderBy: "name",
+      })
+    : [];
+  const seen = new Set<string>();
+  const users = [...byName, ...byEmail, ...ofParties].filter((u) => {
+    if (seen.has(u.id) || isWellmix(u) || !loginActive(u)) return false;
+    seen.add(u.id);
+    return true;
+  });
+  const partyIds = [
+    ...new Set(users.map((u) => u.partyId).filter(Boolean)),
+  ] as string[];
+  const names = partyIds.length
+    ? await listColumns(store, "parties", ["name", "type"], {
+        filter: { id: partyIds },
+      })
+    : [];
+  return users.slice(0, CHAT_TARGET_LIMIT * 2).map((u) => {
+    const party = names.find((p) => p.id === u.partyId);
+    return {
+      id: `user:${u.id}`,
+      name: u.name,
+      type: party?.type ?? u.role,
+      login: u.email,
+      org: party?.name ?? null,
+    };
+  });
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1048,9 +1346,11 @@ export async function searchChatTargets(
 
 export interface OpenTopicInput {
   conversationId?: string | null;
-  /** Wellmix: empresa com quem conversar. */
+  /** Wellmix: empresa do pedido (com um login só, é ele; com vários, escolher). */
   partyId?: string | null;
-  /** Wellmix: login sem empresa com quem conversar. */
+  /** A outra pessoa da conversa (Wellmix: o login de fora; de fora: a pessoa da Wellmix). */
+  peerUserId?: string | null;
+  /** Antigo (= peerUserId): login de fora escolhido pela Wellmix. */
   userId?: string | null;
   requestId?: string | null;
   orderId?: string | null;
@@ -1058,45 +1358,168 @@ export interface OpenTopicInput {
   orderItemId?: string | null;
 }
 
-/** Conversa em que o login abre o assunto. */
-async function resolveConversation(
-  user: User,
-  input: OpenTopicInput,
-  fallbackPartyId: string | null,
-): Promise<Conversation> {
-  const store = getStore();
-  if (!isWellmix(user)) {
-    // Quem é de fora só fala na conversa da própria empresa.
-    const own = await conversationFor(ownKey(user));
-    if (input.conversationId && input.conversationId !== own.id)
-      throw new ForbiddenError();
-    if (input.partyId && input.partyId !== user.partyId)
-      throw new ForbiddenError();
-    if (input.userId && input.userId !== user.id) throw new ForbiddenError();
-    return own;
-  }
-  if (input.conversationId) {
-    const found = await store.get("conversations", input.conversationId);
-    if (!found) throw new MessageError("not_found");
-    return found;
-  }
-  if (input.userId) {
-    const target = await store.get("users", input.userId);
-    if (!target || isWellmix(target)) throw new MessageError("not_found");
-    return conversationFor(ownKey(target));
-  }
-  const partyId = input.partyId || fallbackPartyId;
-  if (!partyId) throw new MessageError("no_company");
-  const party = await store.get("parties", partyId);
-  if (!party) throw new MessageError("not_found");
-  return conversationFor({ partyId: party.id, userId: null });
+/** Do que se fala: o pedido ou a solicitação (nenhum = Geral). */
+interface PeerContext {
+  order?: Order | null;
+  request?: Request | null;
 }
 
 /**
- * Abre (encontra ou cria) a conversa e o assunto: Geral, de uma solicitação
- * ou de um pedido. Assunto de solicitação/pedido só com a empresa
- * participante; quem é de fora, ainda, só se ele mesmo vê a
- * solicitação/o pedido.
+ * Logins de fora com quem a Wellmix conversa sobre o pedido ou a
+ * solicitação: os das empresas participantes que veem o pedido (ou a
+ * solicitação), ativos e com a tela Mensagens.
+ */
+async function externalCandidates(ctx: PeerContext): Promise<User[]> {
+  const store = getStore();
+  const partyIds = ctx.order
+    ? orderParties(ctx.order)
+    : ctx.request?.customerId
+      ? [ctx.request.customerId]
+      : [];
+  if (!partyIds.length) return [];
+  const users = (
+    await store.list("users", {
+      filter: { active: true, partyId: partyIds },
+      orderBy: "name",
+    })
+  ).filter((u) => !isWellmix(u) && loginActive(u));
+  const ok = await Promise.all(
+    users.map(async (u) => {
+      if (ctx.order && !canViewOrder(u, ctx.order)) return false;
+      if (ctx.request && !(await canSeeRequest(u, ctx.request))) return false;
+      return hasMessagesScreen(u);
+    }),
+  );
+  return users.filter((_, i) => ok[i]);
+}
+
+/**
+ * Com quem da Wellmix quem é de fora conversa (dono, 18/11/2026): o
+ * responsável do pedido ou da solicitação primeiro; depois quem criou a
+ * solicitação e as pessoas com quem ele já conversa; sem ninguém, os
+ * administradores. Só logins ativos.
+ */
+async function wellmixCandidates(
+  user: User,
+  ctx: PeerContext,
+): Promise<User[]> {
+  const store = getStore();
+  const existing = (await memberConversations(user)).sort(
+    (a, b) => time(b.lastMessageAt) - time(a.lastMessageAt),
+  );
+  const ids = [
+    ctx.order?.ownerUserId,
+    ctx.request?.ownerUserId,
+    ctx.request?.createdByUserId,
+    ...existing.map((c) => c.wellmixUserId),
+  ].filter((id): id is string => !!id);
+  const unique = [...new Set(ids)];
+  const found = unique.length
+    ? await store.list("users", { filter: { id: unique } })
+    : [];
+  const ordered = unique
+    .map((id) => found.find((u) => u.id === id))
+    .filter((u): u is User => !!u && isWellmix(u) && loginActive(u));
+  if (ordered.length) return ordered;
+  return (
+    await store.list("users", {
+      filter: { role: "admin", active: true },
+      orderBy: "name",
+    })
+  ).filter(loginActive);
+}
+
+/** Pedido ou solicitação do assunto que se quer abrir. */
+async function contextOf(input: OpenTopicInput): Promise<PeerContext> {
+  const store = getStore();
+  if (input.requestId)
+    return { request: await store.get("requests", input.requestId) };
+  if (input.orderItemId) {
+    const item = await store.get("order_items", input.orderItemId);
+    return { order: item ? await store.get("orders", item.orderId) : null };
+  }
+  if (input.orderId) return { order: await store.get("orders", input.orderId) };
+  return {};
+}
+
+/**
+ * Conversa privada em que o login abre o assunto. Wellmix: com o login de
+ * fora escolhido (`peerUserId`) ou, só com a empresa, o único login dela
+ * que pode conversar (ou aquele com quem já conversa); com vários e nenhuma
+ * conversa ainda: "choose_login". De fora: com a pessoa da Wellmix escolhida
+ * na lista curta, ou com a primeira dela (o responsável).
+ */
+async function resolveConversation(
+  user: User,
+  input: OpenTopicInput,
+  ctx: PeerContext,
+): Promise<Conversation> {
+  const store = getStore();
+  if (input.conversationId) {
+    const found = await store.get("conversations", input.conversationId);
+    if (!found) throw new MessageError("not_found");
+    if (!canAccessConversation(user, found)) throw new ForbiddenError();
+    if (!canWriteConversation(user, found)) {
+      if (!isPair(found)) throw new MessageError("read_only");
+      throw new ForbiddenError();
+    }
+    return found;
+  }
+  const hasContext = !!(ctx.order || ctx.request);
+  if (!isWellmix(user)) {
+    if (input.partyId && input.partyId !== user.partyId)
+      throw new ForbiddenError();
+    const candidates = await wellmixCandidates(user, ctx);
+    const peerId = input.peerUserId ?? candidates[0]?.id ?? null;
+    const peer = candidates.find((u) => u.id === peerId);
+    if (!peer) {
+      if (!peerId) throw new MessageError("no_contact");
+      throw new ForbiddenError();
+    }
+    return pairFor(peer, user);
+  }
+  const peerId = input.peerUserId ?? input.userId ?? null;
+  const candidates = hasContext ? await externalCandidates(ctx) : null;
+  if (peerId) {
+    const peer = await store.get("users", peerId);
+    if (!peer || isWellmix(peer)) throw new MessageError("not_found");
+    if (!loginActive(peer)) throw new MessageError("peer_inactive");
+    if (candidates && !candidates.some((u) => u.id === peer.id))
+      throw new MessageError("not_participant");
+    return pairFor(user, peer);
+  }
+  // Só a empresa: o único login dela que pode conversar, ou com quem já conversa.
+  const partyId = input.partyId ?? null;
+  let pool =
+    candidates ??
+    (partyId
+      ? (
+          await store.list("users", {
+            filter: { active: true, partyId },
+          })
+        ).filter((u) => !isWellmix(u) && loginActive(u))
+      : []);
+  if (partyId) pool = pool.filter((u) => u.partyId === partyId);
+  if (pool.length === 1) return pairFor(user, pool[0]);
+  if (!pool.length) {
+    if (partyId) {
+      const party = await store.get("parties", partyId);
+      if (!party) throw new MessageError("not_found");
+    }
+    throw new MessageError("no_login");
+  }
+  const mine = (await memberConversations(user))
+    .filter((c) => pool.some((u) => u.id === c.externalUserId))
+    .sort((a, b) => time(b.lastMessageAt) - time(a.lastMessageAt));
+  if (mine[0]) return mine[0];
+  throw new MessageError("choose_login");
+}
+
+/**
+ * Abre (encontra ou cria) a conversa privada e o assunto: Geral, de uma
+ * solicitação, de um pedido ou de um produto do pedido. O login de fora da
+ * conversa tem de ver a solicitação/o pedido; quem é de fora, ainda, só se
+ * ele mesmo vê.
  */
 export async function openTopic(
   user: User,
@@ -1104,16 +1527,13 @@ export async function openTopic(
 ): Promise<{ conversationId: string; topicId: string }> {
   const store = getStore();
   const wellmix = isWellmix(user);
+  const ctx = await contextOf(input);
   if (input.requestId) {
-    const request = await store.get("requests", input.requestId);
+    const request = ctx.request;
     if (!request) throw new MessageError("not_found");
     if (!wellmix && !(await canSeeRequest(user, request)))
       throw new ForbiddenError();
-    const conversation = await resolveConversation(
-      user,
-      input,
-      request.customerId,
-    );
+    const conversation = await resolveConversation(user, input, ctx);
     if (!(await companyInRequest(conversation, request)))
       throw new MessageError("not_participant");
     const topic =
@@ -1140,11 +1560,7 @@ export async function openTopic(
     const order = await store.get("orders", item.orderId);
     if (!order) throw new MessageError("not_found");
     if (!wellmix && !canViewOrder(user, order)) throw new ForbiddenError();
-    const conversation = await resolveConversation(
-      user,
-      input,
-      order.customerId,
-    );
+    const conversation = await resolveConversation(user, input, { order });
     if (!(await companyInOrder(conversation, order)))
       throw new MessageError("not_participant");
     const topic =
@@ -1166,11 +1582,7 @@ export async function openTopic(
     const order = await store.get("orders", input.orderId);
     if (!order) throw new MessageError("not_found");
     if (!wellmix && !canViewOrder(user, order)) throw new ForbiddenError();
-    const conversation = await resolveConversation(
-      user,
-      input,
-      order.customerId,
-    );
+    const conversation = await resolveConversation(user, input, { order });
     if (!(await companyInOrder(conversation, order)))
       throw new MessageError("not_participant");
     const topic =
@@ -1186,32 +1598,85 @@ export async function openTopic(
     await generalTopic(conversation);
     return { conversationId: conversation.id, topicId: topic.id };
   }
-  const conversation = await resolveConversation(user, input, null);
+  const conversation = await resolveConversation(user, input, {});
   const topic = await generalTopic(conversation);
   return { conversationId: conversation.id, topicId: topic.id };
+}
+
+/**
+ * Com quem da Wellmix quem é de fora começa uma conversa na tela de
+ * Mensagens (sem pedido nem solicitação): as pessoas com quem já conversa ou,
+ * sem ninguém, os administradores. O login só aparece de quem já conversa.
+ */
+export async function externalContactsFor(
+  user: User,
+): Promise<ChatPeerOption[]> {
+  if (isWellmix(user)) return [];
+  return safe(async () => {
+    const [candidates, existing] = await Promise.all([
+      wellmixCandidates(user, {}),
+      memberConversations(user),
+    ]);
+    return candidates.map((u) => {
+      const conv = existing.find((c) => c.wellmixUserId === u.id);
+      const person = personOf(u, []);
+      return {
+        ...person,
+        login: conv ? person.login : null,
+        partyId: null,
+        conversationId: conv?.id ?? null,
+        lastMessageAt: conv?.lastMessageAt ?? null,
+      };
+    });
+  }, []);
 }
 
 /* ---------------------------------------------------------------------- */
 /* Painel lateral (chat a partir de qualquer linha)                        */
 /* ---------------------------------------------------------------------- */
 
+/** Uma pessoa com quem dá para conversar no contexto ("Escolher conversa"). */
+export interface ChatPeerOption extends ChatPerson {
+  /** Empresa do login de fora (para agrupar por empresa). */
+  partyId: string | null;
+  /** Conversa que já existe com ela (nulo: nasce ao abrir). */
+  conversationId: string | null;
+  lastMessageAt: string | null;
+  /** É o responsável do pedido ou da solicitação. */
+  isOwner?: boolean;
+}
+
 export interface ChatContext {
   kind: "order" | "request";
   id: string;
   /** "Pedido #5" ou "Solicitação nº 3: Jarra". */
   title: string;
-  /** Wellmix: com quem dá para conversar (empresas do pedido/da solicitação). */
+  /** Wellmix: as empresas do pedido/da solicitação (atalhos para filtrar a lista). */
   participants: Array<{ partyId: string; name: string; type: PartyType }>;
   /** Pedido: os produtos (a conversa pode descer até o item). */
   items: Array<{ id: string; name: string }>;
-  /** Quem é de fora fala só com a Wellmix (não escolhe empresa). */
+  /** Quem é de fora fala só com a Wellmix (escolhe a pessoa na lista curta). */
   own: boolean;
+  /** Quem vê ("Enviando como"). */
+  me: ChatPerson;
+  /**
+   * Com quem dá para conversar neste pedido ou solicitação: Wellmix, os
+   * logins de fora que veem; de fora, a lista curta da Wellmix (o
+   * responsável primeiro). O login (e-mail) de quem é da Wellmix só aparece
+   * para quem é de fora quando os dois já conversam.
+   */
+  peers: ChatPeerOption[];
+  /**
+   * Escolha padrão: de fora, quem já conversa com ele sobre este assunto ou,
+   * sem conversa, o responsável; Wellmix, nulo (escolhe no painel).
+   */
+  defaultPeerId: string | null;
 }
 
 /**
  * O que o painel lateral precisa para abrir a conversa de um pedido ou de
- * uma solicitação: as empresas participantes (Wellmix) e os itens. Quem é
- * de fora só recebe o contexto do que ele mesmo vê.
+ * uma solicitação: com quem dá para conversar (cada login, com a empresa) e
+ * os itens. Quem é de fora só recebe o contexto do que ele mesmo vê.
  */
 export async function chatContext(
   user: User,
@@ -1219,6 +1684,9 @@ export async function chatContext(
 ): Promise<ChatContext> {
   const store = getStore();
   const wellmix = isWellmix(user);
+  let ctx: PeerContext;
+  let base: Pick<ChatContext, "kind" | "id" | "title" | "items">;
+  let partyIds: string[];
   if (input.orderId) {
     const order = await store.get("orders", input.orderId);
     if (!order) throw new MessageError("not_found");
@@ -1226,50 +1694,107 @@ export async function chatContext(
     const items = await store.list("order_items", {
       filter: { orderId: order.id },
     });
-    const ids = wellmix ? orderParties(order) : [];
-    const parties = ids.length
-      ? await store.list("parties", { filter: { id: ids } })
-      : [];
-    return {
+    ctx = { order };
+    partyIds = orderParties(order);
+    base = {
       kind: "order",
       id: order.id,
       title: `Pedido #${order.number}`,
-      participants: ids.flatMap((id) => {
-        const p = parties.find((x) => x.id === id);
-        return p ? [{ partyId: p.id, name: p.name, type: p.type }] : [];
-      }),
       items: items.map((i) => ({ id: i.id, name: i.name })),
-      own: !wellmix,
     };
-  }
-  if (input.requestId) {
+  } else if (input.requestId) {
     const request = await store.get("requests", input.requestId);
     if (!request) throw new MessageError("not_found");
     if (!wellmix && !(await canSeeRequest(user, request)))
       throw new ForbiddenError();
-    let participants: ChatContext["participants"] = [];
-    if (wellmix) {
-      const ids = [request.customerId].filter((id): id is string => !!id);
-      const parties = ids.length
-        ? await store.list("parties", { filter: { id: ids } })
-        : [];
-      participants = ids.flatMap((id) => {
-        const p = parties.find((x) => x.id === id);
-        return p ? [{ partyId: p.id, name: p.name, type: p.type }] : [];
-      });
-    }
-    return {
+    ctx = { request };
+    partyIds = [request.customerId].filter((id): id is string => !!id);
+    base = {
       kind: "request",
       id: request.id,
       title: request.number
         ? `Solicitação nº ${request.number}: ${request.productName}`
         : request.productName,
-      participants,
       items: [],
-      own: !wellmix,
     };
+  } else throw new MessageError("not_found");
+
+  const candidates = wellmix
+    ? await externalCandidates(ctx)
+    : await wellmixCandidates(user, ctx);
+  const allPartyIds = [
+    ...new Set([
+      ...(wellmix ? partyIds : []),
+      ...candidates.map((u) => u.partyId).filter((id): id is string => !!id),
+    ]),
+  ];
+  const [parties, me, existing] = await Promise.all([
+    allPartyIds.length
+      ? store.list("parties", { filter: { id: allPartyIds } })
+      : Promise.resolve([] as Party[]),
+    peopleOf([user.id]).then((m) => m.get(user.id)!),
+    memberConversations(user),
+  ]);
+  const peers: ChatPeerOption[] = candidates.map((u) => {
+    const conv = existing.find((c) =>
+      wellmix ? c.externalUserId === u.id : c.wellmixUserId === u.id,
+    );
+    const person = personOf(u, parties);
+    return {
+      ...person,
+      // Privacidade: quem é de fora só vê o login de quem já conversa com ele.
+      login: wellmix || conv ? person.login : null,
+      partyId: u.partyId,
+      conversationId: conv?.id ?? null,
+      lastMessageAt: conv?.lastMessageAt ?? null,
+      isOwner:
+        !!u.id &&
+        u.id === (ctx.order?.ownerUserId ?? ctx.request?.ownerUserId ?? null),
+    };
+  });
+  return {
+    ...base,
+    participants: wellmix
+      ? partyIds.flatMap((id) => {
+          const p = parties.find((x) => x.id === id);
+          return p ? [{ partyId: p.id, name: p.name, type: p.type }] : [];
+        })
+      : [],
+    own: !wellmix,
+    me,
+    peers,
+    defaultPeerId: wellmix ? null : await externalDefaultPeer(base, peers),
+  };
+}
+
+/**
+ * Pessoa padrão de quem é de fora: a da conversa mais recente sobre este
+ * pedido ou solicitação (a resposta que ele espera está lá); sem conversa
+ * sobre ele ainda, o responsável (o primeiro da lista curta).
+ */
+async function externalDefaultPeer(
+  base: Pick<ChatContext, "kind" | "id">,
+  peers: ChatPeerOption[],
+): Promise<string | null> {
+  const withConversation = peers.filter((p) => p.conversationId);
+  if (withConversation.length) {
+    const topics = await getStore().list("conversation_topics", {
+      filter: {
+        conversationId: withConversation.map((p) => p.conversationId!),
+        ...(base.kind === "order"
+          ? { orderId: base.id }
+          : { requestId: base.id }),
+      },
+    });
+    const latest = topics
+      .filter((t) => t.lastMessageAt)
+      .sort((a, b) => time(b.lastMessageAt) - time(a.lastMessageAt))[0];
+    const peer =
+      latest &&
+      withConversation.find((p) => p.conversationId === latest.conversationId);
+    if (peer) return peer.userId;
   }
-  throw new MessageError("not_found");
+  return peers[0]?.userId ?? null;
 }
 
 /** A conversa de um assunto (mesma leitura da tela de Mensagens), para o painel lateral. */
@@ -1311,7 +1836,14 @@ export async function postMessage(
   topicId: string,
   body: string,
   attachment?: MessageAttachment | null,
-  options: { replyToMessageId?: string | null } = {},
+  options: {
+    replyToMessageId?: string | null;
+    /**
+     * Conversa que a tela mostrava ao enviar: se o assunto não é dela (a
+     * pessoa trocou de conversa no meio), recusa em vez de mandar para outro.
+     */
+    conversationId?: string | null;
+  } = {},
 ): Promise<Message> {
   const attached =
     attachment instanceof File
@@ -1323,7 +1855,14 @@ export async function postMessage(
   const text = attached && !typed ? "" : messageBody(body);
   const store = getStore();
   // Acesso antes de qualquer gravação (nem o arquivo sobe sem acesso).
-  const { topic, conversation } = await loadTopicFor(user, topicId);
+  const { topic, conversation } = await loadTopicFor(user, topicId, "write");
+  if (options.conversationId && options.conversationId !== conversation.id)
+    throw new MessageError("conversation_changed");
+  // A outra pessoa sem login ativo: ninguém leria (nada é gravado).
+  if (isPair(conversation)) {
+    const peer = await store.get("users", peerIdOf(user, conversation));
+    if (!peer || !loginActive(peer)) throw new MessageError("peer_inactive");
+  }
   // Resposta: a mensagem marcada tem de ser deste assunto (conferido antes de
   // gravar o anexo).
   let replyTo: Message | null = null;
@@ -1485,72 +2024,49 @@ export async function markTopicRead(user: User, topicId: string) {
     await store.update("notifications", n.id, { readAt: now });
 }
 
-/** Avisa no sino quem está do outro lado; quem já tem aviso não lido do assunto, não. */
+/**
+ * Avisa no sino a outra pessoa da conversa privada (só ela); quem já tem
+ * aviso não lido do assunto, não. Conversa antiga: ninguém (é só leitura).
+ */
 async function notifyOtherSide(
   author: User,
   conversation: Conversation,
   topic: ConversationTopic,
   text: string,
 ) {
+  if (!isMember(author, conversation)) return;
   const store = getStore();
-  const fromWellmix = isWellmix(author);
-  let recipients: User[];
-  if (fromWellmix) {
-    const logins = conversation.partyId
-      ? await store.list("users", {
-          filter: { partyId: conversation.partyId, active: true },
-        })
-      : (
-          await conversationOwner(conversation).then((u) => (u ? [u] : []))
-        ).filter((u) => u.active);
-    const external = logins.filter((u) => !isWellmix(u));
-    const { externalAccessFor } = await import("./partner-access");
-    const sees = await Promise.all(
-      external.map(async (u) => {
-        if (!(await canSeeTopic(u, topic))) return false;
-        // Perfil sem a tela Mensagens (Gestão de telas): sem aviso, que
-        // traria o começo da mensagem e um link que o login não abre.
-        const access = await externalAccessFor(u);
-        return !access || access.screens.includes("messages");
-      }),
-    );
-    recipients = external.filter((_, i) => sees[i]);
-  } else {
-    recipients = await store.list("users", {
-      filter: { role: WELLMIX_ROLES, active: true },
-    });
-  }
-  recipients = recipients.filter((u) => u.id !== author.id);
-  if (!recipients.length) return;
+  const peer = await store.get("users", peerIdOf(author, conversation));
+  if (!peer || !loginActive(peer) || peer.id === author.id) return;
+  // Sem a tela Mensagens (Gestão de telas) ou sem ver o assunto: sem aviso,
+  // que traria o começo da mensagem e um link que o login não abre.
+  if (!(await canSeeTopic(peer, topic)) || !(await hasMessagesScreen(peer)))
+    return;
   const link = topicHref(conversation.id, topic.id);
   const pending = await store.list("notifications", {
-    filter: {
-      userId: recipients.map((u) => u.id),
-      channel: "inapp",
-      link,
-      readAt: null,
-    },
+    filter: { userId: peer.id, channel: "inapp", link, readAt: null },
   });
-  const already = new Set(pending.map((n) => n.userId));
-  const fresh = recipients.filter((u) => !already.has(u.id));
-  if (!fresh.length) return;
-  const company = fromWellmix
-    ? null
-    : (await companiesOf([conversation]))(conversation).name;
+  if (pending.length) return;
+  const people = await peopleOf([author.id]);
+  const who = people.get(author.id);
+  const name = who?.name ?? author.name;
   // O começo da mensagem só vai no aviso de quem lê no mesmo idioma de quem
   // escreveu; os outros abrem a conversa e leem a tradução.
   const written = author.locale ?? WELLMIX_LOCALE;
   await notify(
-    { userIds: fresh.map((u) => u.id) },
+    { userIds: [peer.id] },
     {
       link,
       kind: "info",
       actor: null,
       inAppOnly: true,
       text: (t) => ({
-        subject: company
-          ? t("messages.notify.fromCompany", { company })
-          : t("messages.notify.fromWellmix"),
+        subject: isWellmix(author)
+          ? t("messages.notify.fromPersonWellmix", { name })
+          : t("messages.notify.fromPerson", {
+              name,
+              company: who?.org ?? name,
+            }),
         body:
           t.locale === written
             ? `${topicLabel(t, topic)}: ${previewOf(text, 140)}`

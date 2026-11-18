@@ -43,8 +43,8 @@ beforeAll(async () => {
   admin = by("admin@wellmix.com");
   joao = by("joao@lojista.com");
   supplierA = by("supplier.a@china.com");
-  const [own] = await msg.listConversationsFor(joao);
-  topicId = (await msg.getConversationView(joao, own.id))!.topic.id;
+  // Conversa privada entre a Ana (Wellmix) e o João (docs/CHAT_IDENTITY.md).
+  topicId = (await msg.openTopic(admin, { peerUserId: joao.id })).topicId;
 });
 
 const fileOf = (name: string, type: string, bytes = [1, 2, 3, 4, 5]) =>
@@ -118,7 +118,9 @@ describe("envio de fotos e arquivos pelo chat", () => {
       ["scan.tif", "image/tiff"],
     ])
       tiff = sentId(await send(joao, { topicId, file: fileOf(name, type) }));
-    const [own] = await msg.listConversationsFor(joao);
+    const own = {
+      id: (await msg.openTopic(admin, { peerUserId: joao.id })).conversationId,
+    };
     const view = (await msg.getConversationView(joao, own.id, topicId))!;
     expect(view.messages.find((x) => x.id === tiff)?.attachment?.isImage).toBe(
       false,
@@ -246,7 +248,9 @@ describe("vídeo na conversa", () => {
       "",
       fileOf("antigo.3gp", "video/3gpp", bytes),
     );
-    const [own] = await msg.listConversationsFor(joao);
+    const own = {
+      id: (await msg.openTopic(admin, { peerUserId: joao.id })).conversationId,
+    };
     const view = (await msg.getConversationView(joao, own.id, topicId))!;
     expect(
       view.messages.find((m) => m.id === mp4.id)?.attachment?.isVideo,

@@ -218,30 +218,41 @@ describe("ficha do produto escolhido na nova solicitação", () => {
 });
 
 describe("destinatário de conversa nova (Mensagens)", () => {
-  it("empresas ativas dos tipos da conversa, pelo nome, com o tipo ao lado", async () => {
+  it("o login da pessoa (conversa privada), pelo nome ou pela empresa, com a empresa e o e-mail", async () => {
+    const carrier = (
+      await getStore().list("users", {
+        filter: { email: "transportadora@rodo.com" },
+      })
+    )[0];
     const found = await messages.searchChatTargets(admin, "trans");
     expect(found).toContainEqual({
-      id: "party:transportador",
+      id: `user:${carrier.id}`,
       name: "Trans Rodo",
       type: "carrier",
+      login: "transportadora@rodo.com",
+      org: "Trans Rodo",
     });
     expect(messages.chatTypeLabel(t, "carrier")).toBe(
       t("messages.type.carrier"),
     );
     expect(await messages.searchChatTargets(admin, "t")).toEqual([]);
+    // Pelo e-mail também.
+    expect(
+      (await messages.searchChatTargets(admin, "rodo.com")).map((x) => x.id),
+    ).toContain(`user:${carrier.id}`);
   });
 
-  it("tipos fora da conversa nova (fábrica, trading) não aparecem", async () => {
+  it("logins da Wellmix e de empresas fora dos tipos da conversa não aparecem pela empresa", async () => {
     await getStore().create("parties", {
       ...(await getStore().get("parties", "transportador"))!,
       id: "fabrica-trans",
       type: "factory",
       name: "Trans Fábrica",
     });
-    const ids = (await messages.searchChatTargets(admin, "trans")).map(
-      (x) => x.id,
-    );
-    expect(ids).not.toContain("party:fabrica-trans");
+    const found = await messages.searchChatTargets(admin, "trans");
+    expect(found.every((x) => x.org !== "Trans Fábrica")).toBe(true);
+    const wellmix = await messages.searchChatTargets(admin, "admin");
+    expect(wellmix.some((x) => x.login === "admin@wellmix.com")).toBe(false);
   });
 
   it("só a Wellmix busca", async () => {

@@ -2,10 +2,11 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { withTempStore } from "./setup";
 
 /*
- * Mensagens (chat interno): uma conversa por empresa, vista por todos os
- * logins dela e por toda a Wellmix; outra empresa nunca vê. Assuntos de
- * solicitação/pedido só com a empresa participante. Aviso só no sino, um por
- * assunto até ler.
+ * Mensagens (chat interno; dono, 18/11/2026; docs/CHAT_IDENTITY.md): cada
+ * conversa é privada entre dois logins, a pessoa da Wellmix e a de fora. Só
+ * os dois leem, escrevem e são avisados; o administrador lê todas sem
+ * escrever; a conversa antiga da empresa é só leitura. Assuntos de
+ * solicitação/pedido só com quem vê. Aviso só no sino, um por assunto até ler.
  */
 withTempStore();
 
@@ -56,100 +57,153 @@ afterEach(() => {
 const inapp = (userId: string) =>
   getStore().list("notifications", { filter: { userId, channel: "inapp" } });
 
-describe("conversa por empresa", () => {
+describe("conversa privada entre dois logins", () => {
   let conversationId: string;
   let generalId: string;
 
-  it("cliente escreve no Geral: a conversa nasce para a empresa e a Wellmix vê com 1 não lida", async () => {
-    const [own] = await msg.listConversationsFor(joao);
-    expect(own.partyId).toBe(joao.partyId);
-    expect(own.unread).toBe(0);
-    conversationId = own.id;
-    const view = (await msg.getConversationView(joao, own.id))!;
-    expect(view.topic.kind).toBe("general");
-    generalId = view.topic.id;
+  it("quem é de fora começa sem conversa; a Wellmix abre com o login e escreve", async () => {
+    expect(await msg.listConversationsFor(joao)).toEqual([]);
+    // Lista curta de quem é de fora sem ninguém ainda: os administradores.
+    const contacts = await msg.externalContactsFor(joao);
+    expect(contacts.map((c) => c.userId)).toContain(admin.id);
+    // Privacidade: sem conversa, o login da pessoa da Wellmix não aparece.
+    expect(contacts.every((c) => c.login === null)).toBe(true);
 
-    await msg.postMessage(joao, generalId, "  Olá, Wellmix!  ");
+    const opened = await msg.openTopic(admin, { peerUserId: joao.id });
+    conversationId = opened.conversationId;
+    generalId = opened.topicId;
+    const conv = (await getStore().get("conversations", conversationId))!;
+    expect(conv.wellmixUserId).toBe(admin.id);
+    expect(conv.externalUserId).toBe(joao.id);
+    expect(conv.partyId).toBe(joao.partyId);
+    // Abrir de novo devolve a mesma conversa.
+    expect(
+      (await msg.openTopic(admin, { peerUserId: joao.id })).conversationId,
+    ).toBe(conversationId);
 
-    const list = await msg.listConversationsFor(admin);
-    const row = list.find((c) => c.id === conversationId)!;
-    expect(row.name).toBe("Loja do João Ltda");
-    expect(row.type).toBe("customer");
+    await msg.postMessage(admin, generalId, "  Olá, João!  ");
+    const [row] = await msg.listConversationsFor(joao);
+    expect(row.id).toBe(conversationId);
+    expect(row.mode).toBe("pair");
+    expect(row.readOnly).toBe(false);
+    expect(row.name).toBe("Ana Admin");
+    expect(row.peer).toMatchObject({
+      login: "admin@wellmix.com",
+      side: "wellmix",
+    });
     expect(row.unread).toBe(1);
-    expect(row.lastMessagePreview).toBe("Olá, Wellmix!");
-    expect(await msg.unreadCountFor(admin)).toBe(1);
-    // Quem escreveu não tem nada a ler.
-    expect(await msg.unreadCountFor(joao)).toBe(0);
-    const thread = (await msg.getConversationView(admin, conversationId))!;
-    expect(thread.messages.map((m) => [m.body, m.authorSide])).toEqual([
-      ["Olá, Wellmix!", "external"],
+    expect(await msg.unreadCountFor(joao)).toBe(1);
+    expect(await msg.unreadCountFor(admin)).toBe(0);
+  });
+
+  it("identificação: enviando como, destinatário e para quem foi cada mensagem", async () => {
+    const view = (await msg.getConversationView(joao, conversationId))!;
+    expect(view.identity).toMatchObject({
+      mode: "pair",
+      canWrite: true,
+      readOnly: null,
+      me: { userId: joao.id, login: "joao@lojista.com", side: "external" },
+      peer: { userId: admin.id, login: "admin@wellmix.com", side: "wellmix" },
+    });
+    expect(view.identity.me.org).toBe("Loja do João Ltda");
+    const [m] = view.messages;
+    expect(m.body).toBe("Olá, João!");
+    expect(m.author).toMatchObject({
+      name: "Ana Admin",
+      login: "admin@wellmix.com",
+    });
+    expect(m.recipients?.map((r) => r.login)).toEqual(["joao@lojista.com"]);
+    expect(m.mine).toBe(false);
+    await msg.markTopicRead(joao, generalId);
+    await msg.postMessage(joao, generalId, "Oi, Ana.");
+    const seen = (await msg.getConversationView(admin, conversationId))!;
+    expect(seen.identity.peer?.login).toBe("joao@lojista.com");
+    expect(seen.messages.at(-1)!.recipients?.map((r) => r.userId)).toEqual([
+      admin.id,
     ]);
   });
 
-  it("Wellmix responde: o não lido do cliente sobe; ler zera", async () => {
-    await msg.markTopicRead(admin, generalId);
-    expect(await msg.unreadCountFor(admin)).toBe(0);
-    await msg.postMessage(admin, generalId, "Olá, João. Como ajudamos?");
-    expect(await msg.unreadCountFor(joao)).toBe(1);
-    const [own] = await msg.listConversationsFor(joao);
-    expect(own.unread).toBe(1);
-    const view = (await msg.getConversationView(joao, conversationId))!;
-    expect(view.topic.unread).toBe(1);
-    expect(view.messages.at(-1)).toMatchObject({
-      authorSide: "wellmix",
-      authorName: "Ana Admin",
-      mine: false,
-    });
-    await msg.markTopicRead(joao, generalId);
-    expect(await msg.unreadCountFor(joao)).toBe(0);
-  });
-
-  it("outro login da mesma empresa vê e responde a mesma conversa", async () => {
-    const [own] = await msg.listConversationsFor(maria);
-    expect(own.id).toBe(conversationId);
-    // Maria ainda não leu: as duas mensagens (do João e da Wellmix) contam.
-    expect(own.unread).toBe(2);
-    await msg.postMessage(maria, generalId, "Sou a Maria, da mesma loja.");
-    const view = (await msg.getConversationView(joao, conversationId))!;
-    expect(view.messages).toHaveLength(3);
+  it("outro login da mesma empresa não vê nem escreve na conversa", async () => {
     expect(
-      (
-        await getStore().list("conversations", {
-          filter: { partyId: joao.partyId },
-        })
-      ).length,
-    ).toBe(1);
-  });
-
-  it("fornecedor não lê nem escreve na conversa do cliente", async () => {
+      (await msg.listConversationsFor(maria)).some(
+        (c) => c.id === conversationId,
+      ),
+    ).toBe(false);
+    await expect(
+      msg.getConversationView(maria, conversationId),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(
+      msg.postMessage(maria, generalId, "posso?"),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(
+      msg.openTopic(maria, { conversationId }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
     await expect(
       msg.getConversationView(supplierA, conversationId),
     ).rejects.toBeInstanceOf(ForbiddenError);
-    await expect(
-      msg.postMessage(supplierA, generalId, "oi"),
-    ).rejects.toBeInstanceOf(ForbiddenError);
-    await expect(
-      msg.markTopicRead(supplierA, generalId),
-    ).rejects.toBeInstanceOf(ForbiddenError);
-    await expect(
-      msg.openTopic(supplierA, { conversationId }),
-    ).rejects.toBeInstanceOf(ForbiddenError);
-    // A lista dele só tem a conversa da própria empresa.
-    const list = await msg.listConversationsFor(supplierA);
-    expect(list.map((c) => c.partyId)).toEqual([supplierA.partyId]);
-    expect(list.some((c) => c.id === conversationId)).toBe(false);
   });
 
-  it("login sem empresa (jurídico) tem conversa própria e a Wellmix a abre", async () => {
-    const [own] = await msg.listConversationsFor(legal);
-    expect(own.partyId).toBeNull();
-    expect(own.userId).toBe(legal.id);
-    const opened = await msg.openTopic(admin, { userId: legal.id });
-    expect(opened.conversationId).toBe(own.id);
-    // Wellmix abre conversa com qualquer empresa (aqui, a companhia marítima).
-    const sea = await msg.openTopic(admin, { partyId: armador.partyId });
-    const [armadorOwn] = await msg.listConversationsFor(armador);
-    expect(armadorOwn.id).toBe(sea.conversationId);
+  it("outra pessoa da Wellmix não lê; tem a própria conversa com o mesmo login", async () => {
+    await expect(
+      msg.getConversationView(operator, conversationId),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(
+      msg.postMessage(operator, generalId, "oi"),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    const own = await msg.openTopic(operator, { peerUserId: joao.id });
+    expect(own.conversationId).not.toBe(conversationId);
+    expect(
+      (await msg.listConversationsFor(operator)).map((c) => c.id),
+    ).not.toContain(conversationId);
+    // João tem as duas, cada uma com a sua pessoa.
+    await msg.postMessage(operator, own.topicId, "Sou o Otávio.");
+    const names = (await msg.listConversationsFor(joao)).map((c) => c.name);
+    expect(names.sort()).toEqual(["Ana Admin", "Otávio Operador"]);
+  });
+
+  it("administrador lê a conversa dos outros sem escrever e sem acumular não lidas", async () => {
+    const other = await msg.openTopic(operator, { peerUserId: joao.id });
+    const view = (await msg.getConversationView(admin, other.conversationId))!;
+    expect(view.identity.readOnly).toBe("observer");
+    expect(view.identity.canWrite).toBe(false);
+    expect(view.identity.members.map((p) => p.userId)).toEqual([
+      operator.id,
+      joao.id,
+    ]);
+    expect(view.conversation.unread).toBe(0);
+    await expect(
+      msg.postMessage(admin, other.topicId, "intromissão"),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    const row = (await msg.listConversationsFor(admin)).find(
+      (c) => c.id === other.conversationId,
+    )!;
+    expect(row.readOnly).toBe(true);
+    expect(row.name).toBe("Otávio Operador ↔ João Cliente");
+  });
+
+  it("o aviso vai só para a outra pessoa da conversa", async () => {
+    const other = await msg.openTopic(operator, { peerUserId: joao.id });
+    const link = msg.topicHref(other.conversationId, other.topicId);
+    await msg.postMessage(joao, other.topicId, "Otávio, uma dúvida.");
+    const toOperator = (await inapp(operator.id)).filter(
+      (n) => n.link === link,
+    );
+    const toAdmin = (await inapp(admin.id)).filter((n) => n.link === link);
+    expect(toOperator).toHaveLength(1);
+    expect(toOperator[0].subject).toBe(
+      "Nova mensagem de João Cliente (Loja do João Ltda)",
+    );
+    expect(toAdmin).toHaveLength(0);
+    expect(await msg.unreadCountFor(operator)).toBe(1);
+  });
+
+  it("a conversa mudou antes do envio: recusa em vez de mandar para outro", async () => {
+    const other = await msg.openTopic(operator, { peerUserId: joao.id });
+    await expect(
+      msg.postMessage(joao, generalId, "para a Ana", null, {
+        conversationId: other.conversationId,
+      }),
+    ).rejects.toThrow("conversation_changed");
   });
 
   it("texto vazio ou com mais de 4.000 caracteres é recusado", async () => {
@@ -161,6 +215,140 @@ describe("conversa por empresa", () => {
     ).rejects.toThrow("message_too_long");
     const ok = await msg.postMessage(joao, generalId, "x".repeat(4000));
     expect(ok.body).toHaveLength(4000);
+  });
+});
+
+describe("empresa com vários logins, nomes iguais e login desativado", () => {
+  let dupA: User;
+  let dupB: User;
+
+  beforeAll(async () => {
+    const store = getStore();
+    const party = await store.create("parties", {
+      ...(await store.get("parties", "transportador"))!,
+      id: "transp-dupla",
+      name: "Transportes Dupla",
+    });
+    const base = {
+      role: "carrier" as const,
+      partyId: party.id,
+      locale: "pt" as const,
+      passwordHash: null,
+      active: true,
+      importerId: null,
+    };
+    dupA = await store.create("users", {
+      ...base,
+      email: "carlos.a@dupla.com",
+      name: "Carlos Souza",
+    });
+    dupB = await store.create("users", {
+      ...base,
+      email: "carlos.b@dupla.com",
+      name: "Carlos Souza",
+    });
+  });
+
+  it("empresa com dois logins: escolher a pessoa; com um só, abre direto", async () => {
+    await expect(
+      msg.openTopic(operator, { partyId: "transp-dupla" }),
+    ).rejects.toThrow("choose_login");
+    const sea = await msg.openTopic(operator, { partyId: armador.partyId });
+    const conv = (await getStore().get("conversations", sea.conversationId))!;
+    expect(conv.externalUserId).toBe(armador.id);
+    // Escolhida uma pessoa, a empresa abre na conversa com ela.
+    const withB = await msg.openTopic(operator, { peerUserId: dupB.id });
+    expect(
+      (await msg.openTopic(operator, { partyId: "transp-dupla" }))
+        .conversationId,
+    ).toBe(withB.conversationId);
+  });
+
+  it("nomes iguais se distinguem pelo login na busca e no cabeçalho", async () => {
+    const found = await msg.searchChatTargets(admin, "carlos");
+    expect(
+      found.filter((f) => f.name === "Carlos Souza").map((f) => f.login),
+    ).toEqual(
+      expect.arrayContaining(["carlos.a@dupla.com", "carlos.b@dupla.com"]),
+    );
+    expect(found.find((f) => f.login === "carlos.a@dupla.com")).toMatchObject({
+      id: `user:${dupA.id}`,
+      org: "Transportes Dupla",
+    });
+    // Busca pelo nome da empresa traz os logins dela.
+    const byCompany = await msg.searchChatTargets(admin, "dupla");
+    expect(byCompany.map((f) => f.id)).toEqual(
+      expect.arrayContaining([`user:${dupA.id}`, `user:${dupB.id}`]),
+    );
+    const a = await msg.openTopic(admin, { peerUserId: dupA.id });
+    const view = (await msg.getConversationView(admin, a.conversationId))!;
+    expect(view.identity.peer?.login).toBe("carlos.a@dupla.com");
+  });
+
+  it("login desativado: a conversa fica só leitura e o envio é recusado", async () => {
+    const a = await msg.openTopic(admin, { peerUserId: dupA.id });
+    await msg.postMessage(admin, a.topicId, "Antes de sair");
+    await getStore().update("users", dupA.id, { active: false });
+    try {
+      const view = (await msg.getConversationView(admin, a.conversationId))!;
+      expect(view.identity.readOnly).toBe("peer_inactive");
+      expect(view.identity.peer?.active).toBe(false);
+      // O histórico continua com o nome e o login de quem recebeu.
+      expect(view.messages[0].recipients?.[0].login).toBe("carlos.a@dupla.com");
+      await expect(
+        msg.postMessage(admin, a.topicId, "Ainda aí?"),
+      ).rejects.toThrow("peer_inactive");
+      await expect(
+        msg.openTopic(operator, { peerUserId: dupA.id }),
+      ).rejects.toThrow("peer_inactive");
+    } finally {
+      await getStore().update("users", dupA.id, { active: true });
+    }
+  });
+});
+
+describe("conversa antiga da empresa (antes de 18/11/2026)", () => {
+  it("continua visível só para leitura, com o destinatário não identificado", async () => {
+    const store = getStore();
+    const legacy = await store.create("conversations", {
+      partyId: legal.partyId ?? null,
+      userId: legal.partyId ? null : legal.id,
+      lastMessageAt: new Date().toISOString(),
+      lastMessagePreview: "antiga",
+      status: "open",
+    });
+    const topic = await store.create("conversation_topics", {
+      conversationId: legacy.id,
+      kind: "general",
+      requestId: null,
+      orderId: null,
+      title: null,
+      lastMessageAt: new Date().toISOString(),
+    });
+    await store.create("messages", {
+      conversationId: legacy.id,
+      topicId: topic.id,
+      authorUserId: operator.id,
+      authorSide: "wellmix",
+      body: "Mensagem antiga",
+      attachmentDocumentId: null,
+    });
+    const row = (await msg.listConversationsFor(legal)).find(
+      (c) => c.id === legacy.id,
+    )!;
+    expect(row).toMatchObject({ mode: "legacy", readOnly: true });
+    const view = (await msg.getConversationView(legal, legacy.id))!;
+    expect(view.identity.readOnly).toBe("legacy");
+    expect(view.messages[0].recipients).toBeNull();
+    expect(view.messages[0].author.login).toBe("operador@wellmix.com");
+    // A Wellmix também lê; ninguém escreve.
+    expect(await msg.getConversationView(operator, legacy.id)).not.toBeNull();
+    await expect(msg.postMessage(legal, topic.id, "oi")).rejects.toThrow(
+      "read_only",
+    );
+    await expect(msg.postMessage(operator, topic.id, "oi")).rejects.toThrow(
+      "read_only",
+    );
   });
 });
 
@@ -176,17 +364,24 @@ describe("assunto de solicitação", () => {
       unit: "un",
     });
     requestId = request.id;
+    // Responsável da solicitação: o operador.
+    await getStore().update("requests", requestId, {
+      ownerUserId: operator.id,
+    });
   });
 
-  it("só a empresa participante (ou a Wellmix) abre o assunto", async () => {
-    // O cliente solicitante abre na conversa da própria empresa.
+  it("quem é de fora fala com o responsável; a Wellmix só com quem vê", async () => {
     const mine = await msg.openTopic(joao, { requestId });
-    const [own] = await msg.listConversationsFor(joao);
-    expect(mine.conversationId).toBe(own.id);
-    // Abrir de novo devolve o mesmo assunto.
+    const conv = (await getStore().get("conversations", mine.conversationId))!;
+    expect(conv.wellmixUserId).toBe(operator.id);
+    expect(conv.externalUserId).toBe(joao.id);
     expect((await msg.openTopic(joao, { requestId })).topicId).toBe(
       mine.topicId,
     );
+    // Contexto do painel: o responsável primeiro.
+    const ctx = await msg.chatContext(joao, { requestId });
+    expect(ctx.defaultPeerId).toBe(operator.id);
+    expect(ctx.peers[0].userId).toBe(operator.id);
     // Fornecedor e parceiro de fora: não veem a solicitação.
     await expect(
       msg.openTopic(supplierB, { requestId }),
@@ -194,41 +389,43 @@ describe("assunto de solicitação", () => {
     await expect(msg.openTopic(armador, { requestId })).rejects.toBeInstanceOf(
       ForbiddenError,
     );
-    // Wellmix: com o cliente (padrão); empresa que não participa, não.
-    expect((await msg.openTopic(admin, { requestId })).topicId).toBe(
-      mine.topicId,
-    );
+    // Wellmix: o operador com o João cai no mesmo assunto; login que não vê
+    // a solicitação (Maria, da mesma loja), não.
+    expect(
+      (await msg.openTopic(operator, { requestId, peerUserId: joao.id }))
+        .topicId,
+    ).toBe(mine.topicId);
     await expect(
-      msg.openTopic(admin, { requestId, partyId: supplierB.partyId }),
+      msg.openTopic(admin, { requestId, peerUserId: maria.id }),
     ).rejects.toThrow("not_participant");
-    // Outro login da mesma empresa não vê a solicitação do João: o assunto
-    // não aparece para ele e não abre.
-    const mariaView = (await msg.getConversationView(maria, own.id))!;
-    expect(mariaView.topics.some((t) => t.id === mine.topicId)).toBe(false);
     await expect(
-      msg.getConversationView(maria, own.id, mine.topicId),
-    ).rejects.toBeInstanceOf(ForbiddenError);
+      msg.openTopic(admin, { requestId, peerUserId: supplierB.id }),
+    ).rejects.toThrow("not_participant");
+    // De fora não escolhe qualquer pessoa da Wellmix.
+    const stranger = (
+      await getStore().list("users", {
+        filter: { email: "vendas@wellmix.com" },
+      })
+    )[0];
     await expect(
-      msg.postMessage(maria, mine.topicId, "posso ver?"),
+      msg.openTopic(joao, { requestId, peerUserId: stranger.id }),
     ).rejects.toBeInstanceOf(ForbiddenError);
-    const joaoView = (await msg.getConversationView(joao, own.id))!;
-    expect(joaoView.topics.map((t) => t.kind)).toEqual(["general", "request"]);
   });
 });
 
 describe("avisos no sino", () => {
   it("só in-app e no máximo um não lido por assunto até ler", async () => {
-    const { conversationId, topicId } = await msg.openTopic(admin, {
-      partyId: "fornecedor-c",
-    });
     const supplierC = (
       await getStore().list("users", {
         filter: { partyId: "fornecedor-c" },
       })
     )[0];
+    const { conversationId, topicId } = await msg.openTopic(admin, {
+      peerUserId: supplierC.id,
+    });
     const before = (await inapp(supplierC.id)).length;
     await msg.postMessage(admin, topicId, "Primeira");
-    await msg.postMessage(operator, topicId, "Segunda");
+    await msg.postMessage(admin, topicId, "Segunda");
     let notices = (await inapp(supplierC.id)).slice(before);
     expect(notices).toHaveLength(1);
     expect(notices[0].link).toBe(msg.topicHref(conversationId, topicId));
@@ -252,35 +449,21 @@ describe("avisos no sino", () => {
     notices = (await inapp(supplierC.id)).slice(before);
     expect(notices).toHaveLength(2);
     expect(notices.filter((n) => !n.readAt)).toHaveLength(1);
-
-    // Resposta da empresa avisa a Wellmix (uma vez), não o próprio autor.
-    const adminBefore = (await inapp(admin.id)).filter(
-      (n) => n.link === notices[0].link,
-    ).length;
-    await msg.postMessage(supplierC, topicId, "Recebido");
-    await msg.postMessage(supplierC, topicId, "Mais uma");
-    const adminNotices = (await inapp(admin.id)).filter(
-      (n) => n.link === notices[0].link,
-    );
-    expect(adminNotices.length - adminBefore).toBe(1);
-    expect(adminNotices.at(-1)!.subject).toBe(
-      "Nova mensagem de Ningbo Supplier C",
-    );
-    // O texto vai no idioma de quem recebe (Wang Fang usa zh).
-    expect(notices.at(-1)!.subject).toBe("Wellmix 发来新消息");
+    // O texto vai no idioma de quem recebe (Wang Fang usa zh), com o nome.
+    expect(notices.at(-1)!.subject).toBe("来自 Ana Admin（Wellmix）的新消息");
   });
 
   it("perfil sem a tela Mensagens não recebe o aviso da mensagem", async () => {
     const access = await import("@/lib/services/partner-access");
     const { ROLE_SCREENS } = await import("@/lib/auth/screens");
-    const { topicId } = await msg.openTopic(admin, {
-      partyId: "fornecedor-c",
-    });
     const supplierC = (
       await getStore().list("users", {
         filter: { partyId: "fornecedor-c" },
       })
     )[0];
+    const { topicId } = await msg.openTopic(admin, {
+      peerUserId: supplierC.id,
+    });
     // Nada pendente no assunto: a próxima mensagem geraria um aviso novo.
     await msg.markTopicRead(supplierC, topicId);
     const before = (await inapp(supplierC.id)).length;
@@ -329,6 +512,9 @@ describe("abrir a conversa no assunto certo", () => {
       unit: "un",
       deadline: null,
       notes: null,
+    });
+    await getStore().update("requests", request.id, {
+      ownerUserId: admin.id,
     });
     const { conversationId, topicId } = await msg.openTopic(joao, {
       requestId: request.id,
@@ -401,6 +587,12 @@ describe("assunto por item do pedido", () => {
       orderItemId: itemId,
       partyId: supplierOfOrder.partyId,
     });
+    // A empresa tem um login que vê o pedido: a conversa é com ele.
+    const conv = (await getStore().get(
+      "conversations",
+      opened.conversationId,
+    ))!;
+    expect(conv.externalUserId).toBe(supplierOfOrder.id);
     const topic = (await getStore().get(
       "conversation_topics",
       opened.topicId,
@@ -424,8 +616,8 @@ describe("assunto por item do pedido", () => {
 
   it("o fornecedor do pedido abre o item na conversa dele; fornecedor de fora, não", async () => {
     const mine = await msg.openTopic(supplierOfOrder, { orderItemId: itemId });
-    const [own] = await msg.listConversationsFor(supplierOfOrder);
-    expect(mine.conversationId).toBe(own.id);
+    const own = await msg.listConversationsFor(supplierOfOrder);
+    expect(own.map((c) => c.id)).toContain(mine.conversationId);
     await msg.postMessage(
       supplierOfOrder,
       mine.topicId,
@@ -440,9 +632,16 @@ describe("assunto por item do pedido", () => {
     await expect(
       msg.openTopic(admin, {
         orderItemId: itemId,
-        partyId: otherSupplier.partyId,
+        peerUserId: otherSupplier.id,
       }),
     ).rejects.toThrow("not_participant");
+    // Só com a empresa de fora do pedido: ninguém dela pode conversar.
+    await expect(
+      msg.openTopic(admin, {
+        orderItemId: itemId,
+        partyId: otherSupplier.partyId,
+      }),
+    ).rejects.toThrow("no_login");
   });
 
   it("item de outro pedido é recusado", async () => {
@@ -455,17 +654,28 @@ describe("assunto por item do pedido", () => {
     ).rejects.toThrow("item_not_in_order");
   });
 
-  it("contexto do painel: Wellmix vê as empresas e os itens; o fornecedor só fala com a Wellmix", async () => {
+  it("contexto do painel: Wellmix vê os logins e os itens; o fornecedor só fala com a Wellmix", async () => {
     const ctx = await msg.chatContext(admin, { orderId });
     expect(ctx.kind).toBe("order");
     expect(ctx.own).toBe(false);
+    expect(ctx.me.login).toBe("admin@wellmix.com");
     expect(
       ctx.participants.some((p) => p.partyId === supplierOfOrder.partyId),
     ).toBe(true);
+    // Cada login com quem dá para conversar, com o e-mail e a empresa.
+    const peer = ctx.peers.find((p) => p.userId === supplierOfOrder.id)!;
+    expect(peer).toMatchObject({
+      login: supplierOfOrder.email,
+      partyId: supplierOfOrder.partyId,
+    });
+    expect(peer.conversationId).toBeTruthy();
+    expect(ctx.peers.some((p) => p.userId === otherSupplier.id)).toBe(false);
     expect(ctx.items.map((i) => i.id)).toContain(itemId);
     const mine = await msg.chatContext(supplierOfOrder, { orderId });
     expect(mine.own).toBe(true);
     expect(mine.participants).toEqual([]);
+    expect(mine.peers.every((p) => p.side === "wellmix")).toBe(true);
+    expect(mine.defaultPeerId).toBe(mine.peers[0]?.userId);
     expect(mine.items.map((i) => i.id)).toContain(itemId);
     await expect(
       msg.chatContext(otherSupplier, { orderId }),

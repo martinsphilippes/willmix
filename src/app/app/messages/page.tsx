@@ -6,6 +6,7 @@ import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { MESSAGE_MAX_LENGTH, type PartyType, type Role } from "@/lib/db/schema";
 import {
   chatTypeLabel,
+  externalContactsFor,
   getConversationView,
   listConversationsFor,
   topicLabel,
@@ -29,6 +30,7 @@ import {
   Empty,
   Field,
   PageHeader,
+  Select,
   Textarea,
   TextLink,
   cx,
@@ -39,9 +41,16 @@ import { partyPickerLabels } from "@/components/party-picker-labels";
 import { MessageAttach } from "@/components/message-attach";
 import { ChatAttachmentView } from "@/components/chat-attachment";
 import {
+  chatIdentityLabels,
   chatReplyLabels,
   chatUploadLabels,
 } from "@/components/chat-upload-labels";
+import {
+  ChatIdentityHeader,
+  ChatMessageMeta,
+  ChatSendingTo,
+  type ChatIdentityLabels,
+} from "@/components/chat-identity";
 import { ReplyComposer, ReplyQuote, ReplySwipe } from "@/components/chat-reply";
 import { replyTarget } from "@/lib/chat-reply";
 import { MarkTopicRead, MessagesAutoRefresh } from "@/components/messages-live";
@@ -59,6 +68,12 @@ import {
  * quem é de fora: os assuntos da conversa da própria empresa. A conversa se
  * atualiza sozinha a cada 20 s e o assunto aberto é marcado como lido pela
  * tela (Server Action), não pela leitura da página.
+ *
+ * Conversa privada entre dois logins (dono, 18/11/2026; docs/CHAT_IDENTITY.md):
+ * a lista mostra a outra pessoa; em cima da conversa, "Enviando como" e
+ * "Destinatário"; cada mensagem, autor, login e para quem foi; o campo de
+ * envio, "Enviando para". O administrador lê as conversas dos outros sem
+ * escrever; a conversa antiga da empresa é só leitura.
  */
 
 /** Rótulo do tipo da empresa ou do papel do login (messages.ts). */
@@ -131,7 +146,10 @@ export default async function MessagesPage({
   // Conversa nova (Wellmix): empresa ou login escolhidos por busca (a lista
   // com as ~32 mil empresas deixava a tela com 8,9 MB).
   const canStart = wellmix;
+  // Quem é de fora começa conversa com a lista curta da Wellmix.
+  const contacts = wellmix ? [] : await externalContactsFor(user);
   const tree = view ? await topicTree(t, view.topics) : [];
+  const idLabels = chatIdentityLabels(t);
   const errorText = !error
     ? null
     : error === "invalid_input"
@@ -184,17 +202,17 @@ export default async function MessagesPage({
                 data-new-conversation
               >
                 <div className="min-w-0 flex-1">
-                  <Field label={t("messages.new.pick")}>
+                  <Field label={t("messages.new.pickLogin")}>
                     <SearchPicker
                       endpoint="/api/messages/targets"
                       marker="chat-target"
                       kind="new"
                       name="target"
                       required
-                      ariaLabel={t("messages.new.pick")}
+                      ariaLabel={t("messages.new.pickLogin")}
                       labels={{
                         ...partyPickerLabels(t),
-                        placeholder: t("messages.new.choose"),
+                        placeholder: t("messages.new.chooseLogin"),
                       }}
                     />
                   </Field>
@@ -205,17 +223,39 @@ export default async function MessagesPage({
               </form>
             </Card>
           ) : null}
-          {wellmix ? (
-            <ConversationList
-              t={t}
-              conversations={conversations}
-              selectedId={view?.conversation.id ?? null}
-            />
-          ) : view ? (
-            <Card dense title={t("messages.topics")}>
-              <TopicLinks t={t} view={view} tree={tree} vertical />
+          {!wellmix && contacts.length ? (
+            <Card dense title={t("messages.new.external")}>
+              <form
+                action={startConversationAction}
+                className="flex flex-wrap items-end gap-2"
+                data-new-conversation-external
+              >
+                <div className="min-w-0 flex-1">
+                  <Field label={t("messages.new.externalPick")}>
+                    <Select name="target" required defaultValue="">
+                      <option value="" disabled>
+                        {t("messages.new.chooseLogin")}
+                      </option>
+                      {contacts.map((c) => (
+                        <option key={c.userId} value={`user:${c.userId}`}>
+                          {c.login ? `${c.name} (${c.login})` : c.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
+                <SubmitButton variant="secondary">
+                  {t("messages.new.open")}
+                </SubmitButton>
+              </form>
             </Card>
           ) : null}
+          <ConversationList
+            t={t}
+            conversations={conversations}
+            selectedId={view?.conversation.id ?? null}
+            labels={idLabels}
+          />
         </div>
         <div className="min-w-0">
           {view ? (
@@ -223,8 +263,8 @@ export default async function MessagesPage({
               t={t}
               view={view}
               tree={tree}
-              wellmix={wellmix}
               aiOn={aiOn}
+              labels={idLabels}
             />
           ) : (
             <Empty>
@@ -243,10 +283,12 @@ function ConversationList({
   t,
   conversations,
   selectedId,
+  labels,
 }: {
   t: Translate;
   conversations: ConversationSummary[];
   selectedId: string | null;
+  labels: ChatIdentityLabels;
 }) {
   return (
     <Card dense title={t("messages.conversations")}>
@@ -276,8 +318,30 @@ function ConversationList({
                     >
                       {c.name}
                     </span>
+                    {c.mode === "legacy" ? (
+                      <Badge>{labels.legacy}</Badge>
+                    ) : null}
                     <UnreadPill n={c.unread} t={t} />
                   </span>
+                  {c.peer && !c.readOnly ? (
+                    <span
+                      className="mt-0.5 block truncate text-xs text-zinc-500"
+                      title={[
+                        c.peer.login,
+                        c.peer.side === "wellmix" ? labels.wellmix : c.peer.org,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                      data-conversation-peer={c.peer.userId}
+                    >
+                      {[
+                        c.peer.login,
+                        c.peer.side === "wellmix" ? labels.wellmix : c.peer.org,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  ) : null}
                   <span className="mt-0.5 flex items-center gap-2 text-xs text-zinc-500">
                     {typeLabel(t, c.type) ? (
                       <span className="shrink-0">{typeLabel(t, c.type)}</span>
@@ -421,15 +485,15 @@ function Thread({
   t,
   view,
   tree,
-  wellmix,
   aiOn,
+  labels,
 }: {
   t: Translate;
   view: ConversationView;
   tree: TopicNode[];
-  wellmix: boolean;
   /** Tradução automática ligada (a dica aparece no campo de envio). */
   aiOn: boolean;
+  labels: ChatIdentityLabels;
 }) {
   const type = typeLabel(t, view.conversation.type);
   const replyLabels = chatReplyLabels(t);
@@ -438,19 +502,21 @@ function Thread({
       dense
       title={
         <span className="flex flex-wrap items-center gap-2">
-          {wellmix ? view.conversation.name : t("messages.side.wellmix")}
-          {wellmix && type ? <Badge>{type}</Badge> : null}
+          <span className="break-words">{view.conversation.name}</span>
+          {type ? <Badge>{type}</Badge> : null}
           <span className="text-sm font-normal text-zinc-500">
             · {topicLabel(t, view.topic)}
           </span>
         </span>
       }
     >
-      {wellmix ? (
-        <div className="mb-3">
-          <TopicLinks t={t} view={view} tree={tree} />
-        </div>
-      ) : null}
+      {/* Quem envia e quem recebe (dados da sessão, conferidos no servidor). */}
+      <div className="mb-3 border-b border-zinc-100 pb-3">
+        <ChatIdentityHeader identity={view.identity} labels={labels} />
+      </div>
+      <div className="mb-3">
+        <TopicLinks t={t} view={view} tree={tree} />
+      </div>
       {/* Coluna invertida: a conversa abre já no fim (mensagens mais novas). */}
       <div
         className="flex max-h-[60vh] min-h-40 flex-col-reverse overflow-y-auto overflow-x-hidden rounded-xl bg-zinc-50 p-2 sm:p-3"
@@ -485,25 +551,13 @@ function Thread({
                           : "border border-zinc-200 bg-white text-zinc-900",
                     )}
                   >
-                    <div
-                      className={cx(
-                        "mb-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px]",
-                        m.mine ? "text-white/80" : "text-zinc-500",
-                      )}
-                    >
-                      <span className="font-semibold">
-                        {m.mine ? t("messages.you") : m.authorName}
-                      </span>
-                      <span>
-                        ·{" "}
-                        {m.authorSide === "wellmix"
-                          ? t("messages.side.wellmix")
-                          : view.conversation.name}
-                      </span>
-                      <span className="tabular-nums">
-                        · {formatWhen(m.createdAt, t.intl)}
-                      </span>
-                    </div>
+                    <ChatMessageMeta
+                      author={m.author}
+                      recipients={m.recipients}
+                      mine={m.mine}
+                      when={formatWhen(m.createdAt, t.intl)}
+                      labels={labels}
+                    />
                     {m.replyTo ? (
                       <ReplyQuote
                         quote={m.replyTo}
@@ -578,46 +632,56 @@ function Thread({
           </p>
         )}
       </div>
-      <form action={postMessageAction} className="mt-3 space-y-2" data-composer>
-        <input
-          type="hidden"
-          name="conversationId"
-          value={view.conversation.id}
-        />
-        <input type="hidden" name="topicId" value={view.topic.id} />
-        {/* Mensagem marcada para responder ("Respondendo a …"). */}
-        <ReplyComposer key={view.topic.id} labels={replyLabels} />
-        <Field
-          label={t("messages.body.label")}
-          hint={
-            aiOn
-              ? `${t("messages.tr.hint")} ${t("messages.body.hint", {
-                  max: MESSAGE_MAX_LENGTH.toLocaleString(t.intl),
-                })}`
-              : t("messages.body.hint", {
-                  max: MESSAGE_MAX_LENGTH.toLocaleString(t.intl),
-                })
-          }
+      {view.identity.canWrite ? (
+        <form
+          action={postMessageAction}
+          className="mt-3 space-y-2"
+          data-composer
         >
-          <Textarea
-            name="body"
-            rows={3}
-            maxLength={MESSAGE_MAX_LENGTH}
-            placeholder={t("messages.body.placeholder")}
+          <input
+            type="hidden"
+            name="conversationId"
+            value={view.conversation.id}
           />
-        </Field>
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          {/* Escolher fotos ou arquivos envia na hora (vários de uma vez),
+          <input type="hidden" name="topicId" value={view.topic.id} />
+          <ChatSendingTo peer={view.identity.peer} labels={labels} />
+          {/* Mensagem marcada para responder ("Respondendo a …"). */}
+          <ReplyComposer key={view.topic.id} labels={replyLabels} />
+          <Field
+            label={t("messages.body.label")}
+            hint={
+              aiOn
+                ? `${t("messages.tr.hint")} ${t("messages.body.hint", {
+                    max: MESSAGE_MAX_LENGTH.toLocaleString(t.intl),
+                  })}`
+                : t("messages.body.hint", {
+                    max: MESSAGE_MAX_LENGTH.toLocaleString(t.intl),
+                  })
+            }
+          >
+            <Textarea
+              name="body"
+              rows={3}
+              maxLength={MESSAGE_MAX_LENGTH}
+              placeholder={t("messages.body.placeholder")}
+            />
+          </Field>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            {/* Escolher fotos ou arquivos envia na hora (vários de uma vez),
               junto com o texto digitado. */}
-          <MessageAttach topicId={view.topic.id} labels={chatUploadLabels(t)} />
-          <SubmitButton pendingText={t("messages.sending")}>
-            {t("messages.send")}
-          </SubmitButton>
-        </div>
-        <p className="text-xs text-zinc-500">
-          {t("chat.attachHint")} {t("messages.reply.hint")}
-        </p>
-      </form>
+            <MessageAttach
+              topicId={view.topic.id}
+              labels={chatUploadLabels(t)}
+            />
+            <SubmitButton pendingText={t("messages.sending")}>
+              {t("messages.send")}
+            </SubmitButton>
+          </div>
+          <p className="text-xs text-zinc-500">
+            {t("chat.attachHint")} {t("messages.reply.hint")}
+          </p>
+        </form>
+      ) : null}
     </Card>
   );
 }
