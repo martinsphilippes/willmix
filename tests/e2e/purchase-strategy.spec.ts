@@ -185,9 +185,10 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   await expect(page.locator("main")).not.toContainText("Shenzhen");
   await login(page, "operador@wellmix.com");
   // Ainda encomenda: está na lista de Encomendas.
+  // (a linha abre a página do pedido; docs/ORDER_LEVEL_LISTS.md)
   await page.goto("/app/requests");
   await expect(
-    page.locator(`a[href="/app/requests/${encomenda}"]`).first(),
+    page.locator(`a[href="/app/requests/batch/${encomenda}"]`).first(),
   ).toBeVisible();
   const decisionC = await chooseFor(page, encomenda, "last_supplier");
   await approve(page, decisionC);
