@@ -1,5 +1,6 @@
 import type {
   DemandChannel,
+  PurchaseDecision,
   Request,
   RequestOrigin,
   User,
@@ -80,4 +81,39 @@ export function splitCart<T extends CartDemandLine>(
     } else order.push(line);
   }
   return { ready, order };
+}
+
+/** Por que a encomenda saiu do caminho da estratégia de compra. */
+export type ClosedDemandReason = "cancelled" | "ordered" | "missing";
+
+/**
+ * A encomenda não segue mais na estratégia (dono, 18/11/2026)? Cancelada
+ * (excluída em Encomendas), já em outro pedido ou não encontrada. Com uma
+ * assim, a estratégia não é aprovada nem gera o pedido; fica gravada como
+ * está (recusar continua valendo).
+ */
+export function closedDemandReason(
+  decision: Pick<PurchaseDecision, "orderId">,
+  demand: Pick<Request, "status" | "orderId"> | null | undefined,
+): ClosedDemandReason | null {
+  if (!demand) return "missing";
+  if (demand.status === "CANCELLED") return "cancelled";
+  if (demand.orderId && demand.orderId !== decision.orderId) return "ordered";
+  return null;
+}
+
+/** As encomendas da estratégia que não seguem mais (pelo id), com o motivo. */
+export function closedDemands(
+  decision: Pick<PurchaseDecision, "orderId" | "demandIds">,
+  demands: readonly Pick<Request, "id" | "status" | "orderId">[],
+): Map<string, ClosedDemandReason> {
+  const out = new Map<string, ClosedDemandReason>();
+  for (const id of decision.demandIds) {
+    const reason = closedDemandReason(
+      decision,
+      demands.find((d) => d.id === id),
+    );
+    if (reason) out.set(id, reason);
+  }
+  return out;
 }

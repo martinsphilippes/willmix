@@ -111,13 +111,22 @@ export async function orderFromStrategyAction(form: FormData) {
       .min(1)
       .max(200)
       .parse(form.getAll("productIds").map(String));
+    // Peças: número inteiro, com "526.320" lido como milhar (dono,
+    // 18/11/2026), a mesma leitura da tela que mostra os totais.
     const lines = productIds.map((productId) => ({
       productId,
       quantity: QTY.parse(
-        parseNumberInput(str(form, `quantity__${productId}`)),
+        parseNumberInput(str(form, `quantity__${productId}`), { int: true }),
       ),
       unitPrice: seesPrice ? price(str(form, `unitPrice__${productId}`)) : null,
     }));
+    // O que a tela mostrou (caixas master, inner e cubagem) por produto: o
+    // serviço refaz a conta com a embalagem de agora e recusa se mudou.
+    const seals = Object.fromEntries(
+      productIds
+        .map((productId) => [productId, str(form, `seal__${productId}`)])
+        .filter(([, seal]) => seal && seal.length <= 120),
+    ) as Record<string, string>;
     const currency = seesPrice
       ? z
           .string()
@@ -145,6 +154,7 @@ export async function orderFromStrategyAction(form: FormData) {
       leadTimeDays,
       incoterm,
       lines,
+      seals,
     });
     return `/app/orders/${order.id}?created=1`;
   });

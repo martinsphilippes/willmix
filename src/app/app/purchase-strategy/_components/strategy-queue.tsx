@@ -28,6 +28,8 @@ import {
   sendStrategyAction,
   type StrategySendState,
 } from "../../actions/purchase-demand";
+import type { PackingBasis, PackingTotals } from "@/lib/strategy-packing";
+import { PackingCells, type PackingTexts } from "./packing-cells";
 
 /*
  * Estratégia de Compra (dono, 18/11/2026; docs/PURCHASE_DEMAND.md,
@@ -71,6 +73,17 @@ export interface StrategyLineData {
   suggestedIds: string[];
   /** Sem produto do catálogo: não dá para escolher. */
   blocked: string | null;
+  /**
+   * Quantidade (peças), caixas master, caixas inner e cubagem (dono,
+   * 18/11/2026), com as fontes da ficha completa. Nulo: sem leitura.
+   */
+  packing: {
+    totals: PackingTotals | null;
+    basis: PackingBasis;
+    piecesText: string;
+    /** Avisos do servidor, já escritos (programação, unidade). */
+    warnings: string[];
+  } | null;
 }
 
 /** Uma solicitação da fila: a escolha e os destinatários são dela inteira. */
@@ -146,6 +159,9 @@ export interface StrategyTexts {
   note: string;
   working: string;
   picker: SearchPickerLabels;
+  packing: PackingTexts;
+  /** Idioma dos números (pt-BR, en-US, zh-CN). */
+  intl: string;
 }
 
 type Choice = "skip" | StrategyLineChoice;
@@ -379,10 +395,6 @@ export function StrategyQueue({
         <dd className="font-medium">{line.customerName ?? "—"}</dd>
       </div>
       <div>
-        <dt className="text-zinc-500">{texts.quantity}</dt>
-        <dd className="font-medium tabular-nums">{line.quantity}</dd>
-      </div>
-      <div>
         <dt className="text-zinc-500">{texts.desiredAt}</dt>
         <dd>{line.desiredAt ?? "—"}</dd>
       </div>
@@ -494,6 +506,19 @@ export function StrategyQueue({
           {line.origin}
         </Link>
       </div>
+      {line.packing ? (
+        <div className="mt-2">
+          <PackingCells
+            marker={line.demandId}
+            totals={line.packing.totals}
+            basis={line.packing.basis}
+            texts={texts.packing}
+            intl={texts.intl}
+            piecesText={line.packing.piecesText}
+            extraWarnings={line.packing.warnings}
+          />
+        </div>
+      ) : null}
       {details(line)}
       {line.blocked ? (
         <p className="mt-2 text-xs font-medium text-amber-800">
@@ -777,6 +802,7 @@ export function StrategyQueue({
                   onChange={(e) => setNote(e.target.value)}
                   rows={2}
                   maxLength={2000}
+                  className="shadow-none"
                 />
               </label>
               {hasProblem ? (

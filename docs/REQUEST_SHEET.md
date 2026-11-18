@@ -111,7 +111,7 @@ O que falta nos dados (para a ficha ficar completa sem digitação): medidas e C
 
 ## 7. Peças
 
-- `src/lib/services/request-packing.ts` (18/11/2026): a regra de peças, peças por caixa, caixas (por programação), inner, medidas e cubagem da caixa e pedido mínimo, com a origem de cada número (`resolvePacking`), e a escolha da negociação e do Book (`pickNegotiation`, `pickBook`). É a mesma conta da lista de Encomendas, da página da encomenda e do CSV (docs/ORDER_LEVEL_LISTS.md, seção 5); a ficha só escreve os textos e as notas.
+- `src/lib/services/request-packing.ts` (18/11/2026): a regra de peças, peças por caixa, caixas (por programação), inner, medidas e cubagem da caixa e pedido mínimo, com a origem de cada número (`resolvePacking`), a lista única de fontes (`packingCandidates`, também da Estratégia de compra) e a escolha da negociação e do Book (`pickNegotiation`, `pickBook`). É a mesma conta da lista de Encomendas, da página da encomenda e do CSV (docs/ORDER_LEVEL_LISTS.md, seção 5); a ficha só escreve os textos e as notas.
 
 - `src/lib/request-spec-parse.ts`: leitura da especificação (pura).
 - `src/lib/services/request-sheet.ts`: permissões (`sheetAccess`), o montador puro (`buildSheetRow`) e o carregador (`loadRequestSheet`).

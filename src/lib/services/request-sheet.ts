@@ -42,10 +42,13 @@ import { isPieceUnit } from "./purchase-history";
 import {
   PORTAL_ORDER_LABELS,
   dimsMeasure,
+  packingCandidates,
   pickBook,
   pickNegotiation,
   resolvePacking,
+  type CbmCandidate,
 } from "./request-packing";
+import type { PackingBasis } from "@/lib/strategy-packing";
 
 /*
  * Ficha completa da solicitação (dono, 15/11/2026; docs/REQUEST_SHEET.md).
@@ -214,6 +217,7 @@ const text = (s: string | null | undefined) => {
   const v = (s ?? "").trim();
   return v ? v : null;
 };
+const r4 = (n: number) => Math.round(n * 10_000) / 10_000;
 
 /** Moeda da ficha (RMB) no código do Intl (CNY). */
 const isoCurrency = (c: string | null | undefined) => {
@@ -391,6 +395,69 @@ function termsSummary(t: Translate, terms: PaymentTermInstallment[]) {
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Embalagem: a Estratégia de compra (as fontes da ficha, uma lista    */
+/* só em src/lib/services/request-packing.ts, `packingCandidates`)     */
+/* ------------------------------------------------------------------ */
+
+/** Embalagem da Estratégia de compra, pelas fontes da ficha. */
+export interface PackingFacts {
+  basis: PackingBasis;
+  /** De onde veio cada dado (nulo: sem o dado). */
+  from: {
+    perMaster: SourceKind | null;
+    perInner: SourceKind | null;
+    cbm: SourceKind | null;
+  };
+}
+
+/**
+ * A embalagem de uma solicitação para a Estratégia de compra (dono,
+ * 18/11/2026; docs/PURCHASE_DEMAND.md, "Embalagem e cubagem na Estratégia"),
+ * com as fontes da ficha completa (a mesma ordem, para os números baterem).
+ * Duas diferenças, pedidas para esta tela: 0 peças por inner gravado é "sem
+ * caixa inner" (a ficha pula o 0), e o CBM só vale se for da mesma caixa
+ * contada (CBM de uma caixa com outra quantidade de peças fica de fora, com
+ * o aviso). Só para a Wellmix (dados técnicos).
+ */
+export function packingFactsOf(inputs: SheetInputs): PackingFacts {
+  const tech = true;
+  const view = inputs.product
+    ? productPurchaseView(inputs.product, inputs.master)
+    : null;
+  const spec = parseRequestSpec(inputs.request.specification, PORTAL_ORDER_LABELS);
+  const candidates = packingCandidates(inputs, tech, spec, view);
+  const perMaster = pick<number>(candidates.perBox);
+  // A primeira inner informada vale, com o 0 (sem caixa inner) contando.
+  const innerHit =
+    candidates.inner.find(
+      (c) =>
+        typeof c.value === "number" &&
+        Number.isInteger(c.value) &&
+        c.value >= 0,
+    ) ?? null;
+  const cbmHits = candidates.cbm.filter((c) => pos(c.value));
+  // CBM da mesma caixa contada: a fonte não diz de quantas peças é a caixa
+  // (vale, como na ficha) ou diz a mesma quantidade da conta.
+  const sameBox = (c: CbmCandidate) =>
+    !pos(c.boxQty) || !perMaster || c.boxQty === perMaster.value;
+  const cbmHit = cbmHits.find(sameBox) ?? null;
+  const otherBox = cbmHit ? null : (cbmHits.find((c) => !sameBox(c)) ?? null);
+  return {
+    basis: {
+      perMaster: perMaster?.value ?? null,
+      perInner: (innerHit?.value as number | undefined) ?? null,
+      cbmPerMaster: cbmHit ? r4(cbmHit.value as number) : null,
+      cbmOtherBox: otherBox ? (otherBox.boxQty as number) : null,
+    },
+    from: {
+      perMaster: perMaster?.kind ?? null,
+      perInner: innerHit?.kind ?? null,
+      cbm: cbmHit ? (cbmHit.calc ? "calculated" : cbmHit.kind) : null,
+    },
+  };
+}
+
 /**
  * A ficha de uma solicitação. Pura: recebe o que o perfil pode ver (o
  * carregador não lê o que o perfil não vê) e devolve os textos prontos.
@@ -436,7 +503,8 @@ export function buildSheetRow(
   /* ---------- Quantidades, caixas e cubagem ----------
      A mesma regra da lista de Encomendas, da página da encomenda e do CSV
      (src/lib/services/request-packing.ts; dono, 18/11/2026): os números
-     batem entre as telas. Aqui ficam só os textos e as notas. */
+     batem entre as telas. As fontes são as mesmas da Estratégia de compra
+     (`packingCandidates`). Aqui ficam só os textos e as notas. */
   const packing = resolvePacking(inputs, tech, spec);
   const { schedule, perBox, boxUnit, scheduled, pieces, boxDims, inner, moq, cbmTotal } =
     packing;
@@ -502,7 +570,8 @@ export function buildSheetRow(
   );
 
   /* Caixa master: cubagem por caixa (o gravado na fonte; sem ele, das
-     medidas da caixa da mesma fonte, Calculado) e a total. */
+     medidas da caixa da mesma fonte, Calculado) e a total, com o m³ como foi
+     gravado (sem arredondar antes de multiplicar). */
   const cbmPerBox = packing.cbmPerBox
     ? {
         value: packing.cbmPerBox.value,
@@ -1186,7 +1255,6 @@ export function buildSheetRow(
 /* Carregador                                                          */
 /* ------------------------------------------------------------------ */
 
-
 /**
  * A ficha das solicitações (esta e as do lote que o login vê), na ordem em
  * que foram criadas. Lê só o que o perfil pode ver.
@@ -1198,10 +1266,44 @@ export async function loadRequestSheet(
   t: Translate,
 ): Promise<RequestSheetView> {
   const access = sheetAccess(user);
-  const store = getStore();
   const requests = [request, ...siblings].sort(
     (a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
   );
+  const rows = await loadSheetInputs(user, requests);
+  // Pagamento do cliente: só com acesso à venda na ficha e pela regra do
+  // pedido (o cliente vê a forma aprovada; a Wellmix, quem vê valores…).
+  const payments = await Promise.all(
+    rows.map((inputs) =>
+      access.sale && inputs.order
+        ? customerPaymentView(user, inputs.order)
+        : Promise.resolve(null),
+    ),
+  );
+  return {
+    access,
+    rows: rows.map((inputs, i) =>
+      buildSheetRow(
+        { ...inputs, customerPayment: payments[i] },
+        access,
+        t,
+        inputs.request.id === request.id,
+      ),
+    ),
+  };
+}
+
+/**
+ * O que alimenta a ficha de cada solicitação (só o que o perfil pode ver),
+ * na ordem recebida: produto, ficha mestre, pedido, negociação, Book,
+ * fornecedor. A Estratégia de compra lê a embalagem pelas mesmas entradas
+ * (`packingFactsOf`).
+ */
+export async function loadSheetInputs(
+  user: User,
+  requests: readonly Request[],
+): Promise<SheetInputs[]> {
+  const access = sheetAccess(user);
+  const store = getStore();
   const productIds = [
     ...new Set(requests.map((r) => r.productId).filter((v): v is string => !!v)),
   ];
@@ -1314,24 +1416,5 @@ export async function loadRequestSheet(
     };
     return inputs;
   });
-  // Pagamento do cliente: só com acesso à venda na ficha e pela regra do
-  // pedido (o cliente vê a forma aprovada; a Wellmix, quem vê valores…).
-  const payments = await Promise.all(
-    rows.map((inputs) =>
-      access.sale && inputs.order
-        ? customerPaymentView(user, inputs.order)
-        : Promise.resolve(null),
-    ),
-  );
-  return {
-    access,
-    rows: rows.map((inputs, i) =>
-      buildSheetRow(
-        { ...inputs, customerPayment: payments[i] },
-        access,
-        t,
-        inputs.request.id === request.id,
-      ),
-    ),
-  };
+  return rows;
 }

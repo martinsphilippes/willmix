@@ -123,9 +123,159 @@ export const PORTAL_ORDER_LABELS = (["pt", "en", "zh"] as const).map((l) =>
   normLabel(translator(l)("catalog.dimensions")),
 );
 
-interface Candidate<T> {
+/** Um valor candidato com a origem (o primeiro que existe vale). */
+export interface Candidate<T> {
   value: T | null | undefined;
   kind: PackingSourceKind;
+}
+
+/** Uma fonte do CBM da caixa master. */
+export interface CbmCandidate {
+  value: number | null | undefined;
+  kind: PackingSourceKind;
+  /** Das medidas da caixa da mesma fonte (Calculado). */
+  calc: boolean;
+  /** Peças por caixa master da mesma fonte (nula ou ausente: a fonte não diz). */
+  boxQty: number | null | undefined;
+}
+
+export interface PackingCandidates {
+  perBox: Candidate<number>[];
+  inner: Candidate<number>[];
+  cbm: CbmCandidate[];
+}
+
+const cbmFrom = (
+  d:
+    | {
+        lengthCm?: number | null;
+        widthCm?: number | null;
+        heightCm?: number | null;
+      }
+    | null
+    | undefined,
+) => (d ? cbmFromDimensions(d.lengthCm, d.widthCm, d.heightCm) : null);
+
+/**
+ * Fontes da embalagem, na ordem da ficha (a primeira que existe vale): peças
+ * por caixa master, peças por caixa inner e CBM da caixa master (o gravado;
+ * sem ele, das medidas da caixa da mesma fonte). Uma lista só para a ficha
+ * completa, a lista de Encomendas e a Estratégia de compra
+ * (docs/PURCHASE_DEMAND.md, "Embalagem e cubagem na Estratégia").
+ */
+export function packingCandidates(
+  inputs: PackingInputs,
+  tech: boolean,
+  spec: ParsedSpec,
+  view: ReturnType<typeof productPurchaseView> | null,
+): PackingCandidates {
+  const { request, product } = inputs;
+  const master = view?.master ?? null;
+  const variant = request.variant ?? null;
+  const neg = tech ? (inputs.negotiation?.item ?? null) : null;
+  const bk = tech ? inputs.book : null;
+  const sheet = tech ? inputs.orderSheet : null;
+  const specBoxCbm =
+    spec.boxDims && spec.boxDims.values.length === 3
+      ? cbmFromDimensions(
+          spec.boxDims.values[0].value,
+          spec.boxDims.values[1].value,
+          spec.boxDims.values[2].value,
+        )
+      : null;
+  return {
+    perBox: [
+      { value: spec.perBox, kind: "request" },
+      { value: tech ? variant?.masterBoxQty : null, kind: "variant" },
+      { value: sheet?.masterCartonQty, kind: "order" },
+      { value: neg?.masterCartonQty, kind: "negotiation" },
+      { value: bk?.masterCartonQty, kind: "book" },
+      { value: view?.pcsPerCarton, kind: "current" },
+    ],
+    inner: [
+      { value: spec.innerQty, kind: "request" },
+      { value: tech ? variant?.innerBoxQty : null, kind: "variant" },
+      { value: sheet?.innerQty, kind: "order" },
+      { value: neg?.innerQty, kind: "negotiation" },
+      { value: bk?.innerQty, kind: "book" },
+      {
+        value: tech ? (product?.innerBoxQty ?? master?.innerQty) : null,
+        kind: "current",
+      },
+    ],
+    /* CBM por caixa: o gravado na fonte; sem ele, das medidas da caixa da
+       mesma fonte (Calculado). `boxQty`: de quantas peças é essa caixa. */
+    cbm: [
+      {
+        value: spec.cbmPerBox,
+        kind: "request",
+        calc: false,
+        boxQty: spec.perBox,
+      },
+      { value: specBoxCbm, kind: "request", calc: true, boxQty: spec.perBox },
+      {
+        value: tech ? variant?.cbm : null,
+        kind: "variant",
+        calc: false,
+        boxQty: variant?.masterBoxQty,
+      },
+      {
+        value: sheet?.cbmPerCarton,
+        kind: "order",
+        calc: false,
+        boxQty: sheet?.masterCartonQty,
+      },
+      {
+        value: cbmFrom(sheet),
+        kind: "order",
+        calc: true,
+        boxQty: sheet?.masterCartonQty,
+      },
+      {
+        value: neg?.cbmPerCarton,
+        kind: "negotiation",
+        calc: false,
+        boxQty: neg?.masterCartonQty,
+      },
+      {
+        value: bk?.cbmPerCarton,
+        kind: "book",
+        calc: false,
+        boxQty: bk?.masterCartonQty,
+      },
+      {
+        value: tech ? product?.cbm : null,
+        kind: "current",
+        calc: false,
+        boxQty: product?.masterBoxQty,
+      },
+      {
+        value:
+          tech && product
+            ? cbmFromDimensions(
+                product.boxLengthCm,
+                product.boxWidthCm,
+                product.boxHeightCm,
+              )
+            : null,
+        kind: "current",
+        calc: true,
+        boxQty: product?.masterBoxQty,
+      },
+      {
+        value: tech ? inputs.master?.cbmPerCarton : null,
+        kind: "current",
+        calc: false,
+        boxQty: inputs.master?.masterCartonQty,
+      },
+      {
+        value: tech ? cbmFrom(inputs.master) : null,
+        kind: "current",
+        calc: true,
+        boxQty: inputs.master?.masterCartonQty,
+      },
+    ],
+  };
 }
 
 /** O primeiro valor que existe (número só positivo; texto não vazio). */
@@ -172,22 +322,14 @@ export function resolvePacking(
     tech && product ? productPurchaseView(product, inputs.master) : null;
   const master = view?.master ?? null;
   const variant = request.variant ?? null;
-  const neg = tech ? (inputs.negotiation?.item ?? null) : null;
-  const bk = tech ? inputs.book : null;
   const sheet = tech ? inputs.orderSheet : null;
   const spec =
     parsed ?? parseRequestSpec(request.specification, PORTAL_ORDER_LABELS);
+  const candidates = packingCandidates(inputs, tech, spec, view);
 
   /* ---------- Quantidades ---------- */
   const schedule = request.schedule?.items.length ? request.schedule : null;
-  const perBox = pick<number>([
-    { value: spec.perBox, kind: "request" },
-    { value: tech ? variant?.masterBoxQty : null, kind: "variant" },
-    { value: sheet?.masterCartonQty, kind: "order" },
-    { value: neg?.masterCartonQty, kind: "negotiation" },
-    { value: bk?.masterCartonQty, kind: "book" },
-    { value: view?.pcsPerCarton, kind: "current" },
-  ]);
+  const perBox = pick<number>(candidates.perBox);
   const boxUnit = isBoxUnit(request.unit);
   const countable = boxUnit || isPieceUnit(request.unit);
   const scheduled = schedule ? scheduleTotal(schedule) : null;
@@ -274,66 +416,10 @@ export function resolvePacking(
       kind: "current",
     },
   ]);
-  const cbmFrom = (
-    d:
-      | {
-          lengthCm?: number | null;
-          widthCm?: number | null;
-          heightCm?: number | null;
-        }
-      | null
-      | undefined,
-  ) => (d ? cbmFromDimensions(d.lengthCm, d.widthCm, d.heightCm) : null);
   /* CBM por caixa: o gravado na fonte; sem ele, das medidas da caixa da
-     mesma fonte (Calculado). */
-  const cbmCandidates: {
-    value: number | null | undefined;
-    kind: PackingSourceKind;
-    calc: boolean;
-  }[] = [
-    { value: spec.cbmPerBox, kind: "request", calc: false },
-    {
-      value:
-        spec.boxDims && spec.boxDims.values.length === 3
-          ? cbmFromDimensions(
-              spec.boxDims.values[0].value,
-              spec.boxDims.values[1].value,
-              spec.boxDims.values[2].value,
-            )
-          : null,
-      kind: "request",
-      calc: true,
-    },
-    { value: tech ? variant?.cbm : null, kind: "variant", calc: false },
-    { value: sheet?.cbmPerCarton, kind: "order", calc: false },
-    { value: cbmFrom(sheet), kind: "order", calc: true },
-    { value: neg?.cbmPerCarton, kind: "negotiation", calc: false },
-    { value: bk?.cbmPerCarton, kind: "book", calc: false },
-    { value: tech ? product?.cbm : null, kind: "current", calc: false },
-    {
-      value:
-        tech && product
-          ? cbmFromDimensions(
-              product.boxLengthCm,
-              product.boxWidthCm,
-              product.boxHeightCm,
-            )
-          : null,
-      kind: "current",
-      calc: true,
-    },
-    {
-      value: tech ? inputs.master?.cbmPerCarton : null,
-      kind: "current",
-      calc: false,
-    },
-    {
-      value: tech ? cbmFrom(inputs.master) : null,
-      kind: "current",
-      calc: true,
-    },
-  ];
-  const cbmHit = cbmCandidates.find((c) => pos(c.value)) ?? null;
+     mesma fonte (Calculado). A ficha e os totais usam o primeiro que existe
+     (a Estratégia de compra também confere se é da mesma caixa contada). */
+  const cbmHit = candidates.cbm.find((c) => pos(c.value)) ?? null;
   /* O m³ da caixa como foi gravado (sem arredondar): a conta preserva as
      casas decimais e só a tela formata (dono, 18/11/2026; antes, 0,1476375
      virava 0,1476 e as 200 caixas davam 29,52 m³ em vez de 29,5275). */
@@ -349,17 +435,7 @@ export function resolvePacking(
     cbmPerBox && boxes ? r4(cbmPerBox.value * boxes.value) : null;
 
   /* Caixa inner: peças por inner e quantas caixas inner (opcional). */
-  const inner = pick<number>([
-    { value: spec.innerQty, kind: "request" },
-    { value: tech ? variant?.innerBoxQty : null, kind: "variant" },
-    { value: sheet?.innerQty, kind: "order" },
-    { value: neg?.innerQty, kind: "negotiation" },
-    { value: bk?.innerQty, kind: "book" },
-    {
-      value: tech ? (product?.innerBoxQty ?? master?.innerQty) : null,
-      kind: "current",
-    },
-  ]);
+  const inner = pick<number>(candidates.inner);
   const innerPerRound =
     inner && roundPieces
       ? roundPieces.map((p) => cartonsFromPieces(p, inner.value) ?? 0)

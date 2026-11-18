@@ -189,6 +189,29 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   await expect(orderForm.locator("[data-strategy-order-price]")).toHaveValue(
     "1.4",
   );
+  // Quantidade (peças) | Caixas master | Caixas inner | Cubagem (dono,
+  // 18/11/2026): pela embalagem do Book (48 por master, 12 por inner,
+  // 0,12 m³), refeitas a cada tecla com a mesma conta do servidor. A
+  // reposição foi aberta com 3.000 caixas: 144.000 peças.
+  const qty = orderForm.locator("[data-strategy-order-quantity]");
+  const master = orderForm.locator('[data-strategy-pack="master"]');
+  const inner = orderForm.locator('[data-strategy-pack="inner"]');
+  const cbm = orderForm.locator('[data-strategy-pack="cbm"]');
+  const warnings = orderForm.locator("[data-strategy-pack-warnings]");
+  await expect(qty).toHaveValue("144.000");
+  await expect(master).toContainText("3.000");
+  await expect(inner).toContainText("12.000");
+  await expect(cbm).toContainText("360");
+  await expect(warnings).toHaveCount(0);
+  // 24 peças a mais: uma caixa master a mais, com 24 de 48 (aviso).
+  await qty.fill("144.024");
+  await expect(master).toContainText("3.001");
+  await expect(inner).toContainText("12.002");
+  await expect(cbm).toContainText("360,12");
+  await expect(warnings).toContainText("24 de 48");
+  await qty.fill("144000");
+  await expect(master).toContainText("3.000");
+  await expect(warnings).toHaveCount(0);
   await orderForm.locator("[data-strategy-order]").click();
   await page.waitForURL(/\/app\/orders\/[^/?]+\?created=1/);
   await expect(page.locator("main")).toContainText(productName);

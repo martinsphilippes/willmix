@@ -22,7 +22,7 @@ import {
 import { translator } from "@/i18n";
 import { canViewRequest, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
-import { demandKind } from "@/lib/purchase-demand";
+import { closedDemands, demandKind } from "@/lib/purchase-demand";
 import {
   choiceQuotes,
   receivesQuote,
@@ -420,6 +420,9 @@ export async function decideStrategy(
     throw new PurchaseStrategyError("strategy_decided");
   if (!input.approve && !input.note?.trim())
     throw new PurchaseStrategyError("strategy_reject_note");
+  // Encomenda cancelada ou já em outro pedido (dono, 18/11/2026): não
+  // aprova; recusar continua valendo (é como a estratégia sai do caminho).
+  if (input.approve) await assertDemandsOpen(decision);
   const now = new Date().toISOString();
   const updated = await store.update("purchase_decisions", decision.id, {
     status: input.approve ? "approved" : "rejected",
@@ -481,6 +484,11 @@ export async function orderFromStrategy(
       quantity: number;
       unitPrice: number | null;
     }>;
+    /**
+     * O que a tela mostrou por produto (caixas master, inner e cubagem;
+     * `packingSeal`). Ausente: não confere (chamadas sem a tela).
+     */
+    seals?: Record<string, string>;
   },
 ): Promise<Order> {
   if (!isWellmix(user)) throw new PurchaseStrategyError("forbidden");
@@ -496,6 +504,9 @@ export async function orderFromStrategy(
   const demands = await store.list("requests", {
     filter: { id: decision.demandIds },
   });
+  // Encomenda cancelada ou já em outro pedido (dono, 18/11/2026): o pedido
+  // não sai (nem volta a encomenda cancelada para "pedido" nem reserva).
+  await assertDemandsOpen(decision, demands);
   const productIds = [
     ...new Set(demands.map((d) => d.productId).filter(Boolean)),
   ] as string[];
@@ -526,6 +537,26 @@ export async function orderFromStrategy(
     };
   });
   const currency = seesPrice ? input.currency : (reference.currency ?? "USD");
+  // Embalagem conferida no servidor (dono, 18/11/2026; docs/PURCHASE_DEMAND.md,
+  // "Embalagem e cubagem na Estratégia"): a mesma conta da tela, com a
+  // embalagem de agora. Se o que a tela mostrou mudou, nada é criado.
+  const packing = await import("./strategy-packing");
+  const packed = packing.linePackings(
+    demands,
+    await packing.demandPackings(user, demands),
+  );
+  const packingNotes: string[] = [];
+  for (const line of lines) {
+    const pack = packed.find((p) => p.productId === line.productId);
+    if (!pack) continue;
+    const seen = input.seals?.[line.productId];
+    if (seen !== undefined && seen !== packing.lineSeal(pack, line.quantity))
+      throw new PurchaseStrategyError("strategy_packing_changed");
+    const totals = packing.lineTotals(pack, line.quantity);
+    packingNotes.push(
+      `${line.quantity} peças: ${totals?.masterBoxes ?? "—"} caixas master, ${totals?.innerBoxes ?? "—"} caixas inner, ${totals?.cbm ?? "—"} m³`,
+    );
+  }
   const { createDirectPurchaseOrder } = await import("./purchase-order");
   const order = await createDirectPurchaseOrder(user, {
     supplierId: reference.supplierId,
@@ -554,7 +585,7 @@ export async function orderFromStrategy(
     "purchase_strategy.order",
     "purchase_decision",
     decision.id,
-    `Estratégia nº ${decision.number}: pedido de compra #${order.number}`,
+    `Estratégia nº ${decision.number}: pedido de compra #${order.number}${packingNotes.length ? ` (${packingNotes.join("; ")})` : ""}`,
   );
   return order;
 }
@@ -610,6 +641,23 @@ async function reserveOnArrival(user: User, demand: Request, order: Order) {
     demand.id,
     `Reserva na chegada: ${demand.quantity} ${demand.unit} para o cliente da encomenda nº ${demand.number ?? "—"} (pedido #${order.number})`,
   );
+}
+
+/**
+ * A estratégia segue só com todas as encomendas abertas (dono, 18/11/2026):
+ * encomenda cancelada ou já em outro pedido barra a aprovação e o pedido.
+ */
+async function assertDemandsOpen(
+  decision: PurchaseDecision,
+  demands?: readonly Request[],
+): Promise<void> {
+  const rows =
+    demands ??
+    (await getStore().list("requests", {
+      filter: { id: decision.demandIds },
+    }));
+  if (closedDemands(decision, rows).size)
+    throw new PurchaseStrategyError("strategy_demand_closed");
 }
 
 export const canChooseStrategy = (user: User) =>
@@ -672,8 +720,25 @@ export async function strategyTaskDrafts(openRequests: Request[]) {
       ownerUserId: r.ownerUserId ?? null,
     }),
   );
+  // Estratégia com encomenda cancelada ou já em outro pedido (dono,
+  // 18/11/2026): não gera o pedido, então a pendência "Gerar pedido" some.
+  const toOrder = decisions.filter(
+    (d) => d.status !== "pending" && d.choice === "last_supplier" && !d.orderId,
+  );
+  const orderDemandIds = unique(toOrder.flatMap((d) => d.demandIds));
+  const orderDemands = orderDemandIds.length
+    ? await listColumns(getStore(), "requests", ["status", "orderId"], {
+        filter: { id: orderDemandIds },
+      }).catch(() => null)
+    : [];
   for (const d of decisions) {
     const values = { n: d.number };
+    if (
+      toOrder.includes(d) &&
+      orderDemands &&
+      closedDemands(d, orderDemands).size
+    )
+      continue;
     if (d.status === "pending")
       drafts.push(
         draft({
