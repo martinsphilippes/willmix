@@ -690,6 +690,7 @@ export async function PartyAccountDetail({
       {supplier && tab === "info" && isWellmix(user) ? (
         <PartyFamiliesCard
           partyId={party.id}
+          screen="suppliers"
           t={t}
           admin={isAdmin(user)}
           notice={param(sp.families) ?? null}

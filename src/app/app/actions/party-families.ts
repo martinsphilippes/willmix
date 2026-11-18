@@ -16,13 +16,18 @@ import { requireUser, run, str, withQuery } from "./helpers";
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const CODE = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/);
 
-/** Volta para a tela do parceiro: o Fornecedor na aba Informações. */
-async function partyBack(partyId: string): Promise<string> {
+/**
+ * Volta para a tela de onde a seção foi gravada (`screen`): o Fornecedor tem
+ * a dele (aba Informações) e também abre pela ficha de parceiros. Sem a
+ * indicação, a do tipo.
+ */
+async function partyBack(partyId: string, screen: string): Promise<string> {
   const party = ID.safeParse(partyId).success
     ? await getStore().get("parties", partyId)
     : null;
   if (!party) return "/app/parties";
-  return party.type === "supplier"
+  const supplierScreen = party.type === "supplier" && screen !== "parties";
+  return supplierScreen
     ? `/app/suppliers/${party.id}?tab=info#families`
     : `/app/parties/${party.id}#families`;
 }
@@ -30,7 +35,7 @@ async function partyBack(partyId: string): Promise<string> {
 export async function setPartyFamiliesAction(form: FormData) {
   const user = await requireUser();
   const partyId = str(form, "partyId");
-  const back = await partyBack(partyId);
+  const back = await partyBack(partyId, str(form, "screen"));
   await run(back, async () => {
     assertWellmix(user);
     assertScreen(user, "parties");
@@ -48,7 +53,7 @@ export async function setPartyFamiliesAction(form: FormData) {
 /** Atualizar o cadastro de famílias pelo Sankhya (administrador). */
 export async function refreshPartyFamiliesAction(form: FormData) {
   const user = await requireUser();
-  const back = await partyBack(str(form, "partyId"));
+  const back = await partyBack(str(form, "partyId"), str(form, "screen"));
   await run(back, async () => {
     assertWellmix(user);
     const { refreshFamiliesFromSankhya } =

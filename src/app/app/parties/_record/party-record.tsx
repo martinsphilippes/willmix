@@ -1055,6 +1055,7 @@ export async function renderPartyRecord({
       {servesFamilies(party.type) && isWellmix(user) ? (
         <PartyFamiliesCard
           partyId={party.id}
+          screen="parties"
           t={t}
           admin={isAdmin(user)}
           notice={typeof query.families === "string" ? query.families : null}

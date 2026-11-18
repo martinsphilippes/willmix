@@ -30,6 +30,7 @@ const FAMILY_ERRORS = [
  */
 export async function PartyFamiliesCard({
   partyId,
+  screen,
   t,
   admin,
   notice,
@@ -37,6 +38,8 @@ export async function PartyFamiliesCard({
   synced,
 }: {
   partyId: string;
+  /** Tela onde a seção está: gravar volta para ela. */
+  screen: "suppliers" | "parties";
   t: Translate;
   /** O administrador vê o "Atualizar do Sankhya". */
   admin: boolean;
@@ -95,6 +98,7 @@ export async function PartyFamiliesCard({
           {families.length ? (
             <form action={setPartyFamiliesAction} className="space-y-3">
               <input type="hidden" name="partyId" value={partyId} />
+              <input type="hidden" name="screen" value={screen} />
               <PartyFamiliesPicker
                 families={families.map((f) => ({
                   code: f.code,
@@ -127,6 +131,7 @@ export async function PartyFamiliesCard({
               className="flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-3 text-xs text-zinc-500"
             >
               <input type="hidden" name="partyId" value={partyId} />
+              <input type="hidden" name="screen" value={screen} />
               <SubmitButton variant="secondary" data-party-families-sync>
                 {t("partyFamilies.sync")}
               </SubmitButton>

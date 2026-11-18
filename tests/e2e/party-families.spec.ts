@@ -23,6 +23,31 @@ async function newPartner(page: Page, type: string, name: string) {
   return new URL(page.url()).pathname;
 }
 
+/**
+ * Busca pelo nome (sem acento e sem caixa) e pelo código: os dois BRINQUEDOS
+ * aparecem, cada um com o seu código; nada encontrado mostra o aviso.
+ */
+async function checkSearch(page: Page) {
+  const section = page.locator("[data-party-families]");
+  const search = section.locator("[data-party-families-search]");
+  const option = (code: string) =>
+    section.locator(`[data-party-family-option="${code}"]`);
+  await search.fill("brinq");
+  await expect(option("10000000")).toBeVisible();
+  await expect(option("110000000")).toBeVisible();
+  await expect(option("110000000")).toContainText("110000000");
+  await expect(option("20000000")).toBeHidden();
+  await search.fill("Doméstica");
+  await expect(option("20000000")).toBeVisible();
+  await expect(option("10000000")).toBeHidden();
+  await search.fill("11000");
+  await expect(option("10000000")).toBeHidden();
+  await expect(option("110000000")).toBeVisible();
+  await search.fill("nada-assim");
+  await expect(section.locator("[data-party-families-no-match]")).toBeVisible();
+  await search.fill("");
+}
+
 /** Marca as famílias, grava e confere que voltam marcadas. */
 async function chooseFamilies(page: Page, codes: string[]) {
   const section = page.locator("[data-party-families]");
@@ -56,55 +81,51 @@ async function chooseFamilies(page: Page, codes: string[]) {
   }
 }
 
-test("Fornecedor: a seção substitui as Linhas atendidas; busca por nome e código; grava e recarrega", async ({
+test("Fornecedor: a seção substitui as Linhas atendidas; busca por nome e código; grava e recarrega; cada um com as suas", async ({
   page,
 }) => {
   await login(page, "admin@wellmix.com");
   await page.goto("/app/suppliers/fornecedor-a?tab=info");
   // A seção antiga saiu.
   await expect(page.locator("[data-supplier-lines]")).toHaveCount(0);
-  const section = page.locator("[data-party-families]");
-  const search = section.locator("[data-party-families-search]");
-  // Pelo nome (sem acento e caixa): os dois BRINQUEDOS, cada um com o código.
-  await search.fill("brinq");
-  await expect(
-    section.locator('[data-party-family-option="10000000"]'),
-  ).toBeVisible();
-  await expect(
-    section.locator('[data-party-family-option="110000000"]'),
-  ).toBeVisible();
-  await expect(
-    section.locator('[data-party-family-option="110000000"]'),
-  ).toContainText("110000000");
-  await expect(
-    section.locator('[data-party-family-option="20000000"]'),
-  ).toBeHidden();
-  // Pelo código.
-  await search.fill("11000");
-  await expect(
-    section.locator('[data-party-family-option="10000000"]'),
-  ).toBeHidden();
-  await expect(
-    section.locator('[data-party-family-option="110000000"]'),
-  ).toBeVisible();
-  await search.fill("nada-assim");
-  await expect(section.locator("[data-party-families-no-match]")).toBeVisible();
-  await search.fill("");
+  await checkSearch(page);
   await chooseFamilies(page, ["10000000", "20000000"]);
+  // Outro Fornecedor começa sem nenhuma. Gravado pela ficha de parceiros,
+  // volta para ela, e a tela própria do Fornecedor mostra a mesma seleção.
+  const other = await newPartner(page, "supplier", `Família supplier B ${tag}`);
+  await page.goto(other);
+  await expect(page.locator("[data-party-families]")).toHaveAttribute(
+    "data-party-families",
+    "0",
+  );
+  await chooseFamilies(page, ["110000000"]);
+  expect(new URL(page.url()).pathname).toBe(other);
+  await page.goto(`/app/suppliers/${other.split("/").pop()}?tab=info`);
+  await expect(page.locator("[data-party-families]")).toHaveAttribute(
+    "data-party-families",
+    "1",
+  );
+  // O primeiro continua com as dele.
+  await page.goto("/app/suppliers/fornecedor-a?tab=info");
+  await expect(page.locator("[data-party-families]")).toHaveAttribute(
+    "data-party-families",
+    "2",
+  );
 });
 
 for (const [type, codes] of [
   ["trading", ["110000000", "40000000"]],
-  ["supplier_partner", ["10000000"]],
+  ["supplier_partner", ["10000000", "40000000"]],
   ["factory", ["20000000", "10000000", "110000000"]],
 ] as const)
-  test(`${type}: seleciona várias famílias, grava e recarrega; cada parceiro com as suas`, async ({
+  test(`${type}: busca por nome e código, seleciona várias famílias, grava e recarrega; cada parceiro com as suas`, async ({
     page,
   }) => {
     await login(page, "admin@wellmix.com");
     const first = await newPartner(page, type, `Família ${type} A ${tag}`);
     const second = await newPartner(page, type, `Família ${type} B ${tag}`);
     await page.goto(first);
+    await checkSearch(page);
     await chooseFamilies(page, [...codes]);
     // O outro parceiro do mesmo tipo continua sem nenhuma.
     await page.goto(second);
