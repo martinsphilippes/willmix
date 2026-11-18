@@ -18,6 +18,7 @@ import {
   canApproveStrategy,
   canChooseStrategy,
   openDecisions,
+  closedRecipients,
   pendingRecipients,
   recentStrategySends,
   strategyBoard,
@@ -527,6 +528,7 @@ export default async function PurchaseStrategyPage({
           <ul className="divide-y divide-zinc-100" data-strategy-sends>
             {sends.map((send) => {
               const missing = pendingRecipients(send);
+              const closed = closedRecipients(send);
               return (
                 <li
                   key={send.id}
@@ -543,10 +545,14 @@ export default async function PurchaseStrategyPage({
                     {formatDate(send.createdAt, t)} ·{" "}
                     {t("strategy.sends.lines", { n: send.lines.length })}
                   </span>
-                  <Badge tone={missing ? "warning" : "success"}>
+                  <Badge
+                    tone={missing ? "warning" : closed ? "neutral" : "success"}
+                  >
                     {missing
                       ? t("strategy.sends.failures", { n: missing })
-                      : t("strategy.sends.ok")}
+                      : closed
+                        ? t("strategy.sends.closed", { n: closed })
+                        : t("strategy.sends.ok")}
                   </Badge>
                 </li>
               );

@@ -749,25 +749,52 @@ export interface StrategySendInput {
   note: string | null;
 }
 
+/**
+ * Erros que não têm mais o que tentar: a cotação já foi encerrada (vencedora
+ * escolhida, cancelada) ou a demanda já está em outra estratégia.
+ */
+const FINAL_ERRORS = new Set(["quote_closed", "strategy_demand_taken"]);
+
+/** Ainda dá para receber: ficou de fora ou deu erro, com a cotação em aberto. */
+const actionable = (r: StrategySendRecipient) =>
+  r.status === "blocked" ||
+  (r.status === "failed" && !FINAL_ERRORS.has(r.error ?? ""));
+
+/** A linha que nem virou estratégia e ainda pode ser refeita. */
+const lineRetryable = (l: StrategySendLine) =>
+  !!l.error && !l.decisionId && !FINAL_ERRORS.has(l.error);
+
 const sendStatus = (lines: readonly StrategySendLine[]) =>
   lines.some(
     (l) =>
-      !!l.error ||
-      l.recipients.some((r) => r.status === "blocked" || r.status === "failed"),
+      lineRetryable(l) ||
+      (!!l.error && !FINAL_ERRORS.has(l.error)) ||
+      l.recipients.some(actionable),
   )
     ? ("failures" as const)
     : ("ok" as const);
 
-/** Parceiros que ainda não receberam (ficaram de fora ou deram erro). */
+/** Parceiros que ainda podem receber (ficaram de fora ou deram erro). */
 export const pendingRecipients = (send: Pick<PurchaseStrategySend, "lines">) =>
+  send.lines.reduce(
+    (sum, l) => sum + l.recipients.filter(actionable).length,
+    0,
+  );
+
+/** Alguém ficou sem receber de vez (a cotação encerrou antes)? */
+export const closedRecipients = (send: Pick<PurchaseStrategySend, "lines">) =>
   send.lines.reduce(
     (sum, l) =>
       sum +
       l.recipients.filter(
-        (r) => r.status === "blocked" || r.status === "failed",
+        (r) => r.status === "failed" && FINAL_ERRORS.has(r.error ?? ""),
       ).length,
     0,
   );
+
+/** O envio ainda tem o que tentar de novo ("Tentar de novo" e a pendência)? */
+export const sendRetryable = (send: Pick<PurchaseStrategySend, "lines">) =>
+  send.lines.some((l) => lineRetryable(l) || l.recipients.some(actionable));
 
 const choiceLabel = (choice: PurchaseDecisionChoice) =>
   choice === "last_supplier"
@@ -1063,14 +1090,38 @@ export async function recentStrategySends(
   }
 }
 
+/**
+ * Envios com parceiro que ainda pode receber (a pendência "Tentar de novo"):
+ * só as linhas com a cotação em aberto (ou ainda por abrir) contam.
+ */
 async function sendsWithFailures(): Promise<PurchaseStrategySend[]> {
   try {
-    return await getStore().list("purchase_strategy_sends", {
+    const store = getStore();
+    const sends = await store.list("purchase_strategy_sends", {
       filter: { status: "failures" },
       orderBy: "createdAt",
       direction: "desc",
       limit: 50,
     });
+    const quoteIds = unique(
+      sends.flatMap((s) => s.lines.map((l) => l.quoteId)),
+    );
+    const open = new Set(
+      (quoteIds.length
+        ? await store.list("purchase_quotes", { filter: { id: quoteIds } })
+        : []
+      )
+        .filter((q) => q.status === "open")
+        .map((q) => q.id),
+    );
+    return sends.filter((s) =>
+      s.lines.some(
+        (l) =>
+          lineRetryable(l) ||
+          (l.recipients.some(actionable) &&
+            (!l.quoteId || open.has(l.quoteId))),
+      ),
+    );
   } catch {
     return [];
   }
@@ -1094,13 +1145,8 @@ export async function retryStrategySend(
   const send = await getStrategySend(sendId);
   if (!send) throw new PurchaseStrategyError("strategy_send_not_found");
   const pendingIds = (l: StrategySendLine) =>
-    l.recipients
-      .filter((r) => r.status === "blocked" || r.status === "failed")
-      .map((r) => r.partyId);
-  const retryable = send.lines.filter(
-    (l) => (l.error && !l.decisionId) || pendingIds(l).length,
-  );
-  if (!retryable.length)
+    l.recipients.filter(actionable).map((r) => r.partyId);
+  if (!sendRetryable(send))
     throw new PurchaseStrategyError("strategy_nothing_to_retry");
   const { checkRecipients } = await import("./purchase-recipients");
   const checks = await checkRecipients(
@@ -1114,7 +1160,7 @@ export async function retryStrategySend(
   let sentNow = 0;
   const lines: StrategySendLine[] = [];
   for (const line of send.lines) {
-    if (line.error && !line.decisionId) {
+    if (lineRetryable(line)) {
       // A linha não chegou a virar estratégia: refaz, se a demanda ainda espera.
       const demand = await store.get("requests", line.demandId);
       if (!demand || !inStrategyQueue(demand)) {

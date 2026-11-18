@@ -464,6 +464,45 @@ describe("envio da Estratégia de Compra", () => {
     expect(chosen.status).toBe("chosen");
   });
 
+  it("cotação encerrada: quem ficou de fora não tem mais o que tentar, e a pendência sai", async () => {
+    const d = await encomenda("prod-jarra");
+    const lonely = await party("factory", "Fábrica sem login");
+    const send = await strategy.sendStrategy(
+      buyer,
+      {
+        lines: [
+          {
+            demandId: d.id,
+            choice: "quote",
+            recipientIds: ["fornecedor-a", lonely],
+          },
+        ],
+        note: null,
+      },
+      t,
+    );
+    expect(strategy.pendingRecipients(send)).toBe(1);
+    // A cotação anda (a vencedora foi escolhida) antes de alguém regularizar.
+    await getStore().update("purchase_quotes", send.lines[0].quoteId!, {
+      status: "chosen",
+    });
+    const pending = async () =>
+      (await strategy.strategyTaskDrafts([])).some(
+        (x) =>
+          x.kind === "purchase_strategy_send" &&
+          x.link === `/app/purchase-strategy/sends/${send.id}`,
+      );
+    expect(await pending()).toBe(false);
+    const done = await strategy.retryStrategySend(buyer, send.id, t);
+    expect(done.sentNow).toBe(0);
+    expect(done.send.status).toBe("ok");
+    expect(strategy.pendingRecipients(done.send)).toBe(0);
+    expect(strategy.closedRecipients(done.send)).toBe(1);
+    await expect(strategy.retryStrategySend(buyer, send.id, t)).rejects.toThrow(
+      "strategy_nothing_to_retry",
+    );
+  });
+
   it("pedido direto: vai para a aprovação da Diretoria de compras, como antes", async () => {
     const d = await encomenda("prod-panela");
     const send = await strategy.sendStrategy(

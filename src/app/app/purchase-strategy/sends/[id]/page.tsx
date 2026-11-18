@@ -13,7 +13,7 @@ import { partyTypeLabel } from "@/lib/partner-types";
 import {
   canChooseStrategy,
   getStrategySend,
-  pendingRecipients,
+  sendRetryable,
 } from "@/lib/services/purchase-strategy";
 import { getPartnerTypeCatalog } from "@/lib/services/partner-types";
 import {
@@ -86,12 +86,9 @@ export default async function StrategySendPage({
   const errorText = errorCode
     ? errorTextFor(t, errorCode, ["strategy.error"])
     : null;
-  const missing = pendingRecipients(send);
   const lineError = (code: string) =>
     errorTextFor(t, code, ["strategy.error", "quote.error"]);
-  const canRetry =
-    canChooseStrategy(user) &&
-    (missing > 0 || send.lines.some((l) => l.error && !l.decisionId));
+  const canRetry = canChooseStrategy(user) && sendRetryable(send);
   return (
     <div
       data-strategy-send-page={send.id}

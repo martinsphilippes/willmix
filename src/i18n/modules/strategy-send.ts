@@ -113,6 +113,7 @@ export const pt = {
   "strategy.sends.one": "Envio nº {n}",
   "strategy.sends.ok": "Todos receberam",
   "strategy.sends.failures": "{n} sem receber",
+  "strategy.sends.closed": "{n} sem receber (cotação encerrada)",
   "strategy.sends.lines": "{n} produto(s)",
   "strategy.send.title": "Envio nº {n} da Estratégia de Compra",
   "strategy.send.subtitle":
@@ -272,6 +273,7 @@ export const en: Record<keyof typeof pt, string> = {
   "strategy.sends.one": "Send no. {n}",
   "strategy.sends.ok": "Everyone received it",
   "strategy.sends.failures": "{n} did not receive it",
+  "strategy.sends.closed": "{n} did not receive it (quote closed)",
   "strategy.sends.lines": "{n} product(s)",
   "strategy.send.title": "Purchase strategy send no. {n}",
   "strategy.send.subtitle":
@@ -421,6 +423,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.sends.one": "第 {n} 次发送",
   "strategy.sends.ok": "全部已收到",
   "strategy.sends.failures": "{n} 个未收到",
+  "strategy.sends.closed": "{n} 个未收到（询价已结束）",
   "strategy.sends.lines": "{n} 个产品",
   "strategy.send.title": "采购策略第 {n} 次发送",
   "strategy.send.subtitle":
