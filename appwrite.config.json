@@ -1429,6 +1429,13 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "priceForecast",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [

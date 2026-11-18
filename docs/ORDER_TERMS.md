@@ -296,6 +296,13 @@ Vale para as três telas (Encomendas, TS e Venda), que usam o mesmo código (`sr
 - **Login do cliente com acesso não se escolhe mais** na Nova solicitação (Encomendas, TS e Venda): o campo só mostra "Todos os logins do cliente (N)". A venda da Wellmix sem login escolhido (`requestedForUserId` nulo, com as condições do pedido) vai para **todos os logins daquele cliente**: qualquer um vê a solicitação, confirma o pedido e recebe o aviso de confirmar (`forAllCustomerLogins` em src/lib/auth/permissions.ts, `canConfirm` e `notifyCustomerToConfirm`). As solicitações antigas sem as condições do pedido e as com um login escolhido seguem como antes. O pedido (depois da confirmação) segue a regra de antes para o cliente.
 - **Valor do transporte (R$) também quando o cliente chama o transportador:** só a escolha da transportadora sai; o valor aparece, entra na previsão de preço e é gravado em `orderTerms.deliveryFreightBrl` (antes, só quando a Wellmix chamava ou no formato WD).
 
+## 11.16 Previsão de venda gravada no envio (dono, 18/11/2026)
+
+- O **Valor total** da Nova solicitação (preço previsto × quantidade de cada produto) era calculado só na tela. Para o **Preço total** da lista de Encomendas (docs/ORDER_LEVEL_LISTS.md, seção 5), o servidor refaz a mesma cotação V2 de cada produto **depois do envio** (sem atrasar a resposta) e grava em `requests.priceForecast`: preço por peça, peças, total, R$, base (com frete ou WD com frete), formato, nível, quem chama o transportador, frete enviado, situação da cotação e a data. O número do navegador não é aceito.
+- A consulta é uma só (`forecastQuery` em `src/lib/services/request-price-forecast.ts`), usada também pela tela (`/api/price-forecast`).
+- Sem o Sankhya, ou com a cotação sem resposta, a solicitação nasce igual e fica sem previsão ("—" na lista). As solicitações de antes de 18/11/2026 não têm previsão.
+- Coluna nova `requests.priceForecast` (JSON, aditiva; publicada no Supabase).
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

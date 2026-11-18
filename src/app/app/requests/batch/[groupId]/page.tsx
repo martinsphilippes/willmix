@@ -35,9 +35,21 @@ import { ChatOpenButton } from "@/components/chat-open-button";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { galleryProps } from "@/components/photo-gallery-props";
 import { productPhotoList } from "@/lib/services/product-list";
-import { itemLogistics } from "@/lib/services/item-logistics";
 import { getSettings } from "@/lib/settings";
-import { containersText, requestRounds } from "@/lib/request-rounds";
+import { containersText } from "@/lib/request-rounds";
+import { canSeeMoney } from "@/lib/auth/function-access";
+import {
+  loadRequestPacking,
+  packingRounds,
+  packingTotalsLine,
+} from "@/lib/services/request-packing";
+import { encomendaTotals } from "@/lib/request-totals";
+import {
+  SaleTotalValue,
+  TotalValue,
+  moneyValue,
+  unitLabel,
+} from "@/components/request-total-cells";
 import { productNameText } from "@/i18n";
 import { SubmitButton } from "@/components/submit-button";
 import { deleteRequestsAction } from "../../../actions/requests";
@@ -118,17 +130,31 @@ export default async function RequestBatchPage({
   const productById = new Map(products.map((p) => [p.id, p]));
   const productOf = (r: (typeof rows)[number]) =>
     r.productId ? (productById.get(r.productId) ?? null) : null;
-  /* Programações e containers do pedido (os mesmos da lista), no maior
-     container das Configurações. */
+  /* Embalagem de cada produto: a mesma regra da lista de Encomendas e da
+     ficha completa (peças, caixas e inner por programação, CBM, mínimo;
+     src/lib/services/request-packing.ts), para os totais baterem com a
+     lista (dono, 18/11/2026). Programações e containers do pedido pela
+     mesma embalagem, no maior container das Configurações. */
+  const packing = await loadRequestPacking(rows);
   const reference =
     [...settings.containerTypes].sort(
       (a, b) => b.capacityCbm - a.capacityCbm,
     )[0] ?? null;
-  const rounds = requestRounds(
-    rows,
-    (r) => productOf(r as (typeof rows)[number]),
-    reference?.capacityCbm ?? null,
+  const rounds = packingRounds(rows, packing, reference?.capacityCbm ?? null);
+  const wellmix = isWellmix(user);
+  // Venda prevista: só com "Ver valores e margem" (o cliente não vê).
+  const seeSale = wellmix && canSeeMoney(user);
+  const lineOf = new Map(
+    rows.map((r) => [
+      r.id,
+      packingTotalsLine(
+        r,
+        packing.get(r.id),
+        productNameText(t, r.productName),
+      ),
+    ]),
   );
+  const totals = encomendaTotals([...lineOf.values()]);
   const distinctProducts = new Set(
     rows.map((r) => r.productId ?? `n:${r.productName}`),
   ).size;
@@ -329,14 +355,85 @@ export default async function RequestBatchPage({
             : "—",
         })}
       </p>
+      {/* Totais da encomenda (dono, 18/11/2026): os mesmos da lista. */}
+      <section className="mb-3" data-batch-totals>
+        <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          {t("reqBatch.totals")}
+        </h2>
+        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+          {(
+            [
+              ...(seeSale
+                ? [
+                    {
+                      key: "price",
+                      label: t("reqList.col.price"),
+                      value: <SaleTotalValue t={t} sale={totals.sale} />,
+                    },
+                  ]
+                : []),
+              ...(wellmix
+                ? [
+                    {
+                      key: "moq",
+                      label: t("reqList.col.moq"),
+                      value: <TotalValue t={t} part={totals.moq} total="moq" />,
+                    },
+                  ]
+                : []),
+              {
+                key: "pieces",
+                label: t("reqList.col.pieces"),
+                value: <TotalValue t={t} part={totals.pieces} total="pieces" />,
+              },
+              {
+                key: "boxes",
+                label: t("reqList.col.boxes"),
+                value: <TotalValue t={t} part={totals.boxes} total="boxes" />,
+              },
+              {
+                key: "inner",
+                label: t("reqList.col.inner"),
+                value: <TotalValue t={t} part={totals.inner} total="inner" />,
+              },
+              {
+                key: "cbm",
+                label: unitLabel(t("reqList.col.cbm")),
+                value: <TotalValue t={t} part={totals.cbm} total="cbm" />,
+              },
+            ] as const
+          ).map((item) => (
+            <div
+              key={item.key}
+              className="rounded-xl border border-zinc-200 bg-white px-3 py-2"
+              data-batch-total={item.key}
+            >
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                {item.label}
+              </dt>
+              <dd className="mt-0.5 text-base font-semibold text-zinc-900">
+                {item.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
       <Table>
         <thead>
           <tr>
             <Th className="w-14">{t("reqBatch.col.photo")}</Th>
             <Th>{t("common.product")}</Th>
             <Th className="text-right">{t("reqBatch.col.perBox")}</Th>
-            <Th className="text-right">{t("common.quantity")}</Th>
+            <Th className="text-right">{t("reqBatch.col.pieces")}</Th>
             <Th className="text-right">{t("reqBatch.col.boxes")}</Th>
+            <Th className="text-right">{t("reqBatch.col.inner")}</Th>
+            <Th className="text-right">{unitLabel(t("reqBatch.col.cbm"))}</Th>
+            {wellmix ? (
+              <Th className="text-right">{t("reqBatch.col.moq")}</Th>
+            ) : null}
+            {seeSale ? (
+              <Th className="text-right">{t("reqBatch.col.price")}</Th>
+            ) : null}
             <Th className="text-right">{t("reqBatch.col.rounds")}</Th>
             <Th>{t("common.status")}</Th>
             <Th>{t("requests.deadline")}</Th>
@@ -352,12 +449,11 @@ export default async function RequestBatchPage({
               : null;
             const product = productOf(r);
             const name = productNameText(t, r.productName);
-            // Peças por caixa e caixas: as da variação ou do cadastro.
-            const l = itemLogistics({
-              quantity: r.quantity,
-              variant: r.variant ?? null,
-              product,
-            });
+            // Peças por caixa, caixas (por programação), inner e CBM: a
+            // embalagem do produto (a mesma regra da lista e da ficha).
+            const pk = packing.get(r.id);
+            const line = lineOf.get(r.id)!;
+            const forecast = r.priceForecast ?? null;
             const href = `/app/requests/${r.id}`;
             return (
               <tr key={r.id} className={rowClass} data-batch-item={r.id}>
@@ -392,18 +488,98 @@ export default async function RequestBatchPage({
                   className="whitespace-nowrap text-right tabular-nums"
                   data-batch-per-box
                 >
-                  {l.unitsPerBox !== null ? num(l.unitsPerBox) : "—"}
+                  {pk?.perBox ? num(pk.perBox.value) : "—"}
                 </Td>
-                <Td className="whitespace-nowrap text-right tabular-nums">
-                  {num(r.quantity, 2)} {r.unit}
+                <Td
+                  className="whitespace-nowrap text-right tabular-nums"
+                  data-batch-pieces
+                >
+                  {/* Peças de todas as programações; em outra unidade (kg,
+                      m), a quantidade como foi pedida. */}
+                  {line.pieces !== null
+                    ? num(line.pieces, 2)
+                    : `${num(r.quantity, 2)} ${r.unit}`}
                 </Td>
                 <Td
                   className="whitespace-nowrap text-right tabular-nums"
                   data-batch-boxes
                 >
-                  {/* Sem peças por caixa no cadastro, "—" (não um 0 enganoso). */}
-                  {l.unitsPerBox !== null ? num(l.boxes) : "—"}
+                  {/* Sem peças por caixa, "—" (não um 0 enganoso); a dica
+                      mostra as caixas de cada programação. */}
+                  <span
+                    title={
+                      pk?.boxes?.perRound && pk.boxes.perRound.length > 1
+                        ? t("reqBatch.boxes.rounds", {
+                            list: pk.boxes.perRound
+                              .map((n) => num(n))
+                              .join(" + "),
+                          })
+                        : undefined
+                    }
+                  >
+                    {line.boxes !== null ? num(line.boxes) : "—"}
+                  </span>
                 </Td>
+                <Td
+                  className="whitespace-nowrap text-right tabular-nums"
+                  data-batch-inner
+                >
+                  {line.innerBoxes !== null ? num(line.innerBoxes) : "—"}
+                </Td>
+                <Td
+                  className="whitespace-nowrap text-right tabular-nums"
+                  data-batch-cbm
+                >
+                  {/* 3 casas na tela, como a lista; a dica com 4 (a conta). */}
+                  <span
+                    title={
+                      line.cbm !== null
+                        ? `${line.cbm.toLocaleString(t.intl, { maximumFractionDigits: 4 })} m³`
+                        : undefined
+                    }
+                  >
+                    {line.cbm !== null
+                      ? line.cbm.toLocaleString(t.intl, {
+                          minimumFractionDigits: 3,
+                          maximumFractionDigits: 3,
+                        })
+                      : "—"}
+                  </span>
+                </Td>
+                {wellmix ? (
+                  <Td
+                    className="whitespace-nowrap text-right tabular-nums"
+                    data-batch-moq
+                  >
+                    {line.moq !== null ? num(line.moq) : "—"}
+                  </Td>
+                ) : null}
+                {seeSale ? (
+                  <Td
+                    className="whitespace-nowrap text-right tabular-nums"
+                    data-batch-price
+                  >
+                    <span
+                      title={
+                        forecast
+                          ? t("reqBatch.price.hint", {
+                              price: moneyValue(
+                                t,
+                                forecast.unitPrice,
+                                forecast.currency,
+                              ),
+                              pieces: num(forecast.pieces),
+                              date: formatDate(forecast.at, t),
+                            })
+                          : t("reqList.total.price.none")
+                      }
+                    >
+                      {forecast
+                        ? moneyValue(t, forecast.total, forecast.currency)
+                        : "—"}
+                    </span>
+                  </Td>
+                ) : null}
                 <Td className="whitespace-nowrap text-right tabular-nums">
                   {Math.max(1, r.schedule?.items?.length ?? 0)}
                 </Td>
