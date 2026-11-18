@@ -27,7 +27,12 @@ import {
   searchPortfolioCustomers,
   type Standing,
 } from "@/lib/services/portfolio";
-import { STANDING_TONE, dateBr, portfolioError } from "./_components/shared";
+import {
+  STANDING_TONE,
+  dateBr,
+  daysText,
+  portfolioError,
+} from "./_components/shared";
 
 /*
  * Carteira e atendimento (dono, 18/11/2026; docs/TRADE_COMERCIAL.md): os
@@ -186,6 +191,15 @@ export default async function PortfolioPage({
                       {r.code}
                     </span>
                   ) : null}
+                  {/* Celular: a situação junto do nome (a tabela rola para o lado). */}
+                  <span className="mt-1 flex flex-wrap items-center gap-1 text-xs text-zinc-500 sm:hidden">
+                    <Badge tone={STANDING_TONE[r.status]}>
+                      {t(`portfolio.status.${r.status}` as DictionaryKey)}
+                    </Badge>
+                    {r.days !== null ? (
+                      <span>{daysText(t, r.days)}</span>
+                    ) : null}
+                  </span>
                 </Td>
                 <Td>{r.groupName ?? "—"}</Td>
                 <Td>

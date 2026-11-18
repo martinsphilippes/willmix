@@ -37,6 +37,7 @@ import {
   currentTime,
   dateBr,
   dateTimeBr,
+  daysText,
   portfolioError,
 } from "../_components/shared";
 
@@ -132,7 +133,7 @@ export default async function PortfolioCustomerPage({
                     <span>
                       {dateBr(t, row.lastConfirmedAt)}
                       <span className="block text-xs text-zinc-500">
-                        {t("portfolio.customer.days", { n: row.days ?? 0 })}
+                        {daysText(t, row.days ?? 0)}
                       </span>
                     </span>
                   ) : (

@@ -23,7 +23,7 @@ import {
   loadCustomerGroups,
 } from "@/lib/services/portfolio";
 import { createCustomerGroupAction } from "../../actions/portfolio";
-import { portfolioError } from "../_components/shared";
+import { customersText, portfolioError } from "../_components/shared";
 
 /*
  * Grupos econômicos da carteira (dono, 18/11/2026: "monta a lista na mão";
@@ -64,7 +64,7 @@ export default async function PortfolioGroupsPage({
               ) : null}
             </Td>
             <Td>{g.ownerName ?? t("portfolio.owner.none")}</Td>
-            <Td>{t("portfolio.groups.count", { n: g.customers })}</Td>
+            <Td>{customersText(t, g.customers)}</Td>
           </tr>
         ))}
       </tbody>

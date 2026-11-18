@@ -26,7 +26,7 @@ import {
   removeCustomerFromGroupAction,
   updateCustomerGroupAction,
 } from "../../../actions/portfolio";
-import { portfolioError } from "../../_components/shared";
+import { customersText, portfolioError } from "../../_components/shared";
 
 /*
  * Um grupo econômico (docs/TRADE_COMERCIAL.md): nome, responsável e
@@ -74,7 +74,7 @@ export default async function PortfolioGroupPage({
         title={group.name}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
-            <span>{t("portfolio.groups.count", { n: group.customers })}</span>
+            <span>{customersText(t, group.customers)}</span>
             {archived ? <Badge>{t("portfolio.groups.archived")}</Badge> : null}
           </span>
         }

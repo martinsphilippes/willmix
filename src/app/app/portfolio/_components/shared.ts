@@ -11,6 +11,20 @@ export const STANDING_TONE: Record<Standing, Tone> = {
   ok: "success",
 };
 
+/** "1 dia" ou "N dias" sem atendimento. */
+export function daysText(t: Translate, n: number): string {
+  return n === 1
+    ? t("portfolio.customer.dayOne")
+    : t("portfolio.customer.days", { n });
+}
+
+/** "1 cliente" ou "N clientes" no grupo. */
+export function customersText(t: Translate, n: number): string {
+  return n === 1
+    ? t("portfolio.groups.countOne")
+    : t("portfolio.groups.count", { n });
+}
+
 /** Texto do erro de uma ação da carteira (?error=<código>). */
 export function portfolioError(t: Translate, error: unknown): string | null {
   return typeof error === "string" && error

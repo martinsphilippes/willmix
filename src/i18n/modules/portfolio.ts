@@ -69,6 +69,7 @@ export const pt = {
     "Este cliente não está acompanhado: não está num grupo nem tem responsável escolhido. O atendimento fica registrado, mas ele não entra na carteira nem gera pendência.",
   "portfolio.customer.last": "Último atendimento confirmado",
   "portfolio.customer.days": "{n} dias sem atendimento",
+  "portfolio.customer.dayOne": "1 dia sem atendimento",
   "portfolio.customer.due": "Prazo: {date}",
   "portfolio.customer.dueLabel": "Prazo",
   "portfolio.customer.never": "Nenhum atendimento confirmado ainda.",
@@ -135,6 +136,7 @@ export const pt = {
   "portfolio.groups.save": "Salvar",
   "portfolio.groups.customers": "Clientes do grupo",
   "portfolio.groups.count": "{n} clientes",
+  "portfolio.groups.countOne": "1 cliente",
   "portfolio.groups.add": "Incluir no grupo",
   "portfolio.groups.addHint":
     "Busque o cliente pelo nome, código do Sankhya ou CNPJ. Se ele estiver em outro grupo, muda para este.",
@@ -284,6 +286,7 @@ export const en: Record<keyof typeof pt, string> = {
     "This customer is not followed: not in a group and with no one chosen as responsible. The contact is recorded, but the customer is not in the accounts and creates no task.",
   "portfolio.customer.last": "Last confirmed contact",
   "portfolio.customer.days": "{n} days without contact",
+  "portfolio.customer.dayOne": "1 day without contact",
   "portfolio.customer.due": "Deadline: {date}",
   "portfolio.customer.dueLabel": "Deadline",
   "portfolio.customer.never": "No confirmed contact yet.",
@@ -350,6 +353,7 @@ export const en: Record<keyof typeof pt, string> = {
   "portfolio.groups.save": "Save",
   "portfolio.groups.customers": "Customers in the group",
   "portfolio.groups.count": "{n} customers",
+  "portfolio.groups.countOne": "1 customer",
   "portfolio.groups.add": "Add to the group",
   "portfolio.groups.addHint":
     "Search the customer by name, Sankhya code or tax ID. If it is in another group, it moves to this one.",
@@ -492,6 +496,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "此客户未被跟进：不在任何集团中，也没有指定负责人。拜访会被记录，但客户不进入组合，也不产生待办。",
   "portfolio.customer.last": "最近一次已确认拜访",
   "portfolio.customer.days": "{n} 天未拜访",
+  "portfolio.customer.dayOne": "1 天未拜访",
   "portfolio.customer.due": "期限：{date}",
   "portfolio.customer.dueLabel": "期限",
   "portfolio.customer.never": "还没有已确认的拜访。",
@@ -555,6 +560,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "portfolio.groups.save": "保存",
   "portfolio.groups.customers": "集团客户",
   "portfolio.groups.count": "{n} 个客户",
+  "portfolio.groups.countOne": "1 个客户",
   "portfolio.groups.add": "加入集团",
   "portfolio.groups.addHint":
     "按名称、Sankhya 代码或税号搜索客户。如果客户在其他集团，将转到本集团。",
