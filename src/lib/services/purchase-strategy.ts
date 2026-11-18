@@ -138,6 +138,21 @@ export async function openDecisions(): Promise<PurchaseDecision[]> {
 export const requestKey = (r: Pick<Request, "id" | "groupId" | "number">) =>
   r.groupId ? `g:${r.groupId}` : r.number ? `n:${r.number}` : `r:${r.id}`;
 
+/**
+ * "Fornecedor da última compra" para a solicitação: todos os produtos com
+ * compra anterior, e todas do mesmo fornecedor (dono, 18/11/2026).
+ */
+export function sameLastSupplier(
+  productIds: readonly string[],
+  references: ReadonlyMap<string, Pick<LastPurchase, "supplierId">>,
+): boolean {
+  if (!productIds.length) return false;
+  const suppliers = new Set(
+    productIds.map((id) => references.get(id)?.supplierId ?? null),
+  );
+  return suppliers.size === 1 && !suppliers.has(null);
+}
+
 export interface StrategySupplier {
   id: string;
   name: string;
@@ -328,10 +343,12 @@ export async function chooseStrategy(
   }
   const references = await lastPurchases(productIds);
   if (input.choice === "last_supplier") {
-    if (productIds.length > 1)
-      throw new PurchaseStrategyError("strategy_last_one_product");
-    if (!references.get(productIds[0]))
+    // Vale para a solicitação toda quando todos os produtos têm compra
+    // anterior do mesmo fornecedor (dono, 18/11/2026).
+    if (productIds.some((id) => !references.get(id)))
       throw new PurchaseStrategyError("strategy_no_last_purchase");
+    if (!sameLastSupplier(productIds, references))
+      throw new PurchaseStrategyError("strategy_last_same_supplier");
   }
   const now = new Date().toISOString();
   const decision = await store.create("purchase_decisions", {
@@ -447,11 +464,18 @@ export async function orderFromStrategy(
   user: User,
   decisionId: string,
   input: {
-    unitPrice: number | null;
     currency: string;
-    quantity: number;
     leadTimeDays: number | null;
     incoterm: "EXW" | "FOB" | null;
+    /** Um produto (estratégias de um produto só): quantidade e preço. */
+    unitPrice?: number | null;
+    quantity?: number;
+    /** Vários produtos: quantidade e preço de cada um (ausente = o somado e o da última compra). */
+    lines?: Array<{
+      productId: string;
+      quantity: number;
+      unitPrice: number | null;
+    }>;
   },
 ): Promise<Order> {
   if (!isWellmix(user)) throw new PurchaseStrategyError("forbidden");
@@ -464,34 +488,46 @@ export async function orderFromStrategy(
     decision.orderId
   )
     throw new PurchaseStrategyError("strategy_not_ready");
-  const reference = decision.reference?.[0];
-  if (!reference || !decision.productId)
-    throw new PurchaseStrategyError("strategy_no_last_purchase");
-  // Sem "Ver preço de compra" (dono, 15/11/2026; docs/LINHA_DE_VISAO.md,
-  // seção 7): o pedido sai com o preço e a moeda da última compra gravados
-  // na decisão; o que vier no formulário é ignorado.
-  if (!canSeePurchasePrice(user))
-    input = {
-      ...input,
-      unitPrice: reference.unitPrice,
-      currency: reference.currency ?? "USD",
-    };
   const demands = await store.list("requests", {
     filter: { id: decision.demandIds },
   });
+  const productIds = [
+    ...new Set(demands.map((d) => d.productId).filter(Boolean)),
+  ] as string[];
+  const refs = new Map(
+    (decision.reference ?? []).map((r) => [r.productId, r] as const),
+  );
+  if (!productIds.length || !sameLastSupplier(productIds, refs))
+    throw new PurchaseStrategyError("strategy_no_last_purchase");
+  const reference = refs.get(productIds[0])!;
+  // Sem "Ver preço de compra" (dono, 15/11/2026; docs/LINHA_DE_VISAO.md,
+  // seção 7): o pedido sai com o preço e a moeda da última compra gravados
+  // na decisão; o que vier no formulário é ignorado.
+  const seesPrice = canSeePurchasePrice(user);
+  const single = productIds.length === 1;
+  const lines = productIds.map((productId) => {
+    const ref = refs.get(productId)!;
+    const sent = input.lines?.find((l) => l.productId === productId);
+    const summed = demands
+      .filter((d) => d.productId === productId)
+      .reduce((sum, d) => sum + d.quantity, 0);
+    const quantity =
+      sent?.quantity ?? (single ? input.quantity : undefined) ?? summed;
+    const typed = sent ? sent.unitPrice : single ? input.unitPrice : undefined;
+    return {
+      productId,
+      quantity,
+      unitPrice: seesPrice && typed !== undefined ? typed : ref.unitPrice,
+    };
+  });
+  const currency = seesPrice ? input.currency : (reference.currency ?? "USD");
   const { createDirectPurchaseOrder } = await import("./purchase-order");
   const order = await createDirectPurchaseOrder(user, {
     supplierId: reference.supplierId,
-    currency: input.currency,
+    currency,
     incoterm: input.incoterm,
     leadTimeDays: input.leadTimeDays,
-    lines: [
-      {
-        productId: decision.productId,
-        quantity: input.quantity,
-        unitPrice: input.unitPrice,
-      },
-    ],
+    lines,
     demandIds: decision.demandIds,
     summary: `estratégia nº ${decision.number}, demandas ${demands.map((d) => `nº ${d.number ?? "—"}`).join(", ")}`,
   });

@@ -77,7 +77,7 @@ export const pt = {
   "strategy.noLastPurchase":
     "Sem compra anterior deste produto: só dá para cotar entre fornecedores.",
   "strategy.lastOneProduct":
-    "Fornecedor da última compra: só na solicitação de um produto, com compra anterior.",
+    "Fornecedor da última compra: todos os produtos com compra anterior do mesmo fornecedor.",
   "strategy.request": "Solicitação nº {n}",
   "strategy.requestNoNumber": "Solicitação sem número",
   "strategy.requestProducts": "{n} produto(s)",
@@ -101,6 +101,12 @@ export const pt = {
     "Algum fornecedor marcado não é do País × Família da solicitação.",
   "strategy.error.strategy_suppliers_none":
     "Marque ao menos um fornecedor para receber a cotação.",
+  "strategy.lastSameSupplier":
+    "Fornecedor da última compra: os produtos desta solicitação tiveram fornecedores diferentes na última compra; só dá para cotar.",
+  "strategy.lastAllProducts":
+    "Fornecedor da última compra: algum produto desta solicitação não tem compra anterior; só dá para cotar.",
+  "strategy.error.strategy_last_same_supplier":
+    '"Fornecedor da última compra" vale quando todos os produtos tiveram o mesmo fornecedor na última compra.',
   "strategy.submit": "Enviar para aprovação",
   "strategy.chosen":
     "Estratégia nº {n} enviada para a aprovação da Diretoria de compras.",
@@ -339,7 +345,7 @@ export const en: Record<keyof typeof pt, string> = {
   "strategy.noLastPurchase":
     "No previous purchase of this product: only quoting among suppliers is possible.",
   "strategy.lastOneProduct":
-    "Last purchase's supplier: only for a single-product request with a previous purchase.",
+    "Last purchase's supplier: all products with a previous purchase from the same supplier.",
   "strategy.request": "Request no. {n}",
   "strategy.requestNoNumber": "Request without number",
   "strategy.requestProducts": "{n} product(s)",
@@ -363,6 +369,12 @@ export const en: Record<keyof typeof pt, string> = {
     "A selected supplier is not from the request's Country × Family.",
   "strategy.error.strategy_suppliers_none":
     "Select at least one supplier to receive the quote.",
+  "strategy.lastSameSupplier":
+    "Last purchase's supplier: the products of this request had different suppliers in their last purchase; only quoting is possible.",
+  "strategy.lastAllProducts":
+    "Last purchase's supplier: a product of this request has no previous purchase; only quoting is possible.",
+  "strategy.error.strategy_last_same_supplier":
+    '"Last purchase\'s supplier" applies when all products had the same supplier in their last purchase.',
   "strategy.submit": "Send for approval",
   "strategy.chosen":
     "Strategy no. {n} sent to the Purchasing board for approval.",
@@ -593,7 +605,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.choice.quote": "在供应商之间询价",
   "strategy.noLastPurchase": "该产品没有采购记录：只能在供应商之间询价。",
   "strategy.lastOneProduct":
-    "上次采购的供应商：仅适用于只有一个产品且有采购记录的申请。",
+    "上次采购的供应商：所有产品都有同一供应商的采购记录。",
   "strategy.request": "第 {n} 号申请",
   "strategy.requestNoNumber": "无编号申请",
   "strategy.requestProducts": "{n} 个产品",
@@ -614,6 +626,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.error.strategy_supplier_invalid":
     "有勾选的供应商不属于该申请的国家 × 产品族。",
   "strategy.error.strategy_suppliers_none": "请至少勾选一个接收询价的供应商。",
+  "strategy.lastSameSupplier":
+    "上次采购的供应商：本申请的产品上次采购的供应商不同，只能询价。",
+  "strategy.lastAllProducts":
+    "上次采购的供应商：本申请有产品没有采购记录，只能询价。",
+  "strategy.error.strategy_last_same_supplier":
+    "所有产品上次采购的供应商相同时，才能选择“上次采购的供应商”。",
   "strategy.submit": "提交审批",
   "strategy.chosen": "第 {n} 号策略已提交采购总监审批。",
   "strategy.decided": "第 {n} 号策略已决定。",

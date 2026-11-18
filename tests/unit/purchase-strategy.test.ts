@@ -135,14 +135,14 @@ describe("escolha e aprovação", () => {
         note: null,
       }),
     ).rejects.toThrow("strategy_whole_request");
-    // "Última compra" é de um produto só.
+    // A jarra não tem compra anterior: "última compra" não vale.
     await expect(
       strategy.chooseStrategy(buyer, {
         demandIds: lot.map((r) => r.id),
         choice: "last_supplier",
         note: null,
       }),
-    ).rejects.toThrow("strategy_last_one_product");
+    ).rejects.toThrow("strategy_no_last_purchase");
     const whole = await strategy.chooseStrategy(buyer, {
       demandIds: lot.map((r) => r.id),
       choice: "quote",
@@ -153,6 +153,61 @@ describe("escolha e aprovação", () => {
       productId: null,
       quantity: 1400,
     });
+  });
+
+  it("fornecedor da última compra com vários produtos: só quando todos tiveram o mesmo fornecedor", async () => {
+    const store = getStore();
+    // Boneca comprada antes do fornecedor B; jarra, do A (como a panela).
+    const boneca = await demand("prod-boneca", 2000);
+    await orderFromRequest(admin, boneca, {
+      supplierId: "fornecedor-b",
+      price: 2.2,
+      currency: "USD",
+    });
+    await store.update("requests", boneca.id, { status: "ORDERED" });
+    const jarra = await demand("prod-jarra", 1000);
+    await orderFromRequest(admin, jarra, {
+      supplierId: "fornecedor-a",
+      price: 1.1,
+      currency: "USD",
+    });
+    await store.update("requests", jarra.id, { status: "ORDERED" });
+    // Panela (A) e boneca (B): fornecedores diferentes, só cotar.
+    const mixed = await lotOf(["prod-panela", 800], ["prod-boneca", 2000]);
+    await expect(
+      strategy.chooseStrategy(buyer, {
+        demandIds: mixed.map((r) => r.id),
+        choice: "last_supplier",
+        note: null,
+      }),
+    ).rejects.toThrow("strategy_last_same_supplier");
+    // Panela e jarra: as duas do A, a solicitação inteira vai para ele.
+    const lot = await lotOf(["prod-panela", 800], ["prod-jarra", 600]);
+    const decision = await strategy.chooseStrategy(buyer, {
+      demandIds: lot.map((r) => r.id),
+      choice: "last_supplier",
+      note: null,
+    });
+    await strategy.decideStrategy(director, decision.id, {
+      approve: true,
+      note: null,
+    });
+    const order = await strategy.orderFromStrategy(admin, decision.id, {
+      currency: "USD",
+      leadTimeDays: 40,
+      incoterm: "FOB",
+      lines: [
+        { productId: "prod-panela", quantity: 800, unitPrice: 3.5 },
+        { productId: "prod-jarra", quantity: 600, unitPrice: 1.1 },
+      ],
+    });
+    expect(order).toMatchObject({ supplierId: "fornecedor-a" });
+    expect(order.fobTotal).toBeCloseTo(3.5 * 800 + 1.1 * 600);
+    for (const r of lot)
+      expect(await store.get("requests", r.id)).toMatchObject({
+        status: "ORDERED",
+        orderId: order.id,
+      });
   });
 
   it("cotar: os fornecedores do País × Família da solicitação, marcados na tela", async () => {

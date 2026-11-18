@@ -16,6 +16,7 @@ import {
   lastPurchases,
   openDecisions,
   requestKey,
+  sameLastSupplier,
   strategySuppliers,
   waitingDemands,
 } from "@/lib/services/purchase-strategy";
@@ -224,8 +225,9 @@ export default async function PurchaseStrategyPage({
               // "Fornecedor da última compra" vale para um produto só, com
               // compra anterior (o servidor confere).
               const anyLast = productsHere.some((id) => references.has(id));
-              const lastOk =
-                productsHere.length === 1 && !!references.get(productsHere[0]);
+              // Todos os produtos com compra anterior do mesmo fornecedor
+              // (dono, 18/11/2026).
+              const lastOk = sameLastSupplier(productsHere, references);
               return (
                 <form
                   key={key}
@@ -293,7 +295,7 @@ export default async function PurchaseStrategyPage({
                             type="radio"
                             name="choice"
                             value="last_supplier"
-                            disabled={!anyLast}
+                            disabled={!lastOk}
                             defaultChecked={lastOk}
                             data-strategy-choice="last_supplier"
                           />
@@ -306,7 +308,9 @@ export default async function PurchaseStrategyPage({
                           >
                             {t(
                               anyLast
-                                ? "strategy.lastOneProduct"
+                                ? productsHere.every((id) => references.has(id))
+                                  ? "strategy.lastSameSupplier"
+                                  : "strategy.lastAllProducts"
                                 : "strategy.noLastPurchase",
                             )}
                           </p>
@@ -409,6 +413,21 @@ export default async function PurchaseStrategyPage({
                 d.demandIds.includes(r.id),
               );
               const ref = d.reference?.[0];
+              // Uma linha por produto da solicitação, com a quantidade somada
+              // e a última compra de cada um (todos do mesmo fornecedor).
+              const orderLines = [
+                ...new Set(demands.map((r) => r.productId).filter(Boolean)),
+              ].map((productId) => ({
+                productId: productId as string,
+                quantity: demands
+                  .filter((r) => r.productId === productId)
+                  .reduce((sum, r) => sum + r.quantity, 0),
+                ref: d.reference?.find((x) => x.productId === productId),
+              }));
+              const leadTimes = orderLines
+                .map((l) => l.ref?.leadTimeDays)
+                .filter((n): n is number => typeof n === "number");
+              const leadTime = leadTimes.length ? Math.max(...leadTimes) : null;
               return (
                 <section
                   key={d.id}
@@ -436,9 +455,21 @@ export default async function PurchaseStrategyPage({
                   <ul className="mt-2 divide-y divide-zinc-100">
                     {demands.map((r) => demandRow(r, false))}
                   </ul>
-                  {d.choice === "last_supplier" ? (
-                    <div className="mt-2">{reference(ref)}</div>
-                  ) : null}
+                  {d.choice === "last_supplier"
+                    ? orderLines.map((line) => (
+                        <div key={line.productId} className="mt-2 space-y-0.5">
+                          {orderLines.length > 1 ? (
+                            <p className="text-xs font-medium text-zinc-800">
+                              {productNameText(
+                                t,
+                                productById.get(line.productId)?.name ?? "",
+                              )}
+                            </p>
+                          ) : null}
+                          {reference(line.ref)}
+                        </div>
+                      ))
+                    : null}
                   {d.choice === "quote" ? (
                     <p
                       className="mt-2 text-xs text-zinc-700"
@@ -501,46 +532,64 @@ export default async function PurchaseStrategyPage({
                         data-strategy-order-form
                       >
                         <input type="hidden" name="id" value={d.id} />
-                        <Field label={t("common.quantity")}>
-                          <Input
-                            name="quantity"
-                            inputMode="numeric"
-                            defaultValue={String(d.quantity)}
-                            required
-                          />
-                        </Field>
-                        {seesPrice ? (
-                          <>
-                            <Field label={t("strategy.last.price")}>
+                        {orderLines.map((line) => (
+                          <div
+                            key={line.productId}
+                            className="grid gap-2 sm:col-span-5 sm:grid-cols-5"
+                            data-strategy-order-line={line.productId}
+                          >
+                            <input
+                              type="hidden"
+                              name="productIds"
+                              value={line.productId}
+                            />
+                            <p className="self-end pb-2 text-sm font-medium text-zinc-800 sm:col-span-2">
+                              {productNameText(
+                                t,
+                                productById.get(line.productId)?.name ??
+                                  line.productId,
+                              )}
+                            </p>
+                            <Field label={t("common.quantity")}>
                               <Input
-                                name="unitPrice"
-                                inputMode="decimal"
-                                defaultValue={
-                                  ref.unitPrice !== null
-                                    ? String(ref.unitPrice)
-                                    : ""
-                                }
-                                data-strategy-order-price
-                              />
-                            </Field>
-                            <Field label={t("strategy.currency")}>
-                              <Input
-                                name="currency"
-                                defaultValue={ref.currency ?? "USD"}
-                                maxLength={3}
+                                name={`quantity__${line.productId}`}
+                                inputMode="numeric"
+                                defaultValue={String(line.quantity)}
                                 required
                               />
                             </Field>
-                          </>
+                            {seesPrice ? (
+                              <Field label={t("strategy.last.price")}>
+                                <Input
+                                  name={`unitPrice__${line.productId}`}
+                                  inputMode="decimal"
+                                  defaultValue={
+                                    line.ref?.unitPrice != null
+                                      ? String(line.ref.unitPrice)
+                                      : ""
+                                  }
+                                  data-strategy-order-price
+                                />
+                              </Field>
+                            ) : null}
+                          </div>
+                        ))}
+                        {seesPrice ? (
+                          <Field label={t("strategy.currency")}>
+                            <Input
+                              name="currency"
+                              defaultValue={ref.currency ?? "USD"}
+                              maxLength={3}
+                              required
+                            />
+                          </Field>
                         ) : null}
                         <Field label={t("strategy.last.leadTime")}>
                           <Input
                             name="leadTimeDays"
                             inputMode="numeric"
                             defaultValue={
-                              ref.leadTimeDays !== null
-                                ? String(ref.leadTimeDays)
-                                : ""
+                              leadTime !== null ? String(leadTime) : ""
                             }
                           />
                         </Field>
