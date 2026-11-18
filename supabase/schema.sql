@@ -96,7 +96,9 @@ alter table public."product_lines" add column if not exists "prompts" jsonb;
 alter table public."product_lines" add column if not exists "division" text;
 alter table public."product_lines" add column if not exists "sankhyaCode" text;
 alter table public."product_lines" add column if not exists "agencyId" text;
+alter table public."product_lines" add column if not exists "familyCode" text;
 create index if not exists "product_lines_by_sankhya" on public."product_lines" ("sankhyaCode");
+create index if not exists "product_lines_by_family" on public."product_lines" ("familyCode");
 create index if not exists "product_lines_created" on public."product_lines" ("createdAt");
 create index if not exists "product_lines_created_id" on public."product_lines" ("createdAt", "id");
 create index if not exists "product_lines_name_id" on public."product_lines" ("name", "id");
@@ -1854,10 +1856,41 @@ alter table public."supplier_lines" enable row level security;
 alter table public."supplier_lines" add column if not exists "supplierId" text;
 alter table public."supplier_lines" add column if not exists "lineId" text;
 alter table public."supplier_lines" add column if not exists "createdByUserId" text;
+alter table public."supplier_lines" add column if not exists "familyConvertedAt" timestamptz;
 create index if not exists "supplier_lines_by_supplier" on public."supplier_lines" ("supplierId");
 create index if not exists "supplier_lines_by_line" on public."supplier_lines" ("lineId");
 create index if not exists "supplier_lines_created" on public."supplier_lines" ("createdAt");
 create index if not exists "supplier_lines_created_id" on public."supplier_lines" ("createdAt", "id");
+
+create table if not exists public."product_families" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."product_families" enable row level security;
+alter table public."product_families" add column if not exists "code" text;
+alter table public."product_families" add column if not exists "name" text;
+alter table public."product_families" add column if not exists "nameKey" text;
+alter table public."product_families" add column if not exists "active" boolean;
+alter table public."product_families" add column if not exists "syncedAt" timestamptz;
+create unique index if not exists "product_families_by_code" on public."product_families" ("code");
+create index if not exists "product_families_created" on public."product_families" ("createdAt");
+create index if not exists "product_families_created_id" on public."product_families" ("createdAt", "id");
+create index if not exists "product_families_name_id" on public."product_families" ("name", "id");
+
+create table if not exists public."party_families" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."party_families" enable row level security;
+alter table public."party_families" add column if not exists "partyId" text;
+alter table public."party_families" add column if not exists "familyCode" text;
+alter table public."party_families" add column if not exists "createdByUserId" text;
+create index if not exists "party_families_by_party" on public."party_families" ("partyId");
+create index if not exists "party_families_by_family" on public."party_families" ("familyCode");
+create index if not exists "party_families_created" on public."party_families" ("createdAt");
+create index if not exists "party_families_created_id" on public."party_families" ("createdAt", "id");
 
 create table if not exists public."purchase_decisions" (
   "id" text primary key,

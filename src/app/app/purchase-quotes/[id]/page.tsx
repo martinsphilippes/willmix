@@ -500,9 +500,11 @@ export default async function PurchaseQuotePage({
             <form action={quoteNoAnswerAction} className="space-y-2">
               <input type="hidden" name="quoteId" value={quote.id} />
               <input type="hidden" name="what" value="invite" />
+              {/* Fornecedor, Trading, Supplier e Factory (dono, 18/11/2026). */}
               <PartyPicker
                 name="supplierId"
                 type="supplier"
+                alsoTypes={["trading", "supplier_partner", "factory"]}
                 required
                 activeOnly
                 labels={partyPickerLabels(t)}
