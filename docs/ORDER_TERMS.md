@@ -277,6 +277,13 @@ Vale para as três telas (Encomendas, TS e Venda), que usam o mesmo código (`sr
 - **Entrada da Reposição com rascunho:** antes ela não tinha rascunho. Agora tem o mesmo de sempre ("Salvar rascunho", o automático e a lista no alto), marcado pelo campo `from=replenishment` do formulário; vale para quem abre a fila (ação "Abrir reposição" e tela Encomendas), mesmo sem a tela de Venda. O rascunho da Reposição só abre nessa entrada, e o da Venda comum só na Venda.
 - O histórico de compras perdeu a explicação "Pedidos de venda do cliente no Sankhya, do mais recente para o mais antigo…".
 
+## 11.13 Rascunho reaberto sem os produtos (dono, 18/11/2026)
+
+- **O que acontecia:** ao reabrir um rascunho, a leitura dos produtos era a mesma do envio (estrita). Bastava um campo incompleto numa linha (a programação gerada com uma data ainda sem quantidade, por exemplo) para a tela descartar todos os produtos. Em seguida, o rascunho automático gravava a tela vazia por cima.
+- **Agora:** o rascunho volta como foi salvo (`parseRequestItems(form, { lenient: true })` e `parseRequestSchedule(..., { draft: true })`): a quantidade em branco ou inválida da programação vira zero, e a programação que não dá para ler (ou é de outro produto) sai só daquela linha. O envio continua estrito.
+- **O rascunho automático só grava depois de uma ação da pessoa na tela** (tecla, clique ou toque). Abrir um rascunho, com a tela se completando sozinha, nunca grava por cima.
+- **Quem vê o rascunho:** só quem criou (listar, abrir, gravar por cima e apagar conferem o login).
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

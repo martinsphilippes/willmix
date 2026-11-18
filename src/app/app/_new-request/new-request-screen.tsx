@@ -229,7 +229,9 @@ export async function renderNewRequest({
   const draftRows: InitialRequestRow[] = (() => {
     if (!draftFields) return [];
     try {
-      return parseRequestItems(draftFields).map((r) => ({
+      // Leitura tolerante (dono, 18/11/2026): campo incompleto não apaga os
+      // produtos do rascunho.
+      return parseRequestItems(draftFields, { lenient: true }).map((r) => ({
         productId: r.productId ?? "",
         variantId: r.variantId ?? "",
         notInCatalog: r.sourcingDemand && !r.productId,
