@@ -116,7 +116,12 @@ export interface Task {
   title: string;
   detail: string;
   /** Pedido/solicitação da conversa (ícone de chat) quando o link não é deles (cotação, embalagem, frete). */
-  chat?: { orderId?: string | null; requestId?: string | null };
+  chat?: {
+    orderId?: string | null;
+    requestId?: string | null;
+    /** A pessoa de fora da conversa (abre direto a conversa com ela). */
+    peerUserId?: string | null;
+  };
   link: string;
   dueAt: string | null;
   overdue: boolean;
@@ -1079,7 +1084,9 @@ export async function pendingTasksFor(
   if (wellmix)
     tasks.push(
       ...(
-        await (await import("./portfolio"))
+        await (
+          await import("./portfolio")
+        )
           .portfolioTaskDrafts(now)
           .catch(() => [])
       ).map((draft) => finish(draft, now)),
@@ -1814,7 +1821,8 @@ export async function pendingTasksFor(
     }
   }
   // Mensagens que a Wellmix deve responder (Controladoria de mensagens):
-  // prazo de 1 dia útil; o analista é quem escreveu por último pela Wellmix.
+  // prazo de 1 dia útil; o analista é a pessoa da Wellmix da conversa
+  // privada (na antiga, quem escreveu por último pela Wellmix).
   if (wellmix) {
     const { wellmixMessageDebts } = await import("./message-control");
     for (const m of await wellmixMessageDebts(now)) {
@@ -1825,9 +1833,15 @@ export async function pendingTasksFor(
             title: `Responder ${m.partyName}`,
             detail: `${m.title ?? "Geral"} · ${m.lastAuthorName}: ${m.lastPreview}`,
             link: m.href,
-            chat: m.orderItemId
-              ? undefined
-              : { orderId: m.orderId, requestId: m.requestId },
+            // Geral (sem pedido nem solicitação) e item: o link leva à conversa.
+            chat:
+              m.orderItemId || (!m.orderId && !m.requestId)
+                ? undefined
+                : {
+                    orderId: m.orderId,
+                    requestId: m.requestId,
+                    peerUserId: m.peerUserId,
+                  },
             dueAt: m.dueAt,
             customerId: m.customerId,
             ownerUserId: m.analystId,

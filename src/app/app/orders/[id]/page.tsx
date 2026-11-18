@@ -2289,11 +2289,14 @@ export default async function OrderPage({
                               partyId: pid,
                               label: t(`messages.type.${type}`),
                               title: partyName(pid),
+                              // Painel com "Escolher conversa": a empresa
+                              // pode ter vários logins (docs/CHAT_IDENTITY.md).
+                              floating: true,
                             },
                           ]
                         : [],
                     )
-                  : [{ label: t("messages.chatWellmix") }]
+                  : [{ label: t("messages.chatWellmix"), floating: true }]
               }
             />
           </span>

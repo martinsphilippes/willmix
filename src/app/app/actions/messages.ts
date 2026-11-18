@@ -9,8 +9,8 @@ import { field, requireUser, run, runInPlace, str } from "./helpers";
 /*
  * Mensagens (chat interno). Quem tem a tela Mensagens no perfil escreve e
  * abre assuntos; o serviço confere a empresa da conversa e se ele vê a
- * solicitação/o pedido do assunto. Começar conversa escolhendo a empresa: só
- * a Wellmix.
+ * solicitação/o pedido do assunto. A conversa é privada entre dois logins
+ * (docs/CHAT_IDENTITY.md): só os dois escrevem; o administrador lê.
  */
 
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
@@ -62,8 +62,11 @@ export async function postMessageAction(form: FormData) {
     // Resposta a uma mensagem marcada (o serviço confere que é deste assunto).
     const replyTo = str(form, "replyToMessageId");
     const { postMessage } = await import("@/lib/services/messages");
+    // A conversa que a tela mostrava: o serviço recusa se o assunto não é dela.
+    const conversationId = str(form, "conversationId");
     await postMessage(user, topicId, body, attachment, {
       replyToMessageId: replyTo ? ID.parse(replyTo) : null,
+      conversationId: conversationId ? ID.parse(conversationId) : null,
     });
   });
 }
@@ -142,23 +145,25 @@ export async function openTreeTopicAction(form: FormData) {
 }
 
 /**
- * "Nova conversa" (Wellmix): empresa ("party:<id>") ou login sem empresa
- * ("user:<id>") escolhido na lista.
+ * "Nova conversa": a pessoa escolhida (`user:<id>`; a conversa é privada
+ * entre os dois logins). Wellmix: qualquer login de fora ativo (ou
+ * `party:<id>` da lista antiga: o login único da empresa); de fora: uma
+ * pessoa da lista curta da Wellmix (conferida no serviço).
  */
 export async function startConversationAction(form: FormData) {
   const user = await requireUser();
   await run(BASE, async () => {
-    assertWellmix(user);
     assertScreen(user, "messages");
     const target = z
       .string()
       .regex(/^(party|user):[A-Za-z0-9_-]{1,64}$/)
       .parse(str(form, "target"));
     const [kind, id] = target.split(":");
+    if (kind === "party") assertWellmix(user);
     const { openTopic } = await import("@/lib/services/messages");
     const opened = await openTopic(
       user,
-      kind === "party" ? { partyId: id } : { userId: id },
+      kind === "party" ? { partyId: id } : { peerUserId: id },
     );
     return threadBack(opened.conversationId, opened.topicId);
   });

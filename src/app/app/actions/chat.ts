@@ -58,6 +58,8 @@ const openSchema = z.object({
   requestId: optionalId,
   orderItemId: optionalId,
   partyId: optionalId,
+  /** A outra pessoa da conversa (o login); o serviço confere se pode. */
+  peerUserId: optionalId,
 });
 
 /** Abre (ou acha) o assunto: pedido inteiro, item do pedido ou solicitação. */
@@ -105,20 +107,25 @@ export async function chatTranslateAction(messageId: unknown) {
 /**
  * Envia uma mensagem de texto no assunto; com `replyToMessageId`, é a
  * resposta a uma mensagem marcada (do mesmo assunto, conferido no serviço).
+ * Só um dos dois logins da conversa escreve (conferido no serviço).
  */
 export async function chatSendAction(
   topicId: unknown,
   body: unknown,
   replyToMessageId?: unknown,
+  /** Conversa que a tela mostrava: o servidor recusa se o assunto não é dela. */
+  conversationId?: unknown,
 ) {
   const user = await requireUser();
   return guard(user, async () => {
     const id = ID.parse(topicId);
     const text = z.string().trim().min(1).max(MESSAGE_MAX_LENGTH).parse(body);
     const replyTo = optionalId.parse(replyToMessageId ?? null);
+    const conversation = optionalId.parse(conversationId ?? null);
     const { postMessage } = await import("@/lib/services/messages");
     await postMessage(user, id, text, null, {
       replyToMessageId: replyTo ?? null,
+      conversationId: conversation ?? null,
     });
   });
 }

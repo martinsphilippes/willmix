@@ -182,7 +182,7 @@ describe("a faixa na tela (o mesmo componente nas duas telas)", async () => {
     expect(field(render({}), "net-weight")).toEqual(["Peso líquido", "—"]);
   });
 
-  it("peso bruto (dono, 16/11/2026): logo depois do líquido, no mesmo formato; \"—\" sem o dado", () => {
+  it('peso bruto (dono, 16/11/2026): logo depois do líquido, no mesmo formato; "—" sem o dado', () => {
     const html = render({
       netWeight: { value: 0.189, unit: "kg", basis: "piece" },
       grossWeight: { value: 0.21, unit: "kg", basis: "piece" },
@@ -247,12 +247,9 @@ describe("blocos da faixa que quebram juntos", async () => {
   it("o campo com withNext leva o seguinte; os demais vão sozinhos", () => {
     const f = (key: string, withNext?: boolean) => ({ key, withNext });
     expect(
-      fieldUnits([
-        f("a"),
-        f("net", true),
-        f("gross"),
-        f("cap"),
-      ]).map((u) => u.map((x) => x.key)),
+      fieldUnits([f("a"), f("net", true), f("gross"), f("cap")]).map((u) =>
+        u.map((x) => x.key),
+      ),
     ).toEqual([["a"], ["net", "gross"], ["cap"]]);
     // O último com withNext não cria bloco vazio.
     expect(fieldUnits([f("a", true)]).map((u) => u.length)).toEqual([1]);

@@ -265,7 +265,7 @@ export default async function RequestDetailPage({
                       title: customer?.name,
                       floating: true,
                     }
-                  : { label: t("messages.chatWellmix") },
+                  : { label: t("messages.chatWellmix"), floating: true },
               ]}
             />
             {/* Wellmix: mais produtos nesta solicitação antes do pedido

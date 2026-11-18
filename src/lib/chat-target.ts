@@ -11,6 +11,12 @@ export interface ChatTargetDetail {
   orderItemId?: string | null;
   partyId?: string | null;
   /**
+   * A outra pessoa da conversa (o login): a conversa é privada entre dois
+   * logins (docs/CHAT_IDENTITY.md). Ex.: a pendência "Responder" abre direto
+   * a conversa com quem escreveu.
+   */
+  peerUserId?: string | null;
+  /**
    * Começo da mensagem já escrito no campo (ex.: "Etapa Preparação: "), para
    * quem recebe saber do que se trata. Só enviar o começo não vale.
    */
@@ -39,7 +45,8 @@ export function sameChatTarget(
     (a.orderId ?? null) === (b.orderId ?? null) &&
     (a.requestId ?? null) === (b.requestId ?? null) &&
     (a.orderItemId ?? null) === (b.orderItemId ?? null) &&
-    (a.partyId ?? null) === (b.partyId ?? null)
+    (a.partyId ?? null) === (b.partyId ?? null) &&
+    (a.peerUserId ?? null) === (b.peerUserId ?? null)
   );
 }
 
