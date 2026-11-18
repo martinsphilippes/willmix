@@ -64,6 +64,7 @@ import {
   Card,
   cx,
   Empty,
+  OpenLink,
   PageHeader,
   Progress,
   Stat,
@@ -713,14 +714,16 @@ export async function ControlTower({
                             >
                               {t(`ct.exception.${e.kind}`)}
                             </Badge>
-                            <p className="mt-1 text-zinc-700">{e.detail}</p>
+                            <p className="mt-1 text-zinc-700">
+                              <TextLink
+                                href={e.link}
+                                className="text-zinc-700 no-underline hover:underline"
+                              >
+                                {e.detail}
+                              </TextLink>
+                            </p>
                           </div>
-                          <TextLink
-                            href={e.link}
-                            className="whitespace-nowrap text-xs"
-                          >
-                            {t("tasks.open")}
-                          </TextLink>
+                          <OpenLink href={e.link} label={t("tasks.open")} />
                         </li>
                       ))}
                     </ul>

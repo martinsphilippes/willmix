@@ -18,6 +18,7 @@ import {
   Alert,
   Badge,
   Empty,
+  OpenIcon,
   PageHeader,
   Table,
   Td,
@@ -272,7 +273,19 @@ function NotificationRow({ n, t }: { n: Notification; t: Translate }) {
             read ? "font-medium text-zinc-700" : "font-semibold text-zinc-900",
           )}
         >
-          {subject}
+          {n.link ? (
+            // A primeira informação também abre (dono, 18/11/2026): envia o
+            // mesmo formulário do ícone, que marca como lido e leva ao link.
+            <button
+              type="submit"
+              form={`notif-open-${n.id}`}
+              className="text-left hover:underline"
+            >
+              {subject}
+            </button>
+          ) : (
+            subject
+          )}
         </p>
         {n.body ? (
           <p className="mt-0.5 whitespace-pre-line text-xs text-zinc-600">
@@ -299,16 +312,28 @@ function NotificationRow({ n, t }: { n: Notification; t: Translate }) {
       <Td className="whitespace-nowrap text-right">
         <div className="inline-flex items-center justify-end gap-1">
           {n.link ? (
-            <form action={openNotificationAction}>
+            <form action={openNotificationAction} id={`notif-open-${n.id}`}>
               <input type="hidden" name="id" value={n.id} />
-              <SubmitButton
-                variant={mine && !read ? "primary" : "secondary"}
-                className="min-h-8 px-3 py-1 text-xs"
-                data-notification-open={n.id}
-              >
-                {mine ? t("notif.open.action") : t("tasks.open")}
-                <span className="sr-only">: {subject}</span>
-              </SubmitButton>
+              {mine ? (
+                <SubmitButton
+                  variant={!read ? "primary" : "secondary"}
+                  className="min-h-8 px-3 py-1 text-xs"
+                  data-notification-open={n.id}
+                >
+                  {t("notif.open.action")}
+                  <span className="sr-only">: {subject}</span>
+                </SubmitButton>
+              ) : (
+                // Abrir só com o ícone (dono, 18/11/2026).
+                <SubmitTextButton
+                  aria-label={`${t("tasks.open")}: ${subject}`}
+                  title={t("tasks.open")}
+                  data-notification-open={n.id}
+                  className="h-7 w-7 justify-center rounded-md text-zinc-400 no-underline hover:bg-brand-50 hover:text-brand-700"
+                >
+                  <OpenIcon />
+                </SubmitTextButton>
+              )}
             </form>
           ) : null}
           <form action={deleteNotificationAction}>

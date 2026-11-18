@@ -30,6 +30,7 @@ import {
   Stat,
   Table,
   Td,
+  OpenLink,
   TextLink,
   Th,
   formatDate,
@@ -536,9 +537,8 @@ export default async function InventoryPage({
                   </Td>
                   <Td className="whitespace-nowrap text-right">
                     {p ? (
-                      <IconLink
+                      <OpenLink
                         href={`/app/products/${p.id}`}
-                        icon="eye"
                         label={t("inv.open")}
                       />
                     ) : null}

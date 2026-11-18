@@ -15,6 +15,7 @@ import {
   PageHeader,
   Table,
   Td,
+  OpenLink,
   TextLink,
   Th,
   formatDate,
@@ -147,9 +148,10 @@ export default async function StockCountsPage({
                     {c.closedAt ? formatDate(c.closedAt, t) : "—"}
                   </Td>
                   <Td className="text-right">
-                    <TextLink href={`/app/inventory/counts/${c.id}`}>
-                      {t("stockCount.open")}
-                    </TextLink>
+                    <OpenLink
+                      href={`/app/inventory/counts/${c.id}`}
+                      label={t("stockCount.open")}
+                    />
                   </Td>
                 </tr>
               );

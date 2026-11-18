@@ -221,9 +221,10 @@ test("Nova solicitação aberta pelo próprio cliente: ele é o solicitante e o 
     (await page.request.get("/api/parties/rca?customer=cliente-joao")).status(),
   ).toBe(404);
   const requestId = await sendDoll(page);
-  // Na lista dele, a solicitação que ele abriu.
+  // Na lista dele, a solicitação que ele abriu (a linha abre a página do
+  // pedido, também com um produto só; docs/ORDER_LEVEL_LISTS.md).
   await page.goto("/app/requests");
   await expect(
-    page.locator(`a[href="/app/requests/${requestId}"]`).first(),
+    page.locator(`a[href="/app/requests/batch/${requestId}"]`).first(),
   ).toBeVisible();
 });

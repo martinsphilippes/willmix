@@ -211,6 +211,14 @@ export default async function RequestDetailPage({
         }
         actions={
           <>
+            {/* O pedido inteiro (dono, 18/11/2026): esta tela é o produto
+                neste pedido; a página do pedido lista todos os produtos. */}
+            <TextLink
+              href={`/app/requests/batch/${encodeURIComponent(request.groupId ?? request.id)}`}
+              data-back-to-order
+            >
+              {t("reqBatch.backToOrder")}
+            </TextLink>
             {/* Mensagens: assunto desta solicitação na conversa da empresa.
                 "Conversar com a empresa" (Wellmix) abre o chat numa caixa
                 flutuante na própria tela (dono, 14/11/2026). */}

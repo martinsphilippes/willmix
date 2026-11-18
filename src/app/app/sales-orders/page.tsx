@@ -9,6 +9,7 @@ import {
   Badge,
   Card,
   Empty,
+  OpenLink,
   PageHeader,
   Table,
   Td,
@@ -108,9 +109,13 @@ export default async function SalesOrdersPage({
               <tr>
                 <Th>{t("salesOrder.number")}</Th>
                 <Th>{t("salesOrder.customer")}</Th>
+                <Th>{t("salesOrder.products")}</Th>
                 <Th>{t("salesOrder.status")}</Th>
                 <Th>{t("salesOrder.erp")}</Th>
                 <Th>{t("salesOrder.deliveryDate")}</Th>
+                <Th>
+                  <span className="sr-only">{t("tasks.open")}</span>
+                </Th>
               </tr>
             </thead>
             <tbody>
@@ -125,6 +130,9 @@ export default async function SalesOrdersPage({
                     </Link>
                   </Td>
                   <Td>{o.customerName}</Td>
+                  <Td className="tabular-nums" data-sales-order-products={o.id}>
+                    {new Set(o.lines.map((l) => l.productId)).size}
+                  </Td>
                   <Td>
                     <Badge
                       tone={
@@ -148,6 +156,12 @@ export default async function SalesOrdersPage({
                     {o.deliveryDate
                       ? formatDate(`${o.deliveryDate}T12:00:00Z`, t)
                       : "—"}
+                  </Td>
+                  <Td>
+                    <OpenLink
+                      href={`/app/sales-orders/${o.id}`}
+                      label={t("tasks.open")}
+                    />
                   </Td>
                 </tr>
               ))}

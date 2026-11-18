@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { roundsLine } from "@/components/purchase-rounds";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -29,9 +28,14 @@ import {
 } from "@/lib/services/purchase-order";
 import { PurchaseOrderCard } from "./_components/purchase-order";
 import {
+  requestContainersPerRound,
+  requestRounds,
+} from "./_components/request-load";
+import {
   requestClosed,
   requestOrderState,
 } from "@/lib/supplier-request-closing";
+import { getSettings } from "@/lib/settings";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
@@ -39,6 +43,7 @@ import {
   Card,
   Empty,
   LinkButton,
+  OpenLink,
   PageHeader,
   Table,
   Td,
@@ -82,11 +87,19 @@ export default async function SupplierRequestsPage({
   const showPurchase =
     wellmix && canOpen(user, "orders") && can(user, "purchaseOrder.generate");
   // Leituras independentes em paralelo.
-  const [entries, slaMinutes, query] = await Promise.all([
+  const [entries, slaMinutes, query, settings] = await Promise.all([
     listSupplierRequests(user),
     supplierRequestSlaMinutes(),
     searchParams,
+    getSettings(),
   ]);
+  // Containers por programação: no 40HC (o padrão da seleção) ou no maior.
+  const container =
+    settings.containerTypes.find((c) => c.code === "40HC") ??
+    [...settings.containerTypes].sort(
+      (a, b) => b.capacityCbm - a.capacityCbm,
+    )[0] ??
+    null;
   const closedTab = query.tab === "closed";
   // "Gerar pedido" de uma linha: os produtos dela vêm marcados no quadro.
   const pickParam = typeof query.pick === "string" ? query.pick : "";
@@ -105,7 +118,9 @@ export default async function SupplierRequestsPage({
       : fallbackError(t, error);
 
   // Uma linha por solicitação: os produtos abertos juntos para o fornecedor
-  // ficam dentro dela (a antiga, sem batchId, é uma linha sozinha).
+  // ficam dentro dela (a antiga, sem batchId, é uma linha sozinha). Sem
+  // colunas de produto (dono, 18/11/2026): a solicitação pode ter milhares;
+  // os produtos ficam na tela da solicitação.
   const rows = entries ?? [];
   const supplierOf = new Map(rows.map((e) => [e.request.id, e.supplier]));
   const allRequests = groupRequests(rows.map((e) => e.request)).map((list) =>
@@ -203,15 +218,27 @@ export default async function SupplierRequestsPage({
                 <Th>{t("supplierRequests.col.number")}</Th>
                 <Th>{t("supplierRequests.col.status")}</Th>
                 {wellmix ? <Th>{t("supplierRequests.col.supplier")}</Th> : null}
-                <Th>{t("supplierRequests.col.item")}</Th>
-                <Th>{t("supplierRequests.col.quantity")}</Th>
                 <Th>{t("supplierRequests.col.products")}</Th>
+                <Th>{t("supplierRequests.col.quantity")}</Th>
+                <Th>{t("supplierRequests.col.rounds")}</Th>
+                <Th>
+                  <span
+                    title={t("supplierRequests.col.containersHint", {
+                      code: container?.code ?? "—",
+                    })}
+                  >
+                    {t("supplierRequests.col.containersPerRound")}
+                  </span>
+                </Th>
                 <Th>{t("supplierRequests.col.answer")}</Th>
                 <Th>{t("supplierRequests.col.createdAt")}</Th>
                 <Th>{t("supplierRequests.col.finishedAt")}</Th>
                 {closedTab && showPurchase ? (
                   <Th>{t("supplierRequests.col.order")}</Th>
                 ) : null}
+                <Th>
+                  <span className="sr-only">{t("tasks.open")}</span>
+                </Th>
               </tr>
             </thead>
             <tbody>
@@ -250,6 +277,12 @@ export default async function SupplierRequestsPage({
                       .at(-1)!
                   : null;
                 const late = products.some((p) => finishedLate(p, slaMinutes));
+                const href = `/app/supplier-requests/${r.id}`;
+                const rounds = requestRounds(products);
+                const containers = requestContainersPerRound(
+                  products,
+                  container?.capacityCbm ?? null,
+                );
                 const orderState =
                   closedTab && showPurchase
                     ? requestOrderState(products)
@@ -261,10 +294,7 @@ export default async function SupplierRequestsPage({
                     data-supplier-request-row={r.id}
                   >
                     <Td>
-                      <Link
-                        href={`/app/supplier-requests/${r.id}`}
-                        className={linkClass}
-                      >
+                      <Link href={href} className={linkClass}>
                         {r.number}
                       </Link>
                     </Td>
@@ -291,55 +321,32 @@ export default async function SupplierRequestsPage({
                       ) : null}
                     </Td>
                     {wellmix ? <Td>{supplier?.name ?? "—"}</Td> : null}
-                    <Td>
-                      {products.slice(0, 4).map((p) => (
-                        <span
-                          key={p.id}
-                          className="block max-w-64 whitespace-normal"
-                        >
-                          {p.item.description ?? p.item.productName ?? "—"}
-                          {p.item.factoryItemCode ? (
-                            <span className="text-xs text-zinc-500">
-                              {` · ${p.item.factoryItemCode}`}
-                            </span>
-                          ) : null}
-                        </span>
-                      ))}
-                      {products.length > 4 ? (
-                        <span className="block text-xs text-zinc-500">
-                          {t("supplierRequests.list.more", {
-                            n: products.length - 4,
-                          })}
-                        </span>
-                      ) : null}
-                    </Td>
-                    <Td className="tabular-nums">
-                      {t("supplierRequests.detail.pieces", {
-                        n: pieces.toLocaleString(t.intl),
-                      })}
-                      {/* Programação de compra: rodadas e peças por rodada. */}
-                      {products
-                        .filter((p) => p.schedule?.items.length)
-                        .map((p) => (
-                          <span
-                            key={p.id}
-                            className="block text-xs text-zinc-500"
-                            data-supplier-request-rounds={p.id}
-                          >
-                            {roundsLine(p.schedule, t)}
-                          </span>
-                        ))}
-                    </Td>
                     <Td
                       className="tabular-nums"
                       data-supplier-request-products={r.id}
                     >
-                      <Link
-                        href={`/app/supplier-requests/${r.id}`}
-                        className={linkClass}
-                      >
-                        {distinct}
-                      </Link>
+                      {distinct.toLocaleString(t.intl)}
+                    </Td>
+                    <Td className="whitespace-nowrap tabular-nums">
+                      {t("supplierRequests.detail.pieces", {
+                        n: pieces.toLocaleString(t.intl),
+                      })}
+                    </Td>
+                    <Td
+                      className="tabular-nums"
+                      data-supplier-request-rounds={r.id}
+                    >
+                      {rounds}
+                    </Td>
+                    <Td
+                      className="whitespace-nowrap tabular-nums"
+                      data-supplier-request-containers={r.id}
+                    >
+                      {containers
+                        ? containers.min === containers.max
+                          ? containers.max
+                          : `${containers.min}–${containers.max}`
+                        : "—"}
                     </Td>
                     <Td>
                       {many
@@ -416,6 +423,13 @@ export default async function SupplierRequestsPage({
                         )}
                       </Td>
                     ) : null}
+                    <Td>
+                      <OpenLink
+                        href={href}
+                        label={t("tasks.open")}
+                        data-supplier-request-open={r.id}
+                      />
+                    </Td>
                   </tr>
                 );
               })}

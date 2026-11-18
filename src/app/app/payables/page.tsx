@@ -26,6 +26,7 @@ import {
   Stat,
   Table,
   Td,
+  OpenLink,
   TextLink,
   Th,
   cx,
@@ -439,12 +440,19 @@ export default async function PayablesPage({
                     </Td>
                     <Td className="whitespace-nowrap text-right">
                       <span className="inline-flex items-center gap-1.5">
-                        <LinkButton
-                          href={`/app/orders/${payable.order.id}#supplier-payment`}
-                          variant={payable_ ? "primary" : "secondary"}
-                        >
-                          {payable_ ? t("payables.pay") : t("payables.open")}
-                        </LinkButton>
+                        {payable_ ? (
+                          <LinkButton
+                            href={`/app/orders/${payable.order.id}#supplier-payment`}
+                            variant="primary"
+                          >
+                            {t("payables.pay")}
+                          </LinkButton>
+                        ) : (
+                          <OpenLink
+                            href={`/app/orders/${payable.order.id}#supplier-payment`}
+                            label={t("payables.open")}
+                          />
+                        )}
                         <ChatOpenButton
                           target={{ orderId: payable.order.id }}
                           label={t("chat.open")}

@@ -21,10 +21,11 @@ test("Pedidos com o resumo em uso: produto, itens da página e filtro de produto
   const orderRow = page.locator('[data-orders-row^="order:"]').first();
   await expect(orderRow).toBeVisible();
   const key = (await orderRow.getAttribute("data-orders-row"))!;
-  // Produto da linha (o 1º item do pedido), do resumo.
-  const product = (
-    await orderRow.locator("td").nth(1).locator("a").innerText()
-  ).trim();
+  // Lista no nível do pedido (dono, 18/11/2026): a coluna mostra quantos
+  // produtos; o nome do 1º item, do resumo, fica na dica da célula.
+  const products = orderRow.locator("[data-orders-products]");
+  await expect(products).toHaveText(/^\d+$/);
+  const product = ((await products.getAttribute("title")) ?? "").trim();
   expect(product).not.toBe("");
 
   // Itens da linha escolhida: lidos inteiros (só a página), o 1º é o produto.

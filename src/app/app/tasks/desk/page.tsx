@@ -13,10 +13,11 @@ import {
 import {
   Badge,
   Card,
-  LinkButton,
+  OpenLink,
   PageHeader,
   Table,
   Td,
+  TextLink,
   Th,
   cx,
   formatDate,
@@ -103,9 +104,12 @@ export default async function DeskPage({
                       return (
                         <tr key={r.id} data-desk-row={r.id}>
                           <Td>
-                            <span className="font-medium text-zinc-900">
+                            <TextLink
+                              href={r.link}
+                              className="font-medium text-zinc-900 no-underline hover:underline"
+                            >
                               {r.title}
-                            </span>
+                            </TextLink>
                             {r.note ? (
                               <span className="block text-xs text-amber-700">
                                 {r.note}
@@ -126,9 +130,7 @@ export default async function DeskPage({
                             )}
                           </Td>
                           <Td className="text-right">
-                            <LinkButton href={r.link} variant="secondary">
-                              {t("desk.open")}
-                            </LinkButton>
+                            <OpenLink href={r.link} label={t("desk.open")} />
                           </Td>
                         </tr>
                       );

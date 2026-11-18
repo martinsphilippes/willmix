@@ -5,7 +5,6 @@ import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { productNameText } from "@/i18n";
 import { getStore, type PurchaseQuote } from "@/lib/db";
 import {
   quoteClosed,
@@ -17,6 +16,7 @@ import {
   Badge,
   Card,
   Empty,
+  OpenLink,
   PageHeader,
   Table,
   Td,
@@ -29,8 +29,12 @@ import { QuoteDeadline } from "./_time";
 /*
  * Cotação de compra (mapa B13; dono, 15/11/2026; docs/PURCHASE_DEMAND.md).
  * A Wellmix vê todas as cotações, com quantos responderam e o prazo; o
- * fornecedor vê só os convites dele.
+ * fornecedor vê só os convites dele. Uma linha por cotação, sem colunas de
+ * produto (dono, 18/11/2026): "Produtos" é quantos produtos distintos; os
+ * produtos ficam na tela da cotação.
  */
+const productCount = (q: Pick<PurchaseQuote, "items">) =>
+  new Set(q.items.map((i) => i.productId)).size;
 export default async function PurchaseQuotesPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -58,6 +62,9 @@ export default async function PurchaseQuotesPage() {
                   <Th>{t("quote.items")}</Th>
                   <Th>{t("quote.deadline")}</Th>
                   <Th>{t("quote.state")}</Th>
+                  <Th>
+                    <span className="sr-only">{t("tasks.open")}</span>
+                  </Th>
                 </tr>
               </thead>
               <tbody>
@@ -75,10 +82,8 @@ export default async function PurchaseQuotesPage() {
                         #{quote.number}
                       </Link>
                     </Td>
-                    <Td>
-                      {quote.items
-                        .map((i) => productNameText(t, i.name))
-                        .join(", ")}
+                    <Td className="tabular-nums" data-quote-products={quote.id}>
+                      {productCount(quote)}
                     </Td>
                     <Td>
                       <QuoteDeadline t={t} dueAt={response.dueAt} now={now} />
@@ -87,6 +92,12 @@ export default async function PurchaseQuotesPage() {
                       <Badge tone={state === "open" ? "warning" : "neutral"}>
                         {t(`quote.response.${state}` as DictionaryKey)}
                       </Badge>
+                    </Td>
+                    <Td>
+                      <OpenLink
+                        href={`/app/purchase-quotes/${quote.id}`}
+                        label={t("tasks.open")}
+                      />
                     </Td>
                   </tr>
                 ))}
@@ -130,13 +141,26 @@ export default async function PurchaseQuotesPage() {
                 <Th>{t("quote.number")}</Th>
                 <Th>{t("quote.items")}</Th>
                 <Th>{t("quote.answers")}</Th>
+                <Th>{t("quote.deadline")}</Th>
                 <Th>{t("quote.state")}</Th>
+                <Th>
+                  <span className="sr-only">{t("tasks.open")}</span>
+                </Th>
               </tr>
             </thead>
             <tbody>
               {quotes.map((q) => {
                 const mine = responses.filter((r) => r.quoteId === q.id);
                 const state = stateOf(q);
+                // Prazo: o último dos fornecedores que ainda podem responder.
+                const due =
+                  state === "open"
+                    ? (mine
+                        .filter((r) => r.status === "invited")
+                        .map((r) => r.dueAt)
+                        .sort()
+                        .at(-1) ?? null)
+                    : null;
                 return (
                   <tr key={q.id} className={rowClass} data-quote-row={q.id}>
                     <Td>
@@ -147,14 +171,19 @@ export default async function PurchaseQuotesPage() {
                         #{q.number}
                       </Link>
                     </Td>
-                    <Td>
-                      {q.items
-                        .map((i) => productNameText(t, i.name))
-                        .join(", ")}
+                    <Td className="tabular-nums" data-quote-products={q.id}>
+                      {productCount(q)}
                     </Td>
                     <Td className="tabular-nums">
                       {mine.filter((r) => r.status === "answered").length}/
                       {mine.length}
+                    </Td>
+                    <Td>
+                      {due ? (
+                        <QuoteDeadline t={t} dueAt={due} now={now} />
+                      ) : (
+                        "—"
+                      )}
                     </Td>
                     <Td>
                       <Badge
@@ -168,6 +197,12 @@ export default async function PurchaseQuotesPage() {
                       >
                         {t(`quote.status.${state}` as DictionaryKey)}
                       </Badge>
+                    </Td>
+                    <Td>
+                      <OpenLink
+                        href={`/app/purchase-quotes/${q.id}`}
+                        label={t("tasks.open")}
+                      />
                     </Td>
                   </tr>
                 );

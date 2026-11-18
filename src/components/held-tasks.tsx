@@ -6,6 +6,7 @@ import {
   Card,
   Empty,
   LinkButton,
+  OpenLink,
   Table,
   Td,
   TextLink,
@@ -81,7 +82,12 @@ export async function HeldTasks({
               >
                 <Td>
                   <div className="font-medium text-zinc-900">
-                    {caseTitle(task, t)}
+                    <TextLink
+                      href={task.link}
+                      className="text-zinc-900 no-underline hover:underline"
+                    >
+                      {caseTitle(task, t)}
+                    </TextLink>
                   </div>
                   <div className="text-xs text-zinc-500">
                     {task.items?.map((x) => x.label).join(", ") || task.detail}
@@ -91,7 +97,7 @@ export async function HeldTasks({
                   {task.dueAt ? formatDate(task.dueAt, t) : "—"}
                 </Td>
                 <Td className="whitespace-nowrap text-right">
-                  <TextLink href={task.link}>{t("goLive.held.open")}</TextLink>
+                  <OpenLink href={task.link} label={t("goLive.held.open")} />
                 </Td>
               </tr>
             ))}
