@@ -1,13 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
-import { gotoProduct, login, png } from "./helpers";
+import { login } from "./helpers";
 
 /*
- * Produto novo → Encomendas (dono, 16/11/2026): as colunas na ordem Foto →
- * Pedido → Produtos → Quantidade → Cliente → Situação → Próximo passo, e
- * cada linha com o pedido inteiro: uma miniatura por produto no quadrado da
- * foto (foto real; sem foto, a inicial), o início do nome de todos os
- * produtos e a soma das peças. A conta por pedido com os itens do pedido
- * (histórico do Sankhya) está em tests/unit/request-composition.test.ts.
+ * Produto novo → Encomendas (dono, 16/11/2026 e 18/11/2026): as colunas na
+ * ordem Pedido → Cliente → Produtos → Quantidade → Situação → Próximo passo,
+ * sem a coluna Foto, e cada linha com o pedido inteiro: em Produtos, só
+ * quantos produtos o pedido tem (nenhum nome), e a soma das peças. A
+ * etiqueta da encomenda fica embaixo do cliente. A conta por pedido com os
+ * itens do pedido (histórico do Sankhya) está em
+ * tests/unit/request-composition.test.ts.
  */
 const TAG = `CMP${Date.now().toString(36).toUpperCase()}`;
 
@@ -62,23 +63,9 @@ async function sendBatch(page: Page) {
   return new URL(page.url()).pathname;
 }
 
-test("Encomendas: Foto → Pedido → Produtos → Quantidade, com o pedido inteiro em cada linha", async ({
+test("Encomendas: Pedido → Cliente → Produtos (só quantos) → Quantidade, sem Foto, com o pedido inteiro em cada linha", async ({
   page,
 }) => {
-  // Foto real da jarra no cadastro; o copo (fora do catálogo) não tem.
-  await login(page, "admin@wellmix.com");
-  await gotoProduct(page, "prod-jarra");
-  await Promise.all([
-    page.waitForResponse(
-      (r) => r.request().method() === "POST" && r.status() < 400,
-    ),
-    page
-      .locator('[data-sheet-photo="original"] input[type=file]')
-      .first()
-      .setInputFiles(png),
-  ]);
-  await page.waitForLoadState("networkidle");
-
   // O cliente lança um pedido de um produto e um lote de dois.
   await login(page, "joao@lojista.com");
   const singleId = await sendDoll(page);
@@ -92,51 +79,52 @@ test("Encomendas: Foto → Pedido → Produtos → Quantidade, com o pedido inte
       (th.textContent ?? "").replace(/\s+/g, " ").trim(),
     ),
   );
+  // Sem a coluna Foto.
+  expect(titles.some((t) => t.startsWith("Foto"))).toBe(false);
   const order = [
-    "Foto",
     "Pedido",
+    "Cliente",
     "Produtos",
     "Quantidade",
-    "Cliente",
     "Situação",
     "Próximo passo",
   ].map((title) => titles.findIndex((t) => t.startsWith(title)));
   expect(order.every((i) => i >= 0)).toBe(true);
   expect([...order].sort((a, b) => a - b)).toEqual(order);
+  // Cliente logo antes de Produtos.
+  expect(order[2] - order[1]).toBe(1);
   // As demais colunas continuam, depois do Próximo passo.
   for (const rest of ["Prazo de resposta", "Analista", "Data"])
     expect(titles.findIndex((t) => t.startsWith(rest))).toBeGreaterThan(
       order[order.length - 1],
     );
 
-  // Lote de dois produtos: a grade com a foto da jarra e a inicial do copo,
-  // os dois nomes (o início de cada um) e a soma das peças.
+  // Lote de dois produtos: só "2 produtos" (nenhum nome, nenhuma foto) e a
+  // soma das peças.
   const batch = page.locator(`[data-batch-row]:has(a[href="${batchPath}"])`);
   await expect(batch).toHaveCount(1);
-  await expect(batch.locator("[data-photo-grid]")).toHaveAttribute(
-    "data-photo-grid",
-    "2",
+  await expect(
+    batch.locator("[data-photo-grid], [data-gallery-open]"),
+  ).toHaveCount(0);
+  const batchProducts = batch.locator("[data-request-products]");
+  await expect(batchProducts).toHaveAttribute("data-request-products", "2");
+  await expect(batchProducts).toHaveText("2 produtos");
+  await expect(batchProducts.locator("xpath=ancestor::td")).toHaveText(
+    "2 produtos",
   );
-  await expect(batch.locator('[data-photo-tile="photo"]')).toHaveCount(1);
-  await expect(batch.locator('[data-photo-tile="none"]')).toHaveText("C");
-  await expect(batch.locator("[data-request-products]")).toHaveAttribute(
-    "data-request-products",
-    "2",
-  );
-  const names = await batch
-    .locator("[data-request-product-name]")
-    .allTextContents();
-  expect(names.map((n) => n.replace(/^\s*·\s*/, "").trim())).toEqual([
-    expect.stringMatching(/^Jarra/),
-    expect.stringMatching(/^Copo de vidro/),
-  ]);
+  await expect(batch).not.toContainText("Jarra");
+  await expect(batch).not.toContainText(`Copo de vidro ${TAG}`);
   await expect(batch.locator("[data-request-total]")).toHaveText("1.207 un");
   await expect(batch.locator("[data-request-order]")).toHaveText("—");
-  // As células na ordem: foto, pedido, produtos e quantidade.
+  // A etiqueta da encomenda embaixo do cliente.
+  await expect(
+    batch.locator("[data-request-customer] [data-demand-tags]"),
+  ).toHaveCount(1);
+  // As células na ordem: pedido, cliente, produtos e quantidade.
   const cellOrder = await batch.evaluate((tr) =>
     [
-      "[data-photo-grid]",
       "[data-request-order]",
+      "[data-request-customer]",
       "[data-request-products]",
       "[data-request-total]",
     ].map(
@@ -146,21 +134,17 @@ test("Encomendas: Foto → Pedido → Produtos → Quantidade, com o pedido inte
     ),
   );
   expect([...cellOrder].sort((a, b) => a - b)).toEqual(cellOrder);
-  // A grade abre a galeria com a foto de cada produto que tem foto.
-  await batch.locator("[data-gallery-open]").click();
-  await expect(
-    page.locator("dialog[data-gallery][open] [data-gallery-item]"),
-  ).toHaveCount(1);
-  await page.keyboard.press("Escape");
+  expect(cellOrder[2] - cellOrder[1]).toBe(1);
+  // "2 produtos" abre o lote.
+  await expect(batchProducts).toHaveAttribute("href", batchPath);
 
-  // Pedido de um produto só: sem grade, o nome e a quantidade dele.
+  // Pedido de um produto só: "1 produto" e a quantidade dele.
   const single = page.locator(
     `tr:has(a[data-request-open][href="/app/requests/${singleId}"])`,
   );
-  await expect(single.locator("[data-photo-grid]")).toHaveCount(0);
-  await expect(single.locator("[data-request-products]")).toHaveAttribute(
-    "data-request-products",
-    "1",
-  );
+  const singleProducts = single.locator("[data-request-products]");
+  await expect(singleProducts).toHaveAttribute("data-request-products", "1");
+  await expect(singleProducts).toHaveText("1 produto");
+  await expect(single).not.toContainText("Boneca");
   await expect(single.locator("[data-request-total]")).toHaveText("4.800 un");
 });

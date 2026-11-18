@@ -1849,3 +1849,9 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Como ficou**: a importação guarda quem vem com nome e sem e-mail em "Aguardando e-mail" (cargo, área, funções, nível e o "a conferir" sugeridos); na Equipe Interna, o atalho "N aguardando e-mail" abre o painel com "E-mail ou nome de usuário", "Senha provisória" e "Criar login", e "Tirar da lista" (docs/ACCESS.md, "Importar equipe").
 - **Aditivo:** tabela nova `team_pending`; nada muda nos logins existentes nem nas telas de antes (o painel novo entra na lista de painéis da Equipe Interna).
 - Testes: `tests/unit/team-import.test.ts` e `tests/e2e/team-pending.spec.ts`.
+
+## Encomendas: Cliente antes de Produtos, Produtos só com a contagem, sem Foto (18/11/2026)
+
+- **Pedido do dono** (18/11/2026): na lista de Encomendas da Wellmix (`/app/requests`), a coluna antes de Produtos é o Cliente; Produtos mostra só quantos produtos o pedido tem, sem nenhum nome (um pedido pode ter vários); a coluna Foto não aparece nesta tela (docs/FLOW_MENU.md, "Tabela da Wellmix").
+- **Aditivo:** nenhum dado, rota ou tela sai; a busca continua achando pelo nome do produto. A etiqueta da encomenda (tipo e porta de entrada) passou da coluna Produtos para embaixo do cliente. O cliente vê a lista dele como antes. Sem mudança no banco.
+- Testes: `tests/e2e/requests-composition.spec.ts`.
