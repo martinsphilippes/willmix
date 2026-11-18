@@ -113,10 +113,14 @@ test("Fornecedor: a seção substitui as Linhas atendidas; busca por nome e cód
   );
 });
 
+// Os parceiros criados aqui entram na cotação de compra das famílias que
+// marcam (é a regra). Por isso ficam fora de UTILIDADES (20000000): a
+// cotação de utilidades do purchase-quote.spec conta os convidados, e os
+// testes dividem o mesmo banco.
 for (const [type, codes] of [
   ["trading", ["110000000", "40000000"]],
   ["supplier_partner", ["10000000", "40000000"]],
-  ["factory", ["20000000", "10000000", "110000000"]],
+  ["factory", ["10000000", "110000000", "40000000"]],
 ] as const)
   test(`${type}: busca por nome e código, seleciona várias famílias, grava e recarrega; cada parceiro com as suas`, async ({
     page,
