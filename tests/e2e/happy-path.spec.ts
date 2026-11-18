@@ -1748,8 +1748,9 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   const batchRow = page.locator(`[data-batch-row]:has(a[href="${batchPath}"])`);
   await expect(batchRow).toHaveCount(1);
   await expect(batchRow.locator("[data-request-number]")).toHaveText(/^\d+$/);
-  await expect(batchRow).toContainText("Copo de vidro");
-  await expect(batchRow).toContainText("Jarra de vidro");
+  // Lista no nível do pedido (dono, 18/11/2026): a contagem de produtos,
+  // sem os nomes; eles ficam na página do pedido.
+  await expect(batchRow.locator("[data-request-products]")).toHaveText("2");
   await batchRow.getByRole("link", { name: /Abrir|Open|打开/ }).click();
   await page.waitForURL(batchUrl);
   // Cada solicitação mostra a outra do lote.
