@@ -616,12 +616,24 @@ export async function releaseRequest(user: User, request: Request) {
   });
 }
 
-/** Avisa o login do cliente que há um pedido para ele confirmar. */
+/** Avisa o login do cliente (ou todos os dele) que há um pedido para confirmar. */
 async function notifyCustomerToConfirm(request: Request) {
-  if (!request.requestedForUserId) return;
+  // Sem login escolhido: todos os logins ativos do cliente (dono, 18/11/2026).
+  const userIds = request.requestedForUserId
+    ? [request.requestedForUserId]
+    : (
+        await getStore().list("users", {
+          filter: {
+            role: "customer",
+            partyId: request.customerId,
+            active: true,
+          },
+        })
+      ).map((u) => u.id);
+  if (!userIds.length) return;
   const { notify } = await import("./notifications");
   await notify(
-    { userIds: [request.requestedForUserId] },
+    { userIds },
     {
       kind: "action",
       subject: `Confirme o pedido${request.number ? ` nº ${request.number}` : ""}: ${request.productName}`,
