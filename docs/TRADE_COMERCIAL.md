@@ -66,7 +66,7 @@ Visão executiva, ranking, curva ABC (por peças; por valor só para o administr
 ## 5. Casos especiais
 
 - Cliente sem e-mail: o link é copiado e enviado pelo WhatsApp (botão "Copiar link").
-- Cliente com dois cadastros com o mesmo código do Sankhya (hoje o 7197): os números saem em dobro. **Confirmado:** unificar, mantendo o cadastro mais antigo (os dois estão sem solicitações e pedidos).
+- Mesmo código do Sankhya em dois cadastros: a carga do Sankhya guarda um cadastro por tipo (cliente e fornecedor). Conferido em 18/11/2026: o 7197 (Campineira) aparece duas vezes porque está marcado como cliente **e** como fornecedor no Sankhya; o mais antigo é o de fornecedor e o de cliente é o mais novo. Não é duplicado, e nada foi unificado (unificar "ficando o mais antigo" desativaria o cliente). A carteira, os atendimentos e as vendas usam só o cadastro de cliente. Se a Campineira não for fornecedora, o certo é desmarcar "fornecedor" no Sankhya (decisão do dono).
 - Atendimento registrado por quem não é o responsável: vale (o cliente foi atendido); aparece com o nome de quem atendeu.
 - Atendimento no mesmo dia, mais de um: conta o último confirmado.
 - Pessoa sai da empresa: os clientes dela ficam "Sem responsável" até o administrador escolher outro; o histórico fica.
@@ -95,16 +95,16 @@ As pessoas da demanda terão login no portal (decisão do dono).
 
 ## 8. Estrutura do banco de dados (só aditiva)
 
-| Tabela / coluna                   | O quê                                                                                                                                                                                                                                               |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `customer_groups`                 | grupo econômico: nome, observação, responsável (opcional), arquivado em, criado por                                                                                                                                                                 |
-| `parties.customerGroupId`         | grupo do cliente (opcional; índice)                                                                                                                                                                                                                 |
-| `parties.ownerUserId`             | já existe, sem uso: passa a ser o responsável escolhido pelo administrador                                                                                                                                                                          |
-| `users.sellerCode`                | código do vendedor no Sankhya (`CODVEND`) do login, para a carteira automática                                                                                                                                                                      |
+| Tabela / coluna                   | O quê                                                                                                                                                                                                                                                                                                      |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customer_groups`                 | grupo econômico: nome, observação, responsável (opcional), arquivado em, criado por                                                                                                                                                                                                                        |
+| `parties.customerGroupId`         | grupo do cliente (opcional; índice)                                                                                                                                                                                                                                                                        |
+| `parties.ownerUserId`             | já existe, sem uso: passa a ser o responsável escolhido pelo administrador                                                                                                                                                                                                                                 |
+| `users.sellerCode`                | código do vendedor no Sankhya (`CODVEND`) do login, para a carteira automática                                                                                                                                                                                                                             |
 | `customer_attendances`            | cliente, quem atendeu, canal, data e hora, resumo, próximo passo, fotos, situação (aguardando o cliente, confirmado, contestado, cancelado), confirmação do cliente (data, nome, por link ou login), motivo da contestação, parte aleatória do link (o link é assinado pelo servidor, seção 15) e validade |
-| `trade_activities`                | título, descrição, cliente ou grupo, responsável, prazo, situação, concluída em, evidência, observação, criada por                                                                                                                                  |
-| `settings.attendanceSlaDays`      | prazo de atendimento em dias                                                                                                                                                                                                                        |
-| `customer_sales_monthly` (Fase 0) | mês × cliente × produto: peças pedidas e entregues, valor, pedidos, última data, carregado em                                                                                                                                                       |
+| `trade_activities`                | título, descrição, cliente ou grupo, responsável, prazo, situação, concluída em, evidência, observação, criada por                                                                                                                                                                                         |
+| `settings.attendanceSlaDays`      | prazo de atendimento em dias                                                                                                                                                                                                                                                                               |
+| `customer_sales_monthly` (Fase 0) | mês × cliente × produto: peças pedidas e entregues, valor, pedidos, última data, carregado em                                                                                                                                                                                                              |
 
 Indicadores seguem docs/RESUMOS.md: telas de indicador leem tabelas resumidas, nunca pedido a pedido.
 
@@ -169,7 +169,7 @@ Tudo no histórico (Auditoria): grupo criado, alterado, arquivado; cliente inclu
 
 ## Dados de produção (17 e 18/11/2026, leitura)
 
-- Os 5 clientes do grupo estão no portal, com e-mail e telefone, todos com o vendedor 101 no Sankhya e nenhum com login. O 7197 está cadastrado duas vezes.
+- Os 5 clientes do grupo estão no portal, com e-mail e telefone, todos com o vendedor 101 no Sankhya e nenhum com login. O 7197 aparece duas vezes porque é cliente e fornecedor no Sankhya (um cadastro por tipo; seção 5).
 - No portal: 26.688 clientes, 24.579 com e-mail, 2.336 com vendedor do Sankhya (118 vendedores); 2 clientes com login; 58 logins da Wellmix.
 
 ## Entregue no PR 1 (Fase 1, 18/11/2026)
