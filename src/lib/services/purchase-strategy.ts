@@ -635,9 +635,10 @@ export interface StrategyLine {
   customerName: string | null;
   /** Produtos do mesmo lote (encomenda com vários produtos). */
   batchSize: number;
+  /** A família da linha do produto, pelo código do Sankhya (docs/PARTNER_FAMILIES.md). */
   family: { key: string; name: string } | null;
   last: LastPurchase | null;
-  /** Parceiros vinculados à família no cadastro ("Famílias atendidas"). */
+  /** Parceiros que marcaram a família no cadastro ("Grupo de produto (família)"). */
   linkedIds: string[];
   /** Sugeridos pelo histórico (sem vínculo): a última compra, o fornecedor do produto e quem mais forneceu a família. */
   suggestedIds: string[];
@@ -645,6 +646,79 @@ export interface StrategyLine {
 
 /** Quantos sugeridos do histórico da família cada linha mostra (o resto, pela busca). */
 const FAMILY_SUGGESTIONS = 8;
+
+/**
+ * A família de cada linha (o "Grupo de produto (família)" do cadastro,
+ * docs/PARTNER_FAMILIES.md): o código gravado na linha (calculado pela árvore
+ * do Sankhya quando falta), o nome do cadastro de famílias, quem marcou a
+ * família e quem mais forneceu produtos das linhas dela.
+ */
+async function familiesForLines(lineIds: readonly string[]): Promise<{
+  ofLine: Map<string, { key: string; name: string }>;
+  linked: Map<string, string[]>;
+  history: Map<string, string[]>;
+}> {
+  const store = getStore();
+  const ids = unique(lineIds);
+  const out = {
+    ofLine: new Map<string, { key: string; name: string }>(),
+    linked: new Map<string, string[]>(),
+    history: new Map<string, string[]>(),
+  };
+  if (!ids.length) return out;
+  const { familyCodesForLines, listProductFamilies } =
+    await import("./product-families");
+  // Linha ainda sem a família gravada: calculada e gravada (autocorreção).
+  await familyCodesForLines(ids).catch(() => [] as string[]);
+  const [lines, registry] = await Promise.all([
+    listByIds(store, "product_lines", ids),
+    listProductFamilies({ includeInactive: true }).catch(() => []),
+  ]);
+  for (const l of lines)
+    if (l.familyCode)
+      out.ofLine.set(l.id, {
+        key: l.familyCode,
+        name:
+          registry.find((f) => f.code === l.familyCode)?.name ?? l.familyCode,
+      });
+  const codes = unique([...out.ofLine.values()].map((f) => f.key));
+  if (!codes.length) return out;
+  const [links, familyLines] = await Promise.all([
+    store
+      .list("party_families", { filter: { familyCode: codes } })
+      .catch(() => []),
+    listColumns(store, "product_lines", ["familyCode"], {
+      filter: { familyCode: codes },
+    }).catch(() => [] as Array<{ id: string; familyCode?: string | null }>),
+  ]);
+  for (const l of links)
+    out.linked.set(l.familyCode, unique([...(out.linked.get(l.familyCode) ?? []), l.partyId]));
+  // Quem mais forneceu a família: o fornecedor dos produtos ativos das linhas dela.
+  const lineFamily = new Map(
+    familyLines.map((l) => [l.id, l.familyCode ?? null] as const),
+  );
+  const products = lineFamily.size
+    ? await listColumns(store, "products", ["supplierId", "lineId"], {
+        filter: { lineId: [...lineFamily.keys()], active: true },
+      }).catch(() => [])
+    : [];
+  const counts = new Map<string, Map<string, number>>();
+  for (const p of products) {
+    const code = lineFamily.get(p.lineId);
+    if (!code || !p.supplierId) continue;
+    const byParty = counts.get(code) ?? new Map<string, number>();
+    byParty.set(p.supplierId, (byParty.get(p.supplierId) ?? 0) + 1);
+    counts.set(code, byParty);
+  }
+  for (const [code, byParty] of counts)
+    out.history.set(
+      code,
+      [...byParty]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([id]) => id),
+    );
+  return out;
+}
 
 /**
  * A fila da Estratégia de Compra por produto: cada demanda com o produto, o
@@ -665,33 +739,17 @@ export async function strategyBoard(t: Translate): Promise<{
   const waiting = requested.filter(inStrategyQueue);
   const toSend = requested.filter(awaitingStrategySend).length;
   const productIds = unique(waiting.map((d) => d.productId));
-  const { familiesOfProducts, familySupplierIds } =
-    await import("./product-origin");
-  const { partnersByFamily } = await import("./partner-families");
-  const [products, customers, references, families, productLinks] =
-    await Promise.all([
-      listByIds(store, "products", productIds),
-      listByIds(store, "parties", unique(waiting.map((d) => d.customerId))),
-      lastPurchases(productIds),
-      familiesOfProducts(productIds).catch(
-        () => new Map<string, { key: string; name: string }>(),
-      ),
-      productIds.length
-        ? store
-            .list("product_suppliers", { filter: { productId: productIds } })
-            .catch(() => [])
-        : Promise.resolve([]),
-    ]);
-  const familyKeys = unique([...families.values()].map((f) => f.key));
-  const [linkedByFamily, history] = await Promise.all([
-    partnersByFamily(familyKeys),
-    Promise.all(
-      familyKeys.map(
-        async (k) =>
-          [k, await familySupplierIds(k).catch(() => [] as string[])] as const,
-      ),
-    ).then((rows) => new Map(rows)),
+  const [products, customers, references, productLinks] = await Promise.all([
+    listByIds(store, "products", productIds),
+    listByIds(store, "parties", unique(waiting.map((d) => d.customerId))),
+    lastPurchases(productIds),
+    productIds.length
+      ? store
+          .list("product_suppliers", { filter: { productId: productIds } })
+          .catch(() => [])
+      : Promise.resolve([]),
   ]);
+  const families = await familiesForLines(products.map((p) => p.lineId));
   const groupIds = unique(waiting.map((d) => d.groupId));
   const groupRows = groupIds.length
     ? await listColumns(store, "requests", ["groupId"], {
@@ -701,9 +759,11 @@ export async function strategyBoard(t: Translate): Promise<{
   const productById = new Map(products.map((p) => [p.id, p]));
   const lines: StrategyLine[] = waiting.map((d) => {
     const product = d.productId ? productById.get(d.productId) : null;
-    const family = d.productId ? (families.get(d.productId) ?? null) : null;
+    const family = product
+      ? (families.ofLine.get(product.lineId) ?? null)
+      : null;
     const last = d.productId ? (references.get(d.productId) ?? null) : null;
-    const linkedIds = family ? (linkedByFamily.get(family.key) ?? []) : [];
+    const linkedIds = family ? (families.linked.get(family.key) ?? []) : [];
     const suggestedIds = unique([
       last?.supplierId,
       product?.supplierId,
@@ -711,7 +771,10 @@ export async function strategyBoard(t: Translate): Promise<{
         .filter((l) => l.productId === d.productId)
         .map((l) => l.supplierId),
       ...(family
-        ? (history.get(family.key) ?? []).slice(0, FAMILY_SUGGESTIONS)
+        ? (families.history.get(family.key) ?? []).slice(
+            0,
+            FAMILY_SUGGESTIONS,
+          )
         : []),
     ]).filter((id) => !linkedIds.includes(id));
     return {

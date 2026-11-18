@@ -277,37 +277,6 @@ export async function setSupplierLinesAction(form: FormData) {
 
 /* Estratégia de Compra por produto (dono, 18/11/2026; docs/PURCHASE_DEMAND.md). */
 
-const FAMILY_KEY = z.string().regex(/^(fm|ln):[A-Za-z0-9_-]{1,80}$/);
-
-/** Volta do quadro "Famílias atendidas": o cadastro de onde veio. */
-const familyBack = (back: string, partyId: string) =>
-  /^\/app\/(parties|suppliers)\/[A-Za-z0-9][A-Za-z0-9_.-]{0,63}(\?tab=info)?$/.test(
-    back,
-  )
-    ? back
-    : `/app/parties/${partyId}`;
-
-/** Famílias de produto que o parceiro atende (cadastro → "Famílias atendidas"). */
-export async function setPartnerFamiliesAction(form: FormData) {
-  const user = await requireUser();
-  const partyId = str(form, "partyId");
-  const back = ID.safeParse(partyId).success
-    ? familyBack(str(form, "back"), partyId)
-    : "/app/parties";
-  const join = back.includes("?") ? "&" : "?";
-  await run(back, async () => {
-    assertScreen(user, "parties");
-    const keys = z
-      .array(FAMILY_KEY)
-      .max(500)
-      .parse(form.getAll("familyKey").map(String));
-    const { setPartnerFamilies } =
-      await import("@/lib/services/partner-families");
-    await setPartnerFamilies(user, ID.parse(partyId), keys);
-    return `${back}${join}families=saved#partner-families`;
-  });
-}
-
 /**
  * Encomendas → "Enviar para cotação" (dono, 18/11/2026): as encomendas
  * marcadas (produtos soltos ou o lote) entram na Estratégia de Compra.

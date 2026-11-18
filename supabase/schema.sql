@@ -1941,22 +1941,6 @@ create index if not exists "purchase_strategy_sends_by_creator" on public."purch
 create index if not exists "purchase_strategy_sends_created" on public."purchase_strategy_sends" ("createdAt");
 create index if not exists "purchase_strategy_sends_created_id" on public."purchase_strategy_sends" ("createdAt", "id");
 
-create table if not exists public."partner_families" (
-  "id" text primary key,
-  "createdAt" timestamptz not null default now(),
-  "updatedAt" timestamptz not null default now()
-);
-alter table public."partner_families" enable row level security;
-alter table public."partner_families" add column if not exists "partyId" text;
-alter table public."partner_families" add column if not exists "familyKey" text;
-alter table public."partner_families" add column if not exists "familyName" text;
-alter table public."partner_families" add column if not exists "createdByUserId" text;
-create index if not exists "partner_families_by_party" on public."partner_families" ("partyId");
-create index if not exists "partner_families_by_family" on public."partner_families" ("familyKey");
-create unique index if not exists "partner_families_party_family_unique" on public."partner_families" ("partyId", "familyKey");
-create index if not exists "partner_families_created" on public."partner_families" ("createdAt");
-create index if not exists "partner_families_created_id" on public."partner_families" ("createdAt", "id");
-
 create table if not exists public."booking_invites" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),

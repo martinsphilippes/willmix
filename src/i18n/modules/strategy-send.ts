@@ -9,18 +9,6 @@ export const pt = {
   "nav.purchaseStrategy": "Estratégia de compra",
   "perm.note.purchaseStrategy":
     "Estratégia de Compra por produto e o resultado dos envios. Nasce aberta para quem abre Solicitações ao fornecedor.",
-  "family.card.title": "Famílias atendidas",
-  "family.card.hint":
-    "Marque as famílias de produto que este parceiro fornece. Na Estratégia de Compra ele aparece para cotar os produtos dessas famílias.",
-  "family.card.empty":
-    "A lista de famílias ainda não carregou (ela vem do Sankhya). Tente de novo em alguns minutos.",
-  "family.card.products": "{n} produto(s)",
-  "family.card.save": "Salvar famílias",
-  "family.card.saved": "Famílias atendidas salvas.",
-  "family.card.count": "{n} família(s) marcada(s)",
-  "family.card.gone": "fora da lista do Sankhya agora",
-  "catalog.error.family_type_not_allowed":
-    "Só Fornecedor, Trading, Supplier e Factory recebem cotação de compra.",
   "reqSend.button": "Enviar para cotação",
   "reqSend.confirm": "Enviar {n} produto(s) para a Estratégia de Compra?",
   "reqSend.done": "{n} produto(s) enviado(s) para a Estratégia de Compra.",
@@ -65,11 +53,11 @@ export const pt = {
     "Sem cotação: vai para a aprovação da Diretoria de compras e depois vira o pedido de compra.",
   "strategy.option.noHistory":
     "Sem compra anterior deste produto: escolha outros parceiros.",
-  "strategy.recipients.linked": "Vinculados à família {family}",
+  "strategy.recipients.linked": "Marcaram a família {family}",
   "strategy.recipients.suggested":
     "Já forneceram produtos da família (sem vínculo no cadastro)",
   "strategy.recipients.none":
-    "Nenhum parceiro vinculado à família {family}. Vincule no cadastro do parceiro (Famílias atendidas) ou busque abaixo.",
+    "Nenhum parceiro marcou a família {family}. Marque no cadastro do parceiro (Grupo de produto (família)) ou busque abaixo.",
   "strategy.recipients.search":
     "Buscar outro parceiro (Fornecedor, Trading, Supplier ou Factory)",
   "strategy.recipients.added": "Escolhidos na busca",
@@ -79,8 +67,6 @@ export const pt = {
   "strategy.recipients.logins": "{n} login(s)",
   "strategy.recipients.ok": "Apto: recebe e responde no portal",
   "strategy.recipients.lastBadge": "Última compra",
-  "strategy.recipients.cantWin":
-    "Cota, mas ainda não pode vencer (o pedido de compra só aceita Fornecedor)",
   "strategy.issue.not_quote_type": "Tipo de parceiro que não recebe cotação.",
   "strategy.issue.inactive": "Cadastro inativo: reative o parceiro.",
   "strategy.issue.type_inactive":
@@ -158,28 +144,12 @@ export const pt = {
   "quote.item.spec": "Especificação",
   "quote.item.schedule": "Programação de entrega",
   "quote.item.desiredAt": "Entrega desejada",
-  "quote.winner.notSupplier":
-    "{type}: cota, mas ainda não pode ser escolhido como vencedor (o pedido de compra só aceita Fornecedor).",
-  "quote.error.quote_winner_not_supplier":
-    "Este parceiro ainda não pode vencer: o pedido de compra só aceita Fornecedor. Escolha um Fornecedor.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
   "nav.purchaseStrategy": "Purchase strategy",
   "perm.note.purchaseStrategy":
     "Purchase strategy per product and the result of each send. Starts open for those who open Supplier requests.",
-  "family.card.title": "Product families served",
-  "family.card.hint":
-    "Tick the product families this partner supplies. In the Purchase strategy the partner shows up to quote the products of these families.",
-  "family.card.empty":
-    "The family list has not loaded yet (it comes from Sankhya). Try again in a few minutes.",
-  "family.card.products": "{n} product(s)",
-  "family.card.save": "Save families",
-  "family.card.saved": "Product families saved.",
-  "family.card.count": "{n} family(ies) ticked",
-  "family.card.gone": "not in the Sankhya list now",
-  "catalog.error.family_type_not_allowed":
-    "Only Supplier, Trading, Supplier partner and Factory receive purchase quotes.",
   "reqSend.button": "Send to quotation",
   "reqSend.confirm": "Send {n} product(s) to the Purchase strategy?",
   "reqSend.done": "{n} product(s) sent to the Purchase strategy.",
@@ -224,11 +194,11 @@ export const en: Record<keyof typeof pt, string> = {
     "No quote: it goes to the Purchasing board approval and then becomes the purchase order.",
   "strategy.option.noHistory":
     "No previous purchase of this product: choose other partners.",
-  "strategy.recipients.linked": "Linked to the {family} family",
+  "strategy.recipients.linked": "Have the {family} family ticked",
   "strategy.recipients.suggested":
     "Already supplied products of the family (not linked in the record)",
   "strategy.recipients.none":
-    "No partner linked to the {family} family. Link it in the partner record (Product families served) or search below.",
+    "No partner has the {family} family. Tick it in the partner record (Product group (family)) or search below.",
   "strategy.recipients.search":
     "Search another partner (Supplier, Trading, Supplier partner or Factory)",
   "strategy.recipients.added": "Chosen in the search",
@@ -238,8 +208,6 @@ export const en: Record<keyof typeof pt, string> = {
   "strategy.recipients.logins": "{n} login(s)",
   "strategy.recipients.ok": "Eligible: receives and answers in the portal",
   "strategy.recipients.lastBadge": "Last purchase",
-  "strategy.recipients.cantWin":
-    "Quotes, but cannot win yet (the purchase order only accepts a Supplier)",
   "strategy.issue.not_quote_type": "Partner type that does not receive quotes.",
   "strategy.issue.inactive": "Inactive record: reactivate the partner.",
   "strategy.issue.type_inactive":
@@ -318,27 +286,12 @@ export const en: Record<keyof typeof pt, string> = {
   "quote.item.spec": "Specification",
   "quote.item.schedule": "Delivery schedule",
   "quote.item.desiredAt": "Desired delivery",
-  "quote.winner.notSupplier":
-    "{type}: quotes, but cannot be chosen as the winner yet (the purchase order only accepts a Supplier).",
-  "quote.error.quote_winner_not_supplier":
-    "This partner cannot win yet: the purchase order only accepts a Supplier. Choose a Supplier.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
   "nav.purchaseStrategy": "采购策略",
   "perm.note.purchaseStrategy":
     "按产品的采购策略和每次发送的结果。默认对能打开向供应商询价的人开放。",
-  "family.card.title": "供应的产品系列",
-  "family.card.hint":
-    "勾选该合作伙伴供应的产品系列。在采购策略中，它会出现在这些系列产品的询价名单里。",
-  "family.card.empty": "产品系列列表尚未加载（来自 Sankhya）。请几分钟后再试。",
-  "family.card.products": "{n} 个产品",
-  "family.card.save": "保存产品系列",
-  "family.card.saved": "已保存供应的产品系列。",
-  "family.card.count": "已勾选 {n} 个系列",
-  "family.card.gone": "目前不在 Sankhya 列表中",
-  "catalog.error.family_type_not_allowed":
-    "只有供应商、贸易商、Supplier 和工厂接收采购询价。",
   "reqSend.button": "发送询价",
   "reqSend.confirm": "将 {n} 个产品发送到采购策略？",
   "reqSend.done": "已将 {n} 个产品发送到采购策略。",
@@ -380,10 +333,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.option.lastHint": "询价只发给 {name}。",
   "strategy.option.directHint": "不询价：先由采购总监审批，然后生成采购订单。",
   "strategy.option.noHistory": "该产品没有以前的采购：请选择其他合作伙伴。",
-  "strategy.recipients.linked": "关联到 {family} 系列",
+  "strategy.recipients.linked": "已勾选 {family} 系列",
   "strategy.recipients.suggested": "曾供应该系列产品（档案中未关联）",
   "strategy.recipients.none":
-    "没有合作伙伴关联到 {family} 系列。请在合作伙伴档案中关联（供应的产品系列），或在下方搜索。",
+    "没有合作伙伴勾选 {family} 系列。请在合作伙伴档案中勾选（产品组（系列）），或在下方搜索。",
   "strategy.recipients.search":
     "搜索其他合作伙伴（供应商、贸易商、Supplier 或工厂）",
   "strategy.recipients.added": "搜索中选择的",
@@ -393,8 +346,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.recipients.logins": "{n} 个登录",
   "strategy.recipients.ok": "符合条件：在门户中接收并回复",
   "strategy.recipients.lastBadge": "上次采购",
-  "strategy.recipients.cantWin":
-    "可以报价，但暂时不能中选（采购订单只接受供应商）",
   "strategy.issue.not_quote_type": "该合作伙伴类型不接收询价。",
   "strategy.issue.inactive": "档案未启用：请重新启用该合作伙伴。",
   "strategy.issue.type_inactive": "该合作伙伴类型已停用（类型和访问）。",
@@ -463,8 +414,4 @@ export const zh: Record<keyof typeof pt, string> = {
   "quote.item.spec": "规格",
   "quote.item.schedule": "交货计划",
   "quote.item.desiredAt": "期望交货",
-  "quote.winner.notSupplier":
-    "{type}：可以报价，但暂时不能被选为中选方（采购订单只接受供应商）。",
-  "quote.error.quote_winner_not_supplier":
-    "该合作伙伴暂时不能中选：采购订单只接受供应商。请选择一个供应商。",
 };

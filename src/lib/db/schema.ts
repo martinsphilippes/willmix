@@ -3287,20 +3287,6 @@ export interface PartyFamily extends BaseRow {
   createdByUserId: string | null;
 }
 
-/**
- * Parceiro × família de produto (cadastro → "Famílias atendidas"; dono,
- * 18/11/2026): Fornecedor, Trading, Supplier e Factory que podem receber a
- * cotação dos produtos da família na Estratégia de Compra.
- */
-export interface PartnerFamily extends BaseRow {
-  partyId: string;
-  /** Chave da família ("fm:<NOME>"; familyKey em services/product-origin.ts). */
-  familyKey: string;
-  /** Nome da família quando foi marcada (a lista do Sankhya pode mudar). */
-  familyName: string;
-  createdByUserId: string | null;
-}
-
 /*
  * Envio da Estratégia de Compra (dono, 18/11/2026; docs/PURCHASE_DEMAND.md):
  * cada confirmação grava, por produto, a escolha, os destinatários e o que
@@ -3987,7 +3973,6 @@ export interface Tables {
   booking_invites: BookingInvite;
   purchase_decisions: PurchaseDecision;
   purchase_strategy_sends: PurchaseStrategySend;
-  partner_families: PartnerFamily;
   purchase_quotes: PurchaseQuote;
   purchase_quote_responses: PurchaseQuoteResponse;
   supplier_lines: SupplierLine;
@@ -5910,24 +5895,6 @@ export const TABLES: Record<TableName, TableDef> = {
     indexes: [
       { key: "by_status", type: "key", columns: ["status"] },
       { key: "by_creator", type: "key", columns: ["createdByUserId"] },
-    ],
-  },
-  partner_families: {
-    label: "Famílias de produto atendidas por parceiro (cotação de compra)",
-    columns: {
-      partyId: id(),
-      familyKey: str(80, true),
-      familyName: str(200, true),
-      createdByUserId: id(false),
-    },
-    indexes: [
-      { key: "by_party", type: "key", columns: ["partyId"] },
-      { key: "by_family", type: "key", columns: ["familyKey"] },
-      {
-        key: "party_family_unique",
-        type: "unique",
-        columns: ["partyId", "familyKey"],
-      },
     ],
   },
   booking_invites: {

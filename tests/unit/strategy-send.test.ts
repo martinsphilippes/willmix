@@ -13,8 +13,8 @@ import { orderFromRequest } from "./helpers/order";
  * - Quem tem pendência (sem login, inativo, tipo que não cota, tela fechada)
  *   fica de fora e aparece no resultado; "Tentar de novo" convida depois de
  *   regularizar, sem duplicar quem já recebeu.
- * - Trading responde, mas ainda não vence (D4). O parceiro vê a
- *   especificação e a programação, nunca o cliente (D6).
+ * - Trading responde e pode vencer, como o Fornecedor (docs/PARTNER_FAMILIES.md).
+ *   O parceiro vê a especificação e a programação, nunca o cliente (D6).
  * - A tela própria nasce aberta para quem abre as cotações (ninguém perde).
  */
 withTempStore();
@@ -25,8 +25,7 @@ const { PARTY_EXTRA_DEFAULTS } = await import("@/lib/db/schema");
 const requests = await import("@/lib/services/requests");
 const strategy = await import("@/lib/services/purchase-strategy");
 const quotes = await import("@/lib/services/purchase-quote");
-const families = await import("@/lib/services/partner-families");
-const origin = await import("@/lib/services/product-origin");
+const productFamilies = await import("@/lib/services/product-families");
 const { checkRecipients } = await import("@/lib/services/purchase-recipients");
 const { recipientVerdict } = await import("@/lib/purchase-recipients");
 const { createPortalLogin } = await import("@/lib/services/portal-access");
@@ -203,20 +202,15 @@ describe("quem recebe a cotação", () => {
     });
   });
 
-  it("Fornecedor e Trading aptos (a Trading não vence); sem login, inativo e GP ficam de fora", async () => {
+  it("Fornecedor e Trading aptos; sem login, inativo e GP ficam de fora", async () => {
     await getStore().update("parties", "fornecedor-b", { active: false });
     const checks = await checkRecipients(
       ["fornecedor-a", "fornecedor-b", traderParty, factoryParty, gpParty],
       t,
     );
-    expect(checks.get("fornecedor-a")).toMatchObject({
-      ok: true,
-      canWin: true,
-      logins: 1,
-    });
+    expect(checks.get("fornecedor-a")).toMatchObject({ ok: true, logins: 1 });
     expect(checks.get(traderParty)).toMatchObject({
       ok: true,
-      canWin: false,
       type: "trading",
     });
     expect(checks.get(factoryParty)!.issues).toEqual(["no_login"]);
@@ -264,41 +258,30 @@ describe("quem recebe a cotação", () => {
   });
 });
 
-describe("famílias atendidas", () => {
-  it("só os tipos que cotam; troca a lista inteira e fica na Auditoria", async () => {
-    origin.resetOriginIndex();
-    const fam = (await origin.familiesOfProducts(["prod-panela"])).get(
-      "prod-panela",
-    )!;
-    expect(fam.key).toMatch(/^(fm|ln):/);
-    await expect(
-      families.setPartnerFamilies(admin, gpParty, [fam.key]),
-    ).rejects.toThrow("family_type_not_allowed");
-    await families.setPartnerFamilies(admin, traderParty, [fam.key]);
-    expect((await families.partnersByFamily([fam.key])).get(fam.key)).toEqual([
-      traderParty,
-    ]);
-    await families.setPartnerFamilies(admin, traderParty, []);
-    expect(
-      (await families.partnersByFamily([fam.key])).get(fam.key),
-    ).toBeUndefined();
-    await families.setPartnerFamilies(admin, traderParty, [fam.key]);
-    const audit = await getStore().list("audit_log", {
-      filter: { entityId: traderParty, action: "partner.families" },
-    });
-    expect(audit).toHaveLength(3);
-  });
-
-  it("a fila mostra os vinculados à família e sugere quem já forneceu (sem vínculo)", async () => {
+describe("Grupo de produto (família) do cadastro (docs/PARTNER_FAMILIES.md)", () => {
+  it("a fila mostra quem marcou a família da linha e sugere quem já forneceu (sem vínculo)", async () => {
+    // A família das utilidades domésticas (20000000) na Trading.
+    await productFamilies.setPartyFamilies(admin, traderParty, ["20000000"]);
     const d = await encomenda("prod-panela");
     const board = await strategy.strategyBoard(t);
     const line = board.lines.find((l) => l.demand.id === d.id)!;
-    expect(line.linkedIds).toContain(traderParty);
+    expect(line.family).toEqual({
+      key: "20000000",
+      name: "UTILIDADES DOMESTICAS",
+    });
+    expect(line.linkedIds).toEqual([traderParty]);
     expect(line.last?.supplierId).toBe("fornecedor-a");
-    // A última compra entra como sugestão (o vínculo dela não foi marcado).
+    // A última compra entra como sugestão (ela não marcou a família).
     expect(line.suggestedIds).toContain("fornecedor-a");
     expect(line.suggestedIds).not.toContain(traderParty);
     expect(board.checks.get(traderParty)?.ok).toBe(true);
+    // Desmarcada a família, a Trading sai dos vinculados.
+    await productFamilies.setPartyFamilies(admin, traderParty, []);
+    const again = (await strategy.strategyBoard(t)).lines.find(
+      (l) => l.demand.id === d.id,
+    )!;
+    expect(again.linkedIds).toEqual([]);
+    await productFamilies.setPartyFamilies(admin, traderParty, ["20000000"]);
   });
 });
 
@@ -430,7 +413,8 @@ describe("envio da Estratégia de Compra", () => {
       (await quotes.inviteRecipient(quote, traderParty, new Date())).status,
     ).toBe("already");
 
-    // D4: a Trading responde, aparece no comparativo, mas não vence.
+    // A Trading responde no portal e pode vencer, como o Fornecedor
+    // (docs/PARTNER_FAMILIES.md, decisão 1).
     const answer = {
       decline: false,
       prices: [{ productId: "prod-jarra", unitPrice: 2.1 }],
@@ -451,17 +435,18 @@ describe("envio da Estratégia de Compra", () => {
       filter: { quoteId: quote.id },
     });
     const byParty = (id: string) => all.find((r) => r.supplierId === id)!;
-    await expect(
-      quotes.chooseWinner(buyer, quote.id, byParty(traderParty).id, null, late),
-    ).rejects.toThrow("quote_winner_not_supplier");
+    expect(byParty("fornecedor-a").status).toBe("answered");
     const chosen = await quotes.chooseWinner(
       buyer,
       quote.id,
-      byParty("fornecedor-a").id,
+      byParty(traderParty).id,
       null,
       late,
     );
-    expect(chosen.status).toBe("chosen");
+    expect(chosen).toMatchObject({
+      status: "chosen",
+      winnerResponseId: byParty(traderParty).id,
+    });
   });
 
   it("cotação encerrada: quem ficou de fora não tem mais o que tentar, e a pendência sai", async () => {

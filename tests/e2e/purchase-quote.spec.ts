@@ -25,29 +25,15 @@ async function setQuoteHours(page: Page, hours: string) {
 }
 
 /**
- * Os fornecedores B e C passam a atender a família de utilidades (Grupo de
- * produto (família) no cadastro; docs/PARTNER_FAMILIES.md): entram na
- * cotação das linhas dela.
+ * O fornecedor passa a atender a família de utilidades (Grupo de produto
+ * (família) no cadastro; docs/PARTNER_FAMILIES.md): entra na cotação das
+ * linhas dela e aparece vinculado na Estratégia de Compra.
  */
 async function serveUtilities(page: Page, supplierId: string) {
   await page.goto(`/app/suppliers/${supplierId}?tab=info`);
   await page.locator('[data-party-family="20000000"]').check();
   await page.locator("[data-party-families-save]").click();
   await page.waitForURL(/[?&]families=saved/);
-}
-
-/**
- * Famílias atendidas (dono, 18/11/2026): o fornecedor fica vinculado à
- * família das utilidades domésticas e aparece na Estratégia de Compra.
- */
-async function serveFamily(page: Page, supplierId: string) {
-  await page.goto(`/app/suppliers/${supplierId}?tab=info`);
-  const box = page.locator('[data-partner-family="fm:UTILIDADES_DOMESTICAS"]');
-  if (!(await box.isChecked())) {
-    await box.check();
-    await page.locator("[data-partner-families-save]").click();
-    await page.waitForURL(/[?&]families=saved/);
-  }
 }
 
 async function answer(
@@ -73,10 +59,10 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
 }) => {
   test.slow();
   await setQuoteHours(page, "0.02");
-  await serveUtilities(page, "fornecedor-b");
-  await serveUtilities(page, "fornecedor-c");
+  // A, B e C marcam a família das utilidades (Grupo de produto (família)):
+  // aparecem vinculados na Estratégia de Compra e entram na cotação.
   for (const id of ["fornecedor-a", "fornecedor-b", "fornecedor-c"])
-    await serveFamily(page, id);
+    await serveUtilities(page, id);
 
   // Reposição da jarra pelo Planner; o Comprador escolhe cotar com os
   // fornecedores vinculados à família (já vêm marcados) e confirma: a cotação

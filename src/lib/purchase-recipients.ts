@@ -1,4 +1,5 @@
 import type { PartyType } from "@/lib/db/schema";
+import { FAMILY_PARTY_TYPES, servesFamilies } from "@/lib/party-families";
 
 /*
  * Quem recebe a cotação de compra na Estratégia de Compra (dono, 18/11/2026;
@@ -8,25 +9,14 @@ import type { PartyType } from "@/lib/db/schema";
 
 /**
  * Tipos de parceiro que recebem a cotação: Fornecedor, Trading, Supplier
- * ("supplier_partner") e Factory. GP e os outros parceiros não cotam.
+ * ("supplier_partner") e Factory, os mesmos do "Grupo de produto (família)"
+ * do cadastro (docs/PARTNER_FAMILIES.md). GP e os outros parceiros não cotam.
+ * Quem vence vira o fornecedor da solicitação e do pedido, de qualquer
+ * desses tipos (dono, 18/11/2026).
  */
-export const QUOTE_PARTY_TYPES: readonly PartyType[] = [
-  "supplier",
-  "trading",
-  "supplier_partner",
-  "factory",
-];
+export const QUOTE_PARTY_TYPES: readonly PartyType[] = FAMILY_PARTY_TYPES;
 
-export const receivesQuote = (type: string | null | undefined) =>
-  !!type && (QUOTE_PARTY_TYPES as readonly string[]).includes(type);
-
-/**
- * Pedido de compra, assinatura, termos e fatura do fornecedor só aceitam o
- * Fornecedor (dono, 18/11/2026, D4): Trading, Supplier e Factory recebem e
- * respondem a cotação, mas ainda não podem ser escolhidos como vencedores.
- */
-export const canWinQuote = (type: string | null | undefined) =>
-  type === "supplier";
+export const receivesQuote = servesFamilies;
 
 /**
  * Pendências que impedem o parceiro de receber ou responder a cotação no
@@ -59,8 +49,6 @@ export interface RecipientCheck {
   warnings: RecipientWarning[];
   /** Recebe e responde (sem pendência). */
   ok: boolean;
-  /** Pode ser escolhido como vencedor (só o Fornecedor, por ora). */
-  canWin: boolean;
 }
 
 /** Junta as pendências e diz se o parceiro está apto. */

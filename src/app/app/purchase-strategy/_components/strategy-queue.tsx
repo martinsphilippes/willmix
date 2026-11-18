@@ -104,7 +104,6 @@ export interface StrategyTexts {
   logins: string;
   ok: string;
   lastBadge: string;
-  cantWin: string;
   issues: Record<string, string>;
   warnings: Record<string, string>;
   fix: string;
@@ -336,9 +335,6 @@ export function StrategyQueue({
                   {texts.warnings[w] ?? w}
                 </span>
               ))}
-              {!check.canWin ? (
-                <span className="block text-zinc-500">{texts.cantWin}</span>
-              ) : null}
             </span>
           ) : null}
         </span>
@@ -589,7 +585,7 @@ export function StrategyQueue({
                         {texts.search}
                       </p>
                       <SearchPicker
-                        endpoint="/api/parties/search?type=quote&active=1"
+                        endpoint="/api/parties/search?type=supplier&also=trading,supplier_partner,factory&active=1"
                         marker="strategy-recipient-picker"
                         kind="quote"
                         dense

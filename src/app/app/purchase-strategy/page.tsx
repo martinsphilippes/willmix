@@ -126,7 +126,13 @@ export default async function PurchaseStrategyPage({
       ),
       desiredAt: d.desiredAt ? formatDate(d.desiredAt, t) : null,
       deadline: d.deadline ? formatDate(d.deadline, t) : null,
-      family: l.family,
+      // Nome e código (famílias de mesmo nome no Sankhya; docs/PARTNER_FAMILIES.md).
+      family: l.family
+        ? {
+            key: l.family.key,
+            name: `${l.family.name} · ${t("partyFamilies.code", { code: l.family.key })}`,
+          }
+        : null,
       last: l.last
         ? {
             supplierId: l.last.supplierId,
@@ -190,7 +196,6 @@ export default async function PurchaseStrategyPage({
     logins: t("strategy.recipients.logins"),
     ok: t("strategy.recipients.ok"),
     lastBadge: t("strategy.recipients.lastBadge"),
-    cantWin: t("strategy.recipients.cantWin"),
     issues: Object.fromEntries(
       RECIPIENT_ISSUES.map((i) => [
         i,

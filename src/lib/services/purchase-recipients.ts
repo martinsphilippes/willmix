@@ -6,7 +6,6 @@ import { isLoginName } from "@/lib/auth/login-id";
 import { resolveProfile } from "@/lib/partner-access";
 import { partnerTypeCatalog, partnerTypeName } from "@/lib/partner-types";
 import {
-  canWinQuote,
   receivesQuote,
   recipientVerdict,
   type RecipientCheck,
@@ -74,7 +73,6 @@ export async function checkRecipients(
       country: party.country,
       logins: logins.length,
       ...verdict,
-      canWin: canWinQuote(party.type),
     });
   }
   return out;
