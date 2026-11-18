@@ -1213,7 +1213,7 @@ export default async function SupplierRequestPage({
         <div className="mt-4" data-supplier-request-order-pending>
           <Alert tone="info">
             <Link
-              href="/app/supplier-requests?tab=closed"
+              href={`/app/supplier-requests?tab=closed&pick=${r.id}#pedido-de-compra`}
               className={linkClass}
             >
               {t("purchaseOrder.detail.generate")}

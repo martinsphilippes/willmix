@@ -23,19 +23,22 @@ import {
 import { dictionaries } from "@/i18n/dictionaries";
 import { SUPPLIER_REQUEST_STATUSES } from "@/lib/db/schema";
 import { fallbackError } from "@/i18n/error-text";
-import { purchaseOrderCustomer } from "@/lib/services/purchase-order";
+import {
+  listPurchaseCandidates,
+  purchaseOrderCustomer,
+} from "@/lib/services/purchase-order";
+import { PurchaseOrderCard } from "./_components/purchase-order";
 import {
   requestClosed,
   requestOrderState,
 } from "@/lib/supplier-request-closing";
-import { createPurchaseOrderAction } from "../actions/purchase-order";
-import { SubmitButton } from "@/components/submit-button";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
   Badge,
   Card,
   Empty,
+  LinkButton,
   PageHeader,
   Table,
   Td,
@@ -49,7 +52,9 @@ import { can, canSeePurchasePrice } from "@/lib/auth/function-access";
  * Solicitações ao fornecedor (docs/SUPPLIER_REQUESTS.md): a Wellmix vê todas;
  * o fornecedor, só as do próprio cadastro. Duas abas (dono, 18/11/2026): "Em
  * negociação" (a primeira) e "Encerradas" (todos os produtos decididos), onde
- * a solicitação com todos os produtos cadastrados ganha "Gerar pedido".
+ * a solicitação com todos os produtos cadastrados ganha "Gerar pedido", que
+ * leva ao quadro "Gerar pedido de compra" (por fornecedor, para juntar outras
+ * solicitações do mesmo fornecedor e ajustar a quantidade).
  */
 
 export default async function SupplierRequestsPage({
@@ -83,6 +88,9 @@ export default async function SupplierRequestsPage({
     searchParams,
   ]);
   const closedTab = query.tab === "closed";
+  // "Gerar pedido" de uma linha: os produtos dela vêm marcados no quadro.
+  const pickParam = typeof query.pick === "string" ? query.pick : "";
+  const pick = pickParam ? new Set(pickParam.split(",").filter(Boolean)) : null;
   const now = new Date();
   const error = typeof query.error === "string" ? query.error : "";
   const errorKey = [
@@ -109,12 +117,13 @@ export default async function SupplierRequestsPage({
   const openRequests = allRequests.filter((list) => !requestClosed(list));
   const requests = closedTab ? closedRequests : openRequests;
   const tabProducts = new Set(requests.flat().map((p) => p.bookingItemId)).size;
-  // Pedido de compra (docs/PURCHASE_ORDER.md): o comprador é a própria
-  // Wellmix; sem o cadastro dela, "Gerar pedido" avisa em vez de falhar.
-  const purchaseCustomer =
-    closedTab && showPurchase && closedRequests.length
-      ? await purchaseOrderCustomer()
-      : null;
+  // Pedido de compra (docs/PURCHASE_ORDER.md), só na aba Encerradas: os
+  // produtos aprovados de cada fornecedor que ainda não estão em pedido.
+  const purchase =
+    closedTab && showPurchase ? await listPurchaseCandidates(user) : null;
+  const purchaseCustomer = purchase?.length
+    ? await purchaseOrderCustomer()
+    : null;
 
   return (
     <>
@@ -165,14 +174,15 @@ export default async function SupplierRequestsPage({
           );
         })}
       </nav>
-      {closedTab &&
-      showPurchase &&
-      closedRequests.length &&
-      !purchaseCustomer ? (
-        <div className="mb-3">
-          <Alert tone="warning">
-            {t("purchaseOrder.error.purchase_order_customer_missing")}
-          </Alert>
+      {purchase?.length ? (
+        <div className="mb-4" id="pedido-de-compra">
+          <PurchaseOrderCard
+            groups={purchase}
+            customer={purchaseCustomer}
+            showPrice={seesPrice}
+            pick={pick}
+            t={t}
+          />
         </div>
       ) : null}
       {entries === null ? (
@@ -378,23 +388,13 @@ export default async function SupplierRequestsPage({
                     {orderState ? (
                       <Td data-request-order-state={orderState.kind}>
                         {orderState.kind === "ready" ? (
-                          <form action={createPurchaseOrderAction}>
-                            {orderState.requestIds.map((id) => (
-                              <input
-                                key={id}
-                                type="hidden"
-                                name="requestIds"
-                                value={id}
-                              />
-                            ))}
-                            <SubmitButton
-                              pendingText={t("purchaseOrder.card.pending")}
-                              disabled={!purchaseCustomer}
-                              data-request-to-order={r.id}
-                            >
-                              {t("supplierRequests.toOrder.submit")}
-                            </SubmitButton>
-                          </form>
+                          <LinkButton
+                            href={`/app/supplier-requests?tab=closed&pick=${orderState.requestIds.join(",")}#pedido-de-compra`}
+                            variant="primary"
+                            data-request-to-order={r.id}
+                          >
+                            {t("supplierRequests.toOrder.submit")}
+                          </LinkButton>
                         ) : orderState.kind === "missingProduct" ? (
                           <span className="block max-w-48 whitespace-normal text-xs text-zinc-500">
                             {t("supplierRequests.toOrder.missingProduct", {

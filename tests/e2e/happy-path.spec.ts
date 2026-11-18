@@ -331,6 +331,23 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.locator('[data-supplier-request-tab="closed"]').click();
   await page.waitForURL(/[?&]tab=closed/);
   await page.locator(`[data-request-to-order="${requestId}"]`).click();
+  await page.waitForURL(/[?&]pick=/);
+  // O quadro "Gerar pedido de compra" abre com só esta solicitação marcada;
+  // outras do mesmo fornecedor podem ser marcadas para entrar juntas.
+  const group = page.locator(
+    `form:has([data-purchase-candidate="${requestId}"])`,
+  );
+  await expect(
+    group.locator(
+      `[data-purchase-candidate="${requestId}"] input[type=checkbox]`,
+    ),
+  ).toBeChecked();
+  await expect(
+    group.locator(
+      `[data-purchase-candidate]:not([data-purchase-candidate="${requestId}"]) input[type=checkbox]:checked`,
+    ),
+  ).toHaveCount(0);
+  await group.locator("[data-purchase-submit]").click();
   await page.waitForURL(/\/app\/orders\/[^/?]+\?purchase=created/);
   const orderUrl = page.url().split("?")[0];
   const orderNumber = (

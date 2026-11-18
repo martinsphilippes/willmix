@@ -20,7 +20,7 @@ A lista só mostra negociações (cotações e books), nunca pedidos:
 
 - **Em negociação** (a primeira aba, `/app/supplier-requests`): solicitações com algum produto ainda aberto ou respondido.
 - **Encerradas** (`?tab=closed`): todos os produtos decididos (aprovado, recusado ou cancelado; `requestClosed`, `src/lib/supplier-request-closing.ts`).
-- Na aba Encerradas, a coluna **Pedido** (Wellmix com a tela Pedidos e a ação de gerar o pedido de compra) mostra **"Gerar pedido"** quando todos os produtos aprovados fora de pedido existem no cadastro e têm a amostra aprovada (`requestOrderState`); senão, "Falta cadastrar N produto(s)", "Esperando a amostra aprovada" ou "Já virou pedido". O pedido segue docs/PURCHASE_ORDER.md, seção 1.
+- Na aba Encerradas fica o quadro "Gerar pedido de compra" (por fornecedor, para juntar várias solicitações e ajustar a quantidade). A coluna **Pedido** (Wellmix com a tela Pedidos e a ação de gerar o pedido de compra) mostra **"Gerar pedido"** quando todos os produtos aprovados fora de pedido existem no cadastro e têm a amostra aprovada (`requestOrderState`); o botão leva ao quadro com os produtos dela marcados. Senão: "Falta cadastrar N produto(s)", "Esperando a amostra aprovada" ou "Já virou pedido". O pedido segue docs/PURCHASE_ORDER.md, seção 1.
 - Saiu do cabeçalho o botão "Seleção de itens" (a Seleção continua no menu e no Booking).
 
 ### Seleção de itens
