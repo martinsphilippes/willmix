@@ -80,9 +80,22 @@ export function canViewRequest(user: User, request: Request): boolean {
     return (
       request.customerId === user.partyId &&
       (request.requestedForUserId === user.id ||
-        request.createdByUserId === user.id)
+        request.createdByUserId === user.id ||
+        forAllCustomerLogins(request))
     );
   return false;
+}
+
+/**
+ * Venda da Wellmix ao cliente sem um login escolhido (dono, 18/11/2026): a
+ * solicitação vai para todos os logins daquele cliente (veem, confirmam e
+ * recebem o aviso). Só as de venda ao cliente (com as condições do pedido);
+ * as antigas sem login continuam só da Wellmix.
+ */
+export function forAllCustomerLogins(
+  request: Pick<Request, "requestedForUserId" | "orderTerms">,
+): boolean {
+  return !request.requestedForUserId && !!request.orderTerms;
 }
 
 /**

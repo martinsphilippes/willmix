@@ -328,6 +328,8 @@ export async function renderNewRequest({
     accessStock: t("requestPeople.accessStock"),
     accessRequired: t("requestPeople.accessRequired"),
     accessChoose: t("requestPeople.accessChoose"),
+    accessAll: t("requestPeople.accessAll", { n: "{n}" }),
+    accessAllHint: t("requestPeople.accessAllHint"),
   };
   // Cliente pré-escolhido (programação de compra, endereço): só cliente ativo.
   const initialCustomer =
@@ -1002,7 +1004,7 @@ export async function renderNewRequest({
                   requesterName={user.name}
                   loginsByCustomer={loginsByCustomer}
                   labels={requestPeopleLabels}
-                  loginRequired={sellsToCustomer}
+                  allLogins={sellsToCustomer}
                   initialLogin={draftValue("requestedForUserId")}
                 />
               </div>

@@ -26,6 +26,9 @@ export interface RequestPeopleLabels {
   /** Venda ao cliente: o login é obrigatório (é ele quem confirma). */
   accessRequired?: string;
   accessChoose?: string;
+  /** "Todos os logins do cliente ({n})" (dono, 18/11/2026). */
+  accessAll?: string;
+  accessAllHint?: string;
 }
 
 export interface CustomerLogin {
@@ -63,6 +66,7 @@ export function RequestPeopleFields({
   labels,
   loginRequired = false,
   initialLogin = "",
+  allLogins = false,
 }: {
   requesterName: string;
   loginsByCustomer: Record<string, CustomerLogin[]>;
@@ -72,6 +76,11 @@ export function RequestPeopleFields({
    * cliente com acesso é obrigatório (é ele quem confirma o pedido).
    */
   loginRequired?: boolean;
+  /**
+   * Venda da Wellmix ao cliente (dono, 18/11/2026): sem escolher login, a
+   * solicitação vai para todos os logins do cliente; o campo só mostra.
+   */
+  allLogins?: boolean;
   /** Login já escolhido (rascunho). */
   initialLogin?: string;
 }) {
@@ -145,40 +154,69 @@ export function RequestPeopleFields({
           ? labels.accessRequired
           : labels.accessHint;
 
+  const accessField =
+    allLogins && labels.accessAll ? (
+      <Field
+        label={labels.access}
+        hint={
+          stock
+            ? labels.accessStock
+            : !customerId
+              ? labels.accessPick
+              : !logins.length
+                ? labels.accessNoLogins
+                : labels.accessAllHint
+        }
+      >
+        <Input
+          readOnly
+          value={
+            customerId && !stock && logins.length
+              ? labels.accessAll.replace("{n}", String(logins.length))
+              : ""
+          }
+          className="bg-zinc-50 text-zinc-700"
+          data-request-access-all={logins.length}
+        />
+      </Field>
+    ) : null;
+
   return (
     <>
-      <Field label={labels.access} hint={accessHint}>
-        <Select
-          key={customerId ?? (stock ? "stock" : "none")}
-          name="requestedForUserId"
-          defaultValue={
-            logins.some((u) => u.id === initialLogin) ? initialLogin : ""
-          }
-          required={loginRequired && !stock}
-          disabled={!customerId || !logins.length}
-          data-request-access
-          data-request-access-state={
-            stock
-              ? "stock"
-              : !customerId
-                ? "pick"
-                : logins.length
-                  ? "ready"
-                  : "none"
-          }
-        >
-          <option value="" disabled={loginRequired}>
-            {loginRequired && labels.accessChoose
-              ? labels.accessChoose
-              : labels.accessNone}
-          </option>
-          {logins.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name} ({u.email})
+      {accessField ?? (
+        <Field label={labels.access} hint={accessHint}>
+          <Select
+            key={customerId ?? (stock ? "stock" : "none")}
+            name="requestedForUserId"
+            defaultValue={
+              logins.some((u) => u.id === initialLogin) ? initialLogin : ""
+            }
+            required={loginRequired && !stock}
+            disabled={!customerId || !logins.length}
+            data-request-access
+            data-request-access-state={
+              stock
+                ? "stock"
+                : !customerId
+                  ? "pick"
+                  : logins.length
+                    ? "ready"
+                    : "none"
+            }
+          >
+            <option value="" disabled={loginRequired}>
+              {loginRequired && labels.accessChoose
+                ? labels.accessChoose
+                : labels.accessNone}
             </option>
-          ))}
-        </Select>
-      </Field>
+            {logins.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name} ({u.email})
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
       <Field label={labels.requester} hint={labels.requesterHint}>
         <Input
           readOnly
