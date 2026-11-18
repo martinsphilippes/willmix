@@ -30,6 +30,11 @@ import {
 } from "@/lib/services/request-export";
 import { requestTurnContext } from "@/lib/services/request-turns";
 import { turnFilterOf } from "@/lib/turn";
+import { canSeeMoney } from "@/lib/auth/function-access";
+import {
+  loadRequestPacking,
+  packingTotalsLine,
+} from "@/lib/services/request-packing";
 
 export const dynamic = "force-dynamic";
 
@@ -116,7 +121,25 @@ export async function GET(request: NextRequest) {
     const s = v === null || v === undefined ? "" : String(v);
     return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const lines = [t("reqList.csv.header")];
+  /* Totais de Encomendas (dono, 18/11/2026): no fim de cada linha, os
+     valores daquele produto pela mesma embalagem da tela (somando as linhas
+     de um Nº dá o total da lista, sem contar nada duas vezes). O preço
+     previsto só para quem vê valores e margem. Número sem milhar e com a
+     vírgula decimal da planilha em pt. */
+  const packing = await loadRequestPacking(rows);
+  const seeSale = canSeeMoney(user);
+  const decimal = (n: number | null, digits: number) => {
+    if (n === null || !Number.isFinite(n)) return "";
+    const text = String(Math.round(n * 10 ** digits) / 10 ** digits);
+    return t.locale === "pt" ? text.replace(".", ",") : text;
+  };
+  const lines = [
+    [
+      t("reqList.csv.header"),
+      t("reqList.csv.totals"),
+      ...(seeSale ? [t("reqList.csv.price")] : []),
+    ].join(";"),
+  ];
   for (const r of rows)
     lines.push(
       [
@@ -164,6 +187,17 @@ export async function GET(request: NextRequest) {
             order
               ? exportMilestoneCell(t, order.status, milestones.get(order.id))
               : "",
+          ];
+        })(),
+        ...(() => {
+          const line = packingTotalsLine(r, packing.get(r.id), r.productName);
+          return [
+            decimal(line.pieces, 4),
+            decimal(line.boxes, 4),
+            decimal(line.innerBoxes, 4),
+            decimal(line.cbm, 4),
+            decimal(line.moq, 4),
+            ...(seeSale ? [decimal(line.sale?.amount ?? null, 2)] : []),
           ];
         })(),
       ]

@@ -201,6 +201,14 @@ export async function createRequestBatch(
     );
   // Produto sem NCM: o despachante recebe a pendência e um aviso só.
   await (await import("./request-ncm")).notifyNcmPending(created);
+  // Venda ao cliente (condições do pedido): a previsão de venda de cada
+  // produto é gravada depois da resposta (totais de Encomendas; dono,
+  // 18/11/2026). O envio não espera o Sankhya.
+  if (base.orderTerms)
+    (await import("./request-price-forecast")).schedulePriceForecasts(
+      created,
+      base.orderTerms,
+    );
   return created;
 }
 
@@ -294,6 +302,13 @@ export async function addProductsToRequest(
     base.id,
     `Produtos acrescentados à solicitação${base.number ? ` nº ${base.number}` : ""}: ${created.map((r) => r.productName).join(", ")}`,
   );
+  // As condições do pedido valem para o lote todo: o produto acrescentado
+  // também ganha a previsão de venda (totais de Encomendas, 18/11/2026).
+  if (base.orderTerms)
+    (await import("./request-price-forecast")).schedulePriceForecasts(
+      created,
+      base.orderTerms,
+    );
   return { groupId, created };
 }
 

@@ -6,16 +6,9 @@ import { canOpenNewRequest } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { canSeeMoney } from "@/lib/auth/function-access";
 import { getPriceForecastAdapter } from "@/lib/integrations/price-forecast";
-import { cbmFromDimensions } from "@/lib/logistics/cbm";
-import {
-  CARRIER_CALLERS,
-  DELIVERY_ROUTE,
-  WELLMIX_TIERS,
-  saleVip,
-} from "@/lib/order-terms";
+import { CARRIER_CALLERS, WELLMIX_TIERS } from "@/lib/order-terms";
 import { getSettings } from "@/lib/settings";
-import { NO_RCA, rcaCodeOf } from "@/lib/services/rca";
-import { brazilDay } from "@/lib/supplier-terms";
+import { forecastQuery } from "@/lib/services/request-price-forecast";
 
 export const dynamic = "force-dynamic";
 
@@ -98,44 +91,20 @@ export async function GET(request: Request) {
     customerId ? store.get("parties", customerId) : Promise.resolve(null),
     getSettings(),
   ]);
-  // O RCA do cliente como a tela mostra: o gravado no portal ou, sem ele,
-  // o vendedor que veio do Sankhya (sankhyaRefs.CODVEND); 0 = sem vendedor.
-  const rca = customer?.type === "customer" ? rcaCodeOf(customer) : null;
   if (!product)
     return NextResponse.json({ error: "not_found" }, { status: 404 });
-  const query = {
-    productId: product.id,
-    sankhyaCode: product.sankhyaCode ?? null,
-    sku: product.sku ?? null,
+  // A mesma consulta que o envio grava (src/lib/services/request-price-forecast.ts).
+  const query = forecastQuery({
+    product,
+    customer,
     quantity: quantity ?? null,
     containers: containers ?? null,
-    customerId: customer?.type === "customer" ? customer.id : null,
-    customerSankhyaCode:
-      customer?.type === "customer" ? (customer.sankhyaCode ?? null) : null,
-    ncm: product.ncm,
-    netWeightKg: product.netWeightKg,
-    grossWeightKg: product.grossWeightKg,
-    masterBoxQty: product.masterBoxQty,
-    cbmPerCarton:
-      product.cbm && product.cbm > 0
-        ? product.cbm
-        : cbmFromDimensions(
-            product.boxLengthCm,
-            product.boxWidthCm,
-            product.boxHeightCm,
-          ),
-    price: product.price,
-    currency: product.currency,
-    // VIP pelo formato (WD = 5) e pelo nível do Wellmix; rota por quem chama o
-    // transportador; frete de entrega das Configurações; o RCA do cliente
-    // como vendedor; a data de hoje (Brasília).
-    vip: saleVip(saleFormat, tier),
-    route: caller ? DELIVERY_ROUTE[caller] : null,
-    deliveryFreightBrl: freight ?? settings.deliveryFreightDefaultBrl ?? null,
-    sellerCode:
-      rca && rca !== NO_RCA && /^\d{1,9}$/.test(rca) ? Number(rca) : null,
-    dataRef: (brazilDay(new Date()) ?? "").replace(/-/g, "") || null,
-  };
+    saleFormat,
+    tier,
+    caller,
+    freight: freight ?? null,
+    defaultFreight: settings.deliveryFreightDefaultBrl ?? null,
+  });
   const money = canSeeMoney(user);
   // O preço máximo de compra é custo do fornecedor: só com "Ver valores e
   // margem" (a mesma regra das listas).

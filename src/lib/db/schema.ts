@@ -11,7 +11,11 @@
  */
 
 import type { FreightTariffData } from "@/lib/services/freight-tariff-calc";
-import type { CustomerContacts, OrderTerms } from "@/lib/order-terms";
+import type {
+  CustomerContacts,
+  OrderTerms,
+  RequestPriceForecast,
+} from "@/lib/order-terms";
 import type {
   ChargeNotices,
   CustomerCharge,
@@ -1097,6 +1101,13 @@ export interface Request extends BaseRow {
    * todo o lote. Nulo nas antigas, na compra para estoque e na do cliente.
    */
   orderTerms?: OrderTerms | null;
+  /**
+   * Previsão de venda ao cliente gravada no envio (dono, 18/11/2026; totais
+   * de Encomendas, docs/ORDER_LEVEL_LISTS.md): a cotação V2 recalculada pelo
+   * servidor com as condições do pedido. Nula sem as condições, sem o
+   * Sankhya ou quando a cotação não respondeu (a lista mostra "—").
+   */
+  priceForecast?: RequestPriceForecast | null;
 }
 
 export interface Order extends BaseRow {
@@ -4363,6 +4374,8 @@ export const TABLES: Record<TableName, TableDef> = {
       // Enviada para a cotação (Encomendas; dono, 18/11/2026).
       strategySentAt: datetime(),
       strategySentByUserId: id(false),
+      // Previsão de venda gravada no envio (totais de Encomendas, 18/11/2026).
+      priceForecast: json(),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },

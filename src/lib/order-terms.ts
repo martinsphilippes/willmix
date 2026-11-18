@@ -466,6 +466,33 @@ export function contactsFromEntries(
   return out;
 }
 
+/**
+ * Previsão de venda gravada no envio (`requests.priceForecast`; dono,
+ * 18/11/2026, totais de Encomendas): a mesma cotação V2 do Sankhya que a
+ * Nova solicitação mostra no "Valor total", recalculada pelo servidor (o
+ * número do navegador não é aceito). Natureza: venda ao cliente, em R$.
+ */
+export interface RequestPriceForecast {
+  /** Preço por peça ao cliente final (com frete; WD com frete no formato WD). */
+  unitPrice: number;
+  /** Peças da conta (o total da solicitação). */
+  pieces: number;
+  /** Preço × peças. */
+  total: number;
+  currency: "BRL";
+  /** Coluna da cotação V2: com frete (referência) ou WD com frete. */
+  basis: "with_freight" | "wd_with_freight";
+  saleFormat: SaleFormat | null;
+  wellmixTier: WellmixTier | null;
+  carrierCaller: CarrierCaller | null;
+  /** Frete de entrega enviado (R$, total: o digitado ou o padrão). */
+  deliveryFreightBrl: number | null;
+  /** Situação da cotação (STATUS_COTACAO: PRONTA, FRETE_PENDENTE…). */
+  status: string | null;
+  /** Quando foi calculada (ISO). */
+  at: string;
+}
+
 /** Forma de pagamento na solicitação (cópia; dono, 16/11/2026). */
 export interface RequestPaymentPlan {
   planId: string;

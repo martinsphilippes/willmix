@@ -25,6 +25,9 @@ export const pt = {
   "reqList.empty": "Nenhuma solicitação nesta busca ou filtro.",
   "reqList.csv.header":
     "Nº;Data;Produto;Cliente;Analista;Quantidade;Unidade;Situação;Prazo de resposta;Pedido;Próximo passo;Com quem;Etapa do pedido;Marco",
+  // Colunas do fim (totais de Encomendas, 18/11/2026): os valores de cada produto.
+  "reqList.csv.totals": "Peças (UN);Caixas master;Inner (CX);CBM (m³);MOQ (UN)",
+  "reqList.csv.price": "Preço previsto (R$)",
   "reqList.col.photo": "Foto",
   // Encomendas, composição do pedido (dono, 16/11/2026).
   "reqList.col.products": "Produtos",
@@ -74,6 +77,30 @@ export const pt = {
     "Sinal já recebido (confirmado) das solicitações desta lista.",
   "reqList.card.hint.ordered":
     "Valor ao cliente das solicitações desta lista que viraram pedido.",
+  // Totais de cada encomenda (dono, 18/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 5).
+  "reqList.col.price": "Preço total",
+  "reqList.col.moq": "MOQ total (UN)",
+  "reqList.col.pieces": "Peças total (UN)",
+  "reqList.col.boxes": "Caixas master total",
+  "reqList.col.inner": "Inner total (CX)",
+  "reqList.col.cbm": "CBM total (m³)",
+  "reqList.total.partial": "Total parcial",
+  "reqList.total.missing": "Sem o dado: {list}",
+  "reqList.total.more": "e mais {n}",
+  "reqList.total.empty": "Sem o dado nos produtos desta encomenda",
+  "reqList.total.price.hint":
+    "Venda prevista ao cliente: a cotação V2 do Sankhya gravada no envio (preço com frete × peças), em R$",
+  "reqList.total.price.none":
+    "Sem previsão de venda gravada (encomenda sem as condições do pedido, enviada antes de 18/11/2026 ou sem resposta do Sankhya)",
+  "reqList.total.moq.hint":
+    "Soma do pedido mínimo de cada produto, em peças, uma vez por produto",
+  "reqList.total.pieces.hint": "Peças pedidas em todas as programações",
+  "reqList.total.boxes.hint":
+    "Caixas master: peças ÷ peças por caixa, arredondado para cima em cada programação",
+  "reqList.total.inner.hint":
+    "Caixas inner: peças ÷ peças por inner, arredondado para cima em cada programação",
+  "reqList.total.cbm.hint":
+    "Caixas master × m³ da caixa de cada produto: {exact} m³",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -98,6 +125,9 @@ export const en: Record<keyof typeof pt, string> = {
   "reqList.empty": "No request in this search or filter.",
   "reqList.csv.header":
     "No.;Date;Product;Customer;Analyst;Quantity;Unit;Status;Response deadline;Order;Next step;With;Order stage;Milestone",
+  "reqList.csv.totals":
+    "Pieces (PCS);Master cartons;Inner (CTN);CBM (m³);MOQ (PCS)",
+  "reqList.csv.price": "Expected price (BRL)",
   "reqList.col.photo": "Photo",
   "reqList.col.products": "Products",
   "reqList.products.more": "+{n} products",
@@ -146,6 +176,29 @@ export const en: Record<keyof typeof pt, string> = {
     "Down payment already received (confirmed) from requests in this list.",
   "reqList.card.hint.ordered":
     "Customer value of requests in this list that became orders.",
+  "reqList.col.price": "Total price",
+  "reqList.col.moq": "Total MOQ (PCS)",
+  "reqList.col.pieces": "Total pieces (PCS)",
+  "reqList.col.boxes": "Total master cartons",
+  "reqList.col.inner": "Total inner (CTN)",
+  "reqList.col.cbm": "Total CBM (m³)",
+  "reqList.total.partial": "Partial total",
+  "reqList.total.missing": "Missing data: {list}",
+  "reqList.total.more": "and {n} more",
+  "reqList.total.empty": "No product in this order has the data",
+  "reqList.total.price.hint":
+    "Expected sale to the customer: the Sankhya V2 quote saved on sending (price with freight × pieces), in BRL",
+  "reqList.total.price.none":
+    "No expected sale saved (order without the order terms, sent before 11/18/2026 or no answer from Sankhya)",
+  "reqList.total.moq.hint":
+    "Sum of each product's minimum order, in pieces, once per product",
+  "reqList.total.pieces.hint": "Pieces ordered across all deliveries",
+  "reqList.total.boxes.hint":
+    "Master cartons: pieces ÷ pieces per carton, rounded up in each delivery",
+  "reqList.total.inner.hint":
+    "Inner cartons: pieces ÷ pieces per inner, rounded up in each delivery",
+  "reqList.total.cbm.hint":
+    "Master cartons × each product's carton m³: {exact} m³",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -170,6 +223,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqList.empty": "该搜索或筛选下没有询价。",
   "reqList.csv.header":
     "编号;日期;产品;客户;分析师;数量;单位;状态;回复期限;订单;下一步;负责方;订单阶段;里程碑",
+  "reqList.csv.totals": "件数（件）;外箱;内盒（箱）;体积（m³）;起订量（件）",
+  "reqList.csv.price": "预计价格（雷亚尔）",
   "reqList.col.photo": "照片",
   "reqList.col.products": "产品",
   "reqList.products.more": "另 {n} 个产品",
@@ -214,4 +269,23 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqList.card.hint.downDue": "本列表中等待定金的询价尚未收到的定金。",
   "reqList.card.hint.downReceived": "本列表中询价已收到（已确认）的定金。",
   "reqList.card.hint.ordered": "本列表中已转为订单的询价的客户金额。",
+  "reqList.col.price": "总价",
+  "reqList.col.moq": "总起订量（件）",
+  "reqList.col.pieces": "总件数（件）",
+  "reqList.col.boxes": "外箱总数",
+  "reqList.col.inner": "内盒总数（箱）",
+  "reqList.col.cbm": "总体积（m³）",
+  "reqList.total.partial": "部分合计",
+  "reqList.total.missing": "缺少数据：{list}",
+  "reqList.total.more": "另外 {n} 个",
+  "reqList.total.empty": "此订单的产品都没有该数据",
+  "reqList.total.price.hint":
+    "预计对客户的销售额：提交时保存的 Sankhya V2 报价（含运费单价 × 件数），单位雷亚尔",
+  "reqList.total.price.none":
+    "没有保存预计销售额（订单没有订单条件、在 2026/11/18 之前提交或 Sankhya 未响应）",
+  "reqList.total.moq.hint": "每个产品的最小起订量之和（件），每个产品只算一次",
+  "reqList.total.pieces.hint": "所有批次订购的件数",
+  "reqList.total.boxes.hint": "外箱：件数 ÷ 每箱件数，每批向上取整",
+  "reqList.total.inner.hint": "内盒：件数 ÷ 每内盒件数，每批向上取整",
+  "reqList.total.cbm.hint": "外箱数 × 每个产品的外箱体积：{exact} m³",
 };

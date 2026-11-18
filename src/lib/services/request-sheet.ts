@@ -20,22 +20,16 @@ import {
   canSeeMoney,
   canSeePurchasePrice,
 } from "@/lib/auth/function-access";
-import { cbmFromDimensions } from "@/lib/logistics/cbm";
-import { cartonsFromPieces } from "@/lib/purchase-rounds";
-import {
-  scheduleTotal,
-  type RequestSchedule,
-} from "@/lib/workflow/request-schedule";
+import type { RequestSchedule } from "@/lib/workflow/request-schedule";
 import {
   normLabel,
   parseRequestSpec,
-  type Axis,
   type ParsedSpec,
   type SpecLine,
   type SpecMeasure,
 } from "@/lib/request-spec-parse";
 import { describeTerms, termWhen } from "@/components/supplier-terms-text";
-import { productNameText, translator, type Translate } from "@/i18n";
+import { productNameText, type Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { withoutPlaceholder } from "@/lib/placeholder-name";
 import { productPurchaseView } from "./product-sheet";
@@ -44,7 +38,16 @@ import {
   type CustomerPaymentView,
 } from "./customer-payment";
 import type { PaymentPlanEvent } from "@/lib/customer-payment";
-import { isBoxUnit, isPieceUnit } from "./purchase-history";
+import { isPieceUnit } from "./purchase-history";
+import {
+  PORTAL_ORDER_LABELS,
+  dimsMeasure,
+  packingCandidates,
+  pickBook,
+  pickNegotiation,
+  resolvePacking,
+  type CbmCandidate,
+} from "./request-packing";
 import type { PackingBasis } from "@/lib/strategy-packing";
 
 /*
@@ -344,11 +347,6 @@ const hasLabel = (lines: readonly SpecLine[], attr: keyof typeof SYNONYMS) =>
     (l) => l.label && SYNONYMS[attr].includes(normLabel(l.label)),
   );
 
-/** Títulos que o portal escreve em comprimento × largura × altura sem dizer os eixos. */
-const PORTAL_ORDER_LABELS = (["pt", "en", "zh"] as const).map((l) =>
-  normLabel(translator(l)("catalog.dimensions")),
-);
-
 function measureText(t: Translate, m: Pick<SpecMeasure, "values">) {
   const known = m.values.every((v) => v.axis);
   const unitOf = (u: string | null) => (u ? ` ${u}` : "");
@@ -375,23 +373,6 @@ function measureNote(t: Translate, m: Pick<SpecMeasure, "values">) {
   return notes.length ? notes.join(" ") : null;
 }
 
-/** Medidas em cm de três colunas (comprimento, largura, altura). */
-function dimsMeasure(
-  length: number | null | undefined,
-  width: number | null | undefined,
-  height: number | null | undefined,
-): Pick<SpecMeasure, "values"> | null {
-  const order: [Axis, number | null | undefined][] = [
-    ["length", length],
-    ["width", width],
-    ["height", height],
-  ];
-  const values = order
-    .filter(([, v]) => pos(v))
-    .map(([axis, v]) => ({ axis, value: v as number, unit: "cm" }));
-  return values.length ? { values } : null;
-}
-
 /* ------------------------------------------------------------------ */
 /* Construção da ficha (pura)                                          */
 /* ------------------------------------------------------------------ */
@@ -415,147 +396,9 @@ function termsSummary(t: Translate, terms: PaymentTermInstallment[]) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Embalagem: as fontes (ficha completa e Estratégia de compra)        */
+/* Embalagem: a Estratégia de compra (as fontes da ficha, uma lista    */
+/* só em src/lib/services/request-packing.ts, `packingCandidates`)     */
 /* ------------------------------------------------------------------ */
-
-/** Uma fonte do CBM da caixa master. */
-interface CbmCandidate {
-  value: number | null | undefined;
-  kind: SourceKind;
-  /** Das medidas da caixa da mesma fonte (Calculado). */
-  calc: boolean;
-  /** Peças por caixa master da mesma fonte (nula ou ausente: a fonte não diz). */
-  boxQty: number | null | undefined;
-}
-
-interface PackingCandidates {
-  perBox: Candidate<number>[];
-  inner: Candidate<number>[];
-  cbm: CbmCandidate[];
-}
-
-const cbmFrom = (
-  d:
-    | { lengthCm?: number | null; widthCm?: number | null; heightCm?: number | null }
-    | null
-    | undefined,
-) => (d ? cbmFromDimensions(d.lengthCm, d.widthCm, d.heightCm) : null);
-
-/**
- * Fontes da embalagem, na ordem da ficha (a primeira que existe vale): peças
- * por caixa master, peças por caixa inner e CBM da caixa master (o gravado;
- * sem ele, das medidas da caixa da mesma fonte). A Estratégia de compra usa
- * as mesmas (docs/PURCHASE_DEMAND.md, "Embalagem e cubagem na Estratégia").
- */
-function packingCandidates(
-  inputs: SheetInputs,
-  tech: boolean,
-  spec: ParsedSpec,
-  view: ReturnType<typeof productPurchaseView> | null,
-): PackingCandidates {
-  const { request, product } = inputs;
-  const master = view?.master ?? null;
-  const variant = request.variant ?? null;
-  const neg = tech ? (inputs.negotiation?.item ?? null) : null;
-  const bk = tech ? inputs.book : null;
-  const sheet = tech ? inputs.orderSheet : null;
-  const specBoxCbm =
-    spec.boxDims && spec.boxDims.values.length === 3
-      ? cbmFromDimensions(
-          spec.boxDims.values[0].value,
-          spec.boxDims.values[1].value,
-          spec.boxDims.values[2].value,
-        )
-      : null;
-  return {
-    perBox: [
-      { value: spec.perBox, kind: "request" },
-      { value: tech ? variant?.masterBoxQty : null, kind: "variant" },
-      { value: sheet?.masterCartonQty, kind: "order" },
-      { value: neg?.masterCartonQty, kind: "negotiation" },
-      { value: bk?.masterCartonQty, kind: "book" },
-      { value: view?.pcsPerCarton, kind: "current" },
-    ],
-    inner: [
-      { value: spec.innerQty, kind: "request" },
-      { value: tech ? variant?.innerBoxQty : null, kind: "variant" },
-      { value: sheet?.innerQty, kind: "order" },
-      { value: neg?.innerQty, kind: "negotiation" },
-      { value: bk?.innerQty, kind: "book" },
-      {
-        value: tech ? (product?.innerBoxQty ?? master?.innerQty) : null,
-        kind: "current",
-      },
-    ],
-    /* CBM por caixa: o gravado na fonte; sem ele, das medidas da caixa da
-       mesma fonte (Calculado). `boxQty`: de quantas peças é essa caixa. */
-    cbm: [
-      { value: spec.cbmPerBox, kind: "request", calc: false, boxQty: spec.perBox },
-      { value: specBoxCbm, kind: "request", calc: true, boxQty: spec.perBox },
-      {
-        value: tech ? variant?.cbm : null,
-        kind: "variant",
-        calc: false,
-        boxQty: variant?.masterBoxQty,
-      },
-      {
-        value: sheet?.cbmPerCarton,
-        kind: "order",
-        calc: false,
-        boxQty: sheet?.masterCartonQty,
-      },
-      {
-        value: cbmFrom(sheet),
-        kind: "order",
-        calc: true,
-        boxQty: sheet?.masterCartonQty,
-      },
-      {
-        value: neg?.cbmPerCarton,
-        kind: "negotiation",
-        calc: false,
-        boxQty: neg?.masterCartonQty,
-      },
-      {
-        value: bk?.cbmPerCarton,
-        kind: "book",
-        calc: false,
-        boxQty: bk?.masterCartonQty,
-      },
-      {
-        value: tech ? product?.cbm : null,
-        kind: "current",
-        calc: false,
-        boxQty: product?.masterBoxQty,
-      },
-      {
-        value:
-          tech && product
-            ? cbmFromDimensions(
-                product.boxLengthCm,
-                product.boxWidthCm,
-                product.boxHeightCm,
-              )
-            : null,
-        kind: "current",
-        calc: true,
-        boxQty: product?.masterBoxQty,
-      },
-      {
-        value: tech ? inputs.master?.cbmPerCarton : null,
-        kind: "current",
-        calc: false,
-        boxQty: inputs.master?.masterCartonQty,
-      },
-      {
-        value: tech ? cbmFrom(inputs.master) : null,
-        kind: "current",
-        calc: true,
-        boxQty: inputs.master?.masterCartonQty,
-      },
-    ],
-  };
-}
 
 /** Embalagem da Estratégia de compra, pelas fontes da ficha. */
 export interface PackingFacts {
@@ -657,23 +500,14 @@ export function buildSheetRow(
   const L = (key: string) => t(`requestSheet.f.${key}` as DictionaryKey);
   const warnings: string[] = [];
 
-  /* ---------- Quantidades ---------- */
-  const schedule = request.schedule?.items.length ? request.schedule : null;
-  const candidates = packingCandidates(inputs, tech, spec, view);
-  const perBox = pick<number>(candidates.perBox);
-  const boxUnit = isBoxUnit(request.unit);
-  const scheduled = schedule ? scheduleTotal(schedule) : null;
-  /* Total de peças: a programação gravada manda (é o que será comprado);
-     sem ela, a quantidade da solicitação. Em caixas, peças = caixas × peças
-     por caixa master (calculado). */
-  const piecesFrom = (qty: number): { value: number; kind: SourceKind } | null =>
-    boxUnit
-      ? perBox
-        ? { value: qty * perBox.value, kind: "calculated" }
-        : null
-      : { value: qty, kind: scheduled !== null ? "schedule" : "request" };
-  const pieces =
-    scheduled !== null ? piecesFrom(scheduled) : piecesFrom(request.quantity);
+  /* ---------- Quantidades, caixas e cubagem ----------
+     A mesma regra da lista de Encomendas, da página da encomenda e do CSV
+     (src/lib/services/request-packing.ts; dono, 18/11/2026): os números
+     batem entre as telas. As fontes são as mesmas da Estratégia de compra
+     (`packingCandidates`). Aqui ficam só os textos e as notas. */
+  const packing = resolvePacking(inputs, tech, spec);
+  const { schedule, perBox, boxUnit, scheduled, pieces, boxDims, inner, moq, cbmTotal } =
+    packing;
   if (scheduled !== null && scheduled !== request.quantity)
     warnings.push(
       t("requestSheet.warn.scheduleMismatch", {
@@ -705,42 +539,28 @@ export function buildSheetRow(
   /* Caixas master: em caixas, o gravado; em peças, uma conta por
      programação (cada rodada em caixas inteiras, para cima, como o
      gerador), ou do total sem programação. */
-  let boxes: { value: number; kind: SourceKind; note: string | null } | null =
-    null;
-  if (boxUnit) {
-    const qty = scheduled ?? request.quantity;
-    boxes = { value: qty, kind: scheduled !== null ? "schedule" : "request", note: null };
-  } else if (perBox && pieces) {
-    if (schedule) {
-      const per = schedule.items.map((i) => cartonsFromPieces(i.quantity, perBox.value) ?? 0);
-      const exact = schedule.items.every((i) => i.quantity % perBox.value === 0);
-      boxes = {
-        value: per.reduce((s, n) => s + n, 0),
-        kind: "calculated",
-        note: exact
-          ? t("requestSheet.note.boxesRoundsExact", {
-              list: per.map((n) => count(t, n)).join(" + "),
-              perBox: count(t, perBox.value),
-            })
-          : t("requestSheet.note.boxesRounds", {
-              list: per.map((n) => count(t, n)).join(" + "),
-              perBox: count(t, perBox.value),
-            }),
-      };
-    } else {
-      const n = cartonsFromPieces(pieces.value, perBox.value) ?? 0;
-      boxes = {
-        value: n,
-        kind: "calculated",
-        note: t("requestSheet.note.boxesTotal", {
+  const boxesNote = (() => {
+    const b = packing.boxes;
+    if (!b || boxUnit || !perBox) return null;
+    if (b.perRound) {
+      const list = b.perRound.map((n) => count(t, n)).join(" + ");
+      return b.exact
+        ? t("requestSheet.note.boxesRoundsExact", { list, perBox: count(t, perBox.value) })
+        : t("requestSheet.note.boxesRounds", { list, perBox: count(t, perBox.value) });
+    }
+    return pieces
+      ? t("requestSheet.note.boxesTotal", {
           pieces: count(t, pieces.value),
           perBox: count(t, perBox.value),
           exact: decimal(t, pieces.value / perBox.value, 2),
-          boxes: count(t, n),
-        }),
-      };
-    }
-  }
+          boxes: count(t, b.value),
+        })
+      : null;
+  })();
+  const boxes: { value: number; kind: SourceKind; note: string | null } | null =
+    packing.boxes
+      ? { value: packing.boxes.value, kind: packing.boxes.kind, note: boxesNote }
+      : null;
   const boxesField = field(
     "boxes",
     L("boxes"),
@@ -749,42 +569,28 @@ export function buildSheetRow(
     boxes?.note,
   );
 
-  /* Caixa master: medidas e cubagem por caixa. */
-  const boxDims = pick<Pick<SpecMeasure, "values">>([
-    { value: spec.boxDims, kind: "request" },
-    { value: sheet ? dimsMeasure(sheet.lengthCm, sheet.widthCm, sheet.heightCm) : null, kind: "order" },
-    /* As medidas do Book (e da negociação, que as copia) são da PEÇA, não da
-       caixa master (dono, 15/11/2026; docs/SUPPLIER_REQUESTS.md): não entram
-       aqui; vão para "Medidas da peça". */
-    {
-      value: product && tech
-        ? (dimsMeasure(product.boxLengthCm, product.boxWidthCm, product.boxHeightCm) ??
-          (master ? dimsMeasure(master.lengthCm, master.widthCm, master.heightCm) : null))
-        : null,
-      kind: "current",
-    },
-  ]);
-  /* CBM por caixa: o gravado na fonte; sem ele, das medidas da caixa da
-     mesma fonte (Calculado). */
-  const cbmHit = candidates.cbm.find((c) => pos(c.value)) ?? null;
-  const cbmPerBox = cbmHit
+  /* Caixa master: cubagem por caixa (o gravado na fonte; sem ele, das
+     medidas da caixa da mesma fonte, Calculado) e a total, com o m³ como foi
+     gravado (sem arredondar antes de multiplicar). */
+  const cbmPerBox = packing.cbmPerBox
     ? {
-        value: r4(cbmHit.value as number),
-        kind: cbmHit.calc ? ("calculated" as const) : cbmHit.kind,
-        note: cbmHit.calc
-          ? t("requestSheet.note.cbmFromDims", { from: src(cbmHit.kind).label })
+        value: packing.cbmPerBox.value,
+        kind: packing.cbmPerBox.kind as SourceKind,
+        note: packing.cbmPerBox.calculated
+          ? t("requestSheet.note.cbmFromDims", {
+              from: src(packing.cbmPerBox.from).label,
+            })
           : null,
       }
     : null;
   const cbmPerBoxField = field(
     "cbmPerBox",
     L("cbmPerBox"),
-    cbmPerBox ? `${decimal(t, cbmPerBox.value)} m³` : null,
+    // Até 7 casas: o m³ como foi gravado (0,1476375), o mesmo da conta.
+    cbmPerBox ? `${decimal(t, cbmPerBox.value, 7)} m³` : null,
     cbmPerBox?.kind ?? null,
     cbmPerBox?.note,
   );
-  const cbmTotal =
-    cbmPerBox && boxes ? r4(cbmPerBox.value * boxes.value) : null;
   const cbmTotalField = field(
     "cbmTotal",
     L("cbmTotal"),
@@ -793,19 +599,10 @@ export function buildSheetRow(
     cbmTotal !== null && boxes && cbmPerBox
       ? t("requestSheet.note.cbmTotal", {
           boxes: count(t, boxes.value),
-          cbm: decimal(t, cbmPerBox.value),
+          cbm: decimal(t, cbmPerBox.value, 7),
         })
       : null,
   );
-
-  const inner = pick<number>(candidates.inner);
-  const moq = tech
-    ? pick<number>([
-        { value: variant?.moq, kind: "variant" },
-        { value: inputs.master?.moq, kind: "current" },
-        { value: product?.moq, kind: "current" },
-      ])
-    : null;
 
   const packingFields: SheetField[] = [
     piecesField,
@@ -1458,33 +1255,6 @@ export function buildSheetRow(
 /* Carregador                                                          */
 /* ------------------------------------------------------------------ */
 
-const LIVE_NEGOTIATION = new Set<SupplierRequest["status"]>([
-  "open",
-  "answered",
-  "approved",
-]);
-
-/** A negociação do produto: a do pedido; senão a aprovada, a respondida, a aberta (a mais recente). */
-function pickNegotiation(
-  list: readonly SupplierRequest[],
-  request: Request,
-): SupplierRequest | null {
-  const live = list.filter(
-    (s) => s.productId === request.productId && LIVE_NEGOTIATION.has(s.status),
-  );
-  if (request.orderId) {
-    const byOrder = live.find((s) => s.orderId === request.orderId);
-    if (byOrder) return byOrder;
-  }
-  const rank = (s: SupplierRequest) =>
-    s.status === "approved" ? 0 : s.status === "answered" ? 1 : 2;
-  return (
-    [...live].sort(
-      (a, b) => rank(a) - rank(b) || b.updatedAt.localeCompare(a.updatedAt),
-    )[0] ?? null
-  );
-}
-
 /**
  * A ficha das solicitações (esta e as do lote que o login vê), na ordem em
  * que foram criadas. Lê só o que o perfil pode ver.
@@ -1573,18 +1343,9 @@ export async function loadSheetInputs(
     requests.map((r) => [r.id, pickNegotiation(negotiations, r)]),
   );
   // Book: o item da negociação escolhida; senão o mais recente do produto.
-  const bookById = new Map(books.map((b) => [b.id, b]));
-  const bookFor = (r: Request) => {
-    const neg = chosen.get(r.id);
-    const linked = neg?.bookingItemId ? bookById.get(neg.bookingItemId) : null;
-    if (linked) return linked;
-    return (
-      books
-        .filter((b) => b.productId === r.productId)
-        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] ?? null
-    );
-  };
-  const bookChoice = new Map(requests.map((r) => [r.id, bookFor(r)]));
+  const bookChoice = new Map(
+    requests.map((r) => [r.id, pickBook(books, r, chosen.get(r.id) ?? null)]),
+  );
   const [lines, lots, parties, conditions] = await Promise.all([
     access.technical
       ? listByIds(store, "product_lines", products.map((p) => p.lineId))

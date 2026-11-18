@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 import { ServerPager, SortTh } from "@/components/server-table";
 import {
@@ -18,6 +19,7 @@ import {
   type Screen,
 } from "@/lib/auth/screens";
 import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
+import { canSeeMoney } from "@/lib/auth/function-access";
 import { REQUEST_SCREEN } from "@/lib/request-screens";
 import { canDeleteRequest } from "@/lib/services/requests";
 import {
@@ -90,7 +92,25 @@ import {
   type RequestSituation,
 } from "@/lib/services/request-list";
 import { getSettings } from "@/lib/settings";
-import { containersText, requestRounds } from "@/lib/request-rounds";
+import { containersText } from "@/lib/request-rounds";
+import {
+  loadRequestPacking,
+  packingRounds,
+  packingTotalsLine,
+  type RequestPacking,
+} from "@/lib/services/request-packing";
+import {
+  encomendaTotals,
+  totalSortText,
+  type EncomendaTotals,
+  type TotalKey,
+  type TotalsLine,
+} from "@/lib/request-totals";
+import {
+  SaleTotalValue,
+  TotalValue,
+  unitLabel,
+} from "@/components/request-total-cells";
 import { DemandTags } from "@/components/demand-tags";
 import { listDraftsForList } from "@/lib/services/request-drafts";
 import { demandKind, type DemandKind } from "@/lib/purchase-demand";
@@ -110,6 +130,15 @@ import {
 } from "@/lib/request-composition";
 
 const BULK_FORM = "requests-bulk-delete";
+/** Colunas de total (dono, 18/11/2026): ordenar por elas lê os totais de todas as linhas. */
+const TOTAL_SORT_KEYS = new Set([
+  "price",
+  "moq",
+  "pieces",
+  "boxes",
+  "inner",
+  "cbm",
+]);
 
 export default async function RequestsPage({
   searchParams,
@@ -410,11 +439,57 @@ export default async function RequestsPage({
     e.kind === "batch"
       ? [...e.rows].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       : [e.row];
+  /* Totais de cada encomenda (dono, 18/11/2026; docs/ORDER_LEVEL_LISTS.md,
+     seção 5): preço (venda prevista, só com "Ver valores e margem"), pedido
+     mínimo (só a Wellmix), peças, caixas master, caixas inner e CBM, pela
+     embalagem de cada produto: a mesma regra da ficha completa e da página
+     da encomenda (src/lib/services/request-packing.ts). Lidos para as linhas
+     da página; para ordenar a lista longa por um total, para todas. */
+  const seeSale = wellmix && canSeeMoney(user);
+  const packingById = new Map<string, RequestPacking>();
+  const linesOf = new Map<Entry, TotalsLine[]>();
+  const totalsOf = new Map<Entry, EncomendaTotals>();
+  const fillTotals = async (list: readonly Entry[]) => {
+    const todo = list.filter((e) => !totalsOf.has(e));
+    if (!todo.length) return;
+    const loaded = await loadRequestPacking(
+      todo.flatMap(rowsOf).filter((r) => !packingById.has(r.id)),
+    );
+    for (const [id, packing] of loaded) packingById.set(id, packing);
+    for (const e of todo) {
+      const lines = rowsOf(e).map((r) =>
+        packingTotalsLine(
+          r,
+          packingById.get(r.id),
+          productNameText(t, r.productName),
+        ),
+      );
+      linesOf.set(e, lines);
+      totalsOf.set(e, encomendaTotals(lines));
+    }
+  };
+  const totalSort = (key: TotalKey) => (e: Entry) =>
+    totalSortText(totalsOf.get(e)?.[key].value ?? null);
   const entryColumns: ServerColumn<Entry>[] = [
     {
       key: "number",
       text: (e) => String(rowsOf(e).find((r) => r.number)?.number ?? "—"),
     },
+    // Totais (números com ponto: a ordem é numérica; sem dado, no fim).
+    ...(seeSale
+      ? [
+          {
+            key: "price",
+            text: (e: Entry) =>
+              totalSortText(totalsOf.get(e)?.sale.amounts[0]?.amount ?? null),
+          },
+        ]
+      : []),
+    ...(wellmix ? [{ key: "moq", text: totalSort("moq") }] : []),
+    { key: "pieces", text: totalSort("pieces") },
+    { key: "boxes", text: totalSort("boxes") },
+    { key: "inner", text: totalSort("inner") },
+    { key: "cbm", text: totalSort("cbm") },
     {
       // Programações: a maior entre os produtos (a programação gravada em
       // cada um; sem ela, uma entrega só).
@@ -487,12 +562,14 @@ export default async function RequestsPage({
   const one = (v: string | string[] | undefined) =>
     typeof v === "string" ? v : undefined;
   const sort = serverMode ? parseServerSort(one(sp.sort), entryColumns) : null;
+  if (sort && TOTAL_SORT_KEYS.has(sort.key)) await fillTotals(entries);
   const paged = serverTable(entries, entryColumns, {
     sort,
     page: parseServerPage(one(sp.page)),
     size: serverMode ? undefined : Math.max(entries.length, 1),
     decimalComma: t.locale === "pt",
   });
+  await fillTotals(paged.rows);
   const sortValue = sort ? `${sort.desc ? "-" : ""}${sort.key}` : null;
   /* Rascunhos de quem está vendo (dono, 17/11/2026): no alto da lista, com a
      situação "Rascunho", na primeira página, com qualquer filtro de situação
@@ -540,38 +617,41 @@ export default async function RequestsPage({
   );
   /* Lista no nível do pedido (dono, 18/11/2026): sem foto nem nome de
      produto (um pedido pode ter milhares). Programações e containers de
-     cada programação pela caixa master dos produtos das linhas da página
-     (src/lib/request-rounds.ts), no maior container das Configurações. */
-  const roundProductIds = [
-    ...new Set(
-      shownRows.map((r) => r.productId).filter((id): id is string => !!id),
-    ),
-  ];
-  const [roundProducts, { containerTypes }] = await Promise.all([
-    roundProductIds.length
-      ? listColumns(store, "products", ["masterBoxQty", "cbm"], {
-          filter: { id: roundProductIds },
-        })
-      : Promise.resolve([]),
-    getSettings(),
-  ]);
-  const roundProductById = indexBy(roundProducts, "id");
+     cada programação pela embalagem dos produtos (a mesma caixa master e o
+     mesmo m³ dos totais; decisão 3 de 18/11/2026), no maior container das
+     Configurações. */
+  const { containerTypes } = await getSettings();
   const referenceContainer =
     [...containerTypes].sort((a, b) => b.capacityCbm - a.capacityCbm)[0] ??
     null;
   const roundsOf = new Map(
     paged.rows.map((e) => [
       e,
-      requestRounds(
+      packingRounds(
         rowsOf(e),
-        (r) => {
-          const id = (r as (typeof shownRows)[number]).productId;
-          return id ? (roundProductById.get(id) ?? null) : null;
-        },
+        packingById,
         referenceContainer?.capacityCbm ?? null,
       ),
     ]),
   );
+  /* Itens do pedido (histórico do Sankhya) que não estão nas linhas da
+     encomenda: os totais dizem que ficaram de fora ("Total parcial"). */
+  const fold = (v: string | null | undefined) =>
+    (v ?? "").replace(/\s+/g, " ").trim().toLocaleLowerCase();
+  const shownTotals = (e: Entry): EncomendaTotals => {
+    const lines = linesOf.get(e) ?? [];
+    const rows = rowsOf(e);
+    const ids = new Set(rows.map((r) => r.productId).filter(Boolean));
+    const names = new Set(rows.map((r) => fold(r.productName)));
+    const uncovered = (compositionOf.get(e)?.products ?? [])
+      .filter((p) =>
+        p.productId ? !ids.has(p.productId) : !names.has(fold(p.name)),
+      )
+      .map((p) => p.name || "—");
+    return uncovered.length
+      ? encomendaTotals(lines, uncovered)
+      : (totalsOf.get(e) ?? encomendaTotals(lines));
+  };
   /** Produtos: quantos SKUs diferentes o pedido tem (itens do pedido ou as solicitações). */
   const skusCell = (e: Entry) => {
     const n = compositionOf.get(e)?.products.length ?? rowsOf(e).length;
@@ -645,7 +725,7 @@ export default async function RequestsPage({
     const str = p.toString();
     return str ? `/app/requests?${str}` : "/app/requests";
   };
-  const header = (label: string, column: string, className?: string) =>
+  const header = (label: ReactNode, column: string, className?: string) =>
     serverMode ? (
       <SortTh
         label={label}
@@ -1083,6 +1163,17 @@ export default async function RequestsPage({
               {header(t("requests.numberShort"), "number", "w-14")}
               {wellmix ? header(t("common.customer"), "customer") : null}
               <Th className="text-right">{t("reqList.col.skus")}</Th>
+              {/* Totais da encomenda (dono, 18/11/2026). */}
+              {seeSale
+                ? header(t("reqList.col.price"), "price", "text-right")
+                : null}
+              {wellmix
+                ? header(t("reqList.col.moq"), "moq", "text-right")
+                : null}
+              {header(t("reqList.col.pieces"), "pieces", "text-right")}
+              {header(t("reqList.col.boxes"), "boxes", "text-right")}
+              {header(t("reqList.col.inner"), "inner", "text-right")}
+              {header(unitLabel(t("reqList.col.cbm")), "cbm", "text-right")}
               {header(t("common.status"), "status")}
               <Th className="text-right">{t("reqList.col.containers")}</Th>
               {header(t("reqList.col.rounds"), "rounds", "text-right")}
@@ -1119,6 +1210,16 @@ export default async function RequestsPage({
                   </Td>
                 ) : null}
                 <Td className="text-right tabular-nums">{draft.itemCount}</Td>
+                {seeSale ? (
+                  <Td className="text-right text-zinc-400">—</Td>
+                ) : null}
+                {wellmix ? (
+                  <Td className="text-right text-zinc-400">—</Td>
+                ) : null}
+                <Td className="text-right text-zinc-400">—</Td>
+                <Td className="text-right text-zinc-400">—</Td>
+                <Td className="text-right text-zinc-400">—</Td>
+                <Td className="text-right text-zinc-400">—</Td>
                 <Td className="whitespace-nowrap">
                   <Badge tone="neutral">{t("requestDraft.status")}</Badge>
                 </Td>
@@ -1169,6 +1270,8 @@ export default async function RequestsPage({
                 ? t("reqStatusLabel.ORDER_CANCELLED")
                 : t("reqDelete.ordered");
               const names = rows.map((r) => productNameText(t, r.productName));
+              const tot = shownTotals(entry);
+              const sortOf = (key: TotalKey) => totalSortText(tot[key].value);
               return (
                 <tr
                   key={entry.kind === "batch" ? entry.groupId : first.id}
@@ -1223,6 +1326,33 @@ export default async function RequestsPage({
                     </Td>
                   ) : null}
                   <Td className="text-right">{skusCell(entry)}</Td>
+                  {seeSale ? (
+                    <Td
+                      className="text-right"
+                      data-sort={totalSortText(
+                        tot.sale.amounts[0]?.amount ?? null,
+                      )}
+                    >
+                      <SaleTotalValue t={t} sale={tot.sale} />
+                    </Td>
+                  ) : null}
+                  {wellmix ? (
+                    <Td className="text-right" data-sort={sortOf("moq")}>
+                      <TotalValue t={t} part={tot.moq} total="moq" />
+                    </Td>
+                  ) : null}
+                  <Td className="text-right" data-sort={sortOf("pieces")}>
+                    <TotalValue t={t} part={tot.pieces} total="pieces" />
+                  </Td>
+                  <Td className="text-right" data-sort={sortOf("boxes")}>
+                    <TotalValue t={t} part={tot.boxes} total="boxes" />
+                  </Td>
+                  <Td className="text-right" data-sort={sortOf("inner")}>
+                    <TotalValue t={t} part={tot.inner} total="inner" />
+                  </Td>
+                  <Td className="text-right" data-sort={sortOf("cbm")}>
+                    <TotalValue t={t} part={tot.cbm} total="cbm" />
+                  </Td>
                   <Td>
                     <span
                       className="flex flex-wrap gap-1"

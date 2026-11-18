@@ -92,6 +92,16 @@ export const pt = {
     "A variação escolhida não é deste produto ou está desativada.",
   "reqBatch.error.product_unavailable":
     "Um dos produtos escolhidos não está disponível no catálogo. Escolha outro produto ou peça como produto fora do catálogo.",
+  // Totais da encomenda (dono, 18/11/2026): a mesma conta da lista.
+  "reqBatch.col.pieces": "Peças (UN)",
+  "reqBatch.col.inner": "Inner (CX)",
+  "reqBatch.col.cbm": "CBM (m³)",
+  "reqBatch.col.moq": "MOQ (UN)",
+  "reqBatch.col.price": "Preço previsto",
+  "reqBatch.totals": "Totais da encomenda",
+  "reqBatch.price.hint":
+    "{price} por peça × {pieces} peças: a cotação V2 do Sankhya gravada no envio ({date})",
+  "reqBatch.boxes.rounds": "Por programação: {list}",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -185,6 +195,15 @@ export const en: Record<keyof typeof pt, string> = {
     "The chosen variation does not belong to this product or is deactivated.",
   "reqBatch.error.product_unavailable":
     "One of the chosen products is not available in the catalog. Choose another product or request it as a product outside the catalog.",
+  "reqBatch.col.pieces": "Pieces (PCS)",
+  "reqBatch.col.inner": "Inner (CTN)",
+  "reqBatch.col.cbm": "CBM (m³)",
+  "reqBatch.col.moq": "MOQ (PCS)",
+  "reqBatch.col.price": "Expected price",
+  "reqBatch.totals": "Order totals",
+  "reqBatch.price.hint":
+    "{price} per piece × {pieces} pieces: the Sankhya V2 quote saved on sending ({date})",
+  "reqBatch.boxes.rounds": "Per delivery: {list}",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -273,4 +292,13 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqBatch.error.variant_invalid": "所选款式不属于该产品或已停用。",
   "reqBatch.error.product_unavailable":
     "所选产品中有一个不在目录中。请选择其他产品，或按目录外产品提交申请。",
+  "reqBatch.col.pieces": "件数（件）",
+  "reqBatch.col.inner": "内盒（箱）",
+  "reqBatch.col.cbm": "体积（m³）",
+  "reqBatch.col.moq": "起订量（件）",
+  "reqBatch.col.price": "预计价格",
+  "reqBatch.totals": "订单合计",
+  "reqBatch.price.hint":
+    "每件 {price} × {pieces} 件：提交时保存的 Sankhya V2 报价（{date}）",
+  "reqBatch.boxes.rounds": "每批：{list}",
 };

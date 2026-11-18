@@ -59,7 +59,7 @@ A especificação gravada na solicitação é lida linha por linha (`src/lib/req
 - **Peças por embalagem interna** e **peças por caixa master** (solicitação → variação → pedido → negociação → Book → ficha atual).
 - **Quantidade de caixas master (Calculado):** com programação, uma conta por programação, cada uma em caixas inteiras para cima (a regra do gerador: `cartonsFromPieces`), e a soma; sem programação, peças ÷ peças por caixa, para cima. Em caixas, é a quantidade gravada.
 - **Medidas da caixa master** (comprimento × largura × altura) e **cubagem por caixa**: o CBM gravado na fonte; sem ele, das medidas da caixa da mesma fonte (Calculado, "Das medidas da caixa (fonte)"). As medidas da caixa vêm só do texto da solicitação, da ficha de compra do pedido e da ficha atual: o Book e a negociação não trazem as da caixa (as deles são da peça), então o CBM deles é o gravado, nunca o volume da peça.
-- **Cubagem total (Calculado):** caixas × cubagem por caixa, em m³ com 4 casas.
+- **Cubagem total (Calculado):** caixas × cubagem por caixa, em m³ com 4 casas. Desde 18/11/2026 a conta usa o m³ da caixa como foi gravado (0,1476375, não 0,1476: preservar as casas decimais, pedido do dono), e a ficha mostra a cubagem por caixa com até 7 casas, para a conta escrita bater com o total.
 - **Pedido mínimo (peças)** (Wellmix): o da variação; senão o da ficha mestre ou do cadastro.
 
 ### Valores
@@ -110,6 +110,8 @@ Conferido com os registros do Supabase (o montador da ficha rodando sobre as sol
 O que falta nos dados (para a ficha ficar completa sem digitação): medidas e CBM da caixa master (só 2 de 16.843 produtos têm), condição de pagamento dos fornecedores (a HUADA não tem) e, para a venda ao cliente, a forma de pagamento escolhida no pedido (só existe depois do pedido; docs/CUSTOMER_PAYMENT.md).
 
 ## 7. Peças
+
+- `src/lib/services/request-packing.ts` (18/11/2026): a regra de peças, peças por caixa, caixas (por programação), inner, medidas e cubagem da caixa e pedido mínimo, com a origem de cada número (`resolvePacking`), a lista única de fontes (`packingCandidates`, também da Estratégia de compra) e a escolha da negociação e do Book (`pickNegotiation`, `pickBook`). É a mesma conta da lista de Encomendas, da página da encomenda e do CSV (docs/ORDER_LEVEL_LISTS.md, seção 5); a ficha só escreve os textos e as notas.
 
 - `src/lib/request-spec-parse.ts`: leitura da especificação (pura).
 - `src/lib/services/request-sheet.ts`: permissões (`sheetAccess`), o montador puro (`buildSheetRow`) e o carregador (`loadRequestSheet`).
