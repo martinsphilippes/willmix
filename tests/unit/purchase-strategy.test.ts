@@ -15,6 +15,7 @@ const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const requests = await import("@/lib/services/requests");
 const strategy = await import("@/lib/services/purchase-strategy");
+const { countryKey } = await import("@/lib/order-terms");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -31,6 +32,39 @@ const demand = (productId: string, quantity = 1000) =>
     quantity,
     unit: "un",
   });
+
+/**
+ * Uma solicitação com vários produtos (lote), da China, utilidades, já
+ * confirmada pelo cliente (esperando a estratégia).
+ */
+const lotOf = async (...items: Array<[string, number]>) => {
+  const lot = await requests.createRequestBatch(
+    joao,
+    {
+      customerId: "cliente-joao",
+      orderTerms: {
+        originCountry: countryKey("CN"),
+        originCountryName: "China",
+        productFamily: "fm:UTILIDADES_DOMESTICAS",
+        productFamilyName: "UTILIDADES DOMESTICAS",
+      } as never,
+    },
+    items.map(([productId, quantity]) => ({
+      productId,
+      productName: productId,
+      description: "Encomenda",
+      specification: null,
+      quantity,
+      unit: "un",
+      sourcingDemand: false,
+    })),
+  );
+  return Promise.all(
+    lot.map((r) =>
+      getStore().update("requests", r.id, { status: "REQUESTED" }),
+    ),
+  );
+};
 
 beforeAll(async () => {
   const { users } = await seedDemo();
@@ -80,44 +114,122 @@ describe("escolha e aprovação", () => {
     expect(quote).toMatchObject({ choice: "quote", status: "pending" });
   });
 
-  it("junta só demandas do mesmo produto ou da mesma linha", async () => {
+  it("a estratégia é da solicitação inteira, com todos os produtos dela", async () => {
+    // Duas solicitações diferentes não se juntam.
     const a = await demand("prod-jarra", 500);
-    const b = await demand("prod-boneca", 2000);
+    const b = await demand("prod-panela", 800);
     await expect(
       strategy.chooseStrategy(buyer, {
         demandIds: [a.id, b.id],
         choice: "quote",
         note: null,
       }),
-    ).rejects.toThrow("strategy_same_line");
-    // Jarra e panela: a mesma linha (utilidades), mas "última compra" é de um produto só.
-    const c = await demand("prod-panela", 800);
+    ).rejects.toThrow("strategy_same_request");
+    // Uma solicitação com dois produtos (lote): vai inteira.
+    const lot = await lotOf(["prod-jarra", 600], ["prod-panela", 800]);
+    expect(new Set(lot.map((r) => r.groupId)).size).toBe(1);
     await expect(
       strategy.chooseStrategy(buyer, {
-        demandIds: [a.id, c.id],
+        demandIds: [lot[0].id],
+        choice: "quote",
+        note: null,
+      }),
+    ).rejects.toThrow("strategy_whole_request");
+    // "Última compra" é de um produto só.
+    await expect(
+      strategy.chooseStrategy(buyer, {
+        demandIds: lot.map((r) => r.id),
         choice: "last_supplier",
         note: null,
       }),
     ).rejects.toThrow("strategy_last_one_product");
-    const joined = await strategy.chooseStrategy(buyer, {
-      demandIds: [a.id, c.id],
+    const whole = await strategy.chooseStrategy(buyer, {
+      demandIds: lot.map((r) => r.id),
       choice: "quote",
-      note: "Cotar a linha toda",
+      note: "Cotar a solicitação toda",
     });
-    expect(joined).toMatchObject({
+    expect(whole).toMatchObject({
       lineId: "linha-utilidades",
       productId: null,
-      quantity: 1300,
+      quantity: 1400,
     });
+  });
+
+  it("cotar: os fornecedores do País × Família da solicitação, marcados na tela", async () => {
+    const store = getStore();
+    // B marcou a família de utilidades; um fornecedor do Brasil também
+    // (fica fora pelo país); C não marcou (fica fora pela família).
+    await store.create("party_families", {
+      partyId: "fornecedor-b",
+      familyCode: "20000000",
+      createdByUserId: admin.id,
+    });
+    const br = await store.create("parties", {
+      ...(await store.get("parties", "fornecedor-b"))!,
+      id: "fornecedor-br-utilidades",
+      name: "Fornecedor Brasil Utilidades",
+      country: "BR",
+    } as never);
+    await store.create("party_families", {
+      partyId: br.id,
+      familyCode: "20000000",
+      createdByUserId: admin.id,
+    });
+    const lot = await lotOf(["prod-jarra", 600], ["prod-panela", 800]);
+    const origin = await strategy.strategySuppliers(lot);
+    expect(origin.country).toBe(countryKey("CN"));
+    expect(origin.familyName).toBe("UTILIDADES DOMESTICAS");
+    const ids = origin.suppliers.map((s) => s.id);
+    // A: fornecedor da panela; B: família no cadastro.
+    expect(ids).toEqual(
+      expect.arrayContaining(["fornecedor-a", "fornecedor-b"]),
+    );
+    expect(ids).not.toContain(br.id);
+    expect(ids).not.toContain("fornecedor-c");
+    expect(
+      origin.suppliers.find((s) => s.id === "fornecedor-b")?.reasons,
+    ).toEqual(["family"]);
+    // Fora da lista não entra; ninguém marcado também não.
+    await expect(
+      strategy.chooseStrategy(buyer, {
+        demandIds: lot.map((r) => r.id),
+        choice: "quote",
+        note: null,
+        supplierIds: ["fornecedor-c"],
+      }),
+    ).rejects.toThrow("strategy_supplier_invalid");
+    await expect(
+      strategy.chooseStrategy(buyer, {
+        demandIds: lot.map((r) => r.id),
+        choice: "quote",
+        note: null,
+        supplierIds: [],
+      }),
+    ).rejects.toThrow("strategy_suppliers_none");
+    // O Comprador desmarcou o A: a cotação vai só para o B.
+    const decision = await strategy.chooseStrategy(buyer, {
+      demandIds: lot.map((r) => r.id),
+      choice: "quote",
+      note: null,
+      supplierIds: ["fornecedor-b"],
+    });
+    expect(decision.supplierIds).toEqual(["fornecedor-b"]);
+    await strategy.decideStrategy(director, decision.id, {
+      approve: true,
+      note: null,
+    });
+    const fresh = await store.get("purchase_decisions", decision.id);
+    const responses = await store.list("purchase_quote_responses", {
+      filter: { quoteId: fresh!.quoteId! },
+    });
+    expect(responses.map((r) => r.supplierId)).toEqual(["fornecedor-b"]);
   });
 
   it("fornecedor da última compra: Comprador escolhe, Diretoria aprova, pedido de compra com o vínculo e a reserva", async () => {
     const store = getStore();
-    const d1 = await demand("prod-panela", 1500);
-    const d2 = await demand("prod-panela", 500);
-    // Reposição do mesmo produto entra na mesma decisão.
+    const d1 = await demand("prod-panela", 2000);
     const decision = await strategy.chooseStrategy(buyer, {
-      demandIds: [d1.id, d2.id],
+      demandIds: [d1.id],
       choice: "last_supplier",
       note: null,
     });
@@ -157,11 +269,11 @@ describe("escolha e aprovação", () => {
     expect(order).toMatchObject({
       supplierId: "fornecedor-a",
       flow: "supplier_request",
-      demandIds: [d1.id, d2.id],
+      demandIds: [d1.id],
       incoterm: "FOB",
     });
     expect(order.fobTotal).toBeCloseTo(3.4 * 2000);
-    for (const id of [d1.id, d2.id])
+    for (const id of [d1.id])
       expect(await store.get("requests", id)).toMatchObject({
         status: "ORDERED",
         orderId: order.id,
@@ -173,12 +285,8 @@ describe("escolha e aprovação", () => {
     const reservations = await store.list("stock_reservations", {
       filter: { customerId: "cliente-joao" },
     });
-    const mine = reservations.filter((r) =>
-      [d1.id, d2.id].includes(r.requestId ?? ""),
-    );
-    expect(mine.map((r) => r.quantity).sort((a, b) => a - b)).toEqual([
-      500, 1500,
-    ]);
+    const mine = reservations.filter((r) => r.requestId === d1.id);
+    expect(mine.map((r) => r.quantity)).toEqual([2000]);
     expect(mine.every((r) => r.status === "active" && !r.expiresAt)).toBe(true);
     // Vendas é avisada do pedido de compra (V1).
     const notes = await store.list("notifications", {});

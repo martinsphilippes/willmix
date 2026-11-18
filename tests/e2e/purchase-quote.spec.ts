@@ -72,7 +72,14 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   );
   for (let i = 0; i < (await others.count()); i++)
     await others.nth(i).uncheck();
+  // Cotar: a lista dos fornecedores do País × Família aparece, marcada
+  // (dono, 18/11/2026); o Comprador poderia desmarcar quem não recebe.
+  const supplierB = group.locator('[data-strategy-supplier="fornecedor-b"]');
   await group.locator('[data-strategy-choice="quote"]').check();
+  await expect(supplierB).toBeVisible();
+  await expect(supplierB).toBeChecked();
+  await supplierB.uncheck();
+  await supplierB.check();
   await group.locator("[data-strategy-submit]").click();
   await page.waitForURL(/[?&]chosen=\d+/);
   const decisionId = page.url().split("#decision-")[1];

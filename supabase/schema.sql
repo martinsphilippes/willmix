@@ -1914,6 +1914,7 @@ alter table public."purchase_decisions" add column if not exists "approvedAt" ti
 alter table public."purchase_decisions" add column if not exists "approvalNote" text;
 alter table public."purchase_decisions" add column if not exists "orderId" text;
 alter table public."purchase_decisions" add column if not exists "quoteId" text;
+alter table public."purchase_decisions" add column if not exists "supplierIds" jsonb;
 create index if not exists "purchase_decisions_by_status" on public."purchase_decisions" ("status");
 create index if not exists "purchase_decisions_by_product" on public."purchase_decisions" ("productId");
 create index if not exists "purchase_decisions_created" on public."purchase_decisions" ("createdAt");

@@ -246,7 +246,18 @@ export async function openQuoteForDecision(
   await store.update("purchase_decisions", decision.id, { quoteId: quote.id });
   for (const d of demands)
     await store.update("requests", d.id, { status: "RFQ_OPEN" });
-  const suppliers = await supplierIdsForLines(lineIds, productIds);
+  // Os marcados na estratégia (País × Família da solicitação; dono,
+  // 18/11/2026), se ainda ativos; nas antigas, pelas linhas.
+  const suppliers = decision.supplierIds
+    ? (
+        await store.list("parties", {
+          filter: { id: decision.supplierIds },
+        })
+      )
+        .filter((p) => servesFamilies(p.type) && p.active)
+        .map((p) => p.id)
+        .sort()
+    : await supplierIdsForLines(lineIds, productIds);
   await inviteSuppliers(quote, suppliers, now);
   await audit(
     user,

@@ -58,8 +58,18 @@ export async function chooseStrategyAction(form: FormData) {
       .parse(form.getAll("demandIds").map(String));
     const choice = CHOICE.parse(str(form, "choice"));
     const note = field(form, "note", z.string().trim().max(2000)) || null;
+    // A lista de fornecedores vai junto quando a tela a mostrou (cotar).
+    const supplierIds =
+      choice === "quote" && str(form, "supplierList") === "1"
+        ? z.array(ID).max(500).parse(form.getAll("supplierIds").map(String))
+        : undefined;
     const { chooseStrategy } = await import("@/lib/services/purchase-strategy");
-    const decision = await chooseStrategy(user, { demandIds, choice, note });
+    const decision = await chooseStrategy(user, {
+      demandIds,
+      choice,
+      note,
+      supplierIds,
+    });
     return `/app/purchase-strategy?chosen=${decision.number}#decision-${decision.id}`;
   });
 }

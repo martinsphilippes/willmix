@@ -107,6 +107,20 @@ V6 (vitrine) manda para a ordem de venda (V7) o que o estoque livre ou uma compr
 - **Esquema (aditivo)**: `purchase_quotes`, `purchase_quote_responses`, `supplier_lines`; `supplier_requests.quoteResponseId` e `demandIds`.
 - **Testes**: `tests/unit/purchase-quote.test.ts` (fornecedores pela linha, prazo de 24 h com data e fuso explícitos, isolamento, escolha e aprovação até a B7, um responde e outro não, sem nenhuma resposta, lembrete) e `tests/e2e/purchase-quote.spec.ts` ((b) e o isolamento entre fornecedores e do cliente).
 
+## Estratégia por solicitação (dono, 18/11/2026)
+
+Pedido do dono: em `/app/purchase-strategy`, a estratégia é da **solicitação**, não do produto.
+
+- **Fila por solicitação**: cada cartão é uma solicitação (o lote da Nova solicitação, mesmo `groupId` e mesmo número; sem lote, a própria demanda), com o cliente, os produtos dela (cada um com a última compra) e o **País › Família** do pedido. Não há mais caixa por demanda: a escolha vale para todos os produtos da solicitação juntos. O servidor confere (`requestKey`): uma solicitação só (`strategy_same_request`) e todas as demandas dela que esperam a escolha (`strategy_whole_request`). Juntar demandas de solicitações diferentes (antes, "mesma linha") saiu.
+- **"Fornecedor da última compra"** continua valendo só para a solicitação de um produto, com compra anterior.
+- **"Cotar entre fornecedores"**: ao marcar, aparece a lista dos fornecedores que vão receber a cotação, todos marcados; o Comprador desmarca quem não deve receber e pode marcar de novo. A lista (`strategySuppliers`) traz, cada um uma vez só, os parceiros **ativos** dos quatro tipos (Fornecedor, Trading, Supplier e Factory) **do país de origem** que:
+  - marcaram a família da solicitação no cadastro ("Grupo de produto (família)", `party_families`; docs/PARTNER_FAMILIES.md), ou
+  - são o fornecedor principal de um produto ativo da família, ou estão ligados aos produtos da solicitação (`product_suppliers`).
+    O motivo aparece ao lado do nome ("família no cadastro", "fornecedor do produto"). País e família vêm das condições do pedido (`orderTerms.originCountry` e `productFamily`); sem elas (reposição, solicitações antigas), do produto do catálogo (país do fornecedor do produto e família da linha).
+- **Gravado na estratégia** (`purchase_decisions.supplierIds`): os marcados. O servidor recusa fornecedor fora da lista (`strategy_supplier_invalid`) e lista com fornecedores sem nenhum marcado (`strategy_suppliers_none`); sem nenhum fornecedor na lista, a cotação nasce vazia, como antes, e o Comprador convida na tela da cotação. A Diretoria vê os marcados no cartão da estratégia; aprovada, a cotação convida só eles (os que ainda estão ativos). Estratégias antigas (sem a lista) convidam pelas linhas, como antes.
+- **Esquema (aditivo)**: `purchase_decisions.supplierIds` (json).
+- **Testes**: `tests/unit/purchase-strategy.test.ts` (solicitação inteira, País × Família, desmarcar, só os marcados na cotação).
+
 ## O que o PR 5 entregou (limpeza da RFQ)
 
 - Um modelo de cotação só: a Cotação de compra (B13). As tabelas `quotes` e `approvals` já tinham saído em 11/11/2026; os status antigos da solicitação foram reaproveitados (docs/QUOTE_FLOW.md, "Desde 15/11/2026").

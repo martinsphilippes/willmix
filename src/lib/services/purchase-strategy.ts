@@ -20,16 +20,22 @@ import { demandKind } from "@/lib/purchase-demand";
 import { audit } from "./audit";
 import { notify } from "./notifications";
 import { isStockCustomer } from "./stock-party";
+import { listColumns } from "@/lib/db/lookup";
+import { countryKey } from "@/lib/order-terms";
+import { servesFamilies } from "@/lib/party-families";
 
 /*
  * Estratégia de compra (mapa B10?, dono 15/11/2026; docs/PURCHASE_DEMAND.md).
- * Uma fila só do Comprador, com reposições e encomendas. Para uma ou mais
- * demandas do mesmo produto ou da mesma linha, ele escolhe:
+ * Uma fila só do Comprador, com reposições e encomendas. A estratégia é da
+ * solicitação inteira (todos os produtos dela juntos; dono, 18/11/2026), e
+ * ele escolhe:
  *
  * - "Fornecedor da última compra": aprovada pela Diretoria de compras, gera
  *   o pedido de compra direto (P2) com as condições da última compra,
  *   editáveis; sem nova solicitação ao fornecedor nem amostragem;
- * - "Cotar entre fornecedores": aprovada, abre a Cotação de compra (B13).
+ * - "Cotar entre fornecedores": aprovada, abre a Cotação de compra (B13)
+ *   para os fornecedores do País × Família da solicitação marcados na tela
+ *   (`strategySuppliers`; o Comprador desmarca quem não deve receber).
  *
  * Produto sem compra anterior: só dá para cotar (o motivo aparece escrito).
  */
@@ -125,6 +131,138 @@ export async function openDecisions(): Promise<PurchaseDecision[]> {
   );
 }
 
+/**
+ * A solicitação de uma demanda: os produtos do mesmo lote (`groupId`, mesmo
+ * número) são uma solicitação só; sem lote, a própria demanda.
+ */
+export const requestKey = (r: Pick<Request, "id" | "groupId" | "number">) =>
+  r.groupId ? `g:${r.groupId}` : r.number ? `n:${r.number}` : `r:${r.id}`;
+
+export interface StrategySupplier {
+  id: string;
+  name: string;
+  type: string;
+  country: string | null;
+  /** family = marcou a família no cadastro; catalog = fornecedor de produto dela. */
+  reasons: Array<"family" | "catalog">;
+}
+
+export interface StrategyOrigin {
+  /** País de origem (chave de `countryKey`); "" = não informado. */
+  country: string;
+  countryName: string;
+  /** Família ("fm:<NOME>" ou "ln:<linha>"); nula = sem família. */
+  family: string | null;
+  familyName: string | null;
+  suppliers: StrategySupplier[];
+}
+
+/**
+ * Os fornecedores do País × Família da solicitação (dono, 18/11/2026), os
+ * que a tela lista para a cotação, cada um uma vez só:
+ * - quem marcou a família no cadastro ("Grupo de produto (família)",
+ *   `party_families`; docs/PARTNER_FAMILIES.md);
+ * - o fornecedor principal dos produtos ativos da família e os ligados aos
+ *   produtos da solicitação (`product_suppliers`).
+ * Só os ativos dos quatro tipos (Fornecedor, Trading, Supplier e Factory) e
+ * do país de origem. País e família vêm das condições do pedido
+ * (`orderTerms`); sem elas (reposição, antigas), do produto do catálogo.
+ */
+export async function strategySuppliers(
+  demands: readonly Request[],
+): Promise<StrategyOrigin> {
+  const store = getStore();
+  const origin = await import("./product-origin");
+  const terms = demands.find((d) => d.orderTerms?.originCountry)?.orderTerms;
+  const productIds = [
+    ...new Set(demands.map((d) => d.productId).filter(Boolean)),
+  ] as string[];
+  const fromProduct = productIds[0]
+    ? await origin.productOrigin(productIds[0]).catch(() => null)
+    : null;
+  const country = terms?.originCountry || fromProduct?.country || "";
+  const family = terms
+    ? terms.productFamily || null
+    : (fromProduct?.family ?? null);
+  const familyInfo = family
+    ? await origin.originFamily(family).catch(() => null)
+    : null;
+  const countryName =
+    terms?.originCountryName ||
+    (await origin.originCountryName(country).catch(() => country));
+  const familyName =
+    terms?.productFamilyName ||
+    familyInfo?.name ||
+    terms?.productLineName ||
+    null;
+  const products = productIds.length
+    ? await listColumns(store, "products", ["id", "lineId"], {
+        filter: { id: productIds },
+      })
+    : [];
+  const lineIds = [
+    ...new Set(
+      [
+        ...(familyInfo?.lineIds ?? []),
+        ...products.map((p) => p.lineId),
+        terms?.productLineId,
+      ].filter(Boolean),
+    ),
+  ] as string[];
+  const reasons = new Map<string, Set<"family" | "catalog">>();
+  const add = (id: string | null | undefined, why: "family" | "catalog") => {
+    if (!id) return;
+    const set = reasons.get(id) ?? new Set();
+    set.add(why);
+    reasons.set(id, set);
+  };
+  const { familyCodesForLines } = await import("./product-families");
+  const codes = new Set(await familyCodesForLines(lineIds).catch(() => []));
+  if (family?.startsWith("fm:")) {
+    const named = await store
+      .list("product_families", { filter: { nameKey: family } })
+      .catch(() => []);
+    for (const f of named) codes.add(f.code);
+  }
+  if (codes.size) {
+    const links = await store
+      .list("party_families", { filter: { familyCode: [...codes] } })
+      .catch(() => []);
+    for (const l of links) add(l.partyId, "family");
+  }
+  if (lineIds.length) {
+    const ofFamily = await listColumns(store, "products", ["supplierId"], {
+      filter: { lineId: lineIds, active: true },
+    }).catch(() => []);
+    for (const p of ofFamily) add(p.supplierId, "catalog");
+  }
+  if (productIds.length) {
+    const links = await store
+      .list("product_suppliers", { filter: { productId: productIds } })
+      .catch(() => []);
+    for (const l of links) add(l.supplierId, "catalog");
+  }
+  const parties = reasons.size
+    ? await store.list("parties", { filter: { id: [...reasons.keys()] } })
+    : [];
+  const suppliers = parties
+    .filter(
+      (p) =>
+        p.active &&
+        servesFamilies(p.type) &&
+        (!country || countryKey(p.country) === country),
+    )
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      type: p.type,
+      country: p.country,
+      reasons: [...(reasons.get(p.id) ?? [])].sort(),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, "pt"));
+  return { country, countryName, family, familyName, suppliers };
+}
+
 async function teamHolders(action: Parameters<typeof can>[1]) {
   const users = (
     await getStore().list("users", { filter: { active: true } })
@@ -135,9 +273,12 @@ async function teamHolders(action: Parameters<typeof can>[1]) {
 }
 
 /**
- * O Comprador escolhe a estratégia para as demandas marcadas (mesmo produto
- * ou mesma linha). "Fornecedor da última compra" só com um produto e com
- * compra anterior. A escolha vai para a aprovação da Diretoria de compras.
+ * O Comprador escolhe a estratégia da solicitação inteira: todas as demandas
+ * dela que esperam a escolha, juntas (dono, 18/11/2026). "Fornecedor da
+ * última compra" só com um produto e com compra anterior. Em "cotar",
+ * `supplierIds` são os fornecedores marcados da lista do País × Família
+ * (`strategySuppliers`); sem a lista (chamada antiga), a cotação convida
+ * pelas linhas, como antes. A escolha vai para a aprovação da Diretoria.
  */
 export async function chooseStrategy(
   user: User,
@@ -145,6 +286,7 @@ export async function chooseStrategy(
     demandIds: string[];
     choice: PurchaseDecisionChoice;
     note: string | null;
+    supplierIds?: string[];
   },
 ): Promise<PurchaseDecision> {
   if (!isWellmix(user)) throw new PurchaseStrategyError("forbidden");
@@ -160,13 +302,30 @@ export async function chooseStrategy(
       throw new PurchaseStrategyError("strategy_demand_taken");
   if (demands.some((d) => !d.productId))
     throw new PurchaseStrategyError("strategy_product_missing");
+  // Uma solicitação só, com todos os produtos dela que esperam a escolha.
+  const keys = new Set(demands.map(requestKey));
+  if (keys.size > 1) throw new PurchaseStrategyError("strategy_same_request");
+  const [key] = keys;
+  const left = (await waitingDemands()).filter(
+    (r) => requestKey(r) === key && !ids.includes(r.id),
+  );
+  if (left.length) throw new PurchaseStrategyError("strategy_whole_request");
   const productIds = [...new Set(demands.map((d) => d.productId!))];
   const products = await store.list("products", {
     filter: { id: productIds },
   });
   const lineIds = [...new Set(products.map((p) => p.lineId ?? null))];
-  if (productIds.length > 1 && (lineIds.length > 1 || !lineIds[0]))
-    throw new PurchaseStrategyError("strategy_same_line");
+  let supplierIds: string[] | null = null;
+  if (input.choice === "quote" && input.supplierIds) {
+    const eligible = new Set(
+      (await strategySuppliers(demands)).suppliers.map((s) => s.id),
+    );
+    supplierIds = [...new Set(input.supplierIds)];
+    if (supplierIds.some((id) => !eligible.has(id)))
+      throw new PurchaseStrategyError("strategy_supplier_invalid");
+    if (eligible.size && !supplierIds.length)
+      throw new PurchaseStrategyError("strategy_suppliers_none");
+  }
   const references = await lastPurchases(productIds);
   if (input.choice === "last_supplier") {
     if (productIds.length > 1)
@@ -178,7 +337,7 @@ export async function chooseStrategy(
   const decision = await store.create("purchase_decisions", {
     number: await store.nextNumber("purchase_decision_number"),
     productId: productIds.length === 1 ? productIds[0] : null,
-    lineId: lineIds[0] ?? null,
+    lineId: lineIds.length === 1 ? lineIds[0] : null,
     demandIds: ids,
     quantity: demands.reduce((sum, d) => sum + d.quantity, 0),
     choice: input.choice,
@@ -192,6 +351,7 @@ export async function chooseStrategy(
     approvalNote: null,
     orderId: null,
     quoteId: null,
+    ...(supplierIds ? { supplierIds } : {}),
   });
   for (const d of demands)
     await store.update("requests", d.id, { purchaseDecisionId: decision.id });
@@ -204,7 +364,7 @@ export async function chooseStrategy(
     "purchase_strategy.choose",
     "purchase_decision",
     decision.id,
-    `Estratégia nº ${decision.number}: ${label} para ${demands.length} demanda(s) (${demands.map((d) => d.number ?? d.id).join(", ")})`,
+    `Estratégia nº ${decision.number}: ${label} para a solicitação nº ${demands[0].number ?? demands[0].id} (${demands.length} produto(s))${supplierIds ? `, ${supplierIds.length} fornecedor(es) marcados` : ""}`,
   );
   const approvers = await teamHolders("purchaseStrategy.approve");
   if (approvers.length)

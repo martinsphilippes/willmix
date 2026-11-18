@@ -77,7 +77,30 @@ export const pt = {
   "strategy.noLastPurchase":
     "Sem compra anterior deste produto: só dá para cotar entre fornecedores.",
   "strategy.lastOneProduct":
-    "Fornecedor da última compra: marque as demandas de um produto só, com compra anterior.",
+    "Fornecedor da última compra: só na solicitação de um produto, com compra anterior.",
+  "strategy.request": "Solicitação nº {n}",
+  "strategy.requestNoNumber": "Solicitação sem número",
+  "strategy.requestProducts": "{n} produto(s)",
+  "strategy.originMissing": "País e família não informados",
+  "strategy.wholeRequest":
+    "A estratégia vale para a solicitação inteira, com todos os produtos dela.",
+  "strategy.suppliers.title": "Fornecedores que vão receber a cotação ({n})",
+  "strategy.suppliers.hint":
+    "Os fornecedores ativos do País × Família da solicitação. Desmarque quem não deve receber; marque de novo para incluir.",
+  "strategy.suppliers.empty":
+    "Nenhum fornecedor ativo do País × Família da solicitação: a cotação nasce vazia e você convida outro na tela da cotação.",
+  "strategy.suppliers.family": "família no cadastro",
+  "strategy.suppliers.catalog": "fornecedor do produto",
+  "strategy.suppliers.chosen": "Fornecedores marcados ({n})",
+  "strategy.suppliers.lines": "Pelas linhas dos produtos (estratégia antiga)",
+  "strategy.error.strategy_same_request":
+    "A estratégia é de uma solicitação só.",
+  "strategy.error.strategy_whole_request":
+    "A estratégia vale para a solicitação inteira: inclua todos os produtos dela.",
+  "strategy.error.strategy_supplier_invalid":
+    "Algum fornecedor marcado não é do País × Família da solicitação.",
+  "strategy.error.strategy_suppliers_none":
+    "Marque ao menos um fornecedor para receber a cotação.",
   "strategy.submit": "Enviar para aprovação",
   "strategy.chosen":
     "Estratégia nº {n} enviada para a aprovação da Diretoria de compras.",
@@ -316,7 +339,30 @@ export const en: Record<keyof typeof pt, string> = {
   "strategy.noLastPurchase":
     "No previous purchase of this product: only quoting among suppliers is possible.",
   "strategy.lastOneProduct":
-    "Last purchase's supplier: select the demands of a single product with a previous purchase.",
+    "Last purchase's supplier: only for a single-product request with a previous purchase.",
+  "strategy.request": "Request no. {n}",
+  "strategy.requestNoNumber": "Request without number",
+  "strategy.requestProducts": "{n} product(s)",
+  "strategy.originMissing": "Country and family not informed",
+  "strategy.wholeRequest":
+    "The strategy applies to the whole request, with all of its products.",
+  "strategy.suppliers.title": "Suppliers that will receive the quote ({n})",
+  "strategy.suppliers.hint":
+    "The active suppliers of the request's Country × Family. Uncheck those who should not receive it; check again to include.",
+  "strategy.suppliers.empty":
+    "No active supplier for the request's Country × Family: the quote starts empty and you invite another on the quote screen.",
+  "strategy.suppliers.family": "family in the record",
+  "strategy.suppliers.catalog": "product supplier",
+  "strategy.suppliers.chosen": "Selected suppliers ({n})",
+  "strategy.suppliers.lines": "By the products' lines (older strategy)",
+  "strategy.error.strategy_same_request":
+    "The strategy covers a single request.",
+  "strategy.error.strategy_whole_request":
+    "The strategy applies to the whole request: include all of its products.",
+  "strategy.error.strategy_supplier_invalid":
+    "A selected supplier is not from the request's Country × Family.",
+  "strategy.error.strategy_suppliers_none":
+    "Select at least one supplier to receive the quote.",
   "strategy.submit": "Send for approval",
   "strategy.chosen":
     "Strategy no. {n} sent to the Purchasing board for approval.",
@@ -547,7 +593,27 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.choice.quote": "在供应商之间询价",
   "strategy.noLastPurchase": "该产品没有采购记录：只能在供应商之间询价。",
   "strategy.lastOneProduct":
-    "上次采购的供应商：只勾选同一个有采购记录的产品的需求。",
+    "上次采购的供应商：仅适用于只有一个产品且有采购记录的申请。",
+  "strategy.request": "第 {n} 号申请",
+  "strategy.requestNoNumber": "无编号申请",
+  "strategy.requestProducts": "{n} 个产品",
+  "strategy.originMissing": "未填写国家和产品族",
+  "strategy.wholeRequest": "策略适用于整个申请及其全部产品。",
+  "strategy.suppliers.title": "将收到询价的供应商（{n}）",
+  "strategy.suppliers.hint":
+    "申请的国家 × 产品族下的有效供应商。取消勾选不应收到的供应商；再次勾选即可加入。",
+  "strategy.suppliers.empty":
+    "申请的国家 × 产品族下没有有效供应商：询价将为空，可在询价页面邀请其他供应商。",
+  "strategy.suppliers.family": "档案中的产品族",
+  "strategy.suppliers.catalog": "产品供应商",
+  "strategy.suppliers.chosen": "已勾选的供应商（{n}）",
+  "strategy.suppliers.lines": "按产品线（旧策略）",
+  "strategy.error.strategy_same_request": "策略只针对一个申请。",
+  "strategy.error.strategy_whole_request":
+    "策略适用于整个申请：请包含其全部产品。",
+  "strategy.error.strategy_supplier_invalid":
+    "有勾选的供应商不属于该申请的国家 × 产品族。",
+  "strategy.error.strategy_suppliers_none": "请至少勾选一个接收询价的供应商。",
   "strategy.submit": "提交审批",
   "strategy.chosen": "第 {n} 号策略已提交采购总监审批。",
   "strategy.decided": "第 {n} 号策略已决定。",

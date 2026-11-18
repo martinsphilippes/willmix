@@ -15,6 +15,8 @@ import {
   canChooseStrategy,
   lastPurchases,
   openDecisions,
+  requestKey,
+  strategySuppliers,
   waitingDemands,
 } from "@/lib/services/purchase-strategy";
 import {
@@ -41,8 +43,9 @@ import {
 
 /*
  * Estratégia de compra (mapa B10?; dono, 15/11/2026; docs/PURCHASE_DEMAND.md):
- * uma fila só do Comprador com reposições e encomendas. Por linha de produto,
- * as demandas que esperam a escolha, com a última compra de cada produto;
+ * uma fila só do Comprador com reposições e encomendas. Por solicitação
+ * (todos os produtos dela juntos; dono, 18/11/2026), com a última compra de
+ * cada produto e, em "cotar", os fornecedores do País × Família marcados;
  * depois, as estratégias esperando a aprovação da Diretoria de compras e as
  * aprovadas a gerar pedido de compra.
  */
@@ -70,21 +73,13 @@ export default async function PurchaseStrategyPage({
   ] as string[];
   const [products, parties, references] = await Promise.all([
     listByIds(store, "products", productIds),
-    listByIds(
-      store,
-      "parties",
-      allDemands.map((d) => d.customerId),
-    ),
+    listByIds(store, "parties", [
+      ...allDemands.map((d) => d.customerId),
+      ...decisions.flatMap((d) => d.supplierIds ?? []),
+    ]),
     lastPurchases(productIds),
   ]);
-  const lines = await listByIds(
-    store,
-    "product_lines",
-    products.map((p) => p.lineId).filter(Boolean) as string[],
-  );
   const productById = new Map(products.map((p) => [p.id, p]));
-  const lineName = (id: string | null) =>
-    (id && lines.find((l) => l.id === id)?.name) || t("strategy.noLine");
   const partyName = (id: string) =>
     parties.find((p) => p.id === id)?.name ?? "—";
   const canChoose = canChooseStrategy(user);
@@ -96,14 +91,25 @@ export default async function PurchaseStrategyPage({
   // gravado na decisão.
   const seesPrice = canSeePurchasePrice(user);
 
-  // Fila: por linha do produto (as demandas sem produto do catálogo ficam
-  // numa linha à parte: só dá para cotar depois de cadastrar o produto).
+  // Fila: por solicitação, com todos os produtos dela (dono, 18/11/2026).
   const groups = new Map<string, Request[]>();
   for (const d of waiting) {
-    const p = d.productId ? productById.get(d.productId) : null;
-    const key = p ? (p.lineId ?? `product:${p.id}`) : "none";
+    const key = requestKey(d);
     groups.set(key, [...(groups.get(key) ?? []), d]);
   }
+  // País × Família e os fornecedores de cada solicitação (para "cotar").
+  const origins = new Map(
+    canChoose
+      ? await Promise.all(
+          [...groups.entries()]
+            .filter(([, demands]) => demands.every((d) => d.productId))
+            .map(
+              async ([key, demands]) =>
+                [key, await strategySuppliers(demands)] as const,
+            ),
+        )
+      : [],
+  );
   const errorCode = typeof error === "string" ? error : "";
   const errorKey = `strategy.error.${errorCode}` as DictionaryKey;
   const errorText = errorCode && t(errorKey) !== errorKey ? t(errorKey) : null;
@@ -168,16 +174,7 @@ export default async function PurchaseStrategyPage({
       className="flex flex-wrap items-start gap-x-3 gap-y-1 py-1.5"
       data-strategy-demand={d.id}
     >
-      {checkbox ? (
-        <input
-          type="checkbox"
-          name="demandIds"
-          value={d.id}
-          defaultChecked
-          className="mt-1 h-4 w-4"
-          aria-label={productNameText(t, d.productName)}
-        />
-      ) : null}
+      {checkbox ? <input type="hidden" name="demandIds" value={d.id} /> : null}
       <span className="min-w-0 flex-1 text-sm">
         <Link href={`/app/requests/${d.id}`} className={linkClass}>
           {d.number ? `nº ${d.number}` : "—"}
@@ -220,13 +217,12 @@ export default async function PurchaseStrategyPage({
               const productsHere = [
                 ...new Set(demands.map((d) => d.productId).filter(Boolean)),
               ] as string[];
-              const first = productsHere[0]
-                ? productById.get(productsHere[0])
-                : null;
-              const noProduct = key === "none";
+              // Produto fora do catálogo: a solicitação espera o cadastro.
+              const noProduct = demands.some((d) => !d.productId);
+              const origin = origins.get(key);
+              const number = demands[0].number;
               // "Fornecedor da última compra" vale para um produto só, com
-              // compra anterior: a opção fica liberada se algum produto do
-              // grupo tem compra (o servidor confere o que foi marcado).
+              // compra anterior (o servidor confere).
               const anyLast = productsHere.some((id) => references.has(id));
               const lastOk =
                 productsHere.length === 1 && !!references.get(productsHere[0]);
@@ -234,39 +230,58 @@ export default async function PurchaseStrategyPage({
                 <form
                   key={key}
                   action={chooseStrategyAction}
-                  className="rounded-2xl border border-zinc-200 p-3"
+                  className="group rounded-2xl border border-zinc-200 p-3"
                   data-strategy-group={key}
                 >
-                  <h3 className="text-sm font-semibold text-zinc-900">
-                    {noProduct
-                      ? t("strategy.noProduct")
-                      : lineName(first?.lineId ?? null)}
-                  </h3>
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <h3 className="text-sm font-semibold text-zinc-900">
+                      {number
+                        ? t("strategy.request", { n: number })
+                        : t("strategy.requestNoNumber")}
+                    </h3>
+                    <span className="text-xs text-zinc-600">
+                      {partyName(demands[0].customerId)} ·{" "}
+                      {t("strategy.requestProducts", { n: demands.length })}
+                    </span>
+                    {origin ? (
+                      <Badge tone="neutral">
+                        <span data-strategy-origin>
+                          {origin.countryName || origin.familyName
+                            ? `${origin.countryName || "—"} › ${origin.familyName || "—"}`
+                            : t("strategy.originMissing")}
+                        </span>
+                      </Badge>
+                    ) : null}
+                  </div>
                   {noProduct ? (
                     <p className="mt-1 text-xs text-amber-800">
-                      {t("strategy.noProductHint")}
+                      {t("strategy.noProduct")}: {t("strategy.noProductHint")}
+                    </p>
+                  ) : canChoose ? (
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {t("strategy.wholeRequest")}
                     </p>
                   ) : null}
-                  {(noProduct ? [null] : productsHere).map((pid) => (
-                    <div key={pid ?? "none"} className="mt-3 space-y-1">
-                      {pid ? (
-                        <>
-                          <p className="text-sm font-medium text-zinc-800">
-                            {productNameText(
-                              t,
-                              productById.get(pid)?.name ?? "",
-                            )}
-                          </p>
-                          {reference(references.get(pid))}
-                        </>
-                      ) : null}
-                      <ul className="divide-y divide-zinc-100">
-                        {demands
-                          .filter((d) => (d.productId ?? null) === pid)
-                          .map((d) => demandRow(d, canChoose && !noProduct))}
-                      </ul>
-                    </div>
-                  ))}
+                  {[...productsHere, ...(noProduct ? [null] : [])].map(
+                    (pid) => (
+                      <div key={pid ?? "none"} className="mt-3 space-y-1">
+                        <p className="text-sm font-medium text-zinc-800">
+                          {pid
+                            ? productNameText(
+                                t,
+                                productById.get(pid)?.name ?? "",
+                              )
+                            : t("strategy.noProduct")}
+                        </p>
+                        {pid ? reference(references.get(pid)) : null}
+                        <ul className="divide-y divide-zinc-100">
+                          {demands
+                            .filter((d) => (d.productId ?? null) === pid)
+                            .map((d) => demandRow(d, canChoose && !noProduct))}
+                        </ul>
+                      </div>
+                    ),
+                  )}
                   {canChoose && !noProduct ? (
                     <div className="mt-3 grid gap-2 border-t border-zinc-100 pt-3">
                       <fieldset className="space-y-1 text-sm">
@@ -307,6 +322,66 @@ export default async function PurchaseStrategyPage({
                           {t("strategy.choice.quote")}
                         </label>
                       </fieldset>
+                      {origin ? (
+                        <fieldset
+                          className="hidden rounded-xl border border-zinc-200 p-2 group-has-[[data-strategy-choice=quote]:checked]:block"
+                          data-strategy-suppliers={origin.suppliers.length}
+                        >
+                          <input type="hidden" name="supplierList" value="1" />
+                          <legend className="px-1 text-xs font-medium text-zinc-700">
+                            {t("strategy.suppliers.title", {
+                              n: origin.suppliers.length,
+                            })}
+                          </legend>
+                          {origin.suppliers.length ? (
+                            <>
+                              <p className="mb-1 text-xs text-zinc-500">
+                                {t("strategy.suppliers.hint")}
+                              </p>
+                              <ul className="grid gap-1 sm:grid-cols-2">
+                                {origin.suppliers.map((sup) => (
+                                  <li key={sup.id}>
+                                    <label className="flex items-start gap-2 text-sm">
+                                      <input
+                                        type="checkbox"
+                                        name="supplierIds"
+                                        value={sup.id}
+                                        defaultChecked
+                                        className="mt-0.5 h-4 w-4"
+                                        data-strategy-supplier={sup.id}
+                                      />
+                                      <span>
+                                        {sup.name}
+                                        <span className="block text-xs text-zinc-500">
+                                          {[
+                                            sup.type !== "supplier"
+                                              ? t(
+                                                  `messages.type.${sup.type}` as DictionaryKey,
+                                                )
+                                              : null,
+                                            ...sup.reasons.map((r) =>
+                                              t(`strategy.suppliers.${r}`),
+                                            ),
+                                          ]
+                                            .filter(Boolean)
+                                            .join(" · ")}
+                                        </span>
+                                      </span>
+                                    </label>
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          ) : (
+                            <p
+                              className="text-xs text-amber-800"
+                              data-strategy-suppliers-empty
+                            >
+                              {t("strategy.suppliers.empty")}
+                            </p>
+                          )}
+                        </fieldset>
+                      ) : null}
                       <Field label={t("demand.notes")}>
                         <Textarea name="note" rows={2} />
                       </Field>
@@ -346,7 +421,9 @@ export default async function PurchaseStrategyPage({
                     <h3 className="text-sm font-semibold text-zinc-900">
                       {t("strategy.decision", { n: d.number })}
                     </h3>
-                    <Badge tone={d.status === "pending" ? "warning" : "success"}>
+                    <Badge
+                      tone={d.status === "pending" ? "warning" : "success"}
+                    >
                       {t(`strategy.status.${d.status}` as DictionaryKey)}
                     </Badge>
                     <Badge tone="neutral">
@@ -361,6 +438,25 @@ export default async function PurchaseStrategyPage({
                   </ul>
                   {d.choice === "last_supplier" ? (
                     <div className="mt-2">{reference(ref)}</div>
+                  ) : null}
+                  {d.choice === "quote" ? (
+                    <p
+                      className="mt-2 text-xs text-zinc-700"
+                      data-strategy-decision-suppliers={
+                        d.supplierIds?.length ?? ""
+                      }
+                    >
+                      <span className="font-medium">
+                        {d.supplierIds
+                          ? t("strategy.suppliers.chosen", {
+                              n: d.supplierIds.length,
+                            })
+                          : t("strategy.suppliers.lines")}
+                      </span>
+                      {d.supplierIds?.length
+                        ? `: ${d.supplierIds.map(partyName).join(", ")}`
+                        : null}
+                    </p>
                   ) : null}
                   {d.status === "pending" && canApprove ? (
                     <form

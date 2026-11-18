@@ -3133,6 +3133,11 @@ export interface PurchaseDecision extends BaseRow {
   orderId: string | null;
   /** Cotação de compra aberta (cotar entre fornecedores; docs/PURCHASE_DEMAND.md). */
   quoteId: string | null;
+  /**
+   * Fornecedores marcados na estratégia "cotar" (lista do País × Família da
+   * solicitação; dono, 18/11/2026). Nulo nas antigas: convida pelas linhas.
+   */
+  supplierIds?: string[] | null;
 }
 
 /*
@@ -5775,6 +5780,7 @@ export const TABLES: Record<TableName, TableDef> = {
       approvalNote: text(),
       orderId: id(false),
       quoteId: id(false),
+      supplierIds: json(),
     },
     indexes: [
       { key: "by_status", type: "key", columns: ["status"] },

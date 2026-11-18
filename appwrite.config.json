@@ -11406,6 +11406,13 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "supplierIds",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
