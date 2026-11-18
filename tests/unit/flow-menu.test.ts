@@ -312,3 +312,12 @@ describe("LPCO, Amostras e Ofertas", () => {
     expect(ids({ kind: "sales_product" })).toEqual(["sales/offers"]);
   });
 });
+
+describe("subtítulo do passo sem os códigos do mapa (dono, 18/11/2026)", () => {
+  it("nenhum flow.help.* leva código do mapa (B13, R4?, E12 a E15…), em pt, en e zh", () => {
+    for (const dict of [pt, en, zh])
+      for (const [key, text] of Object.entries(dict))
+        if (key.startsWith("flow.help."))
+          expect(text, key).not.toMatch(/\b[A-Z]\d+\??(?![\w])/);
+  });
+});
