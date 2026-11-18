@@ -74,7 +74,7 @@ test("venda aguardando o cliente: Em aberto e com o cliente; ele confirma pelas 
   await login(page, "joao@lojista.com");
   await page.goto("/app/tasks?type=customer_confirm");
   const task = page.locator(
-    `[data-task-row][data-task-group="customer_confirm"] a[href="/app/requests/${requestId}"]`,
+    `[data-task-row][data-task-group="customer_confirm"] a[href="/app/requests/${requestId}"]:not([data-open-link])`,
   );
   await expect(task).toBeVisible();
   await expect(task).toContainText("Confirmar pedido");
@@ -104,12 +104,16 @@ test("venda aguardando o cliente: Em aberto e com o cliente; ele confirma pelas 
   );
   await page.goto("/app/requests?vez=customer");
   await expect(row).toHaveCount(0);
-  await page.goto("/app/tasks");
+  // A pendência "Enviar para cotação" de quem envia (a lista pagina: com
+  // muitas pendências, a linha pode estar em outra página).
+  await page.goto("/app/tasks?type=new_request");
   await expect(
     page
-      .locator(`[data-task-row] a[href="/app/requests/${requestId}"]`)
+      .locator(
+        `[data-task-row] a[href="/app/requests/${requestId}"]:not([data-open-link])`,
+      )
       .first(),
-  ).toBeVisible();
+  ).toContainText("Enviar para cotação");
 });
 
 test("Pedidos: a coluna e o filtro Com quem está seguem a mesma regra", async ({
