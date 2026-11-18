@@ -284,7 +284,8 @@ function hrefOf(l: ImportedLine): string | null {
   if (l.e === "orders") return `/app/orders/${l.i}`;
   if (l.e === "products") return `/app/products/${l.i}`;
   if (l.e === "partners") return `/app/suppliers/${l.i}`;
-  if (l.e === "companies") return `/app/customers/${l.i}`;
+  if (l.e === "companies" || l.e === "customers")
+    return `/app/customers/${l.i}`;
   if (l.e === "productGroups") return "/app/lines";
   return null;
 }

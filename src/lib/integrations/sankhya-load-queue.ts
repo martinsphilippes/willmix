@@ -30,6 +30,7 @@ export const SERVER_LOAD_ORDER: FullLoadEntity[] = [
   "paymentConditions",
   "stockLocations",
   "partners",
+  "customers",
   "products",
   "stockBalances",
   "orders",

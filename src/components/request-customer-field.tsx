@@ -4,6 +4,8 @@ import { useState } from "react";
 import { PartyPicker } from "./party-picker";
 import type { SearchOption, SearchPickerLabels } from "./search-picker";
 import { useRequestCustomer } from "./request-customer-context";
+import { GroupCustomerExtra } from "./economic-group-ui";
+import type { EconomicGroupLabels } from "./economic-group-labels";
 
 /**
  * Cliente da nova solicitação (Wellmix): busca pelo nome (~26 mil clientes
@@ -22,7 +24,13 @@ export function RequestCustomerField({
   labels,
   summary,
   allowStock = true,
+  groupLabels,
 }: {
+  /**
+   * Pedido para um grupo econômico (docs/ECONOMIC_GROUPS.md): "+ x empresas
+   * do grupo" e a distribuição padrão ao lado do cliente. Sem eles, nada.
+   */
+  groupLabels?: EconomicGroupLabels;
   /** Valor gravado para compra para estoque (STOCK_OPTION). */
   stockValue: string;
   stockLabel: string;
@@ -68,7 +76,7 @@ export function RequestCustomerField({
         onDeselect={() => shared?.setCustomer(null)}
       />
       {summary && !stock && shared?.customer ? (
-        <p className="text-xs text-zinc-600" data-request-customer-summary>
+        <div className="text-xs text-zinc-600" data-request-customer-summary>
           <span className="font-medium text-zinc-800">
             {summary.code.replace(
               "{code}",
@@ -77,7 +85,8 @@ export function RequestCustomerField({
           </span>
           {" · "}
           {shared.customer.name}
-        </p>
+          {groupLabels ? <GroupCustomerExtra labels={groupLabels} /> : null}
+        </div>
       ) : null}
       {allowStock ? (
         <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-700">

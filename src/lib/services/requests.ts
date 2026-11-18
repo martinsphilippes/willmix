@@ -11,6 +11,7 @@ import {
   type RequestOrigin,
   type RequestStatus,
   type User,
+  type RequestCompanyAllocation,
   type RequestSchedule,
 } from "@/lib/db";
 import { variantSnapshot } from "@/lib/variants";
@@ -68,6 +69,8 @@ export interface CreateRequestInput {
   desiredAt?: string | null;
   /** Condições do pedido da Nova solicitação (docs/ORDER_TERMS.md). */
   orderTerms?: OrderTerms | null;
+  /** Peças de cada empresa do grupo econômico (docs/ECONOMIC_GROUPS.md). */
+  companyAllocations?: RequestCompanyAllocation[] | null;
 }
 
 /** Um produto do lote: vira uma solicitação própria. */
@@ -83,6 +86,8 @@ export interface RequestBatchItem {
   /** Produto fora do catálogo: sourcing sob demanda. */
   sourcingDemand: boolean;
   schedule?: RequestSchedule | null;
+  /** Peças de cada empresa do grupo econômico (docs/ECONOMIC_GROUPS.md). */
+  companyAllocations?: RequestCompanyAllocation[] | null;
 }
 
 /**
@@ -145,6 +150,7 @@ export async function createRequestBatch(
                 : "manual"),
           groupId,
           schedule: item.schedule ?? null,
+          companyAllocations: item.companyAllocations ?? null,
           number,
         },
         {
@@ -273,6 +279,7 @@ export async function addProductsToRequest(
               : "manual",
           groupId,
           schedule: item.schedule ?? null,
+          companyAllocations: item.companyAllocations ?? null,
           number: base.number ?? undefined,
         }),
       );
@@ -516,6 +523,10 @@ export async function createRequest(
     ...(input.desiredAt ? { desiredAt: input.desiredAt } : {}),
     // Condições do pedido (coluna opcional): só na venda ao cliente pela Wellmix.
     ...(input.orderTerms ? { orderTerms: input.orderTerms } : {}),
+    // Pedido para um grupo econômico (coluna opcional).
+    ...(input.companyAllocations?.length
+      ? { companyAllocations: input.companyAllocations }
+      : {}),
   } as const;
   let request: Request;
   try {

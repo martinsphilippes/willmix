@@ -76,10 +76,16 @@ alter table public."parties" add column if not exists "customerContacts" jsonb;
 alter table public."parties" add column if not exists "customerContactsUpdatedAt" timestamptz;
 alter table public."parties" add column if not exists "customerContactsUpdatedByUserId" text;
 alter table public."parties" add column if not exists "customerGroupId" text;
+alter table public."parties" add column if not exists "economicGroupCode" text;
+alter table public."parties" add column if not exists "economicGroupName" text;
+alter table public."parties" add column if not exists "matrixCode" text;
+alter table public."parties" add column if not exists "sankhyaCustomer" jsonb;
+alter table public."parties" add column if not exists "sankhyaCustomerAt" timestamptz;
 create index if not exists "parties_by_type" on public."parties" ("type");
 create index if not exists "parties_by_owner" on public."parties" ("ownerUserId");
 create index if not exists "parties_by_sankhya" on public."parties" ("sankhyaCode");
 create index if not exists "parties_by_customer_group" on public."parties" ("customerGroupId");
+create index if not exists "parties_by_economic_group" on public."parties" ("economicGroupCode");
 create index if not exists "parties_created" on public."parties" ("createdAt");
 create index if not exists "parties_created_id" on public."parties" ("createdAt", "id");
 create index if not exists "parties_name_id" on public."parties" ("name", "id");
@@ -210,6 +216,7 @@ alter table public."requests" add column if not exists "orderTerms" jsonb;
 alter table public."requests" add column if not exists "strategySentAt" timestamptz;
 alter table public."requests" add column if not exists "strategySentByUserId" text;
 alter table public."requests" add column if not exists "priceForecast" jsonb;
+alter table public."requests" add column if not exists "companyAllocations" jsonb;
 create index if not exists "requests_by_customer" on public."requests" ("customerId");
 create index if not exists "requests_by_status" on public."requests" ("status");
 create index if not exists "requests_by_origin" on public."requests" ("origin");
@@ -1200,6 +1207,21 @@ create index if not exists "customer_groups_by_owner" on public."customer_groups
 create index if not exists "customer_groups_created" on public."customer_groups" ("createdAt");
 create index if not exists "customer_groups_created_id" on public."customer_groups" ("createdAt", "id");
 create index if not exists "customer_groups_name_id" on public."customer_groups" ("name", "id");
+
+create table if not exists public."economic_group_shares" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."economic_group_shares" enable row level security;
+alter table public."economic_group_shares" add column if not exists "groupCode" text;
+alter table public."economic_group_shares" add column if not exists "customerId" text;
+alter table public."economic_group_shares" add column if not exists "percent" double precision;
+alter table public."economic_group_shares" add column if not exists "updatedByUserId" text;
+create index if not exists "economic_group_shares_by_group" on public."economic_group_shares" ("groupCode");
+create index if not exists "economic_group_shares_by_customer" on public."economic_group_shares" ("customerId");
+create index if not exists "economic_group_shares_created" on public."economic_group_shares" ("createdAt");
+create index if not exists "economic_group_shares_created_id" on public."economic_group_shares" ("createdAt", "id");
 
 create table if not exists public."customer_attendances" (
   "id" text primary key,

@@ -549,6 +549,44 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "economicGroupCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
+        },
+        {
+          "key": "economicGroupName",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "matrixCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
+        },
+        {
+          "key": "sankhyaCustomer",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "sankhyaCustomerAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
         }
       ],
       "indexes": [
@@ -587,6 +625,16 @@
           "type": "key",
           "columns": [
             "customerGroupId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_economic_group",
+          "type": "key",
+          "columns": [
+            "economicGroupCode"
           ],
           "orders": [
             "ASC"
@@ -1432,6 +1480,13 @@
         },
         {
           "key": "priceForecast",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "companyAllocations",
           "required": false,
           "array": false,
           "default": null,
@@ -7345,6 +7400,69 @@
           "type": "key",
           "columns": [
             "ownerUserId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "economic_group_shares",
+      "databaseId": "willmix",
+      "name": "Distribuição padrão dos grupos econômicos",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "groupCode",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
+        },
+        {
+          "key": "customerId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "percent",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "updatedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_group",
+          "type": "key",
+          "columns": [
+            "groupCode"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_customer",
+          "type": "key",
+          "columns": [
+            "customerId"
           ],
           "orders": [
             "ASC"

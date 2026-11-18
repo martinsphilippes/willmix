@@ -284,6 +284,33 @@ export async function seedDemo(): Promise<{
   await at("parties", () =>
     getStore().update("parties", "cliente-joao", { rcaCode: "101" }),
   );
+  // Grupo econômico da demonstração (docs/ECONOMIC_GROUPS.md): a matriz
+  // representa o grupo (COD_GRUPO_ECONOMICO = o CODPARC dela) e tem duas
+  // lojas. Só na demonstração, como viria da VW_AD_CLIENTE_WELL.
+  for (const [id, name, code, taxId] of [
+    ["cliente-grupo", "Rede Exemplo Matriz", "9100", "45987123000110"],
+    ["cliente-grupo-loja2", "Rede Exemplo Loja 2", "9101", "45987123000201"],
+    ["cliente-grupo-loja3", "Rede Exemplo Loja 3", "9102", "45987123000392"],
+  ] as const)
+    await at("parties", () =>
+      getStore().create("parties", {
+        ...PARTY_EXTRA_DEFAULTS,
+        id,
+        type: "customer",
+        name,
+        country: "BR",
+        email: null,
+        phone: null,
+        taxId,
+        notes: null,
+        active: true,
+        city: "CAMPINAS - SP",
+        sankhyaCode: code,
+        rcaCode: "101",
+        economicGroupCode: "9100",
+        economicGroupName: "Rede Exemplo Matriz",
+      } as never),
+    );
 
   // Uma conta que falhe (ex.: login já existia no Appwrite Auth) não
   // interrompe a carga: linhas, produtos e o resto ainda são criados, e a

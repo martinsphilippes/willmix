@@ -9,6 +9,7 @@ import {
   searchParties,
   type PartyOption,
 } from "@/lib/services/party-search";
+import { groupSizes } from "@/lib/services/economic-groups";
 import { getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
 
@@ -71,6 +72,12 @@ export async function GET(request: Request) {
     identifiers: wellmix,
   });
   const t = wellmix ? await getT() : null;
+  // Grupo econômico do Sankhya (docs/ECONOMIC_GROUPS.md): a empresa que
+  // representa um grupo diz quantas outras empresas ele tem (só a Wellmix).
+  const sizes =
+    wellmix && (type === "customer" || also.includes("customer"))
+      ? await groupSizes(options.map((o) => o.code ?? "").filter(Boolean))
+      : new Map<string, number>();
   return NextResponse.json(
     {
       options: options.map((o) => ({
@@ -84,10 +91,16 @@ export async function GET(request: Request) {
                     ? t(`party.${o.type}` as Parameters<Translate>[0])
                     : null,
                   partyHint(t, o),
+                  o.code && sizes.get(o.code)
+                    ? t("econGroup.searchHint", { n: sizes.get(o.code)! + 1 })
+                    : null,
                 ]
                   .filter(Boolean)
                   .join(" · ") || null,
               code: o.code ?? null,
+              ...(o.code && sizes.get(o.code)
+                ? { groupSize: sizes.get(o.code) }
+                : {}),
             }
           : {}),
       })),

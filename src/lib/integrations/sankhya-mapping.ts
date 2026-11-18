@@ -663,6 +663,8 @@ export function missingColumns(
 export const FULL_LOAD_ENTITIES = [
   "paymentConditions",
   "partners",
+  /* Clientes pela VW_AD_CLIENTE_WELL (grupo econômico, matriz…; 18/11/2026). */
+  "customers",
   "products",
   "stockLocations",
   "stockBalances",
@@ -689,7 +691,9 @@ const FULL_LOAD_TABLE: Record<
     table: "TGFPAR",
     alias: "P",
     key: "CODPARC",
-    where: "(P.FORNECEDOR = 'S' OR P.CLIENTE = 'S')",
+    // Só fornecedores (dono, 18/11/2026): os clientes vêm da
+    // VW_AD_CLIENTE_WELL (entidade "customers").
+    where: "P.FORNECEDOR = 'S'",
   },
   products: {
     entity: "products",
@@ -699,6 +703,9 @@ const FULL_LOAD_TABLE: Record<
     where: "1 = 1",
   },
 };
+
+/** View de clientes feita para o portal (dicionário de 18/11/2026). */
+export const CUSTOMER_VIEW = "sankhya.VW_AD_CLIENTE_WELL";
 
 const int0 = (n: number) =>
   Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
@@ -722,6 +729,8 @@ export function fullLoadSql(
     return `SELECT E.CODPROD, E.CODLOCAL, SUM(E.ESTOQUE) AS ESTOQUE, SUM(E.RESERVADO) AS RESERVADO FROM TGFEST E WHERE ${empFilter("E", codEmp)}${range("E.CODPROD")} GROUP BY E.CODPROD, E.CODLOCAL ORDER BY E.CODPROD, E.CODLOCAL`;
   if (entity === "orders")
     return `SELECT C.* FROM TGFCAB C WHERE C.CODTIPOPER IN (${IMPORT_TOPS}) AND ${range("C.NUNOTA")} ORDER BY C.NUNOTA`;
+  if (entity === "customers")
+    return `SELECT V.* FROM ${CUSTOMER_VIEW} V WHERE ${range("V.COD_CLIENTE")} ORDER BY V.COD_CLIENTE`;
   if (entity === "paymentConditions")
     return `SELECT CODTIPVENDA, MAX(DESCRTIPVENDA) AS DESCRTIPVENDA FROM TGFTPV WHERE CODTIPVENDA > ${int0(after)} AND CODTIPVENDA <= ${int0(upTo)} GROUP BY CODTIPVENDA ORDER BY CODTIPVENDA`;
   if (entity === "productImages" || entity === "productCartons")
@@ -748,6 +757,8 @@ export function fullLoadProbeSql(
     return `SELECT MIN(E.CODPROD) AS NEXTCODE, COUNT(DISTINCT E.CODPROD) AS REMAINING FROM TGFEST E WHERE ${empFilter("E", codEmp)}E.CODPROD > ${int0(after)}`;
   if (entity === "orders")
     return `SELECT MIN(C.NUNOTA) AS NEXTCODE, COUNT(*) AS REMAINING FROM TGFCAB C WHERE C.CODTIPOPER IN (${IMPORT_TOPS}) AND C.NUNOTA > ${int0(after)}`;
+  if (entity === "customers")
+    return `SELECT MIN(V.COD_CLIENTE) AS NEXTCODE, COUNT(*) AS REMAINING FROM ${CUSTOMER_VIEW} V WHERE V.COD_CLIENTE > ${int0(after)}`;
   if (entity === "paymentConditions")
     return `SELECT MIN(CODTIPVENDA) AS NEXTCODE, COUNT(DISTINCT CODTIPVENDA) AS REMAINING FROM TGFTPV WHERE CODTIPVENDA > ${int0(after)}`;
   if (entity === "productImages" || entity === "productCartons")
@@ -760,6 +771,7 @@ export function fullLoadProbeSql(
 export const FULL_LOAD_KEY: Record<FullLoadEntity, string> = {
   paymentConditions: "CODTIPVENDA",
   partners: "CODPARC",
+  customers: "COD_CLIENTE",
   products: "CODPROD",
   stockLocations: "CODLOCAL",
   stockBalances: "CODPROD",

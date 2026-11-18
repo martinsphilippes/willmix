@@ -27,6 +27,11 @@ export interface SearchOption {
   hint?: string | null;
   /** Código do parceiro no Sankhya (Wellmix; resumo abaixo do campo). */
   code?: string | null;
+  /**
+   * Cliente que representa um grupo econômico do Sankhya: quantas outras
+   * empresas o grupo tem (docs/ECONOMIC_GROUPS.md); 0 ou ausente = nenhuma.
+   */
+  groupSize?: number;
 }
 
 /**

@@ -31,6 +31,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
 import { RequestItems } from "@/components/request-items";
 import { RequestCustomerField } from "@/components/request-customer-field";
+import { economicGroupLabels } from "@/components/economic-group-labels";
 import { RequestCustomerProvider } from "@/components/request-customer-context";
 import {
   RequestPeopleFields,
@@ -185,6 +186,11 @@ export async function renderNewRequest({
       ? undefined
       : customerIdParam;
   const t = await getT();
+  // Pedido para um grupo econômico (dono, 18/11/2026; docs/ECONOMIC_GROUPS.md):
+  // nas telas TS e Venda ao cliente (não na compra para estoque).
+  const groupLabels =
+    screenDef && !replenish ? economicGroupLabels(t) : undefined;
+
   const store = getStore();
   // "Adicionar produto" numa solicitação que ainda não virou pedido (Wellmix):
   // os produtos entram no mesmo lote, com o mesmo número e cliente.
@@ -243,6 +249,7 @@ export async function renderNewRequest({
           specification: r.specification ?? "",
         },
         schedule: r.schedule,
+        companyAllocations: r.companyAllocations,
       }));
     } catch {
       return [];
@@ -998,6 +1005,7 @@ export async function renderNewRequest({
                       code: t("orderTerms.summaryCode", { code: "{code}" }),
                       none: "—",
                     }}
+                    groupLabels={groupLabels}
                   />
                 </div>
                 <RequestPeopleFields
@@ -1133,6 +1141,8 @@ export async function renderNewRequest({
                   cartons: "{cartons}",
                 }),
                 intl: t.intl,
+                // Pedido para um grupo econômico (docs/ECONOMIC_GROUPS.md).
+                group: groupLabels,
                 // O bloco "Programação de compra" da Seleção de itens (dono,
                 // 14/11/2026): os mesmos textos; a explicação diz para onde a
                 // programação da solicitação vai.

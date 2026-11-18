@@ -433,6 +433,8 @@ interface PartyData {
   address?: string | null;
   sankhyaRefs?: Record<string, string | number> | null;
   active: boolean;
+  /** Campos a mais do cadastro (ex.: grupo econômico da view de clientes). */
+  more?: Partial<Party>;
 }
 
 export async function upsertParty(
@@ -476,6 +478,7 @@ export async function upsertParty(
     data.sankhyaRefs.CODVEND !== null
       ? { rcaCode: String(data.sankhyaRefs.CODVEND).trim() || "0" }
       : {}),
+    ...(data.more ?? {}),
   };
   if (party && ctx.update) {
     party = await store.update("parties", party.id, {
@@ -544,37 +547,158 @@ export function partnerData(
   };
 }
 
-/** Carga completa de parceiros: FORNECEDOR = S → fornecedor; CLIENTE = S → cliente. */
+/**
+ * Carga completa de parceiros (TGFPAR): só os fornecedores (FORNECEDOR = S).
+ * Os clientes vêm da VW_AD_CLIENTE_WELL (dono, 18/11/2026;
+ * upsertCustomersFromView); `partnerData` continua para a escrita.
+ */
 export async function upsertPartners(ctx: ImportContext, rows: SankhyaRow[]) {
   const extras = await partnerExtras(rows);
   for (const row of rows) {
     const key = code(row.CODPARC);
     const extra = extras.get(key);
-    const isSupplier = convert("sn", row.FORNECEDOR, row) === true;
-    const isCustomer = convert("sn", row.CLIENTE, row) === true;
-    if (isSupplier)
+    if (convert("sn", row.FORNECEDOR, row) === true)
       await upsertParty(
         ctx,
         "partners",
         key,
         partnerData(row, "supplier", extra),
       );
-    if (isCustomer)
-      await upsertParty(
-        ctx,
-        "customers",
-        key,
-        partnerData(row, "customer", extra),
-      );
-    if (!isSupplier && !isCustomer)
+    else
       ctx.out.push({
         entity: "partners",
         code: key,
         outcome: "skipped",
         id: null,
         label: text(row, "NOMEPARC") ?? key,
-        reason: "nem fornecedor nem cliente",
+        reason: "não é fornecedor (clientes: VW_AD_CLIENTE_WELL)",
       });
+  }
+}
+
+/* ---- Clientes pela VW_AD_CLIENTE_WELL (docs/ECONOMIC_GROUPS.md) ---- */
+
+/** Código do Sankhya da view ("0" ou vazio = nenhum). */
+const viewCode = (v: unknown): string | null => {
+  const c = code(v);
+  return c && c !== "0" && /^\d{1,12}$/.test(c) ? String(Number(c)) : null;
+};
+
+/** A linha da view como JSON simples (datas em texto). */
+export function customerViewSnapshot(
+  row: SankhyaRow,
+): Record<string, string | number | null> {
+  const out: Record<string, string | number | null> = {};
+  for (const [k, v] of Object.entries(row)) {
+    const key = k.toUpperCase();
+    if (v == null) out[key] = null;
+    else if (typeof v === "number") out[key] = v;
+    else out[key] = String(v).trim().slice(0, 500) || null;
+  }
+  return out;
+}
+
+/**
+ * Dados do cliente pela view (dicionário de 18/11/2026). Os códigos que a
+ * escrita na TGFPAR usa (vendedor, endereço, região, tabela, perfil, matriz e
+ * grupo) vão para `sankhyaRefs` com o nome da coluna da TGFPAR.
+ */
+export function customerViewData(row: SankhyaRow): PartyData {
+  const person = text(row, "TIPO_PESSOA")?.toUpperCase().slice(0, 1) ?? null;
+  const city = text(row, "CIDADE");
+  const uf = text(row, "UF");
+  const street = [text(row, "ENDERECO"), text(row, "NUMERO")]
+    .filter(Boolean)
+    .join(", ");
+  const address =
+    [
+      street,
+      text(row, "COMPLEMENTO"),
+      text(row, "BAIRRO"),
+      text(row, "CEP") ? `CEP ${text(row, "CEP")}` : null,
+    ]
+      .filter(Boolean)
+      .join(" - ") || null;
+  const refs: Record<string, string | number> = {};
+  const put = (target: string, column: string) => {
+    const v = row[column];
+    if (v == null || String(v).trim() === "") return;
+    refs[target] = typeof v === "number" ? v : String(v).trim().slice(0, 200);
+  };
+  put("CODPARC", "COD_CLIENTE");
+  put("CODVEND", "COD_VENDEDOR");
+  put("CODEND", "COD_ENDERECO");
+  put("NUMEND", "NUMERO");
+  put("COMPLEMENTO", "COMPLEMENTO");
+  put("CODBAI", "COD_BAIRRO");
+  put("CODCID", "COD_CIDADE");
+  put("CEP", "CEP");
+  put("CODREG", "COD_REGIAO");
+  put("CODTAB", "COD_TABELA_PRECO");
+  put("CODTIPPARC", "COD_PERFIL");
+  put("CODPARCMATRIZ", "COD_MATRIZ");
+  put("CODPARCGRUECONOMICO", "COD_GRUPO_ECONOMICO");
+  put("TIPPESSOA", "TIPO_PESSOA");
+  const group = viewCode(row.COD_GRUPO_ECONOMICO);
+  return {
+    type: "customer",
+    name:
+      text(row, "NOME_CLIENTE") ??
+      text(row, "RAZAO_SOCIAL") ??
+      `Cliente ${code(row.COD_CLIENTE)}`,
+    taxId: convert("digits", row.DOCUMENTO, row) as string | null,
+    email: text(row, "EMAIL"),
+    phone: text(row, "TELEFONE"),
+    legalName: text(row, "RAZAO_SOCIAL"),
+    stateRegistration: text(row, "INSCRICAO_ESTADUAL"),
+    personType: person === "F" || person === "J" ? person : null,
+    city: city ? (uf ? `${city} - ${uf}` : city) : null,
+    country: text(row, "PAIS"),
+    address,
+    sankhyaRefs: refs,
+    active: convert("sn", row.ATIVO, row) !== false,
+    more: {
+      economicGroupCode: group,
+      economicGroupName: group
+        ? (text(row, "GRUPO_ECONOMICO")?.slice(0, 160) ?? null)
+        : null,
+      matrixCode: viewCode(row.COD_MATRIZ),
+      sankhyaCustomer: customerViewSnapshot(row),
+      sankhyaCustomerAt: new Date().toISOString(),
+    },
+  };
+}
+
+/**
+ * Carga de clientes pela VW_AD_CLIENTE_WELL (dono, 18/11/2026): cria ou
+ * atualiza o cliente (um cadastro por CODPARC, tipo cliente), com o grupo
+ * econômico, a matriz e a linha inteira da view. Os códigos que vieram da
+ * TGFPAR ficam (a escrita no Sankhya ainda usa): os da view só se somam.
+ */
+export async function upsertCustomersFromView(
+  ctx: ImportContext,
+  rows: SankhyaRow[],
+) {
+  for (const row of rows) {
+    const key = viewCode(row.COD_CLIENTE);
+    if (!key) {
+      ctx.out.push({
+        entity: "customers",
+        code: code(row.COD_CLIENTE),
+        outcome: "skipped",
+        id: null,
+        label: text(row, "NOME_CLIENTE") ?? code(row.COD_CLIENTE),
+        reason: "sem código do cliente",
+      });
+      continue;
+    }
+    const data = customerViewData(row);
+    const before = ctx.parties.find(
+      (p) => p.sankhyaCode === key && p.type === "customer",
+    );
+    if (before?.sankhyaRefs)
+      data.sankhyaRefs = { ...before.sankhyaRefs, ...data.sankhyaRefs };
+    await upsertParty(ctx, "customers", key, data);
   }
 }
 
