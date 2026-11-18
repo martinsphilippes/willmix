@@ -29,6 +29,8 @@ export interface RequestCustomerContactsLabels {
   phone: string;
   email: string;
   rule: string;
+  /** "Opcional para a equipe interna…" */
+  optional: string;
   /** "+": mais um contato na área (dono, 17/11/2026). */
   add: string;
   /** Lixeira: tira o contato extra. */
@@ -122,12 +124,18 @@ export function RequestCustomerContacts({
   labels,
   className,
   initialValues = {},
+  optional = false,
 }: {
   formId: string;
   labels: RequestCustomerContactsLabels;
   className?: string;
   /** Contatos já digitados (rascunho): `contact.<área>.<campo>` → valor. */
   initialValues?: Record<string, string>;
+  /**
+   * Solicitante da equipe interna (dono, 18/11/2026): os contatos são
+   * opcionais (o que for preenchido o servidor confere).
+   */
+  optional?: boolean;
 }) {
   const shared = useRequestCustomer();
   const stock = !!shared?.stock;
@@ -303,7 +311,7 @@ export function RequestCustomerContacts({
                         type="tel"
                         inputMode="tel"
                         autoComplete="off"
-                        required
+                        required={!optional}
                         maxLength={40}
                         defaultValue={
                           initialValues[`${prefix}.phone`] ??
@@ -319,7 +327,7 @@ export function RequestCustomerContacts({
                         type="email"
                         inputMode="email"
                         autoComplete="off"
-                        required
+                        required={!optional}
                         maxLength={160}
                         defaultValue={
                           initialValues[`${prefix}.email`] ??
@@ -378,6 +386,14 @@ export function RequestCustomerContacts({
                 </fieldset>
               );
             })}
+            {optional ? (
+              <p
+                className="text-xs text-zinc-500"
+                data-customer-contacts-optional
+              >
+                {labels.optional}
+              </p>
+            ) : null}
             <p className="text-xs text-amber-700">{labels.rule}</p>
             <div className="flex flex-wrap items-center gap-3">
               <button

@@ -284,6 +284,13 @@ Vale para as três telas (Encomendas, TS e Venda), que usam o mesmo código (`sr
 - **O rascunho automático só grava depois de uma ação da pessoa na tela** (tecla, clique ou toque). Abrir um rascunho, com a tela se completando sozinha, nunca grava por cima.
 - **Quem vê o rascunho:** só quem criou (listar, abrir, gravar por cima e apagar conferem o login).
 
+## 11.14 Contatos opcionais para a equipe interna (dono, 18/11/2026)
+
+- Quando o Solicitante está na Equipe Interna (a lista de `/app/team`: login ativo de administrador ou operador da Wellmix), os contatos do bloco Cliente são **opcionais**: o pedido sai sem eles. O bloco continua na tela, com o aviso "Opcional para a equipe interna", e pode ser preenchido e salvo ("Salvar dados do cliente").
+- O que for preenchido continua conferido (telefone e e-mail válidos, diferentes dos do vendedor); um contato todo em branco fica de fora, e um meio preenchido é cobrado. Tudo em branco não grava nada.
+- Quem não está na equipe (um representante externo, quando houver) segue com todos os contatos obrigatórios, como antes.
+- Código: `contactsOptionalFor` (src/lib/services/customer-contacts.ts) e `contactIssues(..., { optional })` (src/lib/order-terms.ts).
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

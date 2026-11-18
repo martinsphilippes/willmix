@@ -301,6 +301,9 @@ export const pt = {
   "requestDraft.status": "Rascunho",
   "requestDraft.listHint":
     "Salvo por você; só você vê. Continue de onde parou.",
+  "customerContacts.optional":
+    "Opcional para a equipe interna: preencha o que tiver. O que for preenchido precisa de telefone e e-mail válidos.",
+  "customerContacts.empty": "Preencha ao menos um contato para salvar.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -599,6 +602,9 @@ export const en: Record<keyof typeof pt, string> = {
   "requestDraft.status": "Draft",
   "requestDraft.listHint":
     "Saved by you; only you see it. Continue where you left off.",
+  "customerContacts.optional":
+    "Optional for the internal team: fill in what you have. Whatever you fill in needs a valid phone and e-mail.",
+  "customerContacts.empty": "Fill in at least one contact to save.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -875,4 +881,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "requestDraft.autosaved": "草稿已于 {time} 自动保存",
   "requestDraft.status": "草稿",
   "requestDraft.listHint": "由您保存，仅您可见。从上次中断处继续。",
+  "customerContacts.optional":
+    "内部团队可选填：有什么填什么。填写的联系人需要有效的电话和邮箱。",
+  "customerContacts.empty": "请至少填写一个联系人再保存。",
 };

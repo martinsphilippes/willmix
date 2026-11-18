@@ -184,6 +184,49 @@ describe("contatos do cliente", () => {
     ).rejects.toThrow("contacts_same_as_seller");
   });
 
+  it("equipe interna: contatos opcionais; o que for preenchido é conferido (dono, 18/11/2026)", async () => {
+    expect(contacts.contactsOptionalFor(admin)).toBe(true);
+    expect(contacts.contactsOptionalFor(joao)).toBe(false);
+    expect(
+      contacts.contactsOptionalFor({ ...admin, active: false } as typeof admin),
+    ).toBe(false);
+    const blank = { phone: "", email: "" };
+    // Só o comprador: grava, sem pedir os outros.
+    const onlyBuyer = full({
+      partner: blank,
+      finance: blank,
+      logistics: blank,
+    });
+    expect(terms.contactIssues(onlyBuyer, [], { optional: true })).toEqual([]);
+    expect(terms.contactIssues(onlyBuyer, []).length).toBeGreaterThan(0);
+    await contacts.saveCustomerContacts(admin, "cliente-joao", onlyBuyer);
+    const view = await contacts.customerContactsView(admin, "cliente-joao");
+    expect(view?.state === "known" && view.contacts.partner.phone).toBe("");
+    // Meio preenchido: o que falta é cobrado.
+    await expect(
+      contacts.saveCustomerContacts(
+        admin,
+        "cliente-joao",
+        full({ partner: { phone: "4799990001", email: "" } }),
+      ),
+    ).rejects.toThrow("contacts_invalid");
+    // Tudo em branco: nada a gravar.
+    await expect(
+      contacts.saveCustomerContacts(
+        admin,
+        "cliente-joao",
+        full({
+          partner: blank,
+          buyer: blank,
+          finance: blank,
+          logistics: blank,
+        }),
+      ),
+    ).rejects.toThrow("contacts_empty");
+    // De volta aos contatos completos para os testes seguintes.
+    await contacts.saveCustomerContacts(admin, "cliente-joao", full());
+  });
+
   it("só a Wellmix; a rota não abre para o cliente", async () => {
     await expect(
       contacts.customerContactsView(joao, "cliente-joao"),

@@ -39,6 +39,7 @@ import {
 } from "@/components/request-people-fields";
 import { CustomerPurchaseHistory } from "@/components/customer-purchase-history";
 import { RequestCustomerContacts } from "@/components/request-customer-contacts";
+import { contactsOptionalFor } from "@/lib/services/customer-contacts";
 import { RequestOrderTerms } from "@/components/request-order-terms";
 import { RequestDraftAutosave } from "@/components/request-draft-autosave";
 import {
@@ -730,6 +731,7 @@ export async function renderNewRequest({
               ),
             )}
             labels={customerContactsLabels(t)}
+            optional={contactsOptionalFor(user)}
             className="max-w-2xl lg:col-start-2 lg:row-start-1 lg:max-w-none"
           />
         ) : null}

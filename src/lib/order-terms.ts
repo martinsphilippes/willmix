@@ -328,6 +328,11 @@ export interface SellerContact {
 export function contactIssues(
   contacts: CustomerContacts,
   sellers: readonly SellerContact[],
+  /**
+   * Opcional (Solicitante da equipe interna; dono, 18/11/2026): o contato
+   * todo em branco fica de fora; o que foi preenchido continua conferido.
+   */
+  options: { optional?: boolean } = {},
 ): ContactIssue[] {
   const emails = new Set(
     sellers.map((s) => emailComparable(s.email)).filter(Boolean),
@@ -337,6 +342,7 @@ export function contactIssues(
   );
   const issues: ContactIssue[] = [];
   const check = (role: ContactRole, entry: ContactEntry, index?: number) => {
+    if (options.optional && isBlankContact(entry)) return;
     const at = index === undefined ? {} : { index };
     const phone = phoneDigits(entry.phone);
     const email = emailComparable(entry.email);
@@ -357,6 +363,18 @@ export function contactIssues(
   }
   return issues;
 }
+
+/** Contato sem telefone nem e-mail. */
+export const isBlankContact = (entry: ContactEntry) =>
+  !entry.phone.trim() && !entry.email.trim();
+
+/** Nenhum contato preenchido (o primeiro de cada área e os extras). */
+export const allContactsBlank = (contacts: CustomerContacts) =>
+  CONTACT_ROLES.every(
+    (role) =>
+      isBlankContact(contacts[role]) &&
+      (contacts.more?.[role] ?? []).every(isBlankContact),
+  );
 
 /** Os contatos limpos para gravar (telefone como digitado, e-mail em minúsculas). */
 export function cleanContacts(contacts: CustomerContacts): CustomerContacts {
