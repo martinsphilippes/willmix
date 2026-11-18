@@ -29,9 +29,7 @@ import {
   Card,
   Empty,
   Field,
-  Input,
   PageHeader,
-  Select,
   Textarea,
   formatDate,
   linkClass,
@@ -40,16 +38,23 @@ import { SubmitButton } from "@/components/submit-button";
 import { ActionError } from "@/components/action-error";
 import { DemandTags } from "@/components/demand-tags";
 import { partyPickerLabels } from "@/components/party-picker-labels";
-import {
-  decideStrategyAction,
-  orderFromStrategyAction,
-} from "../actions/purchase-demand";
+import { decideStrategyAction } from "../actions/purchase-demand";
 import {
   StrategyQueue,
   type StrategyGroupData,
   type StrategyLineData,
   type StrategyTexts,
 } from "./_components/strategy-queue";
+import { PackingCells, type PackingTexts } from "./_components/packing-cells";
+import { StrategyOrderForm } from "./_components/strategy-order-form";
+import { closedDemands, type ClosedDemandReason } from "@/lib/purchase-demand";
+import {
+  demandPackings,
+  lineTotals,
+  linePackings,
+  type DemandPacking,
+  type LinePacking,
+} from "@/lib/services/strategy-packing";
 
 /*
  * Estratégia de Compra (mapa B10?; dono, 15/11/2026 e 18/11/2026;
@@ -80,11 +85,23 @@ export default async function PurchaseStrategyPage({
   const decisionDemands = decisionDemandIds.length
     ? await store.list("requests", { filter: { id: decisionDemandIds } })
     : [];
-  const parties = await listByIds(
-    store,
-    "parties",
-    decisionDemands.map((d) => d.customerId),
-  );
+  // Embalagem e cubagem (dono, 18/11/2026; docs/PURCHASE_DEMAND.md,
+  // "Embalagem e cubagem na Estratégia"): as fontes da ficha completa de
+  // cada encomenda, numa leitura só para a fila e "Em andamento".
+  const queueDemands = board.lines.map((l) => l.demand);
+  const [parties, packings] = await Promise.all([
+    listByIds(
+      store,
+      "parties",
+      decisionDemands.map((d) => d.customerId),
+    ),
+    demandPackings(user, [
+      ...queueDemands,
+      ...decisionDemands.filter(
+        (d) => !queueDemands.some((q) => q.id === d.id),
+      ),
+    ]),
+  ]);
   const partyName = (id: string) =>
     parties.find((p) => p.id === id)?.name ?? "—";
   const canChoose = canChooseStrategy(user);
@@ -95,6 +112,45 @@ export default async function PurchaseStrategyPage({
   // docs/LINHA_DE_VISAO.md, seção 7). Sem ela, o pedido sai com o preço
   // gravado na decisão.
   const seesPrice = canSeePurchasePrice(user);
+
+  const packingTexts: PackingTexts = {
+    pieces: t("strategyPack.pieces"),
+    master: t("strategyPack.master"),
+    inner: t("strategyPack.inner"),
+    cbm: t("strategyPack.cbm"),
+    perMaster: t("strategyPack.perMaster"),
+    perMasterMissing: t("strategyPack.perMasterMissing"),
+    perInner: t("strategyPack.perInner"),
+    perInnerMissing: t("strategyPack.perInnerMissing"),
+    noInner: t("strategyPack.noInner"),
+    cbmPerMaster: t("strategyPack.cbmPerMaster"),
+    cbmPerMasterMissing: t("strategyPack.cbmPerMasterMissing"),
+    calculated: t("strategyPack.calculated"),
+    legend: t("strategyPack.legend"),
+    noteMasterExact: t("strategyPack.note.masterExact"),
+    noteMasterUp: t("strategyPack.note.masterUp"),
+    noteMasterRounds: t("strategyPack.note.masterRounds"),
+    noteCbm: t("strategyPack.note.cbm"),
+    warnMasterIncomplete: t("strategyPack.warn.masterIncomplete"),
+    warnMasterIncompleteRounds: t("strategyPack.warn.masterIncompleteRounds"),
+    warnInnerIncomplete: t("strategyPack.warn.innerIncomplete"),
+    warnInnerMismatch: t("strategyPack.warn.innerMismatch"),
+    warnInnerBigger: t("strategyPack.warn.innerBigger"),
+    warnInnerSame: t("strategyPack.warn.innerSame"),
+    warnCbmOtherBox: t("strategyPack.warn.cbmOtherBox"),
+    warnQtyInvalid: t("strategyPack.warn.qtyInvalid"),
+  };
+  /** Avisos do servidor (programação, unidade, embalagens diferentes). */
+  const packWarnings = (
+    list: readonly (
+      DemandPacking["warnings"][number] | LinePacking["warnings"][number]
+    )[],
+  ) => list.map((w) => t(`strategyPack.warn.${w}` as DictionaryKey));
+  /** Quantidade em peças; sem como converter, a gravada com a unidade. */
+  const piecesText = (p: DemandPacking | undefined, d: Request) =>
+    p?.pieces != null
+      ? p.pieces.toLocaleString(t.intl)
+      : `${d.quantity.toLocaleString(t.intl)} ${d.unit}`;
 
   const lines: StrategyLineData[] = board.lines.map((l) => {
     const d = l.demand;
@@ -157,6 +213,17 @@ export default async function PurchaseStrategyPage({
       blocked: d.productId
         ? null
         : `${t("strategy.noProduct")}: ${t("strategy.noProductHint")}`,
+      packing: (() => {
+        const p = packings.get(d.id);
+        return p
+          ? {
+              totals: p.totals,
+              basis: p.facts.basis,
+              piecesText: piecesText(p, d),
+              warnings: packWarnings(p.warnings),
+            }
+          : null;
+      })(),
     };
   });
   // Por solicitação (dono, 18/11/2026): uma escolha para todos os produtos.
@@ -255,6 +322,16 @@ export default async function PurchaseStrategyPage({
     note: t("strategy.note"),
     working: t("strategy.summary.working"),
     picker: partyPickerLabels(t, true),
+    packing: packingTexts,
+    intl: t.intl,
+  };
+  const orderTexts = {
+    packing: packingTexts,
+    price: t("strategy.last.price"),
+    currency: t("strategy.currency"),
+    leadTime: t("strategyPack.leadTime"),
+    incoterm: t("strategy.last.incoterm"),
+    generate: t("strategy.generateOrder"),
   };
 
   const errorCode = typeof error === "string" ? error : "";
@@ -315,11 +392,16 @@ export default async function PurchaseStrategyPage({
       </p>
     );
 
-  const demandRow = (d: Request, checkbox: boolean) => (
+  const demandRow = (
+    d: Request,
+    checkbox: boolean,
+    closed?: ClosedDemandReason,
+  ) => (
     <li
       key={d.id}
       className="flex flex-wrap items-start gap-x-3 gap-y-1 py-1.5"
       data-strategy-demand={d.id}
+      data-strategy-demand-closed={closed}
     >
       {checkbox ? (
         <input
@@ -339,6 +421,11 @@ export default async function PurchaseStrategyPage({
         {d.desiredAt
           ? ` · ${t("demand.desiredAt")}: ${formatDate(d.desiredAt, t)}`
           : ""}
+        {closed ? (
+          <Badge tone="danger" className="ml-2">
+            {t(`strategyPack.closed.${closed}` as DictionaryKey)}
+          </Badge>
+        ) : null}
         <span className="block text-xs text-zinc-600">
           {partyName(d.customerId)}
         </span>
@@ -348,7 +435,7 @@ export default async function PurchaseStrategyPage({
   );
 
   return (
-    <div data-strategy-page={lines.length}>
+    <div data-strategy-page={lines.length} data-compact-fields>
       <PageHeader
         t={t}
         title={t("strategy.title")}
@@ -393,21 +480,41 @@ export default async function PurchaseStrategyPage({
                 d.demandIds.includes(r.id),
               );
               const ref = d.reference?.[0];
-              // Uma linha por produto da solicitação, com a quantidade somada
-              // e a última compra de cada um (todos do mesmo fornecedor).
-              const orderLines = [
-                ...new Set(demands.map((r) => r.productId).filter(Boolean)),
-              ].map((productId) => ({
-                productId: productId as string,
-                quantity: demands
-                  .filter((r) => r.productId === productId)
-                  .reduce((sum, r) => sum + r.quantity, 0),
-                ref: d.reference?.find((x) => x.productId === productId),
-              }));
-              const leadTimes = orderLines
-                .map((l) => l.ref?.leadTimeDays)
+              // Encomenda cancelada ou já em outro pedido (dono, 18/11/2026):
+              // a estratégia não é aprovada nem gera o pedido; fica gravada
+              // como está (recusar continua valendo).
+              const closed = closedDemands(d, demands);
+              const blocked = closed.size > 0;
+              // Uma linha por produto da solicitação, com a quantidade somada,
+              // a embalagem (fontes da ficha completa) e a última compra de
+              // cada um (todos do mesmo fornecedor).
+              const packLines = linePackings(demands, packings);
+              const nameOf = (productId: string) =>
+                productNameText(
+                  t,
+                  demands.find((r) => r.productId === productId)?.productName ??
+                    "",
+                );
+              const refOf = (productId: string) =>
+                d.reference?.find((x) => x.productId === productId);
+              const leadTimes = packLines
+                .map((l) => refOf(l.productId)?.leadTimeDays)
                 .filter((n): n is number => typeof n === "number");
               const leadTime = leadTimes.length ? Math.max(...leadTimes) : null;
+              const orderable =
+                d.status === "approved" &&
+                d.choice === "last_supplier" &&
+                !!ref &&
+                !blocked;
+              const showForm = orderable && canOrder;
+              const closedList = [...closed.entries()]
+                .map(([id, reason]) =>
+                  t("strategyPack.closed.item", {
+                    n: demands.find((r) => r.id === id)?.number ?? "—",
+                    reason: t(`strategyPack.closed.${reason}` as DictionaryKey),
+                  }),
+                )
+                .join(", ");
               return (
                 <section
                   key={d.id}
@@ -415,6 +522,7 @@ export default async function PurchaseStrategyPage({
                   className="rounded-2xl border border-zinc-200 p-3"
                   data-strategy-decision={d.status}
                   data-strategy-decision-choice={d.choice}
+                  data-strategy-blocked={blocked ? "1" : undefined}
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-sm font-semibold text-zinc-900">
@@ -433,43 +541,77 @@ export default async function PurchaseStrategyPage({
                     <p className="mt-1 text-xs text-zinc-600">{d.note}</p>
                   ) : null}
                   <ul className="mt-2 divide-y divide-zinc-100">
-                    {demands.map((r) => demandRow(r, false))}
+                    {demands.map((r) => demandRow(r, false, closed.get(r.id)))}
                   </ul>
-                  {d.choice === "last_supplier"
-                    ? orderLines.map((line) => (
-                        <div key={line.productId} className="mt-2 space-y-0.5">
-                          {orderLines.length > 1 ? (
-                            <p className="text-xs font-medium text-zinc-800">
-                              {productNameText(
-                                t,
-                                demands.find(
-                                  (r) => r.productId === line.productId,
-                                )?.productName ?? "",
-                              )}
-                            </p>
-                          ) : null}
-                          {reference(line.ref)}
-                        </div>
-                      ))
-                    : null}
+                  {blocked ? (
+                    <div className="mt-2" data-strategy-blocked-alert>
+                      <Alert tone="warning">
+                        <p className="font-semibold">
+                          {t("strategyPack.closed.title")}
+                        </p>
+                        <p className="mt-0.5 text-xs">
+                          {t(
+                            d.status === "pending"
+                              ? "strategyPack.closed.bodyPending"
+                              : "strategyPack.closed.body",
+                            { list: closedList },
+                          )}
+                        </p>
+                      </Alert>
+                    </div>
+                  ) : null}
+                  {packLines.map((line) => (
+                    <div
+                      key={line.productId}
+                      className="mt-3 space-y-2"
+                      data-strategy-decision-product={line.productId}
+                    >
+                      {packLines.length > 1 || !showForm ? (
+                        <p className="text-xs font-medium text-zinc-800">
+                          {nameOf(line.productId)}
+                        </p>
+                      ) : null}
+                      {showForm ? null : (
+                        <PackingCells
+                          marker={`${d.id}:${line.productId}`}
+                          totals={lineTotals(line, line.quantity)}
+                          basis={line.basis}
+                          texts={packingTexts}
+                          intl={t.intl}
+                          piecesText={line.quantity.toLocaleString(t.intl)}
+                          extraWarnings={packWarnings(line.warnings)}
+                        />
+                      )}
+                      {d.choice === "last_supplier"
+                        ? reference(refOf(line.productId))
+                        : null}
+                    </div>
+                  ))}
                   {d.status === "pending" && canApprove ? (
                     <form
                       action={decideStrategyAction}
                       className="mt-3 grid gap-2 border-t border-zinc-100 pt-3"
                       data-strategy-approve-form
+                      data-compact-fields
                     >
                       <input type="hidden" name="id" value={d.id} />
                       <Field label={t("strategy.approvalNote")}>
-                        <Textarea name="note" rows={2} />
+                        <Textarea
+                          name="note"
+                          rows={2}
+                          className="shadow-none sm:max-w-xl"
+                        />
                       </Field>
                       <div className="flex flex-wrap gap-2">
-                        <SubmitButton
-                          name="decision"
-                          value="approve"
-                          data-strategy-approve
-                        >
-                          {t("strategy.approve")}
-                        </SubmitButton>
+                        {blocked ? null : (
+                          <SubmitButton
+                            name="decision"
+                            value="approve"
+                            data-strategy-approve
+                          >
+                            {t("strategy.approve")}
+                          </SubmitButton>
+                        )}
                         <SubmitButton
                           name="decision"
                           value="reject"
@@ -485,103 +627,38 @@ export default async function PurchaseStrategyPage({
                       {t("strategy.waitingApproval")}
                     </p>
                   ) : null}
-                  {d.status === "approved" &&
-                  d.choice === "last_supplier" &&
-                  ref ? (
-                    canOrder ? (
-                      <form
-                        action={orderFromStrategyAction}
-                        className="mt-3 grid gap-2 border-t border-zinc-100 pt-3 sm:grid-cols-5"
-                        data-strategy-order-form
-                      >
-                        <input type="hidden" name="id" value={d.id} />
-                        {orderLines.map((line) => (
-                          <div
-                            key={line.productId}
-                            className="grid gap-2 sm:col-span-5 sm:grid-cols-5"
-                            data-strategy-order-line={line.productId}
-                          >
-                            <input
-                              type="hidden"
-                              name="productIds"
-                              value={line.productId}
-                            />
-                            <p className="self-end pb-2 text-sm font-medium text-zinc-800 sm:col-span-2">
-                              {productNameText(
-                                t,
-                                demands.find(
-                                  (r) => r.productId === line.productId,
-                                )?.productName ?? "",
-                              )}
-                            </p>
-                            <Field label={t("common.quantity")}>
-                              <Input
-                                name={`quantity__${line.productId}`}
-                                inputMode="numeric"
-                                defaultValue={String(line.quantity)}
-                                required
-                              />
-                            </Field>
-                            {seesPrice ? (
-                              <Field label={t("strategy.last.price")}>
-                                <Input
-                                  name={`unitPrice__${line.productId}`}
-                                  inputMode="decimal"
-                                  defaultValue={
-                                    line.ref?.unitPrice != null
-                                      ? String(line.ref.unitPrice)
-                                      : ""
-                                  }
-                                  data-strategy-order-price
-                                />
-                              </Field>
-                            ) : null}
-                          </div>
-                        ))}
-                        {seesPrice ? (
-                          <Field label={t("strategy.currency")}>
-                            <Input
-                              name="currency"
-                              defaultValue={ref.currency ?? "USD"}
-                              maxLength={3}
-                              required
-                            />
-                          </Field>
-                        ) : null}
-                        <Field label={t("strategy.last.leadTime")}>
-                          <Input
-                            name="leadTimeDays"
-                            inputMode="numeric"
-                            defaultValue={
-                              leadTime !== null ? String(leadTime) : ""
-                            }
-                          />
-                        </Field>
-                        <Field label={t("strategy.last.incoterm")}>
-                          <Select
-                            name="incoterm"
-                            defaultValue={
-                              ref.incoterm === "EXW" || ref.incoterm === "FOB"
-                                ? ref.incoterm
-                                : ""
-                            }
-                          >
-                            <option value="">—</option>
-                            <option value="FOB">FOB</option>
-                            <option value="EXW">EXW</option>
-                          </Select>
-                        </Field>
-                        <div className="sm:col-span-5">
-                          <SubmitButton data-strategy-order>
-                            {t("strategy.generateOrder")}
-                          </SubmitButton>
-                        </div>
-                      </form>
-                    ) : (
-                      <p className="mt-2 text-xs text-zinc-500">
-                        {t("strategy.waitingOrder")}
-                      </p>
-                    )
+                  {showForm && ref ? (
+                    <StrategyOrderForm
+                      decisionId={d.id}
+                      lines={packLines.map((line) => {
+                        const price = refOf(line.productId)?.unitPrice;
+                        return {
+                          productId: line.productId,
+                          productName: nameOf(line.productId),
+                          quantity: line.quantity,
+                          planned: line.planned,
+                          basis: line.basis,
+                          // O preço com a precisão gravada (sem arredondar).
+                          unitPrice:
+                            seesPrice && price != null ? String(price) : "",
+                          warnings: packWarnings(line.warnings),
+                        };
+                      })}
+                      seesPrice={seesPrice}
+                      currency={ref.currency ?? "USD"}
+                      leadTime={leadTime !== null ? String(leadTime) : ""}
+                      incoterm={
+                        ref.incoterm === "EXW" || ref.incoterm === "FOB"
+                          ? ref.incoterm
+                          : ""
+                      }
+                      texts={orderTexts}
+                      intl={t.intl}
+                    />
+                  ) : orderable ? (
+                    <p className="mt-2 text-xs text-zinc-500">
+                      {t("strategy.waitingOrder")}
+                    </p>
                   ) : null}
                   {d.status === "approved" &&
                   (d.choice === "quote" || d.choice === "quote_last") ? (

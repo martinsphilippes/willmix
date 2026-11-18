@@ -45,6 +45,7 @@ import {
 } from "./customer-payment";
 import type { PaymentPlanEvent } from "@/lib/customer-payment";
 import { isBoxUnit, isPieceUnit } from "./purchase-history";
+import type { PackingBasis } from "@/lib/strategy-packing";
 
 /*
  * Ficha completa da solicitação (dono, 15/11/2026; docs/REQUEST_SHEET.md).
@@ -413,6 +414,207 @@ function termsSummary(t: Translate, terms: PaymentTermInstallment[]) {
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Embalagem: as fontes (ficha completa e Estratégia de compra)        */
+/* ------------------------------------------------------------------ */
+
+/** Uma fonte do CBM da caixa master. */
+interface CbmCandidate {
+  value: number | null | undefined;
+  kind: SourceKind;
+  /** Das medidas da caixa da mesma fonte (Calculado). */
+  calc: boolean;
+  /** Peças por caixa master da mesma fonte (nula ou ausente: a fonte não diz). */
+  boxQty: number | null | undefined;
+}
+
+interface PackingCandidates {
+  perBox: Candidate<number>[];
+  inner: Candidate<number>[];
+  cbm: CbmCandidate[];
+}
+
+const cbmFrom = (
+  d:
+    | { lengthCm?: number | null; widthCm?: number | null; heightCm?: number | null }
+    | null
+    | undefined,
+) => (d ? cbmFromDimensions(d.lengthCm, d.widthCm, d.heightCm) : null);
+
+/**
+ * Fontes da embalagem, na ordem da ficha (a primeira que existe vale): peças
+ * por caixa master, peças por caixa inner e CBM da caixa master (o gravado;
+ * sem ele, das medidas da caixa da mesma fonte). A Estratégia de compra usa
+ * as mesmas (docs/PURCHASE_DEMAND.md, "Embalagem e cubagem na Estratégia").
+ */
+function packingCandidates(
+  inputs: SheetInputs,
+  tech: boolean,
+  spec: ParsedSpec,
+  view: ReturnType<typeof productPurchaseView> | null,
+): PackingCandidates {
+  const { request, product } = inputs;
+  const master = view?.master ?? null;
+  const variant = request.variant ?? null;
+  const neg = tech ? (inputs.negotiation?.item ?? null) : null;
+  const bk = tech ? inputs.book : null;
+  const sheet = tech ? inputs.orderSheet : null;
+  const specBoxCbm =
+    spec.boxDims && spec.boxDims.values.length === 3
+      ? cbmFromDimensions(
+          spec.boxDims.values[0].value,
+          spec.boxDims.values[1].value,
+          spec.boxDims.values[2].value,
+        )
+      : null;
+  return {
+    perBox: [
+      { value: spec.perBox, kind: "request" },
+      { value: tech ? variant?.masterBoxQty : null, kind: "variant" },
+      { value: sheet?.masterCartonQty, kind: "order" },
+      { value: neg?.masterCartonQty, kind: "negotiation" },
+      { value: bk?.masterCartonQty, kind: "book" },
+      { value: view?.pcsPerCarton, kind: "current" },
+    ],
+    inner: [
+      { value: spec.innerQty, kind: "request" },
+      { value: tech ? variant?.innerBoxQty : null, kind: "variant" },
+      { value: sheet?.innerQty, kind: "order" },
+      { value: neg?.innerQty, kind: "negotiation" },
+      { value: bk?.innerQty, kind: "book" },
+      {
+        value: tech ? (product?.innerBoxQty ?? master?.innerQty) : null,
+        kind: "current",
+      },
+    ],
+    /* CBM por caixa: o gravado na fonte; sem ele, das medidas da caixa da
+       mesma fonte (Calculado). `boxQty`: de quantas peças é essa caixa. */
+    cbm: [
+      { value: spec.cbmPerBox, kind: "request", calc: false, boxQty: spec.perBox },
+      { value: specBoxCbm, kind: "request", calc: true, boxQty: spec.perBox },
+      {
+        value: tech ? variant?.cbm : null,
+        kind: "variant",
+        calc: false,
+        boxQty: variant?.masterBoxQty,
+      },
+      {
+        value: sheet?.cbmPerCarton,
+        kind: "order",
+        calc: false,
+        boxQty: sheet?.masterCartonQty,
+      },
+      {
+        value: cbmFrom(sheet),
+        kind: "order",
+        calc: true,
+        boxQty: sheet?.masterCartonQty,
+      },
+      {
+        value: neg?.cbmPerCarton,
+        kind: "negotiation",
+        calc: false,
+        boxQty: neg?.masterCartonQty,
+      },
+      {
+        value: bk?.cbmPerCarton,
+        kind: "book",
+        calc: false,
+        boxQty: bk?.masterCartonQty,
+      },
+      {
+        value: tech ? product?.cbm : null,
+        kind: "current",
+        calc: false,
+        boxQty: product?.masterBoxQty,
+      },
+      {
+        value:
+          tech && product
+            ? cbmFromDimensions(
+                product.boxLengthCm,
+                product.boxWidthCm,
+                product.boxHeightCm,
+              )
+            : null,
+        kind: "current",
+        calc: true,
+        boxQty: product?.masterBoxQty,
+      },
+      {
+        value: tech ? inputs.master?.cbmPerCarton : null,
+        kind: "current",
+        calc: false,
+        boxQty: inputs.master?.masterCartonQty,
+      },
+      {
+        value: tech ? cbmFrom(inputs.master) : null,
+        kind: "current",
+        calc: true,
+        boxQty: inputs.master?.masterCartonQty,
+      },
+    ],
+  };
+}
+
+/** Embalagem da Estratégia de compra, pelas fontes da ficha. */
+export interface PackingFacts {
+  basis: PackingBasis;
+  /** De onde veio cada dado (nulo: sem o dado). */
+  from: {
+    perMaster: SourceKind | null;
+    perInner: SourceKind | null;
+    cbm: SourceKind | null;
+  };
+}
+
+/**
+ * A embalagem de uma solicitação para a Estratégia de compra (dono,
+ * 18/11/2026; docs/PURCHASE_DEMAND.md, "Embalagem e cubagem na Estratégia"),
+ * com as fontes da ficha completa (a mesma ordem, para os números baterem).
+ * Duas diferenças, pedidas para esta tela: 0 peças por inner gravado é "sem
+ * caixa inner" (a ficha pula o 0), e o CBM só vale se for da mesma caixa
+ * contada (CBM de uma caixa com outra quantidade de peças fica de fora, com
+ * o aviso). Só para a Wellmix (dados técnicos).
+ */
+export function packingFactsOf(inputs: SheetInputs): PackingFacts {
+  const tech = true;
+  const view = inputs.product
+    ? productPurchaseView(inputs.product, inputs.master)
+    : null;
+  const spec = parseRequestSpec(inputs.request.specification, PORTAL_ORDER_LABELS);
+  const candidates = packingCandidates(inputs, tech, spec, view);
+  const perMaster = pick<number>(candidates.perBox);
+  // A primeira inner informada vale, com o 0 (sem caixa inner) contando.
+  const innerHit =
+    candidates.inner.find(
+      (c) =>
+        typeof c.value === "number" &&
+        Number.isInteger(c.value) &&
+        c.value >= 0,
+    ) ?? null;
+  const cbmHits = candidates.cbm.filter((c) => pos(c.value));
+  // CBM da mesma caixa contada: a fonte não diz de quantas peças é a caixa
+  // (vale, como na ficha) ou diz a mesma quantidade da conta.
+  const sameBox = (c: CbmCandidate) =>
+    !pos(c.boxQty) || !perMaster || c.boxQty === perMaster.value;
+  const cbmHit = cbmHits.find(sameBox) ?? null;
+  const otherBox = cbmHit ? null : (cbmHits.find((c) => !sameBox(c)) ?? null);
+  return {
+    basis: {
+      perMaster: perMaster?.value ?? null,
+      perInner: (innerHit?.value as number | undefined) ?? null,
+      cbmPerMaster: cbmHit ? r4(cbmHit.value as number) : null,
+      cbmOtherBox: otherBox ? (otherBox.boxQty as number) : null,
+    },
+    from: {
+      perMaster: perMaster?.kind ?? null,
+      perInner: innerHit?.kind ?? null,
+      cbm: cbmHit ? (cbmHit.calc ? "calculated" : cbmHit.kind) : null,
+    },
+  };
+}
+
 /**
  * A ficha de uma solicitação. Pura: recebe o que o perfil pode ver (o
  * carregador não lê o que o perfil não vê) e devolve os textos prontos.
@@ -457,14 +659,8 @@ export function buildSheetRow(
 
   /* ---------- Quantidades ---------- */
   const schedule = request.schedule?.items.length ? request.schedule : null;
-  const perBox = pick<number>([
-    { value: spec.perBox, kind: "request" },
-    { value: tech ? variant?.masterBoxQty : null, kind: "variant" },
-    { value: sheet?.masterCartonQty, kind: "order" },
-    { value: neg?.masterCartonQty, kind: "negotiation" },
-    { value: bk?.masterCartonQty, kind: "book" },
-    { value: view?.pcsPerCarton, kind: "current" },
-  ]);
+  const candidates = packingCandidates(inputs, tech, spec, view);
+  const perBox = pick<number>(candidates.perBox);
   const boxUnit = isBoxUnit(request.unit);
   const scheduled = schedule ? scheduleTotal(schedule) : null;
   /* Total de peças: a programação gravada manda (é o que será comprado);
@@ -568,37 +764,9 @@ export function buildSheetRow(
       kind: "current",
     },
   ]);
-  const cbmFrom = (
-    d: { lengthCm?: number | null; widthCm?: number | null; heightCm?: number | null } | null | undefined,
-  ) => (d ? cbmFromDimensions(d.lengthCm, d.widthCm, d.heightCm) : null);
   /* CBM por caixa: o gravado na fonte; sem ele, das medidas da caixa da
      mesma fonte (Calculado). */
-  const cbmCandidates: { value: number | null | undefined; kind: SourceKind; calc: boolean }[] = [
-    { value: spec.cbmPerBox, kind: "request", calc: false },
-    {
-      value: spec.boxDims && spec.boxDims.values.length === 3
-        ? cbmFromDimensions(spec.boxDims.values[0].value, spec.boxDims.values[1].value, spec.boxDims.values[2].value)
-        : null,
-      kind: "request",
-      calc: true,
-    },
-    { value: tech ? variant?.cbm : null, kind: "variant", calc: false },
-    { value: sheet?.cbmPerCarton, kind: "order", calc: false },
-    { value: cbmFrom(sheet), kind: "order", calc: true },
-    { value: neg?.cbmPerCarton, kind: "negotiation", calc: false },
-    { value: bk?.cbmPerCarton, kind: "book", calc: false },
-    { value: tech ? product?.cbm : null, kind: "current", calc: false },
-    {
-      value: tech && product
-        ? cbmFromDimensions(product.boxLengthCm, product.boxWidthCm, product.boxHeightCm)
-        : null,
-      kind: "current",
-      calc: true,
-    },
-    { value: tech ? inputs.master?.cbmPerCarton : null, kind: "current", calc: false },
-    { value: tech ? cbmFrom(inputs.master) : null, kind: "current", calc: true },
-  ];
-  const cbmHit = cbmCandidates.find((c) => pos(c.value)) ?? null;
+  const cbmHit = candidates.cbm.find((c) => pos(c.value)) ?? null;
   const cbmPerBox = cbmHit
     ? {
         value: r4(cbmHit.value as number),
@@ -630,14 +798,7 @@ export function buildSheetRow(
       : null,
   );
 
-  const inner = pick<number>([
-    { value: spec.innerQty, kind: "request" },
-    { value: tech ? variant?.innerBoxQty : null, kind: "variant" },
-    { value: sheet?.innerQty, kind: "order" },
-    { value: neg?.innerQty, kind: "negotiation" },
-    { value: bk?.innerQty, kind: "book" },
-    { value: tech ? (product?.innerBoxQty ?? master?.innerQty) : null, kind: "current" },
-  ]);
+  const inner = pick<number>(candidates.inner);
   const moq = tech
     ? pick<number>([
         { value: variant?.moq, kind: "variant" },
@@ -1335,10 +1496,44 @@ export async function loadRequestSheet(
   t: Translate,
 ): Promise<RequestSheetView> {
   const access = sheetAccess(user);
-  const store = getStore();
   const requests = [request, ...siblings].sort(
     (a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
   );
+  const rows = await loadSheetInputs(user, requests);
+  // Pagamento do cliente: só com acesso à venda na ficha e pela regra do
+  // pedido (o cliente vê a forma aprovada; a Wellmix, quem vê valores…).
+  const payments = await Promise.all(
+    rows.map((inputs) =>
+      access.sale && inputs.order
+        ? customerPaymentView(user, inputs.order)
+        : Promise.resolve(null),
+    ),
+  );
+  return {
+    access,
+    rows: rows.map((inputs, i) =>
+      buildSheetRow(
+        { ...inputs, customerPayment: payments[i] },
+        access,
+        t,
+        inputs.request.id === request.id,
+      ),
+    ),
+  };
+}
+
+/**
+ * O que alimenta a ficha de cada solicitação (só o que o perfil pode ver),
+ * na ordem recebida: produto, ficha mestre, pedido, negociação, Book,
+ * fornecedor. A Estratégia de compra lê a embalagem pelas mesmas entradas
+ * (`packingFactsOf`).
+ */
+export async function loadSheetInputs(
+  user: User,
+  requests: readonly Request[],
+): Promise<SheetInputs[]> {
+  const access = sheetAccess(user);
+  const store = getStore();
   const productIds = [
     ...new Set(requests.map((r) => r.productId).filter((v): v is string => !!v)),
   ];
@@ -1460,24 +1655,5 @@ export async function loadRequestSheet(
     };
     return inputs;
   });
-  // Pagamento do cliente: só com acesso à venda na ficha e pela regra do
-  // pedido (o cliente vê a forma aprovada; a Wellmix, quem vê valores…).
-  const payments = await Promise.all(
-    rows.map((inputs) =>
-      access.sale && inputs.order
-        ? customerPaymentView(user, inputs.order)
-        : Promise.resolve(null),
-    ),
-  );
-  return {
-    access,
-    rows: rows.map((inputs, i) =>
-      buildSheetRow(
-        { ...inputs, customerPayment: payments[i] },
-        access,
-        t,
-        inputs.request.id === request.id,
-      ),
-    ),
-  };
+  return rows;
 }
