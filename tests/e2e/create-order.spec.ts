@@ -3,30 +3,26 @@ import { login } from "./helpers";
 
 /*
  * "Criar pedido" (dono, 14/11/2026): a entrada da encomenda do cliente
- * (/app/requests/new) aparece no Overview do bloco Pedido, no passo Pedidos
- * e na lista de pedidos para a Wellmix; o cliente tem o link no menu e o
+ * (/app/requests/new) aparece no Overview do bloco Pedido e na lista de
+ * pedidos para a Wellmix (no passo Pedidos, não: dono, 18/11/2026); o cliente tem o link no menu e o
  * botão na lista; o fornecedor não vê o botão.
  */
 test("Criar pedido: Wellmix e cliente chegam à encomenda", async ({ page }) => {
   await login(page, "admin@wellmix.com");
-  for (const path of [
-    "/app/flow/order",
-    "/app/flow/order/orders",
-    "/app/orders",
-  ]) {
+  for (const path of ["/app/flow/order", "/app/orders"]) {
     await page.goto(path);
     const button = page.locator("[data-create-order]");
     await expect(button).toBeVisible();
     await expect(button).toHaveAttribute("href", "/app/requests/new");
   }
-  // Aba "Todos no passo" (paginada) abre.
+  // O passo Pedidos não tem mais o botão (dono, 18/11/2026); a aba "Todos
+  // no passo" (paginada) abre.
   await page.goto("/app/flow/order/orders?tab=all");
   await expect(page.locator('[data-flow-tab="all"]')).toHaveAttribute(
     "aria-current",
     "page",
   );
-  await page.locator("[data-create-order]").click();
-  await page.waitForURL(/\/app\/requests\/new/);
+  await expect(page.locator("[data-create-order]")).toHaveCount(0);
 
   await page.context().clearCookies();
   await login(page, "joao@lojista.com");

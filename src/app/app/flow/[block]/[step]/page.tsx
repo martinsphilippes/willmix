@@ -22,7 +22,6 @@ import { FlowAll } from "@/components/flow-all";
 import { isWellmix } from "@/lib/auth/permissions";
 import { partnerStepsOf, stepId } from "@/lib/flow";
 import { FlowCases } from "@/components/flow-cases";
-import { CreateOrderButton } from "@/components/create-order-button";
 import { FlowStepWork } from "@/components/flow-step-work";
 import {
   FlowFreightWork,
@@ -123,13 +122,10 @@ export default async function FlowStepPage({
     ? stepAll.entities
     : ((await flowPartnerAllFor(user)).get(stepId(step)) ?? []);
   const allCount = stepAll ? stepAll.total : entities.length;
-  // Voltar ao Overview (Wellmix) e, no passo Pedidos, "Criar pedido" (dono,
-  // 14/11/2026: a entrada da encomenda do cliente).
+  // Voltar ao Overview (Wellmix). O "Criar pedido" saiu do passo Pedidos
+  // (dono, 18/11/2026); continua no Overview e na lista de pedidos.
   const headerActions = (
     <>
-      {step.block === "order" && step.key === "orders" ? (
-        <CreateOrderButton user={user} t={t} />
-      ) : null}
       {wellmix && FLOW_OVERVIEW_BLOCKS.includes(step.block) ? (
         <TextLink href={overviewHref(step.block)} data-flow-back>
           {t("flow.step.back", { block: t(blockLabelKey(step.block)) })}
