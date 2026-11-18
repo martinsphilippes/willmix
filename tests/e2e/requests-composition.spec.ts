@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { gotoProduct, login, png } from "./helpers";
+import { gotoProduct, login, png, createdRequestId } from "./helpers";
 
 /*
  * Encomendas no nível do pedido (dono, 18/11/2026): a lista sem foto, nome
@@ -25,7 +25,7 @@ async function sendDoll(page: Page) {
   await gen.locator("[data-generate-total]").fill("100");
   await expect(gen.locator("[data-generate-submit]")).toBeHidden();
   await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
-  await page.waitForURL(/\/app\/requests\/(?!new|batch)[^/?]+$/);
+  await createdRequestId(page);
   return new URL(page.url()).pathname.split("/").pop()!;
 }
 
@@ -140,9 +140,7 @@ test("Encomendas: lista no nível do pedido e a página do pedido com os produto
   // A boneca: 48 peças por caixa, 100 caixas.
   await expect(doll.locator("[data-batch-per-box]")).toHaveText("48");
   await expect(doll.locator("[data-batch-boxes]")).toHaveText("100");
-  await expect(
-    doll.locator('[data-chat-open^="request:"]'),
-  ).toHaveCount(1);
+  await expect(doll.locator('[data-chat-open^="request:"]')).toHaveCount(1);
   // O produto abre a tela dele neste pedido, com o caminho de volta.
   await doll.locator(`a[href="/app/requests/${singleId}"]`).first().click();
   await page.waitForURL(new RegExp(`/app/requests/${singleId}$`));

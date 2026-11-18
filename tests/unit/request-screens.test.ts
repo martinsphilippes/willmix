@@ -483,9 +483,19 @@ describe("enviar: o tipo de operação é o da tela", () => {
     for (const [k, v] of Object.entries(fields)) f.set(k, v);
     return f;
   };
+  // Depois de enviar, a página da solicitação (batch/<lote ou id>;
+  // docs/ORDER_LEVEL_LISTS.md): o produto pelo id ou o 1º do lote.
   const lastRequest = async () => {
-    const id = /^\/app\/requests\/([^/?]+)/.exec(h.redirects.at(-1) ?? "")?.[1];
-    return id ? getStore().get("requests", id) : null;
+    const key = /^\/app\/requests\/(?:batch\/)?([^/?]+)/.exec(
+      h.redirects.at(-1) ?? "",
+    )?.[1];
+    if (!key) return null;
+    const id = decodeURIComponent(key);
+    return (
+      (await getStore().get("requests", id)) ??
+      (await getStore().list("requests", { filter: { groupId: id } }))[0] ??
+      null
+    );
   };
 
   it("TS grava TS mesmo com Venda no formulário; Venda grava Venda", async () => {

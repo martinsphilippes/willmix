@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { login } from "./helpers";
+import { login, createdRequestId } from "./helpers";
 
 /*
  * Nova solicitação (dono, 15/11/2026): a ordem Cliente → Programação →
@@ -175,7 +175,7 @@ test("Nova solicitação: Cliente → Programação → Produtos, 1ª data em la
     await row(page, 0).locator("[data-schedule-date]").allInnerTexts(),
   ).toEqual(expected);
   await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
-  await page.waitForURL(/\/app\/requests\/(?!new|batch)[^/?]+$/);
+  await createdRequestId(page);
   const requestId = new URL(page.url()).pathname.split("/").pop()!;
 
   // 9. Reabrir: a solicitação mostra as 4 datas gravadas, a 2 ajustada.

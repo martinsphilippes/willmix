@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login } from "./helpers";
+import { login, createdRequestId } from "./helpers";
 
 /*
  * "Conversar com a empresa" na solicitação (dono, 14/11/2026): o chat abre
@@ -23,7 +23,7 @@ test("solicitação: Conversar com a empresa abre o chat na caixa flutuante", as
     .locator('[data-request-item="0"] [data-selection-quantity]')
     .fill("500");
   await page.getByRole("button", { name: /enviar|send/i }).click();
-  await page.waitForURL(/\/app\/requests\/(?!new|batch)[^/?]+/);
+  await createdRequestId(page);
   const requestPath = new URL(page.url()).pathname;
 
   // A Wellmix abre a solicitação e conversa com a empresa sem sair dela.

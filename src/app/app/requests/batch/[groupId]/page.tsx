@@ -193,24 +193,29 @@ export default async function RequestBatchPage({
           <Alert tone="success">{t("reqAdd.done", { n: count(added) })}</Alert>
         </div>
       ) : null}
-      {createdCount > 1 ? (
-        <div className="mb-3" data-batch-created>
+      {createdCount > 0 ? (
+        <div
+          className="mb-3"
+          role="status"
+          data-batch-created
+          data-cart-sent={fromCart === "1" ? "" : undefined}
+        >
           <Alert tone="success">
             {fromCart === "1"
-              ? `${t("explore.sent")} ${t("reqBatch.created", { n: createdCount })}${
+              ? `${t("explore.sent")} ${createdCount > 1 ? t("reqBatch.created", { n: createdCount }) : ""}`.trim() +
+                `${
                   typeof sale === "string" && /^\d{1,9}$/.test(sale)
                     ? ` ${t("demand.cart.saleSent", { n: sale })}`
                     : ""
                 }`
-              : t("reqBatch.created", { n: createdCount })}
+              : createdCount > 1
+                ? t("reqBatch.created", { n: createdCount })
+                : t("reqBatch.createdOne")}
           </Alert>
         </div>
       ) : null}
       <p className="mb-1 text-sm text-zinc-600">{t("reqBatch.pageHint")}</p>
-      <p
-        className="mb-3 text-sm font-medium text-zinc-800"
-        data-batch-summary
-      >
+      <p className="mb-3 text-sm font-medium text-zinc-800" data-batch-summary>
         {t("reqBatch.summary", {
           products: distinctProducts,
           rounds: rounds.rounds,
