@@ -130,6 +130,9 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
     .locator('[data-order-terms-carrier-caller-option="customer"]')
     .check();
   await expect(terms.locator("[data-order-terms-carrier]")).toHaveCount(0);
+  // O valor do transporte continua (tem custo de toda forma; dono,
+  // 18/11/2026); só a escolha da transportadora sai.
+  await expect(terms.locator("[data-order-terms-freight]")).toBeVisible();
   await expect(
     terms.locator("[data-order-terms-carrier-caller-hint]"),
   ).toContainText("porto ao cliente");

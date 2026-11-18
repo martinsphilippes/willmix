@@ -291,6 +291,11 @@ Vale para as três telas (Encomendas, TS e Venda), que usam o mesmo código (`sr
 - Quem não está na equipe (um representante externo, quando houver) segue com todos os contatos obrigatórios, como antes.
 - Código: `contactsOptionalFor` (src/lib/services/customer-contacts.ts) e `contactIssues(..., { optional })` (src/lib/order-terms.ts).
 
+## 11.15 Todos os logins do cliente e o valor do transporte (dono, 18/11/2026)
+
+- **Login do cliente com acesso não se escolhe mais** na Nova solicitação (Encomendas, TS e Venda): o campo só mostra "Todos os logins do cliente (N)". A venda da Wellmix sem login escolhido (`requestedForUserId` nulo, com as condições do pedido) vai para **todos os logins daquele cliente**: qualquer um vê a solicitação, confirma o pedido e recebe o aviso de confirmar (`forAllCustomerLogins` em src/lib/auth/permissions.ts, `canConfirm` e `notifyCustomerToConfirm`). As solicitações antigas sem as condições do pedido e as com um login escolhido seguem como antes. O pedido (depois da confirmação) segue a regra de antes para o cliente.
+- **Valor do transporte (R$) também quando o cliente chama o transportador:** só a escolha da transportadora sai; o valor aparece, entra na previsão de preço e é gravado em `orderTerms.deliveryFreightBrl` (antes, só quando a Wellmix chamava ou no formato WD).
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

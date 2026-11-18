@@ -41,6 +41,9 @@ export const pt = {
     "Este cliente não tem login no portal. Só o administrador cria o login (Cadastros → Clientes).",
   "requestPeople.accessStock": "Compra para estoque: sem acesso de cliente.",
   "requestPeople.self": "O seu login: você vê a solicitação e o pedido.",
+  "requestPeople.accessAll": "Todos os logins do cliente ({n})",
+  "requestPeople.accessAllHint":
+    "A solicitação vai para todos os logins deste cliente: qualquer um deles vê e confirma o pedido.",
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
@@ -82,6 +85,9 @@ export const en: Record<keyof typeof pt, string> = {
     "This customer has no portal login. Only the administrator creates logins (Registers → Customers).",
   "requestPeople.accessStock": "Stock purchase: no customer access.",
   "requestPeople.self": "Your login: you see the request and the order.",
+  "requestPeople.accessAll": "All of the customer's logins ({n})",
+  "requestPeople.accessAllHint":
+    "The request goes to every login of this customer: any of them can see and confirm the order.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -118,4 +124,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "该客户没有门户账号。只有管理员可以创建（登记 → 客户）。",
   "requestPeople.accessStock": "库存采购：无客户访问。",
   "requestPeople.self": "您的账号：您可以查看申请和订单。",
+  "requestPeople.accessAll": "该客户的所有登录（{n}）",
+  "requestPeople.accessAllHint":
+    "该申请会发送给该客户的所有登录：任何一个都可以查看并确认订单。",
 };

@@ -368,10 +368,9 @@ async function createRequest(
         orderTerms.paymentPlan = await resolveRequestPaymentPlan(
           str(form, "paymentPlanId"),
         );
-        // O login do cliente com acesso é obrigatório na venda: é ele quem
-        // confirma o pedido (dono, 15/11/2026).
-        if (!str(form, "requestedForUserId"))
-          throw new Error("access_required");
+        // Login do cliente com acesso: não é mais obrigatório (dono,
+        // 18/11/2026). Sem ele, a solicitação vai para todos os logins do
+        // cliente (veem, confirmam e recebem o aviso; forAllCustomerLogins).
         await assertProductsMatchOrigin(
           items.map((i) => i.productId),
           orderTerms,
