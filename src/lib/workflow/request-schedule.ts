@@ -175,7 +175,14 @@ export function parseRequestSchedule(
    * pode ficar sem quantidade numa delas (0 ou em branco). O total do
    * produto continua maior que zero.
    */
-  options: { allowZero?: boolean } = {},
+  options: {
+    allowZero?: boolean;
+    /**
+     * Rascunho (dono, 18/11/2026): a programação volta como foi salva, com as
+     * quantidades ainda em branco (ou inválidas) como zero.
+     */
+    draft?: boolean;
+  } = {},
 ): RequestSchedule | null {
   const get = (k: string) => {
     const v = form.get(`${prefix}schedule.${k}`);
@@ -195,22 +202,27 @@ export function parseRequestSchedule(
   const pins: Array<string | null> = [];
   for (let i = 1; i <= count; i++) {
     const raw = get(`qty.${i}`);
+    const parsed =
+      (options.allowZero || options.draft) && raw === ""
+        ? 0
+        : Number(raw.replace(",", "."));
     const q =
-      options.allowZero && raw === "" ? 0 : Number(raw.replace(",", "."));
+      options.draft && (!Number.isFinite(parsed) || parsed < 0) ? 0 : parsed;
     if (
       !Number.isFinite(q) ||
       q < 0 ||
-      (q === 0 && !options.allowZero) ||
+      (q === 0 && !options.allowZero && !options.draft) ||
       q > 100_000_000
     )
       throw new Error("invalid_input");
     quantities.push(q);
     const pin = get(`manual.${i}`) === "1" ? get(`date.${i}`) : "";
-    if (pin && (!DAY.test(pin) || Number.isNaN(Date.parse(pin))))
-      throw new Error("invalid_input");
-    pins.push(pin || null);
+    const badPin = !!pin && (!DAY.test(pin) || Number.isNaN(Date.parse(pin)));
+    if (badPin && !options.draft) throw new Error("invalid_input");
+    pins.push(pin && !badPin ? pin : null);
   }
-  if (!quantities.some((q) => q > 0)) throw new Error("invalid_input");
+  if (!options.draft && !quantities.some((q) => q > 0))
+    throw new Error("invalid_input");
   return buildSchedule({ intervalDays, firstDate, quantities, pins });
 }
 

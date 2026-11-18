@@ -40,6 +40,13 @@ export function RequestDraftAutosave({
     let busy = false;
     let again = false;
     let sentAt = 0;
+    // Só grava depois de uma ação da pessoa na tela (dono, 18/11/2026): abrir
+    // um rascunho (e a tela se completar sozinha, com as fichas que chegam)
+    // nunca grava por cima do que foi salvo.
+    let touched = false;
+    const onUser = (event: Event) => {
+      if (event.isTrusted) touched = true;
+    };
     const snapshotOf = () => {
       const entries: Array<[string, string]> = [];
       for (const [k, v] of new FormData(form).entries())
@@ -57,7 +64,7 @@ export function RequestDraftAutosave({
       last = JSON.stringify(snapshotOf());
     }, 600);
     const save = async () => {
-      if (Date.now() - sentAt < 8000) return;
+      if (!touched || Date.now() - sentAt < 8000) return;
       if (busy) {
         again = true;
         return;
@@ -112,6 +119,8 @@ export function RequestDraftAutosave({
     // Produto que entra ou sai pela lupa ou pelo histórico (sem digitação).
     const observer = new MutationObserver(schedule);
     observer.observe(form, { childList: true, subtree: true });
+    for (const type of ["pointerdown", "keydown", "input", "change"])
+      document.addEventListener(type, onUser, true);
     document.addEventListener("input", onField, true);
     document.addEventListener("change", onField, true);
     document.addEventListener(REQUEST_DRAFT_TOUCH, schedule);
@@ -121,6 +130,8 @@ export function RequestDraftAutosave({
       clearTimeout(timer);
       clearTimeout(baseline);
       observer.disconnect();
+      for (const type of ["pointerdown", "keydown", "input", "change"])
+        document.removeEventListener(type, onUser, true);
       document.removeEventListener("input", onField, true);
       document.removeEventListener("change", onField, true);
       document.removeEventListener(REQUEST_DRAFT_TOUCH, schedule);

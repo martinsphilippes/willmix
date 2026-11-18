@@ -29,33 +29,51 @@ const ROW = /^p(\d+)\.(productId|productName|description|quantity)$/;
 /** Teto de produtos por formulário (a tela não chega perto; protege o servidor). */
 export const MAX_REQUEST_ITEMS = 30;
 
-export function parseRequestItems(form: FormData): RequestItemFields[] {
+export function parseRequestItems(
+  form: FormData,
+  /**
+   * Rascunho (dono, 18/11/2026): o formulário volta como foi salvo, mesmo
+   * incompleto. Uma programação ainda sem quantidade (ou de outro produto)
+   * não derruba os produtos: a linha volta sem ela. O envio segue estrito.
+   */
+  options: { lenient?: boolean } = {},
+): RequestItemFields[] {
   const indices = new Set<number>();
   for (const key of form.keys()) {
     const m = ROW.exec(key);
     if (m) indices.add(Number(m[1]));
   }
-  if (indices.size > MAX_REQUEST_ITEMS) throw new Error("too_many_products");
+  if (indices.size > MAX_REQUEST_ITEMS && !options.lenient)
+    throw new Error("too_many_products");
   const text = (key: string) => {
     const v = form.get(key);
     return typeof v === "string" ? v.trim() : "";
   };
   return [...indices]
     .sort((a, b) => a - b)
+    .slice(0, options.lenient ? MAX_REQUEST_ITEMS : undefined)
     .map((index) => {
       const p = `p${index}.`;
       const qty = text(`${p}quantity`).replace(",", ".");
       const productId = text(`${p}productId`) || null;
       const variantId = text(`${p}variantId`) || null;
-      const schedule = parseRequestSchedule(form, p, undefined, {
-        allowZero: true,
-      });
+      let schedule: RequestSchedule | null = null;
+      try {
+        schedule = parseRequestSchedule(form, p, undefined, {
+          allowZero: true,
+          draft: options.lenient,
+        });
+      } catch (error) {
+        if (!options.lenient) throw error;
+      }
       // Programação gerada para outro produto (trocado depois de gerar): a
       // tela já tira; o servidor recusa se ainda vier (dono, 14/11/2026).
       const scheduleFor = text(`${p}schedule.for`);
       const current = productId ? `${productId}:${variantId ?? ""}` : "outside";
-      if (schedule && scheduleFor && scheduleFor !== current)
-        throw new Error("schedule_product_changed");
+      if (schedule && scheduleFor && scheduleFor !== current) {
+        if (!options.lenient) throw new Error("schedule_product_changed");
+        schedule = null;
+      }
       return {
         index,
         productId,
@@ -63,7 +81,10 @@ export function parseRequestItems(form: FormData): RequestItemFields[] {
         productName: text(`${p}productName`),
         description: text(`${p}description`),
         specification: text(`${p}specification`) || null,
-        quantity: qty === "" ? null : Number(qty),
+        quantity:
+          qty === "" || (options.lenient && !Number.isFinite(Number(qty)))
+            ? null
+            : Number(qty),
         unit: text(`${p}unit`) || "un",
         sourcingDemand: form.get(`${p}sourcingDemand`) === "on",
         schedule,
