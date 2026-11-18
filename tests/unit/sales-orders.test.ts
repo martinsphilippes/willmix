@@ -527,6 +527,29 @@ describe("venda", () => {
     expect(after.salesFreight).toBe(120);
     expect(after.cost).toBe((before.cost ?? 0) + 120);
     expect(after.margin).toBe((before.margin ?? 0) - 120);
+    // Linha própria no Financeiro do pedido: total e a ordem de venda.
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { translator } = await import("@/i18n");
+    const { SalesFreightLine } =
+      await import("@/app/app/orders/[id]/_components/sales-freight-line");
+    const html = renderToStaticMarkup(
+      (await SalesFreightLine({
+        order: po,
+        finance: after,
+        t: translator("pt") as never,
+      }))!,
+    );
+    expect(html).toContain("Frete das ordens de venda (no custo)");
+    expect(html).toContain(`Ordem de venda #${order.number}`);
+    expect(html).toContain("Transportes Margem");
+    expect(html).toContain("a pagar");
+    expect(
+      await SalesFreightLine({
+        order: po,
+        finance: before,
+        t: translator("pt") as never,
+      }),
+    ).toBeNull();
     // Venda em outra moeda sem câmbio do dia: o custo fica pendente.
     const usd = computeOrderFinance(
       { ...po, sellCurrency: "USD", fobCurrency: "USD" },
