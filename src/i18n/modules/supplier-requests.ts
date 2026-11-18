@@ -415,6 +415,10 @@ export const pt = {
     "{n} solicitações · {products} produtos distintos",
   "supplierRequests.col.products": "Produtos distintos",
   "supplierRequests.col.finishedAt": "Finalizada em",
+  "supplierRequests.col.rounds": "# programações",
+  "supplierRequests.col.containersPerRound": "Containers por programação",
+  "supplierRequests.col.containersHint":
+    'Pela caixa master e o CBM de cada produto, em containers {code}. "—" quando falta a caixa master ou o CBM de algum produto.',
   "supplierRequests.list.finishedLate": "Em atraso",
   "supplierRequests.list.finishedOnTime": "Dentro do SLA",
   "supplierRequests.table.col.cond.state": "Situação",
@@ -870,6 +874,10 @@ export const en: typeof pt = {
   "supplierRequests.list.count": "{n} requests · {products} distinct products",
   "supplierRequests.col.products": "Distinct products",
   "supplierRequests.col.finishedAt": "Finished on",
+  "supplierRequests.col.rounds": "# rounds",
+  "supplierRequests.col.containersPerRound": "Containers per round",
+  "supplierRequests.col.containersHint":
+    'From each product\'s master carton and CBM, in {code} containers. "—" when a product has no master carton or CBM.',
   "supplierRequests.list.finishedLate": "Late",
   "supplierRequests.list.finishedOnTime": "Within SLA",
   "supplierRequests.table.col.cond.state": "Status",
@@ -1303,6 +1311,10 @@ export const zh: typeof pt = {
   "supplierRequests.list.count": "{n} 个询单 · {products} 个不同产品",
   "supplierRequests.col.products": "不同产品",
   "supplierRequests.col.finishedAt": "完成时间",
+  "supplierRequests.col.rounds": "批次数",
+  "supplierRequests.col.containersPerRound": "每批集装箱数",
+  "supplierRequests.col.containersHint":
+    '按每个产品的外箱装量和外箱体积，以 {code} 集装箱计算。某个产品缺少外箱装量或体积时显示 "—"。',
   "supplierRequests.list.finishedLate": "超时",
   "supplierRequests.list.finishedOnTime": "在 SLA 内",
   "supplierRequests.table.col.cond.state": "状态",

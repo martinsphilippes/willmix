@@ -15,6 +15,7 @@ import {
   cx,
   inputDenseClass,
   linkClass,
+  OpenLink,
   rowClass,
   type Tone,
 } from "./ui";
@@ -117,6 +118,12 @@ export interface OrdersTableRow {
   subtitle: string | null;
   isRequest: boolean;
   product: string;
+  /**
+   * Produtos diferentes (SKUs) do pedido: a lista é no nível do pedido (dono,
+   * 18/11/2026), sem o nome do produto; os produtos ficam nos itens embaixo
+   * e na página do pedido.
+   */
+  productCount?: number;
   customer: string;
   supplier: string;
   phase: string;
@@ -141,6 +148,8 @@ export interface OrdersTableRow {
 export interface OrdersTableLabels {
   number: string;
   product: string;
+  /** "Produtos" (contagem de SKUs, no lugar do nome do produto). */
+  products?: string;
   customer: string;
   supplier: string;
   phase: string;
@@ -457,7 +466,7 @@ export function OrdersTable({
         <thead>
           <tr>
             {head("number", labels.number, "w-24")}
-            {head("product", labels.product)}
+            {head("product", labels.products ?? labels.product)}
             {showCustomer ? head("customer", labels.customer) : null}
             {showSupplier ? head("supplier", labels.supplier) : null}
             {head("phase", labels.phase)}
@@ -599,20 +608,12 @@ export function OrdersTable({
                       </span>
                     ) : null}
                   </td>
-                  <td className="min-w-40 px-2.5 py-2 font-medium text-zinc-900">
-                    <Link href={r.href} className="hover:underline">
-                      {r.product}
-                    </Link>
-                    {r.items.length > 1 ? (
-                      <span className="ml-1.5 whitespace-nowrap text-xs font-normal text-zinc-500">
-                        {r.items.length === 2
-                          ? labels.moreItem
-                          : labels.moreItems.replace(
-                              "{n}",
-                              String(r.items.length - 1),
-                            )}
-                      </span>
-                    ) : null}
+                  <td
+                    className="whitespace-nowrap px-2.5 py-2 text-right tabular-nums"
+                    title={r.product}
+                    data-orders-products={r.productCount ?? r.items.length}
+                  >
+                    {r.productCount ?? r.items.length}
                   </td>
                   {showCustomer ? (
                     <td className="min-w-32 px-2.5 py-2">
@@ -652,6 +653,11 @@ export function OrdersTable({
                   </td>
                   {/* Conversa do pedido/solicitação: sempre na última coluna. */}
                   <td className="whitespace-nowrap px-2.5 py-2 text-right">
+                    <OpenLink
+                      href={r.href}
+                      label={r.isRequest ? labels.openRequest : labels.openOrder}
+                      className="align-middle"
+                    />
                     {chatTargetFromHref(r.href) ? (
                       <ChatOpenButton
                         target={chatTargetFromHref(r.href)!}
@@ -749,9 +755,10 @@ function ItemsPanel({
             : labels.items}
         </h2>
         {row ? (
-          <Link href={row.href} className={cx(linkClass, "text-sm")}>
-            {row.isRequest ? labels.openRequest : labels.openOrder} →
-          </Link>
+          <OpenLink
+            href={row.href}
+            label={row.isRequest ? labels.openRequest : labels.openOrder}
+          />
         ) : null}
       </header>
       {!row ? (

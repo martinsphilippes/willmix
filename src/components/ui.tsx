@@ -101,6 +101,55 @@ export function TextLink({
   );
 }
 
+/** Seta de "abrir" (caixa com seta para fora), no traço do ícone de chat. */
+export function OpenIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
+      <path d="M14 4h6v6" />
+      <path d="M20 4 11 13" />
+      <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+    </svg>
+  );
+}
+
+/**
+ * Abrir numa tabela (dono, 18/11/2026): só o ícone, sem a palavra "Abrir".
+ * `label` vira o nome acessível e a dica (title), então quem procura o link
+ * pelo texto ("Abrir", "Abrir pedido") continua achando. A primeira coluna
+ * da linha também leva ao mesmo lugar.
+ */
+export function OpenLink({
+  label,
+  className,
+  prefetch,
+  ...props
+}: Omit<ComponentProps<typeof Link>, "children"> & { label: string }) {
+  return (
+    <Link
+      {...props}
+      prefetch={noPrefetch(props.href, prefetch)}
+      aria-label={label}
+      title={label}
+      data-open-link=""
+      className={cx(
+        "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-400 transition hover:bg-brand-50 hover:text-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
+        className,
+      )}
+    >
+      <OpenIcon />
+    </Link>
+  );
+}
+
 export function Card({
   className,
   title,

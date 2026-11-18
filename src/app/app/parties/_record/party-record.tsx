@@ -38,6 +38,7 @@ import {
   Table,
   Td,
   Textarea,
+  OpenLink,
   TextLink,
   Th,
   formatDate,
@@ -948,7 +949,12 @@ export async function renderPartyRecord({
                   {visits.map((v) => (
                     <tr key={v.id} className={rowClass}>
                       <Td className="whitespace-nowrap">
-                        {formatDate(v.visitedAt, t)}
+                        <TextLink
+                          href={`/app/sourcing/visits/${v.id}`}
+                          className="text-zinc-900 no-underline hover:underline"
+                        >
+                          {formatDate(v.visitedAt, t)}
+                        </TextLink>
                       </Td>
                       <Td>
                         {[v.factoryName, v.location, v.city]
@@ -968,9 +974,10 @@ export async function renderPartyRecord({
                         </Badge>
                       </Td>
                       <Td className="whitespace-nowrap">
-                        <TextLink href={`/app/sourcing/visits/${v.id}`}>
-                          {t("catalog.party.visit.open")}
-                        </TextLink>
+                        <OpenLink
+                          href={`/app/sourcing/visits/${v.id}`}
+                          label={t("catalog.party.visit.open")}
+                        />
                       </Td>
                     </tr>
                   ))}

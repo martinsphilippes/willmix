@@ -22,6 +22,7 @@ import {
   PageHeader,
   Table,
   Td,
+  OpenLink,
   TextLink,
   Th,
   cx,
@@ -30,7 +31,7 @@ import {
   linkClass,
   rowClass,
 } from "@/components/ui";
-import { AccountBar, IconLink, TabLink } from "@/components/customer-account";
+import { AccountBar, TabLink } from "@/components/customer-account";
 import { describeTerms } from "@/components/supplier-terms-text";
 import { parseTerms } from "@/lib/supplier-terms";
 import { supplierLineIds } from "@/lib/services/purchase-quote";
@@ -322,9 +323,8 @@ export async function PartyAccountDetail({
                     </Td>
                     <Td className="whitespace-nowrap text-right">
                       {/* Pedido completo (etapas, aprovações, registros). */}
-                      <IconLink
+                      <OpenLink
                         href={`/app/orders/${r.orderId}`}
-                        icon="eye"
                         label={t("sale.openFull")}
                       />
                       <ChatOpenButton

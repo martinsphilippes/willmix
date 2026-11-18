@@ -24,7 +24,7 @@ import {
   Alert,
   Badge,
   Empty,
-  LinkButton,
+  OpenLink,
   PageHeader,
   Table,
   Td,
@@ -608,14 +608,10 @@ export function TaskItems({
               </Td>
               <Td className="whitespace-nowrap text-right">
                 <span className="inline-flex items-center gap-1.5">
-                  <LinkButton
+                  <OpenLink
                     href={task.link}
-                    variant="primary"
-                    className="min-h-8 px-3 py-1 text-xs"
-                  >
-                    {t("tasks.open")}
-                    <span className="sr-only">: {title}</span>
-                  </LinkButton>
+                    label={`${t("tasks.open")}: ${title}`}
+                  />
                   {/* Conversa do pedido/solicitação: sempre no fim da linha. */}
                   {(task.chat ?? chatTargetFromHref(task.link)) ? (
                     <ChatOpenButton

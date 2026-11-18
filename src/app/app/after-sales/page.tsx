@@ -19,6 +19,7 @@ import {
   Badge,
   Empty,
   PageHeader,
+  OpenLink,
   TextLink,
   cx,
   formatDate,
@@ -211,12 +212,10 @@ export default async function AfterSalesPage({
                     </p>
                   </div>
                   {orderHref ? (
-                    <TextLink
+                    <OpenLink
                       href={orderHref}
-                      className="whitespace-nowrap text-sm"
-                    >
-                      {t("afterSales.openOrder")} →
-                    </TextLink>
+                      label={t("afterSales.openOrder")}
+                    />
                   ) : null}
                 </div>
                 <dl className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
