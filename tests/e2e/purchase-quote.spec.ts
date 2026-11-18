@@ -44,7 +44,7 @@ async function answer(
 ) {
   await login(page, email);
   await page.goto("/app/purchase-quotes");
-  await page.locator(`[data-quote-invite="${quoteId}"] a`).click();
+  await page.locator(`[data-quote-invite="${quoteId}"] a`).first().click();
   await page.waitForURL(new RegExp(`/app/purchase-quotes/${quoteId}`));
   const form = page.locator("[data-quote-answer-form]");
   await form.locator('[data-quote-price="prod-jarra"]').fill(price);

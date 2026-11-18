@@ -121,7 +121,7 @@ A visão é do passo e das necessidades operacionais dele, não do pedido inteir
 
 ## Criar pedido (14/11/2026)
 
-- A encomenda do cliente entra por `/app/requests/new`. Com a lista `/app/requests` fora do menu (MENU_HIDDEN), o botão **+ Criar pedido** fica no cabeçalho do Overview do bloco Pedido (`/app/flow/order`), do passo Pedidos (`/app/flow/order/orders`, nas duas abas) e da lista `/app/orders`.
+- A encomenda do cliente entra por `/app/requests/new`. Com a lista `/app/requests` fora do menu (MENU_HIDDEN), o botão **+ Criar pedido** fica no cabeçalho do Overview do bloco Pedido (`/app/flow/order`), e da lista `/app/orders`. Até 18/11/2026 ficava também no passo Pedidos (`/app/flow/order/orders`); o dono pediu para tirar de lá.
 - Aparece para quem cria: a Wellmix e o cliente, com a tela de solicitações liberada (`canCreateOrder`). Fornecedor e parceiros da operação não veem.
 - O cliente tem também o link "Criar pedido" no grupo "Meus pedidos" do menu.
 

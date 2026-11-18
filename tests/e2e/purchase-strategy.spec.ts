@@ -90,15 +90,24 @@ async function firstPurchase(page: Page): Promise<string> {
   await page.goto(itemUrl);
   await page.click("[data-request-product-release]");
   await page.waitForURL(/[?&]product=released/);
-  await page.goto("/app/supplier-requests");
+  await page.goto("/app/supplier-requests?tab=closed");
+  await page.locator(`[data-request-to-order="${requestId}"]`).click();
+  await page.waitForURL(/[?&]pick=/);
+  // O quadro "Gerar pedido de compra" abre com só esta solicitação marcada;
+  // outras do mesmo fornecedor podem ser marcadas para entrar juntas.
   const group = page.locator(
     `form:has([data-purchase-candidate="${requestId}"])`,
   );
-  const others = group.locator(
-    `[data-purchase-candidate]:not([data-purchase-candidate="${requestId}"]) input[type=checkbox]`,
-  );
-  for (let i = 0; i < (await others.count()); i++)
-    await others.nth(i).uncheck();
+  await expect(
+    group.locator(
+      `[data-purchase-candidate="${requestId}"] input[type=checkbox]`,
+    ),
+  ).toBeChecked();
+  await expect(
+    group.locator(
+      `[data-purchase-candidate]:not([data-purchase-candidate="${requestId}"]) input[type=checkbox]:checked`,
+    ),
+  ).toHaveCount(0);
   await group.locator("[data-purchase-submit]").click();
   await page.waitForURL(/\/app\/orders\/[^/?]+\?purchase=created/);
   return page.url().split("?")[0];
@@ -201,9 +210,10 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   await expect(page.locator("main")).not.toContainText("Shenzhen");
   await login(page, "operador@wellmix.com");
   // Ainda encomenda: está na lista de Encomendas, esperando o envio.
+  // (a linha abre a página do pedido; docs/ORDER_LEVEL_LISTS.md)
   await page.goto("/app/requests");
   await expect(
-    page.locator(`a[href="/app/requests/${encomenda}"]`).first(),
+    page.locator(`a[href="/app/requests/batch/${encomenda}"]`).first(),
   ).toBeVisible();
   // Só entra na Estratégia de Compra depois de "Enviar para cotação".
   await page.goto("/app/purchase-strategy");

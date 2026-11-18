@@ -520,9 +520,17 @@ export function SupplierRequestTable({
                   />
                 </Td>
                 <Td className={cx(nowrap, "tabular-nums font-medium")}>
-                  {r.batchId && rows.length > 1
-                    ? `${r.number}.${index + 1}`
-                    : r.number}
+                  {/* O número e o nome abrem o produto nesta solicitação,
+                      como o ícone de abrir (dono, 18/11/2026). */}
+                  <Link
+                    href={href}
+                    className="text-brand-700 hover:underline"
+                    data-supplier-table-number={r.id}
+                  >
+                    {r.batchId && rows.length > 1
+                      ? `${r.number}.${index + 1}`
+                      : r.number}
+                  </Link>
                   {current ? (
                     <span className="mt-1 block">
                       <Badge tone="info">{k("current")}</Badge>
@@ -530,9 +538,12 @@ export function SupplierRequestTable({
                   ) : null}
                 </Td>
                 <Td>
-                  <span className="block min-w-48 max-w-72 whitespace-normal font-medium text-zinc-900">
+                  <Link
+                    href={href}
+                    className="block min-w-48 max-w-72 whitespace-normal font-medium text-zinc-900 hover:text-brand-700 hover:underline"
+                  >
                     {name}
-                  </span>
+                  </Link>
                   {details.length || wellmix ? (
                     <details
                       className="group/specs mt-1 min-w-48 max-w-72 text-xs"

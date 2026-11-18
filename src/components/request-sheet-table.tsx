@@ -8,7 +8,7 @@ import type {
   SheetRow,
   SheetSource,
 } from "@/lib/services/request-sheet";
-import { cx, formatDate, TextLink } from "./ui";
+import { cx, formatDate, OpenLink, TextLink } from "./ui";
 
 /*
  * "Solicitações" no detalhe da solicitação (dono, 15/11/2026;
@@ -160,14 +160,16 @@ function Cell({
 function ProductName({ row, t }: { row: SheetRow; t: Translate }) {
   return (
     <>
-      <span
-        className={cx(
-          "font-medium",
-          row.current ? "text-zinc-900" : "text-zinc-700",
-        )}
-      >
-        {row.name}
-      </span>
+      {row.current ? (
+        <span className="font-medium text-zinc-900">{row.name}</span>
+      ) : (
+        <TextLink
+          href={`/app/requests/${row.requestId}`}
+          className="font-medium text-zinc-700 no-underline hover:underline"
+        >
+          {row.name}
+        </TextLink>
+      )}
       {row.code ? (
         <span
           className="ml-1.5 whitespace-nowrap text-xs tabular-nums text-zinc-500"
@@ -186,13 +188,12 @@ function ProductName({ row, t }: { row: SheetRow; t: Translate }) {
           {t("requestSheet.thisRequest")}
         </span>
       ) : (
-        <TextLink
+        <OpenLink
           href={`/app/requests/${row.requestId}`}
-          className="mt-0.5 block text-[11px]"
+          label={t("requestSheet.openRequest")}
+          className="ml-1.5 align-middle"
           data-sheet-open-request
-        >
-          {t("requestSheet.openRequest")} →
-        </TextLink>
+        />
       )}
     </>
   );

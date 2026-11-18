@@ -25,6 +25,7 @@ import {
   Empty,
   Field,
   LinkButton,
+  OpenLink,
   PageHeader,
   Select,
   Stat,
@@ -379,12 +380,10 @@ export default async function MarketingPage({
                       {formatDate(kit.releasedAt, t)}
                     </Td>
                     <Td className="text-right">
-                      <TextLink
+                      <OpenLink
                         href={`/app/marketing/${kit.id}`}
-                        className="whitespace-nowrap"
-                      >
-                        {t("marketing.open")}
-                      </TextLink>
+                        label={t("marketing.open")}
+                      />
                     </Td>
                   </tr>
                 ))}

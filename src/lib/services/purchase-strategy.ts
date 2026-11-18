@@ -735,7 +735,8 @@ const unique = <T>(list: readonly (T | null | undefined)[]): T[] => [
 /**
  * Encomendas → "Enviar para cotação": as encomendas marcadas que podem ir
  * (situação Solicitado, ainda não enviadas, visíveis para quem envia) entram
- * na fila da Estratégia de Compra. As outras são contadas e ficam como estão.
+ * na fila da Estratégia de Compra, com os outros produtos da mesma
+ * solicitação (dono, 18/11/2026). As outras são contadas e ficam como estão.
  */
 export async function sendToStrategy(
   user: User,
@@ -745,9 +746,19 @@ export async function sendToStrategy(
   assertScreen(user, "requests");
   const store = getStore();
   const wanted = unique(ids);
-  const rows = wanted.length
+  const picked = wanted.length
     ? await store.list("requests", { filter: { id: wanted } })
     : [];
+  // A solicitação vai inteira (dono, 18/11/2026): um produto marcado leva
+  // os outros do mesmo lote que ainda esperam o envio.
+  const groupIds = unique(picked.map((r) => r.groupId));
+  const siblings = groupIds.length
+    ? await store.list("requests", { filter: { groupId: groupIds } })
+    : [];
+  const rows = [
+    ...picked,
+    ...siblings.filter((r) => !picked.some((p) => p.id === r.id)),
+  ];
   const now = new Date().toISOString();
   const sent: Request[] = [];
   for (const r of rows) {
@@ -785,7 +796,10 @@ export async function sendToStrategy(
         },
       );
   }
-  return { sent, skipped: wanted.length - sent.length };
+  return {
+    sent,
+    skipped: picked.filter((r) => !sent.some((x) => x.id === r.id)).length,
+  };
 }
 
 /** Uma linha da Estratégia de Compra: um produto de uma demanda. */

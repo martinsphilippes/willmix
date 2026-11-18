@@ -5,6 +5,7 @@ import { requireScreen } from "@/lib/auth/guard";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getStore } from "@/lib/db";
+import { canOpen } from "@/lib/auth/screens";
 import { canInvoice, canSell } from "@/lib/services/sales-orders";
 import { listSalesReturns, returnableOf } from "@/lib/services/sales-returns";
 import { canDoQuality } from "@/lib/services/receiving";
@@ -23,6 +24,11 @@ import {
   linkClass,
 } from "@/components/ui";
 import { ProductPicker } from "@/components/product-picker";
+import { PhotoGallery } from "@/components/photo-gallery";
+import { galleryProps } from "@/components/photo-gallery-props";
+import { ChatOpenButton } from "@/components/chat-open-button";
+import { productPhotoList } from "@/lib/services/product-list";
+import { itemLogistics } from "@/lib/services/item-logistics";
 import { productPickerLabels } from "@/components/party-picker-labels";
 import { SubmitButton } from "@/components/submit-button";
 import { ActionError } from "@/components/action-error";
@@ -81,6 +87,26 @@ export default async function SalesOrderPage({
       : Promise.resolve(null),
     store.list("parties", { filter: { type: "carrier", active: true } }),
   ]);
+  // Tabela dos produtos da ordem (dono, 18/11/2026): foto, peças por caixa,
+  // caixas e a conversa sobre o produto. Só os produtos desta ordem.
+  const productIds = [...new Set(order.lines.map((l) => l.productId))];
+  const [products, photos, purchaseItems] = await Promise.all([
+    productIds.length
+      ? store.list("products", { filter: { id: productIds } })
+      : Promise.resolve([]),
+    productIds.length
+      ? store
+          .list("product_photos", { filter: { productId: productIds } })
+          .catch(() => [])
+      : Promise.resolve([]),
+    purchase && productIds.length
+      ? store
+          .list("order_items", { filter: { orderId: purchase.id } })
+          .catch(() => [])
+      : Promise.resolve([]),
+  ]);
+  const productOf = (pid: string) => products.find((p) => p.id === pid) ?? null;
+  const canOpenProducts = canOpen(user, "products");
   const live = order.status !== "draft" && order.status !== "cancelled";
   const out = order.status === "shipped" || order.status === "delivered";
   const carrierName = order.customerPickup
@@ -172,70 +198,140 @@ export default async function SalesOrderPage({
           <Table tools={false}>
             <thead>
               <tr>
+                <Th>
+                  <span className="sr-only">{t("salesOrder.photo")}</span>
+                </Th>
                 <Th>{t("salesOrder.product")}</Th>
                 <Th className="text-right">{t("salesOrder.quantity")}</Th>
+                <Th className="text-right">{t("salesOrder.unitsPerBox")}</Th>
+                <Th className="text-right">{t("salesOrder.boxes")}</Th>
                 <Th className="text-right">
                   {t("salesOrder.unitPrice")} ({order.currency})
                 </Th>
                 <Th>{t("salesOrder.reservation")}</Th>
                 {editable ? <Th>{t("salesOrder.remove")}</Th> : null}
+                <Th>
+                  <span className="sr-only">{t("chat.open")}</span>
+                </Th>
               </tr>
             </thead>
             <tbody>
-              {order.lines.map((l, i) => (
-                <tr key={`${l.productId}-${i}`} data-sales-order-line={i}>
-                  <Td>
-                    <input type="hidden" name="productId" value={l.productId} />
-                    {l.name}
-                  </Td>
-                  <Td className="text-right">
-                    {editable ? (
-                      <Input
-                        dense
-                        name={`quantity_${i}`}
-                        inputMode="decimal"
-                        defaultValue={l.quantity}
-                        className="w-24 text-right"
-                        aria-label={t("salesOrder.quantity")}
-                      />
-                    ) : (
-                      `${l.quantity} ${l.unit}`
-                    )}
-                  </Td>
-                  <Td className="text-right">
-                    {editable ? (
-                      <Input
-                        dense
-                        name={`unitPrice_${i}`}
-                        inputMode="decimal"
-                        defaultValue={l.unitPrice ?? ""}
-                        className="w-28 text-right"
-                        aria-label={t("salesOrder.unitPrice")}
-                      />
-                    ) : (
-                      (l.unitPrice ?? "—")
-                    )}
-                  </Td>
-                  <Td className="text-xs">
-                    {out
-                      ? t("salesOrder.reserved.out")
-                      : order.status !== "confirmed"
-                        ? "—"
-                        : l.reservationId
-                          ? t("salesOrder.reserved.stock")
-                          : t("salesOrder.reserved.arrival")}
-                  </Td>
-                  {editable ? (
-                    <Td>
-                      <input
-                        type="checkbox"
-                        name={`remove_${i}`}
-                        aria-label={t("salesOrder.remove")}
+              {order.lines.map((l, i) => {
+                const product = productOf(l.productId);
+                const logistics = itemLogistics({
+                  quantity: l.quantity,
+                  product,
+                });
+                // Conversa: o item do pedido de compra de onde vem a
+                // mercadoria; senão o pedido de compra. Sem ele, sem ícone.
+                const purchaseItem = purchaseItems.find(
+                  (it) => it.productId === l.productId,
+                );
+                return (
+                  <tr key={`${l.productId}-${i}`} data-sales-order-line={i}>
+                    <Td className="w-14">
+                      <PhotoGallery
+                        name={l.name}
+                        {...galleryProps(
+                          t,
+                          product ? productPhotoList(product, photos) : [],
+                        )}
                       />
                     </Td>
-                  ) : null}
-                </tr>
-              ))}
+                    <Td>
+                      <input
+                        type="hidden"
+                        name="productId"
+                        value={l.productId}
+                      />
+                      {product && canOpenProducts ? (
+                        <Link
+                          href={`/app/products/${product.id}`}
+                          className={linkClass}
+                          data-sales-order-product={l.productId}
+                        >
+                          {l.name}
+                        </Link>
+                      ) : (
+                        l.name
+                      )}
+                    </Td>
+                    <Td className="text-right">
+                      {editable ? (
+                        <Input
+                          dense
+                          name={`quantity_${i}`}
+                          inputMode="decimal"
+                          defaultValue={l.quantity}
+                          className="w-24 text-right"
+                          aria-label={t("salesOrder.quantity")}
+                        />
+                      ) : (
+                        `${l.quantity} ${l.unit}`
+                      )}
+                    </Td>
+                    <Td
+                      className="text-right tabular-nums"
+                      data-sales-order-units-per-box={i}
+                    >
+                      {logistics.unitsPerBox !== null
+                        ? logistics.unitsPerBox.toLocaleString(t.intl)
+                        : "—"}
+                    </Td>
+                    <Td
+                      className="text-right tabular-nums"
+                      data-sales-order-boxes={i}
+                    >
+                      {logistics.unitsPerBox !== null
+                        ? logistics.boxes.toLocaleString(t.intl)
+                        : "—"}
+                    </Td>
+                    <Td className="text-right">
+                      {editable ? (
+                        <Input
+                          dense
+                          name={`unitPrice_${i}`}
+                          inputMode="decimal"
+                          defaultValue={l.unitPrice ?? ""}
+                          className="w-28 text-right"
+                          aria-label={t("salesOrder.unitPrice")}
+                        />
+                      ) : (
+                        (l.unitPrice ?? "—")
+                      )}
+                    </Td>
+                    <Td className="text-xs">
+                      {out
+                        ? t("salesOrder.reserved.out")
+                        : order.status !== "confirmed"
+                          ? "—"
+                          : l.reservationId
+                            ? t("salesOrder.reserved.stock")
+                            : t("salesOrder.reserved.arrival")}
+                    </Td>
+                    {editable ? (
+                      <Td>
+                        <input
+                          type="checkbox"
+                          name={`remove_${i}`}
+                          aria-label={t("salesOrder.remove")}
+                        />
+                      </Td>
+                    ) : null}
+                    <Td>
+                      {purchase ? (
+                        <ChatOpenButton
+                          target={{
+                            orderId: purchase.id,
+                            orderItemId: purchaseItem?.id ?? null,
+                          }}
+                          label={t("chat.open")}
+                        />
+                      ) : null}
+                    </Td>
+                  </tr>
+                );
+              })}
             </tbody>
           </Table>
           <p className="text-sm text-zinc-700">

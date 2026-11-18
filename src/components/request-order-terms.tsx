@@ -230,8 +230,9 @@ export function RequestOrderTerms({
       // O valor do transporte digitado (Wellmix chama) vai no lugar do frete
       // padrão das Configurações (dono, 16/11/2026).
       // No formato WD também (dono, 16/11/2026), mesmo com o cliente chamando.
-      deliveryFreightBrl:
-        caller === "wellmix" || format === "wd" ? freightValue : null,
+      // Com o cliente chamando também (dono, 18/11/2026): o transporte tem
+      // custo de toda forma.
+      deliveryFreightBrl: caller ? freightValue : null,
     });
   }, [format, tier, caller, freightValue, setSaleTerms]);
   // Trocar o país ou a família com produto no pedido (dono, 15/11/2026): o
@@ -533,7 +534,10 @@ export function RequestOrderTerms({
           </div>
           <div className="min-w-0 space-y-3">
             {caller !== "wellmix" ? (
-              format === "wd" ? (
+              // O cliente chama (dono, 18/11/2026): sem escolher a
+              // transportadora, mas o valor do transporte aparece (tem custo
+              // de toda forma).
+              caller ? (
                 freightField
               ) : null
             ) : failed ? (

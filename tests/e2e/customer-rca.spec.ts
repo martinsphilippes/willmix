@@ -15,7 +15,9 @@ import { fillCustomerContacts, fillOrderTerms, login } from "./helpers";
 
 const people = (page: Page) => page.locator("[data-request-people]");
 const rcaField = (page: Page) => page.locator("[data-request-rca]");
-const access = (page: Page) => page.locator("select[data-request-access]");
+// Login do cliente com acesso (dono, 18/11/2026): só mostra que a
+// solicitação vai para todos os logins do cliente.
+const access = (page: Page) => page.locator("[data-request-access-all]");
 const picker = (page: Page) =>
   page.locator('[data-request-customer] [data-party-picker="customer"]');
 
@@ -122,7 +124,8 @@ test("Nova solicitação (Wellmix): RCA do cliente, solicitante e login com aces
   await expect(rcaField(page)).toHaveAttribute("readonly", "");
   // Sem cliente: escolher o cliente.
   await expectRca(page, "pick", "Escolha o cliente para ver o RCA.");
-  await expect(access(page)).toBeDisabled();
+  await expect(access(page)).toHaveValue("");
+  await expect(access(page)).toHaveAttribute("readonly", "");
 
   // RCA ao lado do Solicitante (mesma linha nas telas largas).
   const req = await requester.boundingBox();
@@ -131,27 +134,19 @@ test("Nova solicitação (Wellmix): RCA do cliente, solicitante e login com aces
   expect(Math.abs(req!.y - rca!.y)).toBeLessThan(4);
   expect(rca!.x).toBeGreaterThan(req!.x);
 
-  // Loja do João: RCA Ana; o acesso só com o login do João.
+  // Loja do João: RCA Ana; a solicitação vai para todos os logins dele
+  // (sem escolher; dono, 18/11/2026).
   await chooseCustomer(page, "loja", "cliente-joao");
   await expectRca(page, "ready", "5101 - Ana Representações");
-  await expect(access(page)).toBeEnabled();
-  const accessOptions = await access(page).locator("option").allInnerTexts();
-  // Na venda, o login com acesso é obrigatório (é ele quem confirma o
-  // pedido; docs/ORDER_TERMS.md): sem "Nenhum", a 1ª opção pede a escolha.
-  expect(accessOptions[0]).toBe("Escolha o login do cliente");
-  await expect(access(page)).toHaveAttribute("required", "");
-  expect(accessOptions).toContain("João Cliente (joao@lojista.com)");
-  const joaoLogin = await access(page)
-    .locator("option", { hasText: "joao@lojista.com" })
-    .getAttribute("value");
-  await access(page).selectOption(joaoLogin!);
+  await expect(access(page)).toHaveValue("Todos os logins do cliente (1)");
+  await expect(page.locator('select[name="requestedForUserId"]')).toHaveCount(
+    0,
+  );
 
-  // Trocar para a Wellmix SC: outro RCA (Bruno); o acesso volta para
-  // "Nenhum" e fica desligado (o cliente não tem login).
+  // Trocar para a Wellmix SC: outro RCA (Bruno); sem login no portal.
   await chooseCustomer(page, "wellmix sc", "wellmix-sc");
   await expectRca(page, "ready", "5102 - Bruno Vendas");
   await expect(access(page)).toHaveValue("");
-  await expect(access(page)).toBeDisabled();
   await expect(people(page)).toContainText(
     "Este cliente não tem login no portal.",
   );
@@ -159,11 +154,7 @@ test("Nova solicitação (Wellmix): RCA do cliente, solicitante e login com aces
   // Compra para estoque: sem RCA e sem acesso de cliente; o solicitante fica.
   await page.locator("[data-request-customer] [data-stock-option]").check();
   await expectRca(page, "stock", "Compra para estoque: sem RCA.");
-  await expect(access(page)).toBeDisabled();
-  await expect(access(page)).toHaveAttribute(
-    "data-request-access-state",
-    "stock",
-  );
+  await expect(access(page)).toHaveValue("");
   await expect(requester).toHaveValue("Ana Admin");
   // A compra para estoque tira o cliente da busca (dono, 16/11/2026): ao
   // desmarcar, o campo fica em branco e o RCA espera a escolha.
@@ -176,10 +167,10 @@ test("Nova solicitação (Wellmix): RCA do cliente, solicitante e login com aces
     "pick",
   );
 
-  // De volta ao João: Ana de novo e o acesso em "Nenhum" (não volta sozinho).
+  // De volta ao João: Ana de novo e todos os logins dele.
   await chooseCustomer(page, "loja", "cliente-joao");
   await expectRca(page, "ready", "5101 - Ana Representações");
-  await expect(access(page)).toHaveValue("");
+  await expect(access(page)).toHaveValue("Todos os logins do cliente (1)");
 
   // Cliente sem RCA: tira o RCA do João no cadastro.
   let block = await openParty(page, "cliente-joao");
@@ -190,19 +181,18 @@ test("Nova solicitação (Wellmix): RCA do cliente, solicitante e login com aces
   block = await openParty(page, "cliente-joao");
   await saveRca(page, block, "101");
 
-  // Solicitação aberta pela Wellmix para o João, com o login dele com
-  // acesso: o login escolhido fica gravado e o João vê a solicitação.
+  // Solicitação aberta pela Wellmix para o João, sem escolher login: vai
+  // para todos os logins do cliente, e o João vê a solicitação.
   await page.goto("/app/requests/new");
   await chooseCustomer(page, "loja", "cliente-joao");
   await expectRca(page, "ready", "5101 - Ana Representações");
-  await access(page).selectOption(joaoLogin!);
   // Condições do pedido e contatos do cliente (docs/ORDER_TERMS.md).
   await fillOrderTerms(page);
   await fillCustomerContacts(page, "loja-joao");
   const requestId = await sendDoll(page);
   await expect(
     page.locator('[data-request-requester] select[name="requestedForUserId"]'),
-  ).toHaveValue(joaoLogin!);
+  ).toHaveValue("");
   await login(page, "joao@lojista.com");
   const seen = await page.goto(`/app/requests/${requestId}`);
   expect(seen?.status()).toBe(200);
@@ -231,9 +221,10 @@ test("Nova solicitação aberta pelo próprio cliente: ele é o solicitante e o 
     (await page.request.get("/api/parties/rca?customer=cliente-joao")).status(),
   ).toBe(404);
   const requestId = await sendDoll(page);
-  // Na lista dele, a solicitação que ele abriu.
+  // Na lista dele, a solicitação que ele abriu (a linha abre a página do
+  // pedido, também com um produto só; docs/ORDER_LEVEL_LISTS.md).
   await page.goto("/app/requests");
   await expect(
-    page.locator(`a[href="/app/requests/${requestId}"]`).first(),
+    page.locator(`a[href="/app/requests/batch/${requestId}"]`).first(),
   ).toBeVisible();
 });

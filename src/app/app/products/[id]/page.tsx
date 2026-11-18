@@ -65,6 +65,7 @@ import {
   Select,
   Table,
   Td,
+  OpenLink,
   TextLink,
   Textarea,
   Th,
@@ -1051,9 +1052,12 @@ export default async function ProductSheetPage({
                     key={c.containerId}
                     className="flex flex-wrap items-center gap-x-2 gap-y-1"
                   >
-                    <span className="font-mono font-semibold text-zinc-900">
+                    <TextLink
+                      href={`/app/containers/${c.containerId}`}
+                      className="font-mono font-semibold text-zinc-900 no-underline hover:underline"
+                    >
                       {c.containerCode}
-                    </span>
+                    </TextLink>
                     {c.customer ? (
                       <span className="text-zinc-500">· {c.customer}</span>
                     ) : null}
@@ -1066,12 +1070,10 @@ export default async function ProductSheetPage({
                         }),
                       })}
                     </span>
-                    <TextLink
+                    <OpenLink
                       href={`/app/containers/${c.containerId}`}
-                      className="text-xs"
-                    >
-                      {t("catalog.opp.container.open")}
-                    </TextLink>
+                      label={t("catalog.opp.container.open")}
+                    />
                   </li>
                 ))}
               </ul>

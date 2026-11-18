@@ -11,7 +11,7 @@ import {
   Badge,
   Card,
   Empty,
-  LinkButton,
+  OpenLink,
   PageHeader,
   Stat,
   Table,
@@ -283,14 +283,10 @@ function ItemsTable({
             </Td>
             <Td className="whitespace-nowrap text-right">
               <span className="inline-flex items-center gap-1.5">
-                <LinkButton
+                <OpenLink
                   href={item.link}
-                  variant="primary"
-                  className="min-h-8 px-3 py-1 text-xs"
-                >
-                  {t("tasks.open")}
-                  <span className="sr-only">: {item.title}</span>
-                </LinkButton>
+                  label={`${t("tasks.open")}: ${item.title}`}
+                />
                 {chatTargetFromHref(item.link) ? (
                   <ChatOpenButton
                     target={chatTargetFromHref(item.link)!}

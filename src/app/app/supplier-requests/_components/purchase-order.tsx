@@ -17,6 +17,7 @@ export function PurchaseOrderCard({
   groups,
   customer,
   showPrice = true,
+  pick = null,
   t,
 }: {
   groups: PurchaseCandidateGroup[];
@@ -26,8 +27,25 @@ export function PurchaseOrderCard({
    * preço combinado do mesmo jeito; dono, 15/11/2026).
    */
   showPrice?: boolean;
+  /**
+   * Vindo do "Gerar pedido" de uma solicitação (dono, 18/11/2026): só os
+   * produtos dela vêm marcados, e o fornecedor dela vem primeiro; os outros
+   * do mesmo fornecedor ficam para marcar e juntar no mesmo pedido.
+   */
+  pick?: ReadonlySet<string> | null;
   t: Translate;
 }) {
+  const picked = (id: string) => !pick || pick.has(id);
+  const ordered = pick
+    ? [
+        ...groups.filter((g) =>
+          g.candidates.some((c) => pick.has(c.request.id)),
+        ),
+        ...groups.filter(
+          (g) => !g.candidates.some((c) => pick.has(c.request.id)),
+        ),
+      ]
+    : groups;
   const num = (n: number | null | undefined, digits = 4) =>
     n === null || n === undefined
       ? "—"
@@ -49,11 +67,15 @@ export function PurchaseOrderCard({
         </div>
       )}
       <div className="space-y-4">
-        {groups.map((group) => (
+        {ordered.map((group) => (
           <form
             key={group.supplierId}
             action={createPurchaseOrderAction}
-            className="space-y-2 rounded-lg border border-zinc-200 p-3"
+            className={`space-y-2 rounded-lg border p-3 ${
+              pick && group.candidates.some((c) => pick.has(c.request.id))
+                ? "border-brand-600 ring-1 ring-brand-600"
+                : "border-zinc-200"
+            }`}
             data-purchase-group={group.supplierId}
           >
             <h3 className="text-sm font-semibold">
@@ -79,7 +101,7 @@ export function PurchaseOrderCard({
                         type="checkbox"
                         name="requestIds"
                         value={r.id}
-                        defaultChecked
+                        defaultChecked={picked(r.id)}
                         aria-label={product.name}
                       />
                     </Td>

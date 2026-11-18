@@ -322,19 +322,31 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.click("[data-request-product-create]");
   await page.waitForURL(/[?&]product=created/);
 
-  // 5. Gerar pedido de compra: só o produto deste teste (outros aprovados
-  // do mesmo fornecedor, de rodadas anteriores, ficam desmarcados).
+  // 5. Gerar pedido (dono, 18/11/2026): a solicitação encerrada fica na aba
+  // "Encerradas", com o botão quando todos os produtos estão cadastrados.
   await page.goto("/app/supplier-requests");
-  await expect(page.locator("[data-purchase-customer]")).toBeVisible();
+  await expect(
+    page.locator(`[data-supplier-request-row="${requestId}"]`),
+  ).toHaveCount(0);
+  await page.locator('[data-supplier-request-tab="closed"]').click();
+  await page.waitForURL(/[?&]tab=closed/);
+  await page.locator(`[data-request-to-order="${requestId}"]`).click();
+  await page.waitForURL(/[?&]pick=/);
+  // O quadro "Gerar pedido de compra" abre com só esta solicitação marcada;
+  // outras do mesmo fornecedor podem ser marcadas para entrar juntas.
   const group = page.locator(
     `form:has([data-purchase-candidate="${requestId}"])`,
   );
-  await expect(group).toBeVisible();
-  const others = group.locator(
-    `[data-purchase-candidate]:not([data-purchase-candidate="${requestId}"]) input[type=checkbox]`,
-  );
-  for (let i = 0; i < (await others.count()); i++)
-    await others.nth(i).uncheck();
+  await expect(
+    group.locator(
+      `[data-purchase-candidate="${requestId}"] input[type=checkbox]`,
+    ),
+  ).toBeChecked();
+  await expect(
+    group.locator(
+      `[data-purchase-candidate]:not([data-purchase-candidate="${requestId}"]) input[type=checkbox]:checked`,
+    ),
+  ).toHaveCount(0);
   await group.locator("[data-purchase-submit]").click();
   await page.waitForURL(/\/app\/orders\/[^/?]+\?purchase=created/);
   const orderUrl = page.url().split("?")[0];
@@ -386,11 +398,17 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.waitForLoadState("networkidle");
   await page.goto(orderUrl);
   await expect(carrierRow.locator("td").nth(1)).toHaveText("Trans Rodo");
-  // A solicitação fica presa ao pedido: não volta a ser candidata.
-  await page.goto("/app/supplier-requests");
+  // A solicitação fica presa ao pedido: o botão sai e a linha diz que já
+  // virou pedido.
+  await page.goto("/app/supplier-requests?tab=closed");
   await expect(
-    page.locator(`[data-purchase-candidate="${requestId}"]`),
+    page.locator(`[data-request-to-order="${requestId}"]`),
   ).toHaveCount(0);
+  await expect(
+    page.locator(
+      `[data-supplier-request-row="${requestId}"] [data-request-order-state="ordered"]`,
+    ),
+  ).toBeVisible();
 
   // Venda ao cliente por pedido e por produto (dono, 14/11/2026;
   // docs/ORDER_SALE.md): o administrador grava o preço de cada produto no
@@ -1748,8 +1766,9 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   const batchRow = page.locator(`[data-batch-row]:has(a[href="${batchPath}"])`);
   await expect(batchRow).toHaveCount(1);
   await expect(batchRow.locator("[data-request-number]")).toHaveText(/^\d+$/);
-  await expect(batchRow).toContainText("Copo de vidro");
-  await expect(batchRow).toContainText("Jarra de vidro");
+  // Lista no nível do pedido (dono, 18/11/2026): a contagem de produtos,
+  // sem os nomes; eles ficam na página do pedido.
+  await expect(batchRow.locator("[data-request-products]")).toHaveText("2");
   await batchRow.getByRole("link", { name: /Abrir|Open|打开/ }).click();
   await page.waitForURL(batchUrl);
   // Cada solicitação mostra a outra do lote.
