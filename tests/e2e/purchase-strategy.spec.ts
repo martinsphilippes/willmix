@@ -90,16 +90,8 @@ async function firstPurchase(page: Page): Promise<string> {
   await page.goto(itemUrl);
   await page.click("[data-request-product-release]");
   await page.waitForURL(/[?&]product=released/);
-  await page.goto("/app/supplier-requests");
-  const group = page.locator(
-    `form:has([data-purchase-candidate="${requestId}"])`,
-  );
-  const others = group.locator(
-    `[data-purchase-candidate]:not([data-purchase-candidate="${requestId}"]) input[type=checkbox]`,
-  );
-  for (let i = 0; i < (await others.count()); i++)
-    await others.nth(i).uncheck();
-  await group.locator("[data-purchase-submit]").click();
+  await page.goto("/app/supplier-requests?tab=closed");
+  await page.locator(`[data-request-to-order="${requestId}"]`).click();
   await page.waitForURL(/\/app\/orders\/[^/?]+\?purchase=created/);
   return page.url().split("?")[0];
 }

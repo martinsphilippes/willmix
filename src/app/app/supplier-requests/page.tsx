@@ -23,18 +23,19 @@ import {
 import { dictionaries } from "@/i18n/dictionaries";
 import { SUPPLIER_REQUEST_STATUSES } from "@/lib/db/schema";
 import { fallbackError } from "@/i18n/error-text";
+import { purchaseOrderCustomer } from "@/lib/services/purchase-order";
 import {
-  listPurchaseCandidates,
-  purchaseOrderCustomer,
-} from "@/lib/services/purchase-order";
-import { PurchaseOrderCard } from "./_components/purchase-order";
+  requestClosed,
+  requestOrderState,
+} from "@/lib/supplier-request-closing";
+import { createPurchaseOrderAction } from "../actions/purchase-order";
+import { SubmitButton } from "@/components/submit-button";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
   Badge,
   Card,
   Empty,
-  LinkButton,
   PageHeader,
   Table,
   Td,
@@ -46,7 +47,9 @@ import { can, canSeePurchasePrice } from "@/lib/auth/function-access";
 
 /*
  * Solicitações ao fornecedor (docs/SUPPLIER_REQUESTS.md): a Wellmix vê todas;
- * o fornecedor, só as do próprio cadastro.
+ * o fornecedor, só as do próprio cadastro. Duas abas (dono, 18/11/2026): "Em
+ * negociação" (a primeira) e "Encerradas" (todos os produtos decididos), onde
+ * a solicitação com todos os produtos cadastrados ganha "Gerar pedido".
  */
 
 export default async function SupplierRequestsPage({
@@ -74,12 +77,12 @@ export default async function SupplierRequestsPage({
   const showPurchase =
     wellmix && canOpen(user, "orders") && can(user, "purchaseOrder.generate");
   // Leituras independentes em paralelo.
-  const [entries, slaMinutes, query, purchase] = await Promise.all([
+  const [entries, slaMinutes, query] = await Promise.all([
     listSupplierRequests(user),
     supplierRequestSlaMinutes(),
     searchParams,
-    showPurchase ? listPurchaseCandidates(user) : Promise.resolve(null),
   ]);
+  const closedTab = query.tab === "closed";
   const now = new Date();
   const error = typeof query.error === "string" ? query.error : "";
   const errorKey = [
@@ -92,22 +95,26 @@ export default async function SupplierRequestsPage({
     : errorKey
       ? t(errorKey)
       : fallbackError(t, error);
-  // Pedido de compra (docs/PURCHASE_ORDER.md): os produtos aprovados de cada
-  // fornecedor que ainda não estão em pedido.
-  const purchaseCustomer = purchase?.length
-    ? await purchaseOrderCustomer()
-    : null;
 
   // Uma linha por solicitação: os produtos abertos juntos para o fornecedor
   // ficam dentro dela (a antiga, sem batchId, é uma linha sozinha).
   const rows = entries ?? [];
-  const distinctTotal = new Set(rows.map((e) => e.request.bookingItemId)).size;
   const supplierOf = new Map(rows.map((e) => [e.request.id, e.supplier]));
-  const requests = groupRequests(rows.map((e) => e.request)).map((list) =>
+  const allRequests = groupRequests(rows.map((e) => e.request)).map((list) =>
     [...list].sort(
       (a, b) => a.number - b.number || a.createdAt.localeCompare(b.createdAt),
     ),
   );
+  const closedRequests = allRequests.filter((list) => requestClosed(list));
+  const openRequests = allRequests.filter((list) => !requestClosed(list));
+  const requests = closedTab ? closedRequests : openRequests;
+  const tabProducts = new Set(requests.flat().map((p) => p.bookingItemId)).size;
+  // Pedido de compra (docs/PURCHASE_ORDER.md): o comprador é a própria
+  // Wellmix; sem o cadastro dela, "Gerar pedido" avisa em vez de falhar.
+  const purchaseCustomer =
+    closedTab && showPurchase && closedRequests.length
+      ? await purchaseOrderCustomer()
+      : null;
 
   return (
     <>
@@ -119,39 +126,65 @@ export default async function SupplierRequestsPage({
             ? "supplierRequests.list.subtitle"
             : "supplierRequests.list.subtitleSupplier",
         )}
-        actions={
-          wellmix && canOpen(user, "booking") ? (
-            <LinkButton href="/app/booking/selection" variant="primary">
-              {t("supplierRequests.list.toSelection")}
-            </LinkButton>
-          ) : null
-        }
       />
       {errorText ? (
         <div className="mb-3">
           <Alert tone="danger">{errorText}</Alert>
         </div>
       ) : null}
-      {purchase?.length ? (
-        <div className="mb-4" id="pedido-de-compra">
-          <PurchaseOrderCard
-            groups={purchase}
-            customer={purchaseCustomer}
-            showPrice={seesPrice}
-            t={t}
-          />
+      <nav
+        aria-label={t("supplierRequests.tabs.label")}
+        className="mb-4 flex gap-1 border-b border-zinc-200 text-sm"
+        data-supplier-request-tabs
+      >
+        {(
+          [
+            ["open", "/app/supplier-requests", openRequests.length],
+            [
+              "closed",
+              "/app/supplier-requests?tab=closed",
+              closedRequests.length,
+            ],
+          ] as const
+        ).map(([id, href, n]) => {
+          const active = (id === "closed") === closedTab;
+          return (
+            <Link
+              key={id}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              data-supplier-request-tab={id}
+              className={`-mb-px border-b-2 px-3 py-2 ${
+                active
+                  ? "border-brand-600 font-semibold text-brand-700"
+                  : "border-transparent text-zinc-600 hover:text-zinc-900"
+              }`}
+            >
+              {t(`supplierRequests.tabs.${id}` as DictionaryKey)} ({n})
+            </Link>
+          );
+        })}
+      </nav>
+      {closedTab &&
+      showPurchase &&
+      closedRequests.length &&
+      !purchaseCustomer ? (
+        <div className="mb-3">
+          <Alert tone="warning">
+            {t("purchaseOrder.error.purchase_order_customer_missing")}
+          </Alert>
         </div>
       ) : null}
       {entries === null ? (
         <Alert tone="warning">
           {t("supplierRequests.selection.schemaMissing")}
         </Alert>
-      ) : entries.length ? (
+      ) : requests.length ? (
         <Card>
           <p className="mb-2 text-sm text-zinc-600" data-supplier-request-count>
             {t("supplierRequests.list.count", {
               n: requests.length,
-              products: distinctTotal,
+              products: tabProducts,
             })}
           </p>
           <Table>
@@ -166,6 +199,9 @@ export default async function SupplierRequestsPage({
                 <Th>{t("supplierRequests.col.answer")}</Th>
                 <Th>{t("supplierRequests.col.createdAt")}</Th>
                 <Th>{t("supplierRequests.col.finishedAt")}</Th>
+                {closedTab && showPurchase ? (
+                  <Th>{t("supplierRequests.col.order")}</Th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -204,6 +240,10 @@ export default async function SupplierRequestsPage({
                       .at(-1)!
                   : null;
                 const late = products.some((p) => finishedLate(p, slaMinutes));
+                const orderState =
+                  closedTab && showPurchase
+                    ? requestOrderState(products)
+                    : null;
                 return (
                   <tr
                     key={r.id}
@@ -335,6 +375,47 @@ export default async function SupplierRequestsPage({
                         "—"
                       )}
                     </Td>
+                    {orderState ? (
+                      <Td data-request-order-state={orderState.kind}>
+                        {orderState.kind === "ready" ? (
+                          <form action={createPurchaseOrderAction}>
+                            {orderState.requestIds.map((id) => (
+                              <input
+                                key={id}
+                                type="hidden"
+                                name="requestIds"
+                                value={id}
+                              />
+                            ))}
+                            <SubmitButton
+                              pendingText={t("purchaseOrder.card.pending")}
+                              disabled={!purchaseCustomer}
+                              data-request-to-order={r.id}
+                            >
+                              {t("supplierRequests.toOrder.submit")}
+                            </SubmitButton>
+                          </form>
+                        ) : orderState.kind === "missingProduct" ? (
+                          <span className="block max-w-48 whitespace-normal text-xs text-zinc-500">
+                            {t("supplierRequests.toOrder.missingProduct", {
+                              n: orderState.missing,
+                            })}
+                          </span>
+                        ) : orderState.kind === "waitingSample" ? (
+                          <span className="block max-w-48 whitespace-normal text-xs text-zinc-500">
+                            {t("supplierRequests.toOrder.waitingSample", {
+                              n: orderState.waiting,
+                            })}
+                          </span>
+                        ) : orderState.kind === "ordered" ? (
+                          <span className="text-xs text-zinc-500">
+                            {t("supplierRequests.toOrder.ordered")}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </Td>
+                    ) : null}
                   </tr>
                 );
               })}
@@ -342,7 +423,15 @@ export default async function SupplierRequestsPage({
           </Table>
         </Card>
       ) : (
-        <Empty>{t("supplierRequests.list.empty")}</Empty>
+        <Empty>
+          {t(
+            entries.length
+              ? closedTab
+                ? "supplierRequests.tabs.emptyClosed"
+                : "supplierRequests.tabs.emptyOpen"
+              : "supplierRequests.list.empty",
+          )}
+        </Empty>
       )}
     </>
   );

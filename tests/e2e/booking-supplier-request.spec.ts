@@ -643,7 +643,9 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   // 6. Pedido de compra (docs/PURCHASE_ORDER.md): o produto aprovado vira o
   // pedido do fornecedor, que já abre as três raias na Preparação.
   await login(page, "admin@wellmix.com");
-  await page.goto("/app/supplier-requests");
+  // Encerrada (dono, 18/11/2026): sai de "Em negociação" e vai para a aba
+  // "Encerradas", com "Gerar pedido".
+  await page.goto("/app/supplier-requests?tab=closed");
   // Lista: produtos distintos e a finalização (aprovada) com o SLA.
   await expect(page.locator("[data-supplier-request-count]")).toBeVisible();
   await expect(
@@ -652,11 +654,7 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     ),
   ).not.toHaveText("—");
   const requestId = requestUrl.split("/").pop()!;
-  const group = page.locator(
-    `form:has([data-purchase-candidate="${requestId}"])`,
-  );
-  await expect(group).toBeVisible();
-  await group.locator("[data-purchase-submit]").click();
+  await page.locator(`[data-request-to-order="${requestId}"]`).click();
   await page.waitForURL(/\/app\/orders\/[^/?]+\?purchase=created/);
   await expect(
     // Fase 5e: o selo do pedido mostra o marco atual (não a etapa).

@@ -14,6 +14,15 @@ O dono também registrou que a "Solicitação" que já existia (a do cliente, `r
 
 A Seleção de itens **substituiu a fila de produtos** do Booking antigo: o botão da tela `/app/booking` leva a ela. A fila antiga (`/app/booking/products`) foi removida em 11/11/2026 (docs/BOOKING.md). No menu, Pedidos ganhou "Seleção de itens" e "Solicitações ao fornecedor"; o fornecedor ganhou "Solicitações ao fornecedor" ao lado de Cotações.
 
+### Abas: Em negociação e Encerradas (dono, 18/11/2026)
+
+A lista só mostra negociações (cotações e books), nunca pedidos:
+
+- **Em negociação** (a primeira aba, `/app/supplier-requests`): solicitações com algum produto ainda aberto ou respondido.
+- **Encerradas** (`?tab=closed`): todos os produtos decididos (aprovado, recusado ou cancelado; `requestClosed`, `src/lib/supplier-request-closing.ts`).
+- Na aba Encerradas, a coluna **Pedido** (Wellmix com a tela Pedidos e a ação de gerar o pedido de compra) mostra **"Gerar pedido"** quando todos os produtos aprovados fora de pedido existem no cadastro e têm a amostra aprovada (`requestOrderState`); senão, "Falta cadastrar N produto(s)", "Esperando a amostra aprovada" ou "Já virou pedido". O pedido segue docs/PURCHASE_ORDER.md, seção 1.
+- Saiu do cabeçalho o botão "Seleção de itens" (a Seleção continua no menu e no Booking).
+
 ### Seleção de itens
 
 - Mostra os itens dos bookings **Rascunho, Fechados, Em andamento ou Concluídos** (cancelado só pelo filtro de status; até 11/11/2026 o rascunho ficava fora), até 200 de cada vez, ordenados pela descrição para os parecidos ficarem juntos. O item de rascunho tem o selo do status e não pode ser o escolhido (a solicitação pede o booking fechado); pode entrar como alternativa e nos grupos.
