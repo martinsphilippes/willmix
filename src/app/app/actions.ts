@@ -91,6 +91,7 @@ import { dieCutHref, dieCutItemOf } from "@/lib/die-cut-step";
 import { itemIdOf } from "@/lib/purchase-lanes";
 import { assertSameSchedule, parseRequestItems } from "./actions/request-items";
 import {
+  allContactsBlank,
   contactsFromEntries,
   type CustomerContacts,
   type OrderTerms,
@@ -375,15 +376,16 @@ async function createRequest(
           items.map((i) => i.productId),
           orderTerms,
         );
-        const { saveCustomerContacts, hasPortalContacts } =
+        const { saveCustomerContacts, hasPortalContacts, contactsOptionalFor } =
           await import("@/lib/services/customer-contacts");
-        if (str(form, "contactsEdit") === "1")
-          await saveCustomerContacts(
-            user,
-            base.customerId,
-            contactsFromForm(form),
-          );
-        else if (!(await hasPortalContacts(base.customerId)))
+        // Solicitante da equipe interna (dono, 18/11/2026): os contatos são
+        // opcionais; o que for preenchido continua conferido e gravado.
+        const optional = contactsOptionalFor(user);
+        const contacts = contactsFromForm(form);
+        if (str(form, "contactsEdit") === "1") {
+          if (!optional || !allContactsBlank(contacts))
+            await saveCustomerContacts(user, base.customerId, contacts);
+        } else if (!optional && !(await hasPortalContacts(base.customerId)))
           throw new Error("contacts_required");
       }
       const created = await createRequestBatch(

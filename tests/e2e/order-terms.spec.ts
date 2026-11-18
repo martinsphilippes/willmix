@@ -78,6 +78,12 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await expect(
     contacts.locator('input[name="contact.partner.email"]'),
   ).toHaveValue("");
+  // Solicitante da equipe interna (dono, 18/11/2026): os contatos são
+  // opcionais (o aviso aparece e nenhum campo é obrigatório).
+  await expect(
+    contacts.locator("[data-customer-contacts-optional]"),
+  ).toBeVisible();
+  await expect(contacts.locator("input[required]")).toHaveCount(0);
 
   // Rascunho: salva como está (sem conferir) e volta igual.
   await terms.locator('[data-order-terms-format-option="wellmix"]').check();

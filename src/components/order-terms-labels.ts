@@ -147,6 +147,7 @@ export function customerContactsLabels(
     phone: t("customerContacts.phone"),
     email: t("customerContacts.email"),
     rule: t("customerContacts.rule"),
+    optional: t("customerContacts.optional"),
     add: t("customerContacts.add"),
     remove: t("customerContacts.remove"),
     save: t("customerContacts.save"),
@@ -157,6 +158,7 @@ export function customerContactsLabels(
       contacts_invalid: t("reqBatch.error.contacts_invalid"),
       contacts_same_as_seller: t("reqBatch.error.contacts_same_as_seller"),
       contacts_not_customer: t("reqBatch.error.contacts_not_customer"),
+      contacts_empty: t("customerContacts.empty"),
     },
     roles: record(CONTACT_ROLES, (k) => t(`customerContacts.role.${k}`)),
   };

@@ -3,6 +3,7 @@ import { getStore, type User } from "@/lib/db";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
 import {
+  allContactsBlank,
   cleanContacts,
   contactIssues,
   readContacts,
@@ -29,6 +30,15 @@ export class CustomerContactsError extends Error {
     super(code);
   }
 }
+
+/**
+ * Solicitante da equipe interna (a lista de /app/team: login ativo de
+ * administrador ou operador da Wellmix; dono, 18/11/2026): para ele os
+ * contatos do cliente são opcionais. Quem não está na equipe (um
+ * representante externo, quando houver) segue com todos obrigatórios.
+ */
+export const contactsOptionalFor = (user: User) =>
+  (user.role === "admin" || user.role === "operator") && user.active;
 
 /** Quem preenche: a Wellmix que abre Solicitações (o representante ou vendedor). */
 const canFill = (user: User) => isWellmix(user) && canOpen(user, "requests");
@@ -106,7 +116,13 @@ export async function saveCustomerContacts(
   const party = await store.get("parties", customerId);
   if (!party || party.type !== "customer" || isStockCustomer(party.id))
     throw new CustomerContactsError("contacts_not_customer");
-  const issues = contactIssues(contacts, await sellerContacts(user));
+  const optional = contactsOptionalFor(user);
+  // Opcional e nada preenchido: nada a gravar.
+  if (optional && allContactsBlank(contacts))
+    throw new CustomerContactsError("contacts_empty");
+  const issues = contactIssues(contacts, await sellerContacts(user), {
+    optional,
+  });
   if (issues.length)
     throw new CustomerContactsError(
       issues.some((i) => i.code === "same_as_seller")
