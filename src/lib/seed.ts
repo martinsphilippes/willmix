@@ -344,7 +344,8 @@ export async function seedDemo(): Promise<{
     { code: "110000000", name: "BRINQUEDOS" },
     { code: "40000000", name: "DECORACAO" },
   ];
-  const now = new Date().toISOString();
+  // Sem data de atualização: na demonstração as famílias não vieram do
+  // Sankhya, e a tela não deve dizer que vieram.
   for (const f of families)
     await store
       .create("product_families", {
@@ -352,7 +353,7 @@ export async function seedDemo(): Promise<{
         name: f.name,
         nameKey: `fm:${f.name.replace(/[^A-Z0-9]+/g, "_")}`,
         active: true,
-        syncedAt: now,
+        syncedAt: null,
       })
       .catch(() => undefined);
   const lineFamily: Record<string, string> = {
