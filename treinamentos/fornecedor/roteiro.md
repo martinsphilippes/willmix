@@ -326,7 +326,7 @@ Conta usada na gravação: `supplier.a@china.com` (conta de demonstração, dado
 - *(fala)* Resumindo: você responde à solicitação pela tela do produto, aprova ou recusa pela tabela, conversa dentro da solicitação e responde à contraproposta.
 - *(fala)* Agora responda ao quiz deste módulo. No próximo, você envia a amostragem.
 
-## Quiz do módulo 2 (12 perguntas, nota mínima 80%)
+## Quiz do módulo 2 (11 perguntas, nota mínima 80%)
 
 1. *(cenário)* A Wellmix abriu uma solicitação e você quer responder com preço, pedido mínimo e prazo de produção. Onde faz isso?
    - A) Em Mensagens, no alto da tela
@@ -334,59 +334,57 @@ Conta usada na gravação: `supplier.a@china.com` (conta de demonstração, dado
    - C) Na "Conta corrente"
    - D) No ícone "Renegociar" da tabela
    - Retorno: O prazo de produção só aparece na tela do produto: ícone "Abrir produto", cartão "Resposta do fornecedor". O "Renegociar" da tabela não tem esse campo.
-2. *(clique no lugar certo)* Você está na tabela da solicitação e quer responder com todos os dados. Clique no ícone certo.
-   - Retorno: O ícone "Abrir produto", na coluna "Ações", leva à tela com o cartão "Resposta do fornecedor".
-3. *(cenário)* Você escolheu "Sim, faço", clicou em "Enviar resposta" e o portal respondeu: "Informe o preço por peça para dizer que faz." O que aconteceu?
+2. *(cenário)* Você escolheu "Sim, faço", clicou em "Enviar resposta" e o portal respondeu: "Informe o preço por peça para dizer que faz." O que aconteceu?
    - **A) Nada foi gravado: falta o preço. Preencha e envie de novo** (certa)
    - B) A resposta foi enviada sem preço
    - C) O prazo da solicitação venceu
    - D) A solicitação foi cancelada
    - Retorno: Quem diz que faz precisa informar o preço por peça. Enquanto o aviso aparece, nada foi gravado.
-4. *(cenário)* Você enviou a resposta e percebeu que digitou o prazo errado. A Wellmix ainda não decidiu. O que dá para fazer?
+3. *(cenário)* Você enviou a resposta e percebeu que digitou o prazo errado. A Wellmix ainda não decidiu. O que dá para fazer?
    - A) Pedir à Wellmix que cancele a solicitação
    - B) Nada: a resposta não muda mais
    - C) Recusar a oferta e esperar outra solicitação
    - **D) Abrir o produto, corrigir o valor e enviar a resposta de novo** (certa)
    - Retorno: Você pode mudar a resposta até a Wellmix decidir.
-5. *(clique no lugar certo)* A oferta do book serve do jeito que está. Clique no ícone que aprova a oferta.
+4. *(clique no lugar certo)* Para aprovar a oferta do book do jeito que está, clique no ícone que aprova.
    - Retorno: O ícone verde, "Aprovar oferta", aceita a oferta em vigor: preço, moeda, pedido mínimo e entrega.
-6. *(cenário)* Você clicou no ícone verde e abriu a caixa "Aprovar oferta". O que envia a aprovação?
+5. *(cenário)* Você clicou no ícone verde e abriu a caixa "Aprovar oferta". O que envia a aprovação?
    - A) Fechar a caixa no X
    - B) Clicar fora da caixa
    - C) O botão "Cancelar"
    - **D) O botão verde "Aprovar oferta"** (certa)
    - Retorno: Só o botão verde "Aprovar oferta" envia. "Cancelar", o X ou clicar fora fecham sem gravar.
-7. *(cenário)* A Wellmix pede uma tigela com tampa de bambu e a sua fábrica não faz. O que você faz na solicitação?
+6. *(cenário)* A Wellmix pede uma tigela com tampa de bambu e a sua fábrica não faz. O que você faz na solicitação?
    - **A) Usa o ícone vermelho, "Recusar oferta", e confirma** (certa)
    - B) Aprova a oferta e avisa depois
    - C) Deixa sem resposta
    - D) Envia o book de novo
    - Retorno: Recusar avisa a Wellmix de que você não faz o item. Sem resposta, a solicitação fica parada com o prazo correndo.
-8. *(cenário)* Você quer mandar à Wellmix a foto de uma tampa, dentro da solicitação. Por onde?
+7. *(cenário)* Você quer mandar à Wellmix a foto de uma tampa, dentro da solicitação. Por onde?
    - **A) Pela tela do produto: botão "Abrir a conversa" e o anexo ao lado do campo** (certa)
    - B) Pela "Conta corrente"
    - C) Por "Convites de book"
    - D) Pelo ícone "Mensagem" da tabela
    - Retorno: O ícone "Mensagem" da tabela leva só texto. Para anexar foto, PDF ou Excel, abra o produto e use "Abrir a conversa".
-9. *(cenário)* Você tentou mandar um vídeo pela conversa e apareceu "Arquivo não aceito: envie foto, PDF ou Excel". E agora?
+8. *(cenário)* Você tentou mandar um vídeo pela conversa e apareceu "Arquivo não aceito: envie foto, PDF ou Excel". E agora?
    - A) Tentar de novo até passar
    - B) Abrir outra solicitação
    - C) Recusar a oferta
    - **D) Mandar foto, PDF ou Excel; o vídeo da amostra vai na amostragem** (certa)
    - Retorno: A conversa aceita foto, PDF e Excel. Vídeo da amostra tem lugar próprio: a amostragem.
-10. *(ordene os passos)* Ponha em ordem os passos para aceitar uma contraproposta da Wellmix.
+9. *(ordene os passos)* Ponha em ordem os passos para aceitar uma contraproposta da Wellmix.
    - 1º Em Pendências, clicar no ícone de abrir na solicitação com a contraproposta
    - 2º Clicar no ícone "Abrir produto"
    - 3º Conferir os valores que a Wellmix propôs
    - 4º Clicar em "Aceitar"
    - Retorno: A pendência leva à tabela; o produto mostra os valores propostos; depois de conferir, "Aceitar".
-11. *(cenário)* A Wellmix propôs USD 2,18 e você só consegue fazer por USD 2,20. O que fazer na resposta à contraproposta?
-   - **A) Mudar o preço para 2,20 e clicar em "Enviar nova proposta"** (certa)
+10. *(cenário)* A Wellmix propôs USD 2,18 (cerca de RMB 14,54) e você só consegue fazer por USD 2,20 (cerca de RMB 14,68). O que fazer na resposta à contraproposta?
+   - **A) Mudar o preço para USD 2,20 (cerca de RMB 14,68) e clicar em "Enviar nova proposta"** (certa)
    - B) Não responder
    - C) "Aceitar"
    - D) "Recusar"
    - Retorno: "Enviar nova proposta" devolve os valores que você escrever. "Aceitar" fecha nos valores da Wellmix e "Recusar" mantém a sua resposta anterior.
-12. *(clique no lugar certo)* A contraproposta serve. Clique no botão que fecha nos valores da Wellmix.
+11. *(clique no lugar certo)* A contraproposta serve. Clique no botão que fecha nos valores da Wellmix.
    - Retorno: "Aceitar" faz os valores propostos virarem a sua resposta. Depois disso, a vez é da Wellmix.
 
 # Módulo 3 · Amostragem

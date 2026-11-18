@@ -22,6 +22,8 @@ O que mudou no portal e como ficou o treinamento:
 | Pendências do fornecedor "do Book até a Invoice" | Fornecedor M1 | fala de abertura das Pendências e retorno do quiz |
 | Itens do pedido com peças por caixa e caixas | Certificadora M1 | fala do quadro "Itens do pedido" |
 
+Quiz do Fornecedor com os ajustes do dono de 16/11/2026, trazidos da sessão que publicou a página: sem a q2 do M2, q5 e q11 reescritas (q11 com o preço também em RMB, 1 USD = 6,672 RMB no ambiente de treino), sem f3, f4 e f5 no quiz final e f7 só com o pagamento. O M2 tem 11 perguntas e o quiz final, 13. O player publicado (sorteio de 5 perguntas no quiz final, 2 tentativas e a trava de duas abas) está só no contêiner daquela sessão, ainda fora deste `_pipeline/pacote`.
+
 Conferência: `gravar.mjs --so-ensaio` em todas as cenas dos três papéis contra o portal de 7f6352b, com os dados refeitos do zero (`preparar-fornecedor-m1.mjs`, `caminho-fornecedor.mjs`, `caminho-fornecedor-extras.mjs exw` e `prog`, `caminho-arte-certificacao.mjs`).
 
 Próximos passos, na sessão que tem as gravações: `juntar_cenas.py` → `narrar.py` → `gravar.mjs` → `montar.py` → `auditar.py` → `empacotar.py --artefato` (gera de novo `index.html`, `assets/dados.js` e `guia-rapido.html`) → `testar_pacote.mjs` → publicar na mesma página. Rodar os caminhos de dados no dia da gravação (as datas são do dia).

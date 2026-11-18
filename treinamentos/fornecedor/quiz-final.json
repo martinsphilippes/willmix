@@ -39,60 +39,6 @@
    "feedback": "Tudo o que depende de você aparece em \"Minhas pendências\", com o prazo. O ícone de abrir leva direto ao lugar da tarefa."
   },
   {
-   "id": "f3",
-   "tipo": "cenario",
-   "tema": "Depois da contraproposta aceita",
-   "rever": {
-    "cena": "m2-c4-contra",
-    "passo": "p11"
-   },
-   "enunciado": "Você aceitou a contraproposta da Wellmix, e ela aprovou a negociação. Qual é a sua próxima tarefa?",
-   "alternativas": [
-    "Fazer o check list de carga",
-    "Confirmar o recebimento do sinal",
-    "Enviar a amostragem",
-    "Assinar o contrato"
-   ],
-   "correta": 2,
-   "feedback": "Depois da aprovação, a Wellmix quer ver a amostra: chega a pendência da amostragem. O pedido de compra só é gerado com a amostra aprovada."
-  },
-  {
-   "id": "f4",
-   "tipo": "cenario",
-   "tema": "Tipos de arquivo",
-   "rever": {
-    "cena": "m3-c1-cuidado",
-    "passo": "p3"
-   },
-   "enunciado": "No Die Cut, você enviou a faca da caixa em PDF e deu certo. Na amostragem, escolheu um PDF e nada entrou na lista. Por quê?",
-   "alternativas": [
-    "O portal estava fora do ar",
-    "A amostragem só aceita foto ou vídeo",
-    "Faltou escrever a observação",
-    "O PDF era grande demais"
-   ],
-   "correta": 1,
-   "feedback": "Cada tarefa aceita o seu tipo de arquivo. A amostragem recebe só fotos e vídeos da amostra, com até 50 megas cada."
-  },
-  {
-   "id": "f5",
-   "tipo": "cenario",
-   "tema": "Quem assina primeiro",
-   "rever": {
-    "cena": "m4-c3-cuidado",
-    "passo": "p5"
-   },
-   "enunciado": "Você terminou o Die Cut e abriu o documento do pedido, mas o campo para enviar o contrato assinado não aparece. O que fazer?",
-   "alternativas": [
-    "Mandar o contrato pela conversa",
-    "Esperar: a Wellmix assina primeiro, e a pendência chega na sua vez",
-    "Registrar a produção sem contrato",
-    "Refazer o Die Cut"
-   ],
-   "correta": 1,
-   "feedback": "A Wellmix assina primeiro e você assina em seguida. Enquanto ela não assina, o campo de envio não aparece."
-  },
-  {
    "id": "f6",
    "tipo": "clique",
    "tema": "Confirmar o sinal",
@@ -110,12 +56,12 @@
   {
    "id": "f7",
    "tipo": "cenario",
-   "tema": "Uma tela, duas tarefas",
+   "tema": "Onde confirmar um pagamento",
    "rever": {
-    "cena": "m8-c2-certificacao",
+    "cena": "m4-c4-sinal",
     "passo": "p3"
    },
-   "enunciado": "Em que tela você confirma o recebimento de um pagamento e também registra as certificações da fábrica?",
+   "enunciado": "Em que tela você confirma o recebimento de um pagamento?",
    "alternativas": [
     "Nos documentos do embarque",
     "No cartão \"Produção\"",
@@ -123,7 +69,7 @@
     "Em \"Solicitações ao fornecedor\""
    ],
    "correta": 2,
-   "feedback": "A Conta corrente mostra o total, o recebido e o saldo, os pagamentos a confirmar e, no fim da página, as certificações do fornecedor."
+   "feedback": "A Conta corrente mostra o total, o recebido e o saldo, e os pagamentos a confirmar."
   },
   {
    "id": "f8",

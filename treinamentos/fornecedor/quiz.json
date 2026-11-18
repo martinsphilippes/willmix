@@ -198,21 +198,6 @@
     "feedback": "O prazo de produção só aparece na tela do produto: ícone \"Abrir produto\", cartão \"Resposta do fornecedor\". O \"Renegociar\" da tabela não tem esse campo."
    },
    {
-    "id": "q2",
-    "tipo": "clique",
-    "tema": "Abrir a tela do produto",
-    "rever": {
-     "cena": "m2-c1-responder",
-     "passo": "p7"
-    },
-    "enunciado": "Você está na tabela da solicitação e quer responder com todos os dados. Clique no ícone certo.",
-    "imagem": {
-     "cena": "m2-c1-responder",
-     "passo": "p7"
-    },
-    "feedback": "O ícone \"Abrir produto\", na coluna \"Ações\", leva à tela com o cartão \"Resposta do fornecedor\"."
-   },
-   {
     "id": "q3",
     "tipo": "cenario",
     "tema": "Responder sem preço",
@@ -256,7 +241,7 @@
      "cena": "m2-c2-icones",
      "passo": "p8"
     },
-    "enunciado": "A oferta do book serve do jeito que está. Clique no ícone que aprova a oferta.",
+    "enunciado": "Para aprovar a oferta do book do jeito que está, clique no ícone que aprova.",
     "imagem": {
      "cena": "m2-c2-icones",
      "passo": "p8"
@@ -360,9 +345,9 @@
      "cena": "m2-c4-contra",
      "passo": "p8"
     },
-    "enunciado": "A Wellmix propôs USD 2,18 e você só consegue fazer por USD 2,20. O que fazer na resposta à contraproposta?",
+    "enunciado": "A Wellmix propôs USD 2,18 (cerca de RMB 14,54) e você só consegue fazer por USD 2,20 (cerca de RMB 14,68). O que fazer na resposta à contraproposta?",
     "alternativas": [
-     "Mudar o preço para 2,20 e clicar em \"Enviar nova proposta\"",
+     "Mudar o preço para USD 2,20 (cerca de RMB 14,68) e clicar em \"Enviar nova proposta\"",
      "Não responder",
      "\"Aceitar\"",
      "\"Recusar\""
