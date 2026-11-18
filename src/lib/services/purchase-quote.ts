@@ -2,10 +2,12 @@ import "server-only";
 
 import {
   getStore,
+  type Product,
   type PurchaseDecision,
   type PurchaseQuote,
   type PurchaseQuoteItem,
   type PurchaseQuoteResponse,
+  type Request,
   type SupplierRequest,
   type User,
 } from "@/lib/db";
@@ -139,16 +141,36 @@ async function wellmixHolders(action: Parameters<typeof can>[1]) {
   return holders.length ? holders : users.filter((u) => isAdmin(u));
 }
 
-async function inviteSuppliers(
+/** O que aconteceu com o convite de um parceiro (Estratégia de Compra). */
+export interface InviteResult {
+  partyId: string;
+  status: "sent" | "already" | "failed";
+  /** Logins avisados no portal. */
+  logins: number;
+  error: string | null;
+}
+
+/**
+ * Convida um parceiro para a cotação, uma vez só: quem já foi convidado
+ * fica como está ("already"; o índice único cotação × parceiro segura o
+ * clique duplo). Cada um recebe o convite na língua dele (só a cotação dele).
+ */
+export async function inviteRecipient(
   quote: PurchaseQuote,
-  supplierIds: string[],
+  supplierId: string,
   now: Date,
-): Promise<PurchaseQuoteResponse[]> {
+): Promise<InviteResult> {
   const store = getStore();
+  const invited = () =>
+    store.list("purchase_quote_responses", {
+      filter: { quoteId: quote.id, supplierId },
+      limit: 1,
+    });
+  if ((await invited()).length)
+    return { partyId: supplierId, status: "already", logins: 0, error: null };
   const dueAt = new Date(now.getTime() + quote.hours * HOUR).toISOString();
-  const created: PurchaseQuoteResponse[] = [];
-  for (const supplierId of supplierIds) {
-    const response = await store.create("purchase_quote_responses", {
+  try {
+    await store.create("purchase_quote_responses", {
       quoteId: quote.id,
       supplierId,
       status: "invited",
@@ -165,42 +187,103 @@ async function inviteSuppliers(
       answeredByUserId: null,
       reminderSentAt: null,
     });
-    created.push(response);
-    // Cada fornecedor recebe o convite na língua dele (só a cotação dele).
-    await notify(
-      { partyId: supplierId, role: "supplier" },
-      {
-        kind: "action",
-        link: `/app/purchase-quotes/${quote.id}`,
-        text: (t) => ({
-          subject: t("quote.notify.invite.subject", {
-            n: String(quote.number),
-          }),
-          body: t("quote.notify.invite.body", { hours: String(quote.hours) }),
-        }),
-      },
-    );
+  } catch (error) {
+    // O outro clique (ou a outra aba) convidou antes: não duplica.
+    if ((await invited().catch(() => [])).length)
+      return { partyId: supplierId, status: "already", logins: 0, error: null };
+    return {
+      partyId: supplierId,
+      status: "failed",
+      logins: 0,
+      error: error instanceof Error ? error.message.slice(0, 300) : "error",
+    };
   }
-  return created;
+  let logins = 0;
+  try {
+    logins =
+      (await notify(
+        { partyId: supplierId, role: "supplier" },
+        {
+          kind: "action",
+          link: `/app/purchase-quotes/${quote.id}`,
+          text: (t) => ({
+            subject: t("quote.notify.invite.subject", {
+              n: String(quote.number),
+            }),
+            body: t("quote.notify.invite.body", { hours: String(quote.hours) }),
+          }),
+        },
+      )) ?? 0;
+  } catch (error) {
+    // O convite está gravado (o parceiro vê a cotação no portal); só o aviso falhou.
+    console.error("[quote] aviso do convite", error);
+  }
+  return { partyId: supplierId, status: "sent", logins, error: null };
+}
+
+async function inviteSuppliers(
+  quote: PurchaseQuote,
+  supplierIds: string[],
+  now: Date,
+): Promise<InviteResult[]> {
+  const out: InviteResult[] = [];
+  for (const supplierId of supplierIds)
+    out.push(await inviteRecipient(quote, supplierId, now));
+  return out;
 }
 
 /**
- * Abre a cotação de compra da estratégia aprovada (sem ação manual): os
- * produtos das demandas, somados por produto, para todos os fornecedores
- * ativos que atendem as linhas. Sem nenhum fornecedor, a cotação nasce
- * vazia e o Comprador é avisado (convida ou volta à estratégia).
+ * Os itens da cotação: os produtos das demandas, somados por produto, com o
+ * que o parceiro precisa para cotar (dono, 18/11/2026): a especificação, a
+ * programação de entrega (demanda única) e a data desejada. Nunca o cliente.
  */
-export async function openQuoteForDecision(
+export function quoteItemsFor(
+  demands: readonly Request[],
+  products: readonly Pick<Product, "id" | "name">[],
+): PurchaseQuoteItem[] {
+  const productIds = [
+    ...new Set(demands.map((d) => d.productId).filter(Boolean)),
+  ] as string[];
+  return productIds.map((id) => {
+    const mine = demands.filter((d) => d.productId === id);
+    const specs = [
+      ...new Set(
+        mine
+          .map((d) => d.specification?.trim() ?? "")
+          .filter((x): x is string => !!x),
+      ),
+    ];
+    const desired = mine
+      .map((d) => d.desiredAt ?? null)
+      .filter((x): x is string => !!x)
+      .sort()[0];
+    return {
+      productId: id,
+      name: products.find((p) => p.id === id)?.name ?? mine[0].productName,
+      quantity: mine.reduce((sum, d) => sum + d.quantity, 0),
+      unit: mine[0]?.unit ?? "un",
+      specification: specs.join(" / ").slice(0, 2000) || null,
+      schedule: mine.length === 1 ? (mine[0].schedule ?? null) : null,
+      desiredAt: desired ?? null,
+    };
+  });
+}
+
+/**
+ * Cria a cotação de compra da estratégia (sem convidar ninguém): os itens,
+ * o prazo de cada parceiro e as demandas em "cotação aberta". Uma cotação só
+ * por estratégia: chamada de novo, devolve a que já existe.
+ */
+export async function createQuoteForDecision(
   user: User,
   decision: PurchaseDecision,
-  now = new Date(),
-): Promise<PurchaseQuote> {
+): Promise<{ quote: PurchaseQuote; fresh: boolean }> {
   const store = getStore();
-  if (decision.choice !== "quote" || decision.status !== "approved")
+  if (decision.choice === "last_supplier" || decision.status !== "approved")
     throw new PurchaseQuoteError("quote_not_ready");
   if (decision.quoteId) {
     const existing = await store.get("purchase_quotes", decision.quoteId);
-    if (existing) return existing;
+    if (existing) return { quote: existing, fresh: false };
   }
   const demands = await store.list("requests", {
     filter: { id: decision.demandIds },
@@ -211,15 +294,7 @@ export async function openQuoteForDecision(
   const products = await store.list("products", {
     filter: { id: productIds },
   });
-  const items: PurchaseQuoteItem[] = productIds.map((id) => {
-    const mine = demands.filter((d) => d.productId === id);
-    return {
-      productId: id,
-      name: products.find((p) => p.id === id)?.name ?? mine[0].productName,
-      quantity: mine.reduce((sum, d) => sum + d.quantity, 0),
-      unit: mine[0]?.unit ?? "un",
-    };
-  });
+  const items = quoteItemsFor(demands, products);
   const lineIds = [
     ...new Set(products.map((p) => p.lineId).filter(Boolean)),
   ] as string[];
@@ -246,14 +321,63 @@ export async function openQuoteForDecision(
   await store.update("purchase_decisions", decision.id, { quoteId: quote.id });
   for (const d of demands)
     await store.update("requests", d.id, { status: "RFQ_OPEN" });
-  const suppliers = await supplierIdsForLines(lineIds, productIds);
+  return { quote, fresh: true };
+}
+
+/**
+ * Cotação da Estratégia de Compra por produto (dono, 18/11/2026): convida só
+ * os parceiros escolhidos e devolve o que aconteceu com cada um. Sem nenhum
+ * convite que deu certo, o Comprador é avisado (como na cotação sem resposta).
+ */
+export async function openQuoteWithRecipients(
+  user: User,
+  decision: PurchaseDecision,
+  recipientIds: readonly string[],
+  now = new Date(),
+): Promise<{ quote: PurchaseQuote; results: InviteResult[] }> {
+  const { quote, fresh } = await createQuoteForDecision(user, decision);
+  const results = await inviteSuppliers(quote, [...new Set(recipientIds)], now);
+  const sent = results.filter((r) => r.status === "sent").length;
+  if (fresh)
+    await audit(
+      user,
+      "purchase_quote.open",
+      "purchase_quote",
+      quote.id,
+      `Cotação de compra nº ${quote.number} aberta pela Estratégia de Compra para ${sent} parceiro(s), ${quote.hours} h cada: ${quote.items.map((i) => i.name).join(", ")}`,
+    );
+  if (fresh && !results.some((r) => r.status !== "failed"))
+    await notifyEmpty(quote, now);
+  return { quote, results };
+}
+
+/**
+ * Abre a cotação de compra da estratégia aprovada (sem ação manual): os
+ * produtos das demandas, somados por produto, para todos os fornecedores
+ * ativos que atendem as linhas. Sem nenhum fornecedor, a cotação nasce
+ * vazia e o Comprador é avisado (convida ou volta à estratégia). É o caminho
+ * das estratégias "cotar" de antes da Estratégia de Compra por produto.
+ */
+export async function openQuoteForDecision(
+  user: User,
+  decision: PurchaseDecision,
+  now = new Date(),
+): Promise<PurchaseQuote> {
+  if (decision.choice !== "quote" || decision.status !== "approved")
+    throw new PurchaseQuoteError("quote_not_ready");
+  const { quote, fresh } = await createQuoteForDecision(user, decision);
+  if (!fresh) return quote;
+  const suppliers = await supplierIdsForLines(
+    quote.lineIds,
+    quote.items.map((i) => i.productId),
+  );
   await inviteSuppliers(quote, suppliers, now);
   await audit(
     user,
     "purchase_quote.open",
     "purchase_quote",
     quote.id,
-    `Cotação de compra nº ${quote.number} aberta para ${suppliers.length} fornecedor(es), ${hours} h cada: ${items.map((i) => i.name).join(", ")}`,
+    `Cotação de compra nº ${quote.number} aberta para ${suppliers.length} fornecedor(es), ${quote.hours} h cada: ${quote.items.map((i) => i.name).join(", ")}`,
   );
   if (!suppliers.length) await notifyEmpty(quote, now);
   return quote;

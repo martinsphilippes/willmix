@@ -364,6 +364,8 @@ describe("cotação de compra pelas famílias", () => {
       quantity: 1000,
       unit: "un",
     });
+    // Encomendas → "Enviar para cotação" (Estratégia de Compra, 18/11/2026).
+    await strategy.sendToStrategy(buyer, [d.id]);
     const decision = await strategy.chooseStrategy(buyer, {
       demandIds: [d.id],
       choice: "quote",

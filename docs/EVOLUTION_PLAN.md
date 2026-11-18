@@ -1861,3 +1861,11 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   - nada é apagado.
 - **Muda:** o que a tela mostra: a seção antiga sai da ficha do Fornecedor, a pedido do dono.
 - Testes: `tests/unit/party-families.test.ts`, `tests/e2e/party-families.spec.ts` e `tests/e2e/purchase-quote.spec.ts`.
+
+## Estratégia de Compra por produto (dono, 18/11/2026)
+
+- **Pedido do dono**: depois de Encomendas, a Estratégia de Compra com um produto por linha, a escolha e os destinatários de cada produto (última compra ou outros parceiros: Fornecedor, Trading, Supplier e Factory da família), o resumo, o envio aos parceiros pelo portal e o resultado por destinatário com reenvio sem duplicar. Decisões D1 a D7 em docs/PURCHASE_DEMAND.md, "Estratégia de Compra por produto".
+- **Como ficou**: "Enviar para cotação" em Encomendas (e na página do lote); a Estratégia na mesma rota `/app/purchase-strategy`, redesenhada por produto, logo depois de Encomendas no menu e com tela própria `purchaseStrategy`; resultado em `/app/purchase-strategy/sends/[id]`; os parceiros vêm do "Grupo de produto (família)" do cadastro (docs/PARTNER_FAMILIES.md); Trading, Supplier e Factory cotam, respondem e podem vencer.
+- **Muda regra existente (autorizado pelo dono)**: a encomenda passa a entrar na fila só depois do envio (D1); cotar deixa de passar pela aprovação da Diretoria antes (D2); os rótulos das escolhas mudaram ("Cotar com outros fornecedores", "Pedido direto com o fornecedor da última compra (sem cotação)"). Nada foi apagado: o pedido direto, a aprovação dele, as estratégias e cotações antigas, a rota e a tela de cotações continuam.
+- **Aditivo:** colunas `requests.strategySentAt`/`strategySentByUserId` e `purchase_decisions.recipientIds`/`sendId`; tabela `purchase_strategy_sends`; índice único `purchase_quote_responses (quoteId, supplierId)` (vazia em produção); a escolha nova `quote_last`.
+- Testes: `tests/unit/strategy-send.test.ts`, `tests/e2e/purchase-strategy.spec.ts` e `tests/e2e/purchase-quote.spec.ts`.

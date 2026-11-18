@@ -29,6 +29,7 @@ import {
   Td,
   Textarea,
   Th,
+  formatDate,
   linkClass,
   rowClass,
 } from "@/components/ui";
@@ -157,7 +158,43 @@ export default async function PurchaseQuotePage({
                 <tbody>
                   {quote.items.map((item) => (
                     <tr key={item.productId} className={rowClass}>
-                      <Td>{productNameText(t, item.name)}</Td>
+                      <Td>
+                        {productNameText(t, item.name)}
+                        {/* O que o parceiro precisa para cotar (dono,
+                            18/11/2026): especificação, programação e data
+                            desejada; nunca o cliente. */}
+                        {item.specification ? (
+                          <span
+                            className="block whitespace-pre-line text-xs text-zinc-600"
+                            data-quote-item-spec
+                          >
+                            {t("quote.item.spec")}: {item.specification}
+                          </span>
+                        ) : null}
+                        {item.schedule?.items?.length ? (
+                          <span
+                            className="block text-xs text-zinc-600"
+                            data-quote-item-schedule
+                          >
+                            {t("quote.item.schedule")}:{" "}
+                            {item.schedule.items
+                              .map((i) =>
+                                t("strategy.line.scheduleItem", {
+                                  index: i.index,
+                                  quantity: i.quantity.toLocaleString(t.intl),
+                                  date: formatDate(i.expectedAt, t),
+                                }),
+                              )
+                              .join(" · ")}
+                          </span>
+                        ) : null}
+                        {item.desiredAt ? (
+                          <span className="block text-xs text-zinc-600">
+                            {t("quote.item.desiredAt")}:{" "}
+                            {formatDate(item.desiredAt, t)}
+                          </span>
+                        ) : null}
+                      </Td>
                       <Td className="tabular-nums">
                         {item.quantity.toLocaleString(t.intl)} {item.unit}
                       </Td>

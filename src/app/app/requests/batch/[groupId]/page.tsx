@@ -38,6 +38,9 @@ import { containersText, requestRounds } from "@/lib/request-rounds";
 import { productNameText } from "@/i18n";
 import { SubmitButton } from "@/components/submit-button";
 import { deleteRequestsAction } from "../../../actions/requests";
+import { sendToStrategyAction } from "../../../actions/purchase-demand";
+import { awaitingStrategySend } from "@/lib/services/purchase-strategy";
+import { canOpen } from "@/lib/auth/screens";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 
 /*
@@ -53,8 +56,17 @@ export default async function RequestBatchPage({
   searchParams,
 }: PageProps<"/app/requests/batch/[groupId]">) {
   const { groupId } = await params;
-  const { created, deleted, skipped, error, fromCart, added, sale } =
-    await searchParams;
+  const {
+    created,
+    deleted,
+    skipped,
+    error,
+    fromCart,
+    added,
+    sale,
+    strategySent,
+    strategySkipped,
+  } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "requests");
@@ -120,6 +132,12 @@ export default async function RequestBatchPage({
   const num = (n: number, digits = 0) =>
     n.toLocaleString(t.intl, { maximumFractionDigits: digits });
   const deletable = rows.filter((r) => canDeleteRequest(user, r));
+  // Enviar para cotação (dono, 18/11/2026): os produtos Solicitado ainda não
+  // enviados entram na Estratégia de Compra, todos juntos (a estratégia é da
+  // solicitação inteira).
+  const sendable = isWellmix(user)
+    ? rows.filter((r) => awaitingStrategySend(r))
+    : [];
   const number = rows.find((r) => r.number)?.number ?? null;
 
   const count = (v: string | string[] | undefined) =>
@@ -187,6 +205,42 @@ export default async function RequestBatchPage({
               : ""}
           </Alert>
         </div>
+      ) : null}
+      {count(strategySent) > 0 ? (
+        <div
+          className="mb-3"
+          role="status"
+          data-strategy-sent={count(strategySent)}
+        >
+          <Alert tone="success">
+            {t("reqSend.done", { n: count(strategySent) })}
+            {count(strategySkipped) > 0
+              ? ` ${t("reqSend.skipped", { n: count(strategySkipped) })}`
+              : ""}{" "}
+            {canOpen(user, "purchaseStrategy") ? (
+              <TextLink href="/app/purchase-strategy">
+                {t("reqSend.open")}
+              </TextLink>
+            ) : null}
+          </Alert>
+        </div>
+      ) : null}
+      {sendable.length > 0 ? (
+        <form action={sendToStrategyAction} className="mb-3">
+          {sendable.map((r) => (
+            <input key={r.id} type="hidden" name="ids" value={r.id} />
+          ))}
+          <input type="hidden" name="groupId" value={groupId} />
+          <SubmitButton
+            confirmText={t("reqSend.confirm").replace(
+              "{n}",
+              String(sendable.length),
+            )}
+            data-batch-send-all
+          >
+            {t("reqSend.all", { n: sendable.length })}
+          </SubmitButton>
+        </form>
       ) : null}
       {count(added) > 0 ? (
         <div className="mb-3" data-batch-added>
@@ -324,6 +378,18 @@ export default async function RequestBatchPage({
                 <Td className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <OpenLink href={href} label={t("reqBatch.openProduct")} />
+                    {!sendable.includes(r) &&
+                    r.strategySentAt &&
+                    isWellmix(user) ? (
+                      <span
+                        className="text-xs text-zinc-500"
+                        data-batch-sent={r.id}
+                      >
+                        {t("reqSend.sentAt", {
+                          date: formatDate(r.strategySentAt, t),
+                        })}
+                      </span>
+                    ) : null}
                     {canDeleteRequest(user, r) ? (
                       <form action={deleteRequestsAction}>
                         <input type="hidden" name="ids" value={r.id} />

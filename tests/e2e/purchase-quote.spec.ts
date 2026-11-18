@@ -25,9 +25,9 @@ async function setQuoteHours(page: Page, hours: string) {
 }
 
 /**
- * Os fornecedores B e C passam a atender a família de utilidades (Grupo de
- * produto (família) no cadastro; docs/PARTNER_FAMILIES.md): entram na
- * cotação das linhas dela.
+ * O fornecedor passa a atender a família de utilidades (Grupo de produto
+ * (família) no cadastro; docs/PARTNER_FAMILIES.md): entra na cotação das
+ * linhas dela e aparece vinculado na Estratégia de Compra.
  */
 async function serveUtilities(page: Page, supplierId: string) {
   await page.goto(`/app/suppliers/${supplierId}?tab=info`);
@@ -59,32 +59,44 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
 }) => {
   test.slow();
   await setQuoteHours(page, "0.02");
-  await serveUtilities(page, "fornecedor-b");
-  await serveUtilities(page, "fornecedor-c");
+  // A, B e C marcam a família das utilidades (Grupo de produto (família)):
+  // aparecem vinculados na Estratégia de Compra e entram na cotação.
+  for (const id of ["fornecedor-a", "fornecedor-b", "fornecedor-c"])
+    await serveUtilities(page, id);
 
-  // Reposição da jarra pelo Planner; o Comprador escolhe cotar.
+  // Reposição da jarra pelo Planner; o Comprador escolhe cotar com os
+  // fornecedores vinculados à família (já vêm marcados) e confirma: a cotação
+  // vai na hora, sem aprovação antes (dono, 18/11/2026).
   await login(page, "operador@wellmix.com");
   const demandId = await openReplenishment(page, "UTL-001", "4000");
   await page.goto("/app/purchase-strategy");
-  const group = page.locator(`form:has([data-strategy-demand="${demandId}"])`);
-  const others = group.locator(
-    `[data-strategy-demand]:not([data-strategy-demand="${demandId}"]) input[type=checkbox]`,
-  );
-  for (let i = 0; i < (await others.count()); i++)
-    await others.nth(i).uncheck();
-  await group.locator('[data-strategy-choice="quote"]').check();
-  await group.locator("[data-strategy-submit]").click();
-  await page.waitForURL(/[?&]chosen=\d+/);
-  const decisionId = page.url().split("#decision-")[1];
-
-  // A Diretoria aprova: o sistema abre a cotação.
-  await login(page, "diretoria@wellmix.com");
-  await page.goto("/app/purchase-strategy");
-  await page.locator(`#decision-${decisionId} [data-strategy-approve]`).click();
-  // O sistema abriu a cotação: a tela vai direto a ela.
-  await page.waitForURL(/\/app\/purchase-quotes\/[^/?]+\?opened=1/);
-  const quoteId = new URL(page.url()).pathname.split("/").pop();
+  const line = page.locator(`[data-strategy-line="${demandId}"]`);
+  await line.locator('[data-strategy-choice="quote"]').check();
+  for (const id of ["fornecedor-a", "fornecedor-b", "fornecedor-c"])
+    await expect(
+      line.locator(`[data-strategy-recipient-box="${id}"]`),
+    ).toBeChecked();
+  // A lista do País × Família vem marcada; o Comprador pode desmarcar e
+  // marcar de novo (dono, 18/11/2026).
+  const boxC = line.locator('[data-strategy-recipient-box="fornecedor-c"]');
+  await boxC.uncheck();
+  await expect(boxC).not.toBeChecked();
+  await boxC.check();
+  await page.locator("[data-strategy-review]").click();
+  await expect(
+    page.locator(`[data-strategy-summary-line="${demandId}"]`),
+  ).toContainText("(3)");
+  await page.locator("[data-strategy-confirm]").click();
+  await page.waitForURL(/\/app\/purchase-strategy\/sends\/[^/?]+\?done=1/);
+  // Resultado por destinatário: os três receberam.
+  await expect(
+    page.locator('[data-strategy-send-recipient-status="sent"]'),
+  ).toHaveCount(3);
+  const quoteId = await page
+    .locator("[data-strategy-send-quote]")
+    .getAttribute("data-strategy-send-quote");
   expect(quoteId).toBeTruthy();
+  await page.goto(`/app/purchase-quotes/${quoteId}`);
   await expect(page.locator("[data-quote-response]")).toHaveCount(3);
 
   // A e B respondem; C não.

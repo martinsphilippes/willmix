@@ -27,6 +27,7 @@ Uma única lista de **telas** e uma única regra que diz quais telas cada login 
 | ---------------------------------------------------------------------------- | :-------: | :----------: | :-----: | :------: | :----------: | :------------: | :------: |
 | Booking (planilhas de fornecedor)                                            |     ✓     |      ✓       |    ✓    |    ✓     |      ✓       |       ✓        |          |
 | Solicitações (e cotações)                                                    |     ✓     |      ✓       |    ✓    |          |      ✓       |       ✓        |          |
+| Estratégia de compra (18/11/2026; segue Solicitações, ver abaixo)            |     ✓     |      ✓       |    ✓    |          |      ✓       |       ✓        |          |
 | Pedidos                                                                      |     ✓     |      ✓       |    ✓    |    ✓     |      ✓       |       ✓        |    ✓     |
 | Produção (13/11/2026)                                                        |     ✓     |              |    ✓    |          |      ✓       |       ✓        |          |
 | Sourcing                                                                     |     ✓     |      ✓       |         |    ✓     |      ✓       |       ✓        |          |
@@ -48,6 +49,8 @@ Uma única lista de **telas** e uma única regra que diz quais telas cada login 
 | Financeiro, Contas a pagar, Conta corrente, Configurações, Equipe, Superplan | só admin  |              |         |          |              |                |          |
 
 A função **financeiro** não aparece na tabela: abre só Pedidos (regra 3).
+
+**Tela nova que segue outra** (Estratégia de compra, dono, 18/11/2026; docs/PURCHASE_DEMAND.md): a página `/app/purchase-strategy` usava a tela `quotes` e passou a ter a própria (`purchaseStrategy`). Para ninguém ganhar nem perder acesso, ela segue a de origem onde a configuração ainda não fala dela (`SCREEN_PARENT` em `src/lib/auth/screens.ts`): nas exceções do Personalizado (cotações acrescentadas ou tiradas levam a Estratégia junto), na lista antiga marcada uma a uma e nas funções gravadas antes dela, de fábrica ou criadas (`knownScreens` sem a tela nova). Depois que o administrador grava a função ou o login, vale o que ele marcou. É interna da Wellmix: não vai para logins de fora.
 
 Motivos (das especificações já escritas): comprador abre RFQ, escolhe fornecedor, valida ficha e imagens, acompanha produção e recebimento; gerente de produto libera dumping e cuida de produto, linha, vitrine, marketing e pós-venda; planner aprova o pré-custo, acompanha ETD e follow, containers e fretes; cadastro valida o cadastro do produto no pedido, importa fichas e planilhas; diretorias aprovam, acompanham painéis e auditoria; designer cuida de artes, embalagem, fotos e marketing.
 

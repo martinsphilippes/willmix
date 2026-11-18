@@ -54,6 +54,8 @@ async function openQuote(now = T0) {
     quantity: 1000,
     unit: "un",
   });
+  // Encomendas → "Enviar para cotação" (dono, 18/11/2026).
+  await strategy.sendToStrategy(buyer, [d.id]);
   const decision = await strategy.chooseStrategy(buyer, {
     demandIds: [d.id],
     choice: "quote",

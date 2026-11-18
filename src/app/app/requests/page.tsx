@@ -44,6 +44,11 @@ import {
 } from "@/lib/services/request-groups";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { deleteRequestsAction } from "../actions/requests";
+import { sendToStrategyAction } from "../actions/purchase-demand";
+import {
+  awaitingStrategySend,
+  inStrategyQueue,
+} from "@/lib/services/purchase-strategy";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getStore, type Role } from "@/lib/db";
 import { getT } from "@/i18n/server";
@@ -228,6 +233,14 @@ export default async function RequestsPage({
     return requestNextStep({
       status: r.status,
       display: requestDisplayStatus(r, cancelled),
+      // Encomenda a enviar para cotação, ou já na Estratégia de Compra.
+      strategy: wellmix
+        ? awaitingStrategySend(r)
+          ? "send"
+          : inStrategyQueue(r)
+            ? "queue"
+            : null
+        : null,
       order: order
         ? {
             status: order.status,
@@ -311,10 +324,7 @@ export default async function RequestsPage({
       key: "rounds",
       text: (e) =>
         String(
-          Math.max(
-            1,
-            ...rowsOf(e).map((r) => r.schedule?.items?.length ?? 0),
-          ),
+          Math.max(1, ...rowsOf(e).map((r) => r.schedule?.items?.length ?? 0)),
         ),
     },
     ...(isWellmix(user)
@@ -387,9 +397,7 @@ export default async function RequestsPage({
      (a busca vale pelo título e pelo cliente). Os da Reposição ficam na fila
      de Reposição. */
   const draftRows =
-    filtering &&
-    (!kindFilter || kindFilter === "order") &&
-    paged.page === 0
+    filtering && (!kindFilter || kindFilter === "order") && paged.page === 0
       ? (await listDraftsForList(user, "requests")).filter(
           ({ draft }) =>
             !q ||
@@ -549,6 +557,15 @@ export default async function RequestsPage({
       <Th className={className}>{label}</Th>
     );
   const anyDeletable = requests.some((r) => canDeleteRequest(user, r));
+  // Enviar para cotação (dono, 18/11/2026; docs/PURCHASE_DEMAND.md): a
+  // encomenda Solicitado ainda não enviada entra na Estratégia de Compra. A
+  // mesma seleção serve para enviar e para excluir.
+  const canSend = (r: (typeof requests)[number]) =>
+    wellmix && !showDeleted && awaitingStrategySend(r);
+  const selectable = (r: (typeof requests)[number]) =>
+    canDeleteRequest(user, r) || canSend(r);
+  const anySendable = requests.some(canSend);
+  const anySelectable = !showDeleted && (anyDeletable || anySendable);
   const count = (v: string | string[] | undefined) =>
     typeof v === "string" && /^\d+$/.test(v) ? Number(v) : 0;
   const errorKey = `reqDelete.error.${typeof error === "string" ? error : ""}`;
@@ -762,6 +779,25 @@ export default async function RequestsPage({
           </Alert>
         </div>
       ) : null}
+      {count(sp.strategySent) > 0 ? (
+        <div
+          className="mb-3"
+          role="status"
+          data-strategy-sent={count(sp.strategySent)}
+        >
+          <Alert tone="success">
+            {t("reqSend.done", { n: count(sp.strategySent) })}
+            {count(sp.strategySkipped) > 0
+              ? ` ${t("reqSend.skipped", { n: count(sp.strategySkipped) })}`
+              : ""}{" "}
+            {canOpen(user, "purchaseStrategy") ? (
+              <TextLink href="/app/purchase-strategy">
+                {t("reqSend.open")}
+              </TextLink>
+            ) : null}
+          </Alert>
+        </div>
+      ) : null}
       {typeof error === "string" && error ? (
         <div className="mb-3">
           <Alert tone="danger">
@@ -872,10 +908,21 @@ export default async function RequestsPage({
           </div>
         </div>
       ) : null}
-      {!showDeleted && anyDeletable ? (
+      {anySelectable ? (
         <BulkDeleteBar
           formId={BULK_FORM}
-          action={deleteRequestsAction}
+          action={anyDeletable ? deleteRequestsAction : sendToStrategyAction}
+          showDelete={anyDeletable}
+          lead={
+            anySendable
+              ? {
+                  action: sendToStrategyAction,
+                  label: t("reqSend.button"),
+                  confirmText: t("reqSend.confirm"),
+                  marker: "strategy",
+                }
+              : undefined
+          }
           labels={{
             selectAll: t("reqDelete.selectAll"),
             clear: t("reqDelete.clear"),
@@ -897,7 +944,7 @@ export default async function RequestsPage({
         <Table tools={!serverMode}>
           <thead>
             <tr>
-              {!showDeleted && anyDeletable ? (
+              {anySelectable ? (
                 <Th className="w-10">
                   <BulkSelectAll
                     formId={BULK_FORM}
@@ -930,7 +977,7 @@ export default async function RequestsPage({
                 className={cx(rowClass, "bg-amber-50/40")}
                 data-request-list-draft={draft.id}
               >
-                {!showDeleted && anyDeletable ? <Td /> : null}
+                {anySelectable ? <Td /> : null}
                 <Td className="min-w-40">
                   <TextLink
                     href={href}
@@ -979,6 +1026,7 @@ export default async function RequestsPage({
               const first = rows[0];
               const href = solicitationHref(first);
               const deletable = rows.filter((r) => canDeleteRequest(user, r));
+              const pickable = rows.filter(selectable);
               const statuses = rows.map((r) =>
                 requestDisplayStatus(r, cancelled),
               );
@@ -1004,14 +1052,14 @@ export default async function RequestsPage({
                   data-batch-row={entry.kind === "batch" ? "" : undefined}
                   data-request-row={first.id}
                 >
-                  {!showDeleted && anyDeletable ? (
+                  {anySelectable ? (
                     <Td className="w-10">
-                      {deletable.length > 0 ? (
+                      {pickable.length > 0 ? (
                         entry.kind === "batch" ? (
                           <BatchSelect
                             formId={BULK_FORM}
                             groupKey={entry.groupId}
-                            ids={deletable.map((r) => r.id)}
+                            ids={pickable.map((r) => r.id)}
                             label={`${t("reqBatch.selectBatch")}: ${names.slice(0, 2).join(", ")}${names.length > 2 ? ` +${names.length - 2}` : ""}`}
                           />
                         ) : (

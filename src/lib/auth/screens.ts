@@ -28,6 +28,9 @@ export const SCREENS = [
   "requestTs",
   "requestSale",
   "quotes",
+  // Estratégia de Compra (dono, 18/11/2026; docs/PURCHASE_DEMAND.md): tela
+  // própria; nasce aberta para quem abre a de cotações (SCREEN_PARENT).
+  "purchaseStrategy",
   "orders",
   "production",
   "sourcing",
@@ -55,6 +58,39 @@ export const SCREENS = [
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
+/**
+ * Tela nova que nasce com o acesso de outra, para ninguém perder acesso
+ * quando uma página ganha tela própria: onde a configuração ainda não fala
+ * da nova (exceções do Personalizado, lista antiga marcada uma a uma, função
+ * gravada antes dela), ela segue a de origem. Depois que o administrador
+ * grava, vale o que ele marcou.
+ */
+export const SCREEN_PARENT: Partial<Record<Screen, Screen>> = {
+  purchaseStrategy: "quotes",
+};
+
+/**
+ * Acrescenta à lista as telas novas que seguem uma tela da lista, quando a
+ * configuração não fala delas (`mentioned`: o que ela já decide).
+ */
+export function withInheritedScreens(
+  list: readonly Screen[],
+  mentioned: readonly Screen[] = list,
+): Screen[] {
+  const out = [...list];
+  for (const [child, parent] of Object.entries(SCREEN_PARENT) as [
+    Screen,
+    Screen,
+  ][])
+    if (
+      list.includes(parent) &&
+      !mentioned.includes(child) &&
+      !out.includes(child)
+    )
+      out.push(child);
+  return out;
+}
+
 /** Rota (prefixo) de cada tela; a mais específica primeiro. */
 export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/freight/tariff", "freightTariff"],
@@ -69,8 +105,9 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/new-request/sale", "requestSale"],
   // Reposição (mapa B10; docs/PURCHASE_DEMAND.md): a fila do Planner.
   ["/app/replenishment", "requests"],
-  // Estratégia de compra (mapa B10?): quem abre Solicitações ao fornecedor.
-  ["/app/purchase-strategy", "quotes"],
+  // Estratégia de Compra (mapa B10?): tela própria desde 18/11/2026 (antes,
+  // a de cotações; quem a abria continua abrindo, SCREEN_PARENT).
+  ["/app/purchase-strategy", "purchaseStrategy"],
   // Cotação de compra (mapa B13): a Wellmix e o fornecedor convidado.
   ["/app/purchase-quotes", "quotes"],
   // Solicitações ao fornecedor (docs/SUPPLIER_REQUESTS.md): quem abre Cotações.
@@ -137,6 +174,7 @@ export const SCREEN_LABEL: Record<Screen, DictionaryKey> = {
   requestTs: "nav.requestTs",
   requestSale: "nav.requestSale",
   quotes: "nav.quotes",
+  purchaseStrategy: "nav.purchaseStrategy",
   orders: "nav.orders",
   production: "nav.production",
   sourcing: "nav.sourcing",
@@ -248,6 +286,7 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
     "requests",
     "requestTs",
     "quotes",
+    "purchaseStrategy",
     "orders",
     "production",
     "sourcing",
@@ -266,6 +305,7 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
     "requestTs",
     "requestSale",
     "quotes",
+    "purchaseStrategy",
     "orders",
     "sourcing",
     "reviews",
@@ -280,6 +320,7 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
     "booking",
     "requests",
     "quotes",
+    "purchaseStrategy",
     "orders",
     "production",
     "containers",
@@ -333,6 +374,7 @@ export const SCREEN_GROUPS: ReadonlyArray<{
       "requestTs",
       "requestSale",
       "quotes",
+      "purchaseStrategy",
       "orders",
       "production",
       "sourcing",
@@ -403,11 +445,21 @@ export function screenExceptionsOf(
 ): { added: Screen[]; removed: Screen[] } | null {
   const value = user.screenExceptions;
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const added = validScreens((value as { added?: unknown }).added);
+  const removed = validScreens((value as { removed?: unknown }).removed);
+  // Tela nova segue a de origem no que a exceção decide (SCREEN_PARENT).
+  const mentioned = [...added, ...removed];
   return {
-    added: validScreens((value as { added?: unknown }).added),
-    removed: validScreens((value as { removed?: unknown }).removed),
+    added: withInheritedScreens(added, mentioned),
+    removed: withInheritedScreens(removed, mentioned),
   };
 }
+
+/** Lista antiga marcada uma a uma (users.screens), com as telas novas que seguem uma dela. */
+export const legacyScreensOf = (user: Who): Screen[] | null =>
+  Array.isArray(user.screens)
+    ? withInheritedScreens(validScreens(user.screens))
+    : null;
 
 /**
  * O login está no Personalizado (em vez do padrão das funções)? Pelas
@@ -441,8 +493,8 @@ export function screensFor(
       exceptions.removed.forEach((s) => set.delete(s));
       return set;
     }
-    if (Array.isArray(user.screens))
-      return new Set<Screen>([...WELLMIX_BASE, ...validScreens(user.screens)]);
+    const legacy = legacyScreensOf(user);
+    if (legacy) return new Set<Screen>([...WELLMIX_BASE, ...legacy]);
     return functionScreensFor(user, access);
   }
   // Externo: o perfil configurado na Gestão de telas (guardado nesta
