@@ -18,9 +18,11 @@ import {
 } from "@/lib/services/supplier-requests";
 import {
   DEFAULT_SELECTION_STATUSES,
+  SELECTION_DIMENSIONS,
   SELECTION_STATUSES,
   SELECTION_TABS,
   filtersToParams,
+  formatMeasure,
   groupForBlock,
   parseGroupIds,
   parseSelectionFilters,
@@ -278,6 +280,13 @@ export default async function BookingSelectionPage({
     "border-b border-zinc-200 bg-zinc-50/80 px-2 py-2 text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap text-zinc-500";
   const td =
     "border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800";
+  // Comprimento, Largura e Altura, uma coluna cada (dono, 18/11/2026), com
+  // as divisórias verticais discretas da tabela do Book em volta e entre elas.
+  const dimKeys = new Set<string>(SELECTION_DIMENSIONS.map((d) => d.key));
+  const dimDivider = (key: string) =>
+    key === "height"
+      ? "border-x border-x-zinc-200/70"
+      : "border-l border-l-zinc-200/70";
 
   const filterParams = filtersToParams(filters, q);
   // Cada aba leva os filtros; a Seleção leva também o grupo aberto.
@@ -355,14 +364,19 @@ export default async function BookingSelectionPage({
               "moq",
               "box",
               "cbm",
-              "size",
+              // No lugar de "Medidas (cm)": Comprimento | Largura | Altura.
+              ...SELECTION_DIMENSIONS.map((d) => d.key),
               "capacity",
               "material",
               "sheetQty",
               ...(seesPrice ? ["costPiece", "superplan"] : []),
               "situation",
             ].map((k) => (
-              <th key={k} className={th}>
+              <th
+                key={k}
+                className={cx(th, dimKeys.has(k) && dimDivider(k))}
+                data-selection-dim={dimKeys.has(k) ? k : undefined}
+              >
                 {col(k)}
               </th>
             ))}
@@ -548,11 +562,22 @@ export default async function BookingSelectionPage({
                 <td className={cx(td, "tabular-nums")}>
                   {num(item.cbmPerCarton)}
                 </td>
-                <td className={cx(td, "whitespace-nowrap tabular-nums")}>
-                  {[item.lengthCm, item.widthCm, item.heightCm]
-                    .map((n) => num(n, 2))
-                    .join(" × ")}
-                </td>
+                {/* Uma medida por célula, do seu campo, com as casas gravadas;
+                    sem valor, "—" só nela. A ordem da tabela lê o número da
+                    célula (ausentes sempre no fim). */}
+                {SELECTION_DIMENSIONS.map((d) => (
+                  <td
+                    key={d.key}
+                    className={cx(
+                      td,
+                      dimDivider(d.key),
+                      "whitespace-nowrap tabular-nums",
+                    )}
+                    data-selection-dim={d.key}
+                  >
+                    {formatMeasure(item[d.field], intl)}
+                  </td>
+                ))}
                 <td className={cx(td, "tabular-nums")}>
                   {item.capacityMl === null && item.sizeText
                     ? item.sizeText

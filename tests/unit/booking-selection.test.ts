@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  SELECTION_DIMENSIONS,
   SELECTION_TABS,
+  formatMeasure,
   lotMatchesFilters,
   otherGroupItems,
   parseGroupIds,
   parseSelectionFilters,
   parseSelectionTab,
   searchSuggestions,
+  storedDecimals,
   suggestBlocks,
 } from "@/lib/booking-selection";
+import { compareKeys, sortKey } from "@/lib/table-tools";
 
 /* Seleção de itens: filtros do endereço, blocos sugeridos e autocompletar. */
 
@@ -163,5 +167,103 @@ describe("abas da Seleção de itens", () => {
     expect(parseSelectionTab(undefined)).toBe("items");
     expect(parseSelectionTab("")).toBe("items");
     expect(parseSelectionTab("outra")).toBe("items");
+  });
+});
+
+describe("medidas em três colunas (Comprimento, Largura e Altura)", () => {
+  /** As três células da linha, na ordem das colunas. */
+  const cells = (
+    dims: {
+      lengthCm: number | null;
+      widthCm: number | null;
+      heightCm: number | null;
+    },
+    intl = "pt-BR",
+  ) => SELECTION_DIMENSIONS.map((d) => formatMeasure(dims[d.field], intl));
+
+  it("cada coluna lê o seu campo, na ordem da planilha (LENGTH, WIDTH, HEIGHT) e do cadastro", () => {
+    expect(SELECTION_DIMENSIONS.map((d) => [d.key, d.field])).toEqual([
+      ["length", "lengthCm"],
+      ["width", "widthCm"],
+      ["height", "heightCm"],
+    ]);
+    // Três valores diferentes: nenhum troca de coluna.
+    expect(cells({ lengthCm: 12.5, widthCm: 8.5, heightCm: 9 })).toEqual([
+      "12,5",
+      "8,5",
+      "9",
+    ]);
+  });
+
+  it("vírgula decimal e as casas gravadas, sem arredondar nem completar", () => {
+    expect(formatMeasure(8.3, "pt-BR")).toBe("8,3");
+    expect(formatMeasure(20.125, "pt-BR")).toBe("20,125");
+    expect(formatMeasure(0.05, "pt-BR")).toBe("0,05");
+    expect(formatMeasure(7, "pt-BR")).toBe("7");
+    expect(formatMeasure(1234.5, "pt-BR")).toBe("1.234,5");
+    // Inglês e chinês: o separador do idioma, como nas outras colunas.
+    expect(formatMeasure(20.125, "en-US")).toBe("20.125");
+    expect(formatMeasure(8.3, "zh-CN")).toBe("8.3");
+    // Casas da escrita mais curta; resto de conta não vira precisão.
+    expect(storedDecimals(8.3)).toBe(1);
+    expect(storedDecimals(1.5e-7)).toBe(8);
+    expect(storedDecimals(1e21)).toBe(0);
+    expect(formatMeasure(0.1 + 0.2, "pt-BR")).toBe("0,3");
+  });
+
+  it('medida ausente vira "—" só na coluna dela', () => {
+    expect(cells({ lengthCm: 10, widthCm: null, heightCm: 20 })).toEqual([
+      "10",
+      "—",
+      "20",
+    ]);
+    expect(cells({ lengthCm: null, widthCm: null, heightCm: null })).toEqual([
+      "—",
+      "—",
+      "—",
+    ]);
+    expect(formatMeasure(undefined, "pt-BR")).toBe("—");
+    expect(formatMeasure(Number.NaN, "pt-BR")).toBe("—");
+  });
+
+  it("a tabela ordena pelo número da célula, com os ausentes sempre no fim", () => {
+    const values = [20.5, null, 8.3, 100, 9, 20.125, 1234.5];
+    const order = (intl: string, desc: boolean) =>
+      values
+        .map((n) => formatMeasure(n, intl))
+        .sort((a, b) =>
+          compareKeys(
+            sortKey(a, intl === "pt-BR"),
+            sortKey(b, intl === "pt-BR"),
+            desc,
+          ),
+        );
+    expect(order("pt-BR", false)).toEqual([
+      "8,3",
+      "9",
+      "20,125",
+      "20,5",
+      "100",
+      "1.234,5",
+      "—",
+    ]);
+    expect(order("pt-BR", true)).toEqual([
+      "1.234,5",
+      "100",
+      "20,5",
+      "20,125",
+      "9",
+      "8,3",
+      "—",
+    ]);
+    expect(order("en-US", false)).toEqual([
+      "8.3",
+      "9",
+      "20.125",
+      "20.5",
+      "100",
+      "1,234.5",
+      "—",
+    ]);
   });
 });
