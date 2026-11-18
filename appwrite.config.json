@@ -193,6 +193,14 @@
           "array": false,
           "default": false,
           "type": "boolean"
+        },
+        {
+          "key": "sellerCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
         }
       ],
       "indexes": [
@@ -533,6 +541,14 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "customerGroupId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -561,6 +577,16 @@
           "type": "key",
           "columns": [
             "sankhyaCode"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_customer_group",
+          "type": "key",
+          "columns": [
+            "customerGroupId"
           ],
           "orders": [
             "ASC"
@@ -7221,6 +7247,234 @@
           ],
           "orders": [
             "ASC",
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "customer_groups",
+      "databaseId": "willmix",
+      "name": "Grupos econômicos (carteira)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "notes",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "ownerUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "archivedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "createdByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_owner",
+          "type": "key",
+          "columns": [
+            "ownerUserId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "customer_attendances",
+      "databaseId": "willmix",
+      "name": "Atendimentos ao cliente (carteira)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "customerId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "attendedByUserId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "channel",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "visit",
+            "call",
+            "whatsapp",
+            "email",
+            "video",
+            "other"
+          ]
+        },
+        {
+          "key": "occurredAt",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "summary",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "nextStep",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "documentIds",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "pending_customer",
+            "confirmed",
+            "disputed",
+            "cancelled"
+          ]
+        },
+        {
+          "key": "linkNonce",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 64
+        },
+        {
+          "key": "linkExpiresAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "customerAnsweredAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "customerName",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "customerNote",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "cancelledAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "cancelledByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_customer",
+          "type": "key",
+          "columns": [
+            "customerId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_attendant",
+          "type": "key",
+          "columns": [
+            "attendedByUserId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_status",
+          "type": "key",
+          "columns": [
+            "status"
+          ],
+          "orders": [
             "ASC"
           ]
         }

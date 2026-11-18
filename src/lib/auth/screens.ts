@@ -46,6 +46,8 @@ export const SCREENS = [
   "payables",
   "penalties",
   "afterSales",
+  // Carteira e atendimento ao cliente (dono, 18/11/2026; docs/TRADE_COMERCIAL.md).
+  "portfolio",
   "marketing",
   "history",
   "account",
@@ -97,6 +99,8 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/payables", "payables"],
   ["/app/penalties", "penalties"],
   ["/app/after-sales", "afterSales"],
+  // Carteira e atendimento (docs/TRADE_COMERCIAL.md).
+  ["/app/portfolio", "portfolio"],
   ["/app/marketing", "marketing"],
   ["/app/history", "history"],
   ["/app/account", "account"],
@@ -155,6 +159,7 @@ export const SCREEN_LABEL: Record<Screen, DictionaryKey> = {
   payables: "nav.payables",
   penalties: "nav.penalties",
   afterSales: "nav.afterSales",
+  portfolio: "nav.portfolio",
   marketing: "nav.marketing",
   history: "nav.history",
   account: "nav.account",
@@ -308,7 +313,9 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   comex_internal: ["orders", "containers", "freight", "history"],
   // Vendas (dono, 15/11/2026; docs/PURCHASE_DEMAND.md): encomendas, ofertas,
   // amostras, venda, ordens de venda e reservas (tela Produtos) e pós-venda.
-  sales: ["requests", "products", "afterSales"],
+  // Carteira e atendimento ao cliente (docs/TRADE_COMERCIAL.md): Vendas
+  // atende a carteira; o administrador libera para outras funções.
+  sales: ["requests", "products", "afterSales", "portfolio"],
   // Qualidade do CD: o recebimento no pedido e os containers que chegam.
   quality: ["orders", "containers", "products"],
 };
@@ -355,6 +362,8 @@ export const SCREEN_GROUPS: ReadonlyArray<{
       "payables",
       "penalties",
       "afterSales",
+      // Carteira e atendimento (docs/TRADE_COMERCIAL.md).
+      "portfolio",
       "marketing",
       "history",
       "account",

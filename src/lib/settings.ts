@@ -64,6 +64,13 @@ export const DEFAULT_SETTINGS = {
    * (docs/SUPPLIER_SAMPLING.md). Decisão do dono (12/11/2026): 1 dia.
    */
   samplingSlaDays: 1,
+  /**
+   * Prazo de atendimento ao cliente, em dias corridos, o mesmo para todos os
+   * clientes (dono, 18/11/2026; docs/TRADE_COMERCIAL.md): passou dele sem
+   * atendimento confirmado pelos dois lados, o cliente acompanhado fica
+   * atrasado e o responsável recebe a pendência. Só o administrador muda.
+   */
+  attendanceSlaDays: 30,
   /* ---- Pedido de compra das solicitações ao fornecedor (docs/PURCHASE_ORDER.md) ---- */
   /** Dias da agência de arte para enviar a arte de cada produto, desde o pedido. */
   purchaseArtSlaDays: 5,
