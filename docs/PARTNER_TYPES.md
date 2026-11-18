@@ -2,6 +2,8 @@
 
 Pedido do dono (11/11/2026): quatro tipos novos em Outros parceiros (**Trading, Factory, Supplier e GP**), criar outros tipos pelo painel sem mexer no código, usuários com login em cada um e a Gestão de telas (docs/PARTNER_ACCESS.md). Decisão do dono: esses tipos são **parceiros à parte**: não entram em cotação, booking nem pedido como fornecedor.
 
+**Desde 18/11/2026** (dono; docs/PARTNER_FAMILIES.md): Trading, Supplier e Factory **entram na cotação de compra** (B13) pelas famílias que atendem (seção "Grupo de produto (família)" no cadastro, a mesma do Fornecedor). Se um deles vence, vira o fornecedor da solicitação ao fornecedor e do pedido de compra. Booking como fornecedor e pedido fora da cotação seguem como antes.
+
 ## O que mudou
 
 | Onde                                     | O que                                                                                                                                                                                                                                                                                                                                                    |
@@ -23,7 +25,7 @@ Pedido do dono (11/11/2026): quatro tipos novos em Outros parceiros (**Trading, 
 6. **Nomes únicos**: dois tipos não têm o mesmo nome em nenhum idioma, sem contar acento e caixa (`partner_type_name_taken`).
 7. **Quem**: ler, a Wellmix com a tela Cadastros; criar e alterar, só o administrador (o serviço confere). Auditoria: `partner_type.create` e `partner_type.update`, com antes e depois.
 8. **Login** (`loginRoleOfParty`): os tipos de sempre entram com o papel de sempre. Trading, Factory, Supplier e GP entram **como o Fornecedor entra** (papel `supplier`, com o perfil de telas do próprio tipo: `type:trading`…). O tipo criado no painel tem a caixa "Os usuários deste tipo podem ter login" (marcada na criação pela tela de tipos; o atalho do formulário cria sem login): com ela, entra como os quatro; sem ela, o cadastro mostra o aviso em vez do formulário de acesso e o servidor recusa (`user_role_mismatch`).
-9. **Dados**: o login vê só os registros da própria empresa (`partyId`). Como esses tipos não são escolhidos como fornecedor em nenhuma operação, **as telas abrem vazias** até existir um vínculo deles com pedidos (decisão pendente: como uma Trading ou um GP é ligado a um pedido). Exceção já resolvida: o **Booking**. Quando a Wellmix marca o parceiro como responsável por um booking, a Trading vê esse booking na tela Booking, que vem aberta no perfil dela (docs/BOOKING.md, "Booking do Trading").
+9. **Dados**: o login vê só os registros da própria empresa (`partyId`). Como esses tipos não são escolhidos como fornecedor em nenhuma operação, **as telas abrem vazias** até existir um vínculo deles com pedidos (decisão pendente: como uma Trading ou um GP é ligado a um pedido). Exceções já resolvidas: a **Cotação de compra** (desde 18/11/2026, pelas famílias marcadas no cadastro; docs/PARTNER_FAMILIES.md) e o **Booking**. Quando a Wellmix marca o parceiro como responsável por um booking, a Trading vê esse booking na tela Booking, que vem aberta no perfil dela (docs/BOOKING.md, "Booking do Trading").
 10. **Gerar login de acesso** (pedido do dono, 11/11/2026): o login nasce no quadro "Logins de acesso ao portal" do cadastro do parceiro (nome, login, senha sugerida, idioma). Para ficar à vista: botão **Gerar login de acesso** no topo do cadastro, coluna "Login de acesso" na lista de Outros parceiros (quantos logins tem, ou o link para gerar) e, depois de cadastrar um parceiro novo, a tela já abre nesse quadro.
 11. **Novo parceiro a partir de um filtro**: com um tipo filtrado na lista, o botão já abre o formulário com ele marcado.
 12. **Situação**: o cadastro novo nasce **ativo** (correção de 11/11/2026: nascia inativo, porque a caixa de status só existe na edição, e ficava fora das listas de escolha, como a do responsável pelo booking). Desativar é na edição do cadastro.
@@ -55,7 +57,8 @@ O seletor **DEMO** do cabeçalho não é simulação: faz um **login de verdade*
 
 ## O que ficou para as próximas etapas
 
-- **Vínculo com a operação**: como Trading, Factory, Supplier e GP são ligados a um pedido (hoje nenhum fluxo os escolhe; as telas deles abrem vazias).
+- **Vínculo com a operação**: como Trading, Factory, Supplier e GP são ligados a um pedido fora da cotação de compra (a cotação já os convida pelas famílias e a vencedora vira o fornecedor da solicitação e do pedido de compra, docs/PARTNER_FAMILIES.md; os outros fluxos não os escolhem).
+  - **Estratégia de Compra por produto** (dono, 18/11/2026; docs/PURCHASE_DEMAND.md): Trading, Supplier e Factory (não o GP) aparecem para cotar pelas famílias marcadas no cadastro ("Grupo de produto (família)"), recebem e respondem pelo portal e podem vencer como o Fornecedor.
 - **Acesso** (docs/PARTNER_ACCESS.md, "Ainda não"): ações por tela, escopo por registro, campos protegidos, exceções por empresa e por usuário, herança, vigência, vínculo de um login com mais de uma empresa, delegação, simulação.
 - **Acordos comerciais e comissões**: não construído. Levantamento do que existe para base e gatilho:
   - Valores do pedido: custo (`fobTotal`) e venda (`sellPrice`), com moeda e câmbio; item com quantidade e preço unitário. A linha de produto está no pedido; por item, só pelo produto.

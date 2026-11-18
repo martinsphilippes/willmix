@@ -1,5 +1,6 @@
 import {
   FUNCTION_SCREENS,
+  SCREEN_PARENT,
   SCREENS,
   WELLMIX_BASE,
   type Screen,
@@ -357,8 +358,30 @@ function storedScreens(
   const fresh = FUNCTION_SCREENS[key].filter(
     (s) => !knownList.includes(s) && !saved.includes(s),
   );
-  return SCREENS.filter((s) => saved.includes(s) || fresh.includes(s));
+  return inheritUnknown(
+    SCREENS.filter((s) => saved.includes(s) || fresh.includes(s)),
+    knownList,
+  );
 }
+
+/**
+ * Tela nova que segue outra (SCREEN_PARENT, ex.: a Estratégia de Compra
+ * segue as cotações): enquanto a função não sabe dela, vale o que a função
+ * tem na tela de origem, e não o padrão do código. Assim ninguém ganha nem
+ * perde acesso quando uma página passa a ter tela própria.
+ */
+function inheritUnknown(list: Screen[], known: readonly string[]): Screen[] {
+  return SCREENS.filter((s) => {
+    const parent = SCREEN_PARENT[s];
+    if (parent && !known.includes(s)) return list.includes(parent);
+    return list.includes(s);
+  });
+}
+
+const knownOf = (known: unknown): readonly string[] =>
+  Array.isArray(known)
+    ? (known as unknown[]).filter((s): s is string => typeof s === "string")
+    : LEGACY_SCREENS;
 
 /** Chave de função criada: "fn_" e o nome sem acento, em minúsculas. */
 export const CUSTOM_PREFIX = "fn_";
@@ -429,7 +452,7 @@ export function resolveFunctions(stored: unknown): FunctionDef[] {
       key: f.key,
       name: typeof f.name === "string" && f.name.trim() ? f.name.trim() : f.key,
       builtin: false,
-      screens: validScreens(f.screens),
+      screens: inheritUnknown(validScreens(f.screens), knownOf(f.knownScreens)),
       actions: validActions(f.actions),
       baseOff: validBaseOff(f.baseOff),
       archived: !!f.archived,

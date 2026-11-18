@@ -99,7 +99,9 @@ alter table public."product_lines" add column if not exists "prompts" jsonb;
 alter table public."product_lines" add column if not exists "division" text;
 alter table public."product_lines" add column if not exists "sankhyaCode" text;
 alter table public."product_lines" add column if not exists "agencyId" text;
+alter table public."product_lines" add column if not exists "familyCode" text;
 create index if not exists "product_lines_by_sankhya" on public."product_lines" ("sankhyaCode");
+create index if not exists "product_lines_by_family" on public."product_lines" ("familyCode");
 create index if not exists "product_lines_created" on public."product_lines" ("createdAt");
 create index if not exists "product_lines_created_id" on public."product_lines" ("createdAt", "id");
 create index if not exists "product_lines_name_id" on public."product_lines" ("name", "id");
@@ -205,6 +207,8 @@ alter table public."requests" add column if not exists "channel" text;
 alter table public."requests" add column if not exists "desiredAt" timestamptz;
 alter table public."requests" add column if not exists "purchaseDecisionId" text;
 alter table public."requests" add column if not exists "orderTerms" jsonb;
+alter table public."requests" add column if not exists "strategySentAt" timestamptz;
+alter table public."requests" add column if not exists "strategySentByUserId" text;
 create index if not exists "requests_by_customer" on public."requests" ("customerId");
 create index if not exists "requests_by_status" on public."requests" ("status");
 create index if not exists "requests_by_origin" on public."requests" ("origin");
@@ -1888,6 +1892,7 @@ alter table public."purchase_quote_responses" add column if not exists "answered
 alter table public."purchase_quote_responses" add column if not exists "reminderSentAt" timestamptz;
 create index if not exists "purchase_quote_responses_by_quote" on public."purchase_quote_responses" ("quoteId");
 create index if not exists "purchase_quote_responses_by_supplier" on public."purchase_quote_responses" ("supplierId");
+create unique index if not exists "purchase_quote_responses_quote_supplier_unique" on public."purchase_quote_responses" ("quoteId", "supplierId");
 create index if not exists "purchase_quote_responses_created" on public."purchase_quote_responses" ("createdAt");
 create index if not exists "purchase_quote_responses_created_id" on public."purchase_quote_responses" ("createdAt", "id");
 
@@ -1900,10 +1905,41 @@ alter table public."supplier_lines" enable row level security;
 alter table public."supplier_lines" add column if not exists "supplierId" text;
 alter table public."supplier_lines" add column if not exists "lineId" text;
 alter table public."supplier_lines" add column if not exists "createdByUserId" text;
+alter table public."supplier_lines" add column if not exists "familyConvertedAt" timestamptz;
 create index if not exists "supplier_lines_by_supplier" on public."supplier_lines" ("supplierId");
 create index if not exists "supplier_lines_by_line" on public."supplier_lines" ("lineId");
 create index if not exists "supplier_lines_created" on public."supplier_lines" ("createdAt");
 create index if not exists "supplier_lines_created_id" on public."supplier_lines" ("createdAt", "id");
+
+create table if not exists public."product_families" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."product_families" enable row level security;
+alter table public."product_families" add column if not exists "code" text;
+alter table public."product_families" add column if not exists "name" text;
+alter table public."product_families" add column if not exists "nameKey" text;
+alter table public."product_families" add column if not exists "active" boolean;
+alter table public."product_families" add column if not exists "syncedAt" timestamptz;
+create unique index if not exists "product_families_by_code" on public."product_families" ("code");
+create index if not exists "product_families_created" on public."product_families" ("createdAt");
+create index if not exists "product_families_created_id" on public."product_families" ("createdAt", "id");
+create index if not exists "product_families_name_id" on public."product_families" ("name", "id");
+
+create table if not exists public."party_families" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."party_families" enable row level security;
+alter table public."party_families" add column if not exists "partyId" text;
+alter table public."party_families" add column if not exists "familyCode" text;
+alter table public."party_families" add column if not exists "createdByUserId" text;
+create index if not exists "party_families_by_party" on public."party_families" ("partyId");
+create index if not exists "party_families_by_family" on public."party_families" ("familyCode");
+create index if not exists "party_families_created" on public."party_families" ("createdAt");
+create index if not exists "party_families_created_id" on public."party_families" ("createdAt", "id");
 
 create table if not exists public."purchase_decisions" (
   "id" text primary key,
@@ -1927,10 +1963,29 @@ alter table public."purchase_decisions" add column if not exists "approvedAt" ti
 alter table public."purchase_decisions" add column if not exists "approvalNote" text;
 alter table public."purchase_decisions" add column if not exists "orderId" text;
 alter table public."purchase_decisions" add column if not exists "quoteId" text;
+alter table public."purchase_decisions" add column if not exists "recipientIds" jsonb;
+alter table public."purchase_decisions" add column if not exists "sendId" text;
 create index if not exists "purchase_decisions_by_status" on public."purchase_decisions" ("status");
 create index if not exists "purchase_decisions_by_product" on public."purchase_decisions" ("productId");
 create index if not exists "purchase_decisions_created" on public."purchase_decisions" ("createdAt");
 create index if not exists "purchase_decisions_created_id" on public."purchase_decisions" ("createdAt", "id");
+
+create table if not exists public."purchase_strategy_sends" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."purchase_strategy_sends" enable row level security;
+alter table public."purchase_strategy_sends" add column if not exists "number" bigint;
+alter table public."purchase_strategy_sends" add column if not exists "status" text;
+alter table public."purchase_strategy_sends" add column if not exists "lines" jsonb;
+alter table public."purchase_strategy_sends" add column if not exists "createdByUserId" text;
+alter table public."purchase_strategy_sends" add column if not exists "lastRunAt" timestamptz;
+alter table public."purchase_strategy_sends" add column if not exists "runs" bigint;
+create index if not exists "purchase_strategy_sends_by_status" on public."purchase_strategy_sends" ("status");
+create index if not exists "purchase_strategy_sends_by_creator" on public."purchase_strategy_sends" ("createdByUserId");
+create index if not exists "purchase_strategy_sends_created" on public."purchase_strategy_sends" ("createdAt");
+create index if not exists "purchase_strategy_sends_created_id" on public."purchase_strategy_sends" ("createdAt", "id");
 
 create table if not exists public."booking_invites" (
   "id" text primary key,

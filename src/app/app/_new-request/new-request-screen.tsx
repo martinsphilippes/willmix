@@ -39,6 +39,7 @@ import {
 } from "@/components/request-people-fields";
 import { CustomerPurchaseHistory } from "@/components/customer-purchase-history";
 import { RequestCustomerContacts } from "@/components/request-customer-contacts";
+import { contactsOptionalFor } from "@/lib/services/customer-contacts";
 import { RequestOrderTerms } from "@/components/request-order-terms";
 import { RequestDraftAutosave } from "@/components/request-draft-autosave";
 import {
@@ -229,7 +230,9 @@ export async function renderNewRequest({
   const draftRows: InitialRequestRow[] = (() => {
     if (!draftFields) return [];
     try {
-      return parseRequestItems(draftFields).map((r) => ({
+      // Leitura tolerante (dono, 18/11/2026): campo incompleto não apaga os
+      // produtos do rascunho.
+      return parseRequestItems(draftFields, { lenient: true }).map((r) => ({
         productId: r.productId ?? "",
         variantId: r.variantId ?? "",
         notInCatalog: r.sourcingDemand && !r.productId,
@@ -325,6 +328,8 @@ export async function renderNewRequest({
     accessStock: t("requestPeople.accessStock"),
     accessRequired: t("requestPeople.accessRequired"),
     accessChoose: t("requestPeople.accessChoose"),
+    accessAll: t("requestPeople.accessAll", { n: "{n}" }),
+    accessAllHint: t("requestPeople.accessAllHint"),
   };
   // Cliente pré-escolhido (programação de compra, endereço): só cliente ativo.
   const initialCustomer =
@@ -728,6 +733,7 @@ export async function renderNewRequest({
               ),
             )}
             labels={customerContactsLabels(t)}
+            optional={contactsOptionalFor(user)}
             className="max-w-2xl lg:col-start-2 lg:row-start-1 lg:max-w-none"
           />
         ) : null}
@@ -998,7 +1004,7 @@ export async function renderNewRequest({
                   requesterName={user.name}
                   loginsByCustomer={loginsByCustomer}
                   labels={requestPeopleLabels}
-                  loginRequired={sellsToCustomer}
+                  allLogins={sellsToCustomer}
                   initialLogin={draftValue("requestedForUserId")}
                 />
               </div>

@@ -19,6 +19,7 @@ import {
   PageHeader,
   Table,
   Td,
+  OpenLink,
   TextLink,
   Th,
   cx,
@@ -507,9 +508,8 @@ export async function PartyAccountList({
                           label={L("action.request")}
                         />
                       ) : null}
-                      <IconLink
+                      <OpenLink
                         href={`${base}/${party.id}`}
-                        icon="eye"
                         label={L("action.view")}
                       />
                       <IconLink

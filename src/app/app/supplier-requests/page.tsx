@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { roundsLine } from "@/components/purchase-rounds";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -28,6 +27,15 @@ import {
   purchaseOrderCustomer,
 } from "@/lib/services/purchase-order";
 import { PurchaseOrderCard } from "./_components/purchase-order";
+import {
+  requestContainersPerRound,
+  requestRounds,
+} from "./_components/request-load";
+import {
+  requestClosed,
+  requestOrderState,
+} from "@/lib/supplier-request-closing";
+import { getSettings } from "@/lib/settings";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
@@ -35,6 +43,7 @@ import {
   Card,
   Empty,
   LinkButton,
+  OpenLink,
   PageHeader,
   Table,
   Td,
@@ -46,7 +55,11 @@ import { can, canSeePurchasePrice } from "@/lib/auth/function-access";
 
 /*
  * Solicitações ao fornecedor (docs/SUPPLIER_REQUESTS.md): a Wellmix vê todas;
- * o fornecedor, só as do próprio cadastro.
+ * o fornecedor, só as do próprio cadastro. Duas abas (dono, 18/11/2026): "Em
+ * negociação" (a primeira) e "Encerradas" (todos os produtos decididos), onde
+ * a solicitação com todos os produtos cadastrados ganha "Gerar pedido", que
+ * leva ao quadro "Gerar pedido de compra" (por fornecedor, para juntar outras
+ * solicitações do mesmo fornecedor e ajustar a quantidade).
  */
 
 export default async function SupplierRequestsPage({
@@ -74,12 +87,23 @@ export default async function SupplierRequestsPage({
   const showPurchase =
     wellmix && canOpen(user, "orders") && can(user, "purchaseOrder.generate");
   // Leituras independentes em paralelo.
-  const [entries, slaMinutes, query, purchase] = await Promise.all([
+  const [entries, slaMinutes, query, settings] = await Promise.all([
     listSupplierRequests(user),
     supplierRequestSlaMinutes(),
     searchParams,
-    showPurchase ? listPurchaseCandidates(user) : Promise.resolve(null),
+    getSettings(),
   ]);
+  // Containers por programação: no 40HC (o padrão da seleção) ou no maior.
+  const container =
+    settings.containerTypes.find((c) => c.code === "40HC") ??
+    [...settings.containerTypes].sort(
+      (a, b) => b.capacityCbm - a.capacityCbm,
+    )[0] ??
+    null;
+  const closedTab = query.tab === "closed";
+  // "Gerar pedido" de uma linha: os produtos dela vêm marcados no quadro.
+  const pickParam = typeof query.pick === "string" ? query.pick : "";
+  const pick = pickParam ? new Set(pickParam.split(",").filter(Boolean)) : null;
   const now = new Date();
   const error = typeof query.error === "string" ? query.error : "";
   const errorKey = [
@@ -92,22 +116,29 @@ export default async function SupplierRequestsPage({
     : errorKey
       ? t(errorKey)
       : fallbackError(t, error);
-  // Pedido de compra (docs/PURCHASE_ORDER.md): os produtos aprovados de cada
-  // fornecedor que ainda não estão em pedido.
-  const purchaseCustomer = purchase?.length
-    ? await purchaseOrderCustomer()
-    : null;
 
   // Uma linha por solicitação: os produtos abertos juntos para o fornecedor
-  // ficam dentro dela (a antiga, sem batchId, é uma linha sozinha).
+  // ficam dentro dela (a antiga, sem batchId, é uma linha sozinha). Sem
+  // colunas de produto (dono, 18/11/2026): a solicitação pode ter milhares;
+  // os produtos ficam na tela da solicitação.
   const rows = entries ?? [];
-  const distinctTotal = new Set(rows.map((e) => e.request.bookingItemId)).size;
   const supplierOf = new Map(rows.map((e) => [e.request.id, e.supplier]));
-  const requests = groupRequests(rows.map((e) => e.request)).map((list) =>
+  const allRequests = groupRequests(rows.map((e) => e.request)).map((list) =>
     [...list].sort(
       (a, b) => a.number - b.number || a.createdAt.localeCompare(b.createdAt),
     ),
   );
+  const closedRequests = allRequests.filter((list) => requestClosed(list));
+  const openRequests = allRequests.filter((list) => !requestClosed(list));
+  const requests = closedTab ? closedRequests : openRequests;
+  const tabProducts = new Set(requests.flat().map((p) => p.bookingItemId)).size;
+  // Pedido de compra (docs/PURCHASE_ORDER.md), só na aba Encerradas: os
+  // produtos aprovados de cada fornecedor que ainda não estão em pedido.
+  const purchase =
+    closedTab && showPurchase ? await listPurchaseCandidates(user) : null;
+  const purchaseCustomer = purchase?.length
+    ? await purchaseOrderCustomer()
+    : null;
 
   return (
     <>
@@ -119,25 +150,52 @@ export default async function SupplierRequestsPage({
             ? "supplierRequests.list.subtitle"
             : "supplierRequests.list.subtitleSupplier",
         )}
-        actions={
-          wellmix && canOpen(user, "booking") ? (
-            <LinkButton href="/app/booking/selection" variant="primary">
-              {t("supplierRequests.list.toSelection")}
-            </LinkButton>
-          ) : null
-        }
       />
       {errorText ? (
         <div className="mb-3">
           <Alert tone="danger">{errorText}</Alert>
         </div>
       ) : null}
+      <nav
+        aria-label={t("supplierRequests.tabs.label")}
+        className="mb-4 flex gap-1 border-b border-zinc-200 text-sm"
+        data-supplier-request-tabs
+      >
+        {(
+          [
+            ["open", "/app/supplier-requests", openRequests.length],
+            [
+              "closed",
+              "/app/supplier-requests?tab=closed",
+              closedRequests.length,
+            ],
+          ] as const
+        ).map(([id, href, n]) => {
+          const active = (id === "closed") === closedTab;
+          return (
+            <Link
+              key={id}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              data-supplier-request-tab={id}
+              className={`-mb-px border-b-2 px-3 py-2 ${
+                active
+                  ? "border-brand-600 font-semibold text-brand-700"
+                  : "border-transparent text-zinc-600 hover:text-zinc-900"
+              }`}
+            >
+              {t(`supplierRequests.tabs.${id}` as DictionaryKey)} ({n})
+            </Link>
+          );
+        })}
+      </nav>
       {purchase?.length ? (
         <div className="mb-4" id="pedido-de-compra">
           <PurchaseOrderCard
             groups={purchase}
             customer={purchaseCustomer}
             showPrice={seesPrice}
+            pick={pick}
             t={t}
           />
         </div>
@@ -146,12 +204,12 @@ export default async function SupplierRequestsPage({
         <Alert tone="warning">
           {t("supplierRequests.selection.schemaMissing")}
         </Alert>
-      ) : entries.length ? (
+      ) : requests.length ? (
         <Card>
           <p className="mb-2 text-sm text-zinc-600" data-supplier-request-count>
             {t("supplierRequests.list.count", {
               n: requests.length,
-              products: distinctTotal,
+              products: tabProducts,
             })}
           </p>
           <Table>
@@ -160,12 +218,27 @@ export default async function SupplierRequestsPage({
                 <Th>{t("supplierRequests.col.number")}</Th>
                 <Th>{t("supplierRequests.col.status")}</Th>
                 {wellmix ? <Th>{t("supplierRequests.col.supplier")}</Th> : null}
-                <Th>{t("supplierRequests.col.item")}</Th>
-                <Th>{t("supplierRequests.col.quantity")}</Th>
                 <Th>{t("supplierRequests.col.products")}</Th>
+                <Th>{t("supplierRequests.col.quantity")}</Th>
+                <Th>{t("supplierRequests.col.rounds")}</Th>
+                <Th>
+                  <span
+                    title={t("supplierRequests.col.containersHint", {
+                      code: container?.code ?? "—",
+                    })}
+                  >
+                    {t("supplierRequests.col.containersPerRound")}
+                  </span>
+                </Th>
                 <Th>{t("supplierRequests.col.answer")}</Th>
                 <Th>{t("supplierRequests.col.createdAt")}</Th>
                 <Th>{t("supplierRequests.col.finishedAt")}</Th>
+                {closedTab && showPurchase ? (
+                  <Th>{t("supplierRequests.col.order")}</Th>
+                ) : null}
+                <Th>
+                  <span className="sr-only">{t("tasks.open")}</span>
+                </Th>
               </tr>
             </thead>
             <tbody>
@@ -204,6 +277,16 @@ export default async function SupplierRequestsPage({
                       .at(-1)!
                   : null;
                 const late = products.some((p) => finishedLate(p, slaMinutes));
+                const href = `/app/supplier-requests/${r.id}`;
+                const rounds = requestRounds(products);
+                const containers = requestContainersPerRound(
+                  products,
+                  container?.capacityCbm ?? null,
+                );
+                const orderState =
+                  closedTab && showPurchase
+                    ? requestOrderState(products)
+                    : null;
                 return (
                   <tr
                     key={r.id}
@@ -211,10 +294,7 @@ export default async function SupplierRequestsPage({
                     data-supplier-request-row={r.id}
                   >
                     <Td>
-                      <Link
-                        href={`/app/supplier-requests/${r.id}`}
-                        className={linkClass}
-                      >
+                      <Link href={href} className={linkClass}>
                         {r.number}
                       </Link>
                     </Td>
@@ -241,55 +321,32 @@ export default async function SupplierRequestsPage({
                       ) : null}
                     </Td>
                     {wellmix ? <Td>{supplier?.name ?? "—"}</Td> : null}
-                    <Td>
-                      {products.slice(0, 4).map((p) => (
-                        <span
-                          key={p.id}
-                          className="block max-w-64 whitespace-normal"
-                        >
-                          {p.item.description ?? p.item.productName ?? "—"}
-                          {p.item.factoryItemCode ? (
-                            <span className="text-xs text-zinc-500">
-                              {` · ${p.item.factoryItemCode}`}
-                            </span>
-                          ) : null}
-                        </span>
-                      ))}
-                      {products.length > 4 ? (
-                        <span className="block text-xs text-zinc-500">
-                          {t("supplierRequests.list.more", {
-                            n: products.length - 4,
-                          })}
-                        </span>
-                      ) : null}
-                    </Td>
-                    <Td className="tabular-nums">
-                      {t("supplierRequests.detail.pieces", {
-                        n: pieces.toLocaleString(t.intl),
-                      })}
-                      {/* Programação de compra: rodadas e peças por rodada. */}
-                      {products
-                        .filter((p) => p.schedule?.items.length)
-                        .map((p) => (
-                          <span
-                            key={p.id}
-                            className="block text-xs text-zinc-500"
-                            data-supplier-request-rounds={p.id}
-                          >
-                            {roundsLine(p.schedule, t)}
-                          </span>
-                        ))}
-                    </Td>
                     <Td
                       className="tabular-nums"
                       data-supplier-request-products={r.id}
                     >
-                      <Link
-                        href={`/app/supplier-requests/${r.id}`}
-                        className={linkClass}
-                      >
-                        {distinct}
-                      </Link>
+                      {distinct.toLocaleString(t.intl)}
+                    </Td>
+                    <Td className="whitespace-nowrap tabular-nums">
+                      {t("supplierRequests.detail.pieces", {
+                        n: pieces.toLocaleString(t.intl),
+                      })}
+                    </Td>
+                    <Td
+                      className="tabular-nums"
+                      data-supplier-request-rounds={r.id}
+                    >
+                      {rounds}
+                    </Td>
+                    <Td
+                      className="whitespace-nowrap tabular-nums"
+                      data-supplier-request-containers={r.id}
+                    >
+                      {containers
+                        ? containers.min === containers.max
+                          ? containers.max
+                          : `${containers.min}–${containers.max}`
+                        : "—"}
                     </Td>
                     <Td>
                       {many
@@ -335,6 +392,44 @@ export default async function SupplierRequestsPage({
                         "—"
                       )}
                     </Td>
+                    {orderState ? (
+                      <Td data-request-order-state={orderState.kind}>
+                        {orderState.kind === "ready" ? (
+                          <LinkButton
+                            href={`/app/supplier-requests?tab=closed&pick=${orderState.requestIds.join(",")}#pedido-de-compra`}
+                            variant="primary"
+                            data-request-to-order={r.id}
+                          >
+                            {t("supplierRequests.toOrder.submit")}
+                          </LinkButton>
+                        ) : orderState.kind === "missingProduct" ? (
+                          <span className="block max-w-48 whitespace-normal text-xs text-zinc-500">
+                            {t("supplierRequests.toOrder.missingProduct", {
+                              n: orderState.missing,
+                            })}
+                          </span>
+                        ) : orderState.kind === "waitingSample" ? (
+                          <span className="block max-w-48 whitespace-normal text-xs text-zinc-500">
+                            {t("supplierRequests.toOrder.waitingSample", {
+                              n: orderState.waiting,
+                            })}
+                          </span>
+                        ) : orderState.kind === "ordered" ? (
+                          <span className="text-xs text-zinc-500">
+                            {t("supplierRequests.toOrder.ordered")}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </Td>
+                    ) : null}
+                    <Td>
+                      <OpenLink
+                        href={href}
+                        label={t("tasks.open")}
+                        data-supplier-request-open={r.id}
+                      />
+                    </Td>
                   </tr>
                 );
               })}
@@ -342,7 +437,15 @@ export default async function SupplierRequestsPage({
           </Table>
         </Card>
       ) : (
-        <Empty>{t("supplierRequests.list.empty")}</Empty>
+        <Empty>
+          {t(
+            entries.length
+              ? closedTab
+                ? "supplierRequests.tabs.emptyClosed"
+                : "supplierRequests.tabs.emptyOpen"
+              : "supplierRequests.list.empty",
+          )}
+        </Empty>
       )}
     </>
   );

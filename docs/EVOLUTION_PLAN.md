@@ -1850,6 +1850,26 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Aditivo:** tabela nova `team_pending`; nada muda nos logins existentes nem nas telas de antes (o painel novo entra na lista de painéis da Equipe Interna).
 - Testes: `tests/unit/team-import.test.ts` e `tests/e2e/team-pending.spec.ts`.
 
+## Grupo de produto (família) no cadastro do parceiro (18/11/2026)
+
+- **Pedido do dono** (18/11/2026; docs/PARTNER_FAMILIES.md, decisões 1 a 3): a seção "Linhas atendidas" do Fornecedor dá lugar a "Grupo de produto (família)". A seção também aparece na Trading, no Supplier e na Factory. As famílias marcadas convidam o parceiro para a cotação de compra das linhas delas, e a vencedora de qualquer um dos quatro tipos vira o fornecedor da solicitação.
+- **Aditivo:**
+  - tabelas novas `product_families` (o 1º nível da árvore de grupos do Sankhya, pelo código) e `party_families`;
+  - colunas novas `product_lines.familyCode` e `supplier_lines.familyConvertedAt`;
+  - os vínculos antigos viram famílias uma vez só e ficam no banco, junto com a ação e o serviço antigos;
+  - o fornecedor principal e os fornecedores dos produtos continuam na cotação;
+  - nada é apagado.
+- **Muda:** o que a tela mostra: a seção antiga sai da ficha do Fornecedor, a pedido do dono.
+- Testes: `tests/unit/party-families.test.ts`, `tests/e2e/party-families.spec.ts` e `tests/e2e/purchase-quote.spec.ts`.
+
+## Estratégia de Compra por produto (dono, 18/11/2026)
+
+- **Pedido do dono**: depois de Encomendas, a Estratégia de Compra com um produto por linha, a escolha e os destinatários de cada produto (última compra ou outros parceiros: Fornecedor, Trading, Supplier e Factory da família), o resumo, o envio aos parceiros pelo portal e o resultado por destinatário com reenvio sem duplicar. Decisões D1 a D7 em docs/PURCHASE_DEMAND.md, "Estratégia de Compra por produto".
+- **Como ficou**: "Enviar para cotação" em Encomendas (e na página do lote); a Estratégia na mesma rota `/app/purchase-strategy`, redesenhada por produto, logo depois de Encomendas no menu e com tela própria `purchaseStrategy`; resultado em `/app/purchase-strategy/sends/[id]`; os parceiros vêm do "Grupo de produto (família)" do cadastro (docs/PARTNER_FAMILIES.md); Trading, Supplier e Factory cotam, respondem e podem vencer.
+- **Muda regra existente (autorizado pelo dono)**: a encomenda passa a entrar na fila só depois do envio (D1); cotar deixa de passar pela aprovação da Diretoria antes (D2); os rótulos das escolhas mudaram ("Cotar com outros fornecedores", "Pedido direto com o fornecedor da última compra (sem cotação)"). Nada foi apagado: o pedido direto, a aprovação dele, as estratégias e cotações antigas, a rota e a tela de cotações continuam.
+- **Aditivo:** colunas `requests.strategySentAt`/`strategySentByUserId` e `purchase_decisions.recipientIds`/`sendId`; tabela `purchase_strategy_sends`; índice único `purchase_quote_responses (quoteId, supplierId)` (vazia em produção); a escolha nova `quote_last`.
+- Testes: `tests/unit/strategy-send.test.ts`, `tests/e2e/purchase-strategy.spec.ts` e `tests/e2e/purchase-quote.spec.ts`.
+
 ## Carteira e atendimento ao cliente (Trade e Comercial, PR 1)
 
 - **Pedido do dono** (17 e 18/11/2026; docs/TRADE_COMERCIAL.md): levar o painel do Projeto Campineira para o portal, começando pelo controle de dias de cliente sem atendimento. Decisões: o atendimento só vale confirmado por quem atendeu e por quem foi atendido; prazo único (30 dias) que o administrador muda; pendência só dos clientes acompanhados; grupos montados à mão; "Gerir carteira e trade" só do administrador por padrão.

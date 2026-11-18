@@ -130,6 +130,7 @@ import * as supplierRequestProduct from "./supplier-request-product";
 import * as placeholderName from "./placeholder-name";
 import * as bookingNcm from "./booking-ncm";
 import * as purchaseDemand from "./purchase-demand";
+import * as strategySend from "./strategy-send";
 import * as supplierRequestNegotiation from "./supplier-request-negotiation";
 import * as purchaseOrder from "./purchase-order";
 import * as purchaseSequence from "./purchase-sequence";
@@ -166,6 +167,7 @@ import * as externalTeam from "./external-team";
 import * as accessState from "./access-state";
 import * as internalTeam from "./internal-team";
 import * as newProduct from "./new-product";
+import * as partyFamilies from "./party-families";
 import * as portfolio from "./portfolio";
 
 export const modulesPt = {
@@ -299,6 +301,7 @@ export const modulesPt = {
   ...placeholderName.pt,
   ...bookingNcm.pt,
   ...purchaseDemand.pt,
+  ...strategySend.pt,
   ...supplierRequestNegotiation.pt,
   ...purchaseOrder.pt,
   ...purchaseSequence.pt,
@@ -332,6 +335,7 @@ export const modulesPt = {
   ...accessState.pt,
   ...internalTeam.pt,
   ...newProduct.pt,
+  ...partyFamilies.pt,
   ...portfolio.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
@@ -465,6 +469,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...placeholderName.en,
   ...bookingNcm.en,
   ...purchaseDemand.en,
+  ...strategySend.en,
   ...supplierRequestNegotiation.en,
   ...purchaseOrder.en,
   ...purchaseSequence.en,
@@ -498,6 +503,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...accessState.en,
   ...internalTeam.en,
   ...newProduct.en,
+  ...partyFamilies.en,
   ...portfolio.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
@@ -631,6 +637,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...placeholderName.zh,
   ...bookingNcm.zh,
   ...purchaseDemand.zh,
+  ...strategySend.zh,
   ...supplierRequestNegotiation.zh,
   ...purchaseOrder.zh,
   ...purchaseSequence.zh,
@@ -664,5 +671,6 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...accessState.zh,
   ...internalTeam.zh,
   ...newProduct.zh,
+  ...partyFamilies.zh,
   ...portfolio.zh,
 };

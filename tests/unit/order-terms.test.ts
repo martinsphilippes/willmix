@@ -184,6 +184,49 @@ describe("contatos do cliente", () => {
     ).rejects.toThrow("contacts_same_as_seller");
   });
 
+  it("equipe interna: contatos opcionais; o que for preenchido é conferido (dono, 18/11/2026)", async () => {
+    expect(contacts.contactsOptionalFor(admin)).toBe(true);
+    expect(contacts.contactsOptionalFor(joao)).toBe(false);
+    expect(
+      contacts.contactsOptionalFor({ ...admin, active: false } as typeof admin),
+    ).toBe(false);
+    const blank = { phone: "", email: "" };
+    // Só o comprador: grava, sem pedir os outros.
+    const onlyBuyer = full({
+      partner: blank,
+      finance: blank,
+      logistics: blank,
+    });
+    expect(terms.contactIssues(onlyBuyer, [], { optional: true })).toEqual([]);
+    expect(terms.contactIssues(onlyBuyer, []).length).toBeGreaterThan(0);
+    await contacts.saveCustomerContacts(admin, "cliente-joao", onlyBuyer);
+    const view = await contacts.customerContactsView(admin, "cliente-joao");
+    expect(view?.state === "known" && view.contacts.partner.phone).toBe("");
+    // Meio preenchido: o que falta é cobrado.
+    await expect(
+      contacts.saveCustomerContacts(
+        admin,
+        "cliente-joao",
+        full({ partner: { phone: "4799990001", email: "" } }),
+      ),
+    ).rejects.toThrow("contacts_invalid");
+    // Tudo em branco: nada a gravar.
+    await expect(
+      contacts.saveCustomerContacts(
+        admin,
+        "cliente-joao",
+        full({
+          partner: blank,
+          buyer: blank,
+          finance: blank,
+          logistics: blank,
+        }),
+      ),
+    ).rejects.toThrow("contacts_empty");
+    // De volta aos contatos completos para os testes seguintes.
+    await contacts.saveCustomerContacts(admin, "cliente-joao", full());
+  });
+
   it("só a Wellmix; a rota não abre para o cliente", async () => {
     await expect(
       contacts.customerContactsView(joao, "cliente-joao"),
@@ -446,6 +489,18 @@ describe("país de origem, grupo e entrega", () => {
       ).deliveryFreightBrl,
     ).toBe(1500.5);
     expect(resolved.deliveryFreightBrl).toBeNull();
+    // O cliente chama (dono, 18/11/2026): o valor do transporte também vale.
+    expect(
+      (
+        await orderTerms.resolveOrderTerms({
+          ...base,
+          carrierCaller: "customer",
+          carrier: "",
+          redispatchCarrier: "",
+          deliveryFreightBrl: "800",
+        })
+      ).deliveryFreightBrl,
+    ).toBe(800);
     await fails({ deliveryFreightBrl: "abc" }, "order_terms_freight");
     await fails(
       { redispatchCarrier: "" },
@@ -549,6 +604,84 @@ describe("confirmação do cliente e rascunho", () => {
     expect(terms.validCnpj("11.222.333/0001-82")).toBe(false);
     expect(terms.validCnpj("11111111111111")).toBe(false);
     expect(terms.formatCnpj("11222333000181")).toBe("11.222.333/0001-81");
+  });
+
+  it("sem login escolhido, a venda vai para todos os logins do cliente (dono, 18/11/2026)", async () => {
+    const { getStore, USER_EXTRA_DEFAULTS } = await import("@/lib/db");
+    const { createRequestBatch } = await import("@/lib/services/requests");
+    const { canViewRequest } = await import("@/lib/auth/permissions");
+    const confirmation = await import("@/lib/services/customer-confirmation");
+    const store = getStore();
+    const colleague = await store.create("users", {
+      ...USER_EXTRA_DEFAULTS,
+      ...joao,
+      id: undefined,
+      email: "colega.joao@lojista.com",
+      name: "Colega do João",
+    } as never);
+    const outsider = await store.create("users", {
+      ...USER_EXTRA_DEFAULTS,
+      ...joao,
+      id: undefined,
+      email: "outro@cliente.com",
+      name: "Outro cliente",
+      partyId: "cliente-outro",
+    } as never);
+    const resolved = await orderTerms.resolveOrderTerms({
+      operationType: "ts",
+      saleFormat: "wd",
+      wellmixTier: "",
+      carrierCaller: "customer",
+      carrier: "",
+      redispatch: "no",
+      originCountry: "CHINA",
+      productFamily: "fm:BRINQUEDOS_GERAIS",
+    });
+    const [request] = await createRequestBatch(
+      admin,
+      {
+        customerId: "cliente-joao",
+        deadline: null,
+        notes: null,
+        requestedForUserId: null,
+        orderTerms: resolved,
+      },
+      [
+        {
+          productId: null,
+          productName: "Pote para todos",
+          description: "Pote para todos",
+          specification: null,
+          quantity: 100,
+          unit: "un",
+          sourcingDemand: false,
+        },
+      ],
+    );
+    expect(request.requestedForUserId).toBeNull();
+    expect(request.status).toBe("AWAITING_CUSTOMER");
+    for (const u of [joao, colleague]) {
+      expect(canViewRequest(u, request)).toBe(true);
+      expect(confirmation.canConfirm(u, request)).toBe(true);
+    }
+    expect(canViewRequest(outsider, request)).toBe(false);
+    expect(confirmation.canConfirm(outsider, request)).toBe(false);
+    // Solicitação antiga sem as condições de venda: continua só da Wellmix.
+    const legacy = { ...request, orderTerms: null };
+    expect(canViewRequest(colleague, legacy)).toBe(false);
+    // O aviso de confirmar vai para os dois logins do cliente.
+    const notes = await store.list("notifications", {
+      filter: { userId: [joao.id, colleague.id] },
+    });
+    expect(
+      new Set(
+        notes
+          .filter((n) => n.link === `/app/requests/${request.id}`)
+          .map((n) => n.userId),
+      ),
+    ).toEqual(new Set([joao.id, colleague.id]));
+    await store.remove("users", colleague.id);
+    await store.remove("users", outsider.id);
   });
 
   it("a venda nasce aguardando o cliente; ele confirma e informa a transportadora do re-despacho", async () => {

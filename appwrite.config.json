@@ -673,6 +673,14 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "familyCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
         }
       ],
       "indexes": [
@@ -681,6 +689,16 @@
           "type": "key",
           "columns": [
             "sankhyaCode"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_family",
+          "type": "key",
+          "columns": [
+            "familyCode"
           ],
           "orders": [
             "ASC"
@@ -1396,6 +1414,21 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "strategySentAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "strategySentByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -11323,6 +11356,18 @@
           "orders": [
             "ASC"
           ]
+        },
+        {
+          "key": "quote_supplier_unique",
+          "type": "unique",
+          "columns": [
+            "quoteId",
+            "supplierId"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
         }
       ]
     },
@@ -11357,6 +11402,13 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "familyConvertedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
         }
       ],
       "indexes": [
@@ -11375,6 +11427,122 @@
           "type": "key",
           "columns": [
             "lineId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "product_families",
+      "databaseId": "willmix",
+      "name": "Grupos de produto (famílias)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "code",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "nameKey",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "active",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "syncedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_code",
+          "type": "unique",
+          "columns": [
+            "code"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "party_families",
+      "databaseId": "willmix",
+      "name": "Famílias atendidas por parceiro",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "partyId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "familyCode",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "createdByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_party",
+          "type": "key",
+          "columns": [
+            "partyId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_family",
+          "type": "key",
+          "columns": [
+            "familyCode"
           ],
           "orders": [
             "ASC"
@@ -11436,7 +11604,8 @@
           "format": "enum",
           "elements": [
             "last_supplier",
-            "quote"
+            "quote",
+            "quote_last"
           ]
         },
         {
@@ -11519,6 +11688,21 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "recipientIds",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "sendId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -11537,6 +11721,86 @@
           "type": "key",
           "columns": [
             "productId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "purchase_strategy_sends",
+      "databaseId": "willmix",
+      "name": "Envios da Estratégia de Compra (resultado por destinatário)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "number",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "ok",
+            "failures"
+          ]
+        },
+        {
+          "key": "lines",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "longtext"
+        },
+        {
+          "key": "createdByUserId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "lastRunAt",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "runs",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_status",
+          "type": "key",
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_creator",
+          "type": "key",
+          "columns": [
+            "createdByUserId"
           ],
           "orders": [
             "ASC"

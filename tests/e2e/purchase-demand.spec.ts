@@ -4,6 +4,7 @@ import {
   fillCustomerContacts,
   fillOrderTerms,
   login,
+  createdRequestId,
 } from "./helpers";
 
 /*
@@ -46,7 +47,7 @@ async function orderForJoao(page: Page, name: string) {
     .locator('[data-request-item="0"] [data-selection-quantity]')
     .fill("500");
   await page.getByRole("button", { name: /enviar|send/i }).click();
-  await page.waitForURL(/\/app\/requests\/(?!new|batch)[^/?]+/);
+  await createdRequestId(page);
 }
 
 test("encomenda lançada pelo vendedor e pelo operador em nome do cliente", async ({
@@ -121,11 +122,15 @@ test("carrinho da vitrine: um item de pronta entrega e outro sob encomenda", asy
   );
   await page.locator("[data-cart-checkout]").click();
   // Nasce a encomenda (a panela) e a ordem de venda (a jarra).
-  await page.waitForURL(/\/app\/requests\/[^/]+\?fromCart=1&sale=\d+/);
+  await page.waitForURL(
+    /\/app\/requests\/batch\/[^/]+\?created=1&fromCart=1&sale=\d+/,
+  );
   await expect(page.locator("[data-cart-sent]")).toContainText(
     /ordem de venda/,
   );
-  await expect(page.locator("h1")).toContainText("Jogo de panelas");
+  await expect(page.locator("[data-batch-item]")).toContainText(
+    "Jogo de panelas",
+  );
   const sale = new URL(page.url()).searchParams.get("sale");
 
   // Vendas encontra a ordem de venda em rascunho, com a jarra.

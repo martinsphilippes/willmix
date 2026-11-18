@@ -5,6 +5,7 @@ import {
   fillCustomerContacts,
   fillOrderTerms,
   login,
+  createdRequestId,
 } from "./helpers";
 
 /*
@@ -38,7 +39,7 @@ async function pickDoll(page: Page) {
 
 async function send(page: Page) {
   await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
-  await page.waitForURL(/\/app\/requests\/(?!new|batch)[^/?]+$/);
+  await createdRequestId(page);
   return new URL(page.url()).pathname.split("/").pop()!;
 }
 
@@ -78,6 +79,12 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await expect(
     contacts.locator('input[name="contact.partner.email"]'),
   ).toHaveValue("");
+  // Solicitante da equipe interna (dono, 18/11/2026): os contatos são
+  // opcionais (o aviso aparece e nenhum campo é obrigatório).
+  await expect(
+    contacts.locator("[data-customer-contacts-optional]"),
+  ).toBeVisible();
+  await expect(contacts.locator("input[required]")).toHaveCount(0);
 
   // Rascunho: salva como está (sem conferir) e volta igual.
   await terms.locator('[data-order-terms-format-option="wellmix"]').check();
@@ -124,6 +131,9 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
     .locator('[data-order-terms-carrier-caller-option="customer"]')
     .check();
   await expect(terms.locator("[data-order-terms-carrier]")).toHaveCount(0);
+  // O valor do transporte continua (tem custo de toda forma; dono,
+  // 18/11/2026); só a escolha da transportadora sai.
+  await expect(terms.locator("[data-order-terms-freight]")).toBeVisible();
   await expect(
     terms.locator("[data-order-terms-carrier-caller-hint]"),
   ).toContainText("porto ao cliente");
@@ -551,6 +561,22 @@ test("Lupa da busca de produto: seletor com Grupo, Sub grupo e Coleção, seleç
   await expect(browser.locator("[data-product-browser-progress]")).toHaveText(
     "1 de 2 produtos da família já vistos",
   );
+
+  // Rascunho automático com os produtos (dono, 18/11/2026): reaberto, volta
+  // com os dois (e a linha nova, ainda vazia); e só abrir não grava por cima
+  // (abre de novo, igual).
+  await expect(page.locator("[data-request-autosaved='1']")).toBeVisible({
+    timeout: 15_000,
+  });
+  await page.waitForTimeout(3_000);
+  const draftId = new URL(page.url()).searchParams.get("draft");
+  expect(draftId).toBeTruthy();
+  for (let i = 0; i < 2; i++) {
+    await page.goto(`/app/requests/new?draft=${draftId}`);
+    await expect(page.locator("[data-request-item]")).toHaveCount(3);
+    await expect(inputs.nth(0)).toHaveValue(/Boneca/);
+    await page.waitForTimeout(3_000);
+  }
 });
 
 test("Lupa com a ficha demorando: dois produtos seguidos ficam os dois no pedido", async ({

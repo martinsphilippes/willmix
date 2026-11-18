@@ -80,7 +80,7 @@ function DeleteSelectedButton({
   confirmText: string;
   /** Outra ação no mesmo formulário (ex.: excluir de vez ao lado de restaurar). */
   formAction?: (form: FormData) => Promise<void>;
-  tone?: "danger" | "neutral";
+  tone?: "danger" | "neutral" | "brand";
 }) {
   const { pending } = useFormStatus();
   return (
@@ -96,7 +96,9 @@ function DeleteSelectedButton({
       className={
         tone === "danger"
           ? "inline-flex min-h-10 items-center gap-2 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-          : "inline-flex min-h-10 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+          : tone === "brand"
+            ? "inline-flex min-h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+            : "inline-flex min-h-10 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
       }
     >
       {pending ? (
@@ -118,6 +120,8 @@ export function BulkDeleteBar({
   labels,
   primaryTone = "danger",
   extra,
+  lead,
+  showDelete = true,
 }: {
   formId: string;
   action: (form: FormData) => Promise<void>;
@@ -129,6 +133,18 @@ export function BulkDeleteBar({
     label: string;
     confirmText: string;
   };
+  /**
+   * Ação que não apaga, antes do excluir (botão da cor da marca; ex.:
+   * "Enviar para cotação" em Encomendas, dono, 18/11/2026).
+   */
+  lead?: {
+    action: (form: FormData) => Promise<void>;
+    label: string;
+    confirmText: string;
+    marker?: string;
+  };
+  /** Sem nada que o login possa excluir: só a ação `lead`. */
+  showDelete?: boolean;
   labels: {
     selectAll: string;
     clear: string;
@@ -158,12 +174,25 @@ export function BulkDeleteBar({
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <DeleteSelectedButton
-          count={checked}
-          label={labels.deleteSelected}
-          confirmText={labels.confirmMany}
-          tone={primaryTone}
-        />
+        {lead ? (
+          <span data-bulk-lead={lead.marker ?? ""} className="contents">
+            <DeleteSelectedButton
+              count={checked}
+              label={lead.label}
+              confirmText={lead.confirmText}
+              formAction={lead.action}
+              tone="brand"
+            />
+          </span>
+        ) : null}
+        {showDelete ? (
+          <DeleteSelectedButton
+            count={checked}
+            label={labels.deleteSelected}
+            confirmText={labels.confirmMany}
+            tone={primaryTone}
+          />
+        ) : null}
         {extra ? (
           <DeleteSelectedButton
             count={checked}

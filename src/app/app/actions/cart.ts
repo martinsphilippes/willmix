@@ -89,7 +89,8 @@ export async function requestNowAction(form: FormData) {
       variantId,
     );
     return request
-      ? `/app/requests/${encodeURIComponent(request.id)}?fromCart=1`
+      ? // A página da solicitação, também com um produto só (docs/ORDER_LEVEL_LISTS.md).
+        `/app/requests/batch/${encodeURIComponent(request.groupId ?? request.id)}?created=1&fromCart=1`
       : `/app/explore/cart?sent=1&sale=${salesOrder!.number}`;
   });
 }
@@ -169,8 +170,7 @@ export async function checkoutCartAction(form: FormData) {
     const sale = salesOrder ? `&sale=${salesOrder.number}` : "";
     const first = created[0];
     if (!first) return `/app/explore/cart?sent=1${sale}`;
-    return created.length === 1
-      ? `/app/requests/${encodeURIComponent(first.id)}?fromCart=1${sale}`
-      : `/app/requests/batch/${encodeURIComponent(first.groupId ?? "")}?created=${created.length}&fromCart=1${sale}`;
+    // A página da solicitação, também com um produto só (docs/ORDER_LEVEL_LISTS.md).
+    return `/app/requests/batch/${encodeURIComponent(first.groupId ?? first.id)}?created=${created.length}&fromCart=1${sale}`;
   });
 }

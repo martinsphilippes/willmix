@@ -18,6 +18,7 @@ import {
   Alert,
   Badge,
   LinkButton,
+  OpenLink,
   PageHeader,
   Table,
   Td,
@@ -27,14 +28,27 @@ import {
   rowClass,
 } from "@/components/ui";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
+import { ChatOpenButton } from "@/components/chat-open-button";
+import { PhotoGallery } from "@/components/photo-gallery";
+import { galleryProps } from "@/components/photo-gallery-props";
+import { productPhotoList } from "@/lib/services/product-list";
+import { itemLogistics } from "@/lib/services/item-logistics";
+import { getSettings } from "@/lib/settings";
+import { containersText, requestRounds } from "@/lib/request-rounds";
+import { productNameText } from "@/i18n";
 import { SubmitButton } from "@/components/submit-button";
 import { deleteRequestsAction } from "../../../actions/requests";
+import { sendToStrategyAction } from "../../../actions/purchase-demand";
+import { awaitingStrategySend } from "@/lib/services/purchase-strategy";
+import { canOpen } from "@/lib/auth/screens";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 
 /*
  * Lote de solicitações: os produtos pedidos juntos (mesmo groupId) numa
  * página só. Cada produto segue com o próprio pedido; daqui se abre cada
- * um. Mesmo isolamento da lista: só aparece o que o usuário pode ver
+ * um. É o nível do pedido (dono, 18/11/2026): a solicitação de um produto
+ * só (sem lote) também abre aqui, pelo id dela. Cada produto tem foto,
+ * peças por caixa, caixas e a conversa dele neste pedido. Mesmo isolamento da lista: só aparece o que o usuário pode ver
  * (canViewRequest); nada visível = 404.
  */
 export default async function RequestBatchPage({
@@ -42,34 +56,88 @@ export default async function RequestBatchPage({
   searchParams,
 }: PageProps<"/app/requests/batch/[groupId]">) {
   const { groupId } = await params;
-  const { created, deleted, skipped, error, fromCart, added, sale } =
-    await searchParams;
+  const {
+    created,
+    deleted,
+    skipped,
+    error,
+    fromCart,
+    added,
+    sale,
+    strategySent,
+    strategySkipped,
+  } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "requests");
   const t = await getT();
   const store = getStore();
-  const rows = (
+  let rows = (
     await store.list("requests", {
       filter: { groupId },
       orderBy: "createdAt",
     })
   ).filter((r) => canViewRequest(user, r));
-  if (!rows.length) notFound();
+  /* Abrir é sempre no nível do pedido (dono, 18/11/2026): a solicitação
+     criada sozinha (sem lote) abre aqui pelo id dela, como pedido de um
+     produto só; a de um lote vai para a página do lote. */
+  if (!rows.length) {
+    const own = await store.get("requests", groupId).catch(() => null);
+    if (!own || !canViewRequest(user, own)) notFound();
+    if (own.groupId && own.groupId !== groupId)
+      redirect(`/app/requests/batch/${encodeURIComponent(own.groupId)}`);
+    rows = [own];
+  }
 
   const orderIds = rows
     .map((r) => r.orderId)
     .filter((id): id is string => !!id);
-  const [cancelled, orders, customer] = await Promise.all([
-    cancelledOrderIds(orderIds),
-    orderIds.length
-      ? store.list("orders", { filter: { id: orderIds } })
-      : Promise.resolve([]),
-    isWellmix(user)
-      ? store.get("parties", rows[0].customerId)
-      : Promise.resolve(null),
-  ]);
+  const productIds = [
+    ...new Set(rows.map((r) => r.productId).filter((id): id is string => !!id)),
+  ];
+  const [cancelled, orders, customer, products, photos, settings] =
+    await Promise.all([
+      cancelledOrderIds(orderIds),
+      orderIds.length
+        ? store.list("orders", { filter: { id: orderIds } })
+        : Promise.resolve([]),
+      isWellmix(user)
+        ? store.get("parties", rows[0].customerId)
+        : Promise.resolve(null),
+      productIds.length
+        ? store.list("products", { filter: { id: productIds } })
+        : Promise.resolve([]),
+      productIds.length
+        ? store.list("product_photos", { filter: { productId: productIds } })
+        : Promise.resolve([]),
+      getSettings(),
+    ]);
+  const productById = new Map(products.map((p) => [p.id, p]));
+  const productOf = (r: (typeof rows)[number]) =>
+    r.productId ? (productById.get(r.productId) ?? null) : null;
+  /* Programações e containers do pedido (os mesmos da lista), no maior
+     container das Configurações. */
+  const reference =
+    [...settings.containerTypes].sort(
+      (a, b) => b.capacityCbm - a.capacityCbm,
+    )[0] ?? null;
+  const rounds = requestRounds(
+    rows,
+    (r) => productOf(r as (typeof rows)[number]),
+    reference?.capacityCbm ?? null,
+  );
+  const distinctProducts = new Set(
+    rows.map((r) => r.productId ?? `n:${r.productName}`),
+  ).size;
+  const num = (n: number, digits = 0) =>
+    n.toLocaleString(t.intl, { maximumFractionDigits: digits });
   const deletable = rows.filter((r) => canDeleteRequest(user, r));
+  // Enviar para cotação (dono, 18/11/2026): os produtos Solicitado ainda não
+  // enviados entram na Estratégia de Compra, todos juntos (a estratégia é da
+  // solicitação inteira).
+  const sendable = isWellmix(user)
+    ? rows.filter((r) => awaitingStrategySend(r))
+    : [];
   const number = rows.find((r) => r.number)?.number ?? null;
 
   const count = (v: string | string[] | undefined) =>
@@ -138,30 +206,89 @@ export default async function RequestBatchPage({
           </Alert>
         </div>
       ) : null}
+      {count(strategySent) > 0 ? (
+        <div
+          className="mb-3"
+          role="status"
+          data-strategy-sent={count(strategySent)}
+        >
+          <Alert tone="success">
+            {t("reqSend.done", { n: count(strategySent) })}
+            {count(strategySkipped) > 0
+              ? ` ${t("reqSend.skipped", { n: count(strategySkipped) })}`
+              : ""}{" "}
+            {canOpen(user, "purchaseStrategy") ? (
+              <TextLink href="/app/purchase-strategy">
+                {t("reqSend.open")}
+              </TextLink>
+            ) : null}
+          </Alert>
+        </div>
+      ) : null}
+      {sendable.length > 0 ? (
+        <form action={sendToStrategyAction} className="mb-3">
+          {sendable.map((r) => (
+            <input key={r.id} type="hidden" name="ids" value={r.id} />
+          ))}
+          <input type="hidden" name="groupId" value={groupId} />
+          <SubmitButton
+            confirmText={t("reqSend.confirm").replace(
+              "{n}",
+              String(sendable.length),
+            )}
+            data-batch-send-all
+          >
+            {t("reqSend.all", { n: sendable.length })}
+          </SubmitButton>
+        </form>
+      ) : null}
       {count(added) > 0 ? (
         <div className="mb-3" data-batch-added>
           <Alert tone="success">{t("reqAdd.done", { n: count(added) })}</Alert>
         </div>
       ) : null}
-      {createdCount > 1 ? (
-        <div className="mb-3" data-batch-created>
+      {createdCount > 0 ? (
+        <div
+          className="mb-3"
+          role="status"
+          data-batch-created
+          data-cart-sent={fromCart === "1" ? "" : undefined}
+        >
           <Alert tone="success">
             {fromCart === "1"
-              ? `${t("explore.sent")} ${t("reqBatch.created", { n: createdCount })}${
+              ? `${t("explore.sent")} ${createdCount > 1 ? t("reqBatch.created", { n: createdCount }) : ""}`.trim() +
+                `${
                   typeof sale === "string" && /^\d{1,9}$/.test(sale)
                     ? ` ${t("demand.cart.saleSent", { n: sale })}`
                     : ""
                 }`
-              : t("reqBatch.created", { n: createdCount })}
+              : createdCount > 1
+                ? t("reqBatch.created", { n: createdCount })
+                : t("reqBatch.createdOne")}
           </Alert>
         </div>
       ) : null}
-      <p className="mb-3 text-sm text-zinc-600">{t("reqBatch.pageHint")}</p>
+      <p className="mb-1 text-sm text-zinc-600">{t("reqBatch.pageHint")}</p>
+      <p className="mb-3 text-sm font-medium text-zinc-800" data-batch-summary>
+        {t("reqBatch.summary", {
+          products: distinctProducts,
+          rounds: rounds.rounds,
+          containers: rounds.containers
+            ? containersText(rounds.containers, (n) =>
+                t("reqList.containers.each", { n }),
+              )
+            : "—",
+        })}
+      </p>
       <Table>
         <thead>
           <tr>
+            <Th className="w-14">{t("reqBatch.col.photo")}</Th>
             <Th>{t("common.product")}</Th>
-            <Th>{t("common.quantity")}</Th>
+            <Th className="text-right">{t("reqBatch.col.perBox")}</Th>
+            <Th className="text-right">{t("common.quantity")}</Th>
+            <Th className="text-right">{t("reqBatch.col.boxes")}</Th>
+            <Th className="text-right">{t("reqBatch.col.rounds")}</Th>
             <Th>{t("common.status")}</Th>
             <Th>{t("requests.deadline")}</Th>
             <Th>{t("requests.order")}</Th>
@@ -174,18 +301,62 @@ export default async function RequestBatchPage({
             const order = r.orderId
               ? orders.find((o) => o.id === r.orderId)
               : null;
+            const product = productOf(r);
+            const name = productNameText(t, r.productName);
+            // Peças por caixa e caixas: as da variação ou do cadastro.
+            const l = itemLogistics({
+              quantity: r.quantity,
+              variant: r.variant ?? null,
+              product,
+            });
+            const href = `/app/requests/${r.id}`;
             return (
               <tr key={r.id} className={rowClass} data-batch-item={r.id}>
+                <Td className="w-14">
+                  <PhotoGallery
+                    name={name}
+                    {...galleryProps(
+                      t,
+                      product ? productPhotoList(product, photos) : [],
+                    )}
+                  />
+                </Td>
                 <Td className="min-w-40 font-medium text-zinc-900">
                   <TextLink
-                    href={`/app/requests/${r.id}`}
+                    href={href}
                     className="text-zinc-900 no-underline hover:underline"
                   >
-                    {r.productName}
+                    {name}
                   </TextLink>
+                  {product?.sku ? (
+                    <span className="block font-mono text-xs font-normal text-zinc-500">
+                      {product.sku}
+                    </span>
+                  ) : null}
+                  {r.variant?.name ? (
+                    <span className="block text-xs font-normal text-zinc-500">
+                      {r.variant.name}
+                    </span>
+                  ) : null}
                 </Td>
-                <Td className="whitespace-nowrap tabular-nums">
-                  {r.quantity} {r.unit}
+                <Td
+                  className="whitespace-nowrap text-right tabular-nums"
+                  data-batch-per-box
+                >
+                  {l.unitsPerBox !== null ? num(l.unitsPerBox) : "—"}
+                </Td>
+                <Td className="whitespace-nowrap text-right tabular-nums">
+                  {num(r.quantity, 2)} {r.unit}
+                </Td>
+                <Td
+                  className="whitespace-nowrap text-right tabular-nums"
+                  data-batch-boxes
+                >
+                  {/* Sem peças por caixa no cadastro, "—" (não um 0 enganoso). */}
+                  {l.unitsPerBox !== null ? num(l.boxes) : "—"}
+                </Td>
+                <Td className="whitespace-nowrap text-right tabular-nums">
+                  {Math.max(1, r.schedule?.items?.length ?? 0)}
                 </Td>
                 <Td className="whitespace-nowrap">
                   <Badge tone={requestStatusTone(status)}>
@@ -205,10 +376,20 @@ export default async function RequestBatchPage({
                   )}
                 </Td>
                 <Td className="text-right">
-                  <div className="flex items-center justify-end gap-3">
-                    <TextLink href={`/app/requests/${r.id}`}>
-                      {t("tasks.open")}
-                    </TextLink>
+                  <div className="flex items-center justify-end gap-1">
+                    <OpenLink href={href} label={t("reqBatch.openProduct")} />
+                    {!sendable.includes(r) &&
+                    r.strategySentAt &&
+                    isWellmix(user) ? (
+                      <span
+                        className="text-xs text-zinc-500"
+                        data-batch-sent={r.id}
+                      >
+                        {t("reqSend.sentAt", {
+                          date: formatDate(r.strategySentAt, t),
+                        })}
+                      </span>
+                    ) : null}
                     {canDeleteRequest(user, r) ? (
                       <form action={deleteRequestsAction}>
                         <input type="hidden" name="ids" value={r.id} />
@@ -219,6 +400,11 @@ export default async function RequestBatchPage({
                         />
                       </form>
                     ) : null}
+                    {/* A conversa deste produto neste pedido. */}
+                    <ChatOpenButton
+                      target={{ requestId: r.id }}
+                      label={`${t("reqBatch.chatProduct")}: ${name}`}
+                    />
                   </div>
                 </Td>
               </tr>

@@ -13,6 +13,7 @@ import {
   Badge,
   Empty,
   Input,
+  OpenLink,
   PageHeader,
   TextLink,
   cx,
@@ -175,9 +176,18 @@ export default async function ReviewsPage({
                         {t(`reviews.status.${r.status}`)}
                       </Badge>
                     ) : null}
-                    <span className="text-sm font-semibold text-zinc-900">
-                      {entityLabel(r)}
-                    </span>
+                    {r.link ? (
+                      <TextLink
+                        href={r.link}
+                        className="text-sm font-semibold text-zinc-900 no-underline hover:underline"
+                      >
+                        {entityLabel(r)}
+                      </TextLink>
+                    ) : (
+                      <span className="text-sm font-semibold text-zinc-900">
+                        {entityLabel(r)}
+                      </span>
+                    )}
                     {orderOf(r)?.status === "CANCELLED" ? (
                       <Badge tone="danger">{t("stage.CANCELLED")}</Badge>
                     ) : null}
@@ -191,12 +201,7 @@ export default async function ReviewsPage({
                 </div>
                 <span className="inline-flex items-center gap-1">
                   {r.link ? (
-                    <TextLink
-                      href={r.link}
-                      className="whitespace-nowrap text-sm"
-                    >
-                      {t("tasks.open")}
-                    </TextLink>
+                    <OpenLink href={r.link} label={t("tasks.open")} />
                   ) : null}
                   {orderOf(r) ? (
                     <ChatOpenButton

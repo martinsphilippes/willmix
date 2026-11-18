@@ -10,6 +10,10 @@ import { requestDisplayStatus } from "@/lib/services/order-status";
 import { activeRequests } from "@/lib/services/request-list-data";
 import { demandKind, type DemandKind } from "@/lib/purchase-demand";
 import {
+  awaitingStrategySend,
+  inStrategyQueue,
+} from "@/lib/services/purchase-strategy";
+import {
   LISTED_SITUATIONS,
   inSituation,
   matchesRequest,
@@ -114,6 +118,14 @@ export async function GET(request: NextRequest) {
           const next = requestNextStep({
             status: r.status,
             display: requestDisplayStatus(r, cancelled),
+            // Como na tela: a enviar para cotação ou já na Estratégia de Compra.
+            strategy: isWellmix(user!)
+              ? awaitingStrategySend(r)
+                ? "send"
+                : inStrategyQueue(r)
+                  ? "queue"
+                  : null
+              : null,
             order: order
               ? {
                   status: order.status,

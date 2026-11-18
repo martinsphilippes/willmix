@@ -84,7 +84,7 @@ export function matchesRequest(
     .some((v) => v.includes(term));
 }
 
-export type NextStepKey = "new" | "order" | "none";
+export type NextStepKey = "new" | "send" | "strategy" | "order" | "none";
 
 /** Com quem está a vez: equipe Wellmix ou o papel da etapa do pedido. */
 export type NextStepWho = "wellmix" | Role | null;
@@ -112,6 +112,11 @@ export function requestNextStep(input: {
     dueAt: string | null;
   } | null;
   today: string;
+  /**
+   * Compra por demanda (dono, 18/11/2026): a encomenda ainda a enviar para
+   * cotação ("send") ou já na fila da Estratégia de Compra ("queue").
+   */
+  strategy?: "send" | "queue" | null;
 }): NextStep {
   const { status, display } = input;
   if (status === "CANCELLED" || display === "ORDER_CANCELLED")
@@ -128,6 +133,10 @@ export function requestNextStep(input: {
       late: !!o.dueAt && o.dueAt.slice(0, 10) < input.today,
     };
   }
+  if (status === "REQUESTED" && input.strategy === "send")
+    return { key: "send", who: "wellmix" };
+  if (status === "REQUESTED" && input.strategy === "queue")
+    return { key: "strategy", who: "wellmix" };
   return { key: "new", who: "wellmix" };
 }
 

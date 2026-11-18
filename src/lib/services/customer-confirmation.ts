@@ -5,6 +5,7 @@ import {
   type Request,
   type User,
 } from "@/lib/db";
+import { forAllCustomerLogins } from "@/lib/auth/permissions";
 import { dataMode } from "@/lib/env";
 import {
   cnpjDigits,
@@ -108,12 +109,16 @@ async function batchOf(request: Request): Promise<Request[]> {
   ).filter((r) => r.status !== "CANCELLED");
 }
 
-/** Quem confirma: o login do cliente com acesso àquela solicitação. */
+/**
+ * Quem confirma: o login do cliente com acesso àquela solicitação ou, sem
+ * login escolhido, qualquer login daquele cliente (dono, 18/11/2026).
+ */
 export function canConfirm(user: User, request: Request): boolean {
   return (
     user.role === "customer" &&
     request.status === "AWAITING_CUSTOMER" &&
-    request.requestedForUserId === user.id &&
+    request.customerId === user.partyId &&
+    (request.requestedForUserId === user.id || forAllCustomerLogins(request)) &&
     !!request.orderTerms
   );
 }

@@ -611,6 +611,13 @@ export async function fillOrderTerms(
 
 /** O login do cliente com acesso (obrigatório na venda pela Wellmix). */
 export async function chooseCustomerLogin(page: Page, email: string) {
+  // Venda da Wellmix ao cliente (dono, 18/11/2026): o login não se escolhe
+  // mais; a solicitação vai para todos os logins do cliente.
+  const all = page.locator("[data-request-people] [data-request-access-all]");
+  if (await all.count()) {
+    await expect(all).toHaveValue(/\(\d+\)/);
+    return;
+  }
   const access = page.locator(
     '[data-request-people] select[name="requestedForUserId"]',
   );
@@ -706,4 +713,22 @@ export async function openReplenishment(
   await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
   await page.waitForURL(/\/app\/replenishment\?opened=/);
   return new URL(page.url()).searchParams.get("opened")!;
+}
+
+/**
+ * Depois de "Enviar" uma solicitação de um produto só: a tela cai na página
+ * da solicitação (nível do pedido; docs/ORDER_LEVEL_LISTS.md). Devolve o id
+ * do produto e, com `open`, abre a tela dele (o que os testes conferem).
+ */
+export async function createdRequestId(
+  page: Page,
+  { open = true }: { open?: boolean } = {},
+): Promise<string> {
+  await page.waitForURL(/\/app\/requests\/batch\/[^/?]+\?created=1/);
+  const id = (await page
+    .locator("[data-batch-item]")
+    .first()
+    .getAttribute("data-batch-item"))!;
+  if (open) await page.goto(`/app/requests/${id}`);
+  return id;
 }

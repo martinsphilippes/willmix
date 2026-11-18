@@ -29,6 +29,7 @@ import {
   Td,
   Textarea,
   Th,
+  formatDate,
   linkClass,
   rowClass,
 } from "@/components/ui";
@@ -43,6 +44,34 @@ import {
   quoteNoAnswerAction,
 } from "../../actions/purchase-demand";
 import { QuoteDeadline } from "../_time";
+import { PhotoGallery } from "@/components/photo-gallery";
+import { galleryProps } from "@/components/photo-gallery-props";
+import { ChatOpenButton } from "@/components/chat-open-button";
+import { productPhotoList } from "@/lib/services/product-list";
+import { itemLogistics } from "@/lib/services/item-logistics";
+import { canOpen } from "@/lib/auth/screens";
+import type { Product, PurchaseQuoteItem } from "@/lib/db/schema";
+import type { Translate } from "@/i18n";
+
+/** Peças por caixa e caixas do produto na cotação ("—" sem caixa master). */
+function boxCells(
+  t: Translate,
+  item: PurchaseQuoteItem,
+  product: Product | null,
+) {
+  const l = itemLogistics({ quantity: item.quantity, product });
+  const n = (v: number) => v.toLocaleString(t.intl);
+  return (
+    <>
+      <Td className="tabular-nums" data-quote-units-per-box={item.productId}>
+        {l.unitsPerBox !== null ? n(l.unitsPerBox) : "—"}
+      </Td>
+      <Td className="tabular-nums" data-quote-boxes={item.productId}>
+        {l.unitsPerBox !== null ? n(l.boxes) : "—"}
+      </Td>
+    </>
+  );
+}
 
 /*
  * Uma cotação de compra (mapa B13; docs/PURCHASE_DEMAND.md).
@@ -72,6 +101,15 @@ export default async function PurchaseQuotePage({
     const view = await supplierQuoteView(user, id);
     if (!view) notFound();
     const { quote, response } = view;
+    const quoteProducts = quote.items.length
+      ? await getStore()
+          .list("products", {
+            filter: { id: quote.items.map((i) => i.productId) },
+          })
+          .catch(() => [] as Product[])
+      : [];
+    const productOf = (pid: string) =>
+      quoteProducts.find((p) => p.id === pid) ?? null;
     const state = responseState(response, now);
     const editable = quote.status === "open" && state !== "expired";
     return (
@@ -112,16 +150,55 @@ export default async function PurchaseQuotePage({
                   <tr>
                     <Th>{t("common.product")}</Th>
                     <Th>{t("common.quantity")}</Th>
+                    <Th>{t("quote.unitsPerBox")}</Th>
+                    <Th>{t("quote.boxes")}</Th>
                     <Th>{t("quote.unitPrice")}</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {quote.items.map((item) => (
                     <tr key={item.productId} className={rowClass}>
-                      <Td>{productNameText(t, item.name)}</Td>
+                      <Td>
+                        {productNameText(t, item.name)}
+                        {/* O que o parceiro precisa para cotar (dono,
+                            18/11/2026): especificação, programação e data
+                            desejada; nunca o cliente. */}
+                        {item.specification ? (
+                          <span
+                            className="block whitespace-pre-line text-xs text-zinc-600"
+                            data-quote-item-spec
+                          >
+                            {t("quote.item.spec")}: {item.specification}
+                          </span>
+                        ) : null}
+                        {item.schedule?.items?.length ? (
+                          <span
+                            className="block text-xs text-zinc-600"
+                            data-quote-item-schedule
+                          >
+                            {t("quote.item.schedule")}:{" "}
+                            {item.schedule.items
+                              .map((i) =>
+                                t("strategy.line.scheduleItem", {
+                                  index: i.index,
+                                  quantity: i.quantity.toLocaleString(t.intl),
+                                  date: formatDate(i.expectedAt, t),
+                                }),
+                              )
+                              .join(" · ")}
+                          </span>
+                        ) : null}
+                        {item.desiredAt ? (
+                          <span className="block text-xs text-zinc-600">
+                            {t("quote.item.desiredAt")}:{" "}
+                            {formatDate(item.desiredAt, t)}
+                          </span>
+                        ) : null}
+                      </Td>
                       <Td className="tabular-nums">
                         {item.quantity.toLocaleString(t.intl)} {item.unit}
                       </Td>
+                      {boxCells(t, item, productOf(item.productId))}
                       <Td>
                         <input
                           type="hidden"
@@ -230,19 +307,38 @@ export default async function PurchaseQuotePage({
   const responses = await store.list("purchase_quote_responses", {
     filter: { quoteId: quote.id },
   });
-  const [suppliers, refs, requests] = await Promise.all([
-    responses.length
-      ? store.list("parties", {
-          filter: { id: [...new Set(responses.map((r) => r.supplierId))] },
-        })
-      : Promise.resolve([]),
-    lastPurchases(quote.items.map((i) => i.productId)),
-    quote.supplierRequestIds?.length
-      ? store.list("supplier_requests", {
-          filter: { id: quote.supplierRequestIds },
-        })
-      : Promise.resolve([]),
-  ]);
+  const productIds = [...new Set(quote.items.map((i) => i.productId))];
+  const [suppliers, refs, requests, products, photos, demands] =
+    await Promise.all([
+      responses.length
+        ? store.list("parties", {
+            filter: { id: [...new Set(responses.map((r) => r.supplierId))] },
+          })
+        : Promise.resolve([]),
+      lastPurchases(quote.items.map((i) => i.productId)),
+      quote.supplierRequestIds?.length
+        ? store.list("supplier_requests", {
+            filter: { id: quote.supplierRequestIds },
+          })
+        : Promise.resolve([]),
+      // Tabela dos produtos da cotação: só os produtos desta cotação.
+      productIds.length
+        ? store.list("products", { filter: { id: productIds } })
+        : Promise.resolve([]),
+      productIds.length
+        ? store
+            .list("product_photos", { filter: { productId: productIds } })
+            .catch(() => [])
+        : Promise.resolve([]),
+      // A demanda (solicitação) de cada produto: a conversa sobre ele.
+      quote.demandIds.length
+        ? store
+            .list("requests", { filter: { id: quote.demandIds } })
+            .catch(() => [])
+        : Promise.resolve([]),
+    ]);
+  const productOf = (pid: string) => products.find((p) => p.id === pid) ?? null;
+  const canOpenProducts = canOpen(user, "products");
   const supplierName = (sid: string) =>
     suppliers.find((p) => p.id === sid)?.name ?? sid;
   const closed = quoteClosed(responses, now);
@@ -280,6 +376,74 @@ export default async function PurchaseQuotePage({
           <Alert tone="success">{t(`quote.notice.${notice}`)}</Alert>
         </div>
       ) : null}
+      <Card title={t("quote.productsTitle")}>
+        <Table tools={false}>
+          <thead>
+            <tr>
+              <Th>
+                <span className="sr-only">{t("quote.photo")}</span>
+              </Th>
+              <Th>{t("common.product")}</Th>
+              <Th>{t("common.quantity")}</Th>
+              <Th>{t("quote.unitsPerBox")}</Th>
+              <Th>{t("quote.boxes")}</Th>
+              <Th>
+                <span className="sr-only">{t("chat.open")}</span>
+              </Th>
+            </tr>
+          </thead>
+          <tbody>
+            {quote.items.map((item) => {
+              const product = productOf(item.productId);
+              const name = productNameText(t, item.name);
+              const demand = demands.find(
+                (d) => d.productId === item.productId,
+              );
+              return (
+                <tr
+                  key={item.productId}
+                  className={rowClass}
+                  data-quote-product={item.productId}
+                >
+                  <Td className="w-14">
+                    <PhotoGallery
+                      name={name}
+                      {...galleryProps(
+                        t,
+                        product ? productPhotoList(product, photos) : [],
+                      )}
+                    />
+                  </Td>
+                  <Td>
+                    {product && canOpenProducts ? (
+                      <Link
+                        href={`/app/products/${product.id}`}
+                        className={linkClass}
+                      >
+                        {name}
+                      </Link>
+                    ) : (
+                      name
+                    )}
+                  </Td>
+                  <Td className="tabular-nums">
+                    {item.quantity.toLocaleString(t.intl)} {item.unit}
+                  </Td>
+                  {boxCells(t, item, product)}
+                  <Td>
+                    {demand ? (
+                      <ChatOpenButton
+                        target={{ requestId: demand.id }}
+                        label={t("chat.open")}
+                      />
+                    ) : null}
+                  </Td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </Table>
+      </Card>
       <Card title={t("quote.compare")}>
         <Table tools={false}>
           <thead>
@@ -500,9 +664,11 @@ export default async function PurchaseQuotePage({
             <form action={quoteNoAnswerAction} className="space-y-2">
               <input type="hidden" name="quoteId" value={quote.id} />
               <input type="hidden" name="what" value="invite" />
+              {/* Fornecedor, Trading, Supplier e Factory (dono, 18/11/2026). */}
               <PartyPicker
                 name="supplierId"
                 type="supplier"
+                alsoTypes={["trading", "supplier_partner", "factory"]}
                 required
                 activeOnly
                 labels={partyPickerLabels(t)}

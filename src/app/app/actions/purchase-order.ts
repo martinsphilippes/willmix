@@ -12,7 +12,7 @@ import { requireUser, run, str, withQuery } from "./helpers";
  */
 
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
-const BACK = "/app/supplier-requests#pedido-de-compra";
+const BACK = "/app/supplier-requests?tab=closed#pedido-de-compra";
 
 export async function createPurchaseOrderAction(form: FormData) {
   const user = await requireUser();

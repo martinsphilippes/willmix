@@ -25,7 +25,8 @@ import { OrderProgressCard } from "@/components/order-progress-card";
 import { OrderOriginLinks } from "@/components/entity-links";
 import { isProgressBlock } from "@/lib/flow-progress";
 import { laneWaiting } from "@/lib/requirement-waiting";
-import { listByIds } from "@/lib/db/lookup";
+import { listByIds, listColumns } from "@/lib/db/lookup";
+import { boxesFor } from "@/lib/logistics/cbm";
 import { ColorLines } from "@/components/color-lines";
 import { registerOrderInvoiceAction } from "../../actions/order-invoice";
 import { setPurchaseIncotermAction } from "../../actions/purchase-order";
@@ -178,6 +179,7 @@ import {
   Field,
   Input,
   LinkButton,
+  OpenLink,
   PageHeader,
   Select,
   Table,
@@ -295,6 +297,7 @@ export default async function OrderPage({
     payment: paymentNotice,
     charges: chargesNotice,
     charge: chargeNotice,
+    item: itemQuery,
   } = await searchParams;
   // Grupo aberto no pedido (?stage=CHAVE ou ?stage=all, links antigos).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
@@ -701,6 +704,14 @@ export default async function OrderPage({
     ...i,
     name: productNameText(t, i.name),
   }));
+  /* Produto neste pedido (dono, 18/11/2026): ?item=<item do pedido> mostra
+     só aquele produto na tabela de itens, com a conversa dele neste pedido.
+     Item que não é deste pedido: o pedido inteiro. */
+  const focusItem =
+    typeof itemQuery === "string"
+      ? (items.find((i) => i.id === itemQuery) ?? null)
+      : null;
+  const shownItems = focusItem ? [focusItem] : items;
   const parties = [...known.values()];
   const partyName = (pid: string | null) =>
     (pid && known.get(pid)?.name) || "—";
@@ -833,6 +844,18 @@ export default async function OrderPage({
             .then((photos) => (wellmix ? photos : showcaseOf(photos))),
         ])
       : [[], []];
+  /* Peças por caixa de cada produto (a coluna e as caixas da tabela de
+     itens, para todos que veem o pedido): só a caixa master do cadastro. */
+  const itemBoxQty = new Map<string, number | null>(
+    (itemMedia
+      ? itemProducts
+      : itemProductIds.length
+        ? await listColumns(store, "products", ["masterBoxQty"], {
+            filter: { id: itemProductIds },
+          })
+        : []
+    ).map((p) => [p.id, p.masterBoxQty ?? null]),
+  );
   /* Certificações já registradas do produto e do fornecedor (menos as
      rejeitadas): a certificadora parte delas para gerar o selo. */
   const dossierCerts = certifier
@@ -2426,6 +2449,24 @@ export default async function OrderPage({
           para a Wellmix, foto e preço de compra). */}
       {cargo ? null : (
         <OrderSection id="order-items" title={t("orderView.items")}>
+          {focusItem ? (
+            <div className="mb-3" data-order-item-focus={focusItem.id}>
+              <Alert tone="info">
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span>
+                    {t("orderView.focus", { name: focusItem.name })}
+                  </span>
+                  <ChatOpenButton
+                    target={{ orderId: order.id, orderItemId: focusItem.id }}
+                    label={`${t("chat.openItem")}: ${focusItem.name}`}
+                  />
+                  <TextLink href={`/app/orders/${order.id}#order-items`}>
+                    {t("orderView.focusAll", { n: items.length })}
+                  </TextLink>
+                </span>
+              </Alert>
+            </div>
+          ) : null}
           <Table>
             <thead>
               <tr>
@@ -2435,7 +2476,9 @@ export default async function OrderPage({
                 ) : null}
                 <Th>{t("orderView.col.product")}</Th>
                 <Th>{t("orderView.col.variant")}</Th>
+                <Th className="text-right">{t("orderView.col.perBox")}</Th>
                 <Th className="text-right">{t("orderView.col.qty")}</Th>
+                <Th className="text-right">{t("orderView.col.boxes")}</Th>
                 {purchasePrice ? (
                   <>
                     <Th className="text-right">
@@ -2448,10 +2491,16 @@ export default async function OrderPage({
               </tr>
             </thead>
             <tbody>
-              {items.map((i, index) => {
+              {shownItems.map((i) => {
+                const index = items.indexOf(i);
                 const product = i.productId
                   ? itemProducts.find((p) => p.id === i.productId)
                   : null;
+                const perBox =
+                  i.variant?.masterBoxQty ??
+                  itemBoxQty.get(i.productId ?? "") ??
+                  null;
+                const itemHref = `/app/orders/${order.id}?item=${encodeURIComponent(i.id)}#order-items`;
                 return (
                   <tr key={i.id} className={rowClass} data-order-item>
                     <Td className="text-right tabular-nums">{index + 1}</Td>
@@ -2464,16 +2513,14 @@ export default async function OrderPage({
                       </Td>
                     ) : null}
                     <Td className="min-w-44 font-medium">
-                      {wellmix && i.productId ? (
-                        <TextLink
-                          href={`/app/products/${i.productId}`}
-                          className="text-zinc-900"
-                        >
-                          {i.name}
-                        </TextLink>
-                      ) : (
-                        i.name
-                      )}
+                      {/* O produto neste pedido (só ele, com a conversa dele). */}
+                      <TextLink
+                        href={itemHref}
+                        className="text-zinc-900 no-underline hover:underline"
+                        data-order-item-open
+                      >
+                        {i.name}
+                      </TextLink>
                       {product?.sku ? (
                         <span className="block font-mono text-xs font-normal text-zinc-500">
                           {product.sku}
@@ -2489,8 +2536,23 @@ export default async function OrderPage({
                       />
                     </Td>
                     <Td className="min-w-40">{variantCell(i)}</Td>
+                    <Td
+                      className="whitespace-nowrap text-right tabular-nums"
+                      data-order-item-per-box
+                    >
+                      {perBox !== null ? perBox.toLocaleString(t.intl) : "—"}
+                    </Td>
                     <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
                       {i.quantity.toLocaleString(t.intl)} {i.unit}
+                    </Td>
+                    <Td
+                      className="whitespace-nowrap text-right tabular-nums"
+                      data-order-item-boxes
+                    >
+                      {/* Sem peças por caixa, "—" (não um 0 enganoso). */}
+                      {perBox !== null && perBox > 0
+                        ? boxesFor(i.quantity, perBox).toLocaleString(t.intl)
+                        : "—"}
                     </Td>
                     {purchasePrice ? (
                       <>
@@ -2511,11 +2573,19 @@ export default async function OrderPage({
                         </Td>
                       </>
                     ) : null}
-                    <Td className="w-10 text-right">
-                      <ChatOpenButton
-                        target={{ orderId: order.id, orderItemId: i.id }}
-                        label={`${t("chat.openItem")}: ${i.name}`}
-                      />
+                    <Td className="w-20 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {focusItem ? null : (
+                          <OpenLink
+                            href={itemHref}
+                            label={`${t("orderView.openItem")}: ${i.name}`}
+                          />
+                        )}
+                        <ChatOpenButton
+                          target={{ orderId: order.id, orderItemId: i.id }}
+                          label={`${t("chat.openItem")}: ${i.name}`}
+                        />
+                      </div>
                     </Td>
                   </tr>
                 );

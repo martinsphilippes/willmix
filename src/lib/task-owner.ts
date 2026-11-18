@@ -93,6 +93,8 @@ export function kindGate(
       return { screen: "requests" };
     // Estratégia de compra (docs/PURCHASE_DEMAND.md).
     case "purchase_strategy":
+    // Envio da Estratégia com parceiro sem receber: quem escolhe a estratégia.
+    case "purchase_strategy_send":
       return { action: "purchaseStrategy.choose" };
     case "purchase_strategy_approve":
       return { action: "purchaseStrategy.approve" };

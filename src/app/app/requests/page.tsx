@@ -25,7 +25,6 @@ import {
   closedRequestCount,
   closedRequests,
   groupRequests,
-  groupSizes,
 } from "@/lib/services/request-list-data";
 import {
   cancelledOrderIds,
@@ -45,6 +44,11 @@ import {
 } from "@/lib/services/request-groups";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { deleteRequestsAction } from "../actions/requests";
+import { sendToStrategyAction } from "../actions/purchase-demand";
+import {
+  awaitingStrategySend,
+  inStrategyQueue,
+} from "@/lib/services/purchase-strategy";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getStore, type Role } from "@/lib/db";
 import { getT } from "@/i18n/server";
@@ -65,6 +69,7 @@ import {
   cx,
   formatDate,
   Input,
+  OpenLink,
   rowClass,
   Stat,
   stageTone,
@@ -85,15 +90,13 @@ import {
   type NextStep,
   type RequestSituation,
 } from "@/lib/services/request-list";
-import { productPhotoList } from "@/lib/services/product-list";
-import { PhotoGallery } from "@/components/photo-gallery";
-import { galleryProps } from "@/components/photo-gallery-props";
+import { getSettings } from "@/lib/settings";
+import { containersText, requestRounds } from "@/lib/request-rounds";
 import { DemandTags } from "@/components/demand-tags";
 import { listDraftsForList } from "@/lib/services/request-drafts";
 import { demandKind, type DemandKind } from "@/lib/purchase-demand";
 import {
   requestComposition,
-  shortProductName,
   type Composition,
   type CompositionItem,
 } from "@/lib/request-composition";
@@ -230,6 +233,14 @@ export default async function RequestsPage({
     return requestNextStep({
       status: r.status,
       display: requestDisplayStatus(r, cancelled),
+      // Encomenda a enviar para cotação, ou já na Estratégia de Compra.
+      strategy: wellmix
+        ? awaitingStrategySend(r)
+          ? "send"
+          : inStrategyQueue(r)
+            ? "queue"
+            : null
+        : null,
       order: order
         ? {
             status: order.status,
@@ -282,12 +293,6 @@ export default async function RequestsPage({
     const str = p.toString();
     return str ? `?${str}` : "";
   };
-  // Tamanho de cada lote (selo da linha que ficou sozinha nesta lista, ex.:
-  // o outro produto do lote foi excluído ou já virou pedido): o lote todo,
-  // lido só para os lotes desta lista.
-  const groupSize = await groupSizes(
-    visible.map((r) => r.groupId).filter((id): id is string => !!id),
-  );
   // Produtos pedidos juntos viram uma linha só (abre a página do lote). No
   // filtro de um lote (?group=, links antigos) cada produto segue numa linha.
   const entries: RequestListEntry<(typeof requests)[number]>[] = groupId
@@ -295,6 +300,11 @@ export default async function RequestsPage({
     : groupRequestRows(requests);
   const batchHref = (id: string) =>
     `/app/requests/batch/${encodeURIComponent(id)}`;
+  /* Abrir é sempre no nível do pedido (dono, 18/11/2026), mesmo com um
+     produto só: a página do lote, pelo groupId ou, na solicitação criada
+     sozinha, pelo id dela. */
+  const solicitationHref = (r: { id: string; groupId?: string | null }) =>
+    batchHref(r.groupId ?? r.id);
   // Lista longa: ordem e página no servidor (auditoria de performance,
   // 14/11/2026: 134 MB de HTML com as 16 mil solicitações do histórico).
   // Curta: inteira, como antes. Busca e situação continuam as do servidor.
@@ -309,18 +319,13 @@ export default async function RequestsPage({
       text: (e) => String(rowsOf(e).find((r) => r.number)?.number ?? "—"),
     },
     {
-      key: "product",
+      // Programações: a maior entre os produtos (a programação gravada em
+      // cada um; sem ela, uma entrega só).
+      key: "rounds",
       text: (e) =>
-        rowsOf(e)
-          .map((r) => productNameText(t, r.productName))
-          .join(", "),
-    },
-    {
-      key: "quantity",
-      text: (e) =>
-        rowsOf(e)
-          .map((r) => `${r.quantity} ${r.unit}`)
-          .join(" · "),
+        String(
+          Math.max(1, ...rowsOf(e).map((r) => r.schedule?.items?.length ?? 0)),
+        ),
     },
     ...(isWellmix(user)
       ? [
@@ -392,9 +397,7 @@ export default async function RequestsPage({
      (a busca vale pelo título e pelo cliente). Os da Reposição ficam na fila
      de Reposição. */
   const draftRows =
-    filtering &&
-    (!kindFilter || kindFilter === "order") &&
-    paged.page === 0
+    filtering && (!kindFilter || kindFilter === "order") && paged.page === 0
       ? (await listDraftsForList(user, "requests")).filter(
           ({ draft }) =>
             !q ||
@@ -407,7 +410,7 @@ export default async function RequestsPage({
      produtos, as fotos e a soma das peças pelos itens do pedido, não pelo
      produto da solicitação. Lidos só para as linhas da página: a lista
      inteira tem ~16 mil pedidos e ~185 mil itens (src/lib/request-composition.ts). */
-  const shownRows = wellmix ? paged.rows.flatMap(rowsOf) : [];
+  const shownRows = paged.rows.flatMap(rowsOf);
   const shownOrderIds = [
     ...new Set(
       shownRows.map((r) => r.orderId).filter((id): id is string => !!id),
@@ -431,148 +434,86 @@ export default async function RequestsPage({
     else itemsByOrder.set(i.orderId, [i]);
   }
   const compositionOf = new Map<Entry, Composition>(
-    wellmix
-      ? paged.rows.map((e) => [e, requestComposition(rowsOf(e), itemsByOrder)])
-      : [],
+    paged.rows.map((e) => [e, requestComposition(rowsOf(e), itemsByOrder)]),
   );
-  /* Fotos: a primeira de cada produto, até 12 por linha (a grade mostra 4;
-     a galeria, até 12). Só os produtos dessas linhas. */
-  const PHOTO_PRODUCTS = 12;
-  const photoProductIds = [
+  /* Lista no nível do pedido (dono, 18/11/2026): sem foto nem nome de
+     produto (um pedido pode ter milhares). Programações e containers de
+     cada programação pela caixa master dos produtos das linhas da página
+     (src/lib/request-rounds.ts), no maior container das Configurações. */
+  const roundProductIds = [
     ...new Set(
-      [...compositionOf.values()].flatMap((c) =>
-        c.products
-          .slice(0, PHOTO_PRODUCTS)
-          .map((cp) => cp.productId)
-          .filter((id): id is string => !!id),
-      ),
+      shownRows.map((r) => r.productId).filter((id): id is string => !!id),
     ),
   ];
-  const [products, photos] = photoProductIds.length
-    ? await Promise.all([
-        listColumns(store, "products", ["primaryPhotoDocumentId"], {
-          filter: { id: photoProductIds },
-        }),
-        listColumns(
-          store,
-          "product_photos",
-          ["productId", "documentId", "isPrimary", "kind"],
-          { filter: { productId: photoProductIds } },
-        ),
-      ])
-    : [[], []];
-  const productById = indexBy(products, "id");
-  const photoListOf = (productId: string | null) => {
-    const p = productId ? productById.get(productId) : null;
-    return p ? productPhotoList(p, photos) : [];
-  };
-  /** Foto: um produto, a galeria dele; vários, a grade (uma miniatura por produto). */
-  const photoCell = (e: Entry) => {
-    const comp = compositionOf.get(e);
-    const first = rowsOf(e)[0];
-    const cell = "h-14 w-14";
-    if (!comp || comp.products.length <= 1) {
-      const only = comp?.products[0];
-      return (
-        <PhotoGallery
-          name={productNameText(t, only?.name ?? first.productName)}
-          {...galleryProps(t, photoListOf(only?.productId ?? first.productId))}
-          badge={false}
-          className={cell}
-        />
-      );
-    }
-    const shown = comp.products.slice(0, PHOTO_PRODUCTS).map((cp) => ({
-      cp,
-      name: productNameText(t, cp.name),
-      photo: photoListOf(cp.productId)[0] ?? null,
-    }));
-    // A galeria: a foto de cada produto, com o nome dele (sem repetir foto).
-    const seen = new Set<string>();
-    const withPhoto = shown.filter(
-      (x) =>
-        x.photo &&
-        !seen.has(x.photo.documentId) &&
-        seen.add(x.photo.documentId),
-    );
-    const gallery = galleryProps(
-      t,
-      withPhoto.map((x) => ({ documentId: x.photo!.documentId, kind: null })),
-    );
-    return (
-      <PhotoGallery
-        name={t("reqList.photos.title", { n: comp.products.length })}
-        photos={gallery.photos.map((ph, i) => ({
-          ...ph,
-          label: withPhoto[i].name,
-        }))}
-        labels={gallery.labels}
-        badge={false}
-        className={cell}
-        tiles={{
-          list: shown.slice(0, 4).map((x) => ({
-            id: x.photo?.documentId ?? null,
-            initial: (x.name.trim()[0] ?? "?").toUpperCase(),
-            label: x.name,
-          })),
-          more: Math.max(0, comp.products.length - 4),
-        }}
-      />
-    );
-  };
-  /** Produtos: o início do nome de cada um (todos; depois de 6, num "+N" que abre). */
-  const PRODUCTS_INLINE = 6;
-  const productsList = (comp: Composition) => {
-    const names = comp.products.map((cp) => productNameText(t, cp.name));
-    const inline = names.slice(0, PRODUCTS_INLINE);
-    const rest = names.slice(PRODUCTS_INLINE);
-    // Um produto só cabe quase inteiro; com mais, o começo de cada um.
-    const max = names.length === 1 ? 60 : names.length <= 3 ? 30 : 24;
-    return {
-      inline: (
-        <span data-request-products={names.length}>
-          {inline.map((name, i) => (
-            <span key={`${name}-${i}`} title={name} data-request-product-name>
-              {i > 0 ? <span className="text-zinc-400"> · </span> : null}
-              <span className="whitespace-nowrap">
-                {shortProductName(name, max)}
-              </span>
-            </span>
-          ))}
-        </span>
+  const [roundProducts, { containerTypes }] = await Promise.all([
+    roundProductIds.length
+      ? listColumns(store, "products", ["masterBoxQty", "cbm"], {
+          filter: { id: roundProductIds },
+        })
+      : Promise.resolve([]),
+    getSettings(),
+  ]);
+  const roundProductById = indexBy(roundProducts, "id");
+  const referenceContainer =
+    [...containerTypes].sort((a, b) => b.capacityCbm - a.capacityCbm)[0] ??
+    null;
+  const roundsOf = new Map(
+    paged.rows.map((e) => [
+      e,
+      requestRounds(
+        rowsOf(e),
+        (r) => {
+          const id = (r as (typeof shownRows)[number]).productId;
+          return id ? (roundProductById.get(id) ?? null) : null;
+        },
+        referenceContainer?.capacityCbm ?? null,
       ),
-      rest: rest.length ? (
-        <details className="mt-0.5 text-xs font-normal text-zinc-600">
-          <summary
-            className="cursor-pointer select-none font-semibold text-brand-800"
-            data-request-products-more={rest.length}
-          >
-            {t("reqList.products.more", { n: rest.length })}
-          </summary>
-          <span className="mt-0.5 block">
-            {rest.map((name, i) => (
-              <span key={`${name}-${i}`} title={name}>
-                {i > 0 ? " · " : ""}
-                <span className="whitespace-nowrap">
-                  {shortProductName(name, max)}
-                </span>
-              </span>
-            ))}
-          </span>
-        </details>
-      ) : null,
-    };
+    ]),
+  );
+  /** Produtos: quantos SKUs diferentes o pedido tem (itens do pedido ou as solicitações). */
+  const skusCell = (e: Entry) => {
+    const n = compositionOf.get(e)?.products.length ?? rowsOf(e).length;
+    return (
+      <span
+        className="tabular-nums"
+        title={t("reqList.skus.hint")}
+        data-request-products={n}
+      >
+        {n}
+      </span>
+    );
   };
-  /** Quantidade: a soma das peças do pedido (outra unidade, à parte). */
-  const totalText = (comp: Composition) =>
-    comp.totals.length
-      ? comp.totals
-          .map(
-            (x) =>
-              `${x.quantity.toLocaleString(t.intl, { maximumFractionDigits: 2 })} ${x.unit}`,
-          )
-          .join(" · ")
-      : "—";
+  const roundsCell = (e: Entry) => (
+    <span className="tabular-nums" data-request-rounds="">
+      {roundsOf.get(e)?.rounds ?? 1}
+    </span>
+  );
+  const containersCell = (e: Entry) => {
+    const info = roundsOf.get(e);
+    if (!info?.containers)
+      return (
+        <span
+          className="text-zinc-400"
+          title={t("reqList.containers.missing")}
+          data-request-containers=""
+        >
+          —
+        </span>
+      );
+    return (
+      <span
+        className="whitespace-nowrap tabular-nums"
+        title={t("reqList.containers.hint", {
+          code: referenceContainer?.code ?? "",
+        })}
+        data-request-containers=""
+      >
+        {containersText(info.containers, (n) =>
+          t("reqList.containers.each", { n }),
+        )}
+      </span>
+    );
+  };
   /** Pedido da linha (lote: quantos pedidos; uma solicitação: o número com link). */
   const orderCell = (e: Entry) => {
     if (e.kind === "batch") {
@@ -616,6 +557,15 @@ export default async function RequestsPage({
       <Th className={className}>{label}</Th>
     );
   const anyDeletable = requests.some((r) => canDeleteRequest(user, r));
+  // Enviar para cotação (dono, 18/11/2026; docs/PURCHASE_DEMAND.md): a
+  // encomenda Solicitado ainda não enviada entra na Estratégia de Compra. A
+  // mesma seleção serve para enviar e para excluir.
+  const canSend = (r: (typeof requests)[number]) =>
+    wellmix && !showDeleted && awaitingStrategySend(r);
+  const selectable = (r: (typeof requests)[number]) =>
+    canDeleteRequest(user, r) || canSend(r);
+  const anySendable = requests.some(canSend);
+  const anySelectable = !showDeleted && (anyDeletable || anySendable);
   const count = (v: string | string[] | undefined) =>
     typeof v === "string" && /^\d+$/.test(v) ? Number(v) : 0;
   const errorKey = `reqDelete.error.${typeof error === "string" ? error : ""}`;
@@ -829,6 +779,25 @@ export default async function RequestsPage({
           </Alert>
         </div>
       ) : null}
+      {count(sp.strategySent) > 0 ? (
+        <div
+          className="mb-3"
+          role="status"
+          data-strategy-sent={count(sp.strategySent)}
+        >
+          <Alert tone="success">
+            {t("reqSend.done", { n: count(sp.strategySent) })}
+            {count(sp.strategySkipped) > 0
+              ? ` ${t("reqSend.skipped", { n: count(sp.strategySkipped) })}`
+              : ""}{" "}
+            {canOpen(user, "purchaseStrategy") ? (
+              <TextLink href="/app/purchase-strategy">
+                {t("reqSend.open")}
+              </TextLink>
+            ) : null}
+          </Alert>
+        </div>
+      ) : null}
       {typeof error === "string" && error ? (
         <div className="mb-3">
           <Alert tone="danger">
@@ -939,10 +908,21 @@ export default async function RequestsPage({
           </div>
         </div>
       ) : null}
-      {!showDeleted && anyDeletable ? (
+      {anySelectable ? (
         <BulkDeleteBar
           formId={BULK_FORM}
-          action={deleteRequestsAction}
+          action={anyDeletable ? deleteRequestsAction : sendToStrategyAction}
+          showDelete={anyDeletable}
+          lead={
+            anySendable
+              ? {
+                  action: sendToStrategyAction,
+                  label: t("reqSend.button"),
+                  confirmText: t("reqSend.confirm"),
+                  marker: "strategy",
+                }
+              : undefined
+          }
           labels={{
             selectAll: t("reqDelete.selectAll"),
             clear: t("reqDelete.clear"),
@@ -964,7 +944,7 @@ export default async function RequestsPage({
         <Table tools={!serverMode}>
           <thead>
             <tr>
-              {!showDeleted && anyDeletable ? (
+              {anySelectable ? (
                 <Th className="w-10">
                   <BulkSelectAll
                     formId={BULK_FORM}
@@ -972,24 +952,19 @@ export default async function RequestsPage({
                   />
                 </Th>
               ) : null}
+              {/* No nível do pedido (dono, 18/11/2026): Nº → Cliente →
+                  Produtos (SKUs) → Situação → Containers por programação →
+                  Programações → Próximo passo → Prazo → o resto. Sem foto,
+                  nome ou quantidade de produto: ficam na página do pedido. */}
               {header(t("requests.numberShort"), "number", "w-14")}
-              {/* Wellmix (dono, 16/11/2026): Foto → Pedido → Produtos →
-                  Quantidade → Cliente → Situação → Próximo passo → o resto. */}
-              {wellmix ? (
-                <Th className="w-16">{t("reqList.col.photo")}</Th>
-              ) : null}
-              {wellmix ? header(t("reqList.col.order"), "order") : null}
-              {header(
-                wellmix ? t("reqList.col.products") : t("common.product"),
-                "product",
-              )}
-              {header(t("common.quantity"), "quantity")}
-              {isWellmix(user)
-                ? header(t("common.customer"), "customer")
-                : null}
+              {wellmix ? header(t("common.customer"), "customer") : null}
+              <Th className="text-right">{t("reqList.col.skus")}</Th>
               {header(t("common.status"), "status")}
+              <Th className="text-right">{t("reqList.col.containers")}</Th>
+              {header(t("reqList.col.rounds"), "rounds", "text-right")}
               {wellmix ? header(t("reqList.col.next"), "next") : null}
               {header(t("requests.deadline"), "deadline")}
+              {wellmix ? header(t("reqList.col.order"), "order") : null}
               {wellmix ? header(t("reqList.col.owner"), "owner") : null}
               {wellmix ? header(t("reqList.col.date"), "date") : null}
               <Th />
@@ -1002,240 +977,101 @@ export default async function RequestsPage({
                 className={cx(rowClass, "bg-amber-50/40")}
                 data-request-list-draft={draft.id}
               >
-                {!showDeleted && anyDeletable ? <Td /> : null}
-                <Td className="tabular-nums text-zinc-400">—</Td>
-                <Td />
-                <Td className="text-zinc-400">—</Td>
+                {anySelectable ? <Td /> : null}
                 <Td className="min-w-40">
-                  <TextLink href={href}>{draft.title}</TextLink>
+                  <TextLink
+                    href={href}
+                    className="text-zinc-900 no-underline hover:underline"
+                  >
+                    {draft.title}
+                  </TextLink>
                   <span className="block text-xs text-zinc-500">
                     {t("requestDraft.listHint")}
                   </span>
                 </Td>
-                <Td className="whitespace-nowrap tabular-nums">
-                  {t("reqBatch.count", { n: draft.itemCount })}
-                </Td>
-                <Td className="min-w-32">
-                  {draft.customerName ?? t("requestDraft.noCustomer")}
-                </Td>
+                {wellmix ? (
+                  <Td className="min-w-32">
+                    {draft.customerName ?? t("requestDraft.noCustomer")}
+                  </Td>
+                ) : null}
+                <Td className="text-right tabular-nums">{draft.itemCount}</Td>
                 <Td className="whitespace-nowrap">
                   <Badge tone="neutral">{t("requestDraft.status")}</Badge>
                 </Td>
+                <Td className="text-right text-zinc-400">—</Td>
+                <Td className="text-right text-zinc-400">—</Td>
+                {wellmix ? <Td className="text-zinc-400">—</Td> : null}
                 <Td className="text-zinc-400">—</Td>
-                <Td className="text-zinc-400">—</Td>
-                <Td className="whitespace-nowrap">{user.name}</Td>
-                <Td className="whitespace-nowrap tabular-nums">
-                  {formatDate(draft.updatedAt, t)}
-                </Td>
+                {wellmix ? <Td className="text-zinc-400">—</Td> : null}
+                {wellmix ? (
+                  <Td className="whitespace-nowrap">{user.name}</Td>
+                ) : null}
+                {wellmix ? (
+                  <Td className="whitespace-nowrap tabular-nums">
+                    {formatDate(draft.updatedAt, t)}
+                  </Td>
+                ) : null}
                 <Td className="text-right">
-                  <TextLink href={href} data-request-list-draft-open>
-                    {t("requestDraft.resume")}
-                  </TextLink>
+                  <OpenLink
+                    href={href}
+                    label={t("requestDraft.resume")}
+                    data-request-list-draft-open
+                  />
                 </Td>
               </tr>
             ))}
             {paged.rows.map((entry) => {
-              if (entry.kind === "batch") {
-                // Na ordem em que foram pedidos (igual à página do lote).
-                const rows = [...entry.rows].sort((a, b) =>
-                  a.createdAt.localeCompare(b.createdAt),
-                );
-                const deletable = rows.filter((r) => canDeleteRequest(user, r));
-                const names = rows.map((r) =>
-                  productNameText(t, r.productName),
-                );
-                const comp = compositionOf.get(entry);
-                // Próximos passos diferentes do lote (o primeiro e quantos mais).
-                const steps = [
-                  ...new Map(
-                    rows
-                      .map((r) => nextOf(r))
-                      .filter((n) => n.key !== "none")
-                      .map((n) => [`${nextText(n)}|${whoText(n)}`, n]),
-                  ).values(),
-                ];
-                return (
-                  <tr key={entry.groupId} className={rowClass} data-batch-row>
-                    {!showDeleted && anyDeletable ? (
-                      <Td className="w-10">
-                        {deletable.length > 0 ? (
+              // Na ordem em que foram pedidos (igual à página do pedido).
+              const rows = rowsOf(entry);
+              const first = rows[0];
+              const href = solicitationHref(first);
+              const deletable = rows.filter((r) => canDeleteRequest(user, r));
+              const pickable = rows.filter(selectable);
+              const statuses = rows.map((r) =>
+                requestDisplayStatus(r, cancelled),
+              );
+              // Próximos passos diferentes do pedido (o primeiro e quantos mais).
+              const steps = [
+                ...new Map(
+                  rows
+                    .map((r) => nextOf(r))
+                    .filter((n) => n.key !== "none")
+                    .map((n) => [`${nextText(n)}|${whoText(n)}`, n]),
+                ).values(),
+              ];
+              const number = rows.find((r) => r.number)?.number ?? null;
+              // Pedido cancelado: a dica não diz mais que "o pedido continua".
+              const lockedHint = statuses.includes("ORDER_CANCELLED")
+                ? t("reqStatusLabel.ORDER_CANCELLED")
+                : t("reqDelete.ordered");
+              const names = rows.map((r) => productNameText(t, r.productName));
+              return (
+                <tr
+                  key={entry.kind === "batch" ? entry.groupId : first.id}
+                  className={rowClass}
+                  data-batch-row={entry.kind === "batch" ? "" : undefined}
+                  data-request-row={first.id}
+                >
+                  {anySelectable ? (
+                    <Td className="w-10">
+                      {pickable.length > 0 ? (
+                        entry.kind === "batch" ? (
                           <BatchSelect
                             formId={BULK_FORM}
                             groupKey={entry.groupId}
-                            ids={deletable.map((r) => r.id)}
+                            ids={pickable.map((r) => r.id)}
                             label={`${t("reqBatch.selectBatch")}: ${names.slice(0, 2).join(", ")}${names.length > 2 ? ` +${names.length - 2}` : ""}`}
                           />
                         ) : (
                           <input
                             type="checkbox"
-                            disabled
-                            aria-label={t("reqDelete.ordered")}
-                            title={t("reqDelete.ordered")}
-                            className="h-4 w-4 cursor-not-allowed opacity-40"
+                            name="ids"
+                            value={first.id}
+                            form={BULK_FORM}
+                            aria-label={`${t("reqDelete.selectOne")}: ${names[0]}`}
+                            className="h-4 w-4 accent-brand-600"
                           />
-                        )}
-                      </Td>
-                    ) : null}
-                    <Td className="whitespace-nowrap tabular-nums text-zinc-600">
-                      <span data-request-number>
-                        {rows.find((r) => r.number)?.number ?? "—"}
-                      </span>
-                    </Td>
-                    {wellmix ? (
-                      <Td className="w-16">{photoCell(entry)}</Td>
-                    ) : null}
-                    {wellmix ? (
-                      <Td className="whitespace-nowrap" data-request-order="">
-                        {orderCell(entry)}
-                      </Td>
-                    ) : null}
-                    <Td className="min-w-48 font-medium text-zinc-900">
-                      <TextLink
-                        href={batchHref(entry.groupId)}
-                        className="text-zinc-900 no-underline hover:underline"
-                      >
-                        {comp ? (
-                          productsList(comp).inline
-                        ) : (
-                          <>
-                            {names.slice(0, 2).join(", ")}
-                            {names.length > 2 ? ` +${names.length - 2}` : ""}
-                          </>
-                        )}
-                      </TextLink>
-                      {comp ? productsList(comp).rest : null}
-                      <span
-                        className="ml-2 inline-block rounded bg-brand-50 px-1.5 py-0.5 text-[11px] font-semibold text-brand-800 ring-1 ring-inset ring-brand-200"
-                        data-batch-count
-                      >
-                        {t("reqBatch.count", { n: rows.length })}
-                      </span>
-                      <DemandTags t={t} request={rows[0]} />
-                    </Td>
-                    <Td className="tabular-nums">
-                      {comp ? (
-                        // A soma das peças do pedido (dono, 16/11/2026).
-                        <span
-                          className="whitespace-nowrap"
-                          data-request-total=""
-                        >
-                          {totalText(comp)}
-                        </span>
-                      ) : (
-                        <>
-                          {/* Mesmos dois primeiros produtos do nome; o resto na página do lote. */}
-                          {rows.slice(0, 2).map((r, i) => (
-                            <span key={r.id} className="whitespace-nowrap">
-                              {i > 0 ? " · " : ""}
-                              {r.quantity} {r.unit}
-                            </span>
-                          ))}
-                          {rows.length > 2 ? (
-                            <span className="whitespace-nowrap">
-                              {` +${rows.length - 2}`}
-                            </span>
-                          ) : null}
-                        </>
-                      )}
-                    </Td>
-                    {isWellmix(user) ? (
-                      <Td className="min-w-32">
-                        {partyById.get(rows[0].customerId)?.name ?? "—"}
-                      </Td>
-                    ) : null}
-                    <Td>
-                      <span className="flex flex-wrap gap-1">
-                        {statusCounts(
-                          rows.map((r) => requestDisplayStatus(r, cancelled)),
-                        ).map(({ status, count: n }) => (
-                          <Badge key={status} tone={requestStatusTone(status)}>
-                            {t(`reqStatusLabel.${status}`)}
-                            {n > 1 ? ` ×${n}` : ""}
-                          </Badge>
-                        ))}
-                      </span>
-                    </Td>
-                    {wellmix ? (
-                      <Td className="min-w-40">
-                        {steps.length ? (
-                          <>
-                            {nextCell(steps[0])}
-                            {steps.length > 1 ? (
-                              <span className="block text-xs text-zinc-500">
-                                +{steps.length - 1}
-                              </span>
-                            ) : null}
-                          </>
-                        ) : (
-                          "—"
-                        )}
-                      </Td>
-                    ) : null}
-                    <Td className="whitespace-nowrap tabular-nums">
-                      {formatDate(earliestDeadline(rows), t)}
-                    </Td>
-                    {wellmix ? (
-                      <Td className="whitespace-nowrap">
-                        {ownerName(rows[0].ownerUserId)}
-                      </Td>
-                    ) : null}
-                    {wellmix ? (
-                      <Td className="whitespace-nowrap tabular-nums">
-                        {formatDate(rows[0].createdAt, t)}
-                      </Td>
-                    ) : null}
-                    <Td className="text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <TextLink href={batchHref(entry.groupId)}>
-                          {t("tasks.open")}
-                        </TextLink>
-                        {!showDeleted && deletable.length > 0 ? (
-                          <form action={deleteRequestsAction}>
-                            {deletable.map((r) => (
-                              <input
-                                key={r.id}
-                                type="hidden"
-                                name="ids"
-                                value={r.id}
-                              />
-                            ))}
-                            <ConfirmDeleteButton
-                              label={t("reqBatch.deleteAll")}
-                              confirmText={t("reqBatch.deleteAllConfirm")}
-                            />
-                          </form>
-                        ) : null}
-                        {/* Conversa do lote: abre pela primeira solicitação dele. */}
-                        <ChatOpenButton
-                          target={{ requestId: rows[0].id }}
-                          label={t("chat.open")}
-                        />
-                      </div>
-                    </Td>
-                  </tr>
-                );
-              }
-              const r = entry.row;
-              const comp = compositionOf.get(entry);
-              const status = requestDisplayStatus(r, cancelled);
-              // Pedido cancelado: a dica não diz mais que "o pedido continua".
-              const lockedHint =
-                status === "ORDER_CANCELLED"
-                  ? t("reqStatusLabel.ORDER_CANCELLED")
-                  : t("reqDelete.ordered");
-              return (
-                <tr key={r.id} className={rowClass}>
-                  {!showDeleted && anyDeletable ? (
-                    <Td className="w-10">
-                      {canDeleteRequest(user, r) ? (
-                        <input
-                          type="checkbox"
-                          name="ids"
-                          value={r.id}
-                          form={BULK_FORM}
-                          aria-label={`${t("reqDelete.selectOne")}: ${productNameText(t, r.productName)}`}
-                          className="h-4 w-4 accent-brand-600"
-                        />
+                        )
                       ) : (
                         <input
                           type="checkbox"
@@ -1247,96 +1083,98 @@ export default async function RequestsPage({
                       )}
                     </Td>
                   ) : null}
-                  <Td className="whitespace-nowrap tabular-nums text-zinc-600">
-                    <span data-request-number>{r.number ?? "—"}</span>
+                  <Td className="whitespace-nowrap tabular-nums">
+                    <TextLink
+                      href={href}
+                      className="font-semibold text-zinc-900 no-underline hover:underline"
+                      data-request-open
+                    >
+                      <span data-request-number>{number ?? "—"}</span>
+                    </TextLink>
+                    <DemandTags t={t} request={first} />
                   </Td>
                   {wellmix ? (
-                    <Td className="w-16">{photoCell(entry)}</Td>
+                    <Td className="min-w-32">
+                      {customerName(first.customerId) || "—"}
+                    </Td>
                   ) : null}
+                  <Td className="text-right">{skusCell(entry)}</Td>
+                  <Td>
+                    <span className="flex flex-wrap gap-1">
+                      {statusCounts(statuses).map(({ status, count: n }) => (
+                        <Badge key={status} tone={requestStatusTone(status)}>
+                          {t(`reqStatusLabel.${status}`)}
+                          {n > 1 ? ` ×${n}` : ""}
+                        </Badge>
+                      ))}
+                    </span>
+                  </Td>
+                  <Td className="text-right">{containersCell(entry)}</Td>
+                  <Td className="text-right">{roundsCell(entry)}</Td>
+                  {wellmix ? (
+                    <Td className="min-w-40">
+                      {steps.length ? (
+                        <>
+                          {nextCell(steps[0])}
+                          {steps.length > 1 ? (
+                            <span className="block text-xs text-zinc-500">
+                              +{steps.length - 1}
+                            </span>
+                          ) : null}
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                  ) : null}
+                  <Td className="whitespace-nowrap tabular-nums">
+                    {formatDate(earliestDeadline(rows), t)}
+                  </Td>
                   {wellmix ? (
                     <Td className="whitespace-nowrap" data-request-order="">
                       {orderCell(entry)}
                     </Td>
                   ) : null}
-                  <Td className="min-w-48 font-medium text-zinc-900">
-                    <TextLink
-                      href={`/app/requests/${r.id}`}
-                      className="text-zinc-900 no-underline hover:underline"
-                      data-request-open
-                    >
-                      {comp
-                        ? productsList(comp).inline
-                        : productNameText(t, r.productName)}
-                    </TextLink>
-                    {comp ? productsList(comp).rest : null}
-                    {r.groupId && (groupSize.get(r.groupId) ?? 0) > 1 ? (
-                      <TextLink
-                        href={batchHref(r.groupId)}
-                        className="ml-2 inline-block rounded bg-brand-50 px-1.5 py-0.5 text-[11px] font-semibold text-brand-800 no-underline ring-1 ring-inset ring-brand-200"
-                        data-batch-badge
-                      >
-                        {t("reqBatch.badge", { n: groupSize.get(r.groupId)! })}
-                      </TextLink>
-                    ) : null}
-                    {r.variant?.name ? (
-                      <span className="block text-xs font-normal text-zinc-500">
-                        {r.variant.name}
-                      </span>
-                    ) : null}
-                    <DemandTags t={t} request={r} />
-                  </Td>
-                  <Td className="whitespace-nowrap tabular-nums">
-                    {comp ? (
-                      // A soma das peças do pedido (dono, 16/11/2026).
-                      <span data-request-total="">{totalText(comp)}</span>
-                    ) : (
-                      <>
-                        {r.quantity} {r.unit}
-                      </>
-                    )}
-                  </Td>
-                  {isWellmix(user) ? (
-                    <Td className="min-w-32">
-                      {parties.find((p) => p.id === r.customerId)?.name ?? "—"}
-                    </Td>
-                  ) : null}
-                  <Td className="whitespace-nowrap">
-                    <Badge tone={requestStatusTone(status)}>
-                      {t(`reqStatusLabel.${status}`)}
-                    </Badge>
-                  </Td>
-                  {wellmix ? (
-                    <Td className="min-w-40">{nextCell(nextOf(r))}</Td>
-                  ) : null}
-                  <Td className="whitespace-nowrap tabular-nums">
-                    {formatDate(r.deadline, t)}
-                  </Td>
                   {wellmix ? (
                     <Td className="whitespace-nowrap">
-                      {ownerName(r.ownerUserId)}
+                      {ownerName(first.ownerUserId)}
                     </Td>
                   ) : null}
                   {wellmix ? (
                     <Td className="whitespace-nowrap tabular-nums">
-                      {formatDate(r.createdAt, t)}
+                      {formatDate(first.createdAt, t)}
                     </Td>
                   ) : null}
                   <Td className="text-right">
-                    <div className="flex items-center justify-end gap-3">
-                      <TextLink href={`/app/requests/${r.id}`}>
-                        {t("tasks.open")}
-                      </TextLink>
-                      {!showDeleted && canDeleteRequest(user, r) ? (
+                    <div className="flex items-center justify-end gap-1">
+                      <OpenLink href={href} label={t("reqList.open")} />
+                      {!showDeleted && deletable.length > 0 ? (
                         <form action={deleteRequestsAction}>
-                          <input type="hidden" name="ids" value={r.id} />
+                          {deletable.map((r) => (
+                            <input
+                              key={r.id}
+                              type="hidden"
+                              name="ids"
+                              value={r.id}
+                            />
+                          ))}
                           <ConfirmDeleteButton
-                            label={t("reqDelete.delete")}
-                            confirmText={t("reqDelete.confirmOne")}
+                            label={
+                              entry.kind === "batch"
+                                ? t("reqBatch.deleteAll")
+                                : t("reqDelete.delete")
+                            }
+                            confirmText={
+                              entry.kind === "batch"
+                                ? t("reqBatch.deleteAllConfirm")
+                                : t("reqDelete.confirmOne")
+                            }
                           />
                         </form>
                       ) : null}
+                      {/* Conversa do pedido: abre pela primeira solicitação dele. */}
                       <ChatOpenButton
-                        target={{ requestId: r.id }}
+                        target={{ requestId: first.id }}
                         label={t("chat.open")}
                       />
                     </div>

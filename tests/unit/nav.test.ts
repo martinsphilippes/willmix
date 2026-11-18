@@ -42,8 +42,9 @@ const NEW_PRODUCT = [
   "/app/booking/selection",
   "/app/supplier-requests/invites",
   "/app/requests",
-  "/app/replenishment",
+  // Estratégia de Compra logo depois de Encomendas (dono, 18/11/2026).
   "/app/purchase-strategy",
+  "/app/replenishment",
   "/app/purchase-quotes",
   "/app/supplier-requests",
 ];

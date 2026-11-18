@@ -21,6 +21,7 @@ import {
   Stat,
   Table,
   Td,
+  OpenLink,
   TextLink,
   Th,
   cx,
@@ -290,7 +291,12 @@ export default async function MessageControlPage({
                   data-msgctl-overdue={late ? "true" : undefined}
                 >
                   <Td className="whitespace-nowrap font-medium">
-                    {r.partyName}
+                    <TextLink
+                      href={r.href}
+                      className="text-zinc-900 no-underline hover:underline"
+                    >
+                      {r.partyName}
+                    </TextLink>
                   </Td>
                   <Td>
                     {topicLabel(t, r)}
@@ -343,7 +349,7 @@ export default async function MessageControlPage({
                   </Td>
                   <Td className="whitespace-nowrap">
                     <span className="inline-flex items-center gap-1">
-                      <TextLink href={r.href}>{t("msgctl.open")}</TextLink>
+                      <OpenLink href={r.href} label={t("msgctl.open")} />
                       {target ? (
                         <ChatOpenButton
                           target={target}

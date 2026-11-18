@@ -50,8 +50,19 @@ export async function GET(request: Request) {
   if (!(PARTY_TYPES as readonly string[]).includes(type))
     return NextResponse.json({ error: "type" }, { status: 400 });
   const wellmix = isWellmix(user!);
+  // Outros tipos junto (só a Wellmix): ex.: o convite da cotação de compra
+  // busca Fornecedor, Trading, Supplier e Factory (dono, 18/11/2026).
+  const also = wellmix
+    ? (params.get("also") ?? "")
+        .split(",")
+        .filter(
+          (x): x is PartyType =>
+            (PARTY_TYPES as readonly string[]).includes(x) && x !== type,
+        )
+        .slice(0, 6)
+    : [];
   const options = await searchParties({
-    type: type as PartyType,
+    type: also.length ? [type as PartyType, ...also] : (type as PartyType),
     q: params.get("q") ?? "",
     // O "estoque" é um cliente técnico (reservas): fica fora da busca, menos
     // onde a lista antiga o mostrava (`stock=1`, ex.: cliente do container).
@@ -65,7 +76,20 @@ export async function GET(request: Request) {
       options: options.map((o) => ({
         id: o.id,
         name: o.name,
-        ...(t ? { hint: partyHint(t, o), code: o.code ?? null } : {}),
+        ...(t
+          ? {
+              hint:
+                [
+                  o.type && o.type !== type
+                    ? t(`party.${o.type}` as Parameters<Translate>[0])
+                    : null,
+                  partyHint(t, o),
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || null,
+              code: o.code ?? null,
+            }
+          : {}),
       })),
     },
     { headers: { "Cache-Control": "private, no-store" } },

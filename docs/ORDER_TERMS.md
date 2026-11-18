@@ -277,6 +277,25 @@ Vale para as três telas (Encomendas, TS e Venda), que usam o mesmo código (`sr
 - **Entrada da Reposição com rascunho:** antes ela não tinha rascunho. Agora tem o mesmo de sempre ("Salvar rascunho", o automático e a lista no alto), marcado pelo campo `from=replenishment` do formulário; vale para quem abre a fila (ação "Abrir reposição" e tela Encomendas), mesmo sem a tela de Venda. O rascunho da Reposição só abre nessa entrada, e o da Venda comum só na Venda.
 - O histórico de compras perdeu a explicação "Pedidos de venda do cliente no Sankhya, do mais recente para o mais antigo…".
 
+## 11.13 Rascunho reaberto sem os produtos (dono, 18/11/2026)
+
+- **O que acontecia:** ao reabrir um rascunho, a leitura dos produtos era a mesma do envio (estrita). Bastava um campo incompleto numa linha (a programação gerada com uma data ainda sem quantidade, por exemplo) para a tela descartar todos os produtos. Em seguida, o rascunho automático gravava a tela vazia por cima.
+- **Agora:** o rascunho volta como foi salvo (`parseRequestItems(form, { lenient: true })` e `parseRequestSchedule(..., { draft: true })`): a quantidade em branco ou inválida da programação vira zero, e a programação que não dá para ler (ou é de outro produto) sai só daquela linha. O envio continua estrito.
+- **O rascunho automático só grava depois de uma ação da pessoa na tela** (tecla, clique ou toque). Abrir um rascunho, com a tela se completando sozinha, nunca grava por cima.
+- **Quem vê o rascunho:** só quem criou (listar, abrir, gravar por cima e apagar conferem o login).
+
+## 11.14 Contatos opcionais para a equipe interna (dono, 18/11/2026)
+
+- Quando o Solicitante está na Equipe Interna (a lista de `/app/team`: login ativo de administrador ou operador da Wellmix), os contatos do bloco Cliente são **opcionais**: o pedido sai sem eles. O bloco continua na tela, com o aviso "Opcional para a equipe interna", e pode ser preenchido e salvo ("Salvar dados do cliente").
+- O que for preenchido continua conferido (telefone e e-mail válidos, diferentes dos do vendedor); um contato todo em branco fica de fora, e um meio preenchido é cobrado. Tudo em branco não grava nada.
+- Quem não está na equipe (um representante externo, quando houver) segue com todos os contatos obrigatórios, como antes.
+- Código: `contactsOptionalFor` (src/lib/services/customer-contacts.ts) e `contactIssues(..., { optional })` (src/lib/order-terms.ts).
+
+## 11.15 Todos os logins do cliente e o valor do transporte (dono, 18/11/2026)
+
+- **Login do cliente com acesso não se escolhe mais** na Nova solicitação (Encomendas, TS e Venda): o campo só mostra "Todos os logins do cliente (N)". A venda da Wellmix sem login escolhido (`requestedForUserId` nulo, com as condições do pedido) vai para **todos os logins daquele cliente**: qualquer um vê a solicitação, confirma o pedido e recebe o aviso de confirmar (`forAllCustomerLogins` em src/lib/auth/permissions.ts, `canConfirm` e `notifyCustomerToConfirm`). As solicitações antigas sem as condições do pedido e as com um login escolhido seguem como antes. O pedido (depois da confirmação) segue a regra de antes para o cliente.
+- **Valor do transporte (R$) também quando o cliente chama o transportador:** só a escolha da transportadora sai; o valor aparece, entra na previsão de preço e é gravado em `orderTerms.deliveryFreightBrl` (antes, só quando a Wellmix chamava ou no formato WD).
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

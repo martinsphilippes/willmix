@@ -31,7 +31,14 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
     // Seleção de itens, Convites e Solicitações ao fornecedor.
     key: "newProduct",
     label: "nav.group.newProduct",
-    screens: ["requestTs", "requestSale", "booking", "quotes", "sourcing"],
+    screens: [
+      "requestTs",
+      "requestSale",
+      "booking",
+      "quotes",
+      "purchaseStrategy",
+      "sourcing",
+    ],
     actions: [
       "supplierRequest.decide",
       "sampling.validate",

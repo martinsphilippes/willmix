@@ -298,6 +298,15 @@ export default async function OrdersPage({
           : t("orders.panel.request"),
       isRequest: sorted.every((r) => r.kind === "request"),
       product: first.product,
+      // Produtos diferentes (SKUs): com os itens lidos, pelo cadastro (ou o
+      // nome); sem eles, quantos itens cada pedido tem.
+      productCount: detailed
+        ? new Set(
+            sorted.flatMap((r) =>
+              r.items.map((i) => i.productId ?? `n:${i.name}`),
+            ),
+          ).size
+        : sorted.reduce((n, r) => n + (r.itemCount || r.items.length), 0),
       // Resumo (todas as linhas, só para filtrar e ordenar): sem os textos
       // formatados dos itens. Cada toLocaleString/formatDate cria um
       // formatador; com ~100 mil itens isso passava de 20 s.
@@ -485,6 +494,7 @@ export default async function OrdersPage({
           labels={{
             number: "#",
             product: t("common.product"),
+            products: t("reqList.col.skus"),
             customer: t("common.customer"),
             supplier: t("common.supplier"),
             phase: t("milestone.current"),

@@ -15,6 +15,7 @@ import {
 import { STAGE_KEYS } from "@/lib/db/schema";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import type { TaskItem } from "@/lib/task-owner";
+import type { TaskText } from "@/lib/task-text";
 import { can } from "@/lib/auth/function-access";
 import {
   ORDER_SIGN_SEND,
@@ -58,6 +59,7 @@ export type TaskKind =
   | "purchase_strategy"
   | "purchase_strategy_approve"
   | "purchase_strategy_order"
+  | "purchase_strategy_send"
   | "purchase_quote_answer"
   | "purchase_quote_choose"
   | "purchase_quote_empty"
@@ -127,13 +129,7 @@ export interface Task {
    * quem usa outro idioma (ex.: fornecedor chinês); sem isto valem `title` e
    * `detail`, em português.
    */
-  text?: {
-    title: DictionaryKey;
-    detail: DictionaryKey;
-    /** Frase a mais no detalhe (ex.: o que falta designar e onde). */
-    detailExtra?: DictionaryKey;
-    values: Record<string, string | number>;
-  };
+  text?: TaskText;
   /** Filtro "tipo": a etapa (requisito) ou o tipo da pendência. */
   group: string;
   /** Filtro "prazo". */
@@ -370,6 +366,7 @@ const KIND_ORDER: string[] = [
   "purchase_strategy",
   "purchase_strategy_approve",
   "purchase_strategy_order",
+  "purchase_strategy_send",
   "purchase_quote_answer",
   "purchase_quote_choose",
   "purchase_quote_empty",
@@ -992,9 +989,18 @@ export async function pendingTasksFor(
   // já está numa estratégia sai daqui.
   const strategist =
     wellmix && !options.team && can(user, "purchaseStrategy.choose");
-  for (const request of newRequests.filter(
-    (r) => !r.purchaseDecisionId && !strategist,
-  ))
+  const { awaitingStrategySend, inStrategyQueue } =
+    await import("./purchase-strategy");
+  for (const request of newRequests.filter((r) => !r.purchaseDecisionId)) {
+    // Encomenda do cliente ainda não enviada (dono, 18/11/2026): "Enviar
+    // para cotação", para quem abre Encomendas (o Comprador também).
+    const toSend = awaitingStrategySend(request);
+    if (!toSend) {
+      if (strategist) continue;
+      // Já enviada: segue com quem escolhe a estratégia (passo Estratégia).
+      if (request.origin !== "replenishment" && inStrategyQueue(request))
+        continue;
+    }
     tasks.push(
       finish(
         {
@@ -1002,10 +1008,29 @@ export async function pendingTasksFor(
             request.origin === "replenishment"
               ? "replenishment_request"
               : "new_request",
-          title: `${
-            request.origin === "replenishment" ? "Reposição" : "Encomenda nova"
-          }: ${request.productName}`,
-          detail: `${request.quantity.toLocaleString("pt-BR")} ${request.unit}`,
+          title: toSend
+            ? `Enviar para cotação: ${request.productName}`
+            : `${
+                request.origin === "replenishment"
+                  ? "Reposição"
+                  : "Encomenda nova"
+              }: ${request.productName}`,
+          detail: toSend
+            ? `Encomenda · ${request.quantity.toLocaleString("pt-BR")} ${request.unit}`
+            : `${request.quantity.toLocaleString("pt-BR")} ${request.unit}`,
+          ...(toSend
+            ? {
+                text: {
+                  title: "strategy.task.toSend.title",
+                  detail: "strategy.task.toSend.detail",
+                  values: {
+                    product: request.productName,
+                    unit: request.unit,
+                  },
+                  numbers: { quantity: request.quantity },
+                },
+              }
+            : {}),
           link: `/app/requests/${request.id}`,
           dueAt: request.deadline,
           customerId: request.customerId,
@@ -1014,6 +1039,7 @@ export async function pendingTasksFor(
         now,
       ),
     );
+  }
   if (wellmix)
     tasks.push(
       ...(

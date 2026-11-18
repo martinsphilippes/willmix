@@ -25,6 +25,7 @@ export function PartyPicker({
   disabled,
   activeOnly,
   includeStock,
+  alsoTypes,
   dense,
   className,
   inputClassName,
@@ -46,6 +47,11 @@ export function PartyPicker({
    * onde a lista antiga a mostrava (ex.: cliente do container).
    */
   includeStock?: boolean;
+  /**
+   * Outros tipos de parceiro na mesma busca (só a Wellmix; ex.: Trading,
+   * Supplier e Factory no convite da cotação de compra).
+   */
+  alsoTypes?: readonly string[];
   dense?: boolean;
   className?: string;
   /** Classes a mais no campo de texto. */
@@ -62,6 +68,7 @@ export function PartyPicker({
   const params = new URLSearchParams({ type });
   if (activeOnly) params.set("active", "1");
   if (includeStock) params.set("stock", "1");
+  if (alsoTypes?.length) params.set("also", alsoTypes.join(","));
   return (
     <SearchPicker
       endpoint={`/api/parties/search?${params}`}

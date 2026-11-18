@@ -15,6 +15,8 @@ export interface PartyOption {
    */
   code?: string | null;
   taxId?: string | null;
+  /** Tipo do parceiro (para dizer o tipo ao lado do nome na busca de vários tipos). */
+  type?: PartyType;
 }
 
 /** Só os números do texto (CNPJ/CPF e código digitados com pontuação). */
@@ -67,7 +69,8 @@ export function formatTaxId(taxId: string | null | undefined): {
  *   dado pessoal).
  */
 export async function searchParties(input: {
-  type: PartyType;
+  /** Um tipo ou vários (ex.: os da cotação de compra). */
+  type: PartyType | readonly PartyType[];
   q: string;
   /** Ids que não entram (ex.: o "estoque" nas reservas). */
   exclude?: string[];
@@ -80,15 +83,18 @@ export async function searchParties(input: {
   if (text.length < 2) return [];
   const exclude = new Set(input.exclude ?? []);
   const store = getStore();
+  const types: PartyType[] = Array.isArray(input.type)
+    ? [...(input.type as readonly PartyType[])]
+    : [input.type as PartyType];
   const filter = {
-    type: input.type,
+    type: types.length === 1 ? types[0] : types,
     ...(input.activeOnly ? { active: true } : {}),
   };
   const limit = PARTY_SEARCH_LIMIT + exclude.size;
   const ids = !!input.identifiers;
   const columns = ids
-    ? (["name", "active", "sankhyaCode", "taxId"] as const)
-    : (["name", "active"] as const);
+    ? (["name", "active", "type", "sankhyaCode", "taxId"] as const)
+    : (["name", "active", "type"] as const);
   const digits = digitsOf(input.q).slice(0, 20);
   const numeric = ids && looksNumeric(input.q) && digits.length >= 2;
   const none = Promise.resolve([]);
@@ -133,6 +139,7 @@ export async function searchParties(input: {
   for (const p of [...byCode, ...byTaxId, ...byName] as Array<{
     id: string;
     name: string;
+    type?: PartyType;
     sankhyaCode?: string | null;
     taxId?: string | null;
   }>) {
@@ -145,8 +152,13 @@ export async function searchParties(input: {
             name: p.name,
             code: p.sankhyaCode ?? null,
             taxId: p.taxId ?? null,
+            ...(types.length > 1 && p.type ? { type: p.type } : {}),
           }
-        : { id: p.id, name: p.name },
+        : {
+            id: p.id,
+            name: p.name,
+            ...(types.length > 1 && p.type ? { type: p.type } : {}),
+          },
     );
     if (options.length >= PARTY_SEARCH_LIMIT) break;
   }

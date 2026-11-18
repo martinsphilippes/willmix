@@ -168,7 +168,8 @@ test("Solicitações: uma linha por produto, ficha completa em linha horizontal,
   await expect(field(page, "terms")).toContainText("—");
   // A outra linha do lote, na mesma tabela, com o link da solicitação dela.
   const other = page.locator("[data-sheet-row]:not([data-sheet-current])");
-  await expect(other.locator("[data-sheet-open-request]")).toContainText(
+  await expect(other.locator("[data-sheet-open-request]")).toHaveAttribute(
+    "aria-label",
     "Abrir a solicitação",
   );
   await expect(other.locator('[data-sheet-field="pieces"]')).toContainText(
