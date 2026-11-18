@@ -182,6 +182,7 @@ export const pt = {
   "productBrowser.defaultQty": "Quantidade padrão (caixas)",
   "productBrowser.defaultQtyHint":
     'Cada produto acrescentado entra no pedido com estas caixas master (caixas × peças por caixa, nunca abaixo do pedido mínimo) e já recolhido em "Produtos no pedido". Vazio: o pedido mínimo, com a ficha aberta.',
+  "productBrowser.search": "Buscar produto por nome ou código",
   "productBrowser.selectAll": "Selecionar todos desta página",
   "productBrowser.select": "Selecionar {name}",
   "productBrowser.photo": "Foto",
@@ -484,6 +485,7 @@ export const en: Record<keyof typeof pt, string> = {
   "productBrowser.defaultQty": "Default quantity (cartons)",
   "productBrowser.defaultQtyHint":
     'Each product added goes into the order with these master cartons (cartons × pieces per carton, never below the minimum order), already collapsed in "Products in the order". Empty: the minimum order, with the sheet open.',
+  "productBrowser.search": "Search by name or code",
   "productBrowser.selectAll": "Select all on this page",
   "productBrowser.select": "Select {name}",
   "productBrowser.photo": "Photo",
@@ -771,6 +773,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "productBrowser.defaultQty": "默认数量（箱）",
   "productBrowser.defaultQtyHint":
     "每个添加的产品按此外箱数量加入订单（箱数 × 每箱件数，不低于最小起订量），并在“订单中的产品”中收起。留空：最小起订量，产品表展开。",
+  "productBrowser.search": "按名称或编码搜索",
   "productBrowser.selectAll": "选择本页全部",
   "productBrowser.select": "选择 {name}",
   "productBrowser.photo": "图片",

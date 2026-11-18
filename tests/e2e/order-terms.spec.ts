@@ -516,8 +516,13 @@ test("Lupa da busca de produto: seletor com Grupo, Sub grupo e Coleção, seleç
     ),
   ).toHaveAttribute("data-seen", "all");
 
-  // Clique na boneca: entra no pedido e o seletor continua aberto.
-  await browser.locator('[data-product-browser-add="prod-boneca"]').click();
+  // Busca por nome ou código no seletor (o mesmo buscador da página): a
+  // boneca entra no pedido e o seletor continua aberto.
+  const browserSearch = browser.locator("[data-product-browser-search]");
+  await browserSearch.locator("[data-product-picker-input]").fill("boneca");
+  await browserSearch
+    .locator('[data-product-picker-option="prod-boneca"]')
+    .click();
   await expect(
     browser.locator('[data-product-browser-item="prod-boneca"]'),
   ).toHaveAttribute("data-state", "in-order");

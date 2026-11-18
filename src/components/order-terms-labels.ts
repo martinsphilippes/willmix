@@ -1,4 +1,5 @@
 import type { Translate } from "@/i18n";
+import { productPickerLabels } from "./party-picker-labels";
 import {
   CARRIER_CALLERS,
   CONTACT_ROLES,
@@ -200,6 +201,8 @@ export function productBrowserLabels(t: Translate): ProductBrowserLabels {
     progress: t("productBrowser.progress", { n: "{n}", m: "{m}" }),
     defaultQty: t("productBrowser.defaultQty"),
     defaultQtyHint: t("productBrowser.defaultQtyHint"),
+    search: t("productBrowser.search"),
+    picker: productPickerLabels(t),
     selectAll: t("productBrowser.selectAll"),
     select: t("productBrowser.select", { name: "{name}" }),
     photo: t("productBrowser.photo"),
