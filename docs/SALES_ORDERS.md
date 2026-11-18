@@ -138,7 +138,11 @@ Sem pedido de compra ligado, o frete fica só na ordem de venda. Código:
 `salesFreightByOrder` e `OrderFinance.salesFreight` em
 `src/lib/services/finance.ts`; no resumo por pedido, o campo `sfr`.
 
+No quadro **Financeiro do pedido** de compra, abaixo do custo, aparece a linha
+"Frete das ordens de venda (no custo)". Ela mostra o total na moeda da venda e
+cada ordem de venda expedida: o link para a ordem, a transportadora, o frete
+em reais e se ele está pago ou a pagar (`_components/sales-freight-line.tsx`).
+
 ## Fica para depois
 
-- Mostrar o frete da venda como linha separada no Financeiro do pedido (hoje ele entra no custo e na margem, como os custos de origem).
 - A NF de devolução e a de venda emitidas pelo próprio portal no Sankhya.
