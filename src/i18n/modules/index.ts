@@ -132,6 +132,7 @@ import * as placeholderName from "./placeholder-name";
 import * as bookingNcm from "./booking-ncm";
 import * as purchaseDemand from "./purchase-demand";
 import * as strategySend from "./strategy-send";
+import * as strategyPacking from "./strategy-packing";
 import * as supplierRequestNegotiation from "./supplier-request-negotiation";
 import * as purchaseOrder from "./purchase-order";
 import * as purchaseSequence from "./purchase-sequence";
@@ -303,6 +304,7 @@ export const modulesPt = {
   ...bookingNcm.pt,
   ...purchaseDemand.pt,
   ...strategySend.pt,
+  ...strategyPacking.pt,
   ...supplierRequestNegotiation.pt,
   ...purchaseOrder.pt,
   ...purchaseSequence.pt,
@@ -472,6 +474,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...bookingNcm.en,
   ...purchaseDemand.en,
   ...strategySend.en,
+  ...strategyPacking.en,
   ...supplierRequestNegotiation.en,
   ...purchaseOrder.en,
   ...purchaseSequence.en,
@@ -641,6 +644,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...bookingNcm.zh,
   ...purchaseDemand.zh,
   ...strategySend.zh,
+  ...strategyPacking.zh,
   ...supplierRequestNegotiation.zh,
   ...purchaseOrder.zh,
   ...purchaseSequence.zh,

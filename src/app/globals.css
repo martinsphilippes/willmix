@@ -104,6 +104,26 @@ body {
   }
 }
 
+/* Telas de campos compactos (Estratégia de compra; dono, 18/11/2026): a
+   letra do campo segue a da tela (13px) também no iPad; no iPhone os campos
+   seguem com 16px (senão o Safari dá zoom ao tocar). */
+[data-compact-fields]
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+[data-compact-fields] select,
+[data-compact-fields] textarea {
+  font-size: 13px;
+}
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 767px) {
+    [data-compact-fields]
+      input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    [data-compact-fields] select,
+    [data-compact-fields] textarea {
+      font-size: 16px;
+    }
+  }
+}
+
 /*
  * Cabeçalho do portal fixo no alto (src/app/app/layout.tsx). --wm-header é a
  * altura dele: uma faixa só (o menu fica na barra lateral, src/components/app-nav.tsx).
