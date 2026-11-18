@@ -1,0 +1,19 @@
+{
+  "_origem": "Tudo tirado do repositório do portal: logo em public/brand, cores em src/app/globals.css (--color-brand-*), fonte Geist (next/font, a mesma da interface), vinheta em public/intro.",
+  "nome": "Wellmix",
+  "produto": "Portal Wellmix",
+  "cores": {
+    "vermelho": "#BF2026",
+    "vermelho_escuro": "#9B181D",
+    "vermelho_profundo": "#7E1417",
+    "grafite": "#17181C",
+    "cinza_claro": "#F5F5F6",
+    "branco": "#FFFFFF",
+    "verde_dica": "#1F8F4D",
+    "ambar_atencao": "#B45309"
+  },
+  "fonte": { "familia": "Geist", "arquivos": ["marca/Geist-latin.woff2", "marca/Geist-latin-ext.woff2"], "pesos": "100–900 (variável)" },
+  "logo": { "cor": "marca/wellmix-logo.svg", "branco": "marca/wellmix-logo-white.svg" },
+  "vinheta_portal": "../../public/intro/wellmix-intro.mp4",
+  "video": { "largura": 1920, "altura": 1080, "qps": 30, "abertura_max_s": 4, "cartao_capitulo_max_s": 3 }
+}

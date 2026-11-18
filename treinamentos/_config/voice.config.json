@@ -1,0 +1,11 @@
+{
+  "_decisao": "Escolha do dono em 14/11/2026: voz número 1 da rodada 2. Vale para todos os papéis.",
+  "motor": "piper",
+  "voz": "faber",
+  "rotulo": "Piper · Faber (masculina, falante brasileiro)",
+  "velocidade": 0.88,
+  "seed": 7,
+  "opcoes": { "qualidade": "medium", "variacao": 0.667, "variacao_ritmo": 0.8 },
+  "licenca": "Voz: dados CC0 (OHF-Voice/voice-datasets); modelo em rhasspy/piper-voices (MIT). Programa piper-tts: GPL-3.0, usado só para gerar o áudio.",
+  "volume": { "lufs": -16, "pico_dbtp": -1.5 }
+}

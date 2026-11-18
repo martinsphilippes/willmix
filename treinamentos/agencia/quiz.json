@@ -1,0 +1,461 @@
+[
+ {
+  "modulo": 1,
+  "corte": 0.8,
+  "perguntas": [
+   {
+    "id": "q1",
+    "tipo": "cenario",
+    "tema": "Por onde começar",
+    "rever": {
+     "cena": "m1-c1-pendencias",
+     "passo": "p1"
+    },
+    "enunciado": "Você entrou no portal de manhã. Onde você vê tudo o que a Wellmix espera da agência?",
+    "alternativas": [
+     "Em \"Minhas pendências\", a primeira tela",
+     "Na lista \"Pedidos\"",
+     "No rodapé da tela",
+     "Nas mensagens"
+    ],
+    "correta": 0,
+    "feedback": "A conta da agência abre em \"Minhas pendências\", com tudo o que depende de você, por prazo."
+   },
+   {
+    "id": "q2",
+    "tipo": "clique",
+    "tema": "Filtrar por etapa",
+    "rever": {
+     "cena": "m1-c1-pendencias",
+     "passo": "p4"
+    },
+    "enunciado": "Você quer ver só as pendências da etapa \"Arte do pedido\". Clique no lugar certo.",
+    "imagem": {
+     "cena": "m1-c1-pendencias",
+     "passo": "p4"
+    },
+    "feedback": "Clicar numa etapa do caminho filtra a lista. \"Todas as etapas\" volta a mostrar tudo."
+   },
+   {
+    "id": "q3",
+    "tipo": "cenario",
+    "tema": "Quando a arte chega",
+    "rever": {
+     "cena": "m1-c2-arte",
+     "passo": "p1"
+    },
+    "enunciado": "Apareceu nas suas pendências a arte de um produto. O que aconteceu antes?",
+    "alternativas": [
+     "A certificadora enviou o selo",
+     "A Wellmix assinou o contrato",
+     "O pedido embarcou",
+     "O fornecedor enviou a faca e a foto em alta, e a Wellmix aprovou esse material"
+    ],
+    "correta": 3,
+    "feedback": "A arte libera quando o material de arte do fornecedor (faca e foto em alta) está enviado e aprovado."
+   },
+   {
+    "id": "q4",
+    "tipo": "clique",
+    "tema": "Baixar a faca",
+    "rever": {
+     "cena": "m1-c2-arte",
+     "passo": "p6"
+    },
+    "enunciado": "Você está no pedido e precisa da faca da caixa para montar a arte. Clique no lugar certo.",
+    "imagem": {
+     "cena": "m1-c2-arte",
+     "passo": "p6"
+    },
+    "feedback": "No marco \"Material de arte\", o nome do arquivo da faca é o link para baixar."
+   },
+   {
+    "id": "q5",
+    "tipo": "ordenar",
+    "tema": "Passos para enviar a arte",
+    "rever": {
+     "cena": "m1-c2-arte",
+     "passo": "p2"
+    },
+    "enunciado": "Ponha em ordem os passos para enviar a arte de um produto.",
+    "itens": [
+     "Em Pendências, clicar em \"Abrir\" na linha da arte",
+     "Baixar a faca e a foto em alta, no marco \"Material de arte\"",
+     "No marco \"Arte\", clicar em \"Escolher arquivo\" e selecionar a arte",
+     "Ver a linha passar para \"Concluído\""
+    ],
+    "feedback": "Abra a pendência, baixe o material do fornecedor, suba a arte na linha do produto e veja a situação mudar."
+   },
+   {
+    "id": "q6",
+    "tipo": "cenario",
+    "tema": "Depois de escolher o arquivo",
+    "rever": {
+     "cena": "m1-c2-arte",
+     "passo": "p10"
+    },
+    "enunciado": "Você escolheu o arquivo da arte em \"Escolher arquivo\". O que falta para enviar?",
+    "alternativas": [
+     "Avisar a Wellmix por mensagem",
+     "Nada: o envio acontece na hora e a linha passa para \"Concluído\"",
+     "Clicar em \"Enviar\"",
+     "Abrir o cartão Certificação"
+    ],
+    "correta": 1,
+    "feedback": "Na linha da arte, o arquivo é enviado assim que você escolhe. Não há outro botão."
+   },
+   {
+    "id": "q7",
+    "tipo": "cenario",
+    "tema": "Formato não aceito",
+    "rever": {
+     "cena": "m1-c2-cuidado",
+     "passo": "p3"
+    },
+    "enunciado": "Você escolheu um vídeo na linha da arte e o portal respondeu \"Formato não aceito\". O que fazer?",
+    "alternativas": [
+     "Tentar de novo com o mesmo vídeo",
+     "Esperar a Wellmix liberar o formato",
+     "Exportar a arte em PDF ou imagem e enviar de novo",
+     "Mandar o vídeo pelas mensagens"
+    ],
+    "correta": 2,
+    "feedback": "Vídeo não entra na linha da arte, e o que é recusado não é enviado. Exporte a arte em PDF ou imagem e envie de novo."
+   },
+   {
+    "id": "q8",
+    "tipo": "cenario",
+    "tema": "Arte devolvida",
+    "rever": {
+     "cena": "m1-c3-devolvida",
+     "passo": "p4"
+    },
+    "enunciado": "Chegou o aviso de que a arte foi reprovada. Onde está escrito o que a Wellmix quer que mude?",
+    "alternativas": [
+     "Só por telefone",
+     "Na lista \"Pedidos\"",
+     "No marco \"Material de arte\"",
+     "No aviso do sino e na linha da arte, junto de \"Reprovado\""
+    ],
+    "correta": 3,
+    "feedback": "O motivo vem no aviso e fica na linha da arte, no marco \"Arte\", ao lado da situação \"Reprovado\"."
+   },
+   {
+    "id": "q9",
+    "tipo": "clique",
+    "tema": "Enviar a nova versão",
+    "rever": {
+     "cena": "m1-c3-devolvida",
+     "passo": "p5"
+    },
+    "enunciado": "Você ajustou a arte que voltou. Clique no botão que envia a nova versão.",
+    "imagem": {
+     "cena": "m1-c3-devolvida",
+     "passo": "p5"
+    },
+    "feedback": "A nova versão sobe pelo mesmo botão, \"Escolher arquivo\", na linha da arte. A linha mostra a versão 2."
+   }
+  ]
+ },
+ {
+  "modulo": 2,
+  "corte": 0.8,
+  "perguntas": [
+   {
+    "id": "q1",
+    "tipo": "cenario",
+    "tema": "Quando o selo chega",
+    "rever": {
+     "cena": "m2-c1-selo",
+     "passo": "p1"
+    },
+    "enunciado": "Apareceu nas suas pendências \"Aplicar o selo de certificação na arte\". O que aconteceu antes?",
+    "alternativas": [
+     "A Wellmix cancelou a arte",
+     "A certificadora enviou o selo do produto no pedido",
+     "O pedido embarcou",
+     "O fornecedor assinou o contrato"
+    ],
+    "correta": 1,
+    "feedback": "A pendência nasce quando a certificadora envia o selo. Quem faz a arte baixa o selo, aplica e envia a arte com ele."
+   },
+   {
+    "id": "q2",
+    "tipo": "clique",
+    "tema": "Baixar o selo",
+    "rever": {
+     "cena": "m2-c1-selo",
+     "passo": "p6"
+    },
+    "enunciado": "Você está no cartão \"Certificação\" e precisa do arquivo do selo. Clique no lugar certo.",
+    "imagem": {
+     "cena": "m2-c1-selo",
+     "passo": "p6"
+    },
+    "feedback": "Na linha \"Selo aplicado na arte\", o link \"Baixar o selo\" traz o arquivo enviado pela certificadora."
+   },
+   {
+    "id": "q3",
+    "tipo": "ordenar",
+    "tema": "Passos do selo aplicado na arte",
+    "rever": {
+     "cena": "m2-c1-selo",
+     "passo": "p3"
+    },
+    "enunciado": "Ponha em ordem os passos para enviar a arte com o selo aplicado.",
+    "itens": [
+     "Em Pendências, clicar em \"Abrir\" na linha \"Aplicar o selo de certificação na arte\"",
+     "Clicar em \"Baixar o selo\"",
+     "Selecionar a arte com o selo em \"Escolher arquivo\"",
+     "Clicar em \"Enviar\""
+    ],
+    "feedback": "Abra a pendência, baixe o selo, selecione o arquivo da arte com o selo e clique em \"Enviar\"."
+   },
+   {
+    "id": "q4",
+    "tipo": "cenario",
+    "tema": "Arquivo escolhido",
+    "rever": {
+     "cena": "m2-c1-selo",
+     "passo": "p9"
+    },
+    "enunciado": "No cartão \"Certificação\", você selecionou o arquivo e o nome dele apareceu ao lado do botão. A arte com o selo já foi enviada?",
+    "alternativas": [
+     "Só depois de atualizar a página",
+     "Sim, o envio é automático",
+     "Só se a Wellmix liberar",
+     "Ainda não: falta clicar em \"Enviar\""
+    ],
+    "correta": 3,
+    "feedback": "No cartão \"Certificação\", escolher o arquivo só prepara o envio. É o botão \"Enviar\" que manda."
+   },
+   {
+    "id": "q5",
+    "tipo": "cenario",
+    "tema": "Depois de enviar",
+    "rever": {
+     "cena": "m2-c1-selo",
+     "passo": "p11"
+    },
+    "enunciado": "A linha \"Selo aplicado na arte\" ficou como \"Enviado, aguardando validação\". O que acontece agora?",
+    "alternativas": [
+     "A agência valida a própria arte",
+     "O fornecedor aprova a arte",
+     "A Wellmix olha a arte com o selo e valida, ou devolve com o motivo",
+     "A certificadora envia outro selo"
+    ],
+    "correta": 2,
+    "feedback": "Quem valida o selo aplicado na arte é a Wellmix. Se ela recusar, o motivo aparece na linha."
+   },
+   {
+    "id": "q6",
+    "tipo": "cenario",
+    "tema": "Dois envios da arte com o selo",
+    "rever": {
+     "cena": "m2-c2-final",
+     "passo": "p1"
+    },
+    "enunciado": "Você já enviou a arte com o selo no cartão \"Certificação\". A linha \"Arte final com o selo\", no marco \"Arte\", continua pendente. O que fazer?",
+    "alternativas": [
+     "Nada: o portal copia o arquivo sozinho",
+     "Apagar o envio do cartão \"Certificação\"",
+     "Pedir para a certificadora enviar",
+     "Enviar a arte final também nessa linha, pelo botão \"Escolher arquivo\""
+    ],
+    "correta": 3,
+    "feedback": "Hoje o portal pede a arte com o selo nos dois lugares. Envie também na linha \"Arte final com o selo\" do produto."
+   },
+   {
+    "id": "q7",
+    "tipo": "clique",
+    "tema": "Enviar a arte final",
+    "rever": {
+     "cena": "m2-c2-final",
+     "passo": "p6"
+    },
+    "enunciado": "Você está no marco \"Arte\" e quer enviar a arte final com o selo. Clique no lugar certo.",
+    "imagem": {
+     "cena": "m2-c2-final",
+     "passo": "p6"
+    },
+    "feedback": "Na linha \"Arte final com o selo\", o botão \"Escolher arquivo\" envia na hora o arquivo escolhido."
+   },
+   {
+    "id": "q8",
+    "tipo": "cenario",
+    "tema": "Selo recusado",
+    "rever": {
+     "cena": "m2-c3-recusado",
+     "passo": "p4"
+    },
+    "enunciado": "A linha \"Selo aplicado na arte\" voltou como \"Recusado\". Qual é o primeiro passo?",
+    "alternativas": [
+     "Ler o motivo escrito na linha e ajustar a arte",
+     "Pedir outro selo à certificadora",
+     "Esperar a Wellmix corrigir",
+     "Enviar o mesmo arquivo de novo"
+    ],
+    "correta": 0,
+    "feedback": "O motivo da recusa fica na própria linha (e no aviso do sino). É ele que diz o que mudar antes de enviar de novo."
+   },
+   {
+    "id": "q9",
+    "tipo": "clique",
+    "tema": "Enviar de novo",
+    "rever": {
+     "cena": "m2-c3-recusado",
+     "passo": "p6"
+    },
+    "enunciado": "A arte ajustada já está selecionada, com o nome ao lado de \"Escolher arquivo\". Clique no botão que manda de novo para a Wellmix.",
+    "imagem": {
+     "cena": "m2-c3-recusado",
+     "passo": "p6"
+    },
+    "feedback": "Depois do primeiro envio, o botão desta linha se chama \"Enviar de novo\". É ele que manda a arte ajustada."
+   }
+  ]
+ },
+ {
+  "modulo": 3,
+  "corte": 0.8,
+  "perguntas": [
+   {
+    "id": "q1",
+    "tipo": "cenario",
+    "tema": "O que é o ajuste de arte",
+    "rever": {
+     "cena": "m3-c1-ajuste",
+     "passo": "p1"
+    },
+    "enunciado": "A arte do produto já tinha sido entregue e apareceu a pendência \"Corrigir a arte\". O que ela significa?",
+    "alternativas": [
+     "A certificadora trocou o selo",
+     "O fornecedor pediu outra faca",
+     "O pedido foi cancelado",
+     "A Wellmix apontou um problema na arte daquele produto e espera a correção"
+    ],
+    "correta": 3,
+    "feedback": "É a não conformidade: a Wellmix aponta o problema num produto e quem faz a arte envia a correção."
+   },
+   {
+    "id": "q2",
+    "tipo": "cenario",
+    "tema": "Onde ler o problema",
+    "rever": {
+     "cena": "m3-c1-ajuste",
+     "passo": "p3"
+    },
+    "enunciado": "Você abriu a pendência \"Corrigir a arte\". Onde está escrito o que precisa mudar?",
+    "alternativas": [
+     "No marco \"Material de arte\"",
+     "Na lista \"Pedidos\"",
+     "No cartão \"Artes\", na linha \"Não conforme\" do produto",
+     "No cartão \"Certificação\""
+    ],
+    "correta": 2,
+    "feedback": "O cartão \"Artes\" traz, por produto, a situação e o texto da não conformidade."
+   },
+   {
+    "id": "q3",
+    "tipo": "ordenar",
+    "tema": "Passos da correção",
+    "rever": {
+     "cena": "m3-c1-ajuste",
+     "passo": "p2"
+    },
+    "enunciado": "Ponha em ordem os passos para enviar a correção de uma arte.",
+    "itens": [
+     "Em Pendências, clicar em \"Abrir\" na linha \"Corrigir a arte\"",
+     "Ler o que a Wellmix apontou",
+     "Escrever o que mudou e escolher o arquivo da arte ajustada",
+     "Clicar em \"Enviar correção\""
+    ],
+    "feedback": "Abra a pendência, leia o problema, descreva o que mudou, escolha o arquivo e envie a correção."
+   },
+   {
+    "id": "q4",
+    "tipo": "clique",
+    "tema": "Enviar a correção",
+    "rever": {
+     "cena": "m3-c1-ajuste",
+     "passo": "p6"
+    },
+    "enunciado": "O texto e o arquivo da arte ajustada já estão preenchidos. Clique no botão que envia a correção.",
+    "imagem": {
+     "cena": "m3-c1-ajuste",
+     "passo": "p6"
+    },
+    "feedback": "\"Enviar correção\" manda o texto e o arquivo. A situação passa a \"Corrigida, aguardando aceite\"."
+   },
+   {
+    "id": "q5",
+    "tipo": "cenario",
+    "tema": "Depois da correção",
+    "rever": {
+     "cena": "m3-c1-ajuste",
+     "passo": "p7"
+    },
+    "enunciado": "A linha ficou como \"Corrigida, aguardando aceite\". O que pode acontecer agora?",
+    "alternativas": [
+     "Nada mais: o ajuste fecha sozinho",
+     "O fornecedor decide",
+     "A certificadora valida",
+     "Quem apontou aceita, e o ajuste fecha, ou reabre com o motivo"
+    ],
+    "correta": 3,
+    "feedback": "Quem apontou a não conformidade confere a arte nova: aceita ou reabre, com o motivo."
+   },
+   {
+    "id": "q6",
+    "tipo": "clique",
+    "tema": "A tela Arte",
+    "rever": {
+     "cena": "m3-c2-mesa",
+     "passo": "p2"
+    },
+    "enunciado": "Você quer ver só o passo da arte, com todos os seus pedidos. Clique no item certo do menu.",
+    "imagem": {
+     "cena": "m3-c2-mesa",
+     "passo": "p2"
+    },
+    "feedback": "No grupo \"Pedido\" do menu, \"Arte\" abre a tela do passo, com as abas \"Pendências\" e \"Todos no passo\"."
+   },
+   {
+    "id": "q7",
+    "tipo": "cenario",
+    "tema": "A mesa de trabalho",
+    "rever": {
+     "cena": "m3-c2-mesa",
+     "passo": "p10"
+    },
+    "enunciado": "Você quer ver, numa tela só, as artes a fazer e as artes finais com o selo, por prazo. Qual tela usar?",
+    "alternativas": [
+     "O cartão \"Certificação\"",
+     "A \"Mesa de trabalho\", que abre pelo botão em Pendências, depois de \"Todas as etapas\"",
+     "As mensagens",
+     "A lista \"Pedidos\""
+    ],
+    "correta": 1,
+    "feedback": "A mesa de trabalho separa as artes a fazer e as artes finais com o selo, com o prazo de cada uma."
+   },
+   {
+    "id": "q8",
+    "tipo": "cenario",
+    "tema": "Dúvida sobre a faca",
+    "rever": {
+     "cena": "m3-c3-avisos",
+     "passo": "p4"
+    },
+    "enunciado": "Você tem uma dúvida sobre a faca enviada pelo fornecedor. Como falar com a Wellmix pelo portal?",
+    "alternativas": [
+     "Enviar a dúvida dentro do arquivo da arte",
+     "Recusar a pendência",
+     "Abrir as mensagens, pelo balão ao lado do sino, e escrever",
+     "Esperar o prazo vencer"
+    ],
+    "correta": 2,
+    "feedback": "O balão abre a conversa da agência com a equipe da Wellmix. Todos os logins da agência veem as mesmas mensagens."
+   }
+  ]
+ }
+]

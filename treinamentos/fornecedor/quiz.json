@@ -1,0 +1,1631 @@
+[
+ {
+  "modulo": 1,
+  "corte": 0.8,
+  "perguntas": [
+   {
+    "id": "q1",
+    "tipo": "cenario",
+    "tema": "Por onde começar o dia",
+    "rever": {
+     "cena": "c1-pendencias",
+     "passo": "p1"
+    },
+    "enunciado": "Você entra no portal de manhã e quer saber o que a Wellmix espera de você hoje. Por onde começa?",
+    "alternativas": [
+     "Por \"Minhas pendências\", a tela que abre quando você entra",
+     "Pelo menu \"Pedido\", abrindo pedido por pedido",
+     "Mandando uma mensagem para a Wellmix e esperando a resposta",
+     "Pela \"Conta corrente\""
+    ],
+    "correta": 0,
+    "feedback": "\"Minhas pendências\" junta tudo o que depende de você, do book até o embarque, com o mais urgente primeiro."
+   },
+   {
+    "id": "q2",
+    "tipo": "clique",
+    "tema": "Filtrar as pendências por etapa",
+    "rever": {
+     "cena": "c1-pendencias",
+     "passo": "p4"
+    },
+    "enunciado": "Você quer ver só as pendências da etapa \"Responder a solicitação\". Clique no lugar certo.",
+    "imagem": {
+     "cena": "c1-pendencias",
+     "passo": "p4"
+    },
+    "feedback": "Clicar numa etapa da faixa filtra a lista e mostra só as pendências dela."
+   },
+   {
+    "id": "q3",
+    "tipo": "cenario",
+    "tema": "Voltar a ver todas as pendências",
+    "rever": {
+     "cena": "c1-pendencias",
+     "passo": "p6"
+    },
+    "enunciado": "Você filtrou por uma etapa e a lista ficou com uma linha só. Agora quer ver tudo de novo. O que faz?",
+    "alternativas": [
+     "Escolhe \"Todas as etapas\"",
+     "Sai do portal e entra de novo",
+     "Abre \"Meus books\"",
+     "Clica no sino de avisos"
+    ],
+    "correta": 0,
+    "feedback": "\"Todas as etapas\" tira o filtro e a lista volta inteira."
+   },
+   {
+    "id": "q4",
+    "tipo": "cenario",
+    "tema": "O que é o convite de book",
+    "rever": {
+     "cena": "c2-convite",
+     "passo": "p1"
+    },
+    "enunciado": "Apareceu nas suas pendências a linha \"Enviar book concorrente\". O que a Wellmix está pedindo?",
+    "alternativas": [
+     "Que você mande a planilha do seu book, com o item e o seu preço",
+     "Que você assine o contrato do pedido",
+     "Que você envie fotos da amostra",
+     "Que você aprove o preço de outro fornecedor"
+    ],
+    "correta": 0,
+    "feedback": "No convite, a Wellmix procura um produto e pede o seu book: a planilha com o item e o seu preço."
+   },
+   {
+    "id": "q5",
+    "tipo": "ordenar",
+    "tema": "Passos para enviar o book de um convite",
+    "rever": {
+     "cena": "c2-convite",
+     "passo": "p2"
+    },
+    "enunciado": "Ponha em ordem os passos para enviar o book de um convite.",
+    "itens": [
+     "Em Pendências, clicar em \"Abrir\" na linha \"Enviar book concorrente\"",
+     "Ler o que a Wellmix procura e o que ela precisa",
+     "Em \"Arquivo\", escolher a planilha do book",
+     "Conferir a moeda e clicar em \"Enviar book\""
+    ],
+    "feedback": "Primeiro abra o convite e leia o pedido; depois escolha a planilha, confira a moeda e envie."
+   },
+   {
+    "id": "q6",
+    "tipo": "cenario",
+    "tema": "Planilha fora do modelo",
+    "rever": {
+     "cena": "c2-cuidado",
+     "passo": "p4"
+    },
+    "enunciado": "Você clicou em \"Enviar book\" e o portal respondeu: \"Não achei o cabeçalho da ficha… Confira se é o modelo.\" O que aconteceu e o que você faz?",
+    "alternativas": [
+     "Nada foi enviado: a planilha está fora do modelo. Corrija e envie de novo",
+     "O convite foi cancelado; peça outro à Wellmix",
+     "O book foi enviado; não precisa fazer nada",
+     "O portal saiu do ar; tente amanhã"
+    ],
+    "correta": 0,
+    "feedback": "Esse aviso quer dizer que a planilha não está no modelo de book. Nada foi enviado: é só corrigir a planilha e enviar de novo."
+   },
+   {
+    "id": "q7",
+    "tipo": "clique",
+    "tema": "Onde escolher a planilha no convite",
+    "rever": {
+     "cena": "c2-convite",
+     "passo": "p9"
+    },
+    "enunciado": "O convite está aberto. Clique onde você escolhe a planilha do seu book.",
+    "imagem": {
+     "cena": "c2-convite",
+     "passo": "p9"
+    },
+    "feedback": "A planilha vai no campo \"Arquivo\", dentro de \"Enviar o book\", à direita."
+   },
+   {
+    "id": "q8",
+    "tipo": "cenario",
+    "tema": "O que quer dizer \"Sua vez\" num aviso",
+    "rever": {
+     "cena": "c3-avisos",
+     "passo": "p2"
+    },
+    "enunciado": "Você abriu o sino e um aviso está marcado com \"Sua vez\". O que isso quer dizer?",
+    "alternativas": [
+     "Que o prazo já venceu",
+     "Que a Wellmix está resolvendo e você só espera",
+     "Que o aviso é só para leitura",
+     "Que depende de você agir"
+    ],
+    "correta": 3,
+    "feedback": "\"Sua vez\" quer dizer que a próxima ação é sua. O botão \"Resolver\" leva para a tela certa."
+   },
+   {
+    "id": "q9",
+    "tipo": "clique",
+    "tema": "Onde ficam as mensagens",
+    "rever": {
+     "cena": "c3-avisos",
+     "passo": "p4"
+    },
+    "enunciado": "Você quer falar com a Wellmix. Clique no lugar certo.",
+    "imagem": {
+     "cena": "c3-avisos",
+     "passo": "p4"
+    },
+    "feedback": "O balão de mensagens fica no alto, à direita, ao lado do sino."
+   },
+   {
+    "id": "q10",
+    "tipo": "cenario",
+    "tema": "Trocar o idioma do portal",
+    "rever": {
+     "cena": "t1-entrar",
+     "passo": "p1"
+    },
+    "enunciado": "Um colega da sua empresa prefere usar o portal em inglês. Onde ele troca o idioma?",
+    "alternativas": [
+     "Em \"Conta corrente\"",
+     "Não dá para trocar",
+     "Só pedindo à Wellmix por mensagem",
+     "No alto da tela, nos botões de idioma"
+    ],
+    "correta": 3,
+    "feedback": "O idioma se escolhe no alto da tela: português, inglês ou chinês."
+   }
+  ]
+ },
+ {
+  "modulo": 2,
+  "corte": 0.8,
+  "perguntas": [
+   {
+    "id": "q1",
+    "tipo": "cenario",
+    "tema": "Onde responder com o prazo de produção",
+    "rever": {
+     "cena": "m2-c1-responder",
+     "passo": "p7"
+    },
+    "enunciado": "A Wellmix abriu uma solicitação e você quer responder com preço, pedido mínimo e prazo de produção. Onde faz isso?",
+    "alternativas": [
+     "Em Mensagens, no alto da tela",
+     "Na tela do produto, em \"Resposta do fornecedor\"",
+     "Na \"Conta corrente\"",
+     "No ícone \"Renegociar\" da tabela"
+    ],
+    "correta": 1,
+    "feedback": "O prazo de produção só aparece na tela do produto: ícone \"Abrir produto\", cartão \"Resposta do fornecedor\". O \"Renegociar\" da tabela não tem esse campo."
+   },
+   {
+    "id": "q2",
+    "tipo": "clique",
+    "tema": "Abrir a tela do produto",
+    "rever": {
+     "cena": "m2-c1-responder",
+     "passo": "p7"
+    },
+    "enunciado": "Você está na tabela da solicitação e quer responder com todos os dados. Clique no ícone certo.",
+    "imagem": {
+     "cena": "m2-c1-responder",
+     "passo": "p7"
+    },
+    "feedback": "O ícone \"Abrir produto\", na coluna \"Ações\", leva à tela com o cartão \"Resposta do fornecedor\"."
+   },
+   {
+    "id": "q3",
+    "tipo": "cenario",
+    "tema": "Responder sem preço",
+    "rever": {
+     "cena": "m2-c1-cuidado",
+     "passo": "p4"
+    },
+    "enunciado": "Você escolheu \"Sim, faço\", clicou em \"Enviar resposta\" e o portal respondeu: \"Informe o preço por peça para dizer que faz.\" O que aconteceu?",
+    "alternativas": [
+     "Nada foi gravado: falta o preço. Preencha e envie de novo",
+     "A resposta foi enviada sem preço",
+     "O prazo da solicitação venceu",
+     "A solicitação foi cancelada"
+    ],
+    "correta": 0,
+    "feedback": "Quem diz que faz precisa informar o preço por peça. Enquanto o aviso aparece, nada foi gravado."
+   },
+   {
+    "id": "q4",
+    "tipo": "cenario",
+    "tema": "Corrigir uma resposta já enviada",
+    "rever": {
+     "cena": "m2-c1-responder",
+     "passo": "p19"
+    },
+    "enunciado": "Você enviou a resposta e percebeu que digitou o prazo errado. A Wellmix ainda não decidiu. O que dá para fazer?",
+    "alternativas": [
+     "Pedir à Wellmix que cancele a solicitação",
+     "Nada: a resposta não muda mais",
+     "Recusar a oferta e esperar outra solicitação",
+     "Abrir o produto, corrigir o valor e enviar a resposta de novo"
+    ],
+    "correta": 3,
+    "feedback": "Você pode mudar a resposta até a Wellmix decidir."
+   },
+   {
+    "id": "q5",
+    "tipo": "clique",
+    "tema": "Aprovar a oferta pela tabela",
+    "rever": {
+     "cena": "m2-c2-icones",
+     "passo": "p8"
+    },
+    "enunciado": "A oferta do book serve do jeito que está. Clique no ícone que aprova a oferta.",
+    "imagem": {
+     "cena": "m2-c2-icones",
+     "passo": "p8"
+    },
+    "feedback": "O ícone verde, \"Aprovar oferta\", aceita a oferta em vigor: preço, moeda, pedido mínimo e entrega."
+   },
+   {
+    "id": "q6",
+    "tipo": "cenario",
+    "tema": "O que envia a aprovação",
+    "rever": {
+     "cena": "m2-c2-icones",
+     "passo": "p10"
+    },
+    "enunciado": "Você clicou no ícone verde e abriu a caixa \"Aprovar oferta\". O que envia a aprovação?",
+    "alternativas": [
+     "Fechar a caixa no X",
+     "Clicar fora da caixa",
+     "O botão \"Cancelar\"",
+     "O botão verde \"Aprovar oferta\""
+    ],
+    "correta": 3,
+    "feedback": "Só o botão verde \"Aprovar oferta\" envia. \"Cancelar\", o X ou clicar fora fecham sem gravar."
+   },
+   {
+    "id": "q7",
+    "tipo": "cenario",
+    "tema": "Quando você não faz o item",
+    "rever": {
+     "cena": "m2-c2-icones",
+     "passo": "p15"
+    },
+    "enunciado": "A Wellmix pede uma tigela com tampa de bambu e a sua fábrica não faz. O que você faz na solicitação?",
+    "alternativas": [
+     "Usa o ícone vermelho, \"Recusar oferta\", e confirma",
+     "Aprova a oferta e avisa depois",
+     "Deixa sem resposta",
+     "Envia o book de novo"
+    ],
+    "correta": 0,
+    "feedback": "Recusar avisa a Wellmix de que você não faz o item. Sem resposta, a solicitação fica parada com o prazo correndo."
+   },
+   {
+    "id": "q8",
+    "tipo": "cenario",
+    "tema": "Mandar uma foto dentro da solicitação",
+    "rever": {
+     "cena": "m2-c3-conversa",
+     "passo": "p5"
+    },
+    "enunciado": "Você quer mandar à Wellmix a foto de uma tampa, dentro da solicitação. Por onde?",
+    "alternativas": [
+     "Pela tela do produto: botão \"Abrir a conversa\" e o anexo ao lado do campo",
+     "Pela \"Conta corrente\"",
+     "Por \"Convites de book\"",
+     "Pelo ícone \"Mensagem\" da tabela"
+    ],
+    "correta": 0,
+    "feedback": "O ícone \"Mensagem\" da tabela leva só texto. Para anexar foto, PDF ou Excel, abra o produto e use \"Abrir a conversa\"."
+   },
+   {
+    "id": "q9",
+    "tipo": "cenario",
+    "tema": "Arquivo não aceito na conversa",
+    "rever": {
+     "cena": "m2-c3-cuidado",
+     "passo": "p4"
+    },
+    "enunciado": "Você tentou mandar um vídeo pela conversa e apareceu \"Arquivo não aceito: envie foto, PDF ou Excel\". E agora?",
+    "alternativas": [
+     "Tentar de novo até passar",
+     "Abrir outra solicitação",
+     "Recusar a oferta",
+     "Mandar foto, PDF ou Excel; o vídeo da amostra vai na amostragem"
+    ],
+    "correta": 3,
+    "feedback": "A conversa aceita foto, PDF e Excel. Vídeo da amostra tem lugar próprio: a amostragem."
+   },
+   {
+    "id": "q10",
+    "tipo": "ordenar",
+    "tema": "Passos para aceitar a contraproposta",
+    "rever": {
+     "cena": "m2-c4-contra",
+     "passo": "p2"
+    },
+    "enunciado": "Ponha em ordem os passos para aceitar uma contraproposta da Wellmix.",
+    "itens": [
+     "Em Pendências, clicar em \"Abrir\" na solicitação com a contraproposta",
+     "Clicar no ícone \"Abrir produto\"",
+     "Conferir os valores que a Wellmix propôs",
+     "Clicar em \"Aceitar\""
+    ],
+    "feedback": "A pendência leva à tabela; o produto mostra os valores propostos; depois de conferir, \"Aceitar\"."
+   },
+   {
+    "id": "q11",
+    "tipo": "cenario",
+    "tema": "Aceitar, propor de novo ou recusar",
+    "rever": {
+     "cena": "m2-c4-contra",
+     "passo": "p8"
+    },
+    "enunciado": "A Wellmix propôs USD 2,18 e você só consegue fazer por USD 2,20. O que fazer na resposta à contraproposta?",
+    "alternativas": [
+     "Mudar o preço para 2,20 e clicar em \"Enviar nova proposta\"",
+     "Não responder",
+     "\"Aceitar\"",
+     "\"Recusar\""
+    ],
+    "correta": 0,
+    "feedback": "\"Enviar nova proposta\" devolve os valores que você escrever. \"Aceitar\" fecha nos valores da Wellmix e \"Recusar\" mantém a sua resposta anterior."
+   },
+   {
+    "id": "q12",
+    "tipo": "clique",
+    "tema": "Fechar nos valores da Wellmix",
+    "rever": {
+     "cena": "m2-c4-contra",
+     "passo": "p9"
+    },
+    "enunciado": "A contraproposta serve. Clique no botão que fecha nos valores da Wellmix.",
+    "imagem": {
+     "cena": "m2-c4-contra",
+     "passo": "p9"
+    },
+    "feedback": "\"Aceitar\" faz os valores propostos virarem a sua resposta. Depois disso, a vez é da Wellmix."
+   }
+  ]
+ },
+ {
+  "modulo": 3,
+  "corte": 0.8,
+  "perguntas": [
+   {
+    "id": "q1",
+    "tipo": "cenario",
+    "tema": "Quando a amostragem chega",
+    "rever": {
+     "cena": "m3-c1-enviar",
+     "passo": "p1"
+    },
+    "enunciado": "Apareceu nas suas pendências \"Amostragem da solicitação nº 1\". O que aconteceu antes?",
+    "alternativas": [
+     "O pedido de compra já foi assinado",
+     "A Wellmix pagou o sinal",
+     "A Wellmix recusou a sua oferta",
+     "A Wellmix aprovou a sua oferta e quer ver uma amostra do item"
+    ],
+    "correta": 3,
+    "feedback": "A amostragem vem depois da aprovação da solicitação e antes do produto e do pedido de compra."
+   },
+   {
+    "id": "q2",
+    "tipo": "cenario",
+    "tema": "O que é a amostragem",
+    "rever": {
+     "cena": "m3-c1-enviar",
+     "passo": "p4"
+    },
+    "enunciado": "O que você envia na amostragem?",
+    "alternativas": [
+     "A amostra física, pelo correio",
+     "A planilha do book",
+     "Fotos e vídeos da amostra do item, pelo portal",
+     "O contrato assinado"
+    ],
+    "correta": 2,
+    "feedback": "Você envia fotos e vídeos da amostra feita em impressora 3D. A amostra física não é enviada."
+   },
+   {
+    "id": "q3",
+    "tipo": "clique",
+    "tema": "Adicionar um arquivo à rodada",
+    "rever": {
+     "cena": "m3-c1-enviar",
+     "passo": "p5"
+    },
+    "enunciado": "Você está no cartão \"Amostragem\" e quer subir a primeira foto. Clique no lugar certo.",
+    "imagem": {
+     "cena": "m3-c1-enviar",
+     "passo": "p5"
+    },
+    "feedback": "O botão \"Adicionar foto ou vídeo\" sobe um arquivo de cada vez; cada um aparece na lista da rodada."
+   },
+   {
+    "id": "q4",
+    "tipo": "ordenar",
+    "tema": "Passos para enviar a amostragem",
+    "rever": {
+     "cena": "m3-c1-enviar",
+     "passo": "p2"
+    },
+    "enunciado": "Ponha em ordem os passos para enviar a amostragem.",
+    "itens": [
+     "Em Pendências, clicar em \"Abrir\" na linha da amostragem",
+     "Adicionar as fotos e o vídeo, um arquivo de cada vez",
+     "Conferir a lista da rodada",
+     "Clicar em \"Enviar para a validação\""
+    ],
+    "feedback": "Abra a pendência, suba os arquivos um a um, confira a lista e só então envie para a validação."
+   },
+   {
+    "id": "q5",
+    "tipo": "cenario",
+    "tema": "Arquivo recusado na amostragem",
+    "rever": {
+     "cena": "m3-c1-cuidado",
+     "passo": "p3"
+    },
+    "enunciado": "Você escolheu um PDF na amostragem e o portal respondeu: \"Envie uma foto (JPG, PNG, HEIC) ou um vídeo (MP4, MOV)\". O que fazer?",
+    "alternativas": [
+     "Enviar para a validação assim mesmo",
+     "Esperar a Wellmix liberar",
+     "Mandar o PDF pela Conta corrente",
+     "Escolher uma foto ou um vídeo: o PDF não entrou na lista"
+    ],
+    "correta": 3,
+    "feedback": "A amostragem só aceita foto e vídeo, com até 50 MB por arquivo. O que é recusado não entra na lista."
+   },
+   {
+    "id": "q6",
+    "tipo": "cenario",
+    "tema": "Amostra reprovada",
+    "rever": {
+     "cena": "m3-c2-rodada",
+     "passo": "p4"
+    },
+    "enunciado": "A pendência da amostragem voltou com o aviso de que a amostra foi reprovada. Qual é o primeiro passo?",
+    "alternativas": [
+     "Abrir a amostragem e ler o motivo escrito no cartão",
+     "Esperar a Wellmix abrir outra solicitação",
+     "Recusar a solicitação",
+     "Enviar as mesmas fotos de novo"
+    ],
+    "correta": 0,
+    "feedback": "O motivo da reprovação vem escrito no cartão. É ele que diz o que falta na nova rodada."
+   },
+   {
+    "id": "q7",
+    "tipo": "cenario",
+    "tema": "Arquivos da rodada anterior",
+    "rever": {
+     "cena": "m3-c2-rodada",
+     "passo": "p5b"
+    },
+    "enunciado": "O portal abriu a rodada 2 da amostra. O que aconteceu com os arquivos da rodada 1?",
+    "alternativas": [
+     "Voltaram para o book",
+     "Ficam guardados em \"Rodadas anteriores\"",
+     "Foram enviados de novo sozinhos",
+     "Foram apagados"
+    ],
+    "correta": 1,
+    "feedback": "Cada rodada guarda os seus arquivos. Os das rodadas anteriores ficam em \"Rodadas anteriores\", para consulta."
+   },
+   {
+    "id": "q8",
+    "tipo": "clique",
+    "tema": "Enviar a nova rodada",
+    "rever": {
+     "cena": "m3-c2-rodada",
+     "passo": "p7"
+    },
+    "enunciado": "As fotos que faltavam já estão na lista da rodada 2. Clique no botão que manda a rodada para a Wellmix.",
+    "imagem": {
+     "cena": "m3-c2-rodada",
+     "passo": "p7"
+    },
+    "feedback": "\"Enviar para a validação\" manda a rodada. O selo passa a \"Esperando a validação da Wellmix\"."
+   }
+  ]
+ },
+ {
+  "modulo": 4,
+  "corte": 0.8,
+  "perguntas": [
+   {
+    "id": "q1",
+    "tipo": "cenario",
+    "tema": "Para que serve o Die Cut",
+    "rever": {
+     "cena": "m4-c1-diecut",
+     "passo": "p1"
+    },
+    "enunciado": "A Wellmix gerou o pedido de compra e apareceu a pendência \"Die Cut\". Por que ela vem primeiro?",
+    "alternativas": [
+     "Porque sem ela o pagamento não sai",
+     "Porque ela substitui o contrato",
+     "Porque a agência só faz a arte da caixa depois da faca e da foto em alta",
+     "Porque libera o embarque"
+    ],
+    "correta": 2,
+    "feedback": "A arte da embalagem é feita em cima da faca (die-cut) e usa a foto do produto em alta resolução."
+   },
+   {
+    "id": "q2",
+    "tipo": "clique",
+    "tema": "Enviar a faca em PDF",
+    "rever": {
+     "cena": "m4-c1-diecut",
+     "passo": "p4"
+    },
+    "enunciado": "Você tem a faca da caixa em PDF. Clique no botão certo para enviar.",
+    "imagem": {
+     "cena": "m4-c1-diecut",
+     "passo": "p4"
+    },
+    "feedback": "No item \"Die Cut\", \"Escolher arquivo\" aceita PDF. \"Tirar ou escolher foto\" é para imagem."
+   },
+   {
+    "id": "q3",
+    "tipo": "cenario",
+    "tema": "Pedido mínimo e prazo no Die Cut",
+    "rever": {
+     "cena": "m4-c1-diecut",
+     "passo": "p9"
+    },
+    "enunciado": "No Die Cut, os campos de pedido mínimo e prazo já vêm preenchidos com 1.200 peças e 35 dias, e o prazo mudou para 40 dias. O que fazer?",
+    "alternativas": [
+     "Recusar o pedido",
+     "Corrigir o prazo para 40 e clicar em \"Confirmar pedido mínimo e prazo\"",
+     "Deixar o item sem confirmar",
+     "Confirmar como está e avisar depois"
+    ],
+    "correta": 1,
+    "feedback": "Os campos vêm com o negociado. Se os números mudaram, corrija antes de confirmar: são eles que valem para o pedido."
+   },
+   {
+    "id": "q4",
+    "tipo": "cenario",
+    "tema": "Prazo inválido",
+    "rever": {
+     "cena": "m4-c1-cuidado",
+     "passo": "p4"
+    },
+    "enunciado": "Você digitou 0 no prazo de entrega e o portal respondeu \"Prazo inválido: informe um número inteiro de dias, de 1 a 720\". O que fazer?",
+    "alternativas": [
+     "Esperar a Wellmix corrigir",
+     "Digitar o prazo em dias inteiros, de 1 a 720, e confirmar de novo",
+     "Deixar em branco",
+     "Enviar a faca outra vez"
+    ],
+    "correta": 1,
+    "feedback": "O prazo de entrega é um número inteiro de dias, de 1 a 720."
+   },
+   {
+    "id": "q5",
+    "tipo": "cenario",
+    "tema": "Onde aceitar o pedido de amostras",
+    "rever": {
+     "cena": "m4-c2-amostras",
+     "passo": "p2"
+    },
+    "enunciado": "Chegou a hora de aceitar o pedido de amostras. Como você chega até ele hoje?",
+    "alternativas": [
+     "Pelo menu \"Convites de book\"",
+     "Pela pendência do pedido com o título \"Aprovar a arte\" e, no pedido, pelo botão \"Pedido de amostras\"",
+     "Pela conversa da solicitação",
+     "Pela Conta corrente"
+    ],
+    "correta": 1,
+    "feedback": "Hoje o aceite aparece em Pendências com o título \"Aprovar a arte\". Ela abre o pedido; no item pendente, o botão \"Pedido de amostras\" leva ao aceite."
+   },
+   {
+    "id": "q6",
+    "tipo": "ordenar",
+    "tema": "Passos para aceitar o pedido de amostras",
+    "rever": {
+     "cena": "m4-c2-amostras",
+     "passo": "p4"
+    },
+    "enunciado": "Ponha em ordem os passos para aceitar o pedido de amostras.",
+    "itens": [
+     "Abrir o pedido pela pendência",
+     "Clicar em \"Pedido de amostras\" no item pendente",
+     "Escrever o nome completo e marcar a caixinha de leitura e concordância",
+     "Clicar em \"Aceitar o pedido de amostras\""
+    ],
+    "feedback": "Primeiro o pedido, depois a tela do pedido de amostras; o aceite pede o nome completo e a marcação de que você leu e concorda."
+   },
+   {
+    "id": "q7",
+    "tipo": "cenario",
+    "tema": "Quem assina primeiro",
+    "rever": {
+     "cena": "m4-c3-cuidado",
+     "passo": "p5"
+    },
+    "enunciado": "Você abriu o documento do pedido e leu: \"A Wellmix ainda não assinou. Você assina depois dela.\" O que fazer?",
+    "alternativas": [
+     "Assinar outro pedido no lugar",
+     "Enviar o contrato assinado por mensagem",
+     "Esperar: quando for a sua vez, chega a pendência \"Assinar o pedido\"",
+     "Refazer o Die Cut"
+    ],
+    "correta": 2,
+    "feedback": "A Wellmix assina primeiro. O campo de envio só aparece quando é a sua vez, e a pendência avisa."
+   },
+   {
+    "id": "q8",
+    "tipo": "ordenar",
+    "tema": "Passos para assinar o contrato",
+    "rever": {
+     "cena": "m4-c3-contrato",
+     "passo": "p2"
+    },
+    "enunciado": "Ponha em ordem os passos para assinar o contrato.",
+    "itens": [
+     "Abrir a pendência \"Assinar o pedido\"",
+     "Conferir o documento e baixar o PDF",
+     "Imprimir, assinar e carimbar",
+     "Subir o arquivo em \"Enviar o documento assinado\""
+    ],
+    "feedback": "Confira antes de baixar; assine e carimbe no papel; e só então suba o arquivo."
+   },
+   {
+    "id": "q9",
+    "tipo": "cenario",
+    "tema": "O que registra a assinatura",
+    "rever": {
+     "cena": "m4-c3-contrato",
+     "passo": "p7"
+    },
+    "enunciado": "No documento do pedido, o que registra a sua assinatura?",
+    "alternativas": [
+     "Escolher o arquivo assinado em \"Enviar o documento assinado\"",
+     "Abrir a pendência",
+     "Digitar o nome de quem assinou",
+     "Clicar em \"Baixar o documento em PDF\""
+    ],
+    "correta": 0,
+    "feedback": "Escolher o arquivo já registra a assinatura, com o arquivo guardado no pedido. Confira o arquivo antes de escolher."
+   },
+   {
+    "id": "q10",
+    "tipo": "clique",
+    "tema": "Subir o contrato assinado",
+    "rever": {
+     "cena": "m4-c3-contrato",
+     "passo": "p7"
+    },
+    "enunciado": "O contrato está assinado e carimbado, salvo em PDF. Clique no lugar por onde ele sobe.",
+    "imagem": {
+     "cena": "m4-c3-contrato",
+     "passo": "p7"
+    },
+    "feedback": "\"Enviar o documento assinado (PDF ou foto)\" abre a escolha do arquivo e registra a assinatura."
+   },
+   {
+    "id": "q11",
+    "tipo": "cenario",
+    "tema": "Quando confirmar o recebimento",
+    "rever": {
+     "cena": "m4-c4-sinal",
+     "passo": "p5"
+    },
+    "enunciado": "Apareceu a pendência \"Confirmar recebimento: pedido #1\". Quando você clica em \"Confirmar recebimento\"?",
+    "alternativas": [
+     "Assim que a pendência aparece",
+     "Nunca: quem confirma é a Wellmix",
+     "Só depois do embarque",
+     "Depois de conferir no banco que o dinheiro chegou"
+    ],
+    "correta": 3,
+    "feedback": "A confirmação é um registro seu de que o dinheiro chegou. Confira no banco antes."
+   },
+   {
+    "id": "q12",
+    "tipo": "cenario",
+    "tema": "O que o sinal libera",
+    "rever": {
+     "cena": "m4-c4-sinal",
+     "passo": "p7"
+    },
+    "enunciado": "Você confirmou o recebimento do sinal. O que acontece no pedido?",
+    "alternativas": [
+     "A produção é liberada e a inspeção abre para você",
+     "O pedido é encerrado",
+     "O Die Cut volta a pendente",
+     "O contrato precisa ser assinado de novo"
+    ],
+    "correta": 0,
+    "feedback": "Com o sinal quitado, a produção está liberada e a etapa de inspeção abre para o fornecedor."
+   }
+  ]
+ },
+ {
+  "modulo": 5,
+  "corte": 0.8,
+  "perguntas": [
+   {
+    "id": "q1",
+    "tipo": "cenario",
+    "tema": "O que é o ETD",
+    "rever": {
+     "cena": "m5-c1-producao",
+     "passo": "p4"
+    },
+    "enunciado": "No cartão \"Produção\", o que você informa no campo ETD?",
+    "alternativas": [
+     "A data prevista de saída da carga",
+     "A data do pagamento do sinal",
+     "A data da inspeção da Wellmix",
+     "A data em que o contrato foi assinado"
+    ],
+    "correta": 0,
+    "feedback": "ETD é a saída prevista da carga. A Wellmix acompanha a produção por essa data."
+   },
+   {
+    "id": "q2",
+    "tipo": "clique",
+    "tema": "Onde fica o ETD",
+    "rever": {
+     "cena": "m5-c1-producao",
+     "passo": "p7"
+    },
+    "enunciado": "A produção vai atrasar e você precisa mudar a saída prevista. Clique no campo certo.",
+    "imagem": {
+     "cena": "m5-c1-producao",
+     "passo": "p7"
+    },
+    "feedback": "O campo \"ETD (saída prevista)\" fica no cartão \"Produção\", na tela do pedido."
+   },
+   {
+    "id": "q3",
+    "tipo": "cenario",
+    "tema": "Mudar o ETD",
+    "rever": {
+     "cena": "m5-c1-cuidado",
+     "passo": "p4"
+    },
+    "enunciado": "Você mudou o ETD, clicou em \"Salvar produção\" e o portal respondeu: \"Informe o motivo da mudança do ETD.\" O que fazer?",
+    "alternativas": [
+     "Voltar a data antiga",
+     "Mandar o motivo só por mensagem",
+     "Informar a data de novo, escrever o motivo no campo \"Motivo da mudança do ETD\" e salvar",
+     "Esperar a Wellmix mudar a data"
+    ],
+    "correta": 2,
+    "feedback": "Depois do primeiro ETD, toda mudança pede o motivo. Sem ele, nada é gravado, e a data volta para a anterior: informe de novo, escreva o motivo e salve."
+   },
+   {
+    "id": "q4",
+    "tipo": "cenario",
+    "tema": "Fábrica ou revenda",
+    "rever": {
+     "cena": "m5-c1-producao",
+     "passo": "p5"
+    },
+    "enunciado": "A sua empresa revende e o produto é feito em outra fábrica. O que muda no cartão \"Produção\"?",
+    "alternativas": [
+     "A inspeção deixa de existir",
+     "Nada",
+     "Você não preenche o ETD",
+     "Você escolhe \"Trade (revenda)\" e informa a fábrica e o endereço dela"
+    ],
+    "correta": 3,
+    "feedback": "A Wellmix inspeciona onde o produto é feito. Sendo revenda, a fábrica e o endereço precisam estar no cartão."
+   },
+   {
+    "id": "q5",
+    "tipo": "cenario",
+    "tema": "Inspeção cega",
+    "rever": {
+     "cena": "m5-c2-inspecao",
+     "passo": "p2"
+    },
+    "enunciado": "A tela avisa que a inspeção é cega. O que isso quer dizer?",
+    "alternativas": [
+     "Que a Wellmix não vê o que você envia",
+     "Que você informa o que encontrou sem ver os valores esperados; a Wellmix compara",
+     "Que o peso é opcional",
+     "Que você não precisa enviar fotos"
+    ],
+    "correta": 1,
+    "feedback": "Você informa exatamente o que mediu. Os valores esperados não aparecem, e a comparação é feita pela Wellmix."
+   },
+   {
+    "id": "q6",
+    "tipo": "ordenar",
+    "tema": "Ordem da inspeção",
+    "rever": {
+     "cena": "m5-c2-inspecao",
+     "passo": "p3"
+    },
+    "enunciado": "Ponha em ordem o registro da inspeção.",
+    "itens": [
+     "Enviar as fotos sem embalagem, com embalagem e na balança",
+     "Digitar o peso medido e clicar em \"Enviar\"",
+     "Enviar o vídeo da produção",
+     "Clicar em \"Confirmar\" na declaração de conformidade"
+    ],
+    "feedback": "A declaração vem por último: o botão \"Confirmar\" só aparece depois das fotos, do peso e do vídeo."
+   },
+   {
+    "id": "q7",
+    "tipo": "clique",
+    "tema": "Enviar o peso medido",
+    "rever": {
+     "cena": "m5-c2-inspecao",
+     "passo": "p7"
+    },
+    "enunciado": "Você digitou o peso medido. Clique no botão que envia esse valor.",
+    "imagem": {
+     "cena": "m5-c2-inspecao",
+     "passo": "p7"
+    },
+    "feedback": "Cada item de valor tem o seu próprio \"Enviar\", na mesma linha."
+   },
+   {
+    "id": "q8",
+    "tipo": "cenario",
+    "tema": "Valor errado na inspeção",
+    "rever": {
+     "cena": "m5-c2-cuidado",
+     "passo": "p5"
+    },
+    "enunciado": "Você enviou o peso e percebeu que digitou 6,2 em vez de 0,62. O item aparece como concluído. O que fazer?",
+    "alternativas": [
+     "Usar \"Nova medição\" para abrir o campo de novo e enviar o valor certo",
+     "Apagar o pedido",
+     "Nada: o portal corrige sozinho",
+     "Esperar a Wellmix reprovar"
+    ],
+    "correta": 0,
+    "feedback": "A inspeção é cega: o portal aceita o valor digitado. \"Nova medição\" reabre o campo para você enviar o número certo."
+   },
+   {
+    "id": "q9",
+    "tipo": "cenario",
+    "tema": "Itens opcionais",
+    "rever": {
+     "cena": "m5-c2-inspecao",
+     "passo": "p8"
+    },
+    "enunciado": "Na lista da inspeção há itens marcados \"(opcional)\", como as medidas e a cor. O que fazer com eles?",
+    "alternativas": [
+     "Preencher só quando a Wellmix pedir",
+     "Enviar por mensagem",
+     "Apagar da lista",
+     "Preencher todos antes da declaração"
+    ],
+    "correta": 0,
+    "feedback": "Os obrigatórios são as três fotos, o peso medido, o vídeo e a declaração. Os opcionais entram quando a Wellmix pede."
+   },
+   {
+    "id": "q10",
+    "tipo": "cenario",
+    "tema": "Depois de corrigir o SKU",
+    "rever": {
+     "cena": "m5-c3-reprovado",
+     "passo": "p7"
+    },
+    "enunciado": "A Wellmix reprovou um SKU. Você corrigiu e clicou em \"Enviar correção\". O que mais precisa fazer?",
+    "alternativas": [
+     "Enviar de novo as fotos, o peso, o vídeo e a declaração, com o produto corrigido",
+     "Assinar o contrato outra vez",
+     "Abrir uma nova solicitação",
+     "Nada: a correção basta"
+    ],
+    "correta": 0,
+    "feedback": "Depois de uma reprovação, os itens da inspeção voltam a pendentes e precisam ser reenviados."
+   },
+   {
+    "id": "q11",
+    "tipo": "clique",
+    "tema": "Onde descrever a correção",
+    "rever": {
+     "cena": "m5-c3-reprovado",
+     "passo": "p4"
+    },
+    "enunciado": "O SKU foi reprovado por rebarba na tampa e você já corrigiu na fábrica. Clique no campo onde descreve a correção.",
+    "imagem": {
+     "cena": "m5-c3-reprovado",
+     "passo": "p4"
+    },
+    "feedback": "Em \"Inspeção por SKU\", o campo \"O que foi corrigido\" fica na linha do item reprovado, ao lado de \"Enviar correção\"."
+   }
+  ]
+ },
+ {
+  "modulo": 6,
+  "corte": 0.8,
+  "perguntas": [
+   {
+    "id": "q1",
+    "tipo": "cenario",
+    "tema": "Para onde vão as amostras",
+    "rever": {
+     "cena": "m6-c1-amostras",
+     "passo": "p3"
+    },
+    "enunciado": "O cartão \"Amostras\" divide as peças de cada produto em dois destinos. Quais?",
+    "alternativas": [
+     "A fábrica e a transportadora",
+     "O show room no Brasil e a agência de marketing na China",
+     "A certificadora e o despachante",
+     "O cliente final e o porto"
+    ],
+    "correta": 1,
+    "feedback": "A maior parte vai ao show room no Brasil; a outra vai à agência de marketing na China, que faz as fotos e devolve uma amostra."
+   },
+   {
+    "id": "q2",
+    "tipo": "ordenar",
+    "tema": "Ordem dos passos das amostras",
+    "rever": {
+     "cena": "m6-c1-amostras",
+     "passo": "p4"
+    },
+    "enunciado": "Ponha em ordem o que você registra no cartão \"Amostras\".",
+    "itens": [
+     "A data da retirada das amostras",
+     "O envio ao show room no Brasil, com rastreio e comprovante",
+     "O envio à agência de marketing na China, com rastreio e comprovante",
+     "A validação da amostra devolvida pela agência"
+    ],
+    "feedback": "Os envios só abrem depois da retirada; a devolução só chega depois que a agência recebe e faz as fotos."
+   },
+   {
+    "id": "q3",
+    "tipo": "clique",
+    "tema": "Registrar a retirada",
+    "rever": {
+     "cena": "m6-c1-amostras",
+     "passo": "p5"
+    },
+    "enunciado": "Você já informou a data da retirada das amostras. Clique no botão que grava esse passo.",
+    "imagem": {
+     "cena": "m6-c1-amostras",
+     "passo": "p5"
+    },
+    "feedback": "Cada passo tem o seu \"Enviar\", na coluna \"Ação\" da própria linha."
+   },
+   {
+    "id": "q4",
+    "tipo": "cenario",
+    "tema": "O que o envio pede",
+    "rever": {
+     "cena": "m6-c1-amostras",
+     "passo": "p7"
+    },
+    "enunciado": "No envio das amostras ao Brasil, o que é obrigatório informar?",
+    "alternativas": [
+     "A foto do lacre",
+     "O número do container",
+     "O rastreio e o arquivo do comprovante",
+     "Só a data"
+    ],
+    "correta": 2,
+    "feedback": "Os dois envios pedem o rastreio e o comprovante em arquivo."
+   },
+   {
+    "id": "q5",
+    "tipo": "cenario",
+    "tema": "Amostra que não voltou",
+    "rever": {
+     "cena": "m6-c2-devolucao",
+     "passo": "p4"
+    },
+    "enunciado": "A agência registrou a devolução, mas a amostra não chegou à sua fábrica. O que fazer?",
+    "alternativas": [
+     "Enviar outra amostra ao Brasil",
+     "Clicar em \"Validar\" assim mesmo",
+     "Escrever o motivo e clicar em \"Recusar\"",
+     "Não fazer nada"
+    ],
+    "correta": 2,
+    "feedback": "Validar confirma que a amostra chegou. Se não chegou, recuse com o motivo: a agência é avisada."
+   },
+   {
+    "id": "q6",
+    "tipo": "cenario",
+    "tema": "Por que validar a devolução",
+    "rever": {
+     "cena": "m6-c2-devolucao",
+     "passo": "p6"
+    },
+    "enunciado": "Por que a validação da amostra devolvida é importante para o embarque?",
+    "alternativas": [
+     "Porque troca o ETD",
+     "Porque encerra o pedido",
+     "Porque libera o pagamento",
+     "Porque o container só pode ser carregado depois que a amostra volta"
+    ],
+    "correta": 3,
+    "feedback": "A amostra da China segue junto com a carga. Sem a devolução validada, o carregamento não é aceito."
+   },
+   {
+    "id": "q7",
+    "tipo": "cenario",
+    "tema": "Arquivo do container vazio",
+    "rever": {
+     "cena": "m6-c3-vazio",
+     "passo": "p8"
+    },
+    "enunciado": "Você já enviou a foto do container vazio e quer mandar também um vídeo pelo \"Enviar de novo\". O que acontece?",
+    "alternativas": [
+     "Os dois arquivos ficam guardados",
+     "O portal recusa o vídeo",
+     "O vídeo substitui a foto: o passo guarda um arquivo só",
+     "O passo volta a pendente"
+    ],
+    "correta": 2,
+    "feedback": "O passo das fotos do container vazio guarda um único arquivo. \"Enviar de novo\" troca o anterior."
+   },
+   {
+    "id": "q8",
+    "tipo": "clique",
+    "tema": "Check de carga",
+    "rever": {
+     "cena": "m6-c4-carregamento",
+     "passo": "p3"
+    },
+    "enunciado": "Você vai registrar o carregamento. Clique no campo onde escreve o resumo: caixas, avarias e observações.",
+    "imagem": {
+     "cena": "m6-c4-carregamento",
+     "passo": "p3"
+    },
+    "feedback": "O campo \"Check de carga\" fica na linha \"Carregamento\", junto do arquivo e do botão \"Enviar\"."
+   },
+   {
+    "id": "q9",
+    "tipo": "cenario",
+    "tema": "Carregamento recusado",
+    "rever": {
+     "cena": "m6-c4-cuidado",
+     "passo": "p3"
+    },
+    "enunciado": "A linha do carregamento mostra \"Recusado: Foto escura\". O que fazer?",
+    "alternativas": [
+     "Pular para o lacre",
+     "Refazer a foto, escolher o arquivo novo e usar \"Enviar de novo\"",
+     "Abrir outro pedido",
+     "Esperar a Wellmix validar"
+    ],
+    "correta": 1,
+    "feedback": "O motivo da recusa aparece na linha. Corrija e reenvie pelo \"Enviar de novo\"; o lacre só abre com o carregamento validado."
+   },
+   {
+    "id": "q10",
+    "tipo": "ordenar",
+    "tema": "Os cinco passos do container",
+    "rever": {
+     "cena": "m6-c3-vazio",
+     "passo": "p3"
+    },
+    "enunciado": "Ponha em ordem os passos do cartão \"Container na origem\".",
+    "itens": [
+     "Container vazio no depósito da fábrica (data)",
+     "Fotos e vídeos do container vazio",
+     "Carregamento: fotos, vídeos e check de carga",
+     "Lacre: foto e número do container",
+     "Container lacrado no porto (data)"
+    ],
+    "feedback": "A ordem é fixa e cada passo só abre depois do anterior."
+   },
+   {
+    "id": "q11",
+    "tipo": "cenario",
+    "tema": "Quem valida o quê",
+    "rever": {
+     "cena": "m6-c4-carregamento",
+     "passo": "p6"
+    },
+    "enunciado": "Dos passos do container, qual precisa da validação da Wellmix?",
+    "alternativas": [
+     "A chegada ao porto",
+     "A data do container vazio",
+     "O carregamento",
+     "O lacre"
+    ],
+    "correta": 2,
+    "feedback": "Só o carregamento é validado pela Wellmix. Os outros passos ficam concluídos quando você envia."
+   }
+  ]
+ },
+ {
+  "modulo": 7,
+  "corte": 0.8,
+  "perguntas": [
+   {
+    "id": "q1",
+    "tipo": "ordenar",
+    "tema": "Ordem dos documentos do embarque",
+    "rever": {
+     "cena": "m7-c1-checklist",
+     "passo": "p3"
+    },
+    "enunciado": "Ponha os documentos do embarque na ordem em que são feitos.",
+    "itens": [
+     "Check list de carga",
+     "Packing list",
+     "Invoice",
+     "BL, pela companhia marítima"
+    ],
+    "feedback": "Cada documento só abre depois do anterior, e o portal confere um com o outro."
+   },
+   {
+    "id": "q2",
+    "tipo": "cenario",
+    "tema": "Quando os documentos abrem",
+    "rever": {
+     "cena": "m7-c1-checklist",
+     "passo": "p1"
+    },
+    "enunciado": "A partir de que momento você consegue fazer o check list de carga?",
+    "alternativas": [
+     "Depois de registrar o container vazio na fábrica, com as fotos",
+     "Assim que o contrato é assinado",
+     "Só depois do lacre",
+     "Só depois do BL"
+    ],
+    "correta": 0,
+    "feedback": "Os documentos do embarque abrem quando o container vazio está registrado, com as fotos."
+   },
+   {
+    "id": "q3",
+    "tipo": "clique",
+    "tema": "Lançar as caixas carregadas",
+    "rever": {
+     "cena": "m7-c1-checklist",
+     "passo": "p5"
+    },
+    "enunciado": "Subiram 120 caixas no container. Clique no campo onde você lança esse número.",
+    "imagem": {
+     "cena": "m7-c1-checklist",
+     "passo": "p5"
+    },
+    "feedback": "O campo \"Subiram agora\" recebe as caixas de cada lançamento. O pedido vai sendo abatido até terminar."
+   },
+   {
+    "id": "q4",
+    "tipo": "cenario",
+    "tema": "Check list em partes",
+    "rever": {
+     "cena": "m7-c1-checklist",
+     "passo": "p7"
+    },
+    "enunciado": "Você lançou 120 das 200 caixas e o carregamento parou por hoje. O que acontece?",
+    "alternativas": [
+     "O packing list abre assim mesmo",
+     "O check list é recusado",
+     "Ele fica em andamento, com 80 caixas faltando, e você lança o resto depois",
+     "O pedido é cancelado"
+    ],
+    "correta": 2,
+    "feedback": "O check list aceita vários lançamentos. Os outros documentos só abrem com a carga completa."
+   },
+   {
+    "id": "q5",
+    "tipo": "cenario",
+    "tema": "De onde vêm as caixas do packing list",
+    "rever": {
+     "cena": "m7-c2-packing",
+     "passo": "p3"
+    },
+    "enunciado": "No packing list, o número de caixas de cada item já aparece preenchido. De onde ele vem?",
+    "alternativas": [
+     "Do contrato",
+     "Do book",
+     "Da invoice",
+     "Do check list de carga"
+    ],
+    "correta": 3,
+    "feedback": "As caixas do packing list vêm do check list. Você confere peças, peso líquido e peso bruto."
+   },
+   {
+    "id": "q6",
+    "tipo": "clique",
+    "tema": "Enviar o packing list",
+    "rever": {
+     "cena": "m7-c2-packing",
+     "passo": "p6"
+    },
+    "enunciado": "Os números do packing list estão conferidos. Clique no botão que envia o documento.",
+    "imagem": {
+     "cena": "m7-c2-packing",
+     "passo": "p6"
+    },
+    "feedback": "\"Enviar o packing list\" manda o documento para a conferência com o check list."
+   },
+   {
+    "id": "q7",
+    "tipo": "cenario",
+    "tema": "O que é obrigatório na invoice",
+    "rever": {
+     "cena": "m7-c3-invoice",
+     "passo": "p6"
+    },
+    "enunciado": "Na invoice, além dos números da tabela, o que você precisa informar?",
+    "alternativas": [
+     "O número da invoice e o arquivo do documento",
+     "Nada mais",
+     "Só a foto do lacre",
+     "O rastreio das amostras"
+    ],
+    "correta": 0,
+    "feedback": "Na invoice, o número e o arquivo são obrigatórios. No packing list, o arquivo é opcional."
+   },
+   {
+    "id": "q8",
+    "tipo": "cenario",
+    "tema": "Invoice que não bate",
+    "rever": {
+     "cena": "m7-c3-cuidado",
+     "passo": "p6"
+    },
+    "enunciado": "Você enviou a invoice e o selo ficou \"Não bateu: refazer\", com a linha \"peças esperado 2400, informado 2300\". O que fazer?",
+    "alternativas": [
+     "Enviar o packing list de novo",
+     "Refazer o check list",
+     "Esperar a Wellmix aceitar",
+     "Corrigir as peças na invoice para bater com o packing list e enviar de novo"
+    ],
+    "correta": 3,
+    "feedback": "O quadro \"Diferenças encontradas\" diz o item e o campo. A invoice tem de bater com o packing list, linha a linha."
+   },
+   {
+    "id": "q9",
+    "tipo": "cenario",
+    "tema": "Quem faz o BL",
+    "rever": {
+     "cena": "m7-c3-invoice",
+     "passo": "p9"
+    },
+    "enunciado": "Depois da invoice conferida, quem preenche o BL?",
+    "alternativas": [
+     "Você, na mesma tela",
+     "A companhia marítima; você só acompanha",
+     "A certificadora",
+     "A agência de marketing"
+    ],
+    "correta": 1,
+    "feedback": "O BL é da companhia marítima. Com a invoice conferida, ela é avisada para fazer o documento."
+   },
+   {
+    "id": "q10",
+    "tipo": "clique",
+    "tema": "Número da invoice",
+    "rever": {
+     "cena": "m7-c3-invoice",
+     "passo": "p5"
+    },
+    "enunciado": "Clique no campo onde vai o número da invoice.",
+    "imagem": {
+     "cena": "m7-c3-invoice",
+     "passo": "p5"
+    },
+    "feedback": "O campo \"Nº da invoice\" fica abaixo da tabela, ao lado do arquivo do documento."
+   }
+  ]
+ },
+ {
+  "modulo": 8,
+  "corte": 0.8,
+  "perguntas": [
+   {
+    "id": "q1",
+    "tipo": "cenario",
+    "tema": "Acompanhar sem pendência",
+    "rever": {
+     "cena": "m8-c1-pedidos",
+     "passo": "p1"
+    },
+    "enunciado": "A sua lista de pendências está vazia, mas você quer saber em que etapa está o pedido #1. Por onde vai?",
+    "alternativas": [
+     "Pela tela de login",
+     "Não dá: sem pendência, o pedido some",
+     "Pelo menu \"Meus books\", em \"Pedidos\"",
+     "Pelo sino de avisos"
+    ],
+    "correta": 2,
+    "feedback": "Pendências mostra só o que depende de você. A lista \"Pedidos\" mostra todos os seus pedidos, com a etapa e o progresso."
+   },
+   {
+    "id": "q2",
+    "tipo": "clique",
+    "tema": "Abrir a lista de pedidos",
+    "rever": {
+     "cena": "m8-c1-pedidos",
+     "passo": "p3"
+    },
+    "enunciado": "Você quer ver todos os seus pedidos. Clique no item certo do menu.",
+    "imagem": {
+     "cena": "m8-c1-pedidos",
+     "passo": "p3"
+    },
+    "feedback": "Em \"Meus books\", \"Pedidos\" lista todos os pedidos da sua empresa."
+   },
+   {
+    "id": "q3",
+    "tipo": "cenario",
+    "tema": "O que a linha do pedido abre",
+    "rever": {
+     "cena": "m8-c1-pedidos",
+     "passo": "p7"
+    },
+    "enunciado": "Na lista de pedidos, você clicou no número de um pedido. O que abre?",
+    "alternativas": [
+     "A Conta corrente",
+     "O documento do pedido, que é o contrato",
+     "O book",
+     "A solicitação original"
+    ],
+    "correta": 1,
+    "feedback": "A linha abre o documento do pedido. De lá, \"Etapas e pendências do pedido\" leva à tela completa."
+   },
+   {
+    "id": "q4",
+    "tipo": "clique",
+    "tema": "Ver o pedido inteiro",
+    "rever": {
+     "cena": "m8-c1-pedidos",
+     "passo": "p8"
+    },
+    "enunciado": "Você está no documento do pedido e quer ver todas as etapas. Clique no lugar certo.",
+    "imagem": {
+     "cena": "m8-c1-pedidos",
+     "passo": "p8"
+    },
+    "feedback": "\"Etapas e pendências do pedido\" abre a tela com as etapas, os documentos, a produção e o container."
+   },
+   {
+    "id": "q5",
+    "tipo": "cenario",
+    "tema": "Rever o que foi enviado",
+    "rever": {
+     "cena": "m8-c1-pedidos",
+     "passo": "p10"
+    },
+    "enunciado": "Você quer conferir as fotos que enviou na inspeção, que já está concluída. O que usar na tabela de etapas?",
+    "alternativas": [
+     "O botão \"Voltar\"",
+     "A Conta corrente",
+     "\"Ver detalhes\", na linha da etapa \"Inspeção\"",
+     "O filtro de prazo"
+    ],
+    "correta": 2,
+    "feedback": "\"Ver detalhes\" abre a etapa concluída com tudo o que foi enviado nela."
+   },
+   {
+    "id": "q6",
+    "tipo": "cenario",
+    "tema": "Onde ficam as certificações",
+    "rever": {
+     "cena": "m8-c2-certificacao",
+     "passo": "p3"
+    },
+    "enunciado": "Sua fábrica renovou a ISO 9001. Onde você registra o novo certificado?",
+    "alternativas": [
+     "No Die Cut",
+     "Na solicitação ao fornecedor",
+     "Nos documentos do embarque",
+     "Na Conta corrente, no quadro \"Certificações do fornecedor\""
+    ],
+    "correta": 3,
+    "feedback": "As certificações da fábrica ficam no fim da Conta corrente, separadas das certificações de cada produto."
+   },
+   {
+    "id": "q7",
+    "tipo": "cenario",
+    "tema": "Depois de registrar a certificação",
+    "rever": {
+     "cena": "m8-c2-certificacao",
+     "passo": "p11"
+    },
+    "enunciado": "Você registrou a certificação e ela apareceu como \"Pendente\". O que falta?",
+    "alternativas": [
+     "Assinar o contrato",
+     "A Wellmix conferir e validar",
+     "Enviar a amostragem",
+     "Registrar de novo"
+    ],
+    "correta": 1,
+    "feedback": "A certificação registrada pelo fornecedor fica pendente até a Wellmix validar."
+   },
+   {
+    "id": "q8",
+    "tipo": "clique",
+    "tema": "Campo obrigatório da certificação",
+    "rever": {
+     "cena": "m8-c2-certificacao",
+     "passo": "p4"
+    },
+    "enunciado": "Ao registrar uma certificação, um campo é obrigatório: o nome dela. Clique nesse campo.",
+    "imagem": {
+     "cena": "m8-c2-certificacao",
+     "passo": "p4"
+    },
+    "feedback": "O campo \"Tipo\" recebe o nome da certificação, por exemplo ISO 9001. Sem ele, o registro não é aceito."
+   }
+  ]
+ },
+ {
+  "modulo": 9,
+  "corte": 0.8,
+  "perguntas": [
+   {
+    "id": "q1",
+    "tipo": "cenario",
+    "tema": "O que muda no preço EXW",
+    "rever": {
+     "cena": "m9-c1-modalidade",
+     "passo": "p1"
+    },
+    "enunciado": "Na compra EXW, o que o seu preço por peça NÃO inclui?",
+    "alternativas": [
+     "A embalagem do produto",
+     "O transporte da fábrica até o porto",
+     "A caixa com a marca",
+     "A amostra em impressora 3D"
+    ],
+    "correta": 1,
+    "feedback": "Na modalidade EXW, o transporte da fábrica até o porto fica fora do preço e é registrado à parte, com o custo."
+   },
+   {
+    "id": "q2",
+    "tipo": "clique",
+    "tema": "Onde se informa a modalidade",
+    "rever": {
+     "cena": "m9-c1-modalidade",
+     "passo": "p8"
+    },
+    "enunciado": "Você vai responder a uma solicitação, e a entrega combinada é EXW. Clique no campo que informa isso.",
+    "imagem": {
+     "cena": "m9-c1-modalidade",
+     "passo": "p8"
+    },
+    "feedback": "A modalidade vai no campo \"Modalidade de entrega\", na resposta do fornecedor."
+   },
+   {
+    "id": "q3",
+    "tipo": "ordenar",
+    "tema": "Passos do container na compra EXW",
+    "rever": {
+     "cena": "m9-c1-origem",
+     "passo": "p3"
+    },
+    "enunciado": "Na compra EXW, o cartão \"Container na origem\" começa com passos a mais. Ponha na ordem.",
+    "itens": [
+     "Transportadora contratada na origem",
+     "Previsão do container na fábrica",
+     "Custos do transporte na origem, com comprovante",
+     "Container vazio na fábrica"
+    ],
+    "feedback": "Primeiro a transportadora, depois a previsão, depois os custos. O container vazio só vem depois dos custos validados."
+   },
+   {
+    "id": "q4",
+    "tipo": "cenario",
+    "tema": "Custos enviados, container travado",
+    "rever": {
+     "cena": "m9-c1-origem",
+     "passo": "p12"
+    },
+    "enunciado": "Você enviou os custos do transporte na origem, mas o passo do container vazio não abriu. Por quê?",
+    "alternativas": [
+     "A Wellmix ainda precisa validar os custos",
+     "Falta assinar o contrato de novo",
+     "O pedido voltou para a inspeção",
+     "O comprovante não é aceito em PDF"
+    ],
+    "correta": 0,
+    "feedback": "Os custos ficam como \"Enviado, aguardando validação\". O container vazio só abre depois que a Wellmix valida."
+   },
+   {
+    "id": "q5",
+    "tipo": "clique",
+    "tema": "Valor do transporte",
+    "rever": {
+     "cena": "m9-c1-origem",
+     "passo": "p9"
+    },
+    "enunciado": "Você recebeu o recibo da transportadora. Clique no campo onde vai o valor do transporte.",
+    "imagem": {
+     "cena": "m9-c1-origem",
+     "passo": "p9"
+    },
+    "feedback": "O valor vai no passo dos custos do transporte na origem, junto com a moeda e o comprovante."
+   },
+   {
+    "id": "q6",
+    "tipo": "cenario",
+    "tema": "Uma resposta para o total",
+    "rever": {
+     "cena": "m9-c2-solicitacao",
+     "passo": "p6"
+    },
+    "enunciado": "A solicitação mostra duas programações de 1.800 peças. Quantas respostas você envia?",
+    "alternativas": [
+     "Uma por caixa",
+     "Duas: uma por programação",
+     "Nenhuma: a Wellmix responde",
+     "Uma só, que vale para o total"
+    ],
+    "correta": 3,
+    "feedback": "A resposta é uma só. O preço, o pedido mínimo e o prazo valem para todas as programações."
+   },
+   {
+    "id": "q7",
+    "tipo": "cenario",
+    "tema": "Onde ver as datas das programações",
+    "rever": {
+     "cena": "m9-c2-solicitacao",
+     "passo": "p5"
+    },
+    "enunciado": "Você quer saber em que data cada programação vai virar pedido. Onde olhar, na solicitação?",
+    "alternativas": [
+     "No sino de avisos",
+     "No Die Cut",
+     "Na Conta corrente",
+     "No quadro \"Programação de compra\", na tela do produto"
+    ],
+    "correta": 3,
+    "feedback": "O quadro \"Programação de compra\" mostra cada programação, com a data do pedido e as peças."
+   },
+   {
+    "id": "q8",
+    "tipo": "cenario",
+    "tema": "Die Cut na compra programada",
+    "rever": {
+     "cena": "m9-c3-pai",
+     "passo": "p1"
+    },
+    "enunciado": "Numa compra com três programações, quantas vezes você faz o Die Cut?",
+    "alternativas": [
+     "Três: uma em cada pedido filho",
+     "Nenhuma",
+     "Uma por caixa",
+     "Uma só, no pedido pai"
+    ],
+    "correta": 3,
+    "feedback": "O Die Cut é feito uma vez só, no pedido pai. Os filhos já nascem com ele feito."
+   },
+   {
+    "id": "q9",
+    "tipo": "cenario",
+    "tema": "O que acontece em cada filho",
+    "rever": {
+     "cena": "m9-c3-pai",
+     "passo": "p7"
+    },
+    "enunciado": "O pedido número 2 nasceu da primeira programação. O que acontece nele?",
+    "alternativas": [
+     "Só o Die Cut",
+     "Nada: tudo fica no pedido pai",
+     "O contrato, o sinal, a produção e o embarque dessa programação",
+     "Só a negociação do preço"
+    ],
+    "correta": 2,
+    "feedback": "O pedido pai guarda o total, a negociação e as artes. Contrato, sinal, produção e embarque acontecem em cada pedido filho."
+   },
+   {
+    "id": "q10",
+    "tipo": "clique",
+    "tema": "Voltar ao pedido pai",
+    "rever": {
+     "cena": "m9-c3-pai",
+     "passo": "p5"
+    },
+    "enunciado": "Você está num pedido filho e quer ver todas as programações. Clique no lugar certo.",
+    "imagem": {
+     "cena": "m9-c3-pai",
+     "passo": "p5"
+    },
+    "feedback": "O link \"Abrir o pedido pai\", na faixa do alto, leva ao cartão \"Programação de compra\"."
+   }
+  ]
+ }
+]
