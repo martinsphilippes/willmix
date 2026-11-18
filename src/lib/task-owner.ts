@@ -128,6 +128,9 @@ export function kindGate(
       return COMPRAS;
     case "supplier_payment":
     case "purchase_schedule":
+    // Venda aguardando o cliente sem login que possa confirmar: quem cria o
+    // acesso do cliente (docs/TURNS.md).
+    case "customer_login":
       return ADMIN;
     case "import_step":
     case "import_validate":

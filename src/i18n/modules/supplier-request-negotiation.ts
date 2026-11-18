@@ -40,8 +40,8 @@ export const pt = {
     "Foto, PDF ou Excel. Só a Wellmix e o fornecedor desta solicitação abrem.",
   "supplierRequests.negotiation.send": "Enviar",
   "supplierRequests.negotiation.sending": "Enviando…",
-  "supplierRequests.negotiation.turn.supplier": "Esperando o fornecedor",
-  "supplierRequests.negotiation.turn.wellmix": "Esperando a Wellmix",
+  "supplierRequests.negotiation.turn.supplier": "Aguardando fornecedor",
+  "supplierRequests.negotiation.turn.wellmix": "Aguardando Wellmix",
   "supplierRequests.negotiation.notice.proposal":
     "Contraproposta enviada ao fornecedor.",
   "supplierRequests.negotiation.notice.accept":

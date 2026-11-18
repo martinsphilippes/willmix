@@ -581,6 +581,82 @@ describe("SLA da negociação", () => {
 });
 
 describe("pendências do fornecedor", () => {
+  it("de quem é a vez (docs/TURNS.md): a pendência vai a quem pode agir, sem duplicar", async () => {
+    const { pendingTasksFor } = await import("@/lib/services/tasks");
+    const { tasksForFunctions } = await import("@/lib/task-owner");
+    const store = getStore();
+    // Comprador (decide a solicitação) e Comex interno (não decide).
+    const buyer = await store.create("users", {
+      email: "comprador.vez@wellmix.com",
+      name: "Bia Compras",
+      role: "operator",
+      partyId: null,
+      locale: "pt",
+      passwordHash: "x",
+      active: true,
+      importerId: null,
+      functions: ["buyer"],
+      screens: null,
+      mustChangePassword: false,
+    } as never);
+    const comex = await store.create("users", {
+      email: "comex.vez@wellmix.com",
+      name: "Caio Comex",
+      role: "operator",
+      partyId: null,
+      locale: "pt",
+      passwordHash: "x",
+      active: true,
+      importerId: null,
+      functions: ["comex_internal"],
+      screens: null,
+      mustChangePassword: false,
+    } as never);
+    const of = async (user: User, id: string) =>
+      tasksForFunctions(user, await pendingTasksFor(user)).filter(
+        (t) => t.link === `/app/supplier-requests/${id}`,
+      );
+    const request = await answeredRequest("TURN-1");
+    let fresh = (await store.get("supplier_requests", request.id))!;
+    // Respondida: a vez é da Wellmix decidir.
+    expect(lib.negotiationTurn(fresh)).toBe("wellmix");
+    expect(await of(supplierA, request.id)).toEqual([]);
+    const decide = await of(buyer, request.id);
+    expect(decide).toHaveLength(1);
+    expect(decide[0]).toMatchObject({
+      kind: "supplier_request",
+      text: { title: "turn.task.decide.title" },
+    });
+    expect((await of(admin, request.id)).length).toBe(1);
+    // Quem não decide a solicitação não recebe.
+    expect(await of(comex, request.id)).toEqual([]);
+
+    // Devolução: a contraproposta passa a vez ao fornecedor.
+    await neg.proposeCounter(
+      admin,
+      request.id,
+      offer({ price: 1.3, text: "Fechamos a 1,30?" }),
+    );
+    fresh = (await store.get("supplier_requests", request.id))!;
+    expect(lib.negotiationTurn(fresh)).toBe("supplier");
+    expect(await of(buyer, request.id)).toEqual([]);
+    expect(await of(supplierA, request.id)).toHaveLength(1);
+
+    // Ele propõe de novo: volta para a Wellmix, uma pendência só.
+    await neg.respondToProposal(
+      supplierA,
+      request.id,
+      "counter",
+      offer({ price: 1.35, text: "Podemos 1,35" }),
+    );
+    fresh = (await store.get("supplier_requests", request.id))!;
+    expect(lib.negotiationTurn(fresh)).toBe("wellmix");
+    expect(await of(supplierA, request.id)).toEqual([]);
+    expect(await of(buyer, request.id)).toHaveLength(1);
+    // Repetir a leitura não duplica.
+    expect(await of(buyer, request.id)).toHaveLength(1);
+  });
+
   it("a solicitação fica na etapa Responder a solicitação enquanto a vez é dele", async () => {
     const { pendingTasksFor, supplierGroup } =
       await import("@/lib/services/tasks");

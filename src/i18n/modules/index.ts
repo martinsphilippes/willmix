@@ -90,6 +90,7 @@ import * as rfqStandby from "./rfq-standby";
 import * as sourcingStandby from "./sourcing-standby";
 import * as portalAccess from "./portal-access";
 import * as supplierTasks from "./supplier-tasks";
+import * as turns from "./turns";
 import * as superplanLogic from "./superplan-logic";
 import * as dieCutStep from "./die-cut-step";
 import * as sheetProgress from "./sheet-progress";
@@ -337,6 +338,7 @@ export const modulesPt = {
   ...newProduct.pt,
   ...partyFamilies.pt,
   ...portfolio.pt,
+  ...turns.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...messages.en,
@@ -505,6 +507,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...newProduct.en,
   ...partyFamilies.en,
   ...portfolio.en,
+  ...turns.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...messages.zh,
@@ -673,4 +676,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...newProduct.zh,
   ...partyFamilies.zh,
   ...portfolio.zh,
+  ...turns.zh,
 };

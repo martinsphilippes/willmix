@@ -141,6 +141,13 @@ export interface OrdersTableRow {
   dueLabel: string;
   updated: string;
   updatedLabel: string;
+  /**
+   * Quem está com a vez (docs/TURNS.md): a parte (o filtro guarda), o texto
+   * ("Aguardando cliente") e o tom do selo; vazio quando ninguém.
+   */
+  turn: string;
+  turnLabel: string;
+  turnTone: "brand" | "warning" | "info" | "danger" | "neutral";
   /** Total da tabela de itens (só com os detalhes da Wellmix). */
   itemsTotals?: OrdersItemsTotals | null;
 }
@@ -154,6 +161,8 @@ export interface OrdersTableLabels {
   supplier: string;
   phase: string;
   state: string;
+  /** "Com quem está" (docs/TURNS.md). */
+  turn: string;
   progress: string;
   due: string;
   updated: string;
@@ -253,6 +262,8 @@ export function OrdersTable({
     /** Valor, texto e, nos marcos, o bloco (grupo da lista). */
     phases: Array<[string, string, string?]>;
     states: RowState[];
+    /** Com quem está a vez: as partes presentes (valor, texto). */
+    turns: Array<[string, string]>;
   };
 }) {
   const router = useRouter();
@@ -361,6 +372,14 @@ export function OrdersTable({
   const phases: Array<[string, string, string?]> =
     paging?.phases ?? localPhases;
   const states = paging?.states ?? localStates;
+  // Com quem está a vez: as partes das linhas (sem o servidor paginando).
+  const localTurns = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of rows)
+      if (r.turn && !seen.has(r.turn)) seen.set(r.turn, r.turnLabel);
+    return [...seen.entries()] as Array<[string, string]>;
+  }, [rows]);
+  const turns = paging?.turns ?? localTurns;
 
   const shown = useMemo(
     () =>
@@ -471,6 +490,9 @@ export function OrdersTable({
             {showSupplier ? head("supplier", labels.supplier) : null}
             {head("phase", labels.phase)}
             {head("state", labels.state)}
+            <th className="px-2.5 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
+              {labels.turn}
+            </th>
             {head("progress", labels.progress, "w-44")}
             {head("due", labels.due)}
             {head("updated", labels.updated)}
@@ -516,6 +538,7 @@ export function OrdersTable({
                 states.map((s) => [s, labels.states[s]]),
               ),
             )}
+            {filterCell(select("w", labels.turn, turns))}
             {filterCell(
               <select
                 value={filters.pr}
@@ -631,6 +654,16 @@ export function OrdersTable({
                       {labels.states[r.state]}
                     </Badge>
                   </td>
+                  <td
+                    className="whitespace-nowrap px-2.5 py-2"
+                    data-orders-turn={r.turn || undefined}
+                  >
+                    {r.turn ? (
+                      <Badge tone={r.turnTone}>{r.turnLabel}</Badge>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="px-2.5 py-2">
                     <JourneyBar
                       progress={r.progress}
@@ -655,7 +688,9 @@ export function OrdersTable({
                   <td className="whitespace-nowrap px-2.5 py-2 text-right">
                     <OpenLink
                       href={r.href}
-                      label={r.isRequest ? labels.openRequest : labels.openOrder}
+                      label={
+                        r.isRequest ? labels.openRequest : labels.openOrder
+                      }
                       className="align-middle"
                     />
                     {chatTargetFromHref(r.href) ? (

@@ -7,6 +7,9 @@ import {
   isWellmix,
 } from "@/lib/auth/permissions";
 import { canAddProducts, canDeleteRequest } from "@/lib/services/requests";
+import { canConfirmAs, requestStepsFor } from "@/lib/services/request-turns";
+import { nextStepText } from "@/lib/services/request-list";
+import { turnTone, turnWaitingKey } from "@/lib/turn";
 import {
   cancelledOrderIds,
   requestDisplayStatus,
@@ -139,6 +142,20 @@ export default async function RequestBatchPage({
     ? rows.filter((r) => awaitingStrategySend(r))
     : [];
   const number = rows.find((r) => r.number)?.number ?? null;
+  // De quem é a vez (dono, 18/11/2026; docs/TURNS.md): a mesma regra da
+  // lista, por produto; o cabeçalho junta as diferentes.
+  const steps = await requestStepsFor(user, rows, orders);
+  const turns = [
+    ...new Map(
+      rows
+        .map((r) => steps.get(r.id)!)
+        .filter((n) => !!n.who && n.key !== "none")
+        .map((n) => [`${n.who}|${n.key}`, n]),
+    ).values(),
+  ];
+  // O cliente que confirma a venda: o cartão de confirmação fica na página
+  // da encomenda (a pendência "Confirmar pedido" leva até ele).
+  const confirmable = rows.find((r) => canConfirmAs(user, r)) ?? null;
 
   const count = (v: string | string[] | undefined) =>
     typeof v === "string" && /^\d+$/.test(v) ? Number(v) : 0;
@@ -170,6 +187,28 @@ export default async function RequestBatchPage({
               <span className="font-medium text-zinc-700">{customer.name}</span>
             ) : null}
             <span>{formatDate(rows[0].createdAt, t)}</span>
+            {turns.map((n) => (
+              <span
+                key={`${n.who}|${n.key}`}
+                className="inline-flex flex-wrap items-center gap-2"
+                data-request-turn={n.who!}
+              >
+                <Badge tone={turnTone(n.who!)}>
+                  {user.role === "customer" && n.who === "customer"
+                    ? t("turn.waiting.you")
+                    : t(turnWaitingKey(n.who!))}
+                </Badge>
+                <span
+                  className="text-sm text-zinc-700"
+                  data-request-next={n.key}
+                >
+                  {t("reqList.col.next")}:{" "}
+                  <span className="font-medium text-zinc-900">
+                    {nextStepText(t, n)}
+                  </span>
+                </span>
+              </span>
+            ))}
           </span>
         }
         actions={
@@ -194,6 +233,16 @@ export default async function RequestBatchPage({
       {typeof error === "string" && error ? (
         <div className="mb-3">
           <Alert tone="danger">{errorText(error)}</Alert>
+        </div>
+      ) : null}
+      {confirmable ? (
+        <div className="mb-3" data-batch-confirm>
+          <Alert tone="warning">
+            {t("turn.batch.confirm")}{" "}
+            <TextLink href={`/app/requests/${confirmable.id}`}>
+              {t("reqList.next.confirm")} →
+            </TextLink>
+          </Alert>
         </div>
       ) : null}
       {count(deleted) > 0 ? (

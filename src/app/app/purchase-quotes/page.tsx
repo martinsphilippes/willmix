@@ -5,6 +5,7 @@ import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
+import { turnTone, turnWaitingKey } from "@/lib/turn";
 import { getStore, type PurchaseQuote } from "@/lib/db";
 import {
   quoteClosed,
@@ -197,6 +198,32 @@ export default async function PurchaseQuotesPage() {
                       >
                         {t(`quote.status.${state}` as DictionaryKey)}
                       </Badge>
+                      {/* De quem é a vez (docs/TURNS.md): no prazo, os
+                          fornecedores respondem; depois, a Wellmix escolhe,
+                          decide ou aprova. */}
+                      {state === "open" ||
+                      state === "closed" ||
+                      state === "empty" ||
+                      state === "chosen" ? (
+                        <span
+                          className="ml-1 inline-block"
+                          data-quote-turn={
+                            state === "open" ? "supplier" : "wellmix"
+                          }
+                        >
+                          <Badge
+                            tone={turnTone(
+                              state === "open" ? "supplier" : "wellmix",
+                            )}
+                          >
+                            {t(
+                              turnWaitingKey(
+                                state === "open" ? "supplier" : "wellmix",
+                              ),
+                            )}
+                          </Badge>
+                        </span>
+                      ) : null}
                     </Td>
                     <Td>
                       <OpenLink

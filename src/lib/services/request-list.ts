@@ -1,6 +1,18 @@
 import "server-only";
 
 import type { Request, Role, StageKey } from "@/lib/db";
+import type {
+  PurchaseDecisionChoice,
+  PurchaseDecisionStatus,
+  PurchaseQuoteStatus,
+  SupplierRequestStatus,
+} from "@/lib/db/schema";
+import {
+  partyOfRole,
+  turnWaitingKey,
+  turnWithKey,
+  type TurnParty,
+} from "@/lib/turn";
 import type { Translate } from "@/i18n";
 import type { RequestDisplayStatus } from "./order-status";
 import { orderMilestoneText } from "@/lib/milestones";
@@ -25,9 +37,15 @@ export const LISTED_SITUATIONS = REQUEST_SITUATIONS.filter(
   (k): k is Exclude<RequestSituation, "ordered"> => k !== "ordered",
 );
 
-/** Em aberto (RFQ, cotação e sinal só existem em solicitações antigas). */
+/**
+ * Em aberto: toda encomenda que ainda depende de uma ação, de quem for a vez
+ * (a venda aguardando o cliente também, dono 18/11/2026; RFQ, cotação e sinal
+ * só existem em solicitações antigas; "Fornecedor selecionado" é a vencedora
+ * da cotação de compra seguindo para a solicitação ao fornecedor).
+ */
 const OPEN: readonly string[] = [
   "REQUESTED",
+  "AWAITING_CUSTOMER",
   "RFQ_OPEN",
   "QUOTATION_RECEIVED",
   "SUPPLIER_SELECTED",
@@ -84,10 +102,41 @@ export function matchesRequest(
     .some((v) => v.includes(term));
 }
 
-export type NextStepKey = "new" | "send" | "strategy" | "order" | "none";
+export type NextStepKey =
+  | "new"
+  | "send"
+  | "strategy"
+  | "order"
+  | "none"
+  /** Venda pela Wellmix: o cliente confirma o pedido (docs/ORDER_TERMS.md). */
+  | "confirm"
+  /** Ninguém pode confirmar: falta o login do cliente (vai ao administrador). */
+  | "login"
+  /** Pedido direto: a Diretoria aprova a estratégia. */
+  | "strategy_approve"
+  /** Pedido direto aprovado: gerar o pedido de compra. */
+  | "strategy_order"
+  /** Cotação de compra no prazo: os fornecedores respondem. */
+  | "quote_answer"
+  /** Cotação encerrada: o Comprador escolhe a vencedora. */
+  | "quote_choose"
+  /** Cotação sem resposta: o Comprador decide o que fazer. */
+  | "quote_empty"
+  /** Vencedora escolhida: a Diretoria aprova. */
+  | "quote_approve"
+  /** Solicitação ao fornecedor aberta (ou contraproposta): ele responde. */
+  | "supplier_answer"
+  /** Fornecedor respondeu: a Wellmix decide. */
+  | "supplier_decide"
+  /** Amostragem da solicitação aprovada: o fornecedor envia. */
+  | "sampling_send"
+  /** Amostragem enviada: a Wellmix valida. */
+  | "sampling_validate"
+  /** Solicitação ao fornecedor aprovada: gerar o pedido de compra. */
+  | "purchase_order";
 
-/** Com quem está a vez: equipe Wellmix ou o papel da etapa do pedido. */
-export type NextStepWho = "wellmix" | Role | null;
+/** Com quem está a vez (src/lib/turn.ts): a equipe Wellmix ou a parte de fora. */
+export type NextStepWho = TurnParty | null;
 
 export interface NextStep {
   key: NextStepKey;
@@ -99,8 +148,77 @@ export interface NextStep {
 }
 
 /**
- * Próximo passo da solicitação e com quem está (função pura): a solicitação
- * nova espera a Wellmix; a que virou pedido segue a etapa atual dele.
+ * Onde a encomenda está na compra (Estratégia → Cotação → Solicitação ao
+ * fornecedor), lido das tabelas dela (src/lib/services/request-turns.ts).
+ */
+export interface PurchaseProgress {
+  decision: {
+    status: PurchaseDecisionStatus;
+    choice: PurchaseDecisionChoice;
+    orderId: string | null;
+  } | null;
+  /**
+   * Cotação de compra da estratégia: a situação e, aberta, a fase pelas
+   * respostas (`quoteClosed`/`quoteEmpty` de services/purchase-quote.ts).
+   */
+  quote: {
+    status: PurchaseQuoteStatus;
+    phase: "answering" | "choose" | "empty";
+  } | null;
+  /**
+   * Solicitações ao fornecedor nascidas da vencedora: a situação, de quem é
+   * a vez na negociação (`negotiationTurn`, com a contraproposta da Wellmix
+   * voltando ao fornecedor) e na amostragem depois de aprovada
+   * (`samplingTurn`).
+   */
+  supplierRequests: {
+    status: SupplierRequestStatus;
+    negotiation: "supplier" | "wellmix" | null;
+    sampling: "supplier" | "wellmix" | null;
+  }[];
+}
+
+/** O próximo passo da compra (estratégia, cotação, solicitação); nulo fora dela. */
+function purchaseStep(p: PurchaseProgress | null | undefined): NextStep | null {
+  const d = p?.decision;
+  if (!p || !d || d.status === "rejected") return null;
+  if (d.status === "pending")
+    return { key: "strategy_approve", who: "wellmix" };
+  if (d.choice === "last_supplier")
+    return d.orderId ? null : { key: "strategy_order", who: "wellmix" };
+  const q = p.quote;
+  if (!q || q.status === "cancelled") return null;
+  if (q.status === "chosen") return { key: "quote_approve", who: "wellmix" };
+  if (q.status === "open")
+    return q.phase === "answering"
+      ? { key: "quote_answer", who: "supplier" }
+      : {
+          key: q.phase === "empty" ? "quote_empty" : "quote_choose",
+          who: "wellmix",
+        };
+  // Vencedora aprovada: segue a Solicitação ao fornecedor (a negociação, a
+  // amostragem e o pedido de compra), a primeira que ainda espera alguém.
+  const list = p.supplierRequests;
+  if (list.some((r) => r.negotiation === "supplier"))
+    return { key: "supplier_answer", who: "supplier" };
+  if (list.some((r) => r.negotiation === "wellmix"))
+    return { key: "supplier_decide", who: "wellmix" };
+  const approved = list.filter((r) => r.status === "approved");
+  if (approved.some((r) => r.sampling === "supplier"))
+    return { key: "sampling_send", who: "supplier" };
+  if (approved.some((r) => r.sampling === "wellmix"))
+    return { key: "sampling_validate", who: "wellmix" };
+  if (approved.length) return { key: "purchase_order", who: "wellmix" };
+  return null;
+}
+
+/**
+ * Próximo passo da solicitação e com quem está (função pura; a fonte comum
+ * da situação, do Próximo passo, dos filtros e das Pendências, dono
+ * 18/11/2026, docs/TURNS.md): a venda pela Wellmix espera o cliente
+ * confirmar; a encomenda espera o envio para cotação, a estratégia, a
+ * cotação e a solicitação ao fornecedor; a que virou pedido segue a etapa
+ * atual dele.
  */
 export function requestNextStep(input: {
   status: Request["status"];
@@ -110,6 +228,8 @@ export function requestNextStep(input: {
     status: StageKey | "CANCELLED";
     responsibleRole: Role | null;
     dueAt: string | null;
+    /** Fornecedor do pedido é uma Trading: a vez aparece como Trading. */
+    trading?: boolean;
   } | null;
   today: string;
   /**
@@ -117,6 +237,14 @@ export function requestNextStep(input: {
    * cotação ("send") ou já na fila da Estratégia de Compra ("queue").
    */
   strategy?: "send" | "queue" | null;
+  /** Estratégia, cotação e solicitação ao fornecedor da encomenda. */
+  purchase?: PurchaseProgress | null;
+  /**
+   * Venda aguardando o cliente: há login do cliente que pode confirmar?
+   * `false` = ninguém pode (o caso vai para o administrador); sem a
+   * informação, vale que há.
+   */
+  customerLogin?: boolean | null;
 }): NextStep {
   const { status, display } = input;
   if (status === "CANCELLED" || display === "ORDER_CANCELLED")
@@ -128,11 +256,17 @@ export function requestNextStep(input: {
       return { key: "order", who: null, stage: o.status, late: false };
     return {
       key: "order",
-      who: o.responsibleRole,
+      who: partyOfRole(o.responsibleRole, { trading: o.trading }),
       stage: o.status,
       late: !!o.dueAt && o.dueAt.slice(0, 10) < input.today,
     };
   }
+  if (status === "AWAITING_CUSTOMER")
+    return input.customerLogin === false
+      ? { key: "login", who: "unassigned" }
+      : { key: "confirm", who: "customer" };
+  const purchase = purchaseStep(input.purchase);
+  if (purchase) return purchase;
   if (status === "REQUESTED" && input.strategy === "send")
     return { key: "send", who: "wellmix" };
   if (status === "REQUESTED" && input.strategy === "queue")
@@ -155,9 +289,12 @@ export function nextStepText(t: Translate, n: NextStep): string {
   return t(`reqList.next.${n.key}`);
 }
 
-/** Com quem está a vez (tela e CSV); vazio quando ninguém. */
+/** Com quem está a vez (tela e CSV): "com o cliente"; vazio quando ninguém. */
 export function nextStepWho(t: Translate, n: NextStep): string {
-  if (!n.who) return "";
-  if (n.who === "wellmix") return t("reqList.who.wellmix");
-  return t("reqList.who.role", { role: t(`role.${n.who}`) });
+  return n.who ? t(turnWithKey(n.who)) : "";
+}
+
+/** A situação de quem está com a vez ("Aguardando cliente"); vazio quando ninguém. */
+export function nextStepWaiting(t: Translate, n: NextStep): string {
+  return n.who ? t(turnWaitingKey(n.who)) : "";
 }

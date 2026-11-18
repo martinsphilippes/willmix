@@ -23,6 +23,7 @@ const row = (
   step: "ordBooking",
   due: "",
   updated: "2026-11-12",
+  turn: "supplier",
   items: [
     { name: `Item ${n}`, variant: null, state: "active", step: "ordBooking" },
   ],
@@ -92,5 +93,18 @@ describe("filtro e página da tela Pedidos (servidor e navegador)", () => {
         opts,
       ).map((r) => r.number),
     ).toEqual(["#2"]);
+  });
+
+  it("com quem está a vez (docs/TURNS.md): filtra pela parte; sem filtro, todas", () => {
+    const rows = [
+      row(1, { turn: "supplier" }),
+      row(2, { turn: "wellmix" }),
+      row(3, { turn: "" }),
+    ];
+    const numbers = (w: string) =>
+      filterOrderRows(rows, { w }, null, opts).map((r) => r.number);
+    expect(numbers("supplier")).toEqual(["#1"]);
+    expect(numbers("wellmix")).toEqual(["#2"]);
+    expect(numbers("")).toEqual(["#1", "#2", "#3"]);
   });
 });

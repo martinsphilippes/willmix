@@ -1882,3 +1882,16 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Pedido do dono** (17 e 18/11/2026; docs/TRADE_COMERCIAL.md): levar o painel do Projeto Campineira para o portal, começando pelo controle de dias de cliente sem atendimento. Decisões: o atendimento só vale confirmado por quem atendeu e por quem foi atendido; prazo único (30 dias) que o administrador muda; pendência só dos clientes acompanhados; grupos montados à mão; "Gerir carteira e trade" só do administrador por padrão.
 - **Aditivo:** tabelas novas `customer_groups` e `customer_attendances`; colunas novas e opcionais `parties.customerGroupId` (com índice) e `users.sellerCode`; `parties.ownerUserId` (que já existia, sem uso) passa a ser o responsável escolhido; configuração nova `attendanceSlaDays`; telas novas (`/app/portfolio`, a ficha do cliente na carteira, os grupos e a página pública `/atendimento/<código>`); tela nova `portfolio` (padrão da função Vendas) e ação nova `trade.manage`; dois tipos novos de pendência. Nada é apagado; nenhuma tela, rota ou campo muda de lugar. Antes de o esquema ser publicado, as leituras novas voltam vazias (sem quebrar as telas de hoje).
 - Testes: `tests/unit/portfolio.test.ts` e `tests/e2e/portfolio.spec.ts`.
+
+## De quem é a vez: responsabilidade e Pendências em todos os fluxos
+
+- **Pedido do dono** (18/11/2026): se existe uma ação, mostrar a ação e de quem é a vez e pôr a ação nas Pendências de quem pode executá-la; "Em aberto" para tudo que ainda depende de ação, inclusive aguardando o cliente; a situação e o filtro por quem está com a vez; a mesma regra em todas as telas (docs/TURNS.md).
+- **Como ficou**:
+  - Fonte única: `src/lib/turn.ts` e `requestNextStep` (request-list.ts), alimentada por `request-turns.ts` (estratégia, cotação, negociação, amostragem e o login que confirma) e, no pedido, pelo responsável do marco (`resp`).
+  - Encomendas: a Situação é quem está com a vez, o Próximo passo é a ação com quem, "Em aberto" inclui a venda aguardando o cliente, e há o filtro "Com quem está" (também no CSV).
+  - O detalhe e o lote mostram a vez e o Próximo passo; a coluna e o filtro "Com quem está" estão em Pedidos, com o selo no detalhe do pedido; cotações e negociação usam os mesmos textos.
+  - Pendências novas: "Confirmar pedido" (o login do cliente que confirma), "Login do cliente a definir" (administrador) e "Decidir a resposta do fornecedor" (quem decide a solicitação).
+  - Painel de SLA: venda aguardando o cliente com o prazo vencido.
+- **Textos**: "Solicitação nova: aguardando a Wellmix" virou "Analisar a solicitação" (a situação já diz de quem é a vez). A negociação passou de "Esperando o fornecedor/a Wellmix" para "Aguardando fornecedor/Wellmix". O "com quem" do Próximo passo ficou "com o fornecedor" (antes "com: Fornecedor").
+- **Não mudou**: as situações gravadas (ficam na dica), as regras de cada fluxo, as permissões e as pendências de antes. Sem mudança no banco: tudo é calculado na leitura, e os registros em andamento já mostram a vez.
+- Testes: `tests/unit/turns.test.ts`, `tests/unit/turns-flow.test.ts`, `tests/unit/supplier-request-negotiation.test.ts` ("de quem é a vez"), `tests/unit/orders-filter.test.ts`, `tests/unit/request-next-step.test.ts` e `tests/e2e/turns.spec.ts`.
