@@ -95,6 +95,20 @@ Entram só os parceiros ativos dos quatro tipos. O resto do fluxo não muda:
   - a Trading, o Supplier e a Factory já tinham "Cotações de compra" no perfil de telas (Acessos externos);
   - eles entram com o papel `supplier` e veem só os próprios convites, como o Fornecedor.
 
+## Condição de pagamento, início da produção e fatura (dono, 18/11/2026)
+
+Quem vence a cotação vira o fornecedor do pedido (decisão 1), então os três quadros do fornecedor na ficha (`/app/parties/<id>`) valem para os quatro tipos: Fornecedor, Trading, Supplier e Factory.
+
+- **Condição de pagamento ao fornecedor** (`#payment-terms`, quem abre o Financeiro): o pedido novo copia a condição, e as travas do pedido de compra esperam por ela (sinal ou conta corrente). Antes, só o Fornecedor gravava, e o pedido de uma Trading vencedora ficava parado nessa espera.
+- **Início da produção** (`#production-start`, só o administrador): dias depois do contrato assinado. Vazio: o padrão das Configurações.
+- **Fatura ativa** (`#invoice-days`, só o administrador): dias depois dos documentos do embarque conferidos. Vazio: o padrão das Configurações.
+- **No servidor**: `saveSupplierPaymentTerms`, `setSupplierProductionStartDays` e `setSupplierInvoiceDays` aceitam os quatro tipos (`servesFamilies`). Os outros tipos continuam recusados.
+- **Continuam só do Fornecedor**:
+  - a compra direta pela "última compra";
+  - a página de conta do fornecedor (`/app/suppliers/<id>`, só consulta);
+  - o preenchimento automático da cidade, da loja e do telefone na ficha de compra (`src/lib/services/sheet-records.ts`).
+- **Testes**: `tests/unit/supplier-settings-types.test.ts` e `tests/e2e/partner-order-settings.spec.ts`.
+
 ## Dados reaproveitados e convertidos
 
 - **Reaproveitados**:

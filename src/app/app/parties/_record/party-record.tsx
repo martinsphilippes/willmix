@@ -141,6 +141,10 @@ export async function renderPartyRecord({
   if (!party) notFound();
   const t = await getT();
   const isSupplier = party.type === "supplier";
+  // Pode ser o fornecedor do pedido de compra (vence a cotação; Fornecedor,
+  // Trading, Supplier e Factory, docs/PARTNER_FAMILIES.md): condição de
+  // pagamento, início da produção e fatura também valem para ele.
+  const ordersSupplier = servesFamilies(party.type);
   const isCustomer = party.type === "customer";
   const [users, visits, products, certs, allUsers, settings] =
     await Promise.all([
@@ -221,7 +225,7 @@ export async function renderPartyRecord({
   const accessError = userError ? partyError(t, error) : null;
   const errorText =
     termsError || userError || familyError ? null : partyError(t, error);
-  const currentTerms = isSupplier
+  const currentTerms = ordersSupplier
     ? parseTerms(party.paymentTerms ?? null)
     : null;
   /* Modalidade de operação do cliente (RADAR): nada presumido; aviso só na importação própria sem RADAR.
@@ -789,7 +793,7 @@ export async function renderPartyRecord({
               </SubmitButton>
             </form>
           </Card>
-          {isSupplier && isAdmin(user) ? (
+          {ordersSupplier && isAdmin(user) ? (
             /* Início da produção: dias depois do contrato assinado, por
                fornecedor (só o administrador). Vazio: o padrão das Configurações. */
             <Card
@@ -832,7 +836,7 @@ export async function renderPartyRecord({
               </form>
             </Card>
           ) : null}
-          {isSupplier && isAdmin(user) ? (
+          {ordersSupplier && isAdmin(user) ? (
             /* Fatura ativa (mapa R24): dias depois dos documentos do
                embarque conferidos. Vazio: o padrão das Configurações. */
             <Card
@@ -875,7 +879,7 @@ export async function renderPartyRecord({
               </form>
             </Card>
           ) : null}
-          {isSupplier && canOpen(user, "finance") ? (
+          {ordersSupplier && canOpen(user, "finance") ? (
             /* Condição de pagamento negociada com o fornecedor: os pedidos novos
                copiam; vira parcelas em Contas a pagar. Financeiro: só o admin. */
             <Card

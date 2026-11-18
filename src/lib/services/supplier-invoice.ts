@@ -9,6 +9,7 @@ import { audit } from "./audit";
 import { isFinance } from "./import-flow";
 import { notify } from "./notifications";
 import { loadFunctionDefs } from "./team-functions";
+import { servesFamilies } from "@/lib/party-families";
 
 /*
  * Fatura ativa em N dias (mapa R24; docs/SHIPPING_DOCS.md). Decisão do dono
@@ -40,7 +41,8 @@ export async function setSupplierInvoiceDays(
 ) {
   if (!isAdmin(user)) throw new ForbiddenError();
   const supplier = await getStore().get("parties", supplierId);
-  if (!supplier || supplier.type !== "supplier")
+  // Os quatro tipos que podem ser o fornecedor do pedido (docs/PARTNER_FAMILIES.md).
+  if (!supplier || !servesFamilies(supplier.type))
     throw new SupplierInvoiceError("not_supplier");
   if (days !== null && (!Number.isInteger(days) || days < 0 || days > 365))
     throw new SupplierInvoiceError("invoice_days_invalid");
