@@ -101,6 +101,8 @@ export const FLOW_STEPS: FlowStep[] = [
   // Carteira e atendimento ao cliente (dono, 18/11/2026;
   // docs/TRADE_COMERCIAL.md): dias sem atendimento e o prazo.
   s("sales", "portfolio", "portfolio", "/app/portfolio"),
+  // Plano de ação Trade (docs/TRADE_COMERCIAL.md, PR 2).
+  s("sales", "tradePlan", "portfolio", "/app/portfolio/plan"),
   // Só o contador, no item que já existe.
   s("finance", "finance", "finance", "/app/finance", true),
   s("registry", "products", "products", "/app/products", true),
@@ -322,6 +324,7 @@ const KIND_STEP: Partial<Record<string, Ref>> = {
   // a confirmação do atendimento.
   customer_attendance: "sales/portfolio",
   attendance_confirm: "sales/portfolio",
+  trade_activity: "sales/tradePlan",
   // Encomenda do cliente e reposição (docs/PURCHASE_DEMAND.md).
   new_request: "new-product/demands",
   // Venda aguardando o cliente sem login que possa confirmar (docs/TURNS.md).

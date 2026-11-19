@@ -115,6 +115,7 @@ export function kindGate(
     // é decidido em tasksForFunctions; aqui, só a tela.
     case "customer_attendance":
     case "attendance_confirm":
+    case "trade_activity":
       return { screen: "portfolio" };
     case "sourcing_demand":
       return { screen: "sourcing" };
@@ -214,7 +215,8 @@ export function tasksForFunctions<T extends Filterable>(
     // confirmação); cliente sem responsável fica com quem gere a carteira.
     if (
       task.kind === "customer_attendance" ||
-      task.kind === "attendance_confirm"
+      task.kind === "attendance_confirm" ||
+      task.kind === "trade_activity"
     ) {
       if (!canOpen(user, "portfolio")) continue;
       if (

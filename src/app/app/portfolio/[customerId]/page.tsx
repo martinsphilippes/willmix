@@ -31,6 +31,8 @@ import {
   saveCustomerPortfolioAction,
 } from "../../actions/portfolio";
 import { CopyLink } from "../_components/copy-link";
+import { tradeActivitiesFor } from "@/lib/services/trade-plan";
+import { ActivityList } from "../plan/_components/activity-list";
 import {
   STANDING_TONE,
   brasiliaLocal,
@@ -68,6 +70,7 @@ export default async function PortfolioCustomerPage({
   const now = currentTime();
   const view = await loadPortfolioCustomer(user, customerId, now);
   if (!view) notFound();
+  const activities = await tradeActivitiesFor(user, { customerId }, now);
   const { customer, row } = view;
   const errorText = portfolioError(t, sp.error);
   const nowIso = now.toISOString();
@@ -265,6 +268,34 @@ export default async function PortfolioCustomerPage({
                 </SubmitButton>
               </div>
             </form>
+          </Card>
+
+          <Card
+            dense
+            title={t("tradePlan.section.title")}
+            actions={
+              <span className="flex flex-wrap gap-3 text-xs">
+                {view.canManage ? (
+                  <TextLink
+                    href={`/app/portfolio/plan?new=1&customer=${customer.id}#new`}
+                    data-trade-new-link
+                  >
+                    {t("tradePlan.section.new")}
+                  </TextLink>
+                ) : null}
+                <TextLink href="/app/portfolio/plan">
+                  {t("tradePlan.section.all")}
+                </TextLink>
+              </span>
+            }
+          >
+            {activities.length ? (
+              <ActivityList t={t} rows={activities} />
+            ) : (
+              <p className="text-sm text-zinc-500">
+                {t("tradePlan.section.emptyCustomer")}
+              </p>
+            )}
           </Card>
         </div>
 

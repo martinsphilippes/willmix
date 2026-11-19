@@ -2173,6 +2173,48 @@ export interface CustomerAttendance extends BaseRow {
   cancelledByUserId: string | null;
 }
 
+/**
+ * Plano de ação Trade (docs/TRADE_COMERCIAL.md, PR 2; a tela 12 do painel do
+ * Projeto Campineira): a ação com responsável e prazo, ligada ao cliente ou
+ * ao grupo econômico (e, do diagnóstico, ao produto). Aberta = pendência do
+ * responsável e prazo no Painel de SLA; concluída com a resposta ou a
+ * evidência.
+ */
+export const TRADE_ACTIVITY_STATUSES = [
+  "pending",
+  "investigating",
+  "pilot",
+  "done",
+  "cancelled",
+] as const;
+export type TradeActivityStatus = (typeof TRADE_ACTIVITY_STATUSES)[number];
+
+export interface TradeActivity extends BaseRow {
+  title: string;
+  description: string | null;
+  /** Cliente da ação (ou nulo, quando é do grupo). */
+  customerId: string | null;
+  /** Grupo econômico da ação (ou nulo, quando é de um cliente). */
+  groupId: string | null;
+  /** Produto (CODPROD do Sankhya) quando a ação veio do diagnóstico. */
+  productCode: string | null;
+  productName: string | null;
+  /** Foco do diagnóstico (proteger líderes, ampliar alcance…); nulo à mão. */
+  focus: string | null;
+  responsibleUserId: string;
+  /** Prazo (AAAA-MM-DD, dia de Brasília). */
+  dueDate: string;
+  status: TradeActivityStatus;
+  /** Resposta da gestão e evidências (texto). */
+  notes: string | null;
+  /** Fotos e arquivos de evidência (documents). */
+  documentIds: string[] | null;
+  doneAt: string | null;
+  doneByUserId: string | null;
+  cancelledAt: string | null;
+  createdByUserId: string | null;
+}
+
 export interface CartItem extends BaseRow {
   userId: string;
   customerId: string;
@@ -4102,6 +4144,7 @@ export interface Tables {
   customer_groups: CustomerGroup;
   economic_group_shares: EconomicGroupShare;
   customer_attendances: CustomerAttendance;
+  trade_activities: TradeActivity;
   freight_tariffs: FreightTariff;
   product_variants: ProductVariant;
   conversations: Conversation;
@@ -5402,6 +5445,33 @@ export const TABLES: Record<TableName, TableDef> = {
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
       { key: "by_attendant", type: "key", columns: ["attendedByUserId"] },
+      { key: "by_status", type: "key", columns: ["status"] },
+    ],
+  },
+  trade_activities: {
+    label: "Plano de ação Trade (ações com responsável e prazo)",
+    columns: {
+      title: str(200, true),
+      description: text(),
+      customerId: id(false),
+      groupId: id(false),
+      productCode: str(20),
+      productName: str(300),
+      focus: str(20),
+      responsibleUserId: id(),
+      dueDate: str(10, true),
+      status: enumOf(TRADE_ACTIVITY_STATUSES),
+      notes: text(),
+      documentIds: json(),
+      doneAt: datetime(),
+      doneByUserId: id(false),
+      cancelledAt: datetime(),
+      createdByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_customer", type: "key", columns: ["customerId"] },
+      { key: "by_group", type: "key", columns: ["groupId"] },
+      { key: "by_responsible", type: "key", columns: ["responsibleUserId"] },
       { key: "by_status", type: "key", columns: ["status"] },
     ],
   },

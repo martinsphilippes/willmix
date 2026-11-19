@@ -1250,6 +1250,35 @@ create index if not exists "customer_attendances_by_status" on public."customer_
 create index if not exists "customer_attendances_created" on public."customer_attendances" ("createdAt");
 create index if not exists "customer_attendances_created_id" on public."customer_attendances" ("createdAt", "id");
 
+create table if not exists public."trade_activities" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."trade_activities" enable row level security;
+alter table public."trade_activities" add column if not exists "title" text;
+alter table public."trade_activities" add column if not exists "description" text;
+alter table public."trade_activities" add column if not exists "customerId" text;
+alter table public."trade_activities" add column if not exists "groupId" text;
+alter table public."trade_activities" add column if not exists "productCode" text;
+alter table public."trade_activities" add column if not exists "productName" text;
+alter table public."trade_activities" add column if not exists "focus" text;
+alter table public."trade_activities" add column if not exists "responsibleUserId" text;
+alter table public."trade_activities" add column if not exists "dueDate" text;
+alter table public."trade_activities" add column if not exists "status" text;
+alter table public."trade_activities" add column if not exists "notes" text;
+alter table public."trade_activities" add column if not exists "documentIds" jsonb;
+alter table public."trade_activities" add column if not exists "doneAt" timestamptz;
+alter table public."trade_activities" add column if not exists "doneByUserId" text;
+alter table public."trade_activities" add column if not exists "cancelledAt" timestamptz;
+alter table public."trade_activities" add column if not exists "createdByUserId" text;
+create index if not exists "trade_activities_by_customer" on public."trade_activities" ("customerId");
+create index if not exists "trade_activities_by_group" on public."trade_activities" ("groupId");
+create index if not exists "trade_activities_by_responsible" on public."trade_activities" ("responsibleUserId");
+create index if not exists "trade_activities_by_status" on public."trade_activities" ("status");
+create index if not exists "trade_activities_created" on public."trade_activities" ("createdAt");
+create index if not exists "trade_activities_created_id" on public."trade_activities" ("createdAt", "id");
+
 create table if not exists public."cart_items" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),

@@ -103,6 +103,7 @@ export type TaskKind =
    */
   | "customer_attendance"
   | "attendance_confirm"
+  | "trade_activity"
   /** Venda aguardando o cliente: o login dele confirma (docs/TURNS.md). */
   | "customer_confirm"
   /** Venda aguardando o cliente sem login que possa confirmar (administrador). */
@@ -372,6 +373,7 @@ const KIND_ORDER: string[] = [
   "product_approve",
   "customer_attendance",
   "attendance_confirm",
+  "trade_activity",
   "new_request",
   "replenishment_request",
   "purchase_strategy",
@@ -1088,6 +1090,18 @@ export async function pendingTasksFor(
           await import("./portfolio")
         )
           .portfolioTaskDrafts(now)
+          .catch(() => [])
+      ).map((draft) => finish(draft, now)),
+    );
+  // Plano de ação Trade (docs/TRADE_COMERCIAL.md, PR 2): cada ação em aberto
+  // é pendência do responsável, com o prazo dela.
+  if (wellmix)
+    tasks.push(
+      ...(
+        await (
+          await import("./trade-plan")
+        )
+          .tradeTaskDrafts(now)
           .catch(() => [])
       ).map((draft) => finish(draft, now)),
     );

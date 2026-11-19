@@ -1895,3 +1895,9 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Textos**: "Solicitação nova: aguardando a Wellmix" virou "Analisar a solicitação" (a situação já diz de quem é a vez). A negociação passou de "Esperando o fornecedor/a Wellmix" para "Aguardando fornecedor/Wellmix". O "com quem" do Próximo passo ficou "com o fornecedor" (antes "com: Fornecedor").
 - **Não mudou**: as situações gravadas (ficam na dica), as regras de cada fluxo, as permissões e as pendências de antes. Sem mudança no banco: tudo é calculado na leitura, e os registros em andamento já mostram a vez.
 - Testes: `tests/unit/turns.test.ts`, `tests/unit/turns-flow.test.ts`, `tests/unit/supplier-request-negotiation.test.ts` ("de quem é a vez"), `tests/unit/orders-filter.test.ts`, `tests/unit/request-next-step.test.ts` e `tests/e2e/turns.spec.ts`.
+
+## Plano de ação Trade (Trade e Comercial, PR 2)
+
+- **Pedido do dono** (19/11/2026; docs/TRADE_COMERCIAL.md, "Entregue no PR 2"): trazer o "Plano de ação Trade" do painel do Projeto Campineira para o portal, junto com a base de vendas e o painel.
+- **Aditivo:** tabela nova `trade_activities`; telas novas (`/app/portfolio/plan`, `/app/portfolio/plan/<id>` e a exportação CSV); item novo no menu Vendas; tipo novo de pendência (`trade_activity`); quadro "Ações de trade" nas fichas do cliente e do grupo. Nada é apagado; nenhuma tela, rota ou campo muda de lugar.
+- Testes: `tests/unit/trade-plan.test.ts` e `tests/e2e/trade-plan.spec.ts`.

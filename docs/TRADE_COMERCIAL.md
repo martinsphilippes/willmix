@@ -162,7 +162,7 @@ Tudo no histórico (Auditoria): grupo criado, alterado, arquivado; cliente inclu
 | PR  | Conteúdo                                                                                                                                                                      | Depende de               |
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
 | 1   | Grupos econômicos, responsável pela carteira, atendimentos com confirmação dos dois lados, prazo em Configurações, "Carteira e atendimento" e a pendência "Atender {cliente}" | entregue (18/11/2026)    |
-| 2   | Atividades de trade com SLA (Pendências e Painel de SLA)                                                                                                                      | PR 1                     |
+| 2   | Atividades de trade com SLA (Pendências e Painel de SLA): o Plano de ação Trade                                                                                               | entregue (19/11/2026)    |
 | 3   | Fase 0: base de vendas do Sankhya e "dias sem compra" na carteira                                                                                                             | acesso à view no Sankhya |
 | 4   | Fase 2: painel do cliente e do grupo com as abas                                                                                                                              | PR 3                     |
 | 5   | Fase 3: sugestão de mix com IA                                                                                                                                                | PR 3                     |
@@ -183,3 +183,23 @@ Tudo no histórico (Auditoria): grupo criado, alterado, arquivado; cliente inclu
 - **Banco (aditivo):** `customer_groups`, `customer_attendances`, `parties.customerGroupId` e `users.sellerCode`.
 - **Auditoria:** `portfolio.group.*`, `portfolio.customer_group`, `portfolio.customer_owner`, `attendance.register`, `attendance.link`, `attendance.cancel`, `attendance.confirm`, `attendance.dispute` e `team.seller_code`.
 - **Fica para os próximos PRs:** exportação CSV da carteira e dos atendimentos, histórico de atendimentos também na ficha do grupo e no cadastro do cliente, e os totais por responsável no topo.
+
+## Entregue no PR 2 (Plano de ação Trade, 19/11/2026)
+
+Decisão do dono (19/11/2026): seguir com a base de vendas do Sankhya e o painel (PRs 3 e 4), "com o plano de ação junto". A consulta ao Sankhya funciona em produção (o histórico de compras da Campineira aparece na Nova solicitação).
+
+- **O que é:** a tela 12 do painel do Projeto Campineira ("Plano de ação Trade"), agora gravada no portal: no HTML os cartões ficavam só na sessão; aqui cada ação tem responsável, prazo e situação, e fica no histórico.
+- **Telas:** Vendas → "Plano de ação Trade" (`/app/portfolio/plan`): totais por situação (pendente de validação, investigar, piloto aprovado, atrasadas, concluídas), filtros por situação, responsável, grupo e busca, a lista e "Nova ação" (quem gere a carteira); a ação (`/app/portfolio/plan/<id>`) com a situação, a resposta da gestão e as fotos de evidência, e "Editar ação" (quem gere, enquanto aberta); "Exportar CSV" com os filtros da tela. Nas fichas do cliente e do grupo, o quadro "Ações de trade" com "Nova ação" já preenchendo o cliente ou o grupo.
+- **Situações (as do HTML):** Pendente de validação, Investigar, Piloto aprovado, Concluída; mais Cancelada (só quem gere). Em aberto: as três primeiras.
+- **Regras:**
+  - a ação é de um cliente ou de um grupo econômico (um dos dois);
+  - prazo de hoje em diante ao criar;
+  - concluir pede a resposta ou uma evidência (foto, até 6 por ação);
+  - o responsável avança a situação das ações dele;
+  - quem gere a carteira cria, edita, cancela e reabre a concluída;
+  - quem não gere vê as próprias e as da equipe abaixo (a árvore do Painel de SLA).
+- **Pendências e SLA:** cada ação em aberta é a pendência "Ação de trade: {ação}" do responsável, com o prazo dela (passado o prazo, atrasada); entra no Painel de SLA do responsável e da equipe acima. Concluída: "No prazo" ou "Com atraso".
+- **Avisos:** o responsável é avisado ao receber a ação; quem criou, quando ela é concluída.
+- **Do diagnóstico (PR 4):** a ação guarda o produto (CODPROD e nome) e o foco do diagnóstico, para o painel abrir "Nova ação" já preenchida a partir de um SKU.
+- **Banco (aditivo):** tabela nova `trade_activities`.
+- **Auditoria:** `trade.activity.create`, `trade.activity.update` e `trade.activity.status`.
