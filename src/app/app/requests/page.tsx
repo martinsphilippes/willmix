@@ -111,6 +111,7 @@ import {
   type ListedDraft,
 } from "@/lib/services/request-drafts";
 import { demandKind, type DemandKind } from "@/lib/purchase-demand";
+import { isStockCustomer } from "@/lib/services/stock-party";
 import { requestTurnContext } from "@/lib/services/request-turns";
 import {
   turnFilterOf,
@@ -1061,6 +1062,25 @@ export default async function RequestsPage({
         {hint ? <> {headHint(key)}</> : null}
       </Th>
     );
+  /**
+   * Tipo e porta de entrada da demanda (docs/PURCHASE_DEMAND.md): saíram da
+   * coluna Solicitação, que mostra só o número (dono, 19/11/2026), e ficam na
+   * dica do número ("Encomenda · Vendedor"). A Estratégia de compra segue
+   * com as etiquetas.
+   */
+  const demandOf = (r: Request) => {
+    const kind = demandKind(r);
+    if (!kind || (kind === "order" && isStockCustomer(r.customerId)))
+      return null;
+    return {
+      kind,
+      channel: r.channel ?? null,
+      text: [
+        t(`demand.kind.${kind}.one`),
+        ...(r.channel ? [t(`demand.channel.${r.channel}`)] : []),
+      ].join(" · "),
+    };
+  };
   /** Célula compacta (menos espaço vertical). */
   const cell = "px-2 py-1.5";
   const listedRequests = listed.flatMap((r) =>
@@ -1622,6 +1642,7 @@ export default async function RequestsPage({
               const tot = shownTotals(entry);
               const sortOf = (key: TotalKey) => totalSortText(tot[key].value);
               const due = entryDue(row.card);
+              const demand = demandOf(first);
               return (
                 <tr
                   key={entry.kind === "batch" ? entry.groupId : first.id}
@@ -1666,8 +1687,11 @@ export default async function RequestsPage({
                     <TextLink
                       href={href}
                       aria-label={t("reqList.number.open", { n: number ?? "" })}
+                      title={demand?.text}
                       className="font-semibold text-zinc-900 no-underline hover:underline"
                       data-request-open
+                      data-demand-tags={demand?.kind}
+                      data-demand-channel={demand?.channel ?? undefined}
                     >
                       <span data-request-number>{number ?? "—"}</span>
                     </TextLink>
