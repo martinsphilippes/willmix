@@ -282,6 +282,29 @@ describe("Solicitação nº 1: bastão lança-bolhas, sem preço negociado", () 
     expect(shown(fieldOf(row, "packing", "cbmTotal")).value).toBeNull();
   });
 
+  it("CBM de uma caixa com outra quantidade de peças fica de fora, com o aviso", async () => {
+    // Dono, 19/11/2026 (a mesma proteção da Estratégia de compra): a
+    // variação pedida tem 24 por caixa e nenhum CBM; o cadastro tem o CBM
+    // da caixa de 60. Multiplicar as caixas de 24 pelo m³ da caixa de 60
+    // daria uma cubagem errada: o CBM fica de fora.
+    const p = await product({ masterBoxQty: 60, cbm: 0.08 });
+    const r = await request(p.id, {
+      variant: { name: "Caixa pequena", masterBoxQty: 24 } as never,
+    });
+    const [other] = (await sheetOf(admin, r)).rows;
+    expect(shown(fieldOf(other, "packing", "perBox"))).toEqual({
+      value: "24",
+      source: "Variação da solicitação",
+    });
+    expect(shown(fieldOf(other, "packing", "boxes")).value).toBe("84 caixas");
+    const cbm = fieldOf(other, "packing", "cbmPerBox");
+    expect(cbm.value).toBeNull();
+    expect(cbm.note).toBe(
+      "O CBM de Ficha atual é de uma caixa de 60 peças, e a conta usa caixas de 24: fica de fora",
+    );
+    expect(fieldOf(other, "packing", "cbmTotal").value).toBeNull();
+  });
+
   it("Valores e Pagamento: custo da ficha atual; sem compra, venda e condições", () => {
     expect(shown(fieldOf(row, "values", "quote")).value).toBeNull();
     expect(shown(fieldOf(row, "values", "negotiated")).value).toBeNull();
