@@ -86,6 +86,17 @@ interface RequestCustomerState {
   group: EconomicGroup | null;
   groupLoading: boolean;
   setGroupShares: (shares: Record<string, number>) => void;
+  /**
+   * Distribuição entre as entregas do pedido (dono, 19/11/2026;
+   * docs/ECONOMIC_GROUPS.md): o percentual de cada entrega, para o número
+   * de entregas de agora (`planDates`). Nulo = partes iguais. Vem do padrão
+   * do cliente e pode ser mudada no pedido.
+   */
+  roundPercents: number[] | null;
+  setRoundPercents: (percents: number[] | null) => void;
+  /** Há padrão gravado do cliente para o número de entregas de agora. */
+  roundDefault: number[] | null;
+  setRoundDefault: (percents: number[] | null) => void;
 }
 
 export interface SaleTerms {
@@ -182,6 +193,61 @@ export function RequestCustomerProvider({
     !!customerId &&
     groupState?.for !== customerId &&
     (customer?.groupSize ?? 1) > 0;
+  // Distribuição entre entregas: a do pedido (mudada aqui) ou o padrão do
+  // cliente para o número de entregas de agora.
+  const rounds = planDates.length;
+  const roundKey = customerId && rounds >= 2 ? `${customerId}:${rounds}` : "";
+  const [roundState, setRoundState] = useState<{
+    for: string;
+    percents: number[] | null;
+    defaults: number[] | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!roundKey) return;
+    let off = false;
+    const [cid, n] = roundKey.split(":");
+    fetch(
+      `/api/customers/round-shares?customer=${encodeURIComponent(cid)}&rounds=${n}`,
+    )
+      .then((r) => (r.ok ? r.json() : { percents: null }))
+      .then((b: { percents?: number[] | null }) => {
+        if (off) return;
+        const p = b.percents ?? null;
+        setRoundState((prev) =>
+          prev?.for === roundKey
+            ? prev
+            : { for: roundKey, percents: p, defaults: p },
+        );
+      })
+      .catch(() => {});
+    return () => {
+      off = true;
+    };
+  }, [roundKey]);
+  const ownRound = roundKey && roundState?.for === roundKey ? roundState : null;
+  const roundPercents =
+    ownRound?.percents && ownRound.percents.length === rounds
+      ? ownRound.percents
+      : null;
+  const roundDefault = ownRound?.defaults ?? null;
+  const setRoundPercents = useCallback(
+    (percents: number[] | null) =>
+      setRoundState((prev) => ({
+        for: roundKey,
+        percents,
+        defaults: prev?.for === roundKey ? prev.defaults : null,
+      })),
+    [roundKey],
+  );
+  const setRoundDefault = useCallback(
+    (defaults: number[] | null) =>
+      setRoundState((prev) => ({
+        for: roundKey,
+        percents: prev?.for === roundKey ? prev.percents : defaults,
+        defaults,
+      })),
+    [roundKey],
+  );
   const setGroupShares = useCallback((shares: Record<string, number>) => {
     setGroupState((prev) =>
       prev?.value ? { ...prev, value: { ...prev.value, shares } } : prev,
@@ -270,8 +336,16 @@ export function RequestCustomerProvider({
       group,
       groupLoading,
       setGroupShares,
+      roundPercents,
+      setRoundPercents,
+      roundDefault,
+      setRoundDefault,
     }),
     [
+      roundPercents,
+      setRoundPercents,
+      roundDefault,
+      setRoundDefault,
       group,
       groupLoading,
       setGroupShares,

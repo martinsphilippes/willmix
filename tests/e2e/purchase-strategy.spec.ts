@@ -183,6 +183,8 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   // O Comprador gera o pedido com as condições da última compra.
   await login(page, "operador@wellmix.com");
   await page.goto("/app/purchase-strategy");
+  // Card compacto (dono, 19/11/2026): o formulário abre num painel.
+  await page.locator(`[data-strategy-open-order="${decisionA}"]`).click();
   const orderForm = page.locator(
     `#decision-${decisionA} [data-strategy-order-form]`,
   );
@@ -249,6 +251,7 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   await approve(page, decisionC);
   await login(page, "operador@wellmix.com");
   await page.goto("/app/purchase-strategy");
+  await page.locator(`[data-strategy-open-order="${decisionC}"]`).click();
   await page.locator(`#decision-${decisionC} [data-strategy-order]`).click();
   await page.waitForURL(/\/app\/orders\/[^/?]+\?created=1/);
   // A encomenda virou "pedido" e a mercadoria fica reservada para o cliente.

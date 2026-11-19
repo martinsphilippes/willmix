@@ -11,6 +11,7 @@ withTempStore();
 const { seedDemo } = await import("@/lib/seed");
 const g = await import("@/lib/economic-group");
 const svc = await import("@/lib/services/economic-groups");
+const rounds = await import("@/lib/services/delivery-round-shares");
 const { parseCompanyAllocations } =
   await import("@/app/app/actions/request-items");
 type User = import("@/lib/db").User;
@@ -108,6 +109,24 @@ describe("grupo do cliente", () => {
   });
 });
 
+describe("nome das empresas do grupo (19/11/2026)", () => {
+  it("a razão social (RAZAO_SOCIAL); sem ela, o nome", async () => {
+    const { getStore } = await import("@/lib/db");
+    await getStore().update("parties", "cliente-grupo-loja2", {
+      legalName: "REDE EXEMPLO COMERCIO LTDA",
+    });
+    const group = await svc.economicGroupOf("cliente-grupo");
+    const names = Object.fromEntries(
+      group!.companies.map((c) => [c.id, c.name]),
+    );
+    expect(names["cliente-grupo-loja2"]).toBe("REDE EXEMPLO COMERCIO LTDA");
+    expect(names["cliente-grupo-loja3"]).toBe("Rede Exemplo Filial 3");
+    await getStore().update("parties", "cliente-grupo-loja2", {
+      legalName: null,
+    });
+  });
+});
+
 describe("campo das empresas do produto", () => {
   it("lê o JSON e recusa o que não é", () => {
     expect(parseCompanyAllocations("")).toBeNull();
@@ -122,5 +141,63 @@ describe("campo das empresas do produto", () => {
         JSON.stringify([{ customerId: "x", quantities: [1.5] }]),
       ),
     ).toThrow("allocations");
+  });
+});
+
+describe("matriz Empresas × Entregas (19/11/2026)", () => {
+  const ids = ["a", "b"];
+  it("totais pelas entregas, pelos percentuais ou iguais", () => {
+    expect(g.spreadRounds(10, 2, [60, 40])).toEqual([6, 4]);
+    expect(g.spreadRounds(10, 3)).toEqual([4, 3, 3]);
+    expect(g.spreadRounds(10, 2, [1])).toEqual([5, 5]);
+    expect(g.matrixFromTotals({ a: 10, b: 5 }, ids, 2, [60, 40])).toEqual({
+      a: [6, 4],
+      b: [3, 2],
+    });
+  });
+  it("soma por empresa e por entrega; outro número de entregas", () => {
+    const m = { a: [6, 4], b: [3, 2] };
+    expect(g.matrixTotals(m, ids)).toEqual({ a: 10, b: 5 });
+    expect(g.matrixColumns(m, ids, 2)).toEqual([9, 6]);
+    expect(g.reshapeMatrix(m, ids, 3)).toEqual({ a: [4, 3, 3], b: [2, 2, 1] });
+    expect(g.matrixPieces(m, ids, 2, 10)).toEqual({
+      byCompany: { a: [60, 40], b: [30, 20] },
+      total: [90, 60],
+    });
+  });
+  it("programação mudada fora da matriz: cada entrega na mesma proporção", () => {
+    const m = { a: [6, 4], b: [3, 2] };
+    // A 1ª entrega dobrou e a 2ª ficou: a proporção de cada coluna fica.
+    expect(g.rescaleMatrix(m, ids, [18, 6], {})).toEqual({
+      a: [12, 4],
+      b: [6, 2],
+    });
+    // Matriz vazia: os percentuais do grupo; sem eles, nada.
+    expect(g.rescaleMatrix({}, ids, [10, 10], { a: 70, b: 30 })).toEqual({
+      a: [7, 7],
+      b: [3, 3],
+    });
+    expect(g.rescaleMatrix({}, ids, [10, 10], {})).toBeNull();
+  });
+});
+
+describe("distribuição padrão entre entregas por cliente", () => {
+  it("por número de entregas, somando 100", async () => {
+    expect(await rounds.roundSharesOf("cliente-grupo", 3)).toBeNull();
+    await expect(
+      rounds.saveRoundShares(admin, "cliente-grupo", [50, 30, 10]),
+    ).rejects.toThrow("percent_total");
+    await rounds.saveRoundShares(admin, "cliente-grupo", [40, 30, 30]);
+    await rounds.saveRoundShares(admin, "cliente-grupo", [60, 40]);
+    expect(await rounds.roundSharesOf("cliente-grupo", 3)).toEqual([
+      40, 30, 30,
+    ]);
+    expect(await rounds.roundSharesOf("cliente-grupo", 2)).toEqual([60, 40]);
+    // Gravar de novo troca só o do mesmo número de entregas.
+    await rounds.saveRoundShares(admin, "cliente-grupo", [50, 50]);
+    expect(await rounds.roundSharesOf("cliente-grupo", 2)).toEqual([50, 50]);
+    expect(await rounds.roundSharesOf("cliente-grupo", 3)).toEqual([
+      40, 30, 30,
+    ]);
   });
 });
