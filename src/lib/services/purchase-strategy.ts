@@ -462,6 +462,85 @@ export async function decideStrategy(
   return updated;
 }
 
+/** Encerrar a estratégia parada: o Comprador e a Diretoria de compras (dono, 19/11/2026). */
+export const canCloseStrategy = (user: User) =>
+  isWellmix(user) &&
+  (can(user, "purchaseStrategy.choose") ||
+    can(user, "purchaseStrategy.approve"));
+
+/**
+ * Encerrar a estratégia (dono, 19/11/2026; docs/PURCHASE_DEMAND.md,
+ * "Encerrar a estratégia parada"): a estratégia aprovada que parou porque
+ * alguma encomenda foi cancelada ou já está em outro pedido sai de Em
+ * andamento sem gerar pedido (situação "closed", Encerrada). As encomendas
+ * dela deixam de apontar para a estratégia: a cancelada segue cancelada, a
+ * que já está em outro pedido segue nele e as que continuam abertas voltam
+ * para a fila da Estratégia, para uma nova escolha (como na recusa). A
+ * Auditoria guarda quem encerrou, quando e por quê.
+ */
+export async function closeStrategy(
+  user: User,
+  decisionId: string,
+  note: string | null,
+): Promise<{ decision: PurchaseDecision; reopened: number }> {
+  if (!canCloseStrategy(user)) throw new PurchaseStrategyError("forbidden");
+  const store = getStore();
+  const decision = await store.get("purchase_decisions", decisionId);
+  if (!decision) throw new PurchaseStrategyError("not_found");
+  // Só a aprovada que ainda não gerou pedido nem abriu a cotação.
+  const open =
+    decision.status === "approved" &&
+    (decision.choice === "last_supplier"
+      ? !decision.orderId
+      : !decision.quoteId);
+  if (!open) throw new PurchaseStrategyError("strategy_not_stopped");
+  const demands = await store.list("requests", {
+    filter: { id: decision.demandIds },
+  });
+  const closed = closedDemands(decision, demands);
+  // Só a parada: com todas as encomendas abertas, ela segue o caminho dela.
+  if (!closed.size) throw new PurchaseStrategyError("strategy_not_stopped");
+  const updated = await store.update("purchase_decisions", decision.id, {
+    status: "closed",
+  });
+  let reopened = 0;
+  for (const d of demands) {
+    if (d.purchaseDecisionId !== decision.id) continue;
+    await store.update("requests", d.id, { purchaseDecisionId: null });
+    if (!closed.has(d.id)) reopened++;
+  }
+  const reasons = [...closed.entries()]
+    .map(([id, reason]) => {
+      const n = demands.find((d) => d.id === id)?.number ?? "—";
+      return reason === "cancelled"
+        ? `encomenda nº ${n} cancelada`
+        : reason === "ordered"
+          ? `encomenda nº ${n} já em outro pedido`
+          : "encomenda não encontrada";
+    })
+    .join(", ");
+  await audit(
+    user,
+    "purchase_strategy.close",
+    "purchase_decision",
+    decision.id,
+    `Estratégia nº ${decision.number} encerrada sem pedido: ${reasons}${reopened ? `; ${reopened} encomenda(s) de volta à fila` : ""}${note ? `. Observação: ${note}` : ""}`,
+    { status: decision.status },
+    { status: "closed" },
+  );
+  if (decision.chosenByUserId !== user.id)
+    await notify(
+      { userIds: [decision.chosenByUserId] },
+      {
+        kind: "alert",
+        link: "/app/purchase-strategy",
+        subject: `Estratégia de compra nº ${decision.number} encerrada`,
+        body: `Encerrada sem pedido: ${reasons}.${note ? ` ${note}` : ""}`,
+      },
+    );
+  return { decision: updated, reopened };
+}
+
 /**
  * Gera o pedido de compra da estratégia aprovada "fornecedor da última
  * compra", com as condições conferidas pelo Comprador. As demandas viram

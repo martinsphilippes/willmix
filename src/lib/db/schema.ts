@@ -3253,6 +3253,12 @@ export const PURCHASE_DECISION_STATUSES = [
   "approved",
   "rejected",
   "done",
+  /**
+   * Encerrada sem pedido (dono, 19/11/2026): a estratégia aprovada que parou
+   * (encomenda cancelada ou já em outro pedido) e o Comprador ou a Diretoria
+   * de compras tirou de Em andamento. docs/PURCHASE_DEMAND.md.
+   */
+  "closed",
 ] as const;
 export type PurchaseDecisionStatus =
   (typeof PURCHASE_DECISION_STATUSES)[number];
