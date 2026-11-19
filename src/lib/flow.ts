@@ -57,11 +57,12 @@ export const FLOW_STEPS: FlowStep[] = [
   // Compra por demanda (mapa B14 e B10; dono, 15/11/2026;
   // docs/PURCHASE_DEMAND.md): encomendas do cliente e reposição do Planner.
   s("new-product", "demands", "requests", "/app/requests"),
-  // Estratégia de Compra (mapa B10?; dono, 18/11/2026): logo depois de
-  // Encomendas, com tela própria. Por produto: cotar com a última compra ou
-  // com outros parceiros, ou o pedido direto (com a aprovação da Diretoria).
-  s("new-product", "strategy", "purchaseStrategy", "/app/purchase-strategy"),
   s("new-product", "replenishment", "requests", "/app/replenishment"),
+  // Estratégia de Compra (mapa B10?; dono, 18/11/2026): tela própria. Por
+  // produto: cotar com a última compra ou com outros parceiros, ou o pedido
+  // direto (com a aprovação da Diretoria). No menu, logo abaixo de Reposição
+  // e acima de Cotação de compra (dono, 19/11/2026).
+  s("new-product", "strategy", "purchaseStrategy", "/app/purchase-strategy"),
   // Cotação de compra (mapa B13): aberta pelo sistema, 24 h por fornecedor.
   s("new-product", "purchase-quotes", "quotes", "/app/purchase-quotes"),
   s("new-product", "negotiations", "quotes", "/app/supplier-requests"),

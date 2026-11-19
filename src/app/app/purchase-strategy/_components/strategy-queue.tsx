@@ -7,15 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import {
-  Alert,
-  Badge,
-  Button,
-  Card,
-  Textarea,
-  cx,
-  linkClass,
-} from "@/components/ui";
+import { Alert, Badge, Button, Textarea, cx, linkClass } from "@/components/ui";
 import {
   SearchPicker,
   type SearchPickerLabels,
@@ -30,6 +22,14 @@ import {
 } from "../../actions/purchase-demand";
 import type { PackingBasis, PackingTotals } from "@/lib/strategy-packing";
 import { PackingCells, type PackingTexts } from "./packing-cells";
+import {
+  CompactPack,
+  KV,
+  StrategyGrid,
+  cardClass,
+  type CardTexts,
+} from "./strategy-card";
+import { QuickDialog } from "@/components/quick-dialog";
 
 /*
  * Estratégia de Compra (dono, 18/11/2026; docs/PURCHASE_DEMAND.md,
@@ -160,9 +160,30 @@ export interface StrategyTexts {
   working: string;
   picker: SearchPickerLabels;
   packing: PackingTexts;
+  /** Cards compactos (dono, 19/11/2026): rótulos curtos e o painel Detalhes. */
+  card: CardTexts & {
+    waiting: string;
+    emptyStrip: string;
+    customer: string;
+    supplier: string;
+    price: string;
+    previous: string;
+    leadTime: string;
+    incoterm: string;
+    moq: string;
+    details: string;
+    /** "Detalhes · {title}". */
+    detailsTitle: string;
+    close: string;
+    /** "+{n} produtos (veja Detalhes)". */
+    more: string;
+  };
   /** Idioma dos números (pt-BR, en-US, zh-CN). */
   intl: string;
 }
+
+/** Produtos mostrados no card (os outros ficam no painel Detalhes). */
+const CARD_PRODUCTS = 2;
 
 type Choice = "skip" | StrategyLineChoice;
 
@@ -339,13 +360,15 @@ export function StrategyQueue({
                   : s.recipients.filter((x) => x !== id),
               })
             }
-            className="mt-0.5 h-4 w-4 accent-brand-600"
+            className="mt-0.5 h-3.5 w-3.5 accent-brand-600 pointer-coarse:h-5 pointer-coarse:w-5"
             aria-label={check?.name ?? id}
             data-strategy-recipient-box={id}
           />
         ) : null}
-        <span className="min-w-0 flex-1 text-sm">
-          <span className="font-medium text-zinc-900">{check?.name ?? id}</span>
+        <span className="min-w-0 flex-1 text-xs">
+          <span className="break-words font-medium text-zinc-900">
+            {check?.name ?? id}
+          </span>
           {check ? (
             <span className="text-xs text-zinc-500">
               {" "}
@@ -423,10 +446,7 @@ export function StrategyQueue({
 
   const lastBox = (line: StrategyLineData) =>
     line.last ? (
-      <div
-        className="mt-2 rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-700"
-        data-strategy-last={line.last.supplierId}
-      >
+      <div className="mt-2 rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-700">
         <p className="font-medium text-zinc-900">
           {texts.lastTitle}: {line.last.supplierName}
         </p>
@@ -445,8 +465,63 @@ export function StrategyQueue({
         </p>
       </div>
     ) : (
+      <p className="mt-2 text-xs font-medium text-amber-800">
+        {texts.noHistory}
+      </p>
+    );
+
+  /**
+   * Última compra no card: fornecedor, preço e moeda, pedido anterior e data,
+   * prazo, Incoterm e pedido mínimo (rótulos curtos, explicação ao tocar).
+   */
+  const compactLast = (last: StrategyLineData["last"]) =>
+    last ? (
+      <dl
+        className="grid grid-cols-4 gap-x-2 gap-y-1 border-t border-zinc-100 pt-1.5"
+        data-strategy-last={last.supplierId}
+      >
+        <KV
+          label={texts.card.supplier}
+          tip={texts.lastTitle}
+          className="col-span-2"
+        >
+          <span className="block truncate" title={last.supplierName}>
+            {last.supplierName}
+          </span>
+        </KV>
+        {last.price ? (
+          <KV label={texts.card.price} tip={texts.lastPrice}>
+            <span className="tabular-nums">{last.price}</span>
+          </KV>
+        ) : (
+          <span />
+        )}
+        <KV label={texts.card.previous} tip={texts.lastOrder}>
+          <Link href={last.orderHref} className={linkClass}>
+            {last.orderLabel.split(" · ")[0]}
+          </Link>
+          <span className="text-[10px] font-normal text-zinc-500">
+            {" "}
+            {last.orderLabel.split(" · ").slice(1).join(" · ")}
+          </span>
+        </KV>
+        <KV
+          label={texts.card.leadTime}
+          tip={texts.lastLeadTime}
+          className="col-span-2"
+        >
+          {last.leadTime ?? "—"}
+        </KV>
+        <KV label={texts.card.incoterm} tip={texts.lastIncoterm}>
+          {last.incoterm ?? "—"}
+        </KV>
+        <KV label={texts.card.moq} tip={texts.lastMoq}>
+          <span className="tabular-nums">{last.moq ?? "—"}</span>
+        </KV>
+      </dl>
+    ) : (
       <p
-        className="mt-2 text-xs font-medium text-amber-800"
+        className="text-[11px] font-medium text-amber-800"
         data-strategy-no-history
       >
         {texts.noHistory}
@@ -461,7 +536,7 @@ export function StrategyQueue({
   ) => (
     <label
       className={cx(
-        "flex items-center gap-2 text-sm",
+        "flex items-center gap-1.5 text-xs",
         disabled && "cursor-not-allowed text-zinc-400",
       )}
     >
@@ -475,19 +550,19 @@ export function StrategyQueue({
           set(line.key, { choice: value });
           setReviewing(false);
         }}
-        className="h-4 w-4 accent-brand-600"
+        className="h-3.5 w-3.5 accent-brand-600 pointer-coarse:h-5 pointer-coarse:w-5"
         data-strategy-choice={value}
       />
       {texts.choices[value]}
     </label>
   );
 
-  /** Um produto da solicitação: a encomenda de origem, os dados e a última compra. */
+  /** Um produto da solicitação no painel Detalhes: tudo, com as contas. */
   const productBlock = (line: StrategyLineData) => (
     <div
       key={line.demandId}
       className="border-t border-zinc-100 pt-2 first:border-t-0 first:pt-0"
-      data-strategy-product={line.demandId}
+      data-strategy-detail-product={line.demandId}
     >
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h4 className="text-sm font-semibold text-zinc-900">
@@ -509,7 +584,7 @@ export function StrategyQueue({
       {line.packing ? (
         <div className="mt-2">
           <PackingCells
-            marker={line.demandId}
+            marker={`detail:${line.demandId}`}
             totals={line.packing.totals}
             basis={line.packing.basis}
             texts={texts.packing}
@@ -530,6 +605,70 @@ export function StrategyQueue({
     </div>
   );
 
+  /** Um produto no card: nome, encomenda de origem e os totais da embalagem. */
+  const productCompact = (line: StrategyLineData) => (
+    <div
+      key={line.demandId}
+      className="space-y-1"
+      data-strategy-product={line.demandId}
+    >
+      <p className="flex min-w-0 items-baseline gap-1.5">
+        <span
+          className="min-w-0 flex-1 truncate font-semibold text-zinc-900"
+          title={line.productName}
+        >
+          {line.productHref ? (
+            <Link
+              href={line.productHref}
+              className="text-zinc-900 hover:underline"
+            >
+              {line.productName}
+            </Link>
+          ) : (
+            line.productName
+          )}
+        </span>
+        <Link
+          href={line.demandHref}
+          className={cx(linkClass, "shrink-0 text-[11px]")}
+        >
+          {line.origin}
+        </Link>
+      </p>
+      {line.packing ? (
+        <CompactPack
+          marker={line.demandId}
+          totals={line.packing.totals}
+          basis={line.packing.basis}
+          piecesText={line.packing.piecesText}
+          texts={texts.card}
+          packTexts={texts.packing}
+          intl={texts.intl}
+        />
+      ) : (
+        <p className="text-[11px] text-zinc-600">
+          {texts.quantity}: {line.quantity}
+        </p>
+      )}
+      {line.packing?.warnings.length ? (
+        <p
+          className="truncate text-[11px] text-amber-800"
+          title={line.packing.warnings.join(" ")}
+        >
+          {line.packing.warnings[0]}
+        </p>
+      ) : null}
+      {line.schedule.length ? (
+        <p
+          className="truncate text-[11px] text-zinc-600"
+          title={line.schedule.join(" · ")}
+        >
+          {texts.schedule}: {line.schedule.join(" · ")}
+        </p>
+      ) : null}
+    </div>
+  );
+
   const lineCard = (line: StrategyGroupData) => {
     const s = byLine[line.key];
     const lastCheck = line.last ? checks[line.last.supplierId] : undefined;
@@ -538,50 +677,78 @@ export function StrategyQueue({
     const all = [...line.linkedIds, ...line.suggestedIds, ...extra];
     const members = linesOf(line);
     const batch = members.find((m) => m.batch)?.batch ?? null;
+    const shown = members.slice(0, CARD_PRODUCTS);
+    const hidden = members.length - shown.length;
+    // Última compra do card: a comum à solicitação; um produto só, a dele.
+    const last = line.last ?? (members.length === 1 ? members[0].last : null);
     return (
       <section
         key={line.key}
         className={cx(
-          "rounded-2xl border p-3",
-          s.choice !== "skip"
-            ? "border-brand-300 bg-brand-50/30"
-            : "border-zinc-200",
+          cardClass,
+          s.choice !== "skip" && "border-brand-300 bg-brand-50/30",
+          line.blocked && "border-amber-300",
         )}
         data-strategy-group={line.key}
         data-strategy-line={line.demandIds[0]}
         data-strategy-lines={line.demandIds.join(" ")}
         data-strategy-line-choice={s.choice}
       >
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h3 className="text-sm font-semibold text-zinc-900">{line.title}</h3>
-          {line.customerName ? (
-            <span className="text-xs text-zinc-600">{line.customerName}</span>
-          ) : null}
-          {line.origin ? (
-            <Badge tone="neutral">
-              <span data-strategy-origin>{line.origin}</span>
-            </Badge>
-          ) : null}
+        {/* Solicitação e situação; cliente e identificações. */}
+        <div className="flex flex-wrap items-center gap-1">
+          <h3 className="text-[13px] font-semibold text-zinc-900">
+            {line.title}
+          </h3>
+          <Badge tone="warning">{texts.card.waiting}</Badge>
           {batch ? (
             <Link
               href={batch.href}
-              className={cx(linkClass, "text-xs")}
+              className={cx(linkClass, "text-[11px]")}
               data-strategy-batch
             >
               {batch.label}
             </Link>
           ) : null}
         </div>
-        <div className="mt-2 space-y-2">{members.map(productBlock)}</div>
+        {line.customerName ? (
+          <p
+            className="truncate font-medium text-zinc-900"
+            title={line.customerName}
+          >
+            <span className="text-[10px] uppercase tracking-wide text-zinc-500">
+              {texts.card.customer}:{" "}
+            </span>
+            {line.customerName}
+          </p>
+        ) : null}
+        {line.origin ? (
+          <p className="truncate text-[11px] text-zinc-600" title={line.origin}>
+            <span data-strategy-origin>{line.origin}</span>
+          </p>
+        ) : null}
+        <div className="space-y-1.5">{shown.map(productCompact)}</div>
+        {hidden > 0 ? (
+          <p className="text-[11px] text-zinc-600" data-strategy-more={hidden}>
+            {fill(texts.card.more, { n: hidden })}
+          </p>
+        ) : null}
+        {line.blocked ? null : (
+          <>
+            {compactLast(last)}
+            {!line.last && line.lastReason && members.length > 1 ? (
+              <p className="text-[11px] text-zinc-500">{line.lastReason}</p>
+            ) : null}
+          </>
+        )}
         {line.blocked ? (
-          <p className="mt-2 text-xs font-medium text-amber-800">
+          <p className="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800">
             {line.blocked}
           </p>
         ) : (
           <>
             {canChoose ? (
-              <fieldset className="mt-3 space-y-1 border-t border-zinc-100 pt-2">
-                <legend className="mb-1 text-xs font-medium text-zinc-600">
+              <fieldset className="space-y-0.5 border-t border-zinc-100 pt-1.5">
+                <legend className="mb-0.5 text-[10px] uppercase tracking-wide text-zinc-500">
                   {texts.choose}
                 </legend>
                 {option(line, s, "skip")}
@@ -608,7 +775,7 @@ export function StrategyQueue({
                 ) : null}
                 {option(line, s, "quote")}
                 {s.choice === "quote" ? (
-                  <div className="space-y-2 pl-6" data-strategy-recipients>
+                  <div className="space-y-1.5 pl-5" data-strategy-recipients>
                     <div className="flex flex-wrap gap-3 text-xs">
                       <button
                         type="button"
@@ -675,7 +842,7 @@ export function StrategyQueue({
                         </ul>
                       </div>
                     ) : null}
-                    <div className="max-w-md">
+                    <div>
                       <p className="mb-1 text-xs text-zinc-600">
                         {texts.search}
                       </p>
@@ -703,24 +870,52 @@ export function StrategyQueue({
             ) : null}
           </>
         )}
+        <div className="mt-auto flex flex-wrap gap-1.5 border-t border-zinc-100 pt-1.5">
+          <QuickDialog
+            label={texts.card.details}
+            title={fill(texts.card.detailsTitle, { title: line.title })}
+            closeLabel={texts.card.close}
+            size="lg"
+            data-strategy-details={line.key}
+          >
+            <div className="space-y-3">
+              {line.customerName || line.origin ? (
+                <p className="text-xs text-zinc-600">
+                  {[line.customerName, line.origin].filter(Boolean).join(" · ")}
+                </p>
+              ) : null}
+              {members.map(productBlock)}
+              {!line.last && line.lastReason ? (
+                <p className="text-xs text-zinc-600">{line.lastReason}</p>
+              ) : null}
+            </div>
+          </QuickDialog>
+        </div>
       </section>
     );
   };
 
   return (
-    <div className="space-y-4" data-strategy-queue={lines.length}>
-      <Card title={texts.queueTitle}>
-        {groups.length ? (
-          <div className="space-y-3">{groups.map(lineCard)}</div>
-        ) : (
-          <p className="text-sm text-zinc-500" data-strategy-queue-empty>
-            {texts.queueEmpty}
-          </p>
-        )}
-      </Card>
+    <div className="space-y-2" data-strategy-queue={lines.length}>
+      {groups.length ? (
+        <section>
+          <h2 className="mb-1.5 text-sm font-semibold text-zinc-900">
+            {texts.queueTitle}
+          </h2>
+          <StrategyGrid marker="queue">{groups.map(lineCard)}</StrategyGrid>
+        </section>
+      ) : (
+        // Fila vazia: uma faixa baixa, sem card (dono, 19/11/2026).
+        <p
+          className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-500"
+          data-strategy-queue-empty
+        >
+          {texts.card.emptyStrip}
+        </p>
+      )}
 
       {canChoose && lines.length ? (
-        <div className="sticky bottom-0 z-10 space-y-3 rounded-2xl border border-zinc-200 bg-white/95 p-3 shadow-lg backdrop-blur">
+        <div className="sticky bottom-0 z-10 space-y-2 rounded-xl border border-zinc-200 bg-white/95 p-2.5 shadow-lg backdrop-blur">
           {reviewing && chosen.length ? (
             <div data-strategy-summary>
               <h2 className="text-sm font-semibold text-zinc-900">

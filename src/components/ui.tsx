@@ -248,6 +248,7 @@ export function PageHeader({
   actions,
   help,
   t,
+  dense = false,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
@@ -255,16 +256,35 @@ export function PageHeader({
   /** Painel "Como funciona / O que fazer aqui" exibido logo abaixo do título. */
   help?: HelpSpec;
   t?: Translate;
+  /** Cabeçalho baixo (telas em grade, como a Estratégia de compra). */
+  dense?: boolean;
 }) {
   return (
     <>
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+      <div
+        className={cx(
+          "flex flex-wrap items-end justify-between gap-3",
+          dense ? "mb-2" : "mb-5",
+        )}
+      >
         <div className="border-l-4 border-brand-600 pl-3">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+          <h1
+            className={cx(
+              "font-bold tracking-tight text-zinc-900",
+              dense ? "text-xl" : "text-2xl",
+            )}
+          >
             {title}
           </h1>
           {subtitle ? (
-            <div className="mt-1 text-sm text-zinc-600">{subtitle}</div>
+            <div
+              className={cx(
+                "text-zinc-600",
+                dense ? "mt-0.5 text-xs" : "mt-1 text-sm",
+              )}
+            >
+              {subtitle}
+            </div>
           ) : null}
         </div>
         {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}

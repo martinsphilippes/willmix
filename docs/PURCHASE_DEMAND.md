@@ -167,6 +167,27 @@ Pedido do dono (foto da Estratégia nº 1 no iPad): ao lado da quantidade, quatr
 - **Estratégia parada por encomenda cancelada** (decisão do dono de 18/11/2026, "Bloquear e avisar"): a Estratégia nº 1 de produção estava aprovada com a encomenda nº 5 excluída (cancelada) depois da aprovação, e "Gerar pedido de compra" criaria o pedido, voltaria a encomenda cancelada para "Pedido feito" e reservaria as peças para o cliente. Agora, com encomenda **cancelada ou já em outro pedido** (`closedDemands` em `src/lib/purchase-demand.ts`): a tela mostra o selo na encomenda e o aviso "Estratégia parada"; o servidor não aprova (`decideStrategy`) nem gera o pedido (`orderFromStrategy`, `strategy_demand_closed`); a pendência "Gerar pedido" some. Nada gravado muda; esperando aprovação, a Diretoria ainda pode recusar (é como ela sai de Em andamento).
 - **Testes**: `tests/unit/strategy-packing.test.ts` (a lousa de produção com 2 programações, com e sem inner, inner 0, inner que não fecha, embalagem ausente, outras quantidades por caixa, a quantidade mudada, a encomenda em caixas, a conferência no servidor e a encomenda cancelada) e a E2E `tests/e2e/purchase-strategy.spec.ts` (os quatro campos e o recálculo no formulário).
 
+## Grade de estratégias (dono, 19/11/2026)
+
+A tela mostra mais estratégias de uma vez, em cards pequenos. Os dados, as regras e as ações são os mesmos de antes.
+
+- **Grade**: três colunas lado a lado ("Esperando estratégia" e "Em andamento"), com fundo branco, borda discreta e fonte menor. Em tela estreita, as três colunas continuam numa área com rolagem para os lados, e cada card tem uma largura mínima legível. A página rola para baixo quando os cards não cabem. Com a fila vazia, aparece só uma faixa baixa ("Nenhuma solicitação esperando estratégia"). "Envios recentes" fica depois da grade. O cabeçalho da página é mais baixo (`PageHeader dense`).
+- **Card "Em andamento"**, nesta ordem:
+  1. Estratégia nº e situação, com "Estratégia parada" quando a solicitação foi cancelada ou já está em outro pedido.
+  2. Modalidade.
+  3. Solicitação nº (link) e a situação dela.
+  4. Cliente e as etiquetas (Encomenda, Cliente…).
+  5. Produto.
+  6. Peças | Cx master | Cx inner | m³ total. Embaixo de cada total, o que vai em cada caixa ("48 pç/cx", "0,12 m³/cx"). INNER sem cadastro aparece como "—".
+  7. Programação (uma linha, ou "N programações").
+  8. Última compra: fornecedor, preço un. e moeda (só com "Ver preço de compra"), pedido anterior e data, prazo de produção, Incoterm e pedido mínimo.
+  9. Observação (duas linhas).
+  10. Ações: Aprovar e Recusar, com a observação no próprio card; "Gerar pedido de compra", que abre o formulário de sempre num painel; "Detalhes".
+- **Card da fila**: a solicitação e "Esperando estratégia", o cliente, País › Família, até dois produtos com a embalagem e a programação (os outros: "+N produtos (veja Detalhes)"), a última compra, a escolha e os destinatários (no próprio card) e "Detalhes".
+- **Rótulos curtos**: a explicação aparece ao passar o mouse, ao tocar ou com o foco do teclado (`Tip`, `src/app/app/purchase-strategy/_components/strategy-card.tsx`).
+- **Painel Detalhes** (`QuickDialog`): a embalagem completa (os seis números, a conta escrita e os avisos), a especificação, a entrega desejada, o prazo, a família, a programação inteira, a última compra completa, a observação inteira e, na estratégia parada, a explicação completa. Fechar o painel não muda filtros, escolhas nem a rolagem.
+- **Menu**: em Produto novo, a ordem é Encomendas, Reposição, Estratégia de compra e Cotação de compra (`FLOW_STEPS`, `src/lib/flow.ts`).
+
 ## Andamento
 
 | PR  | Entrega                                                                                       | Situação |
