@@ -17,6 +17,18 @@ export interface RequestPeopleLabels {
   rcaStock: string;
   /** "Vendedor {code}" (o código fora da lista do Sankhya). */
   rcaUnknown: string;
+  /**
+   * Cliente sem RCA (dono, 19/11/2026; docs/CUSTOMER_RCA.md seção 7): o
+   * campo abre para escolher; o que fechar a venda fica padrão por 30 dias.
+   */
+  rcaChoose?: string;
+  rcaOpenHint?: string;
+  rcaCandidates?: string;
+  rcaOthers?: string;
+  /** "Padrão até {date}: fechou a última venda." */
+  rcaLocked?: string;
+  rcaNoList?: string;
+  intl?: string;
   access: string;
   accessHint: string;
   accessNone: string;
@@ -37,6 +49,11 @@ export interface CustomerLogin {
   email: string;
 }
 
+interface RcaOption {
+  code: string;
+  label: string;
+}
+
 interface RcaResult {
   key: string;
   failed: boolean;
@@ -45,6 +62,10 @@ interface RcaResult {
     name: string | null;
     partnerCode?: string | null;
   } | null;
+  /** O RCA que fechou a última venda: padrão até a data. */
+  locked?: { until: string } | null;
+  /** Cliente sem RCA: os cadastrados para ele e os demais vendedores. */
+  open?: { candidates: RcaOption[]; sellers: RcaOption[] } | null;
 }
 
 /**
@@ -67,6 +88,7 @@ export function RequestPeopleFields({
   loginRequired = false,
   initialLogin = "",
   allLogins = false,
+  initialRca = "",
 }: {
   requesterName: string;
   loginsByCustomer: Record<string, CustomerLogin[]>;
@@ -83,6 +105,8 @@ export function RequestPeopleFields({
   allLogins?: boolean;
   /** Login já escolhido (rascunho). */
   initialLogin?: string;
+  /** RCA já escolhido (rascunho; cliente sem RCA). */
+  initialRca?: string;
 }) {
   const shared = useRequestCustomer();
   const stock = !!shared?.stock;
@@ -99,8 +123,14 @@ export function RequestPeopleFields({
           { signal: controller.signal },
         );
         if (!res.ok) throw new Error(String(res.status));
-        const body = (await res.json()) as { rca: RcaResult["rca"] };
-        setLoaded({ key: customerId, failed: false, rca: body.rca ?? null });
+        const body = (await res.json()) as Omit<RcaResult, "key" | "failed">;
+        setLoaded({
+          key: customerId,
+          failed: false,
+          rca: body.rca ?? null,
+          locked: body.locked ?? null,
+          open: body.open ?? null,
+        });
       } catch {
         if (controller.signal.aborted) return;
         setLoaded({ key: customerId, failed: true, rca: null });
@@ -225,15 +255,78 @@ export function RequestPeopleFields({
           data-request-requester
         />
       </Field>
-      <Field label={labels.rca} hint={labels.rcaHint}>
-        <Input
-          readOnly
-          value={rcaText}
-          className="bg-zinc-50 text-zinc-700"
-          data-request-rca
-          data-request-rca-state={rcaState}
-        />
-      </Field>
+      {rcaState === "none" && mine?.open && labels.rcaChoose ? (
+        // Cliente sem RCA: o vendedor escolhe (ou cadastra outro); o que
+        // fechar a venda fica como padrão do cliente por 30 dias.
+        <Field
+          label={labels.rca}
+          hint={
+            mine.open.candidates.length || mine.open.sellers.length
+              ? labels.rcaOpenHint
+              : labels.rcaNoList
+          }
+        >
+          <Select
+            key={customerId ?? "none"}
+            name="rcaCode"
+            defaultValue={
+              [...mine.open.candidates, ...mine.open.sellers].some(
+                (o) => o.code === initialRca,
+              )
+                ? initialRca
+                : mine.open.candidates.length === 1
+                  ? mine.open.candidates[0].code
+                  : ""
+            }
+            data-request-rca
+            data-request-rca-state="open"
+          >
+            <option value="">{labels.rcaChoose}</option>
+            {mine.open.candidates.length ? (
+              <optgroup label={labels.rcaCandidates}>
+                {mine.open.candidates.map((o) => (
+                  <option key={o.code} value={o.code}>
+                    {o.label}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
+            {mine.open.sellers.length ? (
+              <optgroup label={labels.rcaOthers}>
+                {mine.open.sellers.map((o) => (
+                  <option key={o.code} value={o.code}>
+                    {o.label}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
+          </Select>
+        </Field>
+      ) : (
+        <Field
+          label={labels.rca}
+          hint={
+            rcaState === "ready" && mine?.locked && labels.rcaLocked
+              ? labels.rcaLocked.replace(
+                  "{date}",
+                  new Date(mine.locked.until).toLocaleDateString(
+                    labels.intl ?? "pt-BR",
+                  ),
+                )
+              : labels.rcaHint
+          }
+        >
+          <Input
+            readOnly
+            value={rcaText}
+            className="bg-zinc-50 text-zinc-700"
+            data-request-rca
+            data-request-rca-state={
+              rcaState === "ready" && mine?.locked ? "locked" : rcaState
+            }
+          />
+        </Field>
+      )}
     </>
   );
 }

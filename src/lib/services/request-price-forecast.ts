@@ -22,7 +22,7 @@ import {
 import { getSettings } from "@/lib/settings";
 import { brazilDay } from "@/lib/supplier-terms";
 import { scheduleTotal } from "@/lib/workflow/request-schedule";
-import { NO_RCA, rcaCodeOf } from "./rca";
+import { NO_RCA, effectiveRcaCode } from "./rca";
 
 /*
  * Previsão de venda gravada no envio (dono, 18/11/2026; totais de
@@ -56,7 +56,7 @@ export function forecastQuery(input: {
   const isCustomer = customer?.type === "customer";
   // O RCA do cliente como a tela mostra: o gravado no portal ou, sem ele,
   // o vendedor que veio do Sankhya (sankhyaRefs.CODVEND); 0 = sem vendedor.
-  const rca = isCustomer && customer ? rcaCodeOf(customer) : null;
+  const rca = isCustomer && customer ? effectiveRcaCode(customer) : null;
   return {
     productId: product.id,
     sankhyaCode: product.sankhyaCode ?? null,

@@ -98,6 +98,18 @@ export function orderTermsLabels(t: Translate): RequestOrderTermsLabels {
     switchBody: t("orderTerms.switchBody"),
     switchKeep: t("orderTerms.switchKeep"),
     switchConfirm: t("orderTerms.switchConfirm"),
+    collapsed: {
+      edit: t("orderTerms.collapsed.edit"),
+      done: t("orderTerms.collapsed.done"),
+      hint: t("orderTerms.collapsed.hint"),
+      operation: t("orderTerms.collapsed.operation"),
+      format: t("orderTerms.collapsed.format"),
+      redispatch: t("orderTerms.collapsed.redispatch"),
+      carrier: t("orderTerms.collapsed.carrier"),
+      origin: t("orderTerms.collapsed.origin"),
+      payment: t("orderTerms.collapsed.payment"),
+      total: t("orderTerms.collapsed.total"),
+    },
   };
 }
 

@@ -308,6 +308,22 @@ Vale para as três telas (Encomendas, TS e Venda), que usam o mesmo código (`sr
 - **Rótulos curtos** no bloco do pedido e no gerador de cada produto (TS e Venda): "Quantidade de entregas programadas" virou **"# Entregas"** e "Containers por entrega programada" virou **"Containers/Entrega"** (en "# Deliveries" e "Containers/Delivery"; zh "交货次数" e "集装箱/交货"). As explicações longas continuam nas dicas.
 - **Containers/Entrega vai para a cotação V2** (até 19/11/2026; depois saiu da chamada da tela, porque o preço não muda com os containers: docs/ECONOMIC_GROUPS.md) como `QTD_CONTAINERS` (antes ia como nulo, o padrão do Sankhya): o mesmo número do gerador da linha (das peças de cada programação, da caixa master, do CBM e do container escolhido); com entregas de tamanhos diferentes, o maior. Sem caixa ou CBM, continua nulo. Caminho: `PriceForecast` (lê a carga da linha) → `/api/price-forecast?containers=` → `productInput` (src/lib/integrations/price-forecast.ts). Aparece na memória de cálculo de quem vê valores e margem. A previsão gravada no envio (11.16) ainda vai sem os containers: o container escolhido no gerador não fica gravado na solicitação.
 
+## 11.18 Oitava rodada nas telas TS e Venda (dono, 19/11/2026)
+
+Pedido do dono para `/app/new-request/**` (TS - Trading Sales e Venda - Encomenda). A Nova solicitação de Encomendas (`/app/requests/new`) só ganha o que é comum (itens 1, 3, 4, 5, 6, 7, 8 e 9); o "fora do catálogo" continua nela.
+
+1. **RCA do cliente:** sem RCA vinculado, o campo abre para escolher; o que fechar a venda fica padrão por 30 dias (docs/CUSTOMER_RCA.md, seção 7.1).
+2. **Só produtos da base:** sem "Produto ainda não está no catálogo: quero que a Wellmix encontre fornecedores" (`catalogOnly`); o servidor recusa produto fora do catálogo nessas telas (`catalog_only`).
+3. **"Código - Nome do produto"** abaixo da busca, como no cliente encontrado (`data-request-product-summary`; código = SKU, `ProductFill.code`).
+4. **"Ver o cálculo"** na previsão de preço: modal com os parâmetros enviados à cotação V2 e o que ela devolveu, com o que é cada um e o preço da tela destacado (`data-price-forecast-audit`). Só para quem tem "Ver valores e margem" (decisão do dono, 19/11/2026: a memória de cálculo tem custo e margem).
+5. **"Gerar as entregas programadas":** os campos dividem a largura toda do cartão, em uma linha ou mais (antes, na entrega única, as colunas vazias deixavam os campos espremidos e espaço em branco à direita; `data-generate-fill`).
+6. **Condições do pedido** completas se recolhem sozinhas num resumo de uma linha (Operação | Formato | Re-despacho | Transportador | Origem e grupo | Pagamento | Valor total), com Editar e Recolher; voltam a recolher quando ficam completas de novo (`data-order-terms-collapsed`, `data-order-terms-body`).
+7. **Programação de entregas ao cliente:** botão "Confirmar" recolhe o bloco num resumo (Entregas | Intervalo | 1ª entrega | Última), com Editar; desligado enquanto há data fora de ordem ou antes da permitida (`data-order-plan-confirm`, `data-order-plan-summary`).
+8. **Busca de produto:** cada opção com a miniatura da primeira foto (`primaryPhotoDocumentId`) à esquerda do nome, que amplia ao passar o mouse (`src/components/hover-zoom-photo.tsx`; o histórico de compras usa a mesma).
+9. **Descrição do produto** escolhido à direita da busca, só leitura (e a especificação, quando há; `data-request-product-description`).
+
+Testes: `tests/e2e/new-request-round.spec.ts`, `tests/e2e/order-terms.spec.ts` (helper `editOrderTerms`), `tests/unit/request-rca-open.test.ts`.
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

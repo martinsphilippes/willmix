@@ -32,6 +32,15 @@ export const pt = {
   "requestPeople.rcaError": "Não deu para buscar o RCA.",
   "requestPeople.rcaStock": "Compra para estoque: sem RCA.",
   "requestPeople.rcaUnknown": "Vendedor sem cadastro no Sankhya",
+  "requestPeople.rcaChoose": "Sem RCA (escolha um)",
+  "requestPeople.rcaOpenHint":
+    "Cliente sem RCA vinculado: escolha o RCA deste pedido (pode haver vários). O que fechar a venda, quando o cliente confirmar o pedido, fica como padrão do cliente por 30 dias.",
+  "requestPeople.rcaCandidates": "RCAs já cadastrados para este cliente",
+  "requestPeople.rcaOthers": "Outros vendedores",
+  "requestPeople.rcaLocked":
+    "Fechou a última venda: padrão do cliente até {date}.",
+  "requestPeople.rcaNoList":
+    "Cliente sem RCA vinculado, e a lista de vendedores ainda não foi trazida do Sankhya (Cadastro do cliente → RCA responsável).",
   "requestPeople.access": "Login do cliente com acesso",
   "requestPeople.accessHint":
     "Só este login do cliente verá a solicitação e o pedido; outros logins da mesma empresa não veem. Sem login escolhido, só a Wellmix vê.",
@@ -76,6 +85,15 @@ export const en: Record<keyof typeof pt, string> = {
   "requestPeople.rcaError": "Could not load the sales rep.",
   "requestPeople.rcaStock": "Stock purchase: no sales rep.",
   "requestPeople.rcaUnknown": "Sales rep not found in Sankhya",
+  "requestPeople.rcaChoose": "No sales rep (choose one)",
+  "requestPeople.rcaOpenHint":
+    "Customer without a linked sales rep: choose the rep for this order (there can be several). The one who closes the sale, when the customer confirms the order, becomes the customer's default for 30 days.",
+  "requestPeople.rcaCandidates": "Reps already added for this customer",
+  "requestPeople.rcaOthers": "Other sales reps",
+  "requestPeople.rcaLocked":
+    "Closed the last sale: customer's default until {date}.",
+  "requestPeople.rcaNoList":
+    "Customer without a linked sales rep, and the sales rep list has not been brought from Sankhya yet (Customer record → Responsible sales rep).",
   "requestPeople.access": "Customer login with access",
   "requestPeople.accessHint":
     "Only this customer login will see the request and the order; other logins of the same company do not. With no login chosen, only Wellmix sees it.",
@@ -115,6 +133,15 @@ export const zh: Record<keyof typeof pt, string> = {
   "requestPeople.rcaError": "无法获取销售代表。",
   "requestPeople.rcaStock": "库存采购：无销售代表。",
   "requestPeople.rcaUnknown": "Sankhya 中未找到该销售员",
+  "requestPeople.rcaChoose": "无销售代表（请选择）",
+  "requestPeople.rcaOpenHint":
+    "该客户没有关联的销售代表：请选择本订单的销售代表（可以有多个）。客户确认订单时达成销售的那一位，将在 30 天内成为该客户的默认销售代表。",
+  "requestPeople.rcaCandidates": "已为该客户添加的销售代表",
+  "requestPeople.rcaOthers": "其他销售代表",
+  "requestPeople.rcaLocked":
+    "达成了上一笔销售：在 {date} 之前为客户的默认销售代表。",
+  "requestPeople.rcaNoList":
+    "该客户没有关联的销售代表，且尚未从 Sankhya 导入销售代表列表（客户档案 → 负责的销售代表）。",
   "requestPeople.access": "有访问权限的客户账号",
   "requestPeople.accessHint":
     "只有该客户账号可以查看申请和订单；同公司的其他账号看不到。未选择账号时，仅 Wellmix 可见。",

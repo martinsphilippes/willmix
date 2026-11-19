@@ -33,6 +33,8 @@ export interface ProductHit {
   id: string;
   name: string;
   sku: string | null;
+  /** Primeira foto do produto (miniatura na lista da busca). */
+  photoId?: string | null;
 }
 
 /** "Nome (SKU)", como as listas de produto mostravam; nome de exemplo: "Produto sem nome". */
@@ -125,16 +127,21 @@ export async function searchProducts(input: {
   // Nome e código em duas consultas (o banco devolve só id, nome e código).
   const [byName, bySku] = await Promise.all(
     (["name", "sku"] as const).map((column) =>
-      listColumns(store, "products", ["name", "sku"], {
-        filter: {
-          ...(input.scope === "all" ? {} : { active: true }),
-          ...(familyLines ? { lineId: familyLines } : {}),
+      listColumns(
+        store,
+        "products",
+        ["name", "sku", "primaryPhotoDocumentId"],
+        {
+          filter: {
+            ...(input.scope === "all" ? {} : { active: true }),
+            ...(familyLines ? { lineId: familyLines } : {}),
+          },
+          search: { column, text },
+          orderBy: "name",
+          // Com o país, parte do grupo fica de fora: lê mais para sobrar 20.
+          limit: PRODUCT_SEARCH_LIMIT + hidden.size + (allowed ? 200 : 0),
         },
-        search: { column, text },
-        orderBy: "name",
-        // Com o país, parte do grupo fica de fora: lê mais para sobrar 20.
-        limit: PRODUCT_SEARCH_LIMIT + hidden.size + (allowed ? 200 : 0),
-      }),
+      ),
     ),
   );
   const wanted = fold(text);
@@ -155,7 +162,12 @@ export async function searchProducts(input: {
         a.id.localeCompare(b.id),
     )
     .slice(0, PRODUCT_SEARCH_LIMIT)
-    .map((p) => ({ id: p.id, name: p.name, sku: p.sku ?? null }));
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      sku: p.sku ?? null,
+      photoId: p.primaryPhotoDocumentId ?? null,
+    }));
 }
 
 /**

@@ -66,6 +66,7 @@ alter table public."parties" add column if not exists "paymentTerms" jsonb;
 alter table public."parties" add column if not exists "paymentTermsNote" text;
 alter table public."parties" add column if not exists "ownerUserId" text;
 alter table public."parties" add column if not exists "rcaCode" text;
+alter table public."parties" add column if not exists "rcaPortal" jsonb;
 alter table public."parties" add column if not exists "sankhyaCode" text;
 alter table public."parties" add column if not exists "sankhyaSyncedAt" timestamptz;
 alter table public."parties" add column if not exists "legalName" text;

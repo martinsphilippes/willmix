@@ -1077,6 +1077,17 @@ function IncompleteBadge({ labels }: { labels: RequestItemsTableLabels }) {
 
 /** Textos do bloco "Programação de compra do pedido". */
 export interface OrderPlanLabels {
+  /**
+   * "Confirmar" (dono, 19/11/2026): recolhe o bloco num resumo de uma linha
+   * (Entregas | Intervalo | 1ª entrega | Última), com Editar.
+   */
+  confirm?: string;
+  confirmHint?: string;
+  collapsedDeliveries?: string;
+  collapsedInterval?: string;
+  collapsedFirst?: string;
+  collapsedLast?: string;
+  collapsedEdit?: string;
   title: string;
   hint: string;
   count: string;
@@ -1195,6 +1206,19 @@ function OrderPlan({
       : "";
   };
   const firstRef = useRef<HTMLInputElement>(null);
+  // Confirmada (dono, 19/11/2026): o bloco vira um resumo de uma linha.
+  const [confirmed, setConfirmed] = useState(false);
+  const hasProblem =
+    issues.length > 0 ||
+    (scheduled && (!firstDate || firstDate < minDate)) ||
+    dates.some((d) => !!d && d < minDate);
+  const collapsed = confirmed && !!labels.confirm && !hasProblem;
+  const intervalText =
+    interval > 0
+      ? fillText(labels.days, { n: interval })
+      : custom
+        ? fillText(labels.days, { n: custom })
+        : "—";
   // A 1ª data antes da permitida: a mensagem no campo (o envio para nele).
   useEffect(() => {
     firstRef.current?.setCustomValidity(
@@ -1206,162 +1230,237 @@ function OrderPlan({
       className="space-y-2 rounded-xl border border-brand-200 bg-brand-50/40 p-3"
       aria-label={labels.title}
       data-order-plan={scheduled ? count : "single"}
+      data-order-plan-confirmed={collapsed || undefined}
     >
-      <div>
-        <p className="text-sm font-semibold text-zinc-900">{labels.title}</p>
-        <p className="mt-0.5 text-xs leading-relaxed text-zinc-600">
-          {labels.hint}
-        </p>
-      </div>
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="space-y-1">
-          <span className="block text-xs font-medium text-zinc-700">
-            {labels.count}
-          </span>
-          <input
-            type="number"
-            min="1"
-            max={MAX_SCHEDULE_ROUNDS}
-            step="1"
-            inputMode="numeric"
-            value={countText}
-            onChange={(e) => onCount(e.target.value)}
-            onBlur={() => onCount(String(count))}
-            data-order-plan-count
-            className={cx(inputClass, "w-24 tabular-nums")}
-          />
-        </label>
-        {scheduled ? aside : null}
-        {scheduled ? (
-          <>
-            <div className="space-y-1">
-              <span className="block text-xs font-medium text-zinc-700">
-                {labels.interval}
-              </span>
-              <div
-                className="flex flex-wrap gap-1.5"
-                role="group"
-                aria-label={labels.interval}
-              >
-                {SCHEDULE_INTERVALS.map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    aria-pressed={interval === d}
-                    onClick={() => onInterval(d)}
-                    data-order-plan-interval={d}
-                    className={cx(
-                      "rounded-md border px-2.5 py-1 text-xs font-semibold",
-                      interval === d
-                        ? "border-brand-600 bg-brand-600 text-white"
-                        : "border-zinc-300 bg-white text-zinc-700 hover:bg-brand-50",
-                    )}
-                  >
-                    {fillText(labels.days, { n: d })}
-                  </button>
-                ))}
-                <input
-                  type="number"
-                  min="1"
-                  max="365"
-                  placeholder={labels.custom}
-                  value={interval === 0 ? custom : ""}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    onCustom(v);
-                    if (v.trim() !== "" || interval === 0) onInterval(0);
-                  }}
-                  aria-label={labels.custom}
-                  data-order-plan-custom
-                  className={cx(inputClass, "w-20 py-1 text-xs")}
-                />
-              </div>
-            </div>
-            <label className="space-y-1">
-              <span className="block text-xs font-medium text-zinc-700">
-                {labels.firstDate}
-              </span>
-              <input
-                ref={firstRef}
-                type="date"
-                value={firstDate}
-                min={minDate}
-                required
-                onChange={(e) => onFirstDate(e.target.value)}
-                aria-describedby="order-plan-min"
-                data-order-plan-first
-                className={cx(inputClass, "w-40")}
-              />
-            </label>
-          </>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-zinc-900">{labels.title}</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-zinc-600">
+            {collapsed ? labels.confirmHint : labels.hint}
+          </p>
+        </div>
+        {collapsed ? (
+          <button
+            type="button"
+            onClick={() => setConfirmed(false)}
+            className="shrink-0 rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+            data-order-plan-edit
+          >
+            {labels.collapsedEdit}
+          </button>
         ) : null}
       </div>
-      {scheduled ? (
-        <p
-          id="order-plan-min"
-          className={cx(
-            "text-xs",
-            firstDate && firstDate < minDate
-              ? "font-medium text-red-700"
-              : "text-zinc-600",
-          )}
-          data-order-plan-min={minDate}
+      {collapsed ? (
+        <div
+          className="overflow-x-auto rounded-lg border border-zinc-200 bg-white"
+          data-order-plan-summary
         >
-          {fillText(labels.minDate, {
-            date: fmtDate(minDate),
-            launch: fmtDate(launchDate),
-          })}
-        </p>
+          <table className="w-full text-left text-xs">
+            <thead className="bg-zinc-50 text-zinc-500">
+              <tr>
+                <th className="px-2.5 py-1.5 font-medium">
+                  {labels.collapsedDeliveries}
+                </th>
+                {scheduled ? (
+                  <>
+                    <th className="px-2.5 py-1.5 font-medium">
+                      {labels.collapsedInterval}
+                    </th>
+                    <th className="px-2.5 py-1.5 font-medium">
+                      {labels.collapsedFirst}
+                    </th>
+                    <th className="px-2.5 py-1.5 font-medium">
+                      {labels.collapsedLast}
+                    </th>
+                  </>
+                ) : null}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="font-medium text-zinc-900">
+                <td className="px-2.5 py-1.5 tabular-nums">
+                  {scheduled ? count : labels.single}
+                </td>
+                {scheduled ? (
+                  <>
+                    <td className="px-2.5 py-1.5">{intervalText}</td>
+                    <td className="px-2.5 py-1.5 tabular-nums">
+                      {fmtDate(dates[0] ?? "")}
+                    </td>
+                    <td className="px-2.5 py-1.5 tabular-nums">
+                      {fmtDate(dates[count - 1] ?? "")}
+                    </td>
+                  </>
+                ) : null}
+              </tr>
+            </tbody>
+          </table>
+        </div>
       ) : null}
-      {scheduled ? (
-        <div>
-          <p className="text-xs font-medium text-zinc-700">{labels.dates}</p>
-          <ol className="mt-1 flex flex-wrap gap-1.5" data-order-plan-dates>
-            {Array.from({ length: count }, (_, i) => (
-              <PlanDate
-                key={i}
-                index={i}
-                date={dates[i] ?? ""}
-                text={fmtDate(dates[i] ?? "")}
-                manual={!!manual[i]}
-                problem={problemOf(i)}
-                flagged={
-                  involved.has(i + 1) || (!!dates[i] && dates[i] < minDate)
-                }
-                minDate={minDate}
-                labels={labels}
-                onPin={onPin}
-              />
-            ))}
-          </ol>
-          <p className="mt-1 text-[11px] text-zinc-500">{labels.datesHint}</p>
-          {issues.length ? (
-            <div
-              className="mt-2 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-800"
-              role="alert"
-              data-order-plan-issues={issues.map((x) => x.n).join(",")}
-            >
-              <p className="font-semibold">{labels.issues}</p>
-              <ul className="mt-0.5 list-disc pl-4">
-                {issues.map((x) => (
-                  <li key={x.n}>
-                    {fillText(labels.issue, {
-                      n: x.n,
-                      prev: x.prev,
-                      date: fmtDate(dates[x.prev - 1]),
-                    })}
-                  </li>
-                ))}
-              </ul>
-            </div>
+      <div hidden={collapsed} className="space-y-2" data-order-plan-body>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="space-y-1">
+            <span className="block text-xs font-medium text-zinc-700">
+              {labels.count}
+            </span>
+            <input
+              type="number"
+              min="1"
+              max={MAX_SCHEDULE_ROUNDS}
+              step="1"
+              inputMode="numeric"
+              value={countText}
+              onChange={(e) => onCount(e.target.value)}
+              onBlur={() => onCount(String(count))}
+              data-order-plan-count
+              className={cx(inputClass, "w-24 tabular-nums")}
+            />
+          </label>
+          {scheduled ? aside : null}
+          {scheduled ? (
+            <>
+              <div className="space-y-1">
+                <span className="block text-xs font-medium text-zinc-700">
+                  {labels.interval}
+                </span>
+                <div
+                  className="flex flex-wrap gap-1.5"
+                  role="group"
+                  aria-label={labels.interval}
+                >
+                  {SCHEDULE_INTERVALS.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      aria-pressed={interval === d}
+                      onClick={() => onInterval(d)}
+                      data-order-plan-interval={d}
+                      className={cx(
+                        "rounded-md border px-2.5 py-1 text-xs font-semibold",
+                        interval === d
+                          ? "border-brand-600 bg-brand-600 text-white"
+                          : "border-zinc-300 bg-white text-zinc-700 hover:bg-brand-50",
+                      )}
+                    >
+                      {fillText(labels.days, { n: d })}
+                    </button>
+                  ))}
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    placeholder={labels.custom}
+                    value={interval === 0 ? custom : ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      onCustom(v);
+                      if (v.trim() !== "" || interval === 0) onInterval(0);
+                    }}
+                    aria-label={labels.custom}
+                    data-order-plan-custom
+                    className={cx(inputClass, "w-20 py-1 text-xs")}
+                  />
+                </div>
+              </div>
+              <label className="space-y-1">
+                <span className="block text-xs font-medium text-zinc-700">
+                  {labels.firstDate}
+                </span>
+                <input
+                  ref={firstRef}
+                  type="date"
+                  value={firstDate}
+                  min={minDate}
+                  required
+                  onChange={(e) => onFirstDate(e.target.value)}
+                  aria-describedby="order-plan-min"
+                  data-order-plan-first
+                  className={cx(inputClass, "w-40")}
+                />
+              </label>
+            </>
           ) : null}
         </div>
-      ) : (
-        <p className="text-xs text-zinc-600" data-order-plan-single>
-          {labels.single}
-        </p>
-      )}
-      <p className="text-xs text-zinc-500">{labels.countHint}</p>
+        {scheduled ? (
+          <p
+            id="order-plan-min"
+            className={cx(
+              "text-xs",
+              firstDate && firstDate < minDate
+                ? "font-medium text-red-700"
+                : "text-zinc-600",
+            )}
+            data-order-plan-min={minDate}
+          >
+            {fillText(labels.minDate, {
+              date: fmtDate(minDate),
+              launch: fmtDate(launchDate),
+            })}
+          </p>
+        ) : null}
+        {scheduled ? (
+          <div>
+            <p className="text-xs font-medium text-zinc-700">{labels.dates}</p>
+            <ol className="mt-1 flex flex-wrap gap-1.5" data-order-plan-dates>
+              {Array.from({ length: count }, (_, i) => (
+                <PlanDate
+                  key={i}
+                  index={i}
+                  date={dates[i] ?? ""}
+                  text={fmtDate(dates[i] ?? "")}
+                  manual={!!manual[i]}
+                  problem={problemOf(i)}
+                  flagged={
+                    involved.has(i + 1) || (!!dates[i] && dates[i] < minDate)
+                  }
+                  minDate={minDate}
+                  labels={labels}
+                  onPin={onPin}
+                />
+              ))}
+            </ol>
+            <p className="mt-1 text-[11px] text-zinc-500">{labels.datesHint}</p>
+            {issues.length ? (
+              <div
+                className="mt-2 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-800"
+                role="alert"
+                data-order-plan-issues={issues.map((x) => x.n).join(",")}
+              >
+                <p className="font-semibold">{labels.issues}</p>
+                <ul className="mt-0.5 list-disc pl-4">
+                  {issues.map((x) => (
+                    <li key={x.n}>
+                      {fillText(labels.issue, {
+                        n: x.n,
+                        prev: x.prev,
+                        date: fmtDate(dates[x.prev - 1]),
+                      })}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-xs text-zinc-600" data-order-plan-single>
+            {labels.single}
+          </p>
+        )}
+        <p className="text-xs text-zinc-500">{labels.countHint}</p>
+        {labels.confirm ? (
+          <div className="flex justify-end border-t border-brand-100 pt-2">
+            <button
+              type="button"
+              onClick={() => setConfirmed(true)}
+              disabled={hasProblem}
+              className="rounded-md bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-50"
+              data-order-plan-confirm
+            >
+              {labels.confirm}
+            </button>
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }

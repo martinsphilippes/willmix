@@ -80,6 +80,7 @@ import { customerEditHref } from "@/lib/customer-routes";
 
 /* Helpers compartilhados com src/app/app/actions/*.ts */
 import {
+  field,
   flowReturnTo,
   num,
   requireUser,
@@ -328,6 +329,10 @@ async function createRequest(
       // Reposição é de produto do catálogo (como era o "Abrir reposição").
       if (replenish && forStock && items.some((i) => !i.productId))
         throw new Error("replenishment_product");
+      // TS e Venda (dono, 19/11/2026): só produtos da base; o "Produto
+      // ainda não está no catálogo" saiu dessas telas.
+      if (screenDef && items.some((i) => !i.productId || i.sourcingDemand))
+        throw new Error("catalog_only");
       const stockId = forStock ? (await ensureStockParty(user)).id : null;
       const base = requestBaseSchema.parse({
         customerId:
@@ -368,6 +373,15 @@ async function createRequest(
         // Forma de pagamento (dono, 16/11/2026): uma das formas ativas.
         orderTerms.paymentPlan = await resolveRequestPaymentPlan(
           str(form, "paymentPlanId"),
+        );
+        // RCA do pedido (dono, 19/11/2026; docs/CUSTOMER_RCA.md seção 7):
+        // o do cliente; sem ele, o que fechou a última venda (30 dias) ou o
+        // escolhido pelo vendedor, que entra nos RCAs do cliente.
+        const { resolveRequestRca } = await import("@/lib/services/rca");
+        orderTerms.rca = await resolveRequestRca(
+          user,
+          base.customerId,
+          field(form, "rcaCode", z.string().max(12)) || null,
         );
         // Login do cliente com acesso: não é mais obrigatório (dono,
         // 18/11/2026). Sem ele, a solicitação vai para todos os logins do

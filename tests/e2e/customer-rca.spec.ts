@@ -182,7 +182,20 @@ test("Nova solicitação (Wellmix): RCA do cliente, solicitante e login com aces
   await saveRca(page, block, "0");
   await page.goto("/app/requests/new");
   await chooseCustomer(page, "loja", "cliente-joao");
-  await expectRca(page, "none", "Sem RCA vinculado");
+  // Cliente sem RCA (dono, 19/11/2026; docs/CUSTOMER_RCA.md seção 7): o
+  // campo abre para escolher o RCA do pedido entre os vendedores ativos; o
+  // que fechar a venda fica como padrão do cliente por 30 dias.
+  const openRca = people(page).locator('select[name="rcaCode"]');
+  await expect(openRca).toHaveAttribute("data-request-rca-state", "open");
+  await expect(openRca).toHaveValue("");
+  await expect(openRca.locator("option")).toHaveText([
+    "Sem RCA (escolha um)",
+    "5101 - Ana Representações",
+    "5102 - Bruno Vendas",
+  ]);
+  await expect(people(page)).toContainText("padrão do cliente por 30 dias");
+  await openRca.selectOption("102");
+  await expect(openRca).toHaveValue("102");
   block = await openParty(page, "cliente-joao");
   await saveRca(page, block, "101");
 

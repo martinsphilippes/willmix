@@ -52,6 +52,7 @@ import * as dateOrder from "./date-order";
 import * as financeFx from "./finance-fx";
 import * as pageHelp from "./page-help";
 import * as dataReset from "./data-reset";
+import * as newRequestUi from "./new-request-ui";
 import * as passwordReset from "./password-reset";
 import * as supabaseCopy from "./supabase-copy";
 import * as sheetReading from "./sheet-reading";
@@ -205,6 +206,7 @@ export const modulesPt = {
   ...financeFx.pt,
   ...pageHelp.pt,
   ...dataReset.pt,
+  ...newRequestUi.pt,
   ...passwordReset.pt,
   ...supabaseCopy.pt,
   ...sheetReading.pt,
@@ -379,6 +381,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...financeFx.en,
   ...pageHelp.en,
   ...dataReset.en,
+  ...newRequestUi.en,
   ...passwordReset.en,
   ...supabaseCopy.en,
   ...sheetReading.en,
@@ -553,6 +556,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...financeFx.zh,
   ...pageHelp.zh,
   ...dataReset.zh,
+  ...newRequestUi.zh,
   ...passwordReset.zh,
   ...supabaseCopy.zh,
   ...sheetReading.zh,

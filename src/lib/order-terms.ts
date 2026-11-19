@@ -176,6 +176,14 @@ export interface OrderTerms {
   noReturnsAccepted?: boolean;
   /** Confirmação do cliente; nula = aguardando o cliente. */
   confirmation?: CustomerConfirmation | null;
+  /**
+   * RCA do pedido (dono, 19/11/2026; docs/CUSTOMER_RCA.md seção 7): o
+   * vendedor do Sankhya (CODVEND). `customer` = o do cadastro do cliente
+   * (Sankhya ou portal); `locked` = o que fechou a última venda, padrão por
+   * 30 dias; `chosen` = escolhido pelo vendedor (cliente sem RCA). Quando o
+   * cliente confirma o pedido, o `chosen` vira o padrão do cliente.
+   */
+  rca?: { code: string; source: "customer" | "locked" | "chosen" } | null;
 }
 
 /* ------------------------------------------------------------------ */

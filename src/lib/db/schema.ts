@@ -807,6 +807,15 @@ export interface ScreenExceptionsValue {
   removed: string[];
 }
 
+/** RCAs do cliente cadastrados no portal (ver `Party.rcaPortal`). */
+export interface PartyRcaPortal {
+  candidates: string[];
+  lockedCode?: string | null;
+  lockedUntil?: string | null;
+  /** Solicitação confirmada que prendeu o RCA. */
+  lockedByRequestId?: string | null;
+}
+
 export interface Party extends BaseRow {
   type: PartyType;
   /** Tipo criado no painel (`partner_types`), quando `type` é "partner". */
@@ -875,6 +884,14 @@ export interface Party extends BaseRow {
    * sobrescreve o que foi escolhido no portal (dono, 15/11/2026).
    */
   rcaCode?: string | null;
+  /**
+   * Cliente sem RCA (nem no Sankhya nem no portal; dono, 19/11/2026,
+   * docs/CUSTOMER_RCA.md seção 7): os RCAs cadastrados pelos vendedores na
+   * Nova solicitação (`candidates`, códigos do Sankhya, CODVEND) e o que
+   * fechou a venda (o cliente confirmou o pedido), padrão do cliente até
+   * `lockedUntil` (30 dias).
+   */
+  rcaPortal?: PartyRcaPortal | null;
   /** Código do parceiro (CODPARC) ou da empresa (EMP-CODEMP) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
   sankhyaCode?: string | null;
   /** Última sincronização com o Sankhya (docs/SANKHYA.md, fase 3). Alterado depois = pendente. */
@@ -4395,6 +4412,7 @@ export const TABLES: Record<TableName, TableDef> = {
       paymentTermsNote: text(),
       ownerUserId: id(false),
       rcaCode: str(20),
+      rcaPortal: json(),
       sankhyaCode: str(40),
       sankhyaSyncedAt: datetime(),
       legalName: str(160),
@@ -5544,7 +5562,11 @@ export const TABLES: Record<TableName, TableDef> = {
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
-      { key: "by_customer_month", type: "key", columns: ["customerId", "month"] },
+      {
+        key: "by_customer_month",
+        type: "key",
+        columns: ["customerId", "month"],
+      },
     ],
   },
   customer_sales_loads: {

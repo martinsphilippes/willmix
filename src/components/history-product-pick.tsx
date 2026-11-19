@@ -1,6 +1,7 @@
 "use client";
 
 import { useRequestCustomer } from "./request-customer-context";
+import { HoverZoomPhoto } from "./hover-zoom-photo";
 
 /** Textos do histórico → pedido (no idioma de quem vê). */
 export interface HistoryPickLabels {
@@ -47,22 +48,9 @@ export function HistoryProductName({
 }) {
   return (
     <div className="flex min-w-0 items-start gap-2">
-      {/* Foto do produto (dono, 15/11/2026); sem foto, um quadro vazio. */}
-      {photoId ? (
-        // eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão
-        <img
-          src={`/api/files/${photoId}`}
-          alt=""
-          loading="lazy"
-          className="h-10 w-10 shrink-0 rounded-md border border-zinc-200 bg-white object-cover"
-          data-history-photo
-        />
-      ) : (
-        <span
-          aria-hidden
-          className="h-10 w-10 shrink-0 rounded-md border border-dashed border-zinc-200 bg-zinc-50"
-        />
-      )}
+      {/* Foto do produto (dono, 15/11/2026); sem foto, um quadro vazio.
+          Amplia ao passar o mouse, como na busca de produto (19/11/2026). */}
+      <HoverZoomPhoto photoId={photoId ?? null} />
       <NameText
         name={name}
         productId={productId}

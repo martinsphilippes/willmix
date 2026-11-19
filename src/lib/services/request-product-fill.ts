@@ -153,6 +153,8 @@ export async function requestProductFills(
     })),
     // "Produto sem nome" no campo para o nome de exemplo.
     label: productOptionLabel(t, p),
+    // "Código - Nome do produto" abaixo da busca (dono, 19/11/2026).
+    code: p.sku ?? null,
     ...productTexts(t, p),
   }));
 }
