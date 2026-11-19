@@ -109,6 +109,24 @@ describe("grupo do cliente", () => {
   });
 });
 
+describe("nome das empresas do grupo (19/11/2026)", () => {
+  it("a razão social (RAZAO_SOCIAL); sem ela, o nome", async () => {
+    const { getStore } = await import("@/lib/db");
+    await getStore().update("parties", "cliente-grupo-loja2", {
+      legalName: "REDE EXEMPLO COMERCIO LTDA",
+    });
+    const group = await svc.economicGroupOf("cliente-grupo");
+    const names = Object.fromEntries(
+      group!.companies.map((c) => [c.id, c.name]),
+    );
+    expect(names["cliente-grupo-loja2"]).toBe("REDE EXEMPLO COMERCIO LTDA");
+    expect(names["cliente-grupo-loja3"]).toBe("Rede Exemplo Filial 3");
+    await getStore().update("parties", "cliente-grupo-loja2", {
+      legalName: null,
+    });
+  });
+});
+
 describe("campo das empresas do produto", () => {
   it("lê o JSON e recusa o que não é", () => {
     expect(parseCompanyAllocations("")).toBeNull();

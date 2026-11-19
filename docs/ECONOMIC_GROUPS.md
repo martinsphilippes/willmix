@@ -48,6 +48,10 @@ Decisões: vale para qualquer pedido (também de um cliente só); o padrão fica
    - abrir o modal de novo, refazer e aplicar muda outra vez a programação e o total.
 6. O que é gravado continua em `requests.companyAllocations` (peças de cada empresa por entrega), conferido pelo servidor.
 
+## Nome das empresas (dono, 19/11/2026)
+
+Nas telas do pedido do grupo (distribuição padrão, seletor de empresa, preenchimento em massa, matriz e a tabela "Empresas do grupo econômico" da solicitação), a empresa aparece pela **razão social** (`parties.legalName`, a `RAZAO_SOCIAL` da view); sem ela, pelo nome (`companyName` em src/lib/services/economic-groups.ts).
+
 ## O que é gravado
 
 - `requests.companyAllocations` (JSON): por produto, `[{ customerId, quantities: [peças por entrega] }]`. A soma por entrega é a `schedule` do produto. O cliente da solicitação é a empresa que representa o grupo.
