@@ -159,13 +159,13 @@ Tudo no histórico (Auditoria): grupo criado, alterado, arquivado; cliente inclu
 
 ## Plano de entrega (um PR por linha)
 
-| PR  | Conteúdo                                                                                                                                                                      | Depende de               |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| 1   | Grupos econômicos, responsável pela carteira, atendimentos com confirmação dos dois lados, prazo em Configurações, "Carteira e atendimento" e a pendência "Atender {cliente}" | entregue (18/11/2026)    |
-| 2   | Atividades de trade com SLA (Pendências e Painel de SLA)                                                                                                                      | PR 1                     |
-| 3   | Fase 0: base de vendas do Sankhya e "dias sem compra" na carteira                                                                                                             | acesso à view no Sankhya |
-| 4   | Fase 2: painel do cliente e do grupo com as abas                                                                                                                              | PR 3                     |
-| 5   | Fase 3: sugestão de mix com IA                                                                                                                                                | PR 3                     |
+| PR  | Conteúdo                                                                                                                                                                      | Depende de            |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| 1   | Grupos econômicos, responsável pela carteira, atendimentos com confirmação dos dois lados, prazo em Configurações, "Carteira e atendimento" e a pendência "Atender {cliente}" | entregue (18/11/2026) |
+| 2   | Atividades de trade com SLA (Pendências e Painel de SLA): o Plano de ação Trade                                                                                               | entregue (19/11/2026) |
+| 3   | Fase 0: base de vendas do Sankhya e "dias sem compra" na carteira                                                                                                             | entregue (19/11/2026) |
+| 4   | Fase 2: painel do cliente e do grupo com as abas                                                                                                                              | entregue (19/11/2026) |
+| 5   | Fase 3: sugestão de mix com IA                                                                                                                                                | PR 3                  |
 
 ## Dados de produção (17 e 18/11/2026, leitura)
 
@@ -183,3 +183,60 @@ Tudo no histórico (Auditoria): grupo criado, alterado, arquivado; cliente inclu
 - **Banco (aditivo):** `customer_groups`, `customer_attendances`, `parties.customerGroupId` e `users.sellerCode`.
 - **Auditoria:** `portfolio.group.*`, `portfolio.customer_group`, `portfolio.customer_owner`, `attendance.register`, `attendance.link`, `attendance.cancel`, `attendance.confirm`, `attendance.dispute` e `team.seller_code`.
 - **Fica para os próximos PRs:** exportação CSV da carteira e dos atendimentos, histórico de atendimentos também na ficha do grupo e no cadastro do cliente, e os totais por responsável no topo.
+
+## Entregue no PR 2 (Plano de ação Trade, 19/11/2026)
+
+Decisão do dono (19/11/2026): seguir com a base de vendas do Sankhya e o painel (PRs 3 e 4), "com o plano de ação junto". A consulta ao Sankhya funciona em produção (o histórico de compras da Campineira aparece na Nova solicitação).
+
+- **O que é:** a tela 12 do painel do Projeto Campineira ("Plano de ação Trade"), agora gravada no portal: no HTML os cartões ficavam só na sessão; aqui cada ação tem responsável, prazo e situação, e fica no histórico.
+- **Telas:** Vendas → "Plano de ação Trade" (`/app/portfolio/plan`): totais por situação (pendente de validação, investigar, piloto aprovado, atrasadas, concluídas), filtros por situação, responsável, grupo e busca, a lista e "Nova ação" (quem gere a carteira); a ação (`/app/portfolio/plan/<id>`) com a situação, a resposta da gestão e as fotos de evidência, e "Editar ação" (quem gere, enquanto aberta); "Exportar CSV" com os filtros da tela. Nas fichas do cliente e do grupo, o quadro "Ações de trade" com "Nova ação" já preenchendo o cliente ou o grupo.
+- **Situações (as do HTML):** Pendente de validação, Investigar, Piloto aprovado, Concluída; mais Cancelada (só quem gere). Em aberto: as três primeiras.
+- **Regras:**
+  - a ação é de um cliente ou de um grupo econômico (um dos dois);
+  - prazo de hoje em diante ao criar;
+  - concluir pede a resposta ou uma evidência (foto, até 6 por ação);
+  - o responsável avança a situação das ações dele;
+  - quem gere a carteira cria, edita, cancela e reabre a concluída;
+  - quem não gere vê as próprias e as da equipe abaixo (a árvore do Painel de SLA).
+- **Pendências e SLA:** cada ação em aberta é a pendência "Ação de trade: {ação}" do responsável, com o prazo dela (passado o prazo, atrasada); entra no Painel de SLA do responsável e da equipe acima. Concluída: "No prazo" ou "Com atraso".
+- **Avisos:** o responsável é avisado ao receber a ação; quem criou, quando ela é concluída.
+- **Do diagnóstico (PR 4):** a ação guarda o produto (CODPROD e nome) e o foco do diagnóstico, para o painel abrir "Nova ação" já preenchida a partir de um SKU.
+- **Banco (aditivo):** tabela nova `trade_activities`.
+- **Auditoria:** `trade.activity.create`, `trade.activity.update` e `trade.activity.status`.
+
+## Entregue nos PRs 3 e 4 (base de vendas e painel, 19/11/2026)
+
+- **Base de vendas (PR 3):** tabela `customer_sales_monthly`, uma linha por cliente, mês (AAAA-MM), produto (CODPROD) e unidade negociada, com a quantidade pedida, as peças, o valor líquido (após descontos), os pedidos distintos e a data do pedido mais recente do mês.
+  - **De onde vem:** a view `sankhya.VW_AD_PEDCLIENTE_ITEM_WELL`, a mesma do histórico da Nova solicitação (docs/PURCHASE_HISTORY.md, seção 9), com os mesmos pedidos (pendentes e sem pendência, de todas as empresas e TOPs do cliente).
+  - **Consulta:** agregada no Sankhya (`GROUP BY CODPROD, YEAR(DATA_PEDIDO), MONTH(DATA_PEDIDO), UNIDADE_NEGOCIADA`), em páginas de 500 linhas pelo CODPROD, até 100 páginas por cliente. Só inteiros entram no SQL.
+  - **Peças:** UN (e PC, PÇ…) vale 1. Outra unidade (CX…) é convertida pelo volume do produto no Sankhya (TGFVOA, multiplica ou divide). Sem volume, a linha fica sem peças e o painel avisa quantas ficaram fora.
+  - **Quem entra:** os clientes acompanhados na carteira (num grupo ou com responsável escolhido).
+  - **Carga noturna:** cron `/api/jobs/customer-sales` às 01h40 de Brasília, do cliente lido há mais tempo para o mais recente, em rodadas de 4 minutos.
+  - **Atualizar agora:** botão no painel, para quem gere a carteira.
+  - **Gravação:** pelo id fixo (cliente, mês, produto e unidade); o que sumiu do Sankhya sai da base.
+  - **Situação da carga:** tabela `customer_sales_loads`, com a última leitura, a última tentativa, o pedido mais recente, as linhas, se passou do limite e o erro. Com erro, a base anterior fica.
+- **Dias sem compra (PR 3):** a carteira mostra "Última compra" (data e "há N dias") ao lado dos dias sem atendimento; a ficha do cliente também.
+- **Painel (PR 4):** Vendas → "Painel comercial" (`/app/portfolio/panel`).
+  - **Escolha:** o grupo econômico ou o cliente da carteira. Atalhos "Painel do grupo" e "Painel do cliente" nas fichas.
+  - **Telas 01 a 11 do HTML**, sobre a venda real:
+    - 01 Visão executiva: peças, SKUs, clientes, concentração Top 10, pedidos e valor;
+    - 02 Ranking;
+    - 03 Curva ABC por peças (A até 80%, B até 95%);
+    - 04 Frequência: alcance por cliente e recompra, pares com 2 ou mais pedidos;
+    - 05 Período: peças por mês e por trimestre, pela data do pedido;
+    - 06 Comparativo anual: os mesmos meses de dois anos à escolha;
+    - 07 Mix: grupo = família, categoria = linha do catálogo;
+    - 08 Estoque e disponibilidade: livre no Brasil, em trânsito e em produção, da tela Estoque;
+    - 09 Ciclo de vida: até 90, 91 a 180, 181 a 365 e mais de 365 dias desde a última compra;
+    - 10 Clientes: peças, SKUs, pedidos e dias sem compra;
+    - 11 Diagnóstico: os cartões do HTML por SKU, nos focos Proteger Top 10, Sem compra há mais de 180 dias, Ampliar alcance (SKU em um cliente só do grupo), Investigar baixo volume (abaixo da média) e Validar crescimento. Cada cartão traz a pergunta, a ação proposta e a evidência necessária, com "Criar ação no plano" já preenchendo o Plano de ação Trade com o produto.
+  - **A 12** é o Plano de ação Trade (PR 2).
+  - **Filtros:** ano, trimestre, grupo de produto, cliente e busca. "Exportar CSV" de cada tela, com os filtros dela.
+  - **O que o HTML não fazia e agora faz:** venda por mês, ano contra ano e recompra (a planilha só tinha a última compra).
+- **Permissões:**
+  - quem gere a carteira abre qualquer grupo ou cliente e usa "Atualizar agora";
+  - os outros abrem os da própria carteira e os da equipe abaixo;
+  - valor (R$) só com "Ver valores e margem" (padrão: o administrador).
+- **Banco (aditivo):** tabelas novas `customer_sales_monthly` e `customer_sales_loads`.
+- **Auditoria:** `sales.refresh` (o "Atualizar agora").
+- **Fica para depois:** a sugestão de mix com IA (PR 5) e as metas por grupo.

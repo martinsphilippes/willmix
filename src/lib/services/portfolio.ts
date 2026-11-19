@@ -6,6 +6,7 @@ import {
   type AttendanceChannel,
   type CustomerAttendance,
   type CustomerGroup,
+  type CustomerSalesLoad,
   type Party,
   type User,
 } from "@/lib/db";
@@ -299,6 +300,11 @@ async function followedCustomers(ctx: Context): Promise<Party[]> {
   return [...byId.values()];
 }
 
+/** Ids dos clientes acompanhados (a carga noturna de vendas, docs/TRADE_COMERCIAL.md PR 3). */
+export async function followedCustomerIds(): Promise<string[]> {
+  return (await followedCustomers(await context())).map((p) => p.id);
+}
+
 async function attendancesOf(
   customerIds: string[],
 ): Promise<CustomerAttendance[]> {
@@ -322,6 +328,23 @@ export interface PortfolioRow {
   days: number | null;
   dueDay: string | null;
   pending: number;
+  /** Pedido mais recente no Sankhya (base de vendas, PR 3); nulo sem carga. */
+  lastPurchaseDate: string | null;
+  /** Dias desde o pedido mais recente (dia de Brasília). */
+  daysWithoutPurchase: number | null;
+}
+
+/** Pedido mais recente de cada cliente (a carga da base de vendas). */
+async function lastPurchases(ids: string[]): Promise<Map<string, string>> {
+  if (!ids.length) return new Map();
+  const loads = await getStore()
+    .list("customer_sales_loads", { filter: { customerId: ids } })
+    .catch(() => [] as CustomerSalesLoad[]);
+  return new Map(
+    loads
+      .filter((l) => l.lastOrderDate)
+      .map((l) => [l.customerId, l.lastOrderDate as string]),
+  );
 }
 
 function rowsFor(
@@ -329,6 +352,7 @@ function rowsFor(
   customers: Party[],
   attendances: CustomerAttendance[],
   now: Date,
+  purchases: ReadonlyMap<string, string> = new Map(),
 ): PortfolioRow[] {
   const byCustomer = new Map<string, CustomerAttendance[]>();
   for (const a of attendances)
@@ -355,6 +379,15 @@ function rowsFor(
       days: standing.days,
       dueDay: standing.dueDay,
       pending: summary.pending,
+      lastPurchaseDate: purchases.get(p.id) ?? null,
+      daysWithoutPurchase: purchases.has(p.id)
+        ? Math.max(
+            0,
+            Math.round(
+              (dayMs(brDay(now)) - dayMs(purchases.get(p.id)!)) / 86_400_000,
+            ),
+          )
+        : null,
     };
   });
 }
@@ -396,12 +429,12 @@ export async function loadPortfolio(
   assertPortfolio(user);
   const ctx = await context();
   const customers = await followedCustomers(ctx);
-  const rows = rowsFor(
-    ctx,
-    customers,
-    await attendancesOf(customers.map((c) => c.id)),
-    now,
-  );
+  const ids = customers.map((c) => c.id);
+  const [attendances, purchases] = await Promise.all([
+    attendancesOf(ids),
+    lastPurchases(ids),
+  ]);
+  const rows = rowsFor(ctx, customers, attendances, now, purchases);
   const manage = canManagePortfolio(user);
   const visible = visibleTeamIds(user, ctx.team);
   const mine = manage
@@ -484,7 +517,13 @@ export async function loadPortfolioCustomer(
   const attendances = (await attendancesOf([party.id])).sort((a, b) =>
     b.occurredAt.localeCompare(a.occurredAt),
   );
-  const [row] = rowsFor(ctx, [party], attendances, now);
+  const [row] = rowsFor(
+    ctx,
+    [party],
+    attendances,
+    now,
+    await lastPurchases([party.id]),
+  );
   const manage = canManagePortfolio(user);
   const name = new Map(ctx.team.map((u) => [u.id, u.name]));
   const docIds = [...new Set(attendances.flatMap((a) => a.documentIds ?? []))];

@@ -2188,6 +2188,91 @@ export interface CustomerAttendance extends BaseRow {
   cancelledByUserId: string | null;
 }
 
+/**
+ * Base de vendas do Sankhya (docs/TRADE_COMERCIAL.md, PR 3): os pedidos de
+ * cada cliente acompanhado, somados por mês, produto e unidade, pela view do
+ * histórico da Nova solicitação. Derivada: a carga regrava pelo id fixo.
+ */
+export interface CustomerSaleMonth extends BaseRow {
+  customerId: string;
+  /** AAAA-MM (mês do pedido). */
+  month: string;
+  /** CODPROD do Sankhya. */
+  productCode: string;
+  productName: string | null;
+  /** Unidade negociada (UN, CX…). */
+  unit: string | null;
+  /** Quantidade pedida na unidade negociada. */
+  quantity: number;
+  /** Peças (a caixa convertida pelo volume do Sankhya); nulo sem conversão. */
+  pieces: number | null;
+  /** Valor líquido dos itens (após descontos), em R$. */
+  valueBrl: number | null;
+  /** Pedidos distintos no mês. */
+  orders: number;
+  /** AAAA-MM-DD do pedido mais recente do mês. */
+  lastOrderDate: string | null;
+  loadedAt: string;
+}
+
+/** Situação da carga de vendas de um cliente (id = o id do cliente). */
+export interface CustomerSalesLoad extends BaseRow {
+  customerId: string;
+  /** Última leitura que deu certo. */
+  loadedAt: string | null;
+  /** Última tentativa (certa ou com erro). */
+  triedAt: string | null;
+  /** Pedido mais recente do cliente (AAAA-MM-DD): os dias sem compra. */
+  lastOrderDate: string | null;
+  rows: number;
+  /** Falso quando passou do limite de leitura (totais podem estar menores). */
+  complete: boolean | null;
+  /** Erro da última tentativa ("no_code" sem código do Sankhya). */
+  error: string | null;
+}
+
+/**
+ * Plano de ação Trade (docs/TRADE_COMERCIAL.md, PR 2; a tela 12 do painel do
+ * Projeto Campineira): a ação com responsável e prazo, ligada ao cliente ou
+ * ao grupo econômico (e, do diagnóstico, ao produto). Aberta = pendência do
+ * responsável e prazo no Painel de SLA; concluída com a resposta ou a
+ * evidência.
+ */
+export const TRADE_ACTIVITY_STATUSES = [
+  "pending",
+  "investigating",
+  "pilot",
+  "done",
+  "cancelled",
+] as const;
+export type TradeActivityStatus = (typeof TRADE_ACTIVITY_STATUSES)[number];
+
+export interface TradeActivity extends BaseRow {
+  title: string;
+  description: string | null;
+  /** Cliente da ação (ou nulo, quando é do grupo). */
+  customerId: string | null;
+  /** Grupo econômico da ação (ou nulo, quando é de um cliente). */
+  groupId: string | null;
+  /** Produto (CODPROD do Sankhya) quando a ação veio do diagnóstico. */
+  productCode: string | null;
+  productName: string | null;
+  /** Foco do diagnóstico (proteger líderes, ampliar alcance…); nulo à mão. */
+  focus: string | null;
+  responsibleUserId: string;
+  /** Prazo (AAAA-MM-DD, dia de Brasília). */
+  dueDate: string;
+  status: TradeActivityStatus;
+  /** Resposta da gestão e evidências (texto). */
+  notes: string | null;
+  /** Fotos e arquivos de evidência (documents). */
+  documentIds: string[] | null;
+  doneAt: string | null;
+  doneByUserId: string | null;
+  cancelledAt: string | null;
+  createdByUserId: string | null;
+}
+
 export interface CartItem extends BaseRow {
   userId: string;
   customerId: string;
@@ -4118,6 +4203,9 @@ export interface Tables {
   economic_group_shares: EconomicGroupShare;
   delivery_round_shares: DeliveryRoundShare;
   customer_attendances: CustomerAttendance;
+  trade_activities: TradeActivity;
+  customer_sales_monthly: CustomerSaleMonth;
+  customer_sales_loads: CustomerSalesLoad;
   freight_tariffs: FreightTariff;
   product_variants: ProductVariant;
   conversations: Conversation;
@@ -5428,6 +5516,66 @@ export const TABLES: Record<TableName, TableDef> = {
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
       { key: "by_attendant", type: "key", columns: ["attendedByUserId"] },
+      { key: "by_status", type: "key", columns: ["status"] },
+    ],
+  },
+  customer_sales_monthly: {
+    label: "Base de vendas do Sankhya (mês × cliente × produto)",
+    columns: {
+      customerId: id(),
+      month: str(7, true),
+      productCode: str(20, true),
+      productName: str(300),
+      unit: str(10),
+      quantity: float(true),
+      pieces: float(),
+      valueBrl: float(),
+      orders: int(),
+      lastOrderDate: str(10),
+      loadedAt: datetime(true),
+    },
+    indexes: [
+      { key: "by_customer", type: "key", columns: ["customerId"] },
+      { key: "by_customer_month", type: "key", columns: ["customerId", "month"] },
+    ],
+  },
+  customer_sales_loads: {
+    label: "Carga de vendas do Sankhya por cliente",
+    columns: {
+      customerId: id(),
+      loadedAt: datetime(),
+      triedAt: datetime(),
+      lastOrderDate: str(10),
+      rows: int(),
+      complete: bool(),
+      error: str(500),
+    },
+    indexes: [{ key: "by_customer", type: "key", columns: ["customerId"] }],
+  },
+  trade_activities: {
+    label: "Plano de ação Trade (ações com responsável e prazo)",
+    columns: {
+      title: str(200, true),
+      description: text(),
+      customerId: id(false),
+      groupId: id(false),
+      productCode: str(20),
+      productName: str(300),
+      focus: str(20),
+      responsibleUserId: id(),
+      dueDate: str(10, true),
+      status: enumOf(TRADE_ACTIVITY_STATUSES),
+      notes: text(),
+      documentIds: json(),
+      doneAt: datetime(),
+      doneByUserId: id(false),
+      cancelledAt: datetime(),
+      createdByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_customer", type: "key", columns: ["customerId"] },
+      { key: "by_group", type: "key", columns: ["groupId"] },
+      { key: "by_responsible", type: "key", columns: ["responsibleUserId"] },
       { key: "by_status", type: "key", columns: ["status"] },
     ],
   },

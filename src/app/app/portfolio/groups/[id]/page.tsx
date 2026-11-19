@@ -10,6 +10,7 @@ import {
   Empty,
   Field,
   Input,
+  LinkButton,
   PageHeader,
   Select,
   TextLink,
@@ -27,6 +28,8 @@ import {
   updateCustomerGroupAction,
 } from "../../../actions/portfolio";
 import { customersText, portfolioError } from "../../_components/shared";
+import { tradeActivitiesFor } from "@/lib/services/trade-plan";
+import { ActivityList } from "../../plan/_components/activity-list";
 
 /*
  * Um grupo econômico (docs/TRADE_COMERCIAL.md): nome, responsável e
@@ -51,6 +54,7 @@ export default async function PortfolioGroupPage({
   const find = one(sp.find);
   const view = await loadCustomerGroup(user, id, find);
   if (!view) notFound();
+  const activities = await tradeActivitiesFor(user, { groupId: id });
   const { group } = view;
   const errorText = portfolioError(t, sp.error);
   const notice = sp.created
@@ -79,9 +83,17 @@ export default async function PortfolioGroupPage({
           </span>
         }
         actions={
-          <TextLink href="/app/portfolio/groups">
-            {`← ${t("portfolio.groups.title")}`}
-          </TextLink>
+          <>
+            <LinkButton
+              href={`/app/portfolio/panel?scope=g:${group.id}`}
+              data-portfolio-group-panel
+            >
+              {t("portfolio.groups.panelLink")}
+            </LinkButton>
+            <TextLink href="/app/portfolio/groups">
+              {`← ${t("portfolio.groups.title")}`}
+            </TextLink>
+          </>
         }
       />
       {errorText ? (
@@ -274,6 +286,33 @@ export default async function PortfolioGroupPage({
           ) : null}
         </Card>
       </div>
+
+      <Card
+        className="mt-4"
+        dense
+        title={t("tradePlan.section.title")}
+        actions={
+          <span className="flex flex-wrap gap-3 text-xs">
+            <TextLink
+              href={`/app/portfolio/plan?new=1&newGroup=${group.id}#new`}
+              data-trade-new-link
+            >
+              {t("tradePlan.section.new")}
+            </TextLink>
+            <TextLink href={`/app/portfolio/plan?group=${group.id}`}>
+              {t("tradePlan.section.all")}
+            </TextLink>
+          </span>
+        }
+      >
+        {activities.length ? (
+          <ActivityList t={t} rows={activities} />
+        ) : (
+          <p className="text-sm text-zinc-500">
+            {t("tradePlan.section.emptyGroup")}
+          </p>
+        )}
+      </Card>
     </>
   );
 }

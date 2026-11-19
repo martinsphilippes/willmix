@@ -44,6 +44,7 @@ const PORTAL_ONLY: TableName[] = [
   "form_drafts",
   // Atendimentos ao cliente (carteira; docs/TRADE_COMERCIAL.md).
   "customer_attendances",
+  "trade_activities",
   "booking_invites",
   "selection_groups",
   "supplier_requests",

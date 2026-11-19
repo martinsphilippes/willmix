@@ -252,6 +252,7 @@ Em Pendências (`/app/tasks`) o **operador** vê só o que as funções dele faz
 | Itens do fornecedor e dos parceiros                                                                                | não aparecem para o operador                                                                                                      |
 | Mensagem a responder                                                                                               | o analista da conversa (sem analista: todos)                                                                                      |
 | Atender {cliente}; Cobrar a confirmação de {cliente} (docs/TRADE_COMERCIAL.md)                                     | o responsável pelo cliente (na cobrança, quem atendeu), com a tela Carteira e atendimento; sem responsável, a ação "trade.manage" |
+| Ação de trade: {ação} (Plano de ação Trade, docs/TRADE_COMERCIAL.md)                                               | o responsável da ação, com a tela Carteira e atendimento                                                                          |
 
 O painel de SLA e as outras telas continuam com a lista completa da Wellmix.
 
