@@ -264,7 +264,33 @@ export function decodeStatusMessage(message: unknown): string {
  * Serviço "service.sbr" (status "1" = sucesso). O corpo segue o formato da
  * documentação: { serviceName, requestBody }.
  */
+/**
+ * "O serviço foi cancelado por situação de concorrência. Essa mesma sessão
+ * HTTP fez a requisição duas vezes simultaneamente." (dono, 19/11/2026):
+ * outra chamada da mesma sessão estava em andamento; tenta de novo.
+ */
+export const isConcurrencyError = (e: unknown) =>
+  e instanceof SankhyaError &&
+  /concorr[eê]ncia|simultaneamente/i.test(e.detail ?? "");
+
 export async function callService(
+  serviceName: string,
+  requestBody: unknown,
+  options: SankhyaClientOptions & { module?: SankhyaModule } = {},
+): Promise<SankhyaServiceResponse> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await callServiceOnce(serviceName, requestBody, options);
+    } catch (e) {
+      if (attempt >= 3 || !isConcurrencyError(e)) throw e;
+      await new Promise((r) =>
+        setTimeout(r, 300 * (attempt + 1) + Math.floor(Math.random() * 300)),
+      );
+    }
+  }
+}
+
+async function callServiceOnce(
   serviceName: string,
   requestBody: unknown,
   options: SankhyaClientOptions & { module?: SankhyaModule } = {},

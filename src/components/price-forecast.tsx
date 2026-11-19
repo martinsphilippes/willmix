@@ -65,6 +65,17 @@ type Mode = "view" | "target";
 const DEBOUNCE_MS = 600;
 
 /**
+ * Uma chamada de cada vez desta tela (dono, 19/11/2026): o Sankhya recusa
+ * duas requisições simultâneas da mesma sessão ("situação de concorrência").
+ */
+let forecastQueue: Promise<unknown> = Promise.resolve();
+function queued<T>(task: () => Promise<T>): Promise<T> {
+  const run = forecastQueue.then(task, task);
+  forecastQueue = run.catch(() => undefined);
+  return run;
+}
+
+/**
  * Previsão de preço ao cliente final de um produto da Nova solicitação
  * (dono, 15 e 16/11/2026; docs/ORDER_TERMS.md 11.8): a conta é da cotação
  * V2 do Sankhya e roda sozinha quando o produto é escolhido e sempre que
@@ -126,7 +137,9 @@ export function PriceForecast({
   const query = (() => {
     if (!productId || (mode === "target" && !targetOk)) return null;
     const params = new URLSearchParams({ productId });
-    if (piecesOk) params.set("quantity", String(pieces));
+    // Sem a quantidade (dono, 19/11/2026: o preço por peça não depende
+    // dela; o valor total é preço × peças aqui na tela). Mexer nas
+    // quantidades não chama o Sankhya de novo.
     if (containers && containers > 0)
       params.set("containers", String(containers));
     const customerId = shared?.customer?.id;
@@ -147,9 +160,13 @@ export function PriceForecast({
     const timer = window.setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/price-forecast?${query}`, {
-          signal: controller.signal,
-        });
+        const res = await queued(() =>
+          controller.signal.aborted
+            ? Promise.reject(new Error("aborted"))
+            : fetch(`/api/price-forecast?${query}`, {
+                signal: controller.signal,
+              }),
+        );
         if (!res.ok) throw new Error(String(res.status));
         const value = (await res.json()) as PriceForecastAnswer;
         setAnswer({

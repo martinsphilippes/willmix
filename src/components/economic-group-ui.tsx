@@ -103,7 +103,7 @@ function GroupDialog({
       ref={ref}
       onClose={onClose}
       onCancel={onClose}
-      className="m-auto w-[min(44rem,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] overflow-auto rounded-xl border border-zinc-200 bg-white p-0 shadow-xl backdrop:bg-zinc-900/40"
+      className="m-auto w-[min(64rem,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] overflow-auto rounded-xl border border-zinc-200 bg-white p-0 shadow-xl backdrop:bg-zinc-900/40"
       {...rest}
     >
       {open ? (
@@ -721,21 +721,15 @@ export function RowGroupAllocation({
   const filled = Object.keys(current).length;
   const split = matrixPieces(current, ids, n, per);
   const key = filled ? JSON.stringify(split.total) : "";
-  const pending = useRef<string | null>(null);
   // A soma por entrega vai para a programação do produto (o campo de
   // quantidade da linha escuta o evento).
   useEffect(() => {
     if (!key) return;
-    pending.current = key;
-    const timer = window.setTimeout(() => {
-      if (pending.current === key) pending.current = null;
-    }, 1500);
     anchor.current?.closest("form")?.dispatchEvent(
       new CustomEvent<RoundsEventDetail>(ROUNDS_EVENT, {
         detail: { prefix, quantities: JSON.parse(key) as number[] },
       }),
     );
-    return () => window.clearTimeout(timer);
   }, [key, prefix]);
   // A programação do produto mudou fora daqui: a matriz acompanha, na
   // mesma proporção de cada entrega.
@@ -744,24 +738,22 @@ export function RowGroupAllocation({
   const shares = group?.shares ?? {};
   const sharesKey = JSON.stringify(shares);
   const syncFromLoad = useEffectEvent((loaded: string) => {
-    if (!loaded || !group) return;
-    if (loaded === key) {
-      pending.current = null;
-      return;
-    }
-    if (pending.current) return;
+    if (!loaded || !group || loaded === key) return;
     const pieces = JSON.parse(loaded) as number[];
     if (pieces.length !== n) return;
+    // Peças que não fecham a caixa: arredonda para cima (caixa inteira).
     const unit = per ?? 1;
-    const targets = pieces.map((p) => Math.round(p / unit));
+    const targets = pieces.map((p) => Math.ceil(p / unit - 1e-9));
     const total = targets.reduce((a, b) => a + b, 0);
     if (!total && !filled) return;
     const next = rescaleMatrix(matrix, ids, targets, shares);
     if (next) setMatrix(next);
   });
+  // Espera parar de digitar (dono, 19/11/2026: cada tecla numa
+  // "Programação X" reescrevia a matriz no meio da digitação).
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- a programação vem de outro componente (o campo de quantidade da linha)
-    syncFromLoad(loadKey);
+    const timer = window.setTimeout(() => syncFromLoad(loadKey), 700);
+    return () => window.clearTimeout(timer);
   }, [loadKey, n, per, sharesKey]);
   if (!group) return null;
   const fmt = (v: number) => v.toLocaleString(intl);
@@ -964,7 +956,16 @@ function BulkDialog({
   const [mode, setMode] = useState<"base" | "total">("total");
   const [baseId, setBaseId] = useState(ids[0] ?? "");
   const [qty, setQty] = useState("");
+  // Peças digitadas (dono, 19/11/2026): as caixas saem delas, arredondadas
+  // para cima; ao sair do campo, as peças viram as das caixas inteiras.
+  const [qtyPieces, setQtyPieces] = useState<string | null>(null);
   const [cells, setCells] = useState<Record<string, string[]>>({});
+  const [cellPieces, setCellPieces] = useState<{
+    key: string;
+    text: string;
+  } | null>(null);
+  // A simulação do "Por percentual" preenche o "Uma a uma" sozinha.
+  const [simulatedFor, setSimulatedFor] = useState("");
   // Abrir: o padrão do grupo (ou o igual), as entregas e a matriz de agora.
   const [openedFor, setOpenedFor] = useState(false);
   if (open && !openedFor) {
@@ -984,6 +985,9 @@ function BulkDialog({
       ),
     );
     setQty("");
+    setQtyPieces(null);
+    setCellPieces(null);
+    setSimulatedFor("");
   }
   if (!open && openedFor) setOpenedFor(false);
   const shares = toNumbers(percents);
@@ -998,6 +1002,31 @@ function BulkDialog({
     : mode === "total"
       ? splitByPercent(amount, ids, shares)
       : fromBaseCompany(baseId, amount, ids, shares);
+  // 4. A simulação já preenche o "Uma a uma" (dono, 19/11/2026).
+  const simulation = preview ? JSON.stringify([preview, roundWeights]) : "";
+  if (open && simulation && simulation !== simulatedFor) {
+    setSimulatedFor(simulation);
+    const m = matrixFromTotals(preview!, ids, n, roundWeights);
+    setCells(
+      Object.fromEntries(
+        ids.map((id) => [
+          id,
+          Array.from({ length: n }, (_, i) =>
+            m[id]?.[i] ? String(m[id][i]) : "",
+          ),
+        ]),
+      ),
+    );
+  }
+  /** Caixas a partir das peças digitadas (para cima). */
+  const cartonsOf = (pieces: string) => {
+    const p = Math.max(0, Math.floor(num(pieces)));
+    return per && p ? String(Math.ceil(p / per - 1e-9)) : "";
+  };
+  const piecesOf = (cartons: string) => {
+    const c = Math.max(0, Math.floor(num(cartons)));
+    return per && c ? String(c * per) : "";
+  };
   const fmt = (v: number) => v.toLocaleString(intl);
   const tabClass = (on: boolean) =>
     cx(
@@ -1180,11 +1209,36 @@ function BulkDialog({
                 type="text"
                 inputMode="numeric"
                 value={qty}
-                onChange={(e) => setQty(e.target.value)}
+                onChange={(e) => {
+                  setQty(e.target.value);
+                  setQtyPieces(null);
+                }}
                 className={cx(inputDenseClass, "w-28 tabular-nums")}
                 data-group-bulk-qty
               />
             </label>
+            {per ? (
+              <label className="space-y-1">
+                <span className="block font-medium text-zinc-700">
+                  {labels["econGroup.col.pieces"]}
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={qtyPieces ?? piecesOf(qty)}
+                  onChange={(e) => {
+                    setQtyPieces(e.target.value);
+                    setQty(cartonsOf(e.target.value));
+                  }}
+                  onBlur={() => setQtyPieces(null)}
+                  title={fillLabel(labels["econGroup.pieces.hint"], {
+                    n: per,
+                  })}
+                  className={cx(inputDenseClass, "w-28 tabular-nums")}
+                  data-group-bulk-pieces
+                />
+              </label>
+            ) : null}
           </div>
           {mode === "base" && amount && !preview ? (
             <p className="text-xs font-medium text-amber-800" role="alert">
@@ -1279,36 +1333,79 @@ function BulkDialog({
                         {taxIdText(c.taxId)}
                       </span>
                     </td>
-                    {Array.from({ length: n }, (_, i) => (
-                      <td key={i} className="px-2 py-1 text-right">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={cells[c.id]?.[i] ?? ""}
-                          onChange={(e) =>
-                            setCells((prev) => {
-                              const row = Array.from(
-                                { length: n },
-                                (_, k) => prev[c.id]?.[k] ?? "",
-                              );
-                              row[i] = e.target.value;
-                              return { ...prev, [c.id]: row };
-                            })
-                          }
-                          aria-label={`${c.name} ${roundLabel(labels, i, dates[i], intl)}`}
-                          className={cx(
-                            inputDenseClass,
-                            "w-20 text-right tabular-nums",
-                          )}
-                          data-group-cell={`${c.id}:${i + 1}`}
-                        />
-                      </td>
-                    ))}
-                    <td
-                      className="px-2 py-1 text-right font-semibold tabular-nums"
-                      data-group-row-total={c.id}
-                    >
-                      {fmt(rowTotals[c.id] ?? 0)}
+                    {Array.from({ length: n }, (_, i) => {
+                      const setCartons = (v: string) =>
+                        setCells((prev) => {
+                          const row = Array.from(
+                            { length: n },
+                            (_, k) => prev[c.id]?.[k] ?? "",
+                          );
+                          row[i] = v;
+                          return { ...prev, [c.id]: row };
+                        });
+                      const pieceKey = `${c.id}:${i}`;
+                      return (
+                        <td key={i} className="px-2 py-1 text-right">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={cells[c.id]?.[i] ?? ""}
+                            onChange={(e) => setCartons(e.target.value)}
+                            aria-label={`${c.name} ${roundLabel(labels, i, dates[i], intl)}`}
+                            className={cx(
+                              inputDenseClass,
+                              "w-20 text-right tabular-nums",
+                            )}
+                            data-group-cell={`${c.id}:${i + 1}`}
+                          />
+                          {per ? (
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={
+                                cellPieces?.key === pieceKey
+                                  ? cellPieces.text
+                                  : piecesOf(cells[c.id]?.[i] ?? "")
+                              }
+                              onChange={(e) => {
+                                setCellPieces({
+                                  key: pieceKey,
+                                  text: e.target.value,
+                                });
+                                setCartons(cartonsOf(e.target.value));
+                              }}
+                              onBlur={() => setCellPieces(null)}
+                              placeholder={labels["econGroup.col.pieces"]}
+                              aria-label={`${c.name} ${roundLabel(labels, i, dates[i], intl)} ${labels["econGroup.col.pieces"]}`}
+                              title={fillLabel(
+                                labels["econGroup.pieces.hint"],
+                                {
+                                  n: per,
+                                },
+                              )}
+                              className={cx(
+                                inputDenseClass,
+                                "mt-1 block w-20 text-right text-[11px] tabular-nums text-zinc-600",
+                              )}
+                              data-group-cell-pieces={`${c.id}:${i + 1}`}
+                            />
+                          ) : null}
+                        </td>
+                      );
+                    })}
+                    <td className="px-2 py-1 text-right font-semibold tabular-nums">
+                      <span data-group-row-total={c.id}>
+                        {fmt(rowTotals[c.id] ?? 0)}
+                      </span>
+                      {per ? (
+                        <span
+                          className="block text-[11px] font-normal text-zinc-500"
+                          data-group-row-pieces={c.id}
+                        >
+                          {fmt((rowTotals[c.id] ?? 0) * per)}{" "}
+                          {labels["econGroup.col.pieces"].toLowerCase()}
+                        </span>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
