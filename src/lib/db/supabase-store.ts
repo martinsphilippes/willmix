@@ -9,7 +9,14 @@ import type {
   Store,
   StoredFile,
 } from "./store";
-import { hidesHeld, pickColumns, searchText } from "./store";
+import {
+  hidesHeld,
+  likeWord,
+  matchesWords,
+  pickColumns,
+  searchText,
+  searchWords,
+} from "./store";
 import { storageFileName } from "../file-kinds";
 import {
   clampRange,
@@ -114,7 +121,33 @@ export class SupabaseStore implements Store {
     table: K,
     options: ListOptions<Tables[K]>,
     select: string,
+    /**
+     * Busca por palavras: "literal" (cada palavra como foi digitada) ou
+     * "accent" (vogais e "c" com coringa, para achar com acento). Sem dizer,
+     * as duas: a literal primeiro, a outra completa (store.ts, likeWord).
+     */
+    searchMode?: "literal" | "accent",
   ): Promise<Row[]> {
+    const words = options.search ? searchWords(options.search.text) : [];
+    if (words.length && !searchMode) {
+      const literal = await this.listRaw(table, options, select, "literal");
+      const loose = words.some((w) => likeWord(w) !== w);
+      const enough = options.limit && literal.length >= options.limit;
+      const accent =
+        loose && !enough
+          ? await this.listRaw(table, options, select, "accent")
+          : [];
+      const seen = new Set(literal.map((r) => r.id));
+      const merged = [...literal, ...accent.filter((r) => !seen.has(r.id))];
+      const orderBy = (options.orderBy ?? "createdAt") as string;
+      const dir = options.direction === "desc" ? -1 : 1;
+      merged.sort((a, b) => {
+        const x = a[orderBy] as string | number;
+        const y = b[orderBy] as string | number;
+        return x < y ? -dir : x > y ? dir : 0;
+      });
+      return options.limit ? merged.slice(0, options.limit) : merged;
+    }
     // Listas grandes no "igual a um destes" viram consultas em partes (URL
     // curta), juntadas e reordenadas aqui, como no Appwrite.
     const big = Object.entries(options.filter ?? {}).find(
@@ -152,11 +185,18 @@ export class SupabaseStore implements Store {
     const params: string[] = [`select=${select}`, ...where];
     // Histórico do Sankhya em espera (store.ts, hidesHeld).
     if (hidesHeld(table, options)) params.push("held=not.is.true");
-    if (options.search) {
-      const text = searchText(options.search.text);
-      if (text)
-        params.push(`${enc(options.search.column)}=ilike.${enc(`*${text}*`)}`);
-    }
+    // Busca por palavras (dono, 19/11/2026): cada palavra em qualquer
+    // ordem e lugar; na volta "accent", vogais e "c" com coringa por causa
+    // do acento e a conferência exata depois de ler.
+    const typed = options.search
+      ? [...new Set(searchText(options.search.text).split(" ").filter(Boolean))]
+      : [];
+    for (const word of searchMode === "accent" ? words : typed.slice(0, 6))
+      params.push(
+        `${enc(options.search!.column)}=ilike.${enc(
+          `*${searchMode === "accent" ? likeWord(word) : word}*`,
+        )}`,
+      );
     const dir = options.direction === "desc" ? "desc" : "asc";
     params.push(
       `order=${enc(options.orderBy ?? "createdAt")}.${dir},id.${dir}`,
@@ -173,7 +213,14 @@ export class SupabaseStore implements Store {
     // o mesmo (o índice createdAt,id já existe), a ordem e o conjunto são os
     // mesmos, e linha gravada durante a leitura não duplica nem some da lista.
     // Sem Prefer: count=exact: a contagem rodava a consulta inteira de novo.
-    const wanted = options.limit ?? Infinity;
+    // Com a busca, lê mais para sobrar o limite depois da conferência.
+    // Na volta com coringa, lê mais para sobrar o limite depois da
+    // conferência das palavras.
+    const wanted = options.limit
+      ? searchMode === "accent"
+        ? Math.min(options.limit * 10, 1000)
+        : options.limit
+      : Infinity;
     const query = params.join("&");
     const orderBy = options.orderBy ?? "createdAt";
     const rows: Row[] = [];
@@ -202,7 +249,12 @@ export class SupabaseStore implements Store {
       cond = next?.cond ?? null;
       if (next) tail = next.tail;
     }
-    return rows;
+    if (searchMode !== "accent") return rows;
+    const column = options.search!.column as string;
+    const exact = rows.filter(
+      (r) => !(column in r) || matchesWords(r[column], words),
+    );
+    return options.limit ? exact.slice(0, options.limit) : exact;
   }
 
   /**
@@ -222,6 +274,8 @@ export class SupabaseStore implements Store {
         "updatedAt",
         ...columns,
         ...(options.orderBy ? [options.orderBy] : []),
+        // A coluna da busca, para conferir as palavras depois de ler.
+        ...(options.search ? [options.search.column] : []),
       ]),
     ];
     // Coluna JSON com `jsonKeys`: só as chaves pedidas (`apelido:coluna->chave`).

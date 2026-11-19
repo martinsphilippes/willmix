@@ -1,5 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { editOrderTerms, fillOrderTerms, login } from "./helpers";
+import {
+  chooseCustomerLogin,
+  createdRequestId,
+  editOrderTerms,
+  fillCustomerContacts,
+  fillOrderTerms,
+  login,
+} from "./helpers";
 
 /*
  * Nova solicitação TS (rodada do dono de 19/11/2026): só produtos da base;
@@ -150,4 +157,58 @@ test("Nova solicitação TS: produto da base, descrição, cálculo da previsão
   await expect(plan.locator("[data-order-plan-body]")).toBeHidden();
   await plan.locator("[data-order-plan-edit]").click();
   await expect(plan.locator("[data-order-plan-body]")).toBeVisible();
+});
+
+test("Busca por palavras fora de ordem, Enter não envia e a encomenda reaberta para editar", async ({
+  page,
+}) => {
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/new-request/ts");
+  await chooseCustomer(page, "loja", "cliente-joao");
+  await chooseCustomerLogin(page, "joao@lojista.com");
+  await fillOrderTerms(page, { format: "wd", caller: "customer" });
+
+  // Palavras fora de ordem e sem acento acham o produto (dono, 19/11/2026).
+  const row = page.locator('[data-request-item="0"]');
+  const product = row.locator('[data-product-picker="catalog"]');
+  await product
+    .locator("[data-product-picker-input]")
+    .fill("articulada boneca");
+  await product.locator('[data-product-picker-option="prod-boneca"]').click();
+  await row
+    .locator("[data-rounds-generator] [data-generate-total]")
+    .fill("100");
+  await fillCustomerContacts(page, "loja-joao");
+
+  // Enter num campo e espaço no botão Enviar não mandam a solicitação.
+  await page.locator('input[name="deadline"]').press("Enter");
+  const sendButton = page.getByRole("button", { name: /^(Enviar|Send)$/ });
+  await sendButton.focus();
+  await page.keyboard.press("Space");
+  await page.keyboard.press("Enter");
+  await page.waitForTimeout(1000);
+  expect(new URL(page.url()).pathname).toBe("/app/new-request/ts");
+
+  // Só o clique envia.
+  await sendButton.click();
+  const firstId = await createdRequestId(page, { open: false });
+  const title = await page.getByRole("heading", { level: 1 }).textContent();
+
+  // Aguardando o cliente: "Editar a encomenda" reabre a tela com os dados.
+  await page.locator("[data-request-edit]").click();
+  await page.waitForURL(/\/app\/new-request\/ts\?draft=/);
+  await expect(page.locator("[data-request-editing]")).toContainText(
+    "Editando a encomenda",
+  );
+  await expect(
+    page.locator(
+      '[data-request-item="0"] [data-product-picker="catalog"] [data-product-picker-input]',
+    ),
+  ).toHaveValue(/Boneca/);
+  await expect(page.locator("[data-order-terms-collapsed]")).toBeVisible();
+
+  // Enviada de novo: a mesma encomenda (mesmo número e id), no lugar.
+  await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
+  expect(await createdRequestId(page, { open: false })).toBe(firstId);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(title!);
 });

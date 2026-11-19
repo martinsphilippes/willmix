@@ -428,33 +428,54 @@ async function createRequest(
       // (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 6). Só o
       // rascunho de quem envia, desta tela; sem ele, um número novo.
       const draftId = str(form, "draftId");
-      const draftNumber =
+      const sentDraft =
         draftId && isWellmix(user)
-          ? ((
-              await (
-                await import("@/lib/services/request-drafts")
-              ).getRequestDraft(user, draftId, screenMode, replenish)
-            )?.number ?? undefined)
-          : undefined;
-      const created = await createRequestBatch(
-        user,
-        {
-          ...base,
-          // Wellmix em nome do cliente: o login do cliente que solicitou.
-          requestedForUserId:
-            isWellmix(user) && !forStock
-              ? str(form, "requestedForUserId") || null
-              : null,
-          orderTerms,
-        },
-        items,
-        {
-          // Compra para estoque pela Reposição: a origem é reposição (fila
-          // da Reposição); o resto segue como encomenda.
-          ...(replenish && forStock ? { origin: "replenishment" } : {}),
-          ...(typeof draftNumber === "number" ? { number: draftNumber } : {}),
-        },
-      );
+          ? await (
+              await import("@/lib/services/request-drafts")
+            ).getRequestDraft(user, draftId, screenMode, replenish)
+          : null;
+      const draftNumber = sentDraft?.number ?? undefined;
+      // Encomenda reaberta para editar (dono, 19/11/2026): o rascunho dela
+      // traz a marca; o envio refaz a encomenda no lugar (mesmo número, lote
+      // e ids), enquanto o cliente não confirmou.
+      const editModule = await import("@/lib/services/request-edit");
+      const editOf =
+        sentDraft?.payload?.find(([k]) => k === editModule.EDIT_FIELD)?.[1] ??
+        null;
+      const batchBase = {
+        ...base,
+        // Wellmix em nome do cliente: o login do cliente que solicitou.
+        requestedForUserId:
+          isWellmix(user) && !forStock
+            ? str(form, "requestedForUserId") || null
+            : null,
+        orderTerms,
+      };
+      const batchOptions = {
+        // Compra para estoque pela Reposição: a origem é reposição (fila
+        // da Reposição); o resto segue como encomenda.
+        ...(replenish && forStock ? { origin: "replenishment" as const } : {}),
+        ...(typeof draftNumber === "number" ? { number: draftNumber } : {}),
+      };
+      const created =
+        editOf && orderTerms
+          ? await editModule.replaceSentRequest(user, editOf, (keep) =>
+              createRequestBatch(user, batchBase, items, {
+                ...batchOptions,
+                ids: keep.ids,
+                number: keep.number,
+                groupId: keep.groupId,
+              }),
+            )
+          : await createRequestBatch(user, batchBase, items, batchOptions);
+      // O formulário como foi enviado, para "Editar a encomenda" enquanto o
+      // cliente não confirma.
+      if (orderTerms)
+        await editModule
+          .saveSentForm(created, form, screenMode)
+          .catch((error) =>
+            console.error("[action] formulário enviado", error),
+          );
       // Rascunho enviado (docs/ORDER_TERMS.md seção 9): sai da lista.
       if (draftId && isWellmix(user)) {
         const { deleteRequestDraft } =

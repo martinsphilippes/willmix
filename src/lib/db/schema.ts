@@ -1054,6 +1054,13 @@ export interface PriceTier {
   price: number;
 }
 
+/** O formulário enviado (ver `Request.sentForm`). */
+export interface RequestSentForm {
+  /** A tela de onde veio (nulo: Nova solicitação de Encomendas). */
+  screen: string | null;
+  fields: Array<[string, string]>;
+}
+
 export interface Request extends BaseRow {
   customerId: string;
   createdByUserId: string;
@@ -1149,6 +1156,12 @@ export interface Request extends BaseRow {
    * Nulo no pedido de um cliente só.
    */
   companyAllocations?: RequestCompanyAllocation[] | null;
+  /**
+   * O formulário da Nova solicitação como foi enviado (dono, 19/11/2026):
+   * "Editar a encomenda" o reabre, com os dados como estavam, enquanto o
+   * cliente não confirmou. Só na 1ª solicitação do lote; nulo nas antigas.
+   */
+  sentForm?: RequestSentForm | null;
 }
 
 /** Parte de uma empresa do grupo econômico num produto do pedido. */
@@ -4571,6 +4584,7 @@ export const TABLES: Record<TableName, TableDef> = {
       priceForecast: json(),
       // Quantidades por empresa do grupo econômico (18/11/2026).
       companyAllocations: json(),
+      sentForm: json(),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
