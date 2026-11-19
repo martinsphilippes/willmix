@@ -66,8 +66,8 @@ A vez é o papel do próximo item obrigatório do marco atual. Cada item é uma 
 
 - **Encomendas** (`/app/requests`):
   - a Situação é quem está com a vez (a situação gravada fica na dica);
-  - o Próximo passo é a ação, com quem está;
-  - "Em aberto" e "Prazo vencido" contam também a venda aguardando o cliente;
+  - a Próxima ação é a ação e, embaixo, quem deve agir: a pessoa, a equipe (função) ou o parceiro, pela mesma regra das Pendências, com os nomes ao tocar (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 6);
+  - "Abertas" e "Atrasadas" contam também a venda aguardando o cliente, por solicitação; o Prazo é o da pendência da etapa;
   - o filtro **Com quem está** (`?vez=`, com a contagem de cada parte) vale também no CSV.
 - **Detalhe da encomenda e página do lote**: o selo da vez e o Próximo passo. O cliente que confirma vê "Aguardando você" e, no lote, o atalho "Confirmar pedido".
 - **Pedidos** (`/app/orders`): a coluna e o filtro **Com quem está** (`?w=`). No detalhe do pedido, o selo da vez no cabeçalho.

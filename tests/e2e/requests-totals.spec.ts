@@ -107,23 +107,28 @@ test("Encomendas: totais na lista, na página da encomenda e no CSV", async ({
   await login(page, "admin@wellmix.com");
   await page.goto("/app/requests");
   const titles = await headerTitles(page);
+  // Cabeçalhos curtos (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md,
+  // seção 6); o MOQ saiu da tabela e segue na página e no CSV.
   const order = [
-    "Nº",
+    "Solicitação",
     "Cliente",
-    "Produtos",
-    "Preço total",
-    "MOQ total (UN)",
-    "Peças total (UN)",
-    "Caixas master total",
-    "Inner total (CX)",
-    "CBM total (m³)",
+    "Itens",
+    "Valor",
+    "Peças",
+    "Master",
+    "Inner",
+    "CBM (m³)",
     "Situação",
-    "Containers por programação",
-    "Programações",
-    "Próximo passo",
-  ].map((title) => titles.findIndex((t) => t.startsWith(title)));
+    "Cont./prog.",
+    "Entregas",
+    "Próxima ação",
+    "Prazo",
+    "Analista",
+    "Data",
+  ].map((title) => titles.findIndex((t) => t === title));
   expect(order.every((i) => i >= 0)).toBe(true);
   expect([...order].sort((a, b) => a - b)).toEqual(order);
+  expect(titles.some((t) => t.startsWith("MOQ"))).toBe(false);
 
   const row = page.locator(`[data-batch-row]:has(a[href="${path}"])`);
   await expect(row).toHaveCount(1);
@@ -138,8 +143,7 @@ test("Encomendas: totais na lista, na página da encomenda e no CSV", async ({
   await expect(total("inner")).toHaveAttribute("title", /Piscina/);
   await expect(total("cbm")).toContainText("12,609");
   await expect(total("cbm")).toHaveAttribute("data-total-value", "12.609");
-  await expect(total("moq")).toHaveAttribute("data-total-value", "2300");
-  await expect(total("moq")).toContainText("Total parcial");
+  await expect(total("moq")).toHaveCount(0);
   // Sem previsão de venda gravada (o cliente lançou pela tela dele): "—".
   await expect(total("price")).toHaveText("—");
   await expect(total("price")).toHaveAttribute("data-total-empty", "");
@@ -188,9 +192,9 @@ test("Encomendas: totais na lista, na página da encomenda e no CSV", async ({
   await login(page, "joao@lojista.com");
   await page.goto("/app/requests");
   const own = await headerTitles(page);
-  expect(own.some((t) => t.startsWith("Preço total"))).toBe(false);
-  expect(own.some((t) => t.startsWith("MOQ total"))).toBe(false);
-  expect(own.some((t) => t.startsWith("Peças total (UN)"))).toBe(true);
+  expect(own.some((t) => t.startsWith("Valor"))).toBe(false);
+  expect(own.some((t) => t.startsWith("MOQ"))).toBe(false);
+  expect(own.some((t) => t.startsWith("Peças"))).toBe(true);
   const ownRow = page.locator(`tr:has(a[href="${path}"])`).first();
   await expect(ownRow.locator('[data-request-total="pieces"]')).toHaveText(
     "2.820",

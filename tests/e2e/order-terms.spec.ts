@@ -101,8 +101,16 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await page.goto("/app/requests");
   const listed = page.locator(`[data-request-list-draft="${draftId}"]`);
   await expect(listed).toContainText(/Rascunho|Draft/);
-  // Também com filtro de situação (dono, 17/11/2026).
+  // Número persistente desde o rascunho (dono, 19/11/2026): só o número,
+  // como link que continua o rascunho. Está no card Rascunhos, não em
+  // Atrasadas (rascunho não é solicitação enviada).
+  const draftNumber = (
+    await listed.locator("[data-request-number]").textContent()
+  )?.trim();
+  expect(draftNumber).toMatch(/^\d+$/);
   await page.goto("/app/requests?situ=late");
+  await expect(listed).toHaveCount(0);
+  await page.goto("/app/requests?situ=draft");
   await expect(listed).toBeVisible();
   await listed.locator("[data-request-list-draft-open]").click();
   await page.waitForURL(new RegExp(`/app/requests/new\\?draft=${draftId}`));
@@ -221,6 +229,11 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await expect(page.locator(`[data-request-draft="${draftId}"]`)).toHaveCount(
     0,
   );
+  // E a solicitação enviada repete o número reservado no rascunho.
+  await page.goto("/app/requests");
+  await expect(
+    page.locator(`[data-request-row="${requestId}"] [data-request-number]`),
+  ).toHaveText(draftNumber!);
 
   // O cliente confirma: aviso "sem devoluções" e o CNPJ do re-despacho.
   await login(page, "joao@lojista.com");

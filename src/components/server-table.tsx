@@ -23,6 +23,7 @@ export function SortTh({
   href,
   t,
   className,
+  hint,
 }: {
   label: ReactNode;
   column: string;
@@ -31,6 +32,8 @@ export function SortTh({
   href: (sort: string | null) => string;
   t: Translate;
   className?: string;
+  /** Explicação do título (InfoTip), ao lado do link que ordena. */
+  hint?: ReactNode;
 }) {
   const state = sort?.key === column ? (sort.desc ? "desc" : "asc") : "none";
   return (
@@ -53,6 +56,7 @@ export function SortTh({
       >
         {label}
       </Link>
+      {hint ? <> {hint}</> : null}
     </th>
   );
 }

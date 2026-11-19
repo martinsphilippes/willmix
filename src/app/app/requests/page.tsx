@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 import { ServerPager, SortTh } from "@/components/server-table";
 import {
@@ -18,7 +17,7 @@ import {
   canOpen,
   type Screen,
 } from "@/lib/auth/screens";
-import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
+import { canViewRequest, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { canSeeMoney } from "@/lib/auth/function-access";
 import { REQUEST_SCREEN } from "@/lib/request-screens";
 import { canDeleteRequest } from "@/lib/services/requests";
@@ -39,7 +38,6 @@ import {
   BulkSelectAll,
 } from "@/components/bulk-delete";
 import {
-  earliestDeadline,
   groupRequestRows,
   type RequestListEntry,
 } from "@/lib/services/request-groups";
@@ -51,7 +49,7 @@ import {
   inStrategyQueue,
 } from "@/lib/services/purchase-strategy";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { getStore, type Role } from "@/lib/db";
+import { getStore, type Request, type Role } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import { productNameText } from "@/i18n";
 import {
@@ -82,10 +80,7 @@ import { customerOrdersInProgress } from "@/lib/services/customer-home";
 import { milestoneTitle, orderMilestoneText } from "@/lib/milestones";
 import {
   LISTED_SITUATIONS,
-  inSituation,
-  matchesRequest,
   nextStepText,
-  nextStepWho,
   requestNextStep,
   todayBrazil,
   type NextStep,
@@ -111,12 +106,14 @@ import {
   TotalValue,
   unitLabel,
 } from "@/components/request-total-cells";
-import { DemandTags } from "@/components/demand-tags";
-import { listDraftsForList } from "@/lib/services/request-drafts";
+import {
+  listDraftsForList,
+  type ListedDraft,
+} from "@/lib/services/request-drafts";
 import { demandKind, type DemandKind } from "@/lib/purchase-demand";
+import { isStockCustomer } from "@/lib/services/stock-party";
 import { requestTurnContext } from "@/lib/services/request-turns";
 import {
-  turnCounts,
   turnFilterOf,
   turnNameKey,
   turnTone,
@@ -128,17 +125,32 @@ import {
   type Composition,
   type CompositionItem,
 } from "@/lib/request-composition";
+import {
+  entryDue,
+  listCards,
+  type CardEntry,
+} from "@/lib/services/request-list-cards";
+import {
+  isOverdue,
+  responsibleKey,
+  responsibleLine,
+  responsibleOf,
+  stepDue,
+  stepOwner,
+  stepPartners,
+  type Person,
+  type Responsible,
+  type StepDue,
+} from "@/lib/request-responsible";
+import { peopleDirectory } from "@/lib/services/request-responsible";
+import { InfoTip } from "@/components/info-tip";
+import { ClampText } from "@/components/clamp-text";
 
 const BULK_FORM = "requests-bulk-delete";
 /** Colunas de total (dono, 18/11/2026): ordenar por elas lê os totais de todas as linhas. */
-const TOTAL_SORT_KEYS = new Set([
-  "price",
-  "moq",
-  "pieces",
-  "boxes",
-  "inner",
-  "cbm",
-]);
+const TOTAL_SORT_KEYS = new Set(["price", "pieces", "boxes", "inner", "cbm"]);
+/** Fuso dos prazos (o dia de hoje e as horas dos SLA). */
+const TIME_ZONE = "America/Sao_Paulo";
 
 export default async function RequestsPage({
   searchParams,
@@ -190,6 +202,8 @@ export default async function RequestsPage({
     customer && canOpen(user, "orders")
       ? customerOrdersInProgress(user)
       : Promise.resolve([]),
+    // Todos os logins: o Analista e quem age na próxima ação (a equipe pela
+    // função, os logins do cliente e os dos parceiros).
     wellmix ? store.list("users") : Promise.resolve([]),
   ]);
   const { cancelled } = loaded;
@@ -223,25 +237,18 @@ export default async function RequestsPage({
   const kindFilter: DemandKind | null =
     sp.kind === "order" || sp.kind === "replenishment" ? sp.kind : null;
   const today = todayBrazil();
+  const now = new Date();
   // Mapas no lugar de buscas na lista inteira a cada linha (auditoria de
   // performance, 14/11/2026: 16 mil solicitações × milhares de parceiros).
   const partyById = indexBy(parties, "id");
   const customerName = (id: string) => partyById.get(id)?.name ?? "";
-  const situationCounts = Object.fromEntries(
-    LISTED_SITUATIONS.map((k) => [
-      k,
-      byStatus.filter((r) =>
-        inSituation(r, requestDisplayStatus(r, cancelled), k, today),
-      ).length,
-    ]),
-  ) as Record<RequestSituation, number>;
   const filtering = wellmix && !showDeleted && !groupId;
   // De quem é a vez (dono, 18/11/2026; docs/TURNS.md): a compra de cada
   // encomenda (estratégia, cotação, solicitação ao fornecedor) e, na venda
   // aguardando o cliente, se há login que possa confirmar. O cliente vê só
   // se é a vez dele ou da Wellmix (a compra é interna).
   const turnCtx = wellmix ? await requestTurnContext(byStatus) : null;
-  const strategyOf = (r: (typeof byStatus)[number]) =>
+  const strategyOf = (r: Request) =>
     wellmix
       ? awaitingStrategySend(r)
         ? ("send" as const)
@@ -249,35 +256,11 @@ export default async function RequestsPage({
           ? ("queue" as const)
           : null
       : null;
-  /** Quem está com a vez na encomenda (sem o pedido: a lista não tem pedidos). */
-  const turnOf = (r: (typeof byStatus)[number]): TurnParty | null =>
-    requestNextStep({
-      status: r.status,
-      display: requestDisplayStatus(r, cancelled),
-      strategy: strategyOf(r),
-      purchase: turnCtx?.purchaseOf(r) ?? null,
-      customerLogin: turnCtx?.customerLoginOf(r) ?? null,
-      order: null,
-      today,
-    }).who;
   const turnFilter = filtering ? turnFilterOf(sp.vez) : null;
-  const matchesOthers = (r: (typeof byStatus)[number]) =>
-    inSituation(r, requestDisplayStatus(r, cancelled), situation, today) &&
-    (!kindFilter || demandKind(r) === kindFilter) &&
-    matchesRequest(r, customerName(r.customerId), q);
-  // Contagem por quem está com a vez, com os outros filtros aplicados.
-  const turnChips = filtering
-    ? turnCounts(byStatus.filter(matchesOthers).map(turnOf))
-    : [];
-  const requests = byStatus
-    .filter((r) => !groupId || r.groupId === groupId)
-    .filter(
-      (r) =>
-        !filtering ||
-        (matchesOthers(r) && (!turnFilter || turnOf(r) === turnFilter)),
-    );
+  // As solicitações da lista (no filtro de um lote, só as dele).
+  const pool = byStatus.filter((r) => !groupId || r.groupId === groupId);
   const orderIds = [
-    ...new Set(requests.map((r) => r.orderId).filter(Boolean)),
+    ...new Set(pool.map((r) => r.orderId).filter(Boolean)),
   ] as string[];
   const orders =
     wellmix && orderIds.length
@@ -296,8 +279,6 @@ export default async function RequestsPage({
       .filter((p) => p.type === "trading")
       .map((p) => p.id),
   );
-  const orderNumber = (id: string | null) =>
-    id ? (orderById.get(id)?.number ?? null) : null;
   /* Wellmix: quem age e o prazo de cada pedido pelos marcos (fase 5g). As
      fotos e os itens dos pedidos são lidos depois, só para as linhas da
      página (composição do pedido, mais abaixo). */
@@ -307,10 +288,14 @@ export default async function RequestsPage({
       )
     : new Map<string, { responsibleRole: Role | null; dueAt: string | null }>();
   const teamById = indexBy(team, "id");
-  const nextOf = (r: (typeof requests)[number]): NextStep => {
+  /** O próximo passo de cada produto (a mesma regra das Pendências). */
+  const stepCache = new Map<string, NextStep>();
+  const nextOf = (r: Request): NextStep => {
+    const cached = stepCache.get(r.id);
+    if (cached) return cached;
     const order = r.orderId ? orderById.get(r.orderId) : null;
     const info = order ? nextInfo.get(order.id) : undefined;
-    return requestNextStep({
+    const step = requestNextStep({
       status: r.status,
       display: requestDisplayStatus(r, cancelled),
       // Encomenda a enviar para cotação, ou já na Estratégia de Compra.
@@ -327,42 +312,20 @@ export default async function RequestsPage({
         : null,
       today,
     });
+    stepCache.set(r.id, step);
+    return step;
   };
+  /** Prazo da pendência do passo (dono, 19/11/2026, decisão 4). */
+  const dueOf = (r: Request) =>
+    stepDue(nextOf(r), r, turnCtx?.purchaseOf(r) ?? null);
   const nextText = (n: NextStep) => nextStepText(t, n);
-  const whoText = (n: NextStep) => nextStepWho(t, n);
-  /** Próximo passo e com quem está (a vez da Wellmix em destaque). */
-  const nextCell = (n: NextStep) =>
-    n.key === "none" ? (
-      "—"
-    ) : (
-      <span data-request-next={n.key}>
-        <span className="font-medium text-zinc-900">{nextText(n)}</span>
-        {n.who ? (
-          <span
-            className={cx(
-              "block text-xs",
-              n.who === "wellmix"
-                ? "font-medium text-amber-700"
-                : "text-zinc-500",
-            )}
-          >
-            {whoText(n)}
-          </span>
-        ) : null}
-        {n.late ? (
-          <span className="mt-0.5 block">
-            <Badge tone="danger">{t("reqList.late")}</Badge>
-          </span>
-        ) : null}
-      </span>
-    );
   /**
    * Situação (dono, 18/11/2026; docs/TURNS.md): quem está com a vez
    * ("Aguardando cliente"; para o próprio cliente, "Aguardando você"), com a
    * situação gravada na dica. Sem vez (excluída, pedido cancelado ou
    * encerrado), a situação gravada.
    */
-  const situationCell = (list: (typeof requests)[number][]) => {
+  const situationCell = (list: Request[]) => {
     const parts = new Map<
       string,
       {
@@ -421,9 +384,10 @@ export default async function RequestsPage({
   };
   // Produtos pedidos juntos viram uma linha só (abre a página do lote). No
   // filtro de um lote (?group=, links antigos) cada produto segue numa linha.
-  const entries: RequestListEntry<(typeof requests)[number]>[] = groupId
-    ? requests.map((row) => ({ kind: "single", row }))
-    : groupRequestRows(requests);
+  type Entry = RequestListEntry<Request>;
+  const entries: Entry[] = groupId
+    ? pool.map((row) => ({ kind: "single", row }))
+    : groupRequestRows(pool);
   const batchHref = (id: string) =>
     `/app/requests/batch/${encodeURIComponent(id)}`;
   /* Abrir é sempre no nível do pedido (dono, 18/11/2026), mesmo com um
@@ -431,20 +395,75 @@ export default async function RequestsPage({
      sozinha, pelo id dela. */
   const solicitationHref = (r: { id: string; groupId?: string | null }) =>
     batchHref(r.groupId ?? r.id);
-  // Lista longa: ordem e página no servidor (auditoria de performance,
-  // 14/11/2026: 134 MB de HTML com as 16 mil solicitações do histórico).
-  // Curta: inteira, como antes. Busca e situação continuam as do servidor.
-  type Entry = (typeof entries)[number];
+  // Na ordem em que foram pedidos (igual à página do pedido).
   const rowsOf = (e: Entry) =>
     e.kind === "batch"
       ? [...e.rows].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       : [e.row];
+  /* Cards por solicitação (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md,
+     seção 6): cada solicitação conta uma vez, os rascunhos de quem vê entram
+     no Total e em Rascunhos, e os cards contam sobre tudo o que a busca, o
+     tipo e o "Com quem está" deixam, antes da paginação. O card escolhido
+     filtra a lista sem mudar a contagem dos outros. */
+  type CardItem = CardEntry & { entry: Entry };
+  const cardEntries: CardItem[] = entries.map((entry) => {
+    const rows = rowsOf(entry);
+    return {
+      entry,
+      customerName: customerName(rows[0].customerId),
+      rows: rows.map((r) => ({
+        number: r.number ?? null,
+        productName: r.productName,
+        description: r.description,
+        kind: demandKind(r),
+        step: nextOf(r),
+        due: dueOf(r),
+      })),
+    };
+  });
+  // Rascunhos de quem está vendo (só dele, como sempre): todos, na lista.
+  const drafts = filtering
+    ? (await listDraftsForList(user, "requests", 500)).map((d) => ({
+        ...d,
+        number: d.draft.number ?? null,
+        title: d.draft.title,
+        customerName: d.draft.customerName,
+      }))
+    : [];
+  const cards = filtering
+    ? listCards(cardEntries, drafts, {
+        situation,
+        q,
+        kind: kindFilter,
+        turn: turnFilter,
+        now,
+        today,
+      })
+    : null;
+  type ListRow =
+    | { kind: "draft"; draft: ListedDraft }
+    | { kind: "entry"; entry: Entry; card: CardItem };
+  // Rascunhos primeiro (dono, 17/11/2026), depois as solicitações.
+  const listed: ListRow[] = cards
+    ? [
+        ...cards.drafts.map((d) => ({ kind: "draft" as const, draft: d })),
+        ...cards.entries.map((c) => ({
+          kind: "entry" as const,
+          entry: c.entry,
+          card: c,
+        })),
+      ]
+    : cardEntries.map((c) => ({
+        kind: "entry" as const,
+        entry: c.entry,
+        card: c,
+      }));
   /* Totais de cada encomenda (dono, 18/11/2026; docs/ORDER_LEVEL_LISTS.md,
-     seção 5): preço (venda prevista, só com "Ver valores e margem"), pedido
-     mínimo (só a Wellmix), peças, caixas master, caixas inner e CBM, pela
-     embalagem de cada produto: a mesma regra da ficha completa e da página
-     da encomenda (src/lib/services/request-packing.ts). Lidos para as linhas
-     da página; para ordenar a lista longa por um total, para todas. */
+     seção 5): preço (venda prevista, só com "Ver valores e margem"), peças,
+     caixas master, caixas inner e CBM, pela embalagem de cada produto: a
+     mesma regra da ficha completa e da página da encomenda
+     (src/lib/services/request-packing.ts). Lidos para as linhas da página;
+     para ordenar a lista longa por um total, para todas. */
   const seeSale = wellmix && canSeeMoney(user);
   const packingById = new Map<string, RequestPacking>();
   const linesOf = new Map<Entry, TotalsLine[]>();
@@ -468,63 +487,100 @@ export default async function RequestsPage({
       totalsOf.set(e, encomendaTotals(lines));
     }
   };
-  const totalSort = (key: TotalKey) => (e: Entry) =>
-    totalSortText(totalsOf.get(e)?.[key].value ?? null);
-  const entryColumns: ServerColumn<Entry>[] = [
+  const entryOf = (row: ListRow) => (row.kind === "entry" ? row.entry : null);
+  const totalSort = (key: TotalKey) => (row: ListRow) => {
+    const e = entryOf(row);
+    return e ? totalSortText(totalsOf.get(e)?.[key].value ?? null) : "";
+  };
+  /** Instante em Brasília no formato que a ordem entende (AAAA-MM-DD HH:MM). */
+  const brazilStamp = (at: string) =>
+    new Intl.DateTimeFormat("sv-SE", {
+      timeZone: TIME_ZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(at));
+  /** Texto de ordem do prazo: o dia vale até o fim dele. */
+  const dueSortText = (due: StepDue | null) =>
+    !due ? "" : due.day ? `${due.at} 23:59` : brazilStamp(due.at);
+  const columns: ServerColumn<ListRow>[] = [
     {
       key: "number",
-      text: (e) => String(rowsOf(e).find((r) => r.number)?.number ?? "—"),
+      text: (row) =>
+        String(
+          row.kind === "draft"
+            ? (row.draft.draft.number ?? "—")
+            : (rowsOf(row.entry).find((r) => r.number)?.number ?? "—"),
+        ),
     },
     // Totais (números com ponto: a ordem é numérica; sem dado, no fim).
     ...(seeSale
       ? [
           {
             key: "price",
-            text: (e: Entry) =>
-              totalSortText(totalsOf.get(e)?.sale.amounts[0]?.amount ?? null),
+            text: (row: ListRow) => {
+              const e = entryOf(row);
+              return e
+                ? totalSortText(
+                    totalsOf.get(e)?.sale.amounts[0]?.amount ?? null,
+                  )
+                : "";
+            },
           },
         ]
       : []),
-    ...(wellmix ? [{ key: "moq", text: totalSort("moq") }] : []),
     { key: "pieces", text: totalSort("pieces") },
     { key: "boxes", text: totalSort("boxes") },
     { key: "inner", text: totalSort("inner") },
     { key: "cbm", text: totalSort("cbm") },
     {
-      // Programações: a maior entre os produtos (a programação gravada em
-      // cada um; sem ela, uma entrega só).
+      // Entregas: a maior programação entre os produtos (a programação
+      // gravada em cada um; sem ela, uma entrega só).
       key: "rounds",
-      text: (e) =>
-        String(
-          Math.max(1, ...rowsOf(e).map((r) => r.schedule?.items?.length ?? 0)),
-        ),
+      text: (row) =>
+        row.kind === "draft"
+          ? ""
+          : String(
+              Math.max(
+                1,
+                ...rowsOf(row.entry).map((r) => r.schedule?.items?.length ?? 0),
+              ),
+            ),
     },
-    ...(isWellmix(user)
+    ...(wellmix
       ? [
           {
             key: "customer",
-            text: (e: Entry) => customerName(rowsOf(e)[0].customerId) || "—",
+            text: (row: ListRow) =>
+              row.kind === "draft"
+                ? (row.draft.draft.customerName ?? "—")
+                : customerName(rowsOf(row.entry)[0].customerId) || "—",
           },
         ]
       : []),
     {
       key: "status",
-      text: (e) =>
-        rowsOf(e)
-          .map((r) => {
-            const party = nextOf(r).who;
-            return party
-              ? t(turnWaitingKey(party))
-              : t(`reqStatusLabel.${requestDisplayStatus(r, cancelled)}`);
-          })
-          .join(" "),
+      text: (row) =>
+        row.kind === "draft"
+          ? t("requestDraft.status")
+          : rowsOf(row.entry)
+              .map((r) => {
+                const party = nextOf(r).who;
+                return party
+                  ? t(turnWaitingKey(party))
+                  : t(`reqStatusLabel.${requestDisplayStatus(r, cancelled)}`);
+              })
+              .join(" "),
     },
     ...(wellmix
       ? [
           {
             key: "next",
-            text: (e: Entry) => {
-              const n = nextOf(rowsOf(e)[0]);
+            text: (row: ListRow) => {
+              if (row.kind === "draft") return t("reqList.draft.next");
+              const n = nextOf(rowsOf(row.entry)[0]);
               return n.key === "none" ? "—" : nextText(n);
             },
           },
@@ -532,64 +588,53 @@ export default async function RequestsPage({
       : []),
     {
       key: "deadline",
-      text: (e) =>
-        formatDate(
-          e.kind === "batch" ? earliestDeadline(rowsOf(e)) : e.row.deadline,
-          t,
-        ),
+      text: (row) =>
+        row.kind === "draft" ? "" : dueSortText(entryDue(row.card)),
     },
     ...(wellmix
       ? [
           {
-            key: "order",
-            text: (e: Entry) => {
-              const r = rowsOf(e)[0];
-              return r.orderId ? `#${orderNumber(r.orderId) ?? "?"}` : "—";
-            },
-          },
-          {
             key: "owner",
-            text: (e: Entry) => ownerName(rowsOf(e)[0].ownerUserId),
+            text: (row: ListRow) =>
+              row.kind === "draft"
+                ? ""
+                : ownerName(rowsOf(row.entry)[0].ownerUserId),
           },
           {
             key: "date",
-            text: (e: Entry) => formatDate(rowsOf(e)[0].createdAt, t),
+            text: (row: ListRow) =>
+              (row.kind === "draft"
+                ? row.draft.draft.createdAt
+                : rowsOf(row.entry)[0].createdAt
+              ).slice(0, 10),
           },
         ]
       : []),
   ];
-  const serverMode = entries.length > SERVER_TABLE_FROM;
+  const serverMode = listed.length > SERVER_TABLE_FROM;
   const one = (v: string | string[] | undefined) =>
     typeof v === "string" ? v : undefined;
-  const sort = serverMode ? parseServerSort(one(sp.sort), entryColumns) : null;
-  if (sort && TOTAL_SORT_KEYS.has(sort.key)) await fillTotals(entries);
-  const paged = serverTable(entries, entryColumns, {
+  const sort = serverMode ? parseServerSort(one(sp.sort), columns) : null;
+  if (sort && TOTAL_SORT_KEYS.has(sort.key))
+    await fillTotals(
+      listed.flatMap((r) => (r.kind === "entry" ? [r.entry] : [])),
+    );
+  const paged = serverTable(listed, columns, {
     sort,
     page: parseServerPage(one(sp.page)),
-    size: serverMode ? undefined : Math.max(entries.length, 1),
+    size: serverMode ? undefined : Math.max(listed.length, 1),
     decimalComma: t.locale === "pt",
   });
-  await fillTotals(paged.rows);
+  const pagedEntries = paged.rows.flatMap((r) =>
+    r.kind === "entry" ? [r.entry] : [],
+  );
+  await fillTotals(pagedEntries);
   const sortValue = sort ? `${sort.desc ? "-" : ""}${sort.key}` : null;
-  /* Rascunhos de quem está vendo (dono, 17/11/2026): no alto da lista, com a
-     situação "Rascunho", na primeira página, com qualquer filtro de situação
-     (a busca vale pelo título e pelo cliente). Os da Reposição ficam na fila
-     de Reposição. */
-  const draftRows =
-    filtering && (!kindFilter || kindFilter === "order") && paged.page === 0
-      ? (await listDraftsForList(user, "requests")).filter(
-          ({ draft }) =>
-            !q ||
-            `${draft.title} ${draft.customerName ?? ""}`
-              .toLocaleLowerCase()
-              .includes(q.toLocaleLowerCase()),
-        )
-      : [];
   /* Encomendas, composição do pedido de cada linha (dono, 16/11/2026): os
      produtos, as fotos e a soma das peças pelos itens do pedido, não pelo
      produto da solicitação. Lidos só para as linhas da página: a lista
      inteira tem ~16 mil pedidos e ~185 mil itens (src/lib/request-composition.ts). */
-  const shownRows = paged.rows.flatMap(rowsOf);
+  const shownRows = pagedEntries.flatMap(rowsOf);
   const shownOrderIds = [
     ...new Set(
       shownRows.map((r) => r.orderId).filter((id): id is string => !!id),
@@ -613,19 +658,19 @@ export default async function RequestsPage({
     else itemsByOrder.set(i.orderId, [i]);
   }
   const compositionOf = new Map<Entry, Composition>(
-    paged.rows.map((e) => [e, requestComposition(rowsOf(e), itemsByOrder)]),
+    pagedEntries.map((e) => [e, requestComposition(rowsOf(e), itemsByOrder)]),
   );
   /* Lista no nível do pedido (dono, 18/11/2026): sem foto nem nome de
-     produto (um pedido pode ter milhares). Programações e containers de
-     cada programação pela embalagem dos produtos (a mesma caixa master e o
-     mesmo m³ dos totais; decisão 3 de 18/11/2026), no maior container das
-     Configurações. */
+     produto (um pedido pode ter milhares). Entregas (programações) e
+     containers de cada uma pela embalagem dos produtos (a mesma caixa master
+     e o mesmo m³ dos totais; decisão 3 de 18/11/2026), no maior container
+     das Configurações. */
   const { containerTypes } = await getSettings();
   const referenceContainer =
     [...containerTypes].sort((a, b) => b.capacityCbm - a.capacityCbm)[0] ??
     null;
   const roundsOf = new Map(
-    paged.rows.map((e) => [
+    pagedEntries.map((e) => [
       e,
       packingRounds(
         rowsOf(e),
@@ -652,7 +697,274 @@ export default async function RequestsPage({
       ? encomendaTotals(lines, uncovered)
       : (totalsOf.get(e) ?? encomendaTotals(lines));
   };
-  /** Produtos: quantos SKUs diferentes o pedido tem (itens do pedido ou as solicitações). */
+  /* Quem age na próxima ação (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md,
+     seção 6): a mesma regra das Pendências, lida só para as linhas da
+     página. O login (e-mail) só para o administrador. */
+  const partnerIds = shownRows.flatMap((r) => {
+    const step = nextOf(r);
+    return stepOwner(step.key)?.kind === "partners"
+      ? stepPartners(step.key, turnCtx?.purchaseOf(r)).map((p) => p.supplierId)
+      : [];
+  });
+  const directory = wellmix
+    ? await peopleDirectory(user, {
+        users: team,
+        requests: shownRows,
+        ctx: turnCtx,
+        partnerIds,
+        customerName: (id) => customerName(id) || null,
+        translate: (key) => t(key as DictionaryKey),
+      })
+    : null;
+  const respCache = new Map<string, Responsible | null>();
+  const respOf = (r: Request): Responsible | null => {
+    if (!directory) return null;
+    if (!respCache.has(r.id))
+      respCache.set(
+        r.id,
+        responsibleOf(nextOf(r), r, turnCtx?.purchaseOf(r), directory),
+      );
+    return respCache.get(r.id) ?? null;
+  };
+  /** Prazo para mostrar: o dia; no SLA, também a hora (Brasília). */
+  const dueDay = (due: StepDue) =>
+    due.day
+      ? formatDate(due.at, t)
+      : new Date(due.at).toLocaleDateString(t.intl, {
+          timeZone: TIME_ZONE,
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+  const dueHour = (at: string) =>
+    new Date(at).toLocaleTimeString(t.intl, {
+      timeZone: TIME_ZONE,
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  const dueLabel = (due: StepDue) =>
+    due.day ? dueDay(due) : `${dueDay(due)} ${dueHour(due.at)}`;
+  const dueCell = (due: StepDue | null) => {
+    if (!due) return <span className="text-zinc-400">—</span>;
+    const late = isOverdue(due, now, today);
+    return (
+      <span
+        className={cx(
+          "block whitespace-nowrap tabular-nums",
+          late && "font-semibold text-red-700",
+        )}
+        data-request-due={late ? "late" : "ok"}
+      >
+        {dueDay(due)}
+        {due.day ? null : (
+          <span className="block text-[11px] font-normal text-zinc-500">
+            {dueHour(due.at)}
+          </span>
+        )}
+        {late ? (
+          <span className="block text-[11px] font-medium">
+            {t("reqList.late")}
+          </span>
+        ) : null}
+      </span>
+    );
+  };
+  const respLabels = {
+    undefined: t("reqList.resp.undefined"),
+    people: (n: number) => t("reqList.resp.people", { n }),
+    partners: (n: number) => t("reqList.resp.partners", { n }),
+    party: (p: TurnParty) => t(turnNameKey(p)),
+  };
+  const personItem = (p: Person) => (
+    <li key={p.id}>
+      {p.name}
+      {p.login ? <span className="text-zinc-500"> · {p.login}</span> : null}
+    </li>
+  );
+  /** A informação complementar: os nomes, o login (admin) e o que falta. */
+  const respDetail = (r: Responsible) => (
+    <div className="space-y-1.5" data-request-responsible-detail="">
+      <p className="font-semibold text-zinc-900">{t("reqList.resp.title")}</p>
+      {r.partners.length > 1 ? (
+        <ul className="max-h-60 space-y-1 overflow-y-auto">
+          {r.partners.map((p) => (
+            <li key={p.id}>
+              <span className="font-medium text-zinc-900">{p.name}</span>
+              {p.dueAt
+                ? ` · ${t("reqList.resp.due", { date: dueLabel({ at: p.dueAt, day: false }) })}`
+                : ""}
+              {p.people.length ? (
+                <ul className="ml-3 list-disc">{p.people.map(personItem)}</ul>
+              ) : (
+                <span className="text-amber-700">
+                  {" "}
+                  · {t("reqList.resp.noLogin")}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : r.people.length ? (
+        <>
+          {r.group && r.party !== "wellmix" ? (
+            <p className="font-medium text-zinc-900">{r.group}</p>
+          ) : null}
+          <ul className="max-h-60 list-disc space-y-0.5 overflow-y-auto pl-4">
+            {r.people.map(personItem)}
+          </ul>
+        </>
+      ) : r.group ? (
+        <p className="font-medium text-zinc-900">{r.group}</p>
+      ) : null}
+      {r.party === "wellmix" && r.group ? (
+        <p>{t("reqList.resp.functions", { list: r.group })}</p>
+      ) : null}
+      {r.missing ? (
+        <p
+          className="text-amber-800"
+          data-request-responsible-missing={r.missing}
+        >
+          {t(`reqList.resp.missing.${r.missing}`)}
+        </p>
+      ) : null}
+      {r.admins.length ? (
+        <p className="text-zinc-500">
+          {t("reqList.resp.admins", {
+            list: r.admins.map((a) => a.name).join(", "),
+          })}
+        </p>
+      ) : null}
+    </div>
+  );
+  /** 2ª linha da Próxima ação: quem age, com a informação complementar. */
+  const respCell = (r: Responsible | null) => {
+    if (!r) return null;
+    const line = responsibleLine(r, respLabels);
+    const text = line.where ? `${line.who} · ${line.where}` : line.who;
+    return (
+      <InfoTip
+        label={t("reqList.resp.label", { who: text })}
+        className="mt-0.5 block max-w-full"
+        trigger={
+          <span
+            className={cx(
+              "text-xs",
+              line.warn ? "font-medium text-amber-700" : "text-zinc-600",
+            )}
+            data-request-responsible={r.missing ?? "ok"}
+          >
+            {text}
+          </span>
+        }
+      >
+        {respDetail(r)}
+      </InfoTip>
+    );
+  };
+  /**
+   * As ações pendentes da solicitação: os produtos no mesmo passo e com os
+   * mesmos responsáveis viram uma só; a que vence antes vem primeiro.
+   */
+  type ActionGroup = {
+    step: NextStep;
+    resp: Responsible | null;
+    due: StepDue | null;
+    count: number;
+  };
+  const dueTime = (d: StepDue | null) =>
+    !d
+      ? Number.POSITIVE_INFINITY
+      : d.day
+        ? Date.parse(`${d.at}T23:59:59-03:00`)
+        : Date.parse(d.at);
+  const actionsOf = (e: Entry): ActionGroup[] => {
+    const groups = new Map<string, ActionGroup>();
+    for (const r of rowsOf(e)) {
+      const step = nextOf(r);
+      if (step.key === "none") continue;
+      const resp = respOf(r);
+      const due = dueOf(r);
+      const key = `${step.key}|${step.stage ?? ""}|${responsibleKey(resp)}`;
+      const cur = groups.get(key);
+      if (cur) {
+        cur.count += 1;
+        if (dueTime(due) < dueTime(cur.due)) cur.due = due;
+      } else groups.set(key, { step, resp, due, count: 1 });
+    }
+    return [...groups.values()].sort((a, b) => dueTime(a.due) - dueTime(b.due));
+  };
+  const actionLine = (g: ActionGroup, main: boolean) => (
+    <span
+      className="block"
+      data-request-next={main ? g.step.key : undefined}
+      data-request-action={main ? undefined : g.step.key}
+    >
+      <span className="block font-medium leading-snug text-zinc-900">
+        {nextText(g.step)}
+      </span>
+      {respCell(g.resp)}
+    </span>
+  );
+  /** Próxima ação: a ação e quem age; ações paralelas, a lista aberta à parte. */
+  const nextCell = (e: Entry) => {
+    const groups = actionsOf(e);
+    if (!groups.length) {
+      // Sem ação pendente: o estado (excluída, pedido cancelado, encerrado).
+      const first = rowsOf(e)[0];
+      const n = nextOf(first);
+      return (
+        <span className="text-zinc-500" data-request-next="none">
+          {n.key === "order"
+            ? nextText(n)
+            : t(`reqStatusLabel.${requestDisplayStatus(first, cancelled)}`)}
+        </span>
+      );
+    }
+    return (
+      <>
+        {actionLine(groups[0], true)}
+        {groups.length > 1 ? (
+          <details
+            className="mt-1 text-xs"
+            data-request-actions={groups.length}
+          >
+            <summary className="cursor-pointer font-medium text-brand-700">
+              {t("reqList.actions.count", { n: groups.length })}
+            </summary>
+            <ul className="mt-1 space-y-1.5 border-l border-zinc-200 pl-2">
+              {groups.map((g, i) => (
+                <li key={i}>
+                  {actionLine(g, false)}
+                  <span className="block text-[11px] text-zinc-500">
+                    {t("reqList.actions.products", { n: g.count })}
+                    {g.due
+                      ? ` · ${t("reqList.resp.due", { date: dueLabel(g.due) })}`
+                      : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
+      </>
+    );
+  };
+  /** Rascunho: a ação do fluxo de rascunho, com quem o salvou (quem vê). */
+  const draftResponsible: Responsible = {
+    party: "wellmix",
+    group: null,
+    people: [
+      {
+        id: user.id,
+        name: user.name,
+        login: isAdmin(user) ? (user.email ?? null) : null,
+      },
+    ],
+    admins: [],
+    partners: [],
+    missing: null,
+  };
+  /** Itens: quantos SKUs diferentes o pedido tem (itens do pedido ou as solicitações). */
   const skusCell = (e: Entry) => {
     const n = compositionOf.get(e)?.products.length ?? rowsOf(e).length;
     return (
@@ -696,27 +1008,12 @@ export default async function RequestsPage({
       </span>
     );
   };
-  /** Pedido da linha (lote: quantos pedidos; uma solicitação: o número com link). */
-  const orderCell = (e: Entry) => {
-    if (e.kind === "batch") {
-      const rows = rowsOf(e);
-      return rows.some((r) => r.orderId)
-        ? t("reqList.orders", { n: rows.filter((r) => r.orderId).length })
-        : "—";
-    }
-    return e.row.orderId ? (
-      <TextLink href={`/app/orders/${e.row.orderId}`}>
-        #{orderNumber(e.row.orderId) ?? "?"}
-      </TextLink>
-    ) : (
-      "—"
-    );
-  };
   const pageListHref = (patch: { sort?: string | null; page?: number }) => {
     const p = new URLSearchParams();
     if (situation !== "all") p.set("situ", situation);
     if (q) p.set("q", q);
     if (kindFilter) p.set("kind", kindFilter);
+    if (turnFilter) p.set("vez", turnFilter);
     if (showDeleted) p.set("view", "deleted");
     if (groupId) p.set("group", groupId);
     const value = patch.sort !== undefined ? patch.sort : sortValue;
@@ -725,33 +1022,84 @@ export default async function RequestsPage({
     const str = p.toString();
     return str ? `/app/requests?${str}` : "/app/requests";
   };
-  const header = (label: ReactNode, column: string, className?: string) =>
-    serverMode ? (
+  /* Cabeçalhos curtos numa linha (dono, 19/11/2026), cada um com a
+     explicação acessível por mouse, toque e teclado (InfoTip). */
+  const headLabel = (key: string) =>
+    key === "cbm"
+      ? unitLabel(t("reqList.head.cbm"))
+      : t(`reqList.head.${key}` as DictionaryKey);
+  const headHint = (key: string) => (
+    <InfoTip
+      label={t("reqList.head.hintLabel", {
+        title: t(`reqList.head.${key}` as DictionaryKey),
+      })}
+      data-request-head-hint={key}
+    >
+      {t(`reqList.head.${key}.hint` as DictionaryKey)}
+    </InfoTip>
+  );
+  const head = "whitespace-nowrap px-2 py-1.5";
+  const header = (
+    key: string,
+    column: string | null,
+    className?: string,
+    hint = true,
+  ) =>
+    serverMode && column ? (
       <SortTh
-        label={label}
+        key={key}
+        label={headLabel(key)}
         column={column}
         sort={sort}
         href={(value) => pageListHref({ sort: value })}
         t={t}
-        className={className}
+        className={cx(head, className)}
+        hint={hint ? headHint(key) : null}
       />
     ) : (
-      <Th className={className}>{label}</Th>
+      <Th key={key} className={cx(head, className)} data-request-head={key}>
+        {headLabel(key)}
+        {hint ? <> {headHint(key)}</> : null}
+      </Th>
     );
-  const anyDeletable = requests.some((r) => canDeleteRequest(user, r));
+  /**
+   * Tipo e porta de entrada da demanda (docs/PURCHASE_DEMAND.md): saíram da
+   * coluna Solicitação, que mostra só o número (dono, 19/11/2026), e ficam na
+   * dica do número ("Encomenda · Vendedor"). A Estratégia de compra segue
+   * com as etiquetas.
+   */
+  const demandOf = (r: Request) => {
+    const kind = demandKind(r);
+    if (!kind || (kind === "order" && isStockCustomer(r.customerId)))
+      return null;
+    return {
+      kind,
+      channel: r.channel ?? null,
+      text: [
+        t(`demand.kind.${kind}.one`),
+        ...(r.channel ? [t(`demand.channel.${r.channel}`)] : []),
+      ].join(" · "),
+    };
+  };
+  /** Célula compacta (menos espaço vertical). */
+  const cell = "px-2 py-1.5";
+  const listedRequests = listed.flatMap((r) =>
+    r.kind === "entry" ? rowsOf(r.entry) : [],
+  );
+  const anyDeletable = listedRequests.some((r) => canDeleteRequest(user, r));
   // Enviar para cotação (dono, 18/11/2026; docs/PURCHASE_DEMAND.md): a
   // encomenda Solicitado ainda não enviada entra na Estratégia de Compra. A
   // mesma seleção serve para enviar e para excluir.
-  const canSend = (r: (typeof requests)[number]) =>
+  const canSend = (r: Request) =>
     wellmix && !showDeleted && awaitingStrategySend(r);
-  const selectable = (r: (typeof requests)[number]) =>
-    canDeleteRequest(user, r) || canSend(r);
-  const anySendable = requests.some(canSend);
+  const selectable = (r: Request) => canDeleteRequest(user, r) || canSend(r);
+  const anySendable = listedRequests.some(canSend);
   const anySelectable = !showDeleted && (anyDeletable || anySendable);
   const count = (v: string | string[] | undefined) =>
     typeof v === "string" && /^\d+$/.test(v) ? Number(v) : 0;
   const errorKey = `reqDelete.error.${typeof error === "string" ? error : ""}`;
   const batchErrorKey = `reqBatch.error.${typeof error === "string" ? error : ""}`;
+  const counts = cards?.counts ?? null;
 
   return (
     <>
@@ -995,7 +1343,7 @@ export default async function RequestsPage({
         {groupId ? (
           <>
             <span className="text-zinc-600" data-batch-filter>
-              {t("reqBatch.filter", { n: requests.length })}
+              {t("reqBatch.filter", { n: pool.length })}
             </span>
             <TextLink href="/app/requests">{t("reqBatch.all")}</TextLink>
           </>
@@ -1012,32 +1360,42 @@ export default async function RequestsPage({
           </TextLink>
         ) : null}
       </div>
-      {filtering ? (
+      {filtering && cards && counts ? (
         <div className="mb-3 space-y-2" data-request-filters>
-          {/* Situação como cartões-filtro (o escolhido fica marcado). */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {/* Total | Abertas | Rascunhos | Atrasadas (dono, 19/11/2026),
+              contados por solicitação; o escolhido fica marcado. */}
+          <div
+            className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+            data-request-cards
+          >
             {LISTED_SITUATIONS.map((k) => (
-              <Stat
+              <div
                 key={k}
-                compact
-                label={t(`reqList.situ.${k}`)}
-                value={situationCounts[k]}
-                href={`/app/requests${listQuery({ situ: k === "all" ? null : k })}`}
-                tone={
-                  situation === k
-                    ? undefined
-                    : k === "late" && situationCounts.late > 0
-                      ? "danger"
-                      : "neutral"
-                }
-                active={situation === k}
-              />
+                title={t(`reqList.situ.${k}.hint`)}
+                data-request-card={k}
+                data-request-card-count={counts[k]}
+              >
+                <Stat
+                  compact
+                  label={t(`reqList.situ.${k}`)}
+                  value={counts[k]}
+                  href={`/app/requests${listQuery({ situ: k === "all" ? null : k })}`}
+                  tone={
+                    situation === k
+                      ? undefined
+                      : k === "late" && counts.late > 0
+                        ? "danger"
+                        : "neutral"
+                  }
+                  active={situation === k}
+                />
+              </div>
             ))}
           </div>
           {/* Os chips Todas / Encomendas / Reposições saíram (dono, 18/11/2026):
               a Reposição tem tela própria. O ?kind= dos links antigos vale. */}
           {/* Com quem está a vez (dono, 18/11/2026; docs/TURNS.md). */}
-          {turnChips.length || turnFilter ? (
+          {cards.chips.length || turnFilter ? (
             <nav
               className="flex flex-wrap items-center gap-2 text-sm"
               aria-label={t("turn.filter.title")}
@@ -1050,9 +1408,9 @@ export default async function RequestsPage({
               {(
                 [
                   { party: null, count: null },
-                  ...turnChips,
+                  ...cards.chips,
                   ...(turnFilter &&
-                  !turnChips.some((c) => c.party === turnFilter)
+                  !cards.chips.some((c) => c.party === turnFilter)
                     ? [{ party: turnFilter, count: 0 }]
                     : []),
                 ] as { party: TurnParty | null; count: number | null }[]
@@ -1136,11 +1494,11 @@ export default async function RequestsPage({
           }}
         />
       ) : null}
-      {requests.length === 0 && draftRows.length === 0 ? (
+      {listed.length === 0 ? (
         <Empty>
           {customer
             ? t("customerHome.requests.empty")
-            : filtering && (q || situation !== "all")
+            : filtering && (q || situation !== "all" || turnFilter)
               ? t("reqList.empty")
               : t("common.none")}
         </Empty>
@@ -1149,103 +1507,123 @@ export default async function RequestsPage({
           <thead>
             <tr>
               {anySelectable ? (
-                <Th className="w-10">
+                <Th className="w-10 px-2 py-1.5">
                   <BulkSelectAll
                     formId={BULK_FORM}
                     label={t("reqDelete.selectAll")}
                   />
                 </Th>
               ) : null}
-              {/* No nível do pedido (dono, 18/11/2026): Nº → Cliente →
-                  Produtos (SKUs) → Situação → Containers por programação →
-                  Programações → Próximo passo → Prazo → o resto. Sem foto,
-                  nome ou quantidade de produto: ficam na página do pedido. */}
-              {header(t("requests.numberShort"), "number", "w-14")}
-              {wellmix ? header(t("common.customer"), "customer") : null}
-              <Th className="text-right">{t("reqList.col.skus")}</Th>
-              {/* Totais da encomenda (dono, 18/11/2026). */}
-              {seeSale
-                ? header(t("reqList.col.price"), "price", "text-right")
-                : null}
+              {/* Solicitação | Cliente | Itens | Valor | Peças | Master |
+                  Inner | CBM (m³) | Situação | Cont./prog. | Entregas |
+                  Próxima ação | Prazo | Analista | Data (dono, 19/11/2026).
+                  MOQ e Pedido saíram da tabela (seguem na página da
+                  solicitação e no CSV). */}
+              {header("number", "number", "w-px")}
               {wellmix
-                ? header(t("reqList.col.moq"), "moq", "text-right")
+                ? header("customer", "customer", "min-w-[11rem]", false)
                 : null}
-              {header(t("reqList.col.pieces"), "pieces", "text-right")}
-              {header(t("reqList.col.boxes"), "boxes", "text-right")}
-              {header(t("reqList.col.inner"), "inner", "text-right")}
-              {header(unitLabel(t("reqList.col.cbm")), "cbm", "text-right")}
-              {header(t("common.status"), "status")}
-              <Th className="text-right">{t("reqList.col.containers")}</Th>
-              {header(t("reqList.col.rounds"), "rounds", "text-right")}
-              {wellmix ? header(t("reqList.col.next"), "next") : null}
-              {header(t("requests.deadline"), "deadline")}
-              {wellmix ? header(t("reqList.col.order"), "order") : null}
-              {wellmix ? header(t("reqList.col.owner"), "owner") : null}
-              {wellmix ? header(t("reqList.col.date"), "date") : null}
-              <Th />
+              {header("items", null, "text-right")}
+              {seeSale ? header("value", "price", "text-right") : null}
+              {header("pieces", "pieces", "text-right")}
+              {header("master", "boxes", "text-right")}
+              {header("inner", "inner", "text-right")}
+              {header("cbm", "cbm", "text-right")}
+              {header("situation", "status")}
+              {header("containers", null, "text-right")}
+              {header("deliveries", "rounds", "text-right")}
+              {wellmix ? header("next", "next", "min-w-[13rem]") : null}
+              {header("deadline", "deadline")}
+              {wellmix ? header("owner", "owner") : null}
+              {wellmix ? header("date", "date") : null}
+              <Th className="px-2 py-1.5" />
             </tr>
           </thead>
           <tbody>
-            {draftRows.map(({ draft, href }) => (
-              <tr
-                key={`draft-${draft.id}`}
-                className={cx(rowClass, "bg-amber-50/40")}
-                data-request-list-draft={draft.id}
-              >
-                {anySelectable ? <Td /> : null}
-                <Td className="min-w-40">
-                  <TextLink
-                    href={href}
-                    className="text-zinc-900 no-underline hover:underline"
+            {paged.rows.map((row) => {
+              if (row.kind === "draft") {
+                const { draft, href } = row.draft;
+                return (
+                  <tr
+                    key={`draft-${draft.id}`}
+                    className={cx(rowClass, "bg-amber-50/40")}
+                    data-request-list-draft={draft.id}
                   >
-                    {draft.title}
-                  </TextLink>
-                  <span className="block text-xs text-zinc-500">
-                    {t("requestDraft.listHint")}
-                  </span>
-                </Td>
-                {wellmix ? (
-                  <Td className="min-w-32">
-                    {draft.customerName ?? t("requestDraft.noCustomer")}
-                  </Td>
-                ) : null}
-                <Td className="text-right tabular-nums">{draft.itemCount}</Td>
-                {seeSale ? (
-                  <Td className="text-right text-zinc-400">—</Td>
-                ) : null}
-                {wellmix ? (
-                  <Td className="text-right text-zinc-400">—</Td>
-                ) : null}
-                <Td className="text-right text-zinc-400">—</Td>
-                <Td className="text-right text-zinc-400">—</Td>
-                <Td className="text-right text-zinc-400">—</Td>
-                <Td className="text-right text-zinc-400">—</Td>
-                <Td className="whitespace-nowrap">
-                  <Badge tone="neutral">{t("requestDraft.status")}</Badge>
-                </Td>
-                <Td className="text-right text-zinc-400">—</Td>
-                <Td className="text-right text-zinc-400">—</Td>
-                {wellmix ? <Td className="text-zinc-400">—</Td> : null}
-                <Td className="text-zinc-400">—</Td>
-                {wellmix ? <Td className="text-zinc-400">—</Td> : null}
-                {wellmix ? (
-                  <Td className="whitespace-nowrap">{user.name}</Td>
-                ) : null}
-                {wellmix ? (
-                  <Td className="whitespace-nowrap tabular-nums">
-                    {formatDate(draft.updatedAt, t)}
-                  </Td>
-                ) : null}
-                <Td className="text-right">
-                  <OpenLink
-                    href={href}
-                    label={t("requestDraft.resume")}
-                    data-request-list-draft-open
-                  />
-                </Td>
-              </tr>
-            ))}
-            {paged.rows.map((entry) => {
+                    {anySelectable ? <Td className={cell} /> : null}
+                    <Td className={cx(cell, "whitespace-nowrap tabular-nums")}>
+                      {/* Só o número persistente (reservado no rascunho):
+                          continua o rascunho. */}
+                      <TextLink
+                        href={href}
+                        aria-label={t("reqList.draft.open", {
+                          n: draft.number ?? "",
+                        })}
+                        className="font-semibold text-zinc-900 no-underline hover:underline"
+                        data-request-draft-open=""
+                      >
+                        <span data-request-number>{draft.number ?? "—"}</span>
+                      </TextLink>
+                    </Td>
+                    {wellmix ? (
+                      <Td className={cx(cell, "min-w-[11rem]")}>
+                        <ClampText
+                          text={
+                            draft.customerName ?? t("requestDraft.noCustomer")
+                          }
+                          more={t("reqList.more")}
+                          less={t("reqList.less")}
+                        />
+                      </Td>
+                    ) : null}
+                    <Td className={cx(cell, "text-right tabular-nums")}>
+                      {draft.itemCount}
+                    </Td>
+                    {seeSale ? (
+                      <Td className={cx(cell, "text-right text-zinc-400")}>
+                        —
+                      </Td>
+                    ) : null}
+                    <Td className={cx(cell, "text-right text-zinc-400")}>—</Td>
+                    <Td className={cx(cell, "text-right text-zinc-400")}>—</Td>
+                    <Td className={cx(cell, "text-right text-zinc-400")}>—</Td>
+                    <Td className={cx(cell, "text-right text-zinc-400")}>—</Td>
+                    <Td className={cx(cell, "whitespace-nowrap")}>
+                      <Badge tone="neutral">{t("requestDraft.status")}</Badge>
+                    </Td>
+                    <Td className={cx(cell, "text-right text-zinc-400")}>—</Td>
+                    <Td className={cx(cell, "text-right text-zinc-400")}>—</Td>
+                    {wellmix ? (
+                      <Td className={cell}>
+                        <span className="block" data-request-next="draft">
+                          <span className="block font-medium leading-snug text-zinc-900">
+                            {t("reqList.draft.next")}
+                          </span>
+                          {respCell(draftResponsible)}
+                        </span>
+                      </Td>
+                    ) : null}
+                    <Td className={cx(cell, "text-zinc-400")}>—</Td>
+                    {wellmix ? (
+                      <Td className={cx(cell, "text-zinc-400")}>—</Td>
+                    ) : null}
+                    {wellmix ? (
+                      <Td
+                        className={cx(cell, "whitespace-nowrap tabular-nums")}
+                      >
+                        {formatDate(draft.createdAt, t)}
+                      </Td>
+                    ) : null}
+                    <Td className={cx(cell, "text-right")}>
+                      <OpenLink
+                        href={href}
+                        label={t("requestDraft.resume")}
+                        data-request-list-draft-open
+                      />
+                    </Td>
+                  </tr>
+                );
+              }
+              const entry = row.entry;
               // Na ordem em que foram pedidos (igual à página do pedido).
               const rows = rowsOf(entry);
               const first = rows[0];
@@ -1255,15 +1633,6 @@ export default async function RequestsPage({
               const statuses = rows.map((r) =>
                 requestDisplayStatus(r, cancelled),
               );
-              // Próximos passos diferentes do pedido (o primeiro e quantos mais).
-              const steps = [
-                ...new Map(
-                  rows
-                    .map((r) => nextOf(r))
-                    .filter((n) => n.key !== "none")
-                    .map((n) => [`${nextText(n)}|${whoText(n)}`, n]),
-                ).values(),
-              ];
               const number = rows.find((r) => r.number)?.number ?? null;
               // Pedido cancelado: a dica não diz mais que "o pedido continua".
               const lockedHint = statuses.includes("ORDER_CANCELLED")
@@ -1272,6 +1641,8 @@ export default async function RequestsPage({
               const names = rows.map((r) => productNameText(t, r.productName));
               const tot = shownTotals(entry);
               const sortOf = (key: TotalKey) => totalSortText(tot[key].value);
+              const due = entryDue(row.card);
+              const demand = demandOf(first);
               return (
                 <tr
                   key={entry.kind === "batch" ? entry.groupId : first.id}
@@ -1280,7 +1651,7 @@ export default async function RequestsPage({
                   data-request-row={first.id}
                 >
                   {anySelectable ? (
-                    <Td className="w-10">
+                    <Td className={cx(cell, "w-10")}>
                       {pickable.length > 0 ? (
                         entry.kind === "batch" ? (
                           <BatchSelect
@@ -1310,25 +1681,34 @@ export default async function RequestsPage({
                       )}
                     </Td>
                   ) : null}
-                  <Td className="whitespace-nowrap tabular-nums">
+                  {/* Só o número real e persistente, como link (dono,
+                      19/11/2026): sem "#", produto, subtítulo ou etiqueta. */}
+                  <Td className={cx(cell, "whitespace-nowrap tabular-nums")}>
                     <TextLink
                       href={href}
+                      aria-label={t("reqList.number.open", { n: number ?? "" })}
+                      title={demand?.text}
                       className="font-semibold text-zinc-900 no-underline hover:underline"
                       data-request-open
+                      data-demand-tags={demand?.kind}
+                      data-demand-channel={demand?.channel ?? undefined}
                     >
                       <span data-request-number>{number ?? "—"}</span>
                     </TextLink>
-                    <DemandTags t={t} request={first} />
                   </Td>
                   {wellmix ? (
-                    <Td className="min-w-32">
-                      {customerName(first.customerId) || "—"}
+                    <Td className={cx(cell, "min-w-[11rem]")}>
+                      <ClampText
+                        text={customerName(first.customerId) || "—"}
+                        more={t("reqList.more")}
+                        less={t("reqList.less")}
+                      />
                     </Td>
                   ) : null}
-                  <Td className="text-right">{skusCell(entry)}</Td>
+                  <Td className={cx(cell, "text-right")}>{skusCell(entry)}</Td>
                   {seeSale ? (
                     <Td
-                      className="text-right"
+                      className={cx(cell, "text-right")}
                       data-sort={totalSortText(
                         tot.sale.amounts[0]?.amount ?? null,
                       )}
@@ -1336,24 +1716,32 @@ export default async function RequestsPage({
                       <SaleTotalValue t={t} sale={tot.sale} />
                     </Td>
                   ) : null}
-                  {wellmix ? (
-                    <Td className="text-right" data-sort={sortOf("moq")}>
-                      <TotalValue t={t} part={tot.moq} total="moq" />
-                    </Td>
-                  ) : null}
-                  <Td className="text-right" data-sort={sortOf("pieces")}>
+                  <Td
+                    className={cx(cell, "text-right")}
+                    data-sort={sortOf("pieces")}
+                  >
                     <TotalValue t={t} part={tot.pieces} total="pieces" />
                   </Td>
-                  <Td className="text-right" data-sort={sortOf("boxes")}>
+                  <Td
+                    className={cx(cell, "text-right")}
+                    data-sort={sortOf("boxes")}
+                  >
                     <TotalValue t={t} part={tot.boxes} total="boxes" />
                   </Td>
-                  <Td className="text-right" data-sort={sortOf("inner")}>
+                  <Td
+                    className={cx(cell, "text-right")}
+                    data-sort={sortOf("inner")}
+                  >
                     <TotalValue t={t} part={tot.inner} total="inner" />
                   </Td>
-                  <Td className="text-right" data-sort={sortOf("cbm")}>
+                  <Td
+                    className={cx(cell, "text-right")}
+                    data-sort={sortOf("cbm")}
+                  >
                     <TotalValue t={t} part={tot.cbm} total="cbm" />
                   </Td>
-                  <Td>
+                  {/* Selos numa linha (sem quebrar o texto de cada um). */}
+                  <Td className={cx(cell, "whitespace-nowrap")}>
                     <span
                       className="flex flex-wrap gap-1"
                       data-request-situation
@@ -1361,43 +1749,31 @@ export default async function RequestsPage({
                       {situationCell(rows)}
                     </span>
                   </Td>
-                  <Td className="text-right">{containersCell(entry)}</Td>
-                  <Td className="text-right">{roundsCell(entry)}</Td>
-                  {wellmix ? (
-                    <Td className="min-w-40">
-                      {steps.length ? (
-                        <>
-                          {nextCell(steps[0])}
-                          {steps.length > 1 ? (
-                            <span className="block text-xs text-zinc-500">
-                              +{steps.length - 1}
-                            </span>
-                          ) : null}
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </Td>
-                  ) : null}
-                  <Td className="whitespace-nowrap tabular-nums">
-                    {formatDate(earliestDeadline(rows), t)}
+                  <Td className={cx(cell, "text-right")}>
+                    {containersCell(entry)}
+                  </Td>
+                  <Td className={cx(cell, "text-right")}>
+                    {roundsCell(entry)}
                   </Td>
                   {wellmix ? (
-                    <Td className="whitespace-nowrap" data-request-order="">
-                      {orderCell(entry)}
+                    <Td className={cx(cell, "min-w-[13rem]")}>
+                      {nextCell(entry)}
                     </Td>
                   ) : null}
+                  <Td className={cell} data-sort={dueSortText(due)}>
+                    {dueCell(due)}
+                  </Td>
                   {wellmix ? (
-                    <Td className="whitespace-nowrap">
+                    <Td className={cx(cell, "whitespace-nowrap")}>
                       {ownerName(first.ownerUserId)}
                     </Td>
                   ) : null}
                   {wellmix ? (
-                    <Td className="whitespace-nowrap tabular-nums">
+                    <Td className={cx(cell, "whitespace-nowrap tabular-nums")}>
                       {formatDate(first.createdAt, t)}
                     </Td>
                   ) : null}
-                  <Td className="text-right">
+                  <Td className={cx(cell, "text-right")}>
                     <div className="flex items-center justify-end gap-1">
                       <OpenLink href={href} label={t("reqList.open")} />
                       {!showDeleted && deletable.length > 0 ? (
@@ -1437,7 +1813,7 @@ export default async function RequestsPage({
           </tbody>
         </Table>
       )}
-      {serverMode && entries.length ? (
+      {serverMode && listed.length ? (
         <ServerPager
           page={paged}
           href={(page) => pageListHref({ page })}

@@ -410,6 +410,18 @@ async function createRequest(
           }
         }
       }
+      // Rascunho enviado: a solicitação nasce com o número reservado nele
+      // (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 6). Só o
+      // rascunho de quem envia, desta tela; sem ele, um número novo.
+      const draftId = str(form, "draftId");
+      const draftNumber =
+        draftId && isWellmix(user)
+          ? ((
+              await (
+                await import("@/lib/services/request-drafts")
+              ).getRequestDraft(user, draftId, screenMode, replenish)
+            )?.number ?? undefined)
+          : undefined;
       const created = await createRequestBatch(
         user,
         {
@@ -422,12 +434,14 @@ async function createRequest(
           orderTerms,
         },
         items,
-        // Compra para estoque pela Reposição: a origem é reposição (fila da
-        // Reposição); o resto segue como encomenda.
-        replenish && forStock ? { origin: "replenishment" } : {},
+        {
+          // Compra para estoque pela Reposição: a origem é reposição (fila
+          // da Reposição); o resto segue como encomenda.
+          ...(replenish && forStock ? { origin: "replenishment" } : {}),
+          ...(typeof draftNumber === "number" ? { number: draftNumber } : {}),
+        },
       );
       // Rascunho enviado (docs/ORDER_TERMS.md seção 9): sai da lista.
-      const draftId = str(form, "draftId");
       if (draftId && isWellmix(user)) {
         const { deleteRequestDraft } =
           await import("@/lib/services/request-drafts");

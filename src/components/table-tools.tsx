@@ -187,8 +187,14 @@ function readShape(
     Array.from(headRow.cells).forEach((cell, index) => {
       if (cell.colSpan > 1) return;
       if (!(cell.textContent ?? "").trim()) return;
-      // Cabeçalho com botão, link ou campo (ex.: marcar todas) tem ação própria.
-      if (cell.querySelector("a, button, input, select, label")) return;
+      // Cabeçalho com botão, link ou campo (ex.: marcar todas) tem ação
+      // própria. A dica do título (`data-table-hint`, InfoTip) não conta.
+      if (
+        Array.from(
+          cell.querySelectorAll("a, button, input, select, label"),
+        ).some((el) => !el.closest("[data-table-hint]"))
+      )
+        return;
       if (cell.dataset.sortable === "false") return;
       headers.set(index, cell);
     });
@@ -400,6 +406,9 @@ export function TableTools({
     if (!table) return;
     const head = headTableRef.current;
     const pick = (target: EventTarget | null) => {
+      // A dica do título abre o balão dela, sem ordenar.
+      if ((target as HTMLElement | null)?.closest?.("[data-table-hint]"))
+        return null;
       const cell = (target as HTMLElement | null)?.closest?.(
         "th[data-table-sort]",
       ) as HTMLTableCellElement | null;

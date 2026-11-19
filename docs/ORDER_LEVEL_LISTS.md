@@ -78,3 +78,94 @@ O "Valor total" da Nova solicitação era só da tela. Agora, depois do envio (`
 
 - **MOQ do Sankhya** (decisão 4: Sankhya → ficha → cadastro → "—"; o dono deixou para depois em 19/11/2026): o portal não lê pedido mínimo do Sankhya em lugar nenhum (a carga de produtos não tem esse campo e as credenciais do ERP não ficam na sessão de desenvolvimento). Falta o nome do campo no Sankhya (ex.: um `AD_` do TGFPRO). Com ele, a carga grava o mínimo do Sankhya e a regra passa a ser Sankhya → variação → ficha mestre → cadastro. Hoje, em produção, só 2 dos 13.910 produtos ativos têm mínimo cadastrado.
 - **Frete na previsão de vários produtos**: a cotação V2 recebe o valor do transporte total em cada produto (`@FRETE_ENTREGA_BRL`), como a tela sempre fez. Se a função do Sankhya divide o frete pelas peças de cada produto, numa encomenda com N produtos o frete entra N vezes no Valor total. A conferir com o Sankhya antes de mudar.
+
+## 6. Encomendas: cards por solicitação, número do rascunho e quem age (dono, 19/11/2026)
+
+Pedido do dono com as decisões de 19/11/2026: 1, numeração do rascunho pela sequência das solicitações; 2, título "Entregas"; 3, responsável da Wellmix como equipe; 4, prazo da etapa atual.
+
+### Cards
+
+**Total | Abertas | Rascunhos | Atrasadas** (`listCards`, `src/lib/services/request-list-cards.ts`):
+
+- **Total**: as solicitações da lista mais os rascunhos de quem vê.
+- **Abertas**: solicitações enviadas com alguma etapa pendente, de quem for a vez (cliente, fornecedor ou Wellmix).
+- **Rascunhos**: os rascunhos de quem vê (só o dono do rascunho o vê, como sempre).
+- **Atrasadas**: abertas com o prazo da etapa atual vencido (subconjunto de Abertas). Prazo por dia vence no dia seguinte; prazo com hora (SLA), na hora.
+
+**Causa da divergência anterior**: os cards contavam cada produto (a solicitação nº 6, com 2 produtos, entrava 2 vezes; em produção, "Todas" e "Em aberto" mostravam 3 para 2 solicitações), não contavam os rascunhos e ignoravam a busca, o tipo e o "Com quem está".
+
+**Regras**:
+
+- Cada solicitação conta uma vez, com quantos produtos, programações ou pendências tiver.
+- Os cards contam tudo o que a busca, o tipo (`?kind=`) e o "Com quem está" (`?vez=`) deixam, antes da paginação. O card escolhido (`?situ=all|open|draft|late`) filtra a lista sem mudar a contagem dos outros.
+- O "Com quem está" conta cada solicitação uma vez por parte (com ações paralelas, ela entra em cada parte) e conta com a busca, o tipo e o card. O rascunho é da Wellmix.
+- A busca e o "Com quem está" trazem a solicitação inteira quando um produto passa (antes vinham só os produtos que passavam, com totais parciais).
+- Canceladas e excluídas continuam fora dos cards, em "Ver canceladas e excluídas".
+
+### Coluna Solicitação e o número do rascunho
+
+- Só o número real e persistente, como link: abre a solicitação (`/app/requests/batch/<id>`) ou continua o rascunho. Sem "#", nome de produto, "Sem produto", subtítulo ou etiqueta. A Situação do rascunho é "Rascunho".
+- **O rascunho tinha só o id interno (UUID) e o título.** Agora ele reserva o número da solicitação no primeiro salvamento, da mesma sequência das enviadas (`request_number`), em `request_drafts.number`. Ao enviar, a solicitação repete o número (`createRequestBatch`, `internal.number`).
+- Rascunho descartado deixa o número sem uso (salto na sequência).
+- Rascunho de antes da coluna ganha número no próximo salvamento. Os 3 que havia em produção foram numerados uma vez, depois de publicar a coluna.
+- A busca acha o rascunho pelo número; a coluna ordena por número.
+
+### Colunas e cabeçalhos
+
+**Solicitação | Cliente | Itens | Valor | Peças | Master | Inner | CBM (m³) | Situação | Cont./prog. | Entregas | Próxima ação | Prazo | Analista | Data**, cada título numa linha, com a explicação por mouse, toque e teclado (`InfoTip`, `src/components/info-tip.tsx`). O balão fica na camada do topo: não é cortado pela rolagem da tabela, e clicar no "i" não ordena a coluna (`data-table-hint`).
+
+- **MOQ e Pedido saíram da tabela.** O MOQ segue na página da solicitação e no CSV; o vínculo do pedido, na página da solicitação e no CSV. Nenhum dado mudou.
+- **Valor**: previsão de venda ao cliente, em R$ (a cotação V2 do Sankhya com frete, gravada no envio, seção 5). Não é o valor do pedido.
+- **Entregas** (antes "Programações"): as programações de compra. Cada uma vira um pedido filho com embarque e entrega próprios. A data gravada de cada programação é a da compra, não a da entrega; uma entrega dividida depois não aparece aqui.
+- **Data**: a criação da solicitação; no rascunho, a criação dele (antes mostrava a última alteração).
+- Nomes longos de cliente em até duas linhas, com "mais" para o texto completo (`ClampText`). Células mais baixas (`px-2 py-1.5`); a tabela rola de lado no computador e no iPad, e a página não.
+
+### Próxima ação e quem age
+
+Duas linhas: a ação e, embaixo, quem deve agir ("João Cliente · Cliente", "Comprador (3) · Wellmix", "3 parceiros · Fornecedor"). Tocar no responsável abre os nomes autorizados e o que falta. O login (e-mail) só aparece para o administrador, como na Equipe Externa.
+
+Origem (`src/lib/request-responsible.ts` e `src/lib/services/request-responsible.ts`). Nada é gravado; é a mesma regra que põe a ação nas Pendências:
+
+- **Cliente**: os logins que podem confirmar a venda (`confirmersOf`: o "Login do cliente com acesso" escolhido, ou todos os do cliente quando marcado).
+- **Wellmix**: quem tem a função ou a tela da etapa pela porta das Pendências (`kindGate`). Enviar para cotação vai para quem abre Encomendas; Encomenda nova, para quem abre Encomendas menos quem escolhe a estratégia. As demais etapas seguem pela ação: escolher e aprovar a estratégia, gerar o pedido direto, escolher, decidir e aprovar a cotação, decidir a resposta do fornecedor e validar a amostragem.
+  - Uma pessoa aparece pelo nome. Uma função só, com várias pessoas, aparece pela função e quantidade; mais de uma função, pela quantidade.
+  - Ficam de fora os logins suspensos, quem saiu da equipe e os administradores. Os administradores aparecem à parte: "também podem agir".
+- **Fornecedor**: o parceiro convidado da cotação (cada um com o prazo dele), o da solicitação ao fornecedor (negociação) e o da amostragem, com os logins ativos dele.
+- **O Analista não entra**: é o analista vinculado à solicitação, escolhido pela divisão da linha.
+- **"Responsável não definido"**, com a pendência de cadastro:
+  - ninguém da equipe tem a função;
+  - o cliente não tem login que confirme;
+  - o parceiro não tem login (aparece a empresa com o aviso);
+  - a etapa ainda não tem responsável no fluxo: "Gerar o pedido de compra" depois da amostragem (docs/TURNS.md, decisão 5).
+- **Ações paralelas** (produtos da mesma solicitação em passos ou com responsáveis diferentes): a que vence antes fica na célula, e "N ações" abre a lista com cada ação, quem age, quantos produtos e o prazo.
+- **Sem ação pendente** (excluída, pedido cancelado, encerrado): o estado.
+- **Rascunho**: "Concluir e enviar", com quem o salvou (quem vê).
+
+### Prazo
+
+O prazo da pendência da etapa atual, o mesmo das Pendências (`stepDue`):
+
+- **Cotação**: o prazo do convite de cada parceiro (o mais próximo).
+- **Negociação na solicitação ao fornecedor, para responder ou para decidir**: o SLA dela.
+- **Amostragem a enviar**: o SLA da amostragem.
+- **Pedido**: o prazo do marco.
+- **Demais etapas**: não têm prazo próprio; vale o prazo de resposta da solicitação.
+
+A hora aparece nos prazos de SLA. Vencido: em vermelho, com "Etapa atrasada".
+
+### CSV
+
+O CSV usa os mesmos cards e filtros, por solicitação (cada linha continua sendo um produto) e com os rascunhos de quem exporta. Depois de "Com quem" vêm três colunas novas:
+
+- **Responsável**: todos os nomes e a parte.
+- **Prazo da ação**: AAAA-MM-DD ou AAAA-MM-DD HH:MM.
+- **Login do responsável**: só para o administrador.
+
+Os totais continuam no fim.
+
+### Testes
+
+- `tests/unit/request-list-cards.test.ts`: o exemplo de produção (2 enviadas, uma de 2 produtos, e 2 rascunhos dão Total 4, Abertas 2 e Rascunhos 2), card × contagem, Atrasadas por dia e por hora, busca por número e "#", "Com quem está" com ações paralelas e o tipo.
+- `tests/unit/request-responsible.test.ts`: porta de cada passo, prazo da pendência, cliente, equipe, parceiros, sem atribuição e chave das ações paralelas.
+- `tests/unit/request-list-people.test.ts`: número do rascunho ao enviado e diretório de pessoas (sem admin, suspenso ou quem saiu; login só para o admin; confirmação do cliente e logins do parceiro).
+- E2E: `turns.spec.ts` (o responsável "João Cliente · Cliente"), `order-terms.spec.ts` (o número do rascunho no card Rascunhos e repetido no envio), `requests-composition.spec.ts` e `requests-totals.spec.ts` (cabeçalhos curtos, sem MOQ nem Pedido).

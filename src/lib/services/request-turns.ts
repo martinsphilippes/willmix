@@ -12,8 +12,11 @@ import { isWellmix } from "@/lib/auth/permissions";
 import { requestDisplayStatus } from "./order-status";
 import type { Translate } from "@/i18n";
 import { forAllCustomerLogins } from "@/lib/auth/permissions";
-import { negotiationTurn } from "@/lib/supplier-requests";
-import { samplingTurn } from "@/lib/supplier-request-sampling";
+import {
+  negotiationTurn,
+  supplierRequestSlaDue,
+} from "@/lib/supplier-requests";
+import { samplingDueAt, samplingTurn } from "@/lib/supplier-request-sampling";
 import {
   requestNextStep,
   todayBrazil,
@@ -122,7 +125,18 @@ export async function requestTurnContext(
       ? store.list("supplier_requests", { filter: { id: supplierRequestIds } })
       : Promise.resolve([]),
   ]);
-  const { quoteClosed, quoteEmpty } = await import("./purchase-quote");
+  const { quoteClosed, quoteEmpty, responseState } =
+    await import("./purchase-quote");
+  /* Prazos das pendências do fornecedor e da Wellmix (dono, 19/11/2026):
+     o SLA da negociação e o da amostragem, os mesmos das Pendências. */
+  const [slaMinutes, samplingDays] = supplierRequests.length
+    ? await Promise.all([
+        import("./supplier-request-negotiation").then((m) =>
+          m.supplierRequestSlaMinutes(),
+        ),
+        import("./supplier-request-sampling").then((m) => m.samplingSlaDays()),
+      ])
+    : [0, 0];
   const decisionById = new Map(decisions.map((d) => [d.id, d]));
   // A cotação que vale para a estratégia: a mais nova que não foi cancelada.
   const quoteOf = (decisionId: string) =>
@@ -149,6 +163,9 @@ export async function requestTurnContext(
               : quoteClosed(mine, now)
                 ? "choose"
                 : "answering",
+            invites: mine
+              .filter((r) => responseState(r, now) === "open")
+              .map((r) => ({ supplierId: r.supplierId, dueAt: r.dueAt })),
           }
         : null,
       supplierRequests: q?.supplierRequestIds?.length
@@ -160,6 +177,12 @@ export async function requestTurnContext(
               sampling:
                 s.status === "approved"
                   ? samplingTurn(s.sampling ?? null)
+                  : null,
+              supplierId: s.supplierId,
+              negotiationDueAt: supplierRequestSlaDue(s, slaMinutes),
+              samplingDueAt:
+                s.status === "approved"
+                  ? samplingDueAt(s.sampling ?? null, samplingDays)
                   : null,
             }))
         : [],

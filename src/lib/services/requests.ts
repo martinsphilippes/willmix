@@ -118,6 +118,11 @@ export async function createRequestBatch(
     cart?: boolean;
     /** Reposição aberta pela tela Venda (compra para estoque): a origem. */
     origin?: RequestOrigin;
+    /**
+     * Número já reservado no rascunho enviado (dono, 19/11/2026): a
+     * solicitação o repete em vez de pegar outro da sequência.
+     */
+    number?: number;
   } = {},
 ): Promise<Request[]> {
   if (!items.length) throw new Error("no_products");
@@ -126,8 +131,9 @@ export async function createRequestBatch(
   const store = getStore();
   /* Um número para a solicitação inteira: o 1º produto o reserva (depois das
      checagens de permissão, para não gastar número à toa) e os demais o
-     repetem. Sem a coluna no banco ainda, fica sem número. */
-  let number: number | undefined;
+     repetem. Sem a coluna no banco ainda, fica sem número. Vindo de um
+     rascunho, o número reservado nele vale para todos. */
+  let number: number | undefined = internal.number;
   for (const [index, item] of items.entries()) {
     try {
       const request = await createRequest(
