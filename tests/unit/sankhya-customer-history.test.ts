@@ -542,9 +542,9 @@ describe("previsão de preço ao cliente final (SuperPlan, anexo 2)", () => {
     ).toEqual({ mode: "manual" });
   });
 
-  it("cotação V2: 71 posições com CAST; VIP, rota, frete, vendedor e data nas posições da assinatura", async () => {
+  it("cotação V2: 72 posições com CAST; VIP, rota, frete, vendedor e data nas posições da assinatura", async () => {
     const { cotacaoV2Sql, COTACAO_V2_PARAMS, commercialInput } = await pf();
-    expect(COTACAO_V2_PARAMS).toHaveLength(71);
+    expect(COTACAO_V2_PARAMS).toHaveLength(72);
     const sql = cotacaoV2Sql({
       CODPROD: 21952,
       QTD_PECAS: 1000,
@@ -562,7 +562,7 @@ describe("previsão de preço ao cliente final (SuperPlan, anexo 2)", () => {
     });
     expect(sql).toMatch(/^SELECT \* FROM sankhya\.FN_AD_ENC_COTACAO_V2_WELL\(/);
     const a = args(sql);
-    expect(a).toHaveLength(71);
+    expect(a).toHaveLength(72);
     expect(a[0]).toBe("CAST(NULL AS VARCHAR(10))"); // 1 NCM
     expect(a[6]).toBe("CAST(1000 AS FLOAT)"); // 7 QTD_PECAS
     expect(a[37]).toBe("CAST('20261115' AS DATE)"); // 38 DATA_REF
@@ -571,6 +571,7 @@ describe("previsão de preço ao cliente final (SuperPlan, anexo 2)", () => {
     expect(a[57]).toBe("CAST(800 AS FLOAT)"); // 58 FRETE_ENTREGA_BRL
     expect(a[69]).toBe("CAST(337 AS INT)"); // 70 CODVEND
     expect(a[70]).toBe("CAST('PORTO_CLIENTE' AS VARCHAR(20))"); // 71 ROTA
+    expect(a[71]).toBe("CAST(NULL AS FLOAT)"); // 72 DESP_EXTRA_USD (19/11/2026)
     // Frete zero vai como zero; sem frete, NULL (pendente).
     expect(
       args(
