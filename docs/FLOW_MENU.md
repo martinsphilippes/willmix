@@ -4,16 +4,16 @@ Pedido do dono (14/11/2026): o menu lateral segue os blocos do mapa do processo 
 
 ## Estrutura
 
-| Bloco (mapa)        | Itens                                                                                                                                                                                                    |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Produto novo (Book) | Overview, Books, Seleção de itens, Convites de book, Encomendas (B14), Estratégia de compra (B10?), Reposição (B10), Cotação de compra (B13), Negociações (solicitações ao fornecedor, com a amostragem) |
-| Pedido              | Overview, Pedidos, Certificação, Material de arte, Arte, Revisão, Contrato                                                                                                                               |
-| Produção            | Overview (`/app/production`), Pré-produção, Inspeção, Amostra, Produção, Booking (marítima), Logística, Carregamento, Documentos de carga, Embarque                                                      |
-| Entrega             | Overview, LPCO, Presença de carga, Canal cinza ou vermelho, Logística, Nota fiscal, Entrega, Retorno, Armazenagem; Containers, Fretes e Tarifário seguem no fim                                          |
-| Vendas              | Estoque, Amostras, Ofertas, Venda, Carteira e atendimento (`/app/portfolio`, 18/11/2026) e Plano de ação Trade (`/app/portfolio/plan`, 19/11/2026; docs/TRADE_COMERCIAL.md)                              |
-| Financeiro          | Financeiro, Contas a pagar, Fluxo de caixa (saiu de Painéis), Acordos e comissões, Multas                                                                                                                |
-| Painéis             | Painel do dono, Painéis por área, Painel de SLA (só leitura, sem contador)                                                                                                                               |
-| Cadastros           | Clientes, Produtos, Linhas                                                                                                                                                                               |
+| Bloco (mapa)        | Itens                                                                                                                                                                                                                  |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Produto novo (Book) | Overview, Books, Seleção de itens, Convites de book, Encomendas (B14), Estratégia de compra (B10?), Reposição (B10), Cotação de compra (B13), Negociações (solicitações ao fornecedor, com a amostragem)               |
+| Pedido              | Overview, Pedidos, Certificação, Material de arte, Arte, Revisão, Contrato                                                                                                                                             |
+| Produção            | Overview (`/app/production`), Pré-produção, Inspeção, Amostra, Produção, Booking (marítima), Logística, Carregamento, Documentos de carga, Embarque                                                                    |
+| Entrega             | Overview, LPCO, Presença de carga, Canal cinza ou vermelho, Logística, Nota fiscal, Entrega, Retorno, Armazenagem; Containers, Fretes e Tarifário seguem no fim                                                        |
+| Vendas              | Estoque, Amostras, Ofertas, Venda, Carteira e atendimento (`/app/portfolio`, 18/11/2026), Painel comercial (`/app/portfolio/panel`) e Plano de ação Trade (`/app/portfolio/plan`, 19/11/2026; docs/TRADE_COMERCIAL.md) |
+| Financeiro          | Financeiro, Contas a pagar, Fluxo de caixa (saiu de Painéis), Acordos e comissões, Multas                                                                                                                              |
+| Painéis             | Painel do dono, Painéis por área, Painel de SLA (só leitura, sem contador)                                                                                                                                             |
+| Cadastros           | Clientes, Produtos, Linhas                                                                                                                                                                                             |
 
 Fixos embaixo: Configurações, **Equipe Acessos e Parceiros** e Auditoria. Parceiros saiu de Cadastros (dono, 15/11/2026) e virou uma seção de Equipe Acessos e Parceiros; veja "Equipe Acessos e Parceiros" abaixo.
 

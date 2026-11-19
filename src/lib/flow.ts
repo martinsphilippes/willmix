@@ -101,6 +101,8 @@ export const FLOW_STEPS: FlowStep[] = [
   // Carteira e atendimento ao cliente (dono, 18/11/2026;
   // docs/TRADE_COMERCIAL.md): dias sem atendimento e o prazo.
   s("sales", "portfolio", "portfolio", "/app/portfolio"),
+  // Painel do cliente e do grupo (docs/TRADE_COMERCIAL.md, PR 4).
+  s("sales", "salesPanel", "portfolio", "/app/portfolio/panel"),
   // Plano de ação Trade (docs/TRADE_COMERCIAL.md, PR 2).
   s("sales", "tradePlan", "portfolio", "/app/portfolio/plan"),
   // Só o contador, no item que já existe.

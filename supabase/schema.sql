@@ -1250,6 +1250,45 @@ create index if not exists "customer_attendances_by_status" on public."customer_
 create index if not exists "customer_attendances_created" on public."customer_attendances" ("createdAt");
 create index if not exists "customer_attendances_created_id" on public."customer_attendances" ("createdAt", "id");
 
+create table if not exists public."customer_sales_monthly" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."customer_sales_monthly" enable row level security;
+alter table public."customer_sales_monthly" add column if not exists "customerId" text;
+alter table public."customer_sales_monthly" add column if not exists "month" text;
+alter table public."customer_sales_monthly" add column if not exists "productCode" text;
+alter table public."customer_sales_monthly" add column if not exists "productName" text;
+alter table public."customer_sales_monthly" add column if not exists "unit" text;
+alter table public."customer_sales_monthly" add column if not exists "quantity" double precision;
+alter table public."customer_sales_monthly" add column if not exists "pieces" double precision;
+alter table public."customer_sales_monthly" add column if not exists "valueBrl" double precision;
+alter table public."customer_sales_monthly" add column if not exists "orders" bigint;
+alter table public."customer_sales_monthly" add column if not exists "lastOrderDate" text;
+alter table public."customer_sales_monthly" add column if not exists "loadedAt" timestamptz;
+create index if not exists "customer_sales_monthly_by_customer" on public."customer_sales_monthly" ("customerId");
+create index if not exists "customer_sales_monthly_by_customer_month" on public."customer_sales_monthly" ("customerId", "month");
+create index if not exists "customer_sales_monthly_created" on public."customer_sales_monthly" ("createdAt");
+create index if not exists "customer_sales_monthly_created_id" on public."customer_sales_monthly" ("createdAt", "id");
+
+create table if not exists public."customer_sales_loads" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."customer_sales_loads" enable row level security;
+alter table public."customer_sales_loads" add column if not exists "customerId" text;
+alter table public."customer_sales_loads" add column if not exists "loadedAt" timestamptz;
+alter table public."customer_sales_loads" add column if not exists "triedAt" timestamptz;
+alter table public."customer_sales_loads" add column if not exists "lastOrderDate" text;
+alter table public."customer_sales_loads" add column if not exists "rows" bigint;
+alter table public."customer_sales_loads" add column if not exists "complete" boolean;
+alter table public."customer_sales_loads" add column if not exists "error" text;
+create index if not exists "customer_sales_loads_by_customer" on public."customer_sales_loads" ("customerId");
+create index if not exists "customer_sales_loads_created" on public."customer_sales_loads" ("createdAt");
+create index if not exists "customer_sales_loads_created_id" on public."customer_sales_loads" ("createdAt", "id");
+
 create table if not exists public."trade_activities" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),

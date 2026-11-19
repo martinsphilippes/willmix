@@ -89,6 +89,7 @@ const SALES = [
   "/app/flow/sales/offers",
   "/app/flow/sales/sale",
   "/app/portfolio",
+  "/app/portfolio/panel",
   "/app/portfolio/plan",
 ];
 

@@ -288,6 +288,9 @@ export const pt = {
   "flow.step.sales.portfolio": "Carteira e atendimento",
   "flow.help.sales.portfolio":
     "Clientes acompanhados, dias sem atendimento confirmado e o prazo; registrar o atendimento e mandar o link para o cliente confirmar.",
+  "flow.step.sales.salesPanel": "Painel comercial",
+  "flow.help.sales.salesPanel":
+    "As telas do painel do Projeto Campineira com as vendas do Sankhya, por grupo econômico ou cliente.",
   "flow.step.sales.tradePlan": "Plano de ação Trade",
   "flow.help.sales.tradePlan":
     "Ações de trade com responsável, prazo e evidência, por cliente ou grupo econômico.",
@@ -584,6 +587,9 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.step.sales.portfolio": "Accounts and customer service",
   "flow.help.sales.portfolio":
     "Followed customers, days without a confirmed contact and the deadline; record a contact and send the link for the customer to confirm.",
+  "flow.step.sales.salesPanel": "Sales panel",
+  "flow.help.sales.salesPanel":
+    "The Campineira Project panel screens with Sankhya sales, per economic group or customer.",
   "flow.step.sales.tradePlan": "Trade action plan",
   "flow.help.sales.tradePlan":
     "Trade actions with an owner, a deadline and evidence, per customer or economic group.",
@@ -858,6 +864,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.step.sales.portfolio": "客户组合与拜访",
   "flow.help.sales.portfolio":
     "跟进的客户、未确认拜访的天数和期限；登记拜访并发送链接给客户确认。",
+  "flow.step.sales.salesPanel": "销售看板",
+  "flow.help.sales.salesPanel":
+    "按经济集团或客户、使用 Sankhya 销售数据的 Campineira 项目看板页面。",
   "flow.step.sales.tradePlan": "渠道行动计划",
   "flow.help.sales.tradePlan":
     "按客户或经济集团的渠道行动，含负责人、期限和证据。",

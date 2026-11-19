@@ -173,6 +173,7 @@ import * as newProduct from "./new-product";
 import * as partyFamilies from "./party-families";
 import * as portfolio from "./portfolio";
 import * as tradePlan from "./trade-plan";
+import * as salesPanel from "./sales-panel";
 
 export const modulesPt = {
   ...messages.pt,
@@ -344,6 +345,7 @@ export const modulesPt = {
   ...partyFamilies.pt,
   ...portfolio.pt,
   ...tradePlan.pt,
+  ...salesPanel.pt,
   ...turns.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
@@ -516,6 +518,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...partyFamilies.en,
   ...portfolio.en,
   ...tradePlan.en,
+  ...salesPanel.en,
   ...turns.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
@@ -688,5 +691,6 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...partyFamilies.zh,
   ...portfolio.zh,
   ...tradePlan.zh,
+  ...salesPanel.zh,
   ...turns.zh,
 };

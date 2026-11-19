@@ -10,6 +10,7 @@ import {
   Empty,
   Field,
   Input,
+  LinkButton,
   PageHeader,
   Select,
   TextLink,
@@ -82,9 +83,17 @@ export default async function PortfolioGroupPage({
           </span>
         }
         actions={
-          <TextLink href="/app/portfolio/groups">
-            {`← ${t("portfolio.groups.title")}`}
-          </TextLink>
+          <>
+            <LinkButton
+              href={`/app/portfolio/panel?scope=g:${group.id}`}
+              data-portfolio-group-panel
+            >
+              {t("portfolio.groups.panelLink")}
+            </LinkButton>
+            <TextLink href="/app/portfolio/groups">
+              {`← ${t("portfolio.groups.title")}`}
+            </TextLink>
+          </>
         }
       />
       {errorText ? (

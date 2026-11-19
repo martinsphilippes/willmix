@@ -89,11 +89,19 @@ export default async function PortfolioPage({
         title={t("portfolio.title")}
         subtitle={t("portfolio.subtitle", { days: view.slaDays })}
         actions={
-          view.canManage ? (
-            <LinkButton href="/app/portfolio/groups" data-portfolio-groups-link>
-              {t("portfolio.groups.link")}
+          <>
+            <LinkButton href="/app/portfolio/panel" data-portfolio-panel-link>
+              {t("nav.salesPanel")}
             </LinkButton>
-          ) : null
+            {view.canManage ? (
+              <LinkButton
+                href="/app/portfolio/groups"
+                data-portfolio-groups-link
+              >
+                {t("portfolio.groups.link")}
+              </LinkButton>
+            ) : null}
+          </>
         }
       />
       {errorText ? (
@@ -171,6 +179,7 @@ export default async function PortfolioPage({
               <Th>{t("portfolio.col.owner")}</Th>
               <Th>{t("portfolio.col.last")}</Th>
               <Th>{t("portfolio.col.days")}</Th>
+              <Th>{t("portfolio.col.lastPurchase")}</Th>
               <Th>{t("portfolio.col.status")}</Th>
               <Th>{t("portfolio.col.pending")}</Th>
             </tr>
@@ -218,6 +227,20 @@ export default async function PortfolioPage({
                 </Td>
                 <Td>{dateBr(t, r.lastConfirmedAt)}</Td>
                 <Td>{r.days ?? "—"}</Td>
+                <Td>
+                  {r.lastPurchaseDate ? (
+                    <>
+                      {dateBr(t, r.lastPurchaseDate)}
+                      <span className="block text-xs text-zinc-500">
+                        {t("portfolio.daysSince", {
+                          n: r.daysWithoutPurchase ?? 0,
+                        })}
+                      </span>
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </Td>
                 <Td>
                   <span data-portfolio-status={r.status}>
                     <Badge tone={STANDING_TONE[r.status]}>

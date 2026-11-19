@@ -10,6 +10,7 @@ import {
   DescriptionList,
   Field,
   Input,
+  LinkButton,
   PageHeader,
   Select,
   TextLink,
@@ -104,9 +105,17 @@ export default async function PortfolioCustomerPage({
           </span>
         }
         actions={
-          <TextLink href="/app/portfolio">
-            {t("portfolio.customer.back")}
-          </TextLink>
+          <>
+            <LinkButton
+              href={`/app/portfolio/panel?scope=c:${customer.id}`}
+              data-portfolio-customer-panel
+            >
+              {t("portfolio.panelLink")}
+            </LinkButton>
+            <TextLink href="/app/portfolio">
+              {t("portfolio.customer.back")}
+            </TextLink>
+          </>
         }
       />
       {errorText ? (
@@ -167,6 +176,12 @@ export default async function PortfolioCustomerPage({
                 [
                   t("portfolio.col.group"),
                   row.groupName ?? t("portfolio.manage.groupNone"),
+                ],
+                [
+                  t("portfolio.col.lastPurchase"),
+                  row.lastPurchaseDate
+                    ? `${dateBr(t, row.lastPurchaseDate)} · ${t("portfolio.daysSince", { n: row.daysWithoutPurchase ?? 0 })}`
+                    : "—",
                 ],
               ]}
             />
