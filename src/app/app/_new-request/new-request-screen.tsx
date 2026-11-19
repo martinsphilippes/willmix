@@ -1187,6 +1187,7 @@ export async function renderNewRequest({
                   incompleteHint: t("reqBatch.incompleteHint"),
                   outside: t("reqBatch.outside"),
                   noProduct: t("reqBatch.noProduct"),
+                  duplicate: t("reqBatch.duplicate"),
                 },
                 hint: t("reqBatch.hint"),
                 quantity: t("common.quantity"),

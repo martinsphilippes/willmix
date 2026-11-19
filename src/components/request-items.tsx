@@ -157,6 +157,8 @@ export function RequestItems({
       ? Object.fromEntries(draftRows.slice(0, -1).map((_, i) => [i, true]))
       : {},
   );
+  // Aviso do produto que já estava no pedido (some na próxima escolha).
+  const [duplicateNotice, setDuplicateNotice] = useState<number | null>(null);
   // O que a tabela mostra de cada linha, lido do formulário: o nome digitado
   // (fora do catálogo) e se falta dado (campo inválido, sem produto ou sem
   // quantidade).
@@ -358,6 +360,24 @@ export function RequestItems({
     variantId: string,
     fill: ProductFill | null,
   ) {
+    // O mesmo produto não entra em duas linhas (dono, 19/11/2026): escolhido
+    // de novo, a linha nova sai e a que já tem o produto abre para editar.
+    const twin = id
+      ? rows.find((i) => i !== index && !outside[i] && product[i]?.id === id)
+      : undefined;
+    if (twin !== undefined) {
+      setLoad?.(`row-${index}`, null);
+      setRows((r) => r.filter((i) => i !== index));
+      setCollapsed(() => {
+        const out: Record<number, boolean> = {};
+        for (const i of rows) if (i !== twin) out[i] = true;
+        return out;
+      });
+      scrollToRow.current = twin;
+      setDuplicateNotice(twin);
+      return;
+    }
+    setDuplicateNotice(null);
     setProduct((p) => ({ ...p, [index]: { id, variantId, fill } }));
     const moq = moqOf({ id, variantId, fill });
     if (!moq) return;
@@ -416,9 +436,9 @@ export function RequestItems({
     Record<number, { productId: string; fill: ProductFill }>
   >({});
   // O estado atual das linhas, para as fichas que chegam depois.
-  const latest = useRef({ product, outside, historyRows });
+  const latest = useRef({ product, outside, historyRows, rows });
   useEffect(() => {
-    latest.current = { product, outside, historyRows };
+    latest.current = { product, outside, historyRows, rows };
   });
   const addRequest = shared?.addRequest ?? null;
   const handledAdd = useRef(0);
@@ -490,11 +510,14 @@ export function RequestItems({
       setQty((q) => ({ ...q, ...values }));
       // Com a quantidade padrão, os produtos entram recolhidos na tabela
       // "Produtos no pedido" (dono, 16/11/2026); sem ela, abertos.
+      // Uma linha aberta por vez (dono, 19/11/2026): as de antes recolhem
+      // e, das que entram sem a quantidade, só a última fica aberta.
       setCollapsed((c) => {
         const out = { ...c };
-        indexes.forEach((i) => {
-          if (applied.has(i)) out[i] = true;
-        });
+        for (const i of Object.keys(out)) out[Number(i)] = true;
+        for (const i of latest.current.rows) out[i] = true;
+        const open = indexes.filter((i) => !applied.has(i)).at(-1);
+        indexes.forEach((i) => (out[i] = i !== open));
         return out;
       });
       // A primeira linha ainda vazia sai: os produtos entram no lugar dela.
@@ -583,8 +606,51 @@ export function RequestItems({
   useEffect(() => {
     recheck();
   });
-  const expand = (index: number, open: boolean) =>
-    setCollapsed((c) => ({ ...c, [index]: !open }));
+  // Uma linha aberta por vez (dono, 19/11/2026): abrir uma recolhe as
+  // outras; a aba Análise do histórico mostra o produto dela.
+  // Recolher a aberta volta a abrir a que estava aberta antes dela.
+  const previousOpen = useRef<number | null>(null);
+  const expand = (index: number, open: boolean) => {
+    if (open) {
+      const before = rows.find((i) => i !== index && !collapsed[i]);
+      if (before !== undefined) previousOpen.current = before;
+    }
+    const back =
+      !open &&
+      previousOpen.current !== null &&
+      previousOpen.current !== index &&
+      rows.includes(previousOpen.current)
+        ? previousOpen.current
+        : null;
+    if (!open) previousOpen.current = null;
+    setCollapsed((c) => {
+      if (!open)
+        return back === null
+          ? { ...c, [index]: true }
+          : { ...c, [index]: true, [back]: false };
+      const out: Record<number, boolean> = { ...c, [index]: false };
+      for (const i of rows) if (i !== index) out[i] = true;
+      return out;
+    });
+  };
+  const setFocusProduct = shared?.setFocusProduct;
+  const openRow = rows.find((i) => !collapsed[i]);
+  const focus =
+    openRow !== undefined && !outside[openRow] && product[openRow]?.id
+      ? {
+          productId: product[openRow]!.id,
+          name:
+            product[openRow]!.fill?.productName ||
+            product[openRow]!.fill?.label ||
+            "",
+        }
+      : null;
+  const focusKey = focus ? `${focus.productId}|${focus.name}` : "";
+  useEffect(() => {
+    if (!setFocusProduct) return;
+    const [productId, ...name] = focusKey ? focusKey.split("|") : [];
+    setFocusProduct(productId ? { productId, name: name.join("|") } : null);
+  }, [focusKey, setFocusProduct]);
   const nameOf = (index: number, fallback: string) =>
     (!outside[index] &&
       (product[index]?.fill?.label || product[index]?.fill?.productName)) ||
@@ -710,6 +776,15 @@ export function RequestItems({
                   ) : null}
                 </span>
               </legend>
+              {duplicateNotice === index && labels.inOrder.duplicate ? (
+                <p
+                  role="status"
+                  className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 ring-1 ring-amber-200"
+                  data-request-item-duplicate
+                >
+                  {labels.inOrder.duplicate}
+                </p>
+              ) : null}
               {/* Grade de 4 colunas (2 no celular): textos em meia linha ou linha
                 cheia; o bloco "Programação de compra" na linha toda. */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -1058,6 +1133,8 @@ export interface RequestItemsTableLabels {
   incompleteHint: string;
   outside: string;
   noProduct: string;
+  /** O produto escolhido já estava no pedido: esta linha abriu para editar. */
+  duplicate?: string;
 }
 
 /** Marca de produto com dado faltando. */

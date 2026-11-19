@@ -25,7 +25,12 @@ const QUERY = z.object({
     .refine((n) => Number.isSafeInteger(n) && n > 0)
     .optional(),
   /** Visão Produto (dono, 15/11/2026): os produtos dos `shown` pedidos. */
-  view: z.enum(["products"]).optional(),
+  view: z.enum(["products", "analysis"]).optional(),
+  /** Aba Análise (dono, 19/11/2026): o produto do portal da linha aberta. */
+  product: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{1,64}$/)
+    .optional(),
 });
 
 /**
@@ -48,16 +53,23 @@ export async function GET(request: Request) {
     shown: params.get("shown") ?? undefined,
     nunota: params.get("nunota") ?? undefined,
     view: params.get("view") ?? undefined,
+    product: params.get("product") ?? undefined,
   });
   if (!parsed.success)
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
-  const { customer, shown, nunota, view } = parsed.data;
+  const { customer, shown, nunota, view, product } = parsed.data;
+  if (view === "analysis" && !product)
+    return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   const result =
-    view === "products"
-      ? await sankhyaCustomerProducts(user, customer, shown)
-      : nunota
-        ? await sankhyaOrderItems(user, customer, nunota)
-        : await sankhyaCustomerOrders(user, customer, shown ?? 0);
+    view === "analysis"
+      ? await (
+          await import("@/lib/services/purchase-analysis")
+        ).productPurchaseAnalysis(user, customer, product!)
+      : view === "products"
+        ? await sankhyaCustomerProducts(user, customer, shown)
+        : nunota
+          ? await sankhyaOrderItems(user, customer, nunota)
+          : await sankhyaCustomerOrders(user, customer, shown ?? 0);
   if (result.state === "forbidden")
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   return NextResponse.json(result, {

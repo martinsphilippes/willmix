@@ -364,7 +364,7 @@ export function toItem(row: SankhyaRow, money: boolean): SankhyaHistoryItem {
  * Cliente do portal → código do parceiro no Sankhya. Só a Wellmix, só quem
  * abre Solicitações, só cliente cadastrado com código numérico.
  */
-async function customerCode(
+export async function customerCode(
   user: User,
   partyId: string,
 ): Promise<SankhyaHistoryResult<{ code: number }>> {
@@ -377,7 +377,7 @@ async function customerCode(
   return { state: "ok", code };
 }
 
-function failure(
+export function failure(
   e: unknown,
 ):
   | { state: "not_configured" }

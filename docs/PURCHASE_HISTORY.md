@@ -163,6 +163,22 @@ No card do histórico pelo Sankhya (seção 9), um seletor **"Pedido | Produto"*
   - Unitário: SQL, um produto em vários pedidos com dois no mesmo dia, unidades diferentes, leitura em páginas, cliente sem pedidos e permissões.
   - E2E, com o Sankhya simulado na rota do portal: Pedido por padrão, Produto sem abrir pedido, totais e datas, volta para Pedido com a expansão, "Carregar mais pedidos" e troca de cliente.
 
+## 12. Aba Análise (dono, 19/11/2026)
+
+O card ganhou a terceira aba, **Análise** (Pedido | Produto | Análise), com o produto da linha aberta no pedido. Só uma linha fica aberta por vez: abrir uma recolhe as outras (docs/ORDER_TERMS.md 11.20).
+
+- **Dados:** as compras do produto (pelo `sankhyaCode` do produto do portal) pelo cliente e, quando ele representa um grupo econômico, por todas as empresas do grupo (`parties.economicGroupCode`). Vêm do Sankhya na hora, da mesma view do histórico (`VW_AD_PEDCLIENTE_ITEM_WELL`), somadas por dia e unidade e convertidas em peças pelo volume do produto (TGFVOA). Quando alguma unidade não tem conversão, ela entra como veio e a aba avisa. Produto sem código do Sankhya: a aba diz.
+- **Compras por ano (histórico inteiro):** peças e número de compras por ano, do mais recente para o mais antigo. Cada ano abre nos meses com compra.
+- **Estimativa de demanda** (`src/lib/purchase-forecast.ts`):
+  - Cada compra dura até a seguinte, então a demanda/mês daquele intervalo é a quantidade da compra ÷ os meses até a próxima compra.
+  - A tendência é a reta (mínimos quadrados) dessas demandas nas últimas 6 compras.
+  - A demanda prevista de cada um dos próximos 12 meses segue a reta, nunca abaixo de zero. A tabela mostra os meses ou o total por ano (Mês | Ano).
+  - Quando a última compra acaba: a data da última compra + a quantidade dela ÷ a demanda prevista.
+  - **Próxima compra sugerida** (decisão do dono, 19/11/2026): 4 meses antes de a última compra acabar, porque é o tempo do pedido até chegar às mãos do cliente. A quantidade é a demanda prevista no intervalo médio entre as compras. Data já passada: "o ideal é comprar agora".
+  - Com menos de duas compras não há estimativa.
+- **Código:** `src/lib/services/purchase-analysis.ts` (`productPurchaseAnalysis`), `/api/purchase-history/sankhya?view=analysis&product=`, `src/components/purchase-analysis-panel.tsx`. Testes em `tests/unit/purchase-forecast.test.ts`, `tests/unit/purchase-analysis.test.ts` e o 3º teste de `tests/e2e/new-request-round.spec.ts`.
+- **Permissões:** as do histórico pelo Sankhya (Wellmix que abre Solicitações).
+
 ## Preço da última compra ao fornecedor (15/11/2026)
 
 Pedido do dono: ao escolher o produto na Nova solicitação, o quadro verde "Produto do catálogo Wellmix" mostra, só para a Wellmix, "Última compra: US$ 0,1205 por UN · 120.148 UN · pedido 11556 (Sankhya 1185804) · fornecedor" (`src/lib/services/last-purchase.ts`, campo `lastPurchase` da ficha em `request-product-fill.ts`).
