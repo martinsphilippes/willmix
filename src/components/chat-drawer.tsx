@@ -279,6 +279,7 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
         orderId: c.kind === "order" ? c.id : null,
         requestId: c.kind === "request" ? c.id : null,
         orderItemId: c.kind === "order" ? item : null,
+        draftId: c.kind === "draft" ? c.id : null,
         peerUserId: peer,
       });
       if (!res.ok) {
@@ -326,6 +327,7 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
       const res = await chatContextAction({
         orderId: detail.orderId ?? null,
         requestId: detail.requestId ?? null,
+        draftId: detail.draftId ?? null,
       });
       if (!res.ok) {
         setError(labels.error);

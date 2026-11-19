@@ -154,6 +154,7 @@ describe("controladoria", () => {
         request: "Solicitação",
         order: "Pedido",
         item: "Item",
+        draft: "Rascunho",
       },
       yes: "Sim",
       no: "Não",

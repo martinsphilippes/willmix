@@ -11,13 +11,12 @@ import type {
   RequestCompanyAllocation,
   VariantSnapshot,
 } from "@/lib/db/schema";
-import { isWellmix } from "@/lib/auth/permissions";
+import { draftResumeHref, draftScreenOf } from "@/lib/request-screens";
 import {
-  draftIsReplenishment,
-  draftResumeHref,
-  draftScreenOf,
-} from "@/lib/request-screens";
-import { canDraft, draftForm } from "@/lib/services/request-drafts";
+  canDraft,
+  draftForm,
+  getListedDraft,
+} from "@/lib/services/request-drafts";
 import { getProductVariants } from "@/lib/services/product-variants";
 import {
   requestProductName,
@@ -111,25 +110,8 @@ export interface DraftDetails {
   catalog: Product[];
 }
 
-const ID = /^[A-Za-z0-9_-]{1,64}$/;
-
 /** O rascunho que esta pessoa pode ver nos detalhes (nulo: 404). */
-export async function getDraftForDetails(
-  user: User,
-  id: string,
-): Promise<RequestDraft | null> {
-  if (!isWellmix(user) || !ID.test(id)) return null;
-  const draft = await getStore()
-    .get("request_drafts", id)
-    .catch(() => null);
-  if (!draft || draft.userId !== user.id) return null;
-  const screen = draftScreenOf(draft.payload);
-  const replenish = screen === "sale" && draftIsReplenishment(draft.payload);
-  // Encomendas lista os rascunhos da Nova solicitação, de TS e de Venda; o da
-  // Reposição é da fila de Reposição (listDraftsForList).
-  if (replenish) return null;
-  return canDraft(user, screen, false) ? draft : null;
-}
+export const getDraftForDetails = getListedDraft;
 
 /** As entregas digitadas de cada produto (em branco = não digitada). */
 function typedRounds(

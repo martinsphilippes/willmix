@@ -50,7 +50,9 @@ export function ChatOpenButton({
           ? `item:${target.orderItemId}`
           : target.orderId
             ? `order:${target.orderId}`
-            : `request:${target.requestId ?? ""}`
+            : target.draftId
+              ? `draft:${target.draftId}`
+              : `request:${target.requestId ?? ""}`
       }
       onClick={(event) => {
         event.stopPropagation();

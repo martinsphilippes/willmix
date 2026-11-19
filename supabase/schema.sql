@@ -1445,9 +1445,11 @@ alter table public."conversation_topics" add column if not exists "title" text;
 alter table public."conversation_topics" add column if not exists "lastMessageAt" timestamptz;
 alter table public."conversation_topics" add column if not exists "orderItemId" text;
 alter table public."conversation_topics" add column if not exists "productId" text;
+alter table public."conversation_topics" add column if not exists "draftId" text;
 create index if not exists "conversation_topics_by_conversation" on public."conversation_topics" ("conversationId");
 create index if not exists "conversation_topics_by_order" on public."conversation_topics" ("orderId");
 create index if not exists "conversation_topics_by_product" on public."conversation_topics" ("productId");
+create index if not exists "conversation_topics_by_draft" on public."conversation_topics" ("draftId");
 create index if not exists "conversation_topics_created" on public."conversation_topics" ("createdAt");
 create index if not exists "conversation_topics_created_id" on public."conversation_topics" ("createdAt", "id");
 
