@@ -490,13 +490,13 @@ export function StrategyQueue({
           </span>
         </KV>
         {last.price ? (
-          <KV label={texts.card.price} tip={texts.lastPrice}>
+          <KV label={texts.card.price} tip={texts.lastPrice} align="end">
             <span className="tabular-nums">{last.price}</span>
           </KV>
         ) : (
           <span />
         )}
-        <KV label={texts.card.previous} tip={texts.lastOrder}>
+        <KV label={texts.card.previous} tip={texts.lastOrder} align="end">
           <Link href={last.orderHref} className={linkClass}>
             {last.orderLabel.split(" · ")[0]}
           </Link>
@@ -512,10 +512,10 @@ export function StrategyQueue({
         >
           {last.leadTime ?? "—"}
         </KV>
-        <KV label={texts.card.incoterm} tip={texts.lastIncoterm}>
+        <KV label={texts.card.incoterm} tip={texts.lastIncoterm} align="end">
           {last.incoterm ?? "—"}
         </KV>
-        <KV label={texts.card.moq} tip={texts.lastMoq}>
+        <KV label={texts.card.moq} tip={texts.lastMoq} align="end">
           <span className="tabular-nums">{last.moq ?? "—"}</span>
         </KV>
       </dl>

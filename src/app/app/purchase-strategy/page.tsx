@@ -449,7 +449,11 @@ export default async function PurchaseStrategyPage({
           </span>
         </KV>
         {seesPrice ? (
-          <KV label={t("strategyCard.price")} tip={t("strategy.last.price")}>
+          <KV
+            label={t("strategyCard.price")}
+            tip={t("strategy.last.price")}
+            align="end"
+          >
             <span className="tabular-nums">
               {ref.unitPrice !== null
                 ? `${ref.currency ?? ""} ${ref.unitPrice.toLocaleString(t.intl, { maximumFractionDigits: 4 })}`.trim()
@@ -459,7 +463,11 @@ export default async function PurchaseStrategyPage({
         ) : (
           <span />
         )}
-        <KV label={t("strategyCard.previous")} tip={t("strategy.last.date")}>
+        <KV
+          label={t("strategyCard.previous")}
+          tip={t("strategy.last.date")}
+          align="end"
+        >
           <Link href={`/app/orders/${ref.orderId}`} className={linkClass}>
             #{ref.orderNumber}
           </Link>{" "}
@@ -479,10 +487,15 @@ export default async function PurchaseStrategyPage({
         <KV
           label={t("strategyCard.incoterm")}
           tip={t("strategy.last.incoterm")}
+          align="end"
         >
           {ref.incoterm ?? "—"}
         </KV>
-        <KV label={t("strategyCard.moq")} tip={t("strategy.last.moq")}>
+        <KV
+          label={t("strategyCard.moq")}
+          tip={t("strategy.last.moq")}
+          align="end"
+        >
           <span className="tabular-nums">
             {ref.moq !== null ? ref.moq.toLocaleString(t.intl) : "—"}
           </span>
@@ -881,11 +894,11 @@ export default async function PurchaseStrategyPage({
                       <input type="hidden" name="id" value={d.id} />
                       <Textarea
                         name="note"
-                        rows={1}
+                        rows={2}
                         placeholder={t("strategy.approvalNote")}
                         aria-label={t("strategy.approvalNote")}
                         title={t("strategy.approvalNote")}
-                        className="min-h-8 py-1 text-xs shadow-none"
+                        className="py-1 text-xs leading-4 shadow-none"
                       />
                       <div className="flex flex-wrap gap-1.5">
                         {blocked ? null : (

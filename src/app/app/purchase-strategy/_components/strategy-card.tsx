@@ -59,15 +59,22 @@ export function StrategyGrid({
 
 /**
  * Rótulo curto com a explicação: aparece ao passar o mouse, ao tocar ou com
- * o foco do teclado (o leitor de tela lê junto, pelo `aria-describedby`).
+ * o foco do teclado (Tab). O leitor de tela lê o rótulo e a explicação
+ * (texto só para ele); a caixinha visível fica fora da leitura. A caixinha
+ * cabe dentro do próprio card (até 10rem; o card tem no mínimo ~18rem): a
+ * grade rola para os lados e corta o que passa da borda dela. Na metade
+ * direita do card, `align="end"` abre a caixinha para a esquerda. Quem usa
+ * não põe `truncate` (overflow escondido) em volta: cortaria a caixinha.
  */
 export function Tip({
   label,
   tip,
+  align = "start",
   className,
 }: {
   label: ReactNode;
   tip: string;
+  align?: "start" | "end";
   className?: string;
 }) {
   return (
@@ -77,13 +84,17 @@ export function Tip({
         className,
       )}
       tabIndex={0}
-      aria-label={tip}
       data-strategy-tip
     >
       {label}
+      <span className="sr-only">: {tip}</span>
       <span
-        role="tooltip"
-        className="pointer-events-none absolute left-0 top-full z-30 mt-1 hidden w-max max-w-[15rem] whitespace-normal rounded-md bg-zinc-900 px-2 py-1 text-[11px] font-normal leading-4 text-white shadow-lg group-hover/tip:block group-focus/tip:block"
+        aria-hidden
+        className={cx(
+          "pointer-events-none absolute top-full z-30 mt-1 hidden w-max max-w-[10rem] whitespace-normal rounded-md bg-zinc-900 px-2 py-1 text-left text-[11px] font-normal normal-case leading-4 tracking-normal text-white shadow-lg group-hover/tip:block group-focus/tip:block",
+          align === "end" ? "right-0" : "left-0",
+        )}
+        data-strategy-tip-box
       >
         {tip}
       </span>
@@ -95,18 +106,21 @@ export function Tip({
 export function KV({
   label,
   tip,
+  align,
   children,
   className,
 }: {
   label: string;
   tip?: string;
+  /** Coluna da direita: a explicação abre para a esquerda. */
+  align?: "start" | "end";
   children: ReactNode;
   className?: string;
 }) {
   return (
     <div className={cx("min-w-0", className)}>
       <dt className="text-[10px] uppercase tracking-wide text-zinc-500">
-        {tip ? <Tip label={label} tip={tip} /> : label}
+        {tip ? <Tip label={label} tip={tip} align={align} /> : label}
       </dt>
       <dd className="break-words font-medium text-zinc-900">{children}</dd>
     </div>
@@ -199,10 +213,11 @@ export function CompactPack({
       className="grid grid-cols-4 gap-1 rounded-md bg-zinc-50 px-1.5 py-1"
       data-strategy-compact-pack={marker}
     >
-      {cells.map((c) => (
+      {cells.map((c, i) => (
         <div key={c.key} className="min-w-0" data-strategy-pack-cell={c.key}>
-          <dt className="truncate text-[10px] uppercase tracking-wide text-zinc-500">
-            <Tip label={c.label} tip={c.tip} />
+          {/* Sem `truncate` aqui: cortaria a caixinha da explicação. */}
+          <dt className="break-words text-[10px] uppercase tracking-wide text-zinc-500">
+            <Tip label={c.label} tip={c.tip} align={i >= 2 ? "end" : "start"} />
           </dt>
           <dd
             className="truncate text-[13px] font-semibold tabular-nums text-zinc-900"
