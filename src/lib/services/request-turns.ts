@@ -333,6 +333,23 @@ export async function requestStepsFor(
   requests: readonly Request[],
   orders: readonly Order[],
 ): Promise<Map<string, NextStep>> {
+  return (await requestStepsWithContext(user, requests, orders)).steps;
+}
+
+/**
+ * O Próximo passo de cada encomenda e o contexto lido para ele (a compra,
+ * os logins que confirmam): a página da encomenda usa o contexto para dizer
+ * quem age, pela mesma regra da lista (dono, 19/11/2026). Nulo para quem não
+ * é da Wellmix.
+ */
+export async function requestStepsWithContext(
+  user: User,
+  requests: readonly Request[],
+  orders: readonly Order[],
+): Promise<{
+  steps: Map<string, NextStep>;
+  ctx: RequestTurnContext | null;
+}> {
   const wellmix = isWellmix(user);
   const ctx = wellmix ? await requestTurnContext(requests) : null;
   const { awaitingStrategySend, inStrategyQueue } =
@@ -393,7 +410,7 @@ export async function requestStepsFor(
         : { ...step, who: "wellmix" },
     );
   }
-  return out;
+  return { steps: out, ctx };
 }
 
 /** O Próximo passo de uma encomenda para quem a abre (detalhe). */

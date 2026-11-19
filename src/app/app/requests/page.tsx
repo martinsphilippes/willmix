@@ -133,17 +133,23 @@ import {
 import {
   isOverdue,
   responsibleKey,
-  responsibleLine,
   responsibleOf,
   stepDue,
   stepOwner,
   stepPartners,
-  type Person,
   type Responsible,
   type StepDue,
 } from "@/lib/request-responsible";
 import { peopleDirectory } from "@/lib/services/request-responsible";
 import { InfoTip } from "@/components/info-tip";
+import { ListReturnMemory } from "@/components/list-return";
+import {
+  ResponsibleTip,
+  draftResponsible,
+  dueDayText,
+  dueHourText,
+  dueText,
+} from "@/components/request-responsible-tip";
 import { ClampText } from "@/components/clamp-text";
 
 const BULK_FORM = "requests-bulk-delete";
@@ -390,6 +396,9 @@ export default async function RequestsPage({
     : groupRequestRows(pool);
   const batchHref = (id: string) =>
     `/app/requests/batch/${encodeURIComponent(id)}`;
+  /** Detalhes do rascunho, só para consulta (a mesma tela das enviadas). */
+  const draftDetailsHref = (id: string) =>
+    `/app/requests/draft/${encodeURIComponent(id)}`;
   /* Abrir é sempre no nível do pedido (dono, 18/11/2026), mesmo com um
      produto só: a página do lote, pelo groupId ou, na solicitação criada
      sozinha, pelo id dela. */
@@ -727,23 +736,9 @@ export default async function RequestsPage({
     return respCache.get(r.id) ?? null;
   };
   /** Prazo para mostrar: o dia; no SLA, também a hora (Brasília). */
-  const dueDay = (due: StepDue) =>
-    due.day
-      ? formatDate(due.at, t)
-      : new Date(due.at).toLocaleDateString(t.intl, {
-          timeZone: TIME_ZONE,
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        });
-  const dueHour = (at: string) =>
-    new Date(at).toLocaleTimeString(t.intl, {
-      timeZone: TIME_ZONE,
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  const dueLabel = (due: StepDue) =>
-    due.day ? dueDay(due) : `${dueDay(due)} ${dueHour(due.at)}`;
+  const dueDay = (due: StepDue) => dueDayText(t, due);
+  const dueHour = (at: string) => dueHourText(t, at);
+  const dueLabel = (due: StepDue) => dueText(t, due);
   const dueCell = (due: StepDue | null) => {
     if (!due) return <span className="text-zinc-400">—</span>;
     const late = isOverdue(due, now, today);
@@ -769,98 +764,8 @@ export default async function RequestsPage({
       </span>
     );
   };
-  const respLabels = {
-    undefined: t("reqList.resp.undefined"),
-    people: (n: number) => t("reqList.resp.people", { n }),
-    partners: (n: number) => t("reqList.resp.partners", { n }),
-    party: (p: TurnParty) => t(turnNameKey(p)),
-  };
-  const personItem = (p: Person) => (
-    <li key={p.id}>
-      {p.name}
-      {p.login ? <span className="text-zinc-500"> · {p.login}</span> : null}
-    </li>
-  );
-  /** A informação complementar: os nomes, o login (admin) e o que falta. */
-  const respDetail = (r: Responsible) => (
-    <div className="space-y-1.5" data-request-responsible-detail="">
-      <p className="font-semibold text-zinc-900">{t("reqList.resp.title")}</p>
-      {r.partners.length > 1 ? (
-        <ul className="max-h-60 space-y-1 overflow-y-auto">
-          {r.partners.map((p) => (
-            <li key={p.id}>
-              <span className="font-medium text-zinc-900">{p.name}</span>
-              {p.dueAt
-                ? ` · ${t("reqList.resp.due", { date: dueLabel({ at: p.dueAt, day: false }) })}`
-                : ""}
-              {p.people.length ? (
-                <ul className="ml-3 list-disc">{p.people.map(personItem)}</ul>
-              ) : (
-                <span className="text-amber-700">
-                  {" "}
-                  · {t("reqList.resp.noLogin")}
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      ) : r.people.length ? (
-        <>
-          {r.group && r.party !== "wellmix" ? (
-            <p className="font-medium text-zinc-900">{r.group}</p>
-          ) : null}
-          <ul className="max-h-60 list-disc space-y-0.5 overflow-y-auto pl-4">
-            {r.people.map(personItem)}
-          </ul>
-        </>
-      ) : r.group ? (
-        <p className="font-medium text-zinc-900">{r.group}</p>
-      ) : null}
-      {r.party === "wellmix" && r.group ? (
-        <p>{t("reqList.resp.functions", { list: r.group })}</p>
-      ) : null}
-      {r.missing ? (
-        <p
-          className="text-amber-800"
-          data-request-responsible-missing={r.missing}
-        >
-          {t(`reqList.resp.missing.${r.missing}`)}
-        </p>
-      ) : null}
-      {r.admins.length ? (
-        <p className="text-zinc-500">
-          {t("reqList.resp.admins", {
-            list: r.admins.map((a) => a.name).join(", "),
-          })}
-        </p>
-      ) : null}
-    </div>
-  );
   /** 2ª linha da Próxima ação: quem age, com a informação complementar. */
-  const respCell = (r: Responsible | null) => {
-    if (!r) return null;
-    const line = responsibleLine(r, respLabels);
-    const text = line.where ? `${line.who} · ${line.where}` : line.who;
-    return (
-      <InfoTip
-        label={t("reqList.resp.label", { who: text })}
-        className="mt-0.5 block max-w-full"
-        trigger={
-          <span
-            className={cx(
-              "text-xs",
-              line.warn ? "font-medium text-amber-700" : "text-zinc-600",
-            )}
-            data-request-responsible={r.missing ?? "ok"}
-          >
-            {text}
-          </span>
-        }
-      >
-        {respDetail(r)}
-      </InfoTip>
-    );
-  };
+  const respCell = (r: Responsible | null) => <ResponsibleTip r={r} t={t} />;
   /**
    * As ações pendentes da solicitação: os produtos no mesmo passo e com os
    * mesmos responsáveis viram uma só; a que vence antes vem primeiro.
@@ -950,20 +855,7 @@ export default async function RequestsPage({
     );
   };
   /** Rascunho: a ação do fluxo de rascunho, com quem o salvou (quem vê). */
-  const draftResponsible: Responsible = {
-    party: "wellmix",
-    group: null,
-    people: [
-      {
-        id: user.id,
-        name: user.name,
-        login: isAdmin(user) ? (user.email ?? null) : null,
-      },
-    ],
-    admins: [],
-    partners: [],
-    missing: null,
-  };
+  const draftOwner = draftResponsible(user, isAdmin(user));
   /** Itens: quantos SKUs diferentes o pedido tem (itens do pedido ou as solicitações). */
   const skusCell = (e: Entry) => {
     const n = compositionOf.get(e)?.products.length ?? rowsOf(e).length;
@@ -1285,6 +1177,9 @@ export default async function RequestsPage({
           </h2>
         </div>
       ) : null}
+      {/* Volta dos detalhes: a lista abre como estava (busca, filtros,
+          página e rolagem; src/lib/list-return.ts). */}
+      <ListReturnMemory list="requests" />
       {deniedScreen ? (
         <div className="mb-3">
           <Alert tone="warning">
@@ -1503,7 +1398,7 @@ export default async function RequestsPage({
               : t("common.none")}
         </Empty>
       ) : (
-        <Table tools={!serverMode}>
+        <Table tools={!serverMode} returnKey="requests">
           <thead>
             <tr>
               {anySelectable ? (
@@ -1542,7 +1437,11 @@ export default async function RequestsPage({
           <tbody>
             {paged.rows.map((row) => {
               if (row.kind === "draft") {
-                const { draft, href } = row.draft;
+                const { draft } = row.draft;
+                /* O número e o ícone abrem os detalhes do rascunho, só para
+                   consulta (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção
+                   7), como as enviadas; "Continuar edição" fica lá. */
+                const href = draftDetailsHref(draft.id);
                 return (
                   <tr
                     key={`draft-${draft.id}`}
@@ -1551,8 +1450,8 @@ export default async function RequestsPage({
                   >
                     {anySelectable ? <Td className={cell} /> : null}
                     <Td className={cx(cell, "whitespace-nowrap tabular-nums")}>
-                      {/* Só o número persistente (reservado no rascunho):
-                          continua o rascunho. */}
+                      {/* Só o número persistente (reservado no rascunho),
+                          como o das enviadas: abre os detalhes. */}
                       <TextLink
                         href={href}
                         aria-label={t("reqList.draft.open", {
@@ -1560,6 +1459,7 @@ export default async function RequestsPage({
                         })}
                         className="font-semibold text-zinc-900 no-underline hover:underline"
                         data-request-draft-open=""
+                        data-list-return=""
                       >
                         <span data-request-number>{draft.number ?? "—"}</span>
                       </TextLink>
@@ -1598,7 +1498,7 @@ export default async function RequestsPage({
                           <span className="block font-medium leading-snug text-zinc-900">
                             {t("reqList.draft.next")}
                           </span>
-                          {respCell(draftResponsible)}
+                          {respCell(draftOwner)}
                         </span>
                       </Td>
                     ) : null}
@@ -1616,8 +1516,9 @@ export default async function RequestsPage({
                     <Td className={cx(cell, "text-right")}>
                       <OpenLink
                         href={href}
-                        label={t("requestDraft.resume")}
+                        label={t("reqList.draft.view")}
                         data-request-list-draft-open
+                        data-list-return=""
                       />
                     </Td>
                   </tr>
@@ -1692,6 +1593,7 @@ export default async function RequestsPage({
                       data-request-open
                       data-demand-tags={demand?.kind}
                       data-demand-channel={demand?.channel ?? undefined}
+                      data-list-return=""
                     >
                       <span data-request-number>{number ?? "—"}</span>
                     </TextLink>
@@ -1775,7 +1677,11 @@ export default async function RequestsPage({
                   ) : null}
                   <Td className={cx(cell, "text-right")}>
                     <div className="flex items-center justify-end gap-1">
-                      <OpenLink href={href} label={t("reqList.open")} />
+                      <OpenLink
+                        href={href}
+                        label={t("reqList.open")}
+                        data-list-return=""
+                      />
                       {!showDeleted && deletable.length > 0 ? (
                         <form action={deleteRequestsAction}>
                           {deletable.map((r) => (

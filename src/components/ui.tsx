@@ -5,6 +5,7 @@ import { twMerge } from "tailwind-merge";
 import type { Translate } from "@/i18n";
 import { PAGE_HELP_ENABLED, PageHelp, type HelpSpec } from "./page-help";
 import { TableTools } from "./table-tools";
+import type { ReturnList } from "@/lib/list-return";
 
 /*
  * Kit de componentes com a identidade Wellmix. Tailwind 4, sem dependências.
@@ -581,6 +582,7 @@ export function Table({
   paginated = true,
   stickyHead = false,
   tableClassName,
+  returnKey,
 }: {
   children: ReactNode;
   className?: string;
@@ -595,6 +597,8 @@ export function Table({
   stickyHead?: boolean;
   /** Classes a mais no próprio <table> (TableTools `tableClassName`). */
   tableClassName?: string;
+  /** Lista que lembra a vista ao voltar dos detalhes (TableTools `returnKey`). */
+  returnKey?: ReturnList;
 }) {
   if (!tools) {
     return (
@@ -620,6 +624,7 @@ export function Table({
       paginated={paginated}
       stickyHead={stickyHead}
       tableClassName={tableClassName}
+      returnKey={returnKey}
     >
       {children}
     </TableTools>
