@@ -45,8 +45,8 @@ import {
   packingCandidates,
   pickBook,
   pickNegotiation,
+  cbmForBox,
   resolvePacking,
-  type CbmCandidate,
 } from "./request-packing";
 import type { PackingBasis } from "@/lib/strategy-packing";
 
@@ -436,13 +436,12 @@ export function packingFactsOf(inputs: SheetInputs): PackingFacts {
         Number.isInteger(c.value) &&
         c.value >= 0,
     ) ?? null;
-  const cbmHits = candidates.cbm.filter((c) => pos(c.value));
-  // CBM da mesma caixa contada: a fonte não diz de quantas peças é a caixa
-  // (vale, como na ficha) ou diz a mesma quantidade da conta.
-  const sameBox = (c: CbmCandidate) =>
-    !pos(c.boxQty) || !perMaster || c.boxQty === perMaster.value;
-  const cbmHit = cbmHits.find(sameBox) ?? null;
-  const otherBox = cbmHit ? null : (cbmHits.find((c) => !sameBox(c)) ?? null);
+  // CBM da mesma caixa contada (a mesma regra da ficha e dos totais desde
+  // 19/11/2026; src/lib/services/request-packing.ts, `cbmForBox`).
+  const { hit: cbmHit, otherBox } = cbmForBox(
+    candidates.cbm,
+    perMaster?.value ?? null,
+  );
   return {
     basis: {
       perMaster: perMaster?.value ?? null,
@@ -583,13 +582,23 @@ export function buildSheetRow(
           : null,
       }
     : null;
+  /* CBM de uma caixa com outra quantidade de peças: fica de fora, com o
+     aviso (dono, 19/11/2026; a mesma regra da Estratégia de compra). */
+  const cbmOtherNote =
+    !cbmPerBox && packing.cbmOtherBox && perBox
+      ? t("requestSheet.note.cbmOtherBox", {
+          from: src(packing.cbmOtherBox.kind).label,
+          qty: count(t, packing.cbmOtherBox.boxQty),
+          perBox: count(t, perBox.value),
+        })
+      : null;
   const cbmPerBoxField = field(
     "cbmPerBox",
     L("cbmPerBox"),
     // Até 7 casas: o m³ como foi gravado (0,1476375), o mesmo da conta.
     cbmPerBox ? `${decimal(t, cbmPerBox.value, 7)} m³` : null,
     cbmPerBox?.kind ?? null,
-    cbmPerBox?.note,
+    cbmPerBox?.note ?? cbmOtherNote,
   );
   const cbmTotalField = field(
     "cbmTotal",

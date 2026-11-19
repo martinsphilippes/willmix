@@ -43,7 +43,8 @@ import { isBoxUnit } from "./purchase-history";
  * - Caixas master e caixas inner: em cada programação, em caixas inteiras
  *   (para cima, como o gerador), e a soma. Sem programação, do total.
  * - Cubagem: caixas × m³ da caixa master (o m³ como foi gravado; o total
- *   com 4 casas, e a tela formata).
+ *   com 4 casas, e a tela formata). Só o m³ da caixa contada: o de uma
+ *   caixa com outra quantidade de peças fica de fora (dono, 19/11/2026).
  * - Pedido mínimo (peças): variação → ficha mestre → cadastro.
  */
 
@@ -104,6 +105,11 @@ export interface RequestPacking {
   /** m³ por caixa master; `from` é a fonte das medidas quando calculado. */
   cbmPerBox:
     (Picked<number> & { from: PackingSourceKind; calculated: boolean }) | null;
+  /**
+   * CBM que ficou de fora por ser de uma caixa com outra quantidade de peças
+   * (o primeiro deles e de quantas peças é a caixa dele); nulo quando não há.
+   */
+  cbmOtherBox: { boxQty: number; kind: PackingSourceKind } | null;
   /** Caixas × m³ da caixa, com o m³ cheio (o total com 4 casas). */
   cbmTotal: number | null;
   /** Peças por caixa inner. */
@@ -307,6 +313,28 @@ export function dimsMeasure(
 }
 
 /**
+ * O CBM da caixa contada (dono, 19/11/2026: a proteção da Estratégia de
+ * compra vale também na ficha completa e nos totais de Encomendas): o
+ * primeiro CBM cuja fonte não diz de quantas peças é a caixa, ou diz a mesma
+ * quantidade de peças por caixa da conta. O CBM de uma caixa com outra
+ * quantidade de peças fica de fora (`otherBox`, para o aviso): multiplicar
+ * as caixas de 24 pelo m³ de uma caixa de 60 daria uma cubagem errada.
+ */
+export function cbmForBox(
+  cbm: readonly CbmCandidate[],
+  perBox: number | null,
+): { hit: CbmCandidate | null; otherBox: CbmCandidate | null } {
+  const hits = cbm.filter((c) => pos(c.value));
+  const sameBox = (c: CbmCandidate) =>
+    !pos(c.boxQty) || !perBox || c.boxQty === perBox;
+  const hit = hits.find(sameBox) ?? null;
+  return {
+    hit,
+    otherBox: hit ? null : (hits.find((c) => !sameBox(c)) ?? null),
+  };
+}
+
+/**
  * A embalagem de uma solicitação. Pura (lê só o que recebe). `technical`:
  * usa o que está fora da solicitação (variação, pedido, negociação, Book e
  * ficha atual); sem ele, só o texto gravado na solicitação.
@@ -417,9 +445,13 @@ export function resolvePacking(
     },
   ]);
   /* CBM por caixa: o gravado na fonte; sem ele, das medidas da caixa da
-     mesma fonte (Calculado). A ficha e os totais usam o primeiro que existe
-     (a Estratégia de compra também confere se é da mesma caixa contada). */
-  const cbmHit = candidates.cbm.find((c) => pos(c.value)) ?? null;
+     mesma fonte (Calculado). Só o da caixa contada (`cbmForBox`; dono,
+     19/11/2026): o de uma caixa com outra quantidade de peças fica de fora,
+     como na Estratégia de compra. */
+  const { hit: cbmHit, otherBox: cbmOther } = cbmForBox(
+    candidates.cbm,
+    perBox?.value ?? null,
+  );
   /* O m³ da caixa como foi gravado (sem arredondar): a conta preserva as
      casas decimais e só a tela formata (dono, 18/11/2026; antes, 0,1476375
      virava 0,1476 e as 200 caixas davam 29,52 m³ em vez de 29,5275). */
@@ -467,6 +499,10 @@ export function resolvePacking(
     boxes,
     boxDims,
     cbmPerBox,
+    cbmOtherBox:
+      cbmOther && pos(cbmOther.boxQty)
+        ? { boxQty: cbmOther.boxQty, kind: cbmOther.kind }
+        : null,
     cbmTotal,
     inner,
     innerBoxes,

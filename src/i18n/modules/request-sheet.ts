@@ -138,6 +138,9 @@ export const pt = {
   "requestSheet.note.boxesTotal":
     "{pieces} ÷ {perBox} = {exact} → {boxes} caixas (arredondado para cima)",
   "requestSheet.note.cbmFromDims": "Das medidas da caixa ({from})",
+  // CBM de outra caixa fica de fora (dono, 19/11/2026).
+  "requestSheet.note.cbmOtherBox":
+    "O CBM de {from} é de uma caixa de {qty} peças, e a conta usa caixas de {perBox}: fica de fora",
   "requestSheet.note.cbmTotal": "{boxes} caixas × {cbm} m³",
   "requestSheet.note.unitFromTotal": "{total} ÷ {pieces} peças",
   "requestSheet.note.times": "{pieces} peças × {price}",
@@ -295,6 +298,8 @@ export const en: Record<keyof typeof pt, string> = {
   "requestSheet.note.boxesTotal":
     "{pieces} ÷ {perBox} = {exact} → {boxes} cartons (rounded up)",
   "requestSheet.note.cbmFromDims": "From the carton measures ({from})",
+  "requestSheet.note.cbmOtherBox":
+    "The CBM from {from} is for a carton of {qty} pieces, but the count uses cartons of {perBox}: left out",
   "requestSheet.note.cbmTotal": "{boxes} cartons × {cbm} m³",
   "requestSheet.note.unitFromTotal": "{total} ÷ {pieces} pieces",
   "requestSheet.note.times": "{pieces} pieces × {price}",
@@ -446,6 +451,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "requestSheet.note.boxesRoundsExact": "{list} 箱，按批计算（÷ {perBox} 件）",
   "requestSheet.note.boxesTotal": "{pieces} ÷ {perBox} = {exact} → {boxes} 箱（向上取整）",
   "requestSheet.note.cbmFromDims": "由外箱尺寸计算（{from}）",
+  "requestSheet.note.cbmOtherBox":
+    "{from} 的体积是每箱 {qty} 件的外箱，而计算用每箱 {perBox} 件：不计入",
   "requestSheet.note.cbmTotal": "{boxes} 箱 × {cbm} m³",
   "requestSheet.note.unitFromTotal": "{total} ÷ {pieces} 件",
   "requestSheet.note.times": "{pieces} 件 × {price}",

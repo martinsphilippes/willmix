@@ -215,6 +215,64 @@ describe("embalagem de um produto (a regra da ficha completa)", () => {
     expect(k.innerBoxes).toBeNull();
   });
 
+  it("CBM só da caixa contada: o de outra caixa fica de fora (dono, 19/11/2026)", async () => {
+    // Cadastro com caixa de 60 e 0,08 m³; a variação pedida é de 24 por
+    // caixa, sem CBM: a conta das caixas é de 24, então o 0,08 não vale.
+    const p = await product({ masterBoxQty: 60, cbm: 0.08 });
+    const small = await request(p.id, {
+      quantity: 720,
+      variant: { masterBoxQty: 24 } as never,
+    });
+    const k = pack(small, p);
+    expect(k.perBox).toEqual({ value: 24, kind: "variant" });
+    expect(k.boxes?.value).toBe(30);
+    expect(k.cbmPerBox).toBeNull();
+    expect(k.cbmTotal).toBeNull();
+    expect(k.cbmOtherBox).toEqual({ boxQty: 60, kind: "current" });
+    // Com o CBM da própria variação (caixa de 24), ele vale.
+    const own = await request(p.id, {
+      quantity: 720,
+      variant: { masterBoxQty: 24, cbm: 0.04 } as never,
+    });
+    expect(pack(own, p).cbmPerBox).toMatchObject({
+      value: 0.04,
+      kind: "variant",
+    });
+    expect(pack(own, p).cbmOtherBox).toBeNull();
+    // A fonte que não diz de quantas peças é a caixa continua valendo: o
+    // texto "Caixa master: 0,05 m³" (sem as peças da caixa).
+    const text = await request(p.id, {
+      quantity: 720,
+      variant: { masterBoxQty: 24 } as never,
+      specification: "Caixa master: 0,05 m³",
+    });
+    const fromText = pack(text, p);
+    expect(fromText.spec).toMatchObject({ cbmPerBox: 0.05, perBox: null });
+    expect(fromText.cbmPerBox).toMatchObject({ value: 0.05, kind: "request" });
+    expect(fromText.cbmOtherBox).toBeNull();
+    expect(fromText.cbmTotal).toBe(1.5); // 30 caixas × 0,05
+  });
+
+  it("cbmForBox: a mesma caixa, a fonte que não diz e a outra caixa", () => {
+    const c = (value: number, boxQty: number | null) => ({
+      value,
+      kind: "current" as const,
+      calc: false,
+      boxQty,
+    });
+    expect(packingMod.cbmForBox([c(0.1, 60), c(0.2, 24)], 24)).toEqual({
+      hit: c(0.2, 24),
+      otherBox: null,
+    });
+    expect(packingMod.cbmForBox([c(0.1, null)], 24).hit).toEqual(c(0.1, null));
+    expect(packingMod.cbmForBox([c(0.1, 60)], 24)).toEqual({
+      hit: null,
+      otherBox: c(0.1, 60),
+    });
+    // Sem peças por caixa na conta, qualquer CBM vale (não há caixa contada).
+    expect(packingMod.cbmForBox([c(0.1, 60)], null).hit).toEqual(c(0.1, 60));
+  });
+
   it("o carregador lê cadastro, ficha mestre, negociação e Book como a ficha", async () => {
     const p = await product({ masterBoxQty: 48, innerBoxQty: 6, cbm: 0.12 });
     await getStore().create("purchase_sheets", {

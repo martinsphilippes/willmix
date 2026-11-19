@@ -102,6 +102,8 @@ export const pt = {
   "reqBatch.price.hint":
     "{price} por peça × {pieces} peças: a cotação V2 do Sankhya gravada no envio ({date})",
   "reqBatch.boxes.rounds": "Por programação: {list}",
+  "reqBatch.cbm.otherBox":
+    "O CBM cadastrado é de uma caixa de {qty} peças, e a conta usa caixas de {perBox}: fica de fora",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -204,6 +206,8 @@ export const en: Record<keyof typeof pt, string> = {
   "reqBatch.price.hint":
     "{price} per piece × {pieces} pieces: the Sankhya V2 quote saved on sending ({date})",
   "reqBatch.boxes.rounds": "Per delivery: {list}",
+  "reqBatch.cbm.otherBox":
+    "The recorded CBM is for a carton of {qty} pieces, but the count uses cartons of {perBox}: left out",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -301,4 +305,5 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqBatch.price.hint":
     "每件 {price} × {pieces} 件：提交时保存的 Sankhya V2 报价（{date}）",
   "reqBatch.boxes.rounds": "每批：{list}",
+  "reqBatch.cbm.otherBox": "已登记的体积是每箱 {qty} 件的外箱，而计算用每箱 {perBox} 件：不计入",
 };
