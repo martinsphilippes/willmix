@@ -104,6 +104,39 @@ export const pt = {
   "reqBatch.boxes.rounds": "Por programação: {list}",
   "reqBatch.cbm.otherBox":
     "O CBM cadastrado é de uma caixa de {qty} peças, e a conta usa caixas de {perBox}: fica de fora",
+  // Detalhes do rascunho (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 7).
+  "reqDraft.title": "Rascunho · {n} produtos",
+  "reqDraft.resume": "Continuar edição",
+  "reqDraft.notice":
+    "Rascunho salvo por você; só você vê. Nada foi enviado: o cliente, o fornecedor e a equipe só recebem quando você enviar pelo formulário.",
+  "reqDraft.pageHint":
+    "Os produtos salvos neste rascunho, com a mesma conta de embalagem e cubagem da solicitação enviada. O que ainda falta aparece como —, e o total com produto sem o dado é parcial.",
+  "reqDraft.openProduct": "Ver o produto neste rascunho",
+  "reqDraft.noProducts": "Nenhum produto salvo neste rascunho ainda.",
+  "reqDraft.noDeadline":
+    "Rascunho não tem prazo: o prazo começa quando a solicitação é enviada.",
+  "reqDraft.noOrder": "Rascunho não tem pedido.",
+  "reqDraft.priceHint":
+    "A previsão de venda é gravada no envio; o rascunho ainda não tem.",
+  "reqDraft.item.title": "Produto {n} do rascunho",
+  "reqDraft.item.all": "Ver todos os {n} produtos do rascunho",
+  "reqDraft.item.outside": "Fora do catálogo",
+  "reqDraft.item.openCatalog": "Abrir a ficha do produto no cadastro",
+  "reqDraft.field.description": "Descrição",
+  "reqDraft.field.specification": "Especificação",
+  "reqDraft.field.quantity": "Quantidade digitada",
+  "reqDraft.field.pieces": "Total de peças",
+  "reqDraft.field.perBox": "Peças por caixa master",
+  "reqDraft.field.boxes": "Caixas master",
+  "reqDraft.field.inner": "Peças por inner",
+  "reqDraft.field.innerBoxes": "Caixas inner",
+  "reqDraft.field.boxDims": "Medidas da caixa master",
+  "reqDraft.field.cbmPerBox": "CBM por caixa (m³)",
+  "reqDraft.field.cbm": "CBM total (m³)",
+  "reqDraft.field.moq": "Pedido mínimo (UN)",
+  "reqDraft.scheduleBlank": "Sem quantidade digitada nesta entrega",
+  "reqDraft.src.negotiation": "Negociação do produto",
+  "reqDraft.src.book": "Book do produto",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -208,6 +241,39 @@ export const en: Record<keyof typeof pt, string> = {
   "reqBatch.boxes.rounds": "Per delivery: {list}",
   "reqBatch.cbm.otherBox":
     "The recorded CBM is for a carton of {qty} pieces, but the count uses cartons of {perBox}: left out",
+  // Draft details (owner, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, section 7).
+  "reqDraft.title": "Draft · {n} products",
+  "reqDraft.resume": "Continue editing",
+  "reqDraft.notice":
+    "Draft saved by you; only you can see it. Nothing was sent: the customer, the supplier and the team only receive it when you send it from the form.",
+  "reqDraft.pageHint":
+    "The products saved in this draft, with the same packing and cubage calculation as a sent request. Anything still missing shows as —, and a total with a product missing the data is partial.",
+  "reqDraft.openProduct": "View the product in this draft",
+  "reqDraft.noProducts": "No products saved in this draft yet.",
+  "reqDraft.noDeadline":
+    "A draft has no deadline: the deadline starts when the request is sent.",
+  "reqDraft.noOrder": "A draft has no order.",
+  "reqDraft.priceHint":
+    "The sales forecast is saved when the request is sent; the draft has none yet.",
+  "reqDraft.item.title": "Product {n} of the draft",
+  "reqDraft.item.all": "View all {n} products of the draft",
+  "reqDraft.item.outside": "Not in the catalog",
+  "reqDraft.item.openCatalog": "Open the product record",
+  "reqDraft.field.description": "Description",
+  "reqDraft.field.specification": "Specification",
+  "reqDraft.field.quantity": "Quantity typed",
+  "reqDraft.field.pieces": "Total pieces",
+  "reqDraft.field.perBox": "Pieces per master carton",
+  "reqDraft.field.boxes": "Master cartons",
+  "reqDraft.field.inner": "Pieces per inner",
+  "reqDraft.field.innerBoxes": "Inner cartons",
+  "reqDraft.field.boxDims": "Master carton size",
+  "reqDraft.field.cbmPerBox": "CBM per carton (m³)",
+  "reqDraft.field.cbm": "Total CBM (m³)",
+  "reqDraft.field.moq": "Minimum order (PCS)",
+  "reqDraft.scheduleBlank": "No quantity typed for this delivery",
+  "reqDraft.src.negotiation": "Product negotiation",
+  "reqDraft.src.book": "Product Book",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -306,4 +372,35 @@ export const zh: Record<keyof typeof pt, string> = {
     "每件 {price} × {pieces} 件：提交时保存的 Sankhya V2 报价（{date}）",
   "reqBatch.boxes.rounds": "每批：{list}",
   "reqBatch.cbm.otherBox": "已登记的体积是每箱 {qty} 件的外箱，而计算用每箱 {perBox} 件：不计入",
+  // 草稿详情（所有者，2026/11/19；docs/ORDER_LEVEL_LISTS.md 第 7 节）。
+  "reqDraft.title": "草稿 · {n} 个产品",
+  "reqDraft.resume": "继续编辑",
+  "reqDraft.notice":
+    "草稿由您保存，只有您能看到。尚未发送：只有在您从表单发送后，客户、供应商和团队才会收到。",
+  "reqDraft.pageHint":
+    "此草稿中保存的产品，包装和体积的计算与已发送的需求单相同。尚缺的信息显示为 —，含缺少数据产品的合计为部分合计。",
+  "reqDraft.openProduct": "查看此草稿中的产品",
+  "reqDraft.noProducts": "此草稿尚未保存任何产品。",
+  "reqDraft.noDeadline": "草稿没有期限：期限从需求单发送时开始。",
+  "reqDraft.noOrder": "草稿没有订单。",
+  "reqDraft.priceHint": "销售预测在发送时保存；草稿尚无预测。",
+  "reqDraft.item.title": "草稿中的第 {n} 个产品",
+  "reqDraft.item.all": "查看草稿中的全部 {n} 个产品",
+  "reqDraft.item.outside": "目录外产品",
+  "reqDraft.item.openCatalog": "打开产品档案",
+  "reqDraft.field.description": "描述",
+  "reqDraft.field.specification": "规格",
+  "reqDraft.field.quantity": "输入的数量",
+  "reqDraft.field.pieces": "总件数",
+  "reqDraft.field.perBox": "每外箱件数",
+  "reqDraft.field.boxes": "外箱数",
+  "reqDraft.field.inner": "每内盒件数",
+  "reqDraft.field.innerBoxes": "内盒数",
+  "reqDraft.field.boxDims": "外箱尺寸",
+  "reqDraft.field.cbmPerBox": "每箱体积（m³）",
+  "reqDraft.field.cbm": "总体积（m³）",
+  "reqDraft.field.moq": "最小起订量（件）",
+  "reqDraft.scheduleBlank": "此批次未输入数量",
+  "reqDraft.src.negotiation": "产品议价",
+  "reqDraft.src.book": "产品 Book",
 };

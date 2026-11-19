@@ -22,6 +22,12 @@ import {
   type PageSize,
 } from "@/lib/table-tools";
 import { twMerge } from "tailwind-merge";
+import {
+  isFresh,
+  parseTableView,
+  readListReturn,
+  type ReturnList,
+} from "@/lib/list-return";
 
 /*
  * Busca, ordenação e paginação de qualquer tabela do portal (padrão do
@@ -78,6 +84,22 @@ function readPageSize(): PageSize {
 }
 
 const noSubscribe = () => () => {};
+
+/**
+ * A vista guardada desta tabela (texto, para o React comparar), quando a
+ * pessoa volta dos detalhes para o mesmo endereço da lista; nula fora disso.
+ */
+function tableRestoreRaw(returnKey: ReturnList | undefined): string | null {
+  if (!returnKey) return null;
+  const saved = readListReturn(returnKey);
+  if (
+    !saved?.table ||
+    saved.url !== window.location.pathname + window.location.search ||
+    !isFresh(saved, Date.now())
+  )
+    return null;
+  return JSON.stringify({ at: saved.at, ...saved.table });
+}
 
 /* Tamanho da página compartilhado pelas tabelas da tela e guardado no
    aparelho; sem armazenamento (aba anônima) vale só enquanto a tela está aberta. */
@@ -213,6 +235,7 @@ export function TableTools({
   paginated = true,
   stickyHead = false,
   stickyBar,
+  returnKey,
   ...tableAttrs
 }: {
   children: ReactNode;
@@ -231,6 +254,12 @@ export function TableTools({
   stickyHead?: boolean;
   /** Faixa no alto do cabeçalho congelado (ex.: o aviso do "Carregar"). */
   stickyBar?: ReactNode;
+  /**
+   * Lista que lembra a vista ao voltar dos detalhes (src/lib/list-return.ts;
+   * dono, 19/11/2026): a busca, a ordem e a página desta tabela voltam como
+   * estavam quando a pessoa abriu uma linha.
+   */
+  returnKey?: ReturnList;
 } & { [key: `data-${string}`]: string | undefined }) {
   const tableRef = useRef<HTMLTableElement>(null);
   /** Cabeçalho congelado: a tabela dele, a moldura de cada parte e o quadro. */
@@ -362,6 +391,25 @@ export function TableTools({
     );
   }, [sortable, searchable, paginated, sort, query, page, pageSize, labels]);
 
+  // Volta dos detalhes (returnKey): a busca, a ordem e a página guardadas
+  // quando a pessoa abriu a linha, se a lista é a mesma (mesmo endereço).
+  // Lidas no render (no servidor, nada), uma vez por volta.
+  const restoreRaw = useSyncExternalStore(
+    noSubscribe,
+    () => tableRestoreRaw(returnKey),
+    () => null,
+  );
+  const [restoredRaw, setRestoredRaw] = useState<string | null>(null);
+  if (restoreRaw && restoreRaw !== restoredRaw) {
+    setRestoredRaw(restoreRaw);
+    const view = parseTableView(JSON.parse(restoreRaw));
+    if (view) {
+      setQuery(view.query);
+      setSort(view.sort);
+      setPage(view.page);
+    }
+  }
+
   // Uma linha pede para aparecer: limpa a busca que a esconde e reaplica.
   useEffect(() => {
     const table = tableRef.current;
@@ -487,7 +535,13 @@ export function TableTools({
   const range = stats ? pageRange(page, pageSize, stats.matched) : null;
 
   return (
-    <div data-table-tools>
+    <div
+      data-table-tools
+      data-table-return={returnKey}
+      data-table-state={
+        returnKey ? JSON.stringify({ query, sort, page }) : undefined
+      }
+    >
       {showTools && searchable ? (
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <input

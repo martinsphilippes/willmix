@@ -113,7 +113,16 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await expect(listed).toHaveCount(0);
   await page.goto("/app/requests?situ=draft");
   await expect(listed).toBeVisible();
+  // O número e o ícone abrem os detalhes do rascunho, só para consulta
+  // (dono, 19/11/2026); "Continuar edição" volta ao formulário.
+  await expect(listed.locator("[data-request-draft-open]")).toHaveAttribute(
+    "href",
+    `/app/requests/batch/${draftId}`,
+  );
   await listed.locator("[data-request-list-draft-open]").click();
+  await page.waitForURL(new RegExp(`/app/requests/batch/${draftId}$`));
+  await expect(page.locator("[data-draft-status]")).toContainText("Rascunho");
+  await page.locator("[data-draft-resume]").click();
   await page.waitForURL(new RegExp(`/app/requests/new\\?draft=${draftId}`));
   await expect(
     terms.locator('[data-order-terms-format-option="wellmix"]'),
