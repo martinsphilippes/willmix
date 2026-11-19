@@ -177,6 +177,28 @@ Depois da estratégia parada (seção anterior), o dono pediu o botão para tir�
 - **O servidor confere:** quem pode (`canCloseStrategy`: ação "Escolher a estratégia de compra" ou "Aprovar a estratégia de compra"), que a estratégia está aprovada sem pedido nem cotação aberta e que ela parou mesmo (`strategy_not_stopped`, "Só dá para encerrar a estratégia aprovada que parou").
 - **Testes:** `tests/unit/strategy-packing.test.ts` ("Encerrar a estratégia parada": Comprador e Diretoria encerram, Vendas não, a encomenda aberta do lote volta para a fila, a cancelada segue cancelada, Auditoria, sem pendência; esperando aprovação não encerra) e a E2E `tests/e2e/purchase-strategy.spec.ts`, parte (e) (encomenda cancelada depois da aprovação, estratégia parada sem "Gerar pedido" e encerrada pela tela).
 
+## Grade de estratégias (dono, 19/11/2026)
+
+A tela mostra mais estratégias de uma vez, em cards pequenos. Os dados, as regras e as ações são os mesmos de antes.
+
+- **Grade**: três colunas lado a lado ("Esperando estratégia" e "Em andamento"), com fundo branco, borda discreta e fonte menor. Em tela estreita, as três colunas continuam numa área com rolagem para os lados, e cada card tem uma largura mínima legível. A página rola para baixo quando os cards não cabem. Com a fila vazia, aparece só uma faixa baixa ("Nenhuma solicitação esperando estratégia"). "Envios recentes" fica depois da grade. O cabeçalho da página é mais baixo (`PageHeader dense`).
+- **Card "Em andamento"**, nesta ordem:
+  1. Estratégia nº e situação, com "Estratégia parada" quando a solicitação foi cancelada ou já está em outro pedido.
+  2. Modalidade.
+  3. Solicitação nº (link) e a situação dela.
+  4. Cliente e as etiquetas (Encomenda, Cliente…).
+  5. Produto.
+  6. Peças | Cx master | Cx inner | m³ total. Embaixo de cada total, o que vai em cada caixa ("48 pç/cx", "0,12 m³/cx"). INNER sem cadastro aparece como "—".
+  7. Programação (uma linha, ou "N programações").
+  8. Última compra: fornecedor, preço un. e moeda (só com "Ver preço de compra"), pedido anterior e data, prazo de produção, Incoterm e pedido mínimo.
+  9. Observação (duas linhas).
+  10. Ações: Aprovar e Recusar, com a observação no próprio card; "Gerar pedido de compra", que abre o formulário de sempre num painel; "Detalhes".
+- **Card da fila**: a solicitação e "Esperando estratégia", o cliente, País › Família, até dois produtos com a embalagem e a programação (os outros: "+N produtos (veja Detalhes)"), a última compra, a escolha e os destinatários (no próprio card) e "Detalhes".
+- **Rótulos curtos**: a explicação aparece ao passar o mouse, ao tocar ou com o foco do teclado (`Tip`, `src/app/app/purchase-strategy/_components/strategy-card.tsx`).
+- **Painel Detalhes** (`QuickDialog`): a embalagem completa (os seis números, a conta escrita e os avisos), a especificação, a entrega desejada, o prazo, a família, a programação inteira, a última compra completa, a observação inteira e, na estratégia parada, a explicação completa. Fechar o painel não muda filtros, escolhas nem a rolagem.
+- **Encerrar estratégia** (seção anterior, #575): no card da estratégia aprovada que parou, com a observação opcional, a explicação e a confirmação.
+- **Menu**: em Produto novo, a ordem é Encomendas, Reposição, Estratégia de compra e Cotação de compra (`FLOW_STEPS`, `src/lib/flow.ts`).
+
 ## Andamento
 
 | PR  | Entrega                                                                                       | Situação |
@@ -190,3 +212,4 @@ Depois da estratégia parada (seção anterior), o dono pediu o botão para tir�
 | 7   | Estratégia por solicitação: uma escolha para todos os produtos, lista do País × Família       | feito    |
 | 8   | Embalagem e cubagem na Estratégia; estratégia parada por encomenda cancelada                  | feito    |
 | 9   | Encerrar a estratégia parada (Comprador e Diretoria; as abertas voltam para a fila)           | feito    |
+| 10  | Grade de estratégias: três colunas de cards compactos, Detalhes e Gerar pedido em painel      | feito    |
