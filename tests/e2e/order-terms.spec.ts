@@ -3,6 +3,7 @@ import {
   chooseCustomerLogin,
   confirmAsCustomer,
   fillCustomerContacts,
+  editOrderTerms,
   fillOrderTerms,
   login,
   createdRequestId,
@@ -130,6 +131,13 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await chooseCustomerLogin(page, "joao@lojista.com");
   await fillOrderTerms(page, { format: "wd", redispatch: "yes" });
   await expect(page.locator("[data-request-origin-missing]")).toHaveCount(0);
+  // Tudo preenchido: o bloco se recolhe num resumo de uma linha (dono,
+  // 19/11/2026), com o transportador; Editar abre de novo.
+  const summary = terms.locator("[data-order-terms-collapsed]");
+  await expect(summary).toBeVisible();
+  await expect(summary).toContainText("Wellmix");
+  await expect(terms.locator("[data-order-terms-body]")).toBeHidden();
+  await editOrderTerms(page);
   // A Wellmix chama o transportador: com re-despacho, duas transportadoras.
   await expect(
     terms.locator("[data-order-terms-redispatch-carrier-summary]"),
@@ -154,6 +162,9 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await terms
     .locator("[data-order-terms-redispatch-carrier]")
     .selectOption("portal:transportador");
+  // Completo de novo: recolhe sozinho.
+  await expect(terms.locator("[data-order-terms-collapsed]")).toBeVisible();
+  await editOrderTerms(page);
   // Cliente e transportador escolhidos: código (e CNPJ do transportador) e
   // nome logo abaixo. A busca por nome, código ou CNPJ saiu (dono,
   // 16/11/2026): só a lista "Escolha o transportador".
@@ -401,6 +412,7 @@ test("Histórico do cliente → pedido: filtra pela família, acrescenta com um 
 
   // Trocar a família com produto no pedido: o aviso recomenda terminar este
   // pedido; "Manter" desfaz a troca, "Trocar" limpa os produtos.
+  await editOrderTerms(page);
   const family = page.locator("[data-order-terms-group]");
   const dialog = page.locator("[data-order-terms-switch]");
   await family.selectOption("fm:INFLAVEIS");
@@ -774,6 +786,7 @@ test("Previsão de preço (cotação V2): manda formato, nível e quem chama; mo
   );
   // Forma de pagamento logo abaixo do Valor total (dono, 16/11/2026): a
   // previsão reparte o valor total pelas parcelas da forma escolhida.
+  await editOrderTerms(page);
   const payment = page.locator("[data-order-terms-payment]");
   await payment
     .locator("[data-order-terms-payment-plan]")
@@ -806,6 +819,7 @@ test("Previsão de preço (cotação V2): manda formato, nível e quem chama; mo
   await terms
     .locator("[data-order-terms-carrier]")
     .selectOption("portal:transportador");
+  await editOrderTerms(page);
   await terms.locator("[data-order-terms-freight]").fill("1.500,50");
   await expect(priceLine).toHaveText(/10,00/);
   await expect.poll(() => last().get("freight")).toBe("1500.5");

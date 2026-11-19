@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { cx, inputClass, inputDenseClass } from "./ui";
+import { HoverZoomPhoto } from "./hover-zoom-photo";
 
 /** Textos do campo (já no idioma de quem vê). */
 export interface SearchPickerLabels {
@@ -32,6 +33,11 @@ export interface SearchOption {
    * empresas o grupo tem (docs/ECONOMIC_GROUPS.md); 0 ou ausente = nenhuma.
    */
   groupSize?: number;
+  /**
+   * Foto do item (produto: a primeira foto; dono, 19/11/2026): miniatura à
+   * esquerda do nome, que amplia ao passar o mouse.
+   */
+  photoId?: string | null;
 }
 
 /**
@@ -118,6 +124,8 @@ export function SearchPicker({
     open && !disabled && q.length >= 2 && !(selected && selected.name === text);
   const options = searching && result.q === q ? result.options : [];
   const loading = searching && result.q !== q;
+  // Lista com fotos (produtos): cada opção tem a miniatura, com ou sem foto.
+  const photos = options.some((o) => o.photoId !== undefined);
   const data = (suffix: string, value: string | boolean = true) => ({
     [`data-${marker}${suffix}`]: value,
   });
@@ -265,7 +273,8 @@ export function SearchPicker({
                   // O texto ao lado do nome (tipo da empresa, código e CNPJ)
                   // desce para baixo do nome quando não cabe: o nome nunca
                   // fica espremido letra por letra.
-                  "flex cursor-pointer flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-3 py-1.5",
+                  "flex cursor-pointer justify-between gap-x-3 gap-y-0.5 px-3 py-1.5",
+                  photos ? "items-center" : "flex-wrap items-baseline",
                   i === active ? "bg-brand-50 text-brand-800" : "text-zinc-800",
                 )}
                 onMouseDown={(e) => e.preventDefault()}
@@ -273,6 +282,12 @@ export function SearchPicker({
                 onClick={() => choose(option)}
                 {...data("-option", option.id)}
               >
+                {photos ? (
+                  <HoverZoomPhoto
+                    photoId={option.photoId ?? null}
+                    className="self-center"
+                  />
+                ) : null}
                 <span className="min-w-0 flex-[1_1_10rem] break-words">
                   {option.name}
                 </span>

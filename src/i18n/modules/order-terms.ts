@@ -263,6 +263,10 @@ export const pt = {
   "reqBatch.error.order_terms_invalid": "Confira as condições do pedido.",
   "reqBatch.error.order_terms_mismatch":
     "Há produto de outro país ou grupo. Um pedido só tem produtos do país e do grupo escolhidos.",
+  "reqBatch.error.rca_invalid":
+    "Escolha um RCA da lista de vendedores ativos do Sankhya.",
+  "reqBatch.error.catalog_only":
+    "Nesta tela só entram produtos da base: escolha um produto do catálogo em cada linha.",
   "reqBatch.error.contacts_required":
     "Preencha os contatos do cliente (sócio, comprador, financeiro e fiscal, logística).",
   "reqBatch.error.contacts_invalid":
@@ -566,6 +570,10 @@ export const en: Record<keyof typeof pt, string> = {
   "reqBatch.error.order_terms_invalid": "Check the order terms.",
   "reqBatch.error.order_terms_mismatch":
     "There is a product from another country or group. An order only has products of the chosen country and group.",
+  "reqBatch.error.rca_invalid":
+    "Choose a sales rep from the list of active Sankhya sales reps.",
+  "reqBatch.error.catalog_only":
+    "Only products from the catalog can be ordered on this screen: choose a catalog product in each row.",
   "reqBatch.error.contacts_required":
     "Fill in the customer contacts (partner, buyer, finance and tax, logistics).",
   "reqBatch.error.contacts_invalid":
@@ -849,6 +857,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqBatch.error.order_terms_invalid": "请检查订单条件。",
   "reqBatch.error.order_terms_mismatch":
     "有来自其他国家或产品组的产品。订单只能包含所选国家和产品组的产品。",
+  "reqBatch.error.rca_invalid":
+    "请从 Sankhya 的在职销售代表列表中选择一位销售代表。",
+  "reqBatch.error.catalog_only":
+    "此页面只能订购目录中的产品：请在每一行选择目录中的产品。",
   "reqBatch.error.contacts_required":
     "请填写客户联系人（股东、采购、财务和税务、物流）。",
   "reqBatch.error.contacts_invalid":

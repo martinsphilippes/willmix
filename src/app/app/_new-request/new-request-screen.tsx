@@ -103,6 +103,42 @@ import {
   deliveryPlanLabels,
 } from "@/components/delivery-schedule-labels";
 
+/** Parâmetros da cotação com explicação no modal "Ver o cálculo". */
+const FORECAST_PARAMS = [
+  "CODPROD",
+  "QTD_PECAS",
+  "QTD_CONTAINERS",
+  "PRECO_ORIGEM",
+  "MOEDA_ORIGEM",
+  "NCM",
+  "PESO_LIQ_PECA",
+  "PESO_BRUTO_PECA",
+  "PECAS_CAIXA",
+  "CBM_CAIXA",
+  "VIP",
+  "FRETE_ENTREGA_BRL",
+  "DATA_REF",
+  "ROTA_ENTREGA",
+  "CODVEND",
+  "STATUS_COTACAO",
+  "CUSTO_BASE_VENDA",
+  "PRECO_PRODUTO_META",
+  "FRETE_UNITARIO",
+  "PRECO_COM_FRETE_REFERENCIA",
+  "BASE_WD_VALOR",
+  "WD_PERC_REFERENCIA",
+  "PRECO_WD_REFERENCIA",
+  "PRECO_WD_COM_FRETE_REFERENCIA",
+  "LUCRO_LIQUIDO_PERC",
+  "META_LUCRO_PERC",
+  "META_ATINGIDA",
+  "VENDA_IPI",
+  "PRECO_TABELA_COM_IPI",
+  "SUGESTAO_ATACADO",
+  "SUGESTAO_LOJA",
+  "PRECO_VENDA_META",
+] as const;
+
 /** O formulário da solicitação (o bloco do cliente fica fora dele, ligado pelo `form`). */
 const FORM_ID = "new-request-form";
 
@@ -327,6 +363,13 @@ export async function renderNewRequest({
     rcaError: t("requestPeople.rcaError"),
     rcaStock: t("requestPeople.rcaStock"),
     rcaUnknown: t("requestPeople.rcaUnknown"),
+    rcaChoose: t("requestPeople.rcaChoose"),
+    rcaOpenHint: t("requestPeople.rcaOpenHint"),
+    rcaCandidates: t("requestPeople.rcaCandidates"),
+    rcaOthers: t("requestPeople.rcaOthers"),
+    rcaLocked: t("requestPeople.rcaLocked", { date: "{date}" }),
+    rcaNoList: t("requestPeople.rcaNoList"),
+    intl: t.intl,
     access: t("requestPeople.access"),
     accessHint: t("requestPeople.accessHint"),
     accessNone: t("requestPeople.accessNone"),
@@ -1014,6 +1057,7 @@ export async function renderNewRequest({
                   labels={requestPeopleLabels}
                   allLogins={sellsToCustomer}
                   initialLogin={draftValue("requestedForUserId")}
+                  initialRca={draftValue("rcaCode")}
                 />
               </div>
             ) : null}
@@ -1164,6 +1208,13 @@ export async function renderNewRequest({
                   roundsFixed: t("orderPlan.roundsFixed"),
                 }),
                 plan: withDeliveryPlan({
+                  confirm: t("orderPlan.confirm"),
+                  confirmHint: t("orderPlan.confirmHint"),
+                  collapsedDeliveries: t("orderPlan.collapsed.deliveries"),
+                  collapsedInterval: t("orderPlan.collapsed.interval"),
+                  collapsedFirst: t("orderPlan.collapsed.first"),
+                  collapsedLast: t("orderPlan.collapsed.last"),
+                  collapsedEdit: t("orderTerms.collapsed.edit"),
                   title: t("orderPlan.title"),
                   hint: t("orderPlan.hint"),
                   count: t("orderPlan.count"),
@@ -1271,6 +1322,19 @@ export async function renderNewRequest({
                         }),
                         auditDefaults: t("priceForecast.auditDefaults"),
                         auditOutputs: t("priceForecast.auditOutputs"),
+                        auditOpen: t("priceForecast.auditOpen"),
+                        auditClose: t("priceForecast.auditClose"),
+                        auditIntro: t("priceForecast.auditIntro"),
+                        auditParam: t("priceForecast.auditParam"),
+                        auditValue: t("priceForecast.auditValue"),
+                        auditMeaning: t("priceForecast.auditMeaning"),
+                        auditUsed: t("priceForecast.auditUsed"),
+                        params: Object.fromEntries(
+                          FORECAST_PARAMS.map((k) => [
+                            k,
+                            t(`priceForecast.param.${k}` as DictionaryKey),
+                          ]),
+                        ),
                         canSolve: canSeeMoney(user),
                         productPrice: t("priceForecast.productPrice"),
                         freightUnit: t("priceForecast.freightUnit"),
@@ -1309,6 +1373,9 @@ export async function renderNewRequest({
                   : {}),
               }}
               pickerLabels={productPickerLabels(t)}
+              // TS e Venda (dono, 19/11/2026): só produtos da base, sem o
+              // "Produto ainda não está no catálogo".
+              catalogOnly={!!screenDef}
             />
             {/* Prazo (data, estreito) ao lado da observação. Adicionando a uma
               solicitação: o prazo é o SLA e a observação fica a dela. */}

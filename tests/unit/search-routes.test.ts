@@ -240,9 +240,12 @@ describe("/api/products/search e /api/products/fill", () => {
         admin,
       );
       expect(res.status).toBe(200);
+      // Com o código e a primeira foto (miniatura na lista; 19/11/2026).
       expect(res.body.options).toContainEqual({
         id: "prod-jarra",
         name: "Jarra de vidro 1,5 L (UTL-001)",
+        code: "UTL-001",
+        photoId: null,
       });
     }
     expect(

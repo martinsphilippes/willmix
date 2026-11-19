@@ -609,6 +609,16 @@ export async function fillOrderTerms(
   await chooseOrderOrigin(page, options.country, options.family);
 }
 
+/**
+ * Condições do pedido completas se recolhem num resumo (dono, 19/11/2026):
+ * "Editar" abre o bloco de novo para mexer nos campos.
+ */
+export async function editOrderTerms(page: Page) {
+  const edit = page.locator('[data-order-terms-toggle="edit"]');
+  if (await edit.count()) await edit.click();
+  await expect(page.locator("[data-order-terms-body]")).toBeVisible();
+}
+
 /** O login do cliente com acesso (obrigatório na venda pela Wellmix). */
 export async function chooseCustomerLogin(page: Page, email: string) {
   // Venda da Wellmix ao cliente (dono, 18/11/2026): o login não se escolhe

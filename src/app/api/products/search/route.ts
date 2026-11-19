@@ -47,7 +47,13 @@ export async function GET(request: Request) {
   ]);
   return NextResponse.json(
     {
-      options: hits.map((p) => ({ id: p.id, name: productOptionLabel(t, p) })),
+      // Com a primeira foto (miniatura na lista; dono, 19/11/2026) e o código.
+      options: hits.map((p) => ({
+        id: p.id,
+        name: productOptionLabel(t, p),
+        code: p.sku,
+        photoId: p.photoId ?? null,
+      })),
     },
     { headers: { "Cache-Control": "private, no-store" } },
   );

@@ -255,6 +255,14 @@ export async function confirmCustomerOrder(
     released.push(updated);
   }
   for (const r of released) await releaseRequest(user, r);
+  // RCA escolhido pelo vendedor fecha a venda: padrão do cliente por 30
+  // dias (dono, 19/11/2026; docs/CUSTOMER_RCA.md seção 7). Um por lote.
+  if (released.length) {
+    const { lockRcaOnSale } = await import("./rca");
+    await lockRcaOnSale(user, released[0]).catch((error) =>
+      console.error("[confirm] RCA do pedido", error),
+    );
+  }
   if (mainCarrier)
     await notifyWellmix({
       kind: "info",

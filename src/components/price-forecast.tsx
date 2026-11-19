@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { PriceForecastAnswer } from "@/lib/integrations/price-forecast";
+import type {
+  PriceForecastAnswer,
+  SuperplanAudit,
+} from "@/lib/integrations/price-forecast";
+import { QuickDialog } from "./quick-dialog";
 import { useRequestCustomer } from "./request-customer-context";
 import { cx, inputDenseClass } from "./ui";
 
@@ -34,6 +38,20 @@ export interface PriceForecastLabels {
   auditInputs?: string;
   auditDefaults?: string;
   auditOutputs?: string;
+  /**
+   * Modal "Ver o cálculo" (dono, 19/11/2026): os parâmetros enviados ao
+   * Sankhya e o que voltou, com o que cada um é. Só com "Ver valores e
+   * margem" (a memória de cálculo tem custo e margem).
+   */
+  auditOpen?: string;
+  auditClose?: string;
+  auditIntro?: string;
+  auditParam?: string;
+  auditValue?: string;
+  auditMeaning?: string;
+  auditUsed?: string;
+  /** O que é cada parâmetro (nome do Sankhya → texto). */
+  params?: Record<string, string>;
   /** Vê o preço máximo de compra (custo): só com "Ver valores e margem". */
   canSolve?: boolean;
   /** Cotação de encomenda V2 (dono, 16/11/2026). */
@@ -192,6 +210,14 @@ export function PriceForecast({
       : (forecast.withFreight ?? null)
     : null;
   const total = price !== null && piecesOk ? price * pieces : null;
+  // Memória de cálculo (só vem para quem vê valores e margem).
+  const audit =
+    shown && shown.value !== "error" && shown.value.mode === "api"
+      ? (shown.value.audit ?? null)
+      : null;
+  const shownColumn = wd
+    ? "PRECO_WD_COM_FRETE_REFERENCIA"
+    : "PRECO_COM_FRETE_REFERENCIA";
 
   // O valor total da linha vai para a soma do pedido.
   const setRowTotal = shared?.setRowTotal;
@@ -368,8 +394,112 @@ export function PriceForecast({
               </dl>
             )
           ) : null}
+          {audit && labels.auditOpen && labels.canSolve ? (
+            <QuickDialog
+              label={labels.auditOpen}
+              title={labels.auditTitle ?? labels.title}
+              closeLabel={labels.auditClose ?? "×"}
+              size="lg"
+              data-price-forecast-audit-open=""
+            >
+              <AuditBody
+                audit={audit}
+                labels={labels}
+                shownColumn={shownColumn}
+              />
+            </QuickDialog>
+          ) : null}
         </>
       )}
+    </div>
+  );
+}
+
+/** Conteúdo do modal "Ver o cálculo": enviado e devolvido, com o que é. */
+function AuditBody({
+  audit,
+  labels,
+  shownColumn,
+}: {
+  audit: SuperplanAudit;
+  labels: PriceForecastLabels;
+  shownColumn: string;
+}) {
+  const value = (v: string | number | null) =>
+    v === null || v === ""
+      ? "—"
+      : typeof v === "number"
+        ? v.toLocaleString(labels.intl, { maximumFractionDigits: 6 })
+        : String(v);
+  const table = (
+    rows: Array<[string, string | number | null]>,
+    marker: string,
+  ) => (
+    <div className="overflow-x-auto rounded-lg border border-zinc-200">
+      <table className="w-full min-w-[30rem] text-left text-xs">
+        <thead className="bg-zinc-50 text-zinc-500">
+          <tr>
+            <th className="px-2.5 py-1.5 font-medium">{labels.auditParam}</th>
+            <th className="px-2.5 py-1.5 text-right font-medium">
+              {labels.auditValue}
+            </th>
+            <th className="px-2.5 py-1.5 font-medium">{labels.auditMeaning}</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-100">
+          {rows.map(([name, v]) => {
+            const used = name === shownColumn;
+            return (
+              <tr
+                key={name}
+                className={used ? "bg-emerald-50 font-semibold" : undefined}
+                {...{ [`data-price-forecast-audit-${marker}`]: name }}
+              >
+                <td className="px-2.5 py-1 font-mono text-[11px] text-zinc-800">
+                  {name}
+                </td>
+                <td className="px-2.5 py-1 text-right tabular-nums text-zinc-900">
+                  {value(v)}
+                </td>
+                <td className="px-2.5 py-1 text-zinc-600">
+                  {labels.params?.[name] ?? "—"}
+                  {used && labels.auditUsed ? (
+                    <span className="ml-1.5 rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white">
+                      {labels.auditUsed}
+                    </span>
+                  ) : null}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+  return (
+    <div className="space-y-3 text-sm" data-price-forecast-audit>
+      {labels.auditIntro ? (
+        <p className="text-xs leading-relaxed text-zinc-600">
+          {labels.auditIntro}
+        </p>
+      ) : null}
+      <section className="space-y-1.5">
+        <h3 className="text-xs font-semibold text-zinc-800">
+          {(labels.auditInputs ?? "{fn}").replace("{fn}", audit.fn)}
+        </h3>
+        {table(audit.inputs, "input")}
+        {labels.auditDefaults ? (
+          <p className="text-[11px] leading-relaxed text-zinc-500">
+            {labels.auditDefaults}
+          </p>
+        ) : null}
+      </section>
+      <section className="space-y-1.5">
+        <h3 className="text-xs font-semibold text-zinc-800">
+          {labels.auditOutputs}
+        </h3>
+        {table(audit.outputs, "output")}
+      </section>
     </div>
   );
 }

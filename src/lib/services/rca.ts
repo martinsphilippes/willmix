@@ -247,3 +247,198 @@ export async function setCustomerRca(
   );
   return true;
 }
+
+/* ------------------------------------------------------------------ */
+/* Cliente sem RCA: vários RCAs até um fechar a venda (dono, 19/11/2026) */
+/* ------------------------------------------------------------------ */
+
+/** Dias em que o RCA que fechou a venda fica como padrão do cliente. */
+export const RCA_LOCK_DAYS = 30;
+
+/** O RCA que fechou a venda, enquanto vale (até `lockedUntil`). */
+export function lockedRcaOf(
+  party: Pick<Party, "rcaPortal"> | null | undefined,
+  now = new Date(),
+): { code: string; until: string } | null {
+  const portal = party?.rcaPortal;
+  const code = normalizeRcaCode(portal?.lockedCode);
+  const until = portal?.lockedUntil;
+  if (!code || !until || !(Date.parse(until) > now.getTime())) return null;
+  return { code, until };
+}
+
+/** RCAs cadastrados pelos vendedores para o cliente (sem repetir). */
+export function rcaCandidatesOf(
+  party: Pick<Party, "rcaPortal"> | null | undefined,
+): string[] {
+  const list = Array.isArray(party?.rcaPortal?.candidates)
+    ? party!.rcaPortal!.candidates
+    : [];
+  return [
+    ...new Set(list.map(normalizeRcaCode).filter((c): c is string => !!c)),
+  ];
+}
+
+/**
+ * RCA que vale para o cliente agora: o do cadastro (Sankhya ou portal) ou,
+ * sem ele, o que fechou a última venda (30 dias). Nulo = em aberto.
+ */
+export function effectiveRcaCode(
+  party:
+    | Pick<Party, "type" | "rcaCode" | "sankhyaRefs" | "rcaPortal">
+    | null
+    | undefined,
+  now = new Date(),
+): string | null {
+  return rcaCodeOf(party) ?? lockedRcaOf(party, now)?.code ?? null;
+}
+
+/** Uma opção de RCA para a tela ("CODPARC - APELIDO"). */
+export interface RcaOption {
+  code: string;
+  label: string;
+}
+
+const optionOf = (s: RcaSeller): RcaOption => ({
+  code: s.code,
+  label: s.partnerCode ? `${s.partnerCode} - ${s.name}` : s.name,
+});
+
+/**
+ * O que a Nova solicitação mostra no campo "RCA do cliente": o RCA fixo
+ * (`rca`), o que prendeu a venda com a data (`locked`) ou, em aberto, os
+ * cadastrados para o cliente e os demais vendedores ativos para escolher.
+ */
+export interface RcaFieldState {
+  rca: RcaView | null;
+  locked: { until: string } | null;
+  open: { candidates: RcaOption[]; sellers: RcaOption[] } | null;
+}
+
+export async function customerRcaField(
+  user: User,
+  customerId: string,
+): Promise<RcaFieldState> {
+  const rca = await customerRca(user, customerId);
+  if (rca) return { rca, locked: null, open: null };
+  const party = await getStore().get("parties", customerId);
+  if (!party || party.type !== "customer")
+    return { rca: null, locked: null, open: null };
+  const list = await loadRcaList();
+  const locked = lockedRcaOf(party);
+  if (locked) {
+    const view = rcaView(locked.code, list);
+    return {
+      rca: view ?? {
+        code: locked.code,
+        name: null,
+        active: null,
+        partnerCode: null,
+      },
+      locked: { until: locked.until },
+      open: null,
+    };
+  }
+  const candidates = rcaCandidatesOf(party);
+  const byCode = new Map(list.sellers.map((s) => [s.code, s]));
+  return {
+    rca: null,
+    locked: null,
+    open: {
+      candidates: candidates.map((code) => {
+        const s = byCode.get(code);
+        return s ? optionOf(s) : { code, label: code };
+      }),
+      sellers: list.sellers
+        .filter((s) => s.active && !candidates.includes(s.code))
+        .map(optionOf)
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    },
+  };
+}
+
+/**
+ * RCA do pedido no envio da Nova solicitação: o do cliente quando ele tem
+ * (o formulário não muda); o que prendeu a venda; ou, em aberto, o escolhido
+ * pelo vendedor (um vendedor ativo da lista), que entra nos RCAs do cliente.
+ * Sem escolha em aberto: nulo (sem RCA).
+ */
+export async function resolveRequestRca(
+  user: User,
+  customerId: string,
+  chosen: string | null | undefined,
+): Promise<NonNullable<import("@/lib/order-terms").OrderTerms["rca"]> | null> {
+  const store = getStore();
+  const party = await store.get("parties", customerId);
+  if (!party || party.type !== "customer") return null;
+  const fixed = rcaCodeOf(party);
+  if (fixed) return { code: fixed, source: "customer" };
+  const locked = lockedRcaOf(party);
+  if (locked) return { code: locked.code, source: "locked" };
+  const code = normalizeRcaCode(chosen);
+  if (!code) return null;
+  const seller = (await loadRcaList()).sellers.find((s) => s.code === code);
+  if (!seller?.active) throw new RcaError("rca_invalid");
+  const candidates = rcaCandidatesOf(party);
+  if (!candidates.includes(code)) {
+    await store.update("parties", party.id, {
+      rcaPortal: {
+        ...(party.rcaPortal ?? {}),
+        candidates: [...candidates, code],
+      },
+    });
+    await audit(
+      user,
+      "party.rca_candidate",
+      "party",
+      party.id,
+      `RCA cadastrado para o cliente na Nova solicitação: ${seller.name} (${code})`,
+      { candidates },
+      { candidates: [...candidates, code] },
+    );
+  }
+  return { code, source: "chosen" };
+}
+
+/**
+ * O cliente confirmou o pedido: o RCA escolhido fecha a venda e fica como
+ * padrão do cliente por 30 dias (`RCA_LOCK_DAYS`), enquanto o cliente não
+ * tem RCA no cadastro. Devolve se prendeu.
+ */
+export async function lockRcaOnSale(
+  user: User,
+  request: { id: string; customerId: string; orderTerms?: unknown },
+  now = new Date(),
+): Promise<boolean> {
+  const terms = request.orderTerms as
+    import("@/lib/order-terms").OrderTerms | null | undefined;
+  const rca = terms?.rca;
+  // Venda fechada pelo RCA escolhido, ou de novo pelo que já estava preso
+  // (renova os 30 dias).
+  if (!rca || rca.source === "customer") return false;
+  const store = getStore();
+  const party = await store.get("parties", request.customerId);
+  if (!party || party.type !== "customer" || rcaCodeOf(party)) return false;
+  const until = new Date(
+    now.getTime() + RCA_LOCK_DAYS * 86_400_000,
+  ).toISOString();
+  await store.update("parties", party.id, {
+    rcaPortal: {
+      candidates: rcaCandidatesOf(party),
+      ...(party.rcaPortal ?? {}),
+      lockedCode: rca.code,
+      lockedUntil: until,
+      lockedByRequestId: request.id,
+    },
+  });
+  await audit(
+    user,
+    "party.rca_lock",
+    "party",
+    party.id,
+    `RCA ${rca.code} fechou a venda (pedido confirmado pelo cliente): padrão do cliente por ${RCA_LOCK_DAYS} dias`,
+    { rcaPortal: party.rcaPortal ?? null },
+    { lockedCode: rca.code, lockedUntil: until },
+  );
+  return true;
+}

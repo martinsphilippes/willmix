@@ -33,6 +33,8 @@ import type {
 export interface ProductFill {
   id: string;
   label: string;
+  /** Código Wellmix (SKU), para o "Código - Nome" abaixo da busca. */
+  code?: string | null;
   /** Fotos do cadastro (servidas por /api/files, com checagem de acesso). */
   photos: { documentId: string; caption: string }[];
   productName: string;
@@ -101,7 +103,13 @@ export function RequestProductFields({
   prefix = "",
   onProductChange,
   onCatalogModeChange,
+  catalogOnly = false,
 }: {
+  /**
+   * Só produtos do catálogo (telas TS e Venda; dono, 19/11/2026): sem o
+   * "Produto ainda não está no catálogo".
+   */
+  catalogOnly?: boolean;
   /** Fichas já prontas (o produto que chega escolhido); as outras vêm sob demanda. */
   products: ProductFill[];
   /**
@@ -193,7 +201,7 @@ export function RequestProductFields({
   const initialVariant =
     initial?.variants.find((v) => v.id === presetVariantId) ?? null;
   const [notInCatalog, setNotInCatalog] = useState(
-    defaultNotInCatalog && !initial,
+    defaultNotInCatalog && !initial && !catalogOnly,
   );
   const [productId, setProductId] = useState(initial?.id ?? "");
   // Variação escolhida (só para produto com variações; "" = ainda não escolheu).
@@ -427,16 +435,18 @@ export function RequestProductFields({
                 {selected.lastPurchase}
               </span>
             ) : null}
-            <button
-              type="button"
-              onClick={() => toggleNotInCatalog(true)}
-              className="mt-1 text-xs font-medium text-zinc-600 underline underline-offset-2 hover:text-brand-700"
-            >
-              {labels.change}
-            </button>
+            {catalogOnly ? null : (
+              <button
+                type="button"
+                onClick={() => toggleNotInCatalog(true)}
+                className="mt-1 text-xs font-medium text-zinc-600 underline underline-offset-2 hover:text-brand-700"
+              >
+                {labels.change}
+              </button>
+            )}
           </span>
         </div>
-      ) : (
+      ) : catalogOnly ? null : (
         <label className="col-span-2 flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 sm:col-span-4">
           <input
             type="checkbox"
@@ -496,6 +506,17 @@ export function RequestProductFields({
               <ProductBrowserButton labels={labels.browser} />
             ) : null}
           </div>
+          {/* "Código - Nome do produto" (dono, 19/11/2026), como o resumo
+              do cliente encontrado. */}
+          {selected ? (
+            <p className="text-xs text-zinc-600" data-request-product-summary>
+              <span className="font-medium text-zinc-800">
+                {[selected.code, selected.productName || selected.label]
+                  .filter(Boolean)
+                  .join(" - ")}
+              </span>
+            </p>
+          ) : null}
           {loadingId ? (
             <p className="text-xs text-zinc-500" data-request-fill-loading>
               {labels.fillLoading}
@@ -584,6 +605,32 @@ export function RequestProductFields({
                 <p className="text-xs text-zinc-500">{labels.photosNone}</p>
               )}
             </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Descrição do produto escolhido, à direita da busca (dono,
+          19/11/2026): só informativa, sem editar (vem da ficha). */}
+      {selected && !notInCatalog ? (
+        <div
+          className="col-span-2 min-w-0 space-y-1"
+          data-request-product-description
+        >
+          <p className="text-xs font-medium leading-5 text-zinc-700">
+            {labels.description}
+          </p>
+          <div className="max-h-56 overflow-y-auto whitespace-pre-line break-words rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm leading-relaxed text-zinc-700">
+            {values.description || "—"}
+          </div>
+          {values.specification ? (
+            <>
+              <p className="pt-1 text-xs font-medium leading-5 text-zinc-700">
+                {labels.specification}
+              </p>
+              <div className="max-h-40 overflow-y-auto whitespace-pre-line break-words rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs leading-relaxed text-zinc-700">
+                {values.specification}
+              </div>
+            </>
           ) : null}
         </div>
       ) : null}

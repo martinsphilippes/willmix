@@ -103,6 +103,18 @@ Duas linhas: **Cliente | Login do cliente com acesso** e **Solicitante | RCA do 
   - `tests/unit/customer-rca.test.ts`;
   - `tests/e2e/customer-rca.spec.ts`.
 
+## 7.1 Cliente sem RCA: vários RCAs até um fechar a venda (dono, 19/11/2026)
+
+Pedido do dono: "Caso o cliente não tenha RCA vinculado, o campo do RCA do cliente fica aberto para cadastro de um (podem ter múltiplos até algum fechar uma venda e prender ele como padrão por 30 dias)". Decisões (19/11/2026): os RCAs vêm da lista de vendedores do Sankhya (TGFVEN) e "fechar a venda" é o cliente confirmar o pedido (sair de "Aguardando cliente").
+
+- **Quando abre:** o cliente não tem RCA no cadastro (nem no Sankhya, `rcaCode`/`sankhyaRefs.CODVEND`, nem escolhido no portal) e nenhum RCA preso. O campo "RCA do cliente" da Nova solicitação vira uma lista (`rcaCode`), com "RCAs já cadastrados para este cliente" e "Outros vendedores" (os ativos da lista do Sankhya, "CODPARC - APELIDO"). Sem escolha, o pedido vai sem RCA. Sem a lista trazida do Sankhya, o campo diz para trazer no cadastro do cliente.
+- **Vários RCAs:** cada RCA escolhido num pedido entra em `parties.rcaPortal.candidates` (os do cliente; histórico `party.rca_candidate`). Vendedor inativo ou fora da lista é recusado (`rca_invalid`).
+- **No pedido:** o RCA vai em `requests.orderTerms.rca` (`{ code, source }`): `customer` (o do cadastro), `locked` (o preso) ou `chosen` (o escolhido).
+- **Fechar a venda:** quando o cliente confirma o pedido (`confirmCustomerOrder`), o RCA `chosen` (ou o `locked`, que renova) vira o padrão do cliente por 30 dias: `rcaPortal.lockedCode`, `lockedUntil` e `lockedByRequestId` (histórico `party.rca_lock`). Enquanto vale, o campo mostra o RCA, só consulta, com "Fechou a última venda: padrão do cliente até DD/MM/AAAA", e os pedidos levam esse RCA. Passados os 30 dias, o campo volta a abrir.
+- **O cadastro manda:** cliente com RCA no cadastro (Sankhya ou portal) não abre nada e nada é preso; a carga do Sankhya continua sobrescrevendo.
+- **Previsão de preço:** o vendedor (CODVEND) da cotação é o do cadastro ou, sem ele, o preso (`effectiveRcaCode`). O escolhido na tela, antes de fechar a venda, não vai para a cotação.
+- **Código:** `src/lib/services/rca.ts` (`customerRcaField`, `resolveRequestRca`, `lockRcaOnSale`, `RCA_LOCK_DAYS`), `/api/parties/rca`, `src/components/request-people-fields.tsx`; testes `tests/unit/request-rca-open.test.ts` e `tests/e2e/customer-rca.spec.ts`.
+
 ## 8. Fica para depois
 
 - RCA na lista de clientes, com filtro por RCA.

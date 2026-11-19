@@ -475,6 +475,13 @@
           "size": 20
         },
         {
+          "key": "rcaPortal",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
           "key": "sankhyaCode",
           "required": false,
           "array": false,

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
 import { canOpenNewRequest } from "@/lib/auth/screens";
-import { customerRca } from "@/lib/services/rca";
+import { customerRcaField } from "@/lib/services/rca";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +24,10 @@ export async function GET(request: Request) {
   );
   if (!parsed.success)
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
-  const rca = await customerRca(user, parsed.data);
-  return NextResponse.json(
-    { rca },
-    { headers: { "Cache-Control": "private, no-store" } },
-  );
+  // Cliente sem RCA (dono, 19/11/2026): também os RCAs para escolher, ou o
+  // que fechou a última venda (padrão por 30 dias).
+  const field = await customerRcaField(user, parsed.data);
+  return NextResponse.json(field, {
+    headers: { "Cache-Control": "private, no-store" },
+  });
 }

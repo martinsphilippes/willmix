@@ -1295,6 +1295,9 @@ export function SelectionQuantity({
         : String(live.length || 2);
     // Pedido único do pedido inteiro: nada a gerar, só a quantidade.
     const single = !!fixedPlan && fixedPlan.count < 2;
+    // Nova solicitação (dono, 19/11/2026): os campos dividem a largura toda
+    // do cartão, numa linha ou mais, sem colunas vazias à direita.
+    const fillWidth = !!fixedPlan;
     // "Containers por rodada": o que as rodadas da tela precisam; sem
     // programação, o que a prévia (total ÷ rodadas) precisaria.
     const typedTotal = totalPieces();
@@ -1352,9 +1355,21 @@ export function SelectionQuantity({
             linha e o botão desce; em cartão estreito, em 3 ou 2 colunas. A
             medida é a do bloco (@container), que é a mesma com a programação
             ligada ou desligada. */}
+        {/* Nova solicitação (dono, 19/11/2026): os campos dividem a largura
+            toda, em uma linha ou mais (antes, com "Entregas" e o botão
+            escondidos na entrega única, as colunas vazias da grade deixavam
+            os campos espremidos à esquerda e espaço em branco à direita). */}
         <div
-          className="grid grid-cols-2 items-end gap-x-2.5 gap-y-2 @md:grid-cols-3 @[47.5rem]:grid-cols-[minmax(7rem,1fr)_minmax(7rem,1fr)_minmax(5rem,1fr)_auto_minmax(max-content,1fr)_minmax(max-content,1fr)] @[57rem]:grid-cols-[minmax(7rem,1fr)_minmax(7rem,1fr)_minmax(5rem,1fr)_auto_minmax(max-content,1fr)_minmax(max-content,1fr)_auto]"
+          className={cx(
+            "items-end gap-x-2.5 gap-y-2",
+            fillWidth
+              ? // Cada campo cresce até fechar a linha (também a de baixo,
+                // quando quebra), do tamanho do rótulo para cima.
+                "flex flex-wrap [&>div]:flex-[1_1_9rem] [&>label]:flex-[1_1_9rem] [&>p]:basis-full"
+              : "grid grid-cols-2 @md:grid-cols-3 @[47.5rem]:grid-cols-[minmax(7rem,1fr)_minmax(7rem,1fr)_minmax(5rem,1fr)_auto_minmax(max-content,1fr)_minmax(max-content,1fr)] @[57rem]:grid-cols-[minmax(7rem,1fr)_minmax(7rem,1fr)_minmax(5rem,1fr)_auto_minmax(max-content,1fr)_minmax(max-content,1fr)_auto]",
+          )}
           data-generate-fields
+          data-generate-fill={fillWidth || undefined}
         >
           <label className="min-w-0 space-y-1">
             <span className="block font-medium text-zinc-700">{gen.total}</span>
@@ -1441,7 +1456,13 @@ export function SelectionQuantity({
               )}
             />
           </label>
-          <div className="min-w-0 space-y-1">
+          <div
+            className={cx(
+              "min-w-0 space-y-1",
+              // Os botões do container numa linha só.
+              fillWidth && "!flex-none",
+            )}
+          >
             <span className="block font-medium text-zinc-700">
               {gen.container}
             </span>
@@ -1500,7 +1521,10 @@ export function SelectionQuantity({
             aria-describedby={item ? undefined : selectItemId}
             data-generate-submit
             hidden={single}
-            className="order-1 min-h-8 justify-self-start whitespace-nowrap rounded-md bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-50 @[57rem]:order-none"
+            className={cx(
+              "min-h-8 justify-self-start whitespace-nowrap rounded-md bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-50",
+              fillWidth ? "flex-none" : "order-1 @[57rem]:order-none",
+            )}
           >
             {gen.submit}
           </button>
