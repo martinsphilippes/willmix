@@ -43,8 +43,11 @@ import {
  * (`RequestDetailsScreen`). Aqui só o que é do estado de rascunho:
  * - "Solicitação nº N" com o número persistente, o cliente, a data em que foi
  *   criado, "Rascunho" e "Próximo passo: Concluir e enviar" com quem o salvou;
- * - o aviso privado (só quem salvou vê; nada foi enviado);
- * - "Continuar edição" (o formulário de onde veio, com o que foi salvo);
+ * - o aviso privado (só quem salvou vê; nada foi enviado). O administrador
+ *   vê também os rascunhos dos outros (dono, 19/11/2026; seção 9): o aviso
+ *   diz quem salvou e que só essa pessoa continua e envia;
+ * - "Continuar edição" (o formulário de onde veio, com o que foi salvo), só
+ *   para quem salvou;
  * - por produto: "Rascunho" (e "Incompleto"), sem prazo nem pedido; o
  *   produto abre os detalhes dele aqui mesmo (`?item=<posição>`).
  * Só consulta (draft-details.ts): nada é gravado ao montar a tela.
@@ -63,6 +66,13 @@ export async function draftScreenProps(
   },
 ): Promise<RequestDetailsScreenProps> {
   const { draft, number, products } = details;
+  /* Quem age: quem salvou o rascunho (o administrador também vê os dos
+     outros). Login que não existe mais: "—". */
+  const ownerName = details.owner?.name ?? "—";
+  const responsible = draftResponsible(
+    details.owner ?? { id: draft.userId, name: ownerName },
+    isAdmin(user),
+  );
   const nameOf = (p: DraftProduct) => productNameText(t, p.productName);
   const productIds = details.catalog.map((p) => p.id);
   const [photos, settings] = await Promise.all([
@@ -111,9 +121,9 @@ export async function draftScreenProps(
           <span className="font-medium text-zinc-900">
             {t("reqList.draft.next")}
           </span>
-          {/* Quem age: quem salvou o rascunho (só ele o vê). */}
+          {/* Quem age: quem salvou o rascunho. */}
           <ResponsibleTip
-            r={draftResponsible(user, isAdmin(user))}
+            r={responsible}
             t={t}
             className="ml-1.5 inline-block max-w-full align-baseline"
           />
@@ -139,9 +149,15 @@ export async function draftScreenProps(
       </>
     ),
     notices: (
-      <div className="mb-3" data-draft-private="">
+      <div
+        className="mb-3"
+        data-draft-private=""
+        data-draft-owner={details.mine ? "me" : "other"}
+      >
         <Alert tone="info">
-          {t("reqDraft.notice")}{" "}
+          {details.mine
+            ? t("reqDraft.notice")
+            : t("reqDraft.noticeOther", { name: ownerName })}{" "}
           <span className="whitespace-nowrap text-zinc-600">
             (
             {t("requestDraft.updated", {

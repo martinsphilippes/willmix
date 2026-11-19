@@ -427,7 +427,8 @@ export default async function RequestsPage({
       })),
     };
   });
-  // Rascunhos de quem está vendo (só dele, como sempre): todos, na lista.
+  // Rascunhos de quem está vendo, todos, na lista; o administrador vê os de
+  // todos os logins (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 9).
   const drafts = filtering
     ? (await listDraftsForList(user, "requests", 500)).map((d) => ({
         ...d,
@@ -851,8 +852,12 @@ export default async function RequestsPage({
       </>
     );
   };
-  /** Rascunho: a ação do fluxo de rascunho, com quem o salvou (quem vê). */
-  const draftOwner = draftResponsible(user, isAdmin(user));
+  /**
+   * Rascunho: a ação do fluxo de rascunho, com quem o salvou (o administrador
+   * vê também os dos outros). Login que não existe mais: "—".
+   */
+  const draftOwnerOf = ({ draft, owner }: ListedDraft) =>
+    draftResponsible(owner ?? { id: draft.userId, name: "—" }, isAdmin(user));
   /** Itens: quantos SKUs diferentes o pedido tem (itens do pedido ou as solicitações). */
   const skusCell = (e: Entry) => {
     const n = compositionOf.get(e)?.products.length ?? rowsOf(e).length;
@@ -1496,7 +1501,7 @@ export default async function RequestsPage({
                           <span className="block font-medium leading-snug text-zinc-900">
                             {t("reqList.draft.next")}
                           </span>
-                          {respCell(draftOwner)}
+                          {respCell(draftOwnerOf(row.draft))}
                         </span>
                       </Td>
                     ) : null}

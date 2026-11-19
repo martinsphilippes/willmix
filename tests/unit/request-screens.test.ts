@@ -379,6 +379,10 @@ describe("rascunhos nas listas (dono, 17/11/2026)", () => {
       drafts.listDraftsForList(u, list).then((r) => r.map((d) => d.draft.id));
     expect(await listed("replenishment")).toEqual([rep.id]);
     expect(await listed("requests")).not.toContain(rep.id);
+    // O administrador vê os de todos só em Encomendas (seção 9): a Reposição
+    // continua só com os de quem salvou (o rascunho dela abre no formulário).
+    expect(await listed("replenishment", admin)).not.toContain(rep.id);
+    expect(await listed("requests", admin)).not.toContain(rep.id);
     await drafts.deleteRequestDraft(planner, rep.id, "sale", true);
     expect(await listed("replenishment")).toEqual([]);
   });
@@ -399,12 +403,43 @@ describe("rascunhos nas listas (dono, 17/11/2026)", () => {
     expect(hrefOf(legacy.id)).toBe(`/app/requests/new?draft=${legacy.id}`);
     expect(hrefOf(ts.id)).toBe(`/app/new-request/ts?draft=${ts.id}`);
     expect(hrefOf(odd.id)).toBe(`/app/new-request/ts?draft=${odd.id}`);
-    // Só de quem criou.
+    // Os do administrador são dele: ele os continua (`mine`).
+    expect(listed.find((d) => d.draft.id === ts.id)).toMatchObject({
+      mine: true,
+      owner: { id: admin.id, name: admin.name, email: admin.email },
+    });
+    // Quem não é administrador vê só os seus.
     expect(
       (await drafts.listDraftsForList(buyer, "requests")).map(
         (d) => d.draft.id,
       ),
     ).not.toContain(legacy.id);
+    // O administrador vê os de todos os logins (dono, 19/11/2026; seção 9),
+    // com quem salvou; só quem salvou continua.
+    const theirs = await drafts.saveRequestDraft(
+      buyer,
+      form("Bule"),
+      null,
+      "ts",
+    );
+    const seen = (await drafts.listDraftsForList(admin, "requests")).find(
+      (d) => d.draft.id === theirs.id,
+    );
+    expect(seen).toMatchObject({
+      mine: false,
+      owner: { id: buyer.id, name: buyer.name },
+      href: `/app/new-request/ts?draft=${theirs.id}`,
+    });
+    const buyerSees = (await drafts.listDraftsForList(buyer, "requests")).map(
+      (d) => d.draft.id,
+    );
+    expect(buyerSees).toEqual([theirs.id]);
+    // Ver não é continuar: o formulário só reabre o rascunho de quem salvou.
+    expect(await drafts.getRequestDraft(admin, theirs.id, "ts")).toBeNull();
+    expect((await drafts.getRequestDraft(buyer, theirs.id, "ts"))?.id).toBe(
+      theirs.id,
+    );
+    await drafts.deleteRequestDraft(buyer, theirs.id, "ts");
     for (const [d, screen] of [
       [legacy, null],
       [ts, "ts"],

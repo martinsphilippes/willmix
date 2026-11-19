@@ -23,7 +23,7 @@ Decisões do dono de 18/11/2026. Esta especificação substitui o modelo antigo,
 - Assuntos (Geral, solicitação, pedido, produto do pedido): as regras de sempre. O login de fora da conversa precisa ver a solicitação ou o pedido.
 - Assunto do rascunho (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 8):
   - "Solicitação #N (rascunho)" (`conversation_topics.kind = "draft"` e `draftId`).
-  - Só quem salvou o rascunho abre a conversa pelo rascunho, com um login do cliente dele. O login de fora lê o assunto pela conversa privada.
+  - Quem salvou o rascunho abre a conversa pelo rascunho, com um login do cliente dele. O administrador também abre, na conversa dele com o cliente (docs/ORDER_LEVEL_LISTS.md, seção 9). O login de fora lê o assunto pela conversa privada.
   - No envio, o assunto passa a ser o da solicitação, com as mensagens.
 - Não lidas, selo do menu e faixa "Nova mensagem": só das conversas em que o login escreve.
 - Controladoria: o analista de uma conversa privada é a pessoa da Wellmix dela. A pendência "Responder" abre direto a conversa com a pessoa de fora (`peerUserId`).

@@ -15,7 +15,9 @@ import { draftResumeHref, draftScreenOf } from "@/lib/request-screens";
 import {
   canDraft,
   draftForm,
+  draftOwners,
   getListedDraft,
+  type DraftOwner,
 } from "@/lib/services/request-drafts";
 import { getProductVariants } from "@/lib/services/product-variants";
 import {
@@ -47,11 +49,13 @@ import { parseRequestItems } from "../../actions/request-items";
  * docs/ORDER_LEVEL_LISTS.md, seção 7): o rascunho da Nova solicitação aberto
  * na mesma tela da solicitação enviada.
  *
- * - Privacidade: só quem salvou o rascunho, da Wellmix, e só se ainda abre a
- *   tela de onde ele veio (a mesma regra de "Continuar": `canDraft`). Fica de
- *   fora o rascunho da entrada da Reposição (ele é da fila de Reposição, não
- *   de Encomendas). Fora disso, nulo: a página responde 404, sem dizer se o
- *   rascunho existe.
+ * - Privacidade: quem salvou o rascunho, da Wellmix, e o administrador (o de
+ *   qualquer login; dono, 19/11/2026, seção 9), e só se ainda abre a tela de
+ *   onde ele veio (a mesma regra de "Continuar": `canDraft`). Fica de fora o
+ *   rascunho da entrada da Reposição (ele é da fila de Reposição, não de
+ *   Encomendas). Fora disso, nulo: a página responde 404, sem dizer se o
+ *   rascunho existe. "Continuar edição" só para quem salvou (o formulário só
+ *   reabre o rascunho dele).
  * - Só leitura: lê o rascunho, o cliente, os produtos e as variações; não
  *   grava nada, não reserva número, não audita, não notifica e não envia.
  *   O número é o que o rascunho já tem (sem número, fica sem).
@@ -101,7 +105,12 @@ export interface DraftDetails {
   number: number | null;
   /** Continuar a edição: o formulário da tela de onde o rascunho veio. */
   resumeHref: string;
+  /** Só quem salvou continua (e só se ainda abre a tela de onde veio). */
   canResume: boolean;
+  /** Quem salvou (nulo: o login não existe mais). */
+  owner: DraftOwner | null;
+  /** Quem vê é quem salvou (o administrador também vê os dos outros). */
+  mine: boolean;
   customer: Pick<Party, "id" | "name"> | null;
   /** Nome do cliente para a tela (o atual do cadastro; senão o salvo). */
   customerName: string | null;
@@ -147,7 +156,7 @@ export async function loadDraftDetails(
   const variantIds = [
     ...new Set(items.map((i) => i.variantId).filter((v): v is string => !!v)),
   ];
-  const [customer, products, variants] = await Promise.all([
+  const [customer, products, variants, owners] = await Promise.all([
     draft.customerId
       ? store.get("parties", draft.customerId).catch(() => null)
       : Promise.resolve(null),
@@ -155,6 +164,7 @@ export async function loadDraftDetails(
       ? store.list("products", { filter: { id: productIds } })
       : Promise.resolve([]),
     variantIds.length ? getProductVariants(variantIds) : Promise.resolve([]),
+    draftOwners([draft]),
   ]);
   const productById = new Map(products.map((p) => [p.id, p]));
   const variantById = new Map(variants.map((v) => [v.id, v]));
@@ -213,11 +223,14 @@ export async function loadDraftDetails(
     };
   });
   const screen = draftScreenOf(draft.payload);
+  const mine = draft.userId === user.id;
   return {
     draft,
     number: typeof draft.number === "number" ? draft.number : null,
     resumeHref: draftResumeHref(draft.id, draft.payload),
-    canResume: canDraft(user, screen, false),
+    canResume: mine && canDraft(user, screen, false),
+    owner: owners.get(draft.userId) ?? null,
+    mine,
     customer: customer ? { id: customer.id, name: customer.name } : null,
     customerName: customer?.name ?? draft.customerName ?? null,
     products: list,
