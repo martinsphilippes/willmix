@@ -102,7 +102,13 @@ export function RequestScheduleFields({
   blocked = false,
   after,
   fixed = null,
+  aside,
 }: {
+  /**
+   * Ao lado do texto do quadro, no alto (ex.: a empresa do grupo econômico;
+   * docs/ECONOMIC_GROUPS.md).
+   */
+  aside?: ReactNode;
   prefix: string;
   /** Quantidade total da linha (texto do campo). */
   total: string;
@@ -416,10 +422,18 @@ export function RequestScheduleFields({
       {labels.toggle}
     </h3>
   );
-  const hint = (
+  const hintText = (
     <p className="text-xs leading-relaxed text-zinc-600" data-schedule-hint>
       {labels.hint}
     </p>
+  );
+  const hint = aside ? (
+    <div className="flex flex-wrap items-start justify-between gap-2">
+      <div className="min-w-0 flex-1 basis-48">{hintText}</div>
+      <div className="min-w-0 shrink-0">{aside}</div>
+    </div>
+  ) : (
+    hintText
   );
   if (fixed ? !fixedOn : !on)
     return (

@@ -164,6 +164,7 @@ import * as customerPayment from "./customer-payment";
 import * as orderSale from "./order-sale";
 import * as requestScreens from "./request-screens";
 import * as deliverySchedule from "./delivery-schedule";
+import * as economicGroups from "./economic-groups";
 import * as training from "./training";
 import * as externalTeam from "./external-team";
 import * as accessState from "./access-state";
@@ -333,6 +334,7 @@ export const modulesPt = {
   ...orderSale.pt,
   ...requestScreens.pt,
   ...deliverySchedule.pt,
+  ...economicGroups.pt,
   ...training.pt,
   ...externalTeam.pt,
   ...accessState.pt,
@@ -503,6 +505,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...orderSale.en,
   ...requestScreens.en,
   ...deliverySchedule.en,
+  ...economicGroups.en,
   ...training.en,
   ...externalTeam.en,
   ...accessState.en,
@@ -673,6 +676,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...orderSale.zh,
   ...requestScreens.zh,
   ...deliverySchedule.zh,
+  ...economicGroups.zh,
   ...training.zh,
   ...externalTeam.zh,
   ...accessState.zh,

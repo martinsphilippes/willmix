@@ -53,6 +53,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { setRequesterAction } from "../../actions";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
+import { RequestCompanyAllocations } from "@/components/request-company-allocations";
 import { ChatButtons } from "@/components/chat-buttons";
 
 export default async function RequestDetailPage({
@@ -424,6 +425,8 @@ export default async function RequestDetailPage({
               unit={request.unit}
               t={t}
             />
+            {/* Pedido para um grupo econômico (docs/ECONOMIC_GROUPS.md). */}
+            <RequestCompanyAllocations request={request} t={t} />
             {/* Condições do pedido (docs/ORDER_TERMS.md): só a Wellmix vê. */}
             {wellmix ? (
               <RequestOrderTermsView terms={request.orderTerms} t={t} />

@@ -13,6 +13,7 @@ import {
   type RequestSchedule,
 } from "@/lib/workflow/request-schedule";
 import type { FixedSchedulePlan } from "@/components/request-schedule";
+import type { RequestCompanyAllocation } from "@/lib/db/schema";
 import {
   PriceForecast,
   type PriceForecastLabels,
@@ -23,6 +24,11 @@ import {
   type ProductFill,
 } from "@/components/request-product-fields";
 import type { ScheduleLabels } from "@/components/request-schedule";
+import {
+  RowGroupAllocation,
+  amountsFromAllocations,
+} from "@/components/economic-group-ui";
+import type { EconomicGroupLabels } from "@/components/economic-group-labels";
 import { useRequestCustomer } from "@/components/request-customer-context";
 import {
   SelectionQuantity,
@@ -37,6 +43,8 @@ export interface InitialRequestRow {
   quantity: string;
   texts: { productName: string; description: string; specification: string };
   schedule: RequestSchedule | null;
+  /** Peças de cada empresa do grupo econômico (rascunho reaberto). */
+  companyAllocations?: RequestCompanyAllocation[] | null;
 }
 
 type ProductFieldsProps = Omit<
@@ -130,6 +138,8 @@ export function RequestItems({
      * 15/11/2026). Sem ela (login do cliente), o bloco não aparece.
      */
     forecast?: PriceForecastLabels;
+    /** Pedido para um grupo econômico (docs/ECONOMIC_GROUPS.md). */
+    group?: EconomicGroupLabels;
   };
 }) {
   const draftRows = initialRows.length ? initialRows : null;
@@ -798,6 +808,36 @@ export function RequestItems({
                       })()}
                       onQuantityBlur={() => floorToMoq(index)}
                       fixedPlan={plan}
+                      scheduleAside={
+                        labels.group &&
+                        shared?.group &&
+                        item &&
+                        item.id !== "outside" ? (
+                          <RowGroupAllocation
+                            key={`${item.id}:${shared.group.code}`}
+                            prefix={prefix}
+                            rowKey={`row-${index}`}
+                            perCarton={item.masterCartonQty ?? null}
+                            rounds={Math.max(1, plan?.count ?? 1)}
+                            productName={
+                              product[index]?.fill?.productName ||
+                              product[index]?.fill?.label ||
+                              productLabel
+                            }
+                            labels={labels.group}
+                            intl={labels.intl}
+                            initial={
+                              draftRows?.[index]?.companyAllocations?.length &&
+                              draftRows[index].productId === item.id
+                                ? amountsFromAllocations(
+                                    draftRows[index].companyAllocations!,
+                                    item.masterCartonQty ?? null,
+                                  )
+                                : null
+                            }
+                          />
+                        ) : null
+                      }
                       onLoadChange={(load) =>
                         setLoad?.(
                           `row-${index}`,

@@ -2,6 +2,7 @@ import {
   parseRequestSchedule,
   type RequestSchedule,
 } from "@/lib/workflow/request-schedule";
+import type { RequestCompanyAllocation } from "@/lib/db/schema";
 /*
  * Linhas de produto do formulário de nova solicitação. Cada linha usa o
  * prefixo `p<n>.` nos campos (p0.productName, p0.quantity…); linhas removidas
@@ -23,6 +24,43 @@ export interface RequestItemFields {
   attachments: File[];
   /** Programação de entregas da linha (nula quando não ligada). */
   schedule: RequestSchedule | null;
+  /**
+   * Peças de cada empresa do grupo econômico em cada entrega
+   * (docs/ECONOMIC_GROUPS.md); nulo no pedido de um cliente só. A action
+   * confere as empresas e as somas.
+   */
+  companyAllocations: RequestCompanyAllocation[] | null;
+}
+
+const ALLOC_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** O campo `<linha>.companyAllocations` (JSON); inválido = Error("allocations"). */
+export function parseCompanyAllocations(
+  raw: string,
+): RequestCompanyAllocation[] | null {
+  if (!raw) return null;
+  let data: unknown;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error("allocations");
+  }
+  if (!Array.isArray(data) || data.length > 200) throw new Error("allocations");
+  const out = data.map((a) => {
+    const id = (a as { customerId?: unknown })?.customerId;
+    const q = (a as { quantities?: unknown })?.quantities;
+    if (
+      typeof id !== "string" ||
+      !ALLOC_ID.test(id) ||
+      !Array.isArray(q) ||
+      q.length < 1 ||
+      q.length > 60 ||
+      !q.every((n) => Number.isInteger(n) && n >= 0 && n <= 1e9)
+    )
+      throw new Error("allocations");
+    return { customerId: id, quantities: q as number[] };
+  });
+  return out.length ? out : null;
 }
 
 const ROW = /^p(\d+)\.(productId|productName|description|quantity)$/;
@@ -74,10 +112,19 @@ export function parseRequestItems(
         if (!options.lenient) throw new Error("schedule_product_changed");
         schedule = null;
       }
+      let companyAllocations: RequestCompanyAllocation[] | null = null;
+      try {
+        companyAllocations = parseCompanyAllocations(
+          text(`${p}companyAllocations`),
+        );
+      } catch (error) {
+        if (!options.lenient) throw error;
+      }
       return {
         index,
         productId,
         variantId,
+        companyAllocations,
         productName: text(`${p}productName`),
         description: text(`${p}description`),
         specification: text(`${p}specification`) || null,

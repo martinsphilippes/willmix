@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { cx, inputDenseClass } from "@/components/ui";
 import {
   RequestScheduleFields,
@@ -135,6 +142,15 @@ export interface CartonsEventDetail {
   color?: string;
   cartons?: number;
   reset?: boolean;
+}
+/**
+ * Peças de cada programação vindas de fora do campo (a soma das empresas do
+ * grupo econômico; docs/ECONOMIC_GROUPS.md). `prefix` diz a linha.
+ */
+export const ROUNDS_EVENT = "selection:rounds";
+export interface RoundsEventDetail {
+  prefix: string;
+  quantities: number[];
 }
 export interface SplitEventDetail {
   itemId: string | null;
@@ -329,7 +345,10 @@ export function SelectionQuantity({
   onQuantityBlur,
   fixedPlan = null,
   onLoadChange,
+  scheduleAside,
 }: {
+  /** Ao lado do texto do quadro da programação (grupo econômico). */
+  scheduleAside?: ReactNode;
   label: string;
   hint: string;
   /** Dica do campo quando a programação está ligada. */
@@ -560,10 +579,13 @@ export function SelectionQuantity({
     };
     const onCartons = (e: Event) =>
       typeCartons((e as CustomEvent<CartonsEventDetail>).detail);
+    const onRounds = (e: Event) =>
+      setRounds((e as CustomEvent<RoundsEventDetail>).detail);
     const frame = requestAnimationFrame(sync);
     form.addEventListener("change", onChange);
     form.addEventListener(COLORS_EVENT, onColors);
     form.addEventListener(CARTONS_EVENT, onCartons);
+    form.addEventListener(ROUNDS_EVENT, onRounds);
     form.addEventListener("submit", onSubmit);
     window.addEventListener("pageshow", sync);
     return () => {
@@ -571,6 +593,7 @@ export function SelectionQuantity({
       form.removeEventListener("change", onChange);
       form.removeEventListener(COLORS_EVENT, onColors);
       form.removeEventListener(CARTONS_EVENT, onCartons);
+      form.removeEventListener(ROUNDS_EVENT, onRounds);
       form.removeEventListener("submit", onSubmit);
       window.removeEventListener("pageshow", sync);
     };
@@ -1103,6 +1126,18 @@ export function SelectionQuantity({
    * programação, o novo total é espalhado pelas datas na proporção de cada
    * uma (caixas inteiras); sem ela, vira a quantidade.
    */
+  /** As peças de cada programação de fora (empresas do grupo econômico). */
+  const setRounds = useEffectEvent((d: RoundsEventDetail) => {
+    if (d.prefix !== prefix || !d.quantities.length) return;
+    const total = d.quantities.reduce((a, b) => a + b, 0);
+    if (fixedPlan && fixedPlan.count >= 2) {
+      if (d.quantities.length === fixedPlan.count)
+        applyRef.current?.(d.quantities);
+      return;
+    }
+    setQty(String(total));
+    setAmountEdit(null);
+  });
   const typeCartons = useEffectEvent((d: CartonsEventDetail) => {
     if (!item || item.id !== d.itemId) return;
     if (d.reset) {
@@ -1891,6 +1926,7 @@ export function SelectionQuantity({
           }}
           after={colorPreview}
           fixed={fixedPlan}
+          aside={scheduleAside}
         />
       </div>
     </div>

@@ -362,3 +362,79 @@ test("TS e Venda: a recusa depois de criar fala das entregas programadas; Encome
     page.getByText("(anexo, foto da busca ou programação)", { exact: false }),
   ).toBeVisible();
 });
+
+test("TS: pedido para um grupo econômico, com a distribuição padrão e as quantidades de cada empresa", async ({
+  page,
+}) => {
+  // docs/ECONOMIC_GROUPS.md: a matriz da demonstração representa o grupo
+  // (Rede Exemplo, com duas lojas).
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/new-request/ts");
+  await chooseCustomer(page, "rede exemplo", "cliente-grupo");
+  const summary = page.locator("[data-request-customer-summary]");
+  await expect(summary.locator("[data-group-more]")).toHaveText(
+    /\+ 2 empresas do grupo/,
+  );
+
+  // Distribuição padrão do grupo (ícone ao lado do cliente).
+  await summary.locator("[data-group-defaults-open]").click();
+  const defaults = page.locator("[data-group-defaults]");
+  for (const [id, pct] of [
+    ["cliente-grupo", "50"],
+    ["cliente-grupo-loja2", "30"],
+    ["cliente-grupo-loja3", "20"],
+  ])
+    await defaults.locator(`[data-group-percent="${id}"]`).fill(pct);
+  await expect(defaults.locator("[data-group-percent-total]")).toHaveText(
+    "Total: 100%",
+  );
+  await defaults.locator("[data-group-defaults-save]").click();
+  await expect(summary).toContainText("Distribuição padrão salva.");
+
+  await fillOrderTerms(page, { format: "wd", caller: "customer" });
+  await setPlanCount(page, "2");
+  const row = page.locator('[data-request-item="0"]');
+  const product = row.locator('[data-product-picker="catalog"]');
+  await product.locator("[data-product-picker-input]").fill("boneca");
+  await product.locator('[data-product-picker-option="prod-boneca"]').click();
+
+  // Em cada produto: a empresa do grupo, quem falta e o preenchimento em massa.
+  const group = row.locator("[data-group-row]");
+  await expect(group.locator("[data-group-missing]")).toHaveAttribute(
+    "data-group-missing",
+    "3",
+  );
+  await group.locator("[data-group-bulk-open]").click();
+  const bulk = page.locator("[data-group-bulk]");
+  await bulk.locator("[data-group-use-default]").click();
+  await bulk.locator('[data-group-mode="total"]').check();
+  await bulk.locator("[data-group-bulk-qty]").fill("60");
+  await expect(
+    bulk.locator('[data-group-preview="cliente-grupo-loja2"]'),
+  ).toContainText("18");
+  await bulk.locator("[data-group-bulk-apply]").click();
+  await expect(group.locator("[data-group-complete]")).toBeVisible();
+  // Sem empresa escolhida: a soma de todas (60 caixas de 48 peças).
+  await expect(group.locator("[data-group-summary]")).toContainText(
+    "60 caixas",
+  );
+  // A programação do produto é a soma das empresas em cada entrega.
+  await expect(group.locator("[data-group-mismatch]")).toHaveCount(0);
+  // Uma empresa: as peças dela por entrega (12 caixas em 2 entregas).
+  await group
+    .locator("[data-group-company-select]")
+    .selectOption("cliente-grupo-loja3");
+  await expect(group.locator("[data-group-summary]")).toContainText(
+    "288 / 288",
+  );
+
+  // Vai no formulário: as peças de cada empresa em cada entrega.
+  await expect(row.locator('input[name="p0.companyAllocations"]')).toHaveValue(
+    /"cliente-grupo-loja2","quantities":\[432,432\]/,
+  );
+  await send(page);
+  await expect(
+    page.locator('[data-request-company="cliente-grupo-loja2"]'),
+  ).toContainText("864");
+  await expect(page.locator("[data-request-company]")).toHaveCount(3);
+});

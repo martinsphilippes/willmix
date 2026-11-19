@@ -21,6 +21,7 @@ import {
   upsertGroups,
   upsertStockLocations,
   upsertPartners,
+  upsertCustomersFromView,
   upsertPaymentConditions,
   upsertProducts,
   type ImportLine,
@@ -35,8 +36,8 @@ import { fetchImportSetFor } from "./sankhya-sample";
 
 /*
  * Carga completa do Sankhya para o portal (aba Carga do Sankhya;
- * docs/SANKHYA.md): condições de pagamento (TGFTPV), fornecedores e clientes
- * (TGFPAR com FORNECEDOR ou CLIENTE = S), produtos (TGFPRO, com os grupos que
+ * docs/SANKHYA.md): condições de pagamento (TGFTPV), fornecedores (TGFPAR com
+ * FORNECEDOR = S), clientes (VW_AD_CLIENTE_WELL; docs/ECONOMIC_GROUPS.md), produtos (TGFPRO, com os grupos que
  * eles usam), locais de estoque (TGFLOC), saldos por local (TGFEST da empresa
  * da Integração) e o histórico de notas de importação (TGFCAB das TOPs de
  * importação, com itens, títulos e cadastros). Lê por faixas de código e grava em lotes; cada
@@ -121,6 +122,7 @@ const ROWS: Record<FullLoadEntity, { min: number; max: number }> = {
   // Cada parceiro/produto grava várias linhas no banco: lotes menores
   // cabem na rodada (no Supabase, 300 por lote passava do limite de 60 s).
   partners: { min: 40, max: 120 },
+  customers: { min: 40, max: 120 },
   products: { min: 40, max: 120 },
   stockLocations: { min: 100, max: 400 },
   stockBalances: { min: 100, max: 400 },
@@ -219,6 +221,8 @@ export async function runFullLoad(
       await upsertPaymentConditions(ctx, rows);
     } else if (entity === "partners") {
       await upsertPartners(ctx, rows);
+    } else if (entity === "customers") {
+      await upsertCustomersFromView(ctx, rows);
     } else if (entity === "stockLocations") {
       await upsertStockLocations(ctx, rows);
     } else if (entity === "stockBalances") {

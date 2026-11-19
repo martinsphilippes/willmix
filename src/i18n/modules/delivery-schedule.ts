@@ -38,7 +38,7 @@ export const pt = {
   "deliverySchedule.item.toggle": "Programação de entregas ao cliente",
   "deliverySchedule.item.ask": "Entregar ao cliente em mais de uma data?",
   "deliverySchedule.item.hint":
-    "Divida o total nas entregas programadas ao cliente, com intervalo fixo a partir da data prevista do 1º recebimento. Cada programação é uma entrega prevista ao cliente.",
+    "Divida o total nas entregas ao cliente, com intervalo fixo a partir do 1º recebimento.",
   "deliverySchedule.item.add": "Programação de entrega",
   "deliverySchedule.item.remove": "Remover a programação {n}",
   "deliverySchedule.item.off": "Entrega única (sem programação)",
@@ -132,7 +132,7 @@ export const en: typeof pt = {
   "deliverySchedule.item.toggle": "Customer delivery schedule",
   "deliverySchedule.item.ask": "Deliver to the customer on more than one date?",
   "deliverySchedule.item.hint":
-    "Split the total across the deliveries scheduled to the customer, at a fixed interval from the expected date of the 1st receipt. Each schedule is a planned delivery to the customer.",
+    "Split the total across the customer deliveries, at a fixed interval from the 1st receipt.",
   "deliverySchedule.item.add": "Delivery schedule",
   "deliverySchedule.item.remove": "Remove schedule {n}",
   "deliverySchedule.item.off": "Single delivery (no schedule)",
@@ -221,7 +221,7 @@ export const zh: typeof pt = {
   "deliverySchedule.item.toggle": "客户交货计划",
   "deliverySchedule.item.ask": "分多个日期向客户交货？",
   "deliverySchedule.item.hint":
-    "把总数分配到向客户计划的各次交货中，从第 1 次预计收货日期起按固定间隔。每个计划是一次向客户的预计交货。",
+    "把总数分配到向客户的各次交货中，从第 1 次收货起按固定间隔。",
   "deliverySchedule.item.add": "交货计划",
   "deliverySchedule.item.remove": "删除计划 {n}",
   "deliverySchedule.item.off": "一次交货（无计划）",

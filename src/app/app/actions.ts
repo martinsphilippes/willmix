@@ -299,6 +299,7 @@ async function createRequest(
           // Programação de entregas: a quantidade da solicitação é a soma das entregas.
           schedule: row.schedule,
           ...(row.schedule ? { quantity: scheduleTotal(row.schedule) } : {}),
+          companyAllocations: row.companyAllocations,
         });
       }
       // Anexos conferidos antes de criar qualquer solicitação (tipo e tamanho).
@@ -386,6 +387,28 @@ async function createRequest(
             await saveCustomerContacts(user, base.customerId, contacts);
         } else if (!optional && !(await hasPortalContacts(base.customerId)))
           throw new Error("contacts_required");
+      }
+      // Pedido para um grupo econômico (dono, 18/11/2026;
+      // docs/ECONOMIC_GROUPS.md): as empresas são do grupo que o cliente
+      // representa e, em cada produto, a soma delas em cada entrega é a
+      // programação. Fora das telas TS e Venda ao cliente, nada vai.
+      if (items.some((i) => i.companyAllocations?.length)) {
+        if (!screenDef || replenish || forStock || !isWellmix(user))
+          for (const i of items) i.companyAllocations = null;
+        else {
+          const { groupCompanyIds } =
+            await import("@/lib/services/economic-groups");
+          const { allocationsMatch } = await import("@/lib/economic-group");
+          const allowed = await groupCompanyIds(base.customerId);
+          for (const i of items) {
+            if (!i.companyAllocations?.length) continue;
+            const plan = i.schedule?.items.length
+              ? i.schedule.items.map((x) => x.quantity)
+              : [i.quantity];
+            if (!allocationsMatch(i.companyAllocations, plan, allowed))
+              throw new Error("allocations");
+          }
+        }
       }
       const created = await createRequestBatch(
         user,

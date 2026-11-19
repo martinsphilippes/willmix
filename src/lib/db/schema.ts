@@ -852,6 +852,23 @@ export interface Party extends BaseRow {
    */
   customerGroupId?: string | null;
   /**
+   * Cliente: grupo econômico do Sankhya (VW_AD_CLIENTE_WELL.COD_GRUPO_ECONOMICO,
+   * o CODPARC da empresa que representa o grupo; docs/ECONOMIC_GROUPS.md).
+   * Nulo (ou a view com 0) = fora de grupo. A empresa que representa o grupo
+   * tem o próprio código aqui. Diferente do grupo da carteira (customerGroupId).
+   */
+  economicGroupCode?: string | null;
+  /** Nome do grupo econômico (o nome do parceiro que representa o grupo). */
+  economicGroupName?: string | null;
+  /** Matriz no Sankhya (VW_AD_CLIENTE_WELL.COD_MATRIZ); nula sem matriz. */
+  matrixCode?: string | null;
+  /**
+   * A linha da VW_AD_CLIENTE_WELL na última carga de clientes (todas as
+   * colunas do dicionário), e quando foi lida.
+   */
+  sankhyaCustomer?: Record<string, string | number | null> | null;
+  sankhyaCustomerAt?: string | null;
+  /**
    * Cliente: RCA responsável, o código do vendedor no Sankhya (TGFVEN.CODVEND;
    * docs/CUSTOMER_RCA.md). "0" = sem RCA. Nulo = nunca gravado: vale o
    * vendedor que veio na carga (`sankhyaRefs.CODVEND`). A carga do Sankhya
@@ -1108,6 +1125,35 @@ export interface Request extends BaseRow {
    * Sankhya ou quando a cotação não respondeu (a lista mostra "—").
    */
   priceForecast?: RequestPriceForecast | null;
+  /**
+   * Pedido para um grupo econômico (docs/ECONOMIC_GROUPS.md): as peças de
+   * cada empresa do grupo em cada programação. A soma por programação é a
+   * `schedule` (um pedido só ao fornecedor; a NF de venda é por empresa).
+   * Nulo no pedido de um cliente só.
+   */
+  companyAllocations?: RequestCompanyAllocation[] | null;
+}
+
+/** Parte de uma empresa do grupo econômico num produto do pedido. */
+export interface RequestCompanyAllocation {
+  /** Cliente (parties) da empresa do grupo. */
+  customerId: string;
+  /** Peças em cada programação (mesma ordem da `schedule.items`). */
+  quantities: number[];
+}
+
+/**
+ * Distribuição padrão de um grupo econômico entre as empresas dele
+ * (docs/ECONOMIC_GROUPS.md): o percentual de cada empresa, usado no
+ * preenchimento em massa de cada produto. Uma linha por empresa.
+ */
+export interface EconomicGroupShare extends BaseRow {
+  /** Código do grupo (o CODPARC da empresa que representa o grupo). */
+  groupCode: string;
+  customerId: string;
+  /** Percentual da empresa (0 a 100). */
+  percent: number;
+  updatedByUserId: string | null;
 }
 
 export interface Order extends BaseRow {
@@ -4048,6 +4094,7 @@ export interface Tables {
   request_drafts: RequestDraft;
   form_drafts: FormDraft;
   customer_groups: CustomerGroup;
+  economic_group_shares: EconomicGroupShare;
   customer_attendances: CustomerAttendance;
   freight_tariffs: FreightTariff;
   product_variants: ProductVariant;
@@ -4241,12 +4288,23 @@ export const TABLES: Record<TableName, TableDef> = {
       customerContactsUpdatedAt: datetime(),
       customerContactsUpdatedByUserId: id(false),
       customerGroupId: id(false),
+      // Grupo econômico do Sankhya (VW_AD_CLIENTE_WELL; 18/11/2026).
+      economicGroupCode: str(20),
+      economicGroupName: str(160),
+      matrixCode: str(20),
+      sankhyaCustomer: json(),
+      sankhyaCustomerAt: datetime(),
     },
     indexes: [
       { key: "by_type", type: "key", columns: ["type"] },
       { key: "by_owner", type: "key", columns: ["ownerUserId"] },
       { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
       { key: "by_customer_group", type: "key", columns: ["customerGroupId"] },
+      {
+        key: "by_economic_group",
+        type: "key",
+        columns: ["economicGroupCode"],
+      },
     ],
   },
   product_lines: {
@@ -4376,6 +4434,8 @@ export const TABLES: Record<TableName, TableDef> = {
       strategySentByUserId: id(false),
       // Previsão de venda gravada no envio (totais de Encomendas, 18/11/2026).
       priceForecast: json(),
+      // Quantidades por empresa do grupo econômico (18/11/2026).
+      companyAllocations: json(),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
@@ -5300,6 +5360,19 @@ export const TABLES: Record<TableName, TableDef> = {
       createdByUserId: id(false),
     },
     indexes: [{ key: "by_owner", type: "key", columns: ["ownerUserId"] }],
+  },
+  economic_group_shares: {
+    label: "Distribuição padrão dos grupos econômicos",
+    columns: {
+      groupCode: str(20, true),
+      customerId: id(),
+      percent: float(true),
+      updatedByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_group", type: "key", columns: ["groupCode"] },
+      { key: "by_customer", type: "key", columns: ["customerId"] },
+    ],
   },
   customer_attendances: {
     label: "Atendimentos ao cliente (carteira)",

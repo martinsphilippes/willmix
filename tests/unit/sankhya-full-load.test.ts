@@ -88,7 +88,7 @@ function fakeSankhya(
 }
 
 describe("carga completa", () => {
-  it("parceiros: lotes, cursor, fornecedor e cliente no mesmo CODPARC", async () => {
+  it("parceiros: lotes, cursor e só os fornecedores (clientes pela view)", async () => {
     const rows = Array.from({ length: 30 }, (_, i) => ({
       CODPARC: (i + 1) * 100, // códigos espaçados: a faixa pula os buracos
       NOMEPARC: `Parceiro ${i + 1}`,
@@ -120,20 +120,17 @@ describe("carga completa", () => {
 
     // A Wellmix SC da demonstração (comprador dos pedidos de compra) já nasce
     // com o código do Sankhya e não vem desta carga.
+    // Fora: a Wellmix SC e o grupo econômico da demonstração.
+    const demo = (id: string) =>
+      id === "wellmix-sc" || id.startsWith("cliente-grupo");
     const parties = (await getStore().list("parties")).filter(
-      (p) => p.sankhyaCode && p.id !== "wellmix-sc",
+      (p) => p.sankhyaCode && !demo(p.id),
     );
     const suppliers = parties.filter((p) => p.type === "supplier");
     const customers = parties.filter((p) => p.type === "customer");
     expect(suppliers).toHaveLength(10); // i = 0, 3, …, 27
-    expect(customers).toHaveLength(15); // i = 0, 2, …, 28
-    // CODPARC 100 é fornecedor e cliente: dois cadastros com o mesmo código.
-    expect(
-      parties
-        .filter((p) => p.sankhyaCode === "100")
-        .map((p) => p.type)
-        .sort(),
-    ).toEqual(["customer", "supplier"]);
+    // Os clientes vêm da VW_AD_CLIENTE_WELL (dono, 18/11/2026).
+    expect(customers).toHaveLength(0);
     expect(parties.some((p) => p.name === "Funcionário")).toBe(false);
 
     // Rodar de novo (recomeçar) atualiza, não duplica.
@@ -143,10 +140,93 @@ describe("carga completa", () => {
     expect(again.progress.counts.created ?? 0).toBe(0);
     expect(
       (await getStore().list("parties")).filter(
-        (p) => p.sankhyaCode && p.id !== "wellmix-sc",
+        (p) => p.sankhyaCode && !demo(p.id),
       ),
-    ).toHaveLength(25);
+    ).toHaveLength(10);
     expect((await getFullLoadProgress("partners")).done).toBe(true);
+  });
+
+  it("clientes pela VW_AD_CLIENTE_WELL: grupo econômico, matriz e a linha da view", async () => {
+    const view = (over: Record<string, unknown>) => ({
+      COD_CLIENTE: 0,
+      NOME_CLIENTE: "",
+      RAZAO_SOCIAL: null,
+      TIPO_PESSOA: "J",
+      DOCUMENTO: null,
+      ATIVO: "S",
+      COD_GRUPO_ECONOMICO: 0,
+      GRUPO_ECONOMICO: null,
+      COD_MATRIZ: 0,
+      COD_VENDEDOR: 101,
+      CIDADE: "CAMPINAS",
+      UF: "SP",
+      PAIS: "BRASIL",
+      COD_CLASSIFICACAO: "6",
+      CLASSIFICACAO: "PLENO",
+      ...over,
+    });
+    fakeSankhya({
+      "sankhya.VW_AD_CLIENTE_WELL": {
+        key: "COD_CLIENTE",
+        rows: [
+          view({
+            COD_CLIENTE: 5431,
+            NOME_CLIENTE: "CAMPINEIRA MATRIZ",
+            DOCUMENTO: "12345678000190",
+            COD_GRUPO_ECONOMICO: 5431,
+            GRUPO_ECONOMICO: "CAMPINEIRA MATRIZ",
+          }),
+          view({
+            COD_CLIENTE: 5432,
+            NOME_CLIENTE: "CAMPINEIRA LOJA 2",
+            COD_GRUPO_ECONOMICO: 5431,
+            GRUPO_ECONOMICO: "CAMPINEIRA MATRIZ",
+            COD_MATRIZ: 5431,
+          }),
+          view({ COD_CLIENTE: 7000, NOME_CLIENTE: "SOZINHO", ATIVO: "N" }),
+        ],
+      },
+    });
+    sk.resetSankhyaTokenCache();
+    await resetFullLoad("customers");
+    const run = await runFullLoad(admin, "customers", 60_000);
+    expect(run.progress.done).toBe(true);
+    const customers = (await getStore().list("parties")).filter(
+      (p) =>
+        p.type === "customer" &&
+        ["5431", "5432", "7000"].includes(p.sankhyaCode ?? ""),
+    );
+    const by = (c: string) => customers.find((p) => p.sankhyaCode === c)!;
+    expect(customers).toHaveLength(3);
+    expect(by("5431")).toMatchObject({
+      name: "CAMPINEIRA MATRIZ",
+      taxId: "12345678000190",
+      economicGroupCode: "5431",
+      economicGroupName: "CAMPINEIRA MATRIZ",
+      matrixCode: null,
+      city: "CAMPINAS - SP",
+      rcaCode: "101",
+    });
+    expect(by("5432")).toMatchObject({
+      economicGroupCode: "5431",
+      matrixCode: "5431",
+    });
+    // Fora de grupo (0) e inativo.
+    expect(by("7000")).toMatchObject({
+      economicGroupCode: null,
+      active: false,
+    });
+    expect(by("5432").sankhyaCustomer).toMatchObject({
+      CLASSIFICACAO: "PLENO",
+    });
+    expect(by("5432").sankhyaRefs).toMatchObject({
+      CODPARCGRUECONOMICO: 5431,
+      CODVEND: 101,
+    });
+    // Rodar de novo atualiza, não duplica.
+    await resetFullLoad("customers");
+    const again = await runFullLoad(admin, "customers", 60_000);
+    expect(again.progress.counts.created ?? 0).toBe(0);
   });
 
   it("produtos com grupos (linhas), EAN e SKU; condições de pagamento", async () => {

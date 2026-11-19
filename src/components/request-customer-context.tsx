@@ -4,11 +4,13 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
 import type { CompositionItem } from "@/lib/container-composition";
+import type { EconomicGroup } from "@/lib/economic-group";
 import type { SearchOption } from "./search-picker";
 
 /**
@@ -76,6 +78,14 @@ interface RequestCustomerState {
    */
   rowTotals: Record<string, number>;
   setRowTotal: (key: string, total: number | null) => void;
+  /**
+   * Grupo econômico do cliente escolhido (docs/ECONOMIC_GROUPS.md): as
+   * empresas e a distribuição padrão; nulo = pedido de um cliente só.
+   * `groupLoading`: o cliente representa um grupo e as empresas ainda vêm.
+   */
+  group: EconomicGroup | null;
+  groupLoading: boolean;
+  setGroupShares: (shares: Record<string, number>) => void;
 }
 
 export interface SaleTerms {
@@ -145,6 +155,38 @@ export function RequestCustomerProvider({
   const [browserOpen, setBrowserOpen] = useState(false);
   const [saleTerms, setSaleTermsState] = useState<SaleTerms | null>(null);
   const [rowTotals, setRowTotals] = useState<Record<string, number>>({});
+  // Grupo econômico do cliente (só nas telas com as condições do pedido).
+  const [groupState, setGroupState] = useState<{
+    for: string;
+    value: EconomicGroup | null;
+  } | null>(null);
+  const customerId = !stock && originTerms ? (customer?.id ?? null) : null;
+  useEffect(() => {
+    if (!customerId) return;
+    let off = false;
+    fetch(`/api/customers/group?customer=${encodeURIComponent(customerId)}`)
+      .then((r) => (r.ok ? r.json() : { group: null }))
+      .then((b: { group?: EconomicGroup | null }) => {
+        if (!off) setGroupState({ for: customerId, value: b.group ?? null });
+      })
+      .catch(() => {
+        if (!off) setGroupState({ for: customerId, value: null });
+      });
+    return () => {
+      off = true;
+    };
+  }, [customerId]);
+  const group =
+    customerId && groupState?.for === customerId ? groupState.value : null;
+  const groupLoading =
+    !!customerId &&
+    groupState?.for !== customerId &&
+    (customer?.groupSize ?? 1) > 0;
+  const setGroupShares = useCallback((shares: Record<string, number>) => {
+    setGroupState((prev) =>
+      prev?.value ? { ...prev, value: { ...prev.value, shares } } : prev,
+    );
+  }, []);
   const setRowTotal = useCallback((key: string, total: number | null) => {
     setRowTotals((prev) => {
       if (total === null) {
@@ -225,8 +267,14 @@ export function RequestCustomerProvider({
       setSaleTerms,
       rowTotals,
       setRowTotal,
+      group,
+      groupLoading,
+      setGroupShares,
     }),
     [
+      group,
+      groupLoading,
+      setGroupShares,
       rowTotals,
       setRowTotal,
       saleTerms,
