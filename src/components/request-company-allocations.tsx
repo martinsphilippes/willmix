@@ -3,6 +3,7 @@ import type { Request } from "@/lib/db";
 import { getStore } from "@/lib/db";
 import { listByIds } from "@/lib/db/lookup";
 import { taxIdText } from "@/lib/economic-group";
+import { companyName } from "@/lib/services/economic-groups";
 import { Table, Td, Th } from "./ui";
 
 /**
@@ -55,7 +56,7 @@ export async function RequestCompanyAllocations({
             const p = byId.get(r.customerId);
             return (
               <tr key={r.customerId} data-request-company={r.customerId}>
-                <Td>{p?.name ?? "—"}</Td>
+                <Td>{p ? companyName(p) : "—"}</Td>
                 <Td className="tabular-nums">{taxIdText(p?.taxId ?? null)}</Td>
                 {rounds > 1
                   ? Array.from({ length: rounds }, (_, i) => (
