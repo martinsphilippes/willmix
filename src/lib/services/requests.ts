@@ -123,10 +123,13 @@ export async function createRequestBatch(
      * solicitação o repete em vez de pegar outro da sequência.
      */
     number?: number;
+    /** Lote já existente (encomenda editada no lugar). */
+    groupId?: string | null;
   } = {},
 ): Promise<Request[]> {
   if (!items.length) throw new Error("no_products");
-  const groupId = items.length > 1 ? randomUUID() : null;
+  // Encomenda editada (dono, 19/11/2026): o mesmo lote de antes.
+  const groupId = items.length > 1 ? (internal.groupId ?? randomUUID()) : null;
   const created: Request[] = [];
   const store = getStore();
   /* Um número para a solicitação inteira: o 1º produto o reserva (depois das

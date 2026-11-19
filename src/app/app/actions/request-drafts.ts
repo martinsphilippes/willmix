@@ -157,3 +157,21 @@ export async function autosaveRequestDraftAction(input: {
     return { ok: false };
   }
 }
+
+/**
+ * Editar a encomenda enviada (dono, 19/11/2026): enquanto o cliente não
+ * confirmou, reabre a tela de onde ela saiu, com os dados como foram
+ * enviados (src/lib/services/request-edit.ts).
+ */
+export async function reopenSentRequestAction(form: FormData) {
+  const user = await requireUser();
+  const requestId = z.string().regex(ID).parse(str(form, "requestId"));
+  await run(
+    `/app/requests/batch/${encodeURIComponent(requestId)}`,
+    async () => {
+      assertWellmix(user);
+      const { reopenSentRequest } = await import("@/lib/services/request-edit");
+      return reopenSentRequest(user, requestId);
+    },
+  );
+}

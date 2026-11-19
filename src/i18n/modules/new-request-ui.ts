@@ -5,6 +5,11 @@
  * em pt, en e zh.
  */
 export const pt = {
+  "requestEdit.button": "Editar a encomenda",
+  "requestEdit.banner":
+    "Editando a encomenda #{number}, ainda aguardando o cliente. Ao enviar, ela é refeita no lugar (mesmo número) e o cliente confirma de novo.",
+  "reqBatch.error.edit_not_allowed":
+    "Esta encomenda não pode mais ser editada: o cliente já confirmou ou ela mudou. Abra a encomenda para ver como está.",
   "priceForecast.auditOpen": "Ver o cálculo",
   "priceForecast.auditClose": "Fechar",
   "priceForecast.auditIntro":
@@ -71,6 +76,11 @@ export const pt = {
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
+  "requestEdit.button": "Edit the order",
+  "requestEdit.banner":
+    "Editing order #{number}, still waiting for the customer. When you send it, it is rebuilt in place (same number) and the customer confirms again.",
+  "reqBatch.error.edit_not_allowed":
+    "This order can no longer be edited: the customer has already confirmed it or it changed. Open the order to see where it stands.",
   "priceForecast.auditOpen": "Show the calculation",
   "priceForecast.auditClose": "Close",
   "priceForecast.auditIntro":
@@ -139,6 +149,11 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "requestEdit.button": "编辑订购",
+  "requestEdit.banner":
+    "正在编辑订购 #{number}（仍在等待客户确认）。提交后将原地更新（编号不变），客户需要重新确认。",
+  "reqBatch.error.edit_not_allowed":
+    "该订购已无法编辑：客户已经确认或订购已发生变化。请打开订购查看当前状态。",
   "priceForecast.auditOpen": "查看计算",
   "priceForecast.auditClose": "关闭",
   "priceForecast.auditIntro":

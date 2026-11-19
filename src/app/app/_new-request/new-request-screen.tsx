@@ -28,6 +28,7 @@ import {
   formatDate,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { KeyboardSubmitGuard } from "@/components/keyboard-submit-guard";
 import { PhotoInput } from "@/components/photo-input";
 import { RequestItems } from "@/components/request-items";
 import { RequestCustomerField } from "@/components/request-customer-field";
@@ -977,6 +978,9 @@ export async function renderNewRequest({
               : "lg:col-start-1 lg:row-span-2 lg:row-start-1",
           )}
         >
+          {/* Enter e espaço não enviam a solicitação: só o clique (dono,
+              19/11/2026). */}
+          <KeyboardSubmitGuard formId={FORM_ID} />
           {/* key: ao escolher um produto da busca (mesma rota, outro ?productId) o formulário
             é recriado, senão o navegador mantém o valor anterior dos campos. */}
           <form
@@ -1017,6 +1021,24 @@ export async function renderNewRequest({
             ) : null}
             {addToRequest ? (
               <input type="hidden" name="addTo" value={addToRequest.id} />
+            ) : null}
+            {/* Encomenda reaberta para editar (dono, 19/11/2026): a marca vai
+                junto em cada salvamento do rascunho. */}
+            {draftValue("editOf") ? (
+              <>
+                <input
+                  type="hidden"
+                  name="editOf"
+                  value={draftValue("editOf")}
+                />
+                <div data-request-editing>
+                  <Alert tone="warning">
+                    {t("requestEdit.banner", {
+                      number: draft?.number ?? "—",
+                    })}
+                  </Alert>
+                </div>
+              </>
             ) : null}
             {schedule ? (
               <input type="hidden" name="scheduleId" value={schedule.id} />
