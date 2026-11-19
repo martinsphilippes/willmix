@@ -17,6 +17,7 @@ import {
 import {
   canApproveStrategy,
   canChooseStrategy,
+  canCloseStrategy,
   openDecisions,
   closedRecipients,
   pendingRecipients,
@@ -38,7 +39,10 @@ import { SubmitButton } from "@/components/submit-button";
 import { ActionError } from "@/components/action-error";
 import { DemandTags } from "@/components/demand-tags";
 import { partyPickerLabels } from "@/components/party-picker-labels";
-import { decideStrategyAction } from "../actions/purchase-demand";
+import {
+  closeStrategyAction,
+  decideStrategyAction,
+} from "../actions/purchase-demand";
 import {
   StrategyQueue,
   type StrategyGroupData,
@@ -81,7 +85,7 @@ export default async function PurchaseStrategyPage({
   if (!user) redirect("/login");
   requireScreen(user, "purchaseStrategy");
   if (!isWellmix(user)) redirect("/app");
-  const { error, chosen, decided } = await searchParams;
+  const { error, chosen, decided, closed, reopened } = await searchParams;
   const t = await getT();
   const store = getStore();
   const [board, decisions, sends] = await Promise.all([
@@ -114,6 +118,8 @@ export default async function PurchaseStrategyPage({
     parties.find((p) => p.id === id)?.name ?? "—";
   const canChoose = canChooseStrategy(user);
   const canApprove = canApproveStrategy(user);
+  // Encerrar a estratégia parada: o Comprador e a Diretoria (dono, 19/11/2026).
+  const canClose = canCloseStrategy(user);
   const canOrder =
     can(user, "purchaseOrder.generate") && canOpen(user, "orders");
   // Preço da última compra: só com "Ver preço de compra" (dono, 15/11/2026;
@@ -547,6 +553,18 @@ export default async function PurchaseStrategyPage({
           <Alert tone="success">{t("strategy.chosen", { n: chosen })}</Alert>
         </div>
       ) : null}
+      {typeof closed === "string" ? (
+        <div className="mb-2" role="status" data-strategy-closed>
+          <Alert tone="success">
+            {Number(reopened) > 0
+              ? t("strategyClose.doneReopened", {
+                  n: closed,
+                  count: Number(reopened),
+                })
+              : t("strategyClose.done", { n: closed })}
+          </Alert>
+        </div>
+      ) : null}
       {typeof decided === "string" ? (
         <div className="mb-2" role="status" data-strategy-decided>
           <Alert tone="success">{t("strategy.decided", { n: decided })}</Alert>
@@ -896,6 +914,45 @@ export default async function PurchaseStrategyPage({
                     <p className="text-[11px] text-zinc-500">
                       {t("strategy.waitingApproval")}
                     </p>
+                  ) : null}
+                  {/* Encerrar a estratégia aprovada que parou (dono,
+                      19/11/2026): sai de Em andamento sem pedido e as
+                      encomendas abertas voltam para a fila. */}
+                  {blocked && d.status === "approved" && canClose ? (
+                    <form
+                      action={closeStrategyAction}
+                      className="grid gap-1.5 border-t border-zinc-100 pt-1.5"
+                      data-strategy-close-form
+                    >
+                      <input type="hidden" name="id" value={d.id} />
+                      <Textarea
+                        name="note"
+                        rows={1}
+                        maxLength={2000}
+                        placeholder={t("strategyClose.note")}
+                        aria-label={t("strategyClose.note")}
+                        title={t("strategyClose.note")}
+                        className="min-h-8 py-1 text-xs shadow-none"
+                      />
+                      <p
+                        className="line-clamp-2 text-[11px] text-zinc-600"
+                        title={t("strategyClose.hint")}
+                      >
+                        {t("strategyClose.hint")}
+                      </p>
+                      <div>
+                        <SubmitButton
+                          variant="secondary"
+                          className="px-2.5 py-1 text-xs"
+                          confirmText={t("strategyClose.confirm", {
+                            n: d.number,
+                          })}
+                          data-strategy-close
+                        >
+                          {t("strategyClose.button")}
+                        </SubmitButton>
+                      </div>
+                    </form>
                   ) : null}
                   {orderable && !showForm ? (
                     <p className="text-[11px] text-zinc-500">

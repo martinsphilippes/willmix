@@ -11794,7 +11794,8 @@
             "pending",
             "approved",
             "rejected",
-            "done"
+            "done",
+            "closed"
           ]
         },
         {
