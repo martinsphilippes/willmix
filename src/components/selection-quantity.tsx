@@ -724,10 +724,25 @@ export function SelectionQuantity({
     if (perCarton && amount > 0) {
       const boxes = Math.ceil(amount / perCarton - 1e-9);
       if (roundsShortage(boxes, n)) return null;
-      return splitEvenly(boxes, n, maxRounds).map((b) => b * perCarton);
+      return spread(boxes, n).map((b) => b * perCarton);
     }
-    return splitEvenly(amount, n, maxRounds);
+    return spread(amount, n);
   }
+
+  /**
+   * N partes: pelo percentual de cada entrega do pedido (dono, 19/11/2026),
+   * ou iguais.
+   */
+  function spread(amount: number, n: number): number[] {
+    const w = fixedPlan?.weights;
+    return w && w.length === n && w.some((x) => x > 0)
+      ? spreadCartons(amount, w)
+      : splitEvenly(amount, n, maxRounds);
+  }
+  const weighted = (n: number) => {
+    const w = fixedPlan?.weights;
+    return !!w && w.length === n && w.some((x) => x > 0);
+  };
 
   /**
    * Gera com caixas e datas já resolvidas (as saídas do aviso de caixas que
@@ -751,10 +766,10 @@ export function SelectionQuantity({
           maxRounds,
         })
       : null;
-    if (out && "plan" in out) {
+    if (out && "plan" in out && !weighted(count)) {
       apply(out.plan.rounds.map((r) => r.pieces));
     } else {
-      apply(splitEvenly(cartons, count, maxRounds).map((b) => b * perCarton));
+      apply(spread(cartons, count).map((b) => b * perCarton));
     }
     setAmountEdit(null);
     setRoundsEdit(null);
@@ -791,7 +806,7 @@ export function SelectionQuantity({
         return;
       }
       setShort(null);
-      apply(splitEvenly(boxes, count, maxRounds).map((b) => b * perCarton));
+      apply(spread(boxes, count).map((b) => b * perCarton));
     } else {
       const out = planPurchaseRounds({
         total: n,
@@ -822,7 +837,12 @@ export function SelectionQuantity({
         return;
       }
       const { plan } = out;
-      apply(plan.rounds.map((r) => r.pieces));
+      // Percentual por entrega no pedido: as caixas nessa proporção.
+      apply(
+        weighted(count)
+          ? spread(boxes, count).map((b) => b * perCarton)
+          : plan.rounds.map((r) => r.pieces),
+      );
     }
     // Gerado: os campos voltam a acompanhar as rodadas da tela.
     setAmountEdit(null);

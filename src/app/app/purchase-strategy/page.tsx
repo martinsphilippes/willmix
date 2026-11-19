@@ -17,6 +17,7 @@ import {
 import {
   canApproveStrategy,
   canChooseStrategy,
+  canCloseStrategy,
   openDecisions,
   closedRecipients,
   pendingRecipients,
@@ -28,9 +29,9 @@ import {
   Badge,
   Card,
   Empty,
-  Field,
   PageHeader,
   Textarea,
+  cx,
   formatDate,
   linkClass,
 } from "@/components/ui";
@@ -38,7 +39,10 @@ import { SubmitButton } from "@/components/submit-button";
 import { ActionError } from "@/components/action-error";
 import { DemandTags } from "@/components/demand-tags";
 import { partyPickerLabels } from "@/components/party-picker-labels";
-import { decideStrategyAction } from "../actions/purchase-demand";
+import {
+  closeStrategyAction,
+  decideStrategyAction,
+} from "../actions/purchase-demand";
 import {
   StrategyQueue,
   type StrategyGroupData,
@@ -47,6 +51,14 @@ import {
 } from "./_components/strategy-queue";
 import { PackingCells, type PackingTexts } from "./_components/packing-cells";
 import { StrategyOrderForm } from "./_components/strategy-order-form";
+import {
+  CompactPack,
+  KV,
+  StrategyGrid,
+  cardClass,
+  type CardTexts,
+} from "./_components/strategy-card";
+import { QuickDialog } from "@/components/quick-dialog";
 import { closedDemands, type ClosedDemandReason } from "@/lib/purchase-demand";
 import {
   demandPackings,
@@ -73,7 +85,7 @@ export default async function PurchaseStrategyPage({
   if (!user) redirect("/login");
   requireScreen(user, "purchaseStrategy");
   if (!isWellmix(user)) redirect("/app");
-  const { error, chosen, decided } = await searchParams;
+  const { error, chosen, decided, closed, reopened } = await searchParams;
   const t = await getT();
   const store = getStore();
   const [board, decisions, sends] = await Promise.all([
@@ -106,6 +118,8 @@ export default async function PurchaseStrategyPage({
     parties.find((p) => p.id === id)?.name ?? "—";
   const canChoose = canChooseStrategy(user);
   const canApprove = canApproveStrategy(user);
+  // Encerrar a estratégia parada: o Comprador e a Diretoria (dono, 19/11/2026).
+  const canClose = canCloseStrategy(user);
   const canOrder =
     can(user, "purchaseOrder.generate") && canOpen(user, "orders");
   // Preço da última compra: só com "Ver preço de compra" (dono, 15/11/2026;
@@ -139,6 +153,15 @@ export default async function PurchaseStrategyPage({
     warnInnerSame: t("strategyPack.warn.innerSame"),
     warnCbmOtherBox: t("strategyPack.warn.cbmOtherBox"),
     warnQtyInvalid: t("strategyPack.warn.qtyInvalid"),
+  };
+  const cardTexts: CardTexts = {
+    pieces: t("strategyCard.pieces"),
+    piecesTip: t("strategyCard.piecesTip"),
+    master: t("strategyCard.master"),
+    inner: t("strategyCard.inner"),
+    cbm: t("strategyCard.cbm"),
+    perBox: t("strategyCard.perBox"),
+    cbmPerBox: t("strategyCard.cbmPerBox"),
   };
   /** Avisos do servidor (programação, unidade, embalagens diferentes). */
   const packWarnings = (
@@ -257,7 +280,7 @@ export default async function PurchaseStrategyPage({
   const texts: StrategyTexts = {
     originList: t("strategy.recipients.origin"),
     originNone: t("strategy.recipients.originNone"),
-    queueTitle: t("strategy.queue.title", { n: board.groups.length }),
+    queueTitle: t("strategyCard.queueTitle", { n: board.groups.length }),
     queueEmpty: t("strategy.queue.empty"),
     customer: t("strategy.line.customer"),
     quantity: t("strategy.line.quantity"),
@@ -323,6 +346,22 @@ export default async function PurchaseStrategyPage({
     working: t("strategy.summary.working"),
     picker: partyPickerLabels(t, true),
     packing: packingTexts,
+    card: {
+      ...cardTexts,
+      waiting: t("strategyCard.waiting"),
+      emptyStrip: t("strategyCard.queueEmpty"),
+      customer: t("strategyCard.customer"),
+      supplier: t("strategyCard.supplier"),
+      price: t("strategyCard.price"),
+      previous: t("strategyCard.previous"),
+      leadTime: t("strategyCard.leadTime"),
+      incoterm: t("strategyCard.incoterm"),
+      moq: t("strategyCard.moq"),
+      details: t("strategyCard.details"),
+      detailsTitle: t("strategyCard.detailsTitle"),
+      close: t("strategyCard.close"),
+      more: t("strategyCard.more"),
+    },
     intl: t.intl,
   };
   const orderTexts = {
@@ -392,6 +431,72 @@ export default async function PurchaseStrategyPage({
       </p>
     );
 
+  /** Última compra no card: fornecedor, preço, pedido anterior e condições. */
+  const compactReference = (ref: LastPurchase | undefined) =>
+    ref ? (
+      <dl
+        className="grid grid-cols-4 gap-x-2 gap-y-1 border-t border-zinc-100 pt-1.5"
+        data-last-purchase={ref.orderNumber}
+        data-strategy-card-last
+      >
+        <KV
+          label={t("strategyCard.supplier")}
+          tip={t("strategy.last.supplier")}
+          className="col-span-2"
+        >
+          <span className="block truncate" title={ref.supplierName ?? "—"}>
+            {ref.supplierName ?? "—"}
+          </span>
+        </KV>
+        {seesPrice ? (
+          <KV label={t("strategyCard.price")} tip={t("strategy.last.price")}>
+            <span className="tabular-nums">
+              {ref.unitPrice !== null
+                ? `${ref.currency ?? ""} ${ref.unitPrice.toLocaleString(t.intl, { maximumFractionDigits: 4 })}`.trim()
+                : "—"}
+            </span>
+          </KV>
+        ) : (
+          <span />
+        )}
+        <KV label={t("strategyCard.previous")} tip={t("strategy.last.date")}>
+          <Link href={`/app/orders/${ref.orderId}`} className={linkClass}>
+            #{ref.orderNumber}
+          </Link>{" "}
+          <span className="text-[10px] font-normal text-zinc-500">
+            {formatDate(ref.date, t)}
+          </span>
+        </KV>
+        <KV
+          label={t("strategyCard.leadTime")}
+          tip={t("strategy.last.leadTime")}
+          className="col-span-2"
+        >
+          {ref.leadTimeDays !== null
+            ? t("strategy.days", { n: ref.leadTimeDays })
+            : "—"}
+        </KV>
+        <KV
+          label={t("strategyCard.incoterm")}
+          tip={t("strategy.last.incoterm")}
+        >
+          {ref.incoterm ?? "—"}
+        </KV>
+        <KV label={t("strategyCard.moq")} tip={t("strategy.last.moq")}>
+          <span className="tabular-nums">
+            {ref.moq !== null ? ref.moq.toLocaleString(t.intl) : "—"}
+          </span>
+        </KV>
+      </dl>
+    ) : (
+      <p
+        className="text-[11px] font-medium text-amber-800"
+        data-no-last-purchase
+      >
+        {t("strategy.noLastPurchase")}
+      </p>
+    );
+
   const demandRow = (
     d: Request,
     checkbox: boolean,
@@ -440,20 +545,33 @@ export default async function PurchaseStrategyPage({
         t={t}
         title={t("strategy.title")}
         subtitle={t("strategy.subtitle")}
+        dense
       />
       <ActionError t={t} code={errorCode} text={errorText} fields={null} />
       {typeof chosen === "string" ? (
-        <div className="mb-3" role="status" data-strategy-chosen>
+        <div className="mb-2" role="status" data-strategy-chosen>
           <Alert tone="success">{t("strategy.chosen", { n: chosen })}</Alert>
         </div>
       ) : null}
+      {typeof closed === "string" ? (
+        <div className="mb-2" role="status" data-strategy-closed>
+          <Alert tone="success">
+            {Number(reopened) > 0
+              ? t("strategyClose.doneReopened", {
+                  n: closed,
+                  count: Number(reopened),
+                })
+              : t("strategyClose.done", { n: closed })}
+          </Alert>
+        </div>
+      ) : null}
       {typeof decided === "string" ? (
-        <div className="mb-3" role="status" data-strategy-decided>
+        <div className="mb-2" role="status" data-strategy-decided>
           <Alert tone="success">{t("strategy.decided", { n: decided })}</Alert>
         </div>
       ) : null}
       {board.toSend ? (
-        <div className="mb-3" data-strategy-to-send={board.toSend}>
+        <div className="mb-2" data-strategy-to-send={board.toSend}>
           <Alert tone="info">
             {t("strategy.toSend", { n: board.toSend })}{" "}
             <Link href="/app/requests" className={linkClass}>
@@ -471,10 +589,12 @@ export default async function PurchaseStrategyPage({
         canChoose={canChoose}
       />
 
-      <div className="mt-4" />
-      <Card title={t("strategy.open", { n: decisions.length })}>
+      <section className="mt-3" data-strategy-open={decisions.length}>
+        <h2 className="mb-1.5 text-sm font-semibold text-zinc-900">
+          {t("strategyCard.openTitle", { n: decisions.length })}
+        </h2>
         {decisions.length ? (
-          <div className="space-y-3">
+          <StrategyGrid marker="open">
             {decisions.map((d) => {
               const demands = decisionDemands.filter((r) =>
                 d.demandIds.includes(r.id),
@@ -515,65 +635,64 @@ export default async function PurchaseStrategyPage({
                   }),
                 )
                 .join(", ");
-              return (
-                <section
-                  key={d.id}
-                  id={`decision-${d.id}`}
-                  className="rounded-2xl border border-zinc-200 p-3"
-                  data-strategy-decision={d.status}
-                  data-strategy-decision-choice={d.choice}
-                  data-strategy-blocked={blocked ? "1" : undefined}
+              const title = t("strategy.decision", { n: d.number });
+              const customers = [
+                ...new Set(demands.map((r) => partyName(r.customerId))),
+              ];
+              const schedules = demands.flatMap((r) => r.schedule?.items ?? []);
+              const blockedAlert = blocked ? (
+                <div data-strategy-blocked-alert>
+                  <Alert tone="warning">
+                    <p className="font-semibold">
+                      {t("strategyPack.closed.title")}
+                    </p>
+                    <p className="mt-0.5 text-xs">
+                      {t(
+                        d.status === "pending"
+                          ? "strategyPack.closed.bodyPending"
+                          : "strategyPack.closed.body",
+                        { list: closedList },
+                      )}
+                    </p>
+                  </Alert>
+                </div>
+              ) : null;
+              // Detalhes: tudo o que o card resume (as contas, a explicação da
+              // parada, a programação inteira e a última compra completa).
+              const detailsButton = (
+                <QuickDialog
+                  label={t("strategyCard.details")}
+                  title={t("strategyCard.detailsTitle", { title })}
+                  closeLabel={t("strategyCard.close")}
+                  size="lg"
+                  data-strategy-details={d.id}
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-sm font-semibold text-zinc-900">
-                      {t("strategy.decision", { n: d.number })}
-                    </h3>
-                    <Badge
-                      tone={d.status === "pending" ? "warning" : "success"}
-                    >
+                  <div className="space-y-3 text-sm">
+                    <p className="text-xs text-zinc-600">
+                      {t(`strategy.choice.${d.choice}`)} ·{" "}
                       {t(`strategy.status.${d.status}` as DictionaryKey)}
-                    </Badge>
-                    <Badge tone="neutral">
-                      {t(`strategy.choice.${d.choice}`)}
-                    </Badge>
-                  </div>
-                  {d.note ? (
-                    <p className="mt-1 text-xs text-zinc-600">{d.note}</p>
-                  ) : null}
-                  <ul className="mt-2 divide-y divide-zinc-100">
-                    {demands.map((r) => demandRow(r, false, closed.get(r.id)))}
-                  </ul>
-                  {blocked ? (
-                    <div className="mt-2" data-strategy-blocked-alert>
-                      <Alert tone="warning">
-                        <p className="font-semibold">
-                          {t("strategyPack.closed.title")}
-                        </p>
-                        <p className="mt-0.5 text-xs">
-                          {t(
-                            d.status === "pending"
-                              ? "strategyPack.closed.bodyPending"
-                              : "strategyPack.closed.body",
-                            { list: closedList },
-                          )}
-                        </p>
-                      </Alert>
-                    </div>
-                  ) : null}
-                  {packLines.map((line) => (
-                    <div
-                      key={line.productId}
-                      className="mt-3 space-y-2"
-                      data-strategy-decision-product={line.productId}
-                    >
-                      {packLines.length > 1 || !showForm ? (
-                        <p className="text-xs font-medium text-zinc-800">
+                    </p>
+                    {d.note ? (
+                      <p className="whitespace-pre-line text-xs text-zinc-700">
+                        <span className="font-medium">
+                          {t("strategyCard.note")}:
+                        </span>{" "}
+                        {d.note}
+                      </p>
+                    ) : null}
+                    <ul className="divide-y divide-zinc-100">
+                      {demands.map((r) =>
+                        demandRow(r, false, closed.get(r.id)),
+                      )}
+                    </ul>
+                    {blockedAlert}
+                    {packLines.map((line) => (
+                      <div key={line.productId} className="space-y-2">
+                        <p className="text-xs font-semibold text-zinc-900">
                           {nameOf(line.productId)}
                         </p>
-                      ) : null}
-                      {showForm ? null : (
                         <PackingCells
-                          marker={`${d.id}:${line.productId}`}
+                          marker={`detail:${d.id}:${line.productId}`}
                           totals={lineTotals(line, line.quantity)}
                           basis={line.basis}
                           texts={packingTexts}
@@ -581,32 +700,199 @@ export default async function PurchaseStrategyPage({
                           piecesText={line.quantity.toLocaleString(t.intl)}
                           extraWarnings={packWarnings(line.warnings)}
                         />
-                      )}
-                      {d.choice === "last_supplier"
-                        ? reference(refOf(line.productId))
-                        : null}
+                        {d.choice === "last_supplier"
+                          ? reference(refOf(line.productId))
+                          : null}
+                      </div>
+                    ))}
+                    {schedules.length ? (
+                      <div>
+                        <p className="text-xs font-medium text-zinc-700">
+                          {t("strategy.line.schedule")}
+                        </p>
+                        <ul className="text-xs text-zinc-700">
+                          {demands.flatMap((r) =>
+                            (r.schedule?.items ?? []).map((i) => (
+                              <li key={`${r.id}:${i.index}`}>
+                                {r.number ? `nº ${r.number} · ` : ""}
+                                {t("strategy.line.scheduleItem", {
+                                  index: i.index,
+                                  quantity: i.quantity.toLocaleString(t.intl),
+                                  date: formatDate(i.expectedAt, t),
+                                })}
+                              </li>
+                            )),
+                          )}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                </QuickDialog>
+              );
+              const approveHere = d.status === "pending" && canApprove;
+              return (
+                <section
+                  key={d.id}
+                  id={`decision-${d.id}`}
+                  className={cx(
+                    cardClass,
+                    blocked && "border-amber-300 bg-amber-50/30",
+                  )}
+                  data-strategy-decision={d.status}
+                  data-strategy-decision-choice={d.choice}
+                  data-strategy-blocked={blocked ? "1" : undefined}
+                >
+                  {/* Número da estratégia e situação; modalidade. */}
+                  <div className="flex flex-wrap items-center gap-1">
+                    <h3 className="text-[13px] font-semibold text-zinc-900">
+                      {title}
+                    </h3>
+                    <Badge
+                      tone={d.status === "pending" ? "warning" : "success"}
+                    >
+                      {t(`strategy.status.${d.status}` as DictionaryKey)}
+                    </Badge>
+                    {blocked ? (
+                      <Badge tone="danger">
+                        {t("strategyPack.closed.title")}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <p
+                    className="truncate text-[11px] font-medium text-zinc-800"
+                    title={t(`strategy.choice.${d.choice}`)}
+                  >
+                    {t(`strategy.choice.${d.choice}`)}
+                  </p>
+                  {/* Solicitações (link) e a situação de cada uma. */}
+                  <ul className="space-y-0.5" data-strategy-card-requests>
+                    {demands.map((r) => {
+                      const why = closed.get(r.id);
+                      const statusKey =
+                        `reqStatusLabel.${r.status}` as DictionaryKey;
+                      return (
+                        <li
+                          key={r.id}
+                          className="flex flex-wrap items-center gap-1"
+                          data-strategy-demand={r.id}
+                          data-strategy-demand-closed={why}
+                        >
+                          <Link
+                            href={`/app/requests/${r.id}`}
+                            className={cx(linkClass, "font-medium")}
+                          >
+                            {t("strategyCard.request")}{" "}
+                            {r.number ? `nº ${r.number}` : "—"}
+                          </Link>
+                          {why ? (
+                            <Badge tone="danger">
+                              {t(`strategyPack.closed.${why}` as DictionaryKey)}
+                            </Badge>
+                          ) : t(statusKey) !== statusKey ? (
+                            <Badge tone="neutral">{t(statusKey)}</Badge>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {/* Cliente e identificações. */}
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <p
+                      className="min-w-0 flex-1 truncate font-medium text-zinc-900"
+                      title={customers.join(", ")}
+                    >
+                      <span className="text-[10px] uppercase tracking-wide text-zinc-500">
+                        {t("strategyCard.customer")}:{" "}
+                      </span>
+                      {customers.join(", ") || "—"}
+                    </p>
+                    {demands[0] ? (
+                      <div className="shrink-0 [&_*]:text-[10px] [&>*]:mt-0">
+                        <DemandTags t={t} request={demands[0]} />
+                      </div>
+                    ) : null}
+                  </div>
+                  {/* Produto e embalagem (os totais da ficha). */}
+                  {packLines.map((line) => (
+                    <div
+                      key={line.productId}
+                      className="space-y-1"
+                      data-strategy-decision-product={line.productId}
+                    >
+                      <p
+                        className="truncate font-semibold text-zinc-900"
+                        title={nameOf(line.productId)}
+                      >
+                        {nameOf(line.productId)}
+                      </p>
+                      <CompactPack
+                        marker={`${d.id}:${line.productId}`}
+                        totals={lineTotals(line, line.quantity)}
+                        basis={line.basis}
+                        piecesText={line.quantity.toLocaleString(t.intl)}
+                        texts={cardTexts}
+                        packTexts={packingTexts}
+                        intl={t.intl}
+                      />
                     </div>
                   ))}
-                  {d.status === "pending" && canApprove ? (
+                  {schedules.length ? (
+                    <p className="text-[11px] text-zinc-600">
+                      {t("strategyCard.schedule")}:{" "}
+                      {schedules.length > 1
+                        ? t("strategyCard.scheduleCount", {
+                            n: schedules.length,
+                          })
+                        : t("strategy.line.scheduleItem", {
+                            index: schedules[0].index,
+                            quantity: schedules[0].quantity.toLocaleString(
+                              t.intl,
+                            ),
+                            date: formatDate(schedules[0].expectedAt, t),
+                          })}
+                    </p>
+                  ) : null}
+                  {/* Última compra (pedido direto). */}
+                  {d.choice === "last_supplier" ? compactReference(ref) : null}
+                  {d.note ? (
+                    <p
+                      className="line-clamp-2 text-[11px] text-zinc-600"
+                      title={d.note}
+                    >
+                      {t("strategyCard.note")}: {d.note}
+                    </p>
+                  ) : null}
+                  {blocked ? (
+                    <p
+                      className="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800"
+                      data-strategy-blocked-summary
+                    >
+                      {t("strategyCard.blocked")}
+                    </p>
+                  ) : null}
+                  {/* Ações. */}
+                  {approveHere ? (
                     <form
                       action={decideStrategyAction}
-                      className="mt-3 grid gap-2 border-t border-zinc-100 pt-3"
+                      className="grid gap-1.5 border-t border-zinc-100 pt-1.5"
                       data-strategy-approve-form
                       data-compact-fields
                     >
                       <input type="hidden" name="id" value={d.id} />
-                      <Field label={t("strategy.approvalNote")}>
-                        <Textarea
-                          name="note"
-                          rows={2}
-                          className="shadow-none sm:max-w-xl"
-                        />
-                      </Field>
-                      <div className="flex flex-wrap gap-2">
+                      <Textarea
+                        name="note"
+                        rows={1}
+                        placeholder={t("strategy.approvalNote")}
+                        aria-label={t("strategy.approvalNote")}
+                        title={t("strategy.approvalNote")}
+                        className="min-h-8 py-1 text-xs shadow-none"
+                      />
+                      <div className="flex flex-wrap gap-1.5">
                         {blocked ? null : (
                           <SubmitButton
                             name="decision"
                             value="approve"
+                            className="px-2.5 py-1 text-xs"
                             data-strategy-approve
                           >
                             {t("strategy.approve")}
@@ -616,54 +902,67 @@ export default async function PurchaseStrategyPage({
                           name="decision"
                           value="reject"
                           variant="secondary"
+                          className="px-2.5 py-1 text-xs"
                           data-strategy-reject
                         >
                           {t("strategy.reject")}
                         </SubmitButton>
+                        {detailsButton}
                       </div>
                     </form>
                   ) : d.status === "pending" ? (
-                    <p className="mt-2 text-xs text-zinc-500">
+                    <p className="text-[11px] text-zinc-500">
                       {t("strategy.waitingApproval")}
                     </p>
                   ) : null}
-                  {showForm && ref ? (
-                    <StrategyOrderForm
-                      decisionId={d.id}
-                      lines={packLines.map((line) => {
-                        const price = refOf(line.productId)?.unitPrice;
-                        return {
-                          productId: line.productId,
-                          productName: nameOf(line.productId),
-                          quantity: line.quantity,
-                          planned: line.planned,
-                          basis: line.basis,
-                          // O preço com a precisão gravada (sem arredondar).
-                          unitPrice:
-                            seesPrice && price != null ? String(price) : "",
-                          warnings: packWarnings(line.warnings),
-                        };
-                      })}
-                      seesPrice={seesPrice}
-                      currency={ref.currency ?? "USD"}
-                      leadTime={leadTime !== null ? String(leadTime) : ""}
-                      incoterm={
-                        ref.incoterm === "EXW" || ref.incoterm === "FOB"
-                          ? ref.incoterm
-                          : ""
-                      }
-                      texts={orderTexts}
-                      intl={t.intl}
-                    />
-                  ) : orderable ? (
-                    <p className="mt-2 text-xs text-zinc-500">
+                  {/* Encerrar a estratégia aprovada que parou (dono,
+                      19/11/2026): sai de Em andamento sem pedido e as
+                      encomendas abertas voltam para a fila. */}
+                  {blocked && d.status === "approved" && canClose ? (
+                    <form
+                      action={closeStrategyAction}
+                      className="grid gap-1.5 border-t border-zinc-100 pt-1.5"
+                      data-strategy-close-form
+                    >
+                      <input type="hidden" name="id" value={d.id} />
+                      <Textarea
+                        name="note"
+                        rows={1}
+                        maxLength={2000}
+                        placeholder={t("strategyClose.note")}
+                        aria-label={t("strategyClose.note")}
+                        title={t("strategyClose.note")}
+                        className="min-h-8 py-1 text-xs shadow-none"
+                      />
+                      <p
+                        className="line-clamp-2 text-[11px] text-zinc-600"
+                        title={t("strategyClose.hint")}
+                      >
+                        {t("strategyClose.hint")}
+                      </p>
+                      <div>
+                        <SubmitButton
+                          variant="secondary"
+                          className="px-2.5 py-1 text-xs"
+                          confirmText={t("strategyClose.confirm", {
+                            n: d.number,
+                          })}
+                          data-strategy-close
+                        >
+                          {t("strategyClose.button")}
+                        </SubmitButton>
+                      </div>
+                    </form>
+                  ) : null}
+                  {orderable && !showForm ? (
+                    <p className="text-[11px] text-zinc-500">
                       {t("strategy.waitingOrder")}
                     </p>
                   ) : null}
                   {d.status === "approved" &&
                   (d.choice === "quote" || d.choice === "quote_last") ? (
                     <p
-                      className="mt-2 text-xs text-zinc-600"
+                      className="text-[11px] text-zinc-600"
                       data-strategy-quote-pending
                     >
                       {t("strategy.quotePending")}{" "}
@@ -678,15 +977,63 @@ export default async function PurchaseStrategyPage({
                       ) : null}
                     </p>
                   ) : null}
+                  {approveHere ? null : (
+                    <div className="mt-auto flex flex-wrap gap-1.5 border-t border-zinc-100 pt-1.5">
+                      {showForm && ref ? (
+                        <QuickDialog
+                          label={t("strategy.generateOrder")}
+                          title={t("strategyCard.orderTitle", { title })}
+                          closeLabel={t("strategyCard.close")}
+                          tone="primary"
+                          size="lg"
+                          data-strategy-open-order={d.id}
+                        >
+                          <StrategyOrderForm
+                            decisionId={d.id}
+                            lines={packLines.map((line) => {
+                              const price = refOf(line.productId)?.unitPrice;
+                              return {
+                                productId: line.productId,
+                                productName: nameOf(line.productId),
+                                quantity: line.quantity,
+                                planned: line.planned,
+                                basis: line.basis,
+                                // O preço com a precisão gravada (sem arredondar).
+                                unitPrice:
+                                  seesPrice && price != null
+                                    ? String(price)
+                                    : "",
+                                warnings: packWarnings(line.warnings),
+                              };
+                            })}
+                            seesPrice={seesPrice}
+                            currency={ref.currency ?? "USD"}
+                            leadTime={leadTime !== null ? String(leadTime) : ""}
+                            incoterm={
+                              ref.incoterm === "EXW" || ref.incoterm === "FOB"
+                                ? ref.incoterm
+                                : ""
+                            }
+                            texts={orderTexts}
+                            intl={t.intl}
+                          />
+                        </QuickDialog>
+                      ) : null}
+                      {detailsButton}
+                    </div>
+                  )}
                 </section>
               );
             })}
-          </div>
+          </StrategyGrid>
         ) : (
-          <Empty>{t("strategy.openEmpty")}</Empty>
+          <p className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-500">
+            {t("strategy.openEmpty")}
+          </p>
         )}
-      </Card>
+      </section>
 
+      <div className="mt-3" />
       <Card title={t("strategy.sends.title")}>
         {sends.length ? (
           <ul className="divide-y divide-zinc-100" data-strategy-sends>

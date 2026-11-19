@@ -420,21 +420,61 @@ test("TS: pedido para um grupo econômico, com a distribuição padrão e as qua
   );
   // A programação do produto é a soma das empresas em cada entrega.
   await expect(group.locator("[data-group-mismatch]")).toHaveCount(0);
-  // Uma empresa: as peças dela por entrega (12 caixas em 2 entregas).
+  // Uma empresa: as caixas dela em cada entrega (12 caixas em 2 entregas).
   await group
     .locator("[data-group-company-select]")
     .selectOption("cliente-grupo-loja3");
-  await expect(group.locator("[data-group-summary]")).toContainText(
-    "288 / 288",
+  const round = (n: number) =>
+    group.locator(`[data-group-company-round="${n}"]`);
+  await expect(round(1)).toHaveValue("6");
+  await expect(round(2)).toHaveValue("6");
+  await expect(group.locator("[data-group-company-total]")).toContainText("12");
+
+  // Distribuição entre entregas (bloco do pedido): 60/40, salva como padrão
+  // do cliente; os totais de cada empresa se repartem de novo.
+  await page.locator("[data-round-shares-open]").click();
+  const rounds = page.locator("[data-round-shares-dialog]");
+  await rounds.locator('[data-round-percent="1"]').fill("60");
+  await rounds.locator('[data-round-percent="2"]').fill("40");
+  await rounds.locator("[data-round-save-default]").check();
+  await rounds.locator("[data-round-shares-apply]").click();
+  await expect(page.locator("[data-round-shares-summary]")).toHaveText(
+    "60% / 40%",
   );
+  await expect(round(1)).toHaveValue("7");
+  await expect(round(2)).toHaveValue("5");
+
+  // Uma a uma: a matriz Empresas × Entregas, com os totais.
+  await group.locator("[data-group-bulk-open]").click();
+  await bulk.locator('[data-group-bulk-tab="manual"]').click();
+  await bulk.locator('[data-group-cell="cliente-grupo-loja2:1"]').fill("20");
+  await expect(
+    bulk.locator('[data-group-row-total="cliente-grupo-loja2"]'),
+  ).toHaveText("27");
+  await bulk.locator("[data-group-manual-save]").click();
+
+  // O gerador do produto muda o total (100 caixas, 60/40): a matriz
+  // acompanha, na proporção de cada entrega.
+  await row
+    .locator("[data-rounds-generator] [data-generate-total]")
+    .fill("100");
+  await row.locator("[data-rounds-generator] [data-generate-submit]").click();
+  await group.locator("[data-group-bulk-open]").click();
+  await bulk.locator('[data-group-bulk-tab="manual"]').click();
+  await expect(bulk.locator('[data-group-column-total="1"]')).toHaveText("60");
+  await expect(bulk.locator('[data-group-column-total="2"]')).toHaveText("40");
+  await expect(
+    bulk.locator('[data-group-row-total="cliente-grupo-loja2"]'),
+  ).toHaveText("39");
+  await bulk.getByRole("button", { name: "Cancelar" }).click();
 
   // Vai no formulário: as peças de cada empresa em cada entrega.
   await expect(row.locator('input[name="p0.companyAllocations"]')).toHaveValue(
-    /"cliente-grupo-loja2","quantities":\[432,432\]/,
+    /"cliente-grupo-loja2","quantities":\[1296,576\]/,
   );
   await send(page);
   await expect(
     page.locator('[data-request-company="cliente-grupo-loja2"]'),
-  ).toContainText("864");
+  ).toContainText("1.872");
   await expect(page.locator("[data-request-company]")).toHaveCount(3);
 });

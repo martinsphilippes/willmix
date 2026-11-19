@@ -183,6 +183,8 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   // O Comprador gera o pedido com as condições da última compra.
   await login(page, "operador@wellmix.com");
   await page.goto("/app/purchase-strategy");
+  // Card compacto (dono, 19/11/2026): o formulário abre num painel.
+  await page.locator(`[data-strategy-open-order="${decisionA}"]`).click();
   const orderForm = page.locator(
     `#decision-${decisionA} [data-strategy-order-form]`,
   );
@@ -249,6 +251,7 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   await approve(page, decisionC);
   await login(page, "operador@wellmix.com");
   await page.goto("/app/purchase-strategy");
+  await page.locator(`[data-strategy-open-order="${decisionC}"]`).click();
   await page.locator(`#decision-${decisionC} [data-strategy-order]`).click();
   await page.waitForURL(/\/app\/orders\/[^/?]+\?created=1/);
   // A encomenda virou "pedido" e a mercadoria fica reservada para o cliente.
@@ -286,4 +289,42 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   await page.waitForURL(new RegExp(`/app/purchase-quotes/${quoteId}`));
   await expect(page.locator("[data-quote-answer-form]")).toBeVisible();
   await expect(page.locator("main")).not.toContainText("Loja do João");
+
+  // (e) Encomenda cancelada depois da aprovação (dono, 18 e 19/11/2026): a
+  // estratégia para (sem "Gerar pedido") e o Comprador a encerra.
+  await login(page, "joao@lojista.com");
+  await page.goto("/app/requests/new");
+  const item2 = page.locator('[data-request-item="0"]');
+  await choose(
+    item2.locator('[data-product-picker="catalog"]'),
+    "product-picker",
+    TAG,
+  );
+  await expect(item2.locator("[data-selection-quantity]")).not.toHaveValue("");
+  await page.getByRole("button", { name: /enviar|send/i }).click();
+  await createdRequestId(page);
+  const cancelled = new URL(page.url()).pathname.split("/").pop()!;
+  await login(page, "operador@wellmix.com");
+  await sendToQuotation(page, cancelled);
+  const decisionE = await chooseFor(page, cancelled, "last_supplier");
+  await approve(page, decisionE);
+  await login(page, "operador@wellmix.com");
+  await page.goto(`/app/requests/batch/${cancelled}`);
+  page.once("dialog", (dialog) => dialog.accept());
+  await page
+    .locator(
+      `form:has(input[name="ids"][value="${cancelled}"]) button[type="submit"]`,
+    )
+    .first()
+    .click();
+  await page.waitForURL(/[?&]deleted=1/);
+  await page.goto("/app/purchase-strategy");
+  const stopped = page.locator(`#decision-${decisionE}`);
+  await expect(stopped).toHaveAttribute("data-strategy-blocked", "1");
+  await expect(stopped.locator("[data-strategy-order-form]")).toHaveCount(0);
+  page.once("dialog", (dialog) => dialog.accept());
+  await stopped.locator("[data-strategy-close]").click();
+  await page.waitForURL(/[?&]closed=\d+/);
+  await expect(page.locator("[data-strategy-closed]")).toBeVisible();
+  await expect(page.locator(`#decision-${decisionE}`)).toHaveCount(0);
 });

@@ -69,6 +69,23 @@ export async function chooseStrategyAction(form: FormData) {
   });
 }
 
+/**
+ * Encerrar a estratégia aprovada que parou (encomenda cancelada ou já em
+ * outro pedido; dono, 19/11/2026): o Comprador ou a Diretoria de compras a
+ * tira de Em andamento, e as encomendas abertas voltam para a fila.
+ */
+export async function closeStrategyAction(form: FormData) {
+  const user = await requireUser();
+  await run("/app/purchase-strategy", async () => {
+    assertScreen(user, "purchaseStrategy");
+    const id = ID.parse(str(form, "id"));
+    const note = field(form, "note", z.string().trim().max(2000)) || null;
+    const { closeStrategy } = await import("@/lib/services/purchase-strategy");
+    const { decision, reopened } = await closeStrategy(user, id, note);
+    return `/app/purchase-strategy?closed=${decision.number}&reopened=${reopened}`;
+  });
+}
+
 /** A Diretoria de compras aprova ou recusa a estratégia. */
 export async function decideStrategyAction(form: FormData) {
   const user = await requireUser();

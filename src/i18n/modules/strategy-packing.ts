@@ -53,7 +53,7 @@ export const pt = {
   "strategyPack.closed.missing": "Não encontrada",
   "strategyPack.closed.title": "Estratégia parada",
   "strategyPack.closed.body":
-    "{list}: esta estratégia não gera o pedido de compra nem pode ser aprovada. Ela fica gravada como está.",
+    "{list}: esta estratégia não gera o pedido de compra nem pode ser aprovada. Para tirá-la de Em andamento, use “Encerrar estratégia”.",
   "strategyPack.closed.bodyPending":
     "{list}: esta estratégia não pode ser aprovada nem gerar o pedido de compra. Para tirá-la de Em andamento, recuse com o motivo.",
   "strategyPack.closed.item": "Encomenda nº {n} ({reason})",
@@ -61,6 +61,18 @@ export const pt = {
     "Alguma encomenda desta estratégia foi cancelada ou já está em outro pedido: a estratégia não é aprovada nem gera o pedido.",
   "strategy.error.strategy_packing_changed":
     "A embalagem de algum produto mudou desde que a tela abriu. Confira os totais e gere o pedido de novo.",
+  "strategy.status.closed": "Encerrada",
+  "strategyClose.button": "Encerrar estratégia",
+  "strategyClose.hint":
+    "Tira a estratégia de Em andamento sem gerar pedido. As encomendas desta solicitação que continuam abertas voltam para a fila, para uma nova escolha; a cancelada segue cancelada.",
+  "strategyClose.note": "Observação (opcional)",
+  "strategyClose.confirm":
+    "Encerrar a estratégia nº {n}? Ela sai de Em andamento sem gerar pedido.",
+  "strategyClose.done": "Estratégia nº {n} encerrada.",
+  "strategyClose.doneReopened":
+    "Estratégia nº {n} encerrada; {count} encomenda(s) voltaram para a fila.",
+  "strategy.error.strategy_not_stopped":
+    "Só dá para encerrar a estratégia aprovada que parou (encomenda cancelada ou já em outro pedido).",
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
@@ -111,7 +123,7 @@ export const en: Record<keyof typeof pt, string> = {
   "strategyPack.closed.missing": "Not found",
   "strategyPack.closed.title": "Strategy on hold",
   "strategyPack.closed.body":
-    "{list}: this strategy does not generate the purchase order and cannot be approved. It stays recorded as it is.",
+    "{list}: this strategy does not generate the purchase order and cannot be approved. To take it out of In progress, use “Close strategy”.",
   "strategyPack.closed.bodyPending":
     "{list}: this strategy cannot be approved or generate the purchase order. To take it out of In progress, reject it with the reason.",
   "strategyPack.closed.item": "Customer order no. {n} ({reason})",
@@ -119,6 +131,18 @@ export const en: Record<keyof typeof pt, string> = {
     "An order in this strategy was cancelled or is already in another order: the strategy is not approved and does not generate the order.",
   "strategy.error.strategy_packing_changed":
     "A product's packaging changed since the screen was opened. Check the totals and generate the order again.",
+  "strategy.status.closed": "Closed",
+  "strategyClose.button": "Close strategy",
+  "strategyClose.hint":
+    "Takes the strategy out of In progress without generating an order. This request's orders that are still open go back to the queue for a new choice; the cancelled one stays cancelled.",
+  "strategyClose.note": "Note (optional)",
+  "strategyClose.confirm":
+    "Close strategy no. {n}? It leaves In progress without generating an order.",
+  "strategyClose.done": "Strategy no. {n} closed.",
+  "strategyClose.doneReopened":
+    "Strategy no. {n} closed; {count} order(s) went back to the queue.",
+  "strategy.error.strategy_not_stopped":
+    "Only an approved strategy that stopped (order cancelled or already in another order) can be closed.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -164,7 +188,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategyPack.closed.missing": "未找到",
   "strategyPack.closed.title": "策略已暂停",
   "strategyPack.closed.body":
-    "{list}：此策略不生成采购订单，也不能审批。保持原样记录。",
+    "{list}：此策略不生成采购订单，也不能审批。如需移出“进行中”，请使用“关闭策略”。",
   "strategyPack.closed.bodyPending":
     "{list}：此策略不能审批，也不能生成采购订单。如需移出“进行中”，请填写原因后拒绝。",
   "strategyPack.closed.item": "客户订单 {n} 号（{reason}）",
@@ -172,4 +196,15 @@ export const zh: Record<keyof typeof pt, string> = {
     "此策略中有客户订单已取消或已在其他订单中：策略不能审批，也不生成订单。",
   "strategy.error.strategy_packing_changed":
     "打开页面后某产品的包装已变更。请核对合计后重新生成订单。",
+  "strategy.status.closed": "已关闭",
+  "strategyClose.button": "关闭策略",
+  "strategyClose.hint":
+    "将策略移出“进行中”，不生成订单。该申请中仍未关闭的客户订单回到队列，重新选择；已取消的保持取消。",
+  "strategyClose.note": "备注（可选）",
+  "strategyClose.confirm": "关闭第 {n} 号策略？它将移出“进行中”，不生成订单。",
+  "strategyClose.done": "第 {n} 号策略已关闭。",
+  "strategyClose.doneReopened":
+    "第 {n} 号策略已关闭；{count} 个客户订单回到队列。",
+  "strategy.error.strategy_not_stopped":
+    "只有已审批但已暂停的策略（客户订单已取消或已在其他订单中）才能关闭。",
 };

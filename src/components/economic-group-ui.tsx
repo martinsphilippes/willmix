@@ -1,17 +1,34 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  companyRounds,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import {
   equalShares,
   fromBaseCompany,
+  matrixColumns,
+  matrixFromTotals,
+  matrixPieces,
+  matrixTotals,
+  rescaleMatrix,
+  reshapeMatrix,
   sharesTotal,
   splitByPercent,
+  spreadRounds,
   taxIdText,
   type CompanyAmounts,
+  type CompanyMatrix,
   type EconomicGroup,
 } from "@/lib/economic-group";
-import { saveGroupSharesAction } from "@/app/app/actions/economic-groups";
+import { roundLoad } from "@/lib/purchase-rounds";
+import {
+  saveGroupSharesAction,
+  saveRoundSharesAction,
+} from "@/app/app/actions/economic-groups";
 import { useRequestCustomer } from "./request-customer-context";
 import { ROUNDS_EVENT, type RoundsEventDetail } from "./selection-quantity";
 import { fillLabel, type EconomicGroupLabels } from "./economic-group-labels";
@@ -123,7 +140,7 @@ function PercentTable({
   values,
   onChange,
 }: {
-  group: EconomicGroup;
+  group: Pick<EconomicGroup, "companies">;
   labels: EconomicGroupLabels;
   values: Record<string, string>;
   onChange: (next: Record<string, string>) => void;
@@ -336,25 +353,318 @@ export function GroupCustomerExtra({
   );
 }
 
-/** Peças de cada empresa gravadas antes (rascunho) → quantidade digitada. */
-export function amountsFromAllocations(
+/** Peças de cada empresa gravadas antes (rascunho) → matriz digitada. */
+export function matrixFromAllocations(
   allocations: ReadonlyArray<{ customerId: string; quantities: number[] }>,
   perCarton: number | null,
-): CompanyAmounts {
+): CompanyMatrix {
   const per = perCarton && perCarton > 0 ? perCarton : 1;
   return Object.fromEntries(
     allocations.map((a) => [
       a.customerId,
-      Math.round(a.quantities.reduce((s, q) => s + q, 0) / per),
+      a.quantities.map((q) => Math.round(q / per)),
     ]),
+  );
+}
+
+/** "Entrega 1 — 18/03/2027". */
+function roundLabel(
+  labels: EconomicGroupLabels,
+  i: number,
+  date: string | undefined,
+  intl: string,
+): string {
+  const n = fillLabel(labels["econGroup.rounds.delivery"], { n: i + 1 });
+  if (!date) return n;
+  const d = new Date(`${date}T12:00:00`);
+  return Number.isNaN(d.getTime())
+    ? n
+    : `${n} — ${d.toLocaleDateString(intl, { day: "2-digit", month: "2-digit", year: "numeric" })}`;
+}
+
+/** Percentuais de N entregas (texto dos campos). */
+function RoundPercentInputs({
+  n,
+  values,
+  onChange,
+  labels,
+  dates,
+  intl,
+  compact = false,
+}: {
+  n: number;
+  values: string[];
+  onChange: (next: string[]) => void;
+  labels: EconomicGroupLabels;
+  dates: string[];
+  intl: string;
+  compact?: boolean;
+}) {
+  const total = Math.round(values.reduce((s, v) => s + num(v), 0) * 100) / 100;
+  return (
+    <div className="space-y-2">
+      <div
+        className={cx(
+          "grid gap-2",
+          compact ? "grid-cols-[repeat(auto-fill,minmax(7rem,1fr))]" : "",
+        )}
+      >
+        {Array.from({ length: n }, (_, i) => (
+          <label
+            key={i}
+            className={cx(
+              "flex items-center gap-2 text-xs",
+              compact ? "" : "justify-between",
+            )}
+          >
+            <span className="text-zinc-700">
+              {compact
+                ? fillLabel(labels["econGroup.rounds.delivery"], { n: i + 1 })
+                : roundLabel(labels, i, dates[i], intl)}
+            </span>
+            <span className="flex items-center gap-1">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={values[i] ?? ""}
+                onChange={(e) => {
+                  const next = [...values];
+                  while (next.length < n) next.push("");
+                  next[i] = e.target.value;
+                  onChange(next);
+                }}
+                aria-label={roundLabel(labels, i, dates[i], intl)}
+                data-round-percent={i + 1}
+                className={cx(inputDenseClass, "w-16 tabular-nums")}
+              />
+              <span className="text-zinc-500">%</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span
+          className={cx(
+            "font-semibold",
+            Math.abs(total - 100) > 0.01
+              ? "text-amber-700"
+              : "text-emerald-700",
+          )}
+          data-round-percent-total={total}
+        >
+          {fillLabel(labels["econGroup.total"], { pct: total })}
+        </span>
+        <button
+          type="button"
+          onClick={() =>
+            onChange(
+              Array.from({ length: n }, (_, i) =>
+                String(
+                  equalShares(Array.from({ length: n }, (_, k) => String(k)))[
+                    String(i)
+                  ],
+                ),
+              ),
+            )
+          }
+          className="rounded-md border border-zinc-300 bg-white px-2 py-0.5 font-semibold text-zinc-700 hover:bg-zinc-50"
+          data-round-equal
+        >
+          {labels["econGroup.equal"]}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const percentsText = (p: readonly number[] | null, n: number) =>
+  p && p.length === n
+    ? p.map((v) => String(v))
+    : Array.from({ length: n }, (_, i) =>
+        String(
+          equalShares(Array.from({ length: n }, (_, k) => String(k)))[
+            String(i)
+          ],
+        ),
+      );
+const percentsOk = (values: string[], n: number) =>
+  values.length === n &&
+  Math.abs(values.reduce((s, v) => s + num(v), 0) - 100) <= 0.01 &&
+  values.every((v) => num(v) >= 0);
+
+/**
+ * Distribuição entre as entregas do pedido (dono, 19/11/2026), no bloco
+ * "Programação de entregas ao cliente": o percentual de cada entrega, o
+ * padrão do cliente para N entregas e "Salvar como padrão". Aplicar
+ * reparte de novo os produtos já preenchidos.
+ */
+export function RoundSharesControl({
+  labels,
+  count,
+  dates,
+  intl,
+}: {
+  labels: EconomicGroupLabels;
+  count: number;
+  dates: string[];
+  intl: string;
+}) {
+  const shared = useRequestCustomer();
+  const anchor = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [values, setValues] = useState<string[]>([]);
+  const [saveDefault, setSaveDefault] = useState(false);
+  const [state, setState] = useState<"idle" | "saving" | "error">("idle");
+  if (!shared || count < 2) return null;
+  const current = shared.roundPercents;
+  const customer = shared.customer;
+  const summary = current
+    ? current.map((p) => `${p}%`).join(" / ")
+    : labels["econGroup.rounds.equalSplit"];
+  const apply = async () => {
+    const percents = values.map((v) => Math.round(num(v) * 100) / 100);
+    if (saveDefault && customer) {
+      setState("saving");
+      const res = await saveRoundSharesAction({
+        customerId: customer.id,
+        percents,
+      }).catch(() => null);
+      if (!res?.ok) {
+        setState("error");
+        return;
+      }
+      shared.setRoundDefault(res.percents);
+    }
+    shared.setRoundPercents(percents);
+    // Os produtos já preenchidos (fora dos do grupo, que se repartem
+    // sozinhos) são repartidos de novo nessa proporção.
+    const form = anchor.current?.closest("form");
+    for (const [key, load] of Object.entries(shared.loads)) {
+      const index = key.replace(/^row-/, "");
+      if (form?.querySelector(`[data-group-row="${key}"][data-group-filled]`))
+        continue;
+      const per =
+        load.masterCartonQty && load.masterCartonQty > 0
+          ? load.masterCartonQty
+          : 1;
+      const total = load.pieces.reduce((a, b) => a + b, 0);
+      if (!total || load.pieces.length !== count) continue;
+      const units = Math.round(total / per);
+      form?.dispatchEvent(
+        new CustomEvent<RoundsEventDetail>(ROUNDS_EVENT, {
+          detail: {
+            prefix: `p${index}.`,
+            quantities: spreadRounds(units, count, percents).map(
+              (u) => u * per,
+            ),
+          },
+        }),
+      );
+    }
+    setState("idle");
+    setOpen(false);
+  };
+  return (
+    <div ref={anchor} className="space-y-1" data-round-shares>
+      <span className="block text-xs font-medium text-zinc-700">
+        {labels["econGroup.rounds.open"]}
+      </span>
+      <div className="flex min-h-9 items-center gap-1.5 text-xs">
+        <span className="tabular-nums text-zinc-700" data-round-shares-summary>
+          {summary}
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            setValues(percentsText(current ?? shared.roundDefault, count));
+            setSaveDefault(false);
+            setState("idle");
+            setOpen(true);
+          }}
+          title={labels["econGroup.rounds.open"]}
+          aria-label={labels["econGroup.rounds.open"]}
+          className={iconButton}
+          data-round-shares-open
+        >
+          <SplitIcon />
+        </button>
+      </div>
+      <GroupDialog
+        open={open}
+        title={fillLabel(labels["econGroup.rounds.title"], { n: count })}
+        closeLabel={labels["econGroup.close"]}
+        onClose={() => setOpen(false)}
+        data-round-shares-dialog
+      >
+        <p className="text-xs text-zinc-600">
+          {labels["econGroup.rounds.hint"]}
+        </p>
+        {shared.roundDefault ? (
+          <button
+            type="button"
+            onClick={() => setValues(percentsText(shared.roundDefault, count))}
+            className="text-xs font-semibold text-brand-700 underline"
+            data-round-use-default
+          >
+            {labels["econGroup.rounds.useDefault"]}
+          </button>
+        ) : null}
+        <RoundPercentInputs
+          n={count}
+          values={values}
+          onChange={setValues}
+          labels={labels}
+          dates={dates}
+          intl={intl}
+        />
+        {customer ? (
+          <label className="flex items-center gap-2 text-xs text-zinc-700">
+            <input
+              type="checkbox"
+              checked={saveDefault}
+              onChange={(e) => setSaveDefault(e.target.checked)}
+              className="h-4 w-4 accent-brand-600"
+              data-round-save-default
+            />
+            {fillLabel(labels["econGroup.rounds.saveDefault"], { n: count })}
+          </label>
+        ) : null}
+        {state === "error" ? (
+          <p className="text-xs font-medium text-red-700" role="alert">
+            {labels["econGroup.error.generic"]}
+          </p>
+        ) : null}
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
+          >
+            {labels["econGroup.cancel"]}
+          </button>
+          <button
+            type="button"
+            onClick={apply}
+            disabled={state === "saving" || !percentsOk(values, count)}
+            className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+            data-round-shares-apply
+          >
+            {labels["econGroup.bulk.apply"]}
+          </button>
+        </div>
+      </GroupDialog>
+    </div>
   );
 }
 
 /**
  * Empresa do grupo em cada produto: o seletor (com ✓ em quem já tem
  * quantidade e "Completo" quando todas têm), o ícone do preenchimento em
- * massa e a quantidade da empresa escolhida. "Todas as empresas" mostra a
- * soma. A soma por entrega vai para a programação do produto.
+ * massa e, com uma empresa escolhida, a quantidade dela em cada entrega.
+ * "Todas as empresas" mostra a soma. A matriz Empresas × Entregas é a fonte:
+ * a soma por entrega vai para a programação do produto e, quando a
+ * programação muda fora daqui (gerador ou "Programação X"), a matriz se
+ * recalcula na mesma proporção (dono, 19/11/2026).
  */
 export function RowGroupAllocation({
   prefix,
@@ -374,53 +684,105 @@ export function RowGroupAllocation({
   rounds: number;
   productName: string;
   labels: EconomicGroupLabels;
-  initial: CompanyAmounts | null;
+  initial: CompanyMatrix | null;
   intl: string;
 }) {
   const shared = useRequestCustomer();
   const group = shared?.group ?? null;
   const anchor = useRef<HTMLDivElement>(null);
-  const [amounts, setAmounts] = useState<CompanyAmounts>(initial ?? {});
+  const n = Math.max(1, rounds);
+  // Percentual entre entregas: o deste produto (do modal) ou o do pedido.
+  const [ownWeights, setOwnWeights] = useState<number[] | null>(null);
+  const weights =
+    ownWeights?.length === n
+      ? ownWeights
+      : shared?.roundPercents?.length === n
+        ? shared.roundPercents
+        : null;
+  const [matrix, setMatrix] = useState<CompanyMatrix>(initial ?? {});
   const [selected, setSelected] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
   const ids = group ? group.companies.map((c) => c.id) : [];
-  // Só as empresas do grupo de agora (trocar de cliente esquece as outras).
-  const current: CompanyAmounts = Object.fromEntries(
-    ids.filter((id) => (amounts[id] ?? 0) > 0).map((id) => [id, amounts[id]]),
+  const per = perCarton && perCarton > 0 ? perCarton : null;
+  // Outro número de entregas (ou outro percentual do pedido): o total de
+  // cada empresa repartido de novo.
+  const shapeKey = `${n}|${JSON.stringify(weights)}`;
+  const [shapedFor, setShapedFor] = useState(shapeKey);
+  if (shapedFor !== shapeKey) {
+    setShapedFor(shapeKey);
+    setMatrix((m) => reshapeMatrix(m, Object.keys(m), n, weights));
+  }
+  const current: CompanyMatrix = Object.fromEntries(
+    ids
+      .filter((id) => (matrix[id] ?? []).some((v) => v > 0))
+      .map((id) => [id, matrix[id]]),
   );
+  const totals = matrixTotals(current, ids);
   const filled = Object.keys(current).length;
-  const split = companyRounds(current, ids, rounds, perCarton);
+  const split = matrixPieces(current, ids, n, per);
   const key = filled ? JSON.stringify(split.total) : "";
+  const pending = useRef<string | null>(null);
   // A soma por entrega vai para a programação do produto (o campo de
   // quantidade da linha escuta o evento).
   useEffect(() => {
     if (!key) return;
+    pending.current = key;
+    const timer = window.setTimeout(() => {
+      if (pending.current === key) pending.current = null;
+    }, 1500);
     anchor.current?.closest("form")?.dispatchEvent(
       new CustomEvent<RoundsEventDetail>(ROUNDS_EVENT, {
         detail: { prefix, quantities: JSON.parse(key) as number[] },
       }),
     );
+    return () => window.clearTimeout(timer);
   }, [key, prefix]);
-  if (!group) return null;
-  const fmt = (n: number) => n.toLocaleString(intl);
-  const unitCartons = !!perCarton && perCarton > 0;
+  // A programação do produto mudou fora daqui: a matriz acompanha, na
+  // mesma proporção de cada entrega.
   const load = shared?.loads[rowKey];
-  const shown = load?.pieces ?? [];
-  const mismatch =
-    filled > 0 &&
-    (shown.length !== split.total.length ||
-      shown.some((p, i) => p !== split.total[i]));
+  const loadKey = load ? JSON.stringify(load.pieces) : "";
+  const shares = group?.shares ?? {};
+  const sharesKey = JSON.stringify(shares);
+  const syncFromLoad = useEffectEvent((loaded: string) => {
+    if (!loaded || !group) return;
+    if (loaded === key) {
+      pending.current = null;
+      return;
+    }
+    if (pending.current) return;
+    const pieces = JSON.parse(loaded) as number[];
+    if (pieces.length !== n) return;
+    const unit = per ?? 1;
+    const targets = pieces.map((p) => Math.round(p / unit));
+    const total = targets.reduce((a, b) => a + b, 0);
+    if (!total && !filled) return;
+    const next = rescaleMatrix(matrix, ids, targets, shares);
+    if (next) setMatrix(next);
+  });
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a programação vem de outro componente (o campo de quantidade da linha)
+    syncFromLoad(loadKey);
+  }, [loadKey, n, per, sharesKey]);
+  if (!group) return null;
+  const fmt = (v: number) => v.toLocaleString(intl);
   const company = group.companies.find((c) => c.id === selected) ?? null;
   const sumPieces = split.total.reduce((a, b) => a + b, 0);
-  const sumAmount = Object.values(current).reduce((a, b) => a + b, 0);
+  const sumAmount = Object.values(totals).reduce((a, b) => a + b, 0);
   const allocations = ids
     .filter((id) => split.byCompany[id])
     .map((id) => ({ customerId: id, quantities: split.byCompany[id] }));
+  const setCell = (id: string, i: number, value: number) =>
+    setMatrix((m) => {
+      const row = Array.from({ length: n }, (_, k) => m[id]?.[k] ?? 0);
+      row[i] = value;
+      return { ...m, [id]: row };
+    });
   return (
     <div
       ref={anchor}
       className="flex max-w-full flex-col items-end gap-1 text-xs"
       data-group-row={rowKey}
+      data-group-filled={filled ? "" : undefined}
     >
       <input
         type="hidden"
@@ -437,11 +799,7 @@ export function RowGroupAllocation({
         >
           <option value="">{labels["econGroup.row.all"]}</option>
           {group.companies.map((c) => (
-            <option
-              key={c.id}
-              value={c.id}
-              data-done={current[c.id] ? "" : undefined}
-            >
+            <option key={c.id} value={c.id}>
               {current[c.id] ? "✓ " : "  "}
               {c.name}
             </option>
@@ -476,34 +834,54 @@ export function RowGroupAllocation({
         </button>
       </div>
       {company ? (
-        <label className="flex items-center gap-1.5">
-          <span className="text-zinc-600">
-            {unitCartons
-              ? labels["econGroup.row.cartonsOf"]
-              : labels["econGroup.row.piecesOf"]}
+        <div
+          className="flex flex-wrap items-end justify-end gap-1.5"
+          data-group-company-rounds
+        >
+          {Array.from({ length: n }, (_, i) => (
+            <label key={i} className="space-y-0.5 text-right">
+              <span className="block text-zinc-600">
+                {n > 1
+                  ? fillLabel(labels["econGroup.rounds.delivery"], { n: i + 1 })
+                  : per
+                    ? labels["econGroup.row.cartonsOf"]
+                    : labels["econGroup.row.piecesOf"]}
+              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={
+                  matrix[company.id]?.[i] ? String(matrix[company.id][i]) : ""
+                }
+                onChange={(e) =>
+                  setCell(
+                    company.id,
+                    i,
+                    Math.max(0, Math.floor(num(e.target.value))),
+                  )
+                }
+                className={cx(inputDenseClass, "w-16 tabular-nums")}
+                data-group-company-round={i + 1}
+              />
+            </label>
+          ))}
+          <span
+            className="pb-1.5 font-semibold text-zinc-700"
+            data-group-company-total
+          >
+            = {fmt(totals[company.id] ?? 0)}{" "}
+            {(per
+              ? labels["econGroup.col.cartons"]
+              : labels["econGroup.col.pieces"]
+            ).toLowerCase()}
           </span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={current[company.id] ? String(current[company.id]) : ""}
-            onChange={(e) => {
-              const n = Math.max(0, Math.floor(num(e.target.value)));
-              setAmounts((prev) => ({ ...prev, [company.id]: n }));
-            }}
-            className={cx(inputDenseClass, "w-24 tabular-nums")}
-            data-group-company-amount={company.id}
-          />
-        </label>
+        </div>
       ) : null}
       <p className="text-right text-zinc-600" data-group-summary>
         {company
-          ? split.byCompany[company.id]
-            ? fillLabel(labels["econGroup.row.split"], {
-                list: split.byCompany[company.id].map(fmt).join(" / "),
-              })
-            : labels["econGroup.row.noQty"]
+          ? null
           : filled
-            ? unitCartons
+            ? per
               ? fillLabel(labels["econGroup.row.sum"], {
                   cartons: fmt(sumAmount),
                   pieces: fmt(sumPieces),
@@ -513,25 +891,24 @@ export function RowGroupAllocation({
                 })
             : null}
       </p>
-      {mismatch ? (
-        <p
-          className="max-w-xs rounded-md bg-amber-50 px-2 py-1 text-right text-amber-800"
-          role="status"
-          data-group-mismatch
-        >
-          {labels["econGroup.mismatch"]}
-        </p>
-      ) : null}
       <BulkDialog
         open={bulkOpen}
         onClose={() => setBulkOpen(false)}
         group={group}
         labels={labels}
         productName={productName}
-        unitCartons={unitCartons}
-        amounts={current}
-        onApply={(next) => {
-          setAmounts(next);
+        per={per}
+        rounds={n}
+        weights={weights}
+        dates={shared?.planDates ?? []}
+        matrix={current}
+        load={load ?? null}
+        onApply={(next, ownW) => {
+          if (ownW) setOwnWeights(ownW);
+          setShapedFor(
+            `${n}|${JSON.stringify(ownW?.length === n ? ownW : weights)}`,
+          );
+          setMatrix(next);
           setBulkOpen(false);
         }}
         intl={intl}
@@ -540,15 +917,22 @@ export function RowGroupAllocation({
   );
 }
 
-/** Preenchimento em massa de um produto: por percentual ou uma a uma. */
+/**
+ * Preenchimento em massa de um produto: por percentual (das empresas e das
+ * entregas) ou uma a uma, na matriz Empresas × Entregas com os totais.
+ */
 function BulkDialog({
   open,
   onClose,
   group,
   labels,
   productName,
-  unitCartons,
-  amounts,
+  per,
+  rounds,
+  weights,
+  dates,
+  matrix,
+  load,
   onApply,
   intl,
 }: {
@@ -557,27 +941,46 @@ function BulkDialog({
   group: EconomicGroup;
   labels: EconomicGroupLabels;
   productName: string;
-  unitCartons: boolean;
-  amounts: CompanyAmounts;
-  onApply: (next: CompanyAmounts) => void;
+  per: number | null;
+  rounds: number;
+  weights: number[] | null;
+  dates: string[];
+  matrix: CompanyMatrix;
+  load: {
+    masterCartonQty: number | null;
+    cbmPerCarton: number | null;
+    capacityCbm: number | null;
+  } | null;
+  onApply: (next: CompanyMatrix, ownWeights: number[] | null) => void;
   intl: string;
 }) {
   const ids = group.companies.map((c) => c.id);
+  const n = rounds;
   const [tab, setTab] = useState<"percent" | "manual">("percent");
   const [percents, setPercents] = useState<Record<string, string>>({});
+  const [roundValues, setRoundValues] = useState<string[]>([]);
+  // "% só deste produto": só quando mudado aqui (senão vale o do pedido).
+  const [roundsTouched, setRoundsTouched] = useState(false);
   const [mode, setMode] = useState<"base" | "total">("total");
   const [baseId, setBaseId] = useState(ids[0] ?? "");
   const [qty, setQty] = useState("");
-  const [manual, setManual] = useState<Record<string, string>>({});
-  // Abrir: o padrão do grupo (ou o igual) e as quantidades de agora.
+  const [cells, setCells] = useState<Record<string, string[]>>({});
+  // Abrir: o padrão do grupo (ou o igual), as entregas e a matriz de agora.
   const [openedFor, setOpenedFor] = useState(false);
   if (open && !openedFor) {
     setOpenedFor(true);
     const hasDefault = sharesTotal(group.shares) > 0;
     setPercents(toText(hasDefault ? group.shares : equalShares(ids)));
-    setManual(
+    setRoundValues(percentsText(weights, n));
+    setRoundsTouched(false);
+    setCells(
       Object.fromEntries(
-        ids.map((id) => [id, amounts[id] ? String(amounts[id]) : ""]),
+        ids.map((id) => [
+          id,
+          Array.from({ length: n }, (_, i) =>
+            matrix[id]?.[i] ? String(matrix[id][i]) : "",
+          ),
+        ]),
       ),
     );
     setQty("");
@@ -585,13 +988,17 @@ function BulkDialog({
   if (!open && openedFor) setOpenedFor(false);
   const shares = toNumbers(percents);
   const total = sharesTotal(shares);
+  const roundsOk = n < 2 || percentsOk(roundValues, n);
+  const roundWeights =
+    n >= 2 && roundsOk ? roundValues.map((v) => num(v)) : null;
+  const ownWeights = roundsTouched ? roundWeights : null;
   const amount = Math.max(0, Math.floor(num(qty)));
   const preview: CompanyAmounts | null = !amount
     ? null
     : mode === "total"
       ? splitByPercent(amount, ids, shares)
       : fromBaseCompany(baseId, amount, ids, shares);
-  const fmt = (n: number) => n.toLocaleString(intl);
+  const fmt = (v: number) => v.toLocaleString(intl);
   const tabClass = (on: boolean) =>
     cx(
       "rounded-full border px-3 py-1 text-xs font-semibold",
@@ -599,9 +1006,43 @@ function BulkDialog({
         ? "border-brand-600 bg-brand-50 text-brand-700"
         : "border-zinc-200 text-zinc-700 hover:bg-zinc-50",
     );
-  const unitLabel = unitCartons
+  const unitLabel = per
     ? labels["econGroup.col.cartons"]
     : labels["econGroup.col.pieces"];
+  const cellMatrix: CompanyMatrix = Object.fromEntries(
+    ids.map((id) => [
+      id,
+      Array.from({ length: n }, (_, i) =>
+        Math.max(0, Math.floor(num(cells[id]?.[i] ?? ""))),
+      ),
+    ]),
+  );
+  const rowTotals = matrixTotals(cellMatrix, ids);
+  const columns = matrixColumns(cellMatrix, ids, n);
+  const containersOf = (units: number) => {
+    if (!load || !per) return null;
+    const l = roundLoad(
+      units * per,
+      load.masterCartonQty,
+      load.cbmPerCarton,
+      load.capacityCbm,
+    );
+    return l?.needed ?? null;
+  };
+  /** Preenche a matriz com os totais de cada empresa e as entregas. */
+  const fillCells = (totals: CompanyAmounts) => {
+    const m = matrixFromTotals(totals, ids, n, roundWeights);
+    setCells(
+      Object.fromEntries(
+        ids.map((id) => [
+          id,
+          Array.from({ length: n }, (_, i) =>
+            m[id]?.[i] ? String(m[id][i]) : "",
+          ),
+        ]),
+      ),
+    );
+  };
   return (
     <GroupDialog
       open={open}
@@ -634,6 +1075,33 @@ function BulkDialog({
           {labels["econGroup.bulk.manual"]}
         </button>
       </div>
+      {n >= 2 ? (
+        <details
+          className="rounded-lg border border-zinc-200 p-2"
+          data-group-bulk-rounds
+        >
+          <summary className="cursor-pointer text-xs font-semibold text-zinc-700">
+            {labels["econGroup.bulk.roundsLabel"]}:{" "}
+            <span className="font-normal tabular-nums">
+              {roundValues.map((v) => `${num(v)}%`).join(" / ")}
+            </span>
+          </summary>
+          <div className="mt-2">
+            <RoundPercentInputs
+              n={n}
+              values={roundValues}
+              onChange={(v) => {
+                setRoundValues(v);
+                setRoundsTouched(true);
+              }}
+              labels={labels}
+              dates={dates}
+              intl={intl}
+              compact
+            />
+          </div>
+        </details>
+      ) : null}
       {tab === "percent" ? (
         <div className="space-y-3">
           {sharesTotal(group.shares) > 0 ? (
@@ -701,10 +1169,10 @@ function BulkDialog({
             <label className="space-y-1">
               <span className="block font-medium text-zinc-700">
                 {mode === "base"
-                  ? unitCartons
+                  ? per
                     ? labels["econGroup.bulk.baseQty"]
                     : labels["econGroup.bulk.baseQtyPieces"]
-                  : unitCartons
+                  : per
                     ? labels["econGroup.bulk.totalQty"]
                     : labels["econGroup.bulk.totalQtyPieces"]}
               </span>
@@ -749,8 +1217,14 @@ function BulkDialog({
             </button>
             <button
               type="button"
-              onClick={() => preview && onApply(preview)}
-              disabled={!preview || Math.abs(total - 100) > 0.01}
+              onClick={() =>
+                preview &&
+                onApply(
+                  matrixFromTotals(preview, ids, n, roundWeights),
+                  ownWeights,
+                )
+              }
+              disabled={!preview || Math.abs(total - 100) > 0.01 || !roundsOk}
               className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
               data-group-bulk-apply
             >
@@ -760,47 +1234,120 @@ function BulkDialog({
         </div>
       ) : (
         <div className="space-y-3">
-          <p className="text-xs text-zinc-600">
-            {labels["econGroup.bulk.manualHint"]}
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-zinc-600">
+              {labels["econGroup.bulk.manualHint"]}
+            </p>
+            <button
+              type="button"
+              onClick={() => fillCells(rowTotals)}
+              disabled={!roundsOk}
+              className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+              data-group-matrix-spread
+            >
+              {labels["econGroup.matrix.spread"]}
+            </button>
+          </div>
           <div className="max-h-[55dvh] overflow-auto rounded-lg border border-zinc-200">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-zinc-50 text-left text-xs text-zinc-600">
+            <table className="w-full text-sm" data-group-matrix>
+              <thead className="sticky top-0 z-10 bg-zinc-50 text-left text-xs text-zinc-600">
                 <tr>
                   <th className="px-2 py-1.5 font-semibold">
                     {labels["econGroup.col.company"]}
                   </th>
-                  <th className="px-2 py-1.5 font-semibold">
-                    {labels["econGroup.col.taxId"]}
-                  </th>
-                  <th className="w-28 px-2 py-1.5 font-semibold">
-                    {unitLabel}
+                  {Array.from({ length: n }, (_, i) => (
+                    <th
+                      key={i}
+                      className="px-2 py-1.5 text-right font-semibold whitespace-nowrap"
+                    >
+                      {n > 1
+                        ? roundLabel(labels, i, dates[i], intl)
+                        : unitLabel}
+                    </th>
+                  ))}
+                  <th className="px-2 py-1.5 text-right font-semibold">
+                    {labels["econGroup.matrix.total"]}
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {group.companies.map((c) => (
                   <tr key={c.id} className="border-t border-zinc-100">
-                    <td className="px-2 py-1">{c.name}</td>
-                    <td className="px-2 py-1 tabular-nums text-zinc-600">
-                      {taxIdText(c.taxId)}
-                    </td>
                     <td className="px-2 py-1">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={manual[c.id] ?? ""}
-                        onChange={(e) =>
-                          setManual({ ...manual, [c.id]: e.target.value })
-                        }
-                        aria-label={`${unitLabel} ${c.name}`}
-                        className={cx(inputDenseClass, "w-24 tabular-nums")}
-                        data-group-manual={c.id}
-                      />
+                      <span className="block">{c.name}</span>
+                      <span className="block text-xs tabular-nums text-zinc-500">
+                        {taxIdText(c.taxId)}
+                      </span>
+                    </td>
+                    {Array.from({ length: n }, (_, i) => (
+                      <td key={i} className="px-2 py-1 text-right">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={cells[c.id]?.[i] ?? ""}
+                          onChange={(e) =>
+                            setCells((prev) => {
+                              const row = Array.from(
+                                { length: n },
+                                (_, k) => prev[c.id]?.[k] ?? "",
+                              );
+                              row[i] = e.target.value;
+                              return { ...prev, [c.id]: row };
+                            })
+                          }
+                          aria-label={`${c.name} ${roundLabel(labels, i, dates[i], intl)}`}
+                          className={cx(
+                            inputDenseClass,
+                            "w-20 text-right tabular-nums",
+                          )}
+                          data-group-cell={`${c.id}:${i + 1}`}
+                        />
+                      </td>
+                    ))}
+                    <td
+                      className="px-2 py-1 text-right font-semibold tabular-nums"
+                      data-group-row-total={c.id}
+                    >
+                      {fmt(rowTotals[c.id] ?? 0)}
                     </td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot className="sticky bottom-0 bg-zinc-50 text-xs">
+                <tr className="border-t border-zinc-200">
+                  <td className="px-2 py-1.5 font-semibold">
+                    {labels["econGroup.matrix.total"]}
+                  </td>
+                  {columns.map((v, i) => (
+                    <td
+                      key={i}
+                      className="px-2 py-1.5 text-right font-semibold tabular-nums"
+                      data-group-column-total={i + 1}
+                    >
+                      {fmt(v)}
+                    </td>
+                  ))}
+                  <td className="px-2 py-1.5 text-right font-semibold tabular-nums">
+                    {fmt(columns.reduce((a, b) => a + b, 0))}
+                  </td>
+                </tr>
+                {per && load?.capacityCbm ? (
+                  <tr>
+                    <td className="px-2 py-1 text-zinc-600">
+                      {labels["econGroup.matrix.containers"]}
+                    </td>
+                    {columns.map((v, i) => (
+                      <td
+                        key={i}
+                        className="px-2 py-1 text-right tabular-nums text-zinc-600"
+                      >
+                        {containersOf(v) ?? "—"}
+                      </td>
+                    ))}
+                    <td />
+                  </tr>
+                ) : null}
+              </tfoot>
             </table>
           </div>
           <div className="flex justify-end gap-2">
@@ -813,16 +1360,7 @@ function BulkDialog({
             </button>
             <button
               type="button"
-              onClick={() =>
-                onApply(
-                  Object.fromEntries(
-                    ids.map((id) => [
-                      id,
-                      Math.max(0, Math.floor(num(manual[id] ?? ""))),
-                    ]),
-                  ),
-                )
-              }
+              onClick={() => onApply(cellMatrix, ownWeights)}
               className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
               data-group-manual-save
             >

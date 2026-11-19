@@ -42,9 +42,10 @@ const NEW_PRODUCT = [
   "/app/booking/selection",
   "/app/supplier-requests/invites",
   "/app/requests",
-  // Estratégia de Compra logo depois de Encomendas (dono, 18/11/2026).
-  "/app/purchase-strategy",
   "/app/replenishment",
+  // Estratégia de Compra abaixo de Reposição e acima de Cotação de compra
+  // (dono, 19/11/2026).
+  "/app/purchase-strategy",
   "/app/purchase-quotes",
   "/app/supplier-requests",
 ];

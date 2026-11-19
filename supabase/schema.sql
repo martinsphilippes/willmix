@@ -1224,6 +1224,20 @@ create index if not exists "economic_group_shares_by_customer" on public."econom
 create index if not exists "economic_group_shares_created" on public."economic_group_shares" ("createdAt");
 create index if not exists "economic_group_shares_created_id" on public."economic_group_shares" ("createdAt", "id");
 
+create table if not exists public."delivery_round_shares" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."delivery_round_shares" enable row level security;
+alter table public."delivery_round_shares" add column if not exists "customerId" text;
+alter table public."delivery_round_shares" add column if not exists "rounds" bigint;
+alter table public."delivery_round_shares" add column if not exists "percents" jsonb;
+alter table public."delivery_round_shares" add column if not exists "updatedByUserId" text;
+create index if not exists "delivery_round_shares_by_customer" on public."delivery_round_shares" ("customerId");
+create index if not exists "delivery_round_shares_created" on public."delivery_round_shares" ("createdAt");
+create index if not exists "delivery_round_shares_created_id" on public."delivery_round_shares" ("createdAt", "id");
+
 create table if not exists public."customer_attendances" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),

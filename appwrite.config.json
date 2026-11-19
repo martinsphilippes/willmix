@@ -7478,6 +7478,58 @@
       ]
     },
     {
+      "$id": "delivery_round_shares",
+      "databaseId": "willmix",
+      "name": "Distribuição padrão entre entregas (por cliente)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "customerId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "rounds",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "percents",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "updatedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_customer",
+          "type": "key",
+          "columns": [
+            "customerId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
       "$id": "customer_attendances",
       "databaseId": "willmix",
       "name": "Atendimentos ao cliente (carteira)",
@@ -11801,7 +11853,8 @@
             "pending",
             "approved",
             "rejected",
-            "done"
+            "done",
+            "closed"
           ]
         },
         {

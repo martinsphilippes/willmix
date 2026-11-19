@@ -53,12 +53,25 @@ export const pt = {
     "A empresa base precisa de um percentual maior que zero.",
   "econGroup.bulk.apply": "Aplicar",
   "econGroup.bulk.manualHint":
-    "Digite a quantidade de cada empresa e salve. As entregas de cada empresa seguem as datas do pedido.",
+    "Digite as caixas de cada empresa em cada entrega e salve. O total de cada empresa e o de cada entrega aparecem na tabela.",
   "econGroup.mismatch":
     "A soma das empresas não bate com as entregas deste produto. Preencha pelas empresas do grupo.",
   "reqBatch.error.allocations":
     "As quantidades das empresas do grupo econômico não batem com as entregas de um produto. Preencha de novo pelas empresas do grupo.",
   "econGroup.request.title": "Empresas do grupo econômico",
+  "econGroup.rounds.open": "Distribuição entre entregas",
+  "econGroup.rounds.equalSplit": "partes iguais",
+  "econGroup.rounds.title": "Distribuição entre as {n} entregas",
+  "econGroup.rounds.hint":
+    "O percentual de cada entrega vale para todos os produtos do pedido: o gerador de cada produto reparte as caixas nessa proporção, e os produtos já preenchidos são repartidos de novo ao aplicar.",
+  "econGroup.rounds.delivery": "Entrega {n}",
+  "econGroup.rounds.useDefault": "Usar o padrão deste cliente",
+  "econGroup.rounds.saveDefault":
+    "Salvar como padrão deste cliente para {n} entregas",
+  "econGroup.bulk.roundsLabel": "% entre as entregas deste produto",
+  "econGroup.matrix.total": "Total",
+  "econGroup.matrix.containers": "Containers",
+  "econGroup.matrix.spread": "Repartir os totais pelos % das entregas",
   "econGroup.request.total": "Total",
 } as const;
 
@@ -113,12 +126,25 @@ export const en: Record<keyof typeof pt, string> = {
   "econGroup.bulk.baseZero": "The base company needs a percentage above zero.",
   "econGroup.bulk.apply": "Apply",
   "econGroup.bulk.manualHint":
-    "Type each company's quantity and save. Each company's deliveries follow the order dates.",
+    "Type each company's cartons in each delivery and save. Each company's and each delivery's totals show in the table.",
   "econGroup.mismatch":
     "The companies' sum does not match this product's deliveries. Fill it through the group companies.",
   "reqBatch.error.allocations":
     "The economic group companies' quantities do not match a product's deliveries. Fill them again through the group companies.",
   "econGroup.request.title": "Economic group companies",
+  "econGroup.rounds.open": "Split across deliveries",
+  "econGroup.rounds.equalSplit": "equal parts",
+  "econGroup.rounds.title": "Split across the {n} deliveries",
+  "econGroup.rounds.hint":
+    "Each delivery's percentage applies to every product in the order: each product's generator splits the cartons in this proportion, and products already filled are split again when you apply.",
+  "econGroup.rounds.delivery": "Delivery {n}",
+  "econGroup.rounds.useDefault": "Use this customer's default",
+  "econGroup.rounds.saveDefault":
+    "Save as this customer's default for {n} deliveries",
+  "econGroup.bulk.roundsLabel": "% across this product's deliveries",
+  "econGroup.matrix.total": "Total",
+  "econGroup.matrix.containers": "Containers",
+  "econGroup.matrix.spread": "Split the totals by the delivery %",
   "econGroup.request.total": "Total",
 };
 
@@ -171,10 +197,22 @@ export const zh: Record<keyof typeof pt, string> = {
   "econGroup.bulk.baseZero": "基准公司的百分比必须大于零。",
   "econGroup.bulk.apply": "应用",
   "econGroup.bulk.manualHint":
-    "逐一填写每家公司的数量并保存。每家公司的交货按订单日期进行。",
+    "填写每家公司每次交货的箱数并保存。表中显示每家公司和每次交货的合计。",
   "econGroup.mismatch": "各公司合计与该产品的交货不一致。请按集团公司填写。",
   "reqBatch.error.allocations":
     "经济集团公司的数量与某个产品的交货不一致。请按集团公司重新填写。",
   "econGroup.request.title": "经济集团公司",
+  "econGroup.rounds.open": "各次交货分配",
+  "econGroup.rounds.equalSplit": "平均分配",
+  "econGroup.rounds.title": "{n} 次交货的分配",
+  "econGroup.rounds.hint":
+    "每次交货的百分比适用于订单中的所有产品：每个产品的生成器按此比例分配箱数，应用时已填写的产品会重新分配。",
+  "econGroup.rounds.delivery": "第 {n} 次交货",
+  "econGroup.rounds.useDefault": "使用该客户的默认值",
+  "econGroup.rounds.saveDefault": "保存为该客户 {n} 次交货的默认值",
+  "econGroup.bulk.roundsLabel": "该产品各次交货的 %",
+  "econGroup.matrix.total": "合计",
+  "econGroup.matrix.containers": "集装箱",
+  "econGroup.matrix.spread": "按交货百分比分配合计",
   "econGroup.request.total": "合计",
 };

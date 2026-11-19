@@ -31,6 +31,27 @@ O grupo é aberto escolhendo como cliente **a empresa que representa o grupo** (
 5. **Tela principal sem empresa escolhida:** a soma de todas ("Soma das empresas: N caixas (P peças)"). Com uma empresa: a quantidade dela (editável) e as peças por entrega.
 6. A **programação do produto** passa a ser a soma das empresas em cada entrega (o campo de quantidade recebe o evento `selection:rounds`), então a **Composição de containers** sempre soma todas as empresas de todos os produtos. Mexer à mão nas entregas do produto depois mostra o aviso de que a soma não bate.
 
+## Distribuição entre entregas e matriz Empresas × Entregas (dono, 19/11/2026)
+
+Decisões: vale para qualquer pedido (também de um cliente só); o padrão fica por cliente e por número de entregas; com uma empresa escolhida, uma caixa por entrega; a matriz fica na aba "Uma a uma" (sem aba nova).
+
+1. **Distribuição entre entregas** (bloco "Programação de entregas ao cliente", ao lado de "# Entregas", com 2 entregas ou mais): o resumo ("60% / 40%" ou "partes iguais") e o ícone que abre o modal com o % de cada entrega (com a data), "Dividir igual", o total (100%), "Usar o padrão deste cliente" e "Salvar como padrão deste cliente para N entregas". Aplicar:
+   - o gerador de cada produto ("Gerar as entregas programadas pela quantidade" e o "+ Programação") passa a repartir as caixas nessa proporção (`FixedSchedulePlan.weights`; sem ela, partes iguais como antes);
+   - os produtos já preenchidos são repartidos de novo (evento `selection:rounds`); os do grupo se repartem pela matriz (o total de cada empresa nas entregas).
+   - O padrão fica na tabela nova `delivery_round_shares` (cliente, número de entregas, percentuais; gravar troca só o do mesmo número), lido por `/api/customers/round-shares` e gravado por `saveRoundSharesAction`. No pedido de um grupo, o cliente é a empresa que representa o grupo. Trocar o número de entregas ou o cliente busca o padrão daquele número.
+2. **Matriz Empresas × Entregas** (aba "Uma a uma" do preenchimento em massa): linhas = empresas (nome e CNPJ), colunas = entregas (com a data), células em caixas; total de cada empresa, total de cada entrega e os containers de cada entrega (pelo container escolhido no produto). "Repartir os totais pelos % das entregas" refaz as células com o total de cada empresa.
+3. **"% entre as entregas deste produto"** (no alto do modal, recolhido): começa com o do pedido; mudado aqui, vale só para este produto (também na aba "Por percentual", onde o total de cada empresa vai para as entregas nessa proporção, e não mais em partes iguais).
+4. **Empresa escolhida na tela principal:** uma caixa por entrega e o total da empresa.
+5. **Sincronização com a programação do produto:**
+   - matriz → programação: a soma de cada entrega vai para a programação e a quantidade do produto;
+   - programação → matriz: mudar o gerador ou uma "Programação X" à mão reparte o novo total de cada entrega entre as empresas na proporção que elas já tinham nela (entrega vazia: a proporção do total de cada empresa; sem nada, a distribuição padrão do grupo) (`rescaleMatrix`, src/lib/economic-group.ts);
+   - abrir o modal de novo, refazer e aplicar muda outra vez a programação e o total.
+6. O que é gravado continua em `requests.companyAllocations` (peças de cada empresa por entrega), conferido pelo servidor.
+
+## Nome das empresas (dono, 19/11/2026)
+
+Nas telas do pedido do grupo (distribuição padrão, seletor de empresa, preenchimento em massa, matriz e a tabela "Empresas do grupo econômico" da solicitação), a empresa aparece pela **razão social** (`parties.legalName`, a `RAZAO_SOCIAL` da view); sem ela, pelo nome (`companyName` em src/lib/services/economic-groups.ts).
+
 ## O que é gravado
 
 - `requests.companyAllocations` (JSON): por produto, `[{ customerId, quantities: [peças por entrega] }]`. A soma por entrega é a `schedule` do produto. O cliente da solicitação é a empresa que representa o grupo.

@@ -7,6 +7,7 @@ import {
   saveGroupShares,
   type EconomicGroup,
 } from "@/lib/services/economic-groups";
+import { saveRoundShares } from "@/lib/services/delivery-round-shares";
 import { requireUser } from "./helpers";
 
 /*
@@ -46,5 +47,39 @@ export async function saveGroupSharesAction(
     if (m === "percent_total") return { ok: false, error: "total" };
     if (m === "not_a_group") return { ok: false, error: "not_group" };
     return { ok: false, error: "invalid" };
+  }
+}
+
+const ROUNDS_INPUT = z.object({
+  customerId: ID,
+  percents: z.array(z.number().min(0).max(100)).min(2).max(60),
+});
+
+export type SaveRoundSharesResult =
+  | { ok: true; percents: number[] }
+  | { ok: false; error: "forbidden" | "invalid" | "total" };
+
+/**
+ * Distribuição padrão entre as entregas (dono, 19/11/2026): "Salvar como
+ * padrão deste cliente para N entregas" no bloco do pedido.
+ */
+export async function saveRoundSharesAction(
+  input: unknown,
+): Promise<SaveRoundSharesResult> {
+  const user = await requireUser();
+  if (!isWellmix(user) || !canOpenNewRequest(user))
+    return { ok: false, error: "forbidden" };
+  const parsed = ROUNDS_INPUT.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "invalid" };
+  try {
+    const percents = await saveRoundShares(
+      user,
+      parsed.data.customerId,
+      parsed.data.percents,
+    );
+    return { ok: true, percents };
+  } catch (e) {
+    const m = e instanceof Error ? e.message : "";
+    return { ok: false, error: m === "percent_total" ? "total" : "invalid" };
   }
 }

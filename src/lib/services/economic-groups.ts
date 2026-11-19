@@ -40,6 +40,14 @@ export async function groupSizes(
   return out;
 }
 
+/**
+ * Nome da empresa do grupo nas telas do pedido: a razão social
+ * (VW_AD_CLIENTE_WELL.RAZAO_SOCIAL; dono, 19/11/2026), ou o nome sem ela.
+ */
+export function companyName(p: Pick<Party, "name" | "legalName">): string {
+  return p.legalName?.trim() || p.name;
+}
+
 /** O código do grupo que o cliente representa, ou nulo. */
 function headCode(party: Pick<Party, "type" | "sankhyaCode">): string | null {
   const code = party.type === "customer" ? (party.sankhyaCode ?? "") : "";
@@ -62,19 +70,26 @@ export async function economicGroupOf(
   const members = await listColumns(
     store,
     "parties",
-    ["name", "taxId", "sankhyaCode", "active", "economicGroupName"],
+    [
+      "name",
+      "legalName",
+      "taxId",
+      "sankhyaCode",
+      "active",
+      "economicGroupName",
+    ],
     { filter: { type: "customer", economicGroupCode: code } },
   );
   const others = members
     .filter((m) => m.active && m.id !== head.id && m.sankhyaCode !== code)
-    .sort((a, b) => a.name.localeCompare(b.name, "pt"));
+    .sort((a, b) => companyName(a).localeCompare(companyName(b), "pt"));
   if (!others.length) return null;
   const company = (
-    p: Pick<Party, "id" | "name" | "taxId" | "sankhyaCode">,
+    p: Pick<Party, "id" | "name" | "legalName" | "taxId" | "sankhyaCode">,
     isHead: boolean,
   ): GroupCompany => ({
     id: p.id,
-    name: p.name,
+    name: companyName(p),
     taxId: p.taxId ?? null,
     code: p.sankhyaCode ?? null,
     head: isHead,

@@ -25,8 +25,9 @@ import {
 } from "@/components/request-product-fields";
 import type { ScheduleLabels } from "@/components/request-schedule";
 import {
+  RoundSharesControl,
   RowGroupAllocation,
-  amountsFromAllocations,
+  matrixFromAllocations,
 } from "@/components/economic-group-ui";
 import type { EconomicGroupLabels } from "@/components/economic-group-labels";
 import { useRequestCustomer } from "@/components/request-customer-context";
@@ -199,6 +200,15 @@ export function RequestItems({
       : 1;
   const intervalDays =
     planInterval > 0 ? planInterval : Math.max(0, Number(planCustom) || 0);
+  // Composição de containers (docs/ORDER_TERMS.md seção 8): as datas das
+  // programações e a carga de cada linha vão para o bloco ao lado.
+  const shared = useRequestCustomer();
+  // Percentual de cada entrega (dono, 19/11/2026): o gerador de cada
+  // produto reparte as caixas nessa proporção (só nas telas TS e Venda).
+  const roundWeights =
+    labels.group && shared?.roundPercents?.length === count
+      ? shared.roundPercents
+      : null;
   const plan = useMemo<FixedSchedulePlan>(() => {
     const dates = planDates(count, planFirst, intervalDays, pins);
     return {
@@ -207,11 +217,9 @@ export function RequestItems({
       intervalDays,
       dates,
       manual: dates.map((_, i) => !!pins[i]),
+      weights: roundWeights,
     };
-  }, [count, planFirst, intervalDays, pins]);
-  // Composição de containers (docs/ORDER_TERMS.md seção 8): as datas das
-  // programações e a carga de cada linha vão para o bloco ao lado.
-  const shared = useRequestCustomer();
+  }, [count, planFirst, intervalDays, pins, roundWeights]);
   const setPlanDates = shared?.setPlanDates;
   const setLoad = shared?.setLoad;
   useEffect(() => {
@@ -619,6 +627,16 @@ export function RequestItems({
         }
         minDate={minDate}
         launchDate={launchDate}
+        aside={
+          labels.group ? (
+            <RoundSharesControl
+              labels={labels.group}
+              count={count}
+              dates={plan.dates ?? []}
+              intl={labels.intl}
+            />
+          ) : null
+        }
       />
       <div data-request-products-title>
         <p className="text-sm font-semibold text-zinc-900">{labels.products}</p>
@@ -829,7 +847,7 @@ export function RequestItems({
                             initial={
                               draftRows?.[index]?.companyAllocations?.length &&
                               draftRows[index].productId === item.id
-                                ? amountsFromAllocations(
+                                ? matrixFromAllocations(
                                     draftRows[index].companyAllocations!,
                                     item.masterCartonQty ?? null,
                                   )
@@ -1124,7 +1142,10 @@ function OrderPlan({
   onPin,
   minDate,
   launchDate,
+  aside,
 }: {
+  /** Ao lado da quantidade de entregas (distribuição entre entregas). */
+  aside?: React.ReactNode;
   labels: OrderPlanLabels;
   intl: string;
   countText: string;
@@ -1210,6 +1231,7 @@ function OrderPlan({
             className={cx(inputClass, "w-24 tabular-nums")}
           />
         </label>
+        {scheduled ? aside : null}
         {scheduled ? (
           <>
             <div className="space-y-1">
