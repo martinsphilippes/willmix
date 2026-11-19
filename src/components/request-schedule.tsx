@@ -69,6 +69,11 @@ export interface FixedSchedulePlan {
   dates?: string[];
   /** Programações com a data fixada à mão (vão no formulário). */
   manual?: boolean[];
+  /**
+   * Percentual de cada entrega (dono, 19/11/2026; docs/ECONOMIC_GROUPS.md):
+   * o gerador reparte as caixas nessa proporção. Sem ele, partes iguais.
+   */
+  weights?: number[] | null;
 }
 
 const fill = (s: string, vars: Record<string, string | number>) =>
