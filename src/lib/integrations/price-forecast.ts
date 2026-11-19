@@ -126,7 +126,7 @@ export type SuperplanInput = Partial<
 export const SUPERPLAN_FN = "FN_AD_SUPERPLAN_WELL";
 /**
  * Cotação de encomenda V2 (dono, 16/11/2026; "Chamada da API de encomenda ·
- * V2", 71 argumentos): substitui a ida da SuperPlan na previsão de preço. Os
+ * V2", 71 argumentos; o 72º, @DESP_EXTRA_USD, desde 19/11/2026): substitui a ida da SuperPlan na previsão de preço. Os
  * 69 de antes, na mesma ordem, mais @CODVEND (70) e @ROTA_ENTREGA (71); todo
  * argumento vai como CAST(valor AS tipo) e o sem valor como CAST(NULL AS tipo).
  */
@@ -135,6 +135,9 @@ export const COTACAO_V2_PARAMS = [
   ...SUPERPLAN_PARAMS,
   "CODVEND",
   "ROTA_ENTREGA",
+  // 72º (dono, 19/11/2026): despesa extra em US$; vai como NULL (o Sankhya
+  // resolve) enquanto o portal não tem esse dado.
+  "DESP_EXTRA_USD",
 ] as const;
 export type CotacaoV2Param = (typeof COTACAO_V2_PARAMS)[number];
 
@@ -188,7 +191,7 @@ function v2Arg(name: CotacaoV2Param, value: unknown): string {
   return `CAST(${n} AS ${type})`;
 }
 
-/** SELECT da cotação V2, com as 71 posições na ordem. */
+/** SELECT da cotação V2, com as 72 posições na ordem. */
 export function cotacaoV2Sql(input: CotacaoV2Input): string {
   const args = COTACAO_V2_PARAMS.map((k) => v2Arg(k, input[k]));
   return `SELECT * FROM sankhya.${COTACAO_V2_FN}(${args.join(", ")})`;
