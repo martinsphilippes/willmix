@@ -351,6 +351,8 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   const stopped = page.locator(`#decision-${decisionE}`);
   await expect(stopped).toHaveAttribute("data-strategy-blocked", "1");
   await expect(stopped.locator("[data-strategy-order-form]")).toHaveCount(0);
+  // Card mais baixo (dono, 19/11/2026): a observação fica numa caixa.
+  await stopped.locator("[data-strategy-close-open]").click();
   page.once("dialog", (dialog) => dialog.accept());
   await stopped.locator("[data-strategy-close]").click();
   await page.waitForURL(/[?&]closed=\d+/);

@@ -33,11 +33,21 @@ export const pt = {
   "strategyCard.close": "Fechar",
   "strategyCard.orderTitle": "Gerar pedido de compra · {title}",
   "strategyCard.blocked":
-    "Parada: solicitação cancelada ou já em outro pedido. Veja Detalhes.",
+    "Parada: solicitação cancelada ou já em outro pedido.",
   "strategyCard.note": "Observação",
   "strategyCard.packing": "Embalagem e cubagem",
   "strategyCard.more": "+{n} produtos (veja Detalhes)",
   "strategyCard.scroll": "Role para os lados para ver as três colunas.",
+  "strategyCard.stopped": "Parada",
+  "strategyCard.lastTip":
+    "Fornecedor, preço unitário (com a moeda) e o pedido da última compra deste produto.",
+  "strategyCard.order": "Pedido",
+  "strategyCard.leadShort": "Prazo",
+  "strategyCard.moqShort": "Mín.",
+  "strategyCard.rejectTitle": "Recusar a estratégia nº {n}",
+  "strategyCard.rejectNote": "Motivo da recusa (obrigatório)",
+  "strategyCard.decideTitle": "Aprovar ou recusar com observação",
+  "strategyCard.closeTitle": "Encerrar a estratégia nº {n}",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -69,11 +79,21 @@ export const en: Record<keyof typeof pt, string> = {
   "strategyCard.close": "Close",
   "strategyCard.orderTitle": "Generate purchase order · {title}",
   "strategyCard.blocked":
-    "On hold: request cancelled or already in another order. See Details.",
+    "On hold: request cancelled or already in another order.",
   "strategyCard.note": "Note",
   "strategyCard.packing": "Packing and volume",
   "strategyCard.more": "+{n} products (see Details)",
   "strategyCard.scroll": "Scroll sideways to see the three columns.",
+  "strategyCard.stopped": "On hold",
+  "strategyCard.lastTip":
+    "Supplier, unit price (with currency) and order of this product's last purchase.",
+  "strategyCard.order": "Order",
+  "strategyCard.leadShort": "Lead time",
+  "strategyCard.moqShort": "MOQ",
+  "strategyCard.rejectTitle": "Reject strategy no. {n}",
+  "strategyCard.rejectNote": "Reason for rejecting (required)",
+  "strategyCard.decideTitle": "Approve or reject with a note",
+  "strategyCard.closeTitle": "Close strategy no. {n}",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -104,9 +124,18 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategyCard.detailsTitle": "详情 · {title}",
   "strategyCard.close": "关闭",
   "strategyCard.orderTitle": "生成采购订单 · {title}",
-  "strategyCard.blocked": "已暂停：申请已取消或已在其他订单中。请查看详情。",
+  "strategyCard.blocked": "已暂停：申请已取消或已在其他订单中。",
   "strategyCard.note": "备注",
   "strategyCard.packing": "包装与体积",
   "strategyCard.more": "另有 {n} 个产品（见详情）",
   "strategyCard.scroll": "左右滑动可查看三列。",
+  "strategyCard.stopped": "已暂停",
+  "strategyCard.lastTip": "该产品最近一次采购的供应商、单价（含币种）和订单。",
+  "strategyCard.order": "订单",
+  "strategyCard.leadShort": "周期",
+  "strategyCard.moqShort": "起订",
+  "strategyCard.rejectTitle": "拒绝第 {n} 号策略",
+  "strategyCard.rejectNote": "拒绝原因（必填）",
+  "strategyCard.decideTitle": "附备注批准或拒绝",
+  "strategyCard.closeTitle": "关闭第 {n} 号策略",
 };
