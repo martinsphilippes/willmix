@@ -193,6 +193,27 @@ export async function getRequestDraft(
     : null;
 }
 
+/**
+ * O rascunho de Encomendas que esta pessoa pode ver (os detalhes e a conversa
+ * dele; dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 7): só quem o
+ * salvou, da Wellmix, e só se ainda abre a tela de onde ele veio (a regra de
+ * "Continuar"). O da entrada da Reposição é da fila de Reposição. Nulo:
+ * não existe ou não é dele (a tela responde 404, sem dizer qual).
+ */
+export async function getListedDraft(
+  user: User,
+  id: string,
+): Promise<RequestDraft | null> {
+  if (!isWellmix(user) || !/^[A-Za-z0-9_-]{1,64}$/.test(id)) return null;
+  const draft = await getStore()
+    .get("request_drafts", id)
+    .catch(() => null);
+  if (!draft || draft.userId !== user.id) return null;
+  const screen = draftScreenOf(draft.payload);
+  if (screen === "sale" && draftIsReplenishment(draft.payload)) return null;
+  return canDraft(user, screen, false) ? draft : null;
+}
+
 /** Os rascunhos de quem pede, desta tela, o mais recente primeiro. */
 export async function listRequestDrafts(
   user: User,

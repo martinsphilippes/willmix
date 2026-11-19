@@ -25,6 +25,7 @@ import {
   draftResponsible,
 } from "@/components/request-responsible-tip";
 import { ListReturnLink } from "@/components/list-return";
+import { ChatOpenButton } from "@/components/chat-open-button";
 import type { PackingSourceKind } from "@/lib/services/request-packing";
 import type { DetailsProduct, RequestDetailsScreenProps } from "./details-view";
 import {
@@ -219,6 +220,14 @@ export async function draftScreenProps(
           <span className="text-zinc-400" title={t("reqDraft.noOrder")}>
             —
           </span>
+        ),
+        // A conversa do rascunho com o cliente (uma para o rascunho todo;
+        // passa para a solicitação no envio).
+        actions: (
+          <ChatOpenButton
+            target={{ draftId: draft.id }}
+            label={`${t("chat.openDraft")}: ${nameOf(p)}`}
+          />
         ),
       };
     }),

@@ -241,3 +241,17 @@ Reabrir o rascunho no formulário ("Continuar" ou "Continuar edição") mostrava
   - cards, número e avisos iguais; "Continuar edição" com os produtos e os totais salvos;
   - iPad sem rolagem lateral da página; 404 para outro login da Wellmix e para o cliente.
 - `tests/e2e/order-terms.spec.ts`: o ícone leva aos detalhes, e "Continuar edição" volta ao formulário.
+
+## 8. Conversa ligada ao rascunho (dono, 19/11/2026)
+
+Pedido do dono (19/11/2026, com o print de Encomendas): o ícone de mensagem também nos rascunhos. Decisão do dono: a conversa ligada ao rascunho, que passa para a solicitação quando ela é enviada (no lugar de uma conversa geral com o cliente ou de um ícone só desativado).
+
+- **Onde**: na linha do rascunho em Encomendas, ao lado do ícone de abrir (como nas enviadas), e em cada produto dos detalhes do rascunho. É uma conversa só para o rascunho todo (`ChatOpenButton` com `draftId`; `data-chat-open="draft:<id>"`).
+- **Com quem**: quem salvou o rascunho (Wellmix) e um login do cliente do rascunho, ativo e com a tela Mensagens (o painel lista os logins do cliente; com um só, abre direto). Sem cliente ou sem login, o painel avisa que não há com quem conversar.
+- **Assunto**: "Solicitação #N (rascunho)", com o número reservado e o produto (`conversation_topics.kind = "draft"`, `draftId`). Fica na conversa privada dos dois. O cliente lê e responde em Mensagens; o aviso leva à caixa de Mensagens, porque a tela do rascunho é só de quem o salvou.
+- **Privacidade**: abrir pelo rascunho segue a regra dos detalhes (`getListedDraft`: só quem salvou, da tela de onde veio; outro login da Wellmix, o cliente ou login de outra empresa são recusados). O administrador lê as conversas, como sempre.
+- **No envio**: o assunto passa a ser o da solicitação (a primeira do lote; `moveDraftTopics` no envio, antes de o rascunho sair), com as mensagens. O `draftId` fica anotado. Abrir a conversa pela solicitação acha o mesmo assunto.
+- **Esquema**: coluna nova `conversation_topics.draftId` (opcional) e o índice `conversation_topics_by_draft`. O tipo "draft" entra em `TOPIC_KINDS` (no Supabase, `kind` é texto livre).
+- **Testes**:
+  - `tests/unit/draft-chat.test.ts`: o contexto e o assunto do rascunho, a mensagem lida pelo cliente, a privacidade e a passagem para a solicitação no envio.
+  - `tests/e2e/draft-chat.spec.ts`: o ícone na lista e nos detalhes, a mensagem, o cliente lendo em Mensagens e, depois de enviar, a mesma mensagem na conversa da solicitação.

@@ -14,6 +14,7 @@ import {
   type Party,
   type PartyType,
   type Request,
+  type RequestDraft,
   type Role,
   type TopicKind,
   type User,
@@ -38,6 +39,7 @@ import { canOpen } from "@/lib/auth/screens";
 import { searchText } from "@/lib/db/store";
 import { isPlayableVideo, isPreviewImage } from "@/lib/file-kinds";
 import { notify } from "./notifications";
+import { getListedDraft } from "./request-drafts";
 import {
   isAttachmentOnly,
   translateMessage,
@@ -115,6 +117,8 @@ export function topicLabel(
     return t("messages.topic.order", { ref: topic.title ?? "" });
   if (topic.kind === "item")
     return t("messages.topic.item", { ref: topic.title ?? "" });
+  if (topic.kind === "draft")
+    return t("messages.topic.draft", { ref: topic.title ?? "" });
   return t("messages.topic.general");
 }
 
@@ -228,7 +232,10 @@ async function canSeeTopic(
   user: User,
   topic: ConversationTopic,
 ): Promise<boolean> {
-  if (isWellmix(user) || topic.kind === "general") return true;
+  // O rascunho (dono, 19/11/2026): só existe na conversa privada de quem o
+  // salvou com o login do cliente, que já é conferida à parte.
+  if (isWellmix(user) || topic.kind === "general" || topic.kind === "draft")
+    return true;
   const store = getStore();
   if (topic.kind === "request" && topic.requestId) {
     const request = await store.get("requests", topic.requestId);
@@ -351,7 +358,12 @@ async function memberConversations(user: User): Promise<Conversation[]> {
 async function findTopic(
   conversationId: string,
   kind: TopicKind,
-  ref: { requestId?: string; orderId?: string; orderItemId?: string } = {},
+  ref: {
+    requestId?: string;
+    orderId?: string;
+    orderItemId?: string;
+    draftId?: string;
+  } = {},
 ): Promise<ConversationTopic | null> {
   const [found] = await getStore().list("conversation_topics", {
     filter: { conversationId, kind, ...ref },
@@ -383,6 +395,49 @@ const requestRef = (request: Request) =>
     .filter(Boolean)
     .join(" · ")
     .slice(0, 160);
+
+/** Referência do rascunho no assunto: "#5 · Berço de boneca" (o número reservado). */
+const draftRef = (draft: Pick<RequestDraft, "number" | "title">) =>
+  [typeof draft.number === "number" ? `#${draft.number}` : null, draft.title]
+    .filter(Boolean)
+    .join(" · ")
+    .slice(0, 160);
+
+/** O login de fora da conversa é do cliente do rascunho? */
+async function companyInDraft(
+  conversation: Conversation,
+  draft: Pick<RequestDraft, "customerId">,
+): Promise<boolean> {
+  if (!draft.customerId) return false;
+  if (!isPair(conversation) && conversation.partyId)
+    return conversation.partyId === draft.customerId;
+  const owner = await conversationOwner(conversation);
+  return !!owner && owner.partyId === draft.customerId;
+}
+
+/**
+ * Rascunho enviado (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 8):
+ * o assunto do rascunho passa a ser o da solicitação (a primeira do lote),
+ * com as mensagens, na mesma conversa. O rascunho fica anotado no assunto.
+ */
+export async function moveDraftTopics(
+  draftId: string,
+  request: Request,
+): Promise<number> {
+  return safe(async () => {
+    const store = getStore();
+    const topics = (
+      await store.list("conversation_topics", { filter: { draftId } })
+    ).filter((topic) => topic.kind === "draft");
+    for (const topic of topics)
+      await store.update("conversation_topics", topic.id, {
+        kind: "request",
+        requestId: request.id,
+        title: requestRef(request),
+      });
+    return topics.length;
+  }, 0);
+}
 
 async function orderRef(order: Order) {
   const [item] = await getStore().list("order_items", {
@@ -663,7 +718,7 @@ export interface TopicSummary {
  */
 export interface TopicNode {
   key: string;
-  kind: "general" | "order" | "request" | "item";
+  kind: "general" | "order" | "request" | "item" | "draft";
   /** Nome da linha ("Pedido #12", "Solicitação #8", nome do produto). */
   label: string;
   /** Segunda linha (produto da solicitação). */
@@ -773,6 +828,23 @@ export async function topicTree(
       label: hasNumber
         ? t("messages.topic.request", { ref })
         : topicLabel(t, x),
+      sub: hasNumber ? rest.join(" · ") || null : null,
+      topic: x,
+      children: [],
+    });
+  }
+  // Rascunhos (dono, 19/11/2026): o número reservado e o produto, mais
+  // recente primeiro; viram solicitação no envio.
+  const drafts = topics
+    .filter((x) => x.kind === "draft")
+    .sort((a, b) => time(b.lastMessageAt) - time(a.lastMessageAt));
+  for (const x of drafts) {
+    const [ref, ...rest] = (x.title ?? "").split(" · ");
+    const hasNumber = /^#\d+$/.test(ref ?? "");
+    nodes.push({
+      key: x.id,
+      kind: "draft",
+      label: hasNumber ? t("messages.topic.draft", { ref }) : topicLabel(t, x),
       sub: hasNumber ? rest.join(" · ") || null : null,
       topic: x,
       children: [],
@@ -1356,12 +1428,15 @@ export interface OpenTopicInput {
   orderId?: string | null;
   /** Um produto do pedido: o assunto desce até o item. */
   orderItemId?: string | null;
+  /** O rascunho de uma solicitação (só quem o salvou; dono, 19/11/2026). */
+  draftId?: string | null;
 }
 
-/** Do que se fala: o pedido ou a solicitação (nenhum = Geral). */
+/** Do que se fala: o pedido, a solicitação ou o rascunho (nenhum = Geral). */
 interface PeerContext {
   order?: Order | null;
   request?: Request | null;
+  draft?: RequestDraft | null;
 }
 
 /**
@@ -1375,7 +1450,9 @@ async function externalCandidates(ctx: PeerContext): Promise<User[]> {
     ? orderParties(ctx.order)
     : ctx.request?.customerId
       ? [ctx.request.customerId]
-      : [];
+      : ctx.draft?.customerId
+        ? [ctx.draft.customerId]
+        : [];
   if (!partyIds.length) return [];
   const users = (
     await store.list("users", {
@@ -1432,6 +1509,8 @@ async function wellmixCandidates(
 /** Pedido ou solicitação do assunto que se quer abrir. */
 async function contextOf(input: OpenTopicInput): Promise<PeerContext> {
   const store = getStore();
+  if (input.draftId)
+    return { draft: await store.get("request_drafts", input.draftId) };
   if (input.requestId)
     return { request: await store.get("requests", input.requestId) };
   if (input.orderItemId) {
@@ -1465,7 +1544,7 @@ async function resolveConversation(
     }
     return found;
   }
-  const hasContext = !!(ctx.order || ctx.request);
+  const hasContext = !!(ctx.order || ctx.request || ctx.draft);
   if (!isWellmix(user)) {
     if (input.partyId && input.partyId !== user.partyId)
       throw new ForbiddenError();
@@ -1527,6 +1606,30 @@ export async function openTopic(
 ): Promise<{ conversationId: string; topicId: string }> {
   const store = getStore();
   const wellmix = isWellmix(user);
+  if (input.draftId) {
+    /* Rascunho (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 8): só
+       quem o salvou conversa sobre ele (a regra dos detalhes), com um login
+       do cliente dele; no envio, o assunto passa para a solicitação. */
+    if (!wellmix) throw new ForbiddenError();
+    const draft = await getListedDraft(user, input.draftId);
+    if (!draft) throw new MessageError("not_found");
+    const conversation = await resolveConversation(user, input, { draft });
+    if (!(await companyInDraft(conversation, draft)))
+      throw new MessageError("not_participant");
+    const topic =
+      (await findTopic(conversation.id, "draft", { draftId: draft.id })) ??
+      (await store.create("conversation_topics", {
+        conversationId: conversation.id,
+        kind: "draft",
+        requestId: null,
+        orderId: null,
+        draftId: draft.id,
+        title: draftRef(draft),
+        lastMessageAt: null,
+      }));
+    await generalTopic(conversation);
+    return { conversationId: conversation.id, topicId: topic.id };
+  }
   const ctx = await contextOf(input);
   if (input.requestId) {
     const request = ctx.request;
@@ -1647,7 +1750,7 @@ export interface ChatPeerOption extends ChatPerson {
 }
 
 export interface ChatContext {
-  kind: "order" | "request";
+  kind: "order" | "request" | "draft";
   id: string;
   /** "Pedido #5" ou "Solicitação nº 3: Jarra". */
   title: string;
@@ -1680,7 +1783,11 @@ export interface ChatContext {
  */
 export async function chatContext(
   user: User,
-  input: { orderId?: string | null; requestId?: string | null },
+  input: {
+    orderId?: string | null;
+    requestId?: string | null;
+    draftId?: string | null;
+  },
 ): Promise<ChatContext> {
   const store = getStore();
   const wellmix = isWellmix(user);
@@ -1715,6 +1822,23 @@ export async function chatContext(
       title: request.number
         ? `Solicitação nº ${request.number}: ${request.productName}`
         : request.productName,
+      items: [],
+    };
+  } else if (input.draftId) {
+    /* Rascunho (dono, 19/11/2026): só quem o salvou abre a conversa dele,
+       com os logins do cliente do rascunho. */
+    if (!wellmix) throw new ForbiddenError();
+    const draft = await getListedDraft(user, input.draftId);
+    if (!draft) throw new MessageError("not_found");
+    ctx = { draft };
+    partyIds = draft.customerId ? [draft.customerId] : [];
+    base = {
+      kind: "draft",
+      id: draft.id,
+      title:
+        typeof draft.number === "number"
+          ? `Solicitação nº ${draft.number} (rascunho)`
+          : "Rascunho",
       items: [],
     };
   } else throw new MessageError("not_found");

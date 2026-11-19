@@ -8643,7 +8643,8 @@
             "general",
             "request",
             "order",
-            "item"
+            "item",
+            "draft"
           ]
         },
         {
@@ -8692,6 +8693,14 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "draftId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -8720,6 +8729,16 @@
           "type": "key",
           "columns": [
             "productId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_draft",
+          "type": "key",
+          "columns": [
+            "draftId"
           ],
           "orders": [
             "ASC"

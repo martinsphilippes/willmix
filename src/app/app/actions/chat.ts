@@ -41,6 +41,8 @@ async function guard<T>(
 const contextSchema = z.object({
   orderId: optionalId,
   requestId: optionalId,
+  /** O rascunho de uma solicitação (só quem o salvou; o serviço confere). */
+  draftId: optionalId,
 });
 
 /** Com quem dá para conversar e os itens do pedido. */
@@ -57,6 +59,7 @@ const openSchema = z.object({
   orderId: optionalId,
   requestId: optionalId,
   orderItemId: optionalId,
+  draftId: optionalId,
   partyId: optionalId,
   /** A outra pessoa da conversa (o login); o serviço confere se pode. */
   peerUserId: optionalId,

@@ -476,6 +476,15 @@ async function createRequest(
           .catch((error) =>
             console.error("[action] formulário enviado", error),
           );
+      // A conversa do rascunho (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md,
+      // seção 8): o assunto passa para a solicitação enviada, com as
+      // mensagens, antes de o rascunho sair.
+      if (sentDraft && created[0]) {
+        const { moveDraftTopics } = await import("@/lib/services/messages");
+        await moveDraftTopics(sentDraft.id, created[0]).catch((error) =>
+          console.error("[action] conversa do rascunho", error),
+        );
+      }
       // Rascunho enviado (docs/ORDER_TERMS.md seção 9): sai da lista.
       if (draftId && isWellmix(user)) {
         const { deleteRequestDraft } =

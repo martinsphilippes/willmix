@@ -1512,12 +1512,21 @@ export default async function RequestsPage({
                       </Td>
                     ) : null}
                     <Td className={cx(cell, "text-right")}>
-                      <OpenLink
-                        href={href}
-                        label={t("reqList.draft.view")}
-                        data-request-list-draft-open
-                        data-list-return=""
-                      />
+                      <div className="flex items-center justify-end gap-1">
+                        <OpenLink
+                          href={href}
+                          label={t("reqList.draft.view")}
+                          data-request-list-draft-open
+                          data-list-return=""
+                        />
+                        {/* A conversa do rascunho com o cliente dele, que
+                            passa para a solicitação no envio (dono,
+                            19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 8). */}
+                        <ChatOpenButton
+                          target={{ draftId: draft.id }}
+                          label={t("chat.openDraft")}
+                        />
+                      </div>
                     </Td>
                   </tr>
                 );

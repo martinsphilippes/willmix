@@ -565,7 +565,17 @@ export const CONVERSATION_STATUSES = ["open", "closed"] as const;
 export type ConversationStatus = (typeof CONVERSATION_STATUSES)[number];
 /** Assunto da conversa: Geral, uma solicitação ou um pedido. */
 /** "item": um produto do pedido (a conversa desce até o item). */
-export const TOPIC_KINDS = ["general", "request", "order", "item"] as const;
+/**
+ * Assunto da conversa. "draft" (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md,
+ * seção 8): o do rascunho de uma solicitação, que vira "request" no envio.
+ */
+export const TOPIC_KINDS = [
+  "general",
+  "request",
+  "order",
+  "item",
+  "draft",
+] as const;
 export type TopicKind = (typeof TOPIC_KINDS)[number];
 /** Quem escreveu: a equipe Wellmix ou alguém da empresa parceira. */
 export const MESSAGE_SIDES = ["wellmix", "external"] as const;
@@ -2532,6 +2542,12 @@ export interface ConversationTopic extends BaseRow {
   /** Assunto de item: o item do pedido e o produto dele (opcionais). */
   orderItemId?: string | null;
   productId?: string | null;
+  /**
+   * Assunto do rascunho (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção
+   * 8): o rascunho da solicitação de que se fala. Fica gravado quando o
+   * assunto passa para a solicitação enviada (histórico).
+   */
+  draftId?: string | null;
 }
 
 export interface Message extends BaseRow {
@@ -5734,11 +5750,13 @@ export const TABLES: Record<TableName, TableDef> = {
       lastMessageAt: datetime(),
       orderItemId: id(false),
       productId: id(false),
+      draftId: id(false),
     },
     indexes: [
       { key: "by_conversation", type: "key", columns: ["conversationId"] },
       { key: "by_order", type: "key", columns: ["orderId"] },
       { key: "by_product", type: "key", columns: ["productId"] },
+      { key: "by_draft", type: "key", columns: ["draftId"] },
     ],
   },
   messages: {

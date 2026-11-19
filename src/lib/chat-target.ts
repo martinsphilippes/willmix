@@ -9,6 +9,11 @@ export interface ChatTargetDetail {
   orderId?: string | null;
   requestId?: string | null;
   orderItemId?: string | null;
+  /**
+   * O rascunho de uma solicitação (dono, 19/11/2026): a conversa de quem o
+   * salvou com o cliente dele, que passa para a solicitação no envio.
+   */
+  draftId?: string | null;
   partyId?: string | null;
   /**
    * A outra pessoa da conversa (o login): a conversa é privada entre dois
@@ -45,6 +50,7 @@ export function sameChatTarget(
     (a.orderId ?? null) === (b.orderId ?? null) &&
     (a.requestId ?? null) === (b.requestId ?? null) &&
     (a.orderItemId ?? null) === (b.orderItemId ?? null) &&
+    (a.draftId ?? null) === (b.draftId ?? null) &&
     (a.partyId ?? null) === (b.partyId ?? null) &&
     (a.peerUserId ?? null) === (b.peerUserId ?? null)
   );
