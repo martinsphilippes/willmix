@@ -183,6 +183,7 @@ describe("estratégia com a embalagem da ficha e a encomenda cancelada", () => {
   let buyer: User;
   let director: User;
   let joao: User;
+  let sales: User;
 
   const product = (id: string, over: Record<string, unknown>) =>
     getStore().create("products", {
@@ -235,6 +236,30 @@ describe("estratégia com a embalagem da ficha e a encomenda cancelada", () => {
     return sent[0] ?? r;
   };
 
+  /** Solicitação com vários produtos (lote) enviada para cotação. */
+  const lotOf = async (...items: Array<[string, number]>) => {
+    const lot = await requests.createRequestBatch(
+      admin,
+      { customerId: "cliente-joao", requestedForUserId: joao.id },
+      items.map(([productId, quantity]) => ({
+        productId,
+        productName: productId,
+        description: "Encomenda",
+        specification: null,
+        quantity,
+        unit: "un",
+        sourcingDemand: false,
+      })) as never,
+    );
+    for (const r of lot)
+      await getStore().update("requests", r.id, { status: "REQUESTED" });
+    const { sent } = await strategy.sendToStrategy(
+      admin,
+      lot.map((r) => r.id),
+    );
+    return sent;
+  };
+
   /** Escolha "fornecedor da última compra" e aprovação da Diretoria. */
   const approved = async (d: Request) => {
     const decision = await strategy.chooseStrategy(buyer, {
@@ -256,6 +281,7 @@ describe("estratégia com a embalagem da ficha e a encomenda cancelada", () => {
     buyer = by("operador@wellmix.com");
     joao = by("joao@lojista.com");
     director = by("diretoria@wellmix.com");
+    sales = by("vendas@wellmix.com");
     // Compra anterior da panela (4 por master, inner 1, caixa 62 × 32 × 42).
     const previous = await demand("prod-panela", 2000);
     await orderFromRequest(admin, previous, {
@@ -499,5 +525,106 @@ describe("estratégia com a embalagem da ficha e a encomenda cancelada", () => {
         { status: "REQUESTED", orderId: null },
       ),
     ).toBeNull();
+  });
+
+  describe("Encerrar a estratégia parada (dono, 19/11/2026)", () => {
+    it("o Comprador encerra: sai de Em andamento sem pedido, a cancelada segue cancelada e a aberta volta para a fila", async () => {
+      const store = getStore();
+      // A jarra também comprada antes do fornecedor A (como a panela).
+      const previous = await demand("prod-jarra", 1000);
+      await orderFromRequest(admin, previous, {
+        supplierId: "fornecedor-a",
+        price: 1.1,
+        currency: "USD",
+      });
+      await store.update("requests", previous.id, { status: "ORDERED" });
+      const lot = await lotOf(["prod-panela", 800], ["prod-jarra", 500]);
+      const panela = lot.find((r) => r.productId === "prod-panela")!;
+      const jarra = lot.find((r) => r.productId === "prod-jarra")!;
+      const decision = await strategy.chooseStrategy(buyer, {
+        demandIds: [panela.id, jarra.id],
+        choice: "last_supplier",
+        note: null,
+      });
+      await strategy.decideStrategy(director, decision.id, {
+        approve: true,
+        note: null,
+      });
+      // Com todas as encomendas abertas, ela segue o caminho dela.
+      await expect(
+        strategy.closeStrategy(buyer, decision.id, null),
+      ).rejects.toThrow("strategy_not_stopped");
+      await requests.deleteRequests(admin, [jarra.id]);
+      // Vendas não encerra (só o Comprador, a Diretoria e o administrador).
+      await expect(
+        strategy.closeStrategy(sales, decision.id, null),
+      ).rejects.toThrow("forbidden");
+      const { decision: closed, reopened } = await strategy.closeStrategy(
+        buyer,
+        decision.id,
+        "Cliente desistiu da jarra",
+      );
+      expect(closed.status).toBe("closed");
+      expect(reopened).toBe(1);
+      expect(await store.get("requests", jarra.id)).toMatchObject({
+        status: "CANCELLED",
+        purchaseDecisionId: null,
+      });
+      expect(await store.get("requests", panela.id)).toMatchObject({
+        status: "REQUESTED",
+        purchaseDecisionId: null,
+        orderId: null,
+      });
+      // A panela volta para a fila da Estratégia, para uma nova escolha.
+      expect((await strategy.waitingDemands()).map((r) => r.id)).toContain(
+        panela.id,
+      );
+      expect((await strategy.openDecisions()).map((d) => d.id)).not.toContain(
+        decision.id,
+      );
+      const log = (
+        await store.list("audit_log", { filter: { entityId: decision.id } })
+      ).find((l) => l.action === "purchase_strategy.close");
+      expect(log?.summary).toContain("encomenda nº");
+      expect(log?.summary).toContain("cancelada");
+      expect(log?.summary).toContain("Cliente desistiu da jarra");
+      // Encerrada: não encerra de novo nem gera pedido.
+      await expect(
+        strategy.closeStrategy(director, decision.id, null),
+      ).rejects.toThrow("strategy_not_stopped");
+      await expect(
+        strategy.orderFromStrategy(admin, decision.id, {
+          currency: "USD",
+          leadTimeDays: null,
+          incoterm: null,
+        }),
+      ).rejects.toThrow("strategy_not_ready");
+      // Nenhuma pendência dela.
+      const drafts = await strategy.strategyTaskDrafts([]);
+      expect(drafts.some((x) => x.link.endsWith(decision.id))).toBe(false);
+    });
+
+    it("a Diretoria também encerra; esperando aprovação, não (lá vale Recusar)", async () => {
+      const d = await demand("prod-panela", 600);
+      const decision = await approved(d);
+      await requests.deleteRequests(admin, [d.id]);
+      const { decision: closed, reopened } = await strategy.closeStrategy(
+        director,
+        decision.id,
+        null,
+      );
+      expect(closed.status).toBe("closed");
+      expect(reopened).toBe(0);
+      const d2 = await demand("prod-panela", 700);
+      const pending = await strategy.chooseStrategy(buyer, {
+        demandIds: [d2.id],
+        choice: "last_supplier",
+        note: null,
+      });
+      await requests.deleteRequests(admin, [d2.id]);
+      await expect(
+        strategy.closeStrategy(buyer, pending.id, null),
+      ).rejects.toThrow("strategy_not_stopped");
+    });
   });
 });
