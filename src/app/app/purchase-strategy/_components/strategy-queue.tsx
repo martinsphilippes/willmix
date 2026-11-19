@@ -23,11 +23,13 @@ import {
 import type { PackingBasis, PackingTotals } from "@/lib/strategy-packing";
 import { PackingCells, type PackingTexts } from "./packing-cells";
 import {
+  CARD_PRODUCTS,
   CompactPack,
-  KV,
+  LastLines,
   StrategyGrid,
   cardClass,
   type CardTexts,
+  type LastTexts,
 } from "./strategy-card";
 import { QuickDialog } from "@/components/quick-dialog";
 
@@ -165,12 +167,8 @@ export interface StrategyTexts {
     waiting: string;
     emptyStrip: string;
     customer: string;
-    supplier: string;
-    price: string;
-    previous: string;
-    leadTime: string;
-    incoterm: string;
-    moq: string;
+    /** A última compra em duas linhas. */
+    last: LastTexts;
     details: string;
     /** "Detalhes · {title}". */
     detailsTitle: string;
@@ -181,9 +179,6 @@ export interface StrategyTexts {
   /** Idioma dos números (pt-BR, en-US, zh-CN). */
   intl: string;
 }
-
-/** Produtos mostrados no card (os outros ficam no painel Detalhes). */
-const CARD_PRODUCTS = 2;
 
 type Choice = "skip" | StrategyLineChoice;
 
@@ -476,49 +471,19 @@ export function StrategyQueue({
    */
   const compactLast = (last: StrategyLineData["last"]) =>
     last ? (
-      <dl
-        className="grid grid-cols-4 gap-x-2 gap-y-1 border-t border-zinc-100 pt-1.5"
+      <LastLines
+        data={{
+          supplierName: last.supplierName,
+          price: last.price,
+          orderHref: last.orderHref,
+          orderLabel: last.orderLabel,
+          leadTime: last.leadTime,
+          incoterm: last.incoterm,
+          moq: last.moq,
+        }}
+        texts={texts.card.last}
         data-strategy-last={last.supplierId}
-      >
-        <KV
-          label={texts.card.supplier}
-          tip={texts.lastTitle}
-          className="col-span-2"
-        >
-          <span className="block truncate" title={last.supplierName}>
-            {last.supplierName}
-          </span>
-        </KV>
-        {last.price ? (
-          <KV label={texts.card.price} tip={texts.lastPrice}>
-            <span className="tabular-nums">{last.price}</span>
-          </KV>
-        ) : (
-          <span />
-        )}
-        <KV label={texts.card.previous} tip={texts.lastOrder}>
-          <Link href={last.orderHref} className={linkClass}>
-            {last.orderLabel.split(" · ")[0]}
-          </Link>
-          <span className="text-[10px] font-normal text-zinc-500">
-            {" "}
-            {last.orderLabel.split(" · ").slice(1).join(" · ")}
-          </span>
-        </KV>
-        <KV
-          label={texts.card.leadTime}
-          tip={texts.lastLeadTime}
-          className="col-span-2"
-        >
-          {last.leadTime ?? "—"}
-        </KV>
-        <KV label={texts.card.incoterm} tip={texts.lastIncoterm}>
-          {last.incoterm ?? "—"}
-        </KV>
-        <KV label={texts.card.moq} tip={texts.lastMoq}>
-          <span className="tabular-nums">{last.moq ?? "—"}</span>
-        </KV>
-      </dl>
+      />
     ) : (
       <p
         className="text-[11px] font-medium text-amber-800"

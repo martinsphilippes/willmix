@@ -183,6 +183,35 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   // O Comprador gera o pedido com as condições da última compra.
   await login(page, "operador@wellmix.com");
   await page.goto("/app/purchase-strategy");
+  // Rótulo curto do card (dono, 19/11/2026): a explicação aparece por cima,
+  // inteira (nada em volta a corta; a grade rola para os lados e cortaria o
+  // que sai do card).
+  const tip = page
+    .locator(
+      `#decision-${decisionA} [data-strategy-pack-cell="master"] [data-strategy-tip]`,
+    )
+    .first();
+  await tip.hover();
+  await expect(tip.locator("[data-strategy-tip-box]")).toBeVisible();
+  expect(
+    await tip.evaluate((el) => {
+      const box = el.querySelector<HTMLElement>("[data-strategy-tip-box]")!;
+      const r = box.getBoundingClientRect();
+      const card = el.closest("section")!.getBoundingClientRect();
+      box.style.pointerEvents = "auto";
+      const corners = [
+        [r.left + 6, r.top + 6],
+        [r.right - 6, r.top + 6],
+        [r.left + 6, r.bottom - 6],
+        [r.right - 6, r.bottom - 6],
+      ];
+      const onTop = corners.every(([x, y]) =>
+        box.contains(document.elementFromPoint(x, y)),
+      );
+      box.style.pointerEvents = "";
+      return onTop && r.left >= card.left - 1 && r.right <= card.right + 1;
+    }),
+  ).toBe(true);
   // Card compacto (dono, 19/11/2026): o formulário abre num painel.
   await page.locator(`[data-strategy-open-order="${decisionA}"]`).click();
   const orderForm = page.locator(
@@ -322,6 +351,8 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   const stopped = page.locator(`#decision-${decisionE}`);
   await expect(stopped).toHaveAttribute("data-strategy-blocked", "1");
   await expect(stopped.locator("[data-strategy-order-form]")).toHaveCount(0);
+  // Card mais baixo (dono, 19/11/2026): a observação fica numa caixa.
+  await stopped.locator("[data-strategy-close-open]").click();
   page.once("dialog", (dialog) => dialog.accept());
   await stopped.locator("[data-strategy-close]").click();
   await page.waitForURL(/[?&]closed=\d+/);

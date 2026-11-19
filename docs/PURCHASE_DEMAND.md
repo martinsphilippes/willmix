@@ -199,6 +199,23 @@ A tela mostra mais estratégias de uma vez, em cards pequenos. Os dados, as regr
 - **Encerrar estratégia** (seção anterior, #575): no card da estratégia aprovada que parou, com a observação opcional, a explicação e a confirmação.
 - **Menu**: em Produto novo, a ordem é Encomendas, Reposição, Estratégia de compra e Cotação de compra (`FLOW_STEPS`, `src/lib/flow.ts`).
 
+### Cards mais baixos (dono, 19/11/2026)
+
+Para caberem três linhas de cards no Mac e no Full HD, o card de "Em andamento" ficou mais baixo. Os campos e as regras não mudam; só mudam de lugar:
+
+- **Aprovar** continua no card, em um toque (a observação é opcional).
+- **Recusar** abre uma caixa que pede o motivo, obrigatório como antes (`strategy_reject_note` no servidor).
+- **Aprovar ou recusar com observação**: o formulário de sempre fica no painel Detalhes.
+- **Encerrar estratégia** (estratégia aprovada que parou) abre uma caixa com a explicação e a observação opcional.
+- **Última compra** em duas linhas (`LastLines`):
+  - "Última compra: fornecedor · preço · Pedido #N · data";
+  - embaixo, Prazo | Incoterm | Mín.
+- **Uma linha só**, com o texto inteiro ao passar o mouse e no painel Detalhes: modalidade, programação, observação e aviso da parada (o selo diz "Parada").
+- **Solicitação de um lote**: aparece uma vez (mesmo número e situação).
+- **Produtos**: até dois por card; os outros ficam em "+N produtos (veja Detalhes)".
+- **Fila**: os cards usam a mesma última compra em duas linhas.
+- **Dicas dos rótulos curtos**: ficam dentro do próprio card, com até 10rem. A grade rola para os lados e cortaria o que sai dela; por isso nada em volta de uma dica pode cortar o texto (sem `truncate`).
+
 ## Andamento
 
 | PR  | Entrega                                                                                       | Situação |

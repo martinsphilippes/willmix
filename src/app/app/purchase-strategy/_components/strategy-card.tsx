@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { cx } from "@/components/ui";
+import Link from "next/link";
+import { cx, linkClass } from "@/components/ui";
 import type { PackingBasis, PackingTotals } from "@/lib/strategy-packing";
 import type { PackingTexts } from "./packing-cells";
 
@@ -30,9 +31,12 @@ const fill = (text: string, values: Record<string, string | number>) =>
     key in values ? String(values[key]) : all,
   );
 
+/** Produtos mostrados no card (os outros ficam no painel Detalhes). */
+export const CARD_PRODUCTS = 2;
+
 /** Card da grade: fundo branco, borda discreta e espaço interno pequeno. */
 export const cardClass =
-  "flex min-w-0 flex-col gap-1.5 rounded-lg border border-zinc-200 bg-white p-2.5 text-xs text-zinc-700";
+  "flex min-w-0 flex-col gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-xs text-zinc-700";
 
 /**
  * Três colunas lado a lado. Tela estreita: as três colunas continuam, numa
@@ -59,15 +63,22 @@ export function StrategyGrid({
 
 /**
  * Rótulo curto com a explicação: aparece ao passar o mouse, ao tocar ou com
- * o foco do teclado (o leitor de tela lê junto, pelo `aria-describedby`).
+ * o foco do teclado (Tab). O leitor de tela lê o rótulo e a explicação
+ * (texto só para ele); a caixinha visível fica fora da leitura. A caixinha
+ * cabe dentro do próprio card (até 10rem; o card tem no mínimo ~18rem): a
+ * grade rola para os lados e corta o que passa da borda dela. Na metade
+ * direita do card, `align="end"` abre a caixinha para a esquerda. Quem usa
+ * não põe `truncate` (overflow escondido) em volta: cortaria a caixinha.
  */
 export function Tip({
   label,
   tip,
+  align = "start",
   className,
 }: {
   label: ReactNode;
   tip: string;
+  align?: "start" | "end";
   className?: string;
 }) {
   return (
@@ -77,13 +88,17 @@ export function Tip({
         className,
       )}
       tabIndex={0}
-      aria-label={tip}
       data-strategy-tip
     >
       {label}
+      <span className="sr-only">: {tip}</span>
       <span
-        role="tooltip"
-        className="pointer-events-none absolute left-0 top-full z-30 mt-1 hidden w-max max-w-[15rem] whitespace-normal rounded-md bg-zinc-900 px-2 py-1 text-[11px] font-normal leading-4 text-white shadow-lg group-hover/tip:block group-focus/tip:block"
+        aria-hidden
+        className={cx(
+          "pointer-events-none absolute top-full z-30 mt-1 hidden w-max max-w-[10rem] whitespace-normal rounded-md bg-zinc-900 px-2 py-1 text-left text-[11px] font-normal normal-case leading-4 tracking-normal text-white shadow-lg group-hover/tip:block group-focus/tip:block",
+          align === "end" ? "right-0" : "left-0",
+        )}
+        data-strategy-tip-box
       >
         {tip}
       </span>
@@ -95,18 +110,21 @@ export function Tip({
 export function KV({
   label,
   tip,
+  align,
   children,
   className,
 }: {
   label: string;
   tip?: string;
+  /** Coluna da direita: a explicação abre para a esquerda. */
+  align?: "start" | "end";
   children: ReactNode;
   className?: string;
 }) {
   return (
     <div className={cx("min-w-0", className)}>
       <dt className="text-[10px] uppercase tracking-wide text-zinc-500">
-        {tip ? <Tip label={label} tip={tip} /> : label}
+        {tip ? <Tip label={label} tip={tip} align={align} /> : label}
       </dt>
       <dd className="break-words font-medium text-zinc-900">{children}</dd>
     </div>
@@ -196,13 +214,14 @@ export function CompactPack({
   ];
   return (
     <dl
-      className="grid grid-cols-4 gap-1 rounded-md bg-zinc-50 px-1.5 py-1"
+      className="grid grid-cols-4 gap-1 rounded-md bg-zinc-50 px-1.5 py-0.5"
       data-strategy-compact-pack={marker}
     >
-      {cells.map((c) => (
+      {cells.map((c, i) => (
         <div key={c.key} className="min-w-0" data-strategy-pack-cell={c.key}>
-          <dt className="truncate text-[10px] uppercase tracking-wide text-zinc-500">
-            <Tip label={c.label} tip={c.tip} />
+          {/* Sem `truncate` aqui: cortaria a caixinha da explicação. */}
+          <dt className="break-words text-[10px] uppercase tracking-wide text-zinc-500">
+            <Tip label={c.label} tip={c.tip} align={i >= 2 ? "end" : "start"} />
           </dt>
           <dd
             className="truncate text-[13px] font-semibold tabular-nums text-zinc-900"
@@ -219,5 +238,94 @@ export function CompactPack({
         </div>
       ))}
     </dl>
+  );
+}
+
+/** A última compra no card, já escrita (fila e "Em andamento"). */
+export interface LastData {
+  supplierName: string;
+  /** "USD 1,4" (só com "Ver preço de compra"); nulo: não aparece. */
+  price: string | null;
+  orderHref: string;
+  /** "#2 · 19/11/2026". */
+  orderLabel: string;
+  leadTime: string | null;
+  incoterm: string | null;
+  moq: string | null;
+}
+
+export interface LastTexts {
+  /** "Última compra". */
+  last: string;
+  lastTip: string;
+  /** "Pedido". */
+  order: string;
+  lead: string;
+  leadTip: string;
+  incoterm: string;
+  incotermTip: string;
+  moq: string;
+  moqTip: string;
+}
+
+/**
+ * Última compra em duas linhas (dono, 19/11/2026, cards mais baixos):
+ * "Última compra: fornecedor · preço · Pedido #2 · 19/11/2026" e, embaixo,
+ * Prazo | Incoterm | Mín. As explicações ficam em lugares fixos (início da
+ * linha e as três colunas), para a caixinha caber no card.
+ */
+export function LastLines({
+  data,
+  texts,
+  ...rest
+}: {
+  data: LastData;
+  texts: LastTexts;
+} & { [key: `data-${string}`]: string | number | undefined }) {
+  const cell = (
+    label: string,
+    tip: string,
+    value: string | null,
+    align: "start" | "end" = "start",
+  ) => (
+    <span
+      className={cx("min-w-0 break-words", align === "end" && "text-right")}
+    >
+      <span className="text-zinc-500">
+        <Tip label={label} tip={tip} align={align} />:
+      </span>{" "}
+      <span className="font-medium text-zinc-900">{value ?? "—"}</span>
+    </span>
+  );
+  return (
+    <div className="space-y-0.5 border-t border-zinc-100 pt-1" {...rest}>
+      <p className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+        <span className="text-[10px] uppercase tracking-wide text-zinc-500">
+          <Tip label={texts.last} tip={texts.lastTip} />
+        </span>
+        <span
+          className="min-w-0 max-w-full truncate font-medium text-zinc-900"
+          title={data.supplierName}
+        >
+          {data.supplierName}
+        </span>
+        {data.price ? (
+          <span className="font-semibold tabular-nums text-zinc-900">
+            {data.price}
+          </span>
+        ) : null}
+        <span className="text-zinc-600">
+          {texts.order}{" "}
+          <Link href={data.orderHref} className={linkClass}>
+            {data.orderLabel}
+          </Link>
+        </span>
+      </p>
+      <p className="grid grid-cols-3 gap-x-1.5 text-[11px]">
+        {cell(texts.lead, texts.leadTip, data.leadTime)}
+        {cell(texts.incoterm, texts.incotermTip, data.incoterm)}
+        {cell(texts.moq, texts.moqTip, data.moq, "end")}
+      </p>
+    </div>
   );
 }
