@@ -85,4 +85,19 @@ describe("busca por nome (campo de cliente/fornecedor)", () => {
     expect(matchesSearch({ name: "Outra" }, search)).toBe(false);
     expect(matchesSearch({ name: null }, search)).toBe(false);
   });
+
+  it("todas as palavras, em qualquer ordem e lugar (dono, 19/11/2026)", async () => {
+    const { matchesSearch } = await import("@/lib/db/store");
+    const search = { column: "name" as const, text: "dobravel varal" };
+    expect(matchesSearch({ name: "Varal vertical dobrável" }, search)).toBe(
+      true,
+    );
+    expect(matchesSearch({ name: "Varal de chão" }, search)).toBe(false);
+    expect(
+      matchesSearch(
+        { name: "Mesa dobrável" },
+        { column: "name", text: "dobr mes" },
+      ),
+    ).toBe(true);
+  });
 });

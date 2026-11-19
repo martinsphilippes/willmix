@@ -63,22 +63,47 @@ export function searchText(text: string) {
     .trim();
 }
 
-/** Busca do modo memória e do Appwrite: contém o texto, sem caixa nem acento. */
+/** Sem acento e em minúsculas (comparação da busca). */
+export const foldText = (v: string) =>
+  v
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+/**
+ * Palavras da busca (dono, 19/11/2026): cada uma precisa estar no texto, em
+ * qualquer ordem e em qualquer lugar ("dobravel varal" acha "Varal vertical
+ * dobrável"). Até 6, sem repetir.
+ */
+export function searchWords(text: string): string[] {
+  return [
+    ...new Set(searchText(text).split(" ").filter(Boolean).map(foldText)),
+  ].slice(0, 6);
+}
+
+/** Todas as palavras estão no valor (sem caixa nem acento)? */
+export function matchesWords(value: unknown, words: readonly string[]) {
+  if (typeof value !== "string") return false;
+  const folded = foldText(value);
+  return words.every((w) => folded.includes(w));
+}
+
+/**
+ * Padrão do LIKE de uma palavra já sem acento: o banco não ignora acento,
+ * então as vogais e o "c" valem qualquer letra ("dobravel" → "dobr_v_l"
+ * acha "dobrável"); quem chama confere depois com `matchesWords`.
+ */
+export const likeWord = (word: string) => word.replace(/[aeiouc]/g, "_");
+
+/** Busca do modo memória e do Appwrite: todas as palavras, sem caixa nem acento. */
 export function matchesSearch<T extends object>(
   row: T,
   search?: { column: keyof T & string; text: string },
 ): boolean {
   if (!search) return true;
-  const fold = (v: string) =>
-    v
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
-  const value = (row as Record<string, unknown>)[search.column];
-  return (
-    typeof value === "string" &&
-    fold(value).includes(fold(searchText(search.text)))
-  );
+  const words = searchWords(search.text);
+  if (!words.length) return true;
+  return matchesWords((row as Record<string, unknown>)[search.column], words);
 }
 
 /**

@@ -324,6 +324,14 @@ Pedido do dono para `/app/new-request/**` (TS - Trading Sales e Venda - Encomend
 
 Testes: `tests/e2e/new-request-round.spec.ts`, `tests/e2e/order-terms.spec.ts` (helper `editOrderTerms`), `tests/unit/request-rca-open.test.ts`.
 
+## 11.19 Busca por palavras, envio só pelo clique e editar a encomenda (dono, 19/11/2026)
+
+1. **Busca por palavras** em todos os campos com busca no banco (produto, cliente, fornecedor e os demais parceiros, destinatário das mensagens): cada palavra digitada precisa estar no nome, em qualquer ordem e lugar, sem diferenciar acento ("dobravel varal" acha "Varal vertical dobrável"). No Supabase, uma consulta com as palavras como foram digitadas e outra com coringa nas vogais e no "c" (o banco não ignora acento), juntas e conferidas sem acento (`src/lib/db/store.ts`: `searchWords`, `likeWord`, `matchesWords`; `SupabaseStore.listRaw`).
+2. **Envio só pelo clique** (decisão do dono, 19/11/2026): na Nova solicitação (Encomendas, TS e Venda), Enter num campo e Enter ou espaço com o foco em "Enviar" ou "Salvar rascunho" não mandam a solicitação; só o clique ou o toque (`src/components/keyboard-submit-guard.tsx`).
+3. **Editar a encomenda** (decisão do dono, 19/11/2026: só enquanto está "Aguardando cliente"): o envio guarda o formulário como foi enviado (`requests.sentForm`, na 1ª solicitação do lote). Na página da encomenda, "Editar a encomenda" reabre a tela de onde ela saiu com os dados como estavam (rascunho marcado com `editOf` e o mesmo número; aviso "Editando a encomenda #N"). O envio refaz a encomenda no lugar: mesmo número, mesmo lote e os mesmos ids nas posições que já existiam; o cliente confirma de novo. A versão de antes fica no histórico (`request.edited`); se a nova falhar, a de antes volta. Encomendas enviadas antes de 19/11/2026 não têm o formulário guardado e não mostram o botão (`src/lib/services/request-edit.ts`).
+
+Testes: `tests/unit/request-edit.test.ts`, `tests/unit/db-lookup.test.ts`, `tests/unit/supabase-store.test.ts` e o 2º teste de `tests/e2e/new-request-round.spec.ts`.
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

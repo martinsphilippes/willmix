@@ -687,8 +687,28 @@ describe("SupabaseStore: busca por nome", () => {
       search: { column: "name", text: "joão*" },
       limit: 20,
     });
+    // Primeiro como foi digitado; depois sem acento, com coringa nas vogais
+    // (o banco não ignora acento).
     expect(decodeURIComponent(calls[0])).toContain("name=ilike.*joão*");
-    expect(decodeURIComponent(calls[0])).not.toContain("joão**");
+    expect(decodeURIComponent(calls[0])).not.toContain("**");
+    expect(decodeURIComponent(calls[1])).toContain("name=ilike.*j___*");
+  });
+
+  it("cada palavra vira um filtro, em qualquer ordem (dono, 19/11/2026)", async () => {
+    const { calls } = fakeSupabase();
+    const store = new SupabaseStore("https://x.supabase.co", "service");
+    await store.list("products", {
+      search: { column: "name", text: "dobravel varal" },
+      limit: 20,
+    });
+    const literal = decodeURIComponent(calls[0]);
+    expect(literal).toContain("name=ilike.*dobravel*");
+    expect(literal).toContain("name=ilike.*varal*");
+    const accent = decodeURIComponent(calls[1]);
+    expect(accent).toContain("name=ilike.*d_br_v_l*");
+    expect(accent).toContain("name=ilike.*v_r_l*");
+    // Lê mais para sobrar o limite depois da conferência das palavras.
+    expect(accent).toContain("limit=200");
   });
 });
 

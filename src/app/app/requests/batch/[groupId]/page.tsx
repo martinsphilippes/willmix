@@ -1,3 +1,5 @@
+import { canEditSentRequest } from "@/lib/services/request-edit";
+import { reopenSentRequestAction } from "../../../actions/request-drafts";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -196,6 +198,9 @@ export default async function RequestBatchPage({
     }
     return t("common.error");
   };
+  // Editar a encomenda enquanto o cliente não confirmou (dono, 19/11/2026):
+  // reabre a tela de onde ela saiu, com os dados como foram enviados.
+  const editable = await canEditSentRequest(user, rows[0]);
 
   return (
     <>
@@ -239,6 +244,18 @@ export default async function RequestBatchPage({
         }
         actions={
           <>
+            {editable ? (
+              <form action={reopenSentRequestAction}>
+                <input type="hidden" name="requestId" value={rows[0].id} />
+                <SubmitButton
+                  variant="secondary"
+                  pendingText="..."
+                  data-request-edit
+                >
+                  {t("requestEdit.button")}
+                </SubmitButton>
+              </form>
+            ) : null}
             {/* Wellmix: mais produtos no mesmo lote enquanto há um que ainda
                 não virou pedido (o novo entra com o mesmo número). */}
             {addBase ? (

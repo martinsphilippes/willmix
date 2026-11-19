@@ -1498,6 +1498,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "sentForm",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
