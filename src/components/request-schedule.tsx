@@ -211,7 +211,16 @@ export function RequestScheduleFields({
   const [qtys, setQtys] = useState<string[]>(() =>
     fixed
       ? fixedOn
-        ? fixedParts(num(total), fixed.count)
+        ? // A programação gravada volta como foi salva, entrega por entrega
+          // (rascunho reaberto em "Continuar edição", encomenda reaberta em
+          // "Editar a encomenda"; dono, 19/11/2026): 22.320 / 22.320 /
+          // 22.320 / 18.000 não vira a divisão igual. Só sem ela (sem
+          // nenhuma quantidade, que continua em branco, ou com outro número
+          // de datas) o total é repartido nas datas do pedido.
+          initial?.items.length === fixed.count &&
+          initial.items.some((i) => i.quantity > 0)
+          ? initial.items.map((i) => String(i.quantity))
+          : fixedParts(num(total), fixed.count)
         : []
       : (initial?.items.map((i) => String(i.quantity)) ?? []),
   );

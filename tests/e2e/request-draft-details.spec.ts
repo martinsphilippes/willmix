@@ -189,9 +189,10 @@ test("Encomendas: o rascunho abre a mesma tela de detalhes, só para consulta", 
   await page.goto("/app/requests?situ=draft");
   await expect(row.locator("[data-request-number]")).toHaveText(number);
 
-  // Continuar edição: o formulário do rascunho, com os produtos, os nomes e
-  // o total de cada um como foram salvos. (A divisão por entrega ao reabrir
-  // é do formulário: docs/ORDER_LEVEL_LISTS.md, seção 7.6.)
+  // Continuar edição: o formulário do rascunho, com os produtos, os nomes, o
+  // total e cada entrega como foram salvos (docs/ORDER_LEVEL_LISTS.md, seção
+  // 7.6): o copo volta 100 / 0 / 0 (a entrega em branco volta como zero,
+  // como o envio também a conta), não a divisão igual 34 / 33 / 33.
   await page.goto(details);
   await page.locator("[data-draft-resume]").click();
   await page.waitForURL(new RegExp(`/app/requests/new\\?draft=${draftId}`));
@@ -206,6 +207,19 @@ test("Encomendas: o rascunho abre a mesma tela de detalhes, só para consulta", 
     "Copo de vidro 300 ml",
   );
   await expect(page.locator('input[name="p1.quantity"]')).toHaveValue("100");
+  for (const [n, value] of [
+    [1, "100"],
+    [2, "0"],
+    [3, "0"],
+  ] as const)
+    await expect(
+      page.locator(`input[name="p1.schedule.qty.${n}"]`),
+    ).toHaveValue(value);
+  // A boneca: 15 caixas em cada entrega, como foi salvo.
+  for (const n of [1, 2, 3])
+    await expect(
+      page.locator(`input[name="p0.schedule.qty.${n}"]`),
+    ).toHaveValue("720");
   await expect(page.locator('input[name="p2.productName"]')).toHaveValue(
     `Prato ${TAG}`,
   );
@@ -360,7 +374,9 @@ test("Encomendas: o número abre os detalhes do registro certo (rascunho de um c
   await page.reload();
   await expectDraft();
 
-  // Continuar edição: o formulário do rascunho, com o cliente e o produto.
+  // Continuar edição: o formulário do rascunho, com o cliente, o produto e
+  // cada entrega como foi salva (22.320 / 22.320 / 22.320 / 18.000, não a
+  // divisão igual 21.240 em cada; docs/ORDER_LEVEL_LISTS.md, seção 7.6).
   await page.locator("[data-draft-resume]").click();
   await page.waitForURL(new RegExp(`/app/requests/new\\?draft=${draftId}`));
   await expect(
@@ -370,6 +386,37 @@ test("Encomendas: o número abre os detalhes do registro certo (rascunho de um c
     "prod-boneca",
   );
   await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("84960");
+  const resumed = page.locator('[data-request-item="0"]');
+  for (const [n, pieces, boxes] of [
+    [1, "22320", "465"],
+    [2, "22320", "465"],
+    [3, "22320", "465"],
+    [4, "18000", "375"],
+  ] as const) {
+    await expect(
+      page.locator(`input[name="p0.schedule.qty.${n}"]`),
+    ).toHaveValue(pieces);
+    await expect(resumed.locator(`[data-schedule-cartons="${n}"]`)).toHaveValue(
+      boxes,
+    );
+  }
+  // Salvar de novo não muda a divisão (o que foi reaberto é o que foi salvo).
+  await page.locator("[data-request-draft-save]").click();
+  await page.waitForURL(/[?&]draftSaved=1/);
+  await page.goto(draftPath);
+  const saved = page.locator("[data-batch-item]");
+  await expect(saved.locator("[data-batch-pieces]")).toHaveText("84.960");
+  await page.goto(`${draftPath}?item=1`);
+  const rounds = page.locator(
+    "[data-draft-item-focus] [data-request-schedule-table] tbody tr",
+  );
+  for (const [i, text] of [
+    [0, "22.320"],
+    [1, "22.320"],
+    [2, "22.320"],
+    [3, "18.000"],
+  ] as const)
+    await expect(rounds.nth(i)).toContainText(text);
 
   // Depois da consulta: segue rascunho, com o mesmo número, e nada mudou nos
   // cards.

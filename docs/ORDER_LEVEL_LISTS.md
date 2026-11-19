@@ -222,13 +222,14 @@ Os vínculos reais em produção mostram a divergência:
 - **"Voltar às solicitações"** (`ListReturnLink`), nos detalhes do rascunho e da solicitação enviada, leva a esse endereço. Sem nada guardado (link aberto direto, outra aba), leva à lista do início.
 - **A lista, ao voltar** pelo link, pelo "Voltar" do topo ou pelo voltar do navegador, abre na mesma página da tabela, com a mesma busca e ordem, e na mesma rolagem (`ListReturnMemory`). Outra vista da lista (outro filtro) descarta o guardado, e a pessoa rolando interrompe a volta da rolagem. Os endereços dos links não mudaram.
 
-### 7.6 Achado: "Continuar" redistribui as entregas (pendente de decisão do dono)
+### 7.6 "Continuar edição" mantém a divisão salva das entregas (corrigido em 19/11/2026)
 
-Na validação, reabrir o rascunho no formulário ("Continuar" ou "Continuar edição", o mesmo caminho de antes) mostrou a quantidade de cada produto dividida por igual entre as entregas, no lugar da divisão salva. O rascunho guarda 720 / 480 / 240, e o formulário reabre com 480 / 480 / 480. O total do produto se mantém. Se a pessoa salvar de novo, a divisão salva se perde.
+Reabrir o rascunho no formulário ("Continuar" ou "Continuar edição") mostrava a quantidade de cada produto dividida por igual entre as entregas, no lugar da divisão salva: 720 / 480 / 240 voltava como 480 / 480 / 480, com o mesmo total. Se a pessoa salvasse de novo, a divisão salva se perdia. Foi o que aconteceu com o rascunho nº 5 em produção, às 19:39 de 19/11/2026: 22.320 / 22.320 / 22.320 / 18.000 virou 21.240 em cada entrega. O dono autorizou corrigir e restaurar.
 
-- **Causa**: `RequestItems` passa `chosenItemId={null}` para `SelectionQuantity`. Ao montar, o produto da linha chega, e `scheduleOnItemChange` responde "drop" em vez de "restore". O gerador então divide a quantidade de novo.
-- **Os detalhes do rascunho** mostram o que está gravado (720 / 480 / 240).
-- **A correção** é no formulário da Nova solicitação: passar o item salvo da linha (`chosenItemId`), para a programação gravada voltar ("restore"). Ela fica para outra mudança, depois da autorização do dono.
+- **Causa**: em `src/components/request-schedule.tsx`, com a programação do pedido (`fixed`, a da Nova solicitação), a quantidade inicial de cada entrega ignorava a programação gravada (`initial`) e repartia o total nas datas.
+- **Correção**: a programação gravada volta como foi salva, entrega por entrega, quando tem o mesmo número de datas do pedido e alguma quantidade. Sem nenhuma quantidade, as entregas continuam em branco. Com outro número de datas, o total é repartido como antes. Vale também para "Editar a encomenda", que reabre a enviada pela mesma tela.
+- Uma entrega em branco no meio volta como 0, como o envio também a conta.
+- **Testes**: `tests/e2e/request-draft-details.spec.ts` reabre o rascunho e confere cada entrega (100 / 0 / 0 no copo, 720 em cada da boneca e o caso do nº 5, 22.320 / 22.320 / 22.320 / 18.000 com 465 / 465 / 465 / 375 caixas). Também salva de novo e confere que a divisão continua.
 
 ### 7.7 Testes
 
