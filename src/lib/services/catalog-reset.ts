@@ -9,7 +9,8 @@ import {
 } from "@/lib/db";
 import { isAdmin } from "@/lib/auth/permissions";
 import { audit } from "./audit";
-import { RESET_CONFIRM_WORD, planSalesReset } from "./data-reset";
+import { RESET_CONFIRM_WORD, countSalesRows } from "./data-reset";
+import { cols, countRows } from "./reset-query";
 import { STOCK_PARTY_ID } from "./stock-party";
 
 /*
@@ -96,33 +97,51 @@ interface Work {
   }>;
 }
 
-async function safeList(table: TableName) {
-  try {
-    return (await getStore().list(table)) as unknown as Array<
-      Record<string, unknown> & { id: string }
-    >;
-  } catch {
-    return []; // tabela ainda não publicada
-  }
+/** Colunas de ligação de cada tabela (as que apontam para um cadastro). */
+function refColumns(table: TableName) {
+  return Object.entries(TABLES[table].columns).filter(([c]) => REF_COLUMNS[c]);
 }
 
-async function buildWork(user: User): Promise<Work> {
-  const salesLeft = (await planSalesReset(user)).total;
+/**
+ * Calcula o que sai. Com vendas no portal a limpeza não roda: a prévia só
+ * conta os cadastros (sem ler as tabelas que apontam para eles, que com o
+ * Sankhya passam de 700 mil linhas). Sem vendas, lê só as colunas de ligação.
+ */
+async function buildWork(): Promise<Work> {
+  const salesLeft = await countSalesRows();
+  if (salesLeft > 0) {
+    const remove: CatalogResetPlan["remove"] = {};
+    for (const t of TARGETS) {
+      const n = await countRows(t);
+      if (n) remove[t] = n;
+    }
+    return {
+      plan: {
+        salesLeft,
+        remove,
+        unlink: 0,
+        partiesKept: 0,
+        total: Object.values(remove).reduce((s, n) => s + (n ?? 0), 0),
+      },
+      deletes: [],
+      updates: [],
+    };
+  }
   // Parceiro com usuário ligado fica (o login continua funcionando).
   const withUsers = new Set(
-    (await safeList("users"))
+    (await cols("users", ["partyId", "importerId"]))
       .flatMap((u) => [u.partyId, u.importerId])
       .filter((v): v is string => typeof v === "string" && !!v),
   );
   let partiesKept = 0;
+  const idsOf = async (t: TableName) =>
+    new Set((await cols(t, [])).map((r) => r.id));
   const ids: Record<Target, Set<string>> = {
-    products: new Set((await safeList("products")).map((r) => r.id)),
-    product_lines: new Set((await safeList("product_lines")).map((r) => r.id)),
-    payment_conditions: new Set(
-      (await safeList("payment_conditions")).map((r) => r.id),
-    ),
+    products: await idsOf("products"),
+    product_lines: await idsOf("product_lines"),
+    payment_conditions: await idsOf("payment_conditions"),
     parties: new Set(
-      (await safeList("parties"))
+      (await cols("parties", ["type"]))
         .filter(
           (p) =>
             p.id !== STOCK_PARTY_ID &&
@@ -136,19 +155,21 @@ async function buildWork(user: User): Promise<Work> {
         .map((p) => p.id),
     ),
   };
-  const locations = (await safeList("stock_locations")).map((r) => r.id);
+  const locations = (await cols("stock_locations", [])).map((r) => r.id);
   const deletes: Work["deletes"] = [];
   const updates: Work["updates"] = [];
   const doomed = new Set<string>();
 
   for (const table of Object.keys(TABLES) as TableName[]) {
     if (TARGETS.includes(table)) continue;
-    const cols = Object.entries(TABLES[table].columns).filter(
-      ([c]) => REF_COLUMNS[c],
+    const refs = refColumns(table);
+    if (!refs.length) continue;
+    const rows = await cols(
+      table,
+      refs.map(([c]) => c),
     );
-    if (!cols.length) continue;
-    for (const row of await safeList(table)) {
-      const hits = cols.filter(([c]) => {
+    for (const row of rows) {
+      const hits = refs.filter(([c]) => {
         const v = row[c];
         return typeof v === "string" && ids[REF_COLUMNS[c]].has(v);
       });
@@ -188,7 +209,7 @@ async function buildWork(user: User): Promise<Work> {
 
 export async function planCatalogReset(user: User): Promise<CatalogResetPlan> {
   if (!isAdmin(user)) throw new Error("forbidden");
-  return (await buildWork(user)).plan;
+  return (await buildWork()).plan;
 }
 
 export const CATALOG_RESET_BUDGET_MS = 120_000;
@@ -202,7 +223,7 @@ export async function resetCatalogData(
   if (!isAdmin(user)) throw new Error("forbidden");
   if (confirm.trim().toUpperCase() !== RESET_CONFIRM_WORD)
     throw new Error("reset_confirm");
-  const work = await buildWork(user);
+  const work = await buildWork();
   if (work.plan.salesLeft > 0) throw new Error("sales_first");
   const store = getStore();
   const deadline = Date.now() + budgetMs;
@@ -244,10 +265,11 @@ export async function resetCatalogData(
     done.deleted++;
   }
   if (finished) {
-    const settings = await safeList("settings");
+    const settings = await cols("settings", ["key"], {
+      filter: { key: LOAD_KEYS },
+    });
     for (const s of settings)
-      if (LOAD_KEYS.includes(String(s.key)))
-        await tolerant("settings", s.id, () => store.remove("settings", s.id));
+      await tolerant("settings", s.id, () => store.remove("settings", s.id));
   }
   await audit(
     user,

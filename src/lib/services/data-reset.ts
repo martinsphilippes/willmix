@@ -1,9 +1,17 @@
 import "server-only";
 
 import { getStore, type TableName, type User } from "@/lib/db";
+import type { FilterValue } from "@/lib/db/store";
 import { isAdmin } from "@/lib/auth/permissions";
 import { audit } from "./audit";
-import { isSchemaMissing } from "@/lib/db/errors";
+import {
+  cols,
+  colsWhereIn,
+  countTable,
+  inBatches,
+  sweepTable,
+  type Row,
+} from "./reset-query";
 
 /*
  * Limpar dados de teste: apaga as VENDAS (solicitações, cotações, pedidos,
@@ -74,7 +82,6 @@ const SALES_TABLES = [
   "divergence_lots",
   "receivings",
   "art_issues",
-  "art_issues",
   // Estoque de teste: baixas, inventários e perdas (o estoque vem dos containers apagados).
   "stock_movements",
   "stock_count_items",
@@ -88,33 +95,6 @@ const SALES_TABLES = [
   "order_summaries",
   "kpi_snapshots",
 ] as const satisfies readonly TableName[];
-
-/** Tabelas que podem ainda não existir no Appwrite (esquema não publicado). */
-const OPTIONAL_TABLES = new Set<TableName>([
-  "import_steps",
-  "shipping_docs",
-  "real_media",
-  "showroom_receipts",
-  "sales_offers",
-  "sales_orders",
-  "sales_returns",
-  "divergence_lots",
-  "receivings",
-  "production_tracks",
-  "sku_inspections",
-  "messages",
-  "message_reads",
-  "conversation_topics",
-  "conversations",
-  "stock_movements",
-  "stock_count_items",
-  "stock_counts",
-  "stock_reservations",
-  "process_events",
-  "order_milestones",
-  "order_summaries",
-  "kpi_snapshots",
-]);
 
 /** Entidades de venda no histórico (auditoria) e nas medições/revisões. */
 const SALES_ENTITIES = new Set([
@@ -133,7 +113,21 @@ const SALES_ENTITIES = new Set([
   "marketing_kit",
   "ai_suggestion",
   "purchase_snapshot",
+  // Registros das tabelas de venda que também aparecem no histórico.
+  "stage",
+  "message",
+  "conversation",
+  "sales_order",
+  "sales_offer",
+  "sales_return",
+  "customer_attendance",
+  "trade_activity",
+  "stock_count",
+  "request_draft",
 ]);
+
+/** Tabelas de venda sem repetir (saem inteiras, em páginas). */
+const SWEEP_TABLES: TableName[] = [...new Set<TableName>(SALES_TABLES)];
 
 /**
  * Ordem de apagar (menor primeiro): histórico e confirmações; documentos (com
@@ -161,19 +155,6 @@ const DELETE_ORDER: Partial<Record<TableName, number>> = {
 const DEFAULT_ORDER = 5;
 
 const deleteRank = (t: TableName) => DELETE_ORDER[t] ?? DEFAULT_ORDER;
-
-/** Separa os apagamentos (já ordenados) em grupos da mesma ordem. */
-function deleteGroups(deletes: Work["deletes"]) {
-  const groups: Array<Work["deletes"]> = [];
-  let last: number | null = null;
-  for (const d of deletes) {
-    const r = deleteRank(d.table);
-    if (r !== last) groups.push([]);
-    groups[groups.length - 1].push(d);
-    last = r;
-  }
-  return groups;
-}
 
 /** Contadores da numeração (#1 de novo). */
 const COUNTERS = ["request_number", "order_number"];
@@ -223,25 +204,30 @@ interface Work {
   counterIds: string[];
 }
 
-/** Calcula o que sai e o que perde a ligação, sem mudar nada. */
+/** Ids de uma tabela (só id e datas). */
+const ids = async (
+  table: TableName,
+  filter: Record<string, FilterValue> = {},
+) => (await cols(table, [], { filter })).map((r) => r.id);
+
+/**
+ * Calcula o que sai e o que perde a ligação, sem mudar nada. As tabelas de
+ * venda saem inteiras: aqui só a contagem (requisitos e etapas passam de 700
+ * mil linhas); a limpeza as apaga em páginas (`sweepTable`). O resto é lido
+ * só nas colunas que as regras usam.
+ */
 async function buildWork(): Promise<Work> {
-  const store = getStore();
-  const list = <K extends TableName>(table: K) =>
-    OPTIONAL_TABLES.has(table)
-      ? store.list(table).catch((error: unknown) => {
-          if (isSchemaMissing(error)) return [];
-          throw error;
-        })
-      : store.list(table);
+  const str = (v: unknown) => (typeof v === "string" && v ? v : null);
   const [
-    sales,
+    salesCounts,
+    requestIdList,
+    orderIdList,
+    demandRequests,
     documents,
     photos,
     sheets,
     measurements,
     reviews,
-    acks,
-    auditRows,
     products,
     certifications,
     sourcing,
@@ -252,71 +238,80 @@ async function buildWork(): Promise<Work> {
     readings,
     cards,
   ] = await Promise.all([
-    Promise.all(SALES_TABLES.map((t) => list(t))),
-    list("documents"),
-    list("product_photos"),
-    list("purchase_sheets"),
-    list("measurements"),
-    list("review_items"),
-    list("acknowledgements"),
-    list("audit_log"),
-    list("products"),
-    list("certifications"),
-    list("sourcing_items"),
-    list("product_lookups"),
-    list("purchase_schedules"),
-    list("import_batches"),
-    list("counters"),
-    list("sheet_readings"),
-    list("manufacturer_cards"),
+    Promise.all(SWEEP_TABLES.map((t) => countTable(t))),
+    ids("requests"),
+    ids("orders"),
+    cols("requests", ["origin"], { filter: { origin: "sourcing_demand" } }),
+    cols("documents", [
+      "orderId",
+      "requestId",
+      "requirementId",
+      "kitId",
+      "conversationTopicId",
+      "sourcingItemId",
+      "productId",
+      "storageKey",
+      "previousDocumentId",
+    ]),
+    cols("product_photos", [
+      "orderId",
+      "productId",
+      "sourcingItemId",
+      "documentId",
+    ]),
+    cols("purchase_sheets", ["orderId"]),
+    cols("measurements", ["entity", "entityId", "photoDocumentId"]),
+    cols("review_items", ["orderId", "entity", "entityId"]),
+    cols("products", ["primaryPhotoDocumentId"]),
+    cols("certifications", ["documentId"]),
+    cols("sourcing_items", [
+      "requestId",
+      "productId",
+      "status",
+      "primaryPhotoDocumentId",
+    ]),
+    cols("product_lookups", ["requestId", "imageDocumentId"]),
+    cols("purchase_schedules", ["requestId", "orderId", "status"]),
+    cols("import_batches", ["fileDocumentId"]),
+    cols("counters", ["key"], { filter: { key: COUNTERS } }),
+    cols("sheet_readings", ["sheetKey", "documentId"]),
+    cols("manufacturer_cards", ["productId", "documentId"]),
   ]);
 
   const deletes: Work["deletes"] = [];
   const updates: Work["updates"] = [];
+  /** Ids apagados fora das tabelas de venda (documentos, fotos, fichas…). */
   const deleted = new Set<string>();
   const drop = (table: TableName, id: string) => {
     deletes.push({ table, id });
     deleted.add(id);
   };
-  const byTable = Object.fromEntries(
-    SALES_TABLES.map((t, i) => [t, sales[i] as Array<{ id: string }>]),
-  ) as Record<(typeof SALES_TABLES)[number], Array<{ id: string }>>;
-  for (const table of SALES_TABLES)
-    for (const row of byTable[table]) drop(table, row.id);
 
-  const saleIds = (t: (typeof SALES_TABLES)[number]) =>
-    new Set(byTable[t].map((r) => r.id));
-  const requestIds = saleIds("requests");
-  const orderIds = saleIds("orders");
+  const requestIds = new Set(requestIdList);
+  const orderIds = new Set(orderIdList);
   const productIds = new Set(products.map((p) => p.id));
   // Ligação com venda: pedido/solicitação que existe (ou existia) e
   // não é produto do catálogo (a ficha mestre usa orderId = id do produto).
-  const isSale = (id: string | null | undefined) =>
-    !!id && (requestIds.has(id) || orderIds.has(id));
+  const isSale = (id: unknown) =>
+    typeof id === "string" && (requestIds.has(id) || orderIds.has(id));
 
   // Fichas de compra: só existem as do produto (mestre, orderId = id do
   // produto), da cotação e do pedido. Tudo que não é mestre sai (mesmo que a
   // cotação ou o pedido já tenham sido apagados numa rodada anterior).
   for (const s of sheets)
-    if (!productIds.has(s.orderId)) drop("purchase_sheets", s.id);
+    if (!productIds.has(String(s.orderId))) drop("purchase_sheets", s.id);
 
   // Sourcing sob demanda: item que uma solicitação de teste CRIOU (origem
   // "sourcing_demand", nascido junto com ela) e que não virou produto sai
   // junto, com fotos e documentos. Item cadastrado pela equipe e só ligado
   // depois a uma solicitação fica (perde a ligação).
-  const requestById = new Map(
-    (
-      byTable.requests as Array<{
-        id: string;
-        origin?: string | null;
-        createdAt: string;
-      }>
-    ).map((rq) => [rq.id, rq]),
-  );
-  const createdByRequest = (s: (typeof sourcing)[number]) => {
-    const rq = s.requestId ? requestById.get(s.requestId) : undefined;
-    if (!rq || rq.origin !== "sourcing_demand") return false;
-    const gap = Math.abs(Date.parse(s.createdAt) - Date.parse(rq.createdAt));
+  const requestById = new Map(demandRequests.map((rq) => [rq.id, rq]));
+  const createdByRequest = (s: Row) => {
+    const rq = str(s.requestId) ? requestById.get(s.requestId as string) : null;
+    if (!rq) return false;
+    const gap = Math.abs(
+      Date.parse(String(s.createdAt)) - Date.parse(String(rq.createdAt)),
+    );
     return Number.isFinite(gap) && gap < 60_000;
   };
   const sourcingGone = new Set(
@@ -336,26 +331,28 @@ async function buildWork(): Promise<Work> {
   // sourcing na ordem de apagar, então a regra vale na rodada seguinte.)
   for (const m of measurements)
     if (
-      SALES_ENTITIES.has(m.entity) ||
+      SALES_ENTITIES.has(String(m.entity)) ||
       isSale(m.entityId) ||
-      (m.entity === "sourcing_item" && sourcingGone.has(m.entityId))
+      (m.entity === "sourcing_item" && sourcingGone.has(String(m.entityId)))
     )
       drop("measurements", m.id);
   for (const r of reviews)
-    if (r.orderId || SALES_ENTITIES.has(r.entity) || isSale(r.entityId))
+    if (r.orderId || SALES_ENTITIES.has(String(r.entity)) || isSale(r.entityId))
       drop("review_items", r.id);
 
   // Fotos: só as do pedido (sem produto nem item de sourcing); as do catálogo
   // tiradas num pedido ficam e perdem a ligação com ele.
-  const keptPhotos = [];
+  const keptPhotos: Row[] = [];
   const droppedPhotoDocs = new Set<string>();
   for (const p of photos) {
     const fromSale = p.orderId && !p.productId && !p.sourcingItemId;
     const fromGoneSourcing =
-      !!p.sourcingItemId && sourcingGone.has(p.sourcingItemId) && !p.productId;
+      !!p.sourcingItemId &&
+      sourcingGone.has(String(p.sourcingItemId)) &&
+      !p.productId;
     if (fromSale || fromGoneSourcing) {
       drop("product_photos", p.id);
-      if (p.documentId) droppedPhotoDocs.add(p.documentId);
+      if (str(p.documentId)) droppedPhotoDocs.add(p.documentId as string);
     } else {
       keptPhotos.push(p);
       if (p.orderId)
@@ -369,24 +366,23 @@ async function buildWork(): Promise<Work> {
 
   // Fotos do quadro: as da ficha de cotação ou de pedido saem (com a foto);
   // as da ficha mestre do produto ficam (catálogo).
-  const keptReadings = [];
+  const keptReadings: Row[] = [];
   for (const r of readings) {
-    if (productIds.has(r.sheetKey)) keptReadings.push(r);
+    if (productIds.has(String(r.sheetKey))) keptReadings.push(r);
     else {
       drop("sheet_readings", r.id);
-      droppedPhotoDocs.add(r.documentId);
+      if (str(r.documentId)) droppedPhotoDocs.add(r.documentId as string);
     }
   }
 
   // Cartões do fabricante: os do produto ficam (quem fabrica, catálogo); os
   // sem produto saem.
-  const keptCards = [];
+  const keptCards: Row[] = [];
   for (const c of cards) {
-    if (c.productId) {
-      keptCards.push(c);
-    } else {
+    if (c.productId) keptCards.push(c);
+    else {
       drop("manufacturer_cards", c.id);
-      droppedPhotoDocs.add(c.documentId);
+      if (str(c.documentId)) droppedPhotoDocs.add(c.documentId as string);
     }
   }
 
@@ -407,10 +403,10 @@ async function buildWork(): Promise<Work> {
       // Busca por foto/link que virou solicitação de teste sai com ela; a que
       // não virou solicitação fica.
       ...lookups.filter((l) => !l.requestId).map((l) => l.imageDocumentId),
-    ].filter((id): id is string => !!id),
+    ].filter((id): id is string => typeof id === "string" && !!id),
   );
   const files = new Map<string, string>();
-  const keptDocs = [];
+  const keptDocs: Row[] = [];
   for (const d of documents) {
     // De venda: ligado a pedido/solicitação/requisito/kit, foto de cotação
     // (o documento fica sem ligação, só a foto aponta para ele) ou de item de
@@ -420,17 +416,17 @@ async function buildWork(): Promise<Work> {
       // Anexo do chat (sai junto com as mensagens).
       !!d.conversationTopicId ||
       droppedPhotoDocs.has(d.id) ||
-      (!!d.sourcingItemId && sourcingGone.has(d.sourcingItemId));
+      (!!d.sourcingItemId && sourcingGone.has(String(d.sourcingItemId)));
     // Do catálogo: usado por algo que fica, ou do produto/sourcing que fica
     // (arte de kit também tem o produto, mas é da venda do kit).
     const catalog =
       catalogDocs.has(d.id) ||
       (!d.kitId &&
         (!!d.productId ||
-          (!!d.sourcingItemId && !sourcingGone.has(d.sourcingItemId))));
+          (!!d.sourcingItemId && !sourcingGone.has(String(d.sourcingItemId)))));
     if (sale && !catalog) {
       drop("documents", d.id);
-      if (d.storageKey) files.set(d.id, d.storageKey);
+      if (str(d.storageKey)) files.set(d.id, d.storageKey as string);
     } else keptDocs.push(d);
   }
   for (const d of keptDocs) {
@@ -439,19 +435,33 @@ async function buildWork(): Promise<Work> {
     if (d.requestId) patch.requestId = null;
     if (d.requirementId) patch.requirementId = null;
     if (d.kitId) patch.kitId = null;
-    if (d.previousDocumentId && deleted.has(d.previousDocumentId))
+    if (
+      str(d.previousDocumentId) &&
+      deleted.has(d.previousDocumentId as string)
+    )
       patch.previousDocumentId = null;
     if (Object.keys(patch).length)
       updates.push({ table: "documents", id: d.id, patch });
   }
 
-  // Confirmações de leitura e histórico do que saiu.
-  for (const a of acks)
-    if (deleted.has(a.entityId) || SALES_ENTITIES.has(a.entity))
-      drop("acknowledgements", a.id);
-  for (const row of auditRows)
-    if (deleted.has(row.entityId) || SALES_ENTITIES.has(row.entity))
-      drop("audit_log", row.id);
+  // Confirmações de leitura e histórico do que saiu: pela entidade de venda
+  // (filtro no banco) e pelo id do que sai (pedidos, solicitações e o que
+  // saiu fora das tabelas de venda), em pedaços.
+  const trailIds = [...requestIds, ...orderIds, ...deleted];
+  for (const table of ["acknowledgements", "audit_log"] as const) {
+    const seen = new Set<string>();
+    const rows = [
+      ...(await cols(table, [], {
+        filter: { entity: [...SALES_ENTITIES] },
+      })),
+      ...(await colsWhereIn(table, "entityId", trailIds, [])),
+    ];
+    for (const row of rows)
+      if (!seen.has(row.id)) {
+        seen.add(row.id);
+        deletes.push({ table, id: row.id });
+      }
+  }
 
   // O que fica e apontava para uma venda: só perde a ligação.
   for (const s of sourcing)
@@ -482,12 +492,11 @@ async function buildWork(): Promise<Work> {
   // Dependente antes do que é dependido (ver DELETE_ORDER).
   deletes.sort((a, b) => deleteRank(a.table) - deleteRank(b.table));
 
-  const counterIds = counters
-    .filter((c) => COUNTERS.includes(c.key))
-    .map((c) => c.id);
-
+  const swept = Object.fromEntries(
+    SWEEP_TABLES.map((t, i) => [t, salesCounts[i]]),
+  ) as Record<TableName, number>;
   const count = (table: TableName) =>
-    deletes.filter((d) => d.table === table).length;
+    (swept[table] ?? 0) + deletes.filter((d) => d.table === table).length;
   const remove = {
     requests: count("requests"),
     orders: count("orders"),
@@ -501,14 +510,15 @@ async function buildWork(): Promise<Work> {
     messages: count("messages"),
     other: 0,
   };
+  const total = deletes.length + salesCounts.reduce((s, n) => s + n, 0);
   const named = Object.values(remove).reduce((s, n) => s + n, 0);
-  remove.other = deletes.length - named;
+  remove.other = total - named;
   return {
-    plan: { remove, unlink: updates.length, total: deletes.length },
+    plan: { remove, unlink: updates.length, total },
     deletes,
     updates,
     files,
-    counterIds,
+    counterIds: counters.map((c) => c.id),
   };
 }
 
@@ -518,24 +528,11 @@ export async function planSalesReset(user: User): Promise<ResetPlan> {
   return (await buildWork()).plan;
 }
 
-/**
- * Roda em lotes (o Appwrite apaga uma linha por vez). Para antes do lote
- * seguinte se o tempo acabou; devolve se terminou tudo.
- */
-async function inBatches<T>(
-  items: T[],
-  size: number,
-  fn: (item: T) => Promise<unknown>,
-  deadline = Infinity,
-) {
-  for (let i = 0; i < items.length; i += size) {
-    if (Date.now() >= deadline) return false;
-    // Espera o lote inteiro antes de acusar a falha: nada fica rodando depois.
-    const results = await Promise.allSettled(items.slice(i, i + size).map(fn));
-    const failed = results.find((r) => r.status === "rejected");
-    if (failed) throw failed.reason;
-  }
-  return true;
+/** Há vendas no portal (alguma linha nas tabelas de venda)? */
+export async function countSalesRows(): Promise<number> {
+  let total = 0;
+  for (const t of SWEEP_TABLES) total += await countTable(t);
+  return total;
 }
 
 /**
@@ -558,6 +555,8 @@ export async function resetSalesData(
     throw new Error("reset_confirm");
   const deadline = Date.now() + budgetMs;
   const store = getStore();
+  // Linha criada depois daqui (venda nova durante a limpeza) fica.
+  const startedAt = new Date().toISOString();
   const work = await buildWork();
   // Registro que já sumiu (outra limpeza rodando junto, ou uma rodada
   // anterior que parou no meio) não é erro: só segue.
@@ -595,20 +594,37 @@ export async function resetSalesData(
     // meio, a próxima rodada ainda acha o documento e termina. Um grupo da
     // ordem (DELETE_ORDER) termina antes do próximo começar: um lote nunca
     // mistura o documento com a foto que aponta para ele.
-    for (const group of deleteGroups(work.deletes)) {
+    // Tabelas de venda: inteiras, em páginas (só os ids na memória), na
+    // mesma ordem; o que nasceu depois do início da rodada fica.
+    const removeRow = async (table: TableName, id: string) => {
+      const key = table === "documents" ? work.files.get(id) : undefined;
+      if (key) await store.removeFile(key);
+      await tolerant(table, id, () => store.remove(table, id));
+      done.deleted++;
+    };
+    const ranks = [
+      ...new Set([
+        ...work.deletes.map((d) => deleteRank(d.table)),
+        ...SWEEP_TABLES.map(deleteRank),
+      ]),
+    ].sort((a, b) => a - b);
+    for (const rank of ranks) {
       if (!finished) break;
       finished = await inBatches(
-        group,
+        work.deletes.filter((d) => deleteRank(d.table) === rank),
         10,
-        async (d) => {
-          const key =
-            d.table === "documents" ? work.files.get(d.id) : undefined;
-          if (key) await store.removeFile(key);
-          await tolerant(d.table, d.id, () => store.remove(d.table, d.id));
-          done.deleted++;
-        },
+        (d) => removeRow(d.table, d.id),
         deadline,
       );
+      for (const table of SWEEP_TABLES.filter((t) => deleteRank(t) === rank)) {
+        if (!finished) break;
+        finished = await sweepTable(
+          table,
+          startedAt,
+          (id) => removeRow(table, id),
+          deadline,
+        );
+      }
     }
     // A numeração só recomeça com tudo apagado e nenhuma venda nova criada
     // durante a limpeza (senão o próximo pedido repetiria um número).

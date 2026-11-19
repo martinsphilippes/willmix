@@ -2,7 +2,7 @@ import "server-only";
 
 import { getStore, TABLES, type TableName, type User } from "@/lib/db";
 import { isAdmin } from "@/lib/auth/permissions";
-import { isSchemaMissing } from "@/lib/db/errors";
+import { cols, colsWhereIn, wholeTable, type Row } from "./reset-query";
 import { audit } from "./audit";
 import { RESET_CONFIRM_WORD } from "./data-reset";
 
@@ -19,8 +19,11 @@ import { RESET_CONFIRM_WORD } from "./data-reset";
  * - o que depende deles: coluna obrigatória → sai junto; opcional → só perde a
  *   ligação. Documentos e fotos desses registros saem com o arquivo;
  * - avisos, histórico (auditoria) e confirmações de leitura dos registros
- *   apagados; a numeração de bookings, convites e solicitações ao fornecedor
- *   recomeça do 1.
+ *   apagados; a numeração de bookings, convites, solicitações ao fornecedor
+ *   e solicitações (encomendas; decisão do dono de 19/11/2026) recomeça do 1.
+ *
+ * Nada lê uma tabela grande inteira (19/11/2026, memória da Vercel): raízes
+ * por filtro no banco, dependentes e histórico pelos ids delas, em pedaços.
  *
  * Fica: tudo com código do Sankhya (pedidos, itens, títulos, produtos,
  * parceiros, linhas, condições, locais, saldos), usuários e parceiros (os
@@ -93,6 +96,9 @@ const COUNTERS = [
   "booking_lot_number",
   "booking_invite_number",
   "supplier_request_number",
+  // Decisão do dono (19/11/2026): a numeração das solicitações também
+  // recomeça do 1 depois de limpar os testes.
+  "request_number",
 ];
 
 /** Tabelas de histórico: saem as linhas dos registros apagados. */
@@ -109,8 +115,6 @@ const PORTAL_ENTITIES = new Set([
   "conversation",
   "message",
 ]);
-
-type Row = Record<string, unknown> & { id: string };
 
 export interface PortalResetPlan {
   remove: Partial<Record<TableName, number>>;
@@ -129,32 +133,29 @@ interface Work {
   counterIds: string[];
 }
 
-async function safeList(
-  table: TableName,
-  filter?: Record<string, unknown>,
-): Promise<Row[]> {
-  try {
-    return (await getStore().list(table, {
-      filter: filter as never,
-    })) as unknown as Row[];
-  } catch (error) {
-    if (isSchemaMissing(error)) return [];
-    throw error;
-  }
-}
-
-/** Linhas cuja coluna está entre os ids (consulta em pedaços). */
-async function rowsWhereIn(table: TableName, column: string, ids: string[]) {
-  const out: Row[] = [];
-  for (let i = 0; i < ids.length; i += 100) {
-    out.push(...(await safeList(table, { [column]: ids.slice(i, i + 100) })));
-  }
-  return out;
-}
-
 const hasSankhyaCode = (row: Row) =>
   typeof row.sankhyaCode === "string" && row.sankhyaCode !== "";
 
+/** Colunas do documento que as regras usam. */
+const DOC_COLUMNS = [...DOC_LINKS, "storageKey", "previousDocumentId"];
+
+/** Sem código do Sankhya: nulo ou vazio (dois filtros no banco). */
+const NO_CODE = [{ sankhyaCode: null }, { sankhyaCode: "" }] as const;
+
+async function withoutCode(table: TableName, columns: string[]) {
+  const out: Row[] = [];
+  for (const filter of NO_CODE)
+    out.push(...(await cols(table, columns, { filter: { ...filter } })));
+  return out;
+}
+
+/*
+ * Nada aqui lê uma tabela grande inteira (19/11/2026: a tela e a ação
+ * estouravam a memória da Vercel com ~16 mil pedidos e o histórico). As
+ * raízes saem de filtros no banco (sem `sankhyaCode`, tabelas só do portal),
+ * os dependentes e o histórico são buscados pelos ids delas, em pedaços, e
+ * só nas colunas que as regras usam.
+ */
 async function buildWork(): Promise<Work> {
   const doomed = new Map<TableName, Set<string>>();
   const mark = (table: TableName, id: string) => {
@@ -166,6 +167,7 @@ async function buildWork(): Promise<Work> {
   };
   const isDoomed = (table: TableName, id: string) =>
     !!doomed.get(table)?.has(id);
+  const doomedIds = (table: TableName) => [...(doomed.get(table) ?? [])];
   const patches = new Map<
     string,
     { table: TableName; id: string; patch: Row }
@@ -173,23 +175,39 @@ async function buildWork(): Promise<Work> {
 
   // 1. Raízes: o que só nasce no portal.
   for (const table of PORTAL_ONLY)
-    for (const row of await safeList(table)) mark(table, row.id);
-  for (const p of await safeList("products", { sankhyaCode: null }))
-    mark("products", p.id);
-  const orders = await safeList("orders");
-  const sankhyaOrders = new Set(orders.filter(hasSankhyaCode).map((o) => o.id));
-  const sankhyaRequests = new Set(
-    orders
+    for (const row of await cols(table, [])) mark(table, row.id);
+  for (const p of await withoutCode("products", [])) mark("products", p.id);
+  for (const o of await withoutCode("orders", [])) mark("orders", o.id);
+  // Solicitação sem código fica se é de um pedido do Sankhya (o pedido aponta
+  // para ela, ou ela para o pedido).
+  const requests = await withoutCode("requests", ["orderId"]);
+  const sankhyaOrders = (
+    await colsWhereIn(
+      "orders",
+      "id",
+      requests
+        .map((r) => r.orderId)
+        .filter((v): v is string => typeof v === "string" && !!v),
+      ["sankhyaCode"],
+    )
+  ).filter(hasSankhyaCode);
+  const keptRequests = new Set<string>(
+    (
+      await colsWhereIn(
+        "orders",
+        "requestId",
+        requests.map((r) => r.id),
+        ["requestId", "sankhyaCode"],
+      )
+    )
       .filter(hasSankhyaCode)
-      .map((o) => o.requestId)
-      .filter((v): v is string => typeof v === "string"),
+      .map((o) => String(o.requestId)),
   );
-  for (const o of orders) if (!hasSankhyaCode(o)) mark("orders", o.id);
-  for (const r of await safeList("requests"))
+  const sankhyaOrderIds = new Set(sankhyaOrders.map((o) => o.id));
+  for (const r of requests)
     if (
-      !hasSankhyaCode(r) &&
-      !sankhyaRequests.has(r.id) &&
-      !(typeof r.orderId === "string" && sankhyaOrders.has(r.orderId))
+      !keptRequests.has(r.id) &&
+      !(typeof r.orderId === "string" && sankhyaOrderIds.has(r.orderId))
     )
       mark("requests", r.id);
 
@@ -203,31 +221,38 @@ async function buildWork(): Promise<Work> {
     const next = new Map<TableName, string[]>();
     for (const table of Object.keys(TABLES) as TableName[]) {
       if (TRAIL.includes(table) || table === "documents") continue;
-      const cols = Object.entries(TABLES[table].columns).filter(
+      const refCols = Object.entries(TABLES[table].columns).filter(
         ([c, def]) =>
           REFS[c] && def.type === "string" && REFS[c].some((t) => fresh.has(t)),
       );
-      for (const [col, def] of cols) {
+      for (const [col, def] of refCols) {
         const ids = REFS[col].flatMap((t) => fresh.get(t) ?? []);
-        for (const row of await rowsWhereIn(table, col, ids)) {
-          if (isDoomed(table, row.id)) continue;
-          const photoOfProduct =
-            table === "product_photos" && col === "productId";
-          if ((def.required || photoOfProduct) && !hasSankhyaCode(row)) {
-            if (mark(table, row.id))
-              next.set(table, [...(next.get(table) ?? []), row.id]);
-            continue;
-          }
-          if (def.required) continue; // linha do Sankhya: nunca sai
-          const key = `${table}:${row.id}`;
-          const entry = patches.get(key) ?? {
+        for (const filter of wholeTable(table))
+          for (const row of await colsWhereIn(
             table,
-            id: row.id,
-            patch: {} as Row,
-          };
-          (entry.patch as Record<string, unknown>)[col] = null;
-          patches.set(key, entry);
-        }
+            col,
+            ids,
+            ["sankhyaCode"],
+            filter,
+          )) {
+            if (isDoomed(table, row.id)) continue;
+            const photoOfProduct =
+              table === "product_photos" && col === "productId";
+            if ((def.required || photoOfProduct) && !hasSankhyaCode(row)) {
+              if (mark(table, row.id))
+                next.set(table, [...(next.get(table) ?? []), row.id]);
+              continue;
+            }
+            if (def.required) continue; // linha do Sankhya: nunca sai
+            const key = `${table}:${row.id}`;
+            const entry = patches.get(key) ?? {
+              table,
+              id: row.id,
+              patch: {} as Row,
+            };
+            (entry.patch as Record<string, unknown>)[col] = null;
+            patches.set(key, entry);
+          }
       }
     }
     fresh = next;
@@ -245,31 +270,42 @@ async function buildWork(): Promise<Work> {
       )
       .map(([c]) => ({ table, col: c })),
   );
-  const documents = await safeList("documents");
   const usedByDoomed = new Set<string>();
-  for (const { table, col } of docCols) {
-    const ids = [...(doomed.get(table) ?? [])];
-    for (const row of await rowsWhereIn(table, "id", ids))
+  for (const { table, col } of docCols)
+    for (const row of await colsWhereIn(table, "id", doomedIds(table), [col]))
       if (typeof row[col] === "string") usedByDoomed.add(row[col] as string);
-  }
-  const linkedToDoomed = (d: Row) =>
-    DOC_LINKS.some((c) => {
-      const v = d[c];
-      return (
-        typeof v === "string" && (REFS[c] ?? []).some((t) => isDoomed(t, v))
-      );
-    });
-  const loose = (d: Row) => DOC_LINKS.every((c) => d[c] == null || d[c] === "");
-  const candidates = documents.filter(
-    (d) => usedByDoomed.has(d.id) || linkedToDoomed(d) || loose(d),
+  const candidatesById = new Map<string, Row>();
+  const addCandidates = (rows: Row[]) => {
+    for (const d of rows) candidatesById.set(d.id, d);
+  };
+  addCandidates(
+    await colsWhereIn("documents", "id", usedByDoomed, DOC_COLUMNS),
   );
+  for (const c of DOC_LINKS)
+    addCandidates(
+      await colsWhereIn(
+        "documents",
+        c,
+        (REFS[c] ?? []).flatMap(doomedIds),
+        DOC_COLUMNS,
+      ),
+    );
+  // Soltos: nenhuma ligação (filtro no banco).
+  addCandidates(
+    await cols("documents", DOC_COLUMNS, {
+      filter: Object.fromEntries(DOC_LINKS.map((c) => [c, null])),
+    }),
+  );
+  const candidates = [...candidatesById.values()];
   // Documento que algo que fica ainda usa não sai (só perde a ligação).
   const stillUsed = new Set<string>();
   const candidateIds = candidates.map((d) => d.id);
   for (const { table, col } of docCols)
-    for (const row of await rowsWhereIn(table, col, candidateIds))
+    for (const row of await colsWhereIn(table, col, candidateIds, [col]))
       if (!isDoomed(table, row.id)) stillUsed.add(row[col] as string);
-  const settingsText = JSON.stringify(await safeList("settings"));
+  const settingsText = candidates.length
+    ? JSON.stringify(await cols("settings", ["value"]))
+    : "";
   const files = new Map<string, string>();
   for (const d of candidates) {
     if (stillUsed.has(d.id) || settingsText.includes(d.id)) {
@@ -295,12 +331,13 @@ async function buildWork(): Promise<Work> {
     if (typeof d.storageKey === "string" && d.storageKey)
       files.set(d.id, d.storageKey);
   }
-  for (const d of documents)
-    if (
-      !isDoomed("documents", d.id) &&
-      typeof d.previousDocumentId === "string" &&
-      isDoomed("documents", d.previousDocumentId)
-    ) {
+  for (const d of await colsWhereIn(
+    "documents",
+    "previousDocumentId",
+    doomedIds("documents"),
+    ["previousDocumentId"],
+  ))
+    if (!isDoomed("documents", d.id)) {
       const key = `documents:${d.id}`;
       const entry = patches.get(key) ?? {
         table: "documents" as TableName,
@@ -311,21 +348,19 @@ async function buildWork(): Promise<Work> {
       patches.set(key, entry);
     }
 
-  // 4. Histórico, confirmações e avisos do que saiu.
+  // 4. Histórico, confirmações e avisos do que saiu: pela entidade só do
+  // portal (filtro no banco) e pelo id do que sai (em pedaços).
   const allDoomed = new Set([...doomed.values()].flatMap((s) => [...s]));
-  for (const row of await safeList("audit_log"))
-    if (
-      PORTAL_ENTITIES.has(String(row.entity)) ||
-      allDoomed.has(String(row.entityId))
-    )
-      mark("audit_log", row.id);
-  for (const row of await safeList("acknowledgements"))
-    if (
-      PORTAL_ENTITIES.has(String(row.entity)) ||
-      allDoomed.has(String(row.entityId))
-    )
-      mark("acknowledgements", row.id);
-  for (const row of await safeList("notifications")) {
+  for (const table of ["audit_log", "acknowledgements"] as const) {
+    for (const row of await cols(table, [], {
+      filter: { entity: [...PORTAL_ENTITIES] },
+    }))
+      mark(table, row.id);
+    for (const row of await colsWhereIn(table, "entityId", allDoomed, []))
+      mark(table, row.id);
+  }
+  // Aviso não guarda o id do registro, só o link: lê só essa coluna.
+  for (const row of await cols("notifications", ["link"])) {
     const link = typeof row.link === "string" ? row.link : "";
     const path = link.split(/[?#]/)[0];
     const parts = path.split("/").filter(Boolean);
@@ -339,9 +374,9 @@ async function buildWork(): Promise<Work> {
       mark("notifications", row.id);
   }
 
-  const counterIds = (await safeList("counters"))
-    .filter((c) => COUNTERS.includes(String(c.key)))
-    .map((c) => c.id);
+  const counterIds = (
+    await cols("counters", ["key"], { filter: { key: COUNTERS } })
+  ).map((c) => c.id);
 
   // Ordem: histórico e dependentes primeiro, raízes depois (na ordem de
   // PORTAL_ONLY, depois pedidos, solicitações e produtos), documentos por

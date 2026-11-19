@@ -40,20 +40,39 @@ export default async function ResetPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "settings");
-  const { done, error, catalog, portal } = await searchParams;
+  const { done, error, catalog, portal, preview } = await searchParams;
   const t = await getT();
-  const plan = await planSalesReset(user);
-  const catalogPlan = await planCatalogReset(user);
-  const portalPlan = await planPortalTestReset(user);
-  const portalRows = Object.entries(portalPlan.remove).filter(
+  // Prévias sob demanda (19/11/2026): cada uma lê o banco, e as três juntas
+  // a cada abertura da tela estouravam a memória da Vercel. Calcula só a que
+  // o administrador abriu ("Ver o que vai ser apagado") ou a do resultado da
+  // limpeza que acabou de rodar.
+  const has = (v: unknown) => typeof v === "string" && v !== "";
+  const plan =
+    preview === "sales" || has(done) ? await planSalesReset(user) : null;
+  const catalogPlan =
+    preview === "catalog" || has(catalog) ? await planCatalogReset(user) : null;
+  const portalPlan =
+    preview === "portal" || has(portal)
+      ? await planPortalTestReset(user)
+      : null;
+  const portalRows = Object.entries(portalPlan?.remove ?? {}).filter(
     ([, n]) => (n ?? 0) > 0,
   ) as Array<[string, number]>;
-  const catalogRows = Object.entries(catalogPlan.remove).filter(
+  const catalogRows = Object.entries(catalogPlan?.remove ?? {}).filter(
     ([, n]) => (n ?? 0) > 0,
   ) as Array<[string, number]>;
   const rows: Array<[keyof ResetPlan["remove"], number]> = (
-    Object.entries(plan.remove) as Array<[keyof ResetPlan["remove"], number]>
+    Object.entries(plan?.remove ?? {}) as Array<
+      [keyof ResetPlan["remove"], number]
+    >
   ).filter(([, n]) => n > 0);
+  const previewLink = (key: "sales" | "catalog" | "portal") => (
+    <p className="text-sm" data-reset-preview={key}>
+      <TextLink href={`/app/settings/reset?preview=${key}#${key}`}>
+        {t("reset.preview")}
+      </TextLink>
+    </p>
+  );
   const errorText =
     error === "reset_confirm"
       ? t("reset.error.confirm")
@@ -76,7 +95,7 @@ export default async function ResetPage({
           </TextLink>
         }
       />
-      {typeof done === "string" && done && !errorText ? (
+      {plan && has(done) && !errorText ? (
         plan.total === 0 ? (
           <Alert tone="success">
             <span data-reset-done="">{t("reset.done")}</span>
@@ -112,13 +131,15 @@ export default async function ResetPage({
             </Alert>
           ) : portal === "partial" && !errorText ? (
             <Alert tone="warning">
-              {t("reset.remaining", { n: portalPlan.total })}
+              {t("reset.remaining", { n: portalPlan?.total ?? 0 })}
             </Alert>
           ) : null}
           <p className="text-sm font-medium text-red-700">
             {t("reset.portal.intro")}
           </p>
-          {portalPlan.total === 0 && portalPlan.unlink === 0 ? (
+          {!portalPlan ? (
+            previewLink("portal")
+          ) : portalPlan.total === 0 && portalPlan.unlink === 0 ? (
             <p className="text-sm text-zinc-600" data-portal-empty="">
               {t("reset.nothing")}
             </p>
@@ -178,14 +199,16 @@ export default async function ResetPage({
         </div>
       </Card>
       <Card className="mt-6">
-        <div className="space-y-4">
+        <div id="sales" className="scroll-mt-4 space-y-4">
           <p className="text-sm font-medium text-red-700">{t("reset.intro")}</p>
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 {t("reset.removeTitle")}
               </h3>
-              {plan.total === 0 ? (
+              {!plan ? (
+                previewLink("sales")
+              ) : plan.total === 0 ? (
                 <p className="text-sm text-zinc-600" data-reset-empty="">
                   {t("reset.nothing")}
                 </p>
@@ -223,7 +246,7 @@ export default async function ResetPage({
                 {t("reset.keepTitle")}
               </h3>
               <p>{t("reset.keepList")}</p>
-              {plan.unlink > 0 ? (
+              {plan && plan.unlink > 0 ? (
                 <p className="text-xs text-zinc-500">
                   {t("reset.unlink", { n: plan.unlink })}
                 </p>
@@ -231,27 +254,29 @@ export default async function ResetPage({
               <p className="text-xs text-zinc-500">{t("reset.counters")}</p>
             </div>
           </div>
-          <form
-            action={resetSalesDataAction}
-            className="flex flex-wrap items-end gap-3 border-t border-zinc-200 pt-4"
-            data-reset-form=""
-          >
-            <div className="w-full sm:w-64">
-              <Field label={t("reset.confirmLabel")}>
-                <Input
-                  name="confirm"
-                  required
-                  autoComplete="off"
-                  autoCapitalize="characters"
-                  maxLength={20}
-                  placeholder={RESET_CONFIRM_WORD}
-                />
-              </Field>
-            </div>
-            <SubmitButton variant="danger" pendingText="…">
-              {t("reset.submit")}
-            </SubmitButton>
-          </form>
+          {plan ? (
+            <form
+              action={resetSalesDataAction}
+              className="flex flex-wrap items-end gap-3 border-t border-zinc-200 pt-4"
+              data-reset-form=""
+            >
+              <div className="w-full sm:w-64">
+                <Field label={t("reset.confirmLabel")}>
+                  <Input
+                    name="confirm"
+                    required
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    maxLength={20}
+                    placeholder={RESET_CONFIRM_WORD}
+                  />
+                </Field>
+              </div>
+              <SubmitButton variant="danger" pendingText="…">
+                {t("reset.submit")}
+              </SubmitButton>
+            </form>
+          ) : null}
         </div>
       </Card>
       <Card className="mt-6" title={t("reset.catalog.title")}>
@@ -260,13 +285,15 @@ export default async function ResetPage({
             <Alert tone="success">{t("reset.catalog.done")}</Alert>
           ) : catalog === "partial" ? (
             <Alert tone="warning">
-              {t("reset.remaining", { n: catalogPlan.total })}
+              {t("reset.remaining", { n: catalogPlan?.total ?? 0 })}
             </Alert>
           ) : null}
           <p className="text-sm font-medium text-red-700">
             {t("reset.catalog.intro")}
           </p>
-          {catalogPlan.total === 0 ? (
+          {!catalogPlan ? (
+            previewLink("catalog")
+          ) : catalogPlan.total === 0 ? (
             <p className="text-sm text-zinc-600">{t("reset.nothing")}</p>
           ) : (
             <dl
@@ -297,7 +324,7 @@ export default async function ResetPage({
               </div>
             </dl>
           )}
-          {catalogPlan.salesLeft > 0 ? (
+          {!catalogPlan ? null : catalogPlan.salesLeft > 0 ? (
             <Alert tone="warning">{t("reset.catalog.salesFirst")}</Alert>
           ) : catalogPlan.total > 0 ? (
             <form
