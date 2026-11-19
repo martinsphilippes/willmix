@@ -1143,6 +1143,21 @@ export interface RequestCompanyAllocation {
 }
 
 /**
+ * Distribuição padrão entre as entregas programadas de um cliente
+ * (docs/ECONOMIC_GROUPS.md, "Distribuição entre entregas"): o percentual de
+ * cada entrega, por número de entregas (3 entregas: 40/30/30). No pedido de
+ * um grupo econômico, o cliente é a empresa que representa o grupo.
+ */
+export interface DeliveryRoundShare extends BaseRow {
+  customerId: string;
+  /** Número de entregas do pedido a que o padrão vale. */
+  rounds: number;
+  /** Percentual de cada entrega (somam 100), na ordem das entregas. */
+  percents: number[];
+  updatedByUserId: string | null;
+}
+
+/**
  * Distribuição padrão de um grupo econômico entre as empresas dele
  * (docs/ECONOMIC_GROUPS.md): o percentual de cada empresa, usado no
  * preenchimento em massa de cada produto. Uma linha por empresa.
@@ -4101,6 +4116,7 @@ export interface Tables {
   form_drafts: FormDraft;
   customer_groups: CustomerGroup;
   economic_group_shares: EconomicGroupShare;
+  delivery_round_shares: DeliveryRoundShare;
   customer_attendances: CustomerAttendance;
   freight_tariffs: FreightTariff;
   product_variants: ProductVariant;
@@ -5379,6 +5395,16 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_group", type: "key", columns: ["groupCode"] },
       { key: "by_customer", type: "key", columns: ["customerId"] },
     ],
+  },
+  delivery_round_shares: {
+    label: "Distribuição padrão entre entregas (por cliente)",
+    columns: {
+      customerId: id(),
+      rounds: int(true),
+      percents: json(),
+      updatedByUserId: id(false),
+    },
+    indexes: [{ key: "by_customer", type: "key", columns: ["customerId"] }],
   },
   customer_attendances: {
     label: "Atendimentos ao cliente (carteira)",

@@ -143,3 +143,146 @@ export function taxIdText(taxId: string | null): string {
     return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
   return d || "—";
 }
+
+/* ---- Matriz Empresas × Entregas (dono, 19/11/2026) ---- */
+
+/** Quantidade de cada empresa em cada entrega (caixas, ou peças sem caixa). */
+export type CompanyMatrix = Record<string, number[]>;
+
+/** Pesos que valem para N entregas (somam algo e têm N posições). */
+export function usableWeights(
+  weights: readonly number[] | null | undefined,
+  n: number,
+): number[] | null {
+  return weights &&
+    weights.length === n &&
+    weights.every((w) => Number.isFinite(w) && w >= 0) &&
+    weights.some((w) => w > 0)
+    ? [...weights]
+    : null;
+}
+
+/** Um total em N entregas: pelos percentuais, ou em partes iguais. */
+export function spreadRounds(
+  total: number,
+  n: number,
+  weights?: readonly number[] | null,
+): number[] {
+  const count = Math.max(1, Math.floor(n) || 1);
+  const w = usableWeights(weights, count);
+  return w
+    ? spreadCartons(whole(total), w)
+    : splitEvenly(whole(total), count, count);
+}
+
+/** Totais por empresa → matriz (cada total repartido nas entregas). */
+export function matrixFromTotals(
+  totals: CompanyAmounts,
+  ids: readonly string[],
+  n: number,
+  weights?: readonly number[] | null,
+): CompanyMatrix {
+  const out: CompanyMatrix = {};
+  for (const id of ids) {
+    const t = whole(totals[id]);
+    if (t) out[id] = spreadRounds(t, n, weights);
+  }
+  return out;
+}
+
+/** Total de cada empresa na matriz. */
+export function matrixTotals(
+  matrix: CompanyMatrix,
+  ids: readonly string[],
+): CompanyAmounts {
+  return Object.fromEntries(
+    ids.map((id) => [id, (matrix[id] ?? []).reduce((a, b) => a + whole(b), 0)]),
+  );
+}
+
+/** Soma de cada entrega (coluna) da matriz. */
+export function matrixColumns(
+  matrix: CompanyMatrix,
+  ids: readonly string[],
+  n: number,
+): number[] {
+  const out = Array.from({ length: n }, () => 0);
+  for (const id of ids)
+    (matrix[id] ?? []).forEach((v, i) => {
+      if (i < n) out[i] += whole(v);
+    });
+  return out;
+}
+
+/**
+ * Outro número de entregas: o total de cada empresa repartido de novo nas
+ * N entregas (pelos percentuais, ou igual).
+ */
+export function reshapeMatrix(
+  matrix: CompanyMatrix,
+  ids: readonly string[],
+  n: number,
+  weights?: readonly number[] | null,
+): CompanyMatrix {
+  return matrixFromTotals(matrixTotals(matrix, ids), ids, n, weights);
+}
+
+/**
+ * A programação do produto mudou fora da matriz (gerador ou "Programação
+ * X"): cada entrega passa a ter `targets[i]` e é repartida entre as empresas
+ * na proporção que elas já tinham nela; entrega vazia usa a proporção do
+ * total de cada empresa e, sem nada, os percentuais do grupo. Sem nenhuma
+ * base, nulo.
+ */
+export function rescaleMatrix(
+  matrix: CompanyMatrix,
+  ids: readonly string[],
+  targets: readonly number[],
+  shares: Record<string, number>,
+): CompanyMatrix | null {
+  const n = targets.length;
+  const totals = matrixTotals(matrix, ids);
+  const hasTotals = ids.some((id) => totals[id] > 0);
+  const hasShares = ids.some((id) => (Number(shares[id]) || 0) > 0);
+  const out: CompanyMatrix = Object.fromEntries(
+    ids.map((id) => [id, Array.from({ length: n }, () => 0)]),
+  );
+  for (let i = 0; i < n; i++) {
+    const target = whole(targets[i]);
+    if (!target) continue;
+    const column = ids.map((id) => whole(matrix[id]?.[i]));
+    const weights = column.some((v) => v > 0)
+      ? column
+      : hasTotals
+        ? ids.map((id) => totals[id])
+        : hasShares
+          ? ids.map((id) => Math.max(0, Number(shares[id]) || 0))
+          : null;
+    if (!weights) return null;
+    spreadCartons(target, weights).forEach((v, k) => (out[ids[k]][i] = v));
+  }
+  for (const id of ids) if (!out[id].some((v) => v > 0)) delete out[id];
+  return out;
+}
+
+/** Matriz (caixas ou peças) → peças por empresa e a soma por entrega. */
+export function matrixPieces(
+  matrix: CompanyMatrix,
+  ids: readonly string[],
+  n: number,
+  perCarton: number | null,
+): { byCompany: Record<string, number[]>; total: number[] } {
+  const per = perCarton && perCarton > 0 ? perCarton : 1;
+  const total = Array.from({ length: n }, () => 0);
+  const byCompany: Record<string, number[]> = {};
+  for (const id of ids) {
+    const row = Array.from(
+      { length: n },
+      (_, i) => whole(matrix[id]?.[i]) * per,
+    );
+    if (!row.some((v) => v > 0)) continue;
+    byCompany[id] = row;
+    row.forEach((v, i) => (total[i] += v));
+  }
+  return { byCompany, total };
+}
