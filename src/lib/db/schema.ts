@@ -2091,6 +2091,13 @@ export interface RequestDraft extends BaseRow {
   title: string;
   itemCount: number;
   payload: Array<[string, string]>;
+  /**
+   * Número da solicitação (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md,
+   * seção 6): reservado no primeiro salvamento, da mesma sequência das
+   * enviadas (`request_number`), e repetido pela solicitação ao enviar.
+   * Rascunho descartado deixa o número sem uso. Nulo nos de antes da coluna.
+   */
+  number?: number | null;
 }
 
 /**
@@ -5336,6 +5343,7 @@ export const TABLES: Record<TableName, TableDef> = {
       title: str(200, true),
       itemCount: int(true),
       payload: jsonLarge(),
+      number: int(),
     },
     indexes: [{ key: "by_user", type: "key", columns: ["userId"] }],
   },

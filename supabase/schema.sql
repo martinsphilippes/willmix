@@ -1175,6 +1175,7 @@ alter table public."request_drafts" add column if not exists "customerName" text
 alter table public."request_drafts" add column if not exists "title" text;
 alter table public."request_drafts" add column if not exists "itemCount" bigint;
 alter table public."request_drafts" add column if not exists "payload" jsonb;
+alter table public."request_drafts" add column if not exists "number" bigint;
 create index if not exists "request_drafts_by_user" on public."request_drafts" ("userId");
 create index if not exists "request_drafts_created" on public."request_drafts" ("createdAt");
 create index if not exists "request_drafts_created_id" on public."request_drafts" ("createdAt", "id");

@@ -107,6 +107,12 @@ function titleOf(payload: Array<[string, string]>): {
   };
 }
 
+/** Reserva o próximo número de solicitação (sequência `request_number`). */
+async function reserveNumber(): Promise<number> {
+  const { nextRequestNumber } = await import("./requests");
+  return nextRequestNumber();
+}
+
 /** Grava (novo ou por cima do mesmo) o rascunho de quem está no formulário. */
 export async function saveRequestDraft(
   user: User,
@@ -146,9 +152,20 @@ export async function saveRequestDraft(
       !sameEntry(current, screen, replenish)
     )
       throw new DraftError("draft_not_found");
-    return store.update("request_drafts", draftId, data);
+    // Rascunho de antes da numeração: ganha o número no próximo salvamento.
+    return store.update("request_drafts", draftId, {
+      ...data,
+      ...(typeof current.number === "number"
+        ? {}
+        : { number: await reserveNumber() }),
+    });
   }
-  const draft = await store.create("request_drafts", data);
+  // Número da solicitação desde o rascunho (dono, 19/11/2026): a mesma
+  // sequência das enviadas; ao enviar, a solicitação repete este número.
+  const draft = await store.create("request_drafts", {
+    ...data,
+    number: await reserveNumber(),
+  });
   await audit(
     user,
     "request.draft",
@@ -220,13 +237,19 @@ export interface ListedDraft {
 export async function listDraftsForList(
   user: User,
   list: "requests" | "replenishment",
+  /**
+   * Quantos no máximo. Encomendas lê todos os de quem vê (o card Rascunhos
+   * conta todos, dono 19/11/2026); a Reposição segue com os 20 mais novos.
+   */
+  max = 20,
 ): Promise<ListedDraft[]> {
   if (!isWellmix(user)) return [];
   const rows = await getStore().list("request_drafts", {
     filter: { userId: user.id },
     orderBy: "updatedAt",
     direction: "desc",
-    limit: 60,
+    // Folga para os rascunhos das outras telas (o filtro é pelo conteúdo).
+    limit: Math.max(60, max * 3),
   });
   return rows
     .filter((d) => {
@@ -235,7 +258,7 @@ export async function listDraftsForList(
       if ((list === "replenishment") !== replenish) return false;
       return canDraft(user, screen, replenish);
     })
-    .slice(0, 20)
+    .slice(0, max)
     .map((draft) => ({
       draft,
       href: draftResumeHref(draft.id, draft.payload),

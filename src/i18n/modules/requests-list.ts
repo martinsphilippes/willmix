@@ -4,11 +4,87 @@
  * mesmas chaves em pt, en e zh.
  */
 export const pt = {
-  "reqList.situ.all": "Todas",
-  "reqList.situ.open": "Em aberto",
+  "reqList.situ.all": "Total",
+  "reqList.situ.open": "Abertas",
   "reqList.situ.waiting": "Aguardando sinal",
   "reqList.situ.ordered": "Viraram pedido",
-  "reqList.situ.late": "Prazo vencido",
+  "reqList.situ.late": "Atrasadas",
+  // Cards por solicitação e tabela compacta (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 6).
+  "reqList.situ.draft": "Rascunhos",
+  "reqList.situ.all.hint":
+    "Solicitações e rascunhos seus, com a busca e o filtro de quem está com a vez.",
+  "reqList.situ.open.hint":
+    "Solicitações enviadas com alguma etapa pendente, aguardando o cliente, o fornecedor ou a Wellmix.",
+  "reqList.situ.draft.hint": "Os seus rascunhos (só você os vê).",
+  "reqList.situ.late.hint": "Abertas com o prazo da etapa atual vencido.",
+  "reqList.head.number": "Solicitação",
+  "reqList.head.customer": "Cliente",
+  "reqList.head.items": "Itens",
+  "reqList.head.value": "Valor",
+  "reqList.head.pieces": "Peças",
+  "reqList.head.master": "Master",
+  "reqList.head.inner": "Inner",
+  "reqList.head.cbm": "CBM (m³)",
+  "reqList.head.situation": "Situação",
+  "reqList.head.containers": "Cont./prog.",
+  "reqList.head.deliveries": "Entregas",
+  "reqList.head.next": "Próxima ação",
+  "reqList.head.deadline": "Prazo",
+  "reqList.head.owner": "Analista",
+  "reqList.head.date": "Data",
+  "reqList.head.number.hint":
+    "Número da solicitação, o mesmo do rascunho ao envio. Abre a solicitação ou continua o rascunho.",
+  "reqList.head.items.hint":
+    "Quantidade de produtos da solicitação (produtos diferentes).",
+  "reqList.head.value.hint":
+    "Valor total previsto da venda ao cliente, em R$: a cotação do Sankhya com frete, gravada no envio da solicitação. É uma previsão, não o valor do pedido.",
+  "reqList.head.pieces.hint":
+    "Quantidade total em peças: todos os produtos e todas as entregas.",
+  "reqList.head.master.hint":
+    "Quantidade total de caixas master (cada entrega fecha as suas caixas).",
+  "reqList.head.inner.hint": "Quantidade total de caixas inner.",
+  "reqList.head.cbm.hint": "Cubagem total: caixas master × m³ de cada caixa.",
+  "reqList.head.situation.hint":
+    "Com quem está a vez agora. A situação gravada aparece ao passar o mouse no selo.",
+  "reqList.head.containers.hint":
+    "Containers por programação: quantos containers cada entrega enche, no maior container das Configurações.",
+  "reqList.head.deliveries.hint":
+    "Quantidade de entregas programadas: as programações de compra. Cada uma vira um pedido filho com embarque e entrega próprios; a data de cada programação é a da compra, não a da entrega.",
+  "reqList.head.next.hint":
+    "A ação pendente e quem deve agir: a pessoa, a equipe (função) ou o parceiro, pela mesma regra das Pendências. Toque no responsável para ver os nomes.",
+  "reqList.head.deadline.hint":
+    "Prazo de resposta da ação pendente: o mesmo da pendência (convite da cotação, negociação e amostragem com o fornecedor). Sem prazo próprio, vale o prazo de resposta da solicitação.",
+  "reqList.head.owner.hint":
+    "Analista vinculado à solicitação (escolhido pela divisão da linha do produto). Não é, necessariamente, quem age na próxima ação.",
+  "reqList.head.date.hint":
+    "Data de criação da solicitação; no rascunho, o dia em que foi salvo pela primeira vez.",
+  "reqList.head.hintLabel": "Sobre a coluna {title}",
+  "reqList.resp.undefined": "Responsável não definido",
+  "reqList.resp.people": "{n} pessoas",
+  "reqList.resp.partners": "{n} parceiros",
+  "reqList.resp.label": "Quem deve agir: {who}",
+  "reqList.resp.title": "Quem pode agir",
+  "reqList.resp.functions": "Equipe (funções): {list}",
+  "reqList.resp.admins": "Administradores também podem agir: {list}",
+  "reqList.resp.due": "prazo {date}",
+  "reqList.resp.noLogin": "sem login",
+  "reqList.resp.missing.function":
+    "Ninguém da equipe tem a função desta etapa. Pendência de cadastro: dar a função a alguém em Equipe → Funções e acessos. Até lá, os administradores podem agir.",
+  "reqList.resp.missing.login":
+    "Nenhum login do cliente pode confirmar. Pendência de cadastro: escolher o login com acesso na solicitação ou criar o acesso no cadastro do cliente. A pendência vai aos administradores.",
+  "reqList.resp.missing.partner_login":
+    "O parceiro não tem login ativo no portal. Pendência de cadastro: criar o acesso dele na Equipe Externa.",
+  "reqList.resp.missing.flow":
+    "Etapa ainda sem responsável definido no processo. Os administradores podem agir.",
+  "reqList.actions.count": "{n} ações",
+  "reqList.actions.products": "{n} produto(s)",
+  "reqList.draft.next": "Concluir e enviar",
+  "reqList.draft.open": "Continuar o rascunho {n}",
+  "reqList.number.open": "Abrir a solicitação {n}",
+  "reqList.more": "mais",
+  "reqList.less": "menos",
+  "reqList.csv.responsible": "Responsável;Prazo da ação",
+  "reqList.csv.login": "Login do responsável",
   "reqList.search": "Buscar por nº, produto, descrição ou cliente",
   "reqList.searchButton": "Buscar",
   "reqList.export": "Exportar (CSV)",
@@ -104,11 +180,87 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
-  "reqList.situ.all": "All",
+  "reqList.situ.all": "Total",
   "reqList.situ.open": "Open",
   "reqList.situ.waiting": "Waiting for down payment",
   "reqList.situ.ordered": "Became orders",
-  "reqList.situ.late": "Past deadline",
+  "reqList.situ.late": "Overdue",
+  "reqList.situ.draft": "Drafts",
+  "reqList.situ.all.hint":
+    "Requests and your drafts, with the search and the turn filter.",
+  "reqList.situ.open.hint":
+    "Sent requests with a pending step, waiting for the customer, the supplier or Wellmix.",
+  "reqList.situ.draft.hint": "Your drafts (only you see them).",
+  "reqList.situ.late.hint":
+    "Open requests whose current step is past its deadline.",
+  "reqList.head.number": "Request",
+  "reqList.head.customer": "Customer",
+  "reqList.head.items": "Items",
+  "reqList.head.value": "Value",
+  "reqList.head.pieces": "Pieces",
+  "reqList.head.master": "Master",
+  "reqList.head.inner": "Inner",
+  "reqList.head.cbm": "CBM (m³)",
+  "reqList.head.situation": "Status",
+  "reqList.head.containers": "Cont./round",
+  "reqList.head.deliveries": "Deliveries",
+  "reqList.head.next": "Next action",
+  "reqList.head.deadline": "Due",
+  "reqList.head.owner": "Analyst",
+  "reqList.head.date": "Date",
+  "reqList.head.number.hint":
+    "Request number, the same from draft to sent. Opens the request or resumes the draft.",
+  "reqList.head.items.hint":
+    "Number of products in the request (different products).",
+  "reqList.head.value.hint":
+    "Expected total sale value to the customer, in BRL: the Sankhya quote with freight, saved when the request was sent. It is a forecast, not the order value.",
+  "reqList.head.pieces.hint":
+    "Total quantity in pieces: all products and all deliveries.",
+  "reqList.head.master.hint":
+    "Total master cartons (each delivery closes its own cartons).",
+  "reqList.head.inner.hint": "Total inner cartons.",
+  "reqList.head.cbm.hint": "Total volume: master cartons × m³ of each carton.",
+  "reqList.head.situation.hint":
+    "Whose turn it is now. The saved status shows when hovering the badge.",
+  "reqList.head.containers.hint":
+    "Containers per round: how many containers each delivery fills, in the largest container in Settings.",
+  "reqList.head.deliveries.hint":
+    "Number of scheduled deliveries: the purchase rounds. Each one becomes a child order with its own shipment and delivery; each round's date is the purchase date, not the delivery date.",
+  "reqList.head.next.hint":
+    "The pending action and who must act: the person, the team (function) or the partner, by the same rule as Tasks. Tap the responsible to see the names.",
+  "reqList.head.deadline.hint":
+    "Response deadline of the pending action: the same as the task (quote invitation, negotiation and sampling with the supplier). Without its own deadline, the request response deadline applies.",
+  "reqList.head.owner.hint":
+    "Analyst linked to the request (chosen by the product line division). Not necessarily who acts on the next action.",
+  "reqList.head.date.hint":
+    "Request creation date; for a draft, the day it was first saved.",
+  "reqList.head.hintLabel": "About the {title} column",
+  "reqList.resp.undefined": "Responsible not defined",
+  "reqList.resp.people": "{n} people",
+  "reqList.resp.partners": "{n} partners",
+  "reqList.resp.label": "Who must act: {who}",
+  "reqList.resp.title": "Who can act",
+  "reqList.resp.functions": "Team (functions): {list}",
+  "reqList.resp.admins": "Administrators can also act: {list}",
+  "reqList.resp.due": "due {date}",
+  "reqList.resp.noLogin": "no login",
+  "reqList.resp.missing.function":
+    "No one on the team has this step's function. Setup pending: give the function to someone in Team → Functions and access. Until then, administrators can act.",
+  "reqList.resp.missing.login":
+    "No customer login can confirm. Setup pending: choose the login with access on the request or create the access in the customer record. The task goes to the administrators.",
+  "reqList.resp.missing.partner_login":
+    "The partner has no active portal login. Setup pending: create their access in External Team.",
+  "reqList.resp.missing.flow":
+    "Step without a defined responsible in the process yet. Administrators can act.",
+  "reqList.actions.count": "{n} actions",
+  "reqList.actions.products": "{n} product(s)",
+  "reqList.draft.next": "Complete and send",
+  "reqList.draft.open": "Resume draft {n}",
+  "reqList.number.open": "Open request {n}",
+  "reqList.more": "more",
+  "reqList.less": "less",
+  "reqList.csv.responsible": "Responsible;Action due",
+  "reqList.csv.login": "Responsible login",
   "reqList.search": "Search by no., product, description or customer",
   "reqList.searchButton": "Search",
   "reqList.export": "Export (CSV)",
@@ -202,11 +354,80 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
-  "reqList.situ.all": "全部",
+  "reqList.situ.all": "合计",
   "reqList.situ.open": "未完成",
   "reqList.situ.waiting": "待付定金",
   "reqList.situ.ordered": "已转订单",
   "reqList.situ.late": "已超期",
+  "reqList.situ.draft": "草稿",
+  "reqList.situ.all.hint": "需求单和您的草稿，按搜索和“由谁处理”筛选。",
+  "reqList.situ.open.hint":
+    "已发送且有待处理步骤的需求单（等待客户、供应商或 Wellmix）。",
+  "reqList.situ.draft.hint": "您的草稿（仅您可见）。",
+  "reqList.situ.late.hint": "当前步骤已过期的未完成需求单。",
+  "reqList.head.number": "需求单",
+  "reqList.head.customer": "客户",
+  "reqList.head.items": "品项",
+  "reqList.head.value": "金额",
+  "reqList.head.pieces": "件数",
+  "reqList.head.master": "外箱",
+  "reqList.head.inner": "内盒",
+  "reqList.head.cbm": "CBM (m³)",
+  "reqList.head.situation": "状态",
+  "reqList.head.containers": "柜/批",
+  "reqList.head.deliveries": "交付",
+  "reqList.head.next": "下一步",
+  "reqList.head.deadline": "期限",
+  "reqList.head.owner": "分析员",
+  "reqList.head.date": "日期",
+  "reqList.head.number.hint":
+    "需求单编号，草稿到发送保持不变。打开需求单或继续草稿。",
+  "reqList.head.items.hint": "需求单中的产品数量（不同产品）。",
+  "reqList.head.value.hint":
+    "预计对客户的销售总额（雷亚尔）：发送需求单时保存的 Sankhya 含运费报价。这是预测，不是订单金额。",
+  "reqList.head.pieces.hint": "总件数：所有产品和所有交付。",
+  "reqList.head.master.hint": "外箱总数（每次交付各自装箱）。",
+  "reqList.head.inner.hint": "内盒总数。",
+  "reqList.head.cbm.hint": "总体积：外箱数 × 每箱立方米。",
+  "reqList.head.situation.hint":
+    "当前由谁处理。鼠标悬停在标签上可看到保存的状态。",
+  "reqList.head.containers.hint":
+    "每批货柜数：每次交付装满多少个货柜（按设置中最大的货柜）。",
+  "reqList.head.deliveries.hint":
+    "计划交付次数：采购批次。每批成为一个子订单，各自装运和交付；每批的日期是采购日期，不是交付日期。",
+  "reqList.head.next.hint":
+    "待处理的操作和应处理的人：个人、团队（职能）或合作方，规则与待办相同。点击负责人查看姓名。",
+  "reqList.head.deadline.hint":
+    "待处理操作的回复期限：与待办相同（询价邀请、与供应商的谈判和打样）。没有自己的期限时，按需求单的回复期限。",
+  "reqList.head.owner.hint":
+    "与需求单关联的分析员（按产品线部门分配）。不一定是处理下一步的人。",
+  "reqList.head.date.hint": "需求单创建日期；草稿为首次保存的日期。",
+  "reqList.head.hintLabel": "关于 {title} 列",
+  "reqList.resp.undefined": "未指定负责人",
+  "reqList.resp.people": "{n} 人",
+  "reqList.resp.partners": "{n} 个合作方",
+  "reqList.resp.label": "应处理：{who}",
+  "reqList.resp.title": "可处理的人",
+  "reqList.resp.functions": "团队（职能）：{list}",
+  "reqList.resp.admins": "管理员也可处理：{list}",
+  "reqList.resp.due": "期限 {date}",
+  "reqList.resp.noLogin": "无登录",
+  "reqList.resp.missing.function":
+    "团队中没有人拥有此步骤的职能。待完成设置：在 团队 → 职能和权限 中分配职能。在此之前，管理员可以处理。",
+  "reqList.resp.missing.login":
+    "没有可确认的客户登录。待完成设置：在需求单中选择有权限的登录，或在客户档案中创建访问。该待办发给管理员。",
+  "reqList.resp.missing.partner_login":
+    "该合作方在门户中没有有效登录。待完成设置：在外部团队中为其创建访问。",
+  "reqList.resp.missing.flow": "流程中此步骤尚未指定负责人。管理员可以处理。",
+  "reqList.actions.count": "{n} 项操作",
+  "reqList.actions.products": "{n} 个产品",
+  "reqList.draft.next": "完成并发送",
+  "reqList.draft.open": "继续草稿 {n}",
+  "reqList.number.open": "打开需求单 {n}",
+  "reqList.more": "更多",
+  "reqList.less": "收起",
+  "reqList.csv.responsible": "负责人;操作期限",
+  "reqList.csv.login": "负责人登录",
   "reqList.search": "按编号、产品、描述或客户搜索",
   "reqList.searchButton": "搜索",
   "reqList.export": "导出 (CSV)",

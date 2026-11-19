@@ -37,11 +37,13 @@ describe("lista de solicitações", () => {
   });
 
   it('a lista de Encomendas não oferece "viraram pedido" (virou pedido, saiu da etapa)', () => {
-    expect(LISTED_SITUATIONS).toEqual(["all", "open", "late"]);
+    // Cards Total | Abertas | Rascunhos | Atrasadas (dono, 19/11/2026).
+    expect(LISTED_SITUATIONS).toEqual(["all", "open", "draft", "late"]);
     // Quem já virou pedido não entra em nenhuma das situações da lista, exceto
-    // "todas" (que a página alimenta sem os pedidos).
+    // "todas" (que a página alimenta sem os pedidos); solicitação enviada
+    // nunca é rascunho.
     const today = "2026-11-06";
-    for (const k of ["open", "late"] as const)
+    for (const k of ["open", "draft", "late"] as const)
       expect(
         inSituation(req("ORDERED", "2026-01-01"), "ORDERED", k, today),
       ).toBe(false);

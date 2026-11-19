@@ -94,18 +94,20 @@ test("Encomendas: lista no nível do pedido e a página do pedido com os produto
       (th.textContent ?? "").replace(/\s+/g, " ").trim(),
     ),
   );
+  // Cabeçalhos curtos (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 6).
   const order = [
-    "Nº",
+    "Solicitação",
     "Cliente",
-    "Produtos",
+    "Itens",
     "Situação",
-    "Containers por programação",
-    "Programações",
-    "Próximo passo",
+    "Cont./prog.",
+    "Entregas",
+    "Próxima ação",
   ].map((title) => titles.findIndex((t) => t.startsWith(title)));
   expect(order.every((i) => i >= 0)).toBe(true);
   expect([...order].sort((a, b) => a - b)).toEqual(order);
-  for (const rest of ["Prazo de resposta", "Analista", "Data"])
+  expect(titles).not.toContain("Pedido");
+  for (const rest of ["Prazo", "Analista", "Data"])
     expect(titles.findIndex((t) => t.startsWith(rest))).toBeGreaterThan(
       order[order.length - 1],
     );
@@ -121,7 +123,8 @@ test("Encomendas: lista no nível do pedido e a página do pedido com os produto
   await expect(batch.locator("[data-request-products]")).toHaveText("2");
   await expect(batch.locator("[data-request-rounds]")).toHaveText("3");
   await expect(batch.locator("[data-request-containers]")).toHaveText("—");
-  await expect(batch.locator("[data-request-order]")).toHaveText("—");
+  // Sem a coluna Pedido (dono, 19/11/2026): o vínculo segue na página.
+  await expect(batch.locator("[data-request-order]")).toHaveCount(0);
   // Abrir é um ícone, sem a palavra.
   const open = batch.locator(`a[data-open-link][href="${batchPath}"]`);
   await expect(open).toHaveText("");

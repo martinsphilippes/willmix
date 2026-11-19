@@ -25,13 +25,21 @@ import { orderMilestoneText } from "@/lib/milestones";
  * de pedidos até seguir o processo das solicitações ao fornecedor.
  */
 
-export const REQUEST_SITUATIONS = ["all", "open", "ordered", "late"] as const;
+export const REQUEST_SITUATIONS = [
+  "all",
+  "open",
+  "draft",
+  "ordered",
+  "late",
+] as const;
 export type RequestSituation = (typeof REQUEST_SITUATIONS)[number];
 
 /**
  * Situações da lista de Encomendas (dono, 16/11/2026): "Viraram pedido" saiu,
  * porque a encomenda que virou pedido já não é desta etapa. `inSituation`
- * ainda entende "ordered" (a exportação e links antigos).
+ * ainda entende "ordered" (a exportação e links antigos). Cards (dono,
+ * 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 6): Total | Abertas |
+ * Rascunhos | Atrasadas, contados por solicitação.
  */
 export const LISTED_SITUATIONS = REQUEST_SITUATIONS.filter(
   (k): k is Exclude<RequestSituation, "ordered"> => k !== "ordered",
@@ -74,6 +82,9 @@ export function inSituation(
       return true;
     case "open":
       return OPEN.includes(r.status);
+    // Rascunho não é solicitação enviada: o card conta os rascunhos à parte.
+    case "draft":
+      return false;
     case "ordered":
       return display === "ORDERED";
     case "late":
@@ -145,6 +156,8 @@ export interface NextStep {
   stage?: StageKey | null;
   /** Etapa atual com o prazo vencido. */
   late?: boolean;
+  /** Pedido: o prazo da etapa atual (o do marco), quando há. */
+  dueAt?: string | null;
 }
 
 /**
@@ -164,6 +177,11 @@ export interface PurchaseProgress {
   quote: {
     status: PurchaseQuoteStatus;
     phase: "answering" | "choose" | "empty";
+    /**
+     * Convites ainda no prazo (quem responde a cotação): o parceiro e o
+     * prazo dele, o mesmo da pendência de cada um (dono, 19/11/2026).
+     */
+    invites?: { supplierId: string; dueAt: string }[];
   } | null;
   /**
    * Solicitações ao fornecedor nascidas da vencedora: a situação, de quem é
@@ -175,6 +193,12 @@ export interface PurchaseProgress {
     status: SupplierRequestStatus;
     negotiation: "supplier" | "wellmix" | null;
     sampling: "supplier" | "wellmix" | null;
+    /** O fornecedor da solicitação (quem responde e envia a amostragem). */
+    supplierId?: string | null;
+    /** Prazo da negociação (o SLA das pendências de responder e de decidir). */
+    negotiationDueAt?: string | null;
+    /** Prazo da amostragem com o fornecedor (o da pendência dele). */
+    samplingDueAt?: string | null;
   }[];
 }
 
@@ -259,6 +283,7 @@ export function requestNextStep(input: {
       who: partyOfRole(o.responsibleRole, { trading: o.trading }),
       stage: o.status,
       late: !!o.dueAt && o.dueAt.slice(0, 10) < input.today,
+      dueAt: o.dueAt,
     };
   }
   if (status === "AWAITING_CUSTOMER")

@@ -7285,6 +7285,13 @@
           "array": false,
           "default": null,
           "type": "longtext"
+        },
+        {
+          "key": "number",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
         }
       ],
       "indexes": [

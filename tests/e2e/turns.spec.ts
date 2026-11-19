@@ -66,9 +66,10 @@ test("venda aguardando o cliente: Em aberto e com o cliente; ele confirma pelas 
   await expect(row.locator('[data-request-next="confirm"]')).toContainText(
     "Confirmar pedido",
   );
-  await expect(row.locator('[data-request-next="confirm"]')).toContainText(
-    "com o cliente",
-  );
+  // Quem deve agir (dono, 19/11/2026): o login do cliente que confirma.
+  await expect(
+    row.locator('[data-request-next="confirm"] [data-request-responsible]'),
+  ).toHaveText("João Cliente · Cliente");
 
   // O cliente: "Confirmar pedido" nas Pendências, levando ao cartão.
   await login(page, "joao@lojista.com");
