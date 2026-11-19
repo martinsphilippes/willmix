@@ -535,7 +535,15 @@ export default async function RequestBatchPage({
                     title={
                       line.cbm !== null
                         ? `${line.cbm.toLocaleString(t.intl, { maximumFractionDigits: 4 })} m³`
-                        : undefined
+                        : pk?.cbmOtherBox && pk.perBox
+                          ? t("reqBatch.cbm.otherBox", {
+                              qty: num(pk.cbmOtherBox.boxQty),
+                              perBox: num(pk.perBox.value),
+                            })
+                          : undefined
+                    }
+                    data-batch-cbm-other={
+                      line.cbm === null && pk?.cbmOtherBox ? "" : undefined
                     }
                   >
                     {line.cbm !== null
