@@ -12,11 +12,19 @@ export function formatters(t: Translate) {
     style: "currency",
     currency: "BRL",
   });
+  const brlShort = new Intl.NumberFormat(t.intl, {
+    style: "currency",
+    currency: "BRL",
+    notation: "compact",
+    maximumFractionDigits: 2,
+  });
   return {
     int: (n: number) => int.format(n),
     dec: (n: number) => dec.format(n),
     pct: (n: number) => pct.format(n),
     brl: (n: number | null) => (n === null ? "—" : brl.format(n)),
+    /** R$ curto para os cartões ("R$ 1,02 mi"). */
+    brlShort: (n: number | null) => (n === null ? "—" : brlShort.format(n)),
     /** AAAA-MM-DD → dd/mm/aaaa */
     day: (d: string | null) =>
       d ? `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}` : "—",

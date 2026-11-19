@@ -159,7 +159,7 @@ export function ExecutiveTab({ c }: { c: TabContext }) {
           [t("salesPanel.kpi.orders"), f.int(e.orders), "orders"],
           ...(data.money
             ? ([
-                [t("salesPanel.kpi.value"), f.brl(e.valueBrl), "value"],
+                [t("salesPanel.kpi.value"), f.brlShort(e.valueBrl), "value"],
               ] as Array<[string, string, string]>)
             : []),
         ]}
@@ -467,11 +467,12 @@ export function CompareTab({ c }: { c: TabContext }) {
           </tr>
         </thead>
         <tbody>
-          {cmp.rows.map((r) => (
+          {cmp.rows.map((r, i) => (
             <tr key={r.month} className={rowClass}>
               <Td>{r.month}</Td>
               <Td>{f.int(r.a)}</Td>
-              <Td>{f.int(r.b)}</Td>
+              {/* Meses depois do último com venda no ano comparado: ainda não houve. */}
+              <Td>{i < cmp.sameMonths ? f.int(r.b) : "—"}</Td>
             </tr>
           ))}
         </tbody>
@@ -567,7 +568,7 @@ export function StockTab({ c }: { c: TabContext }) {
               .slice(0, 10)
               .map((r) => ({ label: productLabel(r), value: r.free }))}
             format={f.int}
-            empty={t("salesPanel.empty")}
+            empty={t("salesPanel.stock.none")}
           />
         </Card>
         <Card dense title={t("salesPanel.chart.noStock")}>
@@ -577,7 +578,7 @@ export function StockTab({ c }: { c: TabContext }) {
               .slice(0, 10)
               .map((r) => ({ label: productLabel(r), value: r.pieces }))}
             format={f.int}
-            empty={t("salesPanel.empty")}
+            empty={t("salesPanel.stock.allStocked")}
           />
         </Card>
       </div>

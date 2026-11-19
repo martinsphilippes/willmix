@@ -140,6 +140,10 @@ export const pt = {
   "salesPanel.stock.note":
     "Estoque do portal (tela Estoque): livre no Brasil = físico menos as reservas; em trânsito e em produção pelos containers e pedidos.",
   "salesPanel.stock.outCatalog": "fora do catálogo do portal",
+  "salesPanel.stock.none":
+    "Nenhum produto do recorte com estoque livre no Brasil.",
+  "salesPanel.stock.allStocked":
+    "Todos os produtos comprados têm estoque livre.",
 
   "salesPanel.life.d90": "Até 90 dias",
   "salesPanel.life.d180": "91 a 180 dias",
@@ -344,6 +348,9 @@ export const en: Record<keyof typeof pt, string> = {
   "salesPanel.stock.note":
     "Portal stock (Stock screen): free in Brazil = physical minus reservations; in transit and in production from containers and orders.",
   "salesPanel.stock.outCatalog": "not in the portal catalog",
+  "salesPanel.stock.none":
+    "No product in the selection with free stock in Brazil.",
+  "salesPanel.stock.allStocked": "Every product bought has free stock.",
 
   "salesPanel.life.d90": "Up to 90 days",
   "salesPanel.life.d180": "91 to 180 days",
@@ -544,6 +551,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "salesPanel.stock.note":
     "门户库存（库存页面）：巴西可用 = 实物减去预留；在途和生产中来自集装箱和订单。",
   "salesPanel.stock.outCatalog": "不在门户目录中",
+  "salesPanel.stock.none": "范围内没有在巴西有可用库存的产品。",
+  "salesPanel.stock.allStocked": "所有已购买的产品都有可用库存。",
 
   "salesPanel.life.d90": "90 天内",
   "salesPanel.life.d180": "91 至 180 天",
