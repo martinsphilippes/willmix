@@ -456,6 +456,8 @@ test("Encomendas: o administrador vê o rascunho de outro login, só para consul
   await login(page, "operador@wellmix.com");
   await page.goto("/app/new-request/ts");
   await chooseCustomer(page, "loja", "cliente-joao");
+  // O país e o grupo de produto abrem a busca de produto (docs/ORDER_TERMS.md).
+  await fillOrderTerms(page);
   const item = page.locator('[data-request-item="0"]');
   const product = item.locator('[data-product-picker="catalog"]');
   await product.locator("[data-product-picker-input]").fill("boneca");
