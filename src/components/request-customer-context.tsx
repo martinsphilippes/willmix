@@ -47,6 +47,12 @@ interface RequestCustomerState {
    */
   chosenProductIds: string[];
   setChosenProductIds: (ids: string[]) => void;
+  /**
+   * O produto da linha aberta no pedido (só uma fica aberta; dono,
+   * 19/11/2026): a aba Análise do histórico de compras mostra a dele.
+   */
+  focusProduct: FocusProduct | null;
+  setFocusProduct: (product: FocusProduct | null) => void;
   addRequest: AddRequest | null;
   requestAddProduct: (productId: string) => void;
   /**
@@ -97,6 +103,12 @@ interface RequestCustomerState {
   /** Há padrão gravado do cliente para o número de entregas de agora. */
   roundDefault: number[] | null;
   setRoundDefault: (percents: number[] | null) => void;
+}
+
+/** O produto da linha aberta no pedido. */
+export interface FocusProduct {
+  productId: string;
+  name: string;
 }
 
 export interface SaleTerms {
@@ -160,6 +172,14 @@ export function RequestCustomerProvider({
   const [chosenProductIds, setChosenState] = useState<string[]>([]);
   const setChosenProductIds = useCallback((ids: string[]) => {
     setChosenState((prev) => (prev.join("|") === ids.join("|") ? prev : ids));
+  }, []);
+  const [focusProduct, setFocusState] = useState<FocusProduct | null>(null);
+  const setFocusProduct = useCallback((next: FocusProduct | null) => {
+    setFocusState((prev) =>
+      prev?.productId === next?.productId && prev?.name === next?.name
+        ? prev
+        : next,
+    );
   }, []);
   const [addRequest, setAddRequest] = useState<AddRequest | null>(null);
   const [clearSeq, setClearSeq] = useState(0);
@@ -322,6 +342,8 @@ export function RequestCustomerProvider({
       setLoad,
       chosenProductIds,
       setChosenProductIds,
+      focusProduct,
+      setFocusProduct,
       addRequest,
       requestAddProduct,
       requestAddProducts,
@@ -359,6 +381,8 @@ export function RequestCustomerProvider({
       requestClearProducts,
       chosenProductIds,
       setChosenProductIds,
+      focusProduct,
+      setFocusProduct,
       addRequest,
       requestAddProduct,
       customer,

@@ -332,6 +332,15 @@ Testes: `tests/e2e/new-request-round.spec.ts`, `tests/e2e/order-terms.spec.ts` (
 
 Testes: `tests/unit/request-edit.test.ts`, `tests/unit/db-lookup.test.ts`, `tests/unit/supabase-store.test.ts` e o 2º teste de `tests/e2e/new-request-round.spec.ts`.
 
+## 11.20 Produto único no pedido e aba Análise (dono, 19/11/2026)
+
+1. **Sem produto repetido.** Ao escolher na busca um produto que já está noutra linha do pedido:
+   - a linha nova sai;
+   - as demais recolhem;
+   - a linha que já tinha o produto abre para editar, com o aviso "Este produto já estava no pedido" (`data-request-item-duplicate`).
+2. **Uma linha aberta por vez.** Abrir uma linha na tabela "Produtos no pedido" recolhe as outras. Dos produtos que entram pelo histórico ou pela lupa sem quantidade, só o último fica aberto.
+3. **Aba Análise.** O produto da linha aberta vai para o contexto da tela (`focusProduct`), e a aba Análise do histórico de compras mostra a análise dele (docs/PURCHASE_HISTORY.md, seção 12).
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

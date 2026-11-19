@@ -212,3 +212,101 @@ test("Busca por palavras fora de ordem, Enter não envia e a encomenda reaberta 
   expect(await createdRequestId(page, { open: false })).toBe(firstId);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(title!);
 });
+
+test("Produto repetido abre a linha que já tem; a aba Análise mostra o produto aberto", async ({
+  page,
+}) => {
+  // O histórico do Sankhya (aqui simulado): sem pedidos na lista e a
+  // análise do produto aberto.
+  const analysis: string[] = [];
+  await page.route("**/api/purchase-history/sankhya?**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("view") === "analysis") {
+      analysis.push(url.searchParams.get("product") ?? "");
+      return route.fulfill({
+        json: {
+          state: "ok",
+          product: {
+            id: "prod-boneca",
+            name: "Boneca articulada 30 cm",
+            code: 501,
+          },
+          companies: 3,
+          purchases: [],
+          years: [
+            {
+              year: "2026",
+              quantity: 600,
+              purchases: 2,
+              months: [
+                { month: "2026-01", quantity: 300, purchases: 1 },
+                { month: "2026-04", quantity: 300, purchases: 1 },
+              ],
+            },
+          ],
+          estimate: {
+            monthly: 100,
+            slope: 0,
+            intervalMonths: 3,
+            used: 1,
+            last: { date: "2026-04-01", quantity: 300 },
+            runOut: "2026-07-01",
+            suggestedDate: "2026-03-01",
+            late: true,
+            suggestedQuantity: 300,
+            months: [{ month: "2026-11", quantity: 100 }],
+            years: [{ year: "2026", quantity: 100 }],
+          },
+          mixedUnits: false,
+        },
+      });
+    }
+    return route.fulfill({ json: { state: "ok", orders: [], next: null } });
+  });
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/new-request/ts");
+  await chooseCustomer(page, "loja", "cliente-joao");
+  await fillOrderTerms(page);
+  const pick = async (index: number) => {
+    const product = page.locator(
+      `[data-request-item="${index}"] [data-product-picker="catalog"]`,
+    );
+    await product.locator("[data-product-picker-input]").fill("boneca");
+    await product.locator('[data-product-picker-option="prod-boneca"]').click();
+  };
+  await pick(0);
+  // "+ Adicionar outro produto": a linha 1 abre, a 0 recolhe.
+  await page.locator("[data-add-request-item]").click();
+  await expect(page.locator('[data-request-item="1"]')).toBeVisible();
+  await expect(page.locator('[data-request-item="0"]')).toBeHidden();
+  // A mesma boneca na linha nova: ela sai e a linha 0 abre para editar.
+  await pick(1);
+  await expect(page.locator('[data-request-item="1"]')).toHaveCount(0);
+  await expect(page.locator('[data-request-item="0"]')).toBeVisible();
+  await expect(
+    page.locator('[data-request-item="0"] [data-request-item-duplicate]'),
+  ).toBeVisible();
+
+  // Aba Análise: o produto aberto, com o grupo, os anos (que abrem nos
+  // meses) e a estimativa com a sugestão.
+  const history = page.locator("[data-sankhya-history]");
+  await history
+    .locator('[data-sankhya-history-view-button="analysis"]')
+    .click();
+  const panel = history.locator('[data-purchase-analysis="ready"]');
+  await expect(panel).toContainText("Boneca articulada 30 cm");
+  await expect(panel.locator("[data-purchase-analysis-group]")).toContainText(
+    "3 empresas",
+  );
+  expect(analysis.at(-1)).toBe("prod-boneca");
+  await expect(panel.locator("[data-purchase-analysis-month]")).toHaveCount(0);
+  await panel.locator('[data-purchase-analysis-year-toggle="2026"]').click();
+  await expect(panel.locator("[data-purchase-analysis-month]")).toHaveCount(2);
+  await expect(
+    panel.locator("[data-purchase-analysis-suggestion]"),
+  ).toContainText("300 peças");
+  await panel.locator('[data-purchase-analysis-by="year"]').click();
+  await expect(
+    panel.locator('[data-purchase-analysis-forecast="2026"]'),
+  ).toBeVisible();
+});

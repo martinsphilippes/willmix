@@ -5,6 +5,42 @@
  * em pt, en e zh.
  */
 export const pt = {
+  "reqBatch.duplicate":
+    "Este produto já estava no pedido: a linha nova saiu e esta abriu para você editar.",
+  "sankhyaHistory.view.analysis": "Análise",
+  "purchaseAnalysis.pick":
+    "Abra um produto do pedido para ver a análise de compras dele por este cliente.",
+  "purchaseAnalysis.loading": "Lendo o histórico do produto no Sankhya…",
+  "purchaseAnalysis.error": "Não deu para ler o histórico do produto.",
+  "purchaseAnalysis.retry": "Tentar de novo",
+  "purchaseAnalysis.noProductCode":
+    "Este produto não tem código do Sankhya: sem histórico para analisar.",
+  "purchaseAnalysis.group": "Somando {n} empresas do grupo econômico",
+  "purchaseAnalysis.historyTitle": "Compras por ano (histórico inteiro)",
+  "purchaseAnalysis.historyEmpty": "O cliente nunca comprou este produto.",
+  "purchaseAnalysis.year": "Ano",
+  "purchaseAnalysis.month": "Mês",
+  "purchaseAnalysis.quantity": "Peças",
+  "purchaseAnalysis.purchases": "Compras",
+  "purchaseAnalysis.expandYear": "Abrir os meses de {year}",
+  "purchaseAnalysis.estimateTitle": "Estimativa de demanda",
+  "purchaseAnalysis.estimateFew":
+    "Poucas compras para estimar: é preciso pelo menos duas.",
+  "purchaseAnalysis.byMonth": "Mês",
+  "purchaseAnalysis.byYear": "Ano",
+  "purchaseAnalysis.monthly": "Demanda hoje",
+  "purchaseAnalysis.trend": "Tendência",
+  "purchaseAnalysis.trendValue": "{n} peças/mês a cada mês",
+  "purchaseAnalysis.last": "Última compra",
+  "purchaseAnalysis.runOut": "Acaba em",
+  "purchaseAnalysis.suggestion": "Próxima compra sugerida",
+  "purchaseAnalysis.suggestionValue": "{date}: {q} peças",
+  "purchaseAnalysis.late": "A data já passou: o ideal é comprar agora.",
+  "purchaseAnalysis.how":
+    "Cada compra dura até a seguinte: demanda/mês = quantidade ÷ meses até a próxima compra. A tendência é a reta das últimas 6 compras. A sugestão é comprar 4 meses (do pedido até chegar ao cliente) antes de a última compra acabar, na quantidade do intervalo médio entre as compras.",
+  "purchaseAnalysis.mixedUnits":
+    "Alguma unidade não tem conversão para peças no Sankhya e foi somada como veio.",
+  "purchaseAnalysis.pieces": "peças",
   "requestEdit.button": "Editar a encomenda",
   "requestEdit.banner":
     "Editando a encomenda #{number}, ainda aguardando o cliente. Ao enviar, ela é refeita no lugar (mesmo número) e o cliente confirma de novo.",
@@ -76,6 +112,43 @@ export const pt = {
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
+  "reqBatch.duplicate":
+    "This product was already in the order: the new row was removed and this one opened for you to edit.",
+  "sankhyaHistory.view.analysis": "Analysis",
+  "purchaseAnalysis.pick":
+    "Open a product of the order to see this customer's purchase analysis for it.",
+  "purchaseAnalysis.loading": "Reading the product history from Sankhya…",
+  "purchaseAnalysis.error": "Could not read the product history.",
+  "purchaseAnalysis.retry": "Try again",
+  "purchaseAnalysis.noProductCode":
+    "This product has no Sankhya code: no history to analyze.",
+  "purchaseAnalysis.group": "Adding up {n} companies of the economic group",
+  "purchaseAnalysis.historyTitle": "Purchases per year (full history)",
+  "purchaseAnalysis.historyEmpty":
+    "The customer has never bought this product.",
+  "purchaseAnalysis.year": "Year",
+  "purchaseAnalysis.month": "Month",
+  "purchaseAnalysis.quantity": "Pieces",
+  "purchaseAnalysis.purchases": "Purchases",
+  "purchaseAnalysis.expandYear": "Open the months of {year}",
+  "purchaseAnalysis.estimateTitle": "Demand estimate",
+  "purchaseAnalysis.estimateFew":
+    "Too few purchases to estimate: at least two are needed.",
+  "purchaseAnalysis.byMonth": "Month",
+  "purchaseAnalysis.byYear": "Year",
+  "purchaseAnalysis.monthly": "Demand today",
+  "purchaseAnalysis.trend": "Trend",
+  "purchaseAnalysis.trendValue": "{n} pieces/month each month",
+  "purchaseAnalysis.last": "Last purchase",
+  "purchaseAnalysis.runOut": "Runs out on",
+  "purchaseAnalysis.suggestion": "Suggested next purchase",
+  "purchaseAnalysis.suggestionValue": "{date}: {q} pieces",
+  "purchaseAnalysis.late": "The date has passed: ideally buy now.",
+  "purchaseAnalysis.how":
+    "Each purchase lasts until the next one: demand/month = quantity ÷ months until the next purchase. The trend is the line through the last 6 purchases. The suggestion is to buy 4 months (from order to delivery to the customer) before the last purchase runs out, in the quantity of the average interval between purchases.",
+  "purchaseAnalysis.mixedUnits":
+    "Some unit has no conversion to pieces in Sankhya and was added as it came.",
+  "purchaseAnalysis.pieces": "pieces",
   "requestEdit.button": "Edit the order",
   "requestEdit.banner":
     "Editing order #{number}, still waiting for the customer. When you send it, it is rebuilt in place (same number) and the customer confirms again.",
@@ -149,6 +222,40 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "reqBatch.duplicate":
+    "该产品已在订单中：新的一行已移除，这一行已展开供您编辑。",
+  "sankhyaHistory.view.analysis": "分析",
+  "purchaseAnalysis.pick": "展开订单中的一个产品，查看该客户对它的采购分析。",
+  "purchaseAnalysis.loading": "正在从 Sankhya 读取产品历史…",
+  "purchaseAnalysis.error": "无法读取产品历史。",
+  "purchaseAnalysis.retry": "重试",
+  "purchaseAnalysis.noProductCode":
+    "该产品没有 Sankhya 代码：没有可分析的历史。",
+  "purchaseAnalysis.group": "合计经济集团的 {n} 家公司",
+  "purchaseAnalysis.historyTitle": "按年采购（全部历史）",
+  "purchaseAnalysis.historyEmpty": "该客户从未购买过此产品。",
+  "purchaseAnalysis.year": "年份",
+  "purchaseAnalysis.month": "月份",
+  "purchaseAnalysis.quantity": "件数",
+  "purchaseAnalysis.purchases": "采购次数",
+  "purchaseAnalysis.expandYear": "展开 {year} 年的月份",
+  "purchaseAnalysis.estimateTitle": "需求估算",
+  "purchaseAnalysis.estimateFew": "采购次数太少，无法估算：至少需要两次。",
+  "purchaseAnalysis.byMonth": "月",
+  "purchaseAnalysis.byYear": "年",
+  "purchaseAnalysis.monthly": "当前需求",
+  "purchaseAnalysis.trend": "趋势",
+  "purchaseAnalysis.trendValue": "每月变化 {n} 件/月",
+  "purchaseAnalysis.last": "最近一次采购",
+  "purchaseAnalysis.runOut": "预计用完",
+  "purchaseAnalysis.suggestion": "建议下次采购",
+  "purchaseAnalysis.suggestionValue": "{date}：{q} 件",
+  "purchaseAnalysis.late": "日期已过：建议立即采购。",
+  "purchaseAnalysis.how":
+    "每次采购持续到下一次采购：月需求 = 数量 ÷ 距下次采购的月数。趋势为最近 6 次采购的拟合直线。建议在最近一次采购用完前 4 个月（从下单到送达客户的时间）采购，数量为平均采购间隔的需求量。",
+  "purchaseAnalysis.mixedUnits":
+    "某些单位在 Sankhya 中没有换算为件，按原单位计入。",
+  "purchaseAnalysis.pieces": "件",
   "requestEdit.button": "编辑订购",
   "requestEdit.banner":
     "正在编辑订购 #{number}（仍在等待客户确认）。提交后将原地更新（编号不变），客户需要重新确认。",

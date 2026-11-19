@@ -20,6 +20,10 @@ import {
   type HistoryPickLabels,
 } from "./history-product-pick";
 import { Button, Card, cx } from "./ui";
+import {
+  PurchaseAnalysisPanel,
+  type PurchaseAnalysisLabels,
+} from "./purchase-analysis-panel";
 
 /** Textos do card (no idioma de quem vê). */
 export interface SankhyaHistoryLabels {
@@ -49,7 +53,9 @@ export interface SankhyaHistoryLabels {
   fallbackNotConfigured: string;
   fallbackNoCode: string;
   /** Seletor no topo do card (dono, 15/11/2026). */
-  view: { label: string; orders: string; products: string };
+  view: { label: string; orders: string; products: string; analysis?: string };
+  /** Aba Análise (dono, 19/11/2026). */
+  analysis?: PurchaseAnalysisLabels;
   /** Visão Produto. */
   products: {
     hint: string;
@@ -127,7 +133,7 @@ interface ProductsLoaded {
   failed: boolean;
 }
 
-type View = "orders" | "products";
+type View = "orders" | "products" | "analysis";
 /** Produtos mostrados por vez na visão Produto. */
 const PRODUCTS_STEP = 50;
 
@@ -344,10 +350,16 @@ export function SankhyaPurchaseHistory({
           <div
             role="group"
             aria-label={labels.view.label}
-            className="mb-3 grid grid-cols-2 gap-1 rounded-lg bg-zinc-100 p-1"
+            className={cx(
+              "mb-3 grid gap-1 rounded-lg bg-zinc-100 p-1",
+              labels.analysis ? "grid-cols-3" : "grid-cols-2",
+            )}
             data-sankhya-history-views
           >
-            {(["orders", "products"] as const).map((v) => (
+            {(labels.analysis
+              ? (["orders", "products", "analysis"] as const)
+              : (["orders", "products"] as const)
+            ).map((v) => (
               <button
                 key={v}
                 type="button"
@@ -361,7 +373,11 @@ export function SankhyaPurchaseHistory({
                     : "text-zinc-600 hover:text-zinc-900",
                 )}
               >
-                {v === "orders" ? labels.view.orders : labels.view.products}
+                {v === "orders"
+                  ? labels.view.orders
+                  : v === "products"
+                    ? labels.view.products
+                    : (labels.view.analysis ?? "")}
               </button>
             ))}
           </div>
@@ -397,6 +413,13 @@ export function SankhyaPurchaseHistory({
           <p className="text-sm text-zinc-500" data-purchase-history-empty>
             {labels.empty}
           </p>
+        ) : null}
+        {view === "analysis" && key && labels.analysis ? (
+          <PurchaseAnalysisPanel
+            customerId={key}
+            labels={labels.analysis}
+            intl={labels.intl}
+          />
         ) : null}
         {view === "products" && key ? (
           <ProductsPanel
