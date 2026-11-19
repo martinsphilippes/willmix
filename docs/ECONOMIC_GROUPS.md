@@ -48,6 +48,14 @@ Decisões: vale para qualquer pedido (também de um cliente só); o padrão fica
    - abrir o modal de novo, refazer e aplicar muda outra vez a programação e o total.
 6. O que é gravado continua em `requests.companyAllocations` (peças de cada empresa por entrega), conferido pelo servidor.
 
+## Ajustes do modal e da previsão de preço (dono, 19/11/2026)
+
+1. **Peças ao lado das caixas** no "Por percentual" ("Total de caixas" ou "Caixas da empresa base") e em cada célula do "Uma a uma" (com o total de peças de cada empresa): digitar peças muda as caixas, arredondadas para cima até a caixa inteira; ao sair do campo, as peças viram as das caixas inteiras.
+2. **Modal mais largo** (até 64rem).
+3. **A simulação do "Por percentual" já preenche o "Uma a uma"** assim que há quantidade (sem precisar aplicar).
+4. **Programação mudada à mão** (gerador ou "Programação X"): a matriz só acompanha depois que a digitação para (0,7 s) e arredonda para cima em caixas inteiras. Antes, cada tecla reescrevia a matriz no meio da digitação (apagar e digitar "45" zerava a entrega na matriz e deixava as contas erradas).
+5. **Previsão de preço uma vez por produto:** a chamada não leva mais a quantidade (o preço por peça não depende dela; o valor total é preço × peças na tela), então mexer nas quantidades não chama o Sankhya de novo; as chamadas da tela vão uma de cada vez; e o servidor tenta de novo (até 3 vezes) quando o Sankhya responde "situação de concorrência… a mesma sessão HTTP fez a requisição duas vezes simultaneamente" (`isConcurrencyError`, src/lib/integrations/sankhya-client.ts). O "Containers/Entrega" continua indo e chama de novo só quando o número de containers muda.
+
 ## Nome das empresas (dono, 19/11/2026)
 
 Nas telas do pedido do grupo (distribuição padrão, seletor de empresa, preenchimento em massa, matriz e a tabela "Empresas do grupo econômico" da solicitação), a empresa aparece pela **razão social** (`parties.legalName`, a `RAZAO_SOCIAL` da view); sem ela, pelo nome (`companyName` em src/lib/services/economic-groups.ts).

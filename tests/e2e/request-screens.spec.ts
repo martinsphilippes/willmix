@@ -408,10 +408,25 @@ test("TS: pedido para um grupo econômico, com a distribuição padrão e as qua
   const bulk = page.locator("[data-group-bulk]");
   await bulk.locator("[data-group-use-default]").click();
   await bulk.locator('[data-group-mode="total"]').check();
-  await bulk.locator("[data-group-bulk-qty]").fill("60");
+  // Peças ao lado das caixas (19/11/2026): as caixas saem das peças,
+  // arredondadas para cima (48 peças por caixa).
+  const pieces = bulk.locator("[data-group-bulk-pieces]");
+  await pieces.fill("2850");
+  await expect(bulk.locator("[data-group-bulk-qty]")).toHaveValue("60");
+  await pieces.blur();
+  await expect(pieces).toHaveValue("2880");
   await expect(
     bulk.locator('[data-group-preview="cliente-grupo-loja2"]'),
   ).toContainText("18");
+  // A simulação já preenche o "Uma a uma" (18 caixas em 2 entregas).
+  await bulk.locator('[data-group-bulk-tab="manual"]').click();
+  await expect(
+    bulk.locator('[data-group-cell="cliente-grupo-loja2:1"]'),
+  ).toHaveValue("9");
+  await expect(
+    bulk.locator('[data-group-cell-pieces="cliente-grupo-loja2:1"]'),
+  ).toHaveValue("432");
+  await bulk.locator('[data-group-bulk-tab="percent"]').click();
   await bulk.locator("[data-group-bulk-apply]").click();
   await expect(group.locator("[data-group-complete]")).toBeVisible();
   // Sem empresa escolhida: a soma de todas (60 caixas de 48 peças).
@@ -459,6 +474,11 @@ test("TS: pedido para um grupo econômico, com a distribuição padrão e as qua
     .locator("[data-rounds-generator] [data-generate-total]")
     .fill("100");
   await row.locator("[data-rounds-generator] [data-generate-submit]").click();
+  // A matriz acompanha depois que a digitação para (0,7 s).
+  await group.locator("[data-group-company-select]").selectOption("");
+  await expect(group.locator("[data-group-summary]")).toContainText(
+    "100 caixas",
+  );
   await group.locator("[data-group-bulk-open]").click();
   await bulk.locator('[data-group-bulk-tab="manual"]').click();
   await expect(bulk.locator('[data-group-column-total="1"]')).toHaveText("60");

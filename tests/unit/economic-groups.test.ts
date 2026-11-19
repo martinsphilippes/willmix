@@ -201,3 +201,21 @@ describe("distribuição padrão entre entregas por cliente", () => {
     ]);
   });
 });
+
+describe("Sankhya: requisição simultânea da mesma sessão (19/11/2026)", () => {
+  it("reconhece o erro de concorrência (a chamada tenta de novo)", async () => {
+    const { SankhyaError, isConcurrencyError } =
+      await import("@/lib/integrations/sankhya-client");
+    expect(
+      isConcurrencyError(
+        new SankhyaError(
+          "sankhya_service",
+          "O serviço foi cancelado por situação de concorrência. Essa mesma sessão HTTP fez a requisição duas vezes simultaneamente.",
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      isConcurrencyError(new SankhyaError("sankhya_service", "sem custo")),
+    ).toBe(false);
+  });
+});

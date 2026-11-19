@@ -72,6 +72,8 @@ export const pt = {
   "econGroup.matrix.total": "Total",
   "econGroup.matrix.containers": "Containers",
   "econGroup.matrix.spread": "Repartir os totais pelos % das entregas",
+  "econGroup.pieces.hint":
+    "Peças: as caixas saem delas, arredondadas para cima ({n} peças por caixa).",
   "econGroup.request.total": "Total",
 } as const;
 
@@ -145,6 +147,8 @@ export const en: Record<keyof typeof pt, string> = {
   "econGroup.matrix.total": "Total",
   "econGroup.matrix.containers": "Containers",
   "econGroup.matrix.spread": "Split the totals by the delivery %",
+  "econGroup.pieces.hint":
+    "Pieces: the cartons come from them, rounded up ({n} pieces per carton).",
   "econGroup.request.total": "Total",
 };
 
@@ -214,5 +218,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "econGroup.matrix.total": "合计",
   "econGroup.matrix.containers": "集装箱",
   "econGroup.matrix.spread": "按交货百分比分配合计",
+  "econGroup.pieces.hint": "件数：按件数计算箱数，向上取整（每箱 {n} 件）。",
   "econGroup.request.total": "合计",
 };
