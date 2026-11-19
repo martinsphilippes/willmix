@@ -30,6 +30,7 @@ type User = import("@/lib/db").User;
 let admin: User;
 let joao: User;
 let operador: User;
+let vendas: User;
 let supplier: User;
 
 beforeAll(async () => {
@@ -38,6 +39,7 @@ beforeAll(async () => {
   admin = by("admin@wellmix.com");
   joao = by("joao@lojista.com");
   operador = by("operador@wellmix.com");
+  vendas = by("vendas@wellmix.com");
   supplier = by("supplier.a@china.com");
 });
 
@@ -98,7 +100,9 @@ describe("conversa ligada ao rascunho", () => {
     await expect(
       msg.openTopic(operador, { draftId: draft.id, peerUserId: joao.id }),
     ).rejects.toThrow();
-    await expect(msg.chatContext(joao, { draftId: draft.id })).rejects.toThrow();
+    await expect(
+      msg.chatContext(joao, { draftId: draft.id }),
+    ).rejects.toThrow();
     await expect(msg.openTopic(joao, { draftId: draft.id })).rejects.toThrow();
     await expect(
       msg.openTopic(admin, { draftId: draft.id, peerUserId: supplier.id }),
@@ -108,6 +112,35 @@ describe("conversa ligada ao rascunho", () => {
       filter: { draftId: draft.id },
     });
     expect(topics).toEqual([]);
+  });
+
+  it("o administrador também abre a conversa do rascunho de outro login, na conversa dele (seção 9)", async () => {
+    const draft = await saveRequestDraft(operador, draftForm(), null, "ts");
+    const ctx = await msg.chatContext(admin, { draftId: draft.id });
+    expect(ctx.kind).toBe("draft");
+    expect(ctx.peers.map((p) => p.userId)).toContain(joao.id);
+    const opened = await msg.openTopic(admin, {
+      draftId: draft.id,
+      peerUserId: joao.id,
+    });
+    const conversation = await getStore().get(
+      "conversations",
+      opened.conversationId,
+    );
+    // A conversa é a do administrador com o João (não a de quem salvou).
+    expect(conversation).toMatchObject({
+      wellmixUserId: admin.id,
+      externalUserId: joao.id,
+    });
+    // Quem salvou abre a dele; outro login que não é administrador, não.
+    const own = await msg.openTopic(operador, {
+      draftId: draft.id,
+      peerUserId: joao.id,
+    });
+    expect(own.conversationId).not.toBe(opened.conversationId);
+    await expect(
+      msg.chatContext(vendas, { draftId: draft.id }),
+    ).rejects.toThrow();
   });
 
   it("no envio, o assunto passa para a solicitação, com as mensagens", async () => {

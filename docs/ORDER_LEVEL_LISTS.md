@@ -201,17 +201,17 @@ Os vínculos reais em produção mostram a divergência:
 ### 7.3 A tela do rascunho
 
 - **Cabeçalho**: "Solicitação nº N · X produtos" com o número persistente. Rascunho antigo, sem número: "Rascunho · X produtos", e o número não é criado ao abrir. Depois vêm o cliente (o nome atual do cadastro; senão o salvo; sem cliente, "Sem cliente"), a data em que foi criado, o selo "Rascunho" e "Próximo passo: Concluir e enviar", com quem o salvou ("Ana Admin · Wellmix"; o login só para o administrador).
-- **Aviso privado**: "Rascunho salvo por você; só você vê. Nada foi enviado…", com a data do último salvamento.
-- **"Continuar edição"**: o formulário da tela de onde o rascunho veio (`draftResumeHref`), com tudo o que foi salvo. O envio continua só por lá, com as validações de sempre.
+- **Aviso privado**: "Rascunho salvo por você; só você vê. Nada foi enviado…", com a data do último salvamento. O administrador que abre o rascunho de outro login vê "Rascunho salvo por X. Você vê porque é administrador; só X continua a edição e envia" (seção 9).
+- **"Continuar edição"**: o formulário da tela de onde o rascunho veio (`draftResumeHref`), com tudo o que foi salvo, só para quem salvou. O envio continua só por lá, com as validações de sempre.
 - **Totais e tabela**: os dados disponíveis, mesmo incompletos. O que falta aparece como "—", e o total com algum produto sem o dado leva "Total parcial". O preço total é "—": a previsão de venda só é gravada no envio. Os containers são "—" quando algum produto ainda não tem quantidade, porque a conta sairia menor do que é.
 - **Situação por produto**: "Rascunho". O produto sem produto escolhido, sem nome ou sem quantidade também leva "Incompleto", como no formulário.
-- **Sem etapa, prazo ou pedido**: Prazo e Pedido mostram "—", com a dica "o prazo começa quando a solicitação é enviada". Não há SLA, pendência, "Enviar para cotação", excluir nem conversa.
+- **Sem etapa, prazo ou pedido**: Prazo e Pedido mostram "—", com a dica "o prazo começa quando a solicitação é enviada". Não há SLA, pendência, "Enviar para cotação" nem excluir. A conversa do rascunho veio depois, na seção 8.
 - **Detalhes de cada produto**: `/app/requests/batch/<id do rascunho>?item=<posição>`. Mostra o produto (catálogo ou "Fora do catálogo", com o link para a ficha no cadastro quando a pessoa abre Produtos). Também mostra a descrição, a especificação, a quantidade digitada e a embalagem, cada número com a origem: Rascunho, Variação, Ficha atual, Calculado, Programação, Negociação ou Book do produto. Seguem a programação, entrega por entrega, e as empresas do grupo econômico. A tabela mostra só esse produto, com "Ver todos os N produtos do rascunho".
 - **Quantidade em branco × zero**: uma entrega em branco aparece como "—" (com "Sem quantidade digitada nesta entrega"), e um zero digitado aparece como "0 un". O produto sem nenhuma quantidade digitada fica sem peças, caixas, inner e cubagem. A variação escolhida entra como no envio, só na leitura: o nome "Produto · Variação", a cópia dos valores e a especificação dela quando o rascunho não tem. Assim a embalagem bate com a que a solicitação terá.
 
 ### 7.4 Privacidade e só leitura
 
-- **Quem abre** (`getDraftForDetails`, `src/app/app/requests/_details/draft-details.ts`) é a mesma regra de "Continuar": só quem salvou, da Wellmix, e só se ainda abre a tela de onde o rascunho veio (`canDraft`). Fora disso, inclusive pela URL direta, a resposta é 404, sem dizer se o rascunho existe. O administrador não vê o rascunho de outra pessoa, como antes.
+- **Quem abre** (`getDraftForDetails`, `src/app/app/requests/_details/draft-details.ts`) é a mesma regra de "Continuar": só quem salvou, da Wellmix, e só se ainda abre a tela de onde o rascunho veio (`canDraft`). Fora disso, inclusive pela URL direta, a resposta é 404, sem dizer se o rascunho existe. Até 19/11/2026 o administrador não via o rascunho de outra pessoa; desde a seção 9, vê (só consulta).
 - **A solicitação enviada vem primeiro**: o endereço só cai no rascunho quando não há lote nem solicitação com aquele id. Os ids são aleatórios (UUID), e as regras de visão das enviadas (`canViewRequest`) não mudaram.
 - **Rascunho da entrada da Reposição**: fica de fora. Ele é da fila de Reposição, que continua abrindo o formulário.
 - **Só leitura**: abrir lê o rascunho, o cliente, os produtos, as variações e a embalagem. Não grava, não reserva número, não audita, não avisa, não envia e não muda situação, contadores ou vínculos. O teste unitário compara o banco antes e depois (rascunhos, solicitações, auditoria e avisos), e o E2E confere os cards, o número e o sino.
@@ -247,11 +247,33 @@ Reabrir o rascunho no formulário ("Continuar" ou "Continuar edição") mostrava
 Pedido do dono (19/11/2026, com o print de Encomendas): o ícone de mensagem também nos rascunhos. Decisão do dono: a conversa ligada ao rascunho, que passa para a solicitação quando ela é enviada (no lugar de uma conversa geral com o cliente ou de um ícone só desativado).
 
 - **Onde**: na linha do rascunho em Encomendas, ao lado do ícone de abrir (como nas enviadas), e em cada produto dos detalhes do rascunho. É uma conversa só para o rascunho todo (`ChatOpenButton` com `draftId`; `data-chat-open="draft:<id>"`).
-- **Com quem**: quem salvou o rascunho (Wellmix) e um login do cliente do rascunho, ativo e com a tela Mensagens (o painel lista os logins do cliente; com um só, abre direto). Sem cliente ou sem login, o painel avisa que não há com quem conversar.
+- **Com quem**: quem salvou o rascunho (Wellmix; também o administrador, na conversa dele, seção 9) e um login do cliente do rascunho, ativo e com a tela Mensagens (o painel lista os logins do cliente; com um só, abre direto). Sem cliente ou sem login, o painel avisa que não há com quem conversar.
 - **Assunto**: "Solicitação #N (rascunho)", com o número reservado e o produto (`conversation_topics.kind = "draft"`, `draftId`). Fica na conversa privada dos dois. O cliente lê e responde em Mensagens; o aviso leva à caixa de Mensagens, porque a tela do rascunho é só de quem o salvou.
-- **Privacidade**: abrir pelo rascunho segue a regra dos detalhes (`getListedDraft`: só quem salvou, da tela de onde veio; outro login da Wellmix, o cliente ou login de outra empresa são recusados). O administrador lê as conversas, como sempre.
+- **Privacidade**: abrir pelo rascunho segue a regra dos detalhes (`getListedDraft`: quem salvou, da tela de onde veio, e o administrador; outro login da Wellmix, o cliente ou login de outra empresa são recusados). O administrador lê as conversas, como sempre.
 - **No envio**: o assunto passa a ser o da solicitação (a primeira do lote; `moveDraftTopics` no envio, antes de o rascunho sair), com as mensagens. O `draftId` fica anotado. Abrir a conversa pela solicitação acha o mesmo assunto.
 - **Esquema**: coluna nova `conversation_topics.draftId` (opcional) e o índice `conversation_topics_by_draft`. O tipo "draft" entra em `TOPIC_KINDS` (no Supabase, `kind` é texto livre).
 - **Testes**:
   - `tests/unit/draft-chat.test.ts`: o contexto e o assunto do rascunho, a mensagem lida pelo cliente, a privacidade e a passagem para a solicitação no envio.
   - `tests/e2e/draft-chat.spec.ts`: o ícone na lista e nos detalhes, a mensagem, o cliente lendo em Mensagens e, depois de enviar, a mesma mensagem na conversa da solicitação.
+
+## 9. Administrador vê os rascunhos de todos (dono, 19/11/2026)
+
+Pedido do dono (19/11/2026): o rascunho salvo por outro login não aparecia para os administradores, e "os ADMs têm que poder ver os rascunhos". Em produção havia três logins de administrador, e os rascunhos 4 e 5, salvos por dois deles, não apareciam para os outros.
+
+- **Causa**: a lista de Encomendas, o CSV e a tela de detalhes liam só os rascunhos de quem vê (`request_drafts.userId` igual ao login).
+- **Agora**:
+  - **Lista de Encomendas** (`listDraftsForList(user, "requests")`): o administrador (`role = admin`) vê os rascunhos de todos os logins: os da Nova solicitação, de TS e de Venda. Os cards (Total, Rascunhos), a busca, os filtros e o CSV contam todos eles.
+  - **Quem salvou**: a Próxima ação mostra quem salvou cada rascunho ("Concluir e enviar", depois "Otávio Operador · Wellmix"), na lista, no CSV e nos detalhes. O login (e-mail) aparece só para o administrador, como antes. Login que não existe mais: "—".
+  - **Detalhes** (`/app/requests/batch/<id do rascunho>`, `getListedDraft`): abrem para quem salvou e para o administrador, também pela URL direta. Para o administrador, o aviso diz quem salvou e que só essa pessoa continua e envia (`data-draft-owner="other"`; para quem salvou, `"me"`).
+  - **"Continuar edição"**: só para quem salvou (`DraftDetails.mine`, `ListedDraft.mine`). O formulário só reabre o rascunho do próprio login (`getRequestDraft`), e o envio continua sendo dele, com o mesmo número. Ver não é continuar.
+  - **Conversa do rascunho**: o administrador também abre pelo ícone, na conversa dele com um login do cliente. No envio, todos os assuntos do rascunho passam para a solicitação.
+- **Não muda**:
+  - Quem não é administrador continua vendo só os seus rascunhos (lista, detalhes e URL direta, que responde 404).
+  - A Reposição (`/app/replenishment`) continua com os rascunhos de quem vê: o rascunho dela abre direto no formulário, que é só de quem salvou.
+  - Abrir continua só consulta: nada é gravado, numerado, auditado ou avisado.
+- **Testes**:
+  - `tests/unit/request-draft-details.test.ts`: o administrador abre o rascunho de outro login sem gravar nada, sem "Continuar" e com quem salvou; outro login e o cliente, 404; o formulário não reabre o rascunho para ele.
+  - `tests/unit/request-screens.test.ts`: a lista do administrador com os rascunhos dos outros (quem salvou, `mine`); a de quem não é administrador, só os seus; a Reposição sem mudança.
+  - `tests/unit/draft-chat.test.ts`: o administrador abre a conversa do rascunho de outro login, na conversa dele; outro login, não.
+  - `tests/e2e/request-draft-details.spec.ts`: o rascunho do Otávio na lista da Ana (administradora), com quem salvou; os detalhes pelo número e recarregando, sem "Continuar edição"; o Otávio com "Continuar edição"; a Vera (que não é administradora) sem a linha e com 404 pela URL.
+

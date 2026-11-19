@@ -274,8 +274,9 @@ export async function GET(request: NextRequest) {
       ...(seeSale ? [t("reqList.csv.price")] : []),
     ].join(";"),
   ];
-  // Rascunhos de quem exporta (como na lista): a ação do fluxo de rascunho.
-  for (const { draft } of cards.drafts)
+  // Rascunhos (como na lista: os de quem exporta; o administrador, os de
+  // todos): a ação do fluxo de rascunho, com quem salvou.
+  for (const { draft, owner } of cards.drafts)
     lines.push(
       [
         draft.number ?? "",
@@ -290,9 +291,9 @@ export async function GET(request: NextRequest) {
         "",
         t("reqList.draft.next"),
         t(turnWithKey("wellmix")),
-        `${user.name} · ${t(turnNameKey("wellmix"))}`,
+        `${owner?.name ?? "—"} · ${t(turnNameKey("wellmix"))}`,
         "",
-        ...(admin ? [user.email ?? ""] : []),
+        ...(admin ? [owner?.email ?? ""] : []),
         "",
         "",
         ...Array.from({ length: totalsCount + (seeSale ? 1 : 0) }, () => ""),

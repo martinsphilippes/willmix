@@ -11,7 +11,9 @@ import { fillOrderTerms, login } from "./helpers";
  * dado), a tabela de produtos e os detalhes de cada um; "Continuar edição"
  * volta ao formulário com tudo o que foi salvo. Abrir não muda nada (nem
  * contadores, nem número, nem avisos), e a volta para a lista mantém os
- * filtros e a rolagem. Só quem salvou abre (URL direta também).
+ * filtros e a rolagem. Só quem salvou e o administrador abrem (URL direta
+ * também); o administrador vê os de todos os logins, só para consulta (seção
+ * 9).
  */
 const TAG = `DRF${Date.now().toString(36).toUpperCase()}`;
 
@@ -235,8 +237,8 @@ test("Encomendas: o rascunho abre a mesma tela de detalhes, só para consulta", 
     ),
   ).toBe(true);
 
-  // Outro login da Wellmix e o cliente: 404 pela URL direta (o rascunho é
-  // de quem salvou).
+  // Outro login da Wellmix (que não é administrador) e o cliente: 404 pela
+  // URL direta (o rascunho é de quem salvou).
   for (const email of ["operador@wellmix.com", "joao@lojista.com"]) {
     await login(page, email);
     const response = await page.goto(details);
@@ -438,4 +440,77 @@ test("Encomendas: o número abre os detalhes do registro certo (rascunho de um c
       () => document.documentElement.scrollWidth <= window.innerWidth + 1,
     ),
   ).toBe(true);
+});
+
+/**
+ * Administrador vê os rascunhos de todos (dono, 19/11/2026;
+ * docs/ORDER_LEVEL_LISTS.md, seção 9): o rascunho salvo por outro login
+ * aparece em Encomendas para o administrador, com quem salvou, e abre a mesma
+ * tela de detalhes, só para consulta. "Continuar edição" fica com quem
+ * salvou. Quem não é administrador continua sem ver o rascunho dos outros.
+ */
+test("Encomendas: o administrador vê o rascunho de outro login, só para consulta", async ({
+  page,
+}) => {
+  // O Otávio (Comprador) salva um rascunho na tela TS.
+  await login(page, "operador@wellmix.com");
+  await page.goto("/app/new-request/ts");
+  await chooseCustomer(page, "loja", "cliente-joao");
+  const item = page.locator('[data-request-item="0"]');
+  const product = item.locator('[data-product-picker="catalog"]');
+  await product.locator("[data-product-picker-input]").fill("boneca");
+  await product.locator('[data-product-picker-option="prod-boneca"]').click();
+  await page.locator("[data-request-draft-save]").click();
+  await page.waitForURL(/[?&]draftSaved=1/);
+  const draftId = new URL(page.url()).searchParams.get("draft")!;
+  const draftPath = `/app/requests/batch/${draftId}`;
+
+  // A Ana (administradora): na lista, com quem salvou na Próxima ação.
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/requests?situ=draft");
+  const draftRow = page.locator(`[data-request-list-draft="${draftId}"]`);
+  await expect(draftRow).toBeVisible();
+  await expect(draftRow.locator('[data-request-next="draft"]')).toContainText(
+    "Otávio Operador",
+  );
+  const number = (await draftRow
+    .locator("[data-request-number]")
+    .textContent())!.trim();
+  expect(number).toMatch(/^\d+$/);
+
+  // O número abre os detalhes: quem salvou, só consulta, sem continuar.
+  await draftRow.locator("[data-request-draft-open]").click();
+  await page.waitForURL(new RegExp(`${draftPath}$`));
+  const expectOthers = async () => {
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(
+      `Solicitação nº ${number}`,
+    );
+    await expect(page.locator("[data-draft-status]")).toContainText(
+      "Otávio Operador",
+    );
+    await expect(page.locator('[data-draft-owner="other"]')).toContainText(
+      "Rascunho salvo por Otávio Operador",
+    );
+    await expect(page.locator("[data-draft-resume]")).toHaveCount(0);
+  };
+  await expectOthers();
+  // Recarregar e a URL direta: o mesmo.
+  await page.reload();
+  await expectOthers();
+
+  // Quem salvou: o aviso de sempre e "Continuar edição".
+  await login(page, "operador@wellmix.com");
+  await page.goto(draftPath);
+  await expect(page.locator('[data-draft-owner="me"]')).toBeVisible();
+  await expect(page.locator("[data-draft-resume]")).toBeVisible();
+
+  // Outro login da Wellmix que não é administrador: nem na lista, nem pela URL.
+  await login(page, "vendas@wellmix.com");
+  await page.goto("/app/requests?situ=draft");
+  await expect(
+    page.locator(`[data-request-list-draft="${draftId}"]`),
+  ).toHaveCount(0);
+  const response = await page.goto(draftPath);
+  expect(response?.status()).toBe(404);
+  await expect(page.locator("[data-draft-status]")).toHaveCount(0);
 });

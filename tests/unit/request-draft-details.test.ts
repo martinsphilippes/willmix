@@ -4,8 +4,10 @@ import { withTempStore } from "./setup";
 /*
  * Detalhes do rascunho (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção
  * 7): a mesma tela da solicitação enviada, só para consulta.
- * - Privacidade: só quem salvou, da Wellmix, da tela de onde veio (a regra de
- *   "Continuar"); o da Reposição fica de fora; o resto, nulo (404).
+ * - Privacidade: quem salvou, da Wellmix, da tela de onde veio (a regra de
+ *   "Continuar"), e o administrador, o de qualquer login (seção 9; só
+ *   consulta, sem "Continuar edição"); o da Reposição fica de fora; o resto,
+ *   nulo (404).
  * - Só leitura: abrir não grava nada (nem número, nem auditoria, nem aviso).
  * - Quantidade em branco não vira zero; zero digitado continua zero; totais
  *   parciais quando falta o dado.
@@ -14,19 +16,22 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
-const { saveRequestDraft } = await import("@/lib/services/request-drafts");
+const { getRequestDraft, saveRequestDraft } =
+  await import("@/lib/services/request-drafts");
 const { draftDetailsModel, draftPieces, getDraftForDetails, loadDraftDetails } =
   await import("@/app/app/requests/_details/draft-details");
 type User = import("@/lib/db").User;
 
 let admin: User;
 let operator: User;
+let sales: User;
 let customer: User;
 
 beforeAll(async () => {
   const { users } = await seedDemo();
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   operator = users.find((u) => u.email === "operador@wellmix.com")!;
+  sales = users.find((u) => u.email === "vendas@wellmix.com")!;
   customer = users.find((u) => u.email === "joao@lojista.com")!;
 });
 
@@ -165,7 +170,7 @@ describe("detalhes do rascunho", () => {
     expect(model.totals.pieces).toEqual({ value: 0, missing: ["Item p1."] });
   });
 
-  it("privacidade: só quem salvou; o cliente, outro login e a Reposição não abrem", async () => {
+  it("privacidade: quem salvou; o cliente, outro login e a Reposição não abrem", async () => {
     const draft = await saveRequestDraft(admin, form(), null, "ts");
     expect(await getDraftForDetails(admin, draft.id)).not.toBeNull();
     expect(await loadDraftDetails(operator, draft.id)).toBeNull();
@@ -203,5 +208,37 @@ describe("detalhes do rascunho", () => {
       functions: admin.functions,
       screens: admin.screens,
     } as never);
+  });
+
+  it("o administrador vê o rascunho de outro login, só para consulta (seção 9)", async () => {
+    // Rascunho do Otávio (TS).
+    const draft = await saveRequestDraft(operator, form(), null, "ts");
+    const before = await snapshot();
+    const seen = await loadDraftDetails(admin, draft.id);
+    expect(seen).not.toBeNull();
+    expect(seen).toMatchObject({
+      mine: false,
+      canResume: false,
+      number: draft.number,
+      owner: { id: operator.id, name: operator.name },
+    });
+    expect(seen!.products.map((p) => p.position)).toEqual([1, 2, 3]);
+    // Abrir não grava nada (nem número, nem auditoria, nem aviso).
+    expect(await snapshot()).toBe(before);
+    // Quem salvou continua vendo e continuando.
+    expect(await loadDraftDetails(operator, draft.id)).toMatchObject({
+      mine: true,
+      canResume: true,
+    });
+    // Outro login da Wellmix, que não é administrador, e o cliente: 404.
+    expect(await loadDraftDetails(sales, draft.id)).toBeNull();
+    expect(await loadDraftDetails(customer, draft.id)).toBeNull();
+    // Ver não é continuar: o formulário só reabre o rascunho de quem salvou.
+    expect(await getRequestDraft(admin, draft.id, "ts")).toBeNull();
+    // O da entrada da Reposição continua fora dos detalhes, também para ele.
+    const repo = form();
+    repo.append("from", "replenishment");
+    const replenishment = await saveRequestDraft(admin, repo, null, "sale");
+    expect(await loadDraftDetails(admin, replenishment.id)).toBeNull();
   });
 });

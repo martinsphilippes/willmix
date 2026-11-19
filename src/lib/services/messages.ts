@@ -1428,7 +1428,7 @@ export interface OpenTopicInput {
   orderId?: string | null;
   /** Um produto do pedido: o assunto desce até o item. */
   orderItemId?: string | null;
-  /** O rascunho de uma solicitação (só quem o salvou; dono, 19/11/2026). */
+  /** O rascunho de uma solicitação (quem o salvou e o administrador; dono, 19/11/2026). */
   draftId?: string | null;
 }
 
@@ -1607,9 +1607,10 @@ export async function openTopic(
   const store = getStore();
   const wellmix = isWellmix(user);
   if (input.draftId) {
-    /* Rascunho (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 8): só
-       quem o salvou conversa sobre ele (a regra dos detalhes), com um login
-       do cliente dele; no envio, o assunto passa para a solicitação. */
+    /* Rascunho (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seções 8 e 9):
+       quem o salvou e o administrador conversam sobre ele (a regra dos
+       detalhes), cada um na conversa dele com um login do cliente do
+       rascunho; no envio, os assuntos passam para a solicitação. */
     if (!wellmix) throw new ForbiddenError();
     const draft = await getListedDraft(user, input.draftId);
     if (!draft) throw new MessageError("not_found");
@@ -1825,8 +1826,9 @@ export async function chatContext(
       items: [],
     };
   } else if (input.draftId) {
-    /* Rascunho (dono, 19/11/2026): só quem o salvou abre a conversa dele,
-       com os logins do cliente do rascunho. */
+    /* Rascunho (dono, 19/11/2026): quem o salvou e o administrador (a regra
+       dos detalhes) abrem a conversa dele, com os logins do cliente do
+       rascunho. */
     if (!wellmix) throw new ForbiddenError();
     const draft = await getListedDraft(user, input.draftId);
     if (!draft) throw new MessageError("not_found");

@@ -1,6 +1,6 @@
 import "server-only";
 import { getStore, type RequestDraft, type User } from "@/lib/db";
-import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
+import { ForbiddenError, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
 import { can } from "@/lib/auth/function-access";
 import {
@@ -18,8 +18,10 @@ import { audit } from "./audit";
  * Rascunho da Nova solicitação (dono, 15/11/2026; docs/ORDER_TERMS.md
  * seção 9): o vendedor salva o formulário como está e completa depois.
  * Guarda os campos de texto como vieram (sem arquivos e sem os campos
- * internos do envio). Só quem criou vê, reabre e apaga; some quando a
- * solicitação é enviada.
+ * internos do envio). Só quem criou reabre e apaga; some quando a
+ * solicitação é enviada. Ver: quem criou e, em Encomendas, o administrador
+ * (os de todos os logins; dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md,
+ * seção 9).
  */
 
 export class DraftError extends Error {}
@@ -195,10 +197,12 @@ export async function getRequestDraft(
 
 /**
  * O rascunho de Encomendas que esta pessoa pode ver (os detalhes e a conversa
- * dele; dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 7): só quem o
- * salvou, da Wellmix, e só se ainda abre a tela de onde ele veio (a regra de
- * "Continuar"). O da entrada da Reposição é da fila de Reposição. Nulo:
- * não existe ou não é dele (a tela responde 404, sem dizer qual).
+ * dele; dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seções 7 e 9): quem o
+ * salvou, da Wellmix, ou o administrador (o de qualquer login), e só se ainda
+ * abre a tela de onde ele veio (a regra de "Continuar"). O da entrada da
+ * Reposição é da fila de Reposição. Nulo: não existe ou a pessoa não pode
+ * ver (a tela responde 404, sem dizer qual). Ver não é continuar: o
+ * formulário só reabre o rascunho de quem o salvou (`getRequestDraft`).
  */
 export async function getListedDraft(
   user: User,
@@ -208,10 +212,33 @@ export async function getListedDraft(
   const draft = await getStore()
     .get("request_drafts", id)
     .catch(() => null);
-  if (!draft || draft.userId !== user.id) return null;
+  if (!draft) return null;
+  if (draft.userId !== user.id && !isAdmin(user)) return null;
   const screen = draftScreenOf(draft.payload);
   if (screen === "sale" && draftIsReplenishment(draft.payload)) return null;
   return canDraft(user, screen, false) ? draft : null;
+}
+
+/** Quem salvou o rascunho (o nome na lista e nos detalhes; o login só para o administrador). */
+export interface DraftOwner {
+  id: string;
+  name: string;
+  email: string | null;
+}
+
+/** Quem salvou cada rascunho, pelo id do login (fora: o login não existe mais). */
+export async function draftOwners(
+  drafts: Pick<RequestDraft, "userId">[],
+): Promise<Map<string, DraftOwner>> {
+  const ids = [...new Set(drafts.map((d) => d.userId).filter(Boolean))];
+  if (!ids.length) return new Map();
+  const users = await getStore().list("users", { filter: { id: ids } });
+  return new Map(
+    users.map((u) => [
+      u.id,
+      { id: u.id, name: u.name, email: u.email ?? null },
+    ]),
+  );
 }
 
 /** Os rascunhos de quem pede, desta tela, o mais recente primeiro. */
@@ -247,6 +274,10 @@ export async function deleteRequestDraft(
 export interface ListedDraft {
   draft: RequestDraft;
   href: string;
+  /** Quem salvou (nulo: o login não existe mais). */
+  owner: DraftOwner | null;
+  /** Quem vê é quem salvou: só ele continua a edição (o formulário). */
+  mine: boolean;
 }
 
 /**
@@ -254,6 +285,11 @@ export interface ListedDraft {
  * (/app/requests) mostra os da Nova solicitação, de TS e de Venda; Reposição
  * (/app/replenishment), os da entrada da Reposição. Só os das telas que a
  * pessoa abre, o mais recente primeiro.
+ *
+ * O administrador vê em Encomendas os rascunhos de todos os logins (dono,
+ * 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 9), com quem salvou cada um.
+ * A Reposição continua só com os de quem vê: o rascunho dela abre direto no
+ * formulário, que só reabre o de quem o salvou.
  */
 export async function listDraftsForList(
   user: User,
@@ -265,23 +301,27 @@ export async function listDraftsForList(
   max = 20,
 ): Promise<ListedDraft[]> {
   if (!isWellmix(user)) return [];
+  const everyone = list === "requests" && isAdmin(user);
   const rows = await getStore().list("request_drafts", {
-    filter: { userId: user.id },
+    ...(everyone ? {} : { filter: { userId: user.id } }),
     orderBy: "updatedAt",
     direction: "desc",
     // Folga para os rascunhos das outras telas (o filtro é pelo conteúdo).
     limit: Math.max(60, max * 3),
   });
-  return rows
+  const shown = rows
     .filter((d) => {
       const screen = draftScreenOf(d.payload);
       const replenish = screen === "sale" && draftIsReplenishment(d.payload);
       if ((list === "replenishment") !== replenish) return false;
       return canDraft(user, screen, replenish);
     })
-    .slice(0, max)
-    .map((draft) => ({
-      draft,
-      href: draftResumeHref(draft.id, draft.payload),
-    }));
+    .slice(0, max);
+  const owners = await draftOwners(shown);
+  return shown.map((draft) => ({
+    draft,
+    href: draftResumeHref(draft.id, draft.payload),
+    owner: owners.get(draft.userId) ?? null,
+    mine: draft.userId === user.id,
+  }));
 }
