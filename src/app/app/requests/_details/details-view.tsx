@@ -5,7 +5,9 @@ import type { RequestPacking } from "@/lib/services/request-packing";
 import type { EncomendaTotals, TotalsLine } from "@/lib/request-totals";
 import { containersText, type RequestRounds } from "@/lib/request-rounds";
 import {
+  Empty,
   OpenLink,
+  PageHeader,
   Table,
   Td,
   TextLink,
@@ -24,12 +26,13 @@ import {
 
 /*
  * Tela de detalhes da solicitação (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md,
- * seção 7): o resumo, os totais e a tabela de produtos, iguais para a
- * solicitação enviada (/app/requests/batch/<id>) e para o rascunho
- * (/app/requests/draft/<id>). Cada página diz o que muda no estado dela (a
- * situação, o prazo, o pedido e as ações de cada produto); a conta é a
- * mesma (src/lib/services/request-packing.ts e src/lib/request-totals.ts).
- * Só apresentação: nada aqui lê ou grava no banco.
+ * seção 7): uma tela só, /app/requests/batch/<id>, para a solicitação
+ * enviada e para o rascunho (o id dele). O cabeçalho, os avisos, o resumo, os
+ * totais e a tabela de produtos são os mesmos (`RequestDetailsScreen`); muda
+ * só o que é do estado do registro (a situação, a próxima ação, as ações, o
+ * prazo e o pedido de cada produto). A conta é a mesma
+ * (src/lib/services/request-packing.ts e src/lib/request-totals.ts). Só
+ * apresentação: nada aqui lê ou grava no banco.
  */
 
 /** Um produto na tabela de detalhes. */
@@ -368,5 +371,92 @@ export function DetailsProductsTable({
         })}
       </tbody>
     </Table>
+  );
+}
+
+/** O que a tela de detalhes mostra, no estado do registro (enviada ou rascunho). */
+export interface RequestDetailsScreenProps {
+  t: Translate;
+  /** Estado do registro (`data-details-state`). */
+  state: "sent" | "draft";
+  title: string;
+  /** Cliente (nulo: não mostra, como para quem é de fora). */
+  customerName: string | null;
+  /** Data do registro, já formatada. */
+  date: string;
+  /** A situação e a próxima ação com quem age. */
+  status: ReactNode;
+  actions: ReactNode;
+  /** Avisos acima do resumo. */
+  notices?: ReactNode;
+  /** Um produto aberto (rascunho, `?item=`). */
+  focus?: ReactNode;
+  hint: string;
+  products: number;
+  rounds: RequestRounds;
+  totals: EncomendaTotals;
+  wellmix: boolean;
+  seeSale: boolean;
+  items: readonly DetailsProduct[];
+  /** Sem produtos: o texto no lugar da tabela. */
+  empty?: string;
+  footer?: ReactNode;
+}
+
+/**
+ * A tela de detalhes (o número clicado na lista abre esta tela, para a
+ * solicitação enviada e para o rascunho): cabeçalho com o número, o cliente,
+ * a data, a situação e a próxima ação; os avisos; o resumo; os totais; a
+ * tabela de produtos.
+ */
+export function RequestDetailsScreen(props: RequestDetailsScreenProps) {
+  const { t } = props;
+  return (
+    <>
+      <PageHeader
+        help={{ body: "help.requests.body", steps: "help.requests.steps" }}
+        t={t}
+        title={props.title}
+        subtitle={
+          <span
+            className="flex flex-wrap items-center gap-x-3 gap-y-1"
+            data-details-state={props.state}
+          >
+            {props.customerName ? (
+              <span
+                className="font-medium text-zinc-700"
+                data-details-customer=""
+              >
+                {props.customerName}
+              </span>
+            ) : null}
+            <span>{props.date}</span>
+            {props.status}
+          </span>
+        }
+        actions={props.actions}
+      />
+      {props.notices}
+      {props.focus}
+      <p className="mb-1 text-sm text-zinc-600">{props.hint}</p>
+      <DetailsSummary t={t} products={props.products} rounds={props.rounds} />
+      <DetailsTotals
+        t={t}
+        totals={props.totals}
+        wellmix={props.wellmix}
+        seeSale={props.seeSale}
+      />
+      {props.items.length === 0 && props.empty ? (
+        <Empty>{props.empty}</Empty>
+      ) : (
+        <DetailsProductsTable
+          t={t}
+          items={props.items}
+          wellmix={props.wellmix}
+          seeSale={props.seeSale}
+        />
+      )}
+      {props.footer}
+    </>
   );
 }

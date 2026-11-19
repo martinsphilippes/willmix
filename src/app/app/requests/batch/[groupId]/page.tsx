@@ -24,7 +24,6 @@ import {
   Alert,
   Badge,
   LinkButton,
-  PageHeader,
   TextLink,
   formatDate,
 } from "@/components/ui";
@@ -57,11 +56,11 @@ import { peopleDirectory } from "@/lib/services/request-responsible";
 import { ResponsibleTip } from "@/components/request-responsible-tip";
 import { ListReturnLink } from "@/components/list-return";
 import {
-  DetailsProductsTable,
-  DetailsSummary,
-  DetailsTotals,
+  RequestDetailsScreen,
   type DetailsProduct,
 } from "../../_details/details-view";
+import { loadDraftDetails } from "../../_details/draft-details";
+import { draftScreenProps } from "../../_details/draft-screen";
 
 /*
  * Lote de solicitações: os produtos pedidos juntos (mesmo groupId) numa
@@ -71,9 +70,10 @@ import {
  * peças por caixa, caixas e a conversa dele neste pedido. Mesmo isolamento da lista: só aparece o que o usuário pode ver
  * (canViewRequest); nada visível = 404.
  *
- * O resumo, os totais e a tabela de produtos são os mesmos dos detalhes do
- * rascunho (dono, 19/11/2026; ../../_details/details-view.tsx): o rascunho
- * abre a mesma tela, só para consulta (../../draft/[id]/page.tsx).
+ * Uma tela só (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 7): o
+ * número do rascunho na lista também abre aqui, pelo id do rascunho, na
+ * mesma tela (`RequestDetailsScreen`, ../../_details/details-view.tsx), com
+ * os dados do rascunho e só para consulta (../../_details/draft-screen.tsx).
  */
 export default async function RequestBatchPage({
   params,
@@ -90,6 +90,7 @@ export default async function RequestBatchPage({
     sale,
     strategySent,
     strategySkipped,
+    item,
   } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -107,7 +108,23 @@ export default async function RequestBatchPage({
      produto só; a de um lote vai para a página do lote. */
   if (!rows.length) {
     const own = await store.get("requests", groupId).catch(() => null);
-    if (!own || !canViewRequest(user, own)) notFound();
+    if (!own) {
+      /* Rascunho (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 7): o
+         número do rascunho na lista abre esta mesma tela, pelo id dele, com
+         os dados dele (draft-details.ts), só para consulta e só para quem o
+         salvou (a regra de "Continuar"; os outros, 404). Abrir não grava. */
+      const draft = await loadDraftDetails(user, groupId);
+      if (!draft) notFound();
+      return (
+        <RequestDetailsScreen
+          {...await draftScreenProps(user, t, draft, {
+            base: `/app/requests/batch/${encodeURIComponent(groupId)}`,
+            item: typeof item === "string" ? item : null,
+          })}
+        />
+      );
+    }
+    if (!canViewRequest(user, own)) notFound();
     if (own.groupId && own.groupId !== groupId)
       redirect(`/app/requests/batch/${encodeURIComponent(own.groupId)}`);
     rows = [own];
@@ -235,261 +252,249 @@ export default async function RequestBatchPage({
   };
 
   return (
-    <>
-      <PageHeader
-        help={{ body: "help.requests.body", steps: "help.requests.steps" }}
-        t={t}
-        title={
-          number
-            ? t("reqBatch.titleNumbered", { number, n: rows.length })
-            : t("reqBatch.title", { n: rows.length })
-        }
-        subtitle={
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            {customer ? (
-              <span className="font-medium text-zinc-700">{customer.name}</span>
-            ) : null}
-            <span>{formatDate(rows[0].createdAt, t)}</span>
-            {turns.map(({ step: n, people }) => (
-              <span
-                key={`${n.who}|${n.key}`}
-                className="inline-flex flex-wrap items-center gap-2"
-                data-request-turn={n.who!}
-              >
-                <Badge tone={turnTone(n.who!)}>
-                  {user.role === "customer" && n.who === "customer"
-                    ? t("turn.waiting.you")
-                    : t(turnWaitingKey(n.who!))}
-                </Badge>
-                <span
-                  className="text-sm text-zinc-700"
-                  data-request-next={n.key}
-                >
-                  {t("reqList.col.next")}:{" "}
-                  <span className="font-medium text-zinc-900">
-                    {nextStepText(t, n)}
-                  </span>
-                  {/* Quem age (a mesma regra da lista e das Pendências). */}
-                  {[...people.values()].map((r) => (
-                    <ResponsibleTip
-                      key={responsibleKey(r)}
-                      r={r}
-                      t={t}
-                      className="ml-1.5 inline-block max-w-full align-baseline"
-                    />
-                  ))}
-                </span>
-              </span>
-            ))}
-          </span>
-        }
-        actions={
-          <>
-            {/* Wellmix: mais produtos no mesmo lote enquanto há um que ainda
-                não virou pedido (o novo entra com o mesmo número). */}
-            {addBase ? (
-              <LinkButton
-                href={`/app/requests/new?addTo=${addBase.id}`}
-                variant="secondary"
-                data-add-product
-              >
-                {t("reqAdd.button")}
-              </LinkButton>
-            ) : null}
-            {/* Volta para a lista como estava (busca, filtros, página e
-                rolagem; src/lib/list-return.ts). */}
-            <ListReturnLink list="requests" data-details-back="">
-              {t("reqDelete.backToList")}
-            </ListReturnLink>
-          </>
-        }
-      />
-      {typeof error === "string" && error ? (
-        <div className="mb-3">
-          <Alert tone="danger">{errorText(error)}</Alert>
-        </div>
-      ) : null}
-      {confirmable ? (
-        <div className="mb-3" data-batch-confirm>
-          <Alert tone="warning">
-            {t("turn.batch.confirm")}{" "}
-            <TextLink href={`/app/requests/${confirmable.id}`}>
-              {t("reqList.next.confirm")} →
-            </TextLink>
-          </Alert>
-        </div>
-      ) : null}
-      {count(deleted) > 0 ? (
-        <div className="mb-3">
-          <Alert tone="success">
-            {t("reqDelete.done", { n: count(deleted) })}
-            {count(skipped) > 0
-              ? ` ${t("reqDelete.skipped", { n: count(skipped) })}`
-              : ""}
-          </Alert>
-        </div>
-      ) : null}
-      {count(strategySent) > 0 ? (
-        <div
-          className="mb-3"
-          role="status"
-          data-strategy-sent={count(strategySent)}
-        >
-          <Alert tone="success">
-            {t("reqSend.done", { n: count(strategySent) })}
-            {count(strategySkipped) > 0
-              ? ` ${t("reqSend.skipped", { n: count(strategySkipped) })}`
-              : ""}{" "}
-            {canOpen(user, "purchaseStrategy") ? (
-              <TextLink href="/app/purchase-strategy">
-                {t("reqSend.open")}
-              </TextLink>
-            ) : null}
-          </Alert>
-        </div>
-      ) : null}
-      {sendable.length > 0 ? (
-        <form action={sendToStrategyAction} className="mb-3">
-          {sendable.map((r) => (
-            <input key={r.id} type="hidden" name="ids" value={r.id} />
-          ))}
-          <input type="hidden" name="groupId" value={groupId} />
-          <SubmitButton
-            confirmText={t("reqSend.confirm").replace(
-              "{n}",
-              String(sendable.length),
-            )}
-            data-batch-send-all
-          >
-            {t("reqSend.all", { n: sendable.length })}
-          </SubmitButton>
-        </form>
-      ) : null}
-      {count(added) > 0 ? (
-        <div className="mb-3" data-batch-added>
-          <Alert tone="success">{t("reqAdd.done", { n: count(added) })}</Alert>
-        </div>
-      ) : null}
-      {createdCount > 0 ? (
-        <div
-          className="mb-3"
-          role="status"
-          data-batch-created
-          data-cart-sent={fromCart === "1" ? "" : undefined}
-        >
-          <Alert tone="success">
-            {fromCart === "1"
-              ? `${t("explore.sent")} ${createdCount > 1 ? t("reqBatch.created", { n: createdCount }) : ""}`.trim() +
-                `${
-                  typeof sale === "string" && /^\d{1,9}$/.test(sale)
-                    ? ` ${t("demand.cart.saleSent", { n: sale })}`
-                    : ""
-                }`
-              : createdCount > 1
-                ? t("reqBatch.created", { n: createdCount })
-                : t("reqBatch.createdOne")}
-          </Alert>
-        </div>
-      ) : null}
-      <p className="mb-1 text-sm text-zinc-600">{t("reqBatch.pageHint")}</p>
-      <DetailsSummary t={t} products={distinctProducts} rounds={rounds} />
-      {/* Totais da encomenda (dono, 18/11/2026): os mesmos da lista. */}
-      <DetailsTotals
-        t={t}
-        totals={totals}
-        wellmix={wellmix}
-        seeSale={seeSale}
-      />
-      <DetailsProductsTable
-        t={t}
-        wellmix={wellmix}
-        seeSale={seeSale}
-        items={rows.map((r): DetailsProduct => {
-          const status = requestDisplayStatus(r, cancelled);
-          const order = r.orderId
-            ? orders.find((o) => o.id === r.orderId)
-            : null;
-          const product = productOf(r);
-          const name = productNameText(t, r.productName);
-          const href = `/app/requests/${r.id}`;
-          return {
-            key: r.id,
-            itemId: r.id,
-            name,
-            href,
-            openLabel: t("reqBatch.openProduct"),
-            sku: product?.sku ?? null,
-            variantName: r.variant?.name ?? null,
-            photos: product ? productPhotoList(product, photos) : [],
-            packing: packing.get(r.id),
-            line: lineOf.get(r.id)!,
-            quantity: r.quantity,
-            unit: r.unit,
-            forecast: r.priceForecast ?? null,
-            rounds: Math.max(1, r.schedule?.items?.length ?? 0),
-            status: (
-              <Badge tone={requestStatusTone(status)}>
-                {t(`reqStatusLabel.${status}`)}
+    <RequestDetailsScreen
+      t={t}
+      state="sent"
+      title={
+        number
+          ? t("reqBatch.titleNumbered", { number, n: rows.length })
+          : t("reqBatch.title", { n: rows.length })
+      }
+      customerName={customer?.name ?? null}
+      date={formatDate(rows[0].createdAt, t)}
+      status={
+        <>
+          {turns.map(({ step: n, people }) => (
+            <span
+              key={`${n.who}|${n.key}`}
+              className="inline-flex flex-wrap items-center gap-2"
+              data-request-turn={n.who!}
+            >
+              <Badge tone={turnTone(n.who!)}>
+                {user.role === "customer" && n.who === "customer"
+                  ? t("turn.waiting.you")
+                  : t(turnWaitingKey(n.who!))}
               </Badge>
-            ),
-            deadline: formatDate(r.deadline, t),
-            order:
-              order && canViewOrder(user, order) ? (
-                <TextLink href={`/app/orders/${order.id}`}>
-                  {t("reqBatch.order", { n: order.number })}
-                </TextLink>
-              ) : (
-                "—"
-              ),
-            actions: (
-              <>
-                {!sendable.includes(r) &&
-                r.strategySentAt &&
-                isWellmix(user) ? (
-                  <span
-                    className="text-xs text-zinc-500"
-                    data-batch-sent={r.id}
-                  >
-                    {t("reqSend.sentAt", {
-                      date: formatDate(r.strategySentAt, t),
-                    })}
-                  </span>
-                ) : null}
-                {canDeleteRequest(user, r) ? (
-                  <form action={deleteRequestsAction}>
-                    <input type="hidden" name="ids" value={r.id} />
-                    <input type="hidden" name="groupId" value={groupId} />
-                    <ConfirmDeleteButton
-                      label={t("reqDelete.delete")}
-                      confirmText={t("reqDelete.confirmOne")}
-                    />
-                  </form>
-                ) : null}
-                {/* A conversa deste produto neste pedido. */}
-                <ChatOpenButton
-                  target={{ requestId: r.id }}
-                  label={`${t("reqBatch.chatProduct")}: ${name}`}
-                />
-              </>
-            ),
-          };
-        })}
-      />
-      {deletable.length > 1 ? (
-        <form action={deleteRequestsAction} className="mt-3">
-          {deletable.map((r) => (
-            <input key={r.id} type="hidden" name="ids" value={r.id} />
+              <span className="text-sm text-zinc-700" data-request-next={n.key}>
+                {t("reqList.col.next")}:{" "}
+                <span className="font-medium text-zinc-900">
+                  {nextStepText(t, n)}
+                </span>
+                {/* Quem age (a mesma regra da lista e das Pendências). */}
+                {[...people.values()].map((r) => (
+                  <ResponsibleTip
+                    key={responsibleKey(r)}
+                    r={r}
+                    t={t}
+                    className="ml-1.5 inline-block max-w-full align-baseline"
+                  />
+                ))}
+              </span>
+            </span>
           ))}
-          <SubmitButton
-            variant="secondary"
-            className="text-red-700"
-            confirmText={t("reqBatch.deleteAllConfirm")}
-            data-batch-delete-all
-          >
-            {t("reqBatch.deleteAll")}
-          </SubmitButton>
-        </form>
-      ) : null}
-    </>
+        </>
+      }
+      actions={
+        <>
+          {/* Wellmix: mais produtos no mesmo lote enquanto há um que ainda
+                não virou pedido (o novo entra com o mesmo número). */}
+          {addBase ? (
+            <LinkButton
+              href={`/app/requests/new?addTo=${addBase.id}`}
+              variant="secondary"
+              data-add-product
+            >
+              {t("reqAdd.button")}
+            </LinkButton>
+          ) : null}
+          {/* Volta para a lista como estava (busca, filtros, página e
+                rolagem; src/lib/list-return.ts). */}
+          <ListReturnLink list="requests" data-details-back="">
+            {t("reqDelete.backToList")}
+          </ListReturnLink>
+        </>
+      }
+      notices={
+        <>
+          {typeof error === "string" && error ? (
+            <div className="mb-3">
+              <Alert tone="danger">{errorText(error)}</Alert>
+            </div>
+          ) : null}
+          {confirmable ? (
+            <div className="mb-3" data-batch-confirm>
+              <Alert tone="warning">
+                {t("turn.batch.confirm")}{" "}
+                <TextLink href={`/app/requests/${confirmable.id}`}>
+                  {t("reqList.next.confirm")} →
+                </TextLink>
+              </Alert>
+            </div>
+          ) : null}
+          {count(deleted) > 0 ? (
+            <div className="mb-3">
+              <Alert tone="success">
+                {t("reqDelete.done", { n: count(deleted) })}
+                {count(skipped) > 0
+                  ? ` ${t("reqDelete.skipped", { n: count(skipped) })}`
+                  : ""}
+              </Alert>
+            </div>
+          ) : null}
+          {count(strategySent) > 0 ? (
+            <div
+              className="mb-3"
+              role="status"
+              data-strategy-sent={count(strategySent)}
+            >
+              <Alert tone="success">
+                {t("reqSend.done", { n: count(strategySent) })}
+                {count(strategySkipped) > 0
+                  ? ` ${t("reqSend.skipped", { n: count(strategySkipped) })}`
+                  : ""}{" "}
+                {canOpen(user, "purchaseStrategy") ? (
+                  <TextLink href="/app/purchase-strategy">
+                    {t("reqSend.open")}
+                  </TextLink>
+                ) : null}
+              </Alert>
+            </div>
+          ) : null}
+          {sendable.length > 0 ? (
+            <form action={sendToStrategyAction} className="mb-3">
+              {sendable.map((r) => (
+                <input key={r.id} type="hidden" name="ids" value={r.id} />
+              ))}
+              <input type="hidden" name="groupId" value={groupId} />
+              <SubmitButton
+                confirmText={t("reqSend.confirm").replace(
+                  "{n}",
+                  String(sendable.length),
+                )}
+                data-batch-send-all
+              >
+                {t("reqSend.all", { n: sendable.length })}
+              </SubmitButton>
+            </form>
+          ) : null}
+          {count(added) > 0 ? (
+            <div className="mb-3" data-batch-added>
+              <Alert tone="success">
+                {t("reqAdd.done", { n: count(added) })}
+              </Alert>
+            </div>
+          ) : null}
+          {createdCount > 0 ? (
+            <div
+              className="mb-3"
+              role="status"
+              data-batch-created
+              data-cart-sent={fromCart === "1" ? "" : undefined}
+            >
+              <Alert tone="success">
+                {fromCart === "1"
+                  ? `${t("explore.sent")} ${createdCount > 1 ? t("reqBatch.created", { n: createdCount }) : ""}`.trim() +
+                    `${
+                      typeof sale === "string" && /^\d{1,9}$/.test(sale)
+                        ? ` ${t("demand.cart.saleSent", { n: sale })}`
+                        : ""
+                    }`
+                  : createdCount > 1
+                    ? t("reqBatch.created", { n: createdCount })
+                    : t("reqBatch.createdOne")}
+              </Alert>
+            </div>
+          ) : null}
+        </>
+      }
+      hint={t("reqBatch.pageHint")}
+      products={distinctProducts}
+      rounds={rounds}
+      totals={totals}
+      wellmix={wellmix}
+      seeSale={seeSale}
+      items={rows.map((r): DetailsProduct => {
+        const status = requestDisplayStatus(r, cancelled);
+        const order = r.orderId ? orders.find((o) => o.id === r.orderId) : null;
+        const product = productOf(r);
+        const name = productNameText(t, r.productName);
+        const href = `/app/requests/${r.id}`;
+        return {
+          key: r.id,
+          itemId: r.id,
+          name,
+          href,
+          openLabel: t("reqBatch.openProduct"),
+          sku: product?.sku ?? null,
+          variantName: r.variant?.name ?? null,
+          photos: product ? productPhotoList(product, photos) : [],
+          packing: packing.get(r.id),
+          line: lineOf.get(r.id)!,
+          quantity: r.quantity,
+          unit: r.unit,
+          forecast: r.priceForecast ?? null,
+          rounds: Math.max(1, r.schedule?.items?.length ?? 0),
+          status: (
+            <Badge tone={requestStatusTone(status)}>
+              {t(`reqStatusLabel.${status}`)}
+            </Badge>
+          ),
+          deadline: formatDate(r.deadline, t),
+          order:
+            order && canViewOrder(user, order) ? (
+              <TextLink href={`/app/orders/${order.id}`}>
+                {t("reqBatch.order", { n: order.number })}
+              </TextLink>
+            ) : (
+              "—"
+            ),
+          actions: (
+            <>
+              {!sendable.includes(r) && r.strategySentAt && isWellmix(user) ? (
+                <span className="text-xs text-zinc-500" data-batch-sent={r.id}>
+                  {t("reqSend.sentAt", {
+                    date: formatDate(r.strategySentAt, t),
+                  })}
+                </span>
+              ) : null}
+              {canDeleteRequest(user, r) ? (
+                <form action={deleteRequestsAction}>
+                  <input type="hidden" name="ids" value={r.id} />
+                  <input type="hidden" name="groupId" value={groupId} />
+                  <ConfirmDeleteButton
+                    label={t("reqDelete.delete")}
+                    confirmText={t("reqDelete.confirmOne")}
+                  />
+                </form>
+              ) : null}
+              {/* A conversa deste produto neste pedido. */}
+              <ChatOpenButton
+                target={{ requestId: r.id }}
+                label={`${t("reqBatch.chatProduct")}: ${name}`}
+              />
+            </>
+          ),
+        };
+      })}
+      footer={
+        <>
+          {deletable.length > 1 ? (
+            <form action={deleteRequestsAction} className="mt-3">
+              {deletable.map((r) => (
+                <input key={r.id} type="hidden" name="ids" value={r.id} />
+              ))}
+              <SubmitButton
+                variant="secondary"
+                className="text-red-700"
+                confirmText={t("reqBatch.deleteAllConfirm")}
+                data-batch-delete-all
+              >
+                {t("reqBatch.deleteAll")}
+              </SubmitButton>
+            </form>
+          ) : null}
+        </>
+      }
+    />
   );
 }

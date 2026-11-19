@@ -396,9 +396,6 @@ export default async function RequestsPage({
     : groupRequestRows(pool);
   const batchHref = (id: string) =>
     `/app/requests/batch/${encodeURIComponent(id)}`;
-  /** Detalhes do rascunho, só para consulta (a mesma tela das enviadas). */
-  const draftDetailsHref = (id: string) =>
-    `/app/requests/draft/${encodeURIComponent(id)}`;
   /* Abrir é sempre no nível do pedido (dono, 18/11/2026), mesmo com um
      produto só: a página do lote, pelo groupId ou, na solicitação criada
      sozinha, pelo id dela. */
@@ -1438,10 +1435,11 @@ export default async function RequestsPage({
             {paged.rows.map((row) => {
               if (row.kind === "draft") {
                 const { draft } = row.draft;
-                /* O número e o ícone abrem os detalhes do rascunho, só para
-                   consulta (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção
-                   7), como as enviadas; "Continuar edição" fica lá. */
-                const href = draftDetailsHref(draft.id);
+                /* O número e o ícone abrem a mesma tela de detalhes das
+                   enviadas, pelo id do rascunho (dono, 19/11/2026;
+                   docs/ORDER_LEVEL_LISTS.md, seção 7), só para consulta;
+                   "Continuar edição" fica lá. */
+                const href = batchHref(draft.id);
                 return (
                   <tr
                     key={`draft-${draft.id}`}

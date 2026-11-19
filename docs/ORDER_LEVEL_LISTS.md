@@ -174,18 +174,29 @@ Os totais continuam no fim.
 
 Pedido do dono (19/11/2026, com os prints da lista, do rascunho e da Solicitação nº 6): em Encomendas, clicar no número do rascunho abria o formulário da Nova solicitação, e clicar no número de uma solicitação aberta abria a página de detalhes. O número e o ícone passam a abrir a mesma estrutura de detalhes para os dois.
 
+Revisão do dono (19/11/2026): a nº 3, da AFC, abria "Solicitação nº 3", e o nº 5, da Campineira, em rascunho, abria o formulário. A tela de detalhes existente é que passa a carregar o rascunho, sem página paralela.
+
 ### 7.1 A causa da diferença
 
-- Na lista, a linha do rascunho levava o número e o ícone a `draftResumeHref` (`src/lib/request-screens.ts`), que é o formulário (`/app/requests/new?draft=…`, `/app/new-request/ts?draft=…` ou `/app/new-request/sale?draft=…`).
-- A linha da solicitação enviada levava a `/app/requests/batch/<groupId ou id>`, a página de detalhes.
-- O rascunho não tinha página de detalhes. Ele não é uma solicitação: é o formulário guardado em `request_drafts` (pares campo → valor), e a página do lote lê `requests`.
+Os vínculos reais em produção mostram a divergência:
+
+| | Nº 3 (AFC) | Nº 5 (Campineira) |
+| --- | --- | --- |
+| Tabela | `requests` (sem lote) | `request_drafts` (tela TS, 1 produto) |
+| Link do número na lista | `solicitationHref` → `/app/requests/batch/<id>` | o `href` de `listDraftsForList` = `draftResumeHref` → `/app/new-request/ts?draft=<id>` |
+| Destino | a página de detalhes (busca o lote; sem lote, a solicitação pelo id) | o formulário de edição |
+
+- O número exibido não entra na rota: os dois links usam o id do registro, e não há confusão entre o número e os ids de solicitação, lote, produto ou rascunho. A diferença era o ramo "rascunho" da linha na lista.
+- O rascunho não tinha tela de detalhes: ele é o formulário guardado em `request_drafts` (pares campo → valor), e a página de detalhes só lia `requests`.
 
 ### 7.2 O que mudou
 
-- **Rota nova**: `/app/requests/draft/<id>` (`src/app/app/requests/draft/[id]/page.tsx`). Só consulta.
-- **Os mesmos componentes da página do lote** (`src/app/app/requests/_details/details-view.tsx`): o resumo (produtos, programações e containers), os totais e a tabela de produtos (foto, produto, peças por caixa, peças, caixas, inner, CBM, MOQ, preço, programações, situação, prazo e pedido). A página do lote passou a usá-los, com a mesma marcação e os mesmos atributos. A conta é a de sempre: `request-packing.ts` e `request-totals.ts`.
-- **Na lista**: o número e o ícone do rascunho levam aos detalhes (`data-request-draft-open` e `data-request-list-draft-open`), com a mesma aparência das enviadas. "Continuar edição" fica nos detalhes.
-- **Quem age também na página do lote**: a Próxima ação do cabeçalho ganhou a 2ª linha da lista ("3 pessoas · Wellmix", com o balão dos nomes), pela mesma regra (`ResponsibleTip`, `src/components/request-responsible-tip.tsx`, usado pela lista e pelas duas páginas).
+- **Uma tela só, a mesma rota**: o número e o ícone do rascunho levam a `/app/requests/batch/<id do rascunho>`, o mesmo endereço e a mesma página das enviadas (`src/app/app/requests/batch/[groupId]/page.tsx`). A página procura o lote, depois a solicitação pelo id e, sem nenhum dos dois, o rascunho de quem vê (`loadDraftDetails`, `src/app/app/requests/_details/draft-details.ts`). Sem nenhum, 404.
+- **O mesmo esqueleto** (`RequestDetailsScreen`, `src/app/app/requests/_details/details-view.tsx`): cabeçalho (número, cliente, data, situação, próxima ação e quem age), avisos, resumo (produtos, programações e containers), totais e tabela de produtos (foto, produto, peças por caixa, peças, caixas, inner, CBM, MOQ, preço, programações, situação, prazo e pedido).
+  - O que é do estado de rascunho fica em `src/app/app/requests/_details/draft-screen.tsx`. A solicitação enviada passa pelo mesmo esqueleto, com a mesma marcação e os mesmos atributos de antes.
+  - A conta é a de sempre: `request-packing.ts` e `request-totals.ts`.
+- **Na lista**: o número e o ícone do rascunho (`data-request-draft-open` e `data-request-list-draft-open`) têm o mesmo destino e a mesma aparência das enviadas. "Continuar edição" fica nos detalhes.
+- **Quem age também na enviada**: a Próxima ação do cabeçalho ganhou a 2ª linha da lista ("3 pessoas · Wellmix", com o balão dos nomes), pela mesma regra (`ResponsibleTip`, `src/components/request-responsible-tip.tsx`, usado pela lista e pela tela de detalhes).
 
 ### 7.3 A tela do rascunho
 
@@ -195,12 +206,13 @@ Pedido do dono (19/11/2026, com os prints da lista, do rascunho e da Solicitaç�
 - **Totais e tabela**: os dados disponíveis, mesmo incompletos. O que falta aparece como "—", e o total com algum produto sem o dado leva "Total parcial". O preço total é "—": a previsão de venda só é gravada no envio. Os containers são "—" quando algum produto ainda não tem quantidade, porque a conta sairia menor do que é.
 - **Situação por produto**: "Rascunho". O produto sem produto escolhido, sem nome ou sem quantidade também leva "Incompleto", como no formulário.
 - **Sem etapa, prazo ou pedido**: Prazo e Pedido mostram "—", com a dica "o prazo começa quando a solicitação é enviada". Não há SLA, pendência, "Enviar para cotação", excluir nem conversa.
-- **Detalhes de cada produto**: `?item=<posição>`. Mostra o produto (catálogo ou "Fora do catálogo", com o link para a ficha no cadastro quando a pessoa abre Produtos). Também mostra a descrição, a especificação, a quantidade digitada e a embalagem, cada número com a origem: Rascunho, Variação, Ficha atual, Calculado, Programação, Negociação ou Book do produto. Seguem a programação, entrega por entrega, e as empresas do grupo econômico. A tabela mostra só esse produto, com "Ver todos os N produtos do rascunho".
+- **Detalhes de cada produto**: `/app/requests/batch/<id do rascunho>?item=<posição>`. Mostra o produto (catálogo ou "Fora do catálogo", com o link para a ficha no cadastro quando a pessoa abre Produtos). Também mostra a descrição, a especificação, a quantidade digitada e a embalagem, cada número com a origem: Rascunho, Variação, Ficha atual, Calculado, Programação, Negociação ou Book do produto. Seguem a programação, entrega por entrega, e as empresas do grupo econômico. A tabela mostra só esse produto, com "Ver todos os N produtos do rascunho".
 - **Quantidade em branco × zero**: uma entrega em branco aparece como "—" (com "Sem quantidade digitada nesta entrega"), e um zero digitado aparece como "0 un". O produto sem nenhuma quantidade digitada fica sem peças, caixas, inner e cubagem. A variação escolhida entra como no envio, só na leitura: o nome "Produto · Variação", a cópia dos valores e a especificação dela quando o rascunho não tem. Assim a embalagem bate com a que a solicitação terá.
 
 ### 7.4 Privacidade e só leitura
 
 - **Quem abre** (`getDraftForDetails`, `src/app/app/requests/_details/draft-details.ts`) é a mesma regra de "Continuar": só quem salvou, da Wellmix, e só se ainda abre a tela de onde o rascunho veio (`canDraft`). Fora disso, inclusive pela URL direta, a resposta é 404, sem dizer se o rascunho existe. O administrador não vê o rascunho de outra pessoa, como antes.
+- **A solicitação enviada vem primeiro**: o endereço só cai no rascunho quando não há lote nem solicitação com aquele id. Os ids são aleatórios (UUID), e as regras de visão das enviadas (`canViewRequest`) não mudaram.
 - **Rascunho da entrada da Reposição**: fica de fora. Ele é da fila de Reposição, que continua abrindo o formulário.
 - **Só leitura**: abrir lê o rascunho, o cliente, os produtos, as variações e a embalagem. Não grava, não reserva número, não audita, não avisa, não envia e não muda situação, contadores ou vínculos. O teste unitário compara o banco antes e depois (rascunhos, solicitações, auditoria e avisos), e o E2E confere os cards, o número e o sino.
 
@@ -222,7 +234,7 @@ Na validação, reabrir o rascunho no formulário ("Continuar" ou "Continuar edi
 
 - `tests/unit/request-draft-details.test.ts`: leitura do que foi salvo, em branco × zero, totais parciais, containers "—", banco igual antes e depois, e privacidade (outro login, cliente, id inválido, Reposição, sem a tela).
 - `tests/unit/list-return.test.ts`: só o endereço da própria lista, valores estranhos e os 30 minutos.
-- E2E `tests/e2e/request-draft-details.spec.ts`, de ponta a ponta:
+- E2E `tests/e2e/request-draft-details.spec.ts`. O caso do dono, pelo clique real no número: o rascunho de um cliente e a enviada de outro. Ida e volta pelo link, pelo voltar do navegador e pelo ícone, sem misturar os dados; atualizar a página; URL direta; "Continuar edição"; segue rascunho com o mesmo número e os mesmos cards; iPad. E, de ponta a ponta:
   - rascunho com vários produtos, programações e um produto incompleto; número e ícone com o mesmo destino;
   - cabeçalho, totais parciais, detalhes do produto (em branco "—", zero "0 un"), atualizar a página e voltar com o filtro e a rolagem;
   - cards, número e avisos iguais; "Continuar edição" com os produtos e os totais salvos;

@@ -117,10 +117,10 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   // (dono, 19/11/2026); "Continuar edição" volta ao formulário.
   await expect(listed.locator("[data-request-draft-open]")).toHaveAttribute(
     "href",
-    `/app/requests/draft/${draftId}`,
+    `/app/requests/batch/${draftId}`,
   );
   await listed.locator("[data-request-list-draft-open]").click();
-  await page.waitForURL(new RegExp(`/app/requests/draft/${draftId}$`));
+  await page.waitForURL(new RegExp(`/app/requests/batch/${draftId}$`));
   await expect(page.locator("[data-draft-status]")).toContainText("Rascunho");
   await page.locator("[data-draft-resume]").click();
   await page.waitForURL(new RegExp(`/app/requests/new\\?draft=${draftId}`));

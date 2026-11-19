@@ -1,25 +1,23 @@
+import "server-only";
+
 import type { ReactNode } from "react";
-import { notFound, redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth/session";
-import { requireScreen } from "@/lib/auth/guard";
+import type { User } from "@/lib/db";
+import { getStore } from "@/lib/db";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
-import { getStore } from "@/lib/db";
-import { getT } from "@/i18n/server";
+import { canSeeMoney } from "@/lib/auth/function-access";
 import { productNameText, type Translate } from "@/i18n";
+import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
   Badge,
   Card,
-  Empty,
   LinkButton,
-  PageHeader,
   TextLink,
   formatDate,
 } from "@/components/ui";
 import { productPhotoList } from "@/lib/services/product-list";
 import { getSettings } from "@/lib/settings";
-import { canSeeMoney } from "@/lib/auth/function-access";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
 import { RequestCompanyAllocations } from "@/components/request-company-allocations";
 import {
@@ -27,55 +25,50 @@ import {
   draftResponsible,
 } from "@/components/request-responsible-tip";
 import { ListReturnLink } from "@/components/list-return";
-import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { PackingSourceKind } from "@/lib/services/request-packing";
-import {
-  DetailsProductsTable,
-  DetailsSummary,
-  DetailsTotals,
-  type DetailsProduct,
-} from "../../_details/details-view";
+import type { DetailsProduct, RequestDetailsScreenProps } from "./details-view";
 import {
   draftDetailsModel,
   draftPieces,
-  loadDraftDetails,
+  type DraftDetails,
   type DraftPackedProduct,
   type DraftProduct,
-} from "../../_details/draft-details";
+} from "./draft-details";
 
 /*
- * Detalhes do rascunho (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção
- * 7): a mesma tela da solicitação enviada (/app/requests/batch/<id>), com o
- * número persistente, o cliente, a data, a situação "Rascunho", a próxima
- * ação e quem age, os totais e a tabela de produtos; cada produto abre os
- * detalhes dele aqui mesmo (`?item=<posição>`).
- *
- * Só consulta: abrir esta página não grava nada (nem número, nem situação,
- * nem auditoria), não envia, não gera pedido, cotação ou aviso. O envio
- * continua só pelo formulário ("Continuar edição"), com as validações dele.
- * Privacidade: a de "Continuar" (só quem salvou, da tela de onde veio); fora
- * disso, 404 (src/app/app/requests/_details/draft-details.ts). Nada de etapa,
- * prazo ou pendência de solicitação enviada: o rascunho é de quem o salvou.
+ * O rascunho na tela de detalhes (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md,
+ * seção 7): o número do rascunho na lista abre /app/requests/batch/<id do
+ * rascunho>, a mesma página e a mesma tela da solicitação enviada
+ * (`RequestDetailsScreen`). Aqui só o que é do estado de rascunho:
+ * - "Solicitação nº N" com o número persistente, o cliente, a data em que foi
+ *   criado, "Rascunho" e "Próximo passo: Concluir e enviar" com quem o salvou;
+ * - o aviso privado (só quem salvou vê; nada foi enviado);
+ * - "Continuar edição" (o formulário de onde veio, com o que foi salvo);
+ * - por produto: "Rascunho" (e "Incompleto"), sem prazo nem pedido; o
+ *   produto abre os detalhes dele aqui mesmo (`?item=<posição>`).
+ * Só consulta (draft-details.ts): nada é gravado ao montar a tela.
  */
-export default async function RequestDraftPage({
-  params,
-  searchParams,
-}: PageProps<"/app/requests/draft/[id]">) {
-  const { id } = await params;
-  const { item } = await searchParams;
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-  requireScreen(user, "requests");
-  const details = await loadDraftDetails(user, id);
-  if (!details) notFound();
-  const t = await getT();
-  const store = getStore();
+
+/** As peças da tela de detalhes para o rascunho de quem vê. */
+export async function draftScreenProps(
+  user: User,
+  t: Translate,
+  details: DraftDetails,
+  input: {
+    /** Endereço da tela (o mesmo da lista: /app/requests/batch/<id>). */
+    base: string;
+    /** Produto aberto (`?item=<posição>`). */
+    item: string | null;
+  },
+): Promise<RequestDetailsScreenProps> {
   const { draft, number, products } = details;
   const nameOf = (p: DraftProduct) => productNameText(t, p.productName);
   const productIds = details.catalog.map((p) => p.id);
   const [photos, settings] = await Promise.all([
     productIds.length
-      ? store.list("product_photos", { filter: { productId: productIds } })
+      ? getStore().list("product_photos", {
+          filter: { productId: productIds },
+        })
       : Promise.resolve([]),
     getSettings(),
   ]);
@@ -91,70 +84,60 @@ export default async function RequestDraftPage({
   const wellmix = isWellmix(user);
   // Venda prevista: só com "Ver valores e margem" (no rascunho, ainda "—").
   const seeSale = wellmix && canSeeMoney(user);
-  const base = `/app/requests/draft/${encodeURIComponent(draft.id)}`;
   // Produto aberto (?item=<posição>): a tabela mostra só ele, com os detalhes.
   const focus =
-    typeof item === "string" && /^\d{1,3}$/.test(item)
-      ? (model.rows.find((r) => r.product.position === Number(item)) ?? null)
+    input.item && /^\d{1,3}$/.test(input.item)
+      ? (model.rows.find((r) => r.product.position === Number(input.item)) ??
+        null)
       : null;
   const shown = focus ? [focus] : model.rows;
-  const owner = draftResponsible(user, isAdmin(user));
-
-  return (
-    <>
-      <PageHeader
-        help={{ body: "help.requests.body", steps: "help.requests.steps" }}
-        t={t}
-        title={
-          number
-            ? t("reqBatch.titleNumbered", { number, n: products.length })
-            : t("reqDraft.title", { n: products.length })
-        }
-        subtitle={
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="font-medium text-zinc-700" data-draft-customer="">
-              {details.customerName ?? t("requestDraft.noCustomer")}
-            </span>
-            <span>{formatDate(draft.createdAt, t)}</span>
-            <span
-              className="inline-flex flex-wrap items-center gap-2"
-              data-draft-status=""
-            >
-              <Badge tone="neutral">{t("requestDraft.status")}</Badge>
-              <span className="text-sm text-zinc-700" data-request-next="draft">
-                {t("reqList.col.next")}:{" "}
-                <span className="font-medium text-zinc-900">
-                  {t("reqList.draft.next")}
-                </span>
-                {/* Quem age: quem salvou o rascunho (só ele o vê). */}
-                <ResponsibleTip
-                  r={owner}
-                  t={t}
-                  className="ml-1.5 inline-block max-w-full align-baseline"
-                />
-              </span>
-            </span>
+  return {
+    t,
+    state: "draft",
+    title: number
+      ? t("reqBatch.titleNumbered", { number, n: products.length })
+      : t("reqDraft.title", { n: products.length }),
+    customerName: details.customerName ?? t("requestDraft.noCustomer"),
+    date: formatDate(draft.createdAt, t),
+    status: (
+      <span
+        className="inline-flex flex-wrap items-center gap-2"
+        data-draft-status=""
+      >
+        <Badge tone="neutral">{t("requestDraft.status")}</Badge>
+        <span className="text-sm text-zinc-700" data-request-next="draft">
+          {t("reqList.col.next")}:{" "}
+          <span className="font-medium text-zinc-900">
+            {t("reqList.draft.next")}
           </span>
-        }
-        actions={
-          <>
-            {/* Continuar edição: o formulário da tela de onde o rascunho veio,
-                com tudo o que foi salvo (o envio é só por lá). */}
-            {details.canResume ? (
-              <LinkButton
-                href={details.resumeHref}
-                variant="primary"
-                data-draft-resume=""
-              >
-                {t("reqDraft.resume")}
-              </LinkButton>
-            ) : null}
-            <ListReturnLink list="requests" data-details-back="">
-              {t("reqDelete.backToList")}
-            </ListReturnLink>
-          </>
-        }
-      />
+          {/* Quem age: quem salvou o rascunho (só ele o vê). */}
+          <ResponsibleTip
+            r={draftResponsible(user, isAdmin(user))}
+            t={t}
+            className="ml-1.5 inline-block max-w-full align-baseline"
+          />
+        </span>
+      </span>
+    ),
+    actions: (
+      <>
+        {/* Continuar edição: o formulário da tela de onde o rascunho veio,
+            com tudo o que foi salvo (o envio é só por lá). */}
+        {details.canResume ? (
+          <LinkButton
+            href={details.resumeHref}
+            variant="primary"
+            data-draft-resume=""
+          >
+            {t("reqDraft.resume")}
+          </LinkButton>
+        ) : null}
+        <ListReturnLink list="requests" data-details-back="">
+          {t("reqDelete.backToList")}
+        </ListReturnLink>
+      </>
+    ),
+    notices: (
       <div className="mb-3" data-draft-private="">
         <Alert tone="info">
           {t("reqDraft.notice")}{" "}
@@ -167,93 +150,79 @@ export default async function RequestDraftPage({
           </span>
         </Alert>
       </div>
-      {focus ? (
-        <DraftItemCard
-          t={t}
-          row={focus}
-          total={products.length}
-          base={base}
-          wellmix={wellmix}
-          catalogHref={
-            focus.product.productId && canOpen(user, "products")
-              ? `/app/products/${encodeURIComponent(focus.product.productId)}`
-              : null
-          }
-        />
-      ) : null}
-      <p className="mb-1 text-sm text-zinc-600">{t("reqDraft.pageHint")}</p>
-      <DetailsSummary
+    ),
+    focus: focus ? (
+      <DraftItemCard
         t={t}
-        products={model.distinctProducts}
-        rounds={model.rounds}
-      />
-      <DetailsTotals
-        t={t}
-        totals={model.totals}
+        row={focus}
+        total={products.length}
+        base={input.base}
         wellmix={wellmix}
-        seeSale={seeSale}
+        catalogHref={
+          focus.product.productId && canOpen(user, "products")
+            ? `/app/products/${encodeURIComponent(focus.product.productId)}`
+            : null
+        }
       />
-      {products.length === 0 ? (
-        <Empty>{t("reqDraft.noProducts")}</Empty>
-      ) : (
-        <DetailsProductsTable
-          t={t}
-          wellmix={wellmix}
-          seeSale={seeSale}
-          items={shown.map(({ product: p, packing, line }): DetailsProduct => {
-            const catalog = p.productId
-              ? (catalogById.get(p.productId) ?? null)
-              : null;
-            return {
-              key: `p${p.position}`,
-              itemId: `draft-${p.position}`,
-              name: nameOf(p),
-              href: `${base}?item=${p.position}`,
-              openLabel: t("reqDraft.openProduct"),
-              sku: catalog?.sku ?? null,
-              variantName: p.variant?.name ?? null,
-              photos: catalog ? productPhotoList(catalog, photos) : [],
-              packing,
-              line,
-              quantity: draftPieces(p),
-              unit: p.unit,
-              // A previsão de venda é gravada no envio.
-              forecast: null,
-              noPriceHint: t("reqDraft.priceHint"),
-              rounds: Math.max(1, p.schedule?.items.length ?? 0),
-              status: (
-                <span className="flex flex-wrap gap-1">
-                  <Badge tone="neutral">{t("requestDraft.status")}</Badge>
-                  {p.incomplete ? (
-                    <span
-                      title={t("reqBatch.incompleteHint")}
-                      data-draft-incomplete=""
-                    >
-                      <Badge tone="warning">{t("reqBatch.incomplete")}</Badge>
-                    </span>
-                  ) : null}
-                </span>
-              ),
-              deadline: (
-                <span
-                  className="text-zinc-400"
-                  title={t("reqDraft.noDeadline")}
-                  data-draft-deadline=""
-                >
-                  —
-                </span>
-              ),
-              order: (
-                <span className="text-zinc-400" title={t("reqDraft.noOrder")}>
-                  —
-                </span>
-              ),
-            };
-          })}
-        />
-      )}
-    </>
-  );
+    ) : null,
+    hint: t("reqDraft.pageHint"),
+    products: model.distinctProducts,
+    rounds: model.rounds,
+    totals: model.totals,
+    wellmix,
+    seeSale,
+    empty: t("reqDraft.noProducts"),
+    items: shown.map(({ product: p, packing, line }): DetailsProduct => {
+      const catalog = p.productId
+        ? (catalogById.get(p.productId) ?? null)
+        : null;
+      return {
+        key: `p${p.position}`,
+        itemId: `draft-${p.position}`,
+        name: nameOf(p),
+        href: `${input.base}?item=${p.position}`,
+        openLabel: t("reqDraft.openProduct"),
+        sku: catalog?.sku ?? null,
+        variantName: p.variant?.name ?? null,
+        photos: catalog ? productPhotoList(catalog, photos) : [],
+        packing,
+        line,
+        quantity: draftPieces(p),
+        unit: p.unit,
+        // A previsão de venda é gravada no envio.
+        forecast: null,
+        noPriceHint: t("reqDraft.priceHint"),
+        rounds: Math.max(1, p.schedule?.items.length ?? 0),
+        status: (
+          <span className="flex flex-wrap gap-1">
+            <Badge tone="neutral">{t("requestDraft.status")}</Badge>
+            {p.incomplete ? (
+              <span
+                title={t("reqBatch.incompleteHint")}
+                data-draft-incomplete=""
+              >
+                <Badge tone="warning">{t("reqBatch.incomplete")}</Badge>
+              </span>
+            ) : null}
+          </span>
+        ),
+        deadline: (
+          <span
+            className="text-zinc-400"
+            title={t("reqDraft.noDeadline")}
+            data-draft-deadline=""
+          >
+            —
+          </span>
+        ),
+        order: (
+          <span className="text-zinc-400" title={t("reqDraft.noOrder")}>
+            —
+          </span>
+        ),
+      };
+    }),
+  };
 }
 
 const fmt = (t: Translate, n: number, digits = 0) =>
