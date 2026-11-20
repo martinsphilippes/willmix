@@ -1297,6 +1297,22 @@ create index if not exists "customer_sales_monthly_by_customer_month" on public.
 create index if not exists "customer_sales_monthly_created" on public."customer_sales_monthly" ("createdAt");
 create index if not exists "customer_sales_monthly_created_id" on public."customer_sales_monthly" ("createdAt", "id");
 
+create table if not exists public."sankhya_stage_rows" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."sankhya_stage_rows" enable row level security;
+alter table public."sankhya_stage_rows" add column if not exists "dataset" text;
+alter table public."sankhya_stage_rows" add column if not exists "rowKey" text;
+alter table public."sankhya_stage_rows" add column if not exists "nunota" bigint;
+alter table public."sankhya_stage_rows" add column if not exists "runId" text;
+alter table public."sankhya_stage_rows" add column if not exists "row" jsonb;
+alter table public."sankhya_stage_rows" add column if not exists "loadedAt" timestamptz;
+create index if not exists "sankhya_stage_rows_by_dataset_nunota" on public."sankhya_stage_rows" ("dataset", "nunota");
+create index if not exists "sankhya_stage_rows_created" on public."sankhya_stage_rows" ("createdAt");
+create index if not exists "sankhya_stage_rows_created_id" on public."sankhya_stage_rows" ("createdAt", "id");
+
 create table if not exists public."customer_sales_loads" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),

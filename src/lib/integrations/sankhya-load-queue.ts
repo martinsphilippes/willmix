@@ -42,6 +42,13 @@ export const SERVER_LOAD_ORDER: FullLoadEntity[] = [
   "productImages",
   // Caixas (CBM, peças, C1) dos produtos que já estão no portal.
   "productCartons",
+  // Cópia das views de pedido para análise; as ligações depois dos
+  // cabeçalhos de compra (partem deles).
+  "stagePurchaseHeaders",
+  "stagePurchaseItems",
+  "stagePurchaseLinks",
+  "stageSaleHeaders",
+  "stageSaleItems",
 ];
 
 export interface ServerLoadState {

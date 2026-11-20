@@ -7886,6 +7886,75 @@
       ]
     },
     {
+      "$id": "sankhya_stage_rows",
+      "databaseId": "willmix",
+      "name": "Cópia bruta das views de pedido do Sankhya (análise)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "dataset",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "rowKey",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 120
+        },
+        {
+          "key": "nunota",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "runId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "row",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "loadedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_dataset_nunota",
+          "type": "key",
+          "columns": [
+            "dataset",
+            "nunota"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
       "$id": "customer_sales_loads",
       "databaseId": "willmix",
       "name": "Carga de vendas do Sankhya por cliente",

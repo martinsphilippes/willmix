@@ -114,6 +114,16 @@ export const pt = {
     "Vendedores / RCAs (VW_AD_VENDEDOR_WELL; liga ao login pelo e-mail)",
   "sankhyaLoad.full.entity.productSuppliers":
     "Fornecedores de cada produto (VW_AD_PRODUTO_FORNECEDOR_WELL, com os portos)",
+  "sankhyaLoad.full.entity.stagePurchaseHeaders":
+    "Análise: cabeçalhos de compra (VW_AD_PEDCOMPRA_CAB_WELL, cópia bruta)",
+  "sankhyaLoad.full.entity.stagePurchaseItems":
+    "Análise: itens de compra (VW_AD_PEDCOMPRA_ITEM_WELL, cópia bruta)",
+  "sankhyaLoad.full.entity.stagePurchaseLinks":
+    "Análise: de que documento cada compra foi gerada (TGFVAR, depois dos cabeçalhos)",
+  "sankhyaLoad.full.entity.stageSaleHeaders":
+    "Análise: cabeçalhos de venda (VW_AD_PEDCLIENTE_CAB_WELL, cópia bruta)",
+  "sankhyaLoad.full.entity.stageSaleItems":
+    "Análise: itens de venda pendentes ou alterados em 90 dias (VW_AD_PEDCLIENTE_ITEM_WELL)",
   "sankhyaLoad.full.source.view": "Lido da view do portal",
   "sankhyaLoad.full.source.table": "A view falhou: lido da tabela",
   "sankhyaLoad.full.entity.customers": "Clientes (VW_AD_CLIENTE_WELL)",
@@ -446,6 +456,16 @@ export const en: Record<keyof typeof pt, string> = {
     "Sellers / RCAs (VW_AD_VENDEDOR_WELL; linked to the login by e-mail)",
   "sankhyaLoad.full.entity.productSuppliers":
     "Suppliers of each product (VW_AD_PRODUTO_FORNECEDOR_WELL, with the ports)",
+  "sankhyaLoad.full.entity.stagePurchaseHeaders":
+    "Analysis: purchase headers (VW_AD_PEDCOMPRA_CAB_WELL, raw copy)",
+  "sankhyaLoad.full.entity.stagePurchaseItems":
+    "Analysis: purchase items (VW_AD_PEDCOMPRA_ITEM_WELL, raw copy)",
+  "sankhyaLoad.full.entity.stagePurchaseLinks":
+    "Analysis: which document each purchase came from (TGFVAR, after the headers)",
+  "sankhyaLoad.full.entity.stageSaleHeaders":
+    "Analysis: sales headers (VW_AD_PEDCLIENTE_CAB_WELL, raw copy)",
+  "sankhyaLoad.full.entity.stageSaleItems":
+    "Analysis: sales items pending or changed in 90 days (VW_AD_PEDCLIENTE_ITEM_WELL)",
   "sankhyaLoad.full.source.view": "Read from the portal view",
   "sankhyaLoad.full.source.table": "The view failed: read from the table",
   "sankhyaLoad.full.entity.customers": "Customers (VW_AD_CLIENTE_WELL)",
@@ -772,6 +792,16 @@ export const zh: Record<keyof typeof pt, string> = {
     "销售员 / RCA（VW_AD_VENDEDOR_WELL；按电子邮件关联登录）",
   "sankhyaLoad.full.entity.productSuppliers":
     "每个产品的供应商（VW_AD_PRODUTO_FORNECEDOR_WELL，含港口）",
+  "sankhyaLoad.full.entity.stagePurchaseHeaders":
+    "分析：采购单抬头（VW_AD_PEDCOMPRA_CAB_WELL，原始副本）",
+  "sankhyaLoad.full.entity.stagePurchaseItems":
+    "分析：采购单明细（VW_AD_PEDCOMPRA_ITEM_WELL，原始副本）",
+  "sankhyaLoad.full.entity.stagePurchaseLinks":
+    "分析：每笔采购由哪个单据生成（TGFVAR，在抬头之后）",
+  "sankhyaLoad.full.entity.stageSaleHeaders":
+    "分析：销售单抬头（VW_AD_PEDCLIENTE_CAB_WELL，原始副本）",
+  "sankhyaLoad.full.entity.stageSaleItems":
+    "分析：待处理或 90 天内变更的销售明细（VW_AD_PEDCLIENTE_ITEM_WELL）",
   "sankhyaLoad.full.source.view": "从门户视图读取",
   "sankhyaLoad.full.source.table": "视图失败：从数据表读取",
   "sankhyaLoad.full.entity.customers": "客户（VW_AD_CLIENTE_WELL）",

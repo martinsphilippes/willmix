@@ -172,6 +172,12 @@ const ROWS: Record<FullLoadEntity, { min: number; max: number }> = {
   productImages: { min: 60, max: 200 },
   // Caixas: a faixa e os lotes ficam em sankhya-cartons.ts.
   productCartons: { min: 100, max: 600 },
+  // Cópia para análise: páginas de 4.000 em sankhya-stage.ts.
+  stagePurchaseHeaders: { min: 1, max: 4000 },
+  stagePurchaseItems: { min: 1, max: 4000 },
+  stagePurchaseLinks: { min: 1, max: 4000 },
+  stageSaleHeaders: { min: 1, max: 4000 },
+  stageSaleItems: { min: 1, max: 4000 },
 };
 
 export interface FullLoadResult {
@@ -198,6 +204,15 @@ export async function runFullLoad(
     return { progress: await runImageLoad(user, budgetMs), lines: [] };
   }
   if (entity === "sellers") return runSellerLoad(user);
+  if (entity.startsWith("stage")) {
+    const { datasetOfEntity, runStageLoad } = await import("./sankhya-stage");
+    const dataset = datasetOfEntity(entity);
+    if (dataset)
+      return {
+        progress: await runStageLoad(user, dataset, budgetMs),
+        lines: [],
+      };
+  }
   const started = Date.now();
   const progress = await getFullLoadProgress(entity);
   if (progress.done) return { progress, lines: [] };
