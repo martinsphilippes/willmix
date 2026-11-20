@@ -296,3 +296,37 @@ test("Pendências: Login do cliente a definir com o mesmo formulário do balão"
   await done.locator("[data-request-fix-refresh]").click();
   await expect(row).toHaveCount(0);
 });
+
+test("tela baixa (iPad em janela menor): o balão cabe na tela e o formulário inteiro é alcançável", async ({
+  page,
+}) => {
+  // Dono, 20/11/2026: no iPad o balão passava do fim da tela e o formulário
+  // não aparecia inteiro.
+  await login(page, "admin@wellmix.com");
+  const { requestId, buyer } = await saleForNewCustomer(
+    page,
+    "Loja Tela Baixa",
+    "telabaixa",
+  );
+  await page.setViewportSize({ width: 1024, height: 560 });
+  await page.goto("/app/requests?situ=open");
+  const who = page
+    .locator(`[data-request-row="${requestId}"]`)
+    .locator('[data-request-responsible="login"]');
+  await who.scrollIntoViewIfNeeded();
+  await who.click();
+  const tip = page.locator('[data-info-tip][role="dialog"]');
+  await expect(tip).toBeVisible();
+  // O balão inteiro dentro da tela (ele rola por dentro).
+  const box = (await tip.boundingBox())!;
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(560 + 1);
+  // O botão do fim do formulário aparece rolando o balão, e cria o login.
+  const submit = tip.locator("[data-request-fix-submit]");
+  await submit.scrollIntoViewIfNeeded();
+  await expect(submit).toBeInViewport();
+  await submit.click();
+  await expect(
+    tip.locator("[data-request-fix-done] [data-request-fix-login-created]"),
+  ).toHaveText(buyer);
+});
