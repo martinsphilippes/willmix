@@ -21,9 +21,12 @@ export function QuickDialog({
   disabled = false,
   size = "sm",
   openOnHash,
+  headerActions,
   children,
   ...rest
 }: {
+  /** Botões no canto superior direito, antes do "×" (ex.: exportar). */
+  headerActions?: ReactNode;
   /** Texto ou ícone do botão. Só ícone: `hint` vira o nome e a dica dele. */
   label: ReactNode;
   title: string;
@@ -110,14 +113,17 @@ export function QuickDialog({
           >
             {title}
           </h2>
-          <button
-            type="button"
-            onClick={() => dialog.current?.close()}
-            aria-label={closeLabel}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
-          >
-            ×
-          </button>
+          <span className="flex shrink-0 items-center gap-2">
+            {headerActions}
+            <button
+              type="button"
+              onClick={() => dialog.current?.close()}
+              aria-label={closeLabel}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+            >
+              ×
+            </button>
+          </span>
         </div>
         {/* Enviado o formulário, a caixa fecha (a tela volta com o aviso). */}
         <div

@@ -645,11 +645,20 @@ export function RequestItems({
             "",
         }
       : null;
-  const focusKey = focus ? `${focus.productId}|${focus.name}` : "";
+  const focusKey = focus
+    ? JSON.stringify({ ...focus, rowIndex: openRow })
+    : "";
   useEffect(() => {
     if (!setFocusProduct) return;
-    const [productId, ...name] = focusKey ? focusKey.split("|") : [];
-    setFocusProduct(productId ? { productId, name: name.join("|") } : null);
+    setFocusProduct(
+      focusKey
+        ? (JSON.parse(focusKey) as {
+            productId: string;
+            name: string;
+            rowIndex: number;
+          })
+        : null,
+    );
   }, [focusKey, setFocusProduct]);
   const nameOf = (index: number, fallback: string) =>
     (!outside[index] &&

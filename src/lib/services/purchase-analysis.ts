@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getStore, type User } from "@/lib/db";
+import { canSeeMoney } from "@/lib/auth/function-access";
 import { listColumns } from "@/lib/db/lookup";
 import {
   executeQuery,
@@ -48,7 +49,7 @@ export function productPurchasesSql(
   if (!codes.length || !product) throw new Error("invalid_input");
   return [
     `SELECT TOP ${MAX_ROWS} CAST(DATA_PEDIDO AS DATE) AS DIA, UNIDADE_NEGOCIADA,`,
-    "SUM(QTD_NEGOCIADA) AS QTD",
+    "SUM(QTD_NEGOCIADA) AS QTD, SUM(VALOR_ITEM_APOS_DESCONTO_BRL) AS VALOR",
     `FROM ${VIEW} WHERE COD_CLIENTE IN (${codes.join(", ")}) AND CODPROD = ${product}`,
     "GROUP BY CAST(DATA_PEDIDO AS DATE), UNIDADE_NEGOCIADA",
     "ORDER BY DIA",
@@ -62,6 +63,8 @@ export type PurchaseAnalysis = SankhyaHistoryResult<{
   purchases: Purchase[];
   years: YearTotal[];
   estimate: DemandEstimate | null;
+  /** Quem lê vê valores ("Ver valores e margem"). */
+  money: boolean;
   /** Alguma unidade sem conversão para peças (somada como veio). */
   mixedUnits: boolean;
 }>;
@@ -104,6 +107,7 @@ export async function productPurchaseAnalysis(
       executeQuery(volumesSql([productCode]), options),
     ]);
     let mixedUnits = false;
+    const money = canSeeMoney(user);
     const purchases: Purchase[] = [];
     for (const row of rows.rows) {
       const date = sankhyaDate(row.DIA);
@@ -113,7 +117,13 @@ export async function productPurchaseAnalysis(
         row.UNIDADE_NEGOCIADA == null ? null : String(row.UNIDADE_NEGOCIADA);
       const factor = pieceFactor(unit, volumes.rows);
       if (factor === null) mixedUnits = true;
-      purchases.push({ date, quantity: qty * (factor ?? 1) });
+      const value = Number(String(row.VALOR ?? "").replace(",", "."));
+      purchases.push({
+        date,
+        quantity: qty * (factor ?? 1),
+        // Valor só com "Ver valores e margem" (a regra do histórico).
+        value: money ? (Number.isFinite(value) ? value : 0) : null,
+      });
     }
     return {
       state: "ok",
@@ -125,6 +135,7 @@ export async function productPurchaseAnalysis(
       companies: codes.length,
       purchases,
       years: yearTotals(purchases),
+      money,
       estimate: estimateDemand(purchases),
       mixedUnits,
     };

@@ -179,6 +179,18 @@ O card ganhou a terceira aba, **Análise** (Pedido | Produto | Análise), com o 
 - **Código:** `src/lib/services/purchase-analysis.ts` (`productPurchaseAnalysis`), `/api/purchase-history/sankhya?view=analysis&product=`, `src/components/purchase-analysis-panel.tsx`. Testes em `tests/unit/purchase-forecast.test.ts`, `tests/unit/purchase-analysis.test.ts` e o 3º teste de `tests/e2e/new-request-round.spec.ts`.
 - **Permissões:** as do histórico pelo Sankhya (Wellmix que abre Solicitações).
 
+### 12.1 Meses sem compra, valores e "Usar a recomendação" (dono, 20/11/2026)
+
+- **Meses sem compra:** da 1ª compra até o mês de hoje, todo mês aparece. O mês sem compra entra com quantidade e valor zero, em cinza, para o buraco de compras ficar visível (`yearTotals`).
+- **Valor:** a coluna Valor (R$, após descontos, `VALOR_ITEM_APOS_DESCONTO_BRL`) por ano e por mês, só com "Ver valores e margem".
+- **Expandir tudo / Recolher tudo:** acima da tabela, abre ou fecha os meses de todos os anos.
+- **Usar a recomendação:**
+  - A quantidade sugerida, arredondada para cima em caixas master inteiras, vai para a linha aberta do pedido.
+  - Ela é repartida nas entregas programadas do pedido pela demanda prevista de cada uma: cada entrega cobre do dia dela até a seguinte; a última, o intervalo médio entre as entregas (`splitRecommendation`). Sem as datas, a repartição é em partes iguais.
+  - É o percentual deste produto entre as entregas: o percentual geral do pedido (Distribuição entre entregas) não muda.
+  - No pedido para um grupo econômico, a matriz Empresas × Entregas acompanha a nova programação na distribuição entre as lojas (docs/ECONOMIC_GROUPS.md).
+  - O envio usa o evento `selection:rounds` da linha (o mesmo da matriz).
+
 ## Preço da última compra ao fornecedor (15/11/2026)
 
 Pedido do dono: ao escolher o produto na Nova solicitação, o quadro verde "Produto do catálogo Wellmix" mostra, só para a Wellmix, "Última compra: US$ 0,1205 por UN · 120.148 UN · pedido 11556 (Sankhya 1185804) · fornecedor" (`src/lib/services/last-purchase.ts`, campo `lastPurchase` da ficha em `request-product-fill.ts`).

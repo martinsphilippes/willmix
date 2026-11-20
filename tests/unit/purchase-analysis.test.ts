@@ -60,9 +60,9 @@ describe("aba Análise do histórico de compras", () => {
     expect(asked.find((s) => s.includes("COD_CLIENTE IN"))).toMatch(
       /COD_CLIENTE IN \(9100, 9101, 9102\) AND CODPROD = 501/,
     );
-    expect(result.purchases).toEqual([
-      { date: "2026-01-10", quantity: 120 },
-      { date: "2026-04-10", quantity: 120 },
+    expect(result.purchases.map((p) => [p.date, p.quantity])).toEqual([
+      ["2026-01-10", 120],
+      ["2026-04-10", 120],
     ]);
     expect(result.years[0]).toMatchObject({ year: "2026", quantity: 240 });
     expect(result.estimate?.monthly).toBeGreaterThan(0);
