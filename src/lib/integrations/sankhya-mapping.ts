@@ -684,6 +684,12 @@ export const FULL_LOAD_ENTITIES = [
   "productImages",
   /* Caixas dos produtos (TGFVOA: CBM, peças, C1; sankhya-cartons.ts). */
   "productCartons",
+  /* Cópia bruta das views de pedido, só para análise (sankhya-stage.ts). */
+  "stagePurchaseHeaders",
+  "stagePurchaseItems",
+  "stagePurchaseLinks",
+  "stageSaleHeaders",
+  "stageSaleItems",
 ] as const;
 export type FullLoadEntity = (typeof FULL_LOAD_ENTITIES)[number];
 
@@ -775,10 +781,11 @@ export function fullLoadSql(
   if (
     entity === "productImages" ||
     entity === "productCartons" ||
-    entity === "sellers"
+    entity === "sellers" ||
+    entity.startsWith("stage")
   )
     throw new Error(`${entity}: SQL no módulo próprio`);
-  const t = FULL_LOAD_TABLE[entity];
+  const t = FULL_LOAD_TABLE[entity as "partners" | "products"];
   const a = t.alias;
   return `SELECT ${star ? `${a}.*` : cols(t.entity, a)} FROM ${t.table} ${a} WHERE ${t.where} AND ${a}.${t.key} > ${int0(after)} AND ${a}.${t.key} <= ${int0(upTo)} ORDER BY ${a}.${t.key}`;
 }
@@ -809,10 +816,11 @@ export function fullLoadProbeSql(
   if (
     entity === "productImages" ||
     entity === "productCartons" ||
-    entity === "sellers"
+    entity === "sellers" ||
+    entity.startsWith("stage")
   )
     throw new Error(`${entity}: SQL no módulo próprio`);
-  const t = FULL_LOAD_TABLE[entity];
+  const t = FULL_LOAD_TABLE[entity as "partners" | "products"];
   const a = t.alias;
   return `SELECT MIN(${a}.${t.key}) AS NEXTCODE, COUNT(*) AS REMAINING FROM ${t.table} ${a} WHERE ${t.where} AND ${a}.${t.key} > ${int0(after)}`;
 }
@@ -829,6 +837,11 @@ export const FULL_LOAD_KEY: Record<FullLoadEntity, string> = {
   orders: "NUNOTA",
   productImages: "CODPROD",
   productCartons: "CODPROD",
+  stagePurchaseHeaders: "NUNOTA",
+  stagePurchaseItems: "NUNOTA",
+  stagePurchaseLinks: "NUNOTA",
+  stageSaleHeaders: "NUNOTA",
+  stageSaleItems: "NUNOTA",
 };
 
 /* ---- Códigos do Sankhya guardados no registro (sankhyaRefs) ---- */

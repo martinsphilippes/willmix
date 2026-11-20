@@ -2314,6 +2314,23 @@ export interface CustomerSaleMonth extends BaseRow {
 }
 
 /** Situação da carga de vendas de um cliente (id = o id do cliente). */
+/**
+ * Cópia bruta das views de pedido do Sankhya, só para análise (stage;
+ * dono, 20/11/2026; docs/SANKHYA_PEDIDOS.md). Uma linha por linha da view,
+ * com as colunas como vêm do Sankhya. Não alimenta tela nem regra.
+ */
+export interface SankhyaStageRow extends BaseRow {
+  /** purchaseHeaders | purchaseItems | purchaseLinks | saleHeaders. */
+  dataset: string;
+  /** Chave da linha na origem (NUNOTA, NUNOTA:SEQUENCIA...). */
+  rowKey: string;
+  nunota: number | null;
+  /** Rodada da cópia (início da rodada). */
+  runId: string | null;
+  row: Record<string, string | number | null>;
+  loadedAt: string;
+}
+
 export interface CustomerSalesLoad extends BaseRow {
   customerId: string;
   /** Última leitura que deu certo. */
@@ -4310,6 +4327,7 @@ export interface Tables {
   trade_activities: TradeActivity;
   customer_sales_monthly: CustomerSaleMonth;
   customer_sales_loads: CustomerSalesLoad;
+  sankhya_stage_rows: SankhyaStageRow;
   freight_tariffs: FreightTariff;
   product_variants: ProductVariant;
   conversations: Conversation;
@@ -5657,6 +5675,24 @@ export const TABLES: Record<TableName, TableDef> = {
         key: "by_customer_month",
         type: "key",
         columns: ["customerId", "month"],
+      },
+    ],
+  },
+  sankhya_stage_rows: {
+    label: "Cópia bruta das views de pedido do Sankhya (análise)",
+    columns: {
+      dataset: str(40, true),
+      rowKey: str(120, true),
+      nunota: int(),
+      runId: str(40),
+      row: json(),
+      loadedAt: datetime(),
+    },
+    indexes: [
+      {
+        key: "by_dataset_nunota",
+        type: "key",
+        columns: ["dataset", "nunota"],
       },
     ],
   },
