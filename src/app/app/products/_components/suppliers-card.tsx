@@ -93,7 +93,32 @@ export function SuppliersCard({
                           {t("productSuppliers.inactive")}
                         </Badge>
                       ) : null}
+                      {link?.sankhyaPreferential ? (
+                        <Badge tone="info">
+                          {t("productSuppliers.sankhya.preferential")}
+                        </Badge>
+                      ) : null}
+                      {link?.sankhyaValidated ? (
+                        <Badge tone="success">
+                          {t("productSuppliers.sankhya.validated")}
+                        </Badge>
+                      ) : null}
+                      {link?.sankhyaListed === false ? (
+                        <Badge tone="warning">
+                          {t("productSuppliers.sankhya.left")}
+                        </Badge>
+                      ) : null}
                     </div>
+                    {link?.sankhyaPorts?.length ? (
+                      <p className="text-xs text-zinc-500" data-sankhya-ports>
+                        {link.sankhyaPorts
+                          .map((p) =>
+                            [p.country, p.port].filter(Boolean).join(" - "),
+                          )
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="grid min-w-0 gap-2 sm:grid-cols-2 sm:items-center">
                     <form

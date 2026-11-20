@@ -11,8 +11,16 @@ import {
   fullLoadSql,
   missingColumns,
   sampleSql,
+  viewLoadProbeSql,
+  viewLoadSql,
   type FullLoadEntity,
 } from "./sankhya-mapping";
+import {
+  missingViewColumns,
+  PRODUCT_VIEW,
+  productRowFromView,
+  SUPPLIER_VIEW,
+} from "./sankhya-views";
 import {
   applyStockBalances,
   auditImport,
@@ -23,7 +31,9 @@ import {
   upsertPartners,
   upsertCustomersFromView,
   upsertPaymentConditions,
+  upsertProductSuppliers,
   upsertProducts,
+  upsertSuppliersFromView,
   type ImportLine,
   type ImportOutcome,
 } from "./sankhya-import";
@@ -36,8 +46,11 @@ import { fetchImportSetFor } from "./sankhya-sample";
 
 /*
  * Carga completa do Sankhya para o portal (aba Carga do Sankhya;
- * docs/SANKHYA.md): condições de pagamento (TGFTPV), fornecedores (TGFPAR com
- * FORNECEDOR = S), clientes (VW_AD_CLIENTE_WELL; docs/ECONOMIC_GROUPS.md), produtos (TGFPRO, com os grupos que
+ * docs/SANKHYA.md): condições de pagamento (TGFTPV), fornecedores
+ * (VW_AD_FORNECEDOR_WELL; a TGFPAR com FORNECEDOR = S se a view falhar),
+ * vendedores (VW_AD_VENDEDOR_WELL), clientes (VW_AD_CLIENTE_WELL;
+ * docs/ECONOMIC_GROUPS.md), produtos (VW_AD_PRODUTO_WELL; a TGFPRO se a view
+ * falhar), o vínculo produto × fornecedor (VW_AD_PRODUTO_FORNECEDOR_WELL), com os grupos que
  * eles usam), locais de estoque (TGFLOC), saldos por local (TGFEST da empresa
  * da Integração) e o histórico de notas de importação (TGFCAB das TOPs de
  * importação, com itens, títulos e cadastros). Lê por faixas de código e grava em lotes; cada
@@ -60,6 +73,11 @@ export interface FullLoadProgress {
   failed?: string[];
   startedAt: string | null;
   updatedAt: string | null;
+  /**
+   * Fornecedores e produtos: de onde a carga leu (a view do portal ou, se ela
+   * falhou, a tabela). Ausente nas cargas de antes.
+   */
+  source?: "view" | "table";
 }
 
 const EMPTY: FullLoadProgress = {
@@ -98,7 +116,23 @@ async function fetchRange(
   after: number,
   upTo: number,
   codEmp: number | null,
+  source: "view" | "table" = "table",
 ): Promise<{ table: SankhyaTable; missing: string[] }> {
+  if ((entity === "partners" || entity === "products") && source === "view") {
+    const table = await executeQuery(viewLoadSql(entity, after, upTo));
+    return {
+      table,
+      missing: table.rows.length
+        ? missingViewColumns(
+            entity === "partners" ? "suppliers" : "products",
+            table.columns.length ? table.columns : Object.keys(table.rows[0]),
+          ).map(
+            (c) =>
+              `${entity === "partners" ? SUPPLIER_VIEW : PRODUCT_VIEW}.${c}`,
+          )
+        : [],
+    };
+  }
   if (entity === "partners" || entity === "products") {
     try {
       const table = await executeQuery(fullLoadSql(entity, after, upTo, true));
@@ -122,8 +156,12 @@ const ROWS: Record<FullLoadEntity, { min: number; max: number }> = {
   // Cada parceiro/produto grava várias linhas no banco: lotes menores
   // cabem na rodada (no Supabase, 300 por lote passava do limite de 60 s).
   partners: { min: 40, max: 120 },
+  // Vendedores: uma leitura só (rca.ts).
+  sellers: { min: 1, max: 1 },
   customers: { min: 40, max: 120 },
   products: { min: 40, max: 120 },
+  // Linhas da view (vários portos por par): as de um produto ficam juntas.
+  productSuppliers: { min: 100, max: 400 },
   stockLocations: { min: 100, max: 400 },
   stockBalances: { min: 100, max: 400 },
   // Lotes de até 8 notas (12/11/2026): com a nota levando ~1,3 s no portal,
@@ -159,6 +197,7 @@ export async function runFullLoad(
     const { runImageLoad } = await import("./sankhya-images");
     return { progress: await runImageLoad(user, budgetMs), lines: [] };
   }
+  if (entity === "sellers") return runSellerLoad(user);
   const started = Date.now();
   const progress = await getFullLoadProgress(entity);
   if (progress.done) return { progress, lines: [] };
@@ -188,11 +227,29 @@ export async function runFullLoad(
   // Pelo menos um lote por chamada; outro só se couber no tempo que falta
   // (pelo tempo do último lote).
   let lastBatchMs = 0;
+  // Fornecedores e produtos: a view do portal; se ela falhar, a tabela
+  // (fica a escolha da primeira rodada até recomeçar).
+  const viewEntity = entity === "partners" || entity === "products";
+  const probeOf = async (after: number) => {
+    if (viewEntity && progress.source !== "table") {
+      try {
+        const table = await executeQuery(viewLoadProbeSql(entity, after));
+        progress.source = "view";
+        return table;
+      } catch (error) {
+        if (progress.source === "view") throw error;
+        console.warn(
+          `[sankhya-load] ${entity}: view falhou, lendo a tabela`,
+          error,
+        );
+        progress.source = "table";
+      }
+    }
+    return executeQuery(fullLoadProbeSql(entity, after, codEmp));
+  };
   do {
     const batchStarted = Date.now();
-    const probe = await executeQuery(
-      fullLoadProbeSql(entity, progress.after, codEmp),
-    );
+    const probe = await probeOf(progress.after);
     const next = Number(probe.rows[0]?.NEXTCODE);
     progress.remaining = Number(probe.rows[0]?.REMAINING) || 0;
     if (!Number.isFinite(next) || !progress.remaining) {
@@ -202,7 +259,13 @@ export async function runFullLoad(
     // Começa no próximo código existente (pula buracos na numeração).
     const from = next - 1;
     const upTo = from + progress.span;
-    const fetched = await fetchRange(entity, from, upTo, codEmp);
+    const fetched = await fetchRange(
+      entity,
+      from,
+      upTo,
+      codEmp,
+      progress.source,
+    );
     if (fetched.missing.length)
       progress.missing = [
         ...new Set([...progress.missing, ...fetched.missing]),
@@ -211,7 +274,10 @@ export async function runFullLoad(
     // um mesmo produto ficam juntos).
     const all = fetched.table.rows;
     let rows = all.slice(0, limit.max);
-    if (all.length > limit.max && entity === "stockBalances") {
+    if (
+      all.length > limit.max &&
+      (entity === "stockBalances" || entity === "productSuppliers")
+    ) {
       const lastProd = rows[rows.length - 1]?.[key];
       rows = all.filter((r, i) => i < limit.max || r[key] === lastProd);
     }
@@ -220,7 +286,10 @@ export async function runFullLoad(
     if (entity === "paymentConditions") {
       await upsertPaymentConditions(ctx, rows);
     } else if (entity === "partners") {
-      await upsertPartners(ctx, rows);
+      if (progress.source === "view") await upsertSuppliersFromView(ctx, rows);
+      else await upsertPartners(ctx, rows);
+    } else if (entity === "productSuppliers") {
+      await upsertProductSuppliers(ctx, rows);
     } else if (entity === "customers") {
       await upsertCustomersFromView(ctx, rows);
     } else if (entity === "stockLocations") {
@@ -253,6 +322,8 @@ export async function runFullLoad(
         );
       }
     } else {
+      const fromView = progress.source === "view";
+      if (fromView) rows = rows.map(productRowFromView);
       const groupCodes = [
         ...new Set(rows.map((r) => r.CODGRUPOPROD).filter((v) => v != null)),
       ];
@@ -273,11 +344,19 @@ export async function runFullLoad(
         }
       }
       const lineByGroup = await upsertGroups(ctx, groups);
-      await upsertProducts(ctx, rows, lineByGroup, erp.currency);
+      await upsertProducts(ctx, rows, lineByGroup, erp.currency, {
+        fromView,
+      });
     }
 
+    // Na view de fornecedores o código é COD_FORNECEDOR; os produtos já
+    // viraram linhas da TGFPRO (CODPROD).
+    const keyOf =
+      entity === "partners" && progress.source === "view"
+        ? "COD_FORNECEDOR"
+        : key;
     const last = rows.length
-      ? Math.max(...rows.map((r) => Number(r[key]) || 0))
+      ? Math.max(...rows.map((r) => Number(r[keyOf]) || 0))
       : upTo;
     progress.after = truncated ? last : Math.max(upTo, last);
     // Faixa adaptativa: mira entre o mínimo e o máximo de linhas por lote.
@@ -292,6 +371,34 @@ export async function runFullLoad(
   await persist();
   if (ctx.out.length) await auditImport(user, `full:${entity}`, ctx.out);
   return { progress, lines: ctx.out };
+}
+
+/**
+ * Vendedores (RCAs) pela VW_AD_VENDEDOR_WELL (20/11/2026): uma leitura só,
+ * que troca a lista de RCAs do portal e liga o vendedor ao login da equipe
+ * pelo e-mail (rca.ts, syncSellers).
+ */
+async function runSellerLoad(user: User): Promise<FullLoadResult> {
+  const { syncSellers } = await import("@/lib/services/rca");
+  const now = new Date().toISOString();
+  const before = await getFullLoadProgress("sellers");
+  const result = await syncSellers(user);
+  const progress: FullLoadProgress = {
+    ...EMPTY,
+    after: result.list.sellers.length,
+    done: true,
+    remaining: 0,
+    counts: {
+      updated: result.list.sellers.length,
+      linked: result.linkedUsers,
+    },
+    missing: result.missing,
+    startedAt: before.startedAt ?? now,
+    updatedAt: now,
+    source: result.source,
+  };
+  await writeSetting(keyOf("sellers"), progress);
+  return { progress, lines: [] };
 }
 
 /** NUNOTAs que já viraram pedido no portal (pelo código do Sankhya ou nº do ERP). */

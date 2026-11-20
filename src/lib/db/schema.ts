@@ -366,7 +366,16 @@ export type FreightQuoteStatus = (typeof FREIGHT_QUOTE_STATUSES)[number];
  * Como o fornecedor entrou na lista do produto: cadastro (principal), condições
  * negociadas ("quote": solicitação ao fornecedor ou ficha do pedido) ou à mão.
  */
-export const PRODUCT_SUPPLIER_SOURCES = ["catalog", "quote", "manual"] as const;
+/**
+ * "sankhya": o vínculo veio da VW_AD_PRODUTO_FORNECEDOR_WELL (carga do
+ * Sankhya, 20/11/2026; docs/SANKHYA.md, "Views do Sankhya").
+ */
+export const PRODUCT_SUPPLIER_SOURCES = [
+  "catalog",
+  "quote",
+  "manual",
+  "sankhya",
+] as const;
 export type ProductSupplierSource = (typeof PRODUCT_SUPPLIER_SOURCES)[number];
 
 /**
@@ -887,6 +896,13 @@ export interface Party extends BaseRow {
    */
   sankhyaCustomer?: Record<string, string | number | null> | null;
   sankhyaCustomerAt?: string | null;
+  /**
+   * Fornecedor: a linha da VW_AD_FORNECEDOR_WELL na última carga (tipo de
+   * fornecedor, incoterm, plus charge, despesa de origem, estrangeiro...), e
+   * quando foi lida (20/11/2026).
+   */
+  sankhyaSupplier?: Record<string, string | number | null> | null;
+  sankhyaSupplierAt?: string | null;
   /**
    * Cliente: RCA responsável, o código do vendedor no Sankhya (TGFVEN.CODVEND;
    * docs/CUSTOMER_RCA.md). "0" = sem RCA. Nulo = nunca gravado: vale o
@@ -2075,6 +2091,41 @@ export interface ProductSupplier extends BaseRow {
   leadTimeDays: number | null;
   source: ProductSupplierSource;
   createdByUserId: string | null;
+  /**
+   * Vínculo no Sankhya (VW_AD_PRODUTO_FORNECEDOR_WELL; 20/11/2026): os portos
+   * do par produto × fornecedor (uma linha da view por porto), na última
+   * carga. Nulo = o vínculo não veio do Sankhya.
+   */
+  sankhyaPorts?: SankhyaProductSupplierPort[] | null;
+  /** Fornecedor preferencial do produto no Sankhya (algum porto com S). */
+  sankhyaPreferential?: boolean | null;
+  /** Validado no Sankhya (algum porto com S). */
+  sankhyaValidated?: boolean | null;
+  /** Última compra do par no Sankhya (a mais recente entre os portos). */
+  sankhyaLastPurchaseAt?: string | null;
+  /**
+   * O par ainda está na view (falso: estava e saiu; o vínculo fica, só
+   * marcado). Nulo = nunca veio do Sankhya.
+   */
+  sankhyaListed?: boolean | null;
+  sankhyaSyncedAt?: string | null;
+}
+
+/** Um porto do par produto × fornecedor na VW_AD_PRODUTO_FORNECEDOR_WELL. */
+export interface SankhyaProductSupplierPort {
+  portCode: string | null;
+  port: string | null;
+  countryCode: string | null;
+  country: string | null;
+  preferential: boolean;
+  origin: string | null;
+  processes360d: number | null;
+  lastPurchaseAt: string | null;
+  lastPrice: number | null;
+  currencyCode: string | null;
+  currency: string | null;
+  validated: boolean;
+  updatedAt: string | null;
 }
 
 export interface FreightQuote extends BaseRow {
@@ -4458,6 +4509,9 @@ export const TABLES: Record<TableName, TableDef> = {
       matrixCode: str(20),
       sankhyaCustomer: json(),
       sankhyaCustomerAt: datetime(),
+      // Linha da VW_AD_FORNECEDOR_WELL (20/11/2026).
+      sankhyaSupplier: json(),
+      sankhyaSupplierAt: datetime(),
     },
     indexes: [
       { key: "by_type", type: "key", columns: ["type"] },
@@ -5444,6 +5498,13 @@ export const TABLES: Record<TableName, TableDef> = {
       leadTimeDays: int(),
       source: enumOf(PRODUCT_SUPPLIER_SOURCES),
       createdByUserId: id(false),
+      // Vínculo da VW_AD_PRODUTO_FORNECEDOR_WELL (20/11/2026).
+      sankhyaPorts: json(),
+      sankhyaPreferential: bool(),
+      sankhyaValidated: bool(),
+      sankhyaLastPurchaseAt: datetime(),
+      sankhyaListed: bool(),
+      sankhyaSyncedAt: datetime(),
     },
     indexes: [
       {

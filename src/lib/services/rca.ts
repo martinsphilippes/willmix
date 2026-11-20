@@ -6,10 +6,16 @@ import { canOpen, canOpenNewRequest } from "@/lib/auth/screens";
 import { executeQuery } from "@/lib/integrations/sankhya-client";
 import { setRawSetting } from "@/lib/settings";
 import { audit } from "./audit";
+import {
+  SELLER_VIEW,
+  sellerFromRow,
+  type SellerViewRow,
+} from "@/lib/integrations/sankhya-views";
 
 /*
  * RCA do cliente (dono, 15/11/2026; docs/CUSTOMER_RCA.md). O RCA é o vendedor
- * do Sankhya (TGFVEN: CODVEND e APELIDO). O portal guarda uma cópia da lista
+ * do Sankhya (VW_AD_VENDEDOR_WELL desde 20/11/2026: COD_VENDEDOR e
+ * NOME_VENDEDOR; a TGFVEN se a view falhar). O portal guarda uma cópia da lista
  * (trazida do Sankhya pelo botão no cadastro do cliente) e o vínculo no
  * cadastro do cliente pelo código do vendedor (`parties.rcaCode`). Cada cliente
  * já chega da carga com o vendedor de lá (`sankhyaRefs.CODVEND`); o Sankhya
@@ -31,6 +37,15 @@ export interface RcaSeller {
    * (`code`) é interno do Sankhya. Ausente nas listas trazidas antes.
    */
   partnerCode?: string | null;
+  /* Da VW_AD_VENDEDOR_WELL (20/11/2026); ausentes nas listas da TGFVEN. */
+  type?: string | null;
+  wellmixType?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  manager?: string | null;
+  team?: string | null;
+  region?: string | null;
+  states?: string | null;
 }
 
 export interface RcaList {
@@ -84,6 +99,7 @@ export async function loadRcaList(): Promise<RcaList> {
   const sellers = Array.isArray(value?.sellers)
     ? value.sellers
         .map((s) => ({
+          ...sellerExtras(s as RcaSeller),
           code: normalizeRcaCode((s as RcaSeller).code) ?? "",
           name: String((s as RcaSeller).name ?? "").trim(),
           active: (s as RcaSeller).active !== false,
@@ -96,6 +112,27 @@ export async function loadRcaList(): Promise<RcaList> {
     sellers,
     demo: value?.demo === true,
   };
+}
+
+const EXTRA_KEYS = [
+  "type",
+  "wellmixType",
+  "email",
+  "phone",
+  "manager",
+  "team",
+  "region",
+  "states",
+] as const;
+
+/** Os campos a mais da view que estiverem preenchidos. */
+function sellerExtras(s: Partial<RcaSeller>): Partial<RcaSeller> {
+  const out: Partial<RcaSeller> = {};
+  for (const k of EXTRA_KEYS) {
+    const v = typeof s[k] === "string" ? s[k]!.trim().slice(0, 200) : "";
+    if (v) out[k] = v;
+  }
+  return out;
 }
 
 /** O RCA de um código, com o nome da lista (ou sem nome, se não estiver). */
@@ -120,28 +157,73 @@ const canEditCustomers = (user: User) =>
  */
 export async function refreshRcaList(user: User): Promise<RcaList> {
   if (!canEditCustomers(user)) throw new ForbiddenError();
-  let rows: Array<Record<string, unknown>>;
+  return (await syncSellers(user)).list;
+}
+
+/** Lê os vendedores: a view do portal; se ela falhar, a TGFVEN. */
+async function readSellers(): Promise<{
+  sellers: SellerViewRow[];
+  source: "view" | "table";
+  missing: string[];
+}> {
   try {
-    rows = (
-      await executeQuery(
-        "SELECT CODVEND, CODPARC, APELIDO, ATIVO FROM TGFVEN ORDER BY CODVEND",
-      )
-    ).rows;
+    const table = await executeQuery(
+      `SELECT V.* FROM ${SELLER_VIEW} V ORDER BY V.COD_VENDEDOR`,
+    );
+    const columns = table.columns.length
+      ? table.columns
+      : Object.keys(table.rows[0] ?? {});
+    return {
+      sellers: table.rows.map(sellerFromRow).filter((s) => s != null),
+      source: "view",
+      missing: table.rows.length
+        ? ["COD_VENDEDOR", "NOME_VENDEDOR", "ATIVO", "COD_PARCEIRO", "EMAIL"]
+            .filter((c) => !columns.some((k) => k.toUpperCase() === c))
+            .map((c) => `${SELLER_VIEW}.${c}`)
+        : [],
+    };
+  } catch (error) {
+    console.warn("[rca] view de vendedores falhou, lendo a TGFVEN", error);
+  }
+  const rows = (
+    await executeQuery(
+      "SELECT CODVEND, CODPARC, APELIDO, ATIVO FROM TGFVEN ORDER BY CODVEND",
+    )
+  ).rows;
+  return {
+    sellers: rows.map(sellerFromRow).filter((s) => s != null),
+    source: "table",
+    missing: [],
+  };
+}
+
+/**
+ * Traz a lista de vendedores do Sankhya (ativos e inativos), guarda a cópia
+ * e liga cada vendedor ao login da equipe pelo e-mail (dono, 20/11/2026): só
+ * o login da Wellmix sem código de vendedor, com um único vendedor de mesmo
+ * e-mail e esse código ainda sem dono. Nunca troca o que o administrador
+ * gravou. Sem permissão própria: quem chama confere (refreshRcaList, carga).
+ */
+export async function syncSellers(user: User): Promise<{
+  list: RcaList;
+  linkedUsers: number;
+  source: "view" | "table";
+  missing: string[];
+}> {
+  let read: Awaited<ReturnType<typeof readSellers>>;
+  try {
+    read = await readSellers();
   } catch (error) {
     console.error("[rca] lista do Sankhya", error);
     throw new RcaError("rca_sankhya");
   }
-  const sellers: RcaSeller[] = rows
-    .map((row) => ({
-      code: normalizeRcaCode(row.CODVEND) ?? "",
-      name: String(row.APELIDO ?? "").trim(),
-      active:
-        String(row.ATIVO ?? "S")
-          .trim()
-          .toUpperCase() !== "N",
-      partnerCode: normalizeRcaCode(row.CODPARC),
-    }))
-    .filter((s) => s.code && s.name);
+  const sellers: RcaSeller[] = read.sellers.map((s) => ({
+    ...sellerExtras(s),
+    code: s.code,
+    name: s.name,
+    active: s.active,
+    partnerCode: s.partnerCode,
+  }));
   const list: RcaList = { syncedAt: new Date().toISOString(), sellers };
   await setRawSetting(RCA_LIST_KEY, list);
   await audit(
@@ -151,7 +233,53 @@ export async function refreshRcaList(user: User): Promise<RcaList> {
     RCA_LIST_KEY,
     `Lista de RCAs trazida do Sankhya: ${sellers.length} vendedores`,
   );
-  return list;
+  const linkedUsers = await linkSellersByEmail(user, sellers);
+  return {
+    list,
+    linkedUsers,
+    source: read.source,
+    missing: read.source === "view" ? read.missing : [],
+  };
+}
+
+/** Liga vendedor e login pelo e-mail (ver syncSellers). Devolve quantos. */
+export async function linkSellersByEmail(
+  user: User,
+  sellers: RcaSeller[],
+): Promise<number> {
+  const byEmail = new Map<string, RcaSeller[]>();
+  for (const s of sellers) {
+    const email = s.email?.trim().toLowerCase();
+    if (!email || !s.active) continue;
+    byEmail.set(email, [...(byEmail.get(email) ?? []), s]);
+  }
+  if (!byEmail.size) return 0;
+  const store = getStore();
+  const team = (await store.list("users")).filter((u) => isWellmix(u));
+  const taken = new Set(
+    team.map((u) => u.sellerCode?.trim()).filter((c): c is string => !!c),
+  );
+  let linked = 0;
+  for (const member of team) {
+    if (member.active === false || member.sellerCode?.trim()) continue;
+    const matches = byEmail.get(member.email.trim().toLowerCase()) ?? [];
+    if (matches.length !== 1) continue;
+    const code = matches[0].code;
+    if (taken.has(code)) continue;
+    await store.update("users", member.id, { sellerCode: code });
+    taken.add(code);
+    linked++;
+    await audit(
+      user,
+      "team.seller_code",
+      "user",
+      member.id,
+      `${member.name}: vendedor ${matches[0].name} (${code}) pelo e-mail, da lista do Sankhya`,
+      { sellerCode: null },
+      { sellerCode: code },
+    );
+  }
+  return linked;
 }
 
 /** RCA do cliente para a Nova solicitação (Wellmix que abre Solicitações). */
@@ -189,20 +317,26 @@ export async function sankhyaSeller(code: string): Promise<{
   const n = normalizeRcaCode(code);
   if (!n) return null;
   try {
-    const [row] = (
-      await executeQuery(
-        `SELECT CODVEND, CODPARC, APELIDO, ATIVO FROM TGFVEN WHERE CODVEND = ${Number(n)}`,
-      )
-    ).rows;
-    const name = String(row?.APELIDO ?? "").trim();
-    if (!name) return null;
+    let rows: Array<Record<string, unknown>>;
+    try {
+      rows = (
+        await executeQuery(
+          `SELECT V.* FROM ${SELLER_VIEW} V WHERE V.COD_VENDEDOR = ${Number(n)}`,
+        )
+      ).rows;
+    } catch {
+      rows = (
+        await executeQuery(
+          `SELECT CODVEND, CODPARC, APELIDO, ATIVO FROM TGFVEN WHERE CODVEND = ${Number(n)}`,
+        )
+      ).rows;
+    }
+    const seller = rows[0] ? sellerFromRow(rows[0] as never) : null;
+    if (!seller) return null;
     return {
-      name,
-      active:
-        String(row?.ATIVO ?? "S")
-          .trim()
-          .toUpperCase() !== "N",
-      partnerCode: normalizeRcaCode(row?.CODPARC),
+      name: seller.name,
+      active: seller.active,
+      partnerCode: seller.partnerCode,
     };
   } catch (error) {
     console.error("[rca] vendedor do Sankhya", error);

@@ -12,6 +12,11 @@
 
 import type { StageKey } from "@/lib/db/schema";
 import { milestoneOfStatus, type MilestoneKey } from "@/lib/milestones";
+import {
+  PRODUCT_SUPPLIER_VIEW,
+  PRODUCT_VIEW,
+  SUPPLIER_VIEW,
+} from "./sankhya-views";
 
 export type Transform =
   | "text"
@@ -662,10 +667,16 @@ export function missingColumns(
 
 export const FULL_LOAD_ENTITIES = [
   "paymentConditions",
+  /* Fornecedores pela VW_AD_FORNECEDOR_WELL (20/11/2026; a TGFPAR se falhar). */
   "partners",
+  /* Vendedores (RCAs) pela VW_AD_VENDEDOR_WELL (20/11/2026; rca.ts). */
+  "sellers",
   /* Clientes pela VW_AD_CLIENTE_WELL (grupo econômico, matriz…; 18/11/2026). */
   "customers",
+  /* Produtos pela VW_AD_PRODUTO_WELL (20/11/2026; a TGFPRO se falhar). */
   "products",
+  /* Produto × fornecedor pela VW_AD_PRODUTO_FORNECEDOR_WELL (20/11/2026). */
+  "productSuppliers",
   "stockLocations",
   "stockBalances",
   "orders",
@@ -707,6 +718,32 @@ const FULL_LOAD_TABLE: Record<
 /** View de clientes feita para o portal (dicionário de 18/11/2026). */
 export const CUSTOMER_VIEW = "sankhya.VW_AD_CLIENTE_WELL";
 
+/**
+ * Fornecedores e produtos pelas views do portal (dicionário de 20/11/2026;
+ * sankhya-views.ts): lote por faixa de código, como as tabelas. A carga cai
+ * na TGFPAR ou na TGFPRO (fullLoadSql/fullLoadProbeSql) se a view falhar.
+ */
+export function viewLoadSql(
+  entity: "partners" | "products",
+  after: number,
+  upTo: number,
+): string {
+  const range = (c: string) =>
+    `${c} > ${int0(after)} AND ${c} <= ${int0(upTo)}`;
+  return entity === "partners"
+    ? `SELECT V.* FROM ${SUPPLIER_VIEW} V WHERE V.E_FORNECEDOR = 'S' AND ${range("V.COD_FORNECEDOR")} ORDER BY V.COD_FORNECEDOR`
+    : `SELECT V.* FROM ${PRODUCT_VIEW} V WHERE ${range("V.COD_PRODUTO")} ORDER BY V.COD_PRODUTO`;
+}
+
+export function viewLoadProbeSql(
+  entity: "partners" | "products",
+  after: number,
+): string {
+  return entity === "partners"
+    ? `SELECT MIN(V.COD_FORNECEDOR) AS NEXTCODE, COUNT(*) AS REMAINING FROM ${SUPPLIER_VIEW} V WHERE V.E_FORNECEDOR = 'S' AND V.COD_FORNECEDOR > ${int0(after)}`
+    : `SELECT MIN(V.COD_PRODUTO) AS NEXTCODE, COUNT(*) AS REMAINING FROM ${PRODUCT_VIEW} V WHERE V.COD_PRODUTO > ${int0(after)}`;
+}
+
 const int0 = (n: number) =>
   Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
 
@@ -733,7 +770,13 @@ export function fullLoadSql(
     return `SELECT V.* FROM ${CUSTOMER_VIEW} V WHERE ${range("V.COD_CLIENTE")} ORDER BY V.COD_CLIENTE`;
   if (entity === "paymentConditions")
     return `SELECT CODTIPVENDA, MAX(DESCRTIPVENDA) AS DESCRTIPVENDA FROM TGFTPV WHERE CODTIPVENDA > ${int0(after)} AND CODTIPVENDA <= ${int0(upTo)} GROUP BY CODTIPVENDA ORDER BY CODTIPVENDA`;
-  if (entity === "productImages" || entity === "productCartons")
+  if (entity === "productSuppliers")
+    return `SELECT V.* FROM ${PRODUCT_SUPPLIER_VIEW} V WHERE ${range("V.COD_PRODUTO")} ORDER BY V.COD_PRODUTO, V.COD_FORNECEDOR`;
+  if (
+    entity === "productImages" ||
+    entity === "productCartons" ||
+    entity === "sellers"
+  )
     throw new Error(`${entity}: SQL no módulo próprio`);
   const t = FULL_LOAD_TABLE[entity];
   const a = t.alias;
@@ -761,7 +804,13 @@ export function fullLoadProbeSql(
     return `SELECT MIN(V.COD_CLIENTE) AS NEXTCODE, COUNT(*) AS REMAINING FROM ${CUSTOMER_VIEW} V WHERE V.COD_CLIENTE > ${int0(after)}`;
   if (entity === "paymentConditions")
     return `SELECT MIN(CODTIPVENDA) AS NEXTCODE, COUNT(DISTINCT CODTIPVENDA) AS REMAINING FROM TGFTPV WHERE CODTIPVENDA > ${int0(after)}`;
-  if (entity === "productImages" || entity === "productCartons")
+  if (entity === "productSuppliers")
+    return `SELECT MIN(V.COD_PRODUTO) AS NEXTCODE, COUNT(DISTINCT V.COD_PRODUTO) AS REMAINING FROM ${PRODUCT_SUPPLIER_VIEW} V WHERE V.COD_PRODUTO > ${int0(after)}`;
+  if (
+    entity === "productImages" ||
+    entity === "productCartons" ||
+    entity === "sellers"
+  )
     throw new Error(`${entity}: SQL no módulo próprio`);
   const t = FULL_LOAD_TABLE[entity];
   const a = t.alias;
@@ -771,8 +820,10 @@ export function fullLoadProbeSql(
 export const FULL_LOAD_KEY: Record<FullLoadEntity, string> = {
   paymentConditions: "CODTIPVENDA",
   partners: "CODPARC",
+  sellers: "COD_VENDEDOR",
   customers: "COD_CLIENTE",
   products: "CODPROD",
+  productSuppliers: "COD_PRODUTO",
   stockLocations: "CODLOCAL",
   stockBalances: "CODPROD",
   orders: "NUNOTA",
@@ -784,6 +835,9 @@ export const FULL_LOAD_KEY: Record<FullLoadEntity, string> = {
 
 /** Colunas de endereço que também vão nos códigos (para incluir no Sankhya). */
 const REF_EXTRA = new Set([
+  // Porto preferencial e marca Wellmix do produto (VW_AD_PRODUTO_WELL).
+  "AD_IDPORTO",
+  "AD_CODMARCAWELL",
   "NUMEND",
   "COMPLEMENTO",
   "CEP",

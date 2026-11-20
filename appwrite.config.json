@@ -594,6 +594,20 @@
           "array": false,
           "default": null,
           "type": "datetime"
+        },
+        {
+          "key": "sankhyaSupplier",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "sankhyaSupplierAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
         }
       ],
       "indexes": [
@@ -6971,7 +6985,8 @@
           "elements": [
             "catalog",
             "quote",
-            "manual"
+            "manual",
+            "sankhya"
           ]
         },
         {
@@ -6981,6 +6996,48 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "sankhyaPorts",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "sankhyaPreferential",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "sankhyaValidated",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "sankhyaLastPurchaseAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "sankhyaListed",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "sankhyaSyncedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
         }
       ],
       "indexes": [
