@@ -178,6 +178,7 @@ const ROWS: Record<FullLoadEntity, { min: number; max: number }> = {
   stagePurchaseLinks: { min: 1, max: 4000 },
   stageSaleHeaders: { min: 1, max: 4000 },
   stageSaleItems: { min: 1, max: 4000 },
+  stageSaleLinks: { min: 1, max: 4000 },
 };
 
 export interface FullLoadResult {

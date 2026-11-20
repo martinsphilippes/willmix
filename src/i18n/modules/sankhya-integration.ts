@@ -122,6 +122,8 @@ export const pt = {
     "Análise: de que documento cada compra foi gerada (TGFVAR, depois dos cabeçalhos)",
   "sankhyaLoad.full.entity.stageSaleHeaders":
     "Análise: cabeçalhos de venda (VW_AD_PEDCLIENTE_CAB_WELL, cópia bruta)",
+  "sankhyaLoad.full.entity.stageSaleLinks":
+    "Análise: de que documento cada venda foi gerada (TGFVAR, depois dos itens de venda)",
   "sankhyaLoad.full.entity.stageSaleItems":
     "Análise: itens de venda pendentes ou alterados em 90 dias (VW_AD_PEDCLIENTE_ITEM_WELL)",
   "sankhyaLoad.full.source.view": "Lido da view do portal",
@@ -464,6 +466,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Analysis: which document each purchase came from (TGFVAR, after the headers)",
   "sankhyaLoad.full.entity.stageSaleHeaders":
     "Analysis: sales headers (VW_AD_PEDCLIENTE_CAB_WELL, raw copy)",
+  "sankhyaLoad.full.entity.stageSaleLinks":
+    "Analysis: which document each sale came from (TGFVAR, after the sales items)",
   "sankhyaLoad.full.entity.stageSaleItems":
     "Analysis: sales items pending or changed in 90 days (VW_AD_PEDCLIENTE_ITEM_WELL)",
   "sankhyaLoad.full.source.view": "Read from the portal view",
@@ -800,6 +804,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "分析：每笔采购由哪个单据生成（TGFVAR，在抬头之后）",
   "sankhyaLoad.full.entity.stageSaleHeaders":
     "分析：销售单抬头（VW_AD_PEDCLIENTE_CAB_WELL，原始副本）",
+  "sankhyaLoad.full.entity.stageSaleLinks":
+    "分析：每笔销售由哪个单据生成（TGFVAR，在销售明细之后）",
   "sankhyaLoad.full.entity.stageSaleItems":
     "分析：待处理或 90 天内变更的销售明细（VW_AD_PEDCLIENTE_ITEM_WELL）",
   "sankhyaLoad.full.source.view": "从门户视图读取",

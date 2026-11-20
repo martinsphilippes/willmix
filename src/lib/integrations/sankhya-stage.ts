@@ -24,10 +24,18 @@ import { readSetting, writeSetting } from "./sankhya-settings";
  *   em purchaseHeaders, em lotes, com a lista de números no IN (sem
  *   subconsulta, que o TI mediu passar de 90 s);
  * - saleHeaders: VW_AD_PEDCLIENTE_CAB_WELL inteira;
- * - saleItems: VW_AD_PEDCLIENTE_ITEM_WELL só com pendência (pedido ou item
- *   pendente, de qualquer data) ou alterada nos últimos 90 dias. A view tem
- *   4,4 milhões de linhas (~5 GB copiada inteira, mais que o banco aguenta);
- *   as pendências moram no item de venda (dono, 20/11/2026).
+ * - saleLinks: TGFVAR dos pedidos de venda da cópia dos itens de venda
+ *   (de que documento cada venda foi gerada e no que ela virou), como
+ *   purchaseLinks;
+ * - saleItems: VW_AD_PEDCLIENTE_ITEM_WELL dos pedidos de venda com
+ *   pendência (pedido pendente ou algum item pendente, de qualquer data) ou
+ *   alterados nos últimos 90 dias. A view tem 4,4 milhões de linhas (~5 GB
+ *   copiada inteira, mais que o banco aguenta); as pendências moram no item
+ *   de venda (dono, 20/11/2026). Os pedidos saem dos cabeçalhos já copiados
+ *   (saleHeaders) e os itens vêm pelo NUNOTA IN (lista): o filtro com OR na
+ *   view inteira passou de 60 s e a rodada seguinte da fila chegava com a
+ *   anterior ainda rodando no Sankhya ("situação de concorrência",
+ *   20/11/2026).
  */
 
 /** TOPs de importação (Wellmix, 20/11/2026), na ordem do fluxo. */
@@ -45,6 +53,7 @@ export const STAGE_DATASETS = [
   "purchaseLinks",
   "saleHeaders",
   "saleItems",
+  "saleLinks",
 ] as const;
 export type StageDataset = (typeof STAGE_DATASETS)[number];
 
@@ -55,6 +64,7 @@ export const STAGE_ENTITY: Record<StageDataset, FullLoadEntity> = {
   purchaseLinks: "stagePurchaseLinks",
   saleHeaders: "stageSaleHeaders",
   saleItems: "stageSaleItems",
+  saleLinks: "stageSaleLinks",
 };
 
 export const datasetOfEntity = (entity: string): StageDataset | null =>
@@ -82,12 +92,74 @@ export function stagePageSql(
     case "purchaseItems":
       return `SELECT TOP ${PAGE} * FROM sankhya.VW_AD_PEDCOMPRA_ITEM_WELL WHERE ${after(nunota, seq, "NUNOTA", "SEQUENCIA")} ORDER BY NUNOTA, SEQUENCIA`;
     case "purchaseLinks":
-      throw new Error("purchaseLinks: use stageLinksSql");
+    case "saleLinks":
+      throw new Error(`${dataset}: use stageLinksSql`);
     case "saleHeaders":
       return `SELECT TOP ${PAGE} * FROM sankhya.VW_AD_PEDCLIENTE_CAB_WELL WHERE ${after(nunota, seq, "NUNOTA", null)} ORDER BY NUNOTA`;
     case "saleItems":
-      return `SELECT TOP ${PAGE} * FROM sankhya.VW_AD_PEDCLIENTE_ITEM_WELL WHERE (PEDIDO_PENDENTE = 'S' OR ITEM_PENDENTE = 'S' OR DATA_ALTERACAO_PEDIDO >= DATEADD(DAY, -90, CAST(GETDATE() AS DATE))) AND ${after(nunota, seq, "NUNOTA", "SEQUENCIA")} ORDER BY NUNOTA, SEQUENCIA`;
+      throw new Error("saleItems: use saleItemsSql");
   }
+}
+
+/** Itens de venda de um lote de pedidos (lista de números no IN). */
+export function saleItemsSql(nunotas: number[]): string {
+  const list = [...new Set(nunotas.map(int0).filter((n) => n > 0))];
+  return `SELECT * FROM sankhya.VW_AD_PEDCLIENTE_ITEM_WELL WHERE NUNOTA IN (${list.length ? list.join(", ") : "-1"}) ORDER BY NUNOTA, SEQUENCIA`;
+}
+
+/** "31122024 09:22:28", "31/12/2024..." ou ISO → milissegundos (NaN sem data). */
+export function stageTime(value: unknown): number {
+  const s = String(value ?? "").trim();
+  let m =
+    /^(\d{2})\/?(\d{2})\/?(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(s);
+  if (m)
+    return Date.UTC(
+      +m[3],
+      +m[2] - 1,
+      +m[1],
+      +(m[4] ?? 0),
+      +(m[5] ?? 0),
+      +(m[6] ?? 0),
+    );
+  m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(s);
+  if (m)
+    return Date.UTC(
+      +m[1],
+      +m[2] - 1,
+      +m[3],
+      +(m[4] ?? 0),
+      +(m[5] ?? 0),
+      +(m[6] ?? 0),
+    );
+  return NaN;
+}
+
+/**
+ * Pedidos de venda cujos itens entram na cópia: pedido pendente, algum item
+ * pendente ou alterado nos últimos `days` dias. Devolve [NUNOTA, itens].
+ */
+export function saleItemTargets(
+  headers: Array<{
+    nunota: number | null;
+    row: Record<string, unknown> | null;
+  }>,
+  now = Date.now(),
+  days = 90,
+): Array<[number, number]> {
+  const since = now - days * 86_400_000;
+  const out: Array<[number, number]> = [];
+  for (const h of headers) {
+    const r = h.row ?? {};
+    const n = h.nunota ?? 0;
+    if (n <= 0) continue;
+    const pending =
+      String(r.PEDIDO_PENDENTE ?? "").toUpperCase() === "S" ||
+      num(r.QTD_ITENS_PENDENTES) > 0;
+    const t = stageTime(r.DATA_ALTERACAO_PEDIDO);
+    if (pending || (Number.isFinite(t) && t >= since))
+      out.push([n, Math.max(1, num(r.QTD_ITENS))]);
+  }
+  return out.sort((a, b) => a[0] - b[0]);
 }
 
 /** Ligações (TGFVAR) de um lote de documentos de compra (destino ou origem). */
@@ -147,7 +219,7 @@ export function cutPage(
       : num(col(r, "SEQUENCIA"));
   const done = rows.length < PAGE;
   let kept = rows;
-  if (!done && dataset === "purchaseLinks") {
+  if (!done && (dataset === "purchaseLinks" || dataset === "saleLinks")) {
     const last = rows[rows.length - 1];
     const same = (r: SankhyaRow) =>
       num(col(r, "NUNOTA")) === num(col(last, "NUNOTA")) &&
@@ -165,6 +237,8 @@ export function cutPage(
 }
 
 export interface StageProgress {
+  /** Itens de venda: os pedidos escolhidos ([NUNOTA, itens]), na 1ª rodada. */
+  targets?: Array<[number, number]>;
   after: number;
   afterSeq: number;
   span: number;
@@ -209,8 +283,10 @@ export async function runStageLoad(
   progress.afterSeq ??= 0;
   progress.startedAt ??= new Date().toISOString();
   let lastMs = 0;
-  if (dataset === "purchaseLinks")
-    return runLinksLoad(progress, entity, started, budgetMs);
+  if (dataset === "purchaseLinks" || dataset === "saleLinks")
+    return runLinksLoad(progress, entity, started, budgetMs, dataset);
+  if (dataset === "saleItems")
+    return runSaleItemsLoad(progress, entity, started, budgetMs);
   do {
     const t0 = Date.now();
     const table = await executeQuery(
@@ -287,13 +363,25 @@ async function runLinksLoad(
   entity: FullLoadEntity,
   started: number,
   budgetMs: number,
+  dataset: "purchaseLinks" | "saleLinks",
 ): Promise<StageProgress> {
   const store = getStore();
   if (!progress.span || progress.span === PAGE) progress.span = 100;
-  // Só a coluna do número (a linha inteira pesa).
-  const headers = await listColumns(store, "sankhya_stage_rows", ["nunota"], {
-    filter: { dataset: "purchaseHeaders" },
-  });
+  // Compras: os cabeçalhos copiados (só a coluna do número; a linha inteira
+  // pesa). Vendas: os pedidos escolhidos na cópia dos itens de venda.
+  let headers: Array<{ nunota: number | null }> = [];
+  if (dataset === "purchaseLinks")
+    headers = await listColumns(store, "sankhya_stage_rows", ["nunota"], {
+      filter: { dataset: "purchaseHeaders" },
+    });
+  else {
+    const items = await readSetting<StageProgress>(
+      keyOf(STAGE_ENTITY.saleItems),
+    );
+    headers = (items?.done ? (items.targets ?? []) : []).map(([n]) => ({
+      nunota: n,
+    }));
+  }
   const all = [
     ...new Set(headers.map((h) => h.nunota ?? 0).filter((n) => n > 0)),
   ].sort((a, b) => a - b);
@@ -306,7 +394,11 @@ async function runLinksLoad(
       progress.remaining = 0;
       progress.updatedAt = new Date().toISOString();
       if (!headers.length)
-        progress.missing = ["Copie antes os cabeçalhos de compra"];
+        progress.missing = [
+          dataset === "purchaseLinks"
+            ? "Copie antes os cabeçalhos de compra"
+            : "Copie antes os itens de venda",
+        ];
       await writeSetting(keyOf(entity), progress);
       break;
     }
@@ -317,16 +409,95 @@ async function runLinksLoad(
       progress.span = Math.max(1, Math.floor(batch.length / 2));
       continue;
     }
-    const saved = await saveRows(
-      "purchaseLinks",
-      table.rows,
-      progress.startedAt,
-    );
+    const saved = await saveRows(dataset, table.rows, progress.startedAt);
     progress.counts.created = (progress.counts.created ?? 0) + saved;
     progress.after = batch[batch.length - 1];
     progress.remaining = pending.length - batch.length;
     if (table.rows.length < API_ROWS / 4)
       progress.span = Math.min(400, progress.span * 2);
+    progress.updatedAt = new Date().toISOString();
+    await writeSetting(keyOf(entity), progress);
+    lastMs = Date.now() - t0;
+  } while (Date.now() - started + lastMs < budgetMs);
+  return progress;
+}
+
+/**
+ * Itens de venda: os pedidos escolhidos nos cabeçalhos já copiados (uma vez,
+ * guardados no progresso) e lotes com até ~3.000 itens pelo QTD_ITENS do
+ * cabeçalho, para ficar abaixo do teto de 5.000 linhas da API.
+ */
+async function runSaleItemsLoad(
+  progress: StageProgress,
+  entity: FullLoadEntity,
+  started: number,
+  budgetMs: number,
+): Promise<StageProgress> {
+  const store = getStore();
+  if (!progress.targets) {
+    const headers = await listColumns(
+      store,
+      "sankhya_stage_rows",
+      ["nunota", "row"],
+      {
+        filter: { dataset: "saleHeaders" },
+        jsonKeys: {
+          row: [
+            "PEDIDO_PENDENTE",
+            "QTD_ITENS_PENDENTES",
+            "DATA_ALTERACAO_PEDIDO",
+            "QTD_ITENS",
+          ],
+        },
+      },
+    );
+    progress.targets = saleItemTargets(
+      headers as Array<{
+        nunota: number | null;
+        row: Record<string, unknown> | null;
+      }>,
+    );
+    if (!headers.length)
+      progress.missing = ["Copie antes os cabeçalhos de venda"];
+    await writeSetting(keyOf(entity), progress);
+  }
+  const targets = progress.targets;
+  const LIMIT = 3000;
+  let lastMs = 0;
+  do {
+    const t0 = Date.now();
+    const pending = targets.filter(([n]) => n > progress.after);
+    if (!pending.length) {
+      progress.done = true;
+      progress.remaining = 0;
+      progress.updatedAt = new Date().toISOString();
+      await writeSetting(keyOf(entity), progress);
+      break;
+    }
+    const batch: number[] = [];
+    let items = 0;
+    for (const [n, q] of pending) {
+      if (batch.length && items + q > LIMIT) break;
+      batch.push(n);
+      items += q;
+    }
+    const table = await executeQuery(saleItemsSql(batch));
+    if (table.rows.length >= API_ROWS && batch.length > 1) {
+      // O cabeçalho contou menos itens do que veio: guarda só o primeiro
+      // pedido do lote e segue (o próximo lote começa depois dele).
+      const first = batch[0];
+      const rows = table.rows.filter((r) => num(col(r, "NUNOTA")) === first);
+      progress.counts.created =
+        (progress.counts.created ?? 0) +
+        (await saveRows("saleItems", rows, progress.startedAt));
+      progress.after = first;
+    } else {
+      progress.counts.created =
+        (progress.counts.created ?? 0) +
+        (await saveRows("saleItems", table.rows, progress.startedAt));
+      progress.after = batch[batch.length - 1];
+    }
+    progress.remaining = targets.filter(([n]) => n > progress.after).length;
     progress.updatedAt = new Date().toISOString();
     await writeSetting(keyOf(entity), progress);
     lastMs = Date.now() - t0;

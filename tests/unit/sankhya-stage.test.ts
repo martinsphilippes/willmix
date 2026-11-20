@@ -15,7 +15,8 @@ const sankhya: {
   headers: Array<Record<string, unknown>>;
   items: Array<Record<string, unknown>>;
   links: Array<Record<string, unknown>>;
-} = { sql: [], headers: [], items: [], links: [] };
+  saleItems: Array<Record<string, unknown>>;
+} = { sql: [], headers: [], items: [], links: [], saleItems: [] };
 
 const afterCursor = (sql: string, rows: Array<Record<string, unknown>>) => {
   const m =
@@ -39,6 +40,16 @@ vi.mock("@/lib/integrations/sankhya-client", async (importOriginal) => ({
   >()),
   executeQuery: async (sql: string) => {
     sankhya.sql.push(sql);
+    if (sql.includes("VW_AD_PEDCLIENTE_ITEM_WELL")) {
+      const list = /NUNOTA IN \(([\d, -]+)\)/
+        .exec(sql)![1]
+        .split(",")
+        .map(Number);
+      const rows = sankhya.saleItems.filter((r) =>
+        list.includes(Number(r.NUNOTA)),
+      );
+      return { columns: Object.keys(rows[0] ?? {}), rows };
+    }
     if (sql.includes("FROM TGFVAR")) {
       const list = /V\.NUNOTA IN \(([\d, -]+)\)/
         .exec(sql)![1]
@@ -83,10 +94,11 @@ describe("SQL das páginas", () => {
     expect(stage.stagePageSql("purchaseHeaders", 0, 0)).toContain(
       "WHERE NUNOTA > 0 ORDER BY NUNOTA",
     );
-    // Itens de venda: só com pendência ou alterados em 90 dias.
-    expect(stage.stagePageSql("saleItems", 0, 0)).toMatch(
-      /PEDIDO_PENDENTE = 'S' OR ITEM_PENDENTE = 'S' OR DATA_ALTERACAO_PEDIDO >= DATEADD\(DAY, -90/,
+    // Itens de venda: pela lista de pedidos no IN (sem OR na view inteira).
+    expect(stage.saleItemsSql([9, 7, 9])).toBe(
+      "SELECT * FROM sankhya.VW_AD_PEDCLIENTE_ITEM_WELL WHERE NUNOTA IN (9, 7) ORDER BY NUNOTA, SEQUENCIA",
     );
+    expect(() => assertReadOnlySql(stage.saleItemsSql([1]))).not.toThrow();
     // Ligações com a lista de números no IN, sem subconsulta.
     const links = stage.stageLinksSql([5, 3, 5]);
     expect(links).toContain("V.NUNOTA IN (5, 3) OR V.NUNOTAORIG IN (5, 3)");
@@ -95,7 +107,6 @@ describe("SQL das páginas", () => {
       "purchaseHeaders",
       "purchaseItems",
       "saleHeaders",
-      "saleItems",
     ] as const)
       expect(() =>
         assertReadOnlySql(stage.stagePageSql(d, 1, 1)),
@@ -203,5 +214,119 @@ describe("cópia", () => {
       filter: { dataset: "purchaseHeaders" },
     });
     expect(rows).toHaveLength(4500);
+  });
+});
+
+describe("itens de venda", () => {
+  it("escolhe os pedidos pendentes ou alterados em 90 dias", () => {
+    const now = Date.UTC(2026, 10, 20, 12);
+    const t = stage.saleItemTargets(
+      [
+        { nunota: 3, row: { PEDIDO_PENDENTE: "S", QTD_ITENS: 4 } },
+        { nunota: 1, row: { QTD_ITENS_PENDENTES: 2, QTD_ITENS: 2 } },
+        {
+          nunota: 2,
+          row: { DATA_ALTERACAO_PEDIDO: "01102026 10:00:00", QTD_ITENS: 5 },
+        },
+        {
+          nunota: 4,
+          row: { DATA_ALTERACAO_PEDIDO: "31122024 09:22:28", QTD_ITENS: 9 },
+        },
+      ],
+      now,
+    );
+    expect(t).toEqual([
+      [1, 2],
+      [2, 5],
+      [3, 4],
+    ]);
+    expect(stage.stageTime("31122024 09:22:28")).toBe(
+      Date.UTC(2024, 11, 31, 9, 22, 28),
+    );
+  });
+
+  it("copia os itens dos pedidos escolhidos a partir dos cabeçalhos de venda", async () => {
+    const store = getStore();
+    const today = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const recent = `${pad(today.getUTCDate())}${pad(today.getUTCMonth() + 1)}${today.getUTCFullYear()} 08:00:00`;
+    for (const [n, r] of [
+      [9001, { PEDIDO_PENDENTE: "S", QTD_ITENS: 2 }],
+      [
+        9002,
+        { PEDIDO_PENDENTE: "N", DATA_ALTERACAO_PEDIDO: recent, QTD_ITENS: 1 },
+      ],
+      [
+        9003,
+        {
+          PEDIDO_PENDENTE: "N",
+          DATA_ALTERACAO_PEDIDO: "01012021 08:00:00",
+          QTD_ITENS: 3,
+        },
+      ],
+    ] as const)
+      await store.create("sankhya_stage_rows", {
+        id: `saleHeaders:${n}`,
+        dataset: "saleHeaders",
+        rowKey: String(n),
+        nunota: n,
+        runId: null,
+        row: { NUNOTA: n, ...r },
+        loadedAt: new Date().toISOString(),
+      });
+    sankhya.saleItems = [
+      { NUNOTA: 9001, SEQUENCIA: 1, ITEM_PENDENTE: "S" },
+      { NUNOTA: 9001, SEQUENCIA: 2, ITEM_PENDENTE: "N" },
+      { NUNOTA: 9002, SEQUENCIA: 1, ITEM_PENDENTE: "N" },
+      { NUNOTA: 9003, SEQUENCIA: 1, ITEM_PENDENTE: "N" },
+    ];
+    const run = await stage.runStageLoad(admin, "saleItems", 60_000);
+    expect(run.done).toBe(true);
+    const rows = await store.list("sankhya_stage_rows", {
+      filter: { dataset: "saleItems" },
+    });
+    expect(rows.map((r) => r.rowKey).sort()).toEqual([
+      "9001:1",
+      "9001:2",
+      "9002:1",
+    ]);
+
+    // Ligações das vendas: a partir dos pedidos escolhidos nos itens.
+    sankhya.links = [
+      {
+        NUNOTA: 9001,
+        SEQUENCIA: 1,
+        NUNOTAORIG: 8001,
+        SEQUENCIAORIG: 1,
+        TOP_ORIGEM: 111,
+        TOP_DESTINO: 61,
+      },
+      {
+        NUNOTA: 9500,
+        SEQUENCIA: 1,
+        NUNOTAORIG: 9002,
+        SEQUENCIAORIG: 1,
+        TOP_ORIGEM: 61,
+        TOP_DESTINO: 3,
+      },
+      {
+        NUNOTA: 9600,
+        SEQUENCIA: 1,
+        NUNOTAORIG: 9003,
+        SEQUENCIAORIG: 1,
+        TOP_ORIGEM: 61,
+        TOP_DESTINO: 3,
+      },
+    ];
+    expect((await stage.runStageLoad(admin, "saleLinks", 60_000)).done).toBe(
+      true,
+    );
+    const saleLinks = await store.list("sankhya_stage_rows", {
+      filter: { dataset: "saleLinks" },
+    });
+    expect(saleLinks.map((r) => r.rowKey).sort()).toEqual([
+      "9001:1:8001:1",
+      "9500:1:9002:1",
+    ]);
   });
 });
