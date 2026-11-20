@@ -57,7 +57,10 @@ import {
 } from "@/lib/request-responsible";
 import { peopleDirectory } from "@/lib/services/request-responsible";
 import { fixDirectory } from "@/lib/services/request-fix";
-import { ResponsibleTip } from "@/components/request-responsible-tip";
+import {
+  ResponsibleTip,
+  SituationFixTip,
+} from "@/components/request-responsible-tip";
 import { ListReturnLink } from "@/components/list-return";
 import {
   RequestDetailsScreen,
@@ -296,11 +299,23 @@ export default async function RequestBatchPage({
               className="inline-flex flex-wrap items-center gap-2"
               data-request-turn={n.who!}
             >
-              <Badge tone={turnTone(n.who!)}>
-                {user.role === "customer" && n.who === "customer"
-                  ? t("turn.waiting.you")
-                  : t(turnWaitingKey(n.who!))}
-              </Badge>
+              {/* "Sem responsável definido" com o botão que resolve: o
+                  mesmo balão da Próxima ação (dono, 20/11/2026). */}
+              <SituationFixTip
+                r={
+                  n.who === "unassigned"
+                    ? ([...people.values()].find((r) => r.fix && r.missing) ??
+                      null)
+                    : null
+                }
+                t={t}
+              >
+                <Badge tone={turnTone(n.who!)}>
+                  {user.role === "customer" && n.who === "customer"
+                    ? t("turn.waiting.you")
+                    : t(turnWaitingKey(n.who!))}
+                </Badge>
+              </SituationFixTip>
               <span className="text-sm text-zinc-700" data-request-next={n.key}>
                 {t("reqList.col.next")}:{" "}
                 <span className="font-medium text-zinc-900">

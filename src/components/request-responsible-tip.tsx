@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Translate } from "@/i18n";
 import {
   responsibleLine,
@@ -295,6 +296,39 @@ export function ResponsibleTip({
           {text}
         </span>
       }
+    >
+      <ResponsibleDetail r={r} t={t} />
+    </InfoTip>
+  );
+}
+
+/**
+ * O selo da Situação ("Sem responsável definido") com o mesmo balão da
+ * Próxima ação (dono, 20/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 10): para
+ * quem pode resolver, tocar no selo abre quem pode agir e o botão que
+ * resolve (o formulário do login do cliente). Sem botão, o selo fica como
+ * era.
+ */
+export function SituationFixTip({
+  r,
+  t,
+  children,
+}: {
+  r: Responsible | null;
+  t: Translate;
+  /** O selo da Situação. */
+  children: ReactNode;
+}) {
+  if (!r?.fix) return <>{children}</>;
+  const line = responsibleLine(r, responsibleLabels(t));
+  const text = line.where ? `${line.who} · ${line.where}` : line.who;
+  return (
+    <InfoTip
+      label={t("reqList.resp.label", { who: text })}
+      interactive
+      className="cursor-pointer rounded-full no-underline"
+      trigger={children}
+      data-request-situation-fix={r.fix.kind}
     >
       <ResponsibleDetail r={r} t={t} />
     </InfoTip>
