@@ -75,22 +75,44 @@ export function InfoTip({
     setOpen(false);
   }, []);
 
+  /*
+   * Posição do balão na parte visível da tela (a `visualViewport`: no iPad
+   * em janela menor ou com o teclado aberto ela é menor que a janela).
+   * Embaixo do botão; sem espaço, em cima; sem espaço nos dois lados (o
+   * formulário do login do cliente numa tela baixa; dono, 20/11/2026), o
+   * balão ocupa a altura visível e rola por dentro. Antes ele passava do
+   * fim da tela e, por ser fixo, o resto não aparecia.
+   */
   const place = useCallback(() => {
     const anchor = button.current;
     const box = bubble.current;
     if (!anchor || !box) return;
+    const view = window.visualViewport;
+    const viewWidth = view?.width ?? window.innerWidth;
+    const viewHeight = view?.height ?? window.innerHeight;
+    const viewTop = view?.offsetTop ?? 0;
+    const viewLeft = view?.offsetLeft ?? 0;
+    const edge = 8;
+    const gap = 6;
     const r = anchor.getBoundingClientRect();
-    const width = Math.min(box.offsetWidth || 288, window.innerWidth - 16);
+    const width = Math.min(box.offsetWidth || 288, viewWidth - 2 * edge);
     const left = Math.min(
-      Math.max(8, r.left + r.width / 2 - width / 2),
-      window.innerWidth - width - 8,
+      Math.max(viewLeft + edge, r.left + r.width / 2 - width / 2),
+      viewLeft + viewWidth - width - edge,
     );
-    const below = r.bottom + 6;
-    const height = box.offsetHeight;
-    const top =
-      below + height > window.innerHeight - 8 && r.top - height - 6 > 8
-        ? r.top - height - 6
-        : below;
+    // Altura do conteúdo inteiro (mesmo com o limite já aplicado) e bordas.
+    const height = box.scrollHeight + (box.offsetHeight - box.clientHeight);
+    const below = viewTop + viewHeight - edge - (r.bottom + gap);
+    const above = r.top - gap - (viewTop + edge);
+    let top: number;
+    let maxHeight = "";
+    if (height <= below) top = r.bottom + gap;
+    else if (height <= above) top = r.top - gap - height;
+    else {
+      top = viewTop + edge;
+      maxHeight = `${Math.round(viewHeight - 2 * edge)}px`;
+    }
+    box.style.maxHeight = maxHeight;
     box.style.left = `${Math.round(left)}px`;
     box.style.top = `${Math.round(top)}px`;
   }, []);
@@ -119,15 +141,31 @@ export function InfoTip({
       close();
       button.current?.focus();
     };
+    // A rolagem de dentro do balão não o reposiciona (ela continua onde
+    // está); a da página, da tabela e da tela visível, sim.
+    const onScroll = (e: Event) => {
+      if (e.target instanceof Node && box.contains(e.target)) return;
+      place();
+    };
+    const view = window.visualViewport;
+    // O conteúdo muda de tamanho (erro, login criado): cabe de novo.
+    const resized =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
+    resized?.observe(box);
     document.addEventListener("pointerdown", onDown);
     document.addEventListener("keydown", onKey);
     window.addEventListener("resize", place);
-    document.addEventListener("scroll", place, true);
+    document.addEventListener("scroll", onScroll, true);
+    view?.addEventListener("resize", place);
+    view?.addEventListener("scroll", place);
     return () => {
+      resized?.disconnect();
       document.removeEventListener("pointerdown", onDown);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", place);
-      document.removeEventListener("scroll", place, true);
+      document.removeEventListener("scroll", onScroll, true);
+      view?.removeEventListener("resize", place);
+      view?.removeEventListener("scroll", place);
       try {
         box.hidePopover?.();
       } catch {
@@ -235,7 +273,8 @@ export function InfoTip({
                   : undefined
               }
               className={cx(
-                "fixed inset-auto z-[1000] m-0 w-max max-w-[min(20rem,calc(100vw-1rem))] rounded-lg border border-zinc-200 bg-white p-2.5 text-left text-xs font-normal normal-case leading-relaxed tracking-normal text-zinc-700 shadow-lg",
+                // Com o limite de altura (tela baixa), rola por dentro.
+                "fixed inset-auto z-[1000] m-0 w-max max-w-[min(20rem,calc(100vw-1rem))] overflow-y-auto overscroll-contain rounded-lg border border-zinc-200 bg-white p-2.5 text-left text-xs font-normal normal-case leading-relaxed tracking-normal text-zinc-700 shadow-lg",
                 interactive && "focus:outline-none",
                 bubbleClassName,
               )}

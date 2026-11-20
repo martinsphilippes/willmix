@@ -327,6 +327,7 @@ Ação `createRequestCustomerLoginAction` (`src/app/app/actions/request-fix.ts`)
 
 - Na lista de Encomendas (2ª linha da Próxima ação) e na página da encomenda (`/app/requests/batch/<id>`), pela mesma peça (`ResponsibleTip`).
 - O balão com botões vira um diálogo (`InfoTip` com `interactive`). Funciona com toque, mouse e teclado: Enter abre e leva o foco para dentro; Esc fecha e volta ao nome.
+- **Tela baixa** (iPad em janela menor ou com o teclado aberto; dono, 20/11/2026): o balão abre embaixo do nome ou, sem espaço, em cima. Se não couber em nenhum dos dois lados, ocupa a altura visível da tela e rola por dentro, para o formulário aparecer inteiro. A conta usa a parte visível da tela (`visualViewport`) e refaz a posição quando ela muda. Antes, o balão passava do fim da tela e o resto não aparecia.
 - O rascunho não muda: quem age nele é sempre quem o salvou.
 - O selo "Sem responsável definido" da coluna Situação continua só um selo, sem balão. Em 20/11/2026 ele chegou a abrir o mesmo balão da Próxima ação (PR #600), e o dono pediu para desfazer no mesmo dia (PR seguinte). Quem resolve continua usando o "Responsável não definido" da Próxima ação ou a pendência "Login do cliente a definir".
 
