@@ -1346,6 +1346,11 @@ export async function renderNewRequest({
                         auditDefaults: t("priceForecast.auditDefaults"),
                         auditOutputs: t("priceForecast.auditOutputs"),
                         auditOpen: t("priceForecast.auditOpen"),
+                        auditExport: t("priceForecast.auditExport"),
+                        priceOf: t("priceForecast.priceOf", {
+                          format: "{format}",
+                        }),
+                        priceNoFormat: t("priceForecast.priceNoFormat"),
                         auditClose: t("priceForecast.auditClose"),
                         auditIntro: t("priceForecast.auditIntro"),
                         auditParam: t("priceForecast.auditParam"),

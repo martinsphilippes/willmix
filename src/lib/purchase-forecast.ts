@@ -13,10 +13,12 @@
  * compras.
  */
 
-/** Uma compra: a data (AAAA-MM-DD) e a quantidade em peças. */
+/** Uma compra: a data (AAAA-MM-DD), a quantidade em peças e o valor (R$). */
 export interface Purchase {
   date: string;
   quantity: number;
+  /** Valor após descontos (só para quem vê valores). */
+  value?: number | null;
 }
 
 /** Meses de antecedência da sugestão (pedido → cliente). */
@@ -48,30 +50,94 @@ export function byDate(purchases: readonly Purchase[]): Purchase[] {
     .map(([date, quantity]) => ({ date, quantity }));
 }
 
-/** Quantidade por ano, com os meses de cada um (só os meses com compra). */
+/** Um mês do histórico (com ou sem compra). */
+export interface MonthTotal {
+  month: string;
+  quantity: number;
+  /** Nulo quando quem vê não vê valores. */
+  value: number | null;
+  purchases: number;
+}
+
+/**
+ * Quantidade e valor por ano, com os meses de cada um. Do mês da 1ª compra
+ * até o mês de hoje, os meses sem compra entram com zero (dono, 20/11/2026:
+ * o buraco de compras fica visível). Anos do mais recente ao mais antigo;
+ * meses em ordem.
+ */
 export interface YearTotal {
   year: string;
   quantity: number;
+  value: number | null;
   purchases: number;
-  months: Array<{ month: string; quantity: number; purchases: number }>;
+  months: MonthTotal[];
 }
 
-export function yearTotals(purchases: readonly Purchase[]): YearTotal[] {
-  const years = new Map<string, YearTotal>();
-  for (const p of byDate(purchases)) {
-    const year = p.date.slice(0, 4);
-    const y =
-      years.get(year) ??
-      ({ year, quantity: 0, purchases: 0, months: [] } as YearTotal);
-    y.quantity += p.quantity;
-    y.purchases += 1;
+export function yearTotals(
+  purchases: readonly Purchase[],
+  today: string = new Date().toISOString().slice(0, 10),
+): YearTotal[] {
+  const list = byDate(purchases);
+  if (!list.length) return [];
+  const withValue = purchases.some(
+    (p) => p.value !== null && p.value !== undefined,
+  );
+  const months = new Map<string, MonthTotal>();
+  for (const p of list) {
     const key = monthKey(p.date);
-    const m = y.months.find((x) => x.month === key);
-    if (m) {
-      m.quantity += p.quantity;
-      m.purchases += 1;
-    } else y.months.push({ month: key, quantity: p.quantity, purchases: 1 });
-    years.set(year, y);
+    const m = months.get(key) ?? {
+      month: key,
+      quantity: 0,
+      value: withValue ? 0 : null,
+      purchases: 0,
+    };
+    m.quantity += p.quantity;
+    m.purchases += 1;
+    months.set(key, m);
+  }
+  // Valor por dia (as compras do mesmo dia somadas).
+  if (withValue)
+    for (const p of purchases) {
+      const m = months.get(monthKey(p.date));
+      if (m && p.quantity > 0) m.value = (m.value ?? 0) + (p.value ?? 0);
+    }
+  // Do 1º mês até o mês de hoje (ou o da última compra, se for depois).
+  const first = monthKey(list[0].date);
+  const lastKey = [monthKey(today), monthKey(list.at(-1)!.date)].sort().at(-1)!;
+  let [y, mo] = first.split("-").map(Number);
+  for (;;) {
+    const key = `${y}-${String(mo).padStart(2, "0")}`;
+    if (key > lastKey) break;
+    if (!months.has(key))
+      months.set(key, {
+        month: key,
+        quantity: 0,
+        value: withValue ? 0 : null,
+        purchases: 0,
+      });
+    mo += 1;
+    if (mo > 12) {
+      mo = 1;
+      y += 1;
+    }
+  }
+  const years = new Map<string, YearTotal>();
+  for (const m of [...months.values()].sort((a, b) =>
+    a.month.localeCompare(b.month),
+  )) {
+    const year = m.month.slice(0, 4);
+    const t = years.get(year) ?? {
+      year,
+      quantity: 0,
+      value: withValue ? 0 : null,
+      purchases: 0,
+      months: [],
+    };
+    t.quantity += m.quantity;
+    t.purchases += m.purchases;
+    if (withValue) t.value = (t.value ?? 0) + (m.value ?? 0);
+    t.months.push(m);
+    years.set(year, t);
   }
   return [...years.values()].sort((a, b) => b.year.localeCompare(a.year));
 }
@@ -176,4 +242,63 @@ export function estimateDemand(
     months,
     years: [...years].map(([year, quantity]) => ({ year, quantity })),
   };
+}
+
+/**
+ * "Usar a recomendação" (dono, 20/11/2026): a quantidade sugerida repartida
+ * nas entregas do pedido pela demanda prevista de cada uma (a entrega cobre
+ * do dia dela até a entrega seguinte; a última, o intervalo médio entre as
+ * entregas ou, com uma só, o intervalo médio entre as compras), em caixas
+ * inteiras e somando exatamente o sugerido (arredondado para cima em
+ * caixas). É o percentual deste produto entre as entregas; o do pedido não
+ * muda.
+ */
+export function splitRecommendation(
+  estimate: Pick<
+    DemandEstimate,
+    "suggestedQuantity" | "monthly" | "months" | "intervalMonths"
+  >,
+  deliveryDates: readonly string[],
+  perCarton: number | null,
+): number[] {
+  const per = perCarton && perCarton > 0 ? perCarton : 1;
+  const units = Math.max(0, Math.ceil(estimate.suggestedQuantity / per - 1e-9));
+  if (deliveryDates.length <= 1) return [units * per];
+  // Uma entrega por data do pedido; sem todas as datas, partes iguais.
+  const known = deliveryDates.every((d) => /^\d{4}-\d{2}-\d{2}$/.test(d));
+  const dates = known ? [...deliveryDates] : [];
+  const rate = new Map(estimate.months.map((m) => [m.month, m.quantity]));
+  const demandAt = (date: string) =>
+    rate.get(monthKey(date)) ?? estimate.monthly;
+  const gaps = dates
+    .slice(1)
+    .map((d, i) => monthsBetween(dates[i], d))
+    .filter((g) => g > 0);
+  const lastSpan = gaps.length
+    ? gaps.reduce((a, b) => a + b, 0) / gaps.length
+    : estimate.intervalMonths;
+  const weights = dates.map((d, i) => {
+    const span =
+      i + 1 < dates.length ? monthsBetween(d, dates[i + 1]) : lastSpan;
+    const middle = addMonths(d, Math.max(0, span) / 2);
+    return Math.max(0, span) * Math.max(0, demandAt(middle));
+  });
+  const sum = weights.reduce((a, b) => a + b, 0);
+  const shares =
+    known && sum > 0
+      ? weights.map((w) => w / sum)
+      : deliveryDates.map(() => 1 / deliveryDates.length);
+  // Maiores restos: as caixas somam exatamente o total.
+  const raw = shares.map((s) => s * units);
+  const out = raw.map(Math.floor);
+  let left = units - out.reduce((a, b) => a + b, 0);
+  const order = raw
+    .map((r, i) => [r - Math.floor(r), i] as const)
+    .sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+  for (const [, i] of order) {
+    if (left <= 0) break;
+    out[i] += 1;
+    left -= 1;
+  }
+  return out.map((u) => u * per);
 }

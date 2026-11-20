@@ -52,6 +52,11 @@ export interface PriceForecastLabels {
   auditUsed?: string;
   /** O que é cada parâmetro (nome do Sankhya → texto). */
   params?: Record<string, string>;
+  /** "Exportar JSON" no canto do modal (dono, 20/11/2026). */
+  auditExport?: string;
+  /** "Preço {format} - com frete" e, sem formato, "Preço - com frete". */
+  priceOf?: string;
+  priceNoFormat?: string;
   /** Vê o preço máximo de compra (custo): só com "Ver valores e margem". */
   canSolve?: boolean;
   /** Cotação de encomenda V2 (dono, 16/11/2026). */
@@ -204,6 +209,17 @@ export function PriceForecast({
   // o transportador) → PRECO_COM_FRETE_REFERENCIA. O frete é o "Valor do
   // transporte (R$)" digitado ou, sem ele, o padrão das Configurações.
   const wd = terms?.saleFormat === "wd";
+  const formatName = !terms?.saleFormat
+    ? null
+    : wd
+      ? labels.formats?.wd
+      : terms.wellmixTier
+        ? labels.formats?.[terms.wellmixTier]
+        : labels.formats?.wellmix;
+  const priceLabel =
+    formatName && labels.priceOf
+      ? labels.priceOf.replace("{format}", formatName)
+      : (labels.priceNoFormat ?? labels.price ?? "Preço");
   const price = forecast
     ? wd
       ? (forecast.wdWithFreight ?? null)
@@ -355,7 +371,14 @@ export function PriceForecast({
                 role="status"
                 data-price-forecast-result="forecast"
               >
-                <dt className="text-emerald-800">{labels.price ?? "Preço"}</dt>
+                {/* Qual preço está na tela (dono, 20/11/2026): o do formato
+                    escolhido, sempre com frete. */}
+                <dt
+                  className="text-emerald-800"
+                  data-price-forecast-price-label
+                >
+                  {priceLabel}
+                </dt>
                 <dd
                   className="font-semibold tabular-nums"
                   data-price-forecast-line="price"
@@ -401,6 +424,25 @@ export function PriceForecast({
               closeLabel={labels.auditClose ?? "×"}
               size="lg"
               data-price-forecast-audit-open=""
+              headerActions={
+                labels.auditExport ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      exportAnswer(
+                        productId,
+                        shown?.value === "error"
+                          ? null
+                          : (shown?.value ?? null),
+                      )
+                    }
+                    className="rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
+                    data-price-forecast-audit-export
+                  >
+                    {labels.auditExport}
+                  </button>
+                ) : null
+              }
             >
               <AuditBody
                 audit={audit}
@@ -413,6 +455,35 @@ export function PriceForecast({
       )}
     </div>
   );
+}
+
+/**
+ * Exporta a resposta da cotação em JSON (dono, 20/11/2026): o que foi
+ * enviado à função (por nome), o que ela devolveu e a resposta do portal,
+ * para importar no Sankhya e conferir o que divergiu.
+ */
+function exportAnswer(productId: string, answer: PriceForecastAnswer | null) {
+  if (!answer || answer.mode !== "api") return;
+  const audit = answer.audit ?? null;
+  const data = {
+    exportedAt: new Date().toISOString(),
+    productId,
+    function: audit?.fn ?? null,
+    inputs: audit ? Object.fromEntries(audit.inputs) : null,
+    outputs: audit ? Object.fromEntries(audit.outputs) : null,
+    answer,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `cotacao-${productId}-${data.exportedAt.slice(0, 19).replace(/[:T]/g, "-")}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /** Conteúdo do modal "Ver o cálculo": enviado e devolvido, com o que é. */

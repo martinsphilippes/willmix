@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   byDate,
   estimateDemand,
+  splitRecommendation,
   yearTotals,
   LEAD_MONTHS,
 } from "@/lib/purchase-forecast";
@@ -12,21 +13,74 @@ import {
  * compra 4 meses antes de a última acabar.
  */
 describe("análise de compras de um produto", () => {
-  it("soma por ano e mês, do ano mais recente ao mais antigo", () => {
-    const years = yearTotals([
-      { date: "2025-01-10", quantity: 100 },
-      { date: "2025-01-20", quantity: 50 },
-      { date: "2025-06-01", quantity: 200 },
-      { date: "2026-02-01", quantity: 300 },
+  it("soma por ano e mês e completa com zero os meses sem compra até hoje", () => {
+    const years = yearTotals(
+      [
+        { date: "2025-10-10", quantity: 100, value: 1000 },
+        { date: "2025-10-20", quantity: 50, value: 500 },
+        { date: "2025-12-01", quantity: 200, value: 2000 },
+        { date: "2026-02-01", quantity: 300, value: 3000 },
+      ],
+      "2026-04-15",
+    );
+    expect(
+      years.map((y) => [y.year, y.quantity, y.value, y.purchases]),
+    ).toEqual([
+      ["2026", 300, 3000, 1],
+      ["2025", 350, 3500, 3],
     ]);
-    expect(years.map((y) => [y.year, y.quantity, y.purchases])).toEqual([
-      ["2026", 300, 1],
-      ["2025", 350, 3],
+    // De outubro/2025 a abril/2026, com os meses vazios em zero.
+    expect(years[1].months.map((m) => [m.month, m.quantity])).toEqual([
+      ["2025-10", 150],
+      ["2025-11", 0],
+      ["2025-12", 200],
     ]);
-    expect(years[1].months).toEqual([
-      { month: "2025-01", quantity: 150, purchases: 2 },
-      { month: "2025-06", quantity: 200, purchases: 1 },
+    expect(years[0].months.map((m) => [m.month, m.quantity, m.value])).toEqual([
+      ["2026-01", 0, 0],
+      ["2026-02", 300, 3000],
+      ["2026-03", 0, 0],
+      ["2026-04", 0, 0],
     ]);
+    // Sem valores (quem não vê valores): nulos.
+    expect(
+      yearTotals([{ date: "2026-01-05", quantity: 1 }], "2026-01-31")[0].value,
+    ).toBeNull();
+  });
+
+  it("usar a recomendação: reparte pela demanda das entregas, em caixas inteiras", () => {
+    const estimate = {
+      suggestedQuantity: 1000,
+      monthly: 100,
+      intervalMonths: 3,
+      months: [],
+    };
+    // Uma entrega: tudo nela, arredondado para cima em caixas de 48.
+    expect(splitRecommendation(estimate, ["2027-03-01"], 48)).toEqual([1008]);
+    // Três entregas a cada 30 dias, demanda estável: partes iguais.
+    const three = splitRecommendation(
+      estimate,
+      ["2027-03-01", "2027-03-31", "2027-04-30"],
+      48,
+    );
+    expect(three.reduce((a, b) => a + b, 0)).toBe(1008);
+    expect(three.every((q) => q % 48 === 0)).toBe(true);
+    expect(Math.max(...three) - Math.min(...three)).toBeLessThanOrEqual(48);
+    // Demanda maior no mês da 2ª entrega: ela leva mais.
+    const peak = splitRecommendation(
+      {
+        ...estimate,
+        months: [
+          { month: "2027-03", quantity: 100 },
+          { month: "2027-04", quantity: 300 },
+        ],
+      },
+      ["2027-03-01", "2027-04-01"],
+      1,
+    );
+    expect(peak[1]).toBeGreaterThan(peak[0]);
+    expect(peak[0] + peak[1]).toBe(1000);
+    // Datas do pedido ainda sem a 1ª: uma parte por entrega, iguais.
+    expect(splitRecommendation(estimate, ["", ""], 1)).toEqual([500, 500]);
   });
 
   it("compras do mesmo dia viram uma; sem duas compras não há estimativa", () => {

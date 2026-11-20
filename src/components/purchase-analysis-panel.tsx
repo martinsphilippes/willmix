@@ -2,6 +2,14 @@
 
 import { Fragment, useEffect, useState } from "react";
 import type { PurchaseAnalysis } from "@/lib/services/purchase-analysis";
+import {
+  splitRecommendation,
+  type DemandEstimate,
+} from "@/lib/purchase-forecast";
+import { ROUNDS_EVENT, type RoundsEventDetail } from "./selection-quantity";
+
+/** O formulário da Nova solicitação (as linhas escutam o evento nele). */
+const FORM_ID = "new-request-form";
 import { useRequestCustomer } from "./request-customer-context";
 import { cx } from "./ui";
 
@@ -43,6 +51,14 @@ export interface PurchaseAnalysisLabels {
   how: string;
   mixedUnits: string;
   pieces: string;
+  /** Valor (R$), só com "Ver valores e margem". */
+  value?: string;
+  /** "Expandir tudo" / "Recolher tudo". */
+  expandAll?: string;
+  collapseAll?: string;
+  /** "Usar a recomendação" e o aviso "{q} peças em {n} entregas". */
+  use?: string;
+  applied?: string;
 }
 
 type Loaded = {
@@ -71,12 +87,22 @@ export function PurchaseAnalysisPanel({
   labels: PurchaseAnalysisLabels;
   intl: string;
 }) {
-  const focus = useRequestCustomer()?.focusProduct ?? null;
+  const shared = useRequestCustomer();
+  const focus = shared?.focusProduct ?? null;
   const productId = focus?.productId ?? null;
   const key = productId ? `${customerId}|${productId}` : null;
   const [attempt, setAttempt] = useState(0);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [open, setOpen] = useState<string | null>(null);
+  // Anos abertos (dono, 20/11/2026: também "Expandir tudo / Recolher tudo").
+  const [open, setOpen] = useState<Set<string>>(() => new Set());
+  const toggleYear = (year: string) =>
+    setOpen((o) => {
+      const next = new Set(o);
+      if (next.has(year)) next.delete(year);
+      else next.add(year);
+      return next;
+    });
+  const [applied, setApplied] = useState<string | null>(null);
   const [by, setBy] = useState<"month" | "year">("month");
 
   useEffect(() => {
@@ -116,6 +142,38 @@ export function PurchaseAnalysisPanel({
       month: "short",
       year: "numeric",
     });
+
+  const money = (n: number | null) =>
+    n === null
+      ? "—"
+      : n.toLocaleString(intl, { style: "currency", currency: "BRL" });
+  /**
+   * "Usar a recomendação" (dono, 20/11/2026): a quantidade sugerida vai para
+   * a linha aberta, repartida nas entregas do pedido pela demanda prevista
+   * de cada uma, em caixas inteiras. A matriz das empresas do grupo
+   * acompanha, na distribuição dele; o percentual geral do pedido não muda.
+   */
+  function applyRecommendation(estimate: DemandEstimate) {
+    const row = focus?.rowIndex;
+    if (row === undefined) return;
+    const load = shared?.loads[`row-${row}`];
+    const quantities = splitRecommendation(
+      estimate,
+      shared?.planDates ?? [],
+      load?.masterCartonQty ?? null,
+    );
+    document.getElementById(FORM_ID)?.dispatchEvent(
+      new CustomEvent<RoundsEventDetail>(ROUNDS_EVENT, {
+        detail: { prefix: `p${row}.`, quantities },
+      }),
+    );
+    setApplied(
+      fill(labels.applied ?? "", {
+        q: qty(quantities.reduce((a, b) => a + b, 0)),
+        n: quantities.length,
+      }),
+    );
+  }
 
   if (!key)
     return (
@@ -175,9 +233,31 @@ export function PurchaseAnalysisPanel({
       </div>
 
       <section className="space-y-1.5" data-purchase-analysis-history>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-          {labels.historyTitle}
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            {labels.historyTitle}
+          </h3>
+          {result.years.length && labels.expandAll ? (
+            <button
+              type="button"
+              onClick={() =>
+                setOpen(
+                  open.size === result.years.length
+                    ? new Set()
+                    : new Set(result.years.map((y) => y.year)),
+                )
+              }
+              className="rounded-md border border-zinc-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-zinc-700 hover:bg-zinc-50"
+              data-purchase-analysis-expand-all={
+                open.size === result.years.length ? "collapse" : "expand"
+              }
+            >
+              {open.size === result.years.length
+                ? labels.collapseAll
+                : labels.expandAll}
+            </button>
+          ) : null}
+        </div>
         {result.years.length ? (
           <div className="overflow-hidden rounded-lg border border-zinc-200">
             <table className={table}>
@@ -185,6 +265,9 @@ export function PurchaseAnalysisPanel({
                 <tr>
                   <th className="font-medium">{labels.year}</th>
                   <th className="text-right font-medium">{labels.quantity}</th>
+                  {result.money && labels.value ? (
+                    <th className="text-right font-medium">{labels.value}</th>
+                  ) : null}
                   <th className="text-right font-medium">{labels.purchases}</th>
                 </tr>
               </thead>
@@ -195,11 +278,9 @@ export function PurchaseAnalysisPanel({
                       <td>
                         <button
                           type="button"
-                          aria-expanded={open === y.year}
+                          aria-expanded={open.has(y.year)}
                           aria-label={fill(labels.expandYear, { year: y.year })}
-                          onClick={() =>
-                            setOpen((o) => (o === y.year ? null : y.year))
-                          }
+                          onClick={() => toggleYear(y.year)}
                           className="inline-flex items-center gap-1 font-semibold text-zinc-900 hover:text-brand-700"
                           data-purchase-analysis-year-toggle={y.year}
                         >
@@ -207,7 +288,7 @@ export function PurchaseAnalysisPanel({
                             aria-hidden
                             className={cx(
                               "inline-block transition-transform",
-                              open === y.year && "rotate-90",
+                              open.has(y.year) && "rotate-90",
                             )}
                           >
                             ›
@@ -218,24 +299,46 @@ export function PurchaseAnalysisPanel({
                       <td className="text-right font-semibold tabular-nums">
                         {qty(y.quantity)}
                       </td>
+                      {result.money && labels.value ? (
+                        <td className="text-right tabular-nums">
+                          {money(y.value)}
+                        </td>
+                      ) : null}
                       <td className="text-right tabular-nums text-zinc-600">
                         {y.purchases}
                       </td>
                     </tr>
-                    {open === y.year
+                    {open.has(y.year)
                       ? y.months.map((m) => (
                           <tr
                             key={m.month}
-                            className="bg-zinc-50/60"
+                            // Mês sem compra: zero, apagado (o buraco aparece).
+                            className={cx(
+                              "bg-zinc-50/60",
+                              !m.purchases && "text-zinc-400",
+                            )}
                             data-purchase-analysis-month={m.month}
+                            data-purchase-analysis-month-empty={
+                              m.purchases ? undefined : ""
+                            }
                           >
-                            <td className="pl-6 text-zinc-600">
+                            <td
+                              className={cx(
+                                "pl-6",
+                                m.purchases ? "text-zinc-600" : "",
+                              )}
+                            >
                               {monthName(m.month)}
                             </td>
                             <td className="text-right tabular-nums">
                               {qty(m.quantity)}
                             </td>
-                            <td className="text-right tabular-nums text-zinc-500">
+                            {result.money && labels.value ? (
+                              <td className="text-right tabular-nums">
+                                {money(m.value)}
+                              </td>
+                            ) : null}
+                            <td className="text-right tabular-nums">
                               {m.purchases}
                             </td>
                           </tr>
@@ -322,6 +425,28 @@ export function PurchaseAnalysisPanel({
                 q: qty(e.suggestedQuantity),
               })}
               {e.late ? ` ${labels.late}` : ""}
+              {labels.use ? (
+                <span className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyRecommendation(e)}
+                    disabled={focus?.rowIndex === undefined}
+                    className="rounded-md bg-brand-700 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-brand-800 disabled:opacity-50"
+                    data-purchase-analysis-use
+                  >
+                    {labels.use}
+                  </button>
+                  {applied ? (
+                    <span
+                      role="status"
+                      className="text-[11px] font-normal"
+                      data-purchase-analysis-applied
+                    >
+                      {applied}
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
             </p>
             <div className="overflow-hidden rounded-lg border border-zinc-200">
               <table className={table}>

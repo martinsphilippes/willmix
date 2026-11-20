@@ -109,6 +109,8 @@ interface RequestCustomerState {
 export interface FocusProduct {
   productId: string;
   name: string;
+  /** A linha no formulário (campos `p<n>.`): "Usar a recomendação" escreve nela. */
+  rowIndex?: number;
 }
 
 export interface SaleTerms {
@@ -176,7 +178,9 @@ export function RequestCustomerProvider({
   const [focusProduct, setFocusState] = useState<FocusProduct | null>(null);
   const setFocusProduct = useCallback((next: FocusProduct | null) => {
     setFocusState((prev) =>
-      prev?.productId === next?.productId && prev?.name === next?.name
+      prev?.productId === next?.productId &&
+      prev?.name === next?.name &&
+      prev?.rowIndex === next?.rowIndex
         ? prev
         : next,
     );

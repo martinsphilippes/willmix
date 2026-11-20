@@ -341,6 +341,18 @@ Testes: `tests/unit/request-edit.test.ts`, `tests/unit/db-lookup.test.ts`, `test
 2. **Uma linha aberta por vez.** Abrir uma linha na tabela "Produtos no pedido" recolhe as outras. Dos produtos que entram pelo histórico ou pela lupa sem quantidade, só o último fica aberto.
 3. **Aba Análise.** O produto da linha aberta vai para o contexto da tela (`focusProduct`), e a aba Análise do histórico de compras mostra a análise dele (docs/PURCHASE_HISTORY.md, seção 12).
 
+## 11.21 Análise com meses vazios, "Usar a recomendação" e o preço nomeado (dono, 20/11/2026)
+
+1. **Aba Análise:** meses sem compra com zero até o mês de hoje, a coluna Valor (com "Ver valores e margem") e "Expandir tudo / Recolher tudo" (docs/PURCHASE_HISTORY.md 12.1).
+2. **"Usar a recomendação":** a quantidade sugerida vai para o produto aberto, repartida nas entregas do pedido pela demanda de cada uma. A distribuição entre as lojas do grupo é respeitada e o percentual geral do pedido entre as entregas não muda (docs/PURCHASE_HISTORY.md 12.1).
+3. **"Exportar JSON"** no canto superior direito do modal "Ver o cálculo". O arquivo traz:
+   - o que foi enviado à função, por nome (`inputs`);
+   - o que ela devolveu (`outputs`);
+   - a resposta do portal (`answer`).
+
+   Serve para importar no Sankhya e conferir o que divergiu (`cotacao-<produto>-<data>.json`). O `QuickDialog` ganhou `headerActions`.
+4. **Preço nomeado:** em vez de "Preço", a tela diz qual preço está mostrando, sempre com frete: "Preço WD - com frete" ou "Preço Wellmix · Hiper - com frete". Sem formato escolhido, mostra "Preço - com frete".
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

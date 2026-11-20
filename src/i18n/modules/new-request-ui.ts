@@ -5,6 +5,15 @@
  * em pt, en e zh.
  */
 export const pt = {
+  "priceForecast.auditExport": "Exportar JSON",
+  "priceForecast.priceOf": "Preço {format} - com frete",
+  "priceForecast.priceNoFormat": "Preço - com frete",
+  "purchaseAnalysis.value": "Valor",
+  "purchaseAnalysis.expandAll": "Expandir tudo",
+  "purchaseAnalysis.collapseAll": "Recolher tudo",
+  "purchaseAnalysis.use": "Usar a recomendação",
+  "purchaseAnalysis.applied":
+    "{q} peças repartidas em {n} entrega(s) neste produto (o percentual geral do pedido não mudou).",
   "reqBatch.duplicate":
     "Este produto já estava no pedido: a linha nova saiu e esta abriu para você editar.",
   "sankhyaHistory.view.analysis": "Análise",
@@ -112,6 +121,15 @@ export const pt = {
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
+  "priceForecast.auditExport": "Export JSON",
+  "priceForecast.priceOf": "{format} price - with freight",
+  "priceForecast.priceNoFormat": "Price - with freight",
+  "purchaseAnalysis.value": "Value",
+  "purchaseAnalysis.expandAll": "Expand all",
+  "purchaseAnalysis.collapseAll": "Collapse all",
+  "purchaseAnalysis.use": "Use the recommendation",
+  "purchaseAnalysis.applied":
+    "{q} pieces split into {n} delivery(ies) for this product (the order's overall split did not change).",
   "reqBatch.duplicate":
     "This product was already in the order: the new row was removed and this one opened for you to edit.",
   "sankhyaHistory.view.analysis": "Analysis",
@@ -222,6 +240,15 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "priceForecast.auditExport": "导出 JSON",
+  "priceForecast.priceOf": "{format} 价格 - 含运费",
+  "priceForecast.priceNoFormat": "价格 - 含运费",
+  "purchaseAnalysis.value": "金额",
+  "purchaseAnalysis.expandAll": "全部展开",
+  "purchaseAnalysis.collapseAll": "全部收起",
+  "purchaseAnalysis.use": "使用推荐",
+  "purchaseAnalysis.applied":
+    "已将 {q} 件分配到本产品的 {n} 次交货（订单的总体分配比例未改变）。",
   "reqBatch.duplicate":
     "该产品已在订单中：新的一行已移除，这一行已展开供您编辑。",
   "sankhyaHistory.view.analysis": "分析",

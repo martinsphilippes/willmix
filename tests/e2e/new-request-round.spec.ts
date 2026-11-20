@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import {
   chooseCustomerLogin,
@@ -131,6 +132,10 @@ test("Nova solicitação TS: produto da base, descrição, cálculo da previsão
   await expect(
     forecast.locator('[data-price-forecast-line="price"]'),
   ).toHaveText(/11,43/);
+  // Qual preço está na tela (dono, 20/11/2026): o do formato, com frete.
+  await expect(
+    forecast.locator("[data-price-forecast-price-label]"),
+  ).toHaveText("Preço WD - com frete");
   await forecast.locator("[data-price-forecast-audit-open]").click();
   const audit = page.locator("[data-price-forecast-audit]");
   await expect(audit).toBeVisible();
@@ -142,6 +147,18 @@ test("Nova solicitação TS: produto da base, descrição, cálculo da previsão
       '[data-price-forecast-audit-output="PRECO_WD_COM_FRETE_REFERENCIA"]',
     ),
   ).toContainText("Na tela");
+  // "Exportar JSON" no canto do modal: a resposta da API para o Sankhya.
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.locator("[data-price-forecast-audit-export]:visible").click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(
+    /^cotacao-prod-boneca-.*\.json$/,
+  );
+  const exported = JSON.parse(readFileSync(await download.path(), "utf8"));
+  expect(exported.function).toBe("FN_AD_ENC_COTACAO_V2_WELL");
+  expect(exported.inputs).toEqual({ CODPROD: 1001, VIP: 5 });
+  expect(exported.outputs.PRECO_WD_COM_FRETE_REFERENCIA).toBe(11.43);
   await page.keyboard.press("Escape");
   await expect(audit).toBeHidden();
 
@@ -258,6 +275,7 @@ test("Produto repetido abre a linha que já tem; a aba Análise mostra o produto
             years: [{ year: "2026", quantity: 100 }],
           },
           mixedUnits: false,
+          money: false,
         },
       });
     }
@@ -302,9 +320,24 @@ test("Produto repetido abre a linha que já tem; a aba Análise mostra o produto
   await expect(panel.locator("[data-purchase-analysis-month]")).toHaveCount(0);
   await panel.locator('[data-purchase-analysis-year-toggle="2026"]').click();
   await expect(panel.locator("[data-purchase-analysis-month]")).toHaveCount(2);
+  // Expandir tudo / Recolher tudo (dono, 20/11/2026).
+  await expect(
+    panel.locator('[data-purchase-analysis-expand-all="collapse"]'),
+  ).toBeVisible();
+  await panel.locator("[data-purchase-analysis-expand-all]").click();
+  await expect(panel.locator("[data-purchase-analysis-month]")).toHaveCount(0);
+  await panel.locator("[data-purchase-analysis-expand-all]").click();
+  await expect(panel.locator("[data-purchase-analysis-month]")).toHaveCount(2);
   await expect(
     panel.locator("[data-purchase-analysis-suggestion]"),
   ).toContainText("300 peças");
+  // "Usar a recomendação": as 300 peças vão para a linha aberta, em caixas
+  // inteiras de 48 (7 caixas = 336), na entrega única do pedido.
+  await panel.locator("[data-purchase-analysis-use]").click();
+  await expect(panel.locator("[data-purchase-analysis-applied]")).toContainText(
+    "336 peças",
+  );
+  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("336");
   await panel.locator('[data-purchase-analysis-by="year"]').click();
   await expect(
     panel.locator('[data-purchase-analysis-forecast="2026"]'),
