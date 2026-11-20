@@ -16,7 +16,16 @@ const sankhya: {
   items: Array<Record<string, unknown>>;
   links: Array<Record<string, unknown>>;
   saleItems: Array<Record<string, unknown>>;
-} = { sql: [], headers: [], items: [], links: [], saleItems: [] };
+  /** Página acima disso estoura o tempo da chamada (view lenta). */
+  slowAbove: number | null;
+} = {
+  sql: [],
+  headers: [],
+  items: [],
+  links: [],
+  saleItems: [],
+  slowAbove: null,
+};
 
 const afterCursor = (sql: string, rows: Array<Record<string, unknown>>) => {
   const m =
@@ -31,7 +40,7 @@ const afterCursor = (sql: string, rows: Array<Record<string, unknown>>) => {
         Number(r.NUNOTA) > n ||
         (m?.[2] != null && Number(r.NUNOTA) === n && Number(r.SEQUENCIA) > s),
     )
-    .slice(0, PAGE);
+    .slice(0, Number(/TOP (\d+)/.exec(sql)?.[1] ?? PAGE));
 };
 
 vi.mock("@/lib/integrations/sankhya-client", async (importOriginal) => ({
@@ -62,6 +71,12 @@ vi.mock("@/lib/integrations/sankhya-client", async (importOriginal) => ({
       );
       return { columns: Object.keys(rows[0] ?? {}), rows };
     }
+    const top = Number(/TOP (\d+)/.exec(sql)?.[1] ?? 0);
+    if (sankhya.slowAbove != null && top > sankhya.slowAbove)
+      throw Object.assign(
+        new Error("The operation was aborted due to timeout"),
+        { code: "sankhya_network" },
+      );
     const rows = sql.includes("VW_AD_PEDCOMPRA_ITEM_WELL")
       ? afterCursor(sql, sankhya.items)
       : afterCursor(sql, sankhya.headers);
@@ -328,5 +343,26 @@ describe("itens de venda", () => {
       "9001:1:8001:1",
       "9500:1:9002:1",
     ]);
+  });
+});
+
+describe("view lenta", () => {
+  it("página que estoura o tempo cai pela metade e a cópia segue", async () => {
+    const { resetFullLoad } =
+      await import("@/lib/integrations/sankhya-full-load");
+    await resetFullLoad("stagePurchaseHeaders");
+    sankhya.headers = Array.from({ length: 1500 }, (_, i) => ({
+      NUNOTA: 20000 + i,
+      STATUS_RECEBIMENTO: "R",
+    }));
+    sankhya.slowAbove = 1000;
+    const run = await stage.runStageLoad(admin, "purchaseHeaders", 60_000);
+    expect(run).toMatchObject({ done: true, pageSize: 1000 });
+    const rows = await getStore().list("sankhya_stage_rows", {
+      filter: { dataset: "purchaseHeaders" },
+    });
+    expect(rows.filter((r) => r.nunota! >= 20000)).toHaveLength(1500);
+    expect(sankhya.sql.some((q) => q.includes("SELECT TOP 1000 *"))).toBe(true);
+    sankhya.slowAbove = null;
   });
 });

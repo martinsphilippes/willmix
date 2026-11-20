@@ -85,17 +85,19 @@ export function stagePageSql(
   dataset: StageDataset,
   nunota: number,
   seq: number,
+  size = PAGE,
 ): string {
+  const top = Math.max(1, Math.min(PAGE, int0(size) || PAGE));
   switch (dataset) {
     case "purchaseHeaders":
-      return `SELECT TOP ${PAGE} * FROM sankhya.VW_AD_PEDCOMPRA_CAB_WELL WHERE ${after(nunota, seq, "NUNOTA", null)} ORDER BY NUNOTA`;
+      return `SELECT TOP ${top} * FROM sankhya.VW_AD_PEDCOMPRA_CAB_WELL WHERE ${after(nunota, seq, "NUNOTA", null)} ORDER BY NUNOTA`;
     case "purchaseItems":
-      return `SELECT TOP ${PAGE} * FROM sankhya.VW_AD_PEDCOMPRA_ITEM_WELL WHERE ${after(nunota, seq, "NUNOTA", "SEQUENCIA")} ORDER BY NUNOTA, SEQUENCIA`;
+      return `SELECT TOP ${top} * FROM sankhya.VW_AD_PEDCOMPRA_ITEM_WELL WHERE ${after(nunota, seq, "NUNOTA", "SEQUENCIA")} ORDER BY NUNOTA, SEQUENCIA`;
     case "purchaseLinks":
     case "saleLinks":
       throw new Error(`${dataset}: use stageLinksSql`);
     case "saleHeaders":
-      return `SELECT TOP ${PAGE} * FROM sankhya.VW_AD_PEDCLIENTE_CAB_WELL WHERE ${after(nunota, seq, "NUNOTA", null)} ORDER BY NUNOTA`;
+      return `SELECT TOP ${top} * FROM sankhya.VW_AD_PEDCLIENTE_CAB_WELL WHERE ${after(nunota, seq, "NUNOTA", null)} ORDER BY NUNOTA`;
     case "saleItems":
       throw new Error("saleItems: use saleItemsSql");
   }
@@ -212,12 +214,13 @@ export function stageRow(row: SankhyaRow): Record<string, string | number> {
 export function cutPage(
   dataset: StageDataset,
   rows: SankhyaRow[],
+  size = PAGE,
 ): { rows: SankhyaRow[]; nunota: number; seq: number; done: boolean } {
   const seqOf = (r: SankhyaRow) =>
     dataset === "purchaseHeaders" || dataset === "saleHeaders"
       ? 0
       : num(col(r, "SEQUENCIA"));
-  const done = rows.length < PAGE;
+  const done = rows.length < size;
   let kept = rows;
   if (!done && (dataset === "purchaseLinks" || dataset === "saleLinks")) {
     const last = rows[rows.length - 1];
@@ -236,7 +239,25 @@ export function cutPage(
   };
 }
 
+/** Menor página: abaixo disso, o erro de tempo para a rodada. */
+export const MIN_PAGE = 100;
+
+/** Erro de tempo da chamada ao Sankhya (25 s por chamada). */
+const isTimeout = (error: unknown) =>
+  (error as { code?: string }).code === "sankhya_network" &&
+  /timeout|aborted/i.test(String((error as Error).message ?? ""));
+
+/** "O serviço foi cancelado por situação de concorrência" (sessão ocupada). */
+const isBusy = (error: unknown) =>
+  /concorr/i.test(String((error as Error).message ?? ""));
+
 export interface StageProgress {
+  /**
+   * Linhas por página (começa em 4.000). Cai pela metade a cada estouro do
+   * tempo da chamada (a view com colunas calculadas, como recebimento e
+   * qualidade, 20/11/2026), até 100.
+   */
+  pageSize?: number;
   /** Itens de venda: os pedidos escolhidos ([NUNOTA, itens]), na 1ª rodada. */
   targets?: Array<[number, number]>;
   after: number;
@@ -289,10 +310,32 @@ export async function runStageLoad(
     return runSaleItemsLoad(progress, entity, started, budgetMs);
   do {
     const t0 = Date.now();
-    const table = await executeQuery(
-      stagePageSql(dataset, progress.after, progress.afterSeq),
-    );
-    const page = cutPage(dataset, table.rows);
+    const size = progress.pageSize ?? PAGE;
+    let table;
+    try {
+      table = await executeQuery(
+        stagePageSql(dataset, progress.after, progress.afterSeq, size),
+      );
+    } catch (error) {
+      // A consulta anterior (que estourou o tempo) ainda roda no Sankhya na
+      // mesma sessão: espera a próxima rodada, sem contar como falha.
+      if (isBusy(error)) {
+        progress.updatedAt = new Date().toISOString();
+        await writeSetting(keyOf(entity), progress);
+        break;
+      }
+      if (!isTimeout(error) || size <= MIN_PAGE) throw error;
+      // Página grande demais para os 25 s da chamada: a metade, e segue.
+      progress.pageSize = Math.max(MIN_PAGE, Math.floor(size / 2));
+      progress.updatedAt = new Date().toISOString();
+      await writeSetting(keyOf(entity), progress);
+      console.warn(
+        `[sankhya-stage] ${dataset}: página de ${size} passou do tempo; agora ${progress.pageSize}`,
+      );
+      lastMs = Date.now() - t0;
+      continue;
+    }
+    const page = cutPage(dataset, table.rows, size);
     const now = new Date().toISOString();
     const saved = await saveRows(dataset, page.rows, progress.startedAt);
     progress.counts.created = (progress.counts.created ?? 0) + saved;

@@ -44,6 +44,8 @@ Configurações → Sankhya → Carga do Sankhya → Carga completa, linhas "An�
 
 A view de itens de venda tem 4,4 milhões de linhas, uns 5 GB copiada inteira, e o banco tem 8 GB, já com 1,4 GB em uso. As pendências moram no item de venda (dono, 20/11/2026). A primeira versão filtrava a view inteira com `OR` (pendente ou alterado). A consulta passava de 60 s e a rodada seguinte da fila chegava com a anterior ainda rodando no Sankhya, o que dava o erro "O serviço foi cancelado por situação de concorrência" (20/11/2026). Pela lista de pedidos no `IN`, cada chamada é curta.
 
+**Página que encolhe (20/11/2026):** cada chamada ao Sankhya tem 25 s. Com as colunas novas de recebimento e qualidade, calculadas na view, a página de 4.000 cabeçalhos de compra passou desse tempo. A cópia agora corta a página pela metade a cada estouro (4.000, 2.000, 1.000… até 100) e guarda o tamanho que funcionou (`pageSize`). Se a consulta que estourou ainda estiver rodando no Sankhya, vem o erro de concorrência; a rodada então só espera a próxima, sem contar como falha da fila.
+
 Ler de novo não duplica: a linha é gravada pela chave da origem (`dataset:NUNOTA[:SEQUENCIA[:NUNOTAORIG:SEQUENCIAORIG]]`). "Recomeçar" relê tudo, e `runId` diz de que rodada cada linha veio.
 
 ## O que a análise responde (a preencher com os dados)
