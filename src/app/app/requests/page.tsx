@@ -147,6 +147,7 @@ import { InfoTip } from "@/components/info-tip";
 import { ListReturnMemory } from "@/components/list-return";
 import {
   ResponsibleTip,
+  SituationFixTip,
   draftResponsible,
   dueDayText,
   dueHourText,
@@ -353,19 +354,29 @@ export default async function RequestsPage({
         count: (cur?.count ?? 0) + 1,
       });
     }
+    // "Sem responsável definido" com o botão que resolve (dono, 20/11/2026;
+    // seção 10): o selo abre o mesmo balão da Próxima ação.
+    const fixed =
+      list.map((r) => respOf(r)).find((r) => r?.fix && !!r.missing) ?? null;
     return [...parts.values()].map(({ party, status, count: n }) =>
       party ? (
         <span
           key={party}
-          title={t(`reqStatusLabel.${status}`)}
+          title={
+            party === "unassigned" && fixed
+              ? undefined
+              : t(`reqStatusLabel.${status}`)
+          }
           data-request-turn={party}
         >
-          <Badge tone={turnTone(party)}>
-            {customer && party === "customer"
-              ? t("turn.waiting.you")
-              : t(turnWaitingKey(party))}
-            {n > 1 ? ` ×${n}` : ""}
-          </Badge>
+          <SituationFixTip r={party === "unassigned" ? fixed : null} t={t}>
+            <Badge tone={turnTone(party)}>
+              {customer && party === "customer"
+                ? t("turn.waiting.you")
+                : t(turnWaitingKey(party))}
+              {n > 1 ? ` ×${n}` : ""}
+            </Badge>
+          </SituationFixTip>
         </span>
       ) : (
         <Badge key={status} tone={requestStatusTone(status)}>

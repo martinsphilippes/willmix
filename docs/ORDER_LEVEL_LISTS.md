@@ -326,6 +326,7 @@ Ação `createRequestCustomerLoginAction` (`src/app/app/actions/request-fix.ts`)
 ### Onde aparece
 
 - Na lista de Encomendas (2ª linha da Próxima ação) e na página da encomenda (`/app/requests/batch/<id>`), pela mesma peça (`ResponsibleTip`).
+- No selo "Sem responsável definido" da coluna Situação, na lista e na página da encomenda (pedido do dono, 20/11/2026: "como Adm alterar na tela mesmo"). Para quem pode resolver, tocar no selo abre o mesmo balão da Próxima ação, com o formulário ou o botão do aviso (`SituationFixTip`). Sem botão, o selo fica como era.
 - O balão com botões vira um diálogo (`InfoTip` com `interactive`). Funciona com toque, mouse e teclado: Enter abre e leva o foco para dentro; Esc fecha e volta ao nome.
 - O rascunho não muda: quem age nele é sempre quem o salvou.
 
@@ -348,4 +349,4 @@ Criado o login e atualizada a tela, a pendência some. A regra é a mesma do bal
   - "Escolher o login na encomenda" quando o cliente já tem outro login;
   - os erros;
   - nas Pendências, o formulário ou o "Escolher o login" só para o administrador, e a pendência que some depois de criar o login.
-- `tests/e2e/turns.spec.ts`: um cliente novo sem login recebe uma venda; no balão, o formulário com as sugestões e o login criado; fechar e abrir sem perder; "Atualizar a tela" mostra quem confirma; o cliente entra com a senha provisória e acha "Confirmar pedido". Nas Pendências, o mesmo formulário pela pendência "Login do cliente a definir", que some depois de criar o login.
+- `tests/e2e/turns.spec.ts`: um cliente novo sem login recebe uma venda; no balão, o formulário com as sugestões e o login criado; fechar e abrir sem perder; "Atualizar a tela" mostra quem confirma; o cliente entra com a senha provisória e acha "Confirmar pedido". Nas Pendências, o mesmo formulário pela pendência "Login do cliente a definir", que some depois de criar o login. Na Situação, o selo "Sem responsável definido" abre o mesmo formulário na lista e na página da encomenda, e depois de criar o login volta a ser "Aguardando cliente".
