@@ -95,3 +95,50 @@ test("Clientes: quem não é administrador não vê Acessos dos clientes nem des
   await expect(page.locator("[data-account-login]").first()).toBeVisible();
   await expect(page.locator("[data-account-login-toggle]")).toHaveCount(0);
 });
+
+test("Ficha do cliente: alterar o e-mail do login (administrador); entra com o novo e a mesma senha", async ({
+  page,
+}) => {
+  // Dono, 20/11/2026: o login foi criado com o e-mail digitado errado.
+  const tag = `le${Date.now().toString(36)}`;
+  const wrong = `gabrial-${tag}@cliente.com`;
+  const right = `gabriela-${tag}@cliente.com`;
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/customers/new");
+  await page.fill('input[name="name"]', `Cliente ${tag}`);
+  await page.getByRole("button", { name: "Salvar" }).first().click();
+  await page.waitForURL(/\/app\/customers\/[^/?#]+\/edit(#access)?$/);
+  const id = new URL(page.url()).pathname.split("/").at(-2)!;
+  const card = page.locator("[data-party-access]");
+  await card.locator('input[name="name"]').fill(`Gabriela ${tag}`);
+  await card.locator('input[name="login"]').fill(wrong);
+  await card.locator('input[name="password"]').fill(PASSWORD);
+  await card.locator("[data-party-access-create]").click();
+  await page.waitForURL(/saved=user/);
+
+  // Ficha: "Alterar e-mail", com o login de hoje já no campo.
+  await page.goto(`/app/customers/${id}?tab=info`);
+  const box = page.locator("[data-account-login-email]");
+  await box.locator("summary").click();
+  const input = box.locator("[data-account-login-email-input]");
+  await expect(input).toHaveValue(wrong);
+  await input.fill(right);
+  page.once("dialog", (d) => void d.accept());
+  await box.locator("[data-account-login-email-save]").click();
+  await page.waitForURL(/saved=login_email/);
+  await expect(
+    page.locator('[data-account-login-saved="login_email"]'),
+  ).toContainText(right);
+  await expect(
+    page.locator("li", { has: page.locator("[data-account-login]") }),
+  ).toContainText(right);
+
+  // Entra com o novo e a mesma senha; o antigo não entra mais.
+  await login(page, right);
+  await page.context().clearCookies();
+  await page.goto("/login");
+  await page.getByLabel(/e-mail|email|邮箱/i).fill(wrong);
+  await page.getByLabel(/senha|password|密码/i).fill(PASSWORD);
+  await page.getByRole("button", { name: /entrar|sign in|登录/i }).click();
+  await expect(page.getByText("Credenciais inválidas")).toBeVisible();
+});

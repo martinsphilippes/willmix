@@ -208,3 +208,61 @@ export async function supabaseEnsureUser(
     throw error;
   }
 }
+
+/**
+ * A conta do Auth pelo e-mail (exato). A ligação entre o login do portal e
+ * a conta é o e-mail: a lista do Auth é filtrada por ele (`filter`) e, se o
+ * filtro não existir na versão do Auth, percorrida por páginas.
+ */
+export async function supabaseUserIdByEmail(
+  email: string,
+): Promise<string | null> {
+  const { service } = env();
+  const target = email.trim().toLowerCase();
+  const perPage = 1000;
+  for (let page = 1; page <= 50; page++) {
+    const body = await call(
+      `admin/users?page=${page}&per_page=${perPage}&filter=${encodeURIComponent(target)}`,
+      { method: "GET", key: service },
+    );
+    const users = Array.isArray(body.users)
+      ? (body.users as Array<{ id?: unknown; email?: unknown }>)
+      : [];
+    const hit = users.find(
+      (u) => String(u.email ?? "").toLowerCase() === target,
+    );
+    if (hit?.id) return String(hit.id);
+    if (users.length < perPage) return null;
+  }
+  return null;
+}
+
+/**
+ * Troca o e-mail da conta (dono, 20/11/2026; docs/EQUIPE_ACESSOS.md,
+ * "Alterar e-mail do login"): a senha continua a mesma e o novo e-mail já
+ * nasce confirmado. "missing": não há conta com o e-mail antigo (login que
+ * nunca definiu senha); quem chama decide o que fazer.
+ */
+export async function supabaseChangeEmail(
+  oldEmail: string,
+  newEmail: string,
+): Promise<"ok" | "missing"> {
+  const { service } = env();
+  const id = await supabaseUserIdByEmail(oldEmail);
+  if (!id) return "missing";
+  try {
+    await call(`admin/users/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      key: service,
+      body: JSON.stringify({ email: newEmail, email_confirm: true }),
+    });
+  } catch (error) {
+    if (
+      error instanceof SupabaseAuthError &&
+      (error.status === 422 || error.code === "email_exists")
+    )
+      throw new Error("user_email_taken");
+    throw error;
+  }
+  return "ok";
+}

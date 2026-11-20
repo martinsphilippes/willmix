@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
+import { loginLabel } from "@/lib/auth/login-id";
 import { loadSupplierScores } from "@/lib/services/supplier-score-load";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
@@ -39,7 +40,10 @@ import { accountBase, accountLabels } from "./labels";
 import { STOCK_OPTION } from "@/lib/services/stock-party";
 import { ChatOpenButton } from "@/components/chat-open-button";
 import { createUserAction } from "../actions";
-import { setPartnerLoginActiveAction } from "../actions/access-state";
+import {
+  changeLoginEmailAction,
+  setPartnerLoginActiveAction,
+} from "../actions/access-state";
 import { Alert, Field, Input, Select } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { catalogError } from "../products/_components/shared";
@@ -509,6 +513,16 @@ export async function PartyAccountDetail({
                 </Alert>
               </div>
             ) : null}
+            {param(sp.saved) === "login_email" ? (
+              <div className="mb-3" data-account-login-saved="login_email">
+                <Alert tone="success">
+                  {t("access.login.email.saved", {
+                    name: (param(sp.who) ?? "").slice(0, 120),
+                    login: (param(sp.login) ?? "").slice(0, 254),
+                  })}
+                </Alert>
+              </div>
+            ) : null}
             {param(sp.saved) === "user" ? (
               <div className="mb-3" data-login-created>
                 <Alert tone="success">
@@ -583,6 +597,58 @@ export async function PartyAccountDetail({
                         </form>
                       ) : null}
                     </span>
+                    {/* Alterar o e-mail do login (dono, 20/11/2026;
+                        docs/EQUIPE_ACESSOS.md): só o administrador. A senha
+                        continua; o login antigo deixa de entrar. */}
+                    {isAdmin(user) ? (
+                      <details
+                        className="w-full"
+                        data-account-login-email={u.id}
+                      >
+                        <summary className="cursor-pointer text-xs font-medium text-brand-700 hover:text-brand-800">
+                          {t("access.login.email.change")}
+                        </summary>
+                        <form
+                          action={changeLoginEmailAction}
+                          className="mt-2 flex flex-wrap items-end gap-2"
+                        >
+                          <input type="hidden" name="userId" value={u.id} />
+                          <input
+                            type="hidden"
+                            name="back"
+                            value={`${accountBase(side)}/${party.id}?tab=info`}
+                          />
+                          <div className="min-w-0 flex-1 basis-64">
+                            <Field
+                              label={t("access.login.email.new")}
+                              hint={t("access.login.email.hint")}
+                            >
+                              <Input
+                                name="login"
+                                defaultValue={loginLabel(u.email)}
+                                required
+                                minLength={3}
+                                maxLength={254}
+                                autoComplete="off"
+                                autoCapitalize="none"
+                                spellCheck={false}
+                                data-account-login-email-input=""
+                              />
+                            </Field>
+                          </div>
+                          <SubmitButton
+                            variant="primary"
+                            className="px-2.5 py-1 text-xs"
+                            confirmText={t("access.login.email.confirm", {
+                              name: u.name,
+                            })}
+                            data-account-login-email-save=""
+                          >
+                            {t("access.login.email.save")}
+                          </SubmitButton>
+                        </form>
+                      </details>
+                    ) : null}
                   </li>
                 ))}
               </ul>

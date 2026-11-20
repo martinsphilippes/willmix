@@ -2,11 +2,13 @@
 
 import { z } from "zod";
 import {
+  changeLoginEmail,
   reactivateTeamMember,
   setPartnerLoginActive,
   setRequireActiveParty,
   setTeamLoginActive,
 } from "@/lib/services/access-state";
+import { loginLabel } from "@/lib/auth/login-id";
 import { requireUser, run, str, withQuery } from "./helpers";
 
 /*
@@ -38,6 +40,30 @@ export async function setPartnerLoginActiveAction(form: FormData) {
       withQuery(back, "saved", active ? "login_on" : "login_off"),
       "login",
       target.name.slice(0, 120),
+    );
+  });
+}
+
+/**
+ * Alterar o e-mail do login de cliente ou parceiro (dono, 20/11/2026;
+ * docs/EQUIPE_ACESSOS.md): só o administrador (o serviço confere). Volta
+ * para a ficha com o login novo na mensagem; a senha não muda.
+ */
+export async function changeLoginEmailAction(form: FormData) {
+  const user = await requireUser();
+  const back = backOf(form);
+  await run(back, async () => {
+    const userId = z.string().min(1).max(100).parse(str(form, "userId"));
+    const login = z.string().min(3).max(254).parse(str(form, "login"));
+    const updated = await changeLoginEmail(user, userId, login);
+    return withQuery(
+      withQuery(
+        withQuery(back, "saved", "login_email"),
+        "login",
+        loginLabel(updated.email).slice(0, 254),
+      ),
+      "who",
+      updated.name.slice(0, 120),
     );
   });
 }

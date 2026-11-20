@@ -2,7 +2,7 @@ import { cache } from "react";
 import { getStore, type Party, type User } from "@/lib/db";
 import { listByIds } from "@/lib/db/lookup";
 import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
-import { loginLabel } from "@/lib/auth/login-id";
+import { loginLabel, loginToEmail } from "@/lib/auth/login-id";
 import {
   ACCESS_RULES_KEY,
   accessBlockOf,
@@ -155,6 +155,76 @@ export async function setPartnerLoginActive(
     `${active ? "Login reativado" : "Login desativado"}: ${target.name} (${loginLabel(target.email)})`,
     { active: target.active },
     { active },
+  );
+  return updated;
+}
+
+/**
+ * Alterar o e-mail do login de cliente ou parceiro (dono, 20/11/2026;
+ * docs/EQUIPE_ACESSOS.md, "Alterar e-mail do login"): só o administrador. O
+ * login continua o mesmo (cadastro, papel, telas e senha); muda só o e-mail
+ * ou o nome de usuário com que ele entra, e o antigo deixa de entrar. No
+ * Supabase, a conta do Auth troca junto (a senha continua); se a linha do
+ * portal não gravar, a conta volta ao e-mail antigo.
+ */
+export async function changeLoginEmail(
+  user: User,
+  userId: string,
+  login: string,
+): Promise<User> {
+  if (!isAdmin(user)) throw new ForbiddenError();
+  const store = getStore();
+  const target = await store.get("users", userId);
+  if (
+    !target ||
+    !target.partyId ||
+    target.role === "admin" ||
+    target.role === "operator"
+  )
+    throw new AccessStateError("not_found");
+  const email = loginToEmail(login);
+  if (!email) throw new AccessStateError("user_login_invalid");
+  const before = (target.email ?? "").trim().toLowerCase();
+  if (email === before) throw new AccessStateError("login_email_same");
+  const taken = await store.list("users", { filter: { email }, limit: 1 });
+  if (taken.some((u) => u.id !== target.id))
+    throw new AccessStateError("user_email_taken");
+  // O Appwrite está parado desde 11/11/2026 (docs/SUPABASE.md).
+  if (store.mode === "appwrite")
+    throw new AccessStateError("login_email_unsupported");
+  let authChanged = false;
+  if (store.mode === "supabase") {
+    const auth = await import("@/lib/auth/supabase-auth");
+    if ((await auth.supabaseChangeEmail(before, email)) === "ok")
+      authChanged = true;
+    // Sem conta com o e-mail antigo (nunca definiu a senha): a conta nasce
+    // com o novo, e a senha se define pelo "Esqueci minha senha".
+    else await auth.supabaseEnsureUser(email, target.name);
+  }
+  let updated: User;
+  try {
+    updated = await store.update("users", target.id, { email });
+  } catch (error) {
+    if (authChanged) {
+      const { supabaseChangeEmail } = await import("@/lib/auth/supabase-auth");
+      await supabaseChangeEmail(email, before).catch((undo) =>
+        console.error(
+          "[login-email] conta do Auth com o e-mail novo",
+          target.id,
+          undo,
+        ),
+      );
+    }
+    throw error;
+  }
+  await audit(
+    user,
+    "user.email",
+    "user",
+    target.id,
+    `E-mail do login alterado: ${target.name} (${loginLabel(before)} → ${loginLabel(email)})`,
+    { email: before },
+    { email },
   );
   return updated;
 }
