@@ -98,6 +98,8 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/freight/tariff", "freightTariff"],
   ["/app/freight", "freight"],
   ["/app/products", "products"],
+  // Fichas técnicas dos fornecedores (dono, 20/11/2026): o Cadastro revisa.
+  ["/app/supplier-sheets", "products"],
   ["/app/inventory", "products"],
   ["/app/booking", "booking"],
   ["/app/requests", "requests"],

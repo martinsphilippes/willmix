@@ -216,17 +216,46 @@ Para caberem três linhas de cards no Mac e no Full HD, o card de "Em andamento"
 - **Fila**: os cards usam a mesma última compra em duas linhas.
 - **Dicas dos rótulos curtos**: ficam dentro do próprio card, com até 10rem. A grade rola para os lados e cortaria o que sai dela; por isso nada em volta de uma dica pode cortar o texto (sem `truncate`).
 
+## Ficha técnica na cotação (dono, 20/11/2026)
+
+Pedido do dono: o fornecedor que nunca negociou o produto informa a ficha técnica na cotação e o que já negociou confere e ratifica o que temos, uma vez só, com o aviso de que o portal novo está revalidando o cadastro. Decisões do dono ("1 a 6 recomendado"; depois "Sankhya fora", "porto sempre", "Sem código", "regra nova só na foto da balança", "dados da empresa ficam como estão"):
+
+| #   | Decisão                                                                                                                                                                                                         |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Foto na balança**: pedida na cotação, não exigida; exigida da vencedora na ficha de compra, sem aceitar a do cadastro que é de outro fornecedor.                                                              |
+| 2   | **Ficha técnica obrigatória na cotação**, na primeira vez do par produto × fornecedor.                                                                                                                          |
+| 3   | **A ratificação fica dentro da cotação**, só dos produtos cotados.                                                                                                                                              |
+| 4   | **A correção passa pelo Cadastro** e **não muda o cadastro do produto nem o Sankhya** (o cadastro acompanha o Sankhya, a carga o atualiza): fica na ficha do fornecedor, usada nas cotações e nos pedidos dele. |
+| 5   | **O preço da última compra não aparece** para o fornecedor (o comparativo continua mostrando para a Wellmix).                                                                                                   |
+| 6   | **Os dados da empresa** (endereço, contatos, banco) ficam como estão: sem revalidação nesta entrega.                                                                                                            |
+| 7   | **Comercial obrigatório em toda cotação**: preço, moeda, incoterm, prazo de produção, pedido mínimo e porto (também no EXW).                                                                                    |
+| 8   | **Peso bruto da caixa master** (o que o fornecedor tem na caixa e no packing list); peso líquido por peça. A ficha de compra guarda o bruto por peça (caixa ÷ peças).                                           |
+
+- **A ficha técnica** (`supplier_product_sheets`, uma linha por par; regras puras em `src/lib/supplier-sheet.ts`, serviço em `src/lib/services/supplier-sheets.ts`): peças por caixa master; peças por inner ou **"Sem inner"** (0); medidas da caixa master ou o CBM dela (o das medidas sem arredondar); peso líquido por peça; peso bruto da caixa master; material; código do item na fábrica ou **"Sem código"**. Avisos que não impedem o envio: medidas e CBM que não batem (tolerância de CBM das Configurações), inner maior que a master ou que não fecha a master, caixa mais leve que as peças dentro dela.
+- **Quem nunca vendeu** (sem pedido de compra não cancelado com o produto e sem o vínculo do Sankhya com última compra): a ficha vem em branco e a cotação deixa de mostrar a nossa caixa (as caixas saem da caixa dele: "Pela sua caixa: N caixas master · X m³", uma conta por programação). Grava como **informada**.
+- **Quem já vendeu**: a ficha vem com o que temos (a ficha do último pedido dele com o produto, senão a ficha mestre, senão o cadastro; a caixa vem inteira de uma fonte só, a regra "CBM só da mesma caixa"; o código da fábrica só o dele). O aviso de revalidação aparece no topo, o campo que ele muda fica marcado com "Cadastro: X" e **"Confirmo os dados deste produto"** é obrigatório. Sem mudar nada, grava como **confirmada**; com mudança, **corrigida** e vai para o Cadastro. Arredondamento do que mostramos (até 0,5%), medidas em outra ordem e campo que estava vazio não são correção.
+- **Uma vez por par**: confirmada ou informada, a ficha não é pedida de novo; nas próximas cotações aparece "Ficha técnica confirmada em dd/mm/aaaa" e só o comercial. Enquanto o prazo corre, ele corrige a ficha que mandou na mesma cotação. Recusada pelo Cadastro, volta a ser pedida (com o motivo).
+- **Foto na balança** (opcional na cotação): sobe na hora, sem apagar o que foi digitado (`addQuoteScalePhotoAction`, documento sem pedido: só a Wellmix e quem enviou abrem). Para quem já vendeu, só é pedida onde o produto não tem foto na balança no cadastro.
+- **Comparativo** (`/app/purchase-quotes/[id]`, "Ficha técnica das respostas"): por fornecedor e produto, a ficha (informada, confirmada, corrigida ou confirmada antes), peças por master, inner, medidas, CBM, pesos, material, código, **caixas master e m³ total pela caixa dele**, a foto e os avisos em relação ao cadastro com a tolerância da inspeção (peso, medidas, CBM; outra quantidade por caixa sempre avisa). Sem preço: vale para quem não tem "Ver preço de compra".
+- **A vencedora**: a Solicitação ao fornecedor nasce com a caixa master, o inner, o CBM, os pesos, o material e o código que ela informou (as medidas da solicitação são do produto e não recebem as da caixa).
+- **Revisão do Cadastro** (`/app/supplier-sheets` e `/app/supplier-sheets/[id]`, tela Produtos; fora do menu, pelas Pendências e pelo comparativo): o nosso cadastro ao lado do informado, campo a campo ("Mudou", "Preencheu"), a foto e **Aceitar** ou **Recusar** (motivo obrigatório; o fornecedor é avisado na língua dele). Ação nova **"Revisar a ficha técnica do fornecedor"** (`supplierSheet.review`), padrão da função Cadastro (`catalog`); pendência `supplier_sheet_review` (Cadastros → Produtos). Nada muda no cadastro do produto nem no Sankhya.
+- **Ficha de compra do pedido**: a foto na balança do cadastro só vale para quem já vendeu o produto (fora este pedido), para o fornecedor principal (o de referência da ficha mestre) ou quando foi ele que a enviou; a que ele mandou na cotação vale e aparece na ficha ("Foto na balança enviada na cotação"). As outras 4 fotos seguem como antes. O rascunho da ficha nasce da ficha técnica dele (`sheet.prefilled.supplier`), antes da ficha mestre e do cadastro; a ficha do último pedido dele só manda se for mais nova. **Pedido direto**: a ficha de compra salva completa pelo fornecedor, com o inner e o código, vale como a ficha técnica do par (mesmo aviso). A ficha de compra continua completando o cadastro com o que falta, como antes.
+- **Esquema (aditivo)**: tabela `supplier_product_sheets` (índice único produto × fornecedor) e `purchase_quote_responses.items` (JSON). Nenhuma cotação de compra nem ficha de compra existia em produção: nada a migrar.
+- **Dependência**: em 20/11/2026, nenhum dos 78 fornecedores com compra (15.971 pares produto × fornecedor nos produtos ativos) tinha login no portal; sem login a cotação não chega (a Estratégia mostra "sem login ativo"), e a revalidação começa com os logins.
+- **Testes**: `tests/unit/supplier-sheet.test.ts` (o que falta, avisos, o que mudou, comparativo, a caixa de uma fonte só, caixas por programação; comercial obrigatório; quem nunca vendeu e a próxima cotação; quem já vendeu, correção recusada e depois confirmada, sem mudar o cadastro; aceitar; pedido direto; a foto da balança no pedido; a vencedora na Solicitação ao fornecedor) e as E2E `tests/e2e/purchase-quote.spec.ts` (a ficha no envio, o que falta, as caixas pela caixa dele no comparativo, a lista e a ficha do Cadastro) e `tests/e2e/purchase-strategy.spec.ts` (o aviso de revalidação para o fornecedor da última compra).
+
 ## Andamento
 
-| PR  | Entrega                                                                                       | Situação |
-| --- | --------------------------------------------------------------------------------------------- | -------- |
-| 1   | Mapa (MAPA_PROCESSO.md gerado do data.json), decisões e este documento                        | feito    |
-| 2   | Demanda única: encomenda pelas 4 portas, divisão do carrinho, reposição manual, função Vendas | feito    |
-| 3   | Estratégia de compra, aprovação e pedido de compra direto                                     | feito    |
-| 4   | Cotação de compra: fornecedor × linha, 24 h, isolamento, quadro comparativo                   | feito    |
-| 5   | Limpeza dos restos da RFQ                                                                     | feito    |
-| 6   | Estratégia de Compra por produto: envio pela Encomenda, destinatários, resultado e reenvio    | feito    |
-| 7   | Estratégia por solicitação: uma escolha para todos os produtos, lista do País × Família       | feito    |
-| 8   | Embalagem e cubagem na Estratégia; estratégia parada por encomenda cancelada                  | feito    |
-| 9   | Encerrar a estratégia parada (Comprador e Diretoria; as abertas voltam para a fila)           | feito    |
-| 10  | Grade de estratégias: três colunas de cards compactos, Detalhes e Gerar pedido em painel      | feito    |
+| PR  | Entrega                                                                                        | Situação |
+| --- | ---------------------------------------------------------------------------------------------- | -------- |
+| 1   | Mapa (MAPA_PROCESSO.md gerado do data.json), decisões e este documento                         | feito    |
+| 2   | Demanda única: encomenda pelas 4 portas, divisão do carrinho, reposição manual, função Vendas  | feito    |
+| 3   | Estratégia de compra, aprovação e pedido de compra direto                                      | feito    |
+| 4   | Cotação de compra: fornecedor × linha, 24 h, isolamento, quadro comparativo                    | feito    |
+| 5   | Limpeza dos restos da RFQ                                                                      | feito    |
+| 6   | Estratégia de Compra por produto: envio pela Encomenda, destinatários, resultado e reenvio     | feito    |
+| 7   | Estratégia por solicitação: uma escolha para todos os produtos, lista do País × Família        | feito    |
+| 8   | Embalagem e cubagem na Estratégia; estratégia parada por encomenda cancelada                   | feito    |
+| 9   | Encerrar a estratégia parada (Comprador e Diretoria; as abertas voltam para a fila)            | feito    |
+| 10  | Grade de estratégias: três colunas de cards compactos, Detalhes e Gerar pedido em painel       | feito    |
+| 11  | Ficha técnica na cotação: quem nunca vendeu informa, quem já vendeu ratifica uma vez; Cadastro | feito    |

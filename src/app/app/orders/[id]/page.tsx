@@ -4384,7 +4384,7 @@ function RequirementRow({
     missing: string;
     count: number;
     started: boolean;
-    source: "previous" | "catalog" | "master" | null;
+    source: "previous" | "catalog" | "master" | "supplier" | null;
   } | null;
 }) {
   const isSheet = r.key === "purchase_sheet";

@@ -105,6 +105,8 @@ export function kindGate(
       return { action: "purchaseQuote.choose" };
     case "purchase_quote_approve":
       return { action: "purchaseQuote.approve" };
+    case "supplier_sheet_review":
+      return { action: "supplierSheet.review" };
     case "review":
       return { screen: "reviews" };
     // Produto novo a aprovar: já vem só para o administrador e os superiores

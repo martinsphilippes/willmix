@@ -217,10 +217,25 @@ export default async function PurchaseSheetPage({
         {!view.saved && access.editSupplier ? (
           <Alert tone={view.prefillSource === "catalog" ? "neutral" : "info"}>
             {view.prefillSource === "previous" ||
-            view.prefillSource === "master"
+            view.prefillSource === "master" ||
+            view.prefillSource === "supplier"
               ? t(`sheet.prefilledNotice.${view.prefillSource}`)
               : t("sheet.prefilled")}
           </Alert>
+        ) : null}
+        {/* Revalidação de quem já vendeu, uma vez só (dono, 20/11/2026). */}
+        {view.revalidate && access.editSupplier ? (
+          <div data-sheet-revalidate>
+            <Alert tone="brand">
+              <p className="font-semibold">
+                {t("supplierSheet.disclaimer.title")}
+              </p>
+              <p className="mt-1">{t("supplierSheet.disclaimer.body")}</p>
+              <p className="mt-1 text-xs">
+                {t("supplierSheet.purchaseSheet.hint")}
+              </p>
+            </Alert>
+          </div>
         ) : null}
         {!access.editSupplier && !access.editCustoms ? (
           <Alert tone="neutral">{t("sheet.readOnly")}</Alert>
@@ -333,10 +348,44 @@ export default async function PurchaseSheetPage({
           ownerId={id}
           addAction={addPurchaseSheetPhotosAction}
           removeAction={removePurchaseSheetPhotoAction}
-          coveredKinds={view.catalogPhotoKinds}
+          coveredKinds={
+            view.ownScalePhotoDocumentId
+              ? [...view.catalogPhotoKinds, "weight_scale"]
+              : view.catalogPhotoKinds
+          }
+          given={
+            view.ownScalePhotoDocumentId
+              ? [
+                  {
+                    // A foto na balança que ele mandou na cotação (vale como enviada).
+                    id: `quote-${view.ownScalePhotoDocumentId}`,
+                    createdAt: view.order.createdAt,
+                    updatedAt: view.order.createdAt,
+                    productId: null,
+                    sourcingItemId: null,
+                    orderId: null,
+                    documentId: view.ownScalePhotoDocumentId,
+                    kind: "weight_scale",
+                    caption: null,
+                    takenAt: null,
+                    takenByUserId: null,
+                    derivedFromPhotoId: null,
+                    isPrimary: false,
+                  },
+                ]
+              : []
+          }
+          givenTitle={t("supplierSheet.purchaseSheet.givenTitle")}
+          givenNote={t("supplierSheet.purchaseSheet.givenNote")}
           className="lg:order-4"
           open={certifier}
-          hint={certifier ? t("certFlow.sheet.photosHint") : undefined}
+          hint={
+            certifier
+              ? t("certFlow.sheet.photosHint")
+              : view.scaleOwnRequired
+                ? `${t("sheet.photos.hint")} ${t("supplierSheet.purchaseSheet.scaleOwn")}`
+                : undefined
+          }
           missing={shownMissing}
           kinds={
             user.role === "supplier"

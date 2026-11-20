@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
+import { sheetFor } from "./quote-sheet-fixture";
 
 /*
  * Cotação de compra (mapa B13; dono, 15/11/2026; docs/PURCHASE_DEMAND.md):
@@ -89,6 +90,7 @@ const answer = (unitPrice: number) => ({
   port: "Ningbo",
   moq: 500,
   note: null,
+  sheets: [sheetFor("prod-jarra")],
 });
 
 describe("fornecedores pela linha", () => {

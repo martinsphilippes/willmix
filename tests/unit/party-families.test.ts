@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { withTempStore } from "./setup";
+import { sheetFor } from "./quote-sheet-fixture";
 
 /*
  * Grupo de produto (família) do parceiro (dono, 18/11/2026;
@@ -408,6 +409,7 @@ describe("cotação de compra pelas famílias", () => {
         port: "Ningbo",
         moq: 500,
         note: null,
+        sheets: [sheetFor("prod-jarra")],
       },
       plus(1),
     );

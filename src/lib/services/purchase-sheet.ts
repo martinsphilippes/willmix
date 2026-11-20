@@ -36,6 +36,13 @@ import {
   type SheetRecords,
 } from "./sheet-records";
 import { productSupplierLink } from "./product-suppliers";
+import {
+  pairNeedsRevalidation,
+  purchaseSheetFields,
+  recordFromPurchaseSheet,
+  scalePhotoForOrder,
+  settledPairSheet,
+} from "./supplier-sheets";
 import { scheduleToLots } from "@/lib/workflow/request-schedule";
 import { storePhotoDocument, type PhotoSource } from "./documents";
 import {
@@ -273,7 +280,12 @@ export async function containerCapacity(type: string | null): Promise<{
 
 /** Rascunho a partir do cadastro (produto, fornecedor): menos digitação. */
 /** De onde veio o rascunho da ficha ainda não salva no pedido. */
-export type SheetPrefillSource = "previous" | "catalog" | "master";
+export type SheetPrefillSource =
+  | "previous"
+  | "catalog"
+  | "master"
+  // Ficha técnica do fornecedor (cotação ou ficha anterior; dono, 20/11/2026).
+  | "supplier";
 
 /**
  * Campos que valem da ficha de um pedido anterior: tudo menos a programação
@@ -363,16 +375,32 @@ async function prefillBase(
     supplier,
     productForSupplier(product, order.supplierId, link),
   );
+  // Ficha técnica que o próprio fornecedor informou ou confirmou (cotação ou
+  // ficha de compra anterior; dono, 20/11/2026): vale antes da ficha mestre e
+  // do cadastro, que podem ser da peça de outro fornecedor. A ficha do último
+  // pedido dele só manda se for mais nova.
+  const pair = await settledPairSheet(order.supplierId, product?.id ?? null);
+  const pairFields =
+    pair && (!earlier || pair.updatedAt > earlier.sheet.updatedAt)
+      ? (Object.fromEntries(
+          Object.entries(purchaseSheetFields(pair.data)).filter(
+            ([k, v]) =>
+              v !== null &&
+              !(k === "factoryItemCode" && records.factoryItemCode),
+          ),
+        ) as Partial<SheetInput>)
+      : null;
   if (master && !earlier) {
     return {
-      prefillSource: "master",
+      prefillSource: pairFields ? "supplier" : "master",
       ...master,
+      ...pairFields,
       productId: product?.id ?? null,
       supplierName: supplier?.name ?? master.supplierName ?? null,
       supplierPhone: supplier?.phone ?? master.supplierPhone ?? null,
       currency: master.currency ?? null,
       price: master.price ?? null,
-      lots: requestLots(master.masterCartonQty),
+      lots: requestLots(pairFields?.masterCartonQty ?? master.masterCartonQty),
       ...records,
     };
   }
@@ -390,14 +418,17 @@ async function prefillBase(
     }
     return {
       ...reused,
+      ...pairFields,
       productId: product?.id ?? earlier.sheet.productId ?? null,
-      lots: requestLots(earlier.sheet.masterCartonQty),
-      prefillSource: earlier.source,
+      lots: requestLots(
+        pairFields?.masterCartonQty ?? earlier.sheet.masterCartonQty,
+      ),
+      prefillSource: pairFields ? "supplier" : earlier.source,
       ...records,
     };
   }
   return {
-    prefillSource: "catalog",
+    prefillSource: pairFields ? "supplier" : "catalog",
     productId: product?.id ?? null,
     ...records,
     currency: currencyOf(link?.currency ?? (own ? product?.currency : null)),
@@ -415,7 +446,8 @@ async function prefillBase(
     colorPantones: product?.colorPantones ?? null,
     material: product?.material ?? null,
     ncm: product?.ncm ?? null,
-    lots: requestLots(product?.masterBoxQty),
+    ...pairFields,
+    lots: requestLots(pairFields?.masterCartonQty ?? product?.masterBoxQty),
   };
 }
 
@@ -436,7 +468,14 @@ async function photoKindsDone(orderId: string, photos: ProductPhoto[]) {
   const request0 = order0
     ? await store0.get("requests", order0.requestId)
     : null;
-  for (const k of await catalogPhotoKinds(request0?.productId)) kinds.add(k);
+  // A foto na balança do cadastro só vale para quem já vendeu o produto; a
+  // que o fornecedor mandou (na cotação) vale sempre (dono, 20/11/2026).
+  const scale = order0
+    ? await scalePhotoForOrder(order0, request0?.productId)
+    : { catalogCounts: true, ownDocumentId: null };
+  for (const k of await catalogPhotoKinds(request0?.productId))
+    if (k !== "weight_scale" || scale.catalogCounts) kinds.add(k);
+  if (scale.ownDocumentId) kinds.add("weight_scale");
   if (!kinds.has("weight_scale")) {
     // A foto na balança já enviada no checklist do pedido (fase 5g: pelo
     // item, sem a etapa).
@@ -467,6 +506,15 @@ export interface SheetView {
   photos: ProductPhoto[];
   /** Tipos de foto cobertos pelo cadastro do produto (não precisam ser reenviadas). */
   catalogPhotoKinds: string[];
+  /**
+   * Foto na balança (dono, 20/11/2026): a que o fornecedor mandou na
+   * cotação (vale como enviada) e se a do cadastro não vale para ele (é o
+   * primeiro pedido dele com o produto).
+   */
+  ownScalePhotoDocumentId: string | null;
+  scaleOwnRequired: boolean;
+  /** Já vendeu o produto e ainda não confirmou a ficha técnica (o aviso de revalidação). */
+  revalidate: boolean;
   /** Bloco Fornecedor: o que falta nos cadastros do fornecedor e do produto. */
   records: SheetRecords;
   plan: SheetPlan;
@@ -513,6 +561,7 @@ export async function getSheetForUser(
     sheet.productionStartAt = productionStart.at ?? sheet.productionStartAt;
   const photos = await getSheetPhotos(orderId);
   const container = await containerCapacity(sheet.containerType ?? null);
+  const scale = await scalePhotoForOrder(order, request?.productId);
   return {
     order,
     access,
@@ -538,7 +587,14 @@ export async function getSheetForUser(
     missing: ((all) => (isWellmix(user) ? all : supplierMissing(all)))(
       missingForCompletion(sheet, await photoKindsDone(orderId, photos)),
     ),
-    catalogPhotoKinds: await catalogPhotoKinds(request?.productId),
+    catalogPhotoKinds: (await catalogPhotoKinds(request?.productId)).filter(
+      (k) => k !== "weight_scale" || scale.catalogCounts,
+    ),
+    ownScalePhotoDocumentId: scale.ownDocumentId,
+    scaleOwnRequired: !scale.catalogCounts && !scale.ownDocumentId,
+    revalidate:
+      user.role === "supplier" &&
+      (await pairNeedsRevalidation(order, request?.productId)),
     containerType: container.type,
     containerTypes: container.types,
   };
@@ -667,6 +723,15 @@ export async function saveSheet(
     );
   }
   const missing = await syncRequirements(user, order, sheet);
+  // Pedido direto (dono, 20/11/2026): a ficha completa do fornecedor vale como
+  // a ficha técnica do par, uma vez só (falhar aqui não desfaz a ficha).
+  if (!supplierMissing(missing).length)
+    await recordFromPurchaseSheet(user, order, {
+      ...sheet,
+      productId: sheet.productId ?? null,
+    }).catch((error) =>
+      console.error("[purchase-sheet] ficha técnica do par", error),
+    );
   // Programação de compra é da Wellmix: para os outros não é pendência.
   return {
     sheet,

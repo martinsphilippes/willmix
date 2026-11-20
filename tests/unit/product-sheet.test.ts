@@ -185,10 +185,25 @@ describe("ficha mestre do produto", () => {
     expect(sheetView.sheet.packageType).toBe("COLOR BOX");
     expect(sheetView.sheet.incoterm ?? null).toBeNull();
     expect(sheetView.photos).toEqual([]);
+    // Primeiro pedido do fornecedor A com a jarra e a foto do cadastro foi
+    // enviada pela Wellmix (dono, 20/11/2026): a foto na balança tem de ser a
+    // da peça dele; as outras 4 fotos do cadastro valem como antes.
+    expect(sheetView.catalogPhotoKinds).not.toContain("weight_scale");
     expect(sheetView.catalogPhotoKinds.length).toBe(
+      sheets.SHEET_PHOTO_KINDS.length - 1,
+    );
+    expect(sheetView.scaleOwnRequired).toBe(true);
+    expect(sheetView.missing).toContain("scalePhoto");
+    // A é o fornecedor principal (o de referência da ficha mestre): vale.
+    await store.update("products", "prod-jarra", {
+      supplierId: "fornecedor-a",
+    });
+    const asMain = (await sheets.getSheetForUser(admin, order.id))!;
+    expect(asMain.catalogPhotoKinds.length).toBe(
       sheets.SHEET_PHOTO_KINDS.length,
     );
-    expect(sheetView.missing).not.toContain("scalePhoto");
+    expect(asMain.missing).not.toContain("scalePhoto");
+    await store.update("products", "prod-jarra", { supplierId: null });
   });
 
   it("adotar a ficha de um pedido atualiza a ficha mestre e as fotos que faltam", async () => {

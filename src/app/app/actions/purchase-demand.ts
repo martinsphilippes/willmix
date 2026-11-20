@@ -10,7 +10,16 @@ import { getStore } from "@/lib/db";
 import { STRATEGY_LINE_CHOICES } from "@/lib/purchase-recipients";
 import { getT } from "@/i18n/server";
 import { errorTextFor } from "@/i18n/error-text";
-import { errorCode, field, requireUser, run, str } from "./helpers";
+import {
+  errorCode,
+  field,
+  files,
+  requireUser,
+  run,
+  runInPlace,
+  str,
+  uploadedPhotoKeys,
+} from "./helpers";
 
 /*
  * Compra por demanda (mapa B10 e B14; docs/PURCHASE_DEMAND.md). Aqui só o
@@ -213,6 +222,37 @@ export async function answerQuoteAction(form: FormData) {
             .parse(parseNumberInput(raw, { int }))
         : null;
     };
+    // Ficha técnica de cada produto (dono, 20/11/2026). Número que não dá
+    // para ler fica vazio: o serviço aponta o que falta.
+    const sheetNumber = (pid: string, key: string, int = false) => {
+      const v = parseNumberInput(str(form, `sheet.${pid}.${key}`), { int });
+      return v === null || !Number.isFinite(v) || v < 0 || v > 1e9 ? null : v;
+    };
+    const sheets = decline
+      ? []
+      : productIds.map((pid) => ({
+          productId: ID.parse(pid),
+          confirmed: str(form, `sheet.${pid}.confirm`) === "1",
+          draft: form.has(`sheet.${pid}.masterBoxQty`)
+            ? {
+                masterBoxQty: sheetNumber(pid, "masterBoxQty", true),
+                innerBoxQty: sheetNumber(pid, "innerBoxQty", true),
+                noInner: str(form, `sheet.${pid}.noInner`) === "1",
+                boxLengthCm: sheetNumber(pid, "boxLengthCm"),
+                boxWidthCm: sheetNumber(pid, "boxWidthCm"),
+                boxHeightCm: sheetNumber(pid, "boxHeightCm"),
+                cbm: sheetNumber(pid, "cbm"),
+                netWeightKg: sheetNumber(pid, "netWeightKg"),
+                grossWeightBoxKg: sheetNumber(pid, "grossWeightBoxKg"),
+                material: str(form, `sheet.${pid}.material`).slice(0, 200),
+                factoryItemCode: str(
+                  form,
+                  `sheet.${pid}.factoryItemCode`,
+                ).slice(0, 80),
+                noFactoryCode: str(form, `sheet.${pid}.noFactoryCode`) === "1",
+              }
+            : null,
+        }));
     const { answerQuote } = await import("@/lib/services/purchase-quote");
     await answerQuote(user, quoteId, {
       decline,
@@ -225,8 +265,25 @@ export async function answerQuoteAction(form: FormData) {
         : field(form, "port", z.string().trim().max(120)) || null,
       moq: decline ? null : optionalNumber("moq"),
       note: field(form, "note", z.string().trim().max(2000)) || null,
+      sheets,
     });
     return `/app/purchase-quotes/${quoteId}?answered=${decline ? "declined" : "1"}`;
+  });
+}
+
+/** Foto na balança de um produto da cotação (sobe na hora; fica na tela). */
+export async function addQuoteScalePhotoAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "quoteId");
+  await runInPlace(quoteBack(id), async () => {
+    assertScreen(user, "quotes");
+    const quoteId = ID.parse(id);
+    const productId = ID.parse(str(form, "productId"));
+    const [photo] = [...files(form, "photos"), ...uploadedPhotoKeys(form)];
+    if (!photo) throw new Error("photo_required");
+    const { addQuoteScalePhoto } =
+      await import("@/lib/services/purchase-quote");
+    await addQuoteScalePhoto(user, quoteId, productId, photo);
   });
 }
 

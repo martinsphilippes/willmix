@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
   createTeamLogin,
+  fillQuoteSheet,
   grantTeamScreen,
   login,
   openReplenishment,
@@ -48,8 +49,21 @@ async function answer(
   await page.waitForURL(new RegExp(`/app/purchase-quotes/${quoteId}`));
   const form = page.locator("[data-quote-answer-form]");
   await form.locator('[data-quote-price="prod-jarra"]').fill(price);
+  // Ficha técnica (dono, 20/11/2026): sem ela e sem o comercial, o envio não
+  // sai e a tela diz o que falta.
+  if (await form.locator('[data-quote-sheet="prod-jarra"]').count()) {
+    await form.locator("[data-quote-submit]").click();
+    await expect(form.locator("[data-sheet-missing]")).toBeVisible();
+    await expect(page).not.toHaveURL(/[?&]answered=1/);
+  }
+  await fillQuoteSheet(form, "prod-jarra");
+  // 4.000 peças pela caixa dele (24 por caixa): 167 caixas master.
+  await expect(
+    form.locator('[data-sheet-your-box="prod-jarra"]'),
+  ).toContainText("167");
   await form.locator("[data-quote-lead]").fill("35");
   await form.locator("[data-quote-port]").fill("Ningbo");
+  await form.locator("[data-quote-moq]").fill("500");
   await form.locator("[data-quote-submit]").click();
   await page.waitForURL(/[?&]answered=1/);
 }
@@ -125,6 +139,13 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
     page.locator('[data-quote-response-state="expired"]'),
   ).toHaveCount(1);
   await expect(page.locator("[data-quote-reference]")).toBeVisible();
+  // Ficha técnica das respostas (dono, 20/11/2026): a caixa de cada um e as
+  // caixas e o m³ pela caixa dele (4.000 ÷ 24 = 167 caixas · 14,028 m³).
+  for (const id of ["fornecedor-a", "fornecedor-b"]) {
+    const row = page.locator(`[data-quote-sheet-row="${id}:prod-jarra"]`);
+    await expect(row.locator("[data-quote-sheet-boxes]")).toHaveText("167");
+    await expect(row.locator("[data-quote-sheet-cbm]")).toHaveText(/14[,.]028/);
+  }
   await board.locator('[data-quote-winner-option="fornecedor-b"]').check();
   await board.locator("[data-quote-choose]").click();
   await page.waitForURL(/[?&]chosen=1/);
@@ -171,6 +192,18 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
     response?.status() === 404 ||
       !(await page.locator("main").innerText()).includes("Jarra"),
   ).toBe(true);
+
+  // Fichas técnicas dos fornecedores (o Cadastro; o administrador faz tudo):
+  // a lista e a ficha de cada um, nosso cadastro ao lado do informado.
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/supplier-sheets?review=all");
+  const sheetRow = page.locator("[data-supplier-sheet-row]").first();
+  await expect(sheetRow).toBeVisible();
+  await sheetRow.locator("[data-open-link]").click();
+  await page.waitForURL(/\/app\/supplier-sheets\/[^/?]+$/);
+  await expect(
+    page.locator('[data-supplier-sheet-field="masterBoxQty"]'),
+  ).toContainText("24");
 
   await setQuoteHours(page, "24");
 });

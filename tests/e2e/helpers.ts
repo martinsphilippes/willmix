@@ -742,3 +742,36 @@ export async function createdRequestId(
   if (open) await page.goto(`/app/requests/${id}`);
   return id;
 }
+
+/**
+ * Ficha técnica de um produto na resposta da cotação (dono, 20/11/2026;
+ * docs/PURCHASE_DEMAND.md, "Ficha técnica na cotação"): na primeira vez do
+ * par produto × fornecedor, preenche tudo (24 por caixa, inner 6, 60 × 40 ×
+ * 35 cm, 0,45 kg por peça, 12,5 kg a caixa, vidro, JR-01); quem já vendeu
+ * marca "Confirmo os dados deste produto". Sem a ficha (já confirmada), nada.
+ */
+export async function fillQuoteSheet(form: Locator, productId: string) {
+  if (!(await form.locator(`[data-quote-sheet="${productId}"]`).count()))
+    return;
+  const field = (key: string) =>
+    form.locator(`[data-sheet-field="${productId}.${key}"]`);
+  const noInner = form.locator(`[data-sheet-no-inner="${productId}"]`);
+  if (await noInner.isChecked()) await noInner.uncheck();
+  const noCode = form.locator(`[data-sheet-no-code="${productId}"]`);
+  if (await noCode.isChecked()) await noCode.uncheck();
+  for (const [key, value] of [
+    ["masterBoxQty", "24"],
+    ["innerBoxQty", "6"],
+    ["boxLengthCm", "60"],
+    ["boxWidthCm", "40"],
+    ["boxHeightCm", "35"],
+    ["cbm", ""],
+    ["netWeightKg", "0,45"],
+    ["grossWeightBoxKg", "12,5"],
+    ["material", "Vidro"],
+    ["factoryItemCode", "JR-01"],
+  ] as const)
+    await field(key).fill(value);
+  const confirm = form.locator(`[data-sheet-confirm="${productId}"]`);
+  if (await confirm.count()) await confirm.check();
+}
