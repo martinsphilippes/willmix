@@ -16,7 +16,7 @@ const { createRequestBatch } = await import("@/lib/services/requests");
 const { requestStepsFor, requestTurnContext, canConfirmAs } =
   await import("@/lib/services/request-turns");
 const { peopleDirectory } = await import("@/lib/services/request-responsible");
-const { createCustomerLoginForRequest, fixDirectory } =
+const { createCustomerLoginForRequest, fixDirectory, taskFixes } =
   await import("@/lib/services/request-fix");
 const { pendingTasksFor } = await import("@/lib/services/tasks");
 const { responsibleOf, withFix } = await import("@/lib/request-responsible");
@@ -327,5 +327,75 @@ describe("criar o login do cliente pelo balão", () => {
         }),
       ),
     ).toBe("user_password_short");
+  });
+});
+
+describe("o mesmo formulário nas Pendências", () => {
+  it("a pendência Login do cliente a definir traz o formulário (sem login) ou o caminho para escolher (com login), só para o administrador", async () => {
+    const fresh = await customer(
+      "Loja das Pendências",
+      "compras@pendencias.com.br",
+    );
+    const [request] = await sale(fresh.id);
+    const tasks = await pendingTasksFor(admin);
+    const task = tasks.find(
+      (t) => t.kind === "customer_login" && t.requestId === request.id,
+    );
+    expect(task).toBeDefined();
+    const fixes = await taskFixes(admin, tasks);
+    expect(fixes.get(request.id)).toMatchObject({
+      kind: "customer_login",
+      requestId: request.id,
+      customer: "Loja das Pendências",
+      login: "compras@pendencias.com.br",
+    });
+    // Outros tipos de pendência não ganham botão.
+    expect(
+      [...fixes.keys()].every((id) =>
+        tasks.some((t) => t.kind === "customer_login" && t.requestId === id),
+      ),
+    ).toBe(true);
+    // Só o administrador.
+    expect((await taskFixes(operator, tasks)).size).toBe(0);
+    // Criado o login, a pendência some (e o botão com ela).
+    await createCustomerLoginForRequest(admin, request.id, {
+      login: "compras@pendencias.com.br",
+      name: "Loja das Pendências",
+      password: "provisoria-4",
+    });
+    const after = await pendingTasksFor(admin);
+    expect(
+      after.some(
+        (t) => t.kind === "customer_login" && t.requestId === request.id,
+      ),
+    ).toBe(false);
+    expect((await taskFixes(admin, after)).has(request.id)).toBe(false);
+  });
+
+  it("cliente com login ativo que não confirma: escolher o login na encomenda", async () => {
+    const shop2 = await customer("Loja Escolha Pendências", null);
+    const make = (email: string) =>
+      getStore().create("users", {
+        email,
+        name: email,
+        role: "customer",
+        partyId: shop2.id,
+        locale: "pt",
+        passwordHash: "x",
+        active: true,
+        importerId: null,
+        functions: [],
+        screens: null,
+        mustChangePassword: false,
+      } as never) as Promise<User>;
+    const away = await make("saiu@escolha.com.br");
+    await make("ficou@escolha.com.br");
+    const [request] = await sale(shop2.id, away.id);
+    await getStore().update("users", away.id, { active: false });
+    const fixes = await taskFixes(admin, await pendingTasksFor(admin));
+    expect(fixes.get(request.id)).toEqual({
+      kind: "choose_login",
+      href: `/app/requests/${request.id}#requester`,
+    });
   });
 });

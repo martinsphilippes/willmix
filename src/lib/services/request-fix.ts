@@ -9,7 +9,12 @@ import {
   suggestLoginName,
 } from "@/lib/auth/login-id";
 import { readContacts, type ContactRole } from "@/lib/order-terms";
-import type { FixDirectory, PeopleDirectory } from "@/lib/request-responsible";
+import {
+  responsibleFix,
+  type FixDirectory,
+  type PeopleDirectory,
+  type ResponsibleFix,
+} from "@/lib/request-responsible";
 import { audit } from "./audit";
 import { createPortalLogin, suggestPassword } from "./portal-access";
 import { canConfirmAs } from "./request-turns";
@@ -50,7 +55,8 @@ export async function fixDirectory(
     users: readonly User[];
     /** Os clientes das encomendas sem login que confirme. */
     customerIds: readonly string[];
-    people: PeopleDirectory;
+    /** Os parceiros dos passos (a lista e a página da encomenda). */
+    people?: PeopleDirectory;
   },
 ): Promise<FixDirectory> {
   const admin = isAdmin(viewer);
@@ -100,8 +106,46 @@ export async function fixDirectory(
       suggestions.set(customerId, out);
       return out;
     },
-    partner: (partyId) => input.people.partner(partyId),
+    partner: (partyId) =>
+      input.people?.partner(partyId) ?? { name: "—", people: [] },
   };
+}
+
+/**
+ * O mesmo botão na pendência "Login do cliente a definir" (dono,
+ * 20/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 10): por encomenda da
+ * pendência (`requestId`), o formulário do login (cliente sem nenhum login
+ * ativo) ou "Escolher o login na encomenda" (cliente com login). Só o
+ * administrador, que é quem recebe a pendência.
+ */
+export async function taskFixes(
+  viewer: User,
+  tasks: readonly {
+    kind: string;
+    requestId?: string | null;
+    customerId?: string | null;
+  }[],
+): Promise<Map<string, ResponsibleFix>> {
+  const out = new Map<string, ResponsibleFix>();
+  if (!isAdmin(viewer)) return out;
+  const stuck = tasks.filter(
+    (t): t is { kind: string; requestId: string; customerId: string } =>
+      t.kind === "customer_login" && !!t.requestId && !!t.customerId,
+  );
+  if (!stuck.length) return out;
+  const dir = await fixDirectory(viewer, {
+    users: await getStore().list("users"),
+    customerIds: stuck.map((t) => t.customerId),
+  });
+  for (const t of stuck) {
+    const fix = responsibleFix(
+      { missing: "login", group: null },
+      { requestId: t.requestId, customerId: t.customerId, partnerIds: [] },
+      dir,
+    );
+    if (fix) out.set(t.requestId, fix);
+  }
+  return out;
 }
 
 export class RequestFixError extends Error {}

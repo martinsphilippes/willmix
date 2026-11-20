@@ -77,17 +77,21 @@ const fixButton = "min-h-7 px-2 py-0.5 text-xs";
  * docs/ORDER_LEVEL_LISTS.md, seção 10): o formulário curto do login do
  * cliente ou o caminho até onde se resolve.
  */
-function ResponsibleFixBlock({
+export function ResponsibleFixBlock({
   fix,
   t,
+  bare = false,
 }: {
   fix: ResponsibleFix;
   t: Translate;
+  /** O formulário sozinho no balão (Pendências). */
+  bare?: boolean;
 }) {
   switch (fix.kind) {
     case "customer_login":
       return (
         <CustomerLoginFix
+          bare={bare}
           requestId={fix.requestId}
           login={fix.login}
           name={fix.name}
@@ -161,6 +165,39 @@ function ResponsibleFixBlock({
         </LinkButton>
       );
   }
+}
+
+/**
+ * O mesmo botão na pendência "Login do cliente a definir" (dono,
+ * 20/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 10): "Criar login do
+ * cliente…" abre o formulário num balão; "Escolher o login na encomenda"
+ * leva direto ao campo.
+ */
+export function TaskFixButton({
+  fix,
+  t,
+}: {
+  fix: ResponsibleFix;
+  t: Translate;
+}) {
+  if (fix.kind !== "customer_login")
+    return <ResponsibleFixBlock fix={fix} t={t} />;
+  return (
+    <InfoTip
+      interactive
+      label={
+        fix.customer
+          ? t("reqFix.customerLogin.title", { customer: fix.customer })
+          : t("reqFix.customerLogin.titleNoName")
+      }
+      className="inline-flex min-h-7 cursor-pointer items-center rounded-lg bg-brand-600 px-2 py-0.5 text-xs font-semibold text-white no-underline shadow-sm hover:bg-brand-700"
+      trigger={
+        <span data-task-fix-open="">{t("reqFix.customerLogin.open")}</span>
+      }
+    >
+      <ResponsibleFixBlock fix={fix} t={t} bare />
+    </InfoTip>
+  );
 }
 
 /** A informação complementar: os nomes, o login (admin) e o que falta. */

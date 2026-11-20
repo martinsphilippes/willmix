@@ -140,14 +140,14 @@ test("Pedidos: a coluna e o filtro Com quem está seguem a mesma regra", async (
     expect(v).toBe(value);
 });
 
-test("cliente sem login: o administrador cria o login pelo balão Quem pode agir e o cliente confirma", async ({
-  page,
-}) => {
-  // Resolver pelo balão (dono, 20/11/2026; docs/ORDER_LEVEL_LISTS.md,
-  // seção 10): um cliente novo, sem nenhum login, recebe uma venda.
-  await login(page, "admin@wellmix.com");
+/**
+ * Um cliente novo, sem nenhum login, recebe uma venda da Wellmix (o
+ * administrador logado). Os contatos levam o prefixo dado: o do comprador
+ * é `buyer@<prefixo>.com`.
+ */
+async function saleForNewCustomer(page: Page, name: string, prefix: string) {
   const tag = Date.now().toString(36);
-  const customerName = `Loja Balão ${tag}`;
+  const customerName = `${name} ${tag}`;
   await page.goto("/app/customers/new");
   await page.fill('input[name="name"]', customerName);
   await page.getByRole("button", { name: "Salvar" }).first().click();
@@ -172,9 +172,28 @@ test("cliente sem login: o administrador cria o login pelo balão Quem pode agir
   await item
     .locator("[data-rounds-generator] [data-generate-total]")
     .fill("100");
-  await fillCustomerContacts(page, `balao-${tag}`);
+  await fillCustomerContacts(page, `${prefix}-${tag}`);
   await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
   const requestId = await createdRequestId(page);
+  return {
+    requestId,
+    customerId,
+    customerName,
+    buyer: `buyer@${prefix}-${tag}.com`,
+  };
+}
+
+test("cliente sem login: o administrador cria o login pelo balão Quem pode agir e o cliente confirma", async ({
+  page,
+}) => {
+  // Resolver pelo balão (dono, 20/11/2026; docs/ORDER_LEVEL_LISTS.md,
+  // seção 10): um cliente novo, sem nenhum login, recebe uma venda.
+  await login(page, "admin@wellmix.com");
+  const { requestId, customerName, buyer } = await saleForNewCustomer(
+    page,
+    "Loja Balão",
+    "balao",
+  );
 
   // Lista: ninguém pode confirmar; o balão traz o formulário curto.
   await page.goto("/app/requests?situ=open");
@@ -192,7 +211,7 @@ test("cliente sem login: o administrador cria o login pelo balão Quem pode agir
   // Já sugeridos: o e-mail do comprador (contatos da encomenda), o nome do
   // cliente e uma senha provisória.
   const loginInput = form.locator("[data-request-fix-login]");
-  await expect(loginInput).toHaveValue(`buyer@balao-${tag}.com`);
+  await expect(loginInput).toHaveValue(buyer);
   await expect(form.locator("[data-request-fix-name]")).toHaveValue(
     customerName,
   );
@@ -206,7 +225,7 @@ test("cliente sem login: o administrador cria o login pelo balão Quem pode agir
   const done = tip.locator("[data-request-fix-done]");
   await expect(done).toBeVisible();
   await expect(done.locator("[data-request-fix-login-created]")).toHaveText(
-    `buyer@balao-${tag}.com`,
+    buyer,
   );
   await expect(done.locator("[data-request-fix-password]")).toHaveText(
     password,
@@ -226,7 +245,7 @@ test("cliente sem login: o administrador cria o login pelo balão Quem pode agir
   // confirma pelas Pendências.
   await page.context().clearCookies();
   await page.goto("/login");
-  await page.getByLabel(/e-mail|email|邮箱/i).fill(`buyer@balao-${tag}.com`);
+  await page.getByLabel(/e-mail|email|邮箱/i).fill(buyer);
   await page.getByLabel(/senha|password|密码/i).fill(password);
   await page.getByRole("button", { name: /entrar|sign in|登录/i }).click();
   await page.waitForURL(/\/app/);
@@ -241,4 +260,39 @@ test("cliente sem login: o administrador cria o login pelo balão Quem pode agir
       `[data-task-row][data-task-group="customer_confirm"] a[href="/app/requests/${requestId}"]:not([data-open-link])`,
     ),
   ).toContainText("Confirmar pedido");
+});
+
+test("Pendências: Login do cliente a definir com o mesmo formulário do balão", async ({
+  page,
+}) => {
+  // O mesmo formulário nas Pendências (dono, 20/11/2026;
+  // docs/ORDER_LEVEL_LISTS.md, seção 10).
+  await login(page, "admin@wellmix.com");
+  const { customerId, customerName, buyer } = await saleForNewCustomer(
+    page,
+    "Loja Pendência",
+    "pendencia",
+  );
+  await page.goto("/app/tasks?type=customer_login");
+  const row = page.locator(
+    '[data-task-row][data-task-group="customer_login"]',
+    { has: page.locator(`a[href="/app/parties/${customerId}#access"]`) },
+  );
+  await expect(row).toHaveCount(1);
+  await row
+    .locator('[data-task-fix="customer_login"] [data-task-fix-open]')
+    .click();
+  const tip = page.locator('[data-info-tip][role="dialog"]');
+  await expect(tip).toBeVisible();
+  const form = tip.locator('[data-request-fix="customer_login"]');
+  await expect(form).toContainText(`Criar o login de ${customerName}`);
+  await expect(form.locator("[data-request-fix-login]")).toHaveValue(buyer);
+  await form.locator("[data-request-fix-submit]").click();
+  const done = tip.locator("[data-request-fix-done]");
+  await expect(done.locator("[data-request-fix-login-created]")).toHaveText(
+    buyer,
+  );
+  // Atualizada a tela, a pendência sumiu (a encomenda tem quem confirma).
+  await done.locator("[data-request-fix-refresh]").click();
+  await expect(row).toHaveCount(0);
 });

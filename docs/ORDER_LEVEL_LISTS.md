@@ -329,6 +329,15 @@ Ação `createRequestCustomerLoginAction` (`src/app/app/actions/request-fix.ts`)
 - O balão com botões vira um diálogo (`InfoTip` com `interactive`). Funciona com toque, mouse e teclado: Enter abre e leva o foco para dentro; Esc fecha e volta ao nome.
 - O rascunho não muda: quem age nele é sempre quem o salvou.
 
+### Nas Pendências
+
+Pedido do dono (20/11/2026, depois do balão): o mesmo formulário nas Pendências. A pendência "Login do cliente a definir" é do administrador e aparece também no início do portal. Ela ganha, embaixo do detalhe:
+
+- **Cliente sem nenhum login ativo**: "Criar login do cliente…" abre o mesmo formulário num balão, com as mesmas sugestões, a mesma ação e a mesma resposta (login e senha provisória, "Copiar login e senha" e "Atualizar a tela").
+- **Cliente com login, mas nenhum que confirme**: "Escolher o login na encomenda".
+
+Criado o login e atualizada a tela, a pendência some. A regra é a mesma do balão (`responsibleFix`), por encomenda da pendência (`taskFixes`, `src/lib/services/request-fix.ts`).
+
 ### Testes
 
 - `tests/unit/request-responsible.test.ts`: o botão de cada aviso e quem o vê.
@@ -337,5 +346,6 @@ Ação `createRequestCustomerLoginAction` (`src/app/app/actions/request-fix.ts`)
   - o login criado com a troca no 1º acesso, quem confirma, as pendências e a auditoria sem a senha;
   - o lote com o login inativo passa para o novo;
   - "Escolher o login na encomenda" quando o cliente já tem outro login;
-  - os erros.
-- `tests/e2e/turns.spec.ts`: um cliente novo sem login recebe uma venda; no balão, o formulário com as sugestões e o login criado; fechar e abrir sem perder; "Atualizar a tela" mostra quem confirma; o cliente entra com a senha provisória e acha "Confirmar pedido".
+  - os erros;
+  - nas Pendências, o formulário ou o "Escolher o login" só para o administrador, e a pendência que some depois de criar o login.
+- `tests/e2e/turns.spec.ts`: um cliente novo sem login recebe uma venda; no balão, o formulário com as sugestões e o login criado; fechar e abrir sem perder; "Atualizar a tela" mostra quem confirma; o cliente entra com a senha provisória e acha "Confirmar pedido". Nas Pendências, o mesmo formulário pela pendência "Login do cliente a definir", que some depois de criar o login.

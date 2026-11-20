@@ -15,6 +15,7 @@ export const pt = {
   "reqFix.customerLogin.password": "Senha provisória",
   "reqFix.customerLogin.passwordHint":
     "Pelo menos {n} caracteres. O cliente troca no 1º acesso.",
+  "reqFix.customerLogin.open": "Criar login do cliente…",
   "reqFix.customerLogin.submit": "Criar login do cliente",
   "reqFix.customerLogin.working": "Criando…",
   "reqFix.customerLogin.done":
@@ -49,6 +50,7 @@ export const en: Record<keyof typeof pt, string> = {
   "reqFix.customerLogin.password": "Temporary password",
   "reqFix.customerLogin.passwordHint":
     "At least {n} characters. The customer changes it on first sign-in.",
+  "reqFix.customerLogin.open": "Create customer login…",
   "reqFix.customerLogin.submit": "Create customer login",
   "reqFix.customerLogin.working": "Creating…",
   "reqFix.customerLogin.done":
@@ -81,6 +83,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqFix.customerLogin.name": "名称",
   "reqFix.customerLogin.password": "临时密码",
   "reqFix.customerLogin.passwordHint": "至少 {n} 个字符。客户首次登录时修改。",
+  "reqFix.customerLogin.open": "创建客户登录…",
   "reqFix.customerLogin.submit": "创建客户登录",
   "reqFix.customerLogin.working": "正在创建…",
   "reqFix.customerLogin.done":

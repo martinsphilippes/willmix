@@ -7,7 +7,7 @@ import {
   type CustomerLoginFixState,
 } from "@/app/app/actions/request-fix";
 import { SubmitButton } from "./submit-button";
-import { Button, Field, Input } from "./ui";
+import { Button, Field, Input, cx } from "./ui";
 
 /*
  * Resolver pelo balão "Quem pode agir" (dono, 20/11/2026;
@@ -57,6 +57,7 @@ export function CustomerLoginFix({
   password,
   minPassword,
   texts,
+  bare = false,
 }: {
   requestId: string;
   login: string;
@@ -64,6 +65,8 @@ export function CustomerLoginFix({
   password: string;
   minPassword: number;
   texts: CustomerLoginFixTexts;
+  /** Sozinho no balão (Pendências): sem a linha que o separa do aviso. */
+  bare?: boolean;
 }) {
   const [state, action] = useActionState(
     createRequestCustomerLoginAction,
@@ -142,7 +145,7 @@ export function CustomerLoginFix({
   return (
     <form
       action={action}
-      className="space-y-2 border-t border-zinc-200 pt-2"
+      className={cx("space-y-2", !bare && "border-t border-zinc-200 pt-2")}
       data-request-fix="customer_login"
     >
       <input type="hidden" name="requestId" value={requestId} />
