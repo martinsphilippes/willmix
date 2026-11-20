@@ -52,9 +52,11 @@ import {
   responsibleOf,
   stepOwner,
   stepPartners,
+  withFix,
   type Responsible,
 } from "@/lib/request-responsible";
 import { peopleDirectory } from "@/lib/services/request-responsible";
+import { fixDirectory } from "@/lib/services/request-fix";
 import { ResponsibleTip } from "@/components/request-responsible-tip";
 import { ListReturnLink } from "@/components/list-return";
 import {
@@ -206,15 +208,27 @@ export default async function RequestBatchPage({
       ? stepPartners(step.key, ctx?.purchaseOf(r)).map((x) => x.supplierId)
       : [];
   });
+  const users = wellmix ? await store.list("users") : [];
   const directory = wellmix
     ? await peopleDirectory(user, {
-        users: await store.list("users"),
+        users,
         requests: rows,
         ctx,
         partnerIds,
         customerName: (id) =>
           customer && customer.id === id ? customer.name : null,
         translate: (key) => t(key as DictionaryKey),
+      })
+    : null;
+  /* Resolver pelo balão (dono, 20/11/2026; seção 10): o botão que resolve
+     a falta, para quem pode resolver. */
+  const fixDir = directory
+    ? await fixDirectory(user, {
+        users,
+        customerIds: rows
+          .filter((r) => r.status === "AWAITING_CUSTOMER")
+          .map((r) => r.customerId),
+        people: directory,
       })
     : null;
   const turns = [
@@ -227,8 +241,15 @@ export default async function RequestBatchPage({
           step: n,
           people: new Map<string, Responsible>(),
         };
+        const purchase = ctx?.purchaseOf(r);
         const resp = directory
-          ? responsibleOf(n, r, ctx?.purchaseOf(r), directory)
+          ? withFix(
+              responsibleOf(n, r, purchase, directory),
+              n,
+              r,
+              purchase,
+              fixDir,
+            )
           : null;
         if (resp) group.people.set(responsibleKey(resp), resp);
         return groups.set(key, group);

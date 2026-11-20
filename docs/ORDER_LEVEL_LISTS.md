@@ -277,3 +277,65 @@ Pedido do dono (19/11/2026): o rascunho salvo por outro login não aparecia para
   - `tests/unit/draft-chat.test.ts`: o administrador abre a conversa do rascunho de outro login, na conversa dele; outro login, não.
   - `tests/e2e/request-draft-details.spec.ts`: o rascunho do Otávio na lista da Ana (administradora), com quem salvou; os detalhes pelo número e recarregando, sem "Continuar edição"; o Otávio com "Continuar edição"; a Vera (que não é administradora) sem a linha e com 404 pela URL.
 
+## 10. Resolver pelo balão "Quem pode agir" (dono, 20/11/2026)
+
+Pedido do dono (20/11/2026, com o print de Encomendas, no login de administrador): no balão "Quem pode agir" que diz "Nenhum login do cliente pode confirmar…", um botão ali mesmo para criar o login e resolver a pendência. Decisões do dono:
+
+1. **Formulário curto no balão**: Login (e-mail ou nome de usuário), Nome e Senha provisória, já sugeridos. Um toque em "Criar login do cliente" cria o acesso no cadastro do cliente e a encomenda passa a ter quem confirma. A tela mostra o login e a senha provisória para o administrador passar ao cliente, que troca a senha no 1º acesso.
+2. **Botão também nos outros avisos** ("Sim, nos três"): parceiro sem login, ninguém com a função e cliente com login mas nenhum escolhido.
+
+### Quem vê cada botão
+
+A regra é `responsibleFix` (`src/lib/request-responsible.ts`). Quem não pode resolver vê o aviso como antes, sem botão. Gerar login continua só do administrador (docs/EQUIPE_ACESSOS.md, R5).
+
+| Aviso                                                       | Botão                                                           | Quem vê                      | Leva a                                      |
+| ----------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------- | ------------------------------------------- |
+| Cliente sem nenhum login ativo                              | formulário "Criar login do cliente"                             | administrador                | o próprio balão                             |
+| Cliente com login ativo, mas nenhum confirma esta encomenda | "Escolher o login na encomenda"                                 | Wellmix (quem troca o login) | `/app/requests/<id>#requester`              |
+| Parceiro sem login                                          | "Criar o acesso de {parceiro}", um para cada parceiro sem login | administrador                | `/app/parties/<id>#access` (Equipe Externa) |
+| Ninguém da equipe com a função da etapa                     | "Abrir Funções e acessos"                                       | administrador                | `/app/team?tab=functions`                   |
+| Etapa sem responsável no fluxo ("Gerar o pedido de compra") | nenhum (decisão em aberto, docs/TURNS.md)                       | —                            | —                                           |
+
+### Sugestões do formulário
+
+Feitas no servidor (`fixDirectory`, `src/lib/services/request-fix.ts`); tudo pode ser trocado antes de criar:
+
+- **Login**: o primeiro e-mail dos contatos do cliente (comprador, sócio, financeiro e fiscal, logística) ou o do cadastro que ainda não é login de ninguém. Sem e-mail, um nome de usuário pelo nome do cliente, com um número no fim se já for de alguém.
+- **Nome**: o nome do cliente.
+- **Senha provisória**: a mesma sugestão do cadastro do parceiro, com pelo menos 8 caracteres.
+
+### O que acontece ao criar
+
+Ação `createRequestCustomerLoginAction` (`src/app/app/actions/request-fix.ts`) e serviço `createCustomerLoginForRequest`:
+
+- **Só o administrador**: o servidor confere. Outro papel recebe "Só o administrador cria o login do cliente."
+- **O login nasce no cadastro do cliente** (`createPortalLogin`): papel Cliente, idioma pt e troca da senha no 1º acesso (`mustChangePassword`). Como no primeiro acesso de sempre, o cliente pode seguir sem trocar.
+- **A encomenda passa a ter quem confirma**:
+  - sem login com acesso escolhido, ela vale para todos os logins do cliente: nada a trocar;
+  - no lote da encomenda, a que aguarda o cliente com um login com acesso que não confirma mais (inativo) passa para o login novo (`setRequester`, com o registro de sempre).
+- **Pendências**: a "Definir o login do cliente que confirma" dos administradores some, e o cliente recebe "Confirmar pedido".
+- **Auditoria**: `user.create`, como no cadastro, e `request.customer_login` na encomenda, com o login e quantas encomendas passaram a tê-lo. A senha não entra.
+- **Erros com o motivo**: login já usado, login inválido, senha curta, encomenda ou cliente não encontrado. O que foi digitado continua nos campos.
+
+### A senha não some antes de ser copiada
+
+- A resposta mostra o login e a senha provisória, com "Copiar login e senha" (endereço do portal, login e senha) e "Atualizar a tela".
+- A tela só é relida em "Atualizar a tela". O balão com formulário fica aberto enquanto se digita (o mouse saindo não fecha). Fechado com Esc ou com um toque fora, ele guarda a resposta até a tela ser atualizada.
+- A senha não vai no endereço da página nem fica gravada em lugar nenhum além da conta. Depois de atualizar a tela, ela não aparece de novo.
+
+### Onde aparece
+
+- Na lista de Encomendas (2ª linha da Próxima ação) e na página da encomenda (`/app/requests/batch/<id>`), pela mesma peça (`ResponsibleTip`).
+- O balão com botões vira um diálogo (`InfoTip` com `interactive`). Funciona com toque, mouse e teclado: Enter abre e leva o foco para dentro; Esc fecha e volta ao nome.
+- O rascunho não muda: quem age nele é sempre quem o salvou.
+
+### Testes
+
+- `tests/unit/request-responsible.test.ts`: o botão de cada aviso e quem o vê.
+- `tests/unit/request-fix.test.ts`:
+  - a sugestão pelo e-mail do comprador, só para o administrador;
+  - o login criado com a troca no 1º acesso, quem confirma, as pendências e a auditoria sem a senha;
+  - o lote com o login inativo passa para o novo;
+  - "Escolher o login na encomenda" quando o cliente já tem outro login;
+  - os erros.
+- `tests/e2e/turns.spec.ts`: um cliente novo sem login recebe uma venda; no balão, o formulário com as sugestões e o login criado; fechar e abrir sem perder; "Atualizar a tela" mostra quem confirma; o cliente entra com a senha provisória e acha "Confirmar pedido".

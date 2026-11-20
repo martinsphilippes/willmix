@@ -239,6 +239,138 @@ export interface Responsible {
    * ou etapa sem responsável no fluxo (`flow`).
    */
   missing: null | "function" | "login" | "partner_login" | "flow";
+  /**
+   * Como resolver a falta, ali mesmo no balão (dono, 20/11/2026), para quem
+   * pode resolver. Nulo ou ausente: sem botão.
+   */
+  fix?: ResponsibleFix | null;
+}
+
+/**
+ * O botão que resolve a pendência de cadastro do balão "Quem pode agir"
+ * (dono, 20/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 10).
+ */
+export type ResponsibleFix =
+  /**
+   * Cliente sem nenhum login ativo: o formulário curto no balão (login,
+   * nome e senha provisória já sugeridos) cria o acesso do cliente. Só o
+   * administrador (gerar login é dele; docs/EQUIPE_ACESSOS.md, R5).
+   */
+  | {
+      kind: "customer_login";
+      requestId: string;
+      customer: string | null;
+      login: string;
+      name: string;
+      password: string;
+    }
+  /** Cliente com login, mas nenhum que confirme: escolher na encomenda. */
+  | { kind: "choose_login"; href: string }
+  /** Parceiro sem login ativo: criar o acesso no cadastro dele. */
+  | {
+      kind: "partner_login";
+      partners: { id: string; name: string; href: string }[];
+    }
+  /** Ninguém da equipe com a função da etapa: Funções e acessos. */
+  | { kind: "function"; href: string };
+
+/** O que a regra do botão precisa saber (o servidor preenche). */
+export interface FixDirectory {
+  /** Gerar login (cliente e parceiro) e mexer nas funções: o administrador. */
+  admin: boolean;
+  /** Escolher o login com acesso na encomenda: a Wellmix. */
+  wellmix: boolean;
+  /** O cliente tem algum login ativo (mesmo que não confirme esta)? */
+  customerHasLogin(customerId: string): boolean;
+  /** O nome do cliente e o login, o nome e a senha provisória sugeridos. */
+  customerSuggestion(customerId: string): {
+    customer: string | null;
+    login: string;
+    name: string;
+    password: string;
+  };
+  /** O parceiro (nome) e os logins ativos dele. */
+  partner(partyId: string): { name: string; people: Person[] };
+}
+
+/** Acesso do parceiro no cadastro dele (Equipe Externa). */
+export const partnerAccessHref = (partyId: string) =>
+  `/app/parties/${encodeURIComponent(partyId)}#access`;
+
+/** Funções e acessos da Equipe. */
+export const FUNCTIONS_HREF = "/app/team?tab=functions";
+
+/**
+ * O botão de cada falta (nulo: sem botão para quem vê). `partnerIds`: os
+ * parceiros do passo (cotação, solicitação ao fornecedor, amostragem).
+ */
+export function responsibleFix(
+  r: Pick<Responsible, "missing" | "group">,
+  ctx: { requestId: string; customerId: string; partnerIds: readonly string[] },
+  dir: FixDirectory,
+): ResponsibleFix | null {
+  switch (r.missing) {
+    case "login": {
+      // O cliente já tem login (nenhum confirma esta): escolher na encomenda.
+      if (dir.customerHasLogin(ctx.customerId))
+        return dir.wellmix
+          ? {
+              kind: "choose_login",
+              href: `/app/requests/${encodeURIComponent(ctx.requestId)}#requester`,
+            }
+          : null;
+      if (!dir.admin) return null;
+      const s = dir.customerSuggestion(ctx.customerId);
+      return {
+        kind: "customer_login",
+        requestId: ctx.requestId,
+        customer: s.customer ?? r.group,
+        login: s.login,
+        name: s.name,
+        password: s.password,
+      };
+    }
+    case "partner_login": {
+      if (!dir.admin) return null;
+      const partners = [...new Set(ctx.partnerIds)]
+        .map((id) => ({ id, ...dir.partner(id) }))
+        .filter((p) => !p.people.length)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          href: partnerAccessHref(p.id),
+        }));
+      return partners.length ? { kind: "partner_login", partners } : null;
+    }
+    case "function":
+      return dir.admin ? { kind: "function", href: FUNCTIONS_HREF } : null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * O responsável com o botão que resolve a falta, para quem pode resolver
+ * (sem falta ou sem quem resolva: o mesmo responsável).
+ */
+export function withFix(
+  r: Responsible | null,
+  step: NextStep,
+  request: { id: string; customerId: string },
+  purchase: PurchaseProgress | null | undefined,
+  dir: FixDirectory | null,
+): Responsible | null {
+  if (!r?.missing || !dir) return r;
+  const fix = responsibleFix(
+    r,
+    {
+      requestId: request.id,
+      customerId: request.customerId,
+      partnerIds: stepPartners(step.key, purchase).map((p) => p.supplierId),
+    },
+    dir,
+  );
+  return fix ? { ...r, fix } : r;
 }
 
 /** O que a lista precisa saber das pessoas (o servidor preenche). */

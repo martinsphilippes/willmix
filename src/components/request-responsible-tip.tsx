@@ -3,11 +3,14 @@ import {
   responsibleLine,
   type Person,
   type Responsible,
+  type ResponsibleFix,
   type StepDue,
 } from "@/lib/request-responsible";
+import { PORTAL_MIN_PASSWORD } from "@/lib/services/portal-access";
 import { turnNameKey, type TurnParty } from "@/lib/turn";
 import { InfoTip } from "./info-tip";
-import { cx, formatDate } from "./ui";
+import { CustomerLoginFix } from "./request-responsible-fix";
+import { LinkButton, cx, formatDate } from "./ui";
 
 /*
  * Quem age na próxima ação de uma encomenda (dono, 19/11/2026;
@@ -67,6 +70,99 @@ function PersonItem({ p }: { p: Person }) {
   );
 }
 
+const fixButton = "min-h-7 px-2 py-0.5 text-xs";
+
+/**
+ * O botão que resolve a falta ali mesmo (dono, 20/11/2026;
+ * docs/ORDER_LEVEL_LISTS.md, seção 10): o formulário curto do login do
+ * cliente ou o caminho até onde se resolve.
+ */
+function ResponsibleFixBlock({
+  fix,
+  t,
+}: {
+  fix: ResponsibleFix;
+  t: Translate;
+}) {
+  switch (fix.kind) {
+    case "customer_login":
+      return (
+        <CustomerLoginFix
+          requestId={fix.requestId}
+          login={fix.login}
+          name={fix.name}
+          password={fix.password}
+          minPassword={PORTAL_MIN_PASSWORD}
+          texts={{
+            title: fix.customer
+              ? t("reqFix.customerLogin.title", { customer: fix.customer })
+              : t("reqFix.customerLogin.titleNoName"),
+            login: t("reqFix.customerLogin.login"),
+            loginHint: t("reqFix.customerLogin.loginHint"),
+            name: t("reqFix.customerLogin.name"),
+            password: t("reqFix.customerLogin.password"),
+            passwordHint: t("reqFix.customerLogin.passwordHint", {
+              n: PORTAL_MIN_PASSWORD,
+            }),
+            submit: t("reqFix.customerLogin.submit"),
+            working: t("reqFix.customerLogin.working"),
+            done: t("reqFix.customerLogin.done"),
+            portal: t("reqFix.portal"),
+            loginLabel: t("reqFix.login"),
+            passwordLabel: t("reqFix.customerLogin.password"),
+            copy: t("reqFix.copy"),
+            copied: t("reqFix.copied"),
+            copyFailed: t("reqFix.copyFailed"),
+            changeHint: t("reqFix.customerLogin.changeHint"),
+            reassigned: t("reqFix.customerLogin.reassigned"),
+            refresh: t("reqFix.refresh"),
+          }}
+        />
+      );
+    case "choose_login":
+      return (
+        <LinkButton
+          href={fix.href}
+          variant="primary"
+          className={fixButton}
+          data-request-fix="choose_login"
+        >
+          {t("reqFix.chooseLogin")}
+        </LinkButton>
+      );
+    case "partner_login":
+      return (
+        <div
+          className="flex flex-wrap gap-1.5"
+          data-request-fix="partner_login"
+        >
+          {fix.partners.map((p) => (
+            <LinkButton
+              key={p.id}
+              href={p.href}
+              variant="primary"
+              className={fixButton}
+              data-request-fix-partner={p.id}
+            >
+              {t("reqFix.partnerLogin", { name: p.name })}
+            </LinkButton>
+          ))}
+        </div>
+      );
+    case "function":
+      return (
+        <LinkButton
+          href={fix.href}
+          variant="primary"
+          className={fixButton}
+          data-request-fix="function"
+        >
+          {t("reqFix.function")}
+        </LinkButton>
+      );
+  }
+}
+
 /** A informação complementar: os nomes, o login (admin) e o que falta. */
 function ResponsibleDetail({ r, t }: { r: Responsible; t: Translate }) {
   return (
@@ -120,6 +216,7 @@ function ResponsibleDetail({ r, t }: { r: Responsible; t: Translate }) {
           {t(`reqList.resp.missing.${r.missing}`)}
         </p>
       ) : null}
+      {r.fix ? <ResponsibleFixBlock fix={r.fix} t={t} /> : null}
       {r.admins.length ? (
         <p className="text-zinc-500">
           {t("reqList.resp.admins", {
@@ -148,6 +245,8 @@ export function ResponsibleTip({
     <InfoTip
       label={t("reqList.resp.label", { who: text })}
       className={className}
+      // Com o botão que resolve a falta: o balão tem campos e botões.
+      interactive={!!r.fix}
       trigger={
         <span
           className={cx(

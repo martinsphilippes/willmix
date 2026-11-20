@@ -134,6 +134,7 @@ import * as bookingNcm from "./booking-ncm";
 import * as purchaseDemand from "./purchase-demand";
 import * as strategySend from "./strategy-send";
 import * as strategyPacking from "./strategy-packing";
+import * as requestFix from "./request-fix";
 import * as strategyCard from "./strategy-card";
 import * as supplierRequestNegotiation from "./supplier-request-negotiation";
 import * as purchaseOrder from "./purchase-order";
@@ -311,6 +312,7 @@ export const modulesPt = {
   ...purchaseDemand.pt,
   ...strategySend.pt,
   ...strategyPacking.pt,
+  ...requestFix.pt,
   ...strategyCard.pt,
   ...supplierRequestNegotiation.pt,
   ...purchaseOrder.pt,
@@ -486,6 +488,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...purchaseDemand.en,
   ...strategySend.en,
   ...strategyPacking.en,
+  ...requestFix.en,
   ...strategyCard.en,
   ...supplierRequestNegotiation.en,
   ...purchaseOrder.en,
@@ -661,6 +664,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...purchaseDemand.zh,
   ...strategySend.zh,
   ...strategyPacking.zh,
+  ...requestFix.zh,
   ...strategyCard.zh,
   ...supplierRequestNegotiation.zh,
   ...purchaseOrder.zh,
