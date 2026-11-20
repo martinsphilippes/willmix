@@ -22,6 +22,12 @@ import { cx } from "./ui";
  * não é cortado pela rolagem lateral e o texto dele não entra na busca nem
  * na ordenação da TableTools. O botão leva `data-table-hint`: clicar nele
  * não ordena a coluna (src/components/table-tools.tsx).
+ *
+ * `interactive` (dono, 20/11/2026; o botão que resolve a pendência no
+ * balão "Quem pode agir"): o balão tem campos e botões. Vira um diálogo, o
+ * toque ou o foco dentro dele o prende aberto (o mouse saindo não fecha) e,
+ * depois de aberto, fica montado escondido: fechar e abrir de novo não perde
+ * o que foi digitado nem a resposta (o login criado).
  */
 export function InfoTip({
   label,
@@ -29,6 +35,7 @@ export function InfoTip({
   trigger,
   className,
   bubbleClassName,
+  interactive = false,
   ...rest
 }: {
   /** Nome acessível do botão (sem `trigger`, é o único texto dele). */
@@ -39,14 +46,24 @@ export function InfoTip({
   trigger?: ReactNode;
   className?: string;
   bubbleClassName?: string;
+  /** O balão tem campos ou botões (diálogo, não dica). */
+  interactive?: boolean;
 } & { [key: `data-${string}`]: string | undefined }) {
   const id = useId();
   const button = useRef<HTMLButtonElement>(null);
   const bubble = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  // Interativo, depois da 1ª abertura: o balão fica montado (escondido).
+  const [kept, setKept] = useState(false);
   // Aberto pelo clique (toque ou teclado): o mouse saindo não fecha.
   const pinned = useRef(false);
+  // Aberto pelo teclado (interativo): o foco entra no balão.
+  const focusInside = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const show = useCallback(() => {
+    setOpen(true);
+    if (interactive) setKept(true);
+  }, [interactive]);
 
   const clear = () => {
     if (timer.current) clearTimeout(timer.current);
@@ -88,6 +105,10 @@ export function InfoTip({
       // Sem popover: fica como camada fixa (z-index alto).
     }
     place();
+    if (focusInside.current) {
+      focusInside.current = false;
+      box.focus();
+    }
     const onDown = (e: PointerEvent) => {
       const target = e.target as Node;
       if (button.current?.contains(target) || box.contains(target)) return;
@@ -119,7 +140,7 @@ export function InfoTip({
 
   const hoverOpen = () => {
     clear();
-    timer.current = setTimeout(() => setOpen(true), 120);
+    timer.current = setTimeout(show, 120);
   };
   const hoverClose = () => {
     clear();
@@ -134,16 +155,19 @@ export function InfoTip({
         type="button"
         aria-label={trigger ? undefined : label}
         aria-expanded={open}
+        aria-haspopup={interactive ? "dialog" : undefined}
         aria-controls={open ? id : undefined}
-        aria-describedby={open ? id : undefined}
+        aria-describedby={open && !interactive ? id : undefined}
         title={trigger ? label : undefined}
         data-table-hint=""
-        onClick={() => {
+        onClick={(e) => {
           clear();
           if (open && pinned.current) close();
           else {
             pinned.current = true;
-            setOpen(true);
+            // Enter ou Espaço (clique sem ponteiro): o foco vai para o balão.
+            if (interactive && e.detail === 0) focusInside.current = true;
+            show();
           }
         }}
         onPointerEnter={(e) => {
@@ -176,12 +200,15 @@ export function InfoTip({
         )}
       </button>
       {/* Só abre depois de um clique ou do mouse: o documento já existe. */}
-      {open
+      {open || kept
         ? createPortal(
             <div
               ref={bubble}
               id={id}
-              role="tooltip"
+              role={interactive ? "dialog" : "tooltip"}
+              aria-label={interactive ? label : undefined}
+              tabIndex={interactive ? -1 : undefined}
+              hidden={!open}
               popover="manual"
               data-info-tip=""
               onPointerEnter={(e) => {
@@ -190,8 +217,26 @@ export function InfoTip({
               onPointerLeave={(e) => {
                 if (e.pointerType === "mouse") hoverClose();
               }}
+              // Mexeu dentro (campo, botão): fica aberto até fechar de propósito.
+              onPointerDown={
+                interactive
+                  ? () => {
+                      clear();
+                      pinned.current = true;
+                    }
+                  : undefined
+              }
+              onFocus={
+                interactive
+                  ? () => {
+                      clear();
+                      pinned.current = true;
+                    }
+                  : undefined
+              }
               className={cx(
                 "fixed inset-auto z-[1000] m-0 w-max max-w-[min(20rem,calc(100vw-1rem))] rounded-lg border border-zinc-200 bg-white p-2.5 text-left text-xs font-normal normal-case leading-relaxed tracking-normal text-zinc-700 shadow-lg",
+                interactive && "focus:outline-none",
                 bubbleClassName,
               )}
             >

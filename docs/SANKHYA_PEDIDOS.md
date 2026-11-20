@@ -16,6 +16,12 @@ A carga antiga do histórico (11 e 12/11/2026) criou 16.268 pedidos no portal, u
 - Também são de importação: 1002 Cotação, 1003 Amostra e 140 Amostra de importação.
 - Cada etapa é um **documento novo, gerado a partir do anterior**. A mesma compra aparece em várias TOPs, e a etapa em que ela está agora é a do documento com `PEDIDO_PENDENTE = 'S'`.
 - Ficam fora: compra nacional e de consumo (7, 176 e 1120).
+- **Recebimento e qualidade já estão no pedido de compra** (colunas novas da view, 20/11/2026):
+  - `STATUS_RECEBIMENTO` e `DATA_RECEBIMENTO`: pela entrada da nota de importação;
+  - `STATUS_QUALIDADE` e `DATA_INSPECAO`: inspeção antes do embarque.
+
+  As cópias de compra de 20/11/2026 são anteriores a elas. Para trazê-las, copie de novo os cabeçalhos e os itens de compra ("Recomeçar"). A cópia lê a view inteira (`SELECT *`), então não precisa mudar código.
+
 - `NUMERO_IMPORTACAO` está vazio: não liga os documentos de uma compra. Na view de compra, 28.908 documentos em 19 TOPs, de 552 fornecedores, 752 pendentes.
 - A leitura das views segue `LEITURA-VIEWS-PEDIDOS` do TI:
   - filtro por `DATA_ALTERACAO_PEDIDO`;
@@ -37,6 +43,8 @@ Configurações → Sankhya → Carga do Sankhya → Carga completa, linhas "An�
 | `saleLinks`       | `TGFVAR` das vendas                                                                      | De que documento cada venda foi gerada e no que ela virou, a partir dos pedidos da cópia dos itens de venda                                                                                        |
 
 A view de itens de venda tem 4,4 milhões de linhas, uns 5 GB copiada inteira, e o banco tem 8 GB, já com 1,4 GB em uso. As pendências moram no item de venda (dono, 20/11/2026). A primeira versão filtrava a view inteira com `OR` (pendente ou alterado). A consulta passava de 60 s e a rodada seguinte da fila chegava com a anterior ainda rodando no Sankhya, o que dava o erro "O serviço foi cancelado por situação de concorrência" (20/11/2026). Pela lista de pedidos no `IN`, cada chamada é curta.
+
+**Página que encolhe (20/11/2026):** cada chamada ao Sankhya tem 25 s. Com as colunas novas de recebimento e qualidade, calculadas na view, a página de 4.000 cabeçalhos de compra passou desse tempo. A cópia agora corta a página pela metade a cada estouro (4.000, 2.000, 1.000… até 100) e guarda o tamanho que funcionou (`pageSize`). Se a consulta que estourou ainda estiver rodando no Sankhya, vem o erro de concorrência; a rodada então só espera a próxima, sem contar como falha da fila.
 
 Ler de novo não duplica: a linha é gravada pela chave da origem (`dataset:NUNOTA[:SEQUENCIA[:NUNOTAORIG:SEQUENCIAORIG]]`). "Recomeçar" relê tudo, e `runId` diz de que rodada cada linha veio.
 
@@ -110,7 +118,7 @@ O pedido só sai de "pendente" quando todos os itens passam para um embarque. Os
 ### 3. Quando uma compra termina
 
 - **O pedido ao fornecedor** termina quando todos os itens foram para embarque: a 1104 sem pendência, com `QTD_ENTREGUE` igual a `QTD_NEGOCIADA` em todos os itens.
-- **O embarque** termina na nota de compra (37 ou 1201), que é o recebimento no Brasil.
+- **O embarque** termina na nota de compra (37 ou 1201), que é o recebimento no Brasil. Com as colunas novas, o próprio pedido diz isso (`STATUS_RECEBIMENTO`, `DATA_RECEBIMENTO`), sem precisar seguir a TGFVAR até a nota.
 - **A compra inteira** termina quando todos os embarques dos seus itens chegaram à nota.
 
 ### 4. Vendas
@@ -127,7 +135,28 @@ O pedido só sai de "pendente" quando todos os itens passam para um embarque. Os
 | 135 Multi-loja encomenda                |         | 23                         |
 | 34 Orçamento sob encomenda              |         | 12                         |
 
-- A cópia `saleLinks` (ligações das vendas na TGFVAR, depois dos itens de venda) vai mostrar o caminho (por exemplo 111 → 61 → 3 → nota) e onde a venda se liga à compra (container, produto, cliente de referência).
+- **O caminho da venda** (cópia `saleLinks`: 303.898 ligações dos 16 mil pedidos de venda pendentes ou alterados em 90 dias):
+
+| De → para                                     | Documentos de destino | Formato                                                                      |
+| --------------------------------------------- | --------------------- | ---------------------------------------------------------------------------- |
+| 111 Pré-venda FV → 3 Ped venda WMS            | 9.749                 | Uma pré-venda vira vários pedidos WMS (5.542 pré-vendas): atendida em partes |
+| 61 Ped venda FV → 3 Ped venda WMS             | 2.776                 | Um para um                                                                   |
+| 3 Ped venda WMS → 5 (TIPMOV V, nota de venda) | 5.315                 | Um para um: o fim da venda                                                   |
+| 130 → 114 → 51 (Suframa)                      | 147 → 111             | O mesmo caminho para a Zona Franca                                           |
+| 158 (reservando) → 3, 70 → 3, 72 → 73 → 5     |                       | Variações (reserva, multi-loja)                                              |
+| 17 → 19, 40 → 41, 135 → 136                   |                       | Bonificação/amostra, feiras e multi-loja encomenda, direto para a nota       |
+
+- **Onde mora a pendência da venda** (itens dos pedidos pendentes):
+
+| TOP             | Pedidos pendentes | Itens   | Ainda sem atendimento     | Já passaram para a etapa seguinte |
+| --------------- | ----------------- | ------- | ------------------------- | --------------------------------- |
+| 111 Pré-venda   | 4.822             | 160.493 | 24.400                    | 135.726                           |
+| 3 Ped venda WMS | 1.162             | 9.032   | 9.032 (aguardando a nota) | 0                                 |
+| 61 Ped venda FV | 195               | 6.102   | 6.102                     | 0                                 |
+
+A pré-venda pendente não está parada. A maior parte dela já virou pedido WMS, e o que sobra são itens à espera de mercadoria.
+
+- **A venda se liga à compra pelo produto:** 3.887 produtos têm item de pré-venda sem atendimento, e 1.395 deles estão num pedido de compra de importação em andamento (itens pendentes de 1100 a 1104, 35 ou 1). É a demanda que espera a importação.
 
 ### 5. Proposta de modelo para validar
 
@@ -144,4 +173,5 @@ O pedido só sai de "pendente" quando todos os itens passam para um embarque. Os
 1. Os 172 pedidos em 1104 sem `STATUS_SHIPPING` estão em produção ou aguardando outra coisa?
 2. As 16 amostras 140 de 2021 a 2025 ainda pendentes podem ser dadas como encerradas?
 3. O embarque (35) é o container? Um container pode juntar pedidos de fornecedores diferentes?
-4. Na venda, a 111 pré-venda com 4.822 pendentes em 2026 é a fila normal da força de vendas ou tem pedido parado?
+4. Na venda, a 111 pré-venda fica pendente com os itens que esperam mercadoria (24.400 itens, 1.395 produtos com importação em andamento). É assim que a força de vendas trabalha a falta de estoque? O portal deve mostrar essa espera ligada ao pedido de compra (quando chega)?
+5. `STATUS_RECEBIMENTO` e `STATUS_QUALIDADE`: quais valores existem (o dicionário novo) e o que cada um quer dizer?

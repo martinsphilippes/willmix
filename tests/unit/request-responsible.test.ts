@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  FUNCTIONS_HREF,
   isOverdue,
   responsibleKey,
   responsibleLine,
@@ -7,6 +8,8 @@ import {
   stepDue,
   stepOwner,
   stepPartners,
+  withFix,
+  type FixDirectory,
   type PeopleDirectory,
   type Person,
 } from "@/lib/request-responsible";
@@ -307,5 +310,126 @@ describe("quem age (2ª linha da Próxima ação)", () => {
     );
     expect(responsibleKey(a)).toBe(responsibleKey(b));
     expect(responsibleKey(a)).not.toBe(responsibleKey(c));
+  });
+});
+
+describe("o botão que resolve a falta no balão (dono, 20/11/2026)", () => {
+  const request = { id: "r2", customerId: "c" };
+  const people = directory();
+  const fixes = (over: Partial<FixDirectory> = {}): FixDirectory => ({
+    admin: true,
+    wellmix: true,
+    customerHasLogin: () => false,
+    customerSuggestion: () => ({
+      customer: "FC DISTRIBUIDORA",
+      login: "compras@fc.com.br",
+      name: "FC DISTRIBUIDORA",
+      password: "abcd-1234",
+    }),
+    partner: people.partner,
+    ...over,
+  });
+  const answering = (ids: string[]): PurchaseProgress => ({
+    decision: { status: "approved", choice: "quote", orderId: null },
+    quote: {
+      status: "open",
+      phase: "answering",
+      invites: ids.map((id) => ({
+        supplierId: id,
+        dueAt: "2026-11-20T10:00:00Z",
+      })),
+    },
+    supplierRequests: [],
+  });
+  const fixOf = (
+    step: Parameters<typeof responsibleOf>[0],
+    dir: FixDirectory,
+    purchase: PurchaseProgress | null = null,
+  ) =>
+    withFix(
+      responsibleOf(step, request, purchase, people),
+      step,
+      request,
+      purchase,
+      dir,
+    )?.fix ?? null;
+
+  it("cliente sem nenhum login: o formulário curto, só para o administrador", () => {
+    const step = { key: "login", who: "unassigned" } as const;
+    expect(fixOf(step, fixes())).toEqual({
+      kind: "customer_login",
+      requestId: "r2",
+      customer: "FC DISTRIBUIDORA",
+      login: "compras@fc.com.br",
+      name: "FC DISTRIBUIDORA",
+      password: "abcd-1234",
+    });
+    expect(fixOf(step, fixes({ admin: false }))).toBeNull();
+  });
+
+  it("cliente com login que não confirma esta: escolher o login na encomenda (a Wellmix)", () => {
+    const step = { key: "confirm", who: "customer" } as const;
+    const withLogin = { customerHasLogin: () => true };
+    expect(fixOf(step, fixes({ ...withLogin, admin: false }))).toEqual({
+      kind: "choose_login",
+      href: "/app/requests/r2#requester",
+    });
+    expect(
+      fixOf(step, fixes({ ...withLogin, admin: false, wellmix: false })),
+    ).toBeNull();
+  });
+
+  it("parceiro sem login: um botão por parceiro sem acesso, só para o administrador", () => {
+    const step = { key: "quote_answer", who: "supplier" } as const;
+    expect(fixOf(step, fixes(), answering(["s2"]))).toEqual({
+      kind: "partner_login",
+      partners: [
+        { id: "s2", name: "Ningbo XYZ", href: "/app/parties/s2#access" },
+      ],
+    });
+    // Vários, todos sem login: um botão para cada (cada um uma vez).
+    const lonely = directory({ partner: (id) => ({ name: id, people: [] }) });
+    const purchase = answering(["s4", "s5", "s4"]);
+    const many = withFix(
+      responsibleOf(step, request, purchase, lonely),
+      step,
+      request,
+      purchase,
+      fixes({ partner: lonely.partner }),
+    );
+    expect(many?.missing).toBe("partner_login");
+    expect(many?.fix).toMatchObject({
+      kind: "partner_login",
+      partners: [{ id: "s4" }, { id: "s5" }],
+    });
+    expect(fixOf(step, fixes({ admin: false }), answering(["s2"]))).toBeNull();
+  });
+
+  it("ninguém com a função: Funções e acessos (administrador); etapa sem responsável no fluxo e sem falta: sem botão", () => {
+    const step = { key: "quote_approve", who: "wellmix" } as const;
+    expect(fixOf(step, fixes())).toEqual({
+      kind: "function",
+      href: FUNCTIONS_HREF,
+    });
+    expect(fixOf(step, fixes({ admin: false }))).toBeNull();
+    expect(
+      fixOf({ key: "purchase_order", who: "wellmix" } as const, fixes()),
+    ).toBeNull();
+    // Sem falta: o mesmo responsável, sem botão (e a mesma chave).
+    const ok = responsibleOf(
+      { key: "confirm", who: "customer" },
+      { id: "r1", customerId: "c" },
+      null,
+      people,
+    );
+    expect(
+      withFix(
+        ok,
+        { key: "confirm", who: "customer" },
+        { id: "r1", customerId: "c" },
+        null,
+        fixes(),
+      ),
+    ).toBe(ok);
   });
 });

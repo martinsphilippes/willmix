@@ -52,10 +52,15 @@ import {
   responsibleOf,
   stepOwner,
   stepPartners,
+  withFix,
   type Responsible,
 } from "@/lib/request-responsible";
 import { peopleDirectory } from "@/lib/services/request-responsible";
-import { ResponsibleTip } from "@/components/request-responsible-tip";
+import { fixDirectory } from "@/lib/services/request-fix";
+import {
+  ResponsibleTip,
+  SituationFixTip,
+} from "@/components/request-responsible-tip";
 import { ListReturnLink } from "@/components/list-return";
 import {
   RequestDetailsScreen,
@@ -206,15 +211,27 @@ export default async function RequestBatchPage({
       ? stepPartners(step.key, ctx?.purchaseOf(r)).map((x) => x.supplierId)
       : [];
   });
+  const users = wellmix ? await store.list("users") : [];
   const directory = wellmix
     ? await peopleDirectory(user, {
-        users: await store.list("users"),
+        users,
         requests: rows,
         ctx,
         partnerIds,
         customerName: (id) =>
           customer && customer.id === id ? customer.name : null,
         translate: (key) => t(key as DictionaryKey),
+      })
+    : null;
+  /* Resolver pelo balão (dono, 20/11/2026; seção 10): o botão que resolve
+     a falta, para quem pode resolver. */
+  const fixDir = directory
+    ? await fixDirectory(user, {
+        users,
+        customerIds: rows
+          .filter((r) => r.status === "AWAITING_CUSTOMER")
+          .map((r) => r.customerId),
+        people: directory,
       })
     : null;
   const turns = [
@@ -227,8 +244,15 @@ export default async function RequestBatchPage({
           step: n,
           people: new Map<string, Responsible>(),
         };
+        const purchase = ctx?.purchaseOf(r);
         const resp = directory
-          ? responsibleOf(n, r, ctx?.purchaseOf(r), directory)
+          ? withFix(
+              responsibleOf(n, r, purchase, directory),
+              n,
+              r,
+              purchase,
+              fixDir,
+            )
           : null;
         if (resp) group.people.set(responsibleKey(resp), resp);
         return groups.set(key, group);
@@ -275,11 +299,23 @@ export default async function RequestBatchPage({
               className="inline-flex flex-wrap items-center gap-2"
               data-request-turn={n.who!}
             >
-              <Badge tone={turnTone(n.who!)}>
-                {user.role === "customer" && n.who === "customer"
-                  ? t("turn.waiting.you")
-                  : t(turnWaitingKey(n.who!))}
-              </Badge>
+              {/* "Sem responsável definido" com o botão que resolve: o
+                  mesmo balão da Próxima ação (dono, 20/11/2026). */}
+              <SituationFixTip
+                r={
+                  n.who === "unassigned"
+                    ? ([...people.values()].find((r) => r.fix && r.missing) ??
+                      null)
+                    : null
+                }
+                t={t}
+              >
+                <Badge tone={turnTone(n.who!)}>
+                  {user.role === "customer" && n.who === "customer"
+                    ? t("turn.waiting.you")
+                    : t(turnWaitingKey(n.who!))}
+                </Badge>
+              </SituationFixTip>
               <span className="text-sm text-zinc-700" data-request-next={n.key}>
                 {t("reqList.col.next")}:{" "}
                 <span className="font-medium text-zinc-900">

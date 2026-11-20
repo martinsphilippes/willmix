@@ -135,6 +135,7 @@ import * as purchaseDemand from "./purchase-demand";
 import * as supplierSheet from "./supplier-sheet";
 import * as strategySend from "./strategy-send";
 import * as strategyPacking from "./strategy-packing";
+import * as requestFix from "./request-fix";
 import * as strategyCard from "./strategy-card";
 import * as supplierRequestNegotiation from "./supplier-request-negotiation";
 import * as purchaseOrder from "./purchase-order";
@@ -313,6 +314,7 @@ export const modulesPt = {
   ...supplierSheet.pt,
   ...strategySend.pt,
   ...strategyPacking.pt,
+  ...requestFix.pt,
   ...strategyCard.pt,
   ...supplierRequestNegotiation.pt,
   ...purchaseOrder.pt,
@@ -489,6 +491,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...supplierSheet.en,
   ...strategySend.en,
   ...strategyPacking.en,
+  ...requestFix.en,
   ...strategyCard.en,
   ...supplierRequestNegotiation.en,
   ...purchaseOrder.en,
@@ -665,6 +668,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...supplierSheet.zh,
   ...strategySend.zh,
   ...strategyPacking.zh,
+  ...requestFix.zh,
   ...strategyCard.zh,
   ...supplierRequestNegotiation.zh,
   ...purchaseOrder.zh,

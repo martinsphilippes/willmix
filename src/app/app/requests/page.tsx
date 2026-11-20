@@ -137,14 +137,17 @@ import {
   stepDue,
   stepOwner,
   stepPartners,
+  withFix,
   type Responsible,
   type StepDue,
 } from "@/lib/request-responsible";
 import { peopleDirectory } from "@/lib/services/request-responsible";
+import { fixDirectory } from "@/lib/services/request-fix";
 import { InfoTip } from "@/components/info-tip";
 import { ListReturnMemory } from "@/components/list-return";
 import {
   ResponsibleTip,
+  SituationFixTip,
   draftResponsible,
   dueDayText,
   dueHourText,
@@ -351,19 +354,29 @@ export default async function RequestsPage({
         count: (cur?.count ?? 0) + 1,
       });
     }
+    // "Sem responsável definido" com o botão que resolve (dono, 20/11/2026;
+    // seção 10): o selo abre o mesmo balão da Próxima ação.
+    const fixed =
+      list.map((r) => respOf(r)).find((r) => r?.fix && !!r.missing) ?? null;
     return [...parts.values()].map(({ party, status, count: n }) =>
       party ? (
         <span
           key={party}
-          title={t(`reqStatusLabel.${status}`)}
+          title={
+            party === "unassigned" && fixed
+              ? undefined
+              : t(`reqStatusLabel.${status}`)
+          }
           data-request-turn={party}
         >
-          <Badge tone={turnTone(party)}>
-            {customer && party === "customer"
-              ? t("turn.waiting.you")
-              : t(turnWaitingKey(party))}
-            {n > 1 ? ` ×${n}` : ""}
-          </Badge>
+          <SituationFixTip r={party === "unassigned" ? fixed : null} t={t}>
+            <Badge tone={turnTone(party)}>
+              {customer && party === "customer"
+                ? t("turn.waiting.you")
+                : t(turnWaitingKey(party))}
+              {n > 1 ? ` ×${n}` : ""}
+            </Badge>
+          </SituationFixTip>
         </span>
       ) : (
         <Badge key={status} tone={requestStatusTone(status)}>
@@ -723,14 +736,34 @@ export default async function RequestsPage({
         translate: (key) => t(key as DictionaryKey),
       })
     : null;
+  /* Resolver pelo balão (dono, 20/11/2026; seção 10): o botão que resolve
+     a falta, para quem pode resolver (o login do cliente, o administrador). */
+  const fixDir = directory
+    ? await fixDirectory(user, {
+        users: team,
+        customerIds: shownRows
+          .filter((r) => r.status === "AWAITING_CUSTOMER")
+          .map((r) => r.customerId),
+        people: directory,
+      })
+    : null;
   const respCache = new Map<string, Responsible | null>();
   const respOf = (r: Request): Responsible | null => {
     if (!directory) return null;
-    if (!respCache.has(r.id))
+    if (!respCache.has(r.id)) {
+      const step = nextOf(r);
+      const purchase = turnCtx?.purchaseOf(r);
       respCache.set(
         r.id,
-        responsibleOf(nextOf(r), r, turnCtx?.purchaseOf(r), directory),
+        withFix(
+          responsibleOf(step, r, purchase, directory),
+          step,
+          r,
+          purchase,
+          fixDir,
+        ),
       );
+    }
     return respCache.get(r.id) ?? null;
   };
   /** Prazo para mostrar: o dia; no SLA, também a hora (Brasília). */
