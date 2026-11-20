@@ -16,13 +16,19 @@ A carga antiga do histórico (11 e 12/11/2026) criou 16.268 pedidos no portal, u
 - Também são de importação: 1002 Cotação, 1003 Amostra e 140 Amostra de importação.
 - Cada etapa é um **documento novo, gerado a partir do anterior**. A mesma compra aparece em várias TOPs, e a etapa em que ela está agora é a do documento com `PEDIDO_PENDENTE = 'S'`.
 - Ficam fora: compra nacional e de consumo (7, 176 e 1120).
-- **Recebimento e qualidade já estão no pedido de compra** (colunas novas da view, 20/11/2026):
-  - `STATUS_RECEBIMENTO` e `DATA_RECEBIMENTO`: pela entrada da nota de importação;
-  - `STATUS_QUALIDADE` e `DATA_INSPECAO`: inspeção antes do embarque.
+- **Acompanhamento já está no cabeçalho do pedido de compra** (dicionário de 20/11/2026, conferido pelo TI contra o banco). São 6 colunas calculadas no fim da `VW_AD_PEDCOMPRA_CAB_WELL`, que não existem na view de itens:
 
-  As cópias de compra de 20/11/2026 são anteriores a elas. Para trazê-las, copie de novo os cabeçalhos e os itens de compra ("Recomeçar"). A cópia lê a view inteira (`SELECT *`), então não precisa mudar código.
+| Coluna                     | O que é                                                                                                                                      |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CANAL_ADUANEIRO`          | Verde, Amarelo, Vermelho ou Cinza (vale o mais severo entre os processos de importação do pedido); vazio = sem processo de importação ligado |
+| `QTD_PROCESSOS_IMPORTACAO` | Quantos processos de importação entram na conta do canal                                                                                     |
+| `STATUS_RECEBIMENTO`       | Recebido (há entrada e nenhum saldo pendente) ou Recebimento parcial (há entrada e ainda há saldo); vazio = sem entrada                      |
+| `DATA_RECEBIMENTO`         | Data da entrada mais recente entre os processos do pedido                                                                                    |
+| `STATUS_QUALIDADE`         | Inspecionado (todos os itens do 1104 inspecionados), Inspecao parcial ou Nao inspecionado; vazio = documento fora da cadeia de um 1104       |
+| `DATA_INSPECAO`            | Data da inspeção mais recente                                                                                                                |
 
-- `NUMERO_IMPORTACAO` está vazio: não liga os documentos de uma compra. Na view de compra, 28.908 documentos em 19 TOPs, de 552 fornecedores, 752 pendentes.
+A cópia dos cabeçalhos de compra de 20/11/2026 é anterior a elas. Para trazê-las, copie de novo só os cabeçalhos de compra (os itens não mudaram). A cópia lê a view inteira (`SELECT *`), então não precisa mudar código. Colunas por view em 20/11/2026: venda cabeçalho 58, venda item 75, compra cabeçalho 79, compra item 97.
+
 - A leitura das views segue `LEITURA-VIEWS-PEDIDOS` do TI:
   - filtro por `DATA_ALTERACAO_PEDIDO`;
   - páginas de 4.000 por `NUNOTA, SEQUENCIA`;
@@ -44,7 +50,7 @@ Configurações → Sankhya → Carga do Sankhya → Carga completa, linhas "An�
 
 A view de itens de venda tem 4,4 milhões de linhas, uns 5 GB copiada inteira, e o banco tem 8 GB, já com 1,4 GB em uso. As pendências moram no item de venda (dono, 20/11/2026). A primeira versão filtrava a view inteira com `OR` (pendente ou alterado). A consulta passava de 60 s e a rodada seguinte da fila chegava com a anterior ainda rodando no Sankhya, o que dava o erro "O serviço foi cancelado por situação de concorrência" (20/11/2026). Pela lista de pedidos no `IN`, cada chamada é curta.
 
-**Página que encolhe (20/11/2026):** cada chamada ao Sankhya tem 25 s. Com as colunas novas de recebimento e qualidade, calculadas na view, a página de 4.000 cabeçalhos de compra passou desse tempo. A cópia agora corta a página pela metade a cada estouro (4.000, 2.000, 1.000… até 100) e guarda o tamanho que funcionou (`pageSize`). Se a consulta que estourou ainda estiver rodando no Sankhya, vem o erro de concorrência; a rodada então só espera a próxima, sem contar como falha da fila.
+**Página que encolhe (20/11/2026):** cada chamada ao Sankhya tem 25 s. (A primeira versão procurava o texto do erro no lugar errado: o `SankhyaError` guarda o código em `message` e o texto em `detail`. Corrigido na segunda.) Com as colunas novas de recebimento e qualidade, calculadas na view, a página de 4.000 cabeçalhos de compra passou desse tempo. A cópia agora corta a página pela metade a cada estouro (4.000, 2.000, 1.000… até 100) e guarda o tamanho que funcionou (`pageSize`). Se a consulta que estourou ainda estiver rodando no Sankhya, vem o erro de concorrência; a rodada então só espera a próxima, sem contar como falha da fila.
 
 Ler de novo não duplica: a linha é gravada pela chave da origem (`dataset:NUNOTA[:SEQUENCIA[:NUNOTAORIG:SEQUENCIAORIG]]`). "Recomeçar" relê tudo, e `runId` diz de que rodada cada linha veio.
 
@@ -118,7 +124,7 @@ O pedido só sai de "pendente" quando todos os itens passam para um embarque. Os
 ### 3. Quando uma compra termina
 
 - **O pedido ao fornecedor** termina quando todos os itens foram para embarque: a 1104 sem pendência, com `QTD_ENTREGUE` igual a `QTD_NEGOCIADA` em todos os itens.
-- **O embarque** termina na nota de compra (37 ou 1201), que é o recebimento no Brasil. Com as colunas novas, o próprio pedido diz isso (`STATUS_RECEBIMENTO`, `DATA_RECEBIMENTO`), sem precisar seguir a TGFVAR até a nota.
+- **O embarque** termina na nota de compra (37 ou 1201), que é o recebimento no Brasil. Com as colunas novas, o próprio pedido diz isso (`STATUS_RECEBIMENTO` Recebido ou Recebimento parcial, `DATA_RECEBIMENTO`), sem precisar seguir a TGFVAR até a nota. A inspeção (`STATUS_QUALIDADE`) e o canal aduaneiro (`CANAL_ADUANEIRO`) também vêm prontos no pedido.
 - **A compra inteira** termina quando todos os embarques dos seus itens chegaram à nota.
 
 ### 4. Vendas
@@ -174,4 +180,4 @@ A pré-venda pendente não está parada. A maior parte dela já virou pedido WMS
 2. As 16 amostras 140 de 2021 a 2025 ainda pendentes podem ser dadas como encerradas?
 3. O embarque (35) é o container? Um container pode juntar pedidos de fornecedores diferentes?
 4. Na venda, a 111 pré-venda fica pendente com os itens que esperam mercadoria (24.400 itens, 1.395 produtos com importação em andamento). É assim que a força de vendas trabalha a falta de estoque? O portal deve mostrar essa espera ligada ao pedido de compra (quando chega)?
-5. `STATUS_RECEBIMENTO` e `STATUS_QUALIDADE`: quais valores existem (o dicionário novo) e o que cada um quer dizer?
+5. Respondida pelo dicionário de 20/11/2026: `STATUS_RECEBIMENTO` (Recebido, Recebimento parcial), `STATUS_QUALIDADE` (Inspecionado, Inspecao parcial, Nao inspecionado) e o `CANAL_ADUANEIRO` (Verde, Amarelo, Vermelho, Cinza). O canal Cinza ou Vermelho pausa o pedido no portal (docs/DELIVERY.md); vale confirmar se é o mesmo canal.

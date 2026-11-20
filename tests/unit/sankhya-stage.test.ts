@@ -43,6 +43,10 @@ const afterCursor = (sql: string, rows: Array<Record<string, unknown>>) => {
     .slice(0, Number(/TOP (\d+)/.exec(sql)?.[1] ?? PAGE));
 };
 
+const { SankhyaError } = await vi.importActual<
+  typeof import("@/lib/integrations/sankhya-client")
+>("@/lib/integrations/sankhya-client");
+
 vi.mock("@/lib/integrations/sankhya-client", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@/lib/integrations/sankhya-client")
@@ -73,9 +77,10 @@ vi.mock("@/lib/integrations/sankhya-client", async (importOriginal) => ({
     }
     const top = Number(/TOP (\d+)/.exec(sql)?.[1] ?? 0);
     if (sankhya.slowAbove != null && top > sankhya.slowAbove)
-      throw Object.assign(
-        new Error("The operation was aborted due to timeout"),
-        { code: "sankhya_network" },
+      // Como o cliente lança: o código em `message`, o texto em `detail`.
+      throw new SankhyaError(
+        "sankhya_network",
+        "The operation was aborted due to timeout",
       );
     const rows = sql.includes("VW_AD_PEDCOMPRA_ITEM_WELL")
       ? afterCursor(sql, sankhya.items)
@@ -364,5 +369,30 @@ describe("view lenta", () => {
     expect(rows.filter((r) => r.nunota! >= 20000)).toHaveLength(1500);
     expect(sankhya.sql.some((q) => q.includes("SELECT TOP 1000 *"))).toBe(true);
     sankhya.slowAbove = null;
+  });
+});
+
+describe("erros do Sankhya", () => {
+  it("reconhece o estouro de tempo e a sessão ocupada pelo texto em detail", () => {
+    expect(
+      stage.isTimeout(
+        new SankhyaError(
+          "sankhya_network",
+          "The operation was aborted due to timeout",
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      stage.isBusy(
+        new SankhyaError(
+          "sankhya_service",
+          "O serviço foi cancelado por situação de concorrência. Essa mesma sessão HTTP fez a requisição duas vezes simultaneamente.",
+          200,
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      stage.isTimeout(new SankhyaError("sankhya_service", "Erro de SQL")),
+    ).toBe(false);
   });
 });

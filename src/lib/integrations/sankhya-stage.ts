@@ -242,14 +242,22 @@ export function cutPage(
 /** Menor página: abaixo disso, o erro de tempo para a rodada. */
 export const MIN_PAGE = 100;
 
+/**
+ * Texto do erro: o SankhyaError guarda o código em `message` e o texto do
+ * Sankhya (ou do fetch) em `detail`.
+ */
+const errorText = (error: unknown) => {
+  const e = error as { message?: unknown; detail?: unknown };
+  return `${String(e?.message ?? "")} ${String(e?.detail ?? "")}`;
+};
+
 /** Erro de tempo da chamada ao Sankhya (25 s por chamada). */
-const isTimeout = (error: unknown) =>
+export const isTimeout = (error: unknown) =>
   (error as { code?: string }).code === "sankhya_network" &&
-  /timeout|aborted/i.test(String((error as Error).message ?? ""));
+  /timeout|aborted/i.test(errorText(error));
 
 /** "O serviço foi cancelado por situação de concorrência" (sessão ocupada). */
-const isBusy = (error: unknown) =>
-  /concorr/i.test(String((error as Error).message ?? ""));
+export const isBusy = (error: unknown) => /concorr/i.test(errorText(error));
 
 export interface StageProgress {
   /**
