@@ -64,6 +64,7 @@ export type TaskKind =
   | "purchase_quote_choose"
   | "purchase_quote_empty"
   | "purchase_quote_approve"
+  | "supplier_sheet_review"
   | "requirement"
   | "review"
   | "after_sales"
@@ -384,6 +385,7 @@ const KIND_ORDER: string[] = [
   "purchase_quote_choose",
   "purchase_quote_empty",
   "purchase_quote_approve",
+  "supplier_sheet_review",
   "supplier_request",
   "sampling_validate",
   "freight_quote",
@@ -1114,6 +1116,18 @@ export async function pendingTasksFor(
           await import("./purchase-quote")
         )
           .quoteTaskDrafts(user, now)
+          .catch(() => [])
+      ).map((draft) => finish(draft, now)),
+    );
+  // Ficha técnica corrigida pelo fornecedor na cotação (dono, 20/11/2026):
+  // o Cadastro aceita ou recusa.
+  if (wellmix)
+    tasks.push(
+      ...(
+        await (
+          await import("./supplier-sheets")
+        )
+          .supplierSheetTaskDrafts(user)
           .catch(() => [])
       ).map((draft) => finish(draft, now)),
     );

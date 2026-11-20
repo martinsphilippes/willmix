@@ -2028,11 +2028,42 @@ alter table public."purchase_quote_responses" add column if not exists "note" te
 alter table public."purchase_quote_responses" add column if not exists "answeredAt" timestamptz;
 alter table public."purchase_quote_responses" add column if not exists "answeredByUserId" text;
 alter table public."purchase_quote_responses" add column if not exists "reminderSentAt" timestamptz;
+alter table public."purchase_quote_responses" add column if not exists "items" jsonb;
 create index if not exists "purchase_quote_responses_by_quote" on public."purchase_quote_responses" ("quoteId");
 create index if not exists "purchase_quote_responses_by_supplier" on public."purchase_quote_responses" ("supplierId");
 create unique index if not exists "purchase_quote_responses_quote_supplier_unique" on public."purchase_quote_responses" ("quoteId", "supplierId");
 create index if not exists "purchase_quote_responses_created" on public."purchase_quote_responses" ("createdAt");
 create index if not exists "purchase_quote_responses_created_id" on public."purchase_quote_responses" ("createdAt", "id");
+
+create table if not exists public."supplier_product_sheets" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."supplier_product_sheets" enable row level security;
+alter table public."supplier_product_sheets" add column if not exists "productId" text;
+alter table public."supplier_product_sheets" add column if not exists "supplierId" text;
+alter table public."supplier_product_sheets" add column if not exists "kind" text;
+alter table public."supplier_product_sheets" add column if not exists "data" jsonb;
+alter table public."supplier_product_sheets" add column if not exists "baseline" jsonb;
+alter table public."supplier_product_sheets" add column if not exists "changedFields" jsonb;
+alter table public."supplier_product_sheets" add column if not exists "soldBefore" boolean;
+alter table public."supplier_product_sheets" add column if not exists "source" text;
+alter table public."supplier_product_sheets" add column if not exists "quoteId" text;
+alter table public."supplier_product_sheets" add column if not exists "quoteResponseId" text;
+alter table public."supplier_product_sheets" add column if not exists "orderId" text;
+alter table public."supplier_product_sheets" add column if not exists "scalePhotoDocumentId" text;
+alter table public."supplier_product_sheets" add column if not exists "confirmedAt" timestamptz;
+alter table public."supplier_product_sheets" add column if not exists "confirmedByUserId" text;
+alter table public."supplier_product_sheets" add column if not exists "review" text;
+alter table public."supplier_product_sheets" add column if not exists "reviewedAt" timestamptz;
+alter table public."supplier_product_sheets" add column if not exists "reviewedByUserId" text;
+alter table public."supplier_product_sheets" add column if not exists "reviewNote" text;
+create unique index if not exists "supplier_product_sheets_product_supplier_sheet_unique" on public."supplier_product_sheets" ("productId", "supplierId");
+create index if not exists "supplier_product_sheets_by_supplier" on public."supplier_product_sheets" ("supplierId");
+create index if not exists "supplier_product_sheets_by_review" on public."supplier_product_sheets" ("review");
+create index if not exists "supplier_product_sheets_created" on public."supplier_product_sheets" ("createdAt");
+create index if not exists "supplier_product_sheets_created_id" on public."supplier_product_sheets" ("createdAt", "id");
 
 create table if not exists public."supplier_lines" (
   "id" text primary key,

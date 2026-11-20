@@ -3595,6 +3595,94 @@ export interface QuoteResponsePrice {
   unitPrice: number;
 }
 
+/*
+ * Ficha técnica do par produto × fornecedor (dono, 20/11/2026;
+ * docs/PURCHASE_DEMAND.md, "Ficha técnica na cotação"): quem nunca vendeu o
+ * produto informa; quem já vendeu confirma ou corrige o que temos, uma vez
+ * só (na primeira cotação do par ou na ficha de compra do pedido direto).
+ * Não muda o cadastro do produto nem o Sankhya.
+ */
+/** Como a ficha chegou: informada em branco, confirmada sem mudar ou corrigida. */
+export const SUPPLIER_SHEET_KINDS = [
+  "declared",
+  "confirmed",
+  "corrected",
+] as const;
+export type SupplierSheetKind = (typeof SUPPLIER_SHEET_KINDS)[number];
+/** Revisão do Cadastro (só para a ficha corrigida). */
+export const SUPPLIER_SHEET_REVIEWS = [
+  "pending",
+  "accepted",
+  "rejected",
+] as const;
+export type SupplierSheetReview = (typeof SUPPLIER_SHEET_REVIEWS)[number];
+export const SUPPLIER_SHEET_SOURCES = ["quote", "purchase_sheet"] as const;
+export type SupplierSheetSource = (typeof SUPPLIER_SHEET_SOURCES)[number];
+
+/** Os campos da ficha técnica, nas unidades da ficha de compra. */
+export interface SupplierSheetData {
+  /** Peças por caixa master. */
+  masterBoxQty: number;
+  /** Peças por caixa inner; 0 = "Sem inner". */
+  innerBoxQty: number;
+  /** Medidas da caixa master (cm); nulas quando ele informou só o CBM. */
+  boxLengthCm: number | null;
+  boxWidthCm: number | null;
+  boxHeightCm: number | null;
+  /** CBM da caixa master (m³): o informado ou o das medidas, sem arredondar. */
+  cbm: number;
+  /** Peso líquido por peça (kg). */
+  netWeightKg: number;
+  /** Peso bruto da caixa master (kg). */
+  grossWeightBoxKg: number;
+  material: string;
+  /** Código do item na fábrica; nulo = "Sem código". */
+  factoryItemCode: string | null;
+}
+export type SupplierSheetField = keyof SupplierSheetData;
+/** O que tínhamos de cada campo (nulo = não tínhamos). */
+export type SupplierSheetBaseline = {
+  [K in SupplierSheetField]: SupplierSheetData[K] | null;
+};
+
+export interface SupplierProductSheet extends BaseRow {
+  productId: string;
+  supplierId: string;
+  kind: SupplierSheetKind;
+  data: SupplierSheetData;
+  /** O que tínhamos quando ele confirmou (quem já vendeu); nulo para quem nunca vendeu. */
+  baseline: SupplierSheetBaseline | null;
+  /** Campos que ele mudou em relação ao que tínhamos. */
+  changedFields: SupplierSheetField[] | null;
+  /** Já tinha vendido o produto à Wellmix quando informou. */
+  soldBefore: boolean;
+  source: SupplierSheetSource;
+  quoteId: string | null;
+  quoteResponseId: string | null;
+  orderId: string | null;
+  /** Foto na balança que ele enviou (documento). */
+  scalePhotoDocumentId: string | null;
+  confirmedAt: string;
+  confirmedByUserId: string | null;
+  /** Nulo = sem revisão (informada ou confirmada sem mudar). */
+  review: SupplierSheetReview | null;
+  reviewedAt: string | null;
+  reviewedByUserId: string | null;
+  reviewNote: string | null;
+}
+
+/** A ficha técnica e a foto de um produto, como foram na resposta. */
+export interface QuoteResponseItem {
+  productId: string;
+  /** A ficha usada nesta resposta: a enviada agora ou a já confirmada antes. */
+  sheet: SupplierSheetData | null;
+  /** Enviada agora (informada, confirmada ou corrigida) ou "existing" (de antes). */
+  sheetKind: SupplierSheetKind | "existing" | null;
+  changedFields: SupplierSheetField[] | null;
+  /** Foto na balança enviada nesta cotação (documento). */
+  scalePhotoDocumentId: string | null;
+}
+
 export interface PurchaseQuoteResponse extends BaseRow {
   quoteId: string;
   supplierId: string;
@@ -3613,6 +3701,11 @@ export interface PurchaseQuoteResponse extends BaseRow {
   answeredByUserId: string | null;
   /** Lembrete antes de vencer, enviado uma vez. */
   reminderSentAt: string | null;
+  /**
+   * Ficha técnica e foto de cada produto (dono, 20/11/2026). A foto entra
+   * antes da resposta (sobe na hora); a ficha, no envio. Nulo nas antigas.
+   */
+  items?: QuoteResponseItem[] | null;
 }
 
 /** Fornecedor × linha de produto (quem atende cada linha; docs/PURCHASE_DEMAND.md). */
@@ -4358,6 +4451,7 @@ export interface Tables {
   purchase_strategy_sends: PurchaseStrategySend;
   purchase_quotes: PurchaseQuote;
   purchase_quote_responses: PurchaseQuoteResponse;
+  supplier_product_sheets: SupplierProductSheet;
   supplier_lines: SupplierLine;
   product_families: ProductFamilyRow;
   party_families: PartyFamily;
@@ -6366,6 +6460,8 @@ export const TABLES: Record<TableName, TableDef> = {
       answeredAt: datetime(),
       answeredByUserId: id(false),
       reminderSentAt: datetime(),
+      // Ficha técnica e foto de cada produto (dono, 20/11/2026).
+      items: json(),
     },
     indexes: [
       { key: "by_quote", type: "key", columns: ["quoteId"] },
@@ -6377,6 +6473,39 @@ export const TABLES: Record<TableName, TableDef> = {
         type: "unique",
         columns: ["quoteId", "supplierId"],
       },
+    ],
+  },
+  supplier_product_sheets: {
+    label: "Fichas técnicas dos fornecedores",
+    columns: {
+      productId: id(),
+      supplierId: id(),
+      kind: enumOf(SUPPLIER_SHEET_KINDS),
+      data: json(),
+      baseline: json(),
+      changedFields: json(),
+      soldBefore: bool(),
+      source: enumOf(SUPPLIER_SHEET_SOURCES),
+      quoteId: id(false),
+      quoteResponseId: id(false),
+      orderId: id(false),
+      scalePhotoDocumentId: id(false),
+      confirmedAt: datetime(true),
+      confirmedByUserId: id(false),
+      review: enumOf(SUPPLIER_SHEET_REVIEWS, false),
+      reviewedAt: datetime(),
+      reviewedByUserId: id(false),
+      reviewNote: text(),
+    },
+    indexes: [
+      // Uma ficha por par: a segunda resposta atualiza a mesma linha.
+      {
+        key: "product_supplier_sheet_unique",
+        type: "unique",
+        columns: ["productId", "supplierId"],
+      },
+      { key: "by_supplier", type: "key", columns: ["supplierId"] },
+      { key: "by_review", type: "key", columns: ["review"] },
     ],
   },
   supplier_lines: {

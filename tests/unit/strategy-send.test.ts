@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
+import { sheetFor } from "./quote-sheet-fixture";
 import { orderFromRequest } from "./helpers/order";
 
 /*
@@ -527,6 +528,7 @@ describe("envio da Estratégia de Compra", () => {
       port: "Ningbo",
       moq: 500,
       note: null,
+      sheets: [sheetFor("prod-jarra")],
     };
     await quotes.answerQuote(trader, quote.id, answer);
     await quotes.answerQuote(supplierA, quote.id, {

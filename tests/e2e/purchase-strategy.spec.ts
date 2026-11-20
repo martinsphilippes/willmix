@@ -318,6 +318,10 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   await page.waitForURL(new RegExp(`/app/purchase-quotes/${quoteId}`));
   await expect(page.locator("[data-quote-answer-form]")).toBeVisible();
   await expect(page.locator("main")).not.toContainText("Loja do João");
+  // Ele já vendeu o produto (o pedido direto acima): confere o que temos,
+  // com o aviso de revalidação, uma vez só (dono, 20/11/2026).
+  await expect(page.locator("[data-quote-disclaimer]")).toBeVisible();
+  await expect(page.locator("[data-sheet-confirm]")).toHaveCount(1);
 
   // (e) Encomenda cancelada depois da aprovação (dono, 18 e 19/11/2026): a
   // estratégia para (sem "Gerar pedido") e o Comprador a encerra.

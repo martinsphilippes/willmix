@@ -23,6 +23,8 @@ export function SheetPhotosCard({
   hint,
   coveredKinds = [],
   given = [],
+  givenTitle,
+  givenNote,
   waivedKinds = [],
   className = "mt-4",
   missing = [],
@@ -52,6 +54,9 @@ export function SheetPhotosCard({
    * obrigatórios aqui (continuam podendo ser enviados).
    */
   given?: ProductPhoto[];
+  /** Título e nota do quadro das fotos já recebidas (padrão: as do Book). */
+  givenTitle?: string;
+  givenNote?: string;
   waivedKinds?: readonly string[];
   className?: string;
 }) {
@@ -81,7 +86,9 @@ export function SheetPhotosCard({
             data-photos-given={given.length}
           >
             <p className="text-[13px] font-semibold leading-5 text-emerald-900">
-              ✓ {t("sheet.photos.given.title", { n: String(given.length) })}
+              ✓{" "}
+              {givenTitle ??
+                t("sheet.photos.given.title", { n: String(given.length) })}
             </p>
             <ul className="mt-1.5 flex flex-wrap gap-2">
               {given.map((p) => (
@@ -104,7 +111,7 @@ export function SheetPhotosCard({
               ))}
             </ul>
             <p className="mt-1.5 text-xs leading-relaxed text-emerald-900/80">
-              {t("sheet.photos.given.note")}
+              {givenNote ?? t("sheet.photos.given.note")}
             </p>
           </div>
         ) : waivedKinds.length ? (

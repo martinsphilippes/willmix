@@ -341,6 +341,8 @@ const KIND_STEP: Partial<Record<string, Ref>> = {
   purchase_quote_choose: "new-product/purchase-quotes",
   purchase_quote_empty: "new-product/purchase-quotes",
   purchase_quote_approve: "new-product/purchase-quotes",
+  // Ficha técnica corrigida pelo fornecedor: o Cadastro, em Cadastros → Produtos.
+  supplier_sheet_review: "registry/products",
   after_sales: "sales/sale",
   // Recebimento no CD (casos do menu, fora das Pendências; docs/FLOW_MENU.md).
   receiving_storage: "delivery/storage",

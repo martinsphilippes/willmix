@@ -19,6 +19,15 @@ import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
 import { servesFamilies } from "@/lib/party-families";
 import { notify } from "./notifications";
+import { storePhotoDocument, type PhotoSource } from "./documents";
+import {
+  prepareQuoteSheets,
+  saveQuoteSheets,
+  setQuoteScalePhoto,
+  SupplierSheetError,
+  type PreparedQuoteSheet,
+  type QuoteSheetInput,
+} from "./supplier-sheets";
 
 /*
  * Cotação de compra (mapa B13; dono, 15/11/2026; docs/PURCHASE_DEMAND.md).
@@ -537,6 +546,11 @@ export interface QuoteAnswer {
   port: string | null;
   moq: number | null;
   note: string | null;
+  /**
+   * Ficha técnica de cada produto (dono, 20/11/2026): pedida na primeira vez
+   * do par produto × fornecedor; quem já vendeu confirma ou corrige.
+   */
+  sheets?: QuoteSheetInput[];
 }
 
 /** O fornecedor responde (ou recusa) a própria cotação, dentro do prazo. */
@@ -555,6 +569,7 @@ export async function answerQuote(
   if (Date.parse(response.dueAt) <= now.getTime())
     throw new PurchaseQuoteError("quote_expired");
   let patch: Partial<PurchaseQuoteResponse>;
+  let prepared: PreparedQuoteSheet[] = [];
   if (input.decline) {
     patch = {
       status: "declined",
@@ -578,15 +593,35 @@ export async function answerQuote(
       !(SHEET_INCOTERMS as readonly string[]).includes(input.incoterm)
     )
       throw new PurchaseQuoteError("quote_incoterm_required");
+    // Comercial obrigatório em toda cotação (dono, 20/11/2026): prazo de
+    // produção, pedido mínimo e porto (também no EXW).
+    if (
+      input.leadTimeDays === null ||
+      !Number.isInteger(input.leadTimeDays) ||
+      input.leadTimeDays < 0
+    )
+      throw new PurchaseQuoteError("quote_lead_required");
+    if (input.moq === null || !(input.moq > 0))
+      throw new PurchaseQuoteError("quote_moq_required");
+    if (!input.port?.trim())
+      throw new PurchaseQuoteError("quote_port_required");
+    try {
+      prepared = await prepareQuoteSheets(quote, response, input.sheets ?? []);
+    } catch (error) {
+      if (error instanceof SupplierSheetError)
+        throw new PurchaseQuoteError(error.message);
+      throw error;
+    }
     patch = {
       status: "answered",
       prices,
       currency: input.currency,
       incoterm: input.incoterm,
       leadTimeDays: input.leadTimeDays,
-      port: input.port,
+      port: input.port.trim(),
       moq: input.moq,
       note: input.note,
+      items: prepared.map((p) => p.item),
     };
   }
   const updated = await store.update("purchase_quote_responses", response.id, {
@@ -594,6 +629,9 @@ export async function answerQuote(
     answeredAt: now.toISOString(),
     answeredByUserId: user.id,
   });
+  // A ficha de cada par, depois da resposta gravada (uma vez por par).
+  if (prepared.length)
+    await saveQuoteSheets(user, quote, updated, prepared, now);
   await audit(
     user,
     input.decline ? "purchase_quote.decline" : "purchase_quote.answer",
@@ -613,6 +651,38 @@ export async function answerQuote(
       },
     );
   return updated;
+}
+
+/**
+ * Foto na balança de um produto (opcional; dono, 20/11/2026): sobe na hora,
+ * antes ou depois da resposta, enquanto o prazo corre. Só a Wellmix e quem
+ * enviou abrem (documento sem pedido nem solicitação).
+ */
+export async function addQuoteScalePhoto(
+  user: User,
+  quoteId: string,
+  productId: string,
+  source: PhotoSource,
+  now = new Date(),
+): Promise<void> {
+  const response = await ownResponse(user, quoteId);
+  if (!response) throw new PurchaseQuoteError("not_found");
+  const quote = await getStore().get("purchase_quotes", quoteId);
+  if (!quote || quote.status !== "open")
+    throw new PurchaseQuoteError("quote_closed");
+  if (Date.parse(response.dueAt) <= now.getTime())
+    throw new PurchaseQuoteError("quote_expired");
+  if (!quote.items.some((i) => i.productId === productId))
+    throw new PurchaseQuoteError("not_found");
+  const doc = await storePhotoDocument(user, source, { type: "photo" });
+  await setQuoteScalePhoto(response, productId, doc.id);
+  await audit(
+    user,
+    "purchase_quote.scale_photo",
+    "purchase_quote",
+    quote.id,
+    `Cotação de compra nº ${quote.number}: foto na balança do produto ${productId} pelo fornecedor ${response.supplierId}`,
+  );
 }
 
 /* ------------------------------------------------------------------------ */
@@ -780,6 +850,10 @@ async function supplierRequestsFromWinner(
     const price =
       winner.prices?.find((p) => p.productId === item.productId)?.unitPrice ??
       null;
+    // A ficha técnica que a vencedora informou (dono, 20/11/2026): a
+    // solicitação já nasce com a embalagem e o peso dela.
+    const sheet =
+      winner.items?.find((i) => i.productId === item.productId)?.sheet ?? null;
     const request = await store.create("supplier_requests", {
       number,
       batchId,
@@ -791,23 +865,27 @@ async function supplierRequestsFromWinner(
       alternativeItemIds: null,
       item: {
         itemNumber: null,
-        factoryItemCode: null,
+        factoryItemCode: sheet?.factoryItemCode ?? null,
         productName: item.name,
         description: null,
         incoterm,
         currency,
         price,
-        masterCartonQty: null,
-        innerQty: null,
-        netWeightPcKg: null,
-        grossWeightPcKg: null,
-        cbmPerCarton: null,
+        masterCartonQty: sheet?.masterBoxQty ?? null,
+        innerQty: sheet ? sheet.innerBoxQty || null : null,
+        netWeightPcKg: sheet?.netWeightKg ?? null,
+        grossWeightPcKg: sheet
+          ? sheet.grossWeightBoxKg / sheet.masterBoxQty
+          : null,
+        cbmPerCarton: sheet?.cbm ?? null,
+        // Medidas da solicitação são do produto (as do Book); as da ficha
+        // técnica são da caixa master: não entram aqui.
         lengthCm: null,
         widthCm: null,
         heightCm: null,
         capacityMl: null,
         packageType: null,
-        material: null,
+        material: sheet?.material ?? null,
         moq: winner.moq,
         colorAssortment: null,
         powerDetail: null,

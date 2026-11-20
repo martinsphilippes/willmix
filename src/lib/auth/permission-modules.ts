@@ -107,7 +107,7 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
     key: "registry",
     label: "nav.group.registry",
     screens: ["parties", "products", "lines", "explore", "import"],
-    actions: [],
+    actions: ["supplierSheet.review"],
   },
   {
     // Fixos embaixo do menu (Configurações, com o Superplan; Equipe e
