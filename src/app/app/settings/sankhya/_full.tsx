@@ -127,6 +127,13 @@ export async function FullLoadCard({ t, q }: { t: Translate; q: Params }) {
                     {t("sankhyaLoad.full.notStarted")}
                   </Badge>
                 )}
+                {p.source ? (
+                  <span
+                    className={`mt-1 block ${p.source === "table" ? "text-amber-700" : "text-zinc-500"}`}
+                  >
+                    {t(`sankhyaLoad.full.source.${p.source}`)}
+                  </span>
+                ) : null}
                 {p.missing.length ? (
                   <span className="mt-1 block text-amber-700">
                     {t("sankhyaLoad.full.missing", {

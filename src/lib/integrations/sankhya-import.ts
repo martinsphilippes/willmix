@@ -30,6 +30,12 @@ import { legacyGroupOfItem, milestoneRank } from "@/lib/milestones";
 import { milestoneOfItem } from "@/lib/milestone-release";
 import type { ImportSet } from "./sankhya-sample";
 import {
+  productSupplierFromView,
+  viewSnapshot,
+  type ProductSupplierViewRow,
+} from "./sankhya-views";
+import {
+  partnerContacts,
   partnerExtras,
   productExtras,
   titleTypeNames,
@@ -72,7 +78,9 @@ export type ImportEntity =
   | "stockBalances"
   | "orders"
   | "financial"
-  | "paymentConditions";
+  | "paymentConditions"
+  | "productSuppliers"
+  | "sellers";
 
 export interface ImportLine {
   entity: ImportEntity;
@@ -274,7 +282,9 @@ function productFields(row: SankhyaRow) {
     heightCm: cm("ALTURA"),
     widthCm: cm("LARGURA"),
     lengthCm: cm("ESPESSURA"),
-    minStock: number(row, "ESTMIN"),
+    // A VW_AD_PRODUTO_WELL não tem o ESTMIN (20/11/2026): sem a coluna, o
+    // estoque mínimo do portal não muda.
+    ...("ESTMIN" in row ? { minStock: number(row, "ESTMIN") } : {}),
     brand: text(row, "MARCA"),
     sankhyaRefs: refsOf(row),
     // Grupo interno (material de consumo, hardware, folha...): sempre inativo.
@@ -295,9 +305,17 @@ function productExtraFields(
   extra: ProductExtra | undefined,
   currency: string,
 ) {
-  const supplier = extra?.supplierCode
+  // Fornecedor principal do cadastro do produto (TGFPRO.CODPARCFORN; dono,
+  // 20/11/2026) antes do fornecedor da última nota de importação. Só preenche
+  // o produto sem fornecedor no portal.
+  const principal = code(row.CODPARCFORN);
+  const supplierCode =
+    principal && principal !== "0"
+      ? String(Number(principal))
+      : (extra?.supplierCode ?? null);
+  const supplier = supplierCode
     ? ctx.parties.find(
-        (p) => p.type === "supplier" && p.sankhyaCode === extra.supplierCode,
+        (p) => p.type === "supplier" && p.sankhyaCode === supplierCode,
       )
     : undefined;
   const fx = extra?.lastFx && extra.lastFx > 0 ? extra.lastFx : null;
@@ -325,7 +343,17 @@ export async function upsertProducts(
   lineByGroup: Map<string, string>,
   currency = DEFAULT_SANKHYA_ERP.currency,
   /** Histórico de notas: dados extras (última compra, caixas) só dos novos. */
-  { extrasOnlyNew = false }: { extrasOnlyNew?: boolean } = {},
+  {
+    extrasOnlyNew = false,
+    fromView = false,
+  }: {
+    extrasOnlyNew?: boolean;
+    /**
+     * Linhas da VW_AD_PRODUTO_WELL (sankhya-views.ts): a view não tem todas
+     * as colunas da TGFPRO, então os códigos dela se somam aos gravados.
+     */
+    fromView?: boolean;
+  } = {},
 ) {
   const store = getStore();
   const known = new Set(ctx.products.map((p) => p.sankhyaCode));
@@ -360,6 +388,14 @@ export async function upsertProducts(
     if (product && ctx.update) {
       product = await store.update("products", product.id, {
         ...fields,
+        ...(fromView
+          ? {
+              sankhyaRefs: {
+                ...(product.sankhyaRefs ?? {}),
+                ...fields.sankhyaRefs,
+              },
+            }
+          : {}),
         ...emptyOnly(product),
         sankhyaSyncedAt: syncedNow(),
         ...(groupLine ? { lineId: groupLine } : {}),
@@ -699,6 +735,282 @@ export async function upsertCustomersFromView(
     if (before?.sankhyaRefs)
       data.sankhyaRefs = { ...before.sankhyaRefs, ...data.sankhyaRefs };
     await upsertParty(ctx, "customers", key, data);
+  }
+}
+
+/* ---- Fornecedores pela VW_AD_FORNECEDOR_WELL (20/11/2026) ---- */
+
+/** "88300000" → "CEP 88300-000". */
+const cepLabel = (v: unknown) => {
+  const d = String(v ?? "").replace(/\D/g, "");
+  return d.length === 8 ? `CEP ${d.slice(0, 5)}-${d.slice(5)}` : d || null;
+};
+
+/**
+ * Dados do fornecedor pela view (dicionário de 20/11/2026). Endereço, cidade e
+ * país vêm prontos; o contato, da TGFCTT. Os códigos que a escrita na TGFPAR
+ * usa vão para `sankhyaRefs` com o nome da coluna da TGFPAR.
+ */
+export function supplierViewData(
+  row: SankhyaRow,
+  contact?: {
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+  } | null,
+): PartyData {
+  const person = text(row, "TIPO_PESSOA")?.toUpperCase().slice(0, 1) ?? null;
+  const city = text(row, "CIDADE");
+  const uf = text(row, "UF");
+  const street = [text(row, "ENDERECO"), text(row, "NUMERO")]
+    .filter(Boolean)
+    .join(", ");
+  const address =
+    [street, text(row, "COMPLEMENTO"), text(row, "BAIRRO"), cepLabel(row.CEP)]
+      .filter(Boolean)
+      .join(" - ")
+      .slice(0, 255) || null;
+  const refs: Record<string, string | number> = {};
+  const put = (target: string, column: string) => {
+    const v = row[column];
+    if (v == null || String(v).trim() === "") return;
+    refs[target] = typeof v === "number" ? v : String(v).trim().slice(0, 200);
+  };
+  put("CODPARC", "COD_FORNECEDOR");
+  put("NUMEND", "NUMERO");
+  put("COMPLEMENTO", "COMPLEMENTO");
+  put("CODCID", "COD_CIDADE");
+  put("CEP", "CEP");
+  put("CODTIPPARC", "COD_PERFIL");
+  put("CODPARCMATRIZ", "COD_MATRIZ");
+  put("CODPARCGRUECONOMICO", "COD_GRUPO_ECONOMICO");
+  put("TIPPESSOA", "TIPO_PESSOA");
+  return {
+    type: "supplier",
+    name:
+      text(row, "NOME_FORNECEDOR") ??
+      text(row, "RAZAO_SOCIAL") ??
+      `Parceiro ${code(row.COD_FORNECEDOR)}`,
+    taxId: convert("digits", row.DOCUMENTO, row) as string | null,
+    email: text(row, "EMAIL") ?? contact?.email ?? null,
+    phone: text(row, "TELEFONE") ?? contact?.phone ?? null,
+    contactName: contact?.name ?? null,
+    legalName: text(row, "RAZAO_SOCIAL"),
+    stateRegistration: text(row, "INSCRICAO_ESTADUAL"),
+    personType: person === "F" || person === "J" ? person : null,
+    city: city ? (uf ? `${city} - ${uf}` : city) : null,
+    country: text(row, "PAIS"),
+    address,
+    sankhyaRefs: refs,
+    active: convert("sn", row.ATIVO, row) !== false,
+    more: {
+      sankhyaSupplier: viewSnapshot(row),
+      sankhyaSupplierAt: new Date().toISOString(),
+    },
+  };
+}
+
+/**
+ * Carga de fornecedores pela VW_AD_FORNECEDOR_WELL (20/11/2026): um cadastro
+ * por CODPARC, tipo fornecedor, como a TGFPAR fazia. Os códigos que vieram da
+ * TGFPAR (rua, bairro...) ficam: os da view só se somam.
+ */
+export async function upsertSuppliersFromView(
+  ctx: ImportContext,
+  rows: SankhyaRow[],
+) {
+  const contacts = await partnerContacts(rows.map((r) => r.COD_FORNECEDOR));
+  for (const row of rows) {
+    const key = viewCode(row.COD_FORNECEDOR);
+    if (!key) {
+      ctx.out.push({
+        entity: "partners",
+        code: code(row.COD_FORNECEDOR),
+        outcome: "skipped",
+        id: null,
+        label: text(row, "NOME_FORNECEDOR") ?? code(row.COD_FORNECEDOR),
+        reason: "sem código do fornecedor",
+      });
+      continue;
+    }
+    const data = supplierViewData(row, contacts.get(key));
+    const before = ctx.parties.find(
+      (p) => p.sankhyaCode === key && p.type === "supplier",
+    );
+    if (before?.sankhyaRefs)
+      data.sankhyaRefs = { ...before.sankhyaRefs, ...data.sankhyaRefs };
+    await upsertParty(ctx, "partners", key, data);
+  }
+}
+
+/* ---- Produto × fornecedor (VW_AD_PRODUTO_FORNECEDOR_WELL; 20/11/2026) ---- */
+
+/**
+ * Grava os vínculos produto × fornecedor do Sankhya em `product_suppliers`
+ * (a mesma tabela dos vínculos do portal; um por par, com os portos em
+ * `sankhyaPorts`). Não troca o fornecedor principal do produto nem o preço
+ * da cotação: o último preço do Sankhya só entra no vínculo sem preço. Par
+ * que saiu da view fica marcado (`sankhyaListed` falso), não é apagado.
+ * As linhas de um mesmo produto vêm juntas (a carga não corta um produto).
+ */
+export async function upsertProductSuppliers(
+  ctx: ImportContext,
+  rows: SankhyaRow[],
+) {
+  const store = getStore();
+  const parsed = rows
+    .map(productSupplierFromView)
+    .filter((r): r is ProductSupplierViewRow => r != null);
+  const byProduct = new Map<string, ProductSupplierViewRow[]>();
+  for (const r of parsed)
+    byProduct.set(r.productCode, [...(byProduct.get(r.productCode) ?? []), r]);
+  const productByCode = new Map(
+    ctx.products
+      .filter((p) => p.sankhyaCode)
+      .map((p) => [String(Number(p.sankhyaCode)), p]),
+  );
+  const supplierByCode = new Map(
+    ctx.parties
+      .filter((p) => p.type === "supplier" && p.sankhyaCode)
+      .map((p) => [String(Number(p.sankhyaCode)), p]),
+  );
+  const productIds = [...byProduct.keys()]
+    .map((c) => productByCode.get(c)?.id)
+    .filter((id): id is string => !!id);
+  const existing = productIds.length
+    ? await store.list("product_suppliers", {
+        filter: { productId: productIds },
+      })
+    : [];
+  const now = new Date().toISOString();
+  for (const [productCode, list] of byProduct) {
+    const product = productByCode.get(productCode);
+    if (!product) {
+      ctx.out.push({
+        entity: "productSuppliers",
+        code: productCode,
+        outcome: "skipped",
+        id: null,
+        label: `Produto ${productCode}`,
+        reason: "produto não está no portal (rode a carga de produtos)",
+      });
+      continue;
+    }
+    const bySupplier = new Map<string, ProductSupplierViewRow[]>();
+    for (const r of list)
+      bySupplier.set(r.supplierCode, [
+        ...(bySupplier.get(r.supplierCode) ?? []),
+        r,
+      ]);
+    const seen = new Set<string>();
+    for (const [supplierCode, ports] of bySupplier) {
+      const supplier = supplierByCode.get(supplierCode);
+      const label = `${product.sku ?? productCode} × ${supplier?.name ?? supplierCode}`;
+      if (!supplier) {
+        ctx.out.push({
+          entity: "productSuppliers",
+          code: `${productCode}:${supplierCode}`,
+          outcome: "skipped",
+          id: null,
+          label,
+          reason:
+            "fornecedor não está no portal (rode a carga de fornecedores)",
+        });
+        continue;
+      }
+      seen.add(supplier.id);
+      // O porto preferencial e o mais recente primeiro.
+      const sorted = [...ports].sort(
+        (a, b) =>
+          Number(b.preferential) - Number(a.preferential) ||
+          (b.lastPurchaseAt ?? "").localeCompare(a.lastPurchaseAt ?? ""),
+      );
+      const sankhyaPorts = sorted.map((p) => ({
+        portCode: p.portCode,
+        port: p.port,
+        countryCode: p.countryCode,
+        country: p.country,
+        preferential: p.preferential,
+        origin: p.origin,
+        processes360d: p.processes360d,
+        lastPurchaseAt: p.lastPurchaseAt,
+        lastPrice: p.lastPrice,
+        currencyCode: p.currencyCode,
+        currency: p.currency,
+        validated: p.validated,
+        updatedAt: p.updatedAt,
+      }));
+      const last = [...ports]
+        .filter((p) => p.lastPurchaseAt)
+        .sort((a, b) =>
+          (b.lastPurchaseAt ?? "").localeCompare(a.lastPurchaseAt ?? ""),
+        )[0];
+      const sankhya = {
+        sankhyaPorts,
+        sankhyaPreferential: ports.some((p) => p.preferential),
+        sankhyaValidated: ports.some((p) => p.validated),
+        sankhyaLastPurchaseAt: last?.lastPurchaseAt ?? null,
+        sankhyaListed: true,
+        sankhyaSyncedAt: now,
+      };
+      // Moeda do portal tem 3 letras (USD); o nome do Sankhya só se couber.
+      const currency =
+        last?.currency && /^[A-Z]{3}$/.test(last.currency.toUpperCase())
+          ? last.currency.toUpperCase()
+          : null;
+      const link = existing.find(
+        (l) => l.productId === product.id && l.supplierId === supplier.id,
+      );
+      let outcome: ImportOutcome;
+      let id: string;
+      if (link) {
+        const priced = link.price == null && last?.lastPrice != null;
+        const updated = await store.update("product_suppliers", link.id, {
+          ...sankhya,
+          ...(priced ? { price: last.lastPrice, currency } : {}),
+        });
+        replaceIn(existing, updated);
+        outcome = "updated";
+        id = link.id;
+      } else {
+        const created = await store.create("product_suppliers", {
+          productId: product.id,
+          supplierId: supplier.id,
+          supplierSku: null,
+          price: last?.lastPrice ?? null,
+          currency: last?.lastPrice != null ? currency : null,
+          moq: null,
+          leadTimeDays: null,
+          source: "sankhya",
+          createdByUserId: ctx.user.id,
+          ...sankhya,
+        });
+        existing.push(created);
+        outcome = "created";
+        id = created.id;
+      }
+      ctx.out.push({
+        entity: "productSuppliers",
+        code: `${productCode}:${supplierCode}`,
+        outcome,
+        id,
+        label,
+      });
+    }
+    // Par que estava na view e saiu: fica, marcado.
+    for (const l of existing)
+      if (
+        l.productId === product.id &&
+        l.sankhyaListed === true &&
+        !seen.has(l.supplierId)
+      )
+        replaceIn(
+          existing,
+          await store.update("product_suppliers", l.id, {
+            sankhyaListed: false,
+            sankhyaSyncedAt: now,
+          }),
+        );
   }
 }
 

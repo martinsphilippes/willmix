@@ -233,6 +233,28 @@ Depois de testadas as cargas, a Wellmix trunca as mesmas tabelas no portal e imp
 
 Aba Carga do Sankhya → **Carga completa** (`src/lib/integrations/sankhya-full-load.ts`, ação `sankhyaFullLoadAction`): condições de pagamento (TGFTPV, uma linha por CODTIPVENDA), fornecedores e clientes (TGFPAR com FORNECEDOR ou CLIENTE = S; quem é os dois vira dois cadastros com o mesmo `sankhyaCode`) e produtos (TGFPRO, com os grupos de cada lote virando linhas). Lê por faixas de código (`CODIGO > a AND CODIGO <= b`, vale no Oracle e no SQL Server), com a faixa ajustada para ~100–400 linhas por lote; cada clique trabalha ~40 s e guarda o cursor em `settings` (`sankhya.load.<entidade>`). O Sankhya é a fonte desses cadastros: os que já têm vínculo são atualizados (a especificação do produto só é preenchida se estiver vazia). "Recomeçar" volta o cursor ao início sem apagar nada.
 
+### Views do Sankhya (20/11/2026)
+
+O TI da Wellmix montou views prontas para o portal (dicionário `DICIONARIO-VIEWS-5.csv`). A carga completa passa a ler delas; as tabelas ficam como reserva.
+
+| Entidade da carga | View | Se a view falhar |
+|---|---|---|
+| Fornecedores (`partners`) | `sankhya.VW_AD_FORNECEDOR_WELL`, só `E_FORNECEDOR = 'S'` | TGFPAR com FORNECEDOR = S |
+| Vendedores / RCAs (`sellers`, nova) | `sankhya.VW_AD_VENDEDOR_WELL` | TGFVEN |
+| Clientes (`customers`) | `sankhya.VW_AD_CLIENTE_WELL` (desde 18/11/2026) | — |
+| Produtos (`products`) | `sankhya.VW_AD_PRODUTO_WELL` | TGFPRO |
+| Produto × fornecedor (`productSuppliers`, nova) | `sankhya.VW_AD_PRODUTO_FORNECEDOR_WELL` | — |
+
+Regras (`src/lib/integrations/sankhya-views.ts`; decisões do dono de 20/11/2026):
+
+- **Os nomes das tabelas continuam valendo.** A linha da view de produto vira uma linha com os nomes da TGFPRO (`COD_PRODUTO` → `CODPROD`, `COD_GRUPO` → `CODGRUPOPROD`, `COD_FORNECEDOR_PRINCIPAL` → `CODPARCFORN`, `COD_PAIS_ORIGEM` → `CODPAIS`, `COD_PORTO_PREFERENCIAL` → `AD_IDPORTO`...). Assim o país de origem (pelo `CODPARCFORN`), a escrita no Sankhya e o histórico de notas, que lê as tabelas, não mudam. Os códigos da view se somam aos já gravados em `sankhyaRefs`, sem apagar nenhum.
+- **O que a view não tem não se apaga.** A view de produto não tem `CARACTERISTICAS` (especificação) nem `ESTMIN` (estoque mínimo). Os valores do portal ficam como estão e o TI vai acrescentar as duas colunas; quando vierem com esses nomes, voltam a valer.
+- **Fornecedor principal.** No produto sem fornecedor no portal, vale o fornecedor principal do cadastro do produto (`CODPARCFORN`) antes do fornecedor da última nota de importação. O que foi escolhido no portal não muda.
+- **Fornecedores.** Endereço, cidade e país vêm prontos da view. O contato continua pela TGFCTT. A linha inteira da view fica em `parties.sankhyaSupplier`, com tipo de fornecedor, incoterm, plus charge e despesa de origem. O tipo do cadastro no portal não muda pelo `TIPO_FORNECEDOR`.
+- **Vários fornecedores por produto.** A view produto × fornecedor grava em `product_suppliers`, a mesma tabela dos vínculos do portal, com `source = "sankhya"` e um vínculo por par. Os portos do par ficam em `sankhyaPorts` (porto, país, preferencial, origem, processos em 360 dias, última compra, último preço e moeda, validado). Também ficam `sankhyaPreferential`, `sankhyaValidated` e `sankhyaLastPurchaseAt`. O último preço do Sankhya só entra no vínculo sem preço, e a cotação vale mais. Par que sai da view fica, com `sankhyaListed = false`. O principal continua em `products.supplierId`. Esses vínculos aparecem em "Fornecedores deste produto", com "País - Porto". A Estratégia de compra e a cotação de compra já usam `product_suppliers` e passam a considerar esses fornecedores. Próximo passo: o filtro "País - Porto" de famílias e produtos na Nova solicitação.
+- **Vendedores.** A carga `sellers` (e o botão da lista de RCAs no cadastro do cliente) troca a cópia da lista (`settings.sankhyaSellers`), agora com tipo, tipo Wellmix, e-mail, telefone, gerente, equipe, região e estados. Ela também liga o vendedor ao login da equipe pelo e-mail: só o login da Wellmix sem código de vendedor, um único vendedor ativo com o mesmo e-mail e o código ainda sem dono. Nunca troca o que o administrador gravou, e cada ligação vai para a auditoria (`team.seller_code`). A lista continua servindo para escolher o RCA do cliente sem RCA (docs/CUSTOMER_RCA.md, seção 7).
+- A tela da carga mostra de onde cada carga leu ("Lido da view do portal" ou "A view falhou: lido da tabela") e as colunas do dicionário que a view não trouxe. Fotos (`TGFPRO.IMAGEM`), caixas (`TGFVOA`) e transportadoras (`TGFPAR`) continuam nas tabelas.
+
 ## Pendências (decisões com a Wellmix)
 
 1. Nomes das colunas do Incoterm e da moeda de origem do fornecedor no TGFCAB (provavelmente campos AD_).

@@ -304,6 +304,287 @@ describe("carga completa", () => {
   });
 });
 
+describe("views do Sankhya (20/11/2026)", () => {
+  it("fornecedores pela VW_AD_FORNECEDOR_WELL: endereço pronto, linha da view e os códigos antigos ficam", async () => {
+    const store = getStore();
+    // Fornecedor que já veio da TGFPAR (com rua e bairro nos códigos).
+    await store.create("parties", {
+      ...(await import("@/lib/db")).PARTY_EXTRA_DEFAULTS,
+      type: "supplier",
+      name: "NINGBO OLD",
+      country: null,
+      email: null,
+      phone: null,
+      taxId: null,
+      notes: null,
+      active: true,
+      sankhyaCode: "800",
+      sankhyaRefs: { CODPARC: 800, CODEND: 77, CODBAI: 9 },
+    });
+    const sqls = fakeSankhya({
+      "sankhya.VW_AD_FORNECEDOR_WELL": {
+        key: "COD_FORNECEDOR",
+        rows: [
+          {
+            COD_FORNECEDOR: 800,
+            NOME_FORNECEDOR: "NINGBO HOMEWARE",
+            RAZAO_SOCIAL: "NINGBO HOMEWARE CO LTD",
+            TIPO_PESSOA: "J",
+            DOCUMENTO: null,
+            ATIVO: "S",
+            E_FORNECEDOR: "S",
+            COD_TIPO_FORNECEDOR: "FABRICA",
+            TIPO_FORNECEDOR: "Fábrica",
+            ENDERECO: "RUA ZHONGSHAN",
+            NUMERO: "12",
+            COMPLEMENTO: null,
+            BAIRRO: "BEILUN",
+            COD_CIDADE: 4500,
+            CIDADE: "NINGBO",
+            UF: "EX",
+            PAIS: "CHINA",
+            CEP: "00000000",
+            EMAIL: "sales@ningbo.cn",
+          },
+          {
+            COD_FORNECEDOR: 801,
+            NOME_FORNECEDOR: "YIWU TRADING",
+            ATIVO: "S",
+            E_FORNECEDOR: "S",
+            CIDADE: "YIWU",
+            PAIS: "CHINA",
+          },
+        ],
+      },
+    });
+    sk.resetSankhyaTokenCache();
+    await resetFullLoad("partners");
+    const run = await runFullLoad(admin, "partners", 60_000);
+    expect(run.progress).toMatchObject({ done: true, source: "view" });
+    expect(sqls.some((q) => q.includes("E_FORNECEDOR = 'S'"))).toBe(true);
+    const [ningbo] = await store.list("parties", {
+      filter: { sankhyaCode: "800", type: "supplier" },
+    });
+    expect(ningbo).toMatchObject({
+      name: "NINGBO HOMEWARE",
+      legalName: "NINGBO HOMEWARE CO LTD",
+      country: "CHINA",
+      city: "NINGBO - EX",
+      address: "RUA ZHONGSHAN, 12 - BEILUN - CEP 00000-000",
+      email: "sales@ningbo.cn",
+    });
+    expect(ningbo.sankhyaRefs).toMatchObject({
+      CODPARC: 800,
+      CODCID: 4500,
+      CODEND: 77,
+      CODBAI: 9,
+    });
+    expect(ningbo.sankhyaSupplier).toMatchObject({
+      COD_TIPO_FORNECEDOR: "FABRICA",
+    });
+    const [yiwu] = await store.list("parties", {
+      filter: { sankhyaCode: "801", type: "supplier" },
+    });
+    expect(yiwu).toMatchObject({ name: "YIWU TRADING", country: "CHINA" });
+  });
+
+  it("produtos pela VW_AD_PRODUTO_WELL e o vínculo produto × fornecedor com os portos", async () => {
+    const store = getStore();
+    const product = (over: Record<string, unknown>) => ({
+      COD_PRODUTO: 60,
+      DESCRICAO: "TIGELA 500ML",
+      COMPLEMENTO: null,
+      REFERENCIA: "7899000000011",
+      REFERENCIA_FORNECEDOR: "WX9001",
+      MARCA: "WELLMIX",
+      COD_GRUPO: 160201002,
+      NCM: "69120000",
+      UNIDADE: "UN",
+      PESO_BRUTO: 0.4,
+      ALTURA: 0.1,
+      ATIVO: "S",
+      COD_PAIS_ORIGEM: 160,
+      COD_PORTO_PREFERENCIAL: 3,
+      COD_FORNECEDOR_PRINCIPAL: 800,
+      ...over,
+    });
+    const tables = {
+      "sankhya.VW_AD_PRODUTO_WELL": {
+        key: "COD_PRODUTO",
+        rows: [product({})],
+      },
+      TGFGRU: {
+        key: "CODGRUPOPROD",
+        rows: [
+          { CODGRUPOPROD: 160201002, DESCRGRUPOPROD: "TIGELA", ATIVO: "S" },
+        ],
+      },
+      "sankhya.VW_AD_PRODUTO_FORNECEDOR_WELL": {
+        key: "COD_PRODUTO",
+        rows: [
+          {
+            COD_PRODUTO: 60,
+            COD_FORNECEDOR: 800,
+            COD_PORTO: 3,
+            PORTO: "NINGBO",
+            COD_PAIS: 160,
+            PAIS_PORTO: "CHINA",
+            FORNECEDOR_PREFERENCIAL: "S",
+            ORIGEM: "COMPRA",
+            QTD_PROCESSOS: 4,
+            DATA_ULTIMA_COMPRA: "10/09/2026",
+            ULTIMO_PRECO_ORIGEM: 1.25,
+            COD_MOEDA: 2,
+            MOEDA: "USD",
+            VALIDADO: "S",
+          },
+          {
+            COD_PRODUTO: 60,
+            COD_FORNECEDOR: 801,
+            COD_PORTO: 4,
+            PORTO: "SHANGHAI",
+            PAIS_PORTO: "CHINA",
+            FORNECEDOR_PREFERENCIAL: "N",
+            VALIDADO: "N",
+          },
+          { COD_PRODUTO: 61, COD_FORNECEDOR: 800 },
+        ],
+      },
+    };
+    fakeSankhya(tables);
+    sk.resetSankhyaTokenCache();
+    await resetFullLoad("products");
+    const run = await runFullLoad(admin, "products", 60_000);
+    expect(run.progress).toMatchObject({ done: true, source: "view" });
+    let [tigela] = await store.list("products", {
+      filter: { sankhyaCode: "60" },
+    });
+    const ningbo = (
+      await store.list("parties", {
+        filter: { sankhyaCode: "800", type: "supplier" },
+      })
+    )[0];
+    expect(tigela).toMatchObject({
+      name: "TIGELA 500ML",
+      sku: "WX9001",
+      ean: "7899000000011",
+      heightCm: 10,
+      // Fornecedor principal do cadastro do produto (dono, 20/11/2026).
+      supplierId: ningbo.id,
+    });
+    expect(tigela.sankhyaRefs).toMatchObject({
+      CODPROD: 60,
+      CODGRUPOPROD: 160201002,
+      CODPARCFORN: 800,
+      CODPAIS: 160,
+      AD_IDPORTO: 3,
+    });
+    // O que a view não tem (estoque mínimo, códigos antigos) não se perde.
+    tigela = await store.update("products", tigela.id, {
+      minStock: 12,
+      sankhyaRefs: { ...tigela.sankhyaRefs, CODLOCALPADRAO: 101 },
+    });
+    await resetFullLoad("products");
+    await runFullLoad(admin, "products", 60_000);
+    [tigela] = await store.list("products", { filter: { sankhyaCode: "60" } });
+    expect(tigela.minStock).toBe(12);
+    expect(tigela.sankhyaRefs).toMatchObject({ CODLOCALPADRAO: 101 });
+
+    await resetFullLoad("productSuppliers");
+    const links = await runFullLoad(admin, "productSuppliers", 60_000);
+    expect(links.progress.done).toBe(true);
+    expect(links.lines.find((l) => l.code === "61")?.outcome).toBe("skipped");
+    const rows = await store.list("product_suppliers", {
+      filter: { productId: tigela.id },
+    });
+    expect(rows).toHaveLength(2);
+    const main = rows.find((r) => r.supplierId === ningbo.id)!;
+    expect(main).toMatchObject({
+      source: "sankhya",
+      price: 1.25,
+      currency: "USD",
+      sankhyaPreferential: true,
+      sankhyaValidated: true,
+      sankhyaListed: true,
+      sankhyaLastPurchaseAt: "2026-09-10T12:00:00.000Z",
+    });
+    expect(main.sankhyaPorts).toEqual([
+      expect.objectContaining({ port: "NINGBO", country: "CHINA" }),
+    ]);
+
+    // O par que sai da view fica, marcado; o preço da cotação não muda.
+    await store.update("product_suppliers", main.id, { price: 1.1 });
+    tables["sankhya.VW_AD_PRODUTO_FORNECEDOR_WELL"].rows = tables[
+      "sankhya.VW_AD_PRODUTO_FORNECEDOR_WELL"
+    ].rows.slice(0, 1);
+    fakeSankhya(tables);
+    await resetFullLoad("productSuppliers");
+    await runFullLoad(admin, "productSuppliers", 60_000);
+    const after = await store.list("product_suppliers", {
+      filter: { productId: tigela.id },
+    });
+    expect(after).toHaveLength(2);
+    expect(after.find((r) => r.supplierId === ningbo.id)?.price).toBe(1.1);
+    expect(after.find((r) => r.supplierId !== ningbo.id)?.sankhyaListed).toBe(
+      false,
+    );
+  });
+
+  it("vendedores pela VW_AD_VENDEDOR_WELL: lista de RCAs e o login ligado pelo e-mail", async () => {
+    const store = getStore();
+    const vendas = (await store.list("users")).find(
+      (u) => u.email === "vendas@wellmix.com",
+    )!;
+    await store.update("users", vendas.id, { sellerCode: null });
+    fakeSankhya({
+      "sankhya.VW_AD_VENDEDOR_WELL": {
+        key: "COD_VENDEDOR",
+        rows: [
+          {
+            COD_VENDEDOR: 201,
+            NOME_VENDEDOR: "MARIANA",
+            ATIVO: "S",
+            COD_PARCEIRO: 9201,
+            TIPO_DESCR: "Vendedor",
+            TIPO_WELLMIX: "VENDEDOR EXTERNO",
+            EMAIL: " Vendas@Wellmix.com ",
+            EQUIPE: "SUL",
+            REGIAO: "SC",
+          },
+          {
+            COD_VENDEDOR: 202,
+            NOME_VENDEDOR: "SEM LOGIN",
+            ATIVO: "S",
+            EMAIL: "outro@x.com",
+          },
+        ],
+      },
+    });
+    sk.resetSankhyaTokenCache();
+    await resetFullLoad("sellers");
+    const run = await runFullLoad(admin, "sellers", 60_000);
+    expect(run.progress).toMatchObject({
+      done: true,
+      source: "view",
+      counts: { updated: 2, linked: 1 },
+    });
+    const { loadRcaList } = await import("@/lib/services/rca");
+    const list = await loadRcaList();
+    expect(list.sellers.find((s) => s.code === "201")).toMatchObject({
+      name: "MARIANA",
+      partnerCode: "9201",
+      wellmixType: "VENDEDOR EXTERNO",
+      team: "SUL",
+      email: "vendas@wellmix.com",
+    });
+    expect((await store.get("users", vendas.id))?.sellerCode).toBe("201");
+    // Já ligado: não troca.
+    await store.update("users", vendas.id, { sellerCode: "999" });
+    await runFullLoad(admin, "sellers", 60_000);
+    expect((await store.get("users", vendas.id))?.sellerCode).toBe("999");
+  });
+});
+
 describe("moeda dos pedidos da amostra", () => {
   it("com câmbio no pedido: USD = VLRNOTA ÷ VLRMOEDA; vínculo pelo NUNOTA e número pelo NUMNOTA", async () => {
     const erp = {

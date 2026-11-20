@@ -155,7 +155,8 @@ describe("lista de vendedores", () => {
       { CODVEND: 105, APELIDO: "", ATIVO: "S" },
     ];
     const list = await rca.refreshRcaList(admin);
-    expect(sankhya.sql.at(-1)).toMatch(/FROM TGFVEN/);
+    // A view dos vendedores (20/11/2026).
+    expect(sankhya.sql.at(-1)).toMatch(/FROM sankhya\.VW_AD_VENDEDOR_WELL/);
     expect(list.sellers).toEqual([
       {
         code: "101",
@@ -172,8 +173,8 @@ describe("lista de vendedores", () => {
       },
       { code: "104", name: "Dora", active: true, partnerCode: null },
     ]);
-    // O CODPARC vem na mesma leitura da TGFVEN.
-    expect(sankhya.sql.at(-1)).toContain("CODPARC");
+    // O CODPARC vem na mesma leitura (a linha inteira da view).
+    expect(sankhya.sql.at(-1)).toContain("V.*");
     const saved = await rca.loadRcaList();
     expect(saved.demo).toBe(false);
     expect(saved.syncedAt).toBe(list.syncedAt);
@@ -354,7 +355,7 @@ describe("/api/parties/rca (Nova solicitação)", () => {
       partnerCode: "4321",
     });
     expect(sankhya.sql).toEqual([
-      "SELECT CODVEND, CODPARC, APELIDO, ATIVO FROM TGFVEN WHERE CODVEND = 999",
+      "SELECT V.* FROM sankhya.VW_AD_VENDEDOR_WELL V WHERE V.COD_VENDEDOR = 999",
     ]);
     sankhya.rows = [];
     await getStore().update("parties", "cliente-maria", { rcaCode: "0" });

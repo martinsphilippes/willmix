@@ -1,5 +1,6 @@
 import "server-only";
 import { executeQuery } from "@/lib/integrations/sankhya-client";
+import { PRODUCT_VIEW } from "@/lib/integrations/sankhya-views";
 
 /*
  * Fornecedor de cada produto no Sankhya (TGFPRO.CODPARCFORN), lido pela API
@@ -29,11 +30,32 @@ export function resetSankhyaProductSuppliers() {
 export const productSuppliersSql = (after: number) =>
   `SELECT TOP ${PAGE} CODPROD, CODPARCFORN FROM TGFPRO WHERE CODPARCFORN > 0 AND CODPROD > ${Math.max(0, Math.floor(after))} ORDER BY CODPROD`;
 
+/**
+ * O mesmo pela VW_AD_PRODUTO_WELL (fornecedor principal; 20/11/2026), com os
+ * nomes da TGFPRO. A TGFPRO se a view falhar.
+ */
+export const productSuppliersViewSql = (after: number) =>
+  `SELECT TOP ${PAGE} V.COD_PRODUTO AS CODPROD, V.COD_FORNECEDOR_PRINCIPAL AS CODPARCFORN FROM ${PRODUCT_VIEW} V WHERE V.COD_FORNECEDOR_PRINCIPAL > 0 AND V.COD_PRODUTO > ${Math.max(0, Math.floor(after))} ORDER BY V.COD_PRODUTO`;
+
+async function page(after: number, view: boolean) {
+  return executeQuery(
+    view ? productSuppliersViewSql(after) : productSuppliersSql(after),
+  );
+}
+
 async function load(): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   let after = 0;
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const { rows } = await executeQuery(productSuppliersSql(after));
+  let view = true;
+  for (let page_ = 0; page_ < MAX_PAGES; page_++) {
+    let rows;
+    try {
+      ({ rows } = await page(after, view));
+    } catch (error) {
+      if (!view || page_ > 0) throw error;
+      view = false;
+      ({ rows } = await page(after, view));
+    }
     for (const row of rows) {
       const prod = Number(row.CODPROD);
       const forn = Number(row.CODPARCFORN);

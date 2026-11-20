@@ -61,6 +61,14 @@ vi.mock("@/lib/integrations/sankhya-client", async (importOriginal) => ({
             ]
           : [],
       };
+    // O fornecedor principal pela VW_AD_PRODUTO_WELL (20/11/2026).
+    if (/FROM sankhya\.VW_AD_PRODUTO_WELL/.test(sql))
+      return {
+        columns: ["CODPROD", "CODPARCFORN"],
+        rows: /COD_PRODUTO > 0\b/.test(sql)
+          ? [{ CODPROD: 9001, CODPARCFORN: 4321 }]
+          : [],
+      };
     if (/FROM TGFPRO/.test(sql))
       return {
         columns: ["CODPROD", "CODPARCFORN"],

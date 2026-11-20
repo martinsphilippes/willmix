@@ -30,8 +30,12 @@ export const SERVER_LOAD_ORDER: FullLoadEntity[] = [
   "paymentConditions",
   "stockLocations",
   "partners",
+  // Vendedores antes dos clientes (o RCA do cliente aponta para eles).
+  "sellers",
   "customers",
   "products",
+  // Produto × fornecedor depois dos dois cadastros.
+  "productSuppliers",
   "stockBalances",
   "orders",
   // Fotos por último: só dos produtos que já estão no portal.

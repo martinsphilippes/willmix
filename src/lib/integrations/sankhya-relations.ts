@@ -108,6 +108,39 @@ export async function partnerExtras(
   return out;
 }
 
+/**
+ * Primeiro contato de cada parceiro (TGFCTT): a VW_AD_FORNECEDOR_WELL não
+ * traz contato (dono, 20/11/2026: continua pela TGFCTT).
+ */
+export async function partnerContacts(
+  codes: unknown[],
+): Promise<
+  Map<
+    string,
+    { name: string | null; email: string | null; phone: string | null }
+  >
+> {
+  const out = new Map<
+    string,
+    { name: string | null; email: string | null; phone: string | null }
+  >();
+  const list = ints(codes);
+  if (list === "-1") return out;
+  const contacts = await rows(
+    `SELECT * FROM TGFCTT WHERE CODPARC IN (${list}) ORDER BY CODPARC, CODCONTATO`,
+  );
+  for (const [key, c] of byKey(
+    contacts.filter((c) => pick(c, "NOMECONTATO")),
+    "CODPARC",
+  ))
+    out.set(key, {
+      name: pick(c, "NOMECONTATO"),
+      email: pick(c, "EMAIL"),
+      phone: pick(c, "TELEFONE", "CELULAR"),
+    });
+  return out;
+}
+
 /* ---- Produtos: fornecedor e preço da última compra, caixas ---- */
 
 export interface ProductExtra {
