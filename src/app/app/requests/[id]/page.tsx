@@ -445,7 +445,10 @@ export default async function RequestDetailPage({
             {showRequester ? (
               <form
                 action={setRequesterAction}
-                className="mt-3 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-2.5"
+                // Destino do "Escolher o login na encomenda" do balão "Quem
+                // pode agir" (docs/ORDER_LEVEL_LISTS.md, seção 10).
+                id="requester"
+                className="mt-3 flex scroll-mt-24 flex-wrap items-center gap-2 border-t border-zinc-100 pt-2.5"
                 data-request-requester
               >
                 <input type="hidden" name="requestId" value={request.id} />

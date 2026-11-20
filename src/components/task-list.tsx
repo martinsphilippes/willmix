@@ -37,6 +37,9 @@ import {
 } from "./ui";
 import { ChatOpenButton } from "./chat-open-button";
 import { chatTargetFromHref } from "@/lib/chat-target";
+import type { ResponsibleFix } from "@/lib/request-responsible";
+import { taskFixes } from "@/lib/services/request-fix";
+import { TaskFixButton } from "./request-responsible-tip";
 
 /*
  * Pendências: a lista vem do serviço já ordenada pelo prazo (atrasadas,
@@ -64,6 +67,9 @@ export async function TaskList({
     : null;
   const shown = filterTasks(tasks, { due, group });
   const filtering = shown.length !== tasks.length || !!due || !!group;
+  // "Login do cliente a definir": o mesmo formulário do balão de Encomendas
+  // (dono, 20/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 10).
+  const fixes = await taskFixes(user, shown);
   // Fornecedor e Trading: os filtros são as etapas dele (do Book à Invoice),
   // cada uma explicada, e a tabela ganha a data em que a pendência chegou a
   // ele.
@@ -145,7 +151,7 @@ export async function TaskList({
               <TextLink href="/app/tasks">{t("tasks.filter.clear")}</TextLink>
             </Empty>
           ) : (
-            <TaskItems tasks={shown} t={t} since={supplier} />
+            <TaskItems tasks={shown} t={t} since={supplier} fixes={fixes} />
           )}
           {filtering && shown.length > 0 ? (
             <p className="mt-3 text-sm">
@@ -470,11 +476,14 @@ export function TaskItems({
   tasks,
   t,
   since = false,
+  fixes,
 }: {
   tasks: Task[];
   t: Translate;
   /** Fornecedor: coluna "Com você desde" e o nome da etapa dele. */
   since?: boolean;
+  /** O botão que resolve a pendência ali mesmo, por encomenda (`taskFixes`). */
+  fixes?: ReadonlyMap<string, ResponsibleFix>;
 }) {
   /** "hoje", "há 1 dia", "há 5 dias". */
   const ago = (iso: string) => {
@@ -531,6 +540,10 @@ export function TaskItems({
               ? t(`supplierTasks.help.${task.supplierStep}` as DictionaryKey)
               : task.detail;
           const relative = dueLabel(task, t);
+          const fix =
+            task.kind === "customer_login" && task.requestId
+              ? fixes?.get(task.requestId)
+              : undefined;
           return (
             <tr
               key={i}
@@ -554,7 +567,14 @@ export function TaskItems({
                   </span>
                 ) : null}
               </Td>
-              <Td className="min-w-32 text-zinc-600">{detail || "—"}</Td>
+              <Td className="min-w-32 text-zinc-600">
+                {detail || "—"}
+                {fix ? (
+                  <div className="mt-1.5" data-task-fix={fix.kind}>
+                    <TaskFixButton fix={fix} t={t} />
+                  </div>
+                ) : null}
+              </Td>
               <Td className="whitespace-nowrap text-zinc-700">
                 {groupLabel(task.group, !!task.stageKey, t)}
               </Td>
