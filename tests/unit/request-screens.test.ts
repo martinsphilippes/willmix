@@ -415,7 +415,8 @@ describe("rascunhos nas listas (dono, 17/11/2026)", () => {
       ),
     ).not.toContain(legacy.id);
     // O administrador vê os de todos os logins (dono, 19/11/2026; seção 9),
-    // com quem salvou; só quem salvou continua.
+    // com quem salvou, e desde 21/11/2026 também os continua: o "Concluir e
+    // enviar" da lista leva ao formulário com o rascunho.
     const theirs = await drafts.saveRequestDraft(
       buyer,
       form("Bule"),
@@ -427,18 +428,54 @@ describe("rascunhos nas listas (dono, 17/11/2026)", () => {
     );
     expect(seen).toMatchObject({
       mine: false,
+      canContinue: true,
       owner: { id: buyer.id, name: buyer.name },
       href: `/app/new-request/ts?draft=${theirs.id}`,
     });
-    const buyerSees = (await drafts.listDraftsForList(buyer, "requests")).map(
-      (d) => d.draft.id,
+    const buyerSees = await drafts.listDraftsForList(buyer, "requests");
+    expect(buyerSees.map((d) => d.draft.id)).toEqual([theirs.id]);
+    expect(buyerSees[0]).toMatchObject({ mine: true, canContinue: true });
+    // O formulário reabre o rascunho para quem salvou e para o administrador.
+    expect((await drafts.getRequestDraft(admin, theirs.id, "ts"))?.id).toBe(
+      theirs.id,
     );
-    expect(buyerSees).toEqual([theirs.id]);
-    // Ver não é continuar: o formulário só reabre o rascunho de quem salvou.
-    expect(await drafts.getRequestDraft(admin, theirs.id, "ts")).toBeNull();
     expect((await drafts.getRequestDraft(buyer, theirs.id, "ts"))?.id).toBe(
       theirs.id,
     );
+    // Outro operador que abre a tela TS (não é quem salvou nem administrador)
+    // não continua.
+    const otherBuyer = await getStore().create("users", {
+      ...buyer,
+      id: undefined,
+      email: "outro.comprador@wellmix.com",
+      name: "Outro Comprador",
+    } as never);
+    expect(drafts.canDraft(otherBuyer, "ts")).toBe(true);
+    expect(
+      await drafts.getRequestDraft(otherBuyer, theirs.id, "ts"),
+    ).toBeNull();
+    await expect(
+      drafts.saveRequestDraft(otherBuyer, form("Bule 2"), theirs.id, "ts"),
+    ).rejects.toThrow("draft_not_found");
+    // O administrador completa e salva: o rascunho continua de quem o salvou
+    // (não sai da lista dele), com o mesmo número.
+    const completed = await drafts.saveRequestDraft(
+      admin,
+      form("Bule completo"),
+      theirs.id,
+      "ts",
+    );
+    expect(completed).toMatchObject({
+      id: theirs.id,
+      userId: buyer.id,
+      number: theirs.number,
+      title: "Bule completo",
+    });
+    expect(
+      (await drafts.listDraftsForList(buyer, "requests")).map(
+        (d) => d.draft.id,
+      ),
+    ).toEqual([theirs.id]);
     await drafts.deleteRequestDraft(buyer, theirs.id, "ts");
     for (const [d, screen] of [
       [legacy, null],
@@ -575,6 +612,40 @@ describe("enviar: o tipo de operação é o da tela", () => {
     await actions.createTsRequestAction(sale({ addTo: "qualquer" }));
     const added = await lastRequest();
     expect(added?.orderTerms?.operationType).toBe("ts");
+  });
+
+  it("o administrador conclui e envia o rascunho de outro login: o número reservado nele, e o rascunho sai (dono, 21/11/2026)", async () => {
+    // O Comprador salvou um rascunho na tela TS.
+    const draft = await drafts.saveRequestDraft(buyer, sale(), null, "ts");
+    const draftsNow = async () =>
+      (
+        await getStore().list("request_drafts", { filter: { id: [draft.id] } })
+      ).map((d) => d.id);
+    expect(await draftsNow()).toEqual([draft.id]);
+    // Outro operador que abre a tela TS não envia pelo rascunho dele: a
+    // solicitação sai com um número novo e o rascunho fica.
+    const otherBuyer = await getStore().create("users", {
+      ...buyer,
+      id: undefined,
+      email: "comprador.envio@wellmix.com",
+      name: "Comprador Envio",
+    } as never);
+    h.current = otherBuyer;
+    await actions.createTsRequestAction(sale({ draftId: draft.id }));
+    const notMine = await lastRequest();
+    expect(notMine?.number).not.toBe(draft.number);
+    expect(await draftsNow()).toEqual([draft.id]);
+    // O administrador, pelo "Concluir e enviar": a solicitação nasce com o
+    // número do rascunho, com ele como solicitante, e o rascunho sai.
+    h.current = admin;
+    await actions.createTsRequestAction(sale({ draftId: draft.id }));
+    const sent = await lastRequest();
+    expect(sent).toMatchObject({
+      number: draft.number,
+      createdByUserId: admin.id,
+    });
+    expect(sent?.orderTerms?.operationType).toBe("ts");
+    expect(await draftsNow()).toEqual([]);
   });
 });
 

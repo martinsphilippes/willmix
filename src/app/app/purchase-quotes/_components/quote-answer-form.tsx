@@ -14,8 +14,15 @@ import { Alert, Badge, Select, Textarea, cx } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
 import { MoneyInput } from "@/components/money-input";
+import { FxNoteLine, loadFx, prefetchFx } from "@/components/fx-conversion";
+import { convertAmount, convertedText, sameCurrency } from "@/lib/fx-convert";
+import { CURRENCY_SYMBOL } from "@/lib/workflow/money";
 import { parseNumberInput } from "@/lib/number-input";
-import { formatMoneyDigits, moneySeparators } from "@/lib/money-mask";
+import {
+  formatMoneyDigits,
+  moneyDigitsOfValue,
+  moneySeparators,
+} from "@/lib/money-mask";
 import {
   boxesForSheet,
   dimsCbm,
@@ -293,6 +300,13 @@ type NumberKey =
 const fill = (text: string, values: Record<string, string>) =>
   text.replace(/\{(\w+)\}/g, (_, k: string) => values[k] ?? "");
 
+/** "US$ 1.02": o preço como aparece no campo (separador da moeda). */
+function moneyText(n: number, code: string) {
+  const c = code === "RMB" ? "CNY" : code;
+  const symbol = (CURRENCY_SYMBOL as Record<string, string>)[c] ?? code;
+  return `${symbol} ${formatMoneyDigits(moneyDigitsOfValue(n, 2), moneySeparators(code), 2)}`;
+}
+
 function readNumber(raw: string, int = false): number | null {
   const v = parseNumberInput(raw, { int });
   return v === null || !Number.isFinite(v) || v < 0 ? null : v;
@@ -446,6 +460,49 @@ export function QuoteAnswerForm({
     note: pick("note", commercial.note),
   }));
   const [tried, setTried] = useState(false);
+  // Trocar a moeda converte os preços já digitados (dono, 21/11/2026): pelo
+  // câmbio do dia do portal, com o aviso em cada preço e "Manter os valores
+  // digitados" (volta aos números de antes, na moeda nova).
+  const [fxNote, setFxNote] = useState<{
+    before: Record<string, string>;
+    texts: Record<string, string>;
+    keep: string | null;
+  } | null>(null);
+  const fxSeq = useRef(0);
+  function changeCurrency(next: string) {
+    const from = terms.currency;
+    setTerms({ ...terms, currency: next });
+    const id = ++fxSeq.current;
+    const before = prices;
+    const typed = Object.entries(before).flatMap(([pid, v]) => {
+      const n = readNumber(v);
+      return n !== null && n > 0 ? [[pid, n] as const] : [];
+    });
+    if (!from || sameCurrency(from, next) || typed.length === 0) {
+      setFxNote(null);
+      return;
+    }
+    void loadFx().then((fx) => {
+      if (id !== fxSeq.current || !fx) return;
+      const after = { ...before };
+      const texts: Record<string, string> = {};
+      for (const [pid, n] of typed) {
+        const converted = convertAmount(n, from, next, fx.rates, 2);
+        if (converted === null) {
+          setFxNote({
+            before,
+            texts: Object.fromEntries(typed.map(([p]) => [p, fx.labels.none])),
+            keep: null,
+          });
+          return;
+        }
+        after[pid] = converted.toFixed(2);
+        texts[pid] = convertedText(fx, moneyText(n, from));
+      }
+      setPrices(after);
+      setFxNote({ before, texts, keep: fx.labels.keepAll });
+    });
+  }
   // Tudo o que está na tela, pelo nome do formulário (o rascunho).
   const draftValues = useMemo(() => {
     const out: QuoteDraftValues = { ...terms };
@@ -586,8 +643,7 @@ export function QuoteAnswerForm({
         const changed = p.soldBefore
           ? new Set(draftChangedFields(draft, p.baseline, materialTextPt))
           : new Set<SupplierSheetField>();
-        const innerRequired =
-          p.inner.kind === "required" ? p.inner.qty : null;
+        const innerRequired = p.inner.kind === "required" ? p.inner.qty : null;
         const warnings = p.ask
           ? sheetWarnings(
               draft,
@@ -787,9 +843,11 @@ export function QuoteAnswerForm({
                       currency={terms.currency}
                       autoDecimal
                       value={prices[p.productId] ?? ""}
-                      onValueChange={(v) =>
-                        setPrices((all) => ({ ...all, [p.productId]: v }))
-                      }
+                      onValueChange={(v) => {
+                        fxSeq.current++;
+                        setFxNote(null);
+                        setPrices((all) => ({ ...all, [p.productId]: v }));
+                      }}
                       error={lacks(`${p.productId}.price`)}
                       inputData={{ "data-quote-price": p.productId }}
                       className="min-w-0"
@@ -801,6 +859,19 @@ export function QuoteAnswerForm({
                       {priceHint}
                       {products.length > 1 ? ` ${L.currencyAll}` : null}
                     </p>
+                    {fxNote?.texts[p.productId] ? (
+                      <FxNoteLine
+                        note={{
+                          text: fxNote.texts[p.productId],
+                          keep: fxNote.keep,
+                        }}
+                        onKeep={() => {
+                          setPrices(fxNote.before);
+                          setFxNote(null);
+                        }}
+                        className="mt-1"
+                      />
+                    ) : null}
                   </div>
                   <div className="min-w-0">
                     <FieldLabel htmlFor={`quote-currency-${p.productId}`}>
@@ -809,9 +880,8 @@ export function QuoteAnswerForm({
                     <Select
                       id={`quote-currency-${p.productId}`}
                       value={terms.currency}
-                      onChange={(e) =>
-                        setTerms({ ...terms, currency: e.target.value })
-                      }
+                      onFocus={prefetchFx}
+                      onChange={(e) => changeCurrency(e.target.value)}
                       className="h-9! w-full"
                       data-quote-currency={p.productId}
                     >
@@ -1170,8 +1240,8 @@ export function QuoteAnswerForm({
                         data-quote-inner={p.productId}
                         data-quote-inner-qty={innerRequired}
                       >
-                        <Badge tone="info">{L.innerRequired}</Badge>{" "}
-                        {L.inner}: {show(innerRequired, 0)} {L.unitPieces}.{" "}
+                        <Badge tone="info">{L.innerRequired}</Badge> {L.inner}:{" "}
+                        {show(innerRequired, 0)} {L.unitPieces}.{" "}
                         {L.innerRequiredHint}
                       </p>
                     ) : p.inner.kind === "pending" ? (

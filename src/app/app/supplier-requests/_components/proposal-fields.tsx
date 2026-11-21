@@ -2,6 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { Field, Input, Select } from "@/components/ui";
+import {
+  FxNoteLine,
+  prefetchFx,
+  useFxConversion,
+} from "@/components/fx-conversion";
 import { parseNumberInput } from "@/lib/number-input";
 import { computeSuperplan, type SuperplanInput } from "@/lib/superplan";
 import { priceForMinimum } from "@/lib/superplan-inverse";
@@ -83,6 +88,13 @@ export function ProposalFields({
     n === null ? "" : String(n).replace(".", decimal);
   const [price, setPrice] = useState(raw(values.price));
   const [currency, setCurrency] = useState(values.currency);
+  // Trocar a moeda converte o preço (dono, 21/11/2026): câmbio do dia do
+  // portal, com o aviso e o "Manter" (`src/components/fx-conversion.tsx`).
+  const fx = useFxConversion({
+    decimals: 4,
+    format: (n, c) =>
+      `${c} ${n.toLocaleString(intl, { maximumFractionDigits: 4 })}`,
+  });
   const [target, setTarget] = useState("");
 
   const priceNum = parseNumberInput(price);
@@ -128,16 +140,31 @@ export function ProposalFields({
                 inputMode="decimal"
                 className="min-h-9"
                 value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                onChange={(e) => {
+                  fx.clear();
+                  setPrice(e.target.value);
+                }}
                 data-negotiation-price
               />
+              <FxNoteLine note={fx.note} onKeep={fx.keep} />
             </Field>
             <Field label={l.currency}>
               <Select
                 name="currency"
                 className="min-h-9"
                 value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
+                onFocus={prefetchFx}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  const typed = parseNumberInput(price);
+                  fx.convert(
+                    currency,
+                    next,
+                    typed !== null && Number.isFinite(typed) ? typed : null,
+                    (n) => setPrice(raw(n)),
+                  );
+                  setCurrency(next);
+                }}
               >
                 {currencies.map((c) => (
                   <option key={c} value={c}>

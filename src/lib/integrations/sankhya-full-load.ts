@@ -176,6 +176,7 @@ const ROWS: Record<FullLoadEntity, { min: number; max: number }> = {
   stagePurchaseHeaders: { min: 1, max: 4000 },
   stagePurchaseItems: { min: 1, max: 4000 },
   stagePurchaseLinks: { min: 1, max: 4000 },
+  stagePurchaseTracks: { min: 1, max: 4000 },
   stageSaleHeaders: { min: 1, max: 4000 },
   stageSaleItems: { min: 1, max: 4000 },
   stageSaleLinks: { min: 1, max: 4000 },

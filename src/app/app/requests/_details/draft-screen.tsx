@@ -45,9 +45,11 @@ import {
  *   criado, "Rascunho" e "Próximo passo: Concluir e enviar" com quem o salvou;
  * - o aviso privado (só quem salvou vê; nada foi enviado). O administrador
  *   vê também os rascunhos dos outros (dono, 19/11/2026; seção 9): o aviso
- *   diz quem salvou e que só essa pessoa continua e envia;
- * - "Continuar edição" (o formulário de onde veio, com o que foi salvo), só
- *   para quem salvou;
+ *   diz quem salvou e que ele também pode concluir e enviar (dono,
+ *   21/11/2026);
+ * - "Continuar edição" (o formulário de onde veio, com o que foi salvo), para
+ *   quem salvou e para o administrador; o "Concluir e enviar" do Próximo
+ *   passo leva ao mesmo lugar;
  * - por produto: "Rascunho" (e "Incompleto"), sem prazo nem pedido; o
  *   produto abre os detalhes dele aqui mesmo (`?item=<posição>`).
  * Só consulta (draft-details.ts): nada é gravado ao montar a tela.
@@ -118,9 +120,18 @@ export async function draftScreenProps(
         <Badge tone="neutral">{t("requestDraft.status")}</Badge>
         <span className="text-sm text-zinc-700" data-request-next="draft">
           {t("reqList.col.next")}:{" "}
-          <span className="font-medium text-zinc-900">
-            {t("reqList.draft.next")}
-          </span>
+          {/* Quem continua (quem salvou ou o administrador; dono,
+              21/11/2026): o próximo passo leva ao formulário, como o
+              "Continuar edição". */}
+          {details.canResume ? (
+            <TextLink href={details.resumeHref} data-draft-next-resume="">
+              {t("reqList.draft.next")}
+            </TextLink>
+          ) : (
+            <span className="font-medium text-zinc-900">
+              {t("reqList.draft.next")}
+            </span>
+          )}
           {/* Quem age: quem salvou o rascunho. */}
           <ResponsibleTip
             r={responsible}

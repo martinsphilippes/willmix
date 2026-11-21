@@ -380,6 +380,7 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 ## Campo de dinheiro em todo o portal
 
 - `MoneyInput` (`src/components/money-input.tsx`) é o campo único para valores: símbolo da moeda na frente (R$, ¥, US$, €), formatação ao sair do campo e número normalizado num campo oculto (as Server Actions com `num()` não mudam). A moeda vem do seletor próprio (`currencyName`), de um seletor já existente no formulário (`watchField`) ou é fixa (`currency`). Aplicado em: custos do desembaraço, frete da companhia marítima, recebimento do cliente, multa, cotação registrada à mão, sinal, kit de marketing, preço do produto (catálogo e programação), sourcing, pagamento ao fornecedor, frete por CBM (Configurações), preço da ficha de compra e calculadora do valor ao cliente (venda e frete, sempre em Real).
+- Trocar a moeda converte o valor (dono, 21/11/2026; docs/PURCHASE_DEMAND.md, "Conversão ao trocar a moeda"): o `MoneyInput` com seletor de moeda, a resposta da cotação de compra e a negociação com o fornecedor convertem pelo câmbio do dia do portal (`/api/fx`), com o aviso e o "Manter". Aditivo: nenhum campo, ação ou dado muda; o servidor recebe o valor como antes.
 
 ## Custos do desembaraço em dinheiro
 
@@ -1907,3 +1908,16 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Pedido do dono** (19/11/2026; docs/TRADE_COMERCIAL.md, "Entregue nos PRs 3 e 4"): as telas do painel do Projeto Campineira dentro do portal, com os dados do Sankhya (opção A), junto com o Plano de ação.
 - **Aditivo:** tabelas novas `customer_sales_monthly` e `customer_sales_loads`; rota nova `/app/portfolio/panel` (e a exportação CSV); job noturno `/api/jobs/customer-sales` no `vercel.json`; item novo no menu Vendas; coluna "Última compra" na carteira; atalhos nas fichas do cliente e do grupo. Nada é apagado; nenhuma tela, rota ou campo muda de lugar. O painel lê só a base gravada (o Sankhya é lido pela carga).
 - Testes: `tests/unit/customer-sales.test.ts`, `tests/unit/sales-panel.test.ts` e `tests/e2e/sales-panel.spec.ts`.
+
+## Rascunho: "Concluir e enviar" é o botão, também para o administrador (dono, 21/11/2026)
+
+- **Pedido do dono** (21/11/2026, com o print de Encomendas): os rascunhos 4 e 8 não davam para concluir; o "Concluir e enviar" da Próxima ação precisa ser um botão que leve ao lugar certo para concluir e enviar (docs/ORDER_LEVEL_LISTS.md, seção 9, "Concluir e enviar pelo botão").
+- **Causa**: os rascunhos eram de outro login de administrador ("Well"), e só quem salvou continuava; na lista, "Concluir e enviar" era só texto.
+- **Como ficou**:
+  - Na lista de Encomendas, "Concluir e enviar" é o botão que abre o formulário da tela de onde o rascunho veio, com tudo o que foi salvo. Nos detalhes, o Próximo passo e o "Continuar edição" levam ao mesmo lugar.
+  - Quem continua: quem salvou e o administrador (`canContinueDraft`), pela mesma regra na lista, nos detalhes, no formulário, no salvamento e no envio.
+  - O rascunho continua de quem salvou.
+  - O envio sai com o número do rascunho, com quem envia como solicitante.
+- **Aditivo**: um campo novo na lista (`ListedDraft.canContinue`) e dois textos (o aviso no formulário e o aviso nos detalhes, reescrito). Nada é apagado: nenhuma tela, rota, campo ou dado muda. Sem mudança no banco.
+- **Não mudou**: quem não é administrador continua só com os seus rascunhos; a Reposição continua só de quem salvou.
+- Testes: `tests/unit/request-screens.test.ts`, `tests/unit/request-draft-details.test.ts` e `tests/e2e/request-draft-details.spec.ts`.

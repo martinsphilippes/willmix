@@ -210,15 +210,18 @@ describe("detalhes do rascunho", () => {
     } as never);
   });
 
-  it("o administrador vê o rascunho de outro login, só para consulta (seção 9)", async () => {
+  it("o administrador vê e continua o rascunho de outro login (seção 9; dono, 21/11/2026)", async () => {
     // Rascunho do Otávio (TS).
     const draft = await saveRequestDraft(operator, form(), null, "ts");
     const before = await snapshot();
     const seen = await loadDraftDetails(admin, draft.id);
     expect(seen).not.toBeNull();
+    // "Continuar edição" também para o administrador, no formulário da tela
+    // de onde o rascunho veio.
     expect(seen).toMatchObject({
       mine: false,
-      canResume: false,
+      canResume: true,
+      resumeHref: `/app/new-request/ts?draft=${draft.id}`,
       number: draft.number,
       owner: { id: operator.id, name: operator.name },
     });
@@ -233,8 +236,9 @@ describe("detalhes do rascunho", () => {
     // Outro login da Wellmix, que não é administrador, e o cliente: 404.
     expect(await loadDraftDetails(sales, draft.id)).toBeNull();
     expect(await loadDraftDetails(customer, draft.id)).toBeNull();
-    // Ver não é continuar: o formulário só reabre o rascunho de quem salvou.
-    expect(await getRequestDraft(admin, draft.id, "ts")).toBeNull();
+    // O formulário reabre o rascunho para o administrador (o "Concluir e
+    // enviar" da lista leva até lá).
+    expect((await getRequestDraft(admin, draft.id, "ts"))?.id).toBe(draft.id);
     // O da entrada da Reposição continua fora dos detalhes, também para ele.
     const repo = form();
     repo.append("from", "replenishment");

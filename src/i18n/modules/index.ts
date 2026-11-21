@@ -182,6 +182,7 @@ import * as partyFamilies from "./party-families";
 import * as portfolio from "./portfolio";
 import * as tradePlan from "./trade-plan";
 import * as salesPanel from "./sales-panel";
+import * as moneyFx from "./money-fx";
 
 export const modulesPt = {
   ...messages.pt,
@@ -363,6 +364,7 @@ export const modulesPt = {
   ...turns.pt,
   ...negotiationScreen.pt,
   ...quoteInnerMaterials.pt,
+  ...moneyFx.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...messages.en,
@@ -544,6 +546,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...turns.en,
   ...negotiationScreen.en,
   ...quoteInnerMaterials.en,
+  ...moneyFx.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...messages.zh,
@@ -725,4 +728,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...turns.zh,
   ...negotiationScreen.zh,
   ...quoteInnerMaterials.zh,
+  ...moneyFx.zh,
 };
