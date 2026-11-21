@@ -1127,10 +1127,6 @@ export async function renderNewRequest({
                   carrierCaller: draftValue("carrierCaller"),
                   redispatch: draftValue("redispatch"),
                   originCountry: draftValue("originCountry"),
-                  // País - Porto (21/11/2026): rascunho antigo, sem o porto.
-                  originPort: draftFields?.has("originPort")
-                    ? draftValue("originPort")
-                    : undefined,
                   productFamily: draftValue("productFamily"),
                   paymentPlanId: draftValue("paymentPlanId"),
                 }}

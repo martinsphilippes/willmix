@@ -524,22 +524,13 @@ export async function chooseOrderOrigin(
   page: Page,
   country = "CHINA",
   family = "fm:BRINQUEDOS",
-  /** Código do porto; "" = porto não informado (o caso dos dados de teste). */
-  port = "",
 ) {
   const terms = page.locator("[data-order-terms]");
-  // País - Porto pelo buscador único (dono, 21/11/2026): digita e escolhe.
-  const origin = terms.locator("[data-order-terms-country]");
-  const input = origin.locator("[data-origin-port-picker-input]");
-  await input.click();
-  await input.fill(country.toLowerCase());
-  await origin
-    .locator(`[data-origin-port-picker-option="${country}|${port}"]`)
-    .click();
-  await expect(origin).toHaveAttribute(
-    "data-order-terms-port",
-    `${country}|${port}`,
-  );
+  const countrySelect = terms.locator("[data-order-terms-country]");
+  await expect(
+    countrySelect.locator(`option[value="${country}"]`),
+  ).toBeAttached();
+  await countrySelect.selectOption(country);
   const groupSelect = terms.locator("[data-order-terms-group]");
   await expect(groupSelect.locator(`option[value="${family}"]`)).toBeAttached();
   await groupSelect.selectOption(family);

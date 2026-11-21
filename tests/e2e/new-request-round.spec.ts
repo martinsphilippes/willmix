@@ -110,7 +110,7 @@ test("Nova solicitação TS: produto da base, descrição, cálculo da previsão
     delivery.locator("[data-order-terms-collapsed] th"),
   ).toContainText(["Re-despacho", "Transportador", "Origem e grupo"]);
   await expect(delivery.locator("[data-order-terms-collapsed]")).toContainText(
-    "CHINA - Porto não informado › Brinquedos",
+    "CHINA › Brinquedos",
   );
   await expect(terms.locator("[data-order-terms-body]:visible")).toHaveCount(0);
   // O Editar de um quadro abre só ele.

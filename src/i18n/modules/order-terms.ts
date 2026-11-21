@@ -36,7 +36,7 @@ export const pt = {
   "orderTerms.delivery": "Entrega",
   // Quadro Entrega (dono, 21/11/2026; docs/ORDER_TERMS.md, seção 11.24).
   "orderTerms.deliveryHint":
-    "Como o pedido sai do fornecedor e chega ao cliente. Escolha o país, o porto e o grupo antes dos produtos.",
+    "Como o pedido sai do fornecedor e chega ao cliente. Escolha o país e o grupo antes dos produtos.",
   "orderTerms.carrier": "Transportador",
   "orderTerms.carrierNone": "Escolha o transportador",
   "orderTerms.redispatch": "Re-despacho",
@@ -351,7 +351,7 @@ export const en: Record<keyof typeof pt, string> = {
   "orderTerms.delivery": "Delivery",
   // Delivery card (owner, 21/11/2026; docs/ORDER_TERMS.md, section 11.24).
   "orderTerms.deliveryHint":
-    "How the order leaves the supplier and reaches the customer. Choose the country, the port and the group before the products.",
+    "How the order leaves the supplier and reaches the customer. Choose the country and the group before the products.",
   "orderTerms.carrier": "Carrier",
   "orderTerms.carrierNone": "Choose the carrier",
   "orderTerms.redispatch": "Redispatch",
@@ -662,7 +662,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderTerms.delivery": "交货",
   // 交货卡片（所有者，2026/11/21；docs/ORDER_TERMS.md 第 11.24 节）。
   "orderTerms.deliveryHint":
-    "订单如何从供应商发出并送达客户。请先选择国家、港口和产品组，再选择产品。",
+    "订单如何从供应商发出并送达客户。请先选择国家和产品组，再选择产品。",
   "orderTerms.carrier": "承运商",
   "orderTerms.carrierNone": "请选择承运商",
   "orderTerms.redispatch": "转运",
