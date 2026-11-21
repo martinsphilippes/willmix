@@ -389,6 +389,37 @@ Pedido do dono (com três imagens da tela): o quadro único "Condições do pedi
 - **Código:** `src/components/request-order-terms.tsx`, textos `orderTerms.hint`, `orderTerms.deliveryHint` e `orderTerms.collapsed.deliveryHint` (pt, en e zh).
 - **Testes:** `tests/e2e/new-request-round.spec.ts` (cada campo no seu quadro, os dois resumos, o "Editar" de um quadro abrindo só ele e o "Recolher" de cada um), `tests/e2e/order-terms.spec.ts` e o `editOrderTerms` de `tests/e2e/helpers.ts`, que abre os dois quadros.
 
+## 11.25 Cadastro rápido de cliente pelo "+" (dono, 21/11/2026)
+
+Pedido do dono (com o print do campo Cliente): um "+" ao lado do campo Cliente da Nova solicitação, para cadastrar um cliente novo só com os dados principais, na própria tela, sem ir para outra.
+
+Decisões do dono (21/11/2026):
+
+| # | Pergunta | Decisão |
+|---|---|---|
+| 1 | Quais campos | O CNPJ, que a Receita (BrasilAPI) completa com razão social, nome fantasia, cidade e UF, telefone e e-mail; dá para corrigir antes de salvar. Obrigatórios: CNPJ e nome. |
+| 2 | CNPJ que já é de um cliente | Bloqueia: não cria outro e oferece o cliente que existe ("Usar este cliente"). |
+| 3 | Quem vê o "+" | Quem lança a solicitação: todo login da Wellmix que abre a Nova solicitação (Encomendas, TS ou Venda), inclusive Vendas. Editar o cliente depois continua em Cadastros → Clientes. |
+
+- **Tela:** o "+" fica ao lado da busca do campo Cliente (`RequestCustomerField`, `data-quick-customer-open`); some na "Compra para estoque". Abre o quadro "Cliente novo" (`src/components/quick-customer.tsx`, um `<dialog>`):
+  - o CNPJ com 14 dígitos procura primeiro o cliente que já existe;
+  - sem ele, a Receita preenche Nome (fantasia), Razão social, Cidade, UF, Telefone e E-mail;
+  - sem resposta da Receita, ou com o CNPJ não encontrado, os dados se digitam.
+- **Ao salvar:**
+  - o cliente fica escolhido no campo, e o resto da tela reage como numa escolha normal (contatos, login do cliente, RCA e histórico);
+  - aparece "Cliente X cadastrado e escolhido no pedido";
+  - os campos do quadro não têm `name` e não vão no envio da solicitação. O envio por teclado continua barrado (`KeyboardSubmitGuard`), e o Enter no quadro salva o cliente.
+- **Como grava** (`src/lib/services/quick-customer.ts`), igual aos clientes da carga do Sankhya:
+  - tipo cliente, CNPJ só com dígitos, pessoa jurídica, país BRASIL e cidade "CIDADE - UF";
+  - ativo, com auditoria `party.create`;
+  - envio ao Sankhya (`syncSoon`), como no cadastro completo.
+- **Trava do CNPJ:** procura o CNPJ só com dígitos (carga) e com máscara (cadastro completo) entre os clientes. Se for de um inativo, não cria e pede a reativação em Cadastros → Clientes.
+- **Servidor:** `src/app/app/actions/quick-customer.ts`. `findCustomerByCnpjAction` procura antes de preencher. `quickCustomerAction` confere em zod o CNPJ (dígitos verificadores), o nome e o e-mail, e confere o papel: Wellmix com a Nova solicitação (`canOpenNewRequest`). Quem é de fora ou não abre a Nova solicitação recebe `forbidden`.
+- **Fica de fora:** o login do cliente novo. Só o administrador cria o login (Cadastros → Clientes), e é o login do cliente que confirma o pedido. Também fica de fora o cliente pessoa física (CPF), que continua pelo cadastro completo.
+- **Testes:**
+  - `tests/unit/quick-customer.test.ts`: como grava, a escolha devolvida, a trava com e sem máscara e do inativo, as validações e quem pode;
+  - `tests/e2e/quick-customer.spec.ts`: a Vera (Vendas) cadastra pelo "+", o cliente fica escolhido na mesma tela, o mesmo CNPJ oferece o existente e a busca acha o cliente novo.
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.
