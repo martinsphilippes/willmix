@@ -1,5 +1,5 @@
 import type { Translate } from "@/i18n";
-import { listPickerLabels, productPickerLabels } from "./party-picker-labels";
+import { productPickerLabels } from "./party-picker-labels";
 import {
   CARRIER_CALLERS,
   CONTACT_ROLES,
@@ -81,15 +81,6 @@ export function orderTermsLabels(t: Translate): RequestOrderTermsLabels {
     country: t("orderTerms.country"),
     countryChoose: t("orderTerms.countryChoose"),
     countryDisabled: t("orderTerms.countryDisabled"),
-    port: {
-      field: t("originPort.field"),
-      choose: t("originPort.choose"),
-      noPort: t("originPort.noPort"),
-      option: t("originPort.option", { country: "{country}", port: "{port}" }),
-      hint: t("originPort.hint"),
-      groupPick: t("orderTerms.groupPickPort"),
-      picker: listPickerLabels(t),
-    },
     group: t("orderTerms.group"),
     groupChoose: t("orderTerms.groupChoose"),
     groupPickCountry: t("orderTerms.groupPickCountry"),

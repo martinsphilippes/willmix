@@ -84,7 +84,7 @@ test("Nova solicitação TS: produto da base, descrição, cálculo da previsão
     "Pagamento",
     "Valor total",
   ]);
-  await expect(summary).toContainText("CHINA - Porto não informado › Brinquedos");
+  await expect(summary).toContainText("CHINA › Brinquedos");
   await expect(terms.locator("[data-order-terms-body]")).toBeHidden();
   await editOrderTerms(page);
   await expect(summary).toHaveCount(0);

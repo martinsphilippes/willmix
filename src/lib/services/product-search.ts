@@ -100,12 +100,7 @@ export async function searchProducts(input: {
    * País de origem e grupo (linha) escolhidos no pedido (Nova solicitação;
    * docs/ORDER_TERMS.md): só os produtos deles.
    */
-  origin?: {
-    country: string;
-    family: string;
-    /** Porto (dono, 21/11/2026): nulo = qualquer; "" = sem porto. */
-    port?: string | null;
-  } | null;
+  origin?: { country: string; family: string } | null;
 }): Promise<ProductHit[]> {
   const text = searchText(input.q).slice(0, 80);
   if (text.length < 2) return [];
@@ -119,7 +114,6 @@ export async function searchProducts(input: {
       ? await originModule.productIdsOfOrigin(
           input.origin.country,
           input.origin.family,
-          input.origin.port,
         )
       : null;
   if (allowed && !allowed.size) return [];
