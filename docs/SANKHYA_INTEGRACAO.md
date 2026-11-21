@@ -125,6 +125,19 @@ Também vêm as datas de recebimento e de inspeção e a quantidade de processos
   - A pré-venda pendente tem itens à espera de mercadoria: 24.400 itens de 3.887 produtos.
   - Desses produtos, 1.395 estão numa importação em andamento.
 
+### 3.1 Primeiro ensaio da reconstrução (21/11/2026, SQL sobre a cópia)
+
+Cada pedido é a ponta da cadeia de 1100 a 1104/1107: o documento mais avançado, sem sucessor nessas TOPs. Uma divisão (1100 que vira dois 1101) dá dois pedidos.
+
+| Situação da ponta                                     | Pedidos                       | No portal                                                                                                                                        |
+| ----------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1104 sem pendência (tudo embarcado) e 1107            | 3.276                         | Encerrados (ou em embarque, conforme os embarques)                                                                                               |
+| 1104 pendente                                         | 409                           | Em andamento: Produção, Inspeção, Embarque parcial; os sem `STATUS_SHIPPING` vão para "Aguardando definição"                                     |
+| 1100 / 1102 / 1103 pendente                           | 47 / 15 / 1                   | Em andamento                                                                                                                                     |
+| 1100, 1101 ou 1102 **sem pendência e sem sucessor**   | 1.102 + 754 + 269 = **2.125** | **Interrompidos:** o documento saiu de pendente sem gerar o seguinte e sem recebimento. Parecem cancelados ou substituídos no Sankhya (seção 10) |
+| 1103 que seguiu pelo caminho antigo (30 Produção, 94) | 150                           | Caminho antigo, encerrados                                                                                                                       |
+| **Total**                                             | **cerca de 6.000**            | Contra os 16.268 da carga antiga                                                                                                                 |
+
 ## 4. Modelo novo dos pedidos de compra
 
 ### 4.1 O que fica no portal e o que fica só como consulta
@@ -331,3 +344,4 @@ Cada etapa é um PR com testes e E2E. Nada apaga dados até a etapa 5.
 1. Confirmação da Wellmix do de-para da seção 5.1 (D7). Até lá vale a proposta, validada na tela com casos reais.
 2. Confirmação de D8 (canal) e de D9 (embarque parcial pela API, na primeira escrita).
 3. Gerar boleto pelo portal: existe serviço no Sankhya para isso? (Em verificação com a Wellmix.)
+4. Os 2.125 pedidos interrompidos (1100, 1101 ou 1102 sem pendência e sem documento seguinte): foram cancelados ou substituídos no Sankhya? Proposta: entram como encerrados "Interrompido no Sankhya", sem pendências, numa lista para conferência.
