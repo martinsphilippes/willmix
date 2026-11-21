@@ -23,6 +23,22 @@ describe("colunas acrescentadas depois são opcionais", () => {
     ["parties", "customerGroupId"],
     ["users", "sellerCode"],
     ["products", "minStock"],
+    ["orders", "sankhyaChain"],
+    ["orders", "sankhyaChangedAt"],
+    ["orders", "sankhyaQuality"],
+    ["orders", "sankhyaInspectedAt"],
+    ["orders", "sankhyaReceipt"],
+    ["orders", "sankhyaReceivedAt"],
+    ["orders", "customsChannel"],
+    ["orders", "sankhyaImportProcesses"],
+    ["orders", "shipmentState"],
+    ["orders", "sankhyaSituation"],
+    ["order_items", "shippedQty"],
+    ["order_items", "receivedQty"],
+    ["order_items", "pendingQty"],
+    ["containers", "sankhyaCode"],
+    ["containers", "sankhyaChain"],
+    ["containers", "supplierId"],
   ] as const)("%s.%s", (table, column) => {
     expect(TABLES[table].columns[column].required ?? false).toBe(false);
   });

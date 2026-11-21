@@ -2127,6 +2127,93 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "sankhyaChain",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "sankhyaChangedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "sankhyaQuality",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "sankhyaInspectedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "sankhyaReceipt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "sankhyaReceivedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "customsChannel",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
+        },
+        {
+          "key": "sankhyaImportProcesses",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "shipmentState",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "none",
+            "partial",
+            "shipped"
+          ]
+        },
+        {
+          "key": "sankhyaSituation",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "in_progress",
+            "awaiting_definition",
+            "closed",
+            "interrupted",
+            "legacy_path"
+          ]
         }
       ],
       "indexes": [
@@ -2319,6 +2406,27 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "shippedQty",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "receivedQty",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "pendingQty",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
         }
       ],
       "indexes": [
@@ -4870,9 +4978,42 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "sankhyaCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "sankhyaChain",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "supplierId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
+        {
+          "key": "by_sankhya",
+          "type": "key",
+          "columns": [
+            "sankhyaCode"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
         {
           "key": "by_customer",
           "type": "key",
