@@ -1,7 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { CURRENCIES, isCurrency, type Currency } from "@/lib/currencies";
+import {
+  formatMoneyDigits,
+  moneyDigits,
+  moneyDigitsOfPaste,
+  moneyDigitsOfValue,
+  moneySeparators,
+  moneyValueOfDigits,
+} from "@/lib/money-mask";
 import { CURRENCY_SYMBOL } from "@/lib/workflow/money";
 import { cx, inputClass, inputDenseClass } from "./ui";
 
@@ -18,6 +26,12 @@ import { cx, inputClass, inputDenseClass } from "./ui";
  * ("1234.56"), então as Server Actions atuais (`num`) seguem iguais. O campo
  * visível tem `data-money={name}` (testes). Com `value`/`onValueChange` o
  * campo fica controlado (calculadora do valor ao cliente).
+ *
+ * Com `autoDecimal` (dono, 20/11/2026; cotação de compra), a digitação é de
+ * caixa registradora: só números, a vírgula das casas entra sozinha (4000 =
+ * 40,00) e o separador é o da moeda (Yuan e Dólar com ponto, Real e Euro com
+ * vírgula; `src/lib/money-mask.ts`). Sem ele, nada muda: digitação livre,
+ * formatada ao sair do campo no idioma de quem usa.
  */
 export function MoneyInput({
   name,
@@ -39,7 +53,22 @@ export function MoneyInput({
   selectClassName,
   size = "sm",
   id,
+  autoDecimal = false,
+  form,
+  error = false,
+  ariaLabel,
+  inputData,
 }: {
+  /** Só números, a vírgula das casas entra sozinha, separador da moeda. */
+  autoDecimal?: boolean;
+  /** O formulário do campo, quando ele fica fora do <form> (atributo `form`). */
+  form?: string;
+  /** Campo apontado (falta preencher): borda e fundo vermelhos. */
+  error?: boolean;
+  /** Nome do campo visível para leitores de tela. */
+  ariaLabel?: string;
+  /** Atributos data-* a mais no campo visível (testes da tela). */
+  inputData?: Record<`data-${string}`, string>;
   /** Tag Intl do idioma: separadores de milhar e decimal (pt-BR, en-US, zh-CN). */
   locale?: string;
   name?: string;
@@ -86,14 +115,23 @@ export function MoneyInput({
   const [textState, setText] = useState(() =>
     formatOrRaw(rawState, decimals, locale),
   );
+  // Caixa registradora (`autoDecimal`): os números digitados ("4000").
+  const [digitsState, setDigits] = useState(() =>
+    moneyDigitsOfValue(rawState, decimals),
+  );
   const [focused, setFocused] = useState(false);
   const [invalid, setInvalid] = useState(false);
   // Controlado: o valor vem de fora; fora do foco, a tela mostra formatado.
   const raw = value ?? rawState;
-  const text =
+  const freeText =
     value !== undefined && !focused
       ? formatOrRaw(value, decimals, locale)
       : textState;
+  const digits = !autoDecimal
+    ? ""
+    : value !== undefined
+      ? moneyDigitsOfValue(value, decimals)
+      : digitsState;
 
   // Segue o seletor de moeda já existente no formulário (a leitura inicial
   // é adiada: o campo só existe depois de montar).
@@ -115,12 +153,44 @@ export function MoneyInput({
     };
   }, [watchField]);
 
-  const code = watchField ? watched : ownCurrency;
+  // Moeda fixa (sem seletor próprio nem campo seguido): a de agora, para o
+  // símbolo acompanhar quando a tela troca a moeda.
+  const code = watchField
+    ? watched
+    : currencyName
+      ? ownCurrency
+      : (currency ?? defaultCurrency ?? "").toUpperCase();
   const symbol = symbolOf(code);
   const legacy =
     ownCurrency && !(CURRENCIES as readonly string[]).includes(ownCurrency)
       ? ownCurrency
       : null;
+  const sep = moneySeparators(code);
+  const text = autoDecimal
+    ? formatMoneyDigits(digits, sep, decimals)
+    : freeText;
+  const submitted = autoDecimal ? moneyValueOfDigits(digits, decimals) : raw;
+
+  /** Caixa registradora: novos números → campo e valor. */
+  function typeDigits(next: string) {
+    setDigits(next);
+    setInvalid(false);
+    onValueChange?.(moneyValueOfDigits(next, decimals));
+  }
+
+  /**
+   * Caixa registradora: o cursor fica no fim (o número entra pela direita).
+   * Uma seleção feita pela pessoa (para apagar tudo) fica como está.
+   */
+  function caretToEnd(event: MouseEvent<HTMLInputElement>) {
+    if (!autoDecimal) return;
+    const el = event.currentTarget;
+    if (el.selectionStart !== el.selectionEnd) return;
+    requestAnimationFrame(() => {
+      const end = el.value.length;
+      el.setSelectionRange(end, end);
+    });
+  }
 
   function update(next: string) {
     setText(next);
@@ -132,6 +202,8 @@ export function MoneyInput({
 
   function blur() {
     setFocused(false);
+    // Caixa registradora: o campo já está formatado a cada número.
+    if (autoDecimal) return;
     if (!text.trim()) {
       update("");
       return;
@@ -161,6 +233,7 @@ export function MoneyInput({
       {currencyName ? (
         <select
           name={currencyName}
+          form={form}
           value={ownCurrency}
           onChange={(e) => setOwnCurrency(e.target.value)}
           disabled={disabled}
@@ -183,14 +256,15 @@ export function MoneyInput({
       ) : null}
       <span
         className={cx(
-          "inline-flex min-w-0 flex-1 items-center border bg-white shadow-sm focus-within:ring-2 focus-within:ring-brand-200",
+          "inline-flex min-w-0 flex-1 items-center border shadow-sm focus-within:ring-2 focus-within:ring-brand-200",
           size === "sm" ? "min-h-8 rounded-md" : "rounded-lg",
-          invalid ? "border-red-400" : "border-zinc-300",
-          disabled && "bg-zinc-50 opacity-70",
+          invalid || error ? "border-red-400" : "border-zinc-300",
+          disabled ? "bg-zinc-50 opacity-70" : error ? "bg-red-50" : "bg-white",
         )}
       >
         {symbol ? (
           <span
+            data-money-symbol=""
             className={cx(
               "shrink-0 font-semibold text-zinc-500",
               size === "sm" ? "pl-2 pr-1 text-xs" : "pl-3 pr-1 text-sm",
@@ -205,18 +279,38 @@ export function MoneyInput({
           ref={inputRef}
           id={id}
           data-money={name}
+          {...inputData}
           type="text"
-          inputMode="decimal"
+          inputMode={autoDecimal ? "numeric" : "decimal"}
+          aria-label={ariaLabel}
           required={required}
           disabled={disabled}
-          placeholder={placeholder ?? formatPlain(0, decimals, locale)}
+          placeholder={
+            placeholder ??
+            (autoDecimal
+              ? formatMoneyDigits("0", sep, decimals)
+              : formatPlain(0, decimals, locale))
+          }
           value={text}
           onFocus={() => {
-            if (value !== undefined)
+            if (value !== undefined && !autoDecimal)
               setText(formatOrRaw(value, decimals, locale));
             setFocused(true);
           }}
-          onChange={(e) => update(e.target.value)}
+          onClick={caretToEnd}
+          onChange={(e) =>
+            autoDecimal
+              ? typeDigits(moneyDigits(e.target.value))
+              : update(e.target.value)
+          }
+          onPaste={(e) => {
+            if (!autoDecimal) return;
+            // Colado vale como está escrito ("40,50" = 40,50; "4000" = 4.000).
+            const pasted = e.clipboardData.getData("text");
+            if (!pasted.trim()) return;
+            e.preventDefault();
+            typeDigits(moneyDigitsOfPaste(pasted, decimals));
+          }}
           onBlur={blur}
           className={cx(
             "w-full border-0 bg-transparent text-right tabular-nums focus:outline-none disabled:cursor-not-allowed",
@@ -227,7 +321,13 @@ export function MoneyInput({
         />
       </span>
       {name ? (
-        <input type="hidden" name={name} value={raw} disabled={disabled} />
+        <input
+          type="hidden"
+          name={name}
+          form={form}
+          value={submitted}
+          disabled={disabled}
+        />
       ) : null}
     </span>
   );

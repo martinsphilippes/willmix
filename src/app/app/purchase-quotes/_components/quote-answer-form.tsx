@@ -1,6 +1,14 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+} from "react";
 import {
   Alert,
   Badge,
@@ -12,7 +20,9 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
+import { MoneyInput } from "@/components/money-input";
 import { parseNumberInput } from "@/lib/number-input";
+import { formatMoneyDigits, moneySeparators } from "@/lib/money-mask";
 import {
   boxesForSheet,
   dimsCbm,
@@ -36,7 +46,22 @@ import type {
  * obrigatórias. Os campos ficam fora do <form> (atributo `form`) para a
  * foto ter o próprio formulário no meio; o que falta aparece embaixo e o
  * envio só sai completo (o servidor confere de novo).
+ *
+ * Moeda e preço (dono, 20/11/2026; docs/PURCHASE_DEMAND.md, "Moeda e preço
+ * na cotação"): a moeda fica ao lado do preço unitário (RMB por padrão,
+ * Dólar, Euro e Real), uma só para todos os itens da cotação; o preço é
+ * digitado só com números e a vírgula entra sozinha, com o símbolo e o
+ * separador da moeda (4000 = ¥ 40.00).
+ *
+ * Rascunho automático (dono, 20/11/2026; docs/PURCHASE_DEMAND.md, "Rascunho
+ * automático da cotação"): a cada pausa da digitação, tudo o que está na tela
+ * vai para o servidor (por login) e volta quando a página abre de novo; a foto
+ * na balança salva antes de subir. Assim, uma página recarregada (versão nova
+ * do portal no ar, iPad que recarrega a aba) não perde nada.
  */
+
+/** A ordem do seletor (dono, 20/11/2026): RMB, Dólar, Euro e Real. */
+const CURRENCY_ORDER = ["RMB", "USD", "EUR", "BRL"];
 
 export interface QuoteSheetProduct {
   productId: string;
@@ -66,6 +91,12 @@ export interface QuoteAnswerLabels {
   schedule: string;
   desiredAt: string;
   unitPrice: string;
+  /** "Digite só os números: {typed} vira {example}." */
+  priceHint: string;
+  /** Mais de um item: a moeda vale para todos. */
+  currencyAll: string;
+  /** Nome de cada moeda no seletor ("Yuan (RMB)"). */
+  currencyNames: Record<string, string>;
   currency: string;
   incoterm: string;
   leadTime: string;
@@ -110,6 +141,96 @@ export interface QuoteAnswerLabels {
   photoUploading: string;
   photoFailed: string;
   noInner: string;
+  /** Rascunho automático: recuperado, salvando, salvo às {time}, falhou. */
+  draftRestored: string;
+  draftHint: string;
+  draftSaving: string;
+  draftSaved: string;
+  draftError: string;
+}
+
+/** O que o rascunho guarda: os campos pelo nome do formulário, só texto. */
+export type QuoteDraftValues = Record<string, string>;
+
+type DraftSave = (input: {
+  quoteId: string;
+  values: QuoteDraftValues;
+}) => Promise<{ ok: boolean; savedAt: string | null }>;
+
+/** Espera depois da última tecla para salvar o rascunho. */
+const DRAFT_DELAY_MS = 700;
+/** Depois de enviar a resposta, nada de rascunho (o envio o apaga). */
+const DRAFT_PAUSE_AFTER_SEND_MS = 8000;
+
+const TEXT_SHEET_KEYS = [
+  "masterBoxQty",
+  "innerBoxQty",
+  "boxLengthCm",
+  "boxWidthCm",
+  "boxHeightCm",
+  "cbm",
+  "netWeightKg",
+  "grossWeightBoxKg",
+  "material",
+  "factoryItemCode",
+] as const;
+const FLAG_SHEET_KEYS = ["noInner", "noFactoryCode", "confirm"] as const;
+
+const noSubscribe = () => () => {};
+
+/**
+ * Salva o rascunho a cada pausa (só quando algo mudou desde o último salvo)
+ * e devolve a situação para a tela, mais `flush` (salvar já: antes da foto)
+ * e `pause` (a resposta foi enviada).
+ */
+function useDraftAutosave(
+  quoteId: string,
+  values: QuoteDraftValues,
+  save: DraftSave | null,
+  restoredAt: string | null,
+) {
+  const snapshot = JSON.stringify(values);
+  const latest = useRef(values);
+  // O que já está no servidor (a tela aberta não salva sem mudança).
+  const saved = useRef(snapshot);
+  const inFlight = useRef<string | null>(null);
+  const pausedAt = useRef(0);
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">(
+    restoredAt ? "saved" : "idle",
+  );
+  const [savedAt, setSavedAt] = useState<string | null>(restoredAt);
+  // O mesmo `saved`, para a tela: há mudança ainda não salva?
+  const [savedSnap, setSavedSnap] = useState(snapshot);
+
+  const flush = useCallback(async () => {
+    if (!save) return;
+    if (Date.now() - pausedAt.current < DRAFT_PAUSE_AFTER_SEND_MS) return;
+    const current = latest.current;
+    const snap = JSON.stringify(current);
+    if (snap === saved.current || snap === inFlight.current) return;
+    inFlight.current = snap;
+    setStatus("saving");
+    const result = await save({ quoteId, values: current }).catch(() => null);
+    if (inFlight.current === snap) inFlight.current = null;
+    if (result?.ok) {
+      saved.current = snap;
+      setSavedSnap(snap);
+      if (result.savedAt) setSavedAt(result.savedAt);
+      setStatus("saved");
+    } else setStatus("error");
+  }, [quoteId, save]);
+
+  useEffect(() => {
+    latest.current = values;
+    if (!save || snapshot === saved.current) return;
+    const timer = setTimeout(() => void flush(), DRAFT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [snapshot, values, save, flush]);
+
+  const pause = useCallback(() => {
+    pausedAt.current = Date.now();
+  }, []);
+  return { status, savedAt, flush, pause, dirty: snapshot !== savedSnap };
 }
 
 type SheetText = {
@@ -174,10 +295,16 @@ export function QuoteAnswerForm({
   labels: L,
   intl,
   cbmTolerancePercent,
+  draft = null,
+  draftAction = null,
 }: {
   quoteId: string;
   action: (form: FormData) => void | Promise<void>;
   photoAction: (form: FormData) => void | Promise<void>;
+  /** O rascunho salvo deste login (volta para a tela). */
+  draft?: { values: QuoteDraftValues; savedAt: string } | null;
+  /** Salva o rascunho (sem recarregar a página). */
+  draftAction?: DraftSave | null;
   products: QuoteSheetProduct[];
   commercial: {
     currency: string;
@@ -203,33 +330,103 @@ export function QuoteAnswerForm({
         });
   const show = (n: number, digits = 4) =>
     n.toLocaleString(intl, { maximumFractionDigits: digits });
+  // O rascunho deste login, quando há, vale mais que o que veio do servidor
+  // (é o que estava na tela por último; enviar a resposta o apaga).
+  const restored = draft?.values ?? {};
+  const pick = (key: string, fallback: string) =>
+    typeof restored[key] === "string" ? restored[key] : fallback;
+  const pickFlag = (key: string, fallback: boolean) =>
+    typeof restored[key] === "string" ? restored[key] === "1" : fallback;
   const [prices, setPrices] = useState<Record<string, string>>(() =>
-    Object.fromEntries(products.map((p) => [p.productId, p.price])),
+    Object.fromEntries(
+      products.map((p) => [p.productId, pick(`price.${p.productId}`, p.price)]),
+    ),
   );
   const [sheets, setSheets] = useState<Record<string, SheetText>>(() =>
     Object.fromEntries(
-      products.map((p) => [
-        p.productId,
-        {
-          masterBoxQty: fmt(p.draft.masterBoxQty),
-          innerBoxQty: fmt(p.draft.innerBoxQty),
-          noInner: p.draft.noInner,
-          boxLengthCm: fmt(p.draft.boxLengthCm),
-          boxWidthCm: fmt(p.draft.boxWidthCm),
-          boxHeightCm: fmt(p.draft.boxHeightCm),
-          cbm: fmt(p.draft.cbm),
-          netWeightKg: fmt(p.draft.netWeightKg),
-          grossWeightBoxKg: fmt(p.draft.grossWeightBoxKg),
-          material: p.draft.material,
-          factoryItemCode: p.draft.factoryItemCode,
-          noFactoryCode: p.draft.noFactoryCode,
-          confirm: false,
-        },
-      ]),
+      products.map((p) => {
+        const k = (field: string) => `sheet.${p.productId}.${field}`;
+        return [
+          p.productId,
+          {
+            masterBoxQty: pick(k("masterBoxQty"), fmt(p.draft.masterBoxQty)),
+            innerBoxQty: pick(k("innerBoxQty"), fmt(p.draft.innerBoxQty)),
+            noInner: pickFlag(k("noInner"), p.draft.noInner),
+            boxLengthCm: pick(k("boxLengthCm"), fmt(p.draft.boxLengthCm)),
+            boxWidthCm: pick(k("boxWidthCm"), fmt(p.draft.boxWidthCm)),
+            boxHeightCm: pick(k("boxHeightCm"), fmt(p.draft.boxHeightCm)),
+            cbm: pick(k("cbm"), fmt(p.draft.cbm)),
+            netWeightKg: pick(k("netWeightKg"), fmt(p.draft.netWeightKg)),
+            grossWeightBoxKg: pick(
+              k("grossWeightBoxKg"),
+              fmt(p.draft.grossWeightBoxKg),
+            ),
+            material: pick(k("material"), p.draft.material),
+            factoryItemCode: pick(
+              k("factoryItemCode"),
+              p.draft.factoryItemCode,
+            ),
+            noFactoryCode: pickFlag(k("noFactoryCode"), p.draft.noFactoryCode),
+            confirm: pickFlag(k("confirm"), false),
+          },
+        ];
+      }),
     ),
   );
-  const [terms, setTerms] = useState(commercial);
+  const [terms, setTerms] = useState(() => ({
+    currency: currencies.includes(pick("currency", ""))
+      ? pick("currency", "")
+      : commercial.currency,
+    incoterm: incoterms.includes(pick("incoterm", ""))
+      ? pick("incoterm", "")
+      : commercial.incoterm,
+    leadTimeDays: pick("leadTimeDays", commercial.leadTimeDays),
+    port: pick("port", commercial.port),
+    moq: pick("moq", commercial.moq),
+    note: pick("note", commercial.note),
+  }));
   const [tried, setTried] = useState(false);
+  // Tudo o que está na tela, pelo nome do formulário (o rascunho).
+  const draftValues = useMemo(() => {
+    const out: QuoteDraftValues = { ...terms };
+    for (const [pid, price] of Object.entries(prices))
+      out[`price.${pid}`] = price;
+    for (const [pid, sheet] of Object.entries(sheets)) {
+      for (const key of TEXT_SHEET_KEYS)
+        out[`sheet.${pid}.${key}`] = sheet[key];
+      for (const key of FLAG_SHEET_KEYS)
+        out[`sheet.${pid}.${key}`] = sheet[key] ? "1" : "0";
+    }
+    return out;
+  }, [prices, sheets, terms]);
+  const autosave = useDraftAutosave(
+    quoteId,
+    draftValues,
+    draftAction,
+    draft?.savedAt ?? null,
+  );
+  // A hora do rascunho no fuso de quem vê: só depois de abrir no aparelho.
+  const onClient = useSyncExternalStore(
+    noSubscribe,
+    () => true,
+    () => false,
+  );
+  const savedTime =
+    onClient && autosave.savedAt
+      ? new Date(autosave.savedAt).toLocaleTimeString(intl, {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : null;
+  const currencyOptions = [
+    ...CURRENCY_ORDER.filter((c) => currencies.includes(c)),
+    ...currencies.filter((c) => !CURRENCY_ORDER.includes(c)),
+  ];
+  // Exemplo da digitação na moeda escolhida: 4000 → 40.00 (ou 40,00).
+  const priceHint = fill(L.priceHint, {
+    typed: "4000",
+    example: formatMoneyDigits("4000", moneySeparators(terms.currency)),
+  });
   const setSheet = (pid: string, patch: Partial<SheetText>) =>
     setSheets((all) => ({ ...all, [pid]: { ...all[pid], ...patch } }));
 
@@ -279,8 +476,15 @@ export function QuoteAnswerForm({
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     const submitter = (event.nativeEvent as SubmitEvent).submitter;
-    if (submitter?.getAttribute("name") === "decline") return;
-    if (!missing.length) return;
+    if (submitter?.getAttribute("name") === "decline") {
+      autosave.pause();
+      return;
+    }
+    if (!missing.length) {
+      // Vai enviar: o rascunho para (o envio o apaga no servidor).
+      autosave.pause();
+      return;
+    }
     event.preventDefault();
     setTried(true);
     // Leva até o primeiro campo que falta (depois de a tela marcar).
@@ -297,6 +501,11 @@ export function QuoteAnswerForm({
 
   return (
     <div className="space-y-4" data-quote-answer-form data-quote-form={quoteId}>
+      {draft ? (
+        <div data-quote-draft-restored>
+          <Alert tone="info">{L.draftRestored}</Alert>
+        </div>
+      ) : null}
       {showsDisclaimer ? (
         <div data-quote-disclaimer>
           <Alert tone="brand">
@@ -409,35 +618,66 @@ export function QuoteAnswerForm({
                   </p>
                 ) : null}
               </div>
-              <div className="w-40 shrink-0">
-                <Field label={L.unitPrice}>
-                  <input
-                    type="hidden"
-                    form={formId}
-                    name="productId"
-                    value={p.productId}
-                  />
-                  <Input
-                    form={formId}
-                    name={`price.${p.productId}`}
-                    inputMode="decimal"
-                    value={prices[p.productId] ?? ""}
+              <div
+                className="w-full shrink-0 space-y-1 sm:w-72"
+                data-quote-price-box={p.productId}
+              >
+                {/* Rótulo só do preço: a moeda tem o próprio nome (aria). */}
+                <label
+                  htmlFor={`quote-price-${p.productId}`}
+                  className="block text-xs font-medium leading-5 text-zinc-700"
+                >
+                  {L.unitPrice}
+                </label>
+                <input
+                  type="hidden"
+                  form={formId}
+                  name="productId"
+                  value={p.productId}
+                />
+                <div
+                  className="flex items-center gap-2"
+                  data-missing={
+                    lacks(`${p.productId}.price`) ? "true" : undefined
+                  }
+                >
+                  <Select
+                    value={terms.currency}
                     onChange={(e) =>
-                      setPrices((all) => ({
-                        ...all,
-                        [p.productId]: e.target.value,
-                      }))
+                      setTerms({ ...terms, currency: e.target.value })
                     }
-                    data-quote-price={p.productId}
-                    data-missing={
-                      lacks(`${p.productId}.price`) ? "true" : undefined
+                    aria-label={L.currency}
+                    className="w-auto shrink-0"
+                    data-quote-currency={p.productId}
+                  >
+                    {currencyOptions.map((c) => (
+                      <option key={c} value={c}>
+                        {L.currencyNames[c] ?? c}
+                      </option>
+                    ))}
+                  </Select>
+                  <MoneyInput
+                    id={`quote-price-${p.productId}`}
+                    name={`price.${p.productId}`}
+                    form={formId}
+                    currency={terms.currency}
+                    autoDecimal
+                    value={prices[p.productId] ?? ""}
+                    onValueChange={(v) =>
+                      setPrices((all) => ({ ...all, [p.productId]: v }))
                     }
-                    className={cx(
-                      lacks(`${p.productId}.price`) &&
-                        "border-red-400 bg-red-50",
-                    )}
+                    error={lacks(`${p.productId}.price`)}
+                    inputData={{ "data-quote-price": p.productId }}
+                    className="min-w-0 flex-1"
                   />
-                </Field>
+                </div>
+                <p
+                  className="text-xs text-zinc-500"
+                  data-quote-price-hint={p.productId}
+                >
+                  {priceHint}
+                  {products.length > 1 ? ` ${L.currencyAll}` : null}
+                </p>
               </div>
             </div>
 
@@ -754,6 +994,9 @@ export function QuoteAnswerForm({
                 ) : null}
                 <form
                   action={photoAction}
+                  // Antes de a foto subir, o rascunho vai para o servidor: se
+                  // a página recarregar, o que foi digitado volta.
+                  onSubmit={() => void autosave.flush()}
                   className="shrink-0"
                   data-quote-photo-form={p.productId}
                 >
@@ -782,22 +1025,8 @@ export function QuoteAnswerForm({
       })}
 
       <section className="rounded-xl border border-zinc-200 bg-white p-3 sm:p-4">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Field label={L.currency}>
-            <Select
-              form={formId}
-              name="currency"
-              value={terms.currency}
-              onChange={(e) => setTerms({ ...terms, currency: e.target.value })}
-              data-quote-currency
-            >
-              {currencies.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </Select>
-          </Field>
+        {/* A moeda fica ao lado do preço de cada item (uma para todos). */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field label={L.incoterm}>
             <Select
               form={formId}
@@ -873,6 +1102,7 @@ export function QuoteAnswerForm({
           className="mt-3 space-y-2"
         >
           <input type="hidden" name="quoteId" value={quoteId} />
+          <input type="hidden" name="currency" value={terms.currency} />
           {missing.length ? (
             <div
               className={cx(
@@ -891,7 +1121,7 @@ export function QuoteAnswerForm({
               </ul>
             </div>
           ) : null}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <SubmitButton data-quote-submit>{L.answer}</SubmitButton>
             <SubmitButton
               name="decline"
@@ -901,6 +1131,26 @@ export function QuoteAnswerForm({
             >
               {L.decline}
             </SubmitButton>
+            <p
+              className={cx(
+                "text-xs",
+                autosave.status === "error"
+                  ? "text-amber-800"
+                  : "text-zinc-500",
+              )}
+              role="status"
+              aria-live="polite"
+              data-quote-draft-status={autosave.status}
+              data-quote-draft-dirty={autosave.dirty ? "1" : "0"}
+            >
+              {autosave.status === "saving"
+                ? L.draftSaving
+                : autosave.status === "error"
+                  ? L.draftError
+                  : autosave.status === "saved" && savedTime
+                    ? fill(L.draftSaved, { time: savedTime })
+                    : L.draftHint}
+            </p>
           </div>
         </form>
       </section>

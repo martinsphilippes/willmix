@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   createTeamLogin,
   fillQuoteSheet,
@@ -37,18 +37,62 @@ async function serveUtilities(page: Page, supplierId: string) {
   await page.waitForURL(/[?&]families=saved/);
 }
 
+/**
+ * Moeda e preço (dono, 20/11/2026; docs/PURCHASE_DEMAND.md, "Moeda e preço
+ * na cotação"): a moeda fica ao lado do preço, RMB por padrão; o preço é
+ * digitado só com números (caixa registradora: 210 → 2.10) e o campo segue
+ * o símbolo e o separador da moeda (Real com vírgula).
+ */
+async function typePrice(
+  form: Locator,
+  digits: string,
+  currency: "RMB" | "USD",
+) {
+  const box = form.locator('[data-quote-price-box="prod-jarra"]');
+  const select = form.locator('[data-quote-currency="prod-jarra"]');
+  const price = form.locator('[data-quote-price="prod-jarra"]');
+  const symbol = box.locator("[data-money-symbol]");
+  await expect(select).toHaveValue("RMB");
+  // A ordem pedida pelo dono: RMB, Dólar, Euro e Real.
+  await expect(select.locator("option")).toHaveText([
+    /RMB/,
+    /USD/,
+    /EUR/,
+    /BRL/,
+  ]);
+  await expect(symbol).toHaveText("¥");
+  await expect(
+    form.locator('[data-quote-price-hint="prod-jarra"]'),
+  ).toContainText(/4000\D+40\.00/); // no idioma do fornecedor (zh)
+  await price.click();
+  await price.pressSequentially(digits);
+  const shown = `${digits.slice(0, -2) || "0"}.${digits.slice(-2)}`;
+  await expect(price).toHaveValue(shown);
+  if (currency === "USD") {
+    // Real: a vírgula no lugar do ponto; Dólar: o ponto de novo.
+    await select.selectOption("BRL");
+    await expect(symbol).toHaveText("R$");
+    await expect(price).toHaveValue(shown.replace(".", ","));
+    await select.selectOption("USD");
+    await expect(symbol).toHaveText("US$");
+    await expect(price).toHaveValue(shown);
+  }
+}
+
 async function answer(
   page: Page,
   email: string,
   quoteId: string,
-  price: string,
+  digits: string,
+  currency: "RMB" | "USD" = "RMB",
+  reload = false,
 ) {
   await login(page, email);
   await page.goto("/app/purchase-quotes");
   await page.locator(`[data-quote-invite="${quoteId}"] a`).first().click();
   await page.waitForURL(new RegExp(`/app/purchase-quotes/${quoteId}`));
   const form = page.locator("[data-quote-answer-form]");
-  await form.locator('[data-quote-price="prod-jarra"]').fill(price);
+  await typePrice(form, digits, currency);
   // Ficha técnica (dono, 20/11/2026): sem ela e sem o comercial, o envio não
   // sai e a tela diz o que falta.
   if (await form.locator('[data-quote-sheet="prod-jarra"]').count()) {
@@ -61,6 +105,30 @@ async function answer(
   await expect(
     form.locator('[data-sheet-your-box="prod-jarra"]'),
   ).toContainText("167");
+  if (reload) {
+    // Rascunho automático (dono, 20/11/2026): o que foi digitado vai para o
+    // servidor a cada pausa; a página recarregada (versão nova no ar, iPad)
+    // traz tudo de volta.
+    await expect(
+      form.locator(
+        '[data-quote-draft-status="saved"][data-quote-draft-dirty="0"]',
+      ),
+    ).toBeVisible();
+    await page.reload();
+    await expect(form.locator("[data-quote-draft-restored]")).toBeVisible();
+    await expect(form.locator('[data-quote-price="prod-jarra"]')).toHaveValue(
+      `${digits.slice(0, -2) || "0"}.${digits.slice(-2)}`,
+    );
+    await expect(
+      form.locator('[data-sheet-field="prod-jarra.masterBoxQty"]'),
+    ).toHaveValue("24");
+    await expect(
+      form.locator('[data-sheet-field="prod-jarra.factoryItemCode"]'),
+    ).toHaveValue("JR-01");
+    await expect(
+      form.locator('[data-quote-currency="prod-jarra"]'),
+    ).toHaveValue(currency);
+  }
   await form.locator("[data-quote-lead]").fill("35");
   await form.locator("[data-quote-port]").fill("Ningbo");
   await form.locator("[data-quote-moq]").fill("500");
@@ -113,9 +181,9 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   await page.goto(`/app/purchase-quotes/${quoteId}`);
   await expect(page.locator("[data-quote-response]")).toHaveCount(3);
 
-  // A e B respondem; C não.
-  await answer(page, "supplier.a@china.com", quoteId!, "2,10");
-  await answer(page, "supplier.b@china.com", quoteId!, "1,85");
+  // A e B respondem; C não. A em RMB (o padrão), B em Dólar.
+  await answer(page, "supplier.a@china.com", quoteId!, "210", "RMB", true);
+  await answer(page, "supplier.b@china.com", quoteId!, "185", "USD");
 
   // Isolamento: A abre a dele, sem o preço do B, sem o nome do B nem o cliente.
   await login(page, "supplier.a@china.com");
@@ -138,6 +206,13 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   await expect(
     page.locator('[data-quote-response-state="expired"]'),
   ).toHaveCount(1);
+  // A moeda de cada um chegou com o preço digitado.
+  await expect(
+    page.locator('[data-quote-response="fornecedor-a"]'),
+  ).toContainText("RMB 2.1");
+  await expect(
+    page.locator('[data-quote-response="fornecedor-b"]'),
+  ).toContainText("USD 1.85");
   await expect(page.locator("[data-quote-reference]")).toBeVisible();
   // Ficha técnica das respostas (dono, 20/11/2026): a caixa de cada um e as
   // caixas e o m³ pela caixa dele (4.000 ÷ 24 = 167 caixas · 14,028 m³).

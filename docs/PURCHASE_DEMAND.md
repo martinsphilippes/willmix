@@ -270,6 +270,52 @@ Pedido do dono (20/11/2026, com o print da Estratégia de compra): no "Sem login
   - `tests/unit/partner-login.test.ts`: a sugestão, a criação com o papel e a troca no 1º acesso, o parceiro Apto e as recusas;
   - `tests/e2e/strategy-partner-login.spec.ts`: um fornecedor novo sem login, gerar o login na Estratégia, o login e a senha na tela, o parceiro Apto e marcado.
 
+## Moeda e preço na cotação (dono, 20/11/2026)
+
+Pedido do dono (20/11/2026, com o print da resposta da cotação de compra no iPad): o preço unitário tem de aceitar RMB ou Dólar, com RMB fixado como padrão; o campo segue o símbolo da moeda escolhida e a vírgula das casas entra sozinha (a pessoa digita 4000 e o campo mostra 40,00), com vírgula ou ponto conforme a moeda.
+
+- **Moeda ao lado do preço**:
+  - o seletor fica junto do preço unitário de cada item, na ordem pedida pelo dono: RMB (selecionado quando o fornecedor ainda não respondeu), Dólar, Euro e Real (as quatro que já existiam);
+  - a moeda é uma só por resposta, para todos os itens (o quadro compara por resposta); com mais de um item, trocar num item troca em todos, e o aviso embaixo diz isso;
+  - o seletor "Moeda" das condições comerciais (embaixo) saiu: o campo continua o mesmo (`currency` da resposta), só mudou de lugar.
+- **Digitação do preço (caixa registradora)**:
+  - só números; a cada número a vírgula se ajusta (4 → 0.04, 40 → 0.40, 400 → 4.00, 4000 → 40.00), e apagar tira o último número;
+  - separador da moeda: Yuan e Dólar com ponto decimal (¥ 1,234.56, US$ 1,234.56); Real e Euro com vírgula (R$ 1.234,56, € 1.234,56); trocar a moeda refaz o texto com o mesmo número;
+  - duas casas decimais; até 999.999.999,99;
+  - colar um número no campo vale como está escrito ("40,50", "US$ 1,234.56", "4000" = quatro mil);
+  - embaixo do campo, o exemplo na moeda escolhida: "Digite só os números: 4000 vira 40.00".
+- **O que vai ao servidor**: o número com ponto ("40.00"), lido pela mesma regra de antes; a ação e o serviço não mudaram.
+- **Peças**:
+  - a regra pura em `src/lib/money-mask.ts`;
+  - o modo `autoDecimal` do `MoneyInput` (`src/components/money-input.tsx`): desligado, o campo de dinheiro das outras telas segue igual;
+  - a tela em `quote-answer-form.tsx` e os textos `quote.priceHint` e `quote.currencyAll`.
+- **Testes**:
+  - `tests/unit/money-mask.test.ts`: a digitação número a número, apagar, os separadores por moeda, o valor lido pelo servidor, o preço gravado de volta no campo, o texto colado e o limite;
+  - `tests/e2e/purchase-quote.spec.ts`: RMB e ¥ por padrão, 210 digitado vira 2.10, Real com vírgula, Dólar com ponto, e a moeda de cada fornecedor no quadro da Wellmix.
+- **Para depois** (não pedido): as mesmas casas automáticas nos outros campos de preço do portal (é ligar `autoDecimal`) e três casas para itens muito baratos (US$ 0,085), se aparecer.
+
+## Rascunho automático da cotação (dono, 20/11/2026)
+
+Pedido do dono (20/11/2026, com dois prints do iPad): o fornecedor preencheu a ficha técnica, enviou a foto na balança e tudo o que estava digitado sumiu. O pedido é salvar sozinho, para não perder nada do que foi digitado.
+
+- **A causa**: às 23h24 (Brasília), no mesmo minuto da foto, entrou no ar uma versão nova do portal (o PR #608, de outra sessão). A foto foi gravada, mas a resposta veio da versão nova. Quando a versão muda, o Next.js recarrega a página inteira, e o que estava só na tela (preço, ficha, condições ainda não enviados) se perdeu. Fora isso, a foto não apaga nada (conferido com o teste local). O mesmo pode acontecer com o iPad recarregando a aba, com a conexão caindo ou com a aba fechada.
+- **Como ficou**:
+  - a cada pausa da digitação (0,7 s), tudo o que está na tela vai para o servidor, por login: preço e moeda de cada item, a ficha técnica (números, material, código, "Sem inner", "Sem código" e "Confirmo") e as condições (incoterm, prazo, porto, mínimo e observação);
+  - a página aberta de novo traz tudo de volta, com o aviso "Recuperamos o que você tinha digitado (salvo automaticamente)…";
+  - antes de a foto subir, o rascunho é salvo na hora;
+  - ao lado dos botões, a situação: "Tudo o que você digita é salvo automaticamente", "Salvando o rascunho…", "Rascunho salvo às 23:24" (a hora do aparelho) ou o aviso de falha (tenta de novo na próxima alteração);
+  - enviar ou recusar a cotação apaga o rascunho; com o prazo vencido ou a cotação fechada, nada é salvo.
+- **Onde fica**: na tabela `form_drafts` (a mesma do rascunho do Novo parceiro; sem mudança de esquema), com a chave `quote:<cotação>`, um por login e cotação; cada login só lê o próprio, e só o fornecedor convidado grava. O rascunho guarda os campos pelo nome do formulário, só texto, e só os desta cotação.
+- **Peças**:
+  - o serviço `src/lib/services/quote-draft.ts` (`cleanQuoteDraft`, `loadQuoteDraft`, `saveQuoteDraft` e `clearQuoteDraft`, este chamado pelo `answerQuote`);
+  - a ação `saveQuoteDraftAction` (`src/app/app/actions/purchase-demand.ts`);
+  - o `useDraftAutosave` e a volta do rascunho em `quote-answer-form.tsx`;
+  - os textos `quote.draft.*`.
+- **Testes**:
+  - `tests/unit/quote-draft.test.ts`: só os campos desta cotação, salvar e recuperar, um rascunho por login e cotação, quem não foi convidado não salva nem lê, prazo vencido não salva e enviar a resposta apaga;
+  - `tests/e2e/purchase-quote.spec.ts`: o fornecedor A digita, espera "salvo", recarrega a página e encontra o preço, a ficha e a moeda de volta.
+- **Sugestão para o dono (não feito)**: ligar a proteção de versão da Vercel ("Skew Protection", em Settings → Advanced do projeto). Com ela, quem está com a página aberta continua falando com a versão em que abriu, e nenhuma tela de nenhum formulário recarrega quando sai uma versão nova. Vale para o portal todo, não só para a cotação. É uma configuração do projeto na Vercel e pode depender do plano.
+
 ## Andamento
 
 | PR  | Entrega                                                                                        | Situação |

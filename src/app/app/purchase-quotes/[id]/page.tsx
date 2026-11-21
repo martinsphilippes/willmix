@@ -41,7 +41,9 @@ import {
   chooseQuoteWinnerAction,
   decideQuoteWinnerAction,
   quoteNoAnswerAction,
+  saveQuoteDraftAction,
 } from "../../actions/purchase-demand";
+import { loadQuoteDraft } from "@/lib/services/quote-draft";
 import { QuoteDeadline } from "../_time";
 import {
   QuoteAnswerForm,
@@ -123,9 +125,12 @@ export default async function PurchaseQuotePage({
     const editable = quote.status === "open" && state !== "expired";
     // Ficha técnica de cada produto (dono, 20/11/2026): pedida na primeira
     // vez do par; quem já vendeu confere o que temos (o aviso de revalidação).
-    const [lines, tolerances] = await Promise.all([
+    // Rascunho automático deste login (dono, 20/11/2026): o que estava
+    // digitado volta para a tela.
+    const [lines, tolerances, draft] = await Promise.all([
       quoteSheetLines(quote, response),
       sheetTolerances(),
+      editable ? loadQuoteDraft(user, quote.id) : Promise.resolve(null),
     ]);
     const answerProducts: QuoteSheetProduct[] = quote.items.map((item) => {
       const line = lines.find((l) => l.productId === item.productId)!;
@@ -209,7 +214,9 @@ export default async function PurchaseQuotePage({
               photoAction={addQuoteScalePhotoAction}
               products={answerProducts}
               commercial={{
-                currency: response.currency ?? "USD",
+                // Sem resposta ainda: RMB (dono, 20/11/2026); o fornecedor
+                // troca ao lado do preço.
+                currency: response.currency ?? "RMB",
                 incoterm: response.incoterm ?? "FOB",
                 leadTimeDays: response.leadTimeDays?.toString() ?? "",
                 port: response.port ?? "",
@@ -221,6 +228,8 @@ export default async function PurchaseQuotePage({
               labels={answerLabels(t)}
               intl={t.intl}
               cbmTolerancePercent={tolerances.cbmPercent}
+              draft={draft}
+              draftAction={saveQuoteDraftAction}
             />
           ) : (
             <p className="text-sm text-zinc-600" data-quote-locked>

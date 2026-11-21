@@ -271,6 +271,33 @@ export async function answerQuoteAction(form: FormData) {
   });
 }
 
+/**
+ * Rascunho automático da resposta da cotação (dono, 20/11/2026;
+ * docs/PURCHASE_DEMAND.md, "Rascunho automático da cotação"): o que o
+ * fornecedor digita vai para o servidor a cada pausa, sem recarregar a
+ * página, e volta quando ela abre de novo. Só o fornecedor convidado, com a
+ * cotação aberta (o serviço confere).
+ */
+export async function saveQuoteDraftAction(input: {
+  quoteId: string;
+  values: Record<string, string>;
+}): Promise<{ ok: boolean; savedAt: string | null }> {
+  const user = await requireUser();
+  try {
+    assertScreen(user, "quotes");
+    const quoteId = ID.parse(input.quoteId);
+    const values = z
+      .record(z.string().max(120), z.string().max(2000))
+      .refine((v) => Object.keys(v).length <= 1000)
+      .parse(input.values ?? {});
+    const { saveQuoteDraft } = await import("@/lib/services/quote-draft");
+    const savedAt = await saveQuoteDraft(user, quoteId, values);
+    return { ok: true, savedAt };
+  } catch {
+    return { ok: false, savedAt: null };
+  }
+}
+
 /** Foto na balança de um produto da cotação (sobe na hora; fica na tela). */
 export async function addQuoteScalePhotoAction(form: FormData) {
   const user = await requireUser();
