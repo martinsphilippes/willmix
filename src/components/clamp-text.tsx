@@ -31,8 +31,11 @@ export function ClampText({
   lines?: 1 | 2;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
+  const boxRef = useRef<HTMLSpanElement>(null);
   const [cut, setCut] = useState(false);
   const [open, setOpen] = useState(false);
+  /** Uma linha: a largura de antes de abrir, para a coluna não encolher. */
+  const [width, setWidth] = useState<number | null>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || open) return;
@@ -55,7 +58,10 @@ export function ClampText({
       <button
         type="button"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setWidth(open ? null : (boxRef.current?.offsetWidth ?? null));
+          setOpen(!open);
+        }}
         className={cx(
           "text-[11px] font-medium text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-600",
           lines === 1 && "shrink-0",
@@ -68,12 +74,14 @@ export function ClampText({
   if (lines === 1)
     return (
       <span
+        ref={boxRef}
         className={cx(
           open
             ? "block whitespace-normal"
             : "flex min-w-0 items-baseline gap-1",
           className,
         )}
+        style={open && width ? { width } : undefined}
         data-clamp-lines="1"
       >
         <span
