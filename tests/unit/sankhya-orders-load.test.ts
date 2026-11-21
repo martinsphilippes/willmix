@@ -65,6 +65,7 @@ const order = (
     orderedAt: "01092026 00:00:00",
     changedAt: "15102026 10:00:00",
     numnota: "4455",
+    track: key,
     ...data,
   },
 });
@@ -222,9 +223,10 @@ describe("carga dos pedidos do Sankhya", () => {
     expect(p.created).toBe(7);
     expect(p.skipped.map((s) => s.key)).toEqual(["2050"]);
     const store = getStore();
-    const o = (await store.get("orders", "snk-2000"))!;
+    const o = (await store.get("orders", "snk-t2000"))!;
     expect(o.requestId).toBeNull();
     expect(o.sankhyaCode).toBe("2000");
+    expect(o.sankhyaTrackId).toBe("2000");
     expect(o.erpNumber).toBe("4455");
     expect(o.fobCurrency).toBe("USD");
     expect(o.sankhyaSituation).toBe("in_progress");
@@ -247,28 +249,33 @@ describe("carga dos pedidos do Sankhya", () => {
     const lines = await store.list("container_items", {
       filter: { containerId: c.id },
     });
-    expect(lines.map((l) => [l.orderItemId, l.quantity, l.boxCount])).toEqual([
-      ["snk-2000-1", 40, 4],
-      ["snk-2070-1", 5, 1],
+    expect(
+      lines
+        .map((l) => [l.orderItemId, l.quantity, l.boxCount])
+        .sort((a, b) => String(a).localeCompare(String(b))),
+    ).toEqual([
+      ["snk-t2000-2000-1", 10, 1],
+      ["snk-t2000-2000-1", 30, 3],
+      ["snk-t2070-2070-1", 5, 1],
     ]);
   });
 
   it("encerrado, interrompido e aguardando definição sem pendências", async () => {
     const store = getStore();
-    const closed = (await store.get("orders", "snk-2010"))!;
+    const closed = (await store.get("orders", "snk-t2010"))!;
     expect(closed.status).toBe("CLOSED");
     expect(closed.closedAt).toBe("2026-11-20T00:00:00.000Z");
     const [it] = await store.list("order_items", {
       filter: { orderId: closed.id },
     });
     expect(it.receivedQty).toBe(100);
-    const interrupted = (await store.get("orders", "snk-2020"))!;
+    const interrupted = (await store.get("orders", "snk-t2020"))!;
     expect(interrupted.status).toBe("CLOSED");
     expect(interrupted.sankhyaSituation).toBe("interrupted");
-    const waiting = (await store.get("orders", "snk-2040"))!;
+    const waiting = (await store.get("orders", "snk-t2040"))!;
     expect(waiting.status).toBe("ORDER_CREATED");
     expect(waiting.sankhyaSituation).toBe("awaiting_definition");
-    for (const id of ["snk-2010", "snk-2020", "snk-2040"])
+    for (const id of ["snk-t2010", "snk-t2020", "snk-t2040"])
       expect(
         await store.list("requirements", { filter: { orderId: id } }),
       ).toEqual([]);
@@ -281,7 +288,7 @@ describe("carga dos pedidos do Sankhya", () => {
 
   it("carga já embarcada: o pedido passa do Booking (passos do embarque validados)", async () => {
     const store = getStore();
-    const o = (await store.get("orders", "snk-2060"))!;
+    const o = (await store.get("orders", "snk-t2060"))!;
     const steps = await store.list("import_steps", {
       filter: { orderId: o.id },
     });
@@ -291,7 +298,7 @@ describe("carga dos pedidos do Sankhya", () => {
   });
 
   it("canal vermelho pausa o pedido em andamento", async () => {
-    const o = (await getStore().get("orders", "snk-2030"))!;
+    const o = (await getStore().get("orders", "snk-t2030"))!;
     expect(o.pauseReason).toBe("channel_red");
     expect(o.pausedAt).toBeTruthy();
   });
@@ -300,14 +307,14 @@ describe("carga dos pedidos do Sankhya", () => {
     const store = getStore();
     const before = (await store.list("orders")).length;
     const reqs = (
-      await store.list("requirements", { filter: { orderId: "snk-2000" } })
+      await store.list("requirements", { filter: { orderId: "snk-t2000" } })
     ).length;
     const p = await runAll();
     expect(p.created).toBe(0);
     expect(p.updated).toBe(7);
     expect((await store.list("orders")).length).toBe(before);
     expect(
-      (await store.list("requirements", { filter: { orderId: "snk-2000" } }))
+      (await store.list("requirements", { filter: { orderId: "snk-t2000" } }))
         .length,
     ).toBe(reqs);
     expect(
@@ -316,6 +323,6 @@ describe("carga dos pedidos do Sankhya", () => {
           filter: { containerId: "snk-35-3000" },
         })
       ).length,
-    ).toBe(2);
+    ).toBe(3);
   });
 });

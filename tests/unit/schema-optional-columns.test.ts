@@ -33,6 +33,7 @@ describe("colunas acrescentadas depois são opcionais", () => {
     ["orders", "sankhyaImportProcesses"],
     ["orders", "shipmentState"],
     ["orders", "sankhyaSituation"],
+    ["orders", "sankhyaTrackId"],
     ["order_items", "shippedQty"],
     ["order_items", "receivedQty"],
     ["order_items", "pendingQty"],

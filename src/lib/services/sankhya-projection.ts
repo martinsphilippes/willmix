@@ -140,9 +140,13 @@ export async function projectionDetail(
         )
       : [
           ...new Set(
-            ((row.data?.orders ?? []) as Array<{ order?: unknown }>).map(
-              (o) => `order:${String(o.order)}`,
-            ),
+            // Pedido por track (21/11/2026): o track do documento de origem.
+            (
+              (row.data?.orders ?? []) as Array<{
+                order?: unknown;
+                track?: unknown;
+              }>
+            ).map((o) => `order:${String(o.track ?? o.order)}`),
           ),
         ];
   const related = ids.length

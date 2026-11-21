@@ -23,6 +23,12 @@ export interface ProjectionOrder {
   supplierName: string | null;
   shipmentState: ShipmentState | null;
   data: {
+    /** TRACK_ID do pedido (a chave da linha do ensaio por track). */
+    track?: string | null;
+    /** NUNOTA principal do track (a ponta mais adiantada). */
+    mainKey?: string | null;
+    /** As pontas de cadeia juntadas no track. */
+    leaves?: string[] | null;
     chain?: Array<{
       nunota: number;
       top: number;
@@ -50,6 +56,8 @@ export interface ProjectionOrder {
 
 export interface ProjectionItem {
   seq: number;
+  /** NUNOTA do documento do item (pedido por track junta mais de um). */
+  doc?: number | null;
   codprod: string | null;
   name: string | null;
   ref?: string | null;
@@ -83,7 +91,17 @@ export interface ProjectionShipment {
 }
 
 /** Ids fixos: rodar a carga de novo atualiza em vez de duplicar. */
-export const sankhyaOrderId = (leaf: string | number) => `snk-${leaf}`;
+/** Pedido por TRACK_ID (docs/SANKHYA_TRACK_ID.md): `snk-t<track>`. */
+export const sankhyaOrderId = (track: string | number) => `snk-t${track}`;
+/** Item: track, documento e sequência (o track junta mais de um documento). */
+export const sankhyaTrackItemId = (
+  track: string | number,
+  doc: string | number,
+  seq: number,
+) => `snk-t${track}-${doc}-${seq}`;
+/** NUNOTA principal da linha do ensaio (a ponta mais adiantada do track). */
+export const mainKeyOf = (row: Pick<ProjectionOrder, "key" | "data">) =>
+  String(row.data?.mainKey ?? row.key);
 export const sankhyaItemId = (leaf: string | number, seq: number) =>
   `snk-${leaf}-${seq}`;
 export const sankhyaContainerId = (nunota: string | number) =>
@@ -226,8 +244,9 @@ export function orderFieldsOf(row: ProjectionOrder, pausedAt: string) {
     fobCurrency: sankhyaCurrency(d.currency),
     incoterm: d.incoterm?.trim() || null,
     erpSyncStatus: "synced" as const,
-    erpNumber: numnota && numnota !== "0" ? numnota : row.key,
-    sankhyaCode: row.key,
+    erpNumber: numnota && numnota !== "0" ? numnota : mainKeyOf(row),
+    sankhyaCode: mainKeyOf(row),
+    sankhyaTrackId: d.track ?? null,
     sankhyaChain: chainOf(row),
     sankhyaChangedAt: sankhyaIso(d.changedAt),
     sankhyaQuality: d.quality?.trim() || null,
@@ -249,12 +268,12 @@ export function itemFieldsOf(row: ProjectionOrder, item: ProjectionItem) {
   const shipped = num(item.shipped) ?? 0;
   const received = /^recebido$/i.test(row.data?.receipt ?? "") ? shipped : null;
   return {
-    id: sankhyaItemId(row.key, item.seq),
+    id: sankhyaTrackItemId(row.key, item.doc ?? mainKeyOf(row), item.seq),
     name: item.name?.trim() || `Produto ${item.codprod ?? "—"}`,
     quantity: qty,
     unit: item.unit?.trim() || "UN",
     unitPrice: num(item.price),
-    sankhyaCode: String(item.seq),
+    sankhyaCode: `${item.doc ?? mainKeyOf(row)}-${item.seq}`,
     shippedQty: shipped,
     receivedQty: received,
     pendingQty: num(item.pendingQty) ?? Math.max(qty - shipped, 0),
