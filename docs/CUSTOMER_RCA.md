@@ -115,6 +115,10 @@ Pedido do dono: "Caso o cliente não tenha RCA vinculado, o campo do RCA do clie
 - **Previsão de preço:** o vendedor (CODVEND) da cotação é o do cadastro ou, sem ele, o preso (`effectiveRcaCode`). O escolhido na tela, antes de fechar a venda, não vai para a cotação.
 - **Código:** `src/lib/services/rca.ts` (`customerRcaField`, `resolveRequestRca`, `lockRcaOnSale`, `RCA_LOCK_DAYS`), `/api/parties/rca`, `src/components/request-people-fields.tsx`; testes `tests/unit/request-rca-open.test.ts` e `tests/e2e/customer-rca.spec.ts`.
 
+## 7.2 Buscador único no RCA (dono, 21/11/2026)
+
+O campo aberto do cliente sem RCA deixou de ser uma lista simples: é o buscador único dos formulários (docs/ORDER_TERMS.md seção 11.23), com busca por palavras soltas, os grupos "RCAs já cadastrados para este cliente" e "Outros vendedores" e, escolhido, "CODPARC - APELIDO" abaixo do campo. Grava o mesmo `rcaCode`; o servidor não mudou.
+
 ## 8. Fica para depois
 
 - RCA na lista de clientes, com filtro por RCA.

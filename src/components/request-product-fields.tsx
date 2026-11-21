@@ -7,7 +7,10 @@ import {
   ProductBrowserButton,
   type ProductBrowserLabels,
 } from "@/components/product-browser";
-import { useRequestCustomer } from "@/components/request-customer-context";
+import {
+  originSearchParams,
+  useRequestCustomer,
+} from "@/components/request-customer-context";
 import type {
   SearchOption,
   SearchPickerLabels,
@@ -181,12 +184,7 @@ export function RequestProductFields({
   const shared = useRequestCustomer();
   const origin = shared?.origin ?? null;
   const originMissing = !!shared?.originRequired && !origin;
-  const originQuery = origin
-    ? new URLSearchParams({
-        country: origin.country,
-        family: origin.family,
-      }).toString()
-    : "";
+  const originQuery = origin ? originSearchParams(origin) : "";
   const initial = products.find((p) => p.id === presetProductId) ?? null;
   // Fichas conhecidas nesta linha (a pronta e as que vieram da busca).
   const [fills, setFills] = useState<Record<string, ProductFill>>(() =>

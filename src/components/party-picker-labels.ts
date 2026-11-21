@@ -35,3 +35,18 @@ export function productPickerLabels(t: Translate): PartyPickerLabels {
     clear: t("partyPicker.clear"),
   };
 }
+
+/**
+ * Textos do buscador com lista local (dono, 21/11/2026: o componente único
+ * no lugar das listas de seleção simples; ex.: RCA do cliente).
+ */
+export function listPickerLabels(t: Translate): PartyPickerLabels {
+  return {
+    placeholder: t("listPicker.placeholder"),
+    typeMore: t("listPicker.typeMore"),
+    none: t("listPicker.none"),
+    loading: t("listPicker.loading"),
+    pick: t("listPicker.pick"),
+    clear: t("listPicker.clear"),
+  };
+}

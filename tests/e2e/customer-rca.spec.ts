@@ -185,17 +185,29 @@ test("Nova solicitação (Wellmix): RCA do cliente, solicitante e login com aces
   // Cliente sem RCA (dono, 19/11/2026; docs/CUSTOMER_RCA.md seção 7): o
   // campo abre para escolher o RCA do pedido entre os vendedores ativos; o
   // que fechar a venda fica como padrão do cliente por 30 dias.
-  const openRca = people(page).locator('select[name="rcaCode"]');
-  await expect(openRca).toHaveAttribute("data-request-rca-state", "open");
-  await expect(openRca).toHaveValue("");
-  await expect(openRca.locator("option")).toHaveText([
-    "Sem RCA (escolha um)",
+  // Buscador único (dono, 21/11/2026): palavras soltas e "Código - Item"
+  // abaixo do campo.
+  const openRca = people(page).locator('[data-request-rca-state="open"]');
+  await expect(openRca).toBeVisible();
+  const rcaValue = openRca.locator('input[name="rcaCode"]');
+  await expect(rcaValue).toHaveValue("");
+  const rcaInput = openRca.locator("[data-rca-picker-input]");
+  await expect(rcaInput).toHaveAttribute("placeholder", "Sem RCA (escolha um)");
+  await rcaInput.click();
+  await expect(openRca.locator("[data-rca-picker-option]")).toHaveText([
     "5101 - Ana Representações",
     "5102 - Bruno Vendas",
   ]);
+  await rcaInput.fill("vendas bruno");
+  await expect(openRca.locator("[data-rca-picker-option]")).toHaveText([
+    "5102 - Bruno Vendas",
+  ]);
   await expect(people(page)).toContainText("padrão do cliente por 30 dias");
-  await openRca.selectOption("102");
-  await expect(openRca).toHaveValue("102");
+  await openRca.locator('[data-rca-picker-option="102"]').click();
+  await expect(rcaValue).toHaveValue("102");
+  await expect(openRca.locator("[data-rca-picker-summary]")).toHaveText(
+    "5102 - Bruno Vendas",
+  );
   block = await openParty(page, "cliente-joao");
   await saveRca(page, block, "101");
 

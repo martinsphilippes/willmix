@@ -4,6 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRequestCustomer } from "./request-customer-context";
 import { Field, Select } from "./ui";
 import {
+  SearchPicker,
+  type SearchOption,
+  type SearchPickerLabels,
+} from "./search-picker";
+import {
   ENABLED_OPERATION_TYPES,
   OPERATION_TYPES,
   SALE_FORMATS,
@@ -70,6 +75,20 @@ export interface RequestOrderTermsLabels {
   groupChoose: string;
   groupPickCountry: string;
   groupNone: string;
+  /**
+   * País - Porto (dono, 21/11/2026; docs/ORDER_TERMS.md 11.23): o buscador
+   * único no lugar do País; um pedido fica num só país, porto e família.
+   */
+  port: {
+    field: string;
+    choose: string;
+    noPort: string;
+    /** "{country} - {port}" */
+    option: string;
+    hint: string;
+    groupPick: string;
+    picker: SearchPickerLabels;
+  };
   originHint: string;
   loading: string;
   error: string;
@@ -135,6 +154,7 @@ export interface OrderTermsInitial {
   deliveryFreightBrl?: string;
   redispatch?: string;
   originCountry?: string;
+  originPort?: string;
   productFamily?: string;
   paymentPlanId?: string;
 }
@@ -142,6 +162,14 @@ export interface OrderTermsInitial {
 interface Country {
   key: string;
   name: string;
+  products: number;
+}
+interface OriginPort {
+  key: string;
+  country: string;
+  countryName: string;
+  port: string;
+  portName: string;
   products: number;
 }
 interface Group {
@@ -160,6 +188,7 @@ interface Carrier {
 
 interface Options {
   countries: Country[];
+  ports?: OriginPort[];
   carriers: Carrier[];
   sankhya: "ok" | "off" | "error";
 }
@@ -210,7 +239,19 @@ export function RequestOrderTerms({
       ? (initial.saleFormat as SaleFormat)
       : "",
   );
-  const [country, setCountry] = useState<string>(initial.originCountry ?? "");
+  // País e porto andam juntos (rascunho de antes do País - Porto, sem o
+  // porto, volta sem país: escolher de novo).
+  const draftOrigin =
+    !!initial.originCountry && initial.originPort !== undefined;
+  const [country, setCountry] = useState<string>(
+    draftOrigin ? (initial.originCountry ?? "") : "",
+  );
+  const [port, setPort] = useState<string | null>(
+    draftOrigin ? (initial.originPort ?? "") : null,
+  );
+  const originKey = country && port !== null ? `${country}|${port}` : "";
+  // Remonta o buscador quando a troca é cancelada no aviso.
+  const [originPickerKey, setOriginPickerKey] = useState(0);
   const [groups, setGroups] = useState<{ key: string; list: Group[] } | null>(
     null,
   );
@@ -259,17 +300,19 @@ export function RequestOrderTerms({
   const hasProducts = (shared?.chosenProductIds.length ?? 0) > 0;
   const switchDialog = useRef<HTMLDialogElement>(null);
   const [pendingSwitch, setPendingSwitch] = useState<{
-    kind: "country" | "family";
+    kind: "origin" | "family";
     value: string;
   } | null>(null);
-  const applySwitch = (kind: "country" | "family", value: string) => {
-    if (kind === "country") {
-      setCountry(value);
+  const applySwitch = (kind: "origin" | "family", value: string) => {
+    if (kind === "origin") {
+      const at = value.indexOf("|");
+      setCountry(at < 0 ? "" : value.slice(0, at));
+      setPort(at < 0 ? null : value.slice(at + 1));
       setFamily("");
     } else setFamily(value);
   };
-  const askSwitch = (kind: "country" | "family", value: string) => {
-    const current = kind === "country" ? country : family;
+  const askSwitch = (kind: "origin" | "family", value: string) => {
+    const current = kind === "origin" ? originKey : family;
     if (value === current) return;
     if (!hasProducts) {
       applySwitch(kind, value);
@@ -296,29 +339,31 @@ export function RequestOrderTerms({
   }, []);
 
   useEffect(() => {
-    if (!country) return;
+    if (!country || port === null) return;
     const controller = new AbortController();
     (async () => {
       try {
         const res = await fetch(
-          `/api/requests/order-options?country=${encodeURIComponent(country)}`,
+          `/api/requests/order-options?${new URLSearchParams({ country, port })}`,
           { signal: controller.signal },
         );
         if (!res.ok) throw new Error(String(res.status));
         const body = (await res.json()) as { groups: Group[] };
         setGroupsFailed(false);
-        setGroups({ key: country, list: body.groups });
+        setGroups({ key: `${country}|${port}`, list: body.groups });
       } catch {
         if (!controller.signal.aborted) setGroupsFailed(true);
       }
     })();
     return () => controller.abort();
-  }, [country]);
+  }, [country, port]);
 
-  // A busca de produto lê o país e a família escolhidos.
+  // A busca de produto lê o país, o porto e a família escolhidos.
   useEffect(() => {
-    setOrigin?.(country && family ? { country, family } : null);
-  }, [country, family, setOrigin]);
+    setOrigin?.(
+      country && port !== null && family ? { country, port, family } : null,
+    );
+  }, [country, port, family, setOrigin]);
 
   // Transportadores escolhidos (para saber se está tudo preenchido e para
   // o resumo do bloco recolhido).
@@ -351,7 +396,7 @@ export function RequestOrderTerms({
     (caller !== "wellmix" ||
       (!!carrierPick.value &&
         (redispatch !== "yes" || !!redispatchPick.value))) &&
-    !!country &&
+    !!originKey &&
     !!family &&
     (!needsPlan || !!planId);
   const [editing, setEditing] = useState(false);
@@ -372,10 +417,27 @@ export function RequestOrderTerms({
       </p>
     );
 
-  const myGroups = groups && groups.key === country ? groups.list : null;
-  const orderTotal = orderTotalOf(shared?.rowTotals);
+  const myGroups = groups && groups.key === originKey ? groups.list : null;
   const count = (n: number) =>
     labels.productsCount.replace("{n}", n.toLocaleString("pt-BR"));
+  // País - Porto pelo buscador único (dono, 21/11/2026): "CHINA - NINGBO".
+  const originLabel = (o: OriginPort) =>
+    labels.port.option
+      .replace("{country}", o.countryName)
+      .replace("{port}", o.port ? o.portName : labels.port.noPort);
+  const originOptions: SearchOption[] = (options?.ports ?? []).map((o) => {
+    const allowed = countryAllowed(operation, o.country);
+    return {
+      id: o.key,
+      name: originLabel(o),
+      hint: `${count(o.products)}${allowed ? "" : ` ${labels.countryDisabled}`}`,
+      code: o.port || null,
+      disabled: !allowed,
+      keywords: o.country,
+    };
+  });
+  const originChosen = originOptions.find((o) => o.id === originKey) ?? null;
+  const orderTotal = orderTotalOf(shared?.rowTotals);
 
   // Valor do transporte (dono, 16/11/2026): o total da entrega; vai na
   // previsão de preço no lugar do padrão. Com a Wellmix chamando, ao lado do
@@ -454,11 +516,8 @@ export function RequestOrderTerms({
             [
               labels.collapsed.origin,
               [
-                options?.countries.find((c) => c.key === country)?.name ??
-                  country,
-                (groups && groups.key === country ? groups.list : []).find(
-                  (g) => g.id === family,
-                )?.name,
+                originChosen?.name ?? country,
+                (myGroups ?? []).find((g) => g.id === family)?.name,
               ]
                 .filter(Boolean)
                 .join(" › ") || "—",
@@ -729,31 +788,49 @@ export function RequestOrderTerms({
         {/* País de origem > Grupo de produto (família) */}
         <div className="space-y-1" data-order-terms-origin>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label={labels.country}>
-              <Select
-                name="originCountry"
-                value={country}
-                required
-                disabled={!options}
-                onChange={(e) => askSwitch("country", e.target.value)}
-                data-order-terms-country
+            <div className="min-w-0 space-y-1">
+              <label
+                htmlFor="order-terms-origin-port"
+                className="block text-xs font-medium leading-5 text-zinc-700"
               >
-                <option value="" disabled>
-                  {labels.countryChoose}
-                </option>
-                {/* Produto sem país não é vendido; BRASIL não vale no TS. */}
-                {(options?.countries ?? [])
-                  .filter((c) => c.key)
-                  .map((c) => {
-                    const allowed = countryAllowed(operation, c.key);
-                    return (
-                      <option key={c.key} value={c.key} disabled={!allowed}>
-                        {`${c.name} — ${count(c.products)}${allowed ? "" : ` ${labels.countryDisabled}`}`}
-                      </option>
-                    );
-                  })}
-              </Select>
-            </Field>
+                {labels.port.field}
+              </label>
+              <input type="hidden" name="originCountry" value={country} />
+              <input
+                type="hidden"
+                name="originPort"
+                value={port ?? ""}
+                disabled={port === null}
+              />
+              <div data-order-terms-country data-order-terms-port={originKey}>
+                {options ? (
+                  <SearchPicker
+                    key={`${originPickerKey}:${originKey}`}
+                    options={originOptions}
+                    summary
+                    marker="origin-port-picker"
+                    kind={operation}
+                    inputId="order-terms-origin-port"
+                    required
+                    initial={originChosen}
+                    ariaLabel={labels.port.field}
+                    labels={{
+                      ...labels.port.picker,
+                      placeholder: labels.port.choose,
+                    }}
+                    onChoose={(o) => {
+                      if (o) askSwitch("origin", o.id);
+                    }}
+                  />
+                ) : (
+                  <Select disabled value="">
+                    <option value="">
+                      {failed ? labels.error : labels.loading}
+                    </option>
+                  </Select>
+                )}
+              </div>
+            </div>
             <Field label={labels.group}>
               <Select
                 name="productFamily"
@@ -764,8 +841,8 @@ export function RequestOrderTerms({
                 data-order-terms-group
               >
                 <option value="" disabled>
-                  {!country
-                    ? labels.groupPickCountry
+                  {!originKey
+                    ? labels.port.groupPick
                     : groupsFailed
                       ? labels.error
                       : !myGroups
@@ -782,7 +859,7 @@ export function RequestOrderTerms({
               </Select>
             </Field>
           </div>
-          <p className="text-xs text-zinc-500">{labels.originHint}</p>
+          <p className="text-xs text-zinc-500">{labels.port.hint}</p>
         </div>
       </div>
 
@@ -790,7 +867,10 @@ export function RequestOrderTerms({
         ref={switchDialog}
         aria-labelledby="order-terms-switch-title"
         className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-2xl p-0 shadow-xl backdrop:bg-zinc-900/40"
-        onClose={() => setPendingSwitch(null)}
+        onClose={() => {
+          setPendingSwitch(null);
+          setOriginPickerKey((k) => k + 1);
+        }}
         data-order-terms-switch
       >
         <div className="space-y-3 p-5">

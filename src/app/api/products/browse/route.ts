@@ -44,6 +44,7 @@ export async function GET(request: Request) {
   const result = await browseOrigin({
     country: (params.get("country") ?? "").slice(0, 80),
     family,
+    port: params.has("port") ? (params.get("port") ?? "").slice(0, 20) : null,
     filters: [
       level(params.get("l1")),
       level(params.get("l2")),

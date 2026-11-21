@@ -143,6 +143,21 @@ export interface RequestOrigin {
   country: string;
   /** Família de produto (chave "sk:…" ou "ln:…"; docs/ORDER_TERMS.md). */
   family: string;
+  /**
+   * Porto de origem (dono, 21/11/2026): código do porto no Sankhya; "" =
+   * porto não informado; ausente = qualquer porto.
+   */
+  port?: string;
+}
+
+/** Parâmetros da busca e do seletor de produtos pela origem do pedido. */
+export function originSearchParams(origin: RequestOrigin): string {
+  const params = new URLSearchParams({
+    country: origin.country,
+    family: origin.family,
+  });
+  if (origin.port !== undefined) params.set("port", origin.port);
+  return params.toString();
 }
 
 const RequestCustomerContext = createContext<RequestCustomerState | null>(null);

@@ -164,6 +164,14 @@ export interface OrderTerms {
   originCountry: string;
   /** Nome do país como a tela mostrou. */
   originCountryName: string;
+  /**
+   * Porto de origem (dono, 21/11/2026; docs/ORDER_TERMS.md 11.23): o código
+   * do porto no Sankhya, "" = porto não informado. Ausente nas solicitações
+   * de antes do País - Porto (qualquer porto).
+   */
+  originPort?: string;
+  /** Nome do porto como a tela mostrou ("" = não informado). */
+  originPortName?: string;
   /** Família de produto (grupo pai no Sankhya; ver product-origin.ts). */
   productFamily?: string;
   productFamilyName?: string;

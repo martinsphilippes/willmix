@@ -367,6 +367,8 @@ async function createRequest(
             deliveryFreightBrl: str(form, "deliveryFreightBrl"),
             redispatch: str(form, "redispatch"),
             originCountry: str(form, "originCountry"),
+            // País - Porto (dono, 21/11/2026); sem o campo, qualquer porto.
+            originPort: form.has("originPort") ? str(form, "originPort") : null,
             productFamily: str(form, "productFamily"),
           },
           // TS e Venda: o tipo de operação é o da tela.
