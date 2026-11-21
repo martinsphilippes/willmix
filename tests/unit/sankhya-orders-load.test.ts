@@ -100,6 +100,7 @@ beforeAll(async () => {
     order("2030", "in_progress", "customs", { customsChannel: "Vermelho" }),
     order("2040", "awaiting_definition", null, { reason: "no_successor" }),
     order("2050", "in_progress", "production", {}),
+    order("2060", "in_progress", "loading", {}),
   ];
   // Fornecedor sem cadastro: pulado com o motivo.
   rows[5].supplierCode = "SEM-CADASTRO";
@@ -119,14 +120,15 @@ beforeAll(async () => {
       // O mesmo item em duas linhas do 35 (Sankhya divide): soma 30 + 10.
       orders: [
         { order: 2000, seq: 1, qty: 30 },
-        { order: 2000, seq: 1, qty: 10 },
+        // Saiu do documento do meio da cadeia (1999 → 2000): vai para o 2000.
+        { order: 1999, seq: 1, qty: 10 },
       ],
       statusShipping: "3",
       etd: "10112026 00:00:00",
       numnota: "0",
     },
   } as never);
-  for (const key of ["2000", "2010", "2020", "2030", "2040", "2050"])
+  for (const key of ["2000", "2010", "2020", "2030", "2040", "2050", "2060"])
     await store.create("sankhya_stage_rows", {
       dataset: "purchaseHeaders",
       rowKey: key,
@@ -205,7 +207,7 @@ describe("carga dos pedidos do Sankhya", () => {
   it("grava pedidos, itens e o embarque pelo ensaio", async () => {
     const p = await runAll();
     expect(p.phase).toBe("done");
-    expect(p.created).toBe(5);
+    expect(p.created).toBe(6);
     expect(p.skipped.map((s) => s.key)).toEqual(["2050"]);
     const store = getStore();
     const o = (await store.get("orders", "snk-2000"))!;
@@ -264,6 +266,17 @@ describe("carga dos pedidos do Sankhya", () => {
     expect(waiting.customerId).toBe(emp.id);
   });
 
+  it("carga já embarcada: o pedido passa do Booking (passos do embarque validados)", async () => {
+    const store = getStore();
+    const o = (await store.get("orders", "snk-2060"))!;
+    const steps = await store.list("import_steps", {
+      filter: { orderId: o.id },
+    });
+    expect(steps.find((s) => s.key === "booking")?.status).toBe("validated");
+    expect(o.milestoneKey).not.toBe("booking");
+    expect(o.milestoneKey).not.toBe("inspection");
+  });
+
   it("canal vermelho pausa o pedido em andamento", async () => {
     const o = (await getStore().get("orders", "snk-2030"))!;
     expect(o.pauseReason).toBe("channel_red");
@@ -278,7 +291,7 @@ describe("carga dos pedidos do Sankhya", () => {
     ).length;
     const p = await runAll();
     expect(p.created).toBe(0);
-    expect(p.updated).toBe(5);
+    expect(p.updated).toBe(6);
     expect((await store.list("orders")).length).toBe(before);
     expect(
       (await store.list("requirements", { filter: { orderId: "snk-2000" } }))
