@@ -65,6 +65,11 @@ export interface OrdersLoadProgress {
   skipped: Array<{ key: string; reason: string }>;
   startedAt: string | null;
   finishedAt: string | null;
+  /**
+   * Trava da rodada em andamento (duas abas, ou a aba fechada com a rodada
+   * ainda no servidor, 21/11/2026): outra rodada antes desta hora não faz nada.
+   */
+  lockUntil?: string | null;
 }
 
 const EMPTY: OrdersLoadProgress = {
@@ -353,37 +358,45 @@ async function loadOrdersChunk(
       },
       ...(held ? { held: true } : {}),
     };
-    let order: Order;
-    if (before) {
+    let order: Order | null = null;
+    if (!before) {
+      try {
+        order = await store.create("orders", {
+          ...ORDER_EXTRA_DEFAULTS,
+          id,
+          number: await store.nextNumber("order_number"),
+          currentStageId: null,
+          sellPrice: null,
+          sellCurrency: null,
+          agencyId: await lineAgencyOf(first?.lineId),
+          brokerId: null,
+          shippingLineId: null,
+          carrierId: null,
+          notes: `Importado do Sankhya (carga dos pedidos, ${now.slice(0, 10)}): TRACK_ID ${row.data?.track ?? "—"}, NUNOTA ${mainKeyOf(row)}, TOP ${row.top ?? "—"}`,
+          ...fields,
+        } as never);
+        progress.created++;
+      } catch (error) {
+        // Já gravado por outra rodada ao mesmo tempo: segue como atualização.
+        if (!/duplicate|23505|duplicado|already exists/i.test(String(error)))
+          throw error;
+      }
+    }
+    if (!order) {
       // Pedido já carregado: o Sankhya manda nos campos dele; a situação no
       // portal (marcos e itens) segue a do portal.
       const { status: _s, closedAt: _c, ...rest } = fields;
       void _s;
       void _c;
+      const current = before ?? (await store.get("orders", id));
       order = await store.update(
         "orders",
         id,
-        (before.status === "ORDER_CREATED" && fields.status === "CLOSED"
+        (current?.status === "ORDER_CREATED" && fields.status === "CLOSED"
           ? fields
           : rest) as never,
       );
       progress.updated++;
-    } else {
-      order = await store.create("orders", {
-        ...ORDER_EXTRA_DEFAULTS,
-        id,
-        number: await store.nextNumber("order_number"),
-        currentStageId: null,
-        sellPrice: null,
-        sellCurrency: null,
-        agencyId: await lineAgencyOf(first?.lineId),
-        brokerId: null,
-        shippingLineId: null,
-        carrierId: null,
-        notes: `Importado do Sankhya (carga dos pedidos, ${now.slice(0, 10)}): TRACK_ID ${row.data?.track ?? "—"}, NUNOTA ${mainKeyOf(row)}, TOP ${row.top ?? "—"}`,
-        ...fields,
-      } as never);
-      progress.created++;
     }
     await upsertRows(
       store,
@@ -560,6 +573,9 @@ export async function runOrdersLoadStep(
   assertAdmin(user);
   const store = getStore();
   let progress = await ordersLoadProgress(user);
+  const lockMs = (options.budgetMs ?? STEP_BUDGET_MS) + 30_000;
+  if (progress.lockUntil && Date.parse(progress.lockUntil) > Date.now())
+    return progress;
   if (
     options.restart ||
     progress.phase === "idle" ||
@@ -581,6 +597,8 @@ export async function runOrdersLoadStep(
   }
   const began = Date.now();
   const deadline = began + (options.budgetMs ?? STEP_BUDGET_MS);
+  progress.lockUntil = new Date(began + lockMs).toISOString();
+  await writeSetting(ORDERS_LOAD_KEY, progress);
   if (progress.phase === "orders") {
     const keys = await projectionKeys(store, "order");
     do {
@@ -619,6 +637,7 @@ export async function runOrdersLoadStep(
       }
     }
   }
+  progress.lockUntil = null;
   await writeSetting(ORDERS_LOAD_KEY, progress);
   return progress;
 }
