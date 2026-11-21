@@ -1,6 +1,7 @@
 -- Ensaio da reconstrução dos pedidos de compra do Sankhya (docs/SANKHYA_INTEGRACAO.md,
 -- seções 3.1, 4 e 5). Lê só a cópia bruta (sankhya_stage_rows) e grava o resultado em
 -- sankhya_projection (apaga e refaz só essa tabela). Não toca em pedidos do portal.
+-- São três comandos (apagar, pedidos, embarques); cada um tem os próprios "with".
 -- Rodar de novo depois de copiar as views: o resultado é sempre o da cópia atual.
 begin;
 delete from public.sankhya_projection;
@@ -156,6 +157,32 @@ select 'order:' || leaf, 'order', leaf::text, situation,
 from classified;
 
 -- Embarques (35): os pedidos e as quantidades que cada um leva.
+with
+h as (
+  select nunota n, row r,
+    (row->>'CODTIPOPER')::int top,
+    row->>'PEDIDO_PENDENTE' = 'S' pend
+  from public.sankhya_stage_rows where dataset = 'purchaseHeaders'
+),
+lk as (
+  select (row->>'NUNOTAORIG')::bigint o, (row->>'SEQUENCIAORIG')::int os,
+         (row->>'NUNOTA')::bigint d, coalesce((row->>'QTDATENDIDA')::numeric, 0) q,
+         (row->>'TOP_DESTINO')::int topd
+  from public.sankhya_stage_rows where dataset = 'purchaseLinks'
+),
+ld as (select distinct o, d, topd from lk where o <> d),
+-- Pedidos e quantidades de cada embarque, juntados uma vez (por embarque).
+carried as (
+  select d, jsonb_agg(jsonb_build_object('order', o, 'seq', os, 'qty', q)) list
+  from lk where topd = 35 group by d
+),
+ship as (
+  select h.n, h.pend, h.r,
+    exists (select 1 from ld x join h y on y.n = x.d where x.o = h.n and y.top = 1 and y.pend) prenota_pend,
+    exists (select 1 from ld x join h y on y.n = x.d where x.o = h.n and y.top = 1) has_prenota,
+    exists (select 1 from ld x join ld z on z.o = x.d where x.o = h.n and z.topd in (37, 1201)) has_nota
+  from h where h.top = 35
+)
 insert into public.sankhya_projection
   ("id", "kind", "key", "situation", "milestone", "top", "supplierCode", "supplierName",
    "shipmentState", "data", "computedAt")
@@ -168,12 +195,12 @@ select 'shipment:' || s.n, 'shipment', s.n::text,
   end,
   35, s.r->>'COD_FORNECEDOR', s.r->>'NOME_FORNECEDOR', null,
   jsonb_build_object(
-    'orders', (select jsonb_agg(jsonb_build_object('order', x.o, 'seq', x.os, 'qty', x.q))
-               from lk x where x.d = s.n and x.topd = 35),
+    'orders', coalesce(c.list, '[]'::jsonb),
     'prenota', s.has_prenota, 'nota', s.has_nota,
     'statusShipping', s.r->>'STATUS_SHIPPING', 'receipt', s.r->>'STATUS_RECEBIMENTO',
     'customsChannel', s.r->>'CANAL_ADUANEIRO', 'etd', s.r->>'ETD', 'eta', s.r->>'ETA',
     'orderedAt', s.r->>'DATA_PEDIDO', 'numnota', s.r->>'NUMNOTA'),
   now()
-from ship s;
+from ship s
+left join carried c on c.d = s.n;
 commit;

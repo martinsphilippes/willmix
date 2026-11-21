@@ -343,6 +343,8 @@ Cada etapa é um PR com testes e E2E. Nada apaga dados até a etapa 5.
    | Interrompido no Sankhya (D12) | 2.125                                                                                                                                               |
    | Aguardando definição          | 1.382: 197 em produção sem `STATUS_SHIPPING`; 1.185 sem pendência e sem documento seguinte (1.046 em 1104, a maioria de 2024 e 2025, e 139 em 1103) |
 
+   Embarques: 1.510, dos quais 48 em andamento (35 pendente ou pré-nota pendente). Montado na produção em 21/11/2026, 02:30 UTC.
+
    O encerramento vale quando tudo embarcou e nenhum embarque está aberto, mesmo sem a coluna de recebimento (212 pedidos têm os embarques fechados sem `STATUS_RECEBIMENTO`).
 
 4. **Validação:** o dono e a Wellmix conferem o relatório e o de-para da seção 5.1.
