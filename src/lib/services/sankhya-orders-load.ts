@@ -21,6 +21,7 @@ import {
   sankhyaIso,
   sankhyaTrackItemId,
   mainKeyOf,
+  orderNumberOf,
   sankhyaOrderId,
   shipmentLines,
   type ProjectionOrder,
@@ -356,7 +357,10 @@ async function loadOrdersChunk(
         TOP: row.top ?? "",
         ...(row.data?.reason ? { MOTIVO: row.data.reason } : {}),
       },
-      ...(held ? { held: true } : {}),
+      // O pedido aparece nas listas na situação real; só as pendências ficam
+      // em espera até o go-live, sem avisos (docs/SANKHYA_INTEGRACAO.md, 5.2;
+      // 21/11/2026: com o pedido em espera ele sumia de Pedidos e dos Overviews).
+      held: null,
     };
     let order: Order | null = null;
     if (!before) {
@@ -364,7 +368,8 @@ async function loadOrdersChunk(
         order = await store.create("orders", {
           ...ORDER_EXTRA_DEFAULTS,
           id,
-          number: await store.nextNumber("order_number"),
+          number:
+            orderNumberOf(row) ?? (await store.nextNumber("order_number")),
           currentStageId: null,
           sellPrice: null,
           sellCurrency: null,
@@ -389,6 +394,10 @@ async function loadOrdersChunk(
       void _s;
       void _c;
       const current = before ?? (await store.get("orders", id));
+      // O número segue o do Sankhya (o track), também nos pedidos já gravados.
+      const number = orderNumberOf(row);
+      if (number !== null && current && current.number !== number)
+        Object.assign(rest, { number });
       order = await store.update(
         "orders",
         id,

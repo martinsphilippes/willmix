@@ -99,6 +99,18 @@ export const sankhyaTrackItemId = (
   doc: string | number,
   seq: number,
 ) => `snk-t${track}-${doc}-${seq}`;
+/**
+ * Número do pedido no portal = o do Sankhya (dono, 21/11/2026: "não vamos ter
+ * número de pedido só do portal"): o TRACK_ID; sem track (compras antigas 30),
+ * o NUNOTA da ponta principal.
+ */
+export function orderNumberOf(row: Pick<ProjectionOrder, "key" | "data">) {
+  const track = String(row.data?.track ?? "");
+  if (/^\d+$/.test(track)) return Number(track);
+  const main = Number(mainKeyOf(row));
+  return Number.isFinite(main) && main > 0 ? main : null;
+}
+
 /** NUNOTA principal da linha do ensaio (a ponta mais adiantada do track). */
 export const mainKeyOf = (row: Pick<ProjectionOrder, "key" | "data">) =>
   String(row.data?.mainKey ?? row.key);
