@@ -330,3 +330,51 @@ test("tela baixa (iPad em janela menor): o balão cabe na tela e o formulário i
     tip.locator("[data-request-fix-done] [data-request-fix-login-created]"),
   ).toHaveText(buyer);
 });
+
+test("Aguardando Wellmix: a pendência traz o nº e o cliente, e o selo da Situação envia para cotação num toque", async ({
+  page,
+}) => {
+  // Dono, 20/11/2026: a encomenda confirmada não era reconhecida nas
+  // Pendências (só o produto) e a Situação não deixava seguir dali.
+  await login(page, "admin@wellmix.com");
+  const requestId = await newSaleForJoao(page);
+  const number = (
+    await page.locator("[data-request-number]").first().textContent()
+  )
+    ?.replace(/\D/g, "")
+    .trim();
+  await login(page, "joao@lojista.com");
+  await page.goto(`/app/requests/${requestId}`);
+  await confirmAsCustomer(page, requestId);
+
+  // Pendências: "Enviar para cotação: encomenda nº N · cliente".
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/tasks?type=new_request");
+  const task = page
+    .locator(
+      `[data-task-row] a[href="/app/requests/${requestId}"]:not([data-open-link])`,
+    )
+    .first();
+  await expect(task).toContainText("Enviar para cotação: encomenda nº");
+  if (number) await expect(task).toContainText(`nº ${number}`);
+
+  // Lista: tocar em "Aguardando Wellmix" abre o envio; um toque envia.
+  await page.goto("/app/requests?situ=open");
+  const row = page.locator(`[data-request-row="${requestId}"]`);
+  const badge = row.locator(
+    '[data-request-turn="wellmix"] [data-request-quick="send"]',
+  );
+  await expect(badge).toContainText("Aguardando Wellmix");
+  await badge.click();
+  const panel = page.locator(
+    '[data-info-tip][role="dialog"] [data-request-quick-panel="send"]',
+  );
+  await expect(panel).toContainText("Próxima ação: Enviar para cotação");
+  await panel.locator('[data-request-quick-submit="send"]').click();
+  await page.waitForURL(/strategySent=\d+/);
+  await expect(page.locator("[data-strategy-sent]")).toBeVisible();
+  // Enviada: a vez segue na Estratégia de compra, sem o envio no selo.
+  await page.goto("/app/requests?situ=open");
+  await expect(row.locator('[data-request-next="strategy"]')).toBeVisible();
+  await expect(row.locator("[data-request-quick]")).toHaveCount(0);
+});

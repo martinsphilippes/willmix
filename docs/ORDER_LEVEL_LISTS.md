@@ -351,3 +351,22 @@ Criado o login e atualizada a tela, a pendência some. A regra é a mesma do bal
   - os erros;
   - nas Pendências, o formulário ou o "Escolher o login" só para o administrador, e a pendência que some depois de criar o login.
 - `tests/e2e/turns.spec.ts`: um cliente novo sem login recebe uma venda; no balão, o formulário com as sugestões e o login criado; fechar e abrir sem perder; "Atualizar a tela" mostra quem confirma; o cliente entra com a senha provisória e acha "Confirmar pedido". Nas Pendências, o mesmo formulário pela pendência "Login do cliente a definir", que some depois de criar o login.
+
+## 11. Encomenda confirmada: a pendência reconhecível e a ação rápida no selo (dono, 20/11/2026)
+
+Pedido do dono (20/11/2026, com o print de Encomendas): a encomenda nº 9, confirmada pela cliente ("Aguardando Wellmix"), "nem apareceu nas Pendências", e a Situação deveria deixar seguir dali.
+
+- **Pendências**: a pendência existia, mas o título trazia só o produto ("Enviar para cotação: BERCO DE BONECA 17CM X 30CM"), sem o número da encomenda nem o cliente. Agora:
+  - título: "Enviar para cotação: encomenda nº {N} · {cliente}";
+  - detalhe: o produto e a quantidade.
+
+  Encomenda sem número segue como antes. A regra de quem recebe não muda: quem abre Encomendas, o Comprador também (docs/PURCHASE_DEMAND.md). Fica em `src/lib/services/tasks.ts`, com os textos `strategy.task.toSend.titleNumbered` e `detailProduct`.
+- **Ação rápida no selo**: na lista de Encomendas, o selo "Aguardando Wellmix" da encomenda que espera o "Enviar para cotação" vira botão para quem pode enviar (Wellmix, a mesma regra da seleção em massa).
+  - O balão mostra "Próxima ação: Enviar para cotação" e o botão "Enviar para cotação".
+  - Um toque envia a encomenda inteira para a Estratégia de compra (`sendToStrategyAction`, as mesmas regras e a mesma mensagem de envio).
+  - Enviada, a vez segue na Estratégia de compra e o selo volta a ser só o selo.
+  - Para quem não pode enviar e nas outras situações, o selo fica como era. Componente: `SituationQuickSend` (`src/components/request-quick-action.tsx`).
+- **Não é o selo desfeito da seção 10**: aquele repetia no selo o balão "Quem pode agir" da Próxima ação e foi desfeito a pedido do dono. Este faz a próxima ação.
+- **Testes**:
+  - `tests/unit/strategy-send.test.ts`: o título e o detalhe da pendência;
+  - `tests/e2e/turns.spec.ts`: a venda confirmada pelo cliente, a pendência com o nº, o selo que envia num toque e a vez na Estratégia de compra.

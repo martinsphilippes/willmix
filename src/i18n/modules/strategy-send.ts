@@ -24,6 +24,9 @@ export const pt = {
   "tasks.group.purchase_strategy_send": "Envio da estratégia com pendência",
   "strategy.task.toSend.title": "Enviar para cotação: {product}",
   "strategy.task.toSend.detail": "Encomenda · {quantity} {unit}",
+  "strategy.task.toSend.titleNumbered":
+    "Enviar para cotação: encomenda nº {n} · {customer}",
+  "strategy.task.toSend.detailProduct": "{product} · {quantity} {unit}",
   "strategy.task.send.title":
     "Envio nº {n} da Estratégia de Compra: {count} parceiro(s) sem receber",
   "strategy.task.send.detail":
@@ -169,6 +172,9 @@ export const en: Record<keyof typeof pt, string> = {
   "tasks.group.purchase_strategy_send": "Strategy send with issues",
   "strategy.task.toSend.title": "Send to quotation: {product}",
   "strategy.task.toSend.detail": "Customer order · {quantity} {unit}",
+  "strategy.task.toSend.titleNumbered":
+    "Send to quotation: order no. {n} · {customer}",
+  "strategy.task.toSend.detailProduct": "{product} · {quantity} {unit}",
   "strategy.task.send.title":
     "Purchase strategy send no. {n}: {count} partner(s) did not receive it",
   "strategy.task.send.detail":
@@ -315,6 +321,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "tasks.group.purchase_strategy_send": "有问题的策略发送",
   "strategy.task.toSend.title": "发送询价：{product}",
   "strategy.task.toSend.detail": "客户订货 · {quantity} {unit}",
+  "strategy.task.toSend.titleNumbered": "发送询价：订货 {n} 号 · {customer}",
+  "strategy.task.toSend.detailProduct": "{product} · {quantity} {unit}",
   "strategy.task.send.title": "采购策略第 {n} 次发送：{count} 个合作伙伴未收到",
   "strategy.task.send.detail":
     "请处理该合作伙伴的问题或另选一个，然后点击“重试”。",

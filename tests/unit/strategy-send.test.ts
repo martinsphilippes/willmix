@@ -163,13 +163,18 @@ describe("Enviar para cotação (Encomendas)", () => {
     const mine = (await pendingTasksFor(buyer)).filter(
       (x) => x.link === `/app/requests/${d.id}`,
     );
-    expect(mine[0]).toMatchObject({
-      kind: "new_request",
-      title: "Enviar para cotação: prod-boneca",
-    });
-    expect(t(mine[0].text!.title, mine[0].text!.values)).toBe(
-      "Enviar para cotação: prod-boneca",
-    );
+    // Com o número da encomenda e o cliente (dono, 20/11/2026): só o
+    // produto não deixava reconhecer a encomenda; o produto vai no detalhe.
+    const customer = (await getStore().get("parties", d.customerId))!.name;
+    const title = `Enviar para cotação: encomenda nº ${d.number} · ${customer}`;
+    expect(mine[0]).toMatchObject({ kind: "new_request", title });
+    expect(t(mine[0].text!.title, mine[0].text!.values)).toBe(title);
+    expect(
+      t(mine[0].text!.detail, {
+        ...mine[0].text!.values,
+        quantity: (2000).toLocaleString(t.intl),
+      }),
+    ).toBe(`prod-boneca · ${(2000).toLocaleString(t.intl)} un`);
   });
 });
 
