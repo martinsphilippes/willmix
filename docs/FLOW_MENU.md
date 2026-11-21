@@ -185,6 +185,7 @@ Os parceiros (fornecedor, agência, certificadora, despachante, comex, agente de
 - A tela do passo do parceiro tem as duas abas: Pendências (o que espera ação dele) e Todos no passo (os pedidos dele no passo, só com o que é dele: itens de etapa do papel ou que ele pode fazer e os passos que ele vê; sem a coluna do fornecedor; `flowPartnerAllFor`).
 - O pedido no passo abre para o parceiro só nos passos dele e só nos pedidos dele (`canViewOrder`): os itens do papel, os passos que ele vê, o cartão de produção só para o fornecedor do pedido, sem o fornecedor e o cliente no cabeçalho. Recebimento, relatório da inspeção, frete e a criação do pedido seguem só da Wellmix. Passo que não é do parceiro não abre (404).
 - Sem Overview para os parceiros. O detalhe do pedido (`/app/orders/[id]`) continua como estava para eles.
+- **Meus books no alto** (dono, 21/11/2026, com o print do menu do fornecedor): para quem tem o grupo **Meus books** (o fornecedor e os parceiros que lançam book; no fornecedor: Convites de book, Solicitações ao fornecedor, Cotações de compra, Pedidos e Conta corrente), ele fica logo abaixo das Pendências, acima de Pedido e Produção. Os outros parceiros continuam com o grupo "Pedidos" no fim (`navFor` em `src/lib/nav.ts`).
 
 ## LPCO, Amostras e Ofertas (14/11/2026)
 

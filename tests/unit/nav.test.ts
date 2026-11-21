@@ -297,8 +297,19 @@ describe("menu lateral", () => {
     const top = [{ link: "/app" }];
     // Os passos de cada parceiro, por bloco (docs/FLOW_MENU.md); bloco com um
     // passo só vira link direto.
+    // "Meus books" acima de "Pedido" (dono, 21/11/2026).
     expect(view({ role: "supplier" })).toEqual([
       ...top,
+      {
+        group: "nav.group.myBookings",
+        items: [
+          "/app/supplier-requests/invites",
+          "/app/supplier-requests",
+          "/app/purchase-quotes",
+          "/app/orders",
+          "/app/account",
+        ],
+      },
       {
         group: "nav.group.order",
         items: [
@@ -316,16 +327,6 @@ describe("menu lateral", () => {
           "/app/flow/production/loading",
           "/app/flow/production/cargo-docs",
           "/app/flow/production/shipment",
-        ],
-      },
-      {
-        group: "nav.group.myBookings",
-        items: [
-          "/app/supplier-requests/invites",
-          "/app/supplier-requests",
-          "/app/purchase-quotes",
-          "/app/orders",
-          "/app/account",
         ],
       },
     ]);
