@@ -659,3 +659,17 @@ describe("moeda dos pedidos da amostra", () => {
     );
   });
 });
+
+describe("carga antiga do histórico de pedidos", () => {
+  it("fica desligada (21/11/2026): não lê o Sankhya nem grava pedidos", async () => {
+    const before = (await getStore().list("orders")).length;
+    const sqls = fakeSankhya({});
+    await st.writeSetting("sankhya.legacyOrders", null);
+    await resetFullLoad("orders");
+    const run = await runFullLoad(admin, "orders", 60_000);
+    expect(run.progress.done).toBe(true);
+    expect(run.progress.missing[0]).toMatch(/desligada/);
+    expect(sqls).toHaveLength(0);
+    expect((await getStore().list("orders")).length).toBe(before);
+  });
+});

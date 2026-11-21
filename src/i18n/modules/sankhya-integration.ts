@@ -46,7 +46,7 @@ export const pt = {
   "sankhyaLoad.full.entity.stockLocations": "Locais de estoque",
   "sankhyaLoad.full.entity.stockBalances": "Saldos de estoque por local",
   "sankhyaLoad.full.entity.orders":
-    "Histórico de pedidos (notas de importação)",
+    "Histórico de pedidos, carga antiga (desligada em 21/11/2026)",
   "sankhyaLoad.full.entity.productImages":
     "Fotos dos produtos (só baixa o que mudou)",
   "sankhyaLoad.full.entity.productCartons":
@@ -391,7 +391,8 @@ export const en: Record<keyof typeof pt, string> = {
   "sankhyaInt.req.error": "Could not read the database catalog: {detail}",
   "sankhyaLoad.full.entity.stockLocations": "Stock locations",
   "sankhyaLoad.full.entity.stockBalances": "Stock balances by location",
-  "sankhyaLoad.full.entity.orders": "Order history (import notes)",
+  "sankhyaLoad.full.entity.orders":
+    "Order history, old load (switched off on 21/11/2026)",
   "sankhyaLoad.full.entity.productImages":
     "Product photos (downloads only what changed)",
   "sankhyaLoad.full.entity.productCartons":
@@ -731,7 +732,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sankhyaInt.req.error": "无法读取数据库目录：{detail}",
   "sankhyaLoad.full.entity.stockLocations": "库位",
   "sankhyaLoad.full.entity.stockBalances": "各库位库存结存",
-  "sankhyaLoad.full.entity.orders": "订单历史（进口单据）",
+  "sankhyaLoad.full.entity.orders": "订单历史，旧加载（2026/11/21 已停用）",
   "sankhyaLoad.full.entity.productImages": "产品照片（只下载有变化的）",
   "sankhyaLoad.full.entity.productCartons":
     "产品外箱（补空的 CBM 和件数；去掉 C1 内盒）",

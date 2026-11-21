@@ -237,6 +237,7 @@ Pedido do dono: o fornecedor que nunca negociou o produto informa a ficha técni
 - **Uma vez por par**: confirmada ou informada, a ficha não é pedida de novo; nas próximas cotações aparece "Ficha técnica confirmada em dd/mm/aaaa" e só o comercial. Enquanto o prazo corre, ele corrige a ficha que mandou na mesma cotação. Recusada pelo Cadastro, volta a ser pedida (com o motivo).
 - **Foto na balança** (opcional na cotação): sobe na hora, sem apagar o que foi digitado (`addQuoteScalePhotoAction`, documento sem pedido: só a Wellmix e quem enviou abrem). Para quem já vendeu, só é pedida onde o produto não tem foto na balança no cadastro.
 - **Comparativo** (`/app/purchase-quotes/[id]`, "Ficha técnica das respostas"): por fornecedor e produto, a ficha (informada, confirmada, corrigida ou confirmada antes), peças por master, inner, medidas, CBM, pesos, material, código, **caixas master e m³ total pela caixa dele**, a foto e os avisos em relação ao cadastro com a tolerância da inspeção (peso, medidas, CBM; outra quantidade por caixa sempre avisa). Sem preço: vale para quem não tem "Ver preço de compra".
+  - **Linha fina** (dono, 21/11/2026, com a foto do iPad): letra menor (12 px; cabeçalho 10 px) e nenhum texto quebra a linha, nem os títulos das colunas. Fornecedor, produto, material, código e avisos ficam numa linha só, cortados com "…" e com o **"mais"** ao lado (o "menos" volta; o texto inteiro também na dica do mouse). Ao abrir, a coluna mantém a largura. A foto fica em 24 px e amplia ao passar o mouse; o toque abre a foto. Componente `ClampText` com `lines={1}` (`src/components/clamp-text.tsx`); Encomendas segue com duas linhas.
 - **A vencedora**: a Solicitação ao fornecedor nasce com a caixa master, o inner, o CBM, os pesos, o material e o código que ela informou (as medidas da solicitação são do produto e não recebem as da caixa).
 - **Revisão do Cadastro** (`/app/supplier-sheets` e `/app/supplier-sheets/[id]`, tela Produtos; fora do menu, pelas Pendências e pelo comparativo): o nosso cadastro ao lado do informado, campo a campo ("Mudou", "Preencheu"), a foto e **Aceitar** ou **Recusar** (motivo obrigatório; o fornecedor é avisado na língua dele). Ação nova **"Revisar a ficha técnica do fornecedor"** (`supplierSheet.review`), padrão da função Cadastro (`catalog`); pendência `supplier_sheet_review` (Cadastros → Produtos). Nada muda no cadastro do produto nem no Sankhya.
 - **Ficha de compra do pedido**: a foto na balança do cadastro só vale para quem já vendeu o produto (fora este pedido), para o fornecedor principal (o de referência da ficha mestre) ou quando foi ele que a enviou; a que ele mandou na cotação vale e aparece na ficha ("Foto na balança enviada na cotação"). As outras 4 fotos seguem como antes. O rascunho da ficha nasce da ficha técnica dele (`sheet.prefilled.supplier`), antes da ficha mestre e do cadastro; a ficha do último pedido dele só manda se for mais nova. **Pedido direto**: a ficha de compra salva completa pelo fornecedor, com o inner e o código, vale como a ficha técnica do par (mesmo aviso). A ficha de compra continua completando o cadastro com o que falta, como antes.
@@ -316,18 +317,43 @@ Pedido do dono (20/11/2026, com dois prints do iPad): o fornecedor preencheu a f
   - `tests/e2e/purchase-quote.spec.ts`: o fornecedor A digita, espera "salvo", recarrega a página e encontra o preço, a ficha e a moeda de volta.
 - **Sugestão para o dono (não feito)**: ligar a proteção de versão da Vercel ("Skew Protection", em Settings → Advanced do projeto). Com ela, quem está com a página aberta continua falando com a versão em que abriu, e nenhuma tela de nenhum formulário recarrega quando sai uma versão nova. Vale para o portal todo, não só para a cotação. É uma configuração do projeto na Vercel e pode depender do plano.
 
+## Card da cotação mais enxuto (dono, 21/11/2026)
+
+Pedido do dono (21/11/2026, com o print do iPad): o card da resposta da cotação tinha muito espaço aberto; caixas de digitação menores, mais minimalista e bonito.
+
+- **Ficha técnica em quatro linhas**, com o nome da linha à esquerda e os campos lado a lado, cada um do tamanho do número e com a unidade dentro da caixa:
+  - **Peças por caixa**: master e inner (pçs), com "Sem inner";
+  - **Caixa master**: C × L × A (cm) ou o CBM (m³), com "Pelas medidas: … m³" embaixo;
+  - **Peso**: líquido por peça e bruto da caixa (kg);
+  - **Material e código**: material, código na fábrica e "Sem código".
+- O texto de ajuda da ficha fica na mesma linha do título. O nome completo de cada campo continua para o leitor de tela e aparece ao passar o mouse.
+- **Condições comerciais numa linha**: incoterm, prazo de produção (com "dias" dentro), porto e pedido mínimo, cada um do tamanho do que se digita; a observação logo abaixo.
+- **Letra dos campos** de 13 px também no iPad, como na Estratégia de compra (`data-compact-fields`); no iPhone segue 16 px para o Safari não dar zoom.
+- **O que não muda**: os nomes dos campos do formulário, as regras (o que falta, os avisos, o rascunho automático) e os testes (`data-sheet-field`).
+
+## Correção da resposta até o prazo (dono, 21/11/2026)
+
+Pergunta do dono, com o print da cotação nº 1 em produção: "Como assim dá para alterar enquanto o prazo não acabar? Qual prazo?". O prazo é o da resposta de cada fornecedor (`purchaseQuoteHours`, padrão 24 h a partir do convite; o "Vence em" do topo, em Brasília e na China). Decisão do dono: **opção 1**, manter a correção com o texto claro e a tela travada no prazo.
+
+- **Regra única** (`quoteEditable` em `src/lib/services/purchase-quote.ts`): o fornecedor envia e corrige enquanto a cotação está aberta e o prazo dele corre. A escolha da vencedora (ou o cancelamento) trava antes do prazo. O servidor já recusava fora disso (`quote_closed`, `quote_expired`), também na foto e no rascunho automático.
+- **O aviso depois do envio** diz até quando: "Cotação enviada. Você pode corrigir até 21/11, 23:12 (Brasília) · 22/11, 10:12 (China), enquanto a Wellmix não escolher a vencedora." Na recusa, o mesmo prazo para mudar de ideia. Os horários saem de `dueTimes` (`src/app/app/purchase-quotes/_time.tsx`), o mesmo do "Vence em".
+- **Tela travada** (o defeito corrigido: depois do prazo, quem já tinha respondido ainda via o formulário e só no envio recebia "O prazo para responder acabou"): passado o prazo, ou escolhida a vencedora, o formulário sai e fica a resposta enviada, só leitura (`QuoteAnswerSummary`): o motivo da trava, o preço de cada produto, a ficha técnica, a foto na balança e as condições (moeda, incoterm, prazo de produção, porto, pedido mínimo e observação). Sem resposta, "Você não respondeu esta cotação"; recusada, "Você recusou esta cotação".
+- **A regra do peso bruto** (caixa mais leve que as peças) continua só como aviso.
+- **Testes**: `tests/unit/purchase-quote.test.ts` (a regra: aberta e no prazo, no limite exato, vencedora escolhida e cancelada; a resposta trocada no prazo e recusada depois) e `tests/e2e/purchase-quote.spec.ts` (o aviso com a hora de Brasília depois do envio; passado o prazo, o fornecedor A vê a resposta enviada, com o preço, e nenhum formulário).
+
 ## Andamento
 
-| PR  | Entrega                                                                                        | Situação |
-| --- | ---------------------------------------------------------------------------------------------- | -------- |
-| 1   | Mapa (MAPA_PROCESSO.md gerado do data.json), decisões e este documento                         | feito    |
-| 2   | Demanda única: encomenda pelas 4 portas, divisão do carrinho, reposição manual, função Vendas  | feito    |
-| 3   | Estratégia de compra, aprovação e pedido de compra direto                                      | feito    |
-| 4   | Cotação de compra: fornecedor × linha, 24 h, isolamento, quadro comparativo                    | feito    |
-| 5   | Limpeza dos restos da RFQ                                                                      | feito    |
-| 6   | Estratégia de Compra por produto: envio pela Encomenda, destinatários, resultado e reenvio     | feito    |
-| 7   | Estratégia por solicitação: uma escolha para todos os produtos, lista do País × Família        | feito    |
-| 8   | Embalagem e cubagem na Estratégia; estratégia parada por encomenda cancelada                   | feito    |
-| 9   | Encerrar a estratégia parada (Comprador e Diretoria; as abertas voltam para a fila)            | feito    |
-| 10  | Grade de estratégias: três colunas de cards compactos, Detalhes e Gerar pedido em painel       | feito    |
-| 11  | Ficha técnica na cotação: quem nunca vendeu informa, quem já vendeu ratifica uma vez; Cadastro | feito    |
+| PR  | Entrega                                                                                          | Situação |
+| --- | ------------------------------------------------------------------------------------------------ | -------- |
+| 1   | Mapa (MAPA_PROCESSO.md gerado do data.json), decisões e este documento                           | feito    |
+| 2   | Demanda única: encomenda pelas 4 portas, divisão do carrinho, reposição manual, função Vendas    | feito    |
+| 3   | Estratégia de compra, aprovação e pedido de compra direto                                        | feito    |
+| 4   | Cotação de compra: fornecedor × linha, 24 h, isolamento, quadro comparativo                      | feito    |
+| 5   | Limpeza dos restos da RFQ                                                                        | feito    |
+| 6   | Estratégia de Compra por produto: envio pela Encomenda, destinatários, resultado e reenvio       | feito    |
+| 7   | Estratégia por solicitação: uma escolha para todos os produtos, lista do País × Família          | feito    |
+| 8   | Embalagem e cubagem na Estratégia; estratégia parada por encomenda cancelada                     | feito    |
+| 9   | Encerrar a estratégia parada (Comprador e Diretoria; as abertas voltam para a fila)              | feito    |
+| 10  | Grade de estratégias: três colunas de cards compactos, Detalhes e Gerar pedido em painel         | feito    |
+| 11  | Ficha técnica na cotação: quem nunca vendeu informa, quem já vendeu ratifica uma vez; Cadastro   | feito    |
+| 12  | Correção da resposta até o prazo: aviso com a hora exata e a tela travada com a resposta enviada | feito    |

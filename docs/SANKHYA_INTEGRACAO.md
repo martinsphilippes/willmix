@@ -343,10 +343,12 @@ Cada etapa é um PR com testes e E2E. Nada apaga dados até a etapa 5.
    | Interrompido no Sankhya (D12) | 2.125                                                                                                                                               |
    | Aguardando definição          | 1.382: 197 em produção sem `STATUS_SHIPPING`; 1.185 sem pendência e sem documento seguinte (1.046 em 1104, a maioria de 2024 e 2025, e 139 em 1103) |
 
+   Embarques: 1.510, dos quais 48 em andamento (35 pendente ou pré-nota pendente). Montado na produção em 21/11/2026, 02:30 UTC.
+
    O encerramento vale quando tudo embarcou e nenhum embarque está aberto, mesmo sem a coluna de recebimento (212 pedidos têm os embarques fechados sem `STATUS_RECEBIMENTO`).
 
 4. **Validação:** o dono e a Wellmix conferem o relatório e o de-para da seção 5.1.
-5. **Limpeza e carga real:**
+5. **Limpeza (feita em 21/11/2026, a pedido do dono, sem cópia de segurança: "estão errados, ponto") e carga real.** Saíram de vez os 16.268 pedidos da carga antiga e tudo o que veio com eles: 185.457 itens, 161.448 etapas, 613.413 pendências, 50.875 marcos, 16.268 resumos, 27.809 títulos, as 16.268 solicitações da carga e os indicadores prontos. Antes, foi conferido que nenhuma outra tabela (documentos, conversas, avisos, auditoria, estoque, containers e as demais 40 que apontam para pedido) tinha algo ligado a eles. Ficaram as 3 solicitações feitas no portal, todos os cadastros e a cópia das views. A carga antiga ("Histórico de pedidos", entidade `orders` da Carga do Sankhya, e o "Gravar no portal" da amostra) ficou **desligada** (chave `sankhya.legacyOrders`; só os testes da regra antiga a ligam), para os pedidos errados não voltarem. Falta a carga real:
    - apagar os 16.268 pedidos antigos e o que veio junto (solicitações, itens, etapas, pendências, marcos, 27.809 títulos, resumos), em partes, com prévia e a palavra de confirmação. Nenhum trabalho do portal está ligado a eles (conferido em 20/11/2026);
    - gravar os pedidos e embarques novos;
    - reconstruir os resumos.

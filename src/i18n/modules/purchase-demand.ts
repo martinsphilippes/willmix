@@ -197,6 +197,7 @@ export const pt = {
   "quote.unitPrice": "Preço unitário",
   "quote.priceHint": "Digite só os números: {typed} vira {example}.",
   "quote.currencyAll": "A moeda vale para todos os itens desta cotação.",
+  "quote.unit.days": "dias",
   "quote.draft.restored":
     "Recuperamos o que você tinha digitado (salvo automaticamente). Confira e envie quando estiver pronto.",
   "quote.draft.hint": "Tudo o que você digita é salvo automaticamente.",
@@ -229,8 +230,17 @@ export const pt = {
     "Responda em até {hours} h: preço por item, moeda, incoterm, prazo de produção, porto e pedido mínimo.",
   "quote.supplier.locked": "Esta cotação não aceita mais resposta.",
   "quote.supplier.answeredDone":
-    "Cotação enviada. Dá para corrigir enquanto o prazo não acabar.",
-  "quote.supplier.declinedDone": "Você recusou esta cotação.",
+    "Cotação enviada. Você pode corrigir até {br} (Brasília) · {cn} (China), enquanto a Wellmix não escolher a vencedora.",
+  "quote.supplier.declinedDone":
+    "Você recusou esta cotação. Se mudar de ideia, pode responder até {br} (Brasília) · {cn} (China), enquanto a Wellmix não escolher a vencedora.",
+  "quote.supplier.lockedDeadline":
+    "O prazo para responder acabou em {br} (Brasília) · {cn} (China). A cotação não aceita mais mudanças.",
+  "quote.supplier.lockedClosed":
+    "A Wellmix já escolheu a vencedora ou encerrou esta cotação. Ela não aceita mais mudanças.",
+  "quote.supplier.yourAnswer": "A resposta que você enviou",
+  "quote.supplier.sentAt": "Enviada em {date}.",
+  "quote.supplier.noAnswer": "Você não respondeu esta cotação.",
+  "quote.supplier.declinedAnswer": "Você recusou esta cotação.",
   "quote.settings.hours": "Prazo da cotação de compra (horas)",
   "quote.settings.hoursHint":
     "Horas corridas que cada fornecedor tem para responder (padrão 24).",
@@ -475,6 +485,7 @@ export const en: Record<keyof typeof pt, string> = {
   "quote.unitPrice": "Unit price",
   "quote.priceHint": "Type only the digits: {typed} becomes {example}.",
   "quote.currencyAll": "The currency applies to every item in this quote.",
+  "quote.unit.days": "days",
   "quote.draft.restored":
     "We restored what you had typed (saved automatically). Check it and send when ready.",
   "quote.draft.hint": "Everything you type is saved automatically.",
@@ -506,8 +517,17 @@ export const en: Record<keyof typeof pt, string> = {
     "Answer within {hours} h: price per item, currency, incoterm, production lead time, port and minimum order.",
   "quote.supplier.locked": "This quote no longer accepts answers.",
   "quote.supplier.answeredDone":
-    "Quote sent. You can correct it until the deadline.",
-  "quote.supplier.declinedDone": "You declined this quote.",
+    "Quote sent. You can correct it until {br} (Brasília) · {cn} (China), while Wellmix has not chosen the winner.",
+  "quote.supplier.declinedDone":
+    "You declined this quote. If you change your mind, you can answer until {br} (Brasília) · {cn} (China), while Wellmix has not chosen the winner.",
+  "quote.supplier.lockedDeadline":
+    "The deadline to answer ended on {br} (Brasília) · {cn} (China). The quote no longer accepts changes.",
+  "quote.supplier.lockedClosed":
+    "Wellmix has already chosen the winner or closed this quote. It no longer accepts changes.",
+  "quote.supplier.yourAnswer": "The answer you sent",
+  "quote.supplier.sentAt": "Sent on {date}.",
+  "quote.supplier.noAnswer": "You did not answer this quote.",
+  "quote.supplier.declinedAnswer": "You declined this quote.",
   "quote.settings.hours": "Purchase quote deadline (hours)",
   "quote.settings.hoursHint":
     "Calendar hours each supplier has to answer (default 24).",
@@ -735,6 +755,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "quote.unitPrice": "单价",
   "quote.priceHint": "只需输入数字：{typed} 即为 {example}。",
   "quote.currencyAll": "该币种适用于本报价的所有产品。",
+  "quote.unit.days": "天",
   "quote.draft.restored":
     "已恢复您之前输入的内容（自动保存）。请检查后再提交。",
   "quote.draft.hint": "您输入的内容会自动保存。",
@@ -764,8 +785,18 @@ export const zh: Record<keyof typeof pt, string> = {
   "quote.supplier.hint":
     "请在 {hours} 小时内回复：每个商品的价格、币种、贸易术语、生产周期、港口和最小起订量。",
   "quote.supplier.locked": "此询价已不接受回复。",
-  "quote.supplier.answeredDone": "报价已发送。期限结束前可以修改。",
-  "quote.supplier.declinedDone": "您已拒绝此询价。",
+  "quote.supplier.answeredDone":
+    "报价已发送。在 {br}（巴西利亚）· {cn}（中国）之前，且 Wellmix 尚未选定中标方时，您可以修改。",
+  "quote.supplier.declinedDone":
+    "您已拒绝此询价。如改变主意，可在 {br}（巴西利亚）· {cn}（中国）之前、且 Wellmix 尚未选定中标方时回复。",
+  "quote.supplier.lockedDeadline":
+    "回复期限已于 {br}（巴西利亚）· {cn}（中国）结束。此询价不再接受修改。",
+  "quote.supplier.lockedClosed":
+    "Wellmix 已选定中标方或已结束此询价，不再接受修改。",
+  "quote.supplier.yourAnswer": "您提交的报价",
+  "quote.supplier.sentAt": "提交于 {date}。",
+  "quote.supplier.noAnswer": "您未回复此询价。",
+  "quote.supplier.declinedAnswer": "您已拒绝此询价。",
   "quote.settings.hours": "采购询价期限（小时）",
   "quote.settings.hoursHint": "每个供应商回复的自然小时数（默认 24）。",
   "settings.error.purchase_quote_hours_invalid":

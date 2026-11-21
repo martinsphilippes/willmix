@@ -12,6 +12,7 @@ import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
 import { lastPurchases } from "@/lib/services/purchase-strategy";
 import {
   quoteClosed,
+  quoteEditable,
   quoteEmpty,
   responseState,
   supplierQuoteView,
@@ -27,6 +28,7 @@ import {
   Td,
   Textarea,
   Th,
+  cx,
   formatDate,
   linkClass,
   rowClass,
@@ -44,7 +46,8 @@ import {
   saveQuoteDraftAction,
 } from "../../actions/purchase-demand";
 import { loadQuoteDraft } from "@/lib/services/quote-draft";
-import { QuoteDeadline } from "../_time";
+import { QuoteDeadline, dueTimes } from "../_time";
+import { QuoteAnswerSummary } from "../_components/quote-answer-summary";
 import {
   QuoteAnswerForm,
   type QuoteSheetProduct,
@@ -70,6 +73,16 @@ import { itemLogistics } from "@/lib/services/item-logistics";
 import { canOpen } from "@/lib/auth/screens";
 import type { Product, PurchaseQuoteItem } from "@/lib/db/schema";
 import type { Translate } from "@/i18n";
+import { ClampText } from "@/components/clamp-text";
+import { HoverZoomPhoto } from "@/components/hover-zoom-photo";
+
+/*
+ * Ficha técnica das respostas (dono, 21/11/2026): linha fina e minimalista,
+ * letra menor e nenhum texto quebrando a linha; o que não cabe fica recolhido
+ * numa linha com "…" e o "mais" ao lado.
+ */
+const slimTh = "whitespace-nowrap px-2 py-1.5 text-[10px]";
+const slimTd = "whitespace-nowrap px-2 py-1 align-middle text-xs";
 
 /** Peças por caixa e caixas do produto na cotação ("—" sem caixa master). */
 function boxCells(
@@ -122,7 +135,10 @@ export default async function PurchaseQuotePage({
     // Para quem nunca vendeu, a cotação não mostra a nossa caixa: as caixas
     // saem da caixa que ele informar (dono, 20/11/2026).
     const state = responseState(response, now);
-    const editable = quote.status === "open" && state !== "expired";
+    // Enviada ou não, dá para responder e corrigir até o prazo dele, enquanto
+    // a Wellmix não escolhe a vencedora (dono, 21/11/2026, opção 1).
+    const editable = quoteEditable(quote, response, now);
+    const times = dueTimes(t, response.dueAt);
     // Ficha técnica de cada produto (dono, 20/11/2026): pedida na primeira
     // vez do par; quem já vendeu confere o que temos (o aviso de revalidação).
     // Rascunho automático deste login (dono, 20/11/2026): o que estava
@@ -189,13 +205,14 @@ export default async function PurchaseQuotePage({
           subtitle={t("quote.supplier.hint", { hours: quote.hours })}
         />
         <ActionError t={t} code={errorCode} text={errorText} fields={null} />
-        {typeof sp.answered === "string" ? (
+        {typeof sp.answered === "string" && editable ? (
           <div className="mb-3" role="status" data-quote-answered>
             <Alert tone="success">
               {t(
                 sp.answered === "declined"
                   ? "quote.supplier.declinedDone"
                   : "quote.supplier.answeredDone",
+                times,
               )}
             </Alert>
           </div>
@@ -232,9 +249,13 @@ export default async function PurchaseQuotePage({
               draftAction={saveQuoteDraftAction}
             />
           ) : (
-            <p className="text-sm text-zinc-600" data-quote-locked>
-              {t("quote.supplier.locked")}
-            </p>
+            <QuoteAnswerSummary
+              t={t}
+              items={quote.items}
+              response={response}
+              reason={quote.status === "open" ? "deadline" : "closed"}
+              times={times}
+            />
           )}
         </Card>
       </div>
@@ -525,22 +546,36 @@ export default async function PurchaseQuotePage({
           </p>
           <Table tools={false}>
             <thead>
-              <tr>
-                <Th>{t("quote.supplier")}</Th>
-                <Th>{t("common.product")}</Th>
-                <Th>{t("supplierSheet.board.col.kind")}</Th>
-                <Th>{t("supplierSheet.board.col.masterBoxQty")}</Th>
-                <Th>{t("supplierSheet.board.col.innerBoxQty")}</Th>
-                <Th>{t("supplierSheet.board.col.dims")}</Th>
-                <Th>{t("supplierSheet.board.col.cbm")}</Th>
-                <Th>{t("supplierSheet.board.col.netWeight")}</Th>
-                <Th>{t("supplierSheet.board.col.grossWeight")}</Th>
-                <Th>{t("supplierSheet.board.col.material")}</Th>
-                <Th>{t("supplierSheet.board.col.code")}</Th>
-                <Th>{t("supplierSheet.board.col.boxes")}</Th>
-                <Th>{t("supplierSheet.board.col.totalCbm")}</Th>
-                <Th>{t("supplierSheet.board.col.photo")}</Th>
-                <Th>{t("supplierSheet.board.col.alerts")}</Th>
+              <tr data-quote-sheet-head>
+                <Th className={slimTh}>{t("quote.supplier")}</Th>
+                <Th className={slimTh}>{t("common.product")}</Th>
+                <Th className={slimTh}>{t("supplierSheet.board.col.kind")}</Th>
+                <Th className={slimTh}>
+                  {t("supplierSheet.board.col.masterBoxQty")}
+                </Th>
+                <Th className={slimTh}>
+                  {t("supplierSheet.board.col.innerBoxQty")}
+                </Th>
+                <Th className={slimTh}>{t("supplierSheet.board.col.dims")}</Th>
+                <Th className={slimTh}>{t("supplierSheet.board.col.cbm")}</Th>
+                <Th className={slimTh}>
+                  {t("supplierSheet.board.col.netWeight")}
+                </Th>
+                <Th className={slimTh}>
+                  {t("supplierSheet.board.col.grossWeight")}
+                </Th>
+                <Th className={slimTh}>
+                  {t("supplierSheet.board.col.material")}
+                </Th>
+                <Th className={slimTh}>{t("supplierSheet.board.col.code")}</Th>
+                <Th className={slimTh}>{t("supplierSheet.board.col.boxes")}</Th>
+                <Th className={slimTh}>
+                  {t("supplierSheet.board.col.totalCbm")}
+                </Th>
+                <Th className={slimTh}>{t("supplierSheet.board.col.photo")}</Th>
+                <Th className={slimTh}>
+                  {t("supplierSheet.board.col.alerts")}
+                </Th>
               </tr>
             </thead>
             <tbody>
@@ -557,14 +592,28 @@ export default async function PurchaseQuotePage({
                       className={rowClass}
                       data-quote-sheet-row={`${r.supplierId}:${item.productId}`}
                     >
-                      <Td className="font-medium">
-                        {supplierName(r.supplierId)}
+                      <Td className={cx(slimTd, "font-medium")}>
+                        <ClampText
+                          lines={1}
+                          text={supplierName(r.supplierId)}
+                          more={t("reqList.more")}
+                          less={t("reqList.less")}
+                          className="max-w-[12rem]"
+                        />
                       </Td>
-                      <Td>{productNameText(t, item.name)}</Td>
+                      <Td className={slimTd}>
+                        <ClampText
+                          lines={1}
+                          text={productNameText(t, item.name)}
+                          more={t("reqList.more")}
+                          less={t("reqList.less")}
+                          className="max-w-[11rem]"
+                        />
+                      </Td>
                       {sheet ? (
                         <>
-                          <Td>
-                            <span className="flex flex-wrap gap-1">
+                          <Td className={slimTd}>
+                            <span className="flex flex-nowrap items-center gap-1">
                               {cell?.sheetKind ? (
                                 <Badge
                                   tone={
@@ -572,6 +621,7 @@ export default async function PurchaseQuotePage({
                                       ? "warning"
                                       : "neutral"
                                   }
+                                  className="px-1.5 py-0 text-[10px]"
                                 >
                                   {t(`supplierSheet.kind.${cell.sheetKind}`)}
                                 </Badge>
@@ -587,78 +637,110 @@ export default async function PurchaseQuotePage({
                               ) : null}
                             </span>
                           </Td>
-                          <Td className="tabular-nums">
+                          <Td className={cx(slimTd, "tabular-nums")}>
                             {n(sheet.masterBoxQty, 0)}
                           </Td>
-                          <Td className="tabular-nums">
+                          <Td className={cx(slimTd, "tabular-nums")}>
                             {sheet.innerBoxQty
                               ? n(sheet.innerBoxQty, 0)
                               : t("supplierSheet.noInner")}
                           </Td>
-                          <Td className="tabular-nums">
+                          <Td className={cx(slimTd, "tabular-nums")}>
                             {sheet.boxLengthCm !== null &&
                             sheet.boxWidthCm !== null &&
                             sheet.boxHeightCm !== null
                               ? `${n(sheet.boxLengthCm, 2)} × ${n(sheet.boxWidthCm, 2)} × ${n(sheet.boxHeightCm, 2)}`
                               : "—"}
                           </Td>
-                          <Td className="tabular-nums">{n(sheet.cbm, 4)}</Td>
-                          <Td className="tabular-nums">
+                          <Td className={cx(slimTd, "tabular-nums")}>
+                            {n(sheet.cbm, 4)}
+                          </Td>
+                          <Td className={cx(slimTd, "tabular-nums")}>
                             {n(sheet.netWeightKg)}
                           </Td>
-                          <Td className="tabular-nums">
+                          <Td className={cx(slimTd, "tabular-nums")}>
                             {n(sheet.grossWeightBoxKg)}
                           </Td>
-                          <Td>{sheet.material}</Td>
-                          <Td>
-                            {sheet.factoryItemCode ?? t("supplierSheet.noCode")}
+                          <Td className={slimTd}>
+                            <ClampText
+                              lines={1}
+                              text={sheet.material}
+                              more={t("reqList.more")}
+                              less={t("reqList.less")}
+                              className="max-w-[9rem]"
+                            />
                           </Td>
-                          <Td className="tabular-nums" data-quote-sheet-boxes>
+                          <Td className={slimTd}>
+                            <ClampText
+                              lines={1}
+                              text={
+                                sheet.factoryItemCode ??
+                                t("supplierSheet.noCode")
+                              }
+                              more={t("reqList.more")}
+                              less={t("reqList.less")}
+                              className="max-w-[8rem]"
+                            />
+                          </Td>
+                          <Td
+                            className={cx(slimTd, "tabular-nums")}
+                            data-quote-sheet-boxes
+                          >
                             {box ? n(box.boxes, 0) : "—"}
                           </Td>
-                          <Td className="tabular-nums" data-quote-sheet-cbm>
+                          <Td
+                            className={cx(slimTd, "tabular-nums")}
+                            data-quote-sheet-cbm
+                          >
                             {box ? n(box.cbm, 3) : "—"}
                           </Td>
                         </>
                       ) : (
-                        <Td colSpan={11} className="text-xs text-zinc-500">
+                        <Td
+                          colSpan={11}
+                          className={cx(slimTd, "text-zinc-500")}
+                        >
                           {t("supplierSheet.board.none")}
                         </Td>
                       )}
-                      <Td>
+                      <Td className={slimTd}>
                         {cell?.photoDocumentId ? (
                           <a
                             href={`/api/files/${cell.photoDocumentId}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="block w-10 overflow-hidden rounded border border-zinc-200"
+                            aria-label={t("supplierSheet.view.photo")}
+                            className="inline-flex align-middle"
                             data-quote-sheet-photo
                           >
-                            {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
-                            <img
-                              src={`/api/files/${cell.photoDocumentId}`}
-                              alt={t("supplierSheet.view.photo")}
-                              className="h-10 w-10 object-cover"
+                            <HoverZoomPhoto
+                              photoId={cell.photoDocumentId}
+                              size="h-6 w-6"
                             />
                           </a>
                         ) : (
                           "—"
                         )}
                       </Td>
-                      <Td className="text-xs">
+                      <Td className={cx(slimTd, "text-amber-800")}>
                         {cell?.alerts.length ? (
-                          <ul
-                            className="space-y-0.5 text-amber-800"
-                            data-quote-sheet-alerts
+                          <span
+                            data-quote-sheet-alerts={cell.alerts
+                              .map((a) => a.key)
+                              .join(" ")}
                           >
-                            {cell.alerts.map((a) => (
-                              <li key={a.key} data-quote-sheet-alert={a.key}>
-                                ⚠ {alertText(a)}
-                              </li>
-                            ))}
-                          </ul>
+                            <ClampText
+                              lines={1}
+                              text={cell.alerts
+                                .map((a) => `⚠ ${alertText(a)}`)
+                                .join(" · ")}
+                              more={t("reqList.more")}
+                              less={t("reqList.less")}
+                              className="max-w-[16rem]"
+                            />
+                          </span>
                         ) : (
-                          "—"
+                          <span className="text-zinc-800">—</span>
                         )}
                       </Td>
                     </tr>
