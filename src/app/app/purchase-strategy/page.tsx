@@ -2,12 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
-import { isWellmix } from "@/lib/auth/permissions";
+import { isAdmin, isWellmix } from "@/lib/auth/permissions";
+import { PORTAL_MIN_PASSWORD } from "@/lib/services/portal-access";
 import { canOpen } from "@/lib/auth/screens";
 import { can, canSeePurchasePrice } from "@/lib/auth/function-access";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { productNameText } from "@/i18n";
+import { LOCALE_NAMES, productNameText } from "@/i18n";
 import { getStore, type LastPurchase, type Request } from "@/lib/db";
 import { listByIds } from "@/lib/db/lookup";
 import {
@@ -562,6 +563,40 @@ export default async function PurchaseStrategyPage({
         checks={Object.fromEntries(board.checks)}
         texts={texts}
         canChoose={canChoose}
+        // Gerar o login do parceiro aqui (dono, 20/11/2026): só o
+        // administrador (docs/EQUIPE_ACESSOS.md, R5).
+        partnerLogin={
+          isAdmin(user)
+            ? {
+                minPassword: PORTAL_MIN_PASSWORD,
+                texts: {
+                  open: t("partnerLogin.open"),
+                  loading: t("partnerLogin.loading"),
+                  title: t("partnerLogin.title"),
+                  login: t("reqFix.customerLogin.login"),
+                  loginHint: t("partnerLogin.loginHint"),
+                  name: t("reqFix.customerLogin.name"),
+                  password: t("reqFix.customerLogin.password"),
+                  passwordHint: t("partnerLogin.passwordHint", {
+                    n: PORTAL_MIN_PASSWORD,
+                  }),
+                  locale: t("partnerLogin.locale"),
+                  localeNames: LOCALE_NAMES,
+                  submit: t("partnerLogin.submit"),
+                  working: t("reqFix.customerLogin.working"),
+                  cancel: t("partnerLogin.cancel"),
+                  done: t("partnerLogin.done"),
+                  changeHint: t("partnerLogin.changeHint"),
+                  portal: t("reqFix.portal"),
+                  loginLabel: t("reqFix.login"),
+                  passwordLabel: t("reqFix.customerLogin.password"),
+                  copy: t("reqFix.copy"),
+                  copied: t("reqFix.copied"),
+                  copyFailed: t("reqFix.copyFailed"),
+                },
+              }
+            : null
+        }
       />
 
       <section className="mt-3" data-strategy-open={decisions.length}>

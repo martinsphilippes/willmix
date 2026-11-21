@@ -244,6 +244,32 @@ Pedido do dono: o fornecedor que nunca negociou o produto informa a ficha técni
 - **Dependência**: em 20/11/2026, nenhum dos 78 fornecedores com compra (15.971 pares produto × fornecedor nos produtos ativos) tinha login no portal; sem login a cotação não chega (a Estratégia mostra "sem login ativo"), e a revalidação começa com os logins.
 - **Testes**: `tests/unit/supplier-sheet.test.ts` (o que falta, avisos, o que mudou, comparativo, a caixa de uma fonte só, caixas por programação; comercial obrigatório; quem nunca vendeu e a próxima cotação; quem já vendeu, correção recusada e depois confirmada, sem mudar o cadastro; aceitar; pedido direto; a foto da balança no pedido; a vencedora na Solicitação ao fornecedor) e as E2E `tests/e2e/purchase-quote.spec.ts` (a ficha no envio, o que falta, as caixas pela caixa dele no comparativo, a lista e a ficha do Cadastro) e `tests/e2e/purchase-strategy.spec.ts` (o aviso de revalidação para o fornecedor da última compra).
 
+## Login do parceiro na Estratégia (dono, 20/11/2026)
+
+Pedido do dono (20/11/2026, com o print da Estratégia de compra): no "Sem login ativo" da lista de parceiros, o "Abrir o cadastro" levava ao cadastro para gerar o acesso. O pedido é gerar o acesso ali mesmo.
+
+- **Quem**: só o administrador (gerar login é dele; docs/EQUIPE_ACESSOS.md, R5). Para os outros, a linha fica como era, com o "Abrir o cadastro".
+- **Como**:
+  - embaixo do aviso, "Gerar o login aqui" abre um formulário curto, já preenchido;
+  - **login**: o e-mail do cadastro, se ainda não é login de ninguém, ou um nome de usuário pelo nome do parceiro;
+  - **nome**: o contato do cadastro, ou o nome do parceiro;
+  - **senha provisória**: sugerida; o parceiro troca no 1º acesso;
+  - **idioma**: China em chinês, Brasil em português, os outros em inglês;
+  - **papel**: o do tipo do parceiro (`loginRoleOfParty`, a mesma regra do cadastro).
+- **Depois de criar**:
+  - a linha mostra o login e a senha para passar ao parceiro, com "Copiar login e senha";
+  - a tela confere o parceiro de novo (`/api/purchase-strategy/recipient`): ele vira Apto e fica marcado nos produtos em que é da família ou foi escolhido na busca;
+  - as escolhas da tela continuam (nada é recarregado).
+- **Recusas com o motivo**: login já usado ou inválido, senha curta, tipo de parceiro sem login.
+- **Peças**:
+  - `partnerLoginSuggestion` e `createPartnerLogin` (`src/lib/services/partner-login.ts`);
+  - as ações em `src/app/app/actions/partner-login.ts`;
+  - o formulário `PartnerLoginFix` (`src/components/partner-login-fix.tsx`);
+  - a lista (`strategy-queue.tsx`) e os textos `partnerLogin.*`.
+- **Testes**:
+  - `tests/unit/partner-login.test.ts`: a sugestão, a criação com o papel e a troca no 1º acesso, o parceiro Apto e as recusas;
+  - `tests/e2e/strategy-partner-login.spec.ts`: um fornecedor novo sem login, gerar o login na Estratégia, o login e a senha na tela, o parceiro Apto e marcado.
+
 ## Andamento
 
 | PR  | Entrega                                                                                        | Situação |
