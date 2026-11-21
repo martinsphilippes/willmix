@@ -303,6 +303,23 @@ describe("carga dos pedidos do Sankhya", () => {
     expect(o.pausedAt).toBeTruthy();
   });
 
+  it("rodada em andamento (trava) faz a outra esperar", async () => {
+    const { readSetting, writeSetting } =
+      await import("@/lib/integrations/sankhya-settings");
+    const key = load.ORDERS_LOAD_KEY;
+    const saved = await readSetting<Record<string, unknown>>(key);
+    await writeSetting(key, {
+      ...saved,
+      phase: "orders",
+      done: 0,
+      lockUntil: new Date(Date.now() + 60_000).toISOString(),
+    });
+    const p = await load.runOrdersLoadStep(admin);
+    expect(p.done).toBe(0);
+    expect(p.phase).toBe("orders");
+    await writeSetting(key, saved);
+  });
+
   it("rodar de novo atualiza sem duplicar", async () => {
     const store = getStore();
     const before = (await store.list("orders")).length;

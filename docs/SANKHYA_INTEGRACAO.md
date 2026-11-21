@@ -439,6 +439,7 @@ O track junta as partes de um mesmo pedido e confirma que os "gêmeos" são pedi
   - O `sankhyaCode` e o `erpNumber` são os da ponta principal.
   - O item tem o id `snk-t<track>-<NUNOTA>-<SEQUENCIA>`, porque o track junta mais de um documento.
   - A linha do embarque cai no pedido pelo track do documento de origem. Se esse documento não tiver o item, ela vai para o item da ponta principal com a mesma sequência.
+- **Duas rodadas ao mesmo tempo** (aba fechada com a rodada ainda no servidor e "Continuar" de novo; 21/11/2026, "duplicate key … snk-t46553"): a carga ganhou uma trava (`lockUntil` no andamento, o tempo do passo mais 30 s), e o pedido que outra rodada já gravou segue como atualização em vez de erro.
 - **Limpeza da carga de 21/11:** `scripts/sankhya-orders-reset.sql` apaga os pedidos `snk-…`, os embarques `snk-35-…` e tudo o que aponta para eles, nas 36 tabelas com `orderId`, e zera o andamento da carga. Os pedidos do portal, os cadastros e a cópia das views ficam.
 
 ## 10. Em aberto
