@@ -38,6 +38,14 @@ export function loadFx(): Promise<FxPayload | null> {
   return pending;
 }
 
+/**
+ * O portal está devolvendo valores ao formulário (rascunho restaurado,
+ * `FormDraftGuard`): a moeda que volta não converte o valor.
+ */
+export function restoringForm(el: Element | null | undefined) {
+  return Boolean(el?.closest("form")?.dataset.draftRestoring);
+}
+
 /** Busca o câmbio antes da troca (foco no seletor de moeda): a conversão sai na hora. */
 export function prefetchFx() {
   void loadFx();

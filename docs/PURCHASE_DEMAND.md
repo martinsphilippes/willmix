@@ -311,6 +311,7 @@ Pedido do dono (21/11/2026, com o vídeo da ficha do produto no iPad): no quadro
   - `src/lib/fx-convert.ts`: a conta e o texto do aviso;
   - `src/components/fx-conversion.tsx`: câmbio, aviso e "Manter";
   - `src/components/fx-field-watch.tsx`: formulários de campo simples (a oferta da negociação);
+  - `FormDraftGuard` marca o formulário enquanto devolve um rascunho (`data-draft-restoring`): a moeda que volta não converte;
   - `src/app/api/fx/route.ts`, o `MoneyInput`, `quote-answer-form.tsx`, `proposal-fields.tsx` e os textos `moneyFx.*`.
 - **Testes**: `tests/unit/fx-convert.test.ts` e `tests/e2e/currency-conversion.spec.ts` (ficha do produto: Dólar → Real, "Manter", Real → Yuan e o aviso que sai ao digitar).
 - **Para depois**: os outros campos de preço em texto simples ao lado de uma moeda (ex.: o lote do pedido) convertem quando migrarem para o `MoneyInput` ou ganharem o `FxFieldWatch`.

@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { parseNumberInput } from "@/lib/number-input";
-import { FxNoteLine, prefetchFx, useFxConversion } from "./fx-conversion";
+import {
+  FxNoteLine,
+  prefetchFx,
+  restoringForm,
+  useFxConversion,
+} from "./fx-conversion";
 
 /**
  * Conversão ao trocar a moeda num formulário de campos simples (o texto do
@@ -56,6 +61,7 @@ export function FxFieldWatch({
       if (next === last) return;
       const before = last;
       last = next;
+      if (restoringForm(select)) return;
       const typed = parseNumberInput(input.value);
       convert(
         before,

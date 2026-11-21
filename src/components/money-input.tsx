@@ -12,7 +12,12 @@ import {
 } from "@/lib/money-mask";
 import { CURRENCY_SYMBOL } from "@/lib/workflow/money";
 import { cx, inputClass, inputDenseClass } from "./ui";
-import { FxNoteLine, prefetchFx, useFxConversion } from "./fx-conversion";
+import {
+  FxNoteLine,
+  prefetchFx,
+  restoringForm,
+  useFxConversion,
+} from "./fx-conversion";
 
 /**
  * Campo de dinheiro, o mesmo em todo o portal: símbolo da moeda na frente do
@@ -203,7 +208,7 @@ export function MoneyInput({
       const before = last;
       last = next;
       setWatched(next);
-      if (before) onCurrency.current(before, next);
+      if (before && !restoringForm(field)) onCurrency.current(before, next);
     };
     const first = setTimeout(read, 0);
     field.addEventListener("change", read);
@@ -286,7 +291,8 @@ export function MoneyInput({
           onFocus={prefetchFx}
           onChange={(e) => {
             const next = e.target.value;
-            fx.convert(ownCurrency, next, amount, setAmount);
+            if (!restoringForm(e.currentTarget))
+              fx.convert(ownCurrency, next, amount, setAmount);
             setOwnCurrency(next);
           }}
           disabled={disabled}
