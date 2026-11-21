@@ -70,26 +70,63 @@ test("Nova solicitação TS: produto da base, descrição, cálculo da previsão
   await page.goto("/app/new-request/ts");
   await chooseCustomer(page, "loja", "cliente-joao");
 
-  // Condições do pedido: completas, recolhem num resumo de uma linha.
+  // Dois quadros (dono, 21/11/2026): Condições do pedido (operação, formato,
+  // valor total e pagamento) e Entrega (re-despacho, transportador, valor do
+  // transporte, país e porto, grupo e o aviso da confirmação).
   const terms = page.locator("[data-order-terms]");
+  const conditions = terms.locator('[data-order-terms-section="conditions"]');
+  const delivery = terms.locator('[data-order-terms-section="delivery"]');
+  await expect(terms.locator("[data-order-terms-section]")).toHaveCount(2);
+  await expect(conditions.locator("h3")).toHaveText("Condições do pedido");
+  await expect(delivery.locator("h3")).toHaveText("Entrega");
+  for (const field of [
+    "[data-order-terms-operation]",
+    "[data-order-terms-format]",
+    "[data-order-terms-total]",
+    "[data-order-terms-payment-plan]",
+  ]) {
+    await expect(conditions.locator(field)).toHaveCount(1);
+    await expect(delivery.locator(field)).toHaveCount(0);
+  }
+  for (const field of [
+    "[data-order-terms-redispatch]",
+    "[data-order-terms-carrier-caller]",
+    "[data-order-terms-country]",
+    "[data-order-terms-group]",
+    "[data-order-terms-confirm-note]",
+  ]) {
+    await expect(delivery.locator(field)).toHaveCount(1);
+    await expect(conditions.locator(field)).toHaveCount(0);
+  }
+
+  // Completas: cada quadro recolhe num resumo de uma linha.
   await fillOrderTerms(page);
   const summary = terms.locator("[data-order-terms-collapsed]");
-  await expect(summary).toBeVisible();
-  await expect(summary.locator("th")).toContainText([
-    "Operação",
-    "Formato",
-    "Re-despacho",
-    "Transportador",
-    "Origem e grupo",
-    "Pagamento",
-    "Valor total",
-  ]);
-  await expect(summary).toContainText("CHINA - Porto não informado › Brinquedos");
-  await expect(terms.locator("[data-order-terms-body]")).toBeHidden();
+  await expect(summary).toHaveCount(2);
+  await expect(
+    conditions.locator("[data-order-terms-collapsed] th"),
+  ).toContainText(["Operação", "Formato", "Pagamento", "Valor total"]);
+  await expect(
+    delivery.locator("[data-order-terms-collapsed] th"),
+  ).toContainText(["Re-despacho", "Transportador", "Origem e grupo"]);
+  await expect(delivery.locator("[data-order-terms-collapsed]")).toContainText(
+    "CHINA - Porto não informado › Brinquedos",
+  );
+  await expect(terms.locator("[data-order-terms-body]:visible")).toHaveCount(0);
+  // O Editar de um quadro abre só ele.
+  await delivery.locator('[data-order-terms-toggle="edit"]').click();
+  await expect(delivery.locator("[data-order-terms-body]")).toBeVisible();
+  await expect(conditions.locator("[data-order-terms-body]")).toBeHidden();
+  await expect(
+    conditions.locator("[data-order-terms-collapsed]"),
+  ).toBeVisible();
   await editOrderTerms(page);
   await expect(summary).toHaveCount(0);
-  await terms.locator('[data-order-terms-toggle="collapse"]').click();
-  await expect(summary).toBeVisible();
+  // Recolher: cada quadro pelo seu botão.
+  await conditions.locator('[data-order-terms-toggle="collapse"]').click();
+  await expect(summary).toHaveCount(1);
+  await delivery.locator('[data-order-terms-toggle="collapse"]').click();
+  await expect(summary).toHaveCount(2);
 
   // Só produtos da base: sem o "Produto ainda não está no catálogo".
   const row = page.locator('[data-request-item="0"]');
@@ -222,7 +259,7 @@ test("Busca por palavras fora de ordem, Enter não envia e a encomenda reaberta 
       '[data-request-item="0"] [data-product-picker="catalog"] [data-product-picker-input]',
     ),
   ).toHaveValue(/Boneca/);
-  await expect(page.locator("[data-order-terms-collapsed]")).toBeVisible();
+  await expect(page.locator("[data-order-terms-collapsed]")).toHaveCount(2);
 
   // Enviada de novo: a mesma encomenda (mesmo número e id), no lugar.
   await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();

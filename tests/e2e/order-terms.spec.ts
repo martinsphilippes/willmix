@@ -140,12 +140,16 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await chooseCustomerLogin(page, "joao@lojista.com");
   await fillOrderTerms(page, { format: "wd", redispatch: "yes" });
   await expect(page.locator("[data-request-origin-missing]")).toHaveCount(0);
-  // Tudo preenchido: o bloco se recolhe num resumo de uma linha (dono,
-  // 19/11/2026), com o transportador; Editar abre de novo.
+  // Tudo preenchido: cada quadro se recolhe num resumo de uma linha (dono,
+  // 19 e 21/11/2026), o transportador no da Entrega; Editar abre de novo.
   const summary = terms.locator("[data-order-terms-collapsed]");
-  await expect(summary).toBeVisible();
-  await expect(summary).toContainText("Wellmix");
-  await expect(terms.locator("[data-order-terms-body]")).toBeHidden();
+  await expect(summary).toHaveCount(2);
+  await expect(
+    terms.locator(
+      '[data-order-terms-section="delivery"] [data-order-terms-collapsed]',
+    ),
+  ).toContainText("Wellmix");
+  await expect(terms.locator("[data-order-terms-body]:visible")).toHaveCount(0);
   await editOrderTerms(page);
   // A Wellmix chama o transportador: com re-despacho, duas transportadoras.
   await expect(
@@ -171,8 +175,8 @@ test("Nova solicitação (Wellmix): cliente, condições, rascunho e confirmaç�
   await terms
     .locator("[data-order-terms-redispatch-carrier]")
     .selectOption("portal:transportador");
-  // Completo de novo: recolhe sozinho.
-  await expect(terms.locator("[data-order-terms-collapsed]")).toBeVisible();
+  // Completo de novo: os dois quadros recolhem sozinhos.
+  await expect(terms.locator("[data-order-terms-collapsed]")).toHaveCount(2);
   await editOrderTerms(page);
   // Cliente e transportador escolhidos: código (e CNPJ do transportador) e
   // nome logo abaixo. A busca por nome, código ou CNPJ saiu (dono,
