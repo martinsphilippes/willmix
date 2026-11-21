@@ -487,14 +487,29 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     "Fechamos a 1,30?",
   );
   await expect(page.locator("[data-timeline-entry]")).toHaveCount(4);
-  // Chat flutuante: a mensagem da tabela está lá; manda outra por ele.
+  // Conversa embutida na seção "Negociação e conversa" (no lugar do chat
+  // flutuante, dono, 21/11/2026): a mensagem da tabela está lá, com quem
+  // mandou e para quem foi; "Enviando para" é o responsável (quem abriu a
+  // solicitação). Duplo clique manda uma mensagem só.
   await page.click("[data-request-chat-toggle]");
   const chat = page.locator("[data-request-chat]");
   await expect(chat.locator("[data-request-chat-message]")).toHaveCount(1);
+  await expect(chat.locator("[data-request-chat-to]")).toContainText(
+    "admin@wellmix.com",
+  );
+  await expect(chat.locator("[data-request-chat-sending-as]")).toContainText(
+    "supplier.a@china.com",
+  );
+  await expect(chat.locator("[data-request-chat-sending-to]")).toContainText(
+    "admin@wellmix.com",
+  );
   await chat.locator("[data-negotiation-message-text]").fill("Foto amanhã.");
-  await chat.locator("[data-negotiation-message-submit]").click();
+  await chat.locator("[data-negotiation-message-submit]").dblclick();
+  await page.waitForURL(/[?&]negotiation=message/);
   await expect(chat.locator("[data-request-chat-message]")).toHaveCount(2);
-  // Fecha o chat flutuante: com o menu lateral, ele cobre os botões da resposta.
+  await page.reload();
+  await expect(chat.locator("[data-request-chat-message]")).toHaveCount(2);
+  // Recolhe a conversa (abre e fecha no próprio card).
   await page.click("[data-request-chat-toggle]");
   await page.click("[data-negotiation-respond=accept]");
   await page.waitForURL(/[?&]negotiation=accept/);
@@ -523,6 +538,18 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(sent).toHaveAttribute("data-sent-mark", "on");
   await answerNote.fill("Caixa confirmada.");
   await expect(sent).toBeHidden();
+  // Erro no envio (dono, 21/11/2026): a página não recarrega, o aviso
+  // aparece embaixo do formulário e o que foi digitado continua nos campos.
+  const answerPrice = page.locator("[data-supplier-answer-price]");
+  const priceBefore = await answerPrice.inputValue();
+  await answerPrice.fill("abc");
+  await page.click("[data-supplier-answer-submit]");
+  await expect(
+    page.locator("[data-supplier-answer-form] [data-action-form-error]"),
+  ).toBeVisible();
+  await expect(answerNote).toHaveValue("Caixa confirmada.");
+  await expect(answerPrice).toHaveValue("abc");
+  await answerPrice.fill(priceBefore);
   await page.click("[data-supplier-answer-submit]");
   await expect(answerNote).toHaveValue("Caixa confirmada.");
   await expect(sent).toHaveAttribute("data-sent-mark", "on");
@@ -549,6 +576,9 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   expect(altUrl).not.toBe(requestUrl);
   await page.goto(itemUrl);
   await expect(page.locator("[data-linked-request]")).toHaveCount(1);
+  // Opção A do dono (21/11/2026): a observação da decisão continua indo
+  // para o Histórico do fornecedor, e o campo diz isso.
+  await expect(page.locator("[data-supplier-decide-note-hint]")).toBeVisible();
   await page.click("[data-supplier-decide=approved]");
   await page.waitForURL(/[?&]decided=approved/);
   // Aprovada esta, a ligada pede resposta: continuar negociando ou recusar.

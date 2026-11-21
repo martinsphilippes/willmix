@@ -3,6 +3,8 @@
 import {
   startTransition,
   useActionState,
+  useEffect,
+  useRef,
   useState,
   type ComponentProps,
   type ReactNode,
@@ -52,6 +54,13 @@ export function ActionForm({
   // ou com este aviso (o erro volta sem trocar de tela).
   useFormDoneSignal(pending);
   const error = state.error && state.at > hiddenAt ? state.error : null;
+  // Um envio por vez já no clique (duplo clique, Enter repetido): a trava
+  // vale antes de a tela mostrar os campos travados. Solta quando o envio
+  // termina ou quando a ação devolve o erro.
+  const busy = useRef(false);
+  useEffect(() => {
+    if (!pending) busy.current = false;
+  }, [pending, state]);
   return (
     <form
       {...props}
@@ -59,7 +68,8 @@ export function ActionForm({
       data-action-form-pending={pending ? "1" : undefined}
       onSubmit={(event) => {
         event.preventDefault();
-        if (pending) return;
+        if (pending || busy.current) return;
+        busy.current = true;
         const submitter = (event.nativeEvent as SubmitEvent).submitter;
         const data = new FormData(event.currentTarget, submitter ?? null);
         setHiddenAt(state.at);
