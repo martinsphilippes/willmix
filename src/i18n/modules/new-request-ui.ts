@@ -104,6 +104,8 @@ export const pt = {
   "orderTerms.collapsed.done": "Recolher",
   "orderTerms.collapsed.hint":
     "Tudo preenchido: as condições ficam resumidas. Toque em Editar para mudar.",
+  "orderTerms.collapsed.deliveryHint":
+    "Tudo preenchido: a entrega fica resumida. Toque em Editar para mudar.",
   "orderTerms.collapsed.operation": "Operação",
   "orderTerms.collapsed.format": "Formato",
   "orderTerms.collapsed.carrier": "Transportador",
@@ -223,6 +225,8 @@ export const en: Record<keyof typeof pt, string> = {
   "orderTerms.collapsed.done": "Collapse",
   "orderTerms.collapsed.hint":
     "Everything is filled in: the terms are summarized. Tap Edit to change them.",
+  "orderTerms.collapsed.deliveryHint":
+    "Everything is filled in: the delivery is summarized. Tap Edit to change it.",
   "orderTerms.collapsed.operation": "Operation",
   "orderTerms.collapsed.format": "Format",
   "orderTerms.collapsed.carrier": "Carrier",
@@ -333,6 +337,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderTerms.collapsed.done": "收起",
   "orderTerms.collapsed.hint":
     "已全部填写：条件已汇总显示。点击“编辑”进行修改。",
+  "orderTerms.collapsed.deliveryHint":
+    "已全部填写：交货信息已汇总显示。点击“编辑”进行修改。",
   "orderTerms.collapsed.operation": "业务类型",
   "orderTerms.collapsed.format": "销售形式",
   "orderTerms.collapsed.carrier": "承运人",

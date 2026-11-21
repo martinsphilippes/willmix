@@ -36,7 +36,10 @@ export interface RequestOrderTermsLabels {
   tier: string;
   tierChoose: string;
   tiers: Record<WellmixTier, string>;
+  /** Título do quadro Entrega ("Entrega"). */
   delivery: string;
+  /** Dica do quadro Entrega (dono, 21/11/2026). */
+  deliveryHint?: string;
   carrier: string;
   carrierNone: string;
   redispatch: string;
@@ -95,6 +98,8 @@ export interface RequestOrderTermsLabels {
     edit: string;
     done: string;
     hint: string;
+    /** Dica do quadro Entrega recolhido (dono, 21/11/2026). */
+    deliveryHint?: string;
     operation: string;
     format: string;
     redispatch: string;
@@ -341,6 +346,9 @@ export function RequestOrderTerms({
   // Tudo preenchido (dono, 19/11/2026): o bloco se recolhe sozinho num
   // resumo de uma linha; "Editar" abre de novo. Volta a recolher quando
   // fica completo de novo depois de faltar algo, ou pelo "Recolher".
+  // Dois quadros (dono, 21/11/2026; docs/ORDER_TERMS.md, seção 11.24):
+  // Condições do pedido e Entrega se recolhem juntos quando tudo fica
+  // preenchido, cada um no seu resumo, e cada um tem o seu "Editar".
   const needsPlan = !!labels.payment && paymentPlans.length > 0;
   const complete =
     !!labels.collapsed &&
@@ -354,13 +362,16 @@ export function RequestOrderTerms({
     !!country &&
     !!family &&
     (!needsPlan || !!planId);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState<Record<TermsSection, boolean>>({
+    conditions: false,
+    delivery: false,
+  });
   const [seenComplete, setSeenComplete] = useState(false);
   if (complete !== seenComplete) {
     setSeenComplete(complete);
-    if (complete) setEditing(false);
+    if (complete) setEditing({ conditions: false, delivery: false });
   }
-  const collapsed = complete && !editing;
+  const collapsedOf = (section: TermsSection) => complete && !editing[section];
 
   if (stock)
     return (
@@ -397,26 +408,25 @@ export function RequestOrderTerms({
     </Field>
   );
 
-  return (
-    <section
-      className="space-y-3 rounded-xl border border-zinc-200 p-3"
-      data-order-terms
-    >
+  /** Cabeçalho de um quadro: título, dica e o Editar/Recolher dele. */
+  const sectionHeader = (
+    section: TermsSection,
+    title: string,
+    hint: string | undefined,
+  ) => {
+    const collapsed = collapsedOf(section);
+    return (
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-zinc-900">
-            {labels.title}
-          </h3>
-          <p className="text-xs text-zinc-500">
-            {collapsed && labels.collapsed
-              ? labels.collapsed.hint
-              : labels.hint}
-          </p>
+          <h3 className="text-sm font-semibold text-zinc-900">{title}</h3>
+          {hint ? <p className="text-xs text-zinc-500">{hint}</p> : null}
         </div>
         {complete && labels.collapsed ? (
           <button
             type="button"
-            onClick={() => setEditing(collapsed)}
+            onClick={() =>
+              setEditing((current) => ({ ...current, [section]: collapsed }))
+            }
             aria-expanded={!collapsed}
             className="shrink-0 rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50"
             data-order-terms-toggle={collapsed ? "edit" : "collapse"}
@@ -425,366 +435,424 @@ export function RequestOrderTerms({
           </button>
         ) : null}
       </div>
+    );
+  };
+  const conditionsCollapsed = collapsedOf("conditions");
+  const deliveryCollapsed = collapsedOf("delivery");
+  // Quadro: o espaço entre os itens ignora o corpo escondido (recolhido),
+  // que fica na página para os campos irem no envio.
+  const cardClass = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-3";
 
-      {collapsed && labels.collapsed ? (
-        <OrderTermsSummary
-          labels={labels}
-          cells={[
-            [labels.collapsed.operation, labels.operation[operation]],
-            [
-              labels.collapsed.format,
-              format
-                ? `${labels.format[format]}${format === "wellmix" && tier ? ` · ${labels.tiers[tier as WellmixTier]}` : ""}`
-                : "—",
-            ],
-            [
-              labels.collapsed.redispatch,
-              redispatch === "yes"
-                ? `${labels.redispatchYes}${caller === "wellmix" && redispatchPick.name ? ` · ${redispatchPick.name}` : ""}`
-                : labels.redispatchNo,
-            ],
-            [
-              labels.collapsed.carrier,
-              caller === "wellmix"
-                ? `${labels.carrierCallers.wellmix}${carrierPick.name ? ` · ${carrierPick.name}` : ""}`
-                : caller
-                  ? labels.carrierCallers[caller]
-                  : "—",
-            ],
-            [
-              labels.collapsed.origin,
+  return (
+    <div className="space-y-3" data-order-terms>
+      {/* Quadro 1: Condições do pedido (operação, formato, valor total e
+          forma de pagamento; dono, 21/11/2026). */}
+      <section className={cardClass} data-order-terms-section="conditions">
+        {sectionHeader(
+          "conditions",
+          labels.title,
+          conditionsCollapsed && labels.collapsed
+            ? labels.collapsed.hint
+            : labels.hint,
+        )}
+        {conditionsCollapsed && labels.collapsed ? (
+          <OrderTermsSummary
+            labels={labels}
+            cells={[
+              [labels.collapsed.operation, labels.operation[operation]],
               [
-                options?.countries.find((c) => c.key === country)?.name ??
-                  country,
-                (groups && groups.key === country ? groups.list : []).find(
-                  (g) => g.id === family,
-                )?.name,
-              ]
-                .filter(Boolean)
-                .join(" › ") || "—",
-            ],
-            ...(needsPlan
-              ? ([
-                  [
-                    labels.collapsed.payment,
-                    paymentPlans.find((p) => p.planId === planId)?.name ?? "—",
-                  ],
-                ] as Array<[string, string]>)
-              : []),
-            [
-              labels.collapsed.total,
-              orderTotalOf(shared?.rowTotals)?.toLocaleString(
-                labels.intl ?? "pt-BR",
-                { style: "currency", currency: "BRL" },
-              ) ?? "—",
-            ],
-          ]}
-        />
-      ) : null}
-
-      <div hidden={collapsed} className="space-y-3" data-order-terms-body>
-        <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-          {/* Tipo de operação: em Encomendas, hoje só TS (Venda desabilitada);
+                labels.collapsed.format,
+                format
+                  ? `${labels.format[format]}${format === "wellmix" && tier ? ` · ${labels.tiers[tier as WellmixTier]}` : ""}`
+                  : "—",
+              ],
+              ...(needsPlan
+                ? ([
+                    [
+                      labels.collapsed.payment,
+                      paymentPlans.find((p) => p.planId === planId)?.name ??
+                        "—",
+                    ],
+                  ] as Array<[string, string]>)
+                : []),
+              [
+                labels.collapsed.total,
+                orderTotalOf(shared?.rowTotals)?.toLocaleString(
+                  labels.intl ?? "pt-BR",
+                  { style: "currency", currency: "BRL" },
+                ) ?? "—",
+              ],
+            ]}
+          />
+        ) : null}
+        <div
+          hidden={conditionsCollapsed}
+          className="space-y-3"
+          data-order-terms-body
+        >
+          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+            {/* Tipo de operação: em Encomendas, hoje só TS (Venda desabilitada);
             nas telas de TS e de Venda, só o tipo da tela, já marcado. */}
-          <fieldset
-            className="min-w-0 space-y-1"
-            data-order-terms-operation
-            data-order-terms-operation-fixed={fixedOperation}
-          >
-            <legend className="block text-xs font-medium leading-5 text-zinc-700">
-              {labels.operationType}
-            </legend>
-            <div className="flex flex-wrap gap-2">
-              {(fixedOperation ? [fixedOperation] : OPERATION_TYPES).map(
-                (op) => {
-                  const enabled =
-                    op === fixedOperation ||
-                    ENABLED_OPERATION_TYPES.includes(op);
-                  return (
-                    <label key={op} className={radioClass}>
-                      <input
-                        type="radio"
-                        name="operationType"
-                        value={op}
-                        required
-                        disabled={!enabled}
-                        defaultChecked={op === operation}
-                        data-order-terms-operation-option={op}
-                      />
-                      {labels.operation[op]}
-                      {enabled ? null : (
-                        <span className="text-xs text-zinc-500">
-                          {labels.operationDisabled}
-                        </span>
-                      )}
-                    </label>
-                  );
-                },
-              )}
-            </div>
-            {fixedOperation && labels.operationFixed ? (
-              <p className="text-xs text-zinc-500">{labels.operationFixed}</p>
-            ) : null}
-          </fieldset>
+            <fieldset
+              className="min-w-0 space-y-1"
+              data-order-terms-operation
+              data-order-terms-operation-fixed={fixedOperation}
+            >
+              <legend className="block text-xs font-medium leading-5 text-zinc-700">
+                {labels.operationType}
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {(fixedOperation ? [fixedOperation] : OPERATION_TYPES).map(
+                  (op) => {
+                    const enabled =
+                      op === fixedOperation ||
+                      ENABLED_OPERATION_TYPES.includes(op);
+                    return (
+                      <label key={op} className={radioClass}>
+                        <input
+                          type="radio"
+                          name="operationType"
+                          value={op}
+                          required
+                          disabled={!enabled}
+                          defaultChecked={op === operation}
+                          data-order-terms-operation-option={op}
+                        />
+                        {labels.operation[op]}
+                        {enabled ? null : (
+                          <span className="text-xs text-zinc-500">
+                            {labels.operationDisabled}
+                          </span>
+                        )}
+                      </label>
+                    );
+                  },
+                )}
+              </div>
+              {fixedOperation && labels.operationFixed ? (
+                <p className="text-xs text-zinc-500">{labels.operationFixed}</p>
+              ) : null}
+            </fieldset>
 
-          {/* Formato de venda e, no Wellmix, o nível */}
-          <fieldset className="min-w-0 space-y-1" data-order-terms-format>
-            <legend className="block text-xs font-medium leading-5 text-zinc-700">
-              {labels.saleFormat}
-            </legend>
-            <div className="flex flex-wrap gap-2">
-              {SALE_FORMATS.map((f) => (
-                <label key={f} className={radioClass}>
-                  <input
-                    type="radio"
-                    name="saleFormat"
-                    value={f}
+            {/* Formato de venda e, no Wellmix, o nível */}
+            <fieldset className="min-w-0 space-y-1" data-order-terms-format>
+              <legend className="block text-xs font-medium leading-5 text-zinc-700">
+                {labels.saleFormat}
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {SALE_FORMATS.map((f) => (
+                  <label key={f} className={radioClass}>
+                    <input
+                      type="radio"
+                      name="saleFormat"
+                      value={f}
+                      required
+                      checked={format === f}
+                      onChange={() => setFormat(f)}
+                      data-order-terms-format-option={f}
+                    />
+                    {labels.format[f]}
+                  </label>
+                ))}
+              </div>
+              {format === "wellmix" ? (
+                <Field label={labels.tier}>
+                  <Select
+                    name="wellmixTier"
                     required
-                    checked={format === f}
-                    onChange={() => setFormat(f)}
-                    data-order-terms-format-option={f}
-                  />
-                  {labels.format[f]}
-                </label>
-              ))}
+                    value={tier}
+                    onChange={(e) => setTier(e.target.value)}
+                    data-order-terms-tier
+                  >
+                    <option value="" disabled>
+                      {labels.tierChoose}
+                    </option>
+                    {WELLMIX_TIERS.map((tier) => (
+                      <option key={tier} value={tier}>
+                        {labels.tiers[tier]}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : null}
+            </fieldset>
+
+            {/* Valor total do pedido (dono, 16/11/2026): a soma do valor total
+            de cada produto (preço previsto × quantidade). */}
+            <div
+              className="min-w-0 space-y-1 sm:text-right"
+              data-order-terms-total={
+                orderTotal === null ? "" : orderTotal.toFixed(2)
+              }
+            >
+              <p className="text-xs font-medium leading-5 text-zinc-700">
+                {labels.orderTotal ?? "Valor total"}
+              </p>
+              <p className="text-lg font-semibold tabular-nums text-zinc-900">
+                {orderTotal === null
+                  ? "—"
+                  : orderTotal.toLocaleString(labels.intl ?? "pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    })}
+              </p>
             </div>
-            {format === "wellmix" ? (
-              <Field label={labels.tier}>
+          </div>
+
+          {/* Forma de pagamento (dono, 16/11/2026): logo abaixo do Valor total,
+          uma das formas ativas das Configurações, com a previsão das
+          parcelas pelo valor total do pedido. */}
+          {labels.payment ? (
+            <PaymentPlanField
+              labels={labels.payment}
+              intl={labels.intl ?? "pt-BR"}
+              plans={paymentPlans}
+              value={planId}
+              onChange={setPlanId}
+              total={orderTotal}
+            />
+          ) : null}
+        </div>
+      </section>
+
+      {/* Quadro 2: Entrega (re-despacho, quem chama o transportador, a
+          transportadora, o valor do transporte, o país de origem e o grupo
+          de produto; dono, 21/11/2026). */}
+      <section className={cardClass} data-order-terms-section="delivery">
+        {sectionHeader(
+          "delivery",
+          labels.delivery,
+          deliveryCollapsed && labels.collapsed
+            ? (labels.collapsed.deliveryHint ?? labels.collapsed.hint)
+            : labels.deliveryHint,
+        )}
+        {deliveryCollapsed && labels.collapsed ? (
+          <OrderTermsSummary
+            labels={labels}
+            cells={[
+              [
+                labels.collapsed.redispatch,
+                redispatch === "yes"
+                  ? `${labels.redispatchYes}${caller === "wellmix" && redispatchPick.name ? ` · ${redispatchPick.name}` : ""}`
+                  : labels.redispatchNo,
+              ],
+              [
+                labels.collapsed.carrier,
+                caller === "wellmix"
+                  ? `${labels.carrierCallers.wellmix}${carrierPick.name ? ` · ${carrierPick.name}` : ""}`
+                  : caller
+                    ? labels.carrierCallers[caller]
+                    : "—",
+              ],
+              [
+                labels.collapsed.origin,
+                [
+                  options?.countries.find((c) => c.key === country)?.name ??
+                    country,
+                  (groups && groups.key === country ? groups.list : []).find(
+                    (g) => g.id === family,
+                  )?.name,
+                ]
+                  .filter(Boolean)
+                  .join(" › ") || "—",
+              ],
+            ]}
+          />
+        ) : null}
+        <div
+          hidden={deliveryCollapsed}
+          className="space-y-3"
+          data-order-terms-body
+        >
+          {/* Transportador (obrigatório) e Re-despacho Sim/Não */}
+          <div className="space-y-1" data-order-terms-delivery>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="min-w-0 space-y-3">
+                <fieldset
+                  className="min-w-0 space-y-1"
+                  data-order-terms-redispatch
+                >
+                  <legend className="block text-xs font-medium leading-5 text-zinc-700">
+                    {labels.redispatch}
+                  </legend>
+                  <div className="flex flex-wrap gap-2">
+                    {(["yes", "no"] as const).map((v) => (
+                      <label key={v} className={radioClass}>
+                        <input
+                          type="radio"
+                          name="redispatch"
+                          value={v}
+                          required
+                          checked={redispatch === v}
+                          onChange={() => setRedispatch(v)}
+                          data-order-terms-redispatch-option={v}
+                        />
+                        {v === "yes"
+                          ? labels.redispatchYes
+                          : labels.redispatchNo}
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    {labels.redispatchHint}
+                  </p>
+                </fieldset>
+                {/* Quem chama o transportador (dono, 16/11/2026): define quem
+                vincula a(s) transportadora(s) e a rota da entrega. */}
+                <fieldset
+                  className="min-w-0 space-y-1"
+                  data-order-terms-carrier-caller
+                >
+                  <legend className="block text-xs font-medium leading-5 text-zinc-700">
+                    {labels.carrierCaller}
+                  </legend>
+                  <div className="flex flex-wrap gap-2">
+                    {CARRIER_CALLERS.map((v) => (
+                      <label key={v} className={radioClass}>
+                        <input
+                          type="radio"
+                          name="carrierCaller"
+                          value={v}
+                          required
+                          checked={caller === v}
+                          onChange={() => setCaller(v)}
+                          data-order-terms-carrier-caller-option={v}
+                        />
+                        {labels.carrierCallers[v]}
+                      </label>
+                    ))}
+                  </div>
+                  {caller ? (
+                    <p
+                      className="text-xs text-zinc-500"
+                      data-order-terms-carrier-caller-hint
+                    >
+                      {labels.carrierCallerHint[caller]}
+                    </p>
+                  ) : null}
+                </fieldset>
+              </div>
+              <div className="min-w-0 space-y-3">
+                {caller !== "wellmix" ? (
+                  // O cliente chama (dono, 18/11/2026): sem escolher a
+                  // transportadora, mas o valor do transporte aparece (tem custo
+                  // de toda forma).
+                  caller ? (
+                    freightField
+                  ) : null
+                ) : failed ? (
+                  <p className="text-xs font-medium text-red-700">
+                    {labels.error}
+                  </p>
+                ) : !options ? (
+                  <p className="text-xs text-zinc-500">{labels.loading}</p>
+                ) : (
+                  <>
+                    <CarrierPicker
+                      name="carrier"
+                      label={labels.carrier}
+                      initial={initial.carrier ?? ""}
+                      carriers={options.carriers}
+                      labels={labels}
+                      dataKey="carrier"
+                      onValue={onCarrier}
+                    />
+                    {freightField}
+                    {redispatch === "yes" ? (
+                      <CarrierPicker
+                        name="redispatchCarrier"
+                        label={labels.redispatchCarrier}
+                        initial={initial.redispatchCarrier ?? ""}
+                        carriers={options.carriers}
+                        labels={labels}
+                        dataKey="redispatch-carrier"
+                        onValue={onRedispatchCarrier}
+                      />
+                    ) : null}
+                  </>
+                )}
+              </div>
+            </div>
+            {options && options.sankhya !== "ok" ? (
+              <p
+                className="text-xs text-amber-700"
+                data-order-terms-sankhya={options.sankhya}
+              >
+                {options.sankhya === "off"
+                  ? labels.carrierSankhyaOff
+                  : labels.carrierSankhyaError}
+              </p>
+            ) : null}
+          </div>
+
+          {/* País de origem > Grupo de produto (família) */}
+          <div className="space-y-1" data-order-terms-origin>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label={labels.country}>
                 <Select
-                  name="wellmixTier"
+                  name="originCountry"
+                  value={country}
                   required
-                  value={tier}
-                  onChange={(e) => setTier(e.target.value)}
-                  data-order-terms-tier
+                  disabled={!options}
+                  onChange={(e) => askSwitch("country", e.target.value)}
+                  data-order-terms-country
                 >
                   <option value="" disabled>
-                    {labels.tierChoose}
+                    {labels.countryChoose}
                   </option>
-                  {WELLMIX_TIERS.map((tier) => (
-                    <option key={tier} value={tier}>
-                      {labels.tiers[tier]}
+                  {/* Produto sem país não é vendido; BRASIL não vale no TS. */}
+                  {(options?.countries ?? [])
+                    .filter((c) => c.key)
+                    .map((c) => {
+                      const allowed = countryAllowed(operation, c.key);
+                      return (
+                        <option key={c.key} value={c.key} disabled={!allowed}>
+                          {`${c.name} — ${count(c.products)}${allowed ? "" : ` ${labels.countryDisabled}`}`}
+                        </option>
+                      );
+                    })}
+                </Select>
+              </Field>
+              <Field label={labels.group}>
+                <Select
+                  name="productFamily"
+                  value={family}
+                  required
+                  disabled={!myGroups || !myGroups.length}
+                  onChange={(e) => askSwitch("family", e.target.value)}
+                  data-order-terms-group
+                >
+                  <option value="" disabled>
+                    {!country
+                      ? labels.groupPickCountry
+                      : groupsFailed
+                        ? labels.error
+                        : !myGroups
+                          ? labels.loading
+                          : myGroups.length
+                            ? labels.groupChoose
+                            : labels.groupNone}
+                  </option>
+                  {(myGroups ?? []).map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {`${g.name} — ${count(g.products)}`}
                     </option>
                   ))}
                 </Select>
               </Field>
-            ) : null}
-          </fieldset>
-
-          {/* Valor total do pedido (dono, 16/11/2026): a soma do valor total
-            de cada produto (preço previsto × quantidade). */}
-          <div
-            className="min-w-0 space-y-1 sm:text-right"
-            data-order-terms-total={
-              orderTotal === null ? "" : orderTotal.toFixed(2)
-            }
-          >
-            <p className="text-xs font-medium leading-5 text-zinc-700">
-              {labels.orderTotal ?? "Valor total"}
-            </p>
-            <p className="text-lg font-semibold tabular-nums text-zinc-900">
-              {orderTotal === null
-                ? "—"
-                : orderTotal.toLocaleString(labels.intl ?? "pt-BR", {
-                    style: "currency",
-                    currency: "BRL",
-                  })}
-            </p>
-          </div>
-        </div>
-
-        {/* Forma de pagamento (dono, 16/11/2026): logo abaixo do Valor total,
-          uma das formas ativas das Configurações, com a previsão das
-          parcelas pelo valor total do pedido. */}
-        {labels.payment ? (
-          <PaymentPlanField
-            labels={labels.payment}
-            intl={labels.intl ?? "pt-BR"}
-            plans={paymentPlans}
-            value={planId}
-            onChange={setPlanId}
-            total={orderTotal}
-          />
-        ) : null}
-
-        {/* Entrega: Transportador (obrigatório) e Re-despacho Sim/Não */}
-        <div className="space-y-1" data-order-terms-delivery>
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            {labels.delivery}
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="min-w-0 space-y-3">
-              <fieldset
-                className="min-w-0 space-y-1"
-                data-order-terms-redispatch
-              >
-                <legend className="block text-xs font-medium leading-5 text-zinc-700">
-                  {labels.redispatch}
-                </legend>
-                <div className="flex flex-wrap gap-2">
-                  {(["yes", "no"] as const).map((v) => (
-                    <label key={v} className={radioClass}>
-                      <input
-                        type="radio"
-                        name="redispatch"
-                        value={v}
-                        required
-                        checked={redispatch === v}
-                        onChange={() => setRedispatch(v)}
-                        data-order-terms-redispatch-option={v}
-                      />
-                      {v === "yes" ? labels.redispatchYes : labels.redispatchNo}
-                    </label>
-                  ))}
-                </div>
-                <p className="text-xs text-zinc-500">{labels.redispatchHint}</p>
-              </fieldset>
-              {/* Quem chama o transportador (dono, 16/11/2026): define quem
-                vincula a(s) transportadora(s) e a rota da entrega. */}
-              <fieldset
-                className="min-w-0 space-y-1"
-                data-order-terms-carrier-caller
-              >
-                <legend className="block text-xs font-medium leading-5 text-zinc-700">
-                  {labels.carrierCaller}
-                </legend>
-                <div className="flex flex-wrap gap-2">
-                  {CARRIER_CALLERS.map((v) => (
-                    <label key={v} className={radioClass}>
-                      <input
-                        type="radio"
-                        name="carrierCaller"
-                        value={v}
-                        required
-                        checked={caller === v}
-                        onChange={() => setCaller(v)}
-                        data-order-terms-carrier-caller-option={v}
-                      />
-                      {labels.carrierCallers[v]}
-                    </label>
-                  ))}
-                </div>
-                {caller ? (
-                  <p
-                    className="text-xs text-zinc-500"
-                    data-order-terms-carrier-caller-hint
-                  >
-                    {labels.carrierCallerHint[caller]}
-                  </p>
-                ) : null}
-              </fieldset>
             </div>
-            <div className="min-w-0 space-y-3">
-              {caller !== "wellmix" ? (
-                // O cliente chama (dono, 18/11/2026): sem escolher a
-                // transportadora, mas o valor do transporte aparece (tem custo
-                // de toda forma).
-                caller ? (
-                  freightField
-                ) : null
-              ) : failed ? (
-                <p className="text-xs font-medium text-red-700">
-                  {labels.error}
-                </p>
-              ) : !options ? (
-                <p className="text-xs text-zinc-500">{labels.loading}</p>
-              ) : (
-                <>
-                  <CarrierPicker
-                    name="carrier"
-                    label={labels.carrier}
-                    initial={initial.carrier ?? ""}
-                    carriers={options.carriers}
-                    labels={labels}
-                    dataKey="carrier"
-                    onValue={onCarrier}
-                  />
-                  {freightField}
-                  {redispatch === "yes" ? (
-                    <CarrierPicker
-                      name="redispatchCarrier"
-                      label={labels.redispatchCarrier}
-                      initial={initial.redispatchCarrier ?? ""}
-                      carriers={options.carriers}
-                      labels={labels}
-                      dataKey="redispatch-carrier"
-                      onValue={onRedispatchCarrier}
-                    />
-                  ) : null}
-                </>
-              )}
-            </div>
+            <p className="text-xs text-zinc-500">{labels.originHint}</p>
           </div>
-          {options && options.sankhya !== "ok" ? (
-            <p
-              className="text-xs text-amber-700"
-              data-order-terms-sankhya={options.sankhya}
-            >
-              {options.sankhya === "off"
-                ? labels.carrierSankhyaOff
-                : labels.carrierSankhyaError}
-            </p>
-          ) : null}
         </div>
 
-        {/* País de origem > Grupo de produto (família) */}
-        <div className="space-y-1" data-order-terms-origin>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label={labels.country}>
-              <Select
-                name="originCountry"
-                value={country}
-                required
-                disabled={!options}
-                onChange={(e) => askSwitch("country", e.target.value)}
-                data-order-terms-country
-              >
-                <option value="" disabled>
-                  {labels.countryChoose}
-                </option>
-                {/* Produto sem país não é vendido; BRASIL não vale no TS. */}
-                {(options?.countries ?? [])
-                  .filter((c) => c.key)
-                  .map((c) => {
-                    const allowed = countryAllowed(operation, c.key);
-                    return (
-                      <option key={c.key} value={c.key} disabled={!allowed}>
-                        {`${c.name} — ${count(c.products)}${allowed ? "" : ` ${labels.countryDisabled}`}`}
-                      </option>
-                    );
-                  })}
-              </Select>
-            </Field>
-            <Field label={labels.group}>
-              <Select
-                name="productFamily"
-                value={family}
-                required
-                disabled={!myGroups || !myGroups.length}
-                onChange={(e) => askSwitch("family", e.target.value)}
-                data-order-terms-group
-              >
-                <option value="" disabled>
-                  {!country
-                    ? labels.groupPickCountry
-                    : groupsFailed
-                      ? labels.error
-                      : !myGroups
-                        ? labels.loading
-                        : myGroups.length
-                          ? labels.groupChoose
-                          : labels.groupNone}
-                </option>
-                {(myGroups ?? []).map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {`${g.name} — ${count(g.products)}`}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <p className="text-xs text-zinc-500">{labels.originHint}</p>
-        </div>
-      </div>
+        {/* O aviso "sem devoluções" agora é do cliente (dono, 15/11/2026). */}
+        <p
+          className="rounded-lg bg-zinc-50 px-2.5 py-1.5 text-xs text-zinc-600"
+          data-order-terms-confirm-note
+        >
+          {labels.confirmNote}
+        </p>
+      </section>
 
       <dialog
         ref={switchDialog}
@@ -830,15 +898,7 @@ export function RequestOrderTerms({
           </div>
         </div>
       </dialog>
-
-      {/* O aviso "sem devoluções" agora é do cliente (dono, 15/11/2026). */}
-      <p
-        className="rounded-lg bg-zinc-50 px-2.5 py-1.5 text-xs text-zinc-600"
-        data-order-terms-confirm-note
-      >
-        {labels.confirmNote}
-      </p>
-    </section>
+    </div>
   );
 }
 
@@ -923,6 +983,9 @@ function orderTotalOf(rowTotals: Record<string, number> | undefined) {
   const totals = Object.values(rowTotals ?? {});
   return totals.length ? totals.reduce((a, b) => a + b, 0) : null;
 }
+
+/** Os dois quadros das condições (dono, 21/11/2026). */
+type TermsSection = "conditions" | "delivery";
 
 /** Resumo de uma linha das condições do pedido recolhidas. */
 function OrderTermsSummary({

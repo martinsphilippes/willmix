@@ -18,7 +18,7 @@ export const pt = {
     "Escolha a forma de pagamento (uma das formas ativas em Configurações → Formas de pagamento do cliente).",
   "orderTerms.title": "Condições do pedido",
   "orderTerms.hint":
-    "Valem para todos os produtos desta solicitação. Escolha o país e o grupo antes dos produtos.",
+    "Valem para todos os produtos desta solicitação: tipo de operação, formato de venda e forma de pagamento.",
   "orderTerms.operationType": "Tipo de operação",
   "orderTerms.operation.ts": "TS (Trading Sales)",
   "orderTerms.operation.sale": "Venda",
@@ -34,6 +34,9 @@ export const pt = {
   "orderTerms.tier.evo": "Evo",
   "orderTerms.tier.super": "Super",
   "orderTerms.delivery": "Entrega",
+  // Quadro Entrega (dono, 21/11/2026; docs/ORDER_TERMS.md, seção 11.24).
+  "orderTerms.deliveryHint":
+    "Como o pedido sai do fornecedor e chega ao cliente. Escolha o país e o grupo antes dos produtos.",
   "orderTerms.carrier": "Transportador",
   "orderTerms.carrierNone": "Escolha o transportador",
   "orderTerms.redispatch": "Re-despacho",
@@ -330,7 +333,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Choose the payment terms (one of the active terms in Settings → Customer payment terms).",
   "orderTerms.title": "Order terms",
   "orderTerms.hint":
-    "They apply to every product in this request. Choose the country and the group before the products.",
+    "They apply to every product in this request: operation type, sale format and payment terms.",
   "orderTerms.operationType": "Operation type",
   "orderTerms.operation.ts": "TS (Trading Sales)",
   "orderTerms.operation.sale": "Sale",
@@ -346,6 +349,9 @@ export const en: Record<keyof typeof pt, string> = {
   "orderTerms.tier.evo": "Evo",
   "orderTerms.tier.super": "Super",
   "orderTerms.delivery": "Delivery",
+  // Delivery card (owner, 21/11/2026; docs/ORDER_TERMS.md, section 11.24).
+  "orderTerms.deliveryHint":
+    "How the order leaves the supplier and reaches the customer. Choose the country and the group before the products.",
   "orderTerms.carrier": "Carrier",
   "orderTerms.carrierNone": "Choose the carrier",
   "orderTerms.redispatch": "Redispatch",
@@ -638,8 +644,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqBatch.error.order_terms_payment_plan":
     "请选择付款方式（设置 → 客户付款方式 中启用的方式之一）。",
   "orderTerms.title": "订单条件",
-  "orderTerms.hint":
-    "适用于本申请的所有产品。请先选择国家和产品组，再选择产品。",
+  "orderTerms.hint": "适用于本申请的所有产品：业务类型、销售模式和付款方式。",
   "orderTerms.operationType": "业务类型",
   "orderTerms.operation.ts": "TS（贸易销售）",
   "orderTerms.operation.sale": "销售",
@@ -655,6 +660,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderTerms.tier.evo": "Evo",
   "orderTerms.tier.super": "Super",
   "orderTerms.delivery": "交货",
+  // 交货卡片（所有者，2026/11/21；docs/ORDER_TERMS.md 第 11.24 节）。
+  "orderTerms.deliveryHint":
+    "订单如何从供应商发出并送达客户。请先选择国家和产品组，再选择产品。",
   "orderTerms.carrier": "承运商",
   "orderTerms.carrierNone": "请选择承运商",
   "orderTerms.redispatch": "转运",

@@ -611,12 +611,15 @@ export async function fillOrderTerms(
 
 /**
  * Condições do pedido completas se recolhem num resumo (dono, 19/11/2026):
- * "Editar" abre o bloco de novo para mexer nos campos.
+ * "Editar" abre o bloco de novo para mexer nos campos. Dois quadros (dono,
+ * 21/11/2026): Condições do pedido e Entrega, cada um com o seu "Editar";
+ * abre os dois.
  */
 export async function editOrderTerms(page: Page) {
   const edit = page.locator('[data-order-terms-toggle="edit"]');
-  if (await edit.count()) await edit.click();
-  await expect(page.locator("[data-order-terms-body]")).toBeVisible();
+  while (await edit.count()) await edit.first().click();
+  for (const body of await page.locator("[data-order-terms-body]").all())
+    await expect(body).toBeVisible();
 }
 
 /** O login do cliente com acesso (obrigatório na venda pela Wellmix). */

@@ -370,6 +370,25 @@ Pedido do dono: (1) o "RCA do cliente" era uma lista simples; vira um **componen
 - **Fica para depois:** o histórico de compras continua filtrando só pela família (não pelo porto); trocar as outras listas de seleção do sistema pelo buscador, uma tela por vez.
 - **País - Porto desfeito (dono, 21/11/2026, com o print do campo em `/app/new-request/ts`):** "quero que retorne a atualização anterior, onde tinha apenas os países". O campo voltou a ser **"País de origem"**, só com os países (como na seção 9), e a busca, a lupa e o Grupo de produto voltaram a filtrar só pelo país e pela família. Voltaram ao que eram antes do País - Porto: `request-order-terms.tsx`, `request-order-terms-view.tsx`, `order-terms-labels.ts`, `request-customer-context.tsx`, `request-product-fields.tsx`, `product-browser.tsx`, `product-origin.ts`, `order-terms.ts` (serviço), `product-search.ts`, as rotas `/api/products/search`, `/api/products/browse` e `/api/requests/order-options`; o módulo de textos `origin-port` virou `list-picker`, só com os textos do buscador. O buscador único (RCA do cliente e o `SearchPicker` com lista local) continua. `orderTerms.originPort`/`originPortName` ficam no tipo, só para as encomendas gravadas nesse intervalo; nada mais os lê nem grava.
 
+## 11.24 Condições do pedido e Entrega em dois quadros (dono, 21/11/2026)
+
+Pedido do dono (com três imagens da tela): o quadro único "Condições do pedido" vira **dois quadros**. Assim quem lança sabe que está nas condições do pedido e, ao passar dessa parte, entra na entrega.
+
+- **Quadro 1, "Condições do pedido":** Tipo de operação, Formato de venda (e o nível Wellmix), Valor total, Forma de pagamento e a Previsão de pagamento. A dica passa a ser "Valem para todos os produtos desta solicitação: tipo de operação, formato de venda e forma de pagamento".
+- **Quadro 2, "Entrega":**
+  - campos: Re-despacho, Quem chama o transportador, a transportadora e a do re-despacho (quando a Wellmix chama), Valor do transporte, País de origem e Grupo de produto (família);
+  - por último, o aviso de que o cliente confirma o pedido;
+  - o subtítulo "ENTREGA" de antes virou o título do quadro;
+  - a dica: "Como o pedido sai do fornecedor e chega ao cliente. Escolha o país e o grupo antes dos produtos".
+- **Recolher:** como antes, os dois quadros se recolhem juntos quando tudo está preenchido, cada um no seu resumo de uma linha:
+  - Condições: Operação, Formato, Pagamento e Valor total;
+  - Entrega: Re-despacho, Transportador e Origem e grupo.
+
+  Cada quadro tem o seu "Editar" e "Recolher". O "Editar" de um quadro abre só ele, e faltando algo os dois abrem.
+- **Não muda:** os campos, os nomes enviados no formulário, as validações, o rascunho, a previsão de preço e o envio. O envoltório `data-order-terms` continua com todos os campos. Cada quadro tem `data-order-terms-section="conditions"` ou `"delivery"`, com o seu `data-order-terms-body`, o seu `data-order-terms-collapsed` e o seu `data-order-terms-toggle`. A leitura das condições na solicitação enviada continua num quadro só.
+- **Código:** `src/components/request-order-terms.tsx`, textos `orderTerms.hint`, `orderTerms.deliveryHint` e `orderTerms.collapsed.deliveryHint` (pt, en e zh).
+- **Testes:** `tests/e2e/new-request-round.spec.ts` (cada campo no seu quadro, os dois resumos, o "Editar" de um quadro abrindo só ele e o "Recolher" de cada um), `tests/e2e/order-terms.spec.ts` e o `editOrderTerms` de `tests/e2e/helpers.ts`, que abre os dois quadros.
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.
