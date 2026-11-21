@@ -7,6 +7,9 @@ import { Field, Input, Select } from "@/components/ui";
  * "Tela da negociação reorganizada").
  */
 
+/** Campos de 36px nesta tela (toque no iPad); o padrão do portal não muda. */
+export const FIELD = "min-h-9";
+
 /**
  * Preço/peça | Moeda | Mínimo (peças) | Produção (dias) | Incoterm numa linha
  * só quando cabe (resposta do fornecedor e resposta à contraproposta; a da
@@ -54,12 +57,17 @@ export function OfferRowFields({
               <Input
                 name="price"
                 inputMode="decimal"
+                className={FIELD}
                 defaultValue={raw(values.price)}
                 {...mark("price")}
               />
             </Field>
             <Field label={t("negotiationScreen.f.currency")}>
-              <Select name="currency" defaultValue={values.currency}>
+              <Select
+                name="currency"
+                className={FIELD}
+                defaultValue={values.currency}
+              >
                 {SHEET_CURRENCIES.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -73,6 +81,7 @@ export function OfferRowFields({
           <Input
             name="moq"
             inputMode="numeric"
+            className={FIELD}
             defaultValue={raw(values.moq)}
             {...mark("moq")}
           />
@@ -81,6 +90,7 @@ export function OfferRowFields({
           <Input
             name="leadTimeDays"
             inputMode="numeric"
+            className={FIELD}
             defaultValue={raw(values.leadTimeDays)}
             {...mark("leadTime")}
           />
@@ -88,6 +98,7 @@ export function OfferRowFields({
         <Field label={t("negotiationScreen.f.incoterm")}>
           <Select
             name="incoterm"
+            className={FIELD}
             defaultValue={values.incoterm}
             {...mark("incoterm")}
           >

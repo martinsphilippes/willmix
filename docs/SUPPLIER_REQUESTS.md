@@ -165,8 +165,8 @@ A situação geral do produto e o SLA ficavam no meio da tabela, entre as condi�
 ## Tela do produto da solicitação (`?view=item`)
 
 - **Resposta**: o formulário completo tem também a **modalidade de entrega (FOB/EXW)** (`supplierIncoterm`; sem ela, a do item do booking).
-- **Histórico de interações** (linha do tempo, `requestTimeline`), na coluna da direita logo abaixo da resposta do fornecedor: abertura, cada resposta do fornecedor (as registradas pela Wellmix antes de 12/11/2026 continuam marcadas assim), contrapropostas, aceites, novas propostas, recusas, mensagens e arquivos, a decisão da Wellmix e o produto (criado/associado, vitrine, CODPROD), cada um com data e hora, quem fez e o que ficou resolvido. Cada resposta passa a ser um passo `answer` no histórico. As respostas de antes disso (só a última ficava na solicitação) vêm da auditoria (`supplier_request.answer`, `legacyAnswers`): a hora e o "faz/não faz" de cada uma; só a última tem os valores. A 1ª e a última resposta da tabela usam as mesmas horas.
-- **Conversa**: ícone flutuante de chat no canto inferior direito; abre uma janela pequena com as mensagens e o campo para mandar outra (foto, PDF ou Excel). O cartão Negociação fica só com a contraproposta e a resposta a ela.
+- **Histórico de interações** (linha do tempo, `requestTimeline`), na lateral direita (até 21/11/2026, logo abaixo da resposta do fornecedor; desde então a lateral tem só o Histórico e o Book, ver "Tela da negociação reorganizada"): abertura, cada resposta do fornecedor (as registradas pela Wellmix antes de 12/11/2026 continuam marcadas assim), contrapropostas, aceites, novas propostas, recusas, mensagens e arquivos, a decisão da Wellmix e o produto (criado/associado, vitrine, CODPROD), cada um com data e hora, quem fez e o que ficou resolvido. Cada resposta passa a ser um passo `answer` no histórico. As respostas de antes disso (só a última ficava na solicitação) vêm da auditoria (`supplier_request.answer`, `legacyAnswers`): a hora e o "faz/não faz" de cada uma; só a última tem os valores. A 1ª e a última resposta da tabela usam as mesmas horas.
+- **Conversa**: até 21/11/2026, ícone flutuante de chat no canto inferior direito, com uma janela pequena das mensagens e o campo para mandar outra (foto, PDF ou Excel). Desde então fica embutida na seção "Negociação e conversa" do card central, logo abaixo da contraproposta (ver "Tela da negociação reorganizada").
 
 ### Ficha negociada (decisão do dono, 12/11/2026)
 
@@ -179,6 +179,45 @@ A situação geral do produto e o SLA ficavam no meio da tabela, entre as condi�
 
 - **Ligadas**: as solicitações do item e das alternativas dele, nos dois sentidos (uma lista o item da outra como alternativa; `linkedSupplierRequests`). Só a Wellmix vê, no cartão "Solicitações ligadas" da tela do produto: nº, item, fornecedor e situação.
 - **Ao aprovar uma**, cada ligada em andamento (Aberta ou Respondida) passa a **pedir uma resposta** (`linkedApprovalAsking`): **Continuar negociando** (fica o passo `keep` no histórico, só da Wellmix, e a pergunta some até outra aprovação) ou **Recusar** (vai para Recusada mesmo antes da resposta do fornecedor, com a nota "Alternativa aprovada: solicitação nº …"; `resolveLinkedRequest`, permissão `supplierRequest.decide`). A pergunta aparece na aprovada (aviso e botões no cartão) e no topo da ligada até ser respondida.
+
+### Tela da negociação reorganizada (pedido do dono, 21/11/2026)
+
+A mesma tela (`?view=item`), com as mesmas regras, permissões, cálculos, anexos, avisos e histórico; mudou a arrumação. Nada foi apagado: os blocos de antes estão nas seções abaixo. A identidade visual do portal é a de sempre.
+
+**Arrumação**
+
+- **Centro (~75%)**: o card **"O que está sendo negociado"**, com as seções numeradas, nesta ordem e separadas por divisórias discretas:
+  1. **Resumo do produto e condições atuais**: foto, nome e códigos; Quantidade (com a programação de compra), Preço/peça, Moeda, Incoterm, Mínimo (peças) e Produção (dias), cada um na sua célula. Com a resposta "faz", as condições combinadas (`agreedConditions`), com o valor do Book riscado ao lado onde mudou; antes dela, as do Book. Para a Wellmix com "Ver preço de compra", o Superplan refeito. Logo abaixo, "O que a Wellmix precisa no produto", a programação e as variações de cor.
+  2. **Ficha do produto**: uma grade com uma informação por célula, pela mesma regra da tabela da solicitação (`requestItemSpecs`: a cópia gravada na solicitação, completada pelo item exato do Book, com a marca "Book" no que veio dele): Peças por caixa master; Peças por caixa inner (opcional); CBM por caixa master (m³); Caixas master do pedido; CBM total do pedido (m³), com "≈" quando sai das medidas; Comprimento, Largura e Altura **da peça** (cm; dono, 15/11/2026: as medidas do Book são da peça); Capacidade (ml) e Tamanho, separados (`capacityMl` e `sizeText`); Material; Embalagem; Cores; Peso líquido e Peso bruto **por peça** (kg); Função / bateria / 110 / 220; Código da fábrica; Nº do item; o nome do produto quando difere da descrição; e, só para a Wellmix, o NCM e o link "Ver a ficha completa no Book". Zero continua 0; dado ausente é "—".
+  3. **Resposta do fornecedor**: a **oferta recebida** numa faixa compacta (selo "Oferta recebida"): Preço/peça, Moeda, Mínimo, Produção, Incoterm, Fornecedor, **Respondida por** (nome e login), Data e hora, Anexos (os arquivos que o fornecedor mandou na conversa), Outras condições (contraproposta aceita, resposta registrada pela Wellmix) e Comentário. A **contraproposta da Wellmix** que espera o fornecedor aparece em outra faixa, azul (selo "Contraproposta da Wellmix", "Enviada em … por …: aguardando o fornecedor"), para não confundir com a oferta recebida. **Rodadas da negociação (n)**, recolhidas: uma linha por passo de oferta (resposta, contraproposta, aceite, nova proposta, recusa), com quem fez, os valores e a hora; a última fica marcada como "Vigente". O formulário de resposta do fornecedor fica logo abaixo da faixa (só ele responde).
+  4. **Decisão da Wellmix** (só a Wellmix): "Decidida em … por nome (login)", os avisos de espera e de contraproposta pendente, a observação e Aprovar, Recusar ou Cancelar, com as permissões e efeitos de sempre (`supplierRequest.decide`, `supplierRequestDecisions`).
+  5. **Negociação e conversa**: a contraproposta da Wellmix (selo "Em preparação" até enviar) com Preço/peça | Moeda | Mínimo (peças) | Produção (dias) | Incoterm **numa linha só** quando cabe, a estimativa do Superplan, o comentário obrigatório e "Enviar contraproposta"; para o fornecedor, a resposta à contraproposta (Aceitar, Enviar nova proposta, Recusar) na mesma linha de campos; e a **conversa**, embutida e recolhível ("Conversa (n)"), no lugar do chat flutuante.
+  6. **Alternativas** (só a Wellmix): a lista de sempre, com "Abrir solicitação para esta".
+  - Para o fornecedor, as seções da Wellmix (4 e 6) não aparecem e a numeração segue sem buracos (1 a 4).
+  - Abaixo do card, como antes: as referências por IA e as solicitações ligadas.
+- **Lateral (~25%)**: só o **Histórico de interações** (`#historico`) e o **Book** (só a Wellmix: o booking, a seleção e o Superplan do escolhido).
+- **Telas menores que 1280px (iPad)**: a lateral vem depois do conteúdo principal; a partir de 768px, Histórico e Book lado a lado (Wellmix). Nada é cortado nem rola de lado; as grades seguem a largura do próprio quadro (container queries), não a da tela.
+- **Visual**: letras de 11 a 13px, campos e botões com 36px de altura nesta tela (toque no iPad; o padrão do portal nas outras telas não mudou), observações curtas que crescem ao arrastar o canto, menos espaço entre os blocos e nenhuma altura fixa além da rolagem da conversa (até 26rem).
+
+**Quem vê a observação da decisão (Opção A do dono, 21/11/2026)**
+
+- A regra não mudou: a observação da decisão aparece para o fornecedor no Histórico de interações (passo da decisão, `requestTimeline`), e o aviso que ele recebe não leva a observação. Agora o campo diz isso: "O fornecedor vê esta observação no Histórico de interações."
+- Nada interno passou a ir para o fornecedor com a reorganização: Decisão, Alternativas, Book, Superplan, NCM e o passo "Continuar negociando" continuam só da Wellmix; o preço segue "Ver preço de compra" (sem ela, nem o resumo, nem a faixa, nem as rodadas mostram preço e moeda).
+
+**Quem envia e quem recebe**
+
+- Cada mensagem da conversa mostra o autor (nome, "· Você" para quem está vendo, o lado), o login, **"Para:"** e a data e a hora. Acima do campo de escrever, **"Enviando como"** e **"Enviando para"**; nos formulários da resposta, da contraproposta e da resposta a ela, **"De:"** e **"Para:"** acima do botão.
+- O destinatário é quem recebe o aviso pela regra que já existia (`notifyOther`, sem mudança): o que a Wellmix manda avisa os **logins ativos do fornecedor** da solicitação (a lista aparece em "Para:"); o que o fornecedor manda avisa o **responsável** (quem abriu a solicitação). A lista é a de hoje: num aviso antigo, os logins do fornecedor podem ter mudado desde então.
+- Privacidade (dono, 18/11/2026; docs/CHAT_IDENTITY.md, decisão 2): o fornecedor vê os logins da própria empresa e, da Wellmix, só os de quem já conversa com ele nesta solicitação (quem mandou algum passo que ele vê e o responsável); ninguém mais da equipe aparece (`negotiationPeople`, `src/lib/services/supplier-request-people.ts`). A Wellmix vê todos.
+- A conversa continua sendo a da solicitação (quem abre a solicitação na Wellmix e os logins do fornecedor leem); a unificação com o chat privado entre dois logins segue para depois (docs/CHAT_IDENTITY.md).
+
+**Envio sem perder o que foi digitado**
+
+- Resposta, decisão, contraproposta, resposta à contraproposta e mensagem usam as variantes `...StateAction` das mesmas ações (`src/app/app/actions/supplier-requests.ts`, `runState` em `actions/helpers.ts`), que chamam o mesmo serviço: dando certo, a tela volta como antes, com o aviso de sucesso; dando errado, a página não recarrega, o aviso do erro aparece logo abaixo do formulário e o texto, os números e o arquivo escolhidos continuam nos campos (`ActionForm`, `src/components/action-form.tsx`).
+- Enquanto envia, campos e botões ficam travados e o botão mostra o indicador: um envio só por clique. Depois de gravar, o formulário volta limpo (a mensagem) ou com os valores gravados (a resposta, com o "✓ Enviado").
+- Os avisos, o histórico, a situação, as pendências e as regras de cada passo são os de sempre: o serviço é o mesmo.
+
+**Onde está**: `src/app/app/supplier-requests/[id]/page.tsx` (montagem), `_components/negotiation-sections.tsx` (seção, grade, ficha, faixa da resposta, rodadas, "De / Para"), `_components/offer-row.tsx` (linha de oferta), `_components/negotiation.tsx` (contraproposta e resposta a ela), `_components/negotiation-conversation.tsx` (conversa), textos em `src/i18n/modules/negotiation-screen.ts`.
 
 ## Lista de solicitações
 
@@ -250,7 +289,7 @@ Tabela `selection_groups` (escolha por grupo): `status` saved/requested/replaced
 | Serviço (seleção, abrir, ler, responder, decidir, foto)     | `src/lib/services/supplier-requests.ts`; negociação e SLA em `src/lib/services/supplier-request-negotiation.ts`                                                                                   |
 | Ações                                                       | `src/app/app/actions/supplier-requests.ts`                                                                                                                                                        |
 | Telas                                                       | `src/app/app/booking/selection/`, `src/app/app/supplier-requests/` (tabela do fornecedor em `_components/supplier-table.tsx`)                                                                     |
-| Textos                                                      | `src/i18n/modules/supplier-requests.ts`                                                                                                                                                           |
+| Textos                                                      | `src/i18n/modules/supplier-requests.ts`; tela da negociação reorganizada em `src/i18n/modules/negotiation-screen.ts`                                                                              |
 | Testes                                                      | `tests/unit/supplier-requests.test.ts`; de ponta a ponta (booking → seleção → solicitação → resposta do fornecedor → produto → vitrine → CODPROD) em `tests/e2e/booking-supplier-request.spec.ts` |
 
 ## Amostragem (depois de aprovada; 12/11/2026)

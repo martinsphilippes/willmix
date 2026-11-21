@@ -126,6 +126,7 @@ export function ProposalFields({
               <Input
                 name="price"
                 inputMode="decimal"
+                className="min-h-9"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 data-negotiation-price
@@ -134,6 +135,7 @@ export function ProposalFields({
             <Field label={l.currency}>
               <Select
                 name="currency"
+                className="min-h-9"
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
               >
@@ -150,6 +152,7 @@ export function ProposalFields({
           <Input
             name="moq"
             inputMode="numeric"
+            className="min-h-9"
             defaultValue={raw(values.moq)}
             data-negotiation-moq
           />
@@ -158,6 +161,7 @@ export function ProposalFields({
           <Input
             name="leadTimeDays"
             inputMode="numeric"
+            className="min-h-9"
             defaultValue={raw(values.leadTimeDays)}
             data-negotiation-lead-time
           />
@@ -165,6 +169,7 @@ export function ProposalFields({
         <Field label={l.incoterm}>
           <Select
             name="incoterm"
+            className="min-h-9"
             defaultValue={values.incoterm}
             data-negotiation-incoterm
           >

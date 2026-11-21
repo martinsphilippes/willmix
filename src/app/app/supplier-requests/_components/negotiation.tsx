@@ -182,12 +182,13 @@ export function NegotiationForms({
                 rows={2}
                 maxLength={4000}
                 required
-                className="max-h-48 resize-y"
+                className="max-h-48 min-h-9 resize-y"
                 data-negotiation-text
               />
             </Field>
             {fromTo}
             <SubmitButton
+              className="min-h-9"
               pendingText={t("supplierRequests.negotiation.sending")}
               data-negotiation-propose-submit
             >
@@ -236,12 +237,13 @@ export function NegotiationForms({
                 name="text"
                 rows={2}
                 maxLength={4000}
-                className="max-h-48 resize-y"
+                className="max-h-48 min-h-9 resize-y"
               />
             </Field>
             {fromTo}
             <div className="flex flex-wrap gap-2">
               <SubmitButton
+                className="min-h-9"
                 name="action"
                 value="accept"
                 data-negotiation-respond="accept"
@@ -249,6 +251,7 @@ export function NegotiationForms({
                 {t("supplierRequests.negotiation.accept")}
               </SubmitButton>
               <SubmitButton
+                className="min-h-9"
                 name="action"
                 value="counter"
                 variant="secondary"
@@ -257,6 +260,7 @@ export function NegotiationForms({
                 {t("supplierRequests.negotiation.counter")}
               </SubmitButton>
               <SubmitButton
+                className="min-h-9"
                 name="action"
                 value="reject"
                 variant="danger"

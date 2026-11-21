@@ -714,6 +714,7 @@ export default async function SupplierRequestPage({
               <Field label={t("supplierRequests.detail.answer.canDo")}>
                 <Select
                   name="canDo"
+                  className="min-h-9"
                   required
                   defaultValue={r.supplierCanDo ?? ""}
                   data-supplier-answer-cando
@@ -756,6 +757,7 @@ export default async function SupplierRequestPage({
             {fromTo}
             <div className="flex flex-wrap items-center gap-3">
               <SubmitButton
+                className="min-h-9"
                 pendingText={t("supplierRequests.detail.answer.pending")}
                 data-supplier-answer-submit
               >
@@ -818,29 +820,21 @@ export default async function SupplierRequestPage({
             <input type="hidden" name="id" value={r.id} />
             <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
               <div className="min-w-56 flex-1">
-                {/* Opção A do dono (21/11/2026): a regra de sempre, agora
-                    dita na tela: o fornecedor vê esta observação no
-                    Histórico de interações. */}
-                <Field
-                  label={t("supplierRequests.detail.decide.note")}
-                  hint={
-                    <span data-supplier-decide-note-hint>
-                      {t("negotiationScreen.decision.noteHint")}
-                    </span>
-                  }
-                >
+                <Field label={t("supplierRequests.detail.decide.note")}>
                   <Textarea
                     name="note"
                     rows={1}
                     maxLength={500}
-                    className="max-h-32 min-h-8 resize-y"
+                    className="max-h-32 min-h-9 resize-y"
+                    aria-describedby="decide-note-hint"
                   />
                 </Field>
               </div>
-              <div className="flex flex-wrap gap-2 pb-5">
+              <div className="flex flex-wrap gap-2">
                 {decisions.map((d) => (
                   <SubmitButton
                     key={d}
+                    className="min-h-9"
                     name="decision"
                     value={d}
                     variant={
@@ -857,6 +851,16 @@ export default async function SupplierRequestPage({
                 ))}
               </div>
             </div>
+            {/* Opção A do dono (21/11/2026): a regra de sempre, agora dita
+                na tela: o fornecedor vê esta observação no Histórico de
+                interações (o aviso a ele não leva a observação). */}
+            <p
+              id="decide-note-hint"
+              className="mt-1 text-[11px] text-zinc-500"
+              data-supplier-decide-note-hint
+            >
+              {t("negotiationScreen.decision.noteHint")}
+            </p>
           </ActionForm>
         ) : null}
       </div>
