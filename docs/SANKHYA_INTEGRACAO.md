@@ -395,6 +395,27 @@ Passos:
 3. Refazer o ensaio por track (um pedido por track das TOPs 1100 a 1104, etapas pela view, embarques pelo track do item) e mostrar ao dono o antes e depois.
 4. Com o dono de acordo, a carga grava por track. Os pedidos da carga de 21/11 (todos em espera, sem trabalho no portal) dão lugar aos pedidos por track, e as compras 33 → 30 sem track seguem como estão.
 
+### 9.2 O que a cópia do track mostrou (21/11/2026, 19:44)
+
+A cópia de `purchaseTracks` trouxe 23.620 documentos em 5 segundos, e os números batem com os do técnico:
+
+- **Mesmo track entre as etapas:** em todas as ligações, sem diferença: 1002 → 1100 (766), 1100 → 1101 (4.475), 1101 → 1102 (3.891), 1102 → 1103 (3.614), 1103 → 1104 (3.521) e 1100 → 1104 (47).
+- **Pedidos divididos:** 58 tracks com mais de uma 1104.
+- **Compras antigas:** 33 e 30 também têm track (390 e 395).
+- **Sem track:** 9 de 43 das 1003 e a única 1107.
+
+Os 6.422 pedidos da carga são 6.240 tracks. 182 pedidos são parte de um pedido que já está em outra linha.
+
+O que o track resolve nos três casos (pedidos da carga cujo track tem outro pedido):
+
+| Caso                                          | Pedidos | Com outro pedido no mesmo track      | Sem outro documento no track |
+| --------------------------------------------- | ------- | ------------------------------------ | ---------------------------- |
+| Interrompido (1100, 1101, 1102 sem pendência) | 2.125   | 110 (48 chegam a uma 1104)           | 2.015                        |
+| Sem documento seguinte (1103, 1104)           | 1.185   | 113 (41 com a outra parte encerrada) | 1.072                        |
+| 1104 pendente sem `STATUS_SHIPPING`           | 197     | 6                                    | 191                          |
+
+O track junta as partes de um mesmo pedido e confirma que os "gêmeos" são pedidos diferentes. Mas a maior parte dos três casos é de tracks que pararam ali mesmo, sem outro documento. O track não explica por que pararam. Essa resposta continua com a Wellmix, agora com o número do track.
+
 ## 10. Em aberto
 
 1. Confirmação da Wellmix do de-para da seção 5.1 (D7). Até lá vale a proposta, validada na tela com casos reais.
