@@ -165,3 +165,25 @@ Na equipe da Wellmix, o **cadastro na equipe** (`users.active`) e o **login** (`
 - **O documento** (a outra metade da D11): `docs/FLOW_MENU.md` traz a área em duas telas (Equipe Interna e Equipe Externa) e as seções novas; este documento é o registro das etapas.
 - **Peças**: `src/lib/services/form-drafts.ts`, `src/app/app/actions/form-drafts.ts`, `src/components/form-draft-autosave.tsx`, o formulário (`src/components/party-form.tsx`) e a página (`src/app/app/parties/_record/new-party.tsx`); textos em `src/i18n/modules/internal-team.ts`.
 - **Testes**: `tests/unit/form-drafts.test.ts` (só os campos do cadastro, cada login o dele, vazio apaga, quem não abre Parceiros não grava, Descartar e salvar limpam) e `tests/e2e/party-draft.spec.ts` (digitar, recarregar e recuperar, descartar e salvar).
+
+## 12. Alterar e-mail do login (dono, 20/11/2026)
+
+Pedido do dono (20/11/2026): um login de cliente foi criado pelo balão "Quem pode agir" (docs/ORDER_LEVEL_LISTS.md, seção 10) com o e-mail do contato digitado errado ("gabrial" no lugar de "gabriela"). A cliente não entrava, e o portal não tinha como corrigir o e-mail sem desativar o login e criar outro.
+
+- **Onde**: na ficha do cliente ou do fornecedor, aba Informações, lista de logins (`/app/customers/<id>?tab=info` e `/app/suppliers/<id>?tab=info`). Ao lado de "Desativar", o "Alterar e-mail" abre o campo com o login de hoje. "Salvar o novo e-mail" pede confirmação.
+- **Quem**: só o administrador, como gerar e desativar login (R5 e R7). Só logins de cliente ou parceiro. Os da equipe ficam pela Equipe Interna.
+- **O que muda**: só o e-mail (ou o nome de usuário) com que o login entra. Continuam iguais o cadastro, o papel, as telas, a senha, a troca no 1º acesso e as encomendas em que ele é o login com acesso. O login antigo deixa de entrar.
+- **Regras**:
+  - o login novo tem de ser válido (e-mail ou nome de usuário);
+  - tem de ser diferente do de hoje ("Esse já é o login de hoje.");
+  - não pode ser de outro login ("Este e-mail já tem acesso ao portal").
+- **Supabase**: a conta do Auth é achada pelo e-mail antigo e troca para o novo, já confirmado, com a mesma senha. Se a linha do portal não gravar, a conta volta ao e-mail antigo. Login que nunca teve conta no Auth ganha uma conta com o e-mail novo, e a senha se define pelo "Esqueci minha senha". O Appwrite, parado, recusa com aviso.
+- **Auditoria**: `user.email`, com o antes e o depois.
+- **Peças**:
+  - `changeLoginEmail` (`src/lib/services/access-state.ts`);
+  - `supabaseChangeEmail` e `supabaseUserIdByEmail` (`src/lib/auth/supabase-auth.ts`);
+  - `changeLoginEmailAction` (`src/app/app/actions/access-state.ts`);
+  - a ficha (`src/app/app/_party-accounts/detail.tsx`) e os textos em `src/i18n/modules/access-state.ts`.
+- **Testes**:
+  - `tests/unit/login-email.test.ts`: entra com o novo e a mesma senha, e o antigo não; nome de usuário; as recusas; a troca no Auth com respostas simuladas (pelo filtro e por páginas, conta ausente, e-mail de outra conta);
+  - `tests/e2e/customer-screens.spec.ts`: na ficha do cliente, alterar o e-mail, entrar com o novo e o antigo dar "Credenciais inválidas".

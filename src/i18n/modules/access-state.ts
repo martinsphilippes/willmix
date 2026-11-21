@@ -17,6 +17,18 @@ export const pt = {
     "Desativar o login de {name}? Ele deixa de entrar e a sessão aberta cai na próxima página.",
   "access.login.saved.off": "Login desativado: {name}. Ele não entra mais.",
   "access.login.saved.on": "Login reativado: {name}.",
+  "access.login.email.change": "Alterar e-mail",
+  "access.login.email.new": "Novo login ou e-mail",
+  "access.login.email.hint":
+    "A senha continua a mesma. O login antigo deixa de entrar.",
+  "access.login.email.save": "Salvar o novo e-mail",
+  "access.login.email.confirm":
+    "Trocar o login de {name}? A senha continua a mesma e o login antigo deixa de entrar.",
+  "access.login.email.saved":
+    "E-mail do login alterado: {name} agora entra com {login}. A senha continua a mesma.",
+  "catalog.error.login_email_same": "Esse já é o login de hoje.",
+  "catalog.error.login_email_unsupported":
+    "Trocar o e-mail do login não está disponível nesta base de dados.",
   "access.login.blockedByParty":
     "Login ativo, mas o cadastro está inativo: com a regra ligada, não entra.",
   "access.rule.title": "Regra de acesso: cadastro e login ativos",
@@ -59,6 +71,18 @@ export const en: typeof pt = {
   "access.login.saved.off":
     "Login deactivated: {name}. It can no longer sign in.",
   "access.login.saved.on": "Login reactivated: {name}.",
+  "access.login.email.change": "Change e-mail",
+  "access.login.email.new": "New login or e-mail",
+  "access.login.email.hint":
+    "The password stays the same. The old login stops working.",
+  "access.login.email.save": "Save the new e-mail",
+  "access.login.email.confirm":
+    "Change the login of {name}? The password stays the same and the old login stops working.",
+  "access.login.email.saved":
+    "Login e-mail changed: {name} now signs in with {login}. The password stays the same.",
+  "catalog.error.login_email_same": "That is already the current login.",
+  "catalog.error.login_email_unsupported":
+    "Changing the login e-mail is not available on this database.",
   "access.login.blockedByParty":
     "Login active, but the record is inactive: with the rule on, it can't sign in.",
   "access.rule.title": "Access rule: active record and login",
@@ -98,6 +122,16 @@ export const zh: typeof pt = {
     "停用 {name} 的账号？该账号将无法登录，已打开的会话会在下一页结束。",
   "access.login.saved.off": "账号已停用：{name}。该账号无法再登录。",
   "access.login.saved.on": "账号已重新启用：{name}。",
+  "access.login.email.change": "修改邮箱",
+  "access.login.email.new": "新的登录名或邮箱",
+  "access.login.email.hint": "密码保持不变。旧的登录名将无法登录。",
+  "access.login.email.save": "保存新邮箱",
+  "access.login.email.confirm":
+    "修改 {name} 的登录名？密码保持不变，旧的登录名将无法登录。",
+  "access.login.email.saved":
+    "登录邮箱已修改：{name} 现在使用 {login} 登录。密码保持不变。",
+  "catalog.error.login_email_same": "这已经是当前的登录名。",
+  "catalog.error.login_email_unsupported": "此数据库不支持修改登录邮箱。",
   "access.login.blockedByParty": "账号启用，但档案已停用：规则开启时无法登录。",
   "access.rule.title": "访问规则：档案和账号均为启用",
   "access.rule.off": "已关闭：目前即使公司档案已停用，启用的账号仍可登录。",
