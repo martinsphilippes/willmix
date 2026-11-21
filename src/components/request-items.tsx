@@ -13,7 +13,14 @@ import {
   type RequestSchedule,
 } from "@/lib/workflow/request-schedule";
 import type { FixedSchedulePlan } from "@/components/request-schedule";
-import type { RequestCompanyAllocation } from "@/lib/db/schema";
+import type {
+  RequestCompanyAllocation,
+  RequestInnerRequirement,
+} from "@/lib/db/schema";
+import {
+  RequestInnerField,
+  type RequestInnerLabels,
+} from "@/components/request-inner-field";
 import {
   PriceForecast,
   type PriceForecastLabels,
@@ -46,6 +53,8 @@ export interface InitialRequestRow {
   schedule: RequestSchedule | null;
   /** Peças de cada empresa do grupo econômico (rascunho reaberto). */
   companyAllocations?: RequestCompanyAllocation[] | null;
+  /** Caixa inner exigida pelo cliente (rascunho reaberto; dono, 21/11/2026). */
+  innerRequirement?: RequestInnerRequirement | null;
 }
 
 type ProductFieldsProps = Omit<
@@ -141,6 +150,8 @@ export function RequestItems({
     forecast?: PriceForecastLabels;
     /** Pedido para um grupo econômico (docs/ECONOMIC_GROUPS.md). */
     group?: EconomicGroupLabels;
+    /** Caixa inner exigida pelo cliente (dono, 21/11/2026). */
+    inner?: RequestInnerLabels;
   };
 }) {
   const draftRows = initialRows.length ? initialRows : null;
@@ -959,6 +970,21 @@ export function RequestItems({
                     />
                   );
                 })()}
+                {/* Caixa inner exigida pelo cliente (dono, 21/11/2026): "Não"
+                  por padrão; o inner do cadastro aparece só como dica. */}
+                {labels.inner ? (
+                  <RequestInnerField
+                    prefix={prefix}
+                    initial={draftRows?.[index]?.innerRequirement ?? null}
+                    catalogInner={
+                      outside[index]
+                        ? null
+                        : (product[index]?.fill?.innerBoxQty ?? null)
+                    }
+                    labels={labels.inner}
+                    intl={labels.intl}
+                  />
+                ) : null}
                 {labels.forecast ? (
                   <PriceForecast
                     key={product[index]?.id ?? ""}

@@ -10,15 +10,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import {
-  Alert,
-  Badge,
-  Field,
-  Input,
-  Select,
-  Textarea,
-  cx,
-} from "@/components/ui";
+import { Alert, Badge, Select, Textarea, cx } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
 import { MoneyInput } from "@/components/money-input";
@@ -34,10 +26,12 @@ import {
   type SheetWarning,
   type SupplierSheetDraft,
 } from "@/lib/supplier-sheet";
+import type { QuoteInnerState } from "@/lib/quote-inner";
 import type {
   SupplierSheetBaseline,
   SupplierSheetField,
 } from "@/lib/db/schema";
+import { MaterialPicker, type MaterialPickerOption } from "./material-picker";
 
 /*
  * Resposta do fornecedor à cotação de compra (dono, 20/11/2026;
@@ -48,17 +42,21 @@ import type {
  * foto ter o próprio formulário no meio; o que falta aparece embaixo e o
  * envio só sai completo (o servidor confere de novo).
  *
- * Moeda e preço (dono, 20/11/2026; docs/PURCHASE_DEMAND.md, "Moeda e preço
- * na cotação"): a moeda fica ao lado do preço unitário (RMB por padrão,
- * Dólar, Euro e Real), uma só para todos os itens da cotação; o preço é
- * digitado só com números e a vírgula entra sozinha, com o símbolo e o
- * separador da moeda (4000 = ¥ 40.00).
+ * Tela em duas colunas (dono, 21/11/2026; docs/PURCHASE_DEMAND.md, "Inner
+ * do cliente, material do catálogo e Sem peso"): à esquerda, um terço com o
+ * resumo do produto, a especificação e as programações; à direita, o preço,
+ * a moeda e a ficha técnica em linhas (peças, código e material; as medidas
+ * e o CBM da caixa master; os pesos com "Sem peso"); embaixo, os termos
+ * comerciais e o envio. Controles de 36 px. O inner só aparece quando o
+ * cliente exige (travado); o material vem só do catálogo.
  *
- * Rascunho automático (dono, 20/11/2026; docs/PURCHASE_DEMAND.md, "Rascunho
- * automático da cotação"): a cada pausa da digitação, tudo o que está na tela
- * vai para o servidor (por login) e volta quando a página abre de novo; a foto
- * na balança salva antes de subir. Assim, uma página recarregada (versão nova
- * do portal no ar, iPad que recarrega a aba) não perde nada.
+ * Moeda e preço (dono, 20/11/2026): a moeda fica ao lado do preço unitário
+ * (RMB por padrão, Dólar, Euro e Real), uma só para todos os itens da
+ * cotação; o preço é digitado só com números e a vírgula entra sozinha.
+ *
+ * Rascunho automático (dono, 20/11/2026): a cada pausa da digitação, tudo o
+ * que está na tela vai para o servidor (por login) e volta quando a página
+ * abre de novo; a foto na balança salva antes de subir.
  */
 
 /** A ordem do seletor (dono, 20/11/2026): RMB, Dólar, Euro e Real. */
@@ -83,6 +81,15 @@ export interface QuoteSheetProduct {
   baseline: SupplierSheetBaseline | null;
   askPhoto: boolean;
   photoUrl: string | null;
+  /** Caixa inner exigida pelo cliente (nada, travada ou a definir). */
+  inner: QuoteInnerState;
+  /** Material de texto livre de antes do catálogo (para ele escolher de novo). */
+  legacyMaterial: string | null;
+}
+
+/** Um material do catálogo na tela (o nome no idioma dela e o português). */
+export interface QuoteMaterialOption extends MaterialPickerOption {
+  namePt: string;
 }
 
 export interface QuoteAnswerLabels {
@@ -106,8 +113,10 @@ export interface QuoteAnswerLabels {
   note: string;
   answer: string;
   decline: string;
-  disclaimerTitle: string;
-  disclaimerBody: string;
+  /** Aviso "Atualização da ficha do produto" (dono, 21/11/2026). */
+  noticeTitle: string;
+  noticeBody: string;
+  termsTitle: string;
   sheetTitle: string;
   hintDeclare: string;
   hintConfirm: string;
@@ -115,14 +124,37 @@ export interface QuoteAnswerLabels {
   settledHint: string;
   rejected: string;
   fields: Record<
-    | SupplierSheetField
-    | "noInner"
-    | "noFactoryCode"
-    | "cbmHint"
-    | "cbmFromDims"
-    | "box",
+    SupplierSheetField | "noFactoryCode" | "cbmHint" | "cbmFromDims" | "box",
     string
   >;
+  /** Os rótulos curtos dos campos da ficha, acima de cada um. */
+  f: Record<
+    | "master"
+    | "code"
+    | "material"
+    | "length"
+    | "width"
+    | "height"
+    | "cbm"
+    | "net"
+    | "gross",
+    string
+  >;
+  grossUnknown: string;
+  grossUnknownHint: string;
+  grossNotGiven: string;
+  inner: string;
+  innerRequired: string;
+  innerRequiredHint: string;
+  innerPending: string;
+  material: {
+    placeholder: string;
+    empty: string;
+    missing: string;
+    remove: string;
+    /** "Material digitado antes: {text}. Escolha no catálogo." */
+    legacy: string;
+  };
   ours: string;
   changed: string;
   confirm: string;
@@ -141,21 +173,6 @@ export interface QuoteAnswerLabels {
   photoSent: string;
   photoUploading: string;
   photoFailed: string;
-  noInner: string;
-  /** Ficha em linhas (dono, 21/11/2026): o nome de cada linha e os curtos. */
-  rows: Record<"pieces" | "box" | "weight" | "material", string>;
-  short: Record<
-    | "master"
-    | "inner"
-    | "length"
-    | "width"
-    | "height"
-    | "or"
-    | "net"
-    | "gross"
-    | "code",
-    string
-  >;
   unitPieces: string;
   unitDays: string;
   /** Rascunho automático: recuperado, salvando, salvo às {time}, falhou. */
@@ -181,17 +198,15 @@ const DRAFT_PAUSE_AFTER_SEND_MS = 8000;
 
 const TEXT_SHEET_KEYS = [
   "masterBoxQty",
-  "innerBoxQty",
   "boxLengthCm",
   "boxWidthCm",
   "boxHeightCm",
   "cbm",
   "netWeightKg",
   "grossWeightBoxKg",
-  "material",
   "factoryItemCode",
 ] as const;
-const FLAG_SHEET_KEYS = ["noInner", "noFactoryCode", "confirm"] as const;
+const FLAG_SHEET_KEYS = ["grossUnknown", "noFactoryCode", "confirm"] as const;
 
 const noSubscribe = () => () => {};
 
@@ -252,15 +267,15 @@ function useDraftAutosave(
 
 type SheetText = {
   masterBoxQty: string;
-  innerBoxQty: string;
-  noInner: boolean;
   boxLengthCm: string;
   boxWidthCm: string;
   boxHeightCm: string;
   cbm: string;
   netWeightKg: string;
+  /** O número digitado; com "Sem peso" fica guardado (desmarcar devolve). */
   grossWeightBoxKg: string;
-  material: string;
+  grossUnknown: boolean;
+  materialIds: string[];
   factoryItemCode: string;
   noFactoryCode: boolean;
   confirm: boolean;
@@ -268,7 +283,6 @@ type SheetText = {
 
 type NumberKey =
   | "masterBoxQty"
-  | "innerBoxQty"
   | "boxLengthCm"
   | "boxWidthCm"
   | "boxHeightCm"
@@ -287,25 +301,46 @@ function readNumber(raw: string, int = false): number | null {
 function toDraft(s: SheetText): SupplierSheetDraft {
   return {
     masterBoxQty: readNumber(s.masterBoxQty, true),
-    innerBoxQty: readNumber(s.innerBoxQty, true),
-    noInner: s.noInner,
     boxLengthCm: readNumber(s.boxLengthCm),
     boxWidthCm: readNumber(s.boxWidthCm),
     boxHeightCm: readNumber(s.boxHeightCm),
     cbm: readNumber(s.cbm),
     netWeightKg: readNumber(s.netWeightKg),
     grossWeightBoxKg: readNumber(s.grossWeightBoxKg),
-    material: s.material,
+    grossUnknown: s.grossUnknown,
+    materialIds: s.materialIds,
     factoryItemCode: s.factoryItemCode,
     noFactoryCode: s.noFactoryCode,
   };
 }
+
+/** Rótulo de campo da tela (pequeno, legível, acima do controle). */
+function FieldLabel({
+  htmlFor,
+  children,
+}: {
+  htmlFor?: string;
+  children: ReactNode;
+}) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="mb-1 block text-xs font-medium leading-4 text-zinc-700"
+    >
+      {children}
+    </label>
+  );
+}
+
+const textBox =
+  "block h-9 w-full min-w-0 rounded-md border px-2.5 text-[13px] text-zinc-900 shadow-sm transition placeholder:text-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-500";
 
 export function QuoteAnswerForm({
   quoteId,
   action,
   photoAction,
   products,
+  materials,
   commercial,
   currencies,
   incoterms,
@@ -323,6 +358,8 @@ export function QuoteAnswerForm({
   /** Salva o rascunho (sem recarregar a página). */
   draftAction?: DraftSave | null;
   products: QuoteSheetProduct[];
+  /** O catálogo de materiais ativo (dono, 21/11/2026). */
+  materials: QuoteMaterialOption[];
   commercial: {
     currency: string;
     incoterm: string;
@@ -347,6 +384,10 @@ export function QuoteAnswerForm({
         });
   const show = (n: number, digits = 4) =>
     n.toLocaleString(intl, { maximumFractionDigits: digits });
+  const catalog = useMemo(
+    () => new Map(materials.map((m) => [m.id, m])),
+    [materials],
+  );
   // O rascunho deste login, quando há, vale mais que o que veio do servidor
   // (é o que estava na tela por último; enviar a resposta o apaga).
   const restored = draft?.values ?? {};
@@ -367,8 +408,6 @@ export function QuoteAnswerForm({
           p.productId,
           {
             masterBoxQty: pick(k("masterBoxQty"), fmt(p.draft.masterBoxQty)),
-            innerBoxQty: pick(k("innerBoxQty"), fmt(p.draft.innerBoxQty)),
-            noInner: pickFlag(k("noInner"), p.draft.noInner),
             boxLengthCm: pick(k("boxLengthCm"), fmt(p.draft.boxLengthCm)),
             boxWidthCm: pick(k("boxWidthCm"), fmt(p.draft.boxWidthCm)),
             boxHeightCm: pick(k("boxHeightCm"), fmt(p.draft.boxHeightCm)),
@@ -378,7 +417,11 @@ export function QuoteAnswerForm({
               k("grossWeightBoxKg"),
               fmt(p.draft.grossWeightBoxKg),
             ),
-            material: pick(k("material"), p.draft.material),
+            grossUnknown: pickFlag(k("grossUnknown"), p.draft.grossUnknown),
+            // Só ids do catálogo ativo voltam para a escolha.
+            materialIds: pick(k("materialIds"), p.draft.materialIds.join(","))
+              .split(",")
+              .filter((id) => catalog.has(id)),
             factoryItemCode: pick(
               k("factoryItemCode"),
               p.draft.factoryItemCode,
@@ -413,6 +456,7 @@ export function QuoteAnswerForm({
         out[`sheet.${pid}.${key}`] = sheet[key];
       for (const key of FLAG_SHEET_KEYS)
         out[`sheet.${pid}.${key}`] = sheet[key] ? "1" : "0";
+      out[`sheet.${pid}.materialIds`] = sheet.materialIds.join(",");
     }
     return out;
   }, [prices, sheets, terms]);
@@ -461,7 +505,7 @@ export function QuoteAnswerForm({
     }
     if (p.ask) {
       const s = sheets[p.productId];
-      for (const r of missingSheet(toDraft(s))) {
+      for (const r of missingSheet(toDraft(s), catalog)) {
         parts.push(reqLabel(r));
         missingKeys.add(`${p.productId}.${r}`);
       }
@@ -514,7 +558,8 @@ export function QuoteAnswerForm({
     );
   }
 
-  const showsDisclaimer = products.some((p) => p.ask && p.soldBefore);
+  // O aviso vale para quem preenche a ficha de algum produto.
+  const showsNotice = products.some((p) => p.ask);
 
   return (
     <div
@@ -530,23 +575,25 @@ export function QuoteAnswerForm({
           <Alert tone="info">{L.draftRestored}</Alert>
         </div>
       ) : null}
-      {showsDisclaimer ? (
-        <div data-quote-disclaimer>
-          <Alert tone="brand">
-            <p className="font-semibold">{L.disclaimerTitle}</p>
-            <p className="mt-1">{L.disclaimerBody}</p>
-          </Alert>
-        </div>
-      ) : null}
 
       {products.map((p) => {
         const s = sheets[p.productId];
         const draft = toDraft(s);
+        const materialTextPt = s.materialIds
+          .map((id) => catalog.get(id)?.namePt)
+          .filter(Boolean)
+          .join(" / ");
         const changed = p.soldBefore
-          ? new Set(draftChangedFields(draft, p.baseline))
+          ? new Set(draftChangedFields(draft, p.baseline, materialTextPt))
           : new Set<SupplierSheetField>();
+        const innerRequired =
+          p.inner.kind === "required" ? p.inner.qty : null;
         const warnings = p.ask
-          ? sheetWarnings(draft, { cbmPercent: cbmTolerancePercent })
+          ? sheetWarnings(
+              draft,
+              { cbmPercent: cbmTolerancePercent },
+              innerRequired,
+            )
           : [];
         const fromDims = dimsCbm(
           draft.boxLengthCm,
@@ -561,12 +608,6 @@ export function QuoteAnswerForm({
         const oursText = (field: SupplierSheetField): string | null => {
           const b = p.baseline;
           if (!b) return null;
-          if (field === "innerBoxQty")
-            return b.innerBoxQty === null
-              ? null
-              : b.innerBoxQty === 0
-                ? L.noInner
-                : show(b.innerBoxQty, 0);
           if (
             field === "boxLengthCm" ||
             field === "boxWidthCm" ||
@@ -583,103 +624,113 @@ export function QuoteAnswerForm({
         };
         const hintFor = (field: SupplierSheetField) =>
           changed.has(field) && oursText(field) !== null ? (
-            <span
-              className="text-amber-800"
+            <p
+              className="mt-1 text-xs text-amber-800"
               data-sheet-ours={`${p.productId}.${field}`}
             >
               {fill(L.ours, { value: oursText(field)! })}
-            </span>
-          ) : undefined;
-        // Campo de número estreito, com a unidade dentro (dono, 21/11/2026:
-        // card mais enxuto). O nome completo do campo vai para o leitor de
-        // tela; amarelo = mudou do nosso cadastro; vermelho = falta.
-        const cell = (
+            </p>
+          ) : null;
+        const legacy =
+          !s.materialIds.length &&
+          (restored[`sheet.${p.productId}.material`] || p.legacyMaterial)
+            ? restored[`sheet.${p.productId}.material`] || p.legacyMaterial
+            : null;
+        // Campo de número com a unidade dentro, 36 px. Amarelo = mudou do
+        // nosso cadastro; vermelho = falta.
+        const numberBox = (
           key: NumberKey,
           opts: {
-            width: string;
+            label: string;
             unit?: string;
             int?: boolean;
             disabled?: boolean;
             lacking: boolean;
+            /** Mostra vazio (o valor continua guardado). */
+            blank?: boolean;
             placeholder?: string;
           },
-        ) => (
-          <span
-            className={cx(
-              "inline-flex h-8 items-center rounded-md border shadow-sm transition focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-100",
-              opts.lacking
-                ? "border-red-400 bg-red-50"
-                : changed.has(key)
-                  ? "border-amber-400 bg-amber-50"
-                  : "border-zinc-300 bg-white",
-              opts.disabled && "opacity-50",
-            )}
-          >
-            <input
-              form={formId}
-              name={`sheet.${p.productId}.${key}`}
-              inputMode={opts.int ? "numeric" : "decimal"}
-              value={s[key]}
-              disabled={opts.disabled}
-              placeholder={opts.placeholder}
-              aria-label={L.fields[key]}
-              title={L.fields[key]}
-              onChange={(e) => setSheet(p.productId, { [key]: e.target.value })}
-              data-sheet-field={`${p.productId}.${key}`}
-              data-missing={opts.lacking ? "true" : undefined}
-              className={cx(
-                "h-full min-w-0 rounded-md border-0 bg-transparent px-2 text-right text-[13px] tabular-nums text-zinc-900 placeholder:text-zinc-400 focus:outline-none disabled:cursor-not-allowed",
-                opts.width,
-              )}
-            />
-            {opts.unit ? (
-              <span className="pr-2 text-xs text-zinc-500">{opts.unit}</span>
-            ) : null}
-          </span>
-        );
-        // Uma linha da ficha: o nome à esquerda e os campos lado a lado.
-        const row = (label: string, children: ReactNode, key: string) => (
-          <div
-            className="grid gap-1.5 py-2 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-start sm:gap-3"
-            data-sheet-row={key}
-          >
-            {/* Alinhado com a primeira fileira de campos (h-8). */}
-            <p className="text-xs font-medium text-zinc-600 sm:pt-2">{label}</p>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              {children}
+        ) => {
+          const id = `quote-${p.productId}-${key}`;
+          return (
+            <div className="min-w-0">
+              <FieldLabel htmlFor={id}>{opts.label}</FieldLabel>
+              <span
+                className={cx(
+                  "flex h-9 items-center rounded-md border shadow-sm transition focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-100",
+                  opts.lacking
+                    ? "border-red-400 bg-red-50"
+                    : opts.disabled
+                      ? "border-zinc-200 bg-zinc-100"
+                      : changed.has(key)
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-zinc-300 bg-white",
+                )}
+              >
+                <input
+                  id={id}
+                  form={formId}
+                  name={`sheet.${p.productId}.${key}`}
+                  inputMode={opts.int ? "numeric" : "decimal"}
+                  autoComplete="off"
+                  value={opts.blank ? "" : s[key]}
+                  disabled={opts.disabled}
+                  placeholder={opts.placeholder}
+                  onChange={(e) =>
+                    setSheet(p.productId, { [key]: e.target.value })
+                  }
+                  data-sheet-field={`${p.productId}.${key}`}
+                  data-missing={opts.lacking ? "true" : undefined}
+                  className="h-full w-full min-w-0 rounded-md border-0 bg-transparent px-2.5 text-right text-[13px] tabular-nums text-zinc-900 placeholder:text-left placeholder:text-zinc-400 focus:outline-none disabled:cursor-not-allowed"
+                />
+                {opts.unit ? (
+                  <span className="shrink-0 pr-2.5 text-xs text-zinc-500">
+                    {opts.unit}
+                  </span>
+                ) : null}
+              </span>
             </div>
-          </div>
-        );
-        const sub = (text: string, children: ReactNode) => (
-          <label className="inline-flex items-center gap-1.5">
-            <span className="text-xs text-zinc-500">{text}</span>
-            {children}
-          </label>
-        );
+          );
+        };
         return (
           <section
             key={p.productId}
-            className="rounded-xl border border-zinc-200 bg-white p-3 sm:p-4"
+            className="rounded-xl border border-zinc-200 bg-white"
             data-quote-item={p.productId}
           >
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-semibold text-zinc-900">{p.name}</p>
-                <p className="text-xs text-zinc-600">
-                  {L.quantity}: {p.quantityText}
+            <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+              {/* Coluna esquerda (um terço): o produto pedido. */}
+              <div
+                className="min-w-0 space-y-2 border-b border-zinc-100 p-3 sm:p-4 md:border-b-0 md:border-r"
+                data-quote-item-summary={p.productId}
+              >
+                <p className="font-semibold leading-5 text-zinc-900">
+                  {p.name}
+                </p>
+                <p className="text-sm text-zinc-700">
+                  <span className="font-medium">{L.quantity}:</span>{" "}
+                  {p.quantityText}
                 </p>
                 {p.specification ? (
                   <p
-                    className="whitespace-pre-line text-xs text-zinc-600"
+                    className="whitespace-pre-line text-xs leading-5 text-zinc-600"
                     data-quote-item-spec
                   >
-                    {L.spec}: {p.specification}
+                    {p.specification}
                   </p>
                 ) : null}
                 {p.scheduleText ? (
-                  <p className="text-xs text-zinc-600" data-quote-item-schedule>
-                    {L.schedule}: {p.scheduleText}
-                  </p>
+                  <div
+                    className="border-t border-zinc-100 pt-2 text-xs text-zinc-700"
+                    data-quote-item-schedule
+                  >
+                    <p className="font-medium text-zinc-800">{L.schedule}</p>
+                    <ul className="mt-0.5 space-y-0.5">
+                      {p.scheduleText.split(" · ").map((line, i) => (
+                        <li key={i}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
                 ) : null}
                 {p.desiredText ? (
                   <p className="text-xs text-zinc-600">
@@ -687,441 +738,539 @@ export function QuoteAnswerForm({
                   </p>
                 ) : null}
               </div>
-              <div
-                className="w-full shrink-0 space-y-1 sm:w-72"
-                data-quote-price-box={p.productId}
-              >
-                {/* Rótulo só do preço: a moeda tem o próprio nome (aria). */}
-                <label
-                  htmlFor={`quote-price-${p.productId}`}
-                  className="block text-xs font-medium leading-5 text-zinc-700"
-                >
-                  {L.unitPrice}
-                </label>
-                <input
-                  type="hidden"
-                  form={formId}
-                  name="productId"
-                  value={p.productId}
-                />
-                <div
-                  className="flex items-center gap-2"
-                  data-missing={
-                    lacks(`${p.productId}.price`) ? "true" : undefined
-                  }
-                >
-                  <Select
-                    value={terms.currency}
-                    onChange={(e) =>
-                      setTerms({ ...terms, currency: e.target.value })
-                    }
-                    aria-label={L.currency}
-                    className="w-auto shrink-0"
-                    data-quote-currency={p.productId}
-                  >
-                    {currencyOptions.map((c) => (
-                      <option key={c} value={c}>
-                        {L.currencyNames[c] ?? c}
-                      </option>
-                    ))}
-                  </Select>
-                  <MoneyInput
-                    id={`quote-price-${p.productId}`}
-                    name={`price.${p.productId}`}
-                    form={formId}
-                    currency={terms.currency}
-                    autoDecimal
-                    value={prices[p.productId] ?? ""}
-                    onValueChange={(v) =>
-                      setPrices((all) => ({ ...all, [p.productId]: v }))
-                    }
-                    error={lacks(`${p.productId}.price`)}
-                    inputData={{ "data-quote-price": p.productId }}
-                    className="min-w-0 flex-1"
-                  />
-                </div>
-                <p
-                  className="text-xs text-zinc-500"
-                  data-quote-price-hint={p.productId}
-                >
-                  {priceHint}
-                  {products.length > 1 ? ` ${L.currencyAll}` : null}
-                </p>
-              </div>
-            </div>
 
-            {p.ask ? (
-              <div
-                className="mt-3 border-t border-zinc-100 pt-3"
-                data-quote-sheet={p.productId}
-              >
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <p className="text-sm font-semibold text-zinc-900">
-                    {L.sheetTitle}
-                  </p>
-                  {changed.size ? (
-                    <Badge tone="warning">{L.changed}</Badge>
-                  ) : null}
-                  <p className="text-xs text-zinc-500">
-                    {p.own
-                      ? L.hintOwn
-                      : p.soldBefore
-                        ? L.hintConfirm
-                        : L.hintDeclare}
-                  </p>
-                </div>
-                {p.rejectedNote ? (
-                  <div className="mb-2" data-sheet-rejected={p.productId}>
-                    <Alert tone="warning">
-                      {fill(L.rejected, { note: p.rejectedNote })}
-                    </Alert>
+              {/* Coluna direita: preço, moeda e ficha técnica. */}
+              <div className="min-w-0 space-y-3 p-3 sm:p-4">
+                {showsNotice && p === products.find((x) => x.ask) ? (
+                  <div
+                    className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
+                    data-quote-sheet-notice
+                    data-quote-disclaimer
+                  >
+                    <span aria-hidden className="text-sm text-amber-700">
+                      ⓘ
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-zinc-900">
+                        {L.noticeTitle}
+                      </p>
+                      <p className="text-xs leading-5 text-zinc-700">
+                        {L.noticeBody}
+                      </p>
+                    </div>
                   </div>
                 ) : null}
-                <div className="mt-1 divide-y divide-zinc-100">
-                  {row(
-                    L.rows.pieces,
-                    <>
-                      {sub(
-                        L.short.master,
-                        cell("masterBoxQty", {
-                          width: "w-14",
+
+                <div
+                  className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]"
+                  data-quote-price-box={p.productId}
+                >
+                  <input
+                    type="hidden"
+                    form={formId}
+                    name="productId"
+                    value={p.productId}
+                  />
+                  <div
+                    className="min-w-0"
+                    data-missing={
+                      lacks(`${p.productId}.price`) ? "true" : undefined
+                    }
+                  >
+                    <FieldLabel htmlFor={`quote-price-${p.productId}`}>
+                      {L.unitPrice}
+                    </FieldLabel>
+                    <MoneyInput
+                      id={`quote-price-${p.productId}`}
+                      name={`price.${p.productId}`}
+                      form={formId}
+                      currency={terms.currency}
+                      autoDecimal
+                      value={prices[p.productId] ?? ""}
+                      onValueChange={(v) =>
+                        setPrices((all) => ({ ...all, [p.productId]: v }))
+                      }
+                      error={lacks(`${p.productId}.price`)}
+                      inputData={{ "data-quote-price": p.productId }}
+                      className="min-w-0"
+                    />
+                    <p
+                      className="mt-1 text-xs text-zinc-500"
+                      data-quote-price-hint={p.productId}
+                    >
+                      {priceHint}
+                      {products.length > 1 ? ` ${L.currencyAll}` : null}
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    <FieldLabel htmlFor={`quote-currency-${p.productId}`}>
+                      {L.currency}
+                    </FieldLabel>
+                    <Select
+                      id={`quote-currency-${p.productId}`}
+                      value={terms.currency}
+                      onChange={(e) =>
+                        setTerms({ ...terms, currency: e.target.value })
+                      }
+                      className="h-9! w-full"
+                      data-quote-currency={p.productId}
+                    >
+                      {currencyOptions.map((c) => (
+                        <option key={c} value={c}>
+                          {L.currencyNames[c] ?? c}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+
+                {p.ask ? (
+                  <div
+                    className="space-y-3 border-t border-zinc-100 pt-3"
+                    data-quote-sheet={p.productId}
+                  >
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      <p className="text-sm font-semibold text-zinc-900">
+                        {L.sheetTitle}
+                      </p>
+                      {changed.size ? (
+                        <Badge tone="warning">{L.changed}</Badge>
+                      ) : null}
+                      <p className="text-xs text-zinc-500">
+                        {p.own
+                          ? L.hintOwn
+                          : p.soldBefore
+                            ? L.hintConfirm
+                            : L.hintDeclare}
+                      </p>
+                    </div>
+                    {p.rejectedNote ? (
+                      <div data-sheet-rejected={p.productId}>
+                        <Alert tone="warning">
+                          {fill(L.rejected, { note: p.rejectedNote })}
+                        </Alert>
+                      </div>
+                    ) : null}
+
+                    {/* Linha 1: peças por master, código na fábrica e material. */}
+                    <div
+                      className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.1fr)_minmax(0,1.5fr)]"
+                      data-sheet-row="pieces"
+                    >
+                      <div className="min-w-0">
+                        {numberBox("masterBoxQty", {
+                          label: L.f.master,
                           unit: L.unitPieces,
                           int: true,
                           lacking: lacks(`${p.productId}.masterBoxQty`),
-                        }),
-                      )}
-                      {hintFor("masterBoxQty")}
-                      {sub(
-                        L.short.inner,
-                        cell("innerBoxQty", {
-                          width: "w-14",
-                          unit: L.unitPieces,
-                          int: true,
-                          disabled: s.noInner,
-                          lacking: lacks(`${p.productId}.innerBoxQty`),
-                        }),
-                      )}
-                      <label className="inline-flex items-center gap-1.5 text-xs text-zinc-700">
-                        <input
-                          type="checkbox"
-                          form={formId}
-                          name={`sheet.${p.productId}.noInner`}
-                          value="1"
-                          checked={s.noInner}
-                          onChange={(e) =>
-                            setSheet(p.productId, {
-                              noInner: e.target.checked,
-                            })
+                        })}
+                        {hintFor("masterBoxQty")}
+                      </div>
+                      <div className="min-w-0">
+                        <FieldLabel htmlFor={`quote-${p.productId}-code`}>
+                          {L.f.code}
+                        </FieldLabel>
+                        <div className="flex items-center gap-2">
+                          <input
+                            id={`quote-${p.productId}-code`}
+                            form={formId}
+                            name={`sheet.${p.productId}.factoryItemCode`}
+                            value={s.noFactoryCode ? "" : s.factoryItemCode}
+                            maxLength={80}
+                            disabled={s.noFactoryCode}
+                            autoComplete="off"
+                            onChange={(e) =>
+                              setSheet(p.productId, {
+                                factoryItemCode: e.target.value,
+                              })
+                            }
+                            data-sheet-field={`${p.productId}.factoryItemCode`}
+                            data-missing={
+                              lacks(`${p.productId}.factoryItemCode`)
+                                ? "true"
+                                : undefined
+                            }
+                            className={cx(
+                              textBox,
+                              lacks(`${p.productId}.factoryItemCode`)
+                                ? "border-red-400 bg-red-50"
+                                : changed.has("factoryItemCode")
+                                  ? "border-amber-400 bg-amber-50"
+                                  : "border-zinc-300 bg-white",
+                            )}
+                          />
+                          <label className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 text-xs text-zinc-700">
+                            <input
+                              type="checkbox"
+                              form={formId}
+                              name={`sheet.${p.productId}.noFactoryCode`}
+                              value="1"
+                              checked={s.noFactoryCode}
+                              onChange={(e) =>
+                                setSheet(p.productId, {
+                                  noFactoryCode: e.target.checked,
+                                })
+                              }
+                              className="h-4 w-4 accent-brand-700"
+                              data-sheet-no-code={p.productId}
+                            />
+                            {L.fields.noFactoryCode}
+                          </label>
+                        </div>
+                        {hintFor("factoryItemCode")}
+                      </div>
+                      <div className="min-w-0 sm:col-span-2 xl:col-span-1">
+                        <FieldLabel>{L.f.material}</FieldLabel>
+                        <MaterialPicker
+                          options={materials}
+                          value={s.materialIds}
+                          onChange={(ids) =>
+                            setSheet(p.productId, { materialIds: ids })
                           }
-                          data-sheet-no-inner={p.productId}
+                          name={`sheet.${p.productId}.materialIds`}
+                          form={formId}
+                          lacking={lacks(`${p.productId}.material`)}
+                          changed={changed.has("material")}
+                          labels={{ field: L.f.material, ...L.material }}
+                          dataField={`${p.productId}.material`}
                         />
-                        {L.fields.noInner}
-                      </label>
-                      {hintFor("innerBoxQty")}
-                    </>,
-                    "pieces",
-                  )}
-                  {row(
-                    L.rows.box,
-                    <>
-                      <span className="inline-flex items-center gap-1 text-xs text-zinc-400">
-                        {cell("boxLengthCm", {
-                          width: "w-12",
-                          placeholder: L.short.length,
+                        {legacy ? (
+                          <p
+                            className="mt-1 text-xs text-amber-800"
+                            data-material-legacy={p.productId}
+                          >
+                            {fill(L.material.legacy, { text: legacy })}
+                          </p>
+                        ) : null}
+                        {hintFor("material")}
+                      </div>
+                    </div>
+                    {/* Caixa inner só quando o cliente exige (dono, 21/11/2026):
+                        travada, numa linha própria. */}
+                    {innerRequired ? (
+                      <div
+                        className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-sky-200 bg-sky-50 px-3 py-1.5"
+                        data-quote-inner={p.productId}
+                        data-quote-inner-qty={innerRequired}
+                      >
+                        <label
+                          htmlFor={`quote-${p.productId}-inner`}
+                          className="text-xs font-medium text-zinc-700"
+                        >
+                          {L.inner}
+                        </label>
+                        <span className="flex h-9 w-28 items-center rounded-md border border-zinc-200 bg-zinc-100">
+                          <input
+                            id={`quote-${p.productId}-inner`}
+                            value={show(innerRequired, 0)}
+                            readOnly
+                            aria-readonly
+                            tabIndex={-1}
+                            className="h-full w-full min-w-0 border-0 bg-transparent px-2.5 text-right text-[13px] font-semibold tabular-nums text-zinc-900 focus:outline-none"
+                          />
+                          <span className="shrink-0 pr-2.5 text-xs text-zinc-500">
+                            {L.unitPieces}
+                          </span>
+                        </span>
+                        <Badge tone="info">{L.innerRequired}</Badge>
+                        <span className="text-xs text-zinc-600">
+                          {L.innerRequiredHint}
+                        </span>
+                      </div>
+                    ) : p.inner.kind === "pending" ? (
+                      <p
+                        className="text-xs text-zinc-600"
+                        data-quote-inner-pending={p.productId}
+                      >
+                        {L.innerPending}
+                      </p>
+                    ) : null}
+
+                    {/* Linha 2: a caixa master, três medidas em cm ou o CBM. */}
+                    <div data-sheet-row="box">
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {numberBox("boxLengthCm", {
+                          label: L.f.length,
                           lacking: lacks(`${p.productId}.box`),
                         })}
-                        ×
-                        {cell("boxWidthCm", {
-                          width: "w-12",
-                          placeholder: L.short.width,
+                        {numberBox("boxWidthCm", {
+                          label: L.f.width,
                           lacking: lacks(`${p.productId}.box`),
                         })}
-                        ×
-                        {cell("boxHeightCm", {
-                          width: "w-12",
-                          placeholder: L.short.height,
+                        {numberBox("boxHeightCm", {
+                          label: L.f.height,
                           lacking: lacks(`${p.productId}.box`),
                         })}
-                        <span className="text-zinc-500">cm</span>
-                      </span>
+                        {numberBox("cbm", {
+                          label: L.f.cbm,
+                          lacking: lacks(`${p.productId}.box`),
+                        })}
+                      </div>
                       {hintFor("boxLengthCm")}
-                      <span className="text-xs text-zinc-400">
-                        {L.short.or}
-                      </span>
-                      {sub(
-                        "CBM",
-                        cell("cbm", {
-                          width: "w-16",
-                          unit: "m³",
-                          lacking: lacks(`${p.productId}.box`),
-                        }),
-                      )}
                       {hintFor("cbm") ?? (
-                        <span className="text-xs text-zinc-500">
+                        <p className="mt-1 text-xs text-zinc-500">
                           {fromDims !== null
                             ? fill(L.fields.cbmFromDims, {
                                 cbm: show(fromDims, 4),
                               })
                             : L.fields.cbmHint}
-                        </span>
+                        </p>
                       )}
-                    </>,
-                    "box",
-                  )}
-                  {row(
-                    L.rows.weight,
-                    <>
-                      {sub(
-                        L.short.net,
-                        cell("netWeightKg", {
-                          width: "w-14",
+                    </div>
+
+                    {/* Linha 3: pesos, com "Sem peso" ao lado do bruto. */}
+                    <div
+                      className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+                      data-sheet-row="weight"
+                    >
+                      <div className="min-w-0">
+                        {numberBox("netWeightKg", {
+                          label: L.f.net,
                           unit: "kg",
                           lacking: lacks(`${p.productId}.netWeightKg`),
-                        }),
-                      )}
-                      {hintFor("netWeightKg")}
-                      {sub(
-                        L.short.gross,
-                        cell("grossWeightBoxKg", {
-                          width: "w-14",
+                        })}
+                        {hintFor("netWeightKg")}
+                      </div>
+                      <div className="min-w-0">
+                        {numberBox("grossWeightBoxKg", {
+                          label: L.f.gross,
                           unit: "kg",
+                          disabled: s.grossUnknown,
+                          blank: s.grossUnknown,
                           lacking: lacks(`${p.productId}.grossWeightBoxKg`),
-                        }),
-                      )}
-                      {hintFor("grossWeightBoxKg")}
-                    </>,
-                    "weight",
-                  )}
-                  {row(
-                    L.rows.material,
-                    <>
-                      <Input
-                        form={formId}
-                        name={`sheet.${p.productId}.material`}
-                        value={s.material}
-                        maxLength={200}
-                        aria-label={L.fields.material}
-                        placeholder={L.fields.material}
-                        onChange={(e) =>
-                          setSheet(p.productId, { material: e.target.value })
-                        }
-                        data-sheet-field={`${p.productId}.material`}
-                        data-missing={
-                          lacks(`${p.productId}.material`) ? "true" : undefined
-                        }
-                        className={cx(
-                          "w-36",
-                          changed.has("material") &&
-                            "border-amber-400 bg-amber-50",
-                          lacks(`${p.productId}.material`) &&
-                            "border-red-400 bg-red-50",
+                        })}
+                        {s.grossUnknown ? (
+                          <p
+                            className="mt-1 text-xs text-zinc-600"
+                            data-sheet-gross-unknown-text={p.productId}
+                          >
+                            {L.grossNotGiven}
+                          </p>
+                        ) : (
+                          hintFor("grossWeightBoxKg")
                         )}
-                      />
-                      {hintFor("material")}
-                      {sub(
-                        L.short.code,
-                        <Input
-                          form={formId}
-                          name={`sheet.${p.productId}.factoryItemCode`}
-                          value={s.factoryItemCode}
-                          maxLength={80}
-                          disabled={s.noFactoryCode}
-                          aria-label={L.fields.factoryItemCode}
-                          onChange={(e) =>
-                            setSheet(p.productId, {
-                              factoryItemCode: e.target.value,
-                            })
-                          }
-                          data-sheet-field={`${p.productId}.factoryItemCode`}
-                          data-missing={
-                            lacks(`${p.productId}.factoryItemCode`)
-                              ? "true"
-                              : undefined
-                          }
-                          className={cx(
-                            "w-28",
-                            changed.has("factoryItemCode") &&
-                              "border-amber-400 bg-amber-50",
-                            lacks(`${p.productId}.factoryItemCode`) &&
-                              "border-red-400 bg-red-50",
-                          )}
-                        />,
-                      )}
-                      <label className="inline-flex items-center gap-1.5 text-xs text-zinc-700">
+                      </div>
+                      <div className="min-w-0 sm:pt-5">
+                        <label className="inline-flex h-9 cursor-pointer items-center gap-2 text-[13px] font-medium text-zinc-800">
+                          <input
+                            type="checkbox"
+                            form={formId}
+                            name={`sheet.${p.productId}.grossUnknown`}
+                            value="1"
+                            checked={s.grossUnknown}
+                            onChange={(e) =>
+                              setSheet(p.productId, {
+                                grossUnknown: e.target.checked,
+                              })
+                            }
+                            aria-describedby={`quote-${p.productId}-gross-hint`}
+                            className="h-4 w-4 accent-brand-700"
+                            data-sheet-gross-unknown={p.productId}
+                          />
+                          {L.grossUnknown}
+                        </label>
+                        <p
+                          id={`quote-${p.productId}-gross-hint`}
+                          className="max-w-[14rem] text-xs text-zinc-500"
+                        >
+                          {L.grossUnknownHint}
+                        </p>
+                      </div>
+                    </div>
+
+                    {box ? (
+                      <p
+                        className="text-xs text-zinc-600"
+                        data-sheet-your-box={p.productId}
+                      >
+                        {fill(L.yourBox, {
+                          boxes: show(box.boxes, 0),
+                          cbm: show(box.cbm, 3),
+                        })}
+                      </p>
+                    ) : null}
+                    {warnings.length ? (
+                      <ul
+                        className="space-y-1"
+                        data-sheet-warnings={p.productId}
+                      >
+                        {warnings.map((w) => (
+                          <li
+                            key={w.key}
+                            className="text-xs text-amber-800"
+                            data-sheet-warning={w.key}
+                          >
+                            ⚠{" "}
+                            {fill(L.warnings[w.key], {
+                              dims:
+                                w.key === "cbm_dims_mismatch"
+                                  ? show(w.dimsCbm, 4)
+                                  : "",
+                              cbm:
+                                w.key === "cbm_dims_mismatch"
+                                  ? show(w.cbm, 4)
+                                  : "",
+                              net:
+                                w.key === "gross_below_net"
+                                  ? show(w.netBoxKg, 3)
+                                  : "",
+                            })}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {p.soldBefore ? (
+                      <label
+                        className={cx(
+                          "flex items-start gap-2 rounded-lg border px-3 py-2 text-sm",
+                          lacks(`${p.productId}.confirm`)
+                            ? "border-red-400 bg-red-50"
+                            : "border-zinc-200 bg-zinc-50",
+                        )}
+                        data-missing={
+                          lacks(`${p.productId}.confirm`) ? "true" : undefined
+                        }
+                      >
                         <input
                           type="checkbox"
                           form={formId}
-                          name={`sheet.${p.productId}.noFactoryCode`}
+                          name={`sheet.${p.productId}.confirm`}
                           value="1"
-                          checked={s.noFactoryCode}
+                          checked={s.confirm}
                           onChange={(e) =>
-                            setSheet(p.productId, {
-                              noFactoryCode: e.target.checked,
-                            })
+                            setSheet(p.productId, { confirm: e.target.checked })
                           }
-                          data-sheet-no-code={p.productId}
+                          className="mt-0.5 h-4 w-4 accent-brand-700"
+                          data-sheet-confirm={p.productId}
                         />
-                        {L.fields.noFactoryCode}
+                        <span>
+                          <span className="font-medium text-zinc-900">
+                            {L.confirm}
+                          </span>
+                          <span className="block text-xs text-zinc-600">
+                            {L.confirmHint}
+                          </span>
+                        </span>
                       </label>
-                      {hintFor("factoryItemCode")}
-                    </>,
-                    "material",
-                  )}
-                </div>
-                {box ? (
-                  <p
-                    className="mt-2 text-xs text-zinc-600"
-                    data-sheet-your-box={p.productId}
-                  >
-                    {fill(L.yourBox, {
-                      boxes: show(box.boxes, 0),
-                      cbm: show(box.cbm, 3),
-                    })}
-                  </p>
-                ) : null}
-                {warnings.length ? (
-                  <ul
-                    className="mt-2 space-y-1"
-                    data-sheet-warnings={p.productId}
-                  >
-                    {warnings.map((w) => (
-                      <li
-                        key={w.key}
-                        className="text-xs text-amber-800"
-                        data-sheet-warning={w.key}
+                    ) : null}
+                  </div>
+                ) : (
+                  <>
+                    {p.settledText ? (
+                      <p
+                        className="text-xs text-zinc-600"
+                        data-sheet-settled={p.productId}
                       >
-                        ⚠{" "}
-                        {fill(L.warnings[w.key], {
-                          dims:
-                            w.key === "cbm_dims_mismatch"
-                              ? show(w.dimsCbm, 4)
-                              : "",
-                          cbm:
-                            w.key === "cbm_dims_mismatch" ? show(w.cbm, 4) : "",
-                          net:
-                            w.key === "gross_below_net"
-                              ? show(w.netBoxKg, 3)
-                              : "",
-                        })}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                {p.soldBefore ? (
-                  <label
-                    className={cx(
-                      "mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm",
-                      lacks(`${p.productId}.confirm`)
-                        ? "border-red-400 bg-red-50"
-                        : "border-zinc-200 bg-zinc-50",
-                    )}
-                    data-missing={
-                      lacks(`${p.productId}.confirm`) ? "true" : undefined
-                    }
-                  >
-                    <input
-                      type="checkbox"
-                      form={formId}
-                      name={`sheet.${p.productId}.confirm`}
-                      value="1"
-                      checked={s.confirm}
-                      onChange={(e) =>
-                        setSheet(p.productId, { confirm: e.target.checked })
-                      }
-                      className="mt-0.5"
-                      data-sheet-confirm={p.productId}
-                    />
-                    <span>
-                      <span className="font-medium text-zinc-900">
-                        {L.confirm}
-                      </span>
-                      <span className="block text-xs text-zinc-600">
-                        {L.confirmHint}
-                      </span>
-                    </span>
-                  </label>
-                ) : null}
-              </div>
-            ) : p.settledText ? (
-              <p
-                className="mt-2 text-xs text-zinc-600"
-                data-sheet-settled={p.productId}
-              >
-                ✓ {p.settledText} {L.settledHint}
-              </p>
-            ) : null}
+                        ✓ {p.settledText} {L.settledHint}
+                      </p>
+                    ) : null}
+                    {innerRequired ? (
+                      <p
+                        className="text-xs text-zinc-700"
+                        data-quote-inner={p.productId}
+                        data-quote-inner-qty={innerRequired}
+                      >
+                        <Badge tone="info">{L.innerRequired}</Badge>{" "}
+                        {L.inner}: {show(innerRequired, 0)} {L.unitPieces}.{" "}
+                        {L.innerRequiredHint}
+                      </p>
+                    ) : p.inner.kind === "pending" ? (
+                      <p
+                        className="text-xs text-zinc-600"
+                        data-quote-inner-pending={p.productId}
+                      >
+                        {L.innerPending}
+                      </p>
+                    ) : null}
+                  </>
+                )}
 
-            {p.askPhoto || p.photoUrl ? (
-              <div
-                className="mt-3 flex flex-wrap items-center gap-3 border-t border-zinc-100 pt-3"
-                data-quote-photo={p.productId}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-zinc-900">
-                    {L.photoTitle}
-                  </p>
-                  <p className="text-xs text-zinc-600">{L.photoHint}</p>
-                </div>
-                {p.photoUrl ? (
-                  <a
-                    href={p.photoUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block overflow-hidden rounded-lg border border-emerald-300"
-                    title={L.photoSent}
-                    data-quote-photo-sent={p.productId}
+                {p.askPhoto || p.photoUrl ? (
+                  <div
+                    className="flex flex-wrap items-center gap-3 border-t border-zinc-100 pt-3"
+                    data-quote-photo={p.productId}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
-                    <img
-                      src={p.photoUrl}
-                      alt={L.photoSent}
-                      className="h-12 w-12 object-cover"
-                    />
-                  </a>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-zinc-900">
+                        {L.photoTitle}
+                      </p>
+                      <p className="text-xs text-zinc-600">{L.photoHint}</p>
+                    </div>
+                    {p.photoUrl ? (
+                      <a
+                        href={p.photoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block overflow-hidden rounded-lg border border-emerald-300"
+                        title={L.photoSent}
+                        data-quote-photo-sent={p.productId}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+                        <img
+                          src={p.photoUrl}
+                          alt={L.photoSent}
+                          className="h-12 w-12 object-cover"
+                        />
+                      </a>
+                    ) : null}
+                    <form
+                      action={photoAction}
+                      // Antes de a foto subir, o rascunho vai para o servidor:
+                      // se a página recarregar, o que foi digitado volta.
+                      onSubmit={() => void autosave.flush()}
+                      className="shrink-0"
+                      data-quote-photo-form={p.productId}
+                    >
+                      <input type="hidden" name="quoteId" value={quoteId} />
+                      <input
+                        type="hidden"
+                        name="productId"
+                        value={p.productId}
+                      />
+                      <PhotoInput
+                        name="photos"
+                        multiple={false}
+                        label={p.photoUrl ? L.photoReplace : L.photoAdd}
+                        pendingLabel={L.photoSending}
+                        capture={false}
+                        maxDimension={1400}
+                        quality={0.78}
+                        autoSubmit
+                        compact
+                        dense
+                        direct
+                        uploadingLabel={L.photoUploading}
+                        failedLabel={L.photoFailed}
+                      />
+                    </form>
+                  </div>
                 ) : null}
-                <form
-                  action={photoAction}
-                  // Antes de a foto subir, o rascunho vai para o servidor: se
-                  // a página recarregar, o que foi digitado volta.
-                  onSubmit={() => void autosave.flush()}
-                  className="shrink-0"
-                  data-quote-photo-form={p.productId}
-                >
-                  <input type="hidden" name="quoteId" value={quoteId} />
-                  <input type="hidden" name="productId" value={p.productId} />
-                  <PhotoInput
-                    name="photos"
-                    multiple={false}
-                    label={p.photoUrl ? L.photoReplace : L.photoAdd}
-                    pendingLabel={L.photoSending}
-                    capture={false}
-                    maxDimension={1400}
-                    quality={0.78}
-                    autoSubmit
-                    compact
-                    dense
-                    direct
-                    uploadingLabel={L.photoUploading}
-                    failedLabel={L.photoFailed}
-                  />
-                </form>
               </div>
-            ) : null}
+            </div>
           </section>
         );
       })}
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-3 sm:p-4">
-        {/* A moeda fica ao lado do preço de cada item (uma para todos).
-            Campos do tamanho do que se digita, numa linha (dono, 21/11/2026). */}
-        <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
-          <Field label={L.incoterm}>
+      <section
+        className="rounded-xl border border-zinc-200 bg-white p-3 sm:p-4"
+        data-quote-terms
+      >
+        <p className="mb-2 text-sm font-semibold text-zinc-900">
+          {L.termsTitle}
+        </p>
+        {/* A moeda fica ao lado do preço de cada item (uma para todos). */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.6fr)_minmax(0,1fr)]">
+          <div className="min-w-0">
+            <FieldLabel htmlFor={`quote-${quoteId}-incoterm`}>
+              {L.incoterm}
+            </FieldLabel>
             <Select
+              id={`quote-${quoteId}-incoterm`}
               form={formId}
               name="incoterm"
               value={terms.incoterm}
               onChange={(e) => setTerms({ ...terms, incoterm: e.target.value })}
-              className="w-24"
+              className="h-9! w-full"
               data-quote-incoterm
             >
               {incoterms.map((c) => (
@@ -1130,73 +1279,97 @@ export function QuoteAnswerForm({
                 </option>
               ))}
             </Select>
-          </Field>
-          <Field label={L.leadTime}>
+          </div>
+          <div className="min-w-0">
+            <FieldLabel htmlFor={`quote-${quoteId}-lead`}>
+              {L.leadTime}
+            </FieldLabel>
             <span
               className={cx(
-                "inline-flex h-8 items-center rounded-md border shadow-sm transition focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-100",
+                "flex h-9 items-center rounded-md border shadow-sm transition focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-100",
                 lacks("leadTimeDays")
                   ? "border-red-400 bg-red-50"
                   : "border-zinc-300 bg-white",
               )}
             >
               <input
+                id={`quote-${quoteId}-lead`}
                 form={formId}
                 name="leadTimeDays"
                 inputMode="numeric"
+                autoComplete="off"
                 value={terms.leadTimeDays}
                 onChange={(e) =>
                   setTerms({ ...terms, leadTimeDays: e.target.value })
                 }
                 data-quote-lead
                 data-missing={lacks("leadTimeDays") ? "true" : undefined}
-                className="h-full w-14 min-w-0 rounded-md border-0 bg-transparent px-2 text-right text-[13px] tabular-nums text-zinc-900 focus:outline-none"
+                className="h-full w-full min-w-0 rounded-md border-0 bg-transparent px-2.5 text-right text-[13px] tabular-nums text-zinc-900 focus:outline-none"
               />
-              <span className="pr-2 text-xs text-zinc-500">{L.unitDays}</span>
+              <span className="shrink-0 pr-2.5 text-xs text-zinc-500">
+                {L.unitDays}
+              </span>
             </span>
-          </Field>
-          <Field label={L.port}>
-            <Input
+          </div>
+          <div className="min-w-0">
+            <FieldLabel htmlFor={`quote-${quoteId}-port`}>{L.port}</FieldLabel>
+            <input
+              id={`quote-${quoteId}-port`}
               form={formId}
               name="port"
               maxLength={120}
+              autoComplete="off"
               value={terms.port}
               onChange={(e) => setTerms({ ...terms, port: e.target.value })}
               data-quote-port
               data-missing={lacks("port") ? "true" : undefined}
               className={cx(
-                "w-48",
-                lacks("port") && "border-red-400 bg-red-50",
+                textBox,
+                lacks("port")
+                  ? "border-red-400 bg-red-50"
+                  : "border-zinc-300 bg-white",
               )}
             />
-          </Field>
-          <Field label={L.moq}>
-            <Input
-              form={formId}
-              name="moq"
-              inputMode="numeric"
-              value={terms.moq}
-              onChange={(e) => setTerms({ ...terms, moq: e.target.value })}
-              data-quote-moq
-              data-missing={lacks("moq") ? "true" : undefined}
+          </div>
+          <div className="min-w-0">
+            <FieldLabel htmlFor={`quote-${quoteId}-moq`}>{L.moq}</FieldLabel>
+            <span
               className={cx(
-                "w-28 text-right tabular-nums",
-                lacks("moq") && "border-red-400 bg-red-50",
+                "flex h-9 items-center rounded-md border shadow-sm transition focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-100",
+                lacks("moq")
+                  ? "border-red-400 bg-red-50"
+                  : "border-zinc-300 bg-white",
               )}
-            />
-          </Field>
+            >
+              <input
+                id={`quote-${quoteId}-moq`}
+                form={formId}
+                name="moq"
+                inputMode="numeric"
+                autoComplete="off"
+                value={terms.moq}
+                onChange={(e) => setTerms({ ...terms, moq: e.target.value })}
+                data-quote-moq
+                data-missing={lacks("moq") ? "true" : undefined}
+                className="h-full w-full min-w-0 rounded-md border-0 bg-transparent px-2.5 text-right text-[13px] tabular-nums text-zinc-900 focus:outline-none"
+              />
+              <span className="shrink-0 pr-2.5 text-xs text-zinc-500">
+                {L.unitPieces}
+              </span>
+            </span>
+          </div>
         </div>
-        <div className="mt-3 max-w-2xl">
-          <Field label={L.note}>
-            <Textarea
-              form={formId}
-              name="note"
-              rows={2}
-              maxLength={2000}
-              value={terms.note}
-              onChange={(e) => setTerms({ ...terms, note: e.target.value })}
-            />
-          </Field>
+        <div className="mt-3">
+          <FieldLabel htmlFor={`quote-${quoteId}-note`}>{L.note}</FieldLabel>
+          <Textarea
+            id={`quote-${quoteId}-note`}
+            form={formId}
+            name="note"
+            rows={2}
+            maxLength={2000}
+            value={terms.note}
+            onChange={(e) => setTerms({ ...terms, note: e.target.value })}
+          />
         </div>
         <form
           id={formId}

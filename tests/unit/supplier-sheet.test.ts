@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
-import { sheetFor } from "./quote-sheet-fixture";
+import { MATERIAL_VIDRO, sheetFor } from "./quote-sheet-fixture";
 import {
   boxesForSheet,
   catalogAlerts,
@@ -34,76 +34,124 @@ type User = import("@/lib/db").User;
 
 const blank: SupplierSheetDraft = {
   masterBoxQty: null,
-  innerBoxQty: null,
-  noInner: false,
   boxLengthCm: null,
   boxWidthCm: null,
   boxHeightCm: null,
   cbm: null,
   netWeightKg: null,
   grossWeightBoxKg: null,
-  material: "",
+  grossUnknown: false,
+  materialIds: [],
   factoryItemCode: "",
   noFactoryCode: false,
 };
 const full: SupplierSheetDraft = sheetFor("x").draft;
+/** O catálogo dos testes puros (a lista inicial tem o mesmo id). */
+const catalog = new Map([
+  [MATERIAL_VIDRO, { namePt: "Vidro" }],
+  ["mat-plastico", { namePt: "Plástico" }],
+]);
 
 describe("regras puras da ficha técnica", () => {
-  it("o que falta: tudo em branco; medidas ou CBM; sem inner e sem código valem", () => {
-    expect(missingSheet(blank)).toEqual([
+  it("o que falta: tudo em branco; medidas ou CBM; sem código vale; o inner não é dele", () => {
+    expect(missingSheet(blank, catalog)).toEqual([
       "masterBoxQty",
-      "innerBoxQty",
       "box",
       "netWeightKg",
       "grossWeightBoxKg",
       "material",
       "factoryItemCode",
     ]);
-    expect(missingSheet(full)).toEqual([]);
+    expect(missingSheet(full, catalog)).toEqual([]);
     // Duas medidas só não bastam; o CBM sozinho basta.
-    expect(missingSheet({ ...full, boxHeightCm: null })).toEqual(["box"]);
-    expect(missingSheet({ ...full, boxHeightCm: null, cbm: 0.05 })).toEqual([]);
+    expect(missingSheet({ ...full, boxHeightCm: null }, catalog)).toEqual([
+      "box",
+    ]);
     expect(
-      missingSheet({
-        ...full,
-        innerBoxQty: null,
-        noInner: true,
-        factoryItemCode: "",
-        noFactoryCode: true,
-      }),
+      missingSheet({ ...full, boxHeightCm: null, cbm: 0.05 }, catalog),
+    ).toEqual([]);
+    expect(
+      missingSheet(
+        { ...full, factoryItemCode: "", noFactoryCode: true },
+        catalog,
+      ),
     ).toEqual([]);
     // Peças por caixa quebradas não valem.
-    expect(missingSheet({ ...full, masterBoxQty: 2.5 })).toEqual([
+    expect(missingSheet({ ...full, masterBoxQty: 2.5 }, catalog)).toEqual([
       "masterBoxQty",
     ]);
   });
 
-  it("CBM das medidas sem arredondar; sem inner = 0; sem código = nulo", () => {
-    const data = normalizeSheet({
-      ...full,
-      masterBoxQty: 240,
-      boxLengthCm: 31,
-      boxWidthCm: 63.5,
-      boxHeightCm: 75,
-      noInner: true,
-      noFactoryCode: true,
-    })!;
-    expect(data.cbm).toBeCloseTo(0.1476375, 10);
-    expect(data.innerBoxQty).toBe(0);
-    expect(data.factoryItemCode).toBeNull();
-    expect(normalizeSheet(blank)).toBeNull();
+  it("Sem peso: dispensa o peso bruto, sem gravar zero, e o número digitado não vale", () => {
+    const unknown = { ...full, grossWeightBoxKg: null, grossUnknown: true };
+    expect(missingSheet(unknown, catalog)).toEqual([]);
+    const data = normalizeSheet(
+      { ...full, grossWeightBoxKg: 12.5, grossUnknown: true },
+      catalog,
+    )!;
+    expect(data.grossWeightBoxKg).toBeNull();
+    expect(data.grossWeightUnknown).toBe(true);
+    // Sem marcar e sem o número: falta.
+    expect(
+      missingSheet({ ...full, grossWeightBoxKg: null }, catalog),
+    ).toEqual(["grossWeightBoxKg"]);
+    // Peso informado: a marca fica falsa.
+    expect(normalizeSheet(full, catalog)!.grossWeightUnknown).toBe(false);
   });
 
-  it("avisos: medidas × CBM, inner que não fecha ou maior, caixa mais leve que as peças", () => {
-    const keys = (d: SupplierSheetDraft) =>
-      sheetWarnings(d, { cbmPercent: 5 }).map((w) => w.key);
+  it("material só do catálogo: id desconhecido não vale; o texto vira os nomes em português", () => {
+    expect(
+      missingSheet({ ...full, materialIds: ["inventado"] }, catalog),
+    ).toEqual(["material"]);
+    const data = normalizeSheet(
+      { ...full, materialIds: ["mat-plastico", MATERIAL_VIDRO, "mat-plastico"] },
+      catalog,
+    )!;
+    expect(data.materialIds).toEqual(["mat-plastico", MATERIAL_VIDRO]);
+    expect(data.material).toBe("Plástico / Vidro");
+    // A ficha de compra (texto) sem catálogo que bata: fica o texto.
+    const text = normalizeSheet(
+      { ...full, materialIds: [], materialText: "Bambu tratado" },
+      catalog,
+    )!;
+    expect(text.materialIds).toBeNull();
+    expect(text.material).toBe("Bambu tratado");
+  });
+
+  it("CBM das medidas sem arredondar; inner não perguntado = nulo; sem código = nulo", () => {
+    const data = normalizeSheet(
+      {
+        ...full,
+        masterBoxQty: 240,
+        boxLengthCm: 31,
+        boxWidthCm: 63.5,
+        boxHeightCm: 75,
+        noFactoryCode: true,
+      },
+      catalog,
+    )!;
+    expect(data.cbm).toBeCloseTo(0.1476375, 10);
+    expect(data.innerBoxQty).toBeNull();
+    expect(data.factoryItemCode).toBeNull();
+    expect(normalizeSheet(blank, catalog)).toBeNull();
+  });
+
+  it("avisos: medidas × CBM, inner exigido que não fecha ou maior, caixa mais leve que as peças", () => {
+    const keys = (d: SupplierSheetDraft, inner: number | null = null) =>
+      sheetWarnings(d, { cbmPercent: 5 }, inner).map((w) => w.key);
     expect(keys(full)).toEqual([]);
     expect(keys({ ...full, cbm: 0.1 })).toEqual(["cbm_dims_mismatch"]);
     expect(keys({ ...full, cbm: 0.0855 })).toEqual([]); // 1,8% de 0,084
-    expect(keys({ ...full, innerBoxQty: 5 })).toEqual(["inner_not_closing"]);
-    expect(keys({ ...full, innerBoxQty: 48 })).toEqual(["inner_above_master"]);
+    // O inner é o exigido pelo cliente; sem exigência, nada de inner.
+    expect(keys(full, 6)).toEqual([]);
+    expect(keys(full, 5)).toEqual(["inner_not_closing"]);
+    expect(keys(full, 48)).toEqual(["inner_above_master"]);
     // 24 peças × 0,6 kg = 14,4 kg dentro de uma caixa de 12,5 kg.
     expect(keys({ ...full, netWeightKg: 0.6 })).toEqual(["gross_below_net"]);
+    // Sem peso: não há o que comparar.
+    expect(keys({ ...full, netWeightKg: 0.6, grossUnknown: true })).toEqual(
+      [],
+    );
   });
 
   const ours: SupplierSheetBaseline = {
@@ -120,30 +168,46 @@ describe("regras puras da ficha técnica", () => {
   };
 
   it("o que mudou: medidas em outra ordem e arredondamento não são correção; campo vazio preenchido também não", () => {
-    const same = normalizeSheet({
-      ...full,
-      boxLengthCm: 40,
-      boxWidthCm: 60,
-      grossWeightBoxKg: 12.04,
-      material: " vidro ",
-    })!;
+    const same = normalizeSheet(
+      {
+        ...full,
+        boxLengthCm: 40,
+        boxWidthCm: 60,
+        grossWeightBoxKg: 12.04,
+      },
+      catalog,
+    )!;
     expect(changedSheetFields(same, ours)).toEqual([]);
-    const other = normalizeSheet({
-      ...full,
-      masterBoxQty: 36,
-      netWeightKg: 0.4,
-      innerBoxQty: 0,
-      noInner: true,
-    })!;
+    const other = normalizeSheet(
+      {
+        ...full,
+        masterBoxQty: 36,
+        netWeightKg: 0.4,
+        materialIds: ["mat-plastico"],
+      },
+      catalog,
+    )!;
+    // O inner não entra (não é dele); o bruto 12,5 contra os nossos 12 e o
+    // material de Vidro para Plástico mudaram.
     expect(changedSheetFields(other, ours)).toEqual([
       "masterBoxQty",
-      "innerBoxQty",
       "netWeightKg",
       "grossWeightBoxKg",
+      "material",
     ]);
+    // Sem peso com o nosso peso: ele não confirma o que temos.
+    const unknown = normalizeSheet({ ...full, grossUnknown: true }, catalog)!;
+    expect(changedSheetFields(unknown, ours)).toEqual(["grossWeightBoxKg"]);
+    expect(
+      draftChangedFields({ ...full, grossUnknown: true }, ours, "Vidro"),
+    ).toEqual(["grossWeightBoxKg"]);
     // Enquanto digita: a mesma regra, só onde há os dois valores.
     expect(draftChangedFields({ ...blank, masterBoxQty: 36 }, ours)).toEqual([
       "masterBoxQty",
+    ]);
+    expect(draftChangedFields(full, ours, "Plástico")).toEqual([
+      "grossWeightBoxKg",
+      "material",
     ]);
     // Sem o que tínhamos (quem nunca vendeu), nada é correção.
     expect(changedSheetFields(other, null)).toEqual([]);
@@ -151,20 +215,23 @@ describe("regras puras da ficha técnica", () => {
 
   it("avisos do comparativo: peso acima da tolerância, outra caixa, CBM só da mesma caixa", () => {
     const tol = { weightPercent: 3, dimensionPercent: 5, cbmPercent: 5 };
-    const lighter = normalizeSheet({ ...full, netWeightKg: 0.3 })!;
+    const lighter = normalizeSheet({ ...full, netWeightKg: 0.3 }, catalog)!;
     expect(catalogAlerts(lighter, ours, tol).map((a) => a.key)).toEqual([
       "weight",
     ]);
-    const bigger = normalizeSheet({
-      ...full,
-      masterBoxQty: 48,
-      boxHeightCm: 70,
-    })!;
+    const bigger = normalizeSheet(
+      {
+        ...full,
+        masterBoxQty: 48,
+        boxHeightCm: 70,
+      },
+      catalog,
+    )!;
     // Outra caixa: o CBM e as medidas não se comparam (a caixa é outra).
     expect(catalogAlerts(bigger, ours, tol).map((a) => a.key)).toEqual([
       "other_box",
     ]);
-    const wide = normalizeSheet({ ...full, boxWidthCm: 44 })!;
+    const wide = normalizeSheet({ ...full, boxWidthCm: 44 }, catalog)!;
     expect(catalogAlerts(wide, ours, tol).map((a) => a.key)).toEqual([
       "cbm",
       "dims",
@@ -182,12 +249,13 @@ describe("regras puras da ficha técnica", () => {
     expect(
       mergeBaselines(previous, { ...catalog36, masterBoxQty: null }).cbm,
     ).toBe(0.12);
-    // O rascunho de quem já vendeu vem do que temos.
-    expect(draftFromBaseline(ours)).toMatchObject({
+    // O rascunho de quem já vendeu vem do que temos (os materiais do catálogo
+    // que o nosso texto cita, achados por quem chama).
+    expect(draftFromBaseline(ours, [MATERIAL_VIDRO])).toMatchObject({
       masterBoxQty: 24,
-      innerBoxQty: 6,
       cbm: 0.084,
-      material: "Vidro",
+      grossUnknown: false,
+      materialIds: [MATERIAL_VIDRO],
     });
   });
 
@@ -549,18 +617,19 @@ describe("na cotação de compra", () => {
     expect(
       await sheets.recordFromPurchaseSheet(admin, order, ficha),
     ).toBeNull();
-    // Sem o inner (a ficha de compra não exige), não grava: a cotação pede.
+    // Sem o código do item na fábrica (a ficha de compra não exige), não
+    // grava: a cotação pede.
     expect(
       await sheets.recordFromPurchaseSheet(supplierB, order, {
         ...ficha,
-        innerQty: null,
+        factoryItemCode: null,
       }),
     ).toBeNull();
-    const saved = (await sheets.recordFromPurchaseSheet(
-      supplierB,
-      order,
-      ficha,
-    ))!;
+    // O inner não é da ficha do par (dono, 21/11/2026): sem ele, grava.
+    const saved = (await sheets.recordFromPurchaseSheet(supplierB, order, {
+      ...ficha,
+      innerQty: null,
+    }))!;
     expect(saved).toMatchObject({
       kind: "declared",
       source: "purchase_sheet",
@@ -568,6 +637,9 @@ describe("na cotação de compra", () => {
       review: null,
     });
     expect(saved.data.grossWeightBoxKg).toBeCloseTo(12, 10);
+    expect(saved.data.innerBoxQty).toBeNull();
+    // O texto "Vidro" da ficha de compra vira o material do catálogo.
+    expect(saved.data.materialIds).toEqual([MATERIAL_VIDRO]);
     // Já vale: outra ficha salva não grava de novo.
     expect(
       await sheets.recordFromPurchaseSheet(supplierB, order, ficha),
@@ -623,7 +695,9 @@ describe("na cotação de compra", () => {
     });
     expect(sr.item).toMatchObject({
       masterCartonQty: 36,
-      innerQty: 6,
+      // Sem inner exigido pelo cliente, a solicitação nasce sem inner (a
+      // ficha do par não pergunta mais).
+      innerQty: null,
       netWeightPcKg: 0.45,
       cbmPerCarton: 0.084,
       material: "Vidro",

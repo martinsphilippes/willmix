@@ -1113,6 +1113,17 @@ export interface RequestSentForm {
   fields: Array<[string, string]>;
 }
 
+/**
+ * Caixa inner exigida pelo cliente no produto (dono, 21/11/2026; "Caixa
+ * inner exigida pelo cliente" na Nova solicitação, docs/ORDER_TERMS.md). A
+ * cotação de compra mostra ao fornecedor como exigência, travada. O inner da
+ * ficha antiga do produto não conta como pedido do cliente.
+ */
+export interface RequestInnerRequirement {
+  /** Peças por inner; nula = pedida sem a quantidade (a Wellmix corrige). */
+  qty: number | null;
+}
+
 export interface Request extends BaseRow {
   customerId: string;
   createdByUserId: string;
@@ -1214,6 +1225,11 @@ export interface Request extends BaseRow {
    * cliente não confirmou. Só na 1ª solicitação do lote; nulo nas antigas.
    */
   sentForm?: RequestSentForm | null;
+  /**
+   * Caixa inner exigida pelo cliente neste produto (dono, 21/11/2026). Nulo
+   * = o cliente não pediu inner (o padrão, e as solicitações antigas).
+   */
+  innerRequirement?: RequestInnerRequirement | null;
 }
 
 /** Parte de uma empresa do grupo econômico num produto do pedido. */
@@ -3645,6 +3661,34 @@ export interface PurchaseQuoteItem {
   specification?: string | null;
   schedule?: RequestSchedule | null;
   desiredAt?: string | null;
+  /**
+   * Caixa inner exigida pelo cliente (dono, 21/11/2026): copiada das
+   * demandas na abertura. Nula = nenhum cliente pediu (o fornecedor não vê
+   * inner). Nas cotações antigas não existe.
+   */
+  inner?: QuoteItemInner | null;
+}
+
+/** Por que a Wellmix precisa definir o inner do item da cotação. */
+export const QUOTE_INNER_ISSUES = ["missing", "conflict"] as const;
+export type QuoteInnerIssue = (typeof QUOTE_INNER_ISSUES)[number];
+
+export interface QuoteItemInner {
+  /**
+   * Peças por inner exigidas. Nula com `issue` (a definir) ou depois que a
+   * Wellmix decidiu não exigir inner.
+   */
+  qty: number | null;
+  /**
+   * A definir pela Wellmix: "missing" (pedida sem a quantidade) ou
+   * "conflict" (demandas com exigências diferentes). Nulo = definida.
+   */
+  issue: QuoteInnerIssue | null;
+  /** As exigências das demandas quando diferem (0 = não pediu inner). */
+  requested?: number[] | null;
+  /** Quem definiu na cotação e quando (correção da Wellmix). */
+  setByUserId?: string | null;
+  setAt?: string | null;
 }
 
 export interface PurchaseQuote extends BaseRow {
@@ -3703,8 +3747,12 @@ export type SupplierSheetSource = (typeof SUPPLIER_SHEET_SOURCES)[number];
 export interface SupplierSheetData {
   /** Peças por caixa master. */
   masterBoxQty: number;
-  /** Peças por caixa inner; 0 = "Sem inner". */
-  innerBoxQty: number;
+  /**
+   * Peças por caixa inner (0 = "Sem inner"), como o fornecedor informava até
+   * 21/11/2026. Desde então o inner é exigência do cliente, na cotação, e a
+   * ficha do par não pergunta: nulo = não perguntado.
+   */
+  innerBoxQty: number | null;
   /** Medidas da caixa master (cm); nulas quando ele informou só o CBM. */
   boxLengthCm: number | null;
   boxWidthCm: number | null;
@@ -3713,13 +3761,28 @@ export interface SupplierSheetData {
   cbm: number;
   /** Peso líquido por peça (kg). */
   netWeightKg: number;
-  /** Peso bruto da caixa master (kg). */
-  grossWeightBoxKg: number;
+  /** Peso bruto da caixa master (kg); nulo com "Sem peso" (nunca zero). */
+  grossWeightBoxKg: number | null;
+  /**
+   * "Sem peso" (dono, 21/11/2026): ele declarou que não sabe o peso bruto.
+   * Ausente nas fichas antigas (que sempre têm o peso).
+   */
+  grossWeightUnknown?: boolean;
+  /** Os materiais por extenso (em português, separados por " / "). */
   material: string;
+  /**
+   * Materiais escolhidos no catálogo (`materials`, dono, 21/11/2026). Ausente
+   * nas fichas antigas, de texto livre: ficam para o Cadastro revisar.
+   */
+  materialIds?: string[] | null;
   /** Código do item na fábrica; nulo = "Sem código". */
   factoryItemCode: string | null;
 }
-export type SupplierSheetField = keyof SupplierSheetData;
+/** Os campos comparáveis da ficha (sem as marcas "Sem peso" e os ids dos materiais). */
+export type SupplierSheetField = Exclude<
+  keyof SupplierSheetData,
+  "grossWeightUnknown" | "materialIds"
+>;
 /** O que tínhamos de cada campo (nulo = não tínhamos). */
 export type SupplierSheetBaseline = {
   [K in SupplierSheetField]: SupplierSheetData[K] | null;
@@ -3761,6 +3824,11 @@ export interface QuoteResponseItem {
   changedFields: SupplierSheetField[] | null;
   /** Foto na balança enviada nesta cotação (documento). */
   scalePhotoDocumentId: string | null;
+  /**
+   * Peças por inner exigidas pelo cliente quando ele respondeu (nulo = sem
+   * exigência; dono, 21/11/2026). Ausente nas respostas antigas.
+   */
+  innerRequired?: number | null;
 }
 
 export interface PurchaseQuoteResponse extends BaseRow {
@@ -3808,6 +3876,23 @@ export interface SupplierLine extends BaseRow {
  * (TGFGRU), a mesma família da Nova solicitação, gravada com o código.
  * Família que sumiu do Sankhya fica inativa (não se apaga).
  */
+/**
+ * Catálogo de materiais (dono, 21/11/2026; Cadastros → Materiais). O
+ * fornecedor escolhe daqui o material da ficha técnica na cotação, sem texto
+ * livre. Nasce da "Composição" dos produtos do Sankhya (carga sozinha quando
+ * vazio) e o Cadastro ajusta: nome nos três idiomas e ativo.
+ */
+export interface Material extends BaseRow {
+  namePt: string;
+  nameEn: string;
+  nameZh: string;
+  /** Nome em português sem acento e minúsculo: busca e não repetir. */
+  nameKey: string;
+  active: boolean;
+  createdByUserId: string | null;
+  updatedByUserId: string | null;
+}
+
 export interface ProductFamilyRow extends BaseRow {
   /** CODGRUPOPROD do grupo do 1º nível no Sankhya (identificador). */
   code: string;
@@ -4534,6 +4619,7 @@ export interface Tables {
   purchase_quote_responses: PurchaseQuoteResponse;
   supplier_product_sheets: SupplierProductSheet;
   supplier_lines: SupplierLine;
+  materials: Material;
   product_families: ProductFamilyRow;
   party_families: PartyFamily;
   selection_groups: SelectionGroup;
@@ -4848,6 +4934,8 @@ export const TABLES: Record<TableName, TableDef> = {
       // Quantidades por empresa do grupo econômico (18/11/2026).
       companyAllocations: json(),
       sentForm: json(),
+      // Caixa inner exigida pelo cliente (21/11/2026).
+      innerRequirement: json(),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
@@ -6641,6 +6729,19 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
       { key: "by_line", type: "key", columns: ["lineId"] },
     ],
+  },
+  materials: {
+    label: "Materiais",
+    columns: {
+      namePt: str(80, true),
+      nameEn: str(80, true),
+      nameZh: str(80, true),
+      nameKey: str(80, true),
+      active: bool(),
+      createdByUserId: id(false),
+      updatedByUserId: id(false),
+    },
+    indexes: [{ key: "by_name_key", type: "unique", columns: ["nameKey"] }],
   },
   product_families: {
     label: "Grupos de produto (famílias)",

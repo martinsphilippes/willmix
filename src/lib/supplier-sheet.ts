@@ -10,9 +10,14 @@ import type {
  * puras, as mesmas na tela (o que falta, os avisos, o que mudou) e no
  * servidor (que confere de novo antes de gravar).
  *
- * - Peças por caixa master, peças por inner (ou "Sem inner"), medidas da
- *   caixa master ou o CBM dela, peso líquido por peça, peso bruto da caixa
- *   master, material e código do item na fábrica (ou "Sem código").
+ * - Peças por caixa master, medidas da caixa master ou o CBM dela, peso
+ *   líquido por peça, peso bruto da caixa master (ou "Sem peso"), material
+ *   do catálogo e código do item na fábrica (ou "Sem código").
+ * - O inner não é do fornecedor (dono, 21/11/2026): é exigência do cliente,
+ *   vem da cotação travada e só entra nos avisos (inner que não fecha a
+ *   master dele).
+ * - "Sem peso" não grava zero: o peso fica nulo e a marca diz que ele não
+ *   sabe; o número digitado continua no rascunho.
  * - O CBM das medidas vai sem arredondar (como na ficha e nos totais).
  */
 
@@ -32,7 +37,6 @@ export const SUPPLIER_SHEET_FIELDS: readonly SupplierSheetField[] = [
 /** O que falta, como a tela mostra ("box" = medidas ou CBM da caixa master). */
 export const SHEET_REQUIREMENTS = [
   "masterBoxQty",
-  "innerBoxQty",
   "box",
   "netWeightKg",
   "grossWeightBoxKg",
@@ -44,18 +48,28 @@ export type SheetRequirement = (typeof SHEET_REQUIREMENTS)[number];
 /** O formulário de um produto, como veio (números já lidos; vazio = nulo). */
 export interface SupplierSheetDraft {
   masterBoxQty: number | null;
-  innerBoxQty: number | null;
-  noInner: boolean;
   boxLengthCm: number | null;
   boxWidthCm: number | null;
   boxHeightCm: number | null;
   cbm: number | null;
   netWeightKg: number | null;
+  /** O número digitado; com "Sem peso" fica guardado, sem valer. */
   grossWeightBoxKg: number | null;
-  material: string;
+  /** "Sem peso": ele não sabe o peso bruto. */
+  grossUnknown: boolean;
+  /** Materiais escolhidos no catálogo (ids, na ordem da escolha). */
+  materialIds: string[];
+  /**
+   * Material por extenso, sem catálogo: só a ficha de compra (o campo dela é
+   * texto). A cotação nunca manda texto.
+   */
+  materialText?: string;
   factoryItemCode: string;
   noFactoryCode: boolean;
 }
+
+/** Os nomes de um material do catálogo (o português vai para a ficha). */
+export type MaterialNames = { namePt: string };
 
 export interface SheetTolerances {
   /** Peso (%), a mesma tolerância da inspeção. */
@@ -87,40 +101,76 @@ const hasDims = (
 ) =>
   positive(d.boxLengthCm) && positive(d.boxWidthCm) && positive(d.boxHeightCm);
 
-/** O que falta para enviar a ficha de um produto. */
-export function missingSheet(draft: SupplierSheetDraft): SheetRequirement[] {
+/**
+ * Os materiais escolhidos que existem no catálogo dado (sem catálogo, todos
+ * os escolhidos), sem repetir.
+ */
+function knownMaterialIds(
+  draft: Pick<SupplierSheetDraft, "materialIds">,
+  catalog?: ReadonlyMap<string, MaterialNames>,
+): string[] {
+  const out: string[] = [];
+  for (const id of draft.materialIds)
+    if ((!catalog || catalog.has(id)) && !out.includes(id)) out.push(id);
+  return out;
+}
+
+/**
+ * O que falta para enviar a ficha de um produto. Com o catálogo, só valem os
+ * materiais dele (a tela e o servidor passam o catálogo ativo).
+ */
+export function missingSheet(
+  draft: SupplierSheetDraft,
+  catalog?: ReadonlyMap<string, MaterialNames>,
+): SheetRequirement[] {
   const out: SheetRequirement[] = [];
   if (!wholePositive(draft.masterBoxQty)) out.push("masterBoxQty");
-  if (!draft.noInner && !wholePositive(draft.innerBoxQty))
-    out.push("innerBoxQty");
   if (!hasDims(draft) && !positive(draft.cbm)) out.push("box");
   if (!positive(draft.netWeightKg)) out.push("netWeightKg");
-  if (!positive(draft.grossWeightBoxKg)) out.push("grossWeightBoxKg");
-  if (!draft.material.trim()) out.push("material");
+  if (!draft.grossUnknown && !positive(draft.grossWeightBoxKg))
+    out.push("grossWeightBoxKg");
+  if (
+    !knownMaterialIds(draft, catalog).length &&
+    !(draft.materialText ?? "").trim()
+  )
+    out.push("material");
   if (!draft.noFactoryCode && !draft.factoryItemCode.trim())
     out.push("factoryItemCode");
   return out;
 }
 
-/** A ficha completa, pronta para gravar; nula enquanto falta algo. */
+/**
+ * A ficha completa, pronta para gravar; nula enquanto falta algo. O material
+ * por extenso sai dos nomes em português do catálogo ("Plástico / Papel");
+ * sem materiais do catálogo, do texto da ficha de compra.
+ */
 export function normalizeSheet(
   draft: SupplierSheetDraft,
+  catalog?: ReadonlyMap<string, MaterialNames>,
 ): SupplierSheetData | null {
-  if (missingSheet(draft).length) return null;
+  if (missingSheet(draft, catalog).length) return null;
   const dims = hasDims(draft);
   const cbm = positive(draft.cbm)
     ? draft.cbm
     : dimsCbm(draft.boxLengthCm, draft.boxWidthCm, draft.boxHeightCm)!;
+  const ids = knownMaterialIds(draft, catalog);
+  const names = catalog
+    ? ids.map((id) => catalog.get(id)!.namePt).join(" / ")
+    : "";
   return {
     masterBoxQty: draft.masterBoxQty!,
-    innerBoxQty: draft.noInner ? 0 : draft.innerBoxQty!,
+    innerBoxQty: null,
     boxLengthCm: dims ? draft.boxLengthCm : null,
     boxWidthCm: dims ? draft.boxWidthCm : null,
     boxHeightCm: dims ? draft.boxHeightCm : null,
     cbm,
     netWeightKg: draft.netWeightKg!,
-    grossWeightBoxKg: draft.grossWeightBoxKg!,
-    material: draft.material.trim().slice(0, 200),
+    grossWeightBoxKg: draft.grossUnknown ? null : draft.grossWeightBoxKg!,
+    grossWeightUnknown: draft.grossUnknown,
+    material: (ids.length && names ? names : (draft.materialText ?? ""))
+      .trim()
+      .slice(0, 200),
+    materialIds: ids.length ? ids : null,
     factoryItemCode: draft.noFactoryCode
       ? null
       : draft.factoryItemCode.trim().slice(0, 80),
@@ -135,12 +185,15 @@ export type SheetWarning =
 
 /**
  * Avisos que não impedem o envio (ele confirma ou corrige): medidas e CBM
- * que não batem, inner maior que a master ou que não fecha a master (a regra
- * da Estratégia) e caixa mais leve que as peças dentro dela.
+ * que não batem, o inner exigido pelo cliente maior que a master dele ou que
+ * não fecha a master (a regra da Estratégia) e caixa mais leve que as peças
+ * dentro dela (só com o peso informado).
  */
 export function sheetWarnings(
   draft: SupplierSheetDraft,
   tol: Pick<SheetTolerances, "cbmPercent">,
+  /** Peças por inner exigidas pelo cliente (nulo = sem exigência). */
+  innerRequired: number | null = null,
 ): SheetWarning[] {
   const out: SheetWarning[] = [];
   const fromDims = dimsCbm(
@@ -154,12 +207,13 @@ export function sheetWarnings(
       out.push({ key: "cbm_dims_mismatch", dimsCbm: fromDims, cbm: draft.cbm });
   }
   const master = draft.masterBoxQty;
-  const inner = draft.noInner ? 0 : draft.innerBoxQty;
+  const inner = innerRequired;
   if (wholePositive(master) && wholePositive(inner)) {
     if (inner > master) out.push({ key: "inner_above_master" });
     else if (master % inner !== 0) out.push({ key: "inner_not_closing" });
   }
   if (
+    !draft.grossUnknown &&
     wholePositive(master) &&
     positive(draft.netWeightKg) &&
     positive(draft.grossWeightBoxKg)
@@ -208,8 +262,10 @@ export function changedSheetFields(
     data.masterBoxQty !== baseline.masterBoxQty
   )
     out.push("masterBoxQty");
+  // Inner: só nas fichas antigas, em que ele informava (nulo = não perguntado).
   if (
     baseline.innerBoxQty !== null &&
+    data.innerBoxQty !== null &&
     data.innerBoxQty !== baseline.innerBoxQty
   )
     out.push("innerBoxQty");
@@ -231,9 +287,12 @@ export function changedSheetFields(
     percentDiff(data.netWeightKg, baseline.netWeightKg) > SAME_PERCENT
   )
     out.push("netWeightKg");
+  // "Sem peso" com o nosso peso: ele não confirma o que temos.
   if (
     baseline.grossWeightBoxKg !== null &&
-    percentDiff(data.grossWeightBoxKg, baseline.grossWeightBoxKg) > SAME_PERCENT
+    (data.grossWeightBoxKg === null ||
+      percentDiff(data.grossWeightBoxKg, baseline.grossWeightBoxKg) >
+        SAME_PERCENT)
   )
     out.push("grossWeightBoxKg");
   if (baseline.material !== null && !sameText(data.material, baseline.material))
@@ -253,23 +312,19 @@ export function changedSheetFields(
 export function draftChangedFields(
   draft: SupplierSheetDraft,
   baseline: SupplierSheetBaseline | null,
+  /** Os materiais escolhidos por extenso (em português), para comparar. */
+  materialText = "",
 ): SupplierSheetField[] {
   if (!baseline) return [];
   const out: SupplierSheetField[] = [];
   const num = (field: SupplierSheetField, value: number | null) => {
     const base = baseline[field];
     if (typeof base !== "number" || !positive(value)) return;
-    const whole = field === "masterBoxQty" || field === "innerBoxQty";
+    const whole = field === "masterBoxQty";
     if (whole ? value !== base : percentDiff(value, base) > SAME_PERCENT)
       out.push(field);
   };
   num("masterBoxQty", draft.masterBoxQty);
-  if (draft.noInner) {
-    if (baseline.innerBoxQty !== null && baseline.innerBoxQty !== 0)
-      out.push("innerBoxQty");
-  } else if (baseline.innerBoxQty === 0 && positive(draft.innerBoxQty))
-    out.push("innerBoxQty");
-  else num("innerBoxQty", draft.innerBoxQty);
   const ours = sortedDims(baseline);
   const theirs = sortedDims(draft);
   if (
@@ -283,11 +338,13 @@ export function draftChangedFields(
     : dimsCbm(draft.boxLengthCm, draft.boxWidthCm, draft.boxHeightCm);
   num("cbm", cbm);
   num("netWeightKg", draft.netWeightKg);
-  num("grossWeightBoxKg", draft.grossWeightBoxKg);
+  if (draft.grossUnknown) {
+    if (baseline.grossWeightBoxKg !== null) out.push("grossWeightBoxKg");
+  } else num("grossWeightBoxKg", draft.grossWeightBoxKg);
   if (
     baseline.material !== null &&
-    draft.material.trim() &&
-    !sameText(draft.material, baseline.material)
+    materialText.trim() &&
+    !sameText(materialText, baseline.material)
   )
     out.push("material");
   if (baseline.factoryItemCode !== null) {
@@ -473,15 +530,16 @@ export function mergeBaselines(
   return out;
 }
 
-/** O rascunho do formulário a partir do que tínhamos (quem já vendeu). */
+/**
+ * O rascunho do formulário a partir do que tínhamos (quem já vendeu). Os
+ * materiais: os do catálogo que o nosso texto cita (quem chama acha).
+ */
 export function draftFromBaseline(
   b: SupplierSheetBaseline | null,
+  materialIds: readonly string[] = [],
 ): SupplierSheetDraft {
   return {
     masterBoxQty: b?.masterBoxQty ?? null,
-    innerBoxQty:
-      b && b.innerBoxQty !== null && b.innerBoxQty > 0 ? b.innerBoxQty : null,
-    noInner: !!b && b.innerBoxQty === 0,
     boxLengthCm: b?.boxLengthCm ?? null,
     boxWidthCm: b?.boxWidthCm ?? null,
     boxHeightCm: b?.boxHeightCm ?? null,
@@ -490,7 +548,8 @@ export function draftFromBaseline(
     cbm: b?.cbm ?? null,
     netWeightKg: b?.netWeightKg ?? null,
     grossWeightBoxKg: b?.grossWeightBoxKg ?? null,
-    material: b?.material ?? "",
+    grossUnknown: false,
+    materialIds: [...materialIds],
     factoryItemCode: b?.factoryItemCode ?? "",
     noFactoryCode: false,
   };
@@ -503,15 +562,17 @@ export function draftFromData(d: SupplierSheetData): SupplierSheetDraft {
   const dims = fromDims !== null && percentDiff(d.cbm, fromDims) < 1e-6;
   return {
     masterBoxQty: d.masterBoxQty,
-    innerBoxQty: d.innerBoxQty > 0 ? d.innerBoxQty : null,
-    noInner: d.innerBoxQty === 0,
     boxLengthCm: d.boxLengthCm,
     boxWidthCm: d.boxWidthCm,
     boxHeightCm: d.boxHeightCm,
     cbm: dims ? null : d.cbm,
     netWeightKg: d.netWeightKg,
     grossWeightBoxKg: d.grossWeightBoxKg,
-    material: d.material,
+    grossUnknown: !!d.grossWeightUnknown,
+    materialIds: d.materialIds ? [...d.materialIds] : [],
+    // Ficha antiga, de texto livre: o texto aparece para ele escolher no
+    // catálogo (não vale sozinho na cotação).
+    ...(d.materialIds?.length ? {} : { materialText: d.material }),
     factoryItemCode: d.factoryItemCode ?? "",
     noFactoryCode: d.factoryItemCode === null,
   };

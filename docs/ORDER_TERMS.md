@@ -353,6 +353,10 @@ Testes: `tests/unit/request-edit.test.ts`, `tests/unit/db-lookup.test.ts`, `test
    Serve para importar no Sankhya e conferir o que divergiu (`cotacao-<produto>-<data>.json`). O `QuickDialog` ganhou `headerActions`.
 4. **Preço nomeado:** em vez de "Preço", a tela diz qual preço está mostrando, sempre com frete: "Preço WD - com frete" ou "Preço Wellmix · Hiper - com frete". Sem formato escolhido, mostra "Preço - com frete".
 
+## 11.22 Caixa inner exigida pelo cliente (dono, 21/11/2026)
+
+Em cada produto da Nova solicitação (Encomendas, TS e Venda), abaixo da programação: **"Caixa inner exigida pelo cliente"**, "Não" por padrão ou "Sim" com as **peças por inner** (obrigatórias com "Sim"). O inner do cadastro do produto não conta como pedido do cliente: aparece só como dica, sem marcar sozinho. Grava em `requests.innerRequirement`; o rascunho e "Editar a encomenda" voltam com ele; a embalagem da encomenda usa a exigência antes do cadastro. Na cotação de compra, o fornecedor vê a exigência travada e não informa inner (docs/PURCHASE_DEMAND.md, "Inner do cliente, material do catálogo e Sem peso").
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

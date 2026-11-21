@@ -287,6 +287,7 @@ export async function renderNewRequest({
         },
         schedule: r.schedule,
         companyAllocations: r.companyAllocations,
+        innerRequirement: r.innerRequirement,
       }));
     } catch {
       return [];
@@ -1210,6 +1211,15 @@ export async function renderNewRequest({
                 intl: t.intl,
                 // Pedido para um grupo econômico (docs/ECONOMIC_GROUPS.md).
                 group: groupLabels,
+                // Caixa inner exigida pelo cliente (dono, 21/11/2026).
+                inner: {
+                  title: t("reqInner.title"),
+                  no: t("reqInner.no"),
+                  yes: t("reqInner.yes"),
+                  qty: t("reqInner.qty"),
+                  hint: t("reqInner.hint"),
+                  catalog: t("reqInner.catalog", { n: "{n}" }),
+                },
                 // O bloco "Programação de compra" da Seleção de itens (dono,
                 // 14/11/2026): os mesmos textos; a explicação diz para onde a
                 // programação da solicitação vai.

@@ -2,7 +2,11 @@ import {
   parseRequestSchedule,
   type RequestSchedule,
 } from "@/lib/workflow/request-schedule";
-import type { RequestCompanyAllocation } from "@/lib/db/schema";
+import type {
+  RequestCompanyAllocation,
+  RequestInnerRequirement,
+} from "@/lib/db/schema";
+import { parseNumberInput } from "@/lib/number-input";
 /*
  * Linhas de produto do formulário de nova solicitação. Cada linha usa o
  * prefixo `p<n>.` nos campos (p0.productName, p0.quantity…); linhas removidas
@@ -30,6 +34,29 @@ export interface RequestItemFields {
    * confere as empresas e as somas.
    */
   companyAllocations: RequestCompanyAllocation[] | null;
+  /**
+   * Caixa inner exigida pelo cliente (dono, 21/11/2026): "Sim" com as peças
+   * por inner; "Não" (o padrão) = nula.
+   */
+  innerRequirement: RequestInnerRequirement | null;
+}
+
+/**
+ * `<linha>.innerRequired` ("yes"/"no") e `<linha>.innerQty`. No envio, "Sim"
+ * sem um número inteiro positivo = Error("inner_qty_required"); no rascunho,
+ * fica "Sim" sem o número.
+ */
+export function parseInnerRequirement(
+  choice: string,
+  rawQty: string,
+  lenient = false,
+): RequestInnerRequirement | null {
+  if (choice !== "yes") return null;
+  const n = parseNumberInput(rawQty, { int: true });
+  const qty =
+    n !== null && Number.isInteger(n) && n > 0 && n <= 1_000_000 ? n : null;
+  if (qty === null && !lenient) throw new Error("inner_qty_required");
+  return { qty };
 }
 
 const ALLOC_ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -120,11 +147,22 @@ export function parseRequestItems(
       } catch (error) {
         if (!options.lenient) throw error;
       }
+      let innerRequirement: RequestInnerRequirement | null = null;
+      try {
+        innerRequirement = parseInnerRequirement(
+          text(`${p}innerRequired`),
+          text(`${p}innerQty`),
+          options.lenient,
+        );
+      } catch (error) {
+        if (!options.lenient) throw error;
+      }
       return {
         index,
         productId,
         variantId,
         companyAllocations,
+        innerRequirement,
         productName: text(`${p}productName`),
         description: text(`${p}description`),
         specification: text(`${p}specification`) || null,

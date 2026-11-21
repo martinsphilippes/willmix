@@ -44,6 +44,7 @@ import {
   decideQuoteWinnerAction,
   quoteNoAnswerAction,
   saveQuoteDraftAction,
+  setQuoteInnerAction,
 } from "../../actions/purchase-demand";
 import { loadQuoteDraft } from "@/lib/services/quote-draft";
 import { QuoteDeadline, dueTimes } from "../_time";
@@ -65,6 +66,9 @@ import {
   type CatalogAlert,
 } from "@/lib/supplier-sheet";
 import { isPieceUnit } from "@/lib/moq";
+import { listMaterials } from "@/lib/services/materials";
+import { materialName, materialsText } from "@/lib/materials";
+import { quoteInnerState } from "@/lib/quote-inner";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { galleryProps } from "@/components/photo-gallery-props";
 import { ChatOpenButton } from "@/components/chat-open-button";
@@ -143,11 +147,21 @@ export default async function PurchaseQuotePage({
     // vez do par; quem já vendeu confere o que temos (o aviso de revalidação).
     // Rascunho automático deste login (dono, 20/11/2026): o que estava
     // digitado volta para a tela.
-    const [lines, tolerances, draft] = await Promise.all([
+    const [lines, tolerances, draft, catalog] = await Promise.all([
       quoteSheetLines(quote, response),
       sheetTolerances(),
       editable ? loadQuoteDraft(user, quote.id) : Promise.resolve(null),
+      // Catálogo de materiais (dono, 21/11/2026): o fornecedor escolhe daqui.
+      listMaterials({ includeInactive: true }),
     ]);
+    const materialOptions = catalog
+      .filter((m) => m.active)
+      .map((m) => ({
+        id: m.id,
+        label: materialName(m, t.intl),
+        search: `${m.namePt} ${m.nameEn} ${m.nameZh}`,
+        namePt: m.namePt,
+      }));
     const answerProducts: QuoteSheetProduct[] = quote.items.map((item) => {
       const line = lines.find((l) => l.productId === item.productId)!;
       const scheduleItems = item.schedule?.items ?? [];
@@ -189,12 +203,21 @@ export default async function PurchaseQuotePage({
         rejectedNote: line.rejectedNote,
         draft: line.ownDraft
           ? draftFromData(line.ownDraft)
-          : draftFromBaseline(line.soldBefore ? line.baseline : null),
+          : draftFromBaseline(
+              line.soldBefore ? line.baseline : null,
+              line.baselineMaterialIds,
+            ),
         baseline: line.baseline,
         askPhoto: line.askPhoto,
         photoUrl: line.photoDocumentId
           ? `/api/files/${line.photoDocumentId}`
           : null,
+        inner: line.inner,
+        // Ficha de antes do catálogo (texto livre): ele escolhe de novo.
+        legacyMaterial:
+          line.ownDraft && !line.ownDraft.materialIds?.length
+            ? line.ownDraft.material || null
+            : null,
       };
     });
     return (
@@ -230,6 +253,7 @@ export default async function PurchaseQuotePage({
               action={answerQuoteAction}
               photoAction={addQuoteScalePhotoAction}
               products={answerProducts}
+              materials={materialOptions}
               commercial={{
                 // Sem resposta ainda: RMB (dono, 20/11/2026); o fornecedor
                 // troca ao lado do preço.
@@ -255,6 +279,7 @@ export default async function PurchaseQuotePage({
               response={response}
               reason={quote.status === "open" ? "deadline" : "closed"}
               times={times}
+              materials={catalog}
             />
           )}
         </Card>
@@ -269,7 +294,7 @@ export default async function PurchaseQuotePage({
     filter: { quoteId: quote.id },
   });
   const productIds = [...new Set(quote.items.map((i) => i.productId))];
-  const [suppliers, refs, requests, products, photos, demands] =
+  const [suppliers, refs, requests, products, photos, demands, catalog] =
     await Promise.all([
       responses.length
         ? store.list("parties", {
@@ -297,7 +322,10 @@ export default async function PurchaseQuotePage({
             .list("requests", { filter: { id: quote.demandIds } })
             .catch(() => [])
         : Promise.resolve([]),
+      // Os materiais da ficha pelo nome no idioma de quem lê (21/11/2026).
+      listMaterials({ includeInactive: true }),
     ]);
+  const materialById = new Map(catalog.map((m) => [m.id, m]));
   const productOf = (pid: string) => products.find((p) => p.id === pid) ?? null;
   const canOpenProducts = canOpen(user, "products");
   const supplierName = (sid: string) =>
@@ -322,8 +350,21 @@ export default async function PurchaseQuotePage({
         )
       : null;
   const notice = (
-    ["opened", "chosen", "decided", "reopened", "invited"] as const
+    ["opened", "chosen", "decided", "reopened", "invited", "inner"] as const
   ).find((k) => typeof sp[k] === "string");
+  // Caixa inner a definir (dono, 21/11/2026): pedida sem o número ou
+  // diferente entre as encomendas; o Comprador define aqui.
+  const innerText = (item: PurchaseQuoteItem) => {
+    const state = quoteInnerState(item.inner);
+    return state.kind === "required"
+      ? t("quote.inner.required", { n: state.qty.toLocaleString(t.intl) })
+      : state.kind === "pending"
+        ? t("quote.inner.pendingTitle")
+        : t("quote.inner.none");
+  };
+  const pendingInner = quote.items.filter(
+    (i) => quoteInnerState(i.inner).kind === "pending",
+  );
   // Ficha técnica de cada resposta (dono, 20/11/2026): o que cada fornecedor
   // informou, as caixas e o m³ pela caixa dele e os avisos do cadastro.
   const cells = await boardSheetCells(quote, responses);
@@ -372,6 +413,7 @@ export default async function PurchaseQuotePage({
               <Th>{t("common.quantity")}</Th>
               <Th>{t("quote.unitsPerBox")}</Th>
               <Th>{t("quote.boxes")}</Th>
+              <Th>{t("quote.inner.col")}</Th>
               <Th>
                 <span className="sr-only">{t("chat.open")}</span>
               </Th>
@@ -415,6 +457,12 @@ export default async function PurchaseQuotePage({
                     {item.quantity.toLocaleString(t.intl)} {item.unit}
                   </Td>
                   {boxCells(t, item, product)}
+                  <Td
+                    className="text-xs"
+                    data-quote-inner-state={quoteInnerState(item.inner).kind}
+                  >
+                    {innerText(item)}
+                  </Td>
                   <Td>
                     {demand ? (
                       <ChatOpenButton
@@ -429,6 +477,81 @@ export default async function PurchaseQuotePage({
           </tbody>
         </Table>
       </Card>
+      {pendingInner.length && quote.status === "open" ? (
+        <Card title={t("quote.inner.pendingTitle")}>
+          <div className="space-y-3" data-quote-inner-fix>
+            <p className="text-xs text-zinc-600">
+              {t("quote.inner.pendingHint")}
+            </p>
+            {pendingInner.map((item) => {
+              const state = quoteInnerState(item.inner);
+              if (state.kind !== "pending") return null;
+              const name = productNameText(t, item.name);
+              const values = state.requested
+                .map((v) =>
+                  v === 0
+                    ? t("quote.inner.noneValue")
+                    : v.toLocaleString(t.intl),
+                )
+                .join(", ");
+              return (
+                <div
+                  key={item.productId}
+                  className="rounded-lg border border-amber-200 bg-amber-50 p-3"
+                  data-quote-inner-fix-item={item.productId}
+                >
+                  <p className="text-sm text-zinc-900">
+                    {state.issue === "missing"
+                      ? t("quote.inner.missing", { product: name })
+                      : t("quote.inner.conflict", {
+                          product: name,
+                          values,
+                        })}
+                  </p>
+                  {canChoose ? (
+                    <form
+                      action={setQuoteInnerAction}
+                      className="mt-2 flex flex-wrap items-end gap-2"
+                    >
+                      <input type="hidden" name="quoteId" value={quote.id} />
+                      <input
+                        type="hidden"
+                        name="productId"
+                        value={item.productId}
+                      />
+                      <label className="block text-xs font-medium text-zinc-700">
+                        {t("quote.inner.qty")}
+                        <input
+                          name="innerQty"
+                          inputMode="numeric"
+                          autoComplete="off"
+                          className="mt-1 block h-9 w-28 rounded-md border border-zinc-300 bg-white px-2.5 text-right text-[13px] tabular-nums"
+                          data-quote-inner-input={item.productId}
+                        />
+                      </label>
+                      <SubmitButton
+                        name="mode"
+                        value="qty"
+                        data-quote-inner-set={item.productId}
+                      >
+                        {t("quote.inner.set")}
+                      </SubmitButton>
+                      <SubmitButton
+                        name="mode"
+                        value="none"
+                        variant="secondary"
+                        data-quote-inner-none={item.productId}
+                      >
+                        {t("quote.inner.setNone")}
+                      </SubmitButton>
+                    </form>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      ) : null}
       <Card title={t("quote.compare")}>
         <Table tools={false}>
           <thead>
@@ -640,10 +763,24 @@ export default async function PurchaseQuotePage({
                           <Td className={cx(slimTd, "tabular-nums")}>
                             {n(sheet.masterBoxQty, 0)}
                           </Td>
-                          <Td className={cx(slimTd, "tabular-nums")}>
-                            {sheet.innerBoxQty
-                              ? n(sheet.innerBoxQty, 0)
-                              : t("supplierSheet.noInner")}
+                          <Td
+                            className={cx(slimTd, "tabular-nums")}
+                            data-quote-sheet-inner
+                          >
+                            {(() => {
+                              // O inner é a exigência do cliente (21/11/2026);
+                              // nas fichas antigas, o que ele informava.
+                              const state = quoteInnerState(item.inner);
+                              if (state.kind === "required")
+                                return n(state.qty, 0);
+                              if (state.kind === "pending")
+                                return t("quote.inner.pendingTitle");
+                              return sheet.innerBoxQty === null
+                                ? "—"
+                                : sheet.innerBoxQty
+                                  ? n(sheet.innerBoxQty, 0)
+                                  : t("supplierSheet.noInner");
+                            })()}
                           </Td>
                           <Td className={cx(slimTd, "tabular-nums")}>
                             {sheet.boxLengthCm !== null &&
@@ -658,17 +795,39 @@ export default async function PurchaseQuotePage({
                           <Td className={cx(slimTd, "tabular-nums")}>
                             {n(sheet.netWeightKg)}
                           </Td>
-                          <Td className={cx(slimTd, "tabular-nums")}>
-                            {n(sheet.grossWeightBoxKg)}
+                          <Td
+                            className={cx(slimTd, "tabular-nums")}
+                            data-quote-sheet-gross={
+                              sheet.grossWeightBoxKg === null
+                                ? "unknown"
+                                : "given"
+                            }
+                          >
+                            {sheet.grossWeightBoxKg === null
+                              ? t("quote.sheet.grossUnknownDeclared")
+                              : n(sheet.grossWeightBoxKg)}
                           </Td>
-                          <Td className={slimTd}>
+                          <Td className={slimTd} data-quote-sheet-material>
                             <ClampText
                               lines={1}
-                              text={sheet.material}
+                              text={
+                                sheet.materialIds?.length
+                                  ? materialsText(
+                                      sheet.materialIds,
+                                      materialById,
+                                      t.intl,
+                                    ) || sheet.material
+                                  : sheet.material
+                              }
                               more={t("reqList.more")}
                               less={t("reqList.less")}
                               className="max-w-[9rem]"
                             />
+                            {!sheet.materialIds?.length && sheet.material ? (
+                              <span className="block text-[10px] text-amber-800">
+                                {t("quote.material.outside")}
+                              </span>
+                            ) : null}
                           </Td>
                           <Td className={slimTd}>
                             <ClampText

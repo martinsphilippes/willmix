@@ -126,6 +126,8 @@ describe("menu lateral", () => {
           "/app/customers",
           "/app/products",
           "/app/lines",
+          // Catálogo de materiais (dono, 21/11/2026).
+          "/app/materials",
           "/app/explore",
         ],
       },
@@ -270,7 +272,7 @@ describe("menu lateral", () => {
       // Produtos e a vitrine do cliente (o designer abre as duas).
       {
         group: "nav.group.registry",
-        items: ["/app/products", "/app/explore"],
+        items: ["/app/products", "/app/materials", "/app/explore"],
       },
     ]);
   });

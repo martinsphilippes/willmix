@@ -125,6 +125,23 @@ async function answer(
     await expect(
       form.locator('[data-sheet-field="prod-jarra.factoryItemCode"]'),
     ).toHaveValue("JR-01");
+    // O material do catálogo volta escolhido (dono, 21/11/2026).
+    await expect(
+      form.locator('[data-material-chip="mat-vidro"]'),
+    ).toBeVisible();
+    // "Sem peso": o campo trava e mostra "Peso bruto não informado"; ao
+    // desmarcar, o número digitado volta (não se perde).
+    const gross = form.locator(
+      '[data-sheet-field="prod-jarra.grossWeightBoxKg"]',
+    );
+    await form.locator('[data-sheet-gross-unknown="prod-jarra"]').check();
+    await expect(gross).toBeDisabled();
+    await expect(
+      form.locator('[data-sheet-gross-unknown-text="prod-jarra"]'),
+    ).toBeVisible();
+    await form.locator('[data-sheet-gross-unknown="prod-jarra"]').uncheck();
+    await expect(gross).toBeEnabled();
+    await expect(gross).toHaveValue("12,5");
     await expect(
       form.locator('[data-quote-currency="prod-jarra"]'),
     ).toHaveValue(currency);
