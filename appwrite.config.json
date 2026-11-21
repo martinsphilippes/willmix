@@ -1601,7 +1601,7 @@
         },
         {
           "key": "requestId",
-          "required": true,
+          "required": false,
           "array": false,
           "default": null,
           "type": "varchar",
@@ -6912,7 +6912,7 @@
       "columns": [
         {
           "key": "requestId",
-          "required": true,
+          "required": false,
           "array": false,
           "default": null,
           "type": "varchar",

@@ -1,4 +1,5 @@
 import "server-only";
+import { orderRequest } from "@/lib/services/order-request";
 
 import { realName, withoutPlaceholder } from "@/lib/placeholder-name";
 import { getStore, type Order } from "@/lib/db";
@@ -130,7 +131,7 @@ export async function buildOrderSheet(
         .list("production_tracks", { filter: { orderId: order.id }, limit: 1 })
         // Tabela ainda não publicada: sem ETD, como pedido sem produção.
         .catch(() => []),
-      store.get("requests", order.requestId),
+      orderRequest(order, store),
       order.ownerUserId ? store.get("users", order.ownerUserId) : null,
     ]);
   const productIds = [

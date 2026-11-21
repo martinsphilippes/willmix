@@ -1,4 +1,5 @@
 import "server-only";
+import { orderRequest } from "@/lib/services/order-request";
 
 import {
   PRODUCT_EXTRA_DEFAULTS,
@@ -822,7 +823,7 @@ export async function registerProductFromOrderSheet(
     filter: { orderId },
     limit: 1,
   });
-  const request = await store.get("requests", order.requestId);
+  const request = await orderRequest(order, store);
   // Item ou solicitação já ligados a um produto: a ficha passa a apontar
   // para ele (nada de produto em dobro).
   const linked = item?.productId ?? request?.productId ?? null;

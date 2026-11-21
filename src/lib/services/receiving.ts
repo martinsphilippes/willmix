@@ -448,7 +448,10 @@ export async function financialSummary(
   const store = getStore();
   const [byOrder, byRequest] = await Promise.all([
     store.list("payments", { filter: { orderId: order.id } }),
-    store.list("payments", { filter: { requestId: order.requestId } }),
+    // Pedido sem solicitação (Sankhya, D1): só os pagamentos do pedido.
+    order.requestId
+      ? store.list("payments", { filter: { requestId: order.requestId } })
+      : Promise.resolve([]),
   ]);
   const all = [...byOrder, ...byRequest.filter((p) => !p.orderId)];
   const settled = (p: (typeof all)[number]) =>

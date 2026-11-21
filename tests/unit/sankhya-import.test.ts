@@ -233,7 +233,7 @@ describe("carga da amostra do Sankhya", () => {
       await store.list("stages", { filter: { orderId: order!.id } }),
     ).toEqual([]);
     expect(order!.currentStageId ?? null).toBeNull();
-    const request = await store.get("requests", order!.requestId);
+    const request = await store.get("requests", order!.requestId!);
     expect(request).toMatchObject({ status: "ORDERED", orderId: order!.id });
     // Fase 5d (advanceMilestones): TOP → marco (1107 → Desembaraço). Os
     // itens dos marcos antes dele ficam feitos, os do marco da TOP abertos;

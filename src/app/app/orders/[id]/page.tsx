@@ -1,3 +1,4 @@
+import { orderRequest } from "@/lib/services/order-request";
 import {
   OrderMilestoneTimeline,
   type MilestoneTimelineItem,
@@ -663,7 +664,7 @@ export default async function OrderPage({
     /* Módulo cliente 2: pós-venda, "comprar de novo / nova proposta" e origem da solicitação.
        Só cliente (dono) e Wellmix; fornecedor e parceiros não veem avaliação nem preço de venda. */
     customerSide ? getAfterSales(order.id) : Promise.resolve(null),
-    store.get("requests", order.requestId),
+    orderRequest(order, store),
     customerSide
       ? store.list("requests", {
           filter: { sourceOrderId: order.id },
@@ -2160,6 +2161,10 @@ export default async function OrderPage({
                   {t("requests.numbered", { n: sourceRequest.number })}
                 </span>
               )
+            ) : !order.requestId ? (
+              <span title={t("orders.noRequest.hint")} data-no-request>
+                <Badge tone="neutral">{t("orders.noRequest.sankhya")}</Badge>
+              </span>
             ) : null}
             {origin ? (
               <Badge tone="brand">{t(`orders.origin.${origin}`)}</Badge>

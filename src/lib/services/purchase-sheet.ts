@@ -1,4 +1,5 @@
 import "server-only";
+import { orderRequest } from "@/lib/services/order-request";
 import { isOrderOpen } from "@/lib/order-status";
 import { legacyGroupOfItem } from "@/lib/milestones";
 
@@ -334,7 +335,7 @@ async function prefill(
   const base = await prefillBase(order);
   // NCM confirmado na solicitação vale quando a ficha não trouxe um.
   if (base.ncm) return base;
-  const request = await getStore().get("requests", order.requestId);
+  const request = await orderRequest(order);
   const confirmed = normalizeNcm(request?.ncm);
   return confirmed ? { ...base, ncm: formatNcm(confirmed) } : base;
 }
@@ -345,7 +346,7 @@ async function prefillBase(
   SheetInput & { productId: string | null; prefillSource: SheetPrefillSource }
 > {
   const store = getStore();
-  const request = await store.get("requests", order.requestId);
+  const request = await orderRequest(order, store);
   const [product, supplier, link] = await Promise.all([
     request?.productId ? store.get("products", request.productId) : null,
     store.get("parties", order.supplierId),
@@ -465,9 +466,7 @@ async function photoKindsDone(orderId: string, photos: ProductPhoto[]) {
   // Fotos do cadastro do produto contam como enviadas (ficam no catálogo).
   const store0 = getStore();
   const order0 = await store0.get("orders", orderId);
-  const request0 = order0
-    ? await store0.get("requests", order0.requestId)
-    : null;
+  const request0 = order0 ? await orderRequest(order0, store0) : null;
   // A foto na balança do cadastro só vale para quem já vendeu o produto; a
   // que o fornecedor mandou (na cotação) vale sempre (dono, 20/11/2026).
   const scale = order0
@@ -538,7 +537,7 @@ export async function getSheetForUser(
   });
   const draft = existing ? null : await prefill(order);
   const stored = existing ?? draft!;
-  const request = await store.get("requests", order.requestId);
+  const request = await orderRequest(order, store);
   const records = await sheetRecords(
     user,
     order.supplierId,

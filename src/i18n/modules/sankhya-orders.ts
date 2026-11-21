@@ -4,6 +4,9 @@
  * mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "orders.noRequest.sankhya": "Reposição (Sankhya)",
+  "orders.noRequest.hint":
+    "Pedido de compra do Sankhya sem solicitação de cliente (compra para a própria Wellmix).",
   "sankhyaInt.tab.orders": "Pedidos do Sankhya (ensaio)",
   "sankhyaOrders.title": "Pedidos do Sankhya (ensaio)",
   "sankhyaOrders.subtitle":
@@ -64,6 +67,9 @@ export const pt = {
 };
 
 export const en: typeof pt = {
+  "orders.noRequest.sankhya": "Replenishment (Sankhya)",
+  "orders.noRequest.hint":
+    "Sankhya purchase order with no customer request (a purchase for Wellmix itself).",
   "sankhyaInt.tab.orders": "Sankhya orders (trial)",
   "sankhyaOrders.title": "Sankhya orders (trial)",
   "sankhyaOrders.subtitle":
@@ -124,6 +130,8 @@ export const en: typeof pt = {
 };
 
 export const zh: typeof pt = {
+  "orders.noRequest.sankhya": "补货（Sankhya）",
+  "orders.noRequest.hint": "Sankhya 采购单，无客户申请（Wellmix 自用采购）。",
   "sankhyaInt.tab.orders": "Sankhya 订单（试运行）",
   "sankhyaOrders.title": "Sankhya 订单（试运行）",
   "sankhyaOrders.subtitle":

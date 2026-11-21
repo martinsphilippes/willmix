@@ -228,6 +228,14 @@ Hoje `orders.requestId` é obrigatório: todo pedido nasce de uma solicitação.
 
 Como relaxar o "obrigatório" é uma mudança num campo existente, ela vai num PR próprio, com essa revisão e o E2E.
 
+**Feito em 21/11/2026.** No banco a coluna já aceitava vazio (o Supabase não tem `not null` em `requestId`); a mudança é do tipo e do esquema no código, sem mexer em dado:
+
+- `orders.requestId` e `freight_quotes.requestId` (a cotação de frete copia o do pedido) opcionais.
+- Leitura única da solicitação do pedido em `src/lib/services/order-request.ts` (`orderRequest`, que devolve nulo sem ir ao banco, e `orderRequestIds`, sem vazios), usada nas 16 leituras que o compilador apontou: página do pedido e ficha de compra, ficha do pedido, carga, ficha do produto, histórico de compras, programação, ficha de compra, recompra, auditoria, exploração do catálogo e a sincronização com o Sankhya.
+- O resumo financeiro do pedido (`financialSummary`) só busca os pagamentos pela solicitação quando ela existe; sem ela, um filtro vazio traria os pagamentos soltos de outros pedidos.
+- Na página do pedido, o pedido sem solicitação mostra o selo "Reposição (Sankhya)" no lugar do número da solicitação.
+- Teste: `tests/unit/order-without-request.test.ts`.
+
 ## 5. Etapas, marcos e pendências
 
 ### 5.1 De-para do Sankhya para o marco (proposta para a Wellmix validar)
@@ -328,7 +336,7 @@ Os marcos que só existem no portal (Certificação, Amostras, Booking) seguem a
 Cada etapa é um PR com testes e E2E. Nada apaga dados até a etapa 5.
 
 1. **Esquema aditivo:** os campos da seção 4.3. **Feito em 21/11/2026:** `orders.sankhyaChain`, `sankhyaChangedAt`, `sankhyaQuality`, `sankhyaInspectedAt`, `sankhyaReceipt`, `sankhyaReceivedAt`, `customsChannel`, `sankhyaImportProcesses`, `shipmentState` (`none`, `partial`, `shipped`) e `sankhyaSituation` (a situação do ensaio: `in_progress`, `awaiting_definition`, `closed`, `interrupted`, `legacy_path`); `order_items.shippedQty`, `receivedQty`, `pendingQty`; `containers.sankhyaCode` (com índice), `sankhyaChain`, `supplierId`. Todos opcionais; os pedidos do portal ficam com eles vazios.
-2. **Pedido sem solicitação (D1):** `requestId` opcional e a revisão das leituras (seção 4.4).
+2. **Pedido sem solicitação (D1):** `requestId` opcional e a revisão das leituras (seção 4.4). **Feito em 21/11/2026.**
 3. **Carga de ensaio a partir da cópia já no banco** (`sankhya_stage_rows`), sem chamar o Sankhya. **Feita em 21/11/2026:**
    - `scripts/sankhya-projection.sql` monta, no próprio Postgres, um pedido por cadeia (a ponta de 1100 a 1104/1107) e um embarque por documento 35. Grava na tabela de ensaio `sankhya_projection` (apaga e refaz só ela) com situação, marco, estado do embarque, a cadeia de documentos, os itens com o que já embarcou (pela TGFVAR, `QTDATENDIDA`; o `QTD_ENTREGUE` não serve para isso) e o saldo, os status de recebimento, qualidade e canal e os embarques ligados;
    - a tela **Configurações → Sankhya → Pedidos do Sankhya (ensaio)** (`src/app/app/settings/sankhya/_orders.tsx`, só o administrador) mostra as contagens por situação, marco e motivo, a lista com busca por NUNOTA (de qualquer documento da cadeia) ou fornecedor e o detalhe de cada pedido e embarque;

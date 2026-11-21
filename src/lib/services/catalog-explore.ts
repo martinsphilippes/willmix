@@ -1,4 +1,5 @@
 import "server-only";
+import { orderRequestIds } from "@/lib/services/order-request";
 
 import type { Translate } from "@/i18n";
 import {
@@ -293,7 +294,7 @@ async function boughtProductIds(user: User): Promise<Set<string>> {
   ).filter((o) => o.requestedByUserId === user.id && o.status !== "CANCELLED");
   if (!orders.length) return new Set();
   const requests = await store.list("requests", {
-    filter: { id: [...new Set(orders.map((o) => o.requestId))] },
+    filter: { id: orderRequestIds(orders) },
   });
   return new Set(
     requests.map((r) => r.productId).filter((id): id is string => !!id),

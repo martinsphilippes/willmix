@@ -1,4 +1,5 @@
 import "server-only";
+import { orderRequest } from "@/lib/services/order-request";
 
 import { assertWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
@@ -133,7 +134,7 @@ async function createRoundOrder(
   const store = getStore();
   const [parentItems, parentRequest] = await Promise.all([
     store.list("order_items", { filter: { orderId: parent.id } }),
-    store.get("requests", parent.requestId),
+    orderRequest(parent, store),
   ]);
   const lines = round.items
     .map((it) => {

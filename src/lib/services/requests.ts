@@ -1,4 +1,5 @@
 import "server-only";
+import { orderRequest } from "@/lib/services/order-request";
 import { realName } from "@/lib/placeholder-name";
 
 import { randomUUID } from "node:crypto";
@@ -809,7 +810,7 @@ export async function createFollowUpRequest(
     throw new ForbiddenError();
   const [item] = await store.list("order_items", { filter: { orderId } });
   if (!item) throw new RequestError("order_item_missing");
-  const previous = await store.get("requests", order.requestId);
+  const previous = await orderRequest(order, store);
   const product = item.productId
     ? await store.get("products", item.productId)
     : null;

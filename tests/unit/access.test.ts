@@ -122,7 +122,7 @@ describe("cada login do cliente vê só os próprios pedidos", () => {
       }),
     ).rejects.toThrow("invalid_requester");
     await expect(
-      setRequester(joao, order.requestId, joao.id),
+      setRequester(joao, order.requestId!, joao.id),
     ).rejects.toThrow();
   });
 });

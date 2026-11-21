@@ -73,7 +73,9 @@ export async function searchAudit(
       filter: { number: q.orderNumber },
       limit: 1,
     });
-    entityIds = order ? [order.id, order.requestId] : [];
+    entityIds = order
+      ? [order.id, order.requestId].filter((id): id is string => !!id)
+      : [];
     if (!entityIds.length)
       return { rows: [], total: 0, capped: false, page: 1, pages: 1 };
   }
