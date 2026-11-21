@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { fillOrderTerms, login } from "./helpers";
+import {
+  chooseCustomerLogin,
+  createdRequestId,
+  fillCustomerContacts,
+  fillOrderTerms,
+  login,
+} from "./helpers";
 
 /*
  * Detalhes do rascunho (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção
@@ -12,8 +18,8 @@ import { fillOrderTerms, login } from "./helpers";
  * volta ao formulário com tudo o que foi salvo. Abrir não muda nada (nem
  * contadores, nem número, nem avisos), e a volta para a lista mantém os
  * filtros e a rolagem. Só quem salvou e o administrador abrem (URL direta
- * também); o administrador vê os de todos os logins, só para consulta (seção
- * 9).
+ * também); o administrador vê os de todos os logins (seção 9) e, desde
+ * 21/11/2026, também conclui e envia pelo botão "Concluir e enviar".
  */
 const TAG = `DRF${Date.now().toString(36).toUpperCase()}`;
 
@@ -444,12 +450,13 @@ test("Encomendas: o número abre os detalhes do registro certo (rascunho de um c
 
 /**
  * Administrador vê os rascunhos de todos (dono, 19/11/2026;
- * docs/ORDER_LEVEL_LISTS.md, seção 9): o rascunho salvo por outro login
- * aparece em Encomendas para o administrador, com quem salvou, e abre a mesma
- * tela de detalhes, só para consulta. "Continuar edição" fica com quem
- * salvou. Quem não é administrador continua sem ver o rascunho dos outros.
+ * docs/ORDER_LEVEL_LISTS.md, seção 9) e, desde 21/11/2026, conclui e envia:
+ * o "Concluir e enviar" da Próxima ação é o botão que abre o formulário da
+ * tela de onde o rascunho veio, com o que foi salvo e o aviso de quem
+ * salvou; o envio sai com o número do rascunho, e o rascunho sai da lista.
+ * Quem não é administrador continua sem ver o rascunho dos outros.
  */
-test("Encomendas: o administrador vê o rascunho de outro login, só para consulta", async ({
+test("Encomendas: o administrador conclui e envia o rascunho de outro login pelo botão da Próxima ação", async ({
   page,
 }) => {
   // O Otávio (Comprador) salva um rascunho na tela TS.
@@ -466,21 +473,26 @@ test("Encomendas: o administrador vê o rascunho de outro login, só para consul
   await page.waitForURL(/[?&]draftSaved=1/);
   const draftId = new URL(page.url()).searchParams.get("draft")!;
   const draftPath = `/app/requests/batch/${draftId}`;
+  const formPath = `/app/new-request/ts?draft=${draftId}`;
 
-  // A Ana (administradora): na lista, com quem salvou na Próxima ação.
+  // A Ana (administradora): na lista, "Concluir e enviar" é o botão que leva
+  // ao formulário, com quem salvou embaixo.
   await login(page, "admin@wellmix.com");
   await page.goto("/app/requests?situ=draft");
   const draftRow = page.locator(`[data-request-list-draft="${draftId}"]`);
   await expect(draftRow).toBeVisible();
-  await expect(draftRow.locator('[data-request-next="draft"]')).toContainText(
-    "Otávio Operador",
-  );
+  const next = draftRow.locator('[data-request-next="draft"]');
+  await expect(next).toContainText("Otávio Operador");
+  const resume = next.locator("[data-request-draft-resume]");
+  await expect(resume).toHaveText("Concluir e enviar");
+  await expect(resume).toHaveAttribute("href", formPath);
   const number = (await draftRow
     .locator("[data-request-number]")
     .textContent())!.trim();
   expect(number).toMatch(/^\d+$/);
 
-  // O número abre os detalhes: quem salvou, só consulta, sem continuar.
+  // O número abre os detalhes: quem salvou e, para o administrador também,
+  // "Continuar edição" e o próximo passo levando ao formulário.
   await draftRow.locator("[data-request-draft-open]").click();
   await page.waitForURL(new RegExp(`${draftPath}$`));
   const expectOthers = async () => {
@@ -493,7 +505,14 @@ test("Encomendas: o administrador vê o rascunho de outro login, só para consul
     await expect(page.locator('[data-draft-owner="other"]')).toContainText(
       "Rascunho salvo por Otávio Operador",
     );
-    await expect(page.locator("[data-draft-resume]")).toHaveCount(0);
+    await expect(page.locator("[data-draft-resume]")).toHaveAttribute(
+      "href",
+      formPath,
+    );
+    await expect(page.locator("[data-draft-next-resume]")).toHaveAttribute(
+      "href",
+      formPath,
+    );
   };
   await expectOthers();
   // Recarregar e a URL direta: o mesmo.
@@ -515,4 +534,35 @@ test("Encomendas: o administrador vê o rascunho de outro login, só para consul
   const response = await page.goto(draftPath);
   expect(response?.status()).toBe(404);
   await expect(page.locator("[data-draft-status]")).toHaveCount(0);
+
+  // A Ana conclui pelo botão da lista: o formulário com o rascunho e o aviso
+  // de quem salvou; completa a quantidade e os contatos e envia.
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/requests?situ=draft");
+  await draftRow.locator("[data-request-draft-resume]").click();
+  await page.waitForURL(new RegExp(`/app/new-request/ts\\?draft=${draftId}`));
+  await expect(page.locator("[data-request-draft-other]")).toContainText(
+    "Rascunho salvo por Otávio Operador",
+  );
+  const row = page.locator('[data-request-item="0"]');
+  await expect(row.locator('input[name="p0.productId"]')).toHaveValue(
+    "prod-boneca",
+  );
+  await chooseCustomerLogin(page, "joao@lojista.com");
+  await expect(row.locator('[role="status"]').first()).toBeVisible();
+  await row
+    .locator("[data-rounds-generator] [data-generate-total]")
+    .fill("100");
+  await fillCustomerContacts(page, "loja-joao");
+  await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
+  await createdRequestId(page, { open: false });
+  // A solicitação nasce com o número do rascunho.
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    `nº ${number}`,
+  );
+  // O rascunho saiu da lista.
+  await page.goto("/app/requests?situ=draft");
+  await expect(
+    page.locator(`[data-request-list-draft="${draftId}"]`),
+  ).toHaveCount(0);
 });

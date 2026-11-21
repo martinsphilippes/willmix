@@ -11,9 +11,9 @@ import type {
   RequestCompanyAllocation,
   VariantSnapshot,
 } from "@/lib/db/schema";
-import { draftResumeHref, draftScreenOf } from "@/lib/request-screens";
+import { draftResumeHref } from "@/lib/request-screens";
 import {
-  canDraft,
+  canContinueDraft,
   draftForm,
   draftOwners,
   getListedDraft,
@@ -54,8 +54,9 @@ import { parseRequestItems } from "../../actions/request-items";
  *   onde ele veio (a mesma regra de "Continuar": `canDraft`). Fica de fora o
  *   rascunho da entrada da Reposição (ele é da fila de Reposição, não de
  *   Encomendas). Fora disso, nulo: a página responde 404, sem dizer se o
- *   rascunho existe. "Continuar edição" só para quem salvou (o formulário só
- *   reabre o rascunho dele).
+ *   rascunho existe. "Continuar edição" para quem salvou e, desde 21/11/2026
+ *   (dono), para o administrador (`canContinueDraft`), que completa e envia
+ *   pelo formulário sem tomar o rascunho de quem o salvou.
  * - Só leitura: lê o rascunho, o cliente, os produtos e as variações; não
  *   grava nada, não reserva número, não audita, não notifica e não envia.
  *   O número é o que o rascunho já tem (sem número, fica sem).
@@ -105,7 +106,10 @@ export interface DraftDetails {
   number: number | null;
   /** Continuar a edição: o formulário da tela de onde o rascunho veio. */
   resumeHref: string;
-  /** Só quem salvou continua (e só se ainda abre a tela de onde veio). */
+  /**
+   * Quem vê continua: quem salvou ou o administrador (dono, 21/11/2026), só
+   * se ainda abre a tela de onde veio (`canContinueDraft`).
+   */
   canResume: boolean;
   /** Quem salvou (nulo: o login não existe mais). */
   owner: DraftOwner | null;
@@ -222,13 +226,12 @@ export async function loadDraftDetails(
       incomplete,
     };
   });
-  const screen = draftScreenOf(draft.payload);
   const mine = draft.userId === user.id;
   return {
     draft,
     number: typeof draft.number === "number" ? draft.number : null,
     resumeHref: draftResumeHref(draft.id, draft.payload),
-    canResume: mine && canDraft(user, screen, false),
+    canResume: canContinueDraft(user, draft),
     owner: owners.get(draft.userId) ?? null,
     mine,
     customer: customer ? { id: customer.id, name: customer.name } : null,

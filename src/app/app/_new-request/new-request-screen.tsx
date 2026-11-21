@@ -79,6 +79,7 @@ import {
 import { parseRequestItems } from "../actions/request-items";
 import {
   draftForm,
+  draftOwners,
   getRequestDraft,
   listRequestDrafts,
 } from "@/lib/services/request-drafts";
@@ -259,7 +260,8 @@ export async function renderNewRequest({
   const presetQuantity =
     schedule?.quantity ?? (typeof quantity === "string" ? quantity : "");
   // Rascunho do vendedor (docs/ORDER_TERMS.md seção 9): o formulário volta
-  // como foi salvo. Só de quem criou; nada é conferido até o envio.
+  // como foi salvo. De quem criou e, desde 21/11/2026, também para o
+  // administrador (`canContinueDraft`); nada é conferido até o envio.
   // Também na entrada da Reposição (dono, 17/11/2026): o rascunho dela fica
   // na fila de Reposição.
   const draft =
@@ -267,6 +269,12 @@ export async function renderNewRequest({
       ? await getRequestDraft(user, draftParam, mode, replenish)
       : null;
   const draftFields = draft ? draftForm(draft) : null;
+  // O administrador completando o rascunho de outro login (dono, 21/11/2026):
+  // o aviso diz de quem é (o rascunho continua dessa pessoa).
+  const draftOwnerName =
+    draft && draft.userId !== user.id
+      ? ((await draftOwners([draft])).get(draft.userId)?.name ?? "—")
+      : null;
   const draftValue = (key: string) => {
     const v = draftFields?.get(key);
     return typeof v === "string" ? v : "";
@@ -667,6 +675,13 @@ export async function renderNewRequest({
       {error ? <Alert tone="danger">{errorText}</Alert> : null}
       {draftSaved === "1" && draft ? (
         <Alert tone="success">{t("requestDraft.saved")}</Alert>
+      ) : null}
+      {draftOwnerName ? (
+        <div className="mt-3" data-request-draft-other="">
+          <Alert tone="info">
+            {t("requestDraft.otherOwner", { name: draftOwnerName })}
+          </Alert>
+        </div>
       ) : null}
       {draftDeleted === "1" ? (
         <Alert tone="info">{t("requestDraft.deleted")}</Alert>

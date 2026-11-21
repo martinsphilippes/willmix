@@ -109,9 +109,10 @@ export const pt = {
   "reqDraft.resume": "Continuar edição",
   "reqDraft.notice":
     "Rascunho salvo por você; só você vê. Nada foi enviado: o cliente, o fornecedor e a equipe só recebem quando você enviar pelo formulário.",
-  // Rascunho de outro login visto pelo administrador (dono, 19/11/2026; seção 9).
+  // Rascunho de outro login visto pelo administrador (dono, 19/11/2026; seção 9),
+  // que também conclui e envia (dono, 21/11/2026).
   "reqDraft.noticeOther":
-    "Rascunho salvo por {name}. Você vê porque é administrador; só {name} continua a edição e envia. Nada foi enviado: o cliente, o fornecedor e a equipe só recebem quando {name} enviar pelo formulário.",
+    "Rascunho salvo por {name}. Como administrador, você também pode concluir e enviar pelo formulário (Continuar edição); o rascunho continua de {name}. Nada foi enviado: o cliente, o fornecedor e a equipe só recebem quando a solicitação for enviada.",
   "reqDraft.pageHint":
     "Os produtos salvos neste rascunho, com a mesma conta de embalagem e cubagem da solicitação enviada. O que ainda falta aparece como —, e o total com produto sem o dado é parcial.",
   "reqDraft.openProduct": "Ver o produto neste rascunho",
@@ -249,9 +250,10 @@ export const en: Record<keyof typeof pt, string> = {
   "reqDraft.resume": "Continue editing",
   "reqDraft.notice":
     "Draft saved by you; only you can see it. Nothing was sent: the customer, the supplier and the team only receive it when you send it from the form.",
-  // Another login's draft seen by an administrator (owner, 19/11/2026; section 9).
+  // Another login's draft seen by an administrator (owner, 19/11/2026; section 9),
+  // who can also complete and send it (owner, 21/11/2026).
   "reqDraft.noticeOther":
-    "Draft saved by {name}. You can see it because you are an administrator; only {name} can continue editing and send it. Nothing was sent: the customer, the supplier and the team only receive it when {name} sends it from the form.",
+    "Draft saved by {name}. As an administrator, you can also complete and send it from the form (Continue editing); the draft stays with {name}. Nothing was sent: the customer, the supplier and the team only receive it when the request is sent.",
   "reqDraft.pageHint":
     "The products saved in this draft, with the same packing and cubage calculation as a sent request. Anything still missing shows as —, and a total with a product missing the data is partial.",
   "reqDraft.openProduct": "View the product in this draft",
@@ -383,9 +385,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqDraft.resume": "继续编辑",
   "reqDraft.notice":
     "草稿由您保存，只有您能看到。尚未发送：只有在您从表单发送后，客户、供应商和团队才会收到。",
-  // 管理员查看其他账号的草稿（所有者，2026/11/19；第 9 节）。
+  // 管理员查看其他账号的草稿（所有者，2026/11/19；第 9 节），也可以完成并发送（所有者，2026/11/21）。
   "reqDraft.noticeOther":
-    "草稿由 {name} 保存。您是管理员，因此可以查看；只有 {name} 可以继续编辑并发送。尚未发送：只有在 {name} 从表单发送后，客户、供应商和团队才会收到。",
+    "草稿由 {name} 保存。作为管理员，您也可以通过表单（继续编辑）完成并发送；草稿仍归 {name}。尚未发送：只有在需求单发送后，客户、供应商和团队才会收到。",
   "reqDraft.pageHint":
     "此草稿中保存的产品，包装和体积的计算与已发送的需求单相同。尚缺的信息显示为 —，含缺少数据产品的合计为部分合计。",
   "reqDraft.openProduct": "查看此草稿中的产品",

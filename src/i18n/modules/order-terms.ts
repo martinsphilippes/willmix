@@ -154,6 +154,9 @@ export const pt = {
   "requestDraft.updated": "salvo em {date}",
   "requestDraft.open": "Aberto",
   "requestDraft.resume": "Continuar",
+  // O administrador abre o rascunho de outro login no formulário (dono, 21/11/2026).
+  "requestDraft.otherOwner":
+    "Rascunho salvo por {name}. Como administrador, você pode completar e enviar: as alterações ficam no rascunho de {name} e, no envio, a solicitação sai com você como solicitante.",
   "requestDraft.delete": "Apagar",
   "reqBatch.error.draft_not_found":
     "Rascunho não encontrado (já enviado ou apagado).",
@@ -461,6 +464,9 @@ export const en: Record<keyof typeof pt, string> = {
   "requestDraft.updated": "saved on {date}",
   "requestDraft.open": "Open",
   "requestDraft.resume": "Continue",
+  // An administrator opens another login's draft in the form (owner, 21/11/2026).
+  "requestDraft.otherOwner":
+    "Draft saved by {name}. As an administrator, you can complete and send it: your changes stay in {name}'s draft and, when sent, the request goes out with you as the requester.",
   "requestDraft.delete": "Delete",
   "reqBatch.error.draft_not_found":
     "Draft not found (already sent or deleted).",
@@ -754,6 +760,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "requestDraft.updated": "保存于 {date}",
   "requestDraft.open": "已打开",
   "requestDraft.resume": "继续",
+  // 管理员在表单中打开其他账号的草稿（所有者，2026/11/21）。
+  "requestDraft.otherOwner":
+    "草稿由 {name} 保存。作为管理员，您可以补全并发送：修改保存在 {name} 的草稿中；发送时，需求单以您作为申请人。",
   "requestDraft.delete": "删除",
   "reqBatch.error.draft_not_found": "未找到草稿（已提交或已删除）。",
   "historyPick.add": "加入订单",

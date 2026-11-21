@@ -282,7 +282,7 @@ Vale para as três telas (Encomendas, TS e Venda), que usam o mesmo código (`sr
 - **O que acontecia:** ao reabrir um rascunho, a leitura dos produtos era a mesma do envio (estrita). Bastava um campo incompleto numa linha (a programação gerada com uma data ainda sem quantidade, por exemplo) para a tela descartar todos os produtos. Em seguida, o rascunho automático gravava a tela vazia por cima.
 - **Agora:** o rascunho volta como foi salvo (`parseRequestItems(form, { lenient: true })` e `parseRequestSchedule(..., { draft: true })`): a quantidade em branco ou inválida da programação vira zero, e a programação que não dá para ler (ou é de outro produto) sai só daquela linha. O envio continua estrito.
 - **O rascunho automático só grava depois de uma ação da pessoa na tela** (tecla, clique ou toque). Abrir um rascunho, com a tela se completando sozinha, nunca grava por cima.
-- **Quem vê o rascunho:** só quem criou (listar, abrir, gravar por cima e apagar conferem o login).
+- **Quem vê o rascunho:** só quem criou (listar, abrir, gravar por cima e apagar conferem o login). Depois: o administrador vê os de todos em Encomendas (19/11/2026) e, desde 21/11/2026, também os continua e envia (`canContinueDraft`; docs/ORDER_LEVEL_LISTS.md, seção 9, "Concluir e enviar pelo botão").
 
 ## 11.14 Contatos opcionais para a equipe interna (dono, 18/11/2026)
 

@@ -18,10 +18,11 @@ import { audit } from "./audit";
  * Rascunho da Nova solicitação (dono, 15/11/2026; docs/ORDER_TERMS.md
  * seção 9): o vendedor salva o formulário como está e completa depois.
  * Guarda os campos de texto como vieram (sem arquivos e sem os campos
- * internos do envio). Só quem criou reabre e apaga; some quando a
- * solicitação é enviada. Ver: quem criou e, em Encomendas, o administrador
- * (os de todos os logins; dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md,
- * seção 9).
+ * internos do envio). Some quando a solicitação é enviada. Ver: quem criou
+ * e, em Encomendas, o administrador (os de todos os logins; dono,
+ * 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 9). Continuar (reabrir,
+ * salvar, enviar e apagar): quem criou e, desde 21/11/2026, o administrador
+ * (`canContinueDraft`), que completa sem tomar o rascunho de quem o salvou.
  */
 
 export class DraftError extends Error {}
@@ -53,6 +54,25 @@ export const canDraft = (
       can(user, "replenishment.open") &&
       canOpen(user, "requests")
     : canOpen(user, screen ? REQUEST_SCREEN[screen].screen : "requests"));
+
+/**
+ * Quem continua o rascunho (abre no formulário, completa, salva e envia):
+ * quem o salvou e, desde 21/11/2026 (dono; docs/ORDER_LEVEL_LISTS.md, seção
+ * 9), o administrador, que já vê em Encomendas os rascunhos de todos os
+ * logins, para o "Concluir e enviar" da lista levar ao envio. Só enquanto a
+ * pessoa abre a tela de onde o rascunho veio. O da entrada da Reposição fica
+ * com quem o salvou (a fila de Reposição só lista os de quem vê).
+ */
+export function canContinueDraft(
+  user: User,
+  draft: Pick<RequestDraft, "userId" | "payload">,
+): boolean {
+  if (!isWellmix(user)) return false;
+  const screen = draftScreenOf(draft.payload);
+  const replenish = screen === "sale" && draftIsReplenishment(draft.payload);
+  if (draft.userId === user.id) return canDraft(user, screen, replenish);
+  return isAdmin(user) && !replenish && canDraft(user, screen, false);
+}
 
 /** O rascunho é desta tela (e desta entrada: Reposição ou não)? */
 const sameEntry = (
@@ -150,13 +170,17 @@ export async function saveRequestDraft(
     const current = await store.get("request_drafts", draftId);
     if (
       !current ||
-      current.userId !== user.id ||
-      !sameEntry(current, screen, replenish)
+      !sameEntry(current, screen, replenish) ||
+      !canContinueDraft(user, current)
     )
       throw new DraftError("draft_not_found");
     // Rascunho de antes da numeração: ganha o número no próximo salvamento.
     return store.update("request_drafts", draftId, {
       ...data,
+      // O administrador completando o rascunho de outro login (dono,
+      // 21/11/2026): o rascunho continua de quem o salvou, que segue vendo
+      // e continuando o dele.
+      userId: current.userId,
       ...(typeof current.number === "number"
         ? {}
         : { number: await reserveNumber() }),
@@ -178,7 +202,12 @@ export async function saveRequestDraft(
   return draft;
 }
 
-/** O rascunho de quem pede, desta tela (nulo se não é dele, de outra tela ou não existe). */
+/**
+ * O rascunho que quem pede continua, desta tela (nulo se não pode continuar,
+ * é de outra tela ou não existe): o dele ou, para o administrador, o de
+ * outro login (`canContinueDraft`). É o que o formulário reabre, o envio
+ * aproveita (número, conversa) e apaga.
+ */
 export async function getRequestDraft(
   user: User,
   id: string,
@@ -189,8 +218,8 @@ export async function getRequestDraft(
     return null;
   const draft = await getStore().get("request_drafts", id);
   return draft &&
-    draft.userId === user.id &&
-    sameEntry(draft, screen, replenish)
+    sameEntry(draft, screen, replenish) &&
+    canContinueDraft(user, draft)
     ? draft
     : null;
 }
@@ -258,7 +287,7 @@ export async function listRequestDrafts(
   return rows.filter((d) => sameEntry(d, screen, replenish)).slice(0, 20);
 }
 
-/** Apaga o rascunho (só o de quem pede, desta tela). */
+/** Apaga o rascunho desta tela que quem pede continua (`getRequestDraft`). */
 export async function deleteRequestDraft(
   user: User,
   id: string,
@@ -276,8 +305,13 @@ export interface ListedDraft {
   href: string;
   /** Quem salvou (nulo: o login não existe mais). */
   owner: DraftOwner | null;
-  /** Quem vê é quem salvou: só ele continua a edição (o formulário). */
+  /** Quem vê é quem salvou. */
   mine: boolean;
+  /**
+   * Quem vê continua o rascunho (o "Concluir e enviar" da lista leva ao
+   * formulário): quem salvou ou o administrador (`canContinueDraft`).
+   */
+  canContinue: boolean;
 }
 
 /**
@@ -323,5 +357,6 @@ export async function listDraftsForList(
     href: draftResumeHref(draft.id, draft.payload),
     owner: owners.get(draft.userId) ?? null,
     mine: draft.userId === user.id,
+    canContinue: canContinueDraft(user, draft),
   }));
 }
