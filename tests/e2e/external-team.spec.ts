@@ -51,7 +51,10 @@ let created: { tag: string; many: string; one: string; none: string } | null =
   null;
 async function partners(page: Page) {
   if (created) return created;
-  const tag = `ext${Date.now().toString(36)}`;
+  // Só números depois de "ext": o código aleatório em base 36 às vezes
+  // trazia letras como "um" (ext…tumq), e a busca por palavras ("Um") achava
+  // os três parceiros pelo código (21/11/2026).
+  const tag = `ext${Date.now()}`;
   await login(page, ADMIN);
   const many = await partnerWithLogins(page, `Externa ${tag} Muitos`, [
     `m1-${tag}@login.com`,
