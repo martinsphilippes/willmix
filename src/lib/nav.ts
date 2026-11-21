@@ -492,6 +492,11 @@ export function navFor(
       ),
     ),
   );
+  const ownGroup = group(
+    bookings ? "nav.group.myBookings" : "nav.group.orders",
+    bookings ? "cart" : "box",
+    own,
+  );
   return [
     ...pick(has, [
       // O início são as Pendências; sem elas no perfil, é só "Início".
@@ -504,12 +509,12 @@ export function navFor(
       ["messages", MESSAGES],
       ["notifications", NOTIFICATIONS],
     ]),
+    // "Meus books" logo abaixo das Pendências, acima de "Pedido" (dono,
+    // 21/11/2026): o fornecedor começa pelo book. Os outros parceiros
+    // continuam com "Pedidos" no fim.
+    ...(bookings ? ownGroup : []),
     ...flow,
-    ...group(
-      bookings ? "nav.group.myBookings" : "nav.group.orders",
-      bookings ? "cart" : "box",
-      own,
-    ),
+    ...(bookings ? [] : ownGroup),
   ];
 }
 
