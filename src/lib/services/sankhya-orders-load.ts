@@ -1,0 +1,516 @@
+import "server-only";
+import {
+  getStore,
+  ORDER_EXTRA_DEFAULTS,
+  type Order,
+  type Party,
+  type Store,
+  type User,
+} from "@/lib/db";
+import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
+import { listByIds, listColumns } from "@/lib/db/lookup";
+import { readSetting, writeSetting } from "@/lib/integrations/sankhya-settings";
+import {
+  containerStatusOf,
+  doneMilestones,
+  itemFieldsOf,
+  milestoneOf,
+  orderFieldsOf,
+  sankhyaContainerId,
+  sankhyaContainerItemId,
+  sankhyaIso,
+  sankhyaItemId,
+  sankhyaOrderId,
+  type ProjectionOrder,
+  type ProjectionShipment,
+} from "@/lib/integrations/sankhya-orders-plan";
+import { milestoneOfItem } from "@/lib/milestone-release";
+
+/*
+ * Carga real dos pedidos de compra do Sankhya (docs/SANKHYA_INTEGRACAO.md,
+ * seção 9, etapa 5). Lê o ensaio já conferido (sankhya_projection) e a cópia
+ * dos cabeçalhos (sankhya_stage_rows, para a empresa compradora), sem chamar
+ * o Sankhya, e grava:
+ *
+ * - um pedido por cadeia 1100 → 1104 (id `snk-<NUNOTA da ponta>`), sem
+ *   solicitação de cliente (D1), cliente = a empresa Wellmix que compra
+ *   (`EMP-<CODEMP>`), fornecedor pelo código do Sankhya;
+ * - os itens com o embarcado, o recebido e o saldo;
+ * - nos em andamento, os itens do portal (pendências) com os marcos
+ *   anteriores feitos (seção 5.1) e o canal Vermelho ou Cinza pausando (D8);
+ *   encerrados, interrompidos e "Aguardando definição" entram sem pendências;
+ * - um embarque (container) por documento 35, com o que cada pedido leva.
+ *
+ * Roda em partes (o administrador aperta "Carregar" e a tela repete até o
+ * fim); o andamento fica em `sankhya.ordersLoad`. Rodar de novo atualiza.
+ */
+
+export const ORDERS_LOAD_KEY = "sankhya.ordersLoad";
+const ORDER_CHUNK = 10;
+const SHIPMENT_CHUNK = 50;
+/** Tempo de cada passo: a página tem 60 s (maxDuration); sobra folga. */
+const STEP_BUDGET_MS = 35_000;
+const MAX_SKIPPED = 50;
+
+export interface OrdersLoadProgress {
+  phase: "idle" | "orders" | "shipments" | "done";
+  done: number;
+  total: number;
+  created: number;
+  updated: number;
+  withPending: number;
+  containers: number;
+  skipped: Array<{ key: string; reason: string }>;
+  startedAt: string | null;
+  finishedAt: string | null;
+}
+
+const EMPTY: OrdersLoadProgress = {
+  phase: "idle",
+  done: 0,
+  total: 0,
+  created: 0,
+  updated: 0,
+  withPending: 0,
+  containers: 0,
+  skipped: [],
+  startedAt: null,
+  finishedAt: null,
+};
+
+function assertAdmin(user: User) {
+  if (!isAdmin(user)) throw new ForbiddenError();
+}
+
+export async function ordersLoadProgress(
+  user: User,
+): Promise<OrdersLoadProgress> {
+  assertAdmin(user);
+  return {
+    ...EMPTY,
+    ...((await readSetting<OrdersLoadProgress>(ORDERS_LOAD_KEY)) ?? {}),
+  };
+}
+
+/** Chaves do ensaio de um tipo, em ordem (a carga anda por elas). */
+async function projectionKeys(store: Store, kind: "order" | "shipment") {
+  const rows = await listColumns(store, "sankhya_projection", ["kind", "key"]);
+  return rows
+    .filter((r) => r.kind === kind)
+    .map((r) => r.key)
+    .sort((a, b) => Number(a) - Number(b));
+}
+
+async function chunkRows<T>(store: Store, ids: string[]) {
+  const rows = await store.list("sankhya_projection", {
+    filter: { id: ids } as never,
+  });
+  return rows as unknown as T[];
+}
+
+/** Empresa compradora de cada pedido (CODEMP do cabeçalho da ponta). */
+async function companiesOf(store: Store, keys: string[]) {
+  const heads = await store.list("sankhya_stage_rows", {
+    filter: {
+      dataset: "purchaseHeaders",
+      nunota: keys.map(Number),
+    } as never,
+  });
+  const out = new Map<string, string>();
+  for (const h of heads) {
+    const emp = (h.row as Record<string, unknown> | null)?.CODEMP;
+    if (h.nunota !== null && emp !== null && emp !== undefined)
+      out.set(String(h.nunota), String(emp));
+  }
+  return out;
+}
+
+/** Cadastro da empresa Wellmix (cliente do pedido de compra), criado se falta. */
+async function companyParty(
+  store: Store,
+  cache: Map<string, Party>,
+  emp: string,
+) {
+  const code = `EMP-${emp}`;
+  const hit = cache.get(code);
+  if (hit) return hit;
+  const [found] = await store.list("parties", {
+    filter: { sankhyaCode: code, type: "customer" } as never,
+    limit: 1,
+  });
+  const party =
+    found ??
+    (await store.create("parties", {
+      type: "customer",
+      name: `Empresa ${emp} (Sankhya)`,
+      taxId: null,
+      active: true,
+      sankhyaCode: code,
+    } as never));
+  cache.set(code, party);
+  return party;
+}
+
+async function holdState() {
+  const { historyHoldActive } = await import("@/lib/services/go-live");
+  return historyHoldActive();
+}
+
+/** Pendências do pedido em andamento: cria os itens e dá os marcos anteriores como feitos. */
+async function openRequirements(
+  store: Store,
+  order: Order,
+  row: ProjectionOrder,
+  held: boolean,
+) {
+  const { createOrderRequirements } = await import("@/lib/workflow/engine");
+  await createOrderRequirements(order, undefined, { shadow: true });
+  const current = milestoneOf(row.milestone);
+  const done = current
+    ? doneMilestones(current, row.data?.quality)
+    : new Set<string>();
+  const at = sankhyaIso(row.data?.changedAt) ?? new Date().toISOString();
+  const requirements = await store.list("requirements", {
+    filter: { orderId: order.id },
+  });
+  const writes: Array<() => Promise<unknown>> = [];
+  for (const req of requirements) {
+    const key = milestoneOfItem(req);
+    const patch = {
+      ...(req.status === "pending" && key && done.has(key)
+        ? {
+            status: "done" as const,
+            note: "Marco concluído no Sankhya (carga dos pedidos)",
+            submittedAt: at,
+          }
+        : {}),
+      ...(held ? { held: true } : {}),
+    };
+    if (Object.keys(patch).length)
+      writes.push(() => store.update("requirements", req.id, patch));
+  }
+  for (let i = 0; i < writes.length; i += 8)
+    await Promise.all(writes.slice(i, i + 8).map((w) => w()));
+  try {
+    const { syncMilestones } = await import("@/lib/services/order-milestones");
+    await syncMilestones(order.id, { shadow: true });
+  } catch (error) {
+    console.error("[sankhya-orders] marcos", order.id, error);
+  }
+}
+
+async function upsertRows<K extends "order_items" | "container_items">(
+  store: Store,
+  table: K,
+  rows: Array<Record<string, unknown> & { id: string }>,
+) {
+  if (!rows.length) return;
+  if (store.upsertMany) {
+    await store.upsertMany(table, rows as never);
+    return;
+  }
+  for (const r of rows) {
+    const { id, ...rest } = r;
+    if (await store.get(table, id))
+      await store.update(table, id, rest as never);
+    else await store.create(table, r as never);
+  }
+}
+
+async function loadOrdersChunk(
+  user: User,
+  store: Store,
+  keys: string[],
+  progress: OrdersLoadProgress,
+) {
+  const rows = await chunkRows<ProjectionOrder>(
+    store,
+    keys.map((k) => `order:${k}`),
+  );
+  const [emps, existing, suppliers, products] = await Promise.all([
+    companiesOf(store, keys),
+    listByIds(store, "orders", keys.map(sankhyaOrderId)),
+    store.list("parties", {
+      filter: {
+        type: "supplier",
+        sankhyaCode: [
+          ...new Set(rows.map((r) => r.supplierCode).filter(Boolean)),
+        ],
+      } as never,
+    }),
+    store.list("products", {
+      filter: {
+        sankhyaCode: [
+          ...new Set(
+            rows.flatMap((r) =>
+              (r.data?.items ?? []).map((i) => i.codprod).filter(Boolean),
+            ),
+          ),
+        ],
+      } as never,
+    }),
+  ]);
+  const existingById = new Map(existing.map((o) => [o.id, o]));
+  const supplierByCode = new Map(suppliers.map((p) => [p.sankhyaCode, p]));
+  const productByCode = new Map(products.map((p) => [p.sankhyaCode, p]));
+  const companies = new Map<string, Party>();
+  const held = await holdState();
+  const { lineAgencyOf } = await import("@/lib/services/line-agency");
+  const now = new Date().toISOString();
+  for (const row of rows.sort((a, b) => Number(a.key) - Number(b.key))) {
+    const skip = (reason: string) => {
+      if (progress.skipped.length < MAX_SKIPPED)
+        progress.skipped.push({ key: row.key, reason });
+    };
+    const supplier = supplierByCode.get(row.supplierCode ?? "");
+    if (!supplier) {
+      skip(`fornecedor ${row.supplierCode ?? "—"} não cadastrado`);
+      continue;
+    }
+    const emp = emps.get(row.key);
+    if (!emp) {
+      skip("empresa compradora (CODEMP) ausente na cópia");
+      continue;
+    }
+    const customer = await companyParty(store, companies, emp);
+    const items = row.data?.items ?? [];
+    const first = productByCode.get(items[0]?.codprod ?? "") ?? null;
+    const id = sankhyaOrderId(row.key);
+    const before = existingById.get(id);
+    const fields = {
+      ...orderFieldsOf(row, now),
+      requestId: null,
+      customerId: customer.id,
+      supplierId: supplier.id,
+      lineId: first?.lineId ?? null,
+      sankhyaSyncedAt: now,
+      sankhyaRefs: {
+        CODEMP: emp,
+        TOP: row.top ?? "",
+        ...(row.data?.reason ? { MOTIVO: row.data.reason } : {}),
+      },
+      ...(held ? { held: true } : {}),
+    };
+    let order: Order;
+    if (before) {
+      // Pedido já carregado: o Sankhya manda nos campos dele; a situação no
+      // portal (marcos e itens) segue a do portal.
+      const { status: _s, closedAt: _c, ...rest } = fields;
+      void _s;
+      void _c;
+      order = await store.update(
+        "orders",
+        id,
+        (before.status === "ORDER_CREATED" && fields.status === "CLOSED"
+          ? fields
+          : rest) as never,
+      );
+      progress.updated++;
+    } else {
+      order = await store.create("orders", {
+        ...ORDER_EXTRA_DEFAULTS,
+        id,
+        number: await store.nextNumber("order_number"),
+        currentStageId: null,
+        sellPrice: null,
+        sellCurrency: null,
+        agencyId: await lineAgencyOf(first?.lineId),
+        brokerId: null,
+        shippingLineId: null,
+        carrierId: null,
+        notes: `Importado do Sankhya (carga dos pedidos, ${now.slice(0, 10)}): NUNOTA ${row.key}, TOP ${row.top ?? "—"}`,
+        ...fields,
+      } as never);
+      progress.created++;
+    }
+    await upsertRows(
+      store,
+      "order_items",
+      items.map((item) => ({
+        ...itemFieldsOf(row, item),
+        orderId: id,
+        productId: productByCode.get(item.codprod ?? "")?.id ?? null,
+      })),
+    );
+    if (row.situation === "in_progress" && !before) {
+      await openRequirements(store, order, row, held);
+      progress.withPending++;
+    }
+  }
+}
+
+async function loadShipmentsChunk(
+  user: User,
+  store: Store,
+  keys: string[],
+  progress: OrdersLoadProgress,
+) {
+  const rows = await chunkRows<ProjectionShipment>(
+    store,
+    keys.map((k) => `shipment:${k}`),
+  );
+  const orderIds = [
+    ...new Set(
+      rows.flatMap((r) =>
+        (r.data?.orders ?? []).map((o) => sankhyaOrderId(o.order)),
+      ),
+    ),
+  ];
+  const [orders, items, suppliers] = await Promise.all([
+    listByIds(store, "orders", orderIds),
+    orderIds.length
+      ? store.list("order_items", { filter: { orderId: orderIds } as never })
+      : Promise.resolve([]),
+    store.list("parties", {
+      filter: {
+        type: "supplier",
+        sankhyaCode: [
+          ...new Set(rows.map((r) => r.supplierCode).filter(Boolean)),
+        ],
+      } as never,
+    }),
+  ]);
+  const loaded = new Set(orders.map((o) => o.id));
+  const itemById = new Map(items.map((i) => [i.id, i]));
+  const supplierByCode = new Map(suppliers.map((p) => [p.sankhyaCode, p]));
+  const containers = await listByIds(
+    store,
+    "containers",
+    rows.map((r) => sankhyaContainerId(r.key)),
+  );
+  const have = new Set(containers.map((c) => c.id));
+  for (const row of rows) {
+    const d = row.data ?? {};
+    const id = sankhyaContainerId(row.key);
+    const numnota = (d.numnota ?? "").trim();
+    const fields = {
+      code: numnota && numnota !== "0" ? numnota : row.key,
+      status: containerStatusOf(row),
+      etd: sankhyaIso(d.etd),
+      eta: sankhyaIso(d.eta),
+      sankhyaCode: row.key,
+      sankhyaChain: [
+        {
+          nunota: Number(row.key),
+          top: 35,
+          pending: row.situation === "in_progress",
+          date: sankhyaIso(d.orderedAt),
+        },
+      ],
+      supplierId: supplierByCode.get(row.supplierCode ?? "")?.id ?? null,
+    };
+    if (have.has(id)) await store.update("containers", id, fields as never);
+    else
+      await store.create("containers", {
+        id,
+        type: "—",
+        capacityCbm: 0,
+        maxWeightKg: null,
+        customerId: null,
+        notes: `Embarque do Sankhya (documento 35, NUNOTA ${row.key})`,
+        createdByUserId: user.id,
+        ...fields,
+      } as never);
+    progress.containers++;
+    const lines = (d.orders ?? []).flatMap((o) => {
+      const orderId = sankhyaOrderId(o.order);
+      if (!loaded.has(orderId)) return [];
+      const item = itemById.get(sankhyaItemId(o.order, o.seq));
+      if (!item) return [];
+      const qty = Number(o.qty) || 0;
+      const boxes = Number(item.sankhyaRefs?.QTD_CAIXAS ?? 0);
+      const perBox = boxes > 0 && item.quantity > 0 ? item.quantity / boxes : 0;
+      return [
+        {
+          id: sankhyaContainerItemId(row.key, o.order, o.seq),
+          containerId: id,
+          orderId,
+          orderItemId: item.id,
+          productId: item.productId,
+          name: item.name,
+          quantity: qty,
+          unit: item.unit,
+          unitsPerBox: perBox > 0 ? Math.round(perBox) : null,
+          boxCount: perBox > 0 ? Math.round(qty / perBox) : 0,
+          cbmPerBox: 0,
+          weightPerBoxKg: null,
+        },
+      ];
+    });
+    await upsertRows(store, "container_items", lines);
+  }
+}
+
+/**
+ * Um passo da carga: começa (`restart`), segue de onde parou e devolve o
+ * andamento. A tela repete até `phase` = "done".
+ */
+export async function runOrdersLoadStep(
+  user: User,
+  options: { restart?: boolean; budgetMs?: number } = {},
+): Promise<OrdersLoadProgress> {
+  assertAdmin(user);
+  const store = getStore();
+  let progress = await ordersLoadProgress(user);
+  if (
+    options.restart ||
+    progress.phase === "idle" ||
+    progress.phase === "done"
+  ) {
+    const keys = await projectionKeys(store, "order");
+    progress = {
+      ...EMPTY,
+      phase: "orders",
+      total: keys.length,
+      startedAt: new Date().toISOString(),
+    };
+    if (!keys.length) {
+      progress.phase = "done";
+      progress.finishedAt = progress.startedAt;
+    }
+    await writeSetting(ORDERS_LOAD_KEY, progress);
+    return progress;
+  }
+  const began = Date.now();
+  const deadline = began + (options.budgetMs ?? STEP_BUDGET_MS);
+  if (progress.phase === "orders") {
+    const keys = await projectionKeys(store, "order");
+    do {
+      const slice = keys.slice(progress.done, progress.done + ORDER_CHUNK);
+      if (!slice.length) break;
+      await loadOrdersChunk(user, store, slice, progress);
+      progress.done += slice.length;
+      await writeSetting(ORDERS_LOAD_KEY, progress);
+    } while (Date.now() < deadline);
+    if (progress.done >= keys.length) {
+      const ships = await projectionKeys(store, "shipment");
+      progress.phase = "shipments";
+      progress.done = 0;
+      progress.total = ships.length;
+    }
+  } else if (progress.phase === "shipments") {
+    const keys = await projectionKeys(store, "shipment");
+    do {
+      const slice = keys.slice(progress.done, progress.done + SHIPMENT_CHUNK);
+      if (!slice.length) break;
+      await loadShipmentsChunk(user, store, slice, progress);
+      progress.done += slice.length;
+      await writeSetting(ORDERS_LOAD_KEY, progress);
+    } while (Date.now() < deadline);
+    if (progress.done >= keys.length) {
+      progress.phase = "done";
+      progress.finishedAt = new Date().toISOString();
+      // Resumos e indicadores dos pedidos novos (docs/RESUMOS.md): começa a
+      // reconstrução em partes; o job da madrugada termina o que faltar.
+      try {
+        const { rebuildOrderSummariesStep } =
+          await import("@/lib/services/order-summary");
+        await rebuildOrderSummariesStep({ budgetMs: 5_000, start: true });
+      } catch (error) {
+        console.error("[sankhya-orders] resumos", error);
+      }
+    }
+  }
+  await writeSetting(ORDERS_LOAD_KEY, progress);
+  return progress;
+}

@@ -557,7 +557,7 @@ export async function loadPurchaseHistory(
     const list = itemsOf(o.id);
     const total = totalOf(o);
     const request = describesProduct(o)
-      ? (requestById.get(o.requestId) ?? null)
+      ? ((o.requestId ? requestById.get(o.requestId) : undefined) ?? null)
       : null;
     return list.map((item) => {
       const product = item.productId

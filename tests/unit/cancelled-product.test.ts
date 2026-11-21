@@ -88,7 +88,7 @@ describe("produto com pedido cancelado", () => {
     const row = cycle.requests.find((x) => x.id === order.requestId)!;
     expect(row.status).toBe("ORDER_CANCELLED");
     // A solicitação segue no histórico e não vira "excluída".
-    const request = (await getStore().get("requests", order.requestId))!;
+    const request = (await getStore().get("requests", order.requestId!))!;
     expect(request.status).toBe("ORDERED");
     // As outras solicitações seguem com a situação delas.
     expect(cycle.requests.find((x) => x.id === pending.id)!.status).toBe(

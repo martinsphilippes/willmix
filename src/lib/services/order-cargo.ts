@@ -1,4 +1,5 @@
 import "server-only";
+import { orderRequest } from "@/lib/services/order-request";
 
 import {
   getStore,
@@ -62,7 +63,7 @@ export async function cargoViewForOrder(
   if (!canViewOrder(user, order)) throw new ForbiddenError();
   const store = getStore();
   const [request, [sheet]] = await Promise.all([
-    store.get("requests", order.requestId),
+    orderRequest(order, store),
     store.list("purchase_sheets", { filter: { orderId: order.id }, limit: 1 }),
   ]);
   const first = loaded.items[0];

@@ -185,7 +185,7 @@ describe("efeitos do cancelamento", () => {
     const active = await newOrder();
     const order = await newOrder();
     await c.cancelOrder(admin, order.id, input);
-    const request = (await store.get("requests", order.requestId))!;
+    const request = (await store.get("requests", order.requestId!))!;
     expect(request.status).toBe("ORDERED");
     const cancelled = await os.cancelledOrderIds([
       order.id,
@@ -196,7 +196,7 @@ describe("efeitos do cancelamento", () => {
     expect([...cancelled]).toEqual([order.id]);
     expect(os.requestDisplayStatus(request, cancelled)).toBe("ORDER_CANCELLED");
     expect(os.requestStatusTone("ORDER_CANCELLED")).toBe("danger");
-    const other = (await store.get("requests", active.requestId))!;
+    const other = (await store.get("requests", active.requestId!))!;
     expect(os.requestDisplayStatus(other, cancelled)).toBe("ORDERED");
     expect((await os.cancelledOrderIds([])).size).toBe(0);
   });

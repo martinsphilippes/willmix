@@ -1255,7 +1255,12 @@ export interface EconomicGroupShare extends BaseRow {
 
 export interface Order extends BaseRow {
   number: number;
-  requestId: string;
+  /**
+   * Solicitação do cliente que deu origem ao pedido. Vazio no pedido de
+   * compra lido do Sankhya sem solicitação (reposição, D1 de
+   * docs/SANKHYA_INTEGRACAO.md).
+   */
+  requestId: string | null;
   customerId: string;
   supplierId: string;
   lineId: string | null;
@@ -2179,8 +2184,8 @@ export interface SankhyaProductSupplierPort {
 }
 
 export interface FreightQuote extends BaseRow {
-  /** Solicitação do pedido (todo pedido tem uma). */
-  requestId: string;
+  /** Solicitação do pedido; vazia no pedido do Sankhya sem solicitação (D1). */
+  requestId: string | null;
   /** Pedido a que este frete se refere (até 11/11/2026 era a cotação do fornecedor). */
   orderId: string;
   /** Companhia marítima (parceiro do tipo shipping_line). */
@@ -4857,7 +4862,7 @@ export const TABLES: Record<TableName, TableDef> = {
     label: "Pedidos",
     columns: {
       number: int(true),
-      requestId: id(),
+      requestId: id(false),
       customerId: id(),
       supplierId: id(),
       lineId: id(false),
@@ -5667,7 +5672,7 @@ export const TABLES: Record<TableName, TableDef> = {
   freight_quotes: {
     label: "Cotações de frete (companhia marítima)",
     columns: {
-      requestId: id(),
+      requestId: id(false),
       orderId: id(),
       carrierId: id(),
       status: enumOf(FREIGHT_QUOTE_STATUSES),

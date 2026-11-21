@@ -1,3 +1,4 @@
+import { orderRequest } from "@/lib/services/order-request";
 import { notFound, redirect } from "next/navigation";
 import { fallbackError } from "@/i18n/error-text";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -73,7 +74,7 @@ export default async function PurchaseSheetPage({
   const view = await getSheetForUser(user, id);
   if (!view) notFound();
   const t = await getT();
-  const request = await getStore().get("requests", view.order.requestId);
+  const request = await orderRequest(view.order);
   const [item] = await getStore().list("order_items", {
     filter: { orderId: id },
     limit: 1,

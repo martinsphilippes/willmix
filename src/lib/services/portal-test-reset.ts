@@ -201,7 +201,8 @@ async function buildWork(): Promise<Work> {
       )
     )
       .filter(hasSankhyaCode)
-      .map((o) => String(o.requestId)),
+      .map((o) => o.requestId)
+      .filter((id): id is string => !!id),
   );
   const sankhyaOrderIds = new Set(sankhyaOrders.map((o) => o.id));
   for (const r of requests)

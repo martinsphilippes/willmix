@@ -4,6 +4,26 @@
  * mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "sankhyaOrders.load.title": "Carga no portal",
+  "sankhyaOrders.load.hint":
+    "Grava no portal os pedidos e os embarques deste ensaio, pela regra conferida acima: um pedido por cadeia, sem solicitação de cliente; pendências só nos em andamento; encerrados, interrompidos e aguardando definição sem pendências. Não chama o Sankhya. Rodar de novo atualiza, sem duplicar.",
+  "sankhyaOrders.load.start": "Carregar os pedidos no portal",
+  "sankhyaOrders.load.restart": "Carregar de novo",
+  "sankhyaOrders.load.continue": "Continuar",
+  "sankhyaOrders.load.stop": "Parar",
+  "sankhyaOrders.load.phase.idle": "Ainda não carregado.",
+  "sankhyaOrders.load.phase.orders": "Carregando os pedidos",
+  "sankhyaOrders.load.phase.shipments": "Carregando os embarques",
+  "sankhyaOrders.load.phase.done": "Carga concluída.",
+  "sankhyaOrders.load.counts":
+    "{created} pedidos criados, {updated} atualizados, {pending} com pendências, {containers} embarques.",
+  "sankhyaOrders.load.finished": "Terminou em {at}.",
+  "sankhyaOrders.load.skipped": "{n} pedidos pulados (motivo de cada um)",
+  "sankhyaOrders.load.error":
+    "A carga parou com erro: {detail}. Aperte Continuar para seguir de onde parou.",
+  "orders.noRequest.sankhya": "Reposição (Sankhya)",
+  "orders.noRequest.hint":
+    "Pedido de compra do Sankhya sem solicitação de cliente (compra para a própria Wellmix).",
   "sankhyaInt.tab.orders": "Pedidos do Sankhya (ensaio)",
   "sankhyaOrders.title": "Pedidos do Sankhya (ensaio)",
   "sankhyaOrders.subtitle":
@@ -64,6 +84,26 @@ export const pt = {
 };
 
 export const en: typeof pt = {
+  "sankhyaOrders.load.title": "Load into the portal",
+  "sankhyaOrders.load.hint":
+    "Writes this trial's orders and shipments into the portal, by the rule checked above: one order per chain, with no customer request; tasks only for orders in progress; closed, interrupted and awaiting-definition orders without tasks. Does not call Sankhya. Running again updates without duplicating.",
+  "sankhyaOrders.load.start": "Load the orders into the portal",
+  "sankhyaOrders.load.restart": "Load again",
+  "sankhyaOrders.load.continue": "Continue",
+  "sankhyaOrders.load.stop": "Stop",
+  "sankhyaOrders.load.phase.idle": "Not loaded yet.",
+  "sankhyaOrders.load.phase.orders": "Loading orders",
+  "sankhyaOrders.load.phase.shipments": "Loading shipments",
+  "sankhyaOrders.load.phase.done": "Load finished.",
+  "sankhyaOrders.load.counts":
+    "{created} orders created, {updated} updated, {pending} with tasks, {containers} shipments.",
+  "sankhyaOrders.load.finished": "Finished at {at}.",
+  "sankhyaOrders.load.skipped": "{n} orders skipped (reason for each)",
+  "sankhyaOrders.load.error":
+    "The load stopped with an error: {detail}. Press Continue to resume where it stopped.",
+  "orders.noRequest.sankhya": "Replenishment (Sankhya)",
+  "orders.noRequest.hint":
+    "Sankhya purchase order with no customer request (a purchase for Wellmix itself).",
   "sankhyaInt.tab.orders": "Sankhya orders (trial)",
   "sankhyaOrders.title": "Sankhya orders (trial)",
   "sankhyaOrders.subtitle":
@@ -124,6 +164,25 @@ export const en: typeof pt = {
 };
 
 export const zh: typeof pt = {
+  "sankhyaOrders.load.title": "载入门户",
+  "sankhyaOrders.load.hint":
+    "按上方核对过的规则，将本次试算的订单和装运写入门户：每条单据链一个订单，无客户申请；只有进行中的订单生成待办；已完成、已中断和待定的订单无待办。不调用 Sankhya。再次运行只更新，不重复。",
+  "sankhyaOrders.load.start": "将订单载入门户",
+  "sankhyaOrders.load.restart": "重新载入",
+  "sankhyaOrders.load.continue": "继续",
+  "sankhyaOrders.load.stop": "停止",
+  "sankhyaOrders.load.phase.idle": "尚未载入。",
+  "sankhyaOrders.load.phase.orders": "正在载入订单",
+  "sankhyaOrders.load.phase.shipments": "正在载入装运",
+  "sankhyaOrders.load.phase.done": "载入完成。",
+  "sankhyaOrders.load.counts":
+    "已创建 {created} 个订单，更新 {updated} 个，{pending} 个有待办，{containers} 个装运。",
+  "sankhyaOrders.load.finished": "完成于 {at}。",
+  "sankhyaOrders.load.skipped": "跳过 {n} 个订单（各自原因）",
+  "sankhyaOrders.load.error":
+    "载入出错停止：{detail}。点击继续从中断处接着载入。",
+  "orders.noRequest.sankhya": "补货（Sankhya）",
+  "orders.noRequest.hint": "Sankhya 采购单，无客户申请（Wellmix 自用采购）。",
   "sankhyaInt.tab.orders": "Sankhya 订单（试运行）",
   "sankhyaOrders.title": "Sankhya 订单（试运行）",
   "sankhyaOrders.subtitle":

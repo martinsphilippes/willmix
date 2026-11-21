@@ -10,6 +10,13 @@ import {
   projectionDetail,
 } from "@/lib/services/sankhya-projection";
 import { one } from "./_shared";
+import { AutoContinue } from "./_auto";
+import { SubmitButton } from "@/components/submit-button";
+import { sankhyaOrdersLoadAction } from "@/app/app/actions/sankhya-integration";
+import {
+  ordersLoadProgress,
+  type OrdersLoadProgress,
+} from "@/lib/services/sankhya-orders-load";
 
 /*
  * Configurações → Sankhya → Pedidos do Sankhya (ensaio), só o administrador
@@ -90,6 +97,7 @@ export async function OrdersTab({
   });
   const open = one(q.open);
   const detail = open ? await projectionDetail(user, kind, open) : null;
+  const load = await ordersLoadProgress(user);
 
   return (
     <div className="space-y-4" id="orders">
@@ -102,6 +110,8 @@ export async function OrdersTab({
             : "—",
         })}
       </Alert>
+
+      <LoadCard t={t} q={q} load={load} />
 
       <Card title={t("sankhyaOrders.ordersBySituation", { n: total })}>
         <div className="flex flex-wrap gap-2" data-projection-counts>
@@ -492,6 +502,107 @@ function ProjectionDetail({
             </ul>
           </div>
         ) : null}
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * Carga real no portal (seção 9, etapa 5): grava os pedidos e embarques do
+ * ensaio. "Carregar" começa do início; enquanto não termina, a tela segue
+ * sozinha (sair da página para).
+ */
+function LoadCard({
+  t,
+  q,
+  load,
+}: {
+  t: Translate;
+  q: Params;
+  load: OrdersLoadProgress;
+}) {
+  const running = load.phase === "orders" || load.phase === "shipments";
+  const auto = one(q.load) === "auto" && running;
+  const error = one(q.load) === "error";
+  const pct = load.total ? Math.round((load.done / load.total) * 100) : 0;
+  return (
+    <Card title={t("sankhyaOrders.load.title")}>
+      <div className="space-y-3 text-sm" id="orders-load" data-orders-load>
+        <p className="text-zinc-600">{t("sankhyaOrders.load.hint")}</p>
+        {error ? (
+          <Alert tone="danger">
+            {t("sankhyaOrders.load.error", { detail: one(q.detail) || "—" })}
+          </Alert>
+        ) : null}
+        {load.phase !== "idle" ? (
+          <div data-orders-load-phase={load.phase}>
+            <p>
+              {t(`sankhyaOrders.load.phase.${load.phase}` as DictionaryKey)}
+              {running ? ` · ${load.done}/${load.total} (${pct}%)` : ""}
+            </p>
+            <p className="text-zinc-600">
+              {t("sankhyaOrders.load.counts", {
+                created: load.created,
+                updated: load.updated,
+                pending: load.withPending,
+                containers: load.containers,
+              })}
+            </p>
+            {load.finishedAt ? (
+              <p className="text-zinc-600">
+                {t("sankhyaOrders.load.finished", {
+                  at: new Date(load.finishedAt).toLocaleString(t.intl, {
+                    timeZone: "America/Sao_Paulo",
+                  }),
+                })}
+              </p>
+            ) : null}
+            {load.skipped.length ? (
+              <details>
+                <summary>
+                  {t("sankhyaOrders.load.skipped", {
+                    n: load.skipped.length,
+                  })}
+                </summary>
+                <ul className="mt-1 list-disc pl-5">
+                  {load.skipped.map((s) => (
+                    <li key={s.key}>
+                      {s.key}: {s.reason}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <form action={sankhyaOrdersLoadAction}>
+            <input type="hidden" name="restart" value="1" />
+            <input type="hidden" name="auto" value="1" />
+            <SubmitButton pendingText="…" data-orders-load-start>
+              {load.phase === "idle"
+                ? t("sankhyaOrders.load.start")
+                : t("sankhyaOrders.load.restart")}
+            </SubmitButton>
+          </form>
+          {running ? (
+            <form id="orders-load-auto" action={sankhyaOrdersLoadAction}>
+              <input type="hidden" name="auto" value="1" />
+              <SubmitButton variant="secondary" pendingText="…">
+                {t("sankhyaOrders.load.continue")}
+              </SubmitButton>
+            </form>
+          ) : null}
+          {auto ? (
+            <Link
+              href="/app/settings/sankhya?tab=orders#orders-load"
+              className="self-center text-sm underline"
+            >
+              {t("sankhyaOrders.load.stop")}
+            </Link>
+          ) : null}
+        </div>
+        {auto ? <AutoContinue formId="orders-load-auto" /> : null}
       </div>
     </Card>
   );

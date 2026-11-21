@@ -1,3 +1,4 @@
+import { orderRequest } from "@/lib/services/order-request";
 import type { Order, OrderItem } from "@/lib/db";
 
 /**
@@ -37,7 +38,7 @@ export class LiveSankhyaAdapter implements SankhyaAdapter {
       erp.erpNumberField === "NUNOTA" ? nunota : (fresh.erpNumber ?? nunota);
     if (fresh.sankhyaCode)
       return { status: "synced" as const, erpNumber: show(fresh.sankhyaCode) };
-    const request = await store.get("requests", fresh.requestId);
+    const request = await orderRequest(fresh, store);
     if (request?.sankhyaCode) {
       await store.update("orders", fresh.id, {
         sankhyaCode: request.sankhyaCode,
