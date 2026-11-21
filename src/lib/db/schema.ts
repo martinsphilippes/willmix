@@ -31,6 +31,32 @@ export const PAYMENT_PLAN_STATUSES = [
   "rejected",
 ] as const;
 
+/** Embarque do pedido de compra do Sankhya: sem embarque, parcial ou todo embarcado. */
+export const SHIPMENT_STATES = ["none", "partial", "shipped"] as const;
+export type ShipmentState = (typeof SHIPMENT_STATES)[number];
+
+/**
+ * Situação do pedido de compra lido do Sankhya (docs/SANKHYA_INTEGRACAO.md):
+ * em andamento, aguardando definição (D5), encerrado, interrompido no Sankhya
+ * ou caminho antigo (117 → 33 → 30 → 35).
+ */
+export const SANKHYA_ORDER_SITUATIONS = [
+  "in_progress",
+  "awaiting_definition",
+  "closed",
+  "interrupted",
+  "legacy_path",
+] as const;
+export type SankhyaOrderSituation = (typeof SANKHYA_ORDER_SITUATIONS)[number];
+
+/** Um documento da cadeia do pedido no Sankhya, do mais antigo ao atual. */
+export interface SankhyaChainDoc {
+  nunota: number;
+  top: number;
+  pending?: boolean;
+  date?: string | null;
+}
+
 export const ROLES = [
   "admin",
   "operator",
@@ -1362,6 +1388,22 @@ export interface Order extends BaseRow {
   chargeNotices?: ChargeNotices | null;
   /** Vendedor do pedido (login da Wellmix): acompanha e cobra os boletos. */
   sellerUserId?: string | null;
+  /**
+   * Pedido de compra lido do Sankhya (docs/SANKHYA_INTEGRACAO.md, 4.3): a
+   * cadeia de documentos (1100 → 1104), a última mudança, a qualidade, o
+   * recebimento, o canal aduaneiro, o embarque e a situação. Nulos nos pedidos
+   * que nascem no portal.
+   */
+  sankhyaChain?: SankhyaChainDoc[] | null;
+  sankhyaChangedAt?: string | null;
+  sankhyaQuality?: string | null;
+  sankhyaInspectedAt?: string | null;
+  sankhyaReceipt?: string | null;
+  sankhyaReceivedAt?: string | null;
+  customsChannel?: string | null;
+  sankhyaImportProcesses?: number | null;
+  shipmentState?: ShipmentState | null;
+  sankhyaSituation?: SankhyaOrderSituation | null;
 }
 
 /** Uma rodada da programação de compra no pedido pai. */
@@ -1410,6 +1452,10 @@ export interface OrderItem extends BaseRow {
    * depois, mesmo as que o portal não tem como campo.
    */
   sankhyaRefs?: Record<string, string | number> | null;
+  /** Quantidades do Sankhya: já embarcada, recebida e o saldo do item. */
+  shippedQty?: number | null;
+  receivedQty?: number | null;
+  pendingQty?: number | null;
 }
 
 /** LEGADO (fase 5e): linha da tabela `stages`; ver `STAGE_KEYS`. */
@@ -1741,6 +1787,10 @@ export interface Container extends BaseRow {
   eta: string | null;
   notes: string | null;
   createdByUserId: string;
+  /** Embarque do Sankhya: NUNOTA do documento 35, a cadeia (35 → 1 → 37) e o fornecedor. */
+  sankhyaCode?: string | null;
+  sankhyaChain?: SankhyaChainDoc[] | null;
+  supplierId?: string | null;
 }
 
 /** Item dentro do container. Com orderId é mercadoria vendida; sem, é estoque disponível. */
@@ -4869,6 +4919,17 @@ export const TABLES: Record<TableName, TableDef> = {
       customerCharges: jsonLarge(),
       chargeNotices: json(),
       sellerUserId: id(false),
+      // Pedido de compra lido do Sankhya (docs/SANKHYA_INTEGRACAO.md, 4.3).
+      sankhyaChain: json(),
+      sankhyaChangedAt: datetime(),
+      sankhyaQuality: str(40),
+      sankhyaInspectedAt: datetime(),
+      sankhyaReceipt: str(40),
+      sankhyaReceivedAt: datetime(),
+      customsChannel: str(20),
+      sankhyaImportProcesses: int(),
+      shipmentState: enumOf(SHIPMENT_STATES, false),
+      sankhyaSituation: enumOf(SANKHYA_ORDER_SITUATIONS, false),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
@@ -4902,6 +4963,9 @@ export const TABLES: Record<TableName, TableDef> = {
       colors: json(),
       sankhyaCode: str(40),
       sankhyaRefs: json(),
+      shippedQty: float(),
+      receivedQty: float(),
+      pendingQty: float(),
     },
     indexes: [{ key: "by_order", type: "key", columns: ["orderId"] }],
   },
@@ -5311,8 +5375,12 @@ export const TABLES: Record<TableName, TableDef> = {
       eta: datetime(),
       notes: text(),
       createdByUserId: id(),
+      sankhyaCode: str(40),
+      sankhyaChain: json(),
+      supplierId: id(false),
     },
     indexes: [
+      { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
       { key: "by_customer", type: "key", columns: ["customerId"] },
       { key: "by_status", type: "key", columns: ["status"] },
     ],

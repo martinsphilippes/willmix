@@ -212,6 +212,7 @@ Cada pedido é a ponta da cadeia de 1100 a 1104/1107: o documento mais avançado
   - `sankhyaReceipt`, `sankhyaReceivedAt`;
   - `customsChannel`, `sankhyaImportProcesses`;
   - `shipmentState`: sem embarque, embarque parcial ou embarcado.
+  - `sankhyaSituation`: em andamento, aguardando definição, encerrado, interrompido no Sankhya ou caminho antigo (a mesma do ensaio).
 - **`order_items`:** `shippedQty`, `receivedQty`, `pendingQty`.
 - **`containers`:** `sankhyaCode` (NUNOTA pendente), `sankhyaChain`, `supplierId`.
 
@@ -326,7 +327,7 @@ Os marcos que só existem no portal (Certificação, Amostras, Booking) seguem a
 
 Cada etapa é um PR com testes e E2E. Nada apaga dados até a etapa 5.
 
-1. **Esquema aditivo:** os campos da seção 4.3.
+1. **Esquema aditivo:** os campos da seção 4.3. **Feito em 21/11/2026:** `orders.sankhyaChain`, `sankhyaChangedAt`, `sankhyaQuality`, `sankhyaInspectedAt`, `sankhyaReceipt`, `sankhyaReceivedAt`, `customsChannel`, `sankhyaImportProcesses`, `shipmentState` (`none`, `partial`, `shipped`) e `sankhyaSituation` (a situação do ensaio: `in_progress`, `awaiting_definition`, `closed`, `interrupted`, `legacy_path`); `order_items.shippedQty`, `receivedQty`, `pendingQty`; `containers.sankhyaCode` (com índice), `sankhyaChain`, `supplierId`. Todos opcionais; os pedidos do portal ficam com eles vazios.
 2. **Pedido sem solicitação (D1):** `requestId` opcional e a revisão das leituras (seção 4.4).
 3. **Carga de ensaio a partir da cópia já no banco** (`sankhya_stage_rows`), sem chamar o Sankhya. **Feita em 21/11/2026:**
    - `scripts/sankhya-projection.sql` monta, no próprio Postgres, um pedido por cadeia (a ponta de 1100 a 1104/1107) e um embarque por documento 35. Grava na tabela de ensaio `sankhya_projection` (apaga e refaz só ela) com situação, marco, estado do embarque, a cadeia de documentos, os itens com o que já embarcou (pela TGFVAR, `QTDATENDIDA`; o `QTD_ENTREGUE` não serve para isso) e o saldo, os status de recebimento, qualidade e canal e os embarques ligados;
