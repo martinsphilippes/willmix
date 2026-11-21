@@ -12,6 +12,7 @@ import {
 } from "@/lib/money-mask";
 import { CURRENCY_SYMBOL } from "@/lib/workflow/money";
 import { cx, inputClass, inputDenseClass } from "./ui";
+import { FxNoteLine, prefetchFx, useFxConversion } from "./fx-conversion";
 
 /**
  * Campo de dinheiro, o mesmo em todo o portal: símbolo da moeda na frente do
@@ -32,6 +33,13 @@ import { cx, inputClass, inputDenseClass } from "./ui";
  * 40,00) e o separador é o da moeda (Yuan e Dólar com ponto, Real e Euro com
  * vírgula; `src/lib/money-mask.ts`). Sem ele, nada muda: digitação livre,
  * formatada ao sair do campo no idioma de quem usa.
+ *
+ * Trocar a moeda converte o valor (dono, 21/11/2026): pelo câmbio do dia do
+ * portal, na hora, com o aviso "Convertido de US$ 1,0194 · câmbio de
+ * 21/11/2026" e o "Manter" (o número de antes na moeda nova). Vale para o
+ * seletor próprio (`currencyName`) e para o seguido (`watchField`); a moeda
+ * fixa (`currency`) é trocada pela tela, que converte se quiser
+ * (`src/components/fx-conversion.tsx`).
  */
 export function MoneyInput({
   name,
@@ -121,6 +129,11 @@ export function MoneyInput({
   );
   const [focused, setFocused] = useState(false);
   const [invalid, setInvalid] = useState(false);
+  const fx = useFxConversion({
+    decimals,
+    format: (n, c) =>
+      `${symbolOf(c)} ${formatPlain(n, decimals, locale)}`.trim(),
+  });
   // Controlado: o valor vem de fora; fora do foco, a tela mostra formatado.
   const raw = value ?? rawState;
   const freeText =
@@ -132,26 +145,6 @@ export function MoneyInput({
     : value !== undefined
       ? moneyDigitsOfValue(value, decimals)
       : digitsState;
-
-  // Segue o seletor de moeda já existente no formulário (a leitura inicial
-  // é adiada: o campo só existe depois de montar).
-  useEffect(() => {
-    if (!watchField) return;
-    const field = inputRef.current?.form?.elements.namedItem(watchField);
-    if (!(
-      field instanceof HTMLSelectElement || field instanceof HTMLInputElement
-    ))
-      return;
-    const read = () => setWatched(field.value.toUpperCase());
-    const first = setTimeout(read, 0);
-    field.addEventListener("change", read);
-    field.addEventListener("input", read);
-    return () => {
-      clearTimeout(first);
-      field.removeEventListener("change", read);
-      field.removeEventListener("input", read);
-    };
-  }, [watchField]);
 
   // Moeda fixa (sem seletor próprio nem campo seguido): a de agora, para o
   // símbolo acompanhar quando a tela troca a moeda.
@@ -170,9 +163,63 @@ export function MoneyInput({
     ? formatMoneyDigits(digits, sep, decimals)
     : freeText;
   const submitted = autoDecimal ? moneyValueOfDigits(digits, decimals) : raw;
+  const amountNumber = submitted === "" ? NaN : Number(submitted);
+  const amount = Number.isFinite(amountNumber) ? amountNumber : null;
+
+  /** Valor posto pela conversão (ou pelo "Manter"): campo e valor enviado. */
+  function setAmount(n: number) {
+    const normalized = n.toFixed(decimals);
+    if (autoDecimal) setDigits(moneyDigitsOfValue(normalized, decimals));
+    else {
+      setRaw(normalized);
+      setText(formatPlain(n, decimals, locale));
+    }
+    setInvalid(false);
+    onValueChange?.(normalized);
+  }
+
+  // Troca da moeda seguida (`watchField`): o ouvinte do seletor chama sempre
+  // a conversão com o valor de agora.
+  const onCurrency = useRef<(from: string, to: string) => void>(() => {});
+  useEffect(() => {
+    onCurrency.current = (from, to) => fx.convert(from, to, amount, setAmount);
+  });
+
+  // Segue o seletor de moeda já existente no formulário (a leitura inicial
+  // é adiada: o campo só existe depois de montar).
+  useEffect(() => {
+    if (!watchField) return;
+    const field = inputRef.current?.form?.elements.namedItem(watchField);
+    if (!(
+      field instanceof HTMLSelectElement || field instanceof HTMLInputElement
+    ))
+      return;
+    // A primeira leitura só mostra a moeda; as trocas depois dela convertem o
+    // valor ("change" e "input" chegam juntos: a segunda já não muda nada).
+    let last = "";
+    const read = () => {
+      const next = field.value.toUpperCase();
+      if (next === last) return;
+      const before = last;
+      last = next;
+      setWatched(next);
+      if (before) onCurrency.current(before, next);
+    };
+    const first = setTimeout(read, 0);
+    field.addEventListener("change", read);
+    field.addEventListener("input", read);
+    field.addEventListener("focus", prefetchFx);
+    return () => {
+      clearTimeout(first);
+      field.removeEventListener("change", read);
+      field.removeEventListener("input", read);
+      field.removeEventListener("focus", prefetchFx);
+    };
+  }, [watchField]);
 
   /** Caixa registradora: novos números → campo e valor. */
   function typeDigits(next: string) {
+    fx.clear();
     setDigits(next);
     setInvalid(false);
     onValueChange?.(moneyValueOfDigits(next, decimals));
@@ -193,6 +240,7 @@ export function MoneyInput({
   }
 
   function update(next: string) {
+    fx.clear();
     setText(next);
     setInvalid(false);
     const normalized = normalizeRaw(next, locale, decimals);
@@ -235,7 +283,12 @@ export function MoneyInput({
           name={currencyName}
           form={form}
           value={ownCurrency}
-          onChange={(e) => setOwnCurrency(e.target.value)}
+          onFocus={prefetchFx}
+          onChange={(e) => {
+            const next = e.target.value;
+            fx.convert(ownCurrency, next, amount, setAmount);
+            setOwnCurrency(next);
+          }}
           disabled={disabled}
           required={required && !allowEmptyCurrency}
           className={cx(
@@ -329,6 +382,7 @@ export function MoneyInput({
           disabled={disabled}
         />
       ) : null}
+      <FxNoteLine note={fx.note} onKeep={fx.keep} />
     </span>
   );
 }

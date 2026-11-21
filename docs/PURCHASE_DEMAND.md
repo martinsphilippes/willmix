@@ -295,6 +295,26 @@ Pedido do dono (20/11/2026, com o print da resposta da cotação de compra no iP
   - `tests/e2e/purchase-quote.spec.ts`: RMB e ¥ por padrão, 210 digitado vira 2.10, Real com vírgula, Dólar com ponto, e a moeda de cada fornecedor no quadro da Wellmix.
 - **Para depois** (não pedido): as mesmas casas automáticas nos outros campos de preço do portal (é ligar `autoDecimal`) e três casas para itens muito baratos (US$ 0,085), se aparecer.
 
+## Conversão ao trocar a moeda (dono, 21/11/2026)
+
+Pedido do dono (21/11/2026, com o vídeo da ficha do produto no iPad): no quadro "Fornecedor e negociação", trocar a moeda de Dólar para Yuan ou Real mudava só o símbolo (US$ 1,0194 virava ¥ 1,0194). Os campos com valor, inclusive os já preenchidos, têm de converter a moeda e o valor na hora.
+
+- **Regra**: trocar a moeda de um campo de valor converte o número pelo câmbio do dia do portal, passando pelo Real, e arredonda às casas do campo (4 no preço do produto e na negociação, 2 na cotação). É o mesmo câmbio do preço ao cliente: PTAX de venda do Banco Central, as fontes de reserva, o último obtido ou o câmbio manual das Configurações.
+- **Aviso** embaixo do campo: "Convertido de US$ 1,0194 · câmbio de 21/11/2026" e o botão **"Manter R$ 1,0194"**, que volta ao número de antes na moeda nova (para quando a moeda estava errada e o número certo). Digitar no campo tira o aviso. Sem câmbio de uma das moedas, o valor fica igual e o aviso diz isso: nunca um número inventado.
+- **Onde vale**:
+  - todo campo de dinheiro com seletor de moeda (`MoneyInput` com seletor próprio ou seguido): ficha do produto, ficha de compra, sourcing, kit de marketing, frete, custos e pagamentos do pedido, venda ao cliente e o frete por m³ das Configurações;
+  - a resposta da cotação de compra: a moeda é uma por resposta, então trocar converte o preço de todos os itens, com "Manter os valores digitados";
+  - a negociação com o fornecedor: a contraproposta da Wellmix, a resposta do fornecedor e a resposta pela tabela de fornecedores.
+- **Só a troca feita pela pessoa converte**: a moeda posta pelo portal (valor inicial, rascunho restaurado) não mexe no número.
+- **Câmbio no navegador**: `/api/fx` (só com login) devolve o câmbio e os textos do aviso no idioma de quem usa. É uma busca por página, feita quando o seletor de moeda ganha o foco, para a conversão sair na hora.
+- **Peças**:
+  - `src/lib/fx-convert.ts`: a conta e o texto do aviso;
+  - `src/components/fx-conversion.tsx`: câmbio, aviso e "Manter";
+  - `src/components/fx-field-watch.tsx`: formulários de campo simples (a oferta da negociação);
+  - `src/app/api/fx/route.ts`, o `MoneyInput`, `quote-answer-form.tsx`, `proposal-fields.tsx` e os textos `moneyFx.*`.
+- **Testes**: `tests/unit/fx-convert.test.ts` e `tests/e2e/currency-conversion.spec.ts` (ficha do produto: Dólar → Real, "Manter", Real → Yuan e o aviso que sai ao digitar).
+- **Para depois**: os outros campos de preço em texto simples ao lado de uma moeda (ex.: o lote do pedido) convertem quando migrarem para o `MoneyInput` ou ganharem o `FxFieldWatch`.
+
 ## Rascunho automático da cotação (dono, 20/11/2026)
 
 Pedido do dono (20/11/2026, com dois prints do iPad): o fornecedor preencheu a ficha técnica, enviou a foto na balança e tudo o que estava digitado sumiu. O pedido é salvar sozinho, para não perder nada do que foi digitado.
@@ -371,4 +391,5 @@ Pedido do dono, com o desenho da tela: o inner só quando o cliente pede, o avis
 | 10  | Grade de estratégias: três colunas de cards compactos, Detalhes e Gerar pedido em painel         | feito    |
 | 11  | Ficha técnica na cotação: quem nunca vendeu informa, quem já vendeu ratifica uma vez; Cadastro   | feito    |
 | 12  | Correção da resposta até o prazo: aviso com a hora exata e a tela travada com a resposta enviada | feito    |
-| 13  | Inner do cliente, material do catálogo, "Sem peso" e a cotação em duas colunas                  | feito    |
+| 13  | Inner do cliente, material do catálogo, "Sem peso" e a cotação em duas colunas                   | feito    |
+| 14  | Conversão ao trocar a moeda: campos de valor, cotação e negociação, com o aviso e o "Manter"     | feito    |

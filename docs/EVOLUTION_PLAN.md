@@ -380,6 +380,7 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 ## Campo de dinheiro em todo o portal
 
 - `MoneyInput` (`src/components/money-input.tsx`) é o campo único para valores: símbolo da moeda na frente (R$, ¥, US$, €), formatação ao sair do campo e número normalizado num campo oculto (as Server Actions com `num()` não mudam). A moeda vem do seletor próprio (`currencyName`), de um seletor já existente no formulário (`watchField`) ou é fixa (`currency`). Aplicado em: custos do desembaraço, frete da companhia marítima, recebimento do cliente, multa, cotação registrada à mão, sinal, kit de marketing, preço do produto (catálogo e programação), sourcing, pagamento ao fornecedor, frete por CBM (Configurações), preço da ficha de compra e calculadora do valor ao cliente (venda e frete, sempre em Real).
+- Trocar a moeda converte o valor (dono, 21/11/2026; docs/PURCHASE_DEMAND.md, "Conversão ao trocar a moeda"): o `MoneyInput` com seletor de moeda, a resposta da cotação de compra e a negociação com o fornecedor convertem pelo câmbio do dia do portal (`/api/fx`), com o aviso e o "Manter". Aditivo: nenhum campo, ação ou dado muda; o servidor recebe o valor como antes.
 
 ## Custos do desembaraço em dinheiro
 
