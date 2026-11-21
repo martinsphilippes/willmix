@@ -9,7 +9,8 @@ import { priceForMinimum } from "@/lib/superplan-inverse";
 /*
  * Campos da contraproposta da Wellmix (docs/SUPPLIER_REQUESTS.md,
  * "Contraproposta com o Superplan"): os mesmos da resposta do fornecedor
- * (preço, moeda, MOQ, prazo e FOB/EXW) e a estimativa do Superplan do item
+ * (preço, moeda, MOQ, prazo e FOB/EXW), numa linha só (docs/SUPPLIER_REQUESTS.md,
+ * "Tela da negociação reorganizada"), e a estimativa do Superplan do item
  * nos dois sentidos, refeita no navegador a cada tecla:
  * - digita o preço sugerido → custo por peça e preço mínimo;
  * - digita o preço mínimo desejado (R$) → o preço por peça necessário (conta
@@ -106,8 +107,19 @@ export function ProposalFields({
     n.toLocaleString(intl, { maximumFractionDigits: 4 });
 
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-2">
+    <div className="@container space-y-2">
+      {/* Uma linha só quando cabe (tela da negociação reorganizada):
+          Preço/peça | Moeda | Mínimo | Produção | Incoterm; em espaço
+          estreito (iPad em pé, celular), duas ou três colunas. Pela largura
+          do quadro, não da tela. */}
+      <div
+        className={
+          showPrice
+            ? "grid grid-cols-2 gap-2 @sm:grid-cols-3 @xl:grid-cols-5"
+            : "grid grid-cols-2 gap-2 @sm:grid-cols-3"
+        }
+        data-offer-row
+      >
         {showPrice ? (
           <>
             <Field label={l.price}>

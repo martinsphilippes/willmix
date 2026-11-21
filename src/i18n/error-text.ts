@@ -1,5 +1,5 @@
 import type { Translate } from "@/i18n";
-import type { DictionaryKey } from "@/i18n/dictionaries";
+import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
 
 /**
  * Texto de erro sem tradução própria: "unexpected" (falha técnica, já
@@ -27,4 +27,28 @@ export function errorTextFor(
     if (text !== key) return text;
   }
   return fallbackError(t, code);
+}
+
+/**
+ * Textos de todos os códigos de erro dos prefixos, no idioma da tela, para o
+ * formulário que mostra o erro sem recarregar (`ActionForm`). O primeiro
+ * prefixo vence quando o mesmo código existe em dois. Só os códigos em
+ * snake_case (as outras chaves dos prefixos não são erros).
+ */
+export function errorTextsFor(
+  t: Translate,
+  prefixes: readonly string[],
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const prefix of [...prefixes].reverse()) {
+    const head = `${prefix}.`;
+    for (const key of Object.keys(dictionaries.pt)) {
+      if (!key.startsWith(head)) continue;
+      const code = key.slice(head.length);
+      if (!/^[a-z][a-z0-9_]*$/.test(code)) continue;
+      out[code] = t(key as DictionaryKey);
+    }
+  }
+  out.unexpected = t("common.unexpected");
+  return out;
 }
