@@ -127,11 +127,26 @@ describe("SQL das páginas", () => {
       "purchaseHeaders",
       "purchaseItems",
       "saleHeaders",
+      "purchaseTracks",
     ] as const)
       expect(() =>
         assertReadOnlySql(stage.stagePageSql(d, 1, 1)),
       ).not.toThrow();
     expect(() => assertReadOnlySql(links)).not.toThrow();
+  });
+
+  it("TRACK_ID direto da TGFCAB, só nas TOPs de compra de importação", () => {
+    const sql = stage.stagePageSql("purchaseTracks", 1300000, 0, 500);
+    expect(sql).toContain(
+      "TOP 500 C.NUNOTA, C.CODTIPOPER, C.AD_TRACKID AS TRACK_ID",
+    );
+    expect(sql).toContain(
+      "FROM TGFCAB C WHERE C.CODTIPOPER IN (1002, 1003, 140, 1100",
+    );
+    expect(sql).toContain("C.NUNOTA > 1300000 ORDER BY C.NUNOTA");
+    expect(
+      stage.stageRowKey("purchaseTracks", { NUNOTA: 12, TRACK_ID: 9 } as never),
+    ).toBe("12");
   });
 
   it("página cheia de ligações não corta um item no meio", () => {

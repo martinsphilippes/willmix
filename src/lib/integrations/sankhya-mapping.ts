@@ -691,6 +691,7 @@ export const FULL_LOAD_ENTITIES = [
   "stageSaleHeaders",
   "stageSaleItems",
   "stageSaleLinks",
+  "stagePurchaseTracks",
 ] as const;
 export type FullLoadEntity = (typeof FULL_LOAD_ENTITIES)[number];
 
@@ -844,6 +845,7 @@ export const FULL_LOAD_KEY: Record<FullLoadEntity, string> = {
   stageSaleHeaders: "NUNOTA",
   stageSaleItems: "NUNOTA",
   stageSaleLinks: "NUNOTA",
+  stagePurchaseTracks: "NUNOTA",
 };
 
 /* ---- Códigos do Sankhya guardados no registro (sankhyaRefs) ---- */
