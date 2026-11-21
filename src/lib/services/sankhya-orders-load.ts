@@ -19,7 +19,8 @@ import {
   sankhyaContainerId,
   sankhyaContainerItemId,
   sankhyaIso,
-  sankhyaItemId,
+  sankhyaTrackItemId,
+  mainKeyOf,
   sankhyaOrderId,
   shipmentLines,
   type ProjectionOrder,
@@ -289,7 +290,7 @@ async function loadOrdersChunk(
     keys.map((k) => `order:${k}`),
   );
   const [emps, existing, suppliers, products] = await Promise.all([
-    companiesOf(store, keys),
+    companiesOf(store, rows.map(mainKeyOf)),
     listByIds(store, "orders", keys.map(sankhyaOrderId)),
     store.list("parties", {
       filter: {
@@ -328,7 +329,7 @@ async function loadOrdersChunk(
       skip(`fornecedor ${row.supplierCode ?? "—"} não cadastrado`);
       continue;
     }
-    const emp = emps.get(row.key);
+    const emp = emps.get(mainKeyOf(row));
     if (!emp) {
       skip("empresa compradora (CODEMP) ausente na cópia");
       continue;
@@ -379,7 +380,7 @@ async function loadOrdersChunk(
         brokerId: null,
         shippingLineId: null,
         carrierId: null,
-        notes: `Importado do Sankhya (carga dos pedidos, ${now.slice(0, 10)}): NUNOTA ${row.key}, TOP ${row.top ?? "—"}`,
+        notes: `Importado do Sankhya (carga dos pedidos, ${now.slice(0, 10)}): TRACK_ID ${row.data?.track ?? "—"}, NUNOTA ${mainKeyOf(row)}, TOP ${row.top ?? "—"}`,
         ...fields,
       } as never);
       progress.created++;
@@ -442,19 +443,18 @@ async function loadShipmentsChunk(
     store,
     keys.map((k) => `shipment:${k}`),
   );
-  // O 35 pode sair de um documento do meio da cadeia (o 1104 que depois
-  // virou 1107): o pedido é o da ponta da cadeia que o contém.
-  const leafOf = await chainLeaves(store);
+  // Cada linha do 35 sai de um documento (a 1104, ou o 30 no caminho
+  // antigo); o pedido é o track que contém esse documento (docs/SANKHYA_TRACK_ID.md).
+  const trackOf = await chainLeaves(store);
   const linesOf = (r: ProjectionShipment) =>
-    shipmentLines(
-      shipmentLines(r.data?.orders).map((o) => ({
-        ...o,
-        order: Number(leafOf.get(String(o.order)) ?? o.order),
-      })),
-    );
+    shipmentLines(r.data?.orders).map((o) => ({
+      ...o,
+      doc: o.order,
+      track: trackOf.get(String(o.order)) ?? String(o.order),
+    }));
   const orderIds = [
     ...new Set(
-      rows.flatMap((r) => linesOf(r).map((o) => sankhyaOrderId(o.order))),
+      rows.flatMap((r) => linesOf(r).map((o) => sankhyaOrderId(o.track))),
     ),
   ];
   const [orders, items, suppliers] = await Promise.all([
@@ -472,6 +472,7 @@ async function loadShipmentsChunk(
     }),
   ]);
   const loaded = new Set(orders.map((o) => o.id));
+  const mainOf = new Map(orders.map((o) => [o.id, o.sankhyaCode ?? ""]));
   const itemById = new Map(items.map((i) => [i.id, i]));
   const supplierByCode = new Map(suppliers.map((p) => [p.sankhyaCode, p]));
   const containers = await listByIds(
@@ -514,16 +515,22 @@ async function loadShipmentsChunk(
       } as never);
     progress.containers++;
     const lines = linesOf(row).flatMap((o) => {
-      const orderId = sankhyaOrderId(o.order);
+      const orderId = sankhyaOrderId(o.track);
       if (!loaded.has(orderId)) return [];
-      const item = itemById.get(sankhyaItemId(o.order, o.seq));
+      // O item do próprio documento; senão, o da ponta principal com a mesma
+      // sequência (o 35 que saiu de um documento do meio da cadeia).
+      const item =
+        itemById.get(sankhyaTrackItemId(o.track, o.doc, o.seq)) ??
+        itemById.get(
+          sankhyaTrackItemId(o.track, mainOf.get(orderId) ?? o.doc, o.seq),
+        );
       if (!item) return [];
       const qty = Number(o.qty) || 0;
       const boxes = Number(item.sankhyaRefs?.QTD_CAIXAS ?? 0);
       const perBox = boxes > 0 && item.quantity > 0 ? item.quantity / boxes : 0;
       return [
         {
-          id: sankhyaContainerItemId(row.key, o.order, o.seq),
+          id: sankhyaContainerItemId(row.key, o.doc, o.seq),
           containerId: id,
           orderId,
           orderItemId: item.id,

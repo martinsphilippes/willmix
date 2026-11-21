@@ -1425,6 +1425,8 @@ export interface Order extends BaseRow {
   sankhyaImportProcesses?: number | null;
   shipmentState?: ShipmentState | null;
   sankhyaSituation?: SankhyaOrderSituation | null;
+  /** TRACK_ID do Sankhya: o código do pedido de importação (docs/SANKHYA_TRACK_ID.md). */
+  sankhyaTrackId?: string | null;
 }
 
 /** Uma rodada da programação de compra no pedido pai. */
@@ -5023,6 +5025,7 @@ export const TABLES: Record<TableName, TableDef> = {
       sankhyaImportProcesses: int(),
       shipmentState: enumOf(SHIPMENT_STATES, false),
       sankhyaSituation: enumOf(SANKHYA_ORDER_SITUATIONS, false),
+      sankhyaTrackId: str(20),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
@@ -5035,6 +5038,7 @@ export const TABLES: Record<TableName, TableDef> = {
       },
       { key: "by_parent", type: "key", columns: ["parentOrderId"] },
       { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
+      { key: "by_sankhya_track", type: "key", columns: ["sankhyaTrackId"] },
       { key: "by_owner", type: "key", columns: ["ownerUserId"] },
       { key: "by_customer", type: "key", columns: ["customerId"] },
       { key: "by_supplier", type: "key", columns: ["supplierId"] },

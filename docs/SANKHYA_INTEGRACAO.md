@@ -416,6 +416,31 @@ O que o track resolve nos três casos (pedidos da carga cujo track tem outro ped
 
 O track junta as partes de um mesmo pedido e confirma que os "gêmeos" são pedidos diferentes. Mas a maior parte dos três casos é de tracks que pararam ali mesmo, sem outro documento. O track não explica por que pararam. Essa resposta continua com a Wellmix, agora com o número do track.
 
+### 9.3 Carga por TRACK_ID (dono, 21/11/2026: "pode apagar tudo e refazer por track")
+
+- **Ensaio:** `scripts/sankhya-projection.sql` ganhou a junção por track, um comando no fim do script.
+  - As pontas de cadeia do mesmo track viram um pedido só. A chave é o track; sem track, "-NUNOTA".
+  - A situação vem da ponta mais adiantada: em andamento, depois encerrado, depois aguardando definição, depois interrompido.
+  - Os itens vêm das pontas que valem. A interrompida só conta se o track inteiro parou.
+  - A cadeia lista todos os documentos do track (cópia `purchaseTracks`), e os embarques levam o track de cada pedido.
+  - Os 10 documentos 30 que vêm da cadeia nova entram pelo track deles. O "Caminho antigo" do 1103 some na junção.
+  - Prévia de 21/11: 6.256 pedidos por track, vindos de 6.422 pontas de cadeia:
+
+    | Situação             | Pedidos |
+    | -------------------- | ------- |
+    | Em andamento         | 366     |
+    | Encerrado            | 2.543   |
+    | Interrompido         | 2.040   |
+    | Aguardando definição | 1.306   |
+    | Caminho antigo       | 1       |
+
+- **Carga:**
+  - O pedido tem o id `snk-t<track>` e o campo novo `orders.sankhyaTrackId`, com índice.
+  - O `sankhyaCode` e o `erpNumber` são os da ponta principal.
+  - O item tem o id `snk-t<track>-<NUNOTA>-<SEQUENCIA>`, porque o track junta mais de um documento.
+  - A linha do embarque cai no pedido pelo track do documento de origem. Se esse documento não tiver o item, ela vai para o item da ponta principal com a mesma sequência.
+- **Limpeza da carga de 21/11:** `scripts/sankhya-orders-reset.sql` apaga os pedidos `snk-…`, os embarques `snk-35-…` e tudo o que aponta para eles, nas 36 tabelas com `orderId`, e zera o andamento da carga. Os pedidos do portal, os cadastros e a cópia das views ficam.
+
 ## 10. Em aberto
 
 1. Confirmação da Wellmix do de-para da seção 5.1 (D7). Até lá vale a proposta, validada na tela com casos reais.

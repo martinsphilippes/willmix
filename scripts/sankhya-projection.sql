@@ -1,8 +1,8 @@
 -- Ensaio da reconstrução dos pedidos de compra do Sankhya (docs/SANKHYA_INTEGRACAO.md,
 -- seções 3.1, 4 e 5). Lê só a cópia bruta (sankhya_stage_rows) e grava o resultado em
 -- sankhya_projection (apaga e refaz só essa tabela). Não toca em pedidos do portal.
--- São quatro comandos (apagar, pedidos, embarques e as compras 33 -> 30); cada um tem os
--- próprios "with".
+-- Comandos: apagar, pedidos (pontas de cadeia), embarques, compras 33 -> 30 e a junção por
+-- TRACK_ID (que precisa da cópia purchaseTracks); cada um tem os próprios "with".
 -- Rodar de novo depois de copiar as views: o resultado é sempre o da cópia atual.
 begin;
 delete from public.sankhya_projection;
@@ -206,8 +206,7 @@ from ship s
 left join carried c on c.d = s.n;
 -- Compras de 2020 a 2022 pelo caminho 117 -> 33 -> 30 -> 35 (dono, 21/11/2026: "traga como
 -- histórico encerrado"): um pedido por documento 30, com a cadeia (117, 33) e os itens do 30,
--- sempre encerrado. Os 10 que vêm da cadeia nova (1103 -> 30) já são os "Caminho antigo" do
--- primeiro comando e ficam fora daqui.
+-- sempre encerrado.
 with recursive
 h as (
   select nunota n, row r,
@@ -222,12 +221,9 @@ lk as (
   from public.sankhya_stage_rows where dataset = 'purchaseLinks'
 ),
 ld as (select distinct o, d from lk where o <> d),
-leaf as (
-  select h.* from h where h.top = 30
-  and not exists (
-    select 1 from ld join h a on a.n = ld.o
-    where ld.d = h.n and a.top in (1100, 1101, 1102, 1103, 1104, 1107))
-),
+-- Inclui os 10 que vêm da cadeia nova (1103 -> 30): o 30 tem o mesmo track do 1103 e é dele
+-- que sai o embarque; o "Caminho antigo" some na junção por track, mais abaixo.
+leaf as (select h.* from h where h.top = 30),
 anc(leaf, n, depth) as (
   select n, n, 0 from leaf
   union
@@ -298,4 +294,47 @@ left join outs o on o.leaf = l.n
 left join items it on it.leaf = l.n
 on conflict ("id") do nothing;
 
+-- Pedido por TRACK_ID (docs/SANKHYA_TRACK_ID.md; dono, 21/11/2026): as pontas de cadeia do mesmo
+-- track viram um pedido só (chave = track; sem track, "-NUNOTA"). Situação pela ponta mais
+-- adiantada; itens das pontas que valem (a interrompida só conta se o track inteiro parou); a
+-- cadeia é a de todos os documentos do track (cópia purchaseTracks). Os embarques levam o track.
+with
+t as (select nunota n, nullif(row->>'TRACK_ID', '') tr, (row->>'CODTIPOPER')::int top from public.sankhya_stage_rows where dataset = 'purchaseTracks'),
+h as (select nunota n, row r from public.sankhya_stage_rows where dataset = 'purchaseHeaders'),
+leaf0 as (select p.*, coalesce(t.tr, '-' || p.key) trk from public.sankhya_projection p left join t on t.n::text = p.key where p.kind = 'order'),
+lf as (select * from leaf0 l where not (l.situation = 'legacy_path' and exists (select 1 from leaf0 o where o.trk = l.trk and o.key <> l.key))),
+lfi as (select * from lf x where x.situation <> 'interrupted' or not exists (select 1 from lf y where y.trk = x.trk and y.situation <> 'interrupted')),
+ms as (select array['new-order','certification','art-material','art','contract','down-payment','pre-production','inspection','samples','production','booking','loading','shipment','customs','invoice-transport','delivery'] a),
+ranked as (select lf.*, row_number() over (partition by trk order by (situation = 'in_progress') desc, (situation = 'closed') desc, (situation = 'awaiting_definition') desc, key::bigint desc) rk from lf),
+agg as (
+  select trk,
+    case when bool_or(situation = 'in_progress') then 'in_progress' when bool_or(situation = 'closed') then 'closed' when bool_or(situation = 'awaiting_definition') then 'awaiting_definition' when bool_or(situation = 'legacy_path') then 'legacy_path' else 'interrupted' end situation,
+    max(top) top,
+    (select x.milestone from lf x, ms where x.trk = lf.trk and x.situation = 'in_progress' and x.milestone is not null order by array_position(ms.a, x.milestone) desc limit 1) milestone,
+    jsonb_agg(to_jsonb(key) order by key::bigint) leaves
+  from lf group by trk),
+tot as (
+  select trk, sum(coalesce((data->>'qtyTotal')::numeric, 0)) qty_total, sum(coalesce((data->>'shippedTotal')::numeric, 0)) shipped_total,
+    bool_and(coalesce("shipmentState", 'none') = 'shipped') all_shipped
+  from lfi group by trk),
+items as (select x.trk, jsonb_agg(i || jsonb_build_object('doc', x.key::bigint) order by x.key::bigint, (i->>'seq')::int) list from lfi x, jsonb_array_elements(case when jsonb_typeof(x.data->'items') = 'array' then x.data->'items' else '[]'::jsonb end) i group by x.trk),
+ships as (select x.trk, jsonb_agg(distinct s) list from lf x, jsonb_array_elements(case when jsonb_typeof(x.data->'shipments') = 'array' then x.data->'shipments' else '[]'::jsonb end) s group by x.trk),
+chain as (select t.tr trk, jsonb_agg(jsonb_build_object('nunota', t.n, 'top', t.top, 'pending', h.r->>'PEDIDO_PENDENTE' = 'S', 'date', h.r->>'DATA_PEDIDO', 'numnota', h.r->>'NUMNOTA') order by t.n) docs from t left join h on h.n = t.n where t.tr is not null group by t.tr)
+insert into public.sankhya_projection ("id", "kind", "key", "situation", "milestone", "top", "supplierCode", "supplierName", "shipmentState", "data", "computedAt")
+select 'track:' || a.trk, 'track', a.trk, a.situation, a.milestone, a.top, m."supplierCode", m."supplierName",
+  case when coalesce(tt.shipped_total, 0) <= 0 then 'none' when tt.all_shipped then 'shipped' else 'partial' end,
+  m.data || jsonb_build_object('track', a.trk, 'mainKey', m.key, 'leaves', a.leaves,
+    'chain', coalesce(c.docs, m.data->'chain'), 'items', coalesce(i.list, '[]'::jsonb), 'shipments', coalesce(s.list, '[]'::jsonb),
+    'qtyTotal', coalesce(tt.qty_total, 0), 'shippedTotal', coalesce(tt.shipped_total, 0)),
+  now()
+from agg a join ranked m on m.trk = a.trk and m.rk = 1
+left join tot tt on tt.trk = a.trk left join items i on i.trk = a.trk left join ships s on s.trk = a.trk left join chain c on c.trk = a.trk;
+delete from public.sankhya_projection where kind = 'order';
+update public.sankhya_projection set kind = 'order', id = 'order:' || key where kind = 'track';
+update public.sankhya_projection s set data = jsonb_set(s.data, '{orders}', coalesce((
+  select jsonb_agg(o || jsonb_build_object('track', coalesce(t.tr, '-' || (o->>'order'))))
+  from jsonb_array_elements(case when jsonb_typeof(s.data->'orders') = 'array' then s.data->'orders' else '[]'::jsonb end) o
+  left join (select nunota n, nullif(row->>'TRACK_ID', '') tr from public.sankhya_stage_rows where dataset = 'purchaseTracks') t on t.n = (o->>'order')::bigint
+), '[]'::jsonb))
+where s.kind = 'shipment';
 commit;
