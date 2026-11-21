@@ -29,7 +29,10 @@ import {
   type SheetTolerances,
   type SupplierSheetDraft,
 } from "@/lib/supplier-sheet";
+import { matchMaterials } from "@/lib/materials";
+import { quoteInnerState } from "@/lib/quote-inner";
 import { audit } from "./audit";
+import { checkMaterialIds, listMaterials, materialCatalog } from "./materials";
 import { notify } from "./notifications";
 
 /*
@@ -229,6 +232,14 @@ export interface QuoteSheetLine {
   askPhoto: boolean;
   /** Foto já enviada nesta cotação. */
   photoDocumentId: string | null;
+  /**
+   * Caixa inner exigida pelo cliente (dono, 21/11/2026): "none" (não pediu:
+   * nada de inner na tela), "required" (travada, com as peças) ou "pending"
+   * (a Wellmix ainda define; não trava o envio).
+   */
+  inner: ReturnType<typeof quoteInnerState>;
+  /** Os materiais do catálogo que o nosso texto cita (quem já vendeu). */
+  baselineMaterialIds: string[];
 }
 
 const itemOf = (
@@ -244,13 +255,14 @@ export async function quoteSheetLines(
 ): Promise<QuoteSheetLine[]> {
   const store = getStore();
   const productIds = [...new Set(quote.items.map((i) => i.productId))];
-  const [sold, pairs, products, scale] = await Promise.all([
+  const [sold, pairs, products, scale, materials] = await Promise.all([
     soldBeforeProducts(response.supplierId, productIds),
     loadPairSheets(response.supplierId, productIds),
     productIds.length
       ? store.list("products", { filter: { id: productIds } })
       : Promise.resolve([] as Product[]),
     catalogScalePhotos(productIds),
+    listMaterials(),
   ]);
   const soldProducts = products.filter((p) => sold.has(p.id));
   const baselines = await loadSheetBaselines(response.supplierId, soldProducts);
@@ -264,21 +276,28 @@ export async function quoteSheetLines(
       pair.review !== "rejected";
     const soldBefore = own ? pair!.soldBefore : sold.has(productId);
     const ask = own || !sheetSettled(pair);
+    const baseline = soldBefore
+      ? own
+        ? pair!.baseline
+        : (baselines.get(productId) ?? null)
+      : null;
     return {
       productId,
       soldBefore,
       ask,
       settled: ask ? null : pair,
       ownDraft: own ? pair!.data : null,
-      baseline: soldBefore
-        ? own
-          ? pair!.baseline
-          : (baselines.get(productId) ?? null)
-        : null,
+      baseline,
       rejectedNote: pair?.review === "rejected" ? pair.reviewNote : null,
       askPhoto: !soldBefore || !scale.has(productId),
       photoDocumentId:
         itemOf(response, productId)?.scalePhotoDocumentId ?? null,
+      inner: quoteInnerState(
+        quote.items.find((i) => i.productId === productId)?.inner,
+      ),
+      baselineMaterialIds: baseline?.material
+        ? matchMaterials(baseline.material, materials).ids
+        : [],
     };
   });
 }
@@ -312,9 +331,16 @@ export async function prepareQuoteSheets(
   response: PurchaseQuoteResponse,
   inputs: readonly QuoteSheetInput[],
 ): Promise<PreparedQuoteSheet[]> {
-  const lines = await quoteSheetLines(quote, response);
+  const [lines, catalog] = await Promise.all([
+    quoteSheetLines(quote, response),
+    materialCatalog(),
+  ]);
+  // Só os materiais ativos do catálogo valem na cotação (dono, 21/11/2026).
+  const active = new Map([...catalog].filter(([, m]) => m.active));
   return lines.map((line) => {
     const photo = line.photoDocumentId;
+    const innerRequired =
+      line.inner.kind === "required" ? line.inner.qty : null;
     if (!line.ask) {
       return {
         line,
@@ -324,12 +350,22 @@ export async function prepareQuoteSheets(
           sheetKind: line.settled ? "existing" : null,
           changedFields: null,
           scalePhotoDocumentId: photo,
+          innerRequired,
         },
         write: null,
       };
     }
     const input = inputs.find((i) => i.productId === line.productId);
-    const data = input?.draft ? normalizeSheet(input.draft) : null;
+    // Material fora do catálogo (texto ou id desconhecido) é recusado, não
+    // vira texto livre.
+    const draft = input?.draft
+      ? {
+          ...input.draft,
+          materialIds: checkMaterialIds(input.draft.materialIds, active),
+          materialText: undefined,
+        }
+      : null;
+    const data = draft ? normalizeSheet(draft, active) : null;
     if (!data) throw new SupplierSheetError("quote_sheet_missing");
     if (line.soldBefore && !input?.confirmed)
       throw new SupplierSheetError("quote_sheet_confirm");
@@ -349,6 +385,7 @@ export async function prepareQuoteSheets(
         sheetKind: kind,
         changedFields: changed.length ? changed : null,
         scalePhotoDocumentId: photo,
+        innerRequired,
       },
       write: { kind, data, changedFields: changed },
     };
@@ -604,13 +641,19 @@ export async function settledPairSheet(
   return sheetSettled(pair) ? pair! : null;
 }
 
-/** A ficha técnica nos nomes da ficha de compra (peso bruto por peça = caixa ÷ peças). */
+/**
+ * A ficha técnica nos nomes da ficha de compra (peso bruto por peça = caixa
+ * ÷ peças). "Sem peso" e o inner não perguntado ficam vazios.
+ */
 export function purchaseSheetFields(data: SupplierSheetData) {
   return {
     masterCartonQty: data.masterBoxQty,
     innerQty: data.innerBoxQty,
     netWeightPcKg: data.netWeightKg,
-    grossWeightPcKg: data.grossWeightBoxKg / data.masterBoxQty,
+    grossWeightPcKg:
+      data.grossWeightBoxKg !== null
+        ? data.grossWeightBoxKg / data.masterBoxQty
+        : null,
     cbmPerCarton: data.cbm,
     lengthCm: data.boxLengthCm,
     widthCm: data.boxWidthCm,
@@ -623,8 +666,11 @@ export function purchaseSheetFields(data: SupplierSheetData) {
 /**
  * Pedido direto (sem cotação): a ficha de compra salva completa pelo
  * fornecedor vale como a ficha técnica do par, uma vez só, quando traz tudo
- * o que a ficha técnica pede (o inner e o código do item na fábrica, que a
- * ficha de compra não exige). Correção de quem já vendeu vai para a revisão.
+ * o que a ficha técnica pede (o código do item na fábrica, que a ficha de
+ * compra não exige). Correção de quem já vendeu vai para a revisão. O inner
+ * não entra (é do pedido, não do par; dono, 21/11/2026). O material da
+ * ficha de compra é texto: vira os materiais do catálogo quando todas as
+ * partes batem; senão fica o texto, para o Cadastro revisar.
  */
 export async function recordFromPurchaseSheet(
   user: User,
@@ -649,22 +695,26 @@ export async function recordFromPurchaseSheet(
   if (await settledPairSheet(order.supplierId, productId)) return null;
   const master = sheet.masterCartonQty ?? null;
   const gross = sheet.grossWeightPcKg ?? null;
-  const data = normalizeSheet({
-    masterBoxQty: master,
-    innerBoxQty: sheet.innerQty ?? null,
-    // Inner 0 na ficha = sem inner; vazio = não informado (não grava).
-    noInner: sheet.innerQty === 0,
-    boxLengthCm: sheet.lengthCm ?? null,
-    boxWidthCm: sheet.widthCm ?? null,
-    boxHeightCm: sheet.heightCm ?? null,
-    cbm: sheet.cbmPerCarton ?? null,
-    netWeightKg: sheet.netWeightPcKg ?? null,
-    grossWeightBoxKg: master && gross ? gross * master : null,
-    material: sheet.material ?? "",
-    factoryItemCode: sheet.factoryItemCode ?? "",
-    noFactoryCode: false,
-  });
-  if (!data || (sheet.innerQty !== 0 && !sheet.innerQty)) return null;
+  const catalog = await materialCatalog();
+  const matched = matchMaterials(sheet.material, [...catalog.values()]);
+  const data = normalizeSheet(
+    {
+      masterBoxQty: master,
+      boxLengthCm: sheet.lengthCm ?? null,
+      boxWidthCm: sheet.widthCm ?? null,
+      boxHeightCm: sheet.heightCm ?? null,
+      cbm: sheet.cbmPerCarton ?? null,
+      netWeightKg: sheet.netWeightPcKg ?? null,
+      grossWeightBoxKg: master && gross ? gross * master : null,
+      grossUnknown: false,
+      materialIds: matched.unknown.length ? [] : matched.ids,
+      materialText: sheet.material ?? "",
+      factoryItemCode: sheet.factoryItemCode ?? "",
+      noFactoryCode: false,
+    },
+    catalog,
+  );
+  if (!data) return null;
   const store = getStore();
   const sold = await soldBeforeProducts(order.supplierId, [productId], {
     exceptOrderId: order.id,

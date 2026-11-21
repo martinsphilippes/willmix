@@ -6,6 +6,8 @@ import type {
   SupplierSheetData,
 } from "@/lib/db/schema";
 import { Alert, Table, Td, Th, formatDate, rowClass } from "@/components/ui";
+import { materialsText, type MaterialOption } from "@/lib/materials";
+import { quoteInnerState } from "@/lib/quote-inner";
 
 /*
  * A cotação travada para o fornecedor (dono, 21/11/2026, opção 1): passado o
@@ -19,6 +21,7 @@ export function QuoteAnswerSummary({
   response,
   reason,
   times,
+  materials = [],
 }: {
   t: Translate;
   items: readonly PurchaseQuoteItem[];
@@ -27,22 +30,36 @@ export function QuoteAnswerSummary({
   reason: "deadline" | "closed";
   /** O prazo em Brasília e na China. */
   times: { br: string; cn: string };
+  /** O catálogo de materiais (os nomes no idioma da tela). */
+  materials?: readonly MaterialOption[];
 }) {
+  const byId = new Map(materials.map((m) => [m.id, m]));
   const n = (v: number, digits = 3) =>
     v.toLocaleString(t.intl, { maximumFractionDigits: digits });
   const sheetText = (s: SupplierSheetData) =>
     [
       `${t("supplierSheet.board.col.masterBoxQty")}: ${n(s.masterBoxQty, 0)}`,
-      `${t("supplierSheet.board.col.innerBoxQty")}: ${
-        s.innerBoxQty ? n(s.innerBoxQty, 0) : t("supplierSheet.noInner")
-      }`,
+      // O inner da ficha só nas antigas (hoje é exigência do cliente).
+      s.innerBoxQty === null
+        ? null
+        : `${t("supplierSheet.board.col.innerBoxQty")}: ${
+            s.innerBoxQty ? n(s.innerBoxQty, 0) : t("supplierSheet.noInner")
+          }`,
       s.boxLengthCm !== null && s.boxWidthCm !== null && s.boxHeightCm !== null
         ? `${t("supplierSheet.board.col.dims")}: ${n(s.boxLengthCm, 2)} × ${n(s.boxWidthCm, 2)} × ${n(s.boxHeightCm, 2)}`
         : null,
       `${t("supplierSheet.board.col.cbm")}: ${n(s.cbm, 4)}`,
       `${t("supplierSheet.board.col.netWeight")}: ${n(s.netWeightKg)}`,
-      `${t("supplierSheet.board.col.grossWeight")}: ${n(s.grossWeightBoxKg)}`,
-      `${t("supplierSheet.board.col.material")}: ${s.material}`,
+      `${t("supplierSheet.board.col.grossWeight")}: ${
+        s.grossWeightBoxKg === null
+          ? t("quote.sheet.grossUnknownDeclared")
+          : n(s.grossWeightBoxKg)
+      }`,
+      `${t("supplierSheet.board.col.material")}: ${
+        (s.materialIds?.length
+          ? materialsText(s.materialIds, byId, t.intl)
+          : "") || s.material
+      }`,
       `${t("supplierSheet.board.col.code")}: ${s.factoryItemCode ?? t("supplierSheet.noCode")}`,
     ]
       .filter(Boolean)
@@ -113,6 +130,19 @@ export function QuoteAnswerSummary({
                       <span className="block text-xs text-zinc-500">
                         {item.quantity.toLocaleString(t.intl)} {item.unit}
                       </span>
+                      {(() => {
+                        const inner = quoteInnerState(item.inner);
+                        return inner.kind === "required" ? (
+                          <span
+                            className="block text-xs text-zinc-600"
+                            data-quote-sent-inner={inner.qty}
+                          >
+                            {t("quote.inner.required", {
+                              n: inner.qty.toLocaleString(t.intl),
+                            })}
+                          </span>
+                        ) : null;
+                      })()}
                     </Td>
                     <Td className="tabular-nums" data-quote-sent-price>
                       {price

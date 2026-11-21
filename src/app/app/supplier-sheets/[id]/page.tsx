@@ -8,6 +8,8 @@ import { productNameText } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { supplierSheetView } from "@/lib/services/supplier-sheets";
 import { baselineFromProduct } from "@/lib/supplier-sheet";
+import { materialCatalog } from "@/lib/services/materials";
+import { materialsText } from "@/lib/materials";
 import type {
   SupplierSheetBaseline,
   SupplierSheetData,
@@ -94,7 +96,11 @@ export default async function SupplierSheetPage({
   const { id } = await params;
   const sp = await searchParams;
   const t = await getT();
-  const view = await supplierSheetView(user, id);
+  const [view, catalog] = await Promise.all([
+    supplierSheetView(user, id),
+    // Os materiais da ficha pelo nome no idioma de quem lê (21/11/2026).
+    materialCatalog(),
+  ]);
   if (!view) notFound();
   const { sheet, product, supplier, quote, canReview } = view;
   const errorCode = typeof sp.error === "string" ? sp.error : "";
@@ -130,6 +136,20 @@ export default async function SupplierSheetPage({
           : n(v.innerBoxQty, 0);
     if (row.key === "factoryItemCode")
       return v.factoryItemCode ?? (theirs ? t("supplierSheet.noCode") : "—");
+    // "Sem peso" declarado e o material do catálogo (dono, 21/11/2026): a
+    // ficha antiga, de texto livre, fica marcada para revisar.
+    if (theirs && row.key === "grossWeightBoxKg" && v.grossWeightBoxKg === null)
+      return (v as SupplierSheetData).grossWeightUnknown
+        ? t("quote.sheet.grossUnknownDeclared")
+        : "—";
+    if (theirs && row.key === "material") {
+      const d = v as SupplierSheetData;
+      if (d.materialIds?.length)
+        return materialsText(d.materialIds, catalog, t.intl) || d.material;
+      return d.material
+        ? `${d.material} (${t("quote.material.outside")})`
+        : "—";
+    }
     const raw = v[row.fields[0]];
     if (raw === null || raw === undefined) return "—";
     if (typeof raw === "number")

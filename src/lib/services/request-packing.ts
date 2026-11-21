@@ -68,7 +68,8 @@ export interface PackingInputs {
   request: Pick<
     Request,
     "quantity" | "unit" | "schedule" | "variant" | "specification"
-  >;
+  > &
+    Partial<Pick<Request, "innerRequirement">>;
   product: Product | null;
   /** Ficha mestre do produto (`purchase_sheets` com orderId = id do produto). */
   master: PurchaseSheet | null;
@@ -199,6 +200,9 @@ export function packingCandidates(
       { value: view?.pcsPerCarton, kind: "current" },
     ],
     inner: [
+      // A caixa inner exigida pelo cliente vem antes de tudo (dono,
+      // 21/11/2026; "Caixa inner exigida pelo cliente" na Nova solicitação).
+      { value: request.innerRequirement?.qty ?? null, kind: "request" },
       { value: spec.innerQty, kind: "request" },
       { value: tech ? variant?.innerBoxQty : null, kind: "variant" },
       { value: sheet?.innerQty, kind: "order" },

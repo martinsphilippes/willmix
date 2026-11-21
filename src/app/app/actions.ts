@@ -301,6 +301,8 @@ async function createRequest(
           schedule: row.schedule,
           ...(row.schedule ? { quantity: scheduleTotal(row.schedule) } : {}),
           companyAllocations: row.companyAllocations,
+          // Caixa inner exigida pelo cliente (dono, 21/11/2026).
+          innerRequirement: row.innerRequirement,
         });
       }
       // Anexos conferidos antes de criar qualquer solicitação (tipo e tamanho).

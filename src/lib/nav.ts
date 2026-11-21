@@ -371,6 +371,9 @@ export function navFor(
             },
           ],
           ["lines", { href: "/app/lines", key: "nav.lines" }],
+          // Catálogo de materiais (dono, 21/11/2026): a lista que o
+          // fornecedor escolhe na ficha técnica da cotação.
+          ["products", { href: "/app/materials", key: "nav.materials" }],
           // A vitrine como o cliente vê (de volta ao menu em 16/11/2026):
           // as funções que abrem a tela em Funções e acessos.
           ["explore", { href: "/app/explore", key: "nav.explorePreview" }],

@@ -55,6 +55,9 @@ export const ACTION_GROUPS = [
       // Ficha técnica do fornecedor (dono, 20/11/2026): o Cadastro confere a
       // correção que ele mandou na cotação.
       "supplierSheet.review",
+      // Catálogo de materiais (dono, 21/11/2026): o Cadastro mantém a lista
+      // que o fornecedor escolhe na ficha técnica da cotação.
+      "materials.manage",
     ],
   },
   {
@@ -170,6 +173,9 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
     // Ficha técnica do fornecedor (dono, 20/11/2026): o Cadastro, a mesma
     // função que completa a ficha mestre e valida o NCM.
     case "supplierSheet.review":
+      return ["catalog"];
+    // Catálogo de materiais (dono, 21/11/2026): também o Cadastro.
+    case "materials.manage":
       return ["catalog"];
     // Assinar o contrato pela Wellmix: só as diretorias (decisão do dono,
     // 13/11/2026; mapa do processo, P11: a Diretoria de compras aprova). O

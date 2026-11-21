@@ -95,6 +95,9 @@ const typed = {
   "sheet.prod-jarra.noInner": "0",
   "sheet.prod-jarra.material": "Vidro",
   "sheet.prod-jarra.confirm": "1",
+  // Tela de 21/11/2026: "Sem peso" e os materiais do catálogo.
+  "sheet.prod-jarra.grossUnknown": "1",
+  "sheet.prod-jarra.materialIds": "mat-vidro,mat-plastico",
 };
 
 describe("rascunho automático da cotação", () => {
@@ -117,6 +120,10 @@ describe("rascunho automático da cotação", () => {
     // Campo vazio entra: o que estava na tela, apagado de propósito.
     expect(clean.moq).toBe("");
     expect(clean["sheet.prod-jarra.noInner"]).toBe("0");
+    expect(clean["sheet.prod-jarra.grossUnknown"]).toBe("1");
+    expect(clean["sheet.prod-jarra.materialIds"]).toBe(
+      "mat-vidro,mat-plastico",
+    );
     expect(clean.port).toHaveLength(120);
     expect(clean["sheet.prod-jarra.material"]).toHaveLength(200);
     for (const key of [

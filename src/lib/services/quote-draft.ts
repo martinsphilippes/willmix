@@ -31,6 +31,12 @@ export const QUOTE_DRAFT_SHEET_FIELDS = [
   "factoryItemCode",
   "noFactoryCode",
   "confirm",
+  // Tela de 21/11/2026: "Sem peso" e os materiais do catálogo (ids
+  // separados por vírgula). Os nomes antigos (inner e o material digitado)
+  // continuam aceitos: um rascunho antigo mostra o material digitado para
+  // ele escolher no catálogo.
+  "grossUnknown",
+  "materialIds",
 ] as const;
 
 /** Condições comerciais (uma vez por resposta) e o tamanho de cada uma. */
@@ -47,6 +53,8 @@ const TERM_LIMITS: Record<string, number> = {
 const SHEET_LIMITS: Record<string, number> = {
   material: 200,
   factoryItemCode: 80,
+  // Até 20 materiais do catálogo.
+  materialIds: 1400,
 };
 const NUMBER_LIMIT = 24;
 

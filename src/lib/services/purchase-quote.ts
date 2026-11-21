@@ -21,6 +21,7 @@ import { servesFamilies } from "@/lib/party-families";
 import { notify } from "./notifications";
 import { storePhotoDocument, type PhotoSource } from "./documents";
 import { clearQuoteDraft } from "./quote-draft";
+import { innerFromDemands, quoteInnerState } from "@/lib/quote-inner";
 import {
   prepareQuoteSheets,
   saveQuoteSheets,
@@ -260,6 +261,8 @@ async function inviteSuppliers(
  * Os itens da cotação: os produtos das demandas, somados por produto, com o
  * que o parceiro precisa para cotar (dono, 18/11/2026): a especificação, a
  * programação de entrega (demanda única) e a data desejada. Nunca o cliente.
+ * A caixa inner exigida pelo cliente vem das demandas (dono, 21/11/2026;
+ * src/lib/quote-inner.ts): sem pedido, o item não tem inner.
  */
 export function quoteItemsFor(
   demands: readonly Request[],
@@ -289,6 +292,7 @@ export function quoteItemsFor(
       specification: specs.join(" / ").slice(0, 2000) || null,
       schedule: mine.length === 1 ? (mine[0].schedule ?? null) : null,
       desiredAt: desired ?? null,
+      inner: innerFromDemands(mine),
     };
   });
 }
@@ -872,6 +876,7 @@ async function supplierRequestsFromWinner(
     // solicitação já nasce com a embalagem e o peso dela.
     const sheet =
       winner.items?.find((i) => i.productId === item.productId)?.sheet ?? null;
+    const inner = quoteInnerState(item.inner);
     const request = await store.create("supplier_requests", {
       number,
       batchId,
@@ -890,11 +895,17 @@ async function supplierRequestsFromWinner(
         currency,
         price,
         masterCartonQty: sheet?.masterBoxQty ?? null,
-        innerQty: sheet ? sheet.innerBoxQty || null : null,
+        // O inner é o exigido pelo cliente (dono, 21/11/2026); nas fichas
+        // antigas, o que ele informava.
+        innerQty:
+          (inner.kind === "required" ? inner.qty : null) ??
+          (sheet?.innerBoxQty || null),
         netWeightPcKg: sheet?.netWeightKg ?? null,
-        grossWeightPcKg: sheet
-          ? sheet.grossWeightBoxKg / sheet.masterBoxQty
-          : null,
+        // "Sem peso": a solicitação nasce sem o peso bruto.
+        grossWeightPcKg:
+          sheet && sheet.grossWeightBoxKg !== null
+            ? sheet.grossWeightBoxKg / sheet.masterBoxQty
+            : null,
         cbmPerCarton: sheet?.cbm ?? null,
         // Medidas da solicitação são do produto (as do Book); as da ficha
         // técnica são da caixa master: não entram aqui.
@@ -1051,16 +1062,71 @@ export async function backToStrategy(
 }
 
 /**
+ * A Wellmix define a caixa inner do item (dono, 21/11/2026): o produto
+ * pedido sem o número, ou com exigências diferentes entre as demandas.
+ * `qty` nulo = não exigir inner. Só com a cotação aberta; os fornecedores
+ * passam a ver a exigência (quem já respondeu corrige no prazo).
+ */
+export async function setQuoteItemInner(
+  user: User,
+  quoteId: string,
+  productId: string,
+  qty: number | null,
+  now = new Date(),
+): Promise<PurchaseQuote> {
+  if (!isWellmix(user)) throw new PurchaseQuoteError("forbidden");
+  assertCan(user, "purchaseQuote.choose");
+  if (qty !== null && (!Number.isInteger(qty) || qty <= 0 || qty > 1_000_000))
+    throw new PurchaseQuoteError("quote_inner_invalid");
+  const { quote } = await loadOpen(quoteId);
+  if (quote.status !== "open") throw new PurchaseQuoteError("quote_closed");
+  const item = quote.items.find((i) => i.productId === productId);
+  if (!item) throw new PurchaseQuoteError("quote_item_not_found");
+  const before = item.inner ?? null;
+  const items = quote.items.map((i) =>
+    i.productId === productId
+      ? {
+          ...i,
+          inner: {
+            qty,
+            issue: null,
+            requested: before?.requested ?? null,
+            setByUserId: user.id,
+            setAt: now.toISOString(),
+          },
+        }
+      : i,
+  );
+  const saved = await getStore().update("purchase_quotes", quote.id, {
+    items,
+  });
+  await audit(
+    user,
+    "purchase_quote.inner",
+    "purchase_quote",
+    quote.id,
+    `Cotação de compra nº ${quote.number}, ${item.name}: ${
+      qty === null ? "sem inner exigido" : `inner exigido de ${qty} peças`
+    }`,
+    before,
+    { qty },
+  );
+  return saved;
+}
+
+/**
  * Pendências da cotação de compra (passo "Cotação de compra" do menu): o
  * fornecedor responde a dele no prazo; o Comprador escolhe a vencedora (ou
- * decide o que fazer sem resposta); a Diretoria aprova a vencedora. As
- * portas por ação ficam em src/lib/task-owner.ts (kindGate).
+ * decide o que fazer sem resposta) e define o inner que ficou a definir; a
+ * Diretoria aprova a vencedora. As portas por ação ficam em
+ * src/lib/task-owner.ts (kindGate).
  */
 export async function quoteTaskDrafts(user: User, now = new Date()) {
   type Draft = {
     kind:
       | "purchase_quote_answer"
       | "purchase_quote_choose"
+      | "purchase_quote_inner"
       | "purchase_quote_empty"
       | "purchase_quote_approve";
     title: string;
@@ -1101,6 +1167,16 @@ export async function quoteTaskDrafts(user: User, now = new Date()) {
       link: `/app/purchase-quotes/${q.id}`,
       dueAt: null,
     };
+    // Inner do cliente a definir (dono, 21/11/2026): uma pendência por
+    // produto, enquanto a cotação está aberta.
+    if (q.status === "open")
+      for (const item of q.items)
+        if (quoteInnerState(item.inner).kind === "pending")
+          drafts.push({
+            ...base,
+            kind: "purchase_quote_inner",
+            detail: item.name,
+          });
     if (q.status === "chosen")
       drafts.push({ ...base, kind: "purchase_quote_approve" });
     else if (quoteEmpty(mine, now))

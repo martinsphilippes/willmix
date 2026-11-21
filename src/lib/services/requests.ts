@@ -13,6 +13,7 @@ import {
   type RequestStatus,
   type User,
   type RequestCompanyAllocation,
+  type RequestInnerRequirement,
   type RequestSchedule,
 } from "@/lib/db";
 import { variantSnapshot } from "@/lib/variants";
@@ -72,6 +73,8 @@ export interface CreateRequestInput {
   orderTerms?: OrderTerms | null;
   /** Peças de cada empresa do grupo econômico (docs/ECONOMIC_GROUPS.md). */
   companyAllocations?: RequestCompanyAllocation[] | null;
+  /** Caixa inner exigida pelo cliente (dono, 21/11/2026). */
+  innerRequirement?: RequestInnerRequirement | null;
 }
 
 /** Um produto do lote: vira uma solicitação própria. */
@@ -89,6 +92,8 @@ export interface RequestBatchItem {
   schedule?: RequestSchedule | null;
   /** Peças de cada empresa do grupo econômico (docs/ECONOMIC_GROUPS.md). */
   companyAllocations?: RequestCompanyAllocation[] | null;
+  /** Caixa inner exigida pelo cliente (dono, 21/11/2026). */
+  innerRequirement?: RequestInnerRequirement | null;
 }
 
 /**
@@ -161,6 +166,7 @@ export async function createRequestBatch(
           groupId,
           schedule: item.schedule ?? null,
           companyAllocations: item.companyAllocations ?? null,
+          innerRequirement: item.innerRequirement ?? null,
           number,
         },
         {
@@ -290,6 +296,7 @@ export async function addProductsToRequest(
           groupId,
           schedule: item.schedule ?? null,
           companyAllocations: item.companyAllocations ?? null,
+          innerRequirement: item.innerRequirement ?? null,
           number: base.number ?? undefined,
         }),
       );
@@ -536,6 +543,10 @@ export async function createRequest(
     // Pedido para um grupo econômico (coluna opcional).
     ...(input.companyAllocations?.length
       ? { companyAllocations: input.companyAllocations }
+      : {}),
+    // Caixa inner exigida pelo cliente (coluna opcional; dono, 21/11/2026).
+    ...(input.innerRequirement
+      ? { innerRequirement: input.innerRequirement }
       : {}),
   } as const;
   let request: Request;

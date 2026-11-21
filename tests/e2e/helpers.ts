@@ -746,32 +746,45 @@ export async function createdRequestId(
 /**
  * Ficha técnica de um produto na resposta da cotação (dono, 20/11/2026;
  * docs/PURCHASE_DEMAND.md, "Ficha técnica na cotação"): na primeira vez do
- * par produto × fornecedor, preenche tudo (24 por caixa, inner 6, 60 × 40 ×
- * 35 cm, 0,45 kg por peça, 12,5 kg a caixa, vidro, JR-01); quem já vendeu
- * marca "Confirmo os dados deste produto". Sem a ficha (já confirmada), nada.
+ * par produto × fornecedor, preenche tudo (24 por caixa, 60 × 40 × 35 cm,
+ * 0,45 kg por peça, 12,5 kg a caixa, vidro do catálogo, JR-01); quem já
+ * vendeu marca "Confirmo os dados deste produto". Sem a ficha (já
+ * confirmada), nada. O inner não é dele (exigência do cliente, travada).
  */
 export async function fillQuoteSheet(form: Locator, productId: string) {
   if (!(await form.locator(`[data-quote-sheet="${productId}"]`).count()))
     return;
   const field = (key: string) =>
     form.locator(`[data-sheet-field="${productId}.${key}"]`);
-  const noInner = form.locator(`[data-sheet-no-inner="${productId}"]`);
-  if (await noInner.isChecked()) await noInner.uncheck();
+  // O inner não é dele (exigência do cliente, travada); "Sem peso" desmarcado.
   const noCode = form.locator(`[data-sheet-no-code="${productId}"]`);
   if (await noCode.isChecked()) await noCode.uncheck();
+  const noWeight = form.locator(`[data-sheet-gross-unknown="${productId}"]`);
+  if (await noWeight.isChecked()) await noWeight.uncheck();
   for (const [key, value] of [
     ["masterBoxQty", "24"],
-    ["innerBoxQty", "6"],
     ["boxLengthCm", "60"],
     ["boxWidthCm", "40"],
     ["boxHeightCm", "35"],
     ["cbm", ""],
     ["netWeightKg", "0,45"],
     ["grossWeightBoxKg", "12,5"],
-    ["material", "Vidro"],
     ["factoryItemCode", "JR-01"],
   ] as const)
     await field(key).fill(value);
+  // Material só pelo catálogo (dono, 21/11/2026): busca e escolhe "Vidro".
+  const chip = form.locator(
+    `[data-material-picker="${productId}.material"] [data-material-chip="mat-vidro"]`,
+  );
+  if (!(await chip.count())) {
+    await field("material").fill("vidro");
+    await form
+      .locator(
+        `[data-material-options="${productId}.material"] [data-material-option="mat-vidro"]`,
+      )
+      .click();
+  }
+  await expect(chip).toBeVisible();
   const confirm = form.locator(`[data-sheet-confirm="${productId}"]`);
   if (await confirm.count()) await confirm.check();
 }

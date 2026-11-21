@@ -1519,6 +1519,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "innerRequirement",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -12623,6 +12630,83 @@
           "type": "key",
           "columns": [
             "lineId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "materials",
+      "databaseId": "willmix",
+      "name": "Materiais",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "namePt",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "nameEn",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "nameZh",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "nameKey",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "active",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "createdByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "updatedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_name_key",
+          "type": "unique",
+          "columns": [
+            "nameKey"
           ],
           "orders": [
             "ASC"

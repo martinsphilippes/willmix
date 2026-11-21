@@ -339,6 +339,7 @@ const KIND_STEP: Partial<Record<string, Ref>> = {
   purchase_strategy_send: "new-product/strategy",
   purchase_quote_answer: "new-product/purchase-quotes",
   purchase_quote_choose: "new-product/purchase-quotes",
+  purchase_quote_inner: "new-product/purchase-quotes",
   purchase_quote_empty: "new-product/purchase-quotes",
   purchase_quote_approve: "new-product/purchase-quotes",
   // Ficha técnica corrigida pelo fornecedor: o Cadastro, em Cadastros → Produtos.

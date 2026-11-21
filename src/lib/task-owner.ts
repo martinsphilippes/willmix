@@ -102,6 +102,8 @@ export function kindGate(
       return { action: "purchaseOrder.generate" };
     case "purchase_quote_choose":
     case "purchase_quote_empty":
+    // Inner do cliente a definir na cotação (dono, 21/11/2026): o Comprador.
+    case "purchase_quote_inner":
       return { action: "purchaseQuote.choose" };
     case "purchase_quote_approve":
       return { action: "purchaseQuote.approve" };

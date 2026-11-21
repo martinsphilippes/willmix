@@ -221,6 +221,7 @@ alter table public."requests" add column if not exists "strategySentByUserId" te
 alter table public."requests" add column if not exists "priceForecast" jsonb;
 alter table public."requests" add column if not exists "companyAllocations" jsonb;
 alter table public."requests" add column if not exists "sentForm" jsonb;
+alter table public."requests" add column if not exists "innerRequirement" jsonb;
 create index if not exists "requests_by_customer" on public."requests" ("customerId");
 create index if not exists "requests_by_status" on public."requests" ("status");
 create index if not exists "requests_by_origin" on public."requests" ("origin");
@@ -2116,6 +2117,23 @@ create index if not exists "supplier_lines_by_supplier" on public."supplier_line
 create index if not exists "supplier_lines_by_line" on public."supplier_lines" ("lineId");
 create index if not exists "supplier_lines_created" on public."supplier_lines" ("createdAt");
 create index if not exists "supplier_lines_created_id" on public."supplier_lines" ("createdAt", "id");
+
+create table if not exists public."materials" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."materials" enable row level security;
+alter table public."materials" add column if not exists "namePt" text;
+alter table public."materials" add column if not exists "nameEn" text;
+alter table public."materials" add column if not exists "nameZh" text;
+alter table public."materials" add column if not exists "nameKey" text;
+alter table public."materials" add column if not exists "active" boolean;
+alter table public."materials" add column if not exists "createdByUserId" text;
+alter table public."materials" add column if not exists "updatedByUserId" text;
+create unique index if not exists "materials_by_name_key" on public."materials" ("nameKey");
+create index if not exists "materials_created" on public."materials" ("createdAt");
+create index if not exists "materials_created_id" on public."materials" ("createdAt", "id");
 
 create table if not exists public."product_families" (
   "id" text primary key,

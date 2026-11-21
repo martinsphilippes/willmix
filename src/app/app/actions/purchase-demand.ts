@@ -233,18 +233,26 @@ export async function answerQuoteAction(form: FormData) {
       : productIds.map((pid) => ({
           productId: ID.parse(pid),
           confirmed: str(form, `sheet.${pid}.confirm`) === "1",
+          // Sem inner (é exigência do cliente, travada na cotação), com
+          // "Sem peso" e os materiais pelos ids do catálogo, numa lista
+          // separada por vírgula (dono, 21/11/2026). O serviço recusa id
+          // fora do catálogo; texto livre não existe mais aqui.
           draft: form.has(`sheet.${pid}.masterBoxQty`)
             ? {
                 masterBoxQty: sheetNumber(pid, "masterBoxQty", true),
-                innerBoxQty: sheetNumber(pid, "innerBoxQty", true),
-                noInner: str(form, `sheet.${pid}.noInner`) === "1",
                 boxLengthCm: sheetNumber(pid, "boxLengthCm"),
                 boxWidthCm: sheetNumber(pid, "boxWidthCm"),
                 boxHeightCm: sheetNumber(pid, "boxHeightCm"),
                 cbm: sheetNumber(pid, "cbm"),
                 netWeightKg: sheetNumber(pid, "netWeightKg"),
                 grossWeightBoxKg: sheetNumber(pid, "grossWeightBoxKg"),
-                material: str(form, `sheet.${pid}.material`).slice(0, 200),
+                grossUnknown: str(form, `sheet.${pid}.grossUnknown`) === "1",
+                materialIds: str(form, `sheet.${pid}.materialIds`)
+                  .split(",")
+                  .map((m) => m.trim())
+                  .filter(Boolean)
+                  .slice(0, 20)
+                  .map((m) => ID.parse(m)),
                 factoryItemCode: str(
                   form,
                   `sheet.${pid}.factoryItemCode`,
@@ -311,6 +319,32 @@ export async function addQuoteScalePhotoAction(form: FormData) {
     const { addQuoteScalePhoto } =
       await import("@/lib/services/purchase-quote");
     await addQuoteScalePhoto(user, quoteId, productId, photo);
+  });
+}
+
+/**
+ * A Wellmix define a caixa inner do produto na cotação (dono, 21/11/2026):
+ * pedida sem o número ou diferente entre as demandas. "none" = não exigir.
+ */
+export async function setQuoteInnerAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "quoteId");
+  await run(quoteBack(id), async () => {
+    assertScreen(user, "quotes");
+    const quoteId = ID.parse(id);
+    const productId = ID.parse(str(form, "productId"));
+    const qty =
+      str(form, "mode") === "none"
+        ? null
+        : z
+            .number()
+            .int()
+            .positive()
+            .max(1_000_000)
+            .parse(parseNumberInput(str(form, "innerQty"), { int: true }));
+    const { setQuoteItemInner } = await import("@/lib/services/purchase-quote");
+    await setQuoteItemInner(user, quoteId, productId, qty);
+    return `/app/purchase-quotes/${quoteId}?inner=1`;
   });
 }
 

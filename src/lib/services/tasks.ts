@@ -62,6 +62,7 @@ export type TaskKind =
   | "purchase_strategy_send"
   | "purchase_quote_answer"
   | "purchase_quote_choose"
+  | "purchase_quote_inner"
   | "purchase_quote_empty"
   | "purchase_quote_approve"
   | "supplier_sheet_review"
@@ -383,6 +384,7 @@ const KIND_ORDER: string[] = [
   "purchase_strategy_send",
   "purchase_quote_answer",
   "purchase_quote_choose",
+  "purchase_quote_inner",
   "purchase_quote_empty",
   "purchase_quote_approve",
   "supplier_sheet_review",
