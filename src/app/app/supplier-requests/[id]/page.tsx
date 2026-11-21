@@ -508,11 +508,11 @@ export default async function SupplierRequestPage({
   // Seções numeradas na ordem do dono; as da Wellmix não aparecem para o
   // fornecedor, e a numeração segue sem buracos.
   let sectionNo = 0;
-  const next = () => ++sectionNo;
+  const nextSection = () => ++sectionNo;
 
   const summarySection = (
     <NegotiationSection
-      n={next()}
+      n={nextSection()}
       title={t("negotiationScreen.s.summary")}
       mark="summary"
     >
@@ -665,7 +665,7 @@ export default async function SupplierRequestPage({
 
   const sheetSection = (
     <NegotiationSection
-      n={next()}
+      n={nextSection()}
       title={t("negotiationScreen.s.sheet")}
       mark="sheet"
     >
@@ -681,7 +681,7 @@ export default async function SupplierRequestPage({
 
   const answerSection = (
     <NegotiationSection
-      n={next()}
+      n={nextSection()}
       title={t("negotiationScreen.s.answer")}
       mark="answer"
     >
@@ -780,7 +780,7 @@ export default async function SupplierRequestPage({
 
   const decisionSection = wellmix ? (
     <NegotiationSection
-      n={next()}
+      n={nextSection()}
       title={t("negotiationScreen.s.decision")}
       mark="decision"
     >
@@ -869,7 +869,7 @@ export default async function SupplierRequestPage({
 
   const negotiationSection = (
     <NegotiationSection
-      n={next()}
+      n={nextSection()}
       title={t("negotiationScreen.s.negotiation")}
       mark="negotiation"
       id="conversa"
@@ -918,7 +918,7 @@ export default async function SupplierRequestPage({
 
   const alternativesSection = wellmix ? (
     <NegotiationSection
-      n={next()}
+      n={nextSection()}
       title={`${t("negotiationScreen.s.alternatives")} (${alternatives.length})`}
       mark="alternatives"
     >

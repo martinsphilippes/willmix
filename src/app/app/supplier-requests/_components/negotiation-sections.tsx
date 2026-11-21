@@ -287,7 +287,7 @@ export function PersonLabel({
         <span className="text-zinc-500"> · {t("negotiationScreen.you")}</span>
       ) : null}
       {person.login ? (
-        <span className="break-all text-zinc-500" data-negotiation-login>
+        <span className="text-zinc-500" data-negotiation-login>
           {" "}
           ({person.login})
         </span>
@@ -467,7 +467,7 @@ export function SupplierResponseStrip({
             <InfoCell label={k("answer.supplier")} mark="answerSupplier">
               {supplierName}
             </InfoCell>
-            <InfoCell label={k("answer.by")} mark="answerBy">
+            <InfoCell label={k("answer.by")} mark="answerBy" wide>
               <PersonLabel person={responder} meId={meId} t={t} />
             </InfoCell>
             <InfoCell label={k("answer.at")} mark="answerAt">
