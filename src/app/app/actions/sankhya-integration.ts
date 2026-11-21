@@ -503,3 +503,42 @@ export async function sankhyaServerLoadAction(form: FormData) {
     `${BACK}?tab=load&server=${input.stop ? "stopped" : "started"}#full`,
   );
 }
+
+/**
+ * Carga real dos pedidos de compra do Sankhya a partir do ensaio
+ * (docs/SANKHYA_INTEGRACAO.md, seção 9, etapa 5): um passo por envio; com
+ * "auto", a tela envia de novo sozinha até o fim.
+ */
+export async function sankhyaOrdersLoadAction(form: FormData) {
+  const user = await admin();
+  const input = z.object({ restart: z.boolean(), auto: z.boolean() }).parse({
+    restart: str(form, "restart") === "1",
+    auto: str(form, "auto") === "1",
+  });
+  let target: string;
+  try {
+    const { runOrdersLoadStep } =
+      await import("@/lib/services/sankhya-orders-load");
+    const progress = await runOrdersLoadStep(user, { restart: input.restart });
+    if (progress.phase === "done")
+      await audit(
+        user,
+        "sankhya.ordersLoad",
+        "settings",
+        "sankhya",
+        `Carga dos pedidos do Sankhya: ${progress.created} criados, ${progress.updated} atualizados, ${progress.containers} embarques`,
+      );
+    target = `${BACK}?${new URLSearchParams({
+      tab: "orders",
+      ...(input.auto && progress.phase !== "done" ? { load: "auto" } : {}),
+    }).toString()}#orders-load`;
+  } catch (error) {
+    console.error("[sankhya-orders-load]", error);
+    target = `${BACK}?${new URLSearchParams({
+      tab: "orders",
+      load: "error",
+      detail: error instanceof Error ? error.message.slice(0, 200) : "",
+    }).toString()}#orders-load`;
+  }
+  redirect(target);
+}
