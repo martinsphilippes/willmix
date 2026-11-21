@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  originSearchParams,
-  useRequestCustomer,
-} from "./request-customer-context";
+import { useRequestCustomer } from "./request-customer-context";
 import { ProductPicker } from "./product-picker";
 import type { SearchPickerLabels } from "./search-picker";
 
@@ -162,7 +159,6 @@ export function ProductBrowserHost({
       labels={labels}
       country={origin.country}
       family={origin.family}
-      port={origin.port}
       customer={shared.customer?.id ?? "-"}
       onClose={() => shared.setBrowserOpen(false)}
     />
@@ -173,26 +169,19 @@ function ProductBrowserDialog({
   labels,
   country,
   family,
-  port,
   customer,
   onClose,
 }: {
   labels: ProductBrowserLabels;
   country: string;
   family: string;
-  /** Porto do pedido (dono, 21/11/2026); ausente = qualquer. */
-  port?: string;
   customer: string;
   onClose: () => void;
 }) {
   const shared = useRequestCustomer();
   const chosen = shared?.chosenProductIds ?? [];
   const dialog = useRef<HTMLDialogElement>(null);
-  const storageKey = seenKey(
-    customer,
-    port === undefined ? country : `${country}|${port}`,
-    family,
-  );
+  const storageKey = seenKey(customer, country, family);
   const [filters, setFilters] = useState<Levels>(EMPTY);
   const [page, setPage] = useState(1);
   const [seen, setSeen] = useState<Levels[]>(() => readSeen(storageKey));
@@ -217,7 +206,6 @@ function ProductBrowserDialog({
       page: String(page),
       seen: JSON.stringify(seen),
     });
-    if (port !== undefined) params.set("port", port);
     filters.forEach((v, i) => v && params.set(`l${i + 1}`, v));
     void (async () => {
       try {
@@ -234,7 +222,7 @@ function ProductBrowserDialog({
     return () => {
       alive = false;
     };
-  }, [country, family, port, filters, page, seen]);
+  }, [country, family, filters, page, seen]);
 
   const choose = (level: number, value: string) => {
     setState("loading");
@@ -314,7 +302,7 @@ function ProductBrowserDialog({
             <ProductPicker
               key={pickerKey}
               scope="catalog"
-              query={originSearchParams({ country, family, port })}
+              query={new URLSearchParams({ country, family }).toString()}
               inputId="product-browser-search"
               ariaLabel={labels.search}
               labels={labels.picker}

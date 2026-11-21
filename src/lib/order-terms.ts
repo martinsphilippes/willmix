@@ -166,8 +166,9 @@ export interface OrderTerms {
   originCountryName: string;
   /**
    * Porto de origem (dono, 21/11/2026; docs/ORDER_TERMS.md 11.23): o código
-   * do porto no Sankhya, "" = porto não informado. Ausente nas solicitações
-   * de antes do País - Porto (qualquer porto).
+   * do porto no Sankhya, "" = porto não informado. O País - Porto foi
+   * desfeito no mesmo dia a pedido do dono (o campo voltou a ser só o país):
+   * fica para as encomendas gravadas nesse intervalo; nada mais o lê.
    */
   originPort?: string;
   /** Nome do porto como a tela mostrou ("" = não informado). */

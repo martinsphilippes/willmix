@@ -46,37 +46,6 @@ export interface ProductOrigin {
   country: string;
   lineId: string;
   family: string;
-  /**
-   * Portos de embarque do produto no país (código do porto no Sankhya; dono,
-   * 21/11/2026): os do vínculo produto × fornecedor e o preferencial do
-   * produto (`AD_IDPORTO`). Vazio = porto não informado.
-   */
-  ports?: string[];
-}
-
-/** País e porto de origem: a combinação que o pedido escolhe. */
-export interface OriginPort {
-  /** "<país>|<porto>" (porto vazio = não informado). */
-  key: string;
-  country: string;
-  countryName: string;
-  /** Código do porto no Sankhya; "" = não informado. */
-  port: string;
-  portName: string;
-  products: number;
-}
-
-/**
- * O produto está no porto? `port` nulo ou ausente = qualquer porto
- * (solicitação de antes do País - Porto); "" = só os sem porto.
- */
-export function portMatches(
-  origin: Pick<ProductOrigin, "ports">,
-  port: string | null | undefined,
-): boolean {
-  if (port == null) return true;
-  const ports = origin.ports ?? [];
-  return port === "" ? ports.length === 0 : ports.includes(port);
 }
 
 /** Os três níveis abaixo da família: Grupo, Sub grupo e Coleção do grupo. */
@@ -106,8 +75,6 @@ interface OriginIndex {
   faces: Map<string, ProductFace>;
   /** chave do nível → nome */
   levelNames: Map<string, string>;
-  /** código do porto → nome */
-  portNames: Map<string, string>;
 }
 
 const TTL_MS = 10 * 60 * 1000;
@@ -138,59 +105,31 @@ export function resetOriginIndex() {
 
 async function buildIndex(): Promise<OriginIndex> {
   const store = getStore();
-  const [products, suppliers, hidden, lines, groups, links] = await Promise.all(
-    [
-      listColumns(
-        store,
-        "products",
-        [
-          "lineId",
-          "supplierId",
-          "sankhyaRefs",
-          "sankhyaCode",
-          "name",
-          "sku",
-          "primaryPhotoDocumentId",
-        ],
-        {
-          filter: { active: true },
-          jsonKeys: { sankhyaRefs: ["CODPARCFORN", "AD_IDPORTO"] },
-        },
-      ),
-      listColumns(store, "parties", ["country", "sankhyaCode"], {
-        filter: { type: "supplier" },
-      }),
-      hiddenBookingProductIds(),
-      listColumns(store, "product_lines", ["name", "sankhyaCode"]),
-      sankhyaProductGroups(),
-      // Portos do par produto × fornecedor (VW_AD_PRODUTO_FORNECEDOR_WELL).
-      listColumns(store, "product_suppliers", [
-        "productId",
-        "sankhyaPorts",
-        "sankhyaListed",
-      ]),
-    ],
-  );
-  const countryNames = new Map<string, string>();
-  // Portos de cada produto (dono, 21/11/2026): os do vínculo ainda na view
-  // do Sankhya, com o país do porto, e os nomes pelo código.
-  const portNames = new Map<string, string>();
-  const linkPorts = new Map<string, Array<{ code: string; country: string }>>();
-  for (const l of links) {
-    if (l.sankhyaListed === false || !Array.isArray(l.sankhyaPorts)) continue;
-    for (const p of l.sankhyaPorts) {
-      const code = p?.portCode ? String(Number(p.portCode) || p.portCode) : "";
-      if (!code) continue;
-      if (p.port && !portNames.has(code)) portNames.set(code, p.port);
-      const list = linkPorts.get(l.productId) ?? [];
-      if (!list.some((x) => x.code === code))
-        list.push({ code, country: countryKey(p.country) });
-      linkPorts.set(l.productId, list);
-      const key = countryKey(p.country);
-      if (key && !countryNames.has(key))
-        countryNames.set(key, countryName(p.country));
-    }
-  }
+  const [products, suppliers, hidden, lines, groups] = await Promise.all([
+    listColumns(
+      store,
+      "products",
+      [
+        "lineId",
+        "supplierId",
+        "sankhyaRefs",
+        "sankhyaCode",
+        "name",
+        "sku",
+        "primaryPhotoDocumentId",
+      ],
+      {
+        filter: { active: true },
+        jsonKeys: { sankhyaRefs: ["CODPARCFORN"] },
+      },
+    ),
+    listColumns(store, "parties", ["country", "sankhyaCode"], {
+      filter: { type: "supplier" },
+    }),
+    hiddenBookingProductIds(),
+    listColumns(store, "product_lines", ["name", "sankhyaCode"]),
+    sankhyaProductGroups(),
+  ]);
   // Família de cada produto pelo Sankhya: o 1º nível da árvore (técnico do
   // Sankhya, 15/11/2026). Vale por cima da família da linha.
   const productFamilies = await sankhyaFamiliesByProduct();
@@ -229,6 +168,7 @@ async function buildIndex(): Promise<OriginIndex> {
   };
   const supplierCountry = new Map<string, string>();
   const bySankhya = new Map<string, string>();
+  const countryNames = new Map<string, string>();
   for (const s of suppliers) {
     const key = countryKey(s.country);
     if (!key) continue;
@@ -280,28 +220,11 @@ async function buildIndex(): Promise<OriginIndex> {
     const forn =
       p.sankhyaRefs?.CODPARCFORN ??
       (p.sankhyaCode ? fromApi.get(String(p.sankhyaCode)) : undefined);
-    const own = linkPorts.get(p.id) ?? [];
-    // Sem país pelo fornecedor: o país do porto do vínculo (Sankhya).
     const country =
       (p.supplierId ? supplierCountry.get(p.supplierId) : undefined) ??
       (forn != null ? bySankhya.get(String(forn)) : undefined) ??
-      own.find((x) => x.country)?.country ??
       "";
-    // Só os portos do país do produto (porto sem país conta).
-    const ports = own
-      .filter((x) => !x.country || x.country === country)
-      .map((x) => x.code);
-    const preferred = p.sankhyaRefs?.AD_IDPORTO;
-    if (preferred != null && String(preferred).trim()) {
-      const code = String(Number(preferred) || preferred);
-      if (!ports.includes(code)) ports.push(code);
-    }
-    byProduct.set(p.id, {
-      country,
-      lineId: p.lineId,
-      family: familyOf(p),
-      ports,
-    });
+    byProduct.set(p.id, { country, lineId: p.lineId, family: familyOf(p) });
   }
   // Grupo, Sub grupo e Coleção do grupo de cada produto (seletor de
   // produtos; docs/ORDER_TERMS.md 11.5): sobe na árvore do grupo do produto
@@ -352,7 +275,6 @@ async function buildIndex(): Promise<OriginIndex> {
     byCode,
     faces,
     levelNames,
-    portNames,
   };
 }
 
@@ -410,7 +332,6 @@ export async function productOrigin(
     country: countryKey(supplier?.country),
     lineId: product.lineId,
     family: index.lineFamily.get(product.lineId)?.key ?? `ln:${product.lineId}`,
-    ports: [],
   };
 }
 
@@ -434,62 +355,13 @@ export async function originCountries(): Promise<OriginCountry[]> {
     );
 }
 
-/**
- * As combinações País - Porto do catálogo (dono, 21/11/2026): cada porto de
- * cada país, com quantos produtos embarcam nele, e "porto não informado"
- * para os produtos do país sem porto. Um produto com dois portos conta nos
- * dois.
- */
-export async function originPorts(): Promise<OriginPort[]> {
-  const index = await originIndex();
-  const counts = new Map<string, number>();
-  for (const { country, ports } of index.byProduct.values()) {
-    if (!country) continue;
-    for (const port of ports?.length ? ports : [""]) {
-      const key = `${country}|${port}`;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-  }
-  return [...counts.entries()]
-    .map(([key, products]) => {
-      const [country, port] = key.split("|");
-      return {
-        key,
-        country,
-        countryName: index.countryNames.get(country) ?? country,
-        port,
-        portName: port ? (index.portNames.get(port) ?? port) : "",
-        products,
-      };
-    })
-    .sort(
-      (a, b) =>
-        a.countryName.localeCompare(b.countryName, "pt") ||
-        // "Porto não informado" por último no país.
-        Number(!a.port) - Number(!b.port) ||
-        a.portName.localeCompare(b.portName, "pt"),
-    );
-}
-
-/** Nome do porto pelo código ("" = não informado; nulo = não existe). */
-export async function originPortName(port: string): Promise<string | null> {
-  if (!port) return "";
-  return (await originIndex()).portNames.get(port) ?? null;
-}
-
-/**
- * As famílias com produto do catálogo no país (e no porto, quando
- * escolhido; "" = sem porto) escolhido.
- */
-export async function originGroups(
-  country: string,
-  port?: string | null,
-): Promise<OriginGroup[]> {
+/** As famílias com produto do catálogo no país escolhido. */
+export async function originGroups(country: string): Promise<OriginGroup[]> {
   if (!country) return [];
   const index = await originIndex();
   const counts = new Map<string, number>();
   for (const o of index.byProduct.values())
-    if (o.country === country && portMatches(o, port))
+    if (o.country === country)
       counts.set(o.family, (counts.get(o.family) ?? 0) + 1);
   return [...counts.entries()]
     .map(([id, products]) => ({
@@ -518,14 +390,12 @@ export async function originCountryName(key: string): Promise<string> {
 export async function productIdsOfOrigin(
   country: string,
   family: string,
-  port?: string | null,
 ): Promise<Set<string>> {
   const ids = new Set<string>();
   if (!country) return ids;
   const index = await originIndex();
   for (const [id, o] of index.byProduct)
-    if (o.country === country && o.family === family && portMatches(o, port))
-      ids.add(id);
+    if (o.country === country && o.family === family) ids.add(id);
   return ids;
 }
 
@@ -588,8 +458,6 @@ const comboMatches = (combo: BrowseCombo, levels: BrowseLevels) =>
 export async function browseOrigin(input: {
   country: string;
   family: string;
-  /** Porto do pedido (nulo = qualquer; "" = sem porto). */
-  port?: string | null;
   filters: BrowseLevels;
   seen: BrowseCombo[];
   page: number;
@@ -599,7 +467,6 @@ export async function browseOrigin(input: {
   const inFamily: Array<[string, ProductFace]> = [];
   for (const [id, o] of index.byProduct) {
     if (o.country !== input.country || o.family !== input.family) continue;
-    if (!portMatches(o, input.port)) continue;
     const face = index.faces.get(id);
     if (face) inFamily.push([id, face]);
   }

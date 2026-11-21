@@ -41,10 +41,6 @@ export async function GET(request: Request) {
           ? {
               country: (params.get("country") ?? "").slice(0, 80),
               family: params.get("family")!,
-              // Porto do pedido (dono, 21/11/2026); sem o parâmetro, qualquer.
-              port: params.has("port")
-                ? (params.get("port") ?? "").slice(0, 20)
-                : null,
             }
           : null,
     }),
