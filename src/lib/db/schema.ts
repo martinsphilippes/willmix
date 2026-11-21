@@ -23,6 +23,10 @@ import type {
   PaymentPlanInstallment,
   PaymentPlanStatus,
 } from "@/lib/customer-payment";
+import type {
+  ConditionInstallment,
+  ConditionKind,
+} from "@/lib/payment-condition-schedule";
 
 /** Situação da forma de pagamento do cliente no pedido (src/lib/customer-payment.ts). */
 export const PAYMENT_PLAN_STATUSES = [
@@ -4311,6 +4315,21 @@ export interface PaymentCondition extends BaseRow {
   /** Veio do Sankhya (carga) ou foi criada no portal. */
   source: "sankhya" | "portal";
   updatedByUserId: string | null;
+  /**
+   * Como vence (21/11/2026, src/lib/payment-condition-schedule.ts): "time" =
+   * dias depois da nota; "event" = pelos eventos do pedido (sinal, embarque,
+   * Presença de Carga, entrega); nulo = a revisar.
+   */
+  scheduleKind?: ConditionKind | null;
+  /** Parcelas (percentual, base e dias), lidas da descrição ou da regra. */
+  installments?: ConditionInstallment[] | null;
+  /** Regra escrita pelo administrador no lugar da descrição (mesmo formato). */
+  scheduleRule?: string | null;
+  /** Motivo de revisar: "unreadable" ou "percent_sum". */
+  scheduleProblem?: string | null;
+  /** Linha da VW_AD_TIPONEGOCIACAO_WELL como veio. */
+  sankhyaRow?: Record<string, string | number | null> | null;
+  sankhyaSyncedAt?: string | null;
 }
 
 /**
@@ -7086,6 +7105,12 @@ export const TABLES: Record<TableName, TableDef> = {
       notes: text(),
       source: enumOf(["sankhya", "portal"] as const),
       updatedByUserId: id(false),
+      scheduleKind: enumOf(["time", "event"] as const, false),
+      installments: json(),
+      scheduleRule: str(500),
+      scheduleProblem: str(40),
+      sankhyaRow: json(),
+      sankhyaSyncedAt: datetime(),
     },
     indexes: [{ key: "code_unique", type: "unique", columns: ["code"] }],
   },

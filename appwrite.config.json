@@ -14865,6 +14865,55 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "scheduleKind",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "time",
+            "event"
+          ]
+        },
+        {
+          "key": "installments",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "scheduleRule",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 500
+        },
+        {
+          "key": "scheduleProblem",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "sankhyaRow",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "sankhyaSyncedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
         }
       ],
       "indexes": [

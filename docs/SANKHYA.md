@@ -244,6 +244,7 @@ O TI da Wellmix montou views prontas para o portal (dicionário `DICIONARIO-VIEW
 | Clientes (`customers`) | `sankhya.VW_AD_CLIENTE_WELL` (desde 18/11/2026) | — |
 | Produtos (`products`) | `sankhya.VW_AD_PRODUTO_WELL` | TGFPRO |
 | Produto × fornecedor (`productSuppliers`, nova) | `sankhya.VW_AD_PRODUTO_FORNECEDOR_WELL` | — |
+| Condições de pagamento (`paymentConditions`, 21/11/2026) | `sankhya.VW_AD_TIPONEGOCIACAO_WELL` | nada muda (a TGFTPV não é mais lida) |
 
 Regras (`src/lib/integrations/sankhya-views.ts`; decisões do dono de 20/11/2026):
 
@@ -254,6 +255,19 @@ Regras (`src/lib/integrations/sankhya-views.ts`; decisões do dono de 20/11/2026
 - **Vários fornecedores por produto.** A view produto × fornecedor grava em `product_suppliers`, a mesma tabela dos vínculos do portal, com `source = "sankhya"` e um vínculo por par. Os portos do par ficam em `sankhyaPorts` (porto, país, preferencial, origem, processos em 360 dias, última compra, último preço e moeda, validado). Também ficam `sankhyaPreferential`, `sankhyaValidated` e `sankhyaLastPurchaseAt`. O último preço do Sankhya só entra no vínculo sem preço, e a cotação vale mais. Par que sai da view fica, com `sankhyaListed = false`. O principal continua em `products.supplierId`. Esses vínculos aparecem em "Fornecedores deste produto", com "País - Porto". A Estratégia de compra e a cotação de compra já usam `product_suppliers` e passam a considerar esses fornecedores. Próximo passo: o filtro "País - Porto" de famílias e produtos na Nova solicitação.
 - **Vendedores.** A carga `sellers` (e o botão da lista de RCAs no cadastro do cliente) troca a cópia da lista (`settings.sankhyaSellers`), agora com tipo, tipo Wellmix, e-mail, telefone, gerente, equipe, região e estados. Ela também liga o vendedor ao login da equipe pelo e-mail: só o login da Wellmix sem código de vendedor, um único vendedor ativo com o mesmo e-mail e o código ainda sem dono. Nunca troca o que o administrador gravou, e cada ligação vai para a auditoria (`team.seller_code`). A lista continua servindo para escolher o RCA do cliente sem RCA (docs/CUSTOMER_RCA.md, seção 7).
 - A tela da carga mostra de onde cada carga leu ("Lido da view do portal" ou "A view falhou: lido da tabela") e as colunas do dicionário que a view não trouxe. Fotos (`TGFPRO.IMAGEM`), caixas (`TGFVOA`) e transportadoras (`TGFPAR`) continuam nas tabelas.
+
+### Condições de pagamento pela view (dono, 21/11/2026)
+
+O TI atualizou a `VW_AD_TIPONEGOCIACAO_WELL`, e ela passou a ser a lista que vale. Antes, a tabela tinha 216 condições da TGFTPV.
+
+- **A sincronização troca a tabela pela view.** Ela roda pelo botão "Sincronizar com o Sankhya" em Configurações → Sankhya → Condições de pagamento, ou pela Carga completa → Condições de pagamento. O que não está na view é apagado, e os pedidos e as ordens de venda ligados a essas condições ficam sem condição (`orders.paymentConditionId` e `sales_orders.paymentConditionId` vazios). A auditoria (`payment_condition.sync`) guarda os códigos e nomes que saíram. Se a view falha ou vem vazia, nada muda. A linha da view fica em `payment_conditions.sankhyaRow`.
+- **Decisão do dono (21/11/2026): truncar só pela view.** Os pedidos de compra refeitos pela carga nova usam condições de importação que não estão na view: 199 "20% ANT-80% 150 DAYS AFTER SHIPPING" (2.013 pedidos), 172, 148, 202 e outras. Esses pedidos ficam sem condição ligada, e o código continua na cópia bruta (`sankhya_stage_rows`, `COD_TIPO_NEGOCIACAO`). Quando o TI puser essas condições na view, a próxima sincronização as traz.
+- **Colunas.** O portal aceita `CODTIPVENDA` ou `COD_TIPO_NEGOCIACAO` para o código, `DESCRTIPVENDA` ou `DESCRICAO` para o nome, `ATIVO` ("N" = inativa) e `SUBTIPOVENDA` (1 = à vista). A tela avisa das colunas que faltarem.
+- **Por tempo ou por evento** (`src/lib/payment-condition-schedule.ts`). Cada condição tem `scheduleKind` e `installments`, com percentual, base e dias:
+  - **Por prazo**: dias depois da nota. "30/60/90 DIAS" vira três partes iguais; "30 A 120 ... VENCIM. DIARIOS", "INTERV 3 DD" e "7 EM 7" viram uma parcela por vencimento; "A VISTA" (ou subtipo 1) vence na nota.
+  - **Por evento**: é a mesma estrutura das formas de pagamento do cliente (docs/CUSTOMER_PAYMENT.md). SIN/ANT vira o pedido; EMB/EMBQ/SHIP/BL, o embarque; REGISTRO, a Presença de Carga; ENTREGA, a entrega. "10% SIN, 40% EMB, 50% REGISTRO" fica 10% no pedido, 40% no embarque e 50% na Presença de Carga. "N DAYS AFTER SHIPPING" conta os dias depois do embarque.
+  - **A revisar**: a condição fica a revisar quando a descrição não pôde ser lida ou as parcelas não somam 100%. É o caso da 259 "20% SIN, 70% EMBQ", que soma 90%. O administrador escreve a regra na coluna Parcelas, no mesmo formato (ex.: "20% SIN, 70% EMB, 10% ENTREGA"), em `payment_conditions.scheduleRule`. A regra vale mais que a descrição e sobrevive às próximas sincronizações.
+- **Ainda não usado.** As parcelas da condição ainda não geram contas a pagar ou a receber. O pedido de compra segue com as parcelas do fornecedor (`supplierPaymentTerms`), e o cliente com a forma de pagamento (`payment_plans`).
 
 ## Pendências (decisões com a Wellmix)
 

@@ -2538,6 +2538,12 @@ alter table public."payment_conditions" add column if not exists "active" boolea
 alter table public."payment_conditions" add column if not exists "notes" text;
 alter table public."payment_conditions" add column if not exists "source" text;
 alter table public."payment_conditions" add column if not exists "updatedByUserId" text;
+alter table public."payment_conditions" add column if not exists "scheduleKind" text;
+alter table public."payment_conditions" add column if not exists "installments" jsonb;
+alter table public."payment_conditions" add column if not exists "scheduleRule" text;
+alter table public."payment_conditions" add column if not exists "scheduleProblem" text;
+alter table public."payment_conditions" add column if not exists "sankhyaRow" jsonb;
+alter table public."payment_conditions" add column if not exists "sankhyaSyncedAt" timestamptz;
 create unique index if not exists "payment_conditions_code_unique" on public."payment_conditions" ("code");
 create index if not exists "payment_conditions_created" on public."payment_conditions" ("createdAt");
 create index if not exists "payment_conditions_created_id" on public."payment_conditions" ("createdAt", "id");

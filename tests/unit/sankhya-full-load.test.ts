@@ -260,11 +260,16 @@ describe("carga completa", () => {
           { CODGRUPOPROD: 160201001, DESCRGRUPOPROD: "CANECA", ATIVO: "S" },
         ],
       },
-      TGFTPV: {
+      // Desde 21/11/2026 a lista é a view (a TGFTPV não é mais lida).
+      "sankhya.VW_AD_TIPONEGOCIACAO_WELL": {
         key: "CODTIPVENDA",
         rows: [
-          { CODTIPVENDA: 33, DESCRTIPVENDA: "IMPORTAÇÃO" },
-          { CODTIPVENDA: 111, DESCRTIPVENDA: "30% ANT 70% 30 DAYS AFTER SHIP" },
+          { CODTIPVENDA: 33, DESCRTIPVENDA: "IMPORTAÇÃO", ATIVO: "S" },
+          {
+            CODTIPVENDA: 111,
+            DESCRTIPVENDA: "30% ANT 70% 30 DAYS AFTER SHIP",
+            ATIVO: "S",
+          },
         ],
       },
     });
@@ -294,11 +299,19 @@ describe("carga completa", () => {
     expect(
       (await runFullLoad(admin, "paymentConditions", 60_000)).progress.done,
     ).toBe(true);
+    // A tabela fica igual à view (as da demonstração saem).
     const conditions = await getStore().list("payment_conditions");
     expect(conditions.map((c) => [c.code, c.name, c.source]).sort()).toEqual([
       [111, "30% ANT 70% 30 DAYS AFTER SHIP", "sankhya"],
       [33, "IMPORTAÇÃO", "sankhya"],
     ]);
+    expect(conditions.find((c) => c.code === 111)).toMatchObject({
+      scheduleKind: "event",
+      installments: [
+        { percent: 30, base: "order", days: 0 },
+        { percent: 70, base: "shipment", days: 30 },
+      ],
+    });
     for (const sql of sqls)
       expect(() => sk.assertReadOnlySql(sql)).not.toThrow();
   });

@@ -91,7 +91,7 @@ export const pt = {
   "paymentConditions.subtitle":
     "A mesma tabela do Sankhya (tipos de negociação, CODTIPVENDA), para compra e venda.",
   "paymentConditions.hint":
-    "Carregada do Sankhya pela aba Carga do Sankhya (Carga completa → Condições de pagamento). Aqui dá para incluir e alterar; o envio das alterações ao Sankhya entra com a sincronização.",
+    "Vem da view VW_AD_TIPONEGOCIACAO_WELL do Sankhya (botão abaixo ou Carga completa → Condições de pagamento). Cada condição vence por prazo (dias depois da nota) ou por evento do pedido (sinal, embarque, Presença de Carga, entrega); as parcelas saem da descrição, ou da regra que você escrever.",
   "paymentConditions.code": "Código (CODTIPVENDA)",
   "paymentConditions.name": "Descrição",
   "paymentConditions.active": "Ativa",
@@ -105,6 +105,35 @@ export const pt = {
   "paymentConditions.duplicate": "Já existe uma condição com o código {code}.",
   "paymentConditions.empty":
     "Nenhuma condição. Carregue do Sankhya na aba Carga do Sankhya ou inclua acima.",
+  "paymentConditions.sync.hint":
+    "A lista que vale é a view {view} do Sankhya. Sincronizar troca a tabela pela view: as condições que não estão nela saem, e os pedidos ligados a elas ficam sem condição.",
+  "paymentConditions.sync.button": "Sincronizar com o Sankhya",
+  "paymentConditions.sync.done":
+    "Sincronizado: {created} novas, {updated} atualizadas, {removed} removidas ({unlinked} pedidos ficaram sem condição); {review} a revisar.",
+  "paymentConditions.sync.missing":
+    "A view não trouxe as colunas {columns}; o portal usou o que havia.",
+  "paymentConditions.review":
+    "{count} condições a revisar: não deu para ler as parcelas pela descrição, ou elas não somam 100%. Escreva a regra na coluna Parcelas.",
+  "paymentConditions.error.view_failed":
+    "Não deu para ler a view {view} do Sankhya. Nada mudou.",
+  "paymentConditions.error.view_empty":
+    "A view {view} veio sem condições. Nada mudou.",
+  "paymentConditions.error.not_found": "Condição não encontrada.",
+  "paymentConditions.kind": "Vencimento",
+  "paymentConditions.kind.time": "Por prazo",
+  "paymentConditions.kind.event": "Por evento",
+  "paymentConditions.kind.review": "A revisar",
+  "paymentConditions.installments": "Parcelas",
+  "paymentConditions.days": "dias",
+  "paymentConditions.base.invoice": "da nota",
+  "paymentConditions.base.order": "no pedido",
+  "paymentConditions.base.shipment": "no embarque",
+  "paymentConditions.base.cargo_presence": "na Presença de Carga",
+  "paymentConditions.base.delivery": "na entrega",
+  "paymentConditions.problem.percent_sum": "As parcelas não somam 100%.",
+  "paymentConditions.rule": "Regra das parcelas",
+  "paymentConditions.rule.placeholder": "Ex.: 20% SIN, 70% EMB, 10% ENTREGA",
+  "paymentConditions.rule.save": "Aplicar",
   "sankhyaLoad.full": "Carga completa (migração do Sankhya)",
   "sankhyaLoad.full.hint":
     'Traz do Sankhya a tabela inteira, nesta ordem: condições de pagamento, fornecedores, clientes (pela VW_AD_CLIENTE_WELL, com o grupo econômico), produtos (com os grupos, que viram linhas), locais de estoque, saldos por local (da empresa da Integração) e o histórico de pedidos (notas das TOPs de importação, com itens, títulos e cadastros). Cada clique trabalha uns 40 segundos e guarda onde parou; "Rodar até o fim" continua sozinho enquanto a página estiver aberta. O Sankhya é a fonte: o que já tem vínculo é atualizado; o resto é criado ou vinculado (CNPJ/nome, SKU, nome da linha). Cada registro guarda todos os códigos do Sankhya (sankhyaRefs).',
@@ -450,6 +479,35 @@ export const en: Record<keyof typeof pt, string> = {
   "paymentConditions.duplicate": "A term with code {code} already exists.",
   "paymentConditions.empty":
     "No terms. Load them from Sankhya in the Sankhya load tab or add one above.",
+  "paymentConditions.sync.hint":
+    "The list that counts is the Sankhya view {view}. Syncing replaces the table with the view: terms not in it are removed, and orders linked to them are left without a term.",
+  "paymentConditions.sync.button": "Sync with Sankhya",
+  "paymentConditions.sync.done":
+    "Synced: {created} new, {updated} updated, {removed} removed ({unlinked} orders left without a term); {review} to review.",
+  "paymentConditions.sync.missing":
+    "The view did not return the columns {columns}; the portal used what it had.",
+  "paymentConditions.review":
+    "{count} terms to review: the installments could not be read from the description, or they do not add up to 100%. Write the rule in the Installments column.",
+  "paymentConditions.error.view_failed":
+    "Could not read the Sankhya view {view}. Nothing changed.",
+  "paymentConditions.error.view_empty":
+    "The view {view} returned no terms. Nothing changed.",
+  "paymentConditions.error.not_found": "Term not found.",
+  "paymentConditions.kind": "Due by",
+  "paymentConditions.kind.time": "By time",
+  "paymentConditions.kind.event": "By event",
+  "paymentConditions.kind.review": "To review",
+  "paymentConditions.installments": "Installments",
+  "paymentConditions.days": "days",
+  "paymentConditions.base.invoice": "from invoice",
+  "paymentConditions.base.order": "at order",
+  "paymentConditions.base.shipment": "at shipment",
+  "paymentConditions.base.cargo_presence": "at cargo presence",
+  "paymentConditions.base.delivery": "at delivery",
+  "paymentConditions.problem.percent_sum": "Installments do not add up to 100%.",
+  "paymentConditions.rule": "Installment rule",
+  "paymentConditions.rule.placeholder": "E.g.: 20% SIN, 70% EMB, 10% ENTREGA",
+  "paymentConditions.rule.save": "Apply",
   "sankhyaLoad.full": "Full load (migration from Sankhya)",
   "sankhyaLoad.full.hint":
     'Brings the whole table from Sankhya, in this order: payment terms, suppliers, customers (from VW_AD_CLIENTE_WELL, with the economic group), products (with their groups, which become lines), stock locations, balances by location (for the Integration company) and the order history (import TOP notes, with items, titles and master data). Each click works about 40 seconds and saves where it stopped; "Run to the end" keeps going by itself while the page is open. Sankhya is the source: linked records are updated; the rest is created or linked (CNPJ/name, SKU, line name). Each record keeps all its Sankhya codes (sankhyaRefs).',
@@ -788,6 +846,32 @@ export const zh: Record<keyof typeof pt, string> = {
   "paymentConditions.duplicate": "已存在代码为 {code} 的条件。",
   "paymentConditions.empty":
     "没有条件。请在“Sankhya 数据导入”标签中从 Sankhya 加载，或在上方新增。",
+  "paymentConditions.sync.hint":
+    "以 Sankhya 视图 {view} 为准。同步会用视图替换此表：不在视图中的条件将被删除，关联的订单将不再有付款条件。",
+  "paymentConditions.sync.button": "与 Sankhya 同步",
+  "paymentConditions.sync.done":
+    "已同步：新增 {created}，更新 {updated}，删除 {removed}（{unlinked} 个订单不再有条件）；{review} 个待检查。",
+  "paymentConditions.sync.missing": "视图未返回列 {columns}；门户使用了现有的列。",
+  "paymentConditions.review":
+    "{count} 个条件待检查：无法从描述中读取分期，或分期合计不为 100%。请在“分期”列中填写规则。",
+  "paymentConditions.error.view_failed": "无法读取 Sankhya 视图 {view}。未做任何更改。",
+  "paymentConditions.error.view_empty": "视图 {view} 没有返回条件。未做任何更改。",
+  "paymentConditions.error.not_found": "未找到该条件。",
+  "paymentConditions.kind": "到期方式",
+  "paymentConditions.kind.time": "按期限",
+  "paymentConditions.kind.event": "按事件",
+  "paymentConditions.kind.review": "待检查",
+  "paymentConditions.installments": "分期",
+  "paymentConditions.days": "天",
+  "paymentConditions.base.invoice": "自发票",
+  "paymentConditions.base.order": "下单时",
+  "paymentConditions.base.shipment": "装运时",
+  "paymentConditions.base.cargo_presence": "货物到港时",
+  "paymentConditions.base.delivery": "交货时",
+  "paymentConditions.problem.percent_sum": "分期合计不为 100%。",
+  "paymentConditions.rule": "分期规则",
+  "paymentConditions.rule.placeholder": "例如：20% SIN, 70% EMB, 10% ENTREGA",
+  "paymentConditions.rule.save": "应用",
   "sankhyaLoad.full": "完整导入（从 Sankhya 迁移）",
   "sankhyaLoad.full.hint":
     "按以下顺序从 Sankhya 导入整张表：付款条件、供应商、客户（来自 VW_AD_CLIENTE_WELL，含经济集团）、产品（含分组，转为产品线）、库位、各库位结存（集成设置中的公司）以及订单历史（进口 TOP 单据，含明细、账款和主数据）。每次点击运行约 40 秒并记录进度；“一直运行到结束”会在页面打开期间自动继续。Sankhya 是数据来源：已关联的记录会被更新；其余的会新建或关联（CNPJ/名称、SKU、产品线名称）。每条记录都保存其全部 Sankhya 代码（sankhyaRefs）。",

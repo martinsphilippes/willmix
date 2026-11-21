@@ -31,6 +31,12 @@ import {
   stopServerLoad,
 } from "@/lib/integrations/sankhya-load-queue";
 import { getStore } from "@/lib/db";
+import { conditionSchedule } from "@/lib/payment-condition-view";
+import {
+  PaymentConditionSyncError,
+  savePaymentConditionRule,
+  syncPaymentConditions,
+} from "@/lib/services/payment-conditions";
 import { requireUser, str } from "./helpers";
 
 /*
@@ -433,11 +439,18 @@ export async function savePaymentConditionAction(form: FormData) {
     } else if (input.id) {
       const before = await store.get("payment_conditions", input.id);
       if (!before) throw new z.ZodError([]);
+      const schedule = conditionSchedule({
+        name: input.name,
+        scheduleRule: before.scheduleRule ?? null,
+      });
       const after = await store.update("payment_conditions", input.id, {
         code: input.code,
         name: input.name,
         active: input.active,
         notes: input.notes || null,
+        scheduleKind: schedule.kind,
+        installments: schedule.installments,
+        scheduleProblem: schedule.problem,
         updatedByUserId: user.id,
       });
       await audit(
@@ -451,12 +464,19 @@ export async function savePaymentConditionAction(form: FormData) {
       );
       target = `${CONDITIONS}&saved=${input.code}#conditions`;
     } else {
+      const schedule = conditionSchedule({
+        name: input.name,
+        scheduleRule: null,
+      });
       const created = await store.create("payment_conditions", {
         code: input.code,
         name: input.name,
         active: input.active,
         notes: input.notes || null,
         source: "portal",
+        scheduleKind: schedule.kind,
+        installments: schedule.installments,
+        scheduleProblem: schedule.problem,
         updatedByUserId: user.id,
       });
       await audit(
@@ -478,6 +498,51 @@ export async function savePaymentConditionAction(form: FormData) {
             .join("; ")
         : String(error),
     ).slice(0, 600)}#conditions`;
+  }
+  redirect(target);
+}
+
+/**
+ * Troca a tabela de condições pela VW_AD_TIPONEGOCIACAO_WELL (dono,
+ * 21/11/2026): o que não está na view sai. Só o administrador.
+ */
+export async function syncPaymentConditionsAction() {
+  const user = await admin();
+  let target: string;
+  try {
+    const r = await syncPaymentConditions(user);
+    target = `${CONDITIONS}&synced=${[r.created, r.updated, r.removed, r.unlinked, r.review].join(".")}${
+      r.missing.length
+        ? `&missing=${encodeURIComponent(r.missing.join(", "))}`
+        : ""
+    }#conditions`;
+  } catch (error) {
+    target = `${CONDITIONS}&error=${
+      error instanceof PaymentConditionSyncError ? error.message : "view_failed"
+    }#conditions`;
+  }
+  redirect(target);
+}
+
+const ruleSchema = z.object({
+  id: z.string().min(1).max(64),
+  rule: z.string().trim().max(500),
+});
+
+/** Regra das parcelas da condição (vazia = lê a descrição de novo). */
+export async function savePaymentConditionRuleAction(form: FormData) {
+  const user = await admin();
+  const input = ruleSchema.parse({ id: str(form, "id"), rule: str(form, "rule") });
+  let target: string;
+  try {
+    const after = await savePaymentConditionRule(
+      user,
+      input.id,
+      input.rule || null,
+    );
+    target = `${CONDITIONS}&saved=${after.code}#conditions`;
+  } catch {
+    target = `${CONDITIONS}&error=not_found#conditions`;
   }
   redirect(target);
 }

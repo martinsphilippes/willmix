@@ -30,7 +30,6 @@ import {
   upsertStockLocations,
   upsertPartners,
   upsertCustomersFromView,
-  upsertPaymentConditions,
   upsertProductSuppliers,
   upsertProducts,
   upsertSuppliersFromView,
@@ -229,6 +228,7 @@ export async function runFullLoad(
     return { progress: await runImageLoad(user, budgetMs), lines: [] };
   }
   if (entity === "sellers") return runSellerLoad(user);
+  if (entity === "paymentConditions") return runPaymentConditionLoad(user);
   if (entity.startsWith("stage")) {
     const { datasetOfEntity, runStageLoad } = await import("./sankhya-stage");
     const dataset = datasetOfEntity(entity);
@@ -323,9 +323,7 @@ export async function runFullLoad(
     }
     const truncated = rows.length < all.length;
 
-    if (entity === "paymentConditions") {
-      await upsertPaymentConditions(ctx, rows);
-    } else if (entity === "partners") {
+    if (entity === "partners") {
       if (progress.source === "view") await upsertSuppliersFromView(ctx, rows);
       else await upsertPartners(ctx, rows);
     } else if (entity === "productSuppliers") {
@@ -438,6 +436,36 @@ async function runSellerLoad(user: User): Promise<FullLoadResult> {
     source: result.source,
   };
   await writeSetting(keyOf("sellers"), progress);
+  return { progress, lines: [] };
+}
+
+/**
+ * Condições de pagamento pela VW_AD_TIPONEGOCIACAO_WELL (21/11/2026): uma
+ * leitura só, que troca a tabela pela view (payment-conditions.ts). A TGFTPV
+ * não é mais lida: com a view falhando, nada muda.
+ */
+async function runPaymentConditionLoad(user: User): Promise<FullLoadResult> {
+  const { syncPaymentConditions } = await import(
+    "@/lib/services/payment-conditions"
+  );
+  const now = new Date().toISOString();
+  const before = await getFullLoadProgress("paymentConditions");
+  const result = await syncPaymentConditions(user);
+  const progress: FullLoadProgress = {
+    ...EMPTY,
+    after: result.created + result.updated,
+    done: true,
+    remaining: 0,
+    counts: {
+      created: result.created,
+      updated: result.updated,
+    },
+    missing: result.missing,
+    startedAt: before.startedAt ?? now,
+    updatedAt: now,
+    source: "view",
+  };
+  await writeSetting(keyOf("paymentConditions"), progress);
   return { progress, lines: [] };
 }
 
