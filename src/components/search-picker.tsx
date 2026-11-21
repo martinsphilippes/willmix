@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { cx, inputClass, inputDenseClass } from "./ui";
 import { HoverZoomPhoto } from "./hover-zoom-photo";
+import { matchesWords, searchWords } from "@/lib/db/store";
 
 /** Textos do campo (já no idioma de quem vê). */
 export interface SearchPickerLabels {
@@ -38,10 +39,53 @@ export interface SearchOption {
    * esquerda do nome, que amplia ao passar o mouse.
    */
   photoId?: string | null;
+  /**
+   * Grupo da opção na lista (lista local; ex.: "Do cliente" e "Outros
+   * vendedores"): opções seguidas do mesmo grupo ficam sob um título.
+   */
+  group?: string | null;
+  /** Opção que aparece mas não pode ser escolhida (ex.: BRASIL no TS). */
+  disabled?: boolean;
+  /** Texto a mais que a busca considera (não aparece). */
+  keywords?: string | null;
 }
 
+/** Quantas opções da lista local aparecem de cada vez. */
+const LOCAL_LIMIT = 60;
+
 /**
- * Campo com busca no servidor, no lugar de uma lista de seleção com o
+ * Busca da lista local (dono, 21/11/2026): as mesmas regras da busca no
+ * banco (palavras soltas, em qualquer ordem, sem acento nem caixa) sobre o
+ * nome, o código, o texto ao lado e as palavras a mais de cada opção.
+ */
+export function filterSearchOptions(
+  options: readonly SearchOption[],
+  text: string,
+): SearchOption[] {
+  const words = searchWords(text);
+  if (!words.length) return [...options];
+  return options.filter((o) =>
+    matchesWords(
+      [o.code, o.name, o.hint, o.group, o.keywords].filter(Boolean).join(" "),
+      words,
+    ),
+  );
+}
+
+/** "Código - Item" do escolhido (abaixo do campo; sem código, só o item). */
+export const searchOptionSummary = (o: SearchOption) =>
+  [o.code, o.name].filter(Boolean).join(" - ");
+
+/**
+ * Campo com busca (dono, 21/11/2026: o componente único dos formulários, no
+ * lugar das listas de seleção simples). Dois modos:
+ * - `endpoint`: busca no servidor (cadastros grandes, abaixo);
+ * - `options`: a lista já está na tela; a busca é local, com as mesmas
+ *   regras (palavras soltas, sem acento), e a lista abre ao entrar no campo.
+ * Com foto, as opções mostram a miniatura; com `summary`, o escolhido
+ * aparece abaixo do campo como "Código - Item".
+ *
+ * Busca no servidor, no lugar de uma lista de seleção com o
  * cadastro inteiro (auditoria de performance, 14/11/2026): com a carga do
  * Sankhya são ~26 mil clientes, ~5,7 mil fornecedores e ~17 mil produtos, e
  * a página mandava todos ao navegador. Busca a partir de 2 letras em
@@ -54,6 +98,8 @@ export interface SearchOption {
  */
 export function SearchPicker({
   endpoint,
+  options: localOptions,
+  summary,
   marker,
   kind,
   name,
@@ -70,7 +116,11 @@ export function SearchPicker({
   onDeselect,
 }: {
   /** Rota de busca, com os parâmetros fixos (ex.: `/api/products/search?scope=catalog`). */
-  endpoint: string;
+  endpoint?: string;
+  /** Lista local (sem `endpoint`): a busca filtra estas opções na tela. */
+  options?: readonly SearchOption[];
+  /** Mostra "Código - Item" do escolhido abaixo do campo. */
+  summary?: boolean;
   /** Nome dos atributos de teste (ex.: "party-picker"). */
   marker: string;
   /** Valor de `data-<marker>` (ex.: o tipo de parceiro). */
@@ -120,9 +170,25 @@ export function SearchPicker({
   });
   const [active, setActive] = useState(0);
   const q = text.trim();
-  const searching =
-    open && !disabled && q.length >= 2 && !(selected && selected.name === text);
-  const options = searching && result.q === q ? result.options : [];
+  const local = !endpoint;
+  const unchanged = !!selected && selected.name === text;
+  // Lista local: ao entrar no campo já escolhido, abre a lista inteira (como
+  // uma lista de seleção); na busca no servidor, só depois de digitar.
+  const showing = open && !disabled && (local || !unchanged);
+  const searching = !local && showing && q.length >= 2;
+  const filtered = local
+    ? filterSearchOptions(localOptions ?? [], unchanged ? "" : q).slice(
+        0,
+        LOCAL_LIMIT,
+      )
+    : [];
+  const options = local
+    ? showing
+      ? filtered
+      : []
+    : searching && result.q === q
+      ? result.options
+      : [];
   const loading = searching && result.q !== q;
   // Lista com fotos (produtos): cada opção tem a miniatura, com ou sem foto.
   const photos = options.some((o) => o.photoId !== undefined);
@@ -139,7 +205,7 @@ export function SearchPicker({
 
   // Busca com espera curta (não a cada letra); só a última resposta vale.
   useEffect(() => {
-    if (!searching) return;
+    if (!searching || !endpoint) return;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
@@ -160,14 +226,18 @@ export function SearchPicker({
   }, [searching, q, endpoint]);
 
   const choose = (option: SearchOption | null) => {
+    if (option?.disabled) return;
     setSelected(option);
     setText(option?.name ?? "");
     setOpen(false);
     onChoose?.(option);
   };
 
-  const hint =
-    q.length < 2
+  const hint = local
+    ? options.length === 0
+      ? labels.none
+      : null
+    : q.length < 2
       ? labels.typeMore
       : loading
         ? labels.loading
@@ -203,6 +273,7 @@ export function SearchPicker({
           {...data("-input")}
           onChange={(e) => {
             setText(e.target.value);
+            setActive(0);
             // Mudou o texto: a escolha anterior não vale mais.
             if (selected && e.target.value !== selected.name) {
               setSelected(null);
@@ -253,7 +324,14 @@ export function SearchPicker({
           </button>
         ) : null}
       </div>
-      {open && !disabled && !(selected && selected.name === text) ? (
+      {summary && selected ? (
+        <p className="mt-1 text-xs text-zinc-600" {...data("-summary")}>
+          <span className="font-medium text-zinc-800">
+            {searchOptionSummary(selected)}
+          </span>
+        </p>
+      ) : null}
+      {showing ? (
         <ul
           id={listId}
           role="listbox"
@@ -264,12 +342,24 @@ export function SearchPicker({
               {hint}
             </li>
           ) : (
-            options.map((option, i) => (
+            options.map((option, i) => [
+              option.group && option.group !== options[i - 1]?.group ? (
+                <li
+                  key={`g:${option.group}:${i}`}
+                  role="presentation"
+                  className="px-3 pb-0.5 pt-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400"
+                  {...data("-group")}
+                >
+                  {option.group}
+                </li>
+              ) : null,
               <li
                 key={option.id}
                 role="option"
                 aria-selected={i === active}
+                aria-disabled={option.disabled || undefined}
                 className={cx(
+                  option.disabled && "cursor-not-allowed opacity-50",
                   // O texto ao lado do nome (tipo da empresa, código e CNPJ)
                   // desce para baixo do nome quando não cabe: o nome nunca
                   // fica espremido letra por letra.
@@ -289,7 +379,9 @@ export function SearchPicker({
                   />
                 ) : null}
                 <span className="min-w-0 flex-[1_1_10rem] break-words">
-                  {option.name}
+                  {local && option.code
+                    ? searchOptionSummary(option)
+                    : option.name}
                 </span>
                 {option.hint ? (
                   <span
@@ -299,8 +391,8 @@ export function SearchPicker({
                     {option.hint}
                   </span>
                 ) : null}
-              </li>
-            ))
+              </li>,
+            ])
           )}
         </ul>
       ) : null}

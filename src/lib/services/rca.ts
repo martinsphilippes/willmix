@@ -431,11 +431,16 @@ export function effectiveRcaCode(
 export interface RcaOption {
   code: string;
   label: string;
+  /** Nome e CODPARC do vendedor (buscador "Código - Item"; 21/11/2026). */
+  name?: string;
+  partnerCode?: string | null;
 }
 
 const optionOf = (s: RcaSeller): RcaOption => ({
   code: s.code,
   label: s.partnerCode ? `${s.partnerCode} - ${s.name}` : s.name,
+  name: s.name,
+  partnerCode: s.partnerCode ?? null,
 });
 
 /**

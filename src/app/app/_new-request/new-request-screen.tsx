@@ -56,6 +56,7 @@ import { sankhyaHistoryLabels } from "@/components/sankhya-history-labels";
 import {
   partyPickerLabels,
   productPickerLabels,
+  listPickerLabels,
 } from "@/components/party-picker-labels";
 import { requestProductFills } from "@/lib/services/request-product-fill";
 import { getSettings } from "@/lib/settings";
@@ -366,6 +367,7 @@ export async function renderNewRequest({
     rcaStock: t("requestPeople.rcaStock"),
     rcaUnknown: t("requestPeople.rcaUnknown"),
     rcaChoose: t("requestPeople.rcaChoose"),
+    picker: listPickerLabels(t),
     rcaOpenHint: t("requestPeople.rcaOpenHint"),
     rcaCandidates: t("requestPeople.rcaCandidates"),
     rcaOthers: t("requestPeople.rcaOthers"),
@@ -1110,6 +1112,10 @@ export async function renderNewRequest({
                   carrierCaller: draftValue("carrierCaller"),
                   redispatch: draftValue("redispatch"),
                   originCountry: draftValue("originCountry"),
+                  // País - Porto (21/11/2026): rascunho antigo, sem o porto.
+                  originPort: draftFields?.has("originPort")
+                    ? draftValue("originPort")
+                    : undefined,
                   productFamily: draftValue("productFamily"),
                   paymentPlanId: draftValue("paymentPlanId"),
                 }}

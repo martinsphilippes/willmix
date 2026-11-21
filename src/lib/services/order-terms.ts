@@ -17,6 +17,8 @@ import { resolveCarrier } from "./delivery-carriers";
 import {
   originCountryName,
   originFamily,
+  originPortName,
+  portMatches,
   productOrigin,
 } from "./product-origin";
 
@@ -55,6 +57,11 @@ const RAW = z.object({
       return n;
     }),
   originCountry: z.string().min(1, { error: "order_terms_origin" }).max(80),
+  // Porto (código do Sankhya; "" = não informado; nulo = sem o campo).
+  originPort: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{0,20}$/, { error: "order_terms_origin" })
+    .nullable(),
   productFamily: z
     .string()
     .regex(/^(fm|sk|ln):[A-Za-z0-9_-]{1,64}$/, { error: "order_terms_origin" }),
@@ -82,6 +89,7 @@ export async function resolveOrderTerms(
     carrier: input.carrier || null,
     redispatchCarrier: input.redispatchCarrier || null,
     deliveryFreightBrl: input.deliveryFreightBrl || null,
+    originPort: input.originPort ?? null,
   });
   if (!parsed.success)
     throw new OrderTermsError(
@@ -111,16 +119,21 @@ export async function resolveOrderTerms(
     throw new OrderTermsError("order_terms_carrier_required");
   if (wellmixCalls && redispatchRequired && !raw.redispatchCarrier)
     throw new OrderTermsError("order_terms_redispatch_carrier_required");
-  const [carrier, redispatchCarrier, family, countryName] = await Promise.all([
-    wellmixCalls && raw.carrier
-      ? resolveCarrier(parseCarrierValue(raw.carrier))
-      : null,
-    wellmixCalls && redispatchRequired && raw.redispatchCarrier
-      ? resolveCarrier(parseCarrierValue(raw.redispatchCarrier))
-      : null,
-    originFamily(raw.productFamily),
-    originCountryName(raw.originCountry),
-  ]);
+  const [carrier, redispatchCarrier, family, countryName, portName] =
+    await Promise.all([
+      wellmixCalls && raw.carrier
+        ? resolveCarrier(parseCarrierValue(raw.carrier))
+        : null,
+      wellmixCalls && redispatchRequired && raw.redispatchCarrier
+        ? resolveCarrier(parseCarrierValue(raw.redispatchCarrier))
+        : null,
+      originFamily(raw.productFamily),
+      originCountryName(raw.originCountry),
+      raw.originPort === null ? null : originPortName(raw.originPort),
+    ]);
+  // Porto que não existe no catálogo.
+  if (raw.originPort !== null && portName === null)
+    throw new OrderTermsError("order_terms_origin");
   if (wellmixCalls && !carrier)
     throw new OrderTermsError("order_terms_carrier");
   if (wellmixCalls && redispatchRequired && !redispatchCarrier)
@@ -139,6 +152,9 @@ export async function resolveOrderTerms(
     deliveryFreightBrl: raw.deliveryFreightBrl,
     originCountry: raw.originCountry,
     originCountryName: countryName,
+    ...(raw.originPort !== null
+      ? { originPort: raw.originPort, originPortName: portName ?? "" }
+      : {}),
     productFamily: raw.productFamily,
     productFamilyName: family.name,
     noReturnsNotice: true,
@@ -147,13 +163,13 @@ export async function resolveOrderTerms(
 }
 
 /**
- * Todo produto do catálogo do pedido é do país e da família escolhidos
+ * Todo produto do catálogo do pedido é do país, do porto e da família escolhidos
  * (dono, 15/11/2026: um pedido não mistura país nem família de produtos).
  * Produto fora do catálogo (sourcing) não tem cadastro para conferir.
  */
 export async function assertProductsMatchOrigin(
   productIds: Array<string | null>,
-  terms: Pick<OrderTerms, "originCountry" | "productFamily">,
+  terms: Pick<OrderTerms, "originCountry" | "productFamily" | "originPort">,
 ): Promise<void> {
   for (const id of productIds) {
     if (!id) continue;
@@ -161,7 +177,9 @@ export async function assertProductsMatchOrigin(
     if (
       !origin ||
       origin.family !== terms.productFamily ||
-      origin.country !== terms.originCountry
+      origin.country !== terms.originCountry ||
+      // Um pedido, um porto (dono, 21/11/2026).
+      !portMatches(origin, terms.originPort)
     )
       throw new OrderTermsError("order_terms_mismatch");
   }

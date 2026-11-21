@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRequestCustomer } from "./request-customer-context";
 import { Field, Input, Select } from "./ui";
+import {
+  SearchPicker,
+  type SearchOption,
+  type SearchPickerLabels,
+} from "./search-picker";
 
 /** Textos dos campos (no idioma de quem vê). */
 export interface RequestPeopleLabels {
@@ -41,6 +46,8 @@ export interface RequestPeopleLabels {
   /** "Todos os logins do cliente ({n})" (dono, 18/11/2026). */
   accessAll?: string;
   accessAllHint?: string;
+  /** Buscador do RCA em aberto (lista local; dono, 21/11/2026). */
+  picker?: SearchPickerLabels;
 }
 
 export interface CustomerLogin {
@@ -52,7 +59,18 @@ export interface CustomerLogin {
 interface RcaOption {
   code: string;
   label: string;
+  name?: string;
+  partnerCode?: string | null;
 }
+
+/** Opção do buscador: o CODVEND gravado, "CODPARC - APELIDO" na tela. */
+const rcaSearchOption = (o: RcaOption, group: string | undefined) =>
+  ({
+    id: o.code,
+    name: o.name ?? o.label,
+    code: o.name ? (o.partnerCode ?? null) : null,
+    group: group ?? null,
+  }) satisfies SearchOption;
 
 interface RcaResult {
   key: string;
@@ -266,41 +284,51 @@ export function RequestPeopleFields({
               : labels.rcaNoList
           }
         >
-          <Select
-            key={customerId ?? "none"}
-            name="rcaCode"
-            defaultValue={
-              [...mine.open.candidates, ...mine.open.sellers].some(
-                (o) => o.code === initialRca,
-              )
-                ? initialRca
-                : mine.open.candidates.length === 1
-                  ? mine.open.candidates[0].code
-                  : ""
-            }
-            data-request-rca
-            data-request-rca-state="open"
-          >
-            <option value="">{labels.rcaChoose}</option>
-            {mine.open.candidates.length ? (
-              <optgroup label={labels.rcaCandidates}>
-                {mine.open.candidates.map((o) => (
-                  <option key={o.code} value={o.code}>
-                    {o.label}
-                  </option>
-                ))}
-              </optgroup>
-            ) : null}
-            {mine.open.sellers.length ? (
-              <optgroup label={labels.rcaOthers}>
-                {mine.open.sellers.map((o) => (
-                  <option key={o.code} value={o.code}>
-                    {o.label}
-                  </option>
-                ))}
-              </optgroup>
-            ) : null}
-          </Select>
+          {labels.picker ? (
+            <RcaPicker
+              key={customerId ?? "none"}
+              open={mine.open}
+              initialRca={initialRca}
+              labels={labels}
+              picker={labels.picker}
+            />
+          ) : (
+            <Select
+              key={customerId ?? "none"}
+              name="rcaCode"
+              defaultValue={
+                [...mine.open.candidates, ...mine.open.sellers].some(
+                  (o) => o.code === initialRca,
+                )
+                  ? initialRca
+                  : mine.open.candidates.length === 1
+                    ? mine.open.candidates[0].code
+                    : ""
+              }
+              data-request-rca
+              data-request-rca-state="open"
+            >
+              <option value="">{labels.rcaChoose}</option>
+              {mine.open.candidates.length ? (
+                <optgroup label={labels.rcaCandidates}>
+                  {mine.open.candidates.map((o) => (
+                    <option key={o.code} value={o.code}>
+                      {o.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
+              {mine.open.sellers.length ? (
+                <optgroup label={labels.rcaOthers}>
+                  {mine.open.sellers.map((o) => (
+                    <option key={o.code} value={o.code}>
+                      {o.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
+            </Select>
+          )}
         </Field>
       ) : (
         <Field
@@ -328,5 +356,47 @@ export function RequestPeopleFields({
         </Field>
       )}
     </>
+  );
+}
+
+/**
+ * RCA em aberto pelo buscador único (dono, 21/11/2026): palavras soltas,
+ * os RCAs do cliente primeiro e os demais vendedores depois, e o escolhido
+ * abaixo do campo como "CODPARC - APELIDO". Grava o CODVEND em `rcaCode`.
+ */
+function RcaPicker({
+  open,
+  initialRca,
+  labels,
+  picker,
+}: {
+  open: { candidates: RcaOption[]; sellers: RcaOption[] };
+  initialRca: string;
+  labels: RequestPeopleLabels;
+  picker: SearchPickerLabels;
+}) {
+  const options = [
+    ...open.candidates.map((o) => rcaSearchOption(o, labels.rcaCandidates)),
+    ...open.sellers.map((o) => rcaSearchOption(o, labels.rcaOthers)),
+  ];
+  const initial =
+    options.find((o) => o.id === initialRca) ??
+    (open.candidates.length === 1 ? options[0] : null);
+  return (
+    <div data-request-rca data-request-rca-state="open">
+      <SearchPicker
+        options={options}
+        summary
+        marker="rca-picker"
+        kind="open"
+        name="rcaCode"
+        initial={initial}
+        ariaLabel={labels.rca}
+        labels={{
+          ...picker,
+          placeholder: labels.rcaChoose ?? picker.placeholder,
+        }}
+      />
+    </div>
   );
 }

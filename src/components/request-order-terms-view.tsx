@@ -65,10 +65,19 @@ export function RequestOrderTermsView({
       : []),
     [t("orderTerms.carrier"), mainCarrier],
     [t("orderTerms.redispatch"), redispatch],
-    [
-      t("orderTerms.country"),
-      terms.originCountryName || terms.originCountry || "—",
-    ],
+    // País - Porto (dono, 21/11/2026); as antigas, só o país.
+    terms.originPort !== undefined
+      ? [
+          t("originPort.field"),
+          t("originPort.option", {
+            country: terms.originCountryName || terms.originCountry || "—",
+            port: terms.originPortName || t("originPort.noPort"),
+          }),
+        ]
+      : [
+          t("orderTerms.country"),
+          terms.originCountryName || terms.originCountry || "—",
+        ],
     [
       t("orderTerms.group"),
       terms.productFamilyName || terms.productLineName || "—",
