@@ -38,6 +38,8 @@ Os números de linha citados são do código em 21/11/2026.
 | D9  | Embarque pelo portal com quantidade parcial?                                                          | Sim, pode ser parcial (a confirmar com o técnico do Sankhya na primeira escrita).                                                                                                                                                                                                                          |
 | D10 | Cotação 1002 e amostras 1003/140                                                                      | Ligar: a 1002 com a cotação de compra do portal e a 1003/140 com o fluxo de amostra.                                                                                                                                                                                                                       |
 | D11 | 1104 pendentes sem `STATUS_SHIPPING` e amostras 140 antigas pendentes                                 | Situação separada **"Aguardando definição"**, com os dois casos à vista para observar e ajustar depois.                                                                                                                                                                                                    |
+| D12 | Os 2.125 pedidos interrompidos (1100, 1101 ou 1102 sem pendência e sem documento seguinte)            | Entram como encerrados **"Interrompido no Sankhya"**, sem pendências, numa lista para conferência (dono, 21/11/2026).                                                                                                                                                                                      |
+| D13 | Canal Amarelo                                                                                         | Segue o fluxo com aviso de conferência documental, sem pausar (dono, 21/11/2026).                                                                                                                                                                                                                          |
 
 ## 1. Como o portal fala com o Sankhya
 
@@ -326,10 +328,23 @@ Cada etapa é um PR com testes e E2E. Nada apaga dados até a etapa 5.
 
 1. **Esquema aditivo:** os campos da seção 4.3.
 2. **Pedido sem solicitação (D1):** `requestId` opcional e a revisão das leituras (seção 4.4).
-3. **Carga de ensaio a partir da cópia já no banco** (`sankhya_stage_rows`), sem chamar o Sankhya:
-   - monta pedidos, itens e embarques numa área separada;
-   - roda a conferência da seção 7;
-   - gera um relatório: quantos pedidos, quantos em cada marco, pendências por pessoa e as divergências.
+3. **Carga de ensaio a partir da cópia já no banco** (`sankhya_stage_rows`), sem chamar o Sankhya. **Feita em 21/11/2026:**
+   - `scripts/sankhya-projection.sql` monta, no próprio Postgres, um pedido por cadeia (a ponta de 1100 a 1104/1107) e um embarque por documento 35. Grava na tabela de ensaio `sankhya_projection` (apaga e refaz só ela) com situação, marco, estado do embarque, a cadeia de documentos, os itens com o que já embarcou (pela TGFVAR, `QTDATENDIDA`; o `QTD_ENTREGUE` não serve para isso) e o saldo, os status de recebimento, qualidade e canal e os embarques ligados;
+   - a tela **Configurações → Sankhya → Pedidos do Sankhya (ensaio)** (`src/app/app/settings/sankhya/_orders.tsx`, só o administrador) mostra as contagens por situação, marco e motivo, a lista com busca por NUNOTA (de qualquer documento da cadeia) ou fornecedor e o detalhe de cada pedido e embarque;
+   - para montar de novo depois de uma cópia nova das views, o Claude roda o script pela ferramenta do Supabase.
+
+   **Resultado de 21/11/2026:**
+
+   | Situação                      | Pedidos                                                                                                                                             |
+   | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | Em andamento                  | 366: Pedido novo 47, Arte 15, Pré-produção 1, Sinal 2, Produção 210 (135 com embarque parcial), Carregamento e documentos 88, Desembaraço 3         |
+   | Encerrado                     | 2.139                                                                                                                                               |
+   | Caminho antigo                | 11                                                                                                                                                  |
+   | Interrompido no Sankhya (D12) | 2.125                                                                                                                                               |
+   | Aguardando definição          | 1.382: 197 em produção sem `STATUS_SHIPPING`; 1.185 sem pendência e sem documento seguinte (1.046 em 1104, a maioria de 2024 e 2025, e 139 em 1103) |
+
+   O encerramento vale quando tudo embarcou e nenhum embarque está aberto, mesmo sem a coluna de recebimento (212 pedidos têm os embarques fechados sem `STATUS_RECEBIMENTO`).
+
 4. **Validação:** o dono e a Wellmix conferem o relatório e o de-para da seção 5.1.
 5. **Limpeza e carga real:**
    - apagar os 16.268 pedidos antigos e o que veio junto (solicitações, itens, etapas, pendências, marcos, 27.809 títulos, resumos), em partes, com prévia e a palavra de confirmação. Nenhum trabalho do portal está ligado a eles (conferido em 20/11/2026);
@@ -344,4 +359,4 @@ Cada etapa é um PR com testes e E2E. Nada apaga dados até a etapa 5.
 1. Confirmação da Wellmix do de-para da seção 5.1 (D7). Até lá vale a proposta, validada na tela com casos reais.
 2. Confirmação de D8 (canal) e de D9 (embarque parcial pela API, na primeira escrita).
 3. Gerar boleto pelo portal: existe serviço no Sankhya para isso? (Em verificação com a Wellmix.)
-4. Os 2.125 pedidos interrompidos (1100, 1101 ou 1102 sem pendência e sem documento seguinte): foram cancelados ou substituídos no Sankhya? Proposta: entram como encerrados "Interrompido no Sankhya", sem pendências, numa lista para conferência.
+4. Os 1.046 pedidos em 1104 sem pendência e sem documento seguinte (nem embarque nem recebimento), quase todos de 2024 e 2025: foram cancelados, desmembrados ou embarcados por outro caminho? Estão em "Aguardando definição" na tela de ensaio.

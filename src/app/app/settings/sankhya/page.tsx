@@ -23,6 +23,7 @@ import { getSankhyaConfigStatus } from "@/lib/integrations/sankhya-settings";
 import { SettingsTabs } from "../_tabs";
 import { IntegrationTab } from "./_integration";
 import { LoadTab } from "./_load";
+import { OrdersTab } from "./_orders";
 import { PaymentConditionsTab } from "./_payment";
 import { ProcessTab } from "./_process";
 import {
@@ -140,6 +141,23 @@ export default async function SankhyaPage({
         />
         <SettingsTabs t={t} active="payment" admin />
         <PaymentConditionsTab t={t} q={q} />
+      </>
+    );
+
+  if (one(q.tab) === "orders")
+    return (
+      <>
+        <PageHeader
+          title={t("sankhyaOrders.title")}
+          subtitle={t("sankhyaOrders.subtitle")}
+          actions={
+            <TextLink href="/app/settings" className="text-sm">
+              {t("sankhya.back")}
+            </TextLink>
+          }
+        />
+        <SettingsTabs t={t} active="orders" admin />
+        <OrdersTab t={t} q={q} user={user} />
       </>
     );
 
