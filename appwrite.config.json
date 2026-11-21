@@ -7955,6 +7955,107 @@
       ]
     },
     {
+      "$id": "sankhya_projection",
+      "databaseId": "willmix",
+      "name": "Ensaio dos pedidos do Sankhya (conferência)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "kind",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
+        },
+        {
+          "key": "key",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "situation",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 30
+        },
+        {
+          "key": "milestone",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "top",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "supplierCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
+        },
+        {
+          "key": "supplierName",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "shipmentState",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
+        },
+        {
+          "key": "data",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "computedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_kind_situation",
+          "type": "key",
+          "columns": [
+            "kind",
+            "situation"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
       "$id": "customer_sales_loads",
       "databaseId": "willmix",
       "name": "Carga de vendas do Sankhya por cliente",

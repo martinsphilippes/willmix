@@ -1313,6 +1313,26 @@ create index if not exists "sankhya_stage_rows_by_dataset_nunota" on public."san
 create index if not exists "sankhya_stage_rows_created" on public."sankhya_stage_rows" ("createdAt");
 create index if not exists "sankhya_stage_rows_created_id" on public."sankhya_stage_rows" ("createdAt", "id");
 
+create table if not exists public."sankhya_projection" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."sankhya_projection" enable row level security;
+alter table public."sankhya_projection" add column if not exists "kind" text;
+alter table public."sankhya_projection" add column if not exists "key" text;
+alter table public."sankhya_projection" add column if not exists "situation" text;
+alter table public."sankhya_projection" add column if not exists "milestone" text;
+alter table public."sankhya_projection" add column if not exists "top" bigint;
+alter table public."sankhya_projection" add column if not exists "supplierCode" text;
+alter table public."sankhya_projection" add column if not exists "supplierName" text;
+alter table public."sankhya_projection" add column if not exists "shipmentState" text;
+alter table public."sankhya_projection" add column if not exists "data" jsonb;
+alter table public."sankhya_projection" add column if not exists "computedAt" timestamptz;
+create index if not exists "sankhya_projection_by_kind_situation" on public."sankhya_projection" ("kind", "situation");
+create index if not exists "sankhya_projection_created" on public."sankhya_projection" ("createdAt");
+create index if not exists "sankhya_projection_created_id" on public."sankhya_projection" ("createdAt", "id");
+
 create table if not exists public."customer_sales_loads" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),

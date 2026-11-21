@@ -6,6 +6,7 @@
 import * as catalog from "./catalog";
 import * as intro from "./intro";
 import * as productSuppliers from "./product-suppliers";
+import * as sankhyaOrders from "./sankhya-orders";
 import * as sheetMissing from "./sheet-missing";
 import * as messageControl from "./message-control";
 import * as customers from "./customers";
@@ -271,6 +272,7 @@ export const modulesPt = {
   ...i18nSweep.pt,
   ...requestSchedule.pt,
   ...productSuppliers.pt,
+  ...sankhyaOrders.pt,
   ...sheetMissing.pt,
   ...messageControl.pt,
   ...customers.pt,
@@ -448,6 +450,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...i18nSweep.en,
   ...requestSchedule.en,
   ...productSuppliers.en,
+  ...sankhyaOrders.en,
   ...sheetMissing.en,
   ...messageControl.en,
   ...customers.en,
@@ -625,6 +628,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...i18nSweep.zh,
   ...requestSchedule.zh,
   ...productSuppliers.zh,
+  ...sankhyaOrders.zh,
   ...sheetMissing.zh,
   ...messageControl.zh,
   ...customers.zh,

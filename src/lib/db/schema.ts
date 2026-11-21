@@ -2331,6 +2331,31 @@ export interface SankhyaStageRow extends BaseRow {
   loadedAt: string;
 }
 
+/**
+ * Ensaio da reconstrução dos pedidos de compra do Sankhya (21/11/2026;
+ * docs/SANKHYA_INTEGRACAO.md, seções 3.1 e 9): montado no banco por
+ * scripts/sankhya-projection.sql a partir da cópia bruta (sankhya_stage_rows).
+ * Uma linha por pedido (ponta da cadeia 1100 → 1104) ou por embarque (35).
+ * Só para conferência na tela; não alimenta pedidos nem regras.
+ */
+export interface SankhyaProjectionRow extends BaseRow {
+  /** "order" (pedido) ou "shipment" (embarque). */
+  kind: string;
+  /** NUNOTA da ponta da cadeia (pedido) ou do documento 35 (embarque). */
+  key: string;
+  /** in_progress | closed | interrupted | legacy_path | awaiting_definition. */
+  situation: string | null;
+  /** Marco do portal (MILESTONE_KEYS) em que o pedido entraria. */
+  milestone: string | null;
+  top: number | null;
+  supplierCode: string | null;
+  supplierName: string | null;
+  /** none | partial | shipped (só pedidos). */
+  shipmentState: string | null;
+  data: Record<string, unknown> | null;
+  computedAt: string | null;
+}
+
 export interface CustomerSalesLoad extends BaseRow {
   customerId: string;
   /** Última leitura que deu certo. */
@@ -4421,6 +4446,7 @@ export interface Tables {
   customer_sales_monthly: CustomerSaleMonth;
   customer_sales_loads: CustomerSalesLoad;
   sankhya_stage_rows: SankhyaStageRow;
+  sankhya_projection: SankhyaProjectionRow;
   freight_tariffs: FreightTariff;
   product_variants: ProductVariant;
   conversations: Conversation;
@@ -5787,6 +5813,28 @@ export const TABLES: Record<TableName, TableDef> = {
         key: "by_dataset_nunota",
         type: "key",
         columns: ["dataset", "nunota"],
+      },
+    ],
+  },
+  sankhya_projection: {
+    label: "Ensaio dos pedidos do Sankhya (conferência)",
+    columns: {
+      kind: str(20, true),
+      key: str(40, true),
+      situation: str(30),
+      milestone: str(40),
+      top: int(),
+      supplierCode: str(20),
+      supplierName: str(160),
+      shipmentState: str(20),
+      data: json(),
+      computedAt: datetime(),
+    },
+    indexes: [
+      {
+        key: "by_kind_situation",
+        type: "key",
+        columns: ["kind", "situation"],
       },
     ],
   },
