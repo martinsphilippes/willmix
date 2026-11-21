@@ -197,11 +197,66 @@ async function openRequirements(
   }
   for (let i = 0; i < writes.length; i += 8)
     await Promise.all(writes.slice(i, i + 8).map((w) => w()));
+  await closeImportSteps(store, order.id, done, at);
   try {
     const { syncMilestones } = await import("@/lib/services/order-milestones");
     await syncMilestones(order.id, { shadow: true });
   } catch (error) {
     console.error("[sankhya-orders] marcos", order.id, error);
+  }
+}
+
+/**
+ * Passos do embarque e do desembaraço (`import_steps`: booking, documentos de
+ * carga, presença de carga, canal, DI, nota…) dos marcos que o Sankhya mostra
+ * que já passaram: gravados como validados, só os que ainda não existem (o
+ * que o portal já gravou fica). Certificação, amostras e divergência seguem
+ * as regras do portal.
+ */
+async function closeImportSteps(
+  store: Store,
+  orderId: string,
+  done: ReadonlySet<string>,
+  at: string,
+) {
+  if (!done.size) return;
+  const [
+    { IMPORT_STEPS },
+    { flowStepOfImportKey, stepId },
+    { milestoneOfStep },
+  ] = await Promise.all([
+    import("@/lib/services/import-flow"),
+    import("@/lib/flow"),
+    import("@/lib/milestones"),
+  ]);
+  const keys = IMPORT_STEPS.map((t) => t.key).filter((key) => {
+    if (/^(cert_|samples_|divergence_)/.test(key)) return false;
+    const step = flowStepOfImportKey(key);
+    const milestone = step ? milestoneOfStep(stepId(step)) : null;
+    return !!milestone && done.has(milestone);
+  });
+  if (!keys.length) return;
+  const have = new Set(
+    (await store.list("import_steps", { filter: { orderId } })).map(
+      (s) => s.key,
+    ),
+  );
+  for (const key of keys) {
+    if (have.has(key)) continue;
+    await store.create("import_steps", {
+      orderId,
+      key,
+      status: "validated",
+      value: "Concluído no Sankhya (carga dos pedidos)",
+      amount: null,
+      currency: null,
+      documentId: null,
+      submittedByUserId: null,
+      submittedAt: at,
+      validatedByUserId: null,
+      validatedAt: at,
+      rejectReason: null,
+    } as never);
   }
 }
 
@@ -345,6 +400,26 @@ async function loadOrdersChunk(
   }
 }
 
+/** NUNOTA de cada documento das cadeias → NUNOTA da ponta (o pedido). */
+async function chainLeaves(store: Store) {
+  const rows = await listColumns(
+    store,
+    "sankhya_projection",
+    ["kind", "key", "data"],
+    { jsonKeys: { data: ["chain"] } },
+  );
+  const out = new Map<string, string>();
+  for (const r of rows) {
+    if (r.kind !== "order") continue;
+    const chain = (r.data as { chain?: Array<{ nunota?: unknown }> } | null)
+      ?.chain;
+    for (const d of Array.isArray(chain) ? chain : [])
+      if (d?.nunota !== undefined && String(d.nunota) !== r.key)
+        out.set(String(d.nunota), r.key);
+  }
+  return out;
+}
+
 async function loadShipmentsChunk(
   user: User,
   store: Store,
@@ -355,11 +430,19 @@ async function loadShipmentsChunk(
     store,
     keys.map((k) => `shipment:${k}`),
   );
+  // O 35 pode sair de um documento do meio da cadeia (o 1104 que depois
+  // virou 1107): o pedido é o da ponta da cadeia que o contém.
+  const leafOf = await chainLeaves(store);
+  const linesOf = (r: ProjectionShipment) =>
+    shipmentLines(
+      shipmentLines(r.data?.orders).map((o) => ({
+        ...o,
+        order: Number(leafOf.get(String(o.order)) ?? o.order),
+      })),
+    );
   const orderIds = [
     ...new Set(
-      rows.flatMap((r) =>
-        shipmentLines(r.data?.orders).map((o) => sankhyaOrderId(o.order)),
-      ),
+      rows.flatMap((r) => linesOf(r).map((o) => sankhyaOrderId(o.order))),
     ),
   ];
   const [orders, items, suppliers] = await Promise.all([
@@ -418,7 +501,7 @@ async function loadShipmentsChunk(
         ...fields,
       } as never);
     progress.containers++;
-    const lines = shipmentLines(d.orders).flatMap((o) => {
+    const lines = linesOf(row).flatMap((o) => {
       const orderId = sankhyaOrderId(o.order);
       if (!loaded.has(orderId)) return [];
       const item = itemById.get(sankhyaItemId(o.order, o.seq));
