@@ -1,0 +1,21 @@
+# Intermediários pesados e ambientes locais (não versionar)
+_pipeline/.venv*/
+_pipeline/.cache/
+_pipeline/node_modules/
+_pipeline/__pycache__/
+_demo/.data*/
+_demo/snapshots/
+**/_build/
+*.pyc
+_entrega/
+# Só as fontes vão para o repositório (decisão pendente do dono): vídeos, telas paradas,
+# arquivos fictícios gerados e cópias de entrega ficam fora (regeneráveis pelo pipeline).
+*.mp4
+*/assets/quadros/
+_entrega/
+_demo/arquivos/*
+!_demo/arquivos/*.py
+_demo/planilhas/*.xlsx
+_demo/*.enderecos.json
+_demo/falha-*.png
+_demo/servidor*.log

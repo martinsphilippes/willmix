@@ -1,0 +1,700 @@
+{
+ "papel": "avaliacao",
+ "titulo": "Vídeo de avaliação · Comprador · Do book à solicitação ao fornecedor",
+ "conta": {
+  "email": "operador@wellmix.com",
+  "idioma": "pt"
+ },
+ "cenas": [
+  {
+   "id": "a0-abertura",
+   "modulo": 1,
+   "tipo": "cartao",
+   "capitulo": "Abertura",
+   "cartao": {
+    "tipo": "abertura",
+    "sobretitulo": "Treinamento do Portal Wellmix · Comprador",
+    "titulo": "Do book à solicitação ao fornecedor"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Olá! Este é o treinamento do portal da Wellmix para quem compra. Neste vídeo, você leva a planilha de um fornecedor até a solicitação aberta para ele, do começo ao fim."
+    }
+   ]
+  },
+  {
+   "id": "c1-cartao",
+   "modulo": 1,
+   "tipo": "cartao",
+   "capitulo": "1 · Importar o book",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 1 de 4",
+    "titulo": "Importar o book",
+    "subtitulo": "A planilha do fornecedor entra no portal"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Primeiro: importar o book."
+    }
+   ]
+  },
+  {
+   "id": "c1-importar",
+   "modulo": 1,
+   "tipo": "tela",
+   "capitulo": "1 · Importar o book",
+   "estado": "aval-base",
+   "salvar": "aval-s1",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Chegou a planilha de produtos de um fornecedor? No portal, essa planilha se chama book. É por ela que todo produto novo entra."
+    },
+    {
+     "id": "p2",
+     "fala": "Olha o menu da esquerda. Clica em \"Produto novo\".",
+     "alvo": {
+      "seletor": "aside button",
+      "contem": "Produto novo"
+     },
+     "rotulo": "Produto novo",
+     "resumo": "Abra o grupo \"Produto novo\"",
+     "acao": "clicar",
+     "destaque_em": {
+      "em": "menu"
+     },
+     "espera": {
+      "seletor": "aside a[href='/app/booking']"
+     }
+    },
+    {
+     "id": "p3",
+     "fala": "O menu abre os passos. Clica em \"Books\".",
+     "alvo": {
+      "seletor": "aside a[href='/app/booking']"
+     },
+     "rotulo": "Books",
+     "resumo": "Clique em \"Books\"",
+     "acao": "clicar",
+     "espera": {
+      "url": "/app/booking$",
+      "rede": true
+     }
+    },
+    {
+     "id": "p4",
+     "fala": "Aqui ficam os books que já entraram. Já existe um, fechado, de outro fornecedor.",
+     "alvo": {
+      "seletor": "main table tbody tr"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p5",
+     "fala": "Para subir a planilha nova, olha no alto, à direita: o botão vermelho \"Importar book\". Clica nele.",
+     "alvo": {
+      "seletor": "main a[href='/app/booking/import']"
+     },
+     "rotulo": "Importar book",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Importar book\"",
+     "acao": "clicar",
+     "destaque_em": {
+      "em": "alto"
+     },
+     "espera": {
+      "url": "/app/booking/import",
+      "rede": true
+     }
+    },
+    {
+     "id": "p6",
+     "fala": "Em \"Arquivo\", clica em \"Escolher arquivo\" e pega a planilha que o fornecedor mandou. Aqui eu escolhi a planilha do fornecedor A.",
+     "alvo": {
+      "seletor": "[data-booking-import-form] input[type=file]"
+     },
+     "rotulo": "Arquivo",
+     "resumo": "Escolha a planilha do fornecedor",
+     "acao": "anexar",
+     "valor": "{DEMO}/planilhas/book-shenzhen-supplier-a.xlsx",
+     "destaque_em": {
+      "em": "Arquivo"
+     },
+     "acao_em": {
+      "apos": "mandou"
+     },
+     "zoom": 1.25
+    },
+    {
+     "id": "p7",
+     "fala": "Agora clica em \"Importar book\", o botão vermelho logo abaixo.",
+     "alvo": {
+      "seletor": "[data-booking-import-submit]"
+     },
+     "rotulo": "Importar book",
+     "resumo": "Clique em \"Importar book\"",
+     "acao": "clicar",
+     "espera": {
+      "url": "/app/booking/lots/.+created=1",
+      "rede": true
+     }
+    },
+    {
+     "id": "p8",
+     "fala": "Pronto. O portal leu a planilha e abriu um book novo, em rascunho, com três itens. Nenhum produto foi criado ainda.",
+     "alvo": {
+      "texto": "Book carregado com 3 itens",
+      "exato": false
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "pausa": 0.6
+    }
+   ]
+  },
+  {
+   "id": "c2-cartao",
+   "modulo": 1,
+   "tipo": "cartao",
+   "capitulo": "2 · Conferir e fechar",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 2 de 4",
+    "titulo": "Conferir e fechar o book",
+    "subtitulo": "Sem fechar, os itens não podem ser escolhidos"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora: conferir e fechar o book."
+    }
+   ]
+  },
+  {
+   "id": "c2-fechar",
+   "modulo": 1,
+   "tipo": "tela",
+   "capitulo": "2 · Conferir e fechar",
+   "estado": "aval-s1",
+   "salvar": "aval-s2",
+   "inicio": {
+    "url": "/app/booking",
+    "antes": [
+     {
+      "acao": "clicar",
+      "alvo": {
+       "seletor": "main a[href^='/app/booking/lots/']"
+      },
+      "espera": {
+       "url": "/app/booking/lots/",
+       "rede": true
+      }
+     }
+    ]
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Confere primeiro o quadro \"Dados do book\". A fábrica e a data vieram da planilha.",
+     "alvo": {
+      "seletor": "section:has(:is(h2,h3):text-is('Dados do book'))"
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "cursor": false
+    },
+    {
+     "id": "p2",
+     "fala": "Repara no aviso amarelo. Os três itens estão sem NCM, o código fiscal do produto, e foram para o despachante classificar.",
+     "alvo": {
+      "texto": "Itens sem produto parecido",
+      "exato": false
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p3",
+     "fala": "À direita, o quadro \"Fechar o book\" confirma: falta para fechar, três itens incompletos. Com esse aviso na tela, o book não fecha.",
+     "alvo": {
+      "texto": "Falta para fechar",
+      "exato": false
+     },
+     "acao": "mostrar",
+     "destaque_em": {
+      "em": "quadro"
+     }
+    },
+    {
+     "id": "p4",
+     "fala": "Se você já tem o NCM, pode preencher. Desce até a tabela \"Itens\". Na coluna NCM da primeira linha, digite o código e aperte Enter.",
+     "alvo": {
+      "seletor": "input[data-booking-item-ncm]",
+      "n": 0
+     },
+     "rotulo": "NCM",
+     "rotulo_lado": "acima",
+     "resumo": "Digite o NCM do primeiro item e aperte Enter",
+     "acao": "digitar",
+     "valor": "7013.49.00",
+     "enter": true,
+     "destaque_em": {
+      "em": "coluna"
+     },
+     "acao_em": {
+      "apos": "digite"
+     },
+     "espera": {
+      "seletor": "[data-booking-row-note=\"saved\"]",
+      "ms": 500
+     },
+     "zoom": 1.35,
+     "pausa": 0.7
+    },
+    {
+     "id": "p5",
+     "fala": "Apareceu \"Gravado\" embaixo do campo. Todo campo grava sozinho, sem botão de salvar.",
+     "alvo": {
+      "seletor": "[data-booking-row-note=\"saved\"]",
+      "n": 0
+     },
+     "acao": "mostrar",
+     "zoom": 1.35
+    },
+    {
+     "id": "p6",
+     "fala": "Faça o mesmo na segunda linha.",
+     "alvo": {
+      "seletor": "input[data-booking-item-ncm]",
+      "n": 1
+     },
+     "rotulo": "NCM",
+     "rotulo_lado": "acima",
+     "resumo": "Digite o NCM do segundo item",
+     "acao": "digitar",
+     "valor": "7013.37.00",
+     "enter": true,
+     "acao_em": 0.9,
+     "espera": {
+      "ms": 250
+     },
+     "pausa": 0.5
+    },
+    {
+     "id": "p7",
+     "fala": "E na terceira.",
+     "alvo": {
+      "seletor": "input[data-booking-item-ncm]",
+      "n": 2
+     },
+     "rotulo": "NCM",
+     "rotulo_lado": "acima",
+     "resumo": "Digite o NCM do terceiro item",
+     "acao": "digitar",
+     "valor": "7013.49.00",
+     "enter": true,
+     "acao_em": 0.9,
+     "espera": {
+      "ms": 250
+     },
+     "pausa": 0.5
+    },
+    {
+     "id": "p8",
+     "fala": "Agora sobe até o quadro \"Fechar o book\" e clica em \"Fechar e analisar\".",
+     "alvo": {
+      "seletor": "[data-booking-lot-close-submit]"
+     },
+     "rotulo": "Fechar e analisar",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Fechar e analisar\"",
+     "acao": "clicar",
+     "destaque_em": {
+      "em": "quadro"
+     },
+     "espera": {
+      "url": "closed=1",
+      "rede": true
+     }
+    },
+    {
+     "id": "p9",
+     "fala": "Book fechado. O Superplan, que calcula o custo de cada item, já analisou os três.",
+     "alvo": {
+      "texto": "Book fechado. O Superplan analisou todos os itens.",
+      "exato": false
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "pausa": 0.6
+    }
+   ]
+  },
+  {
+   "id": "c3-cartao",
+   "modulo": 1,
+   "tipo": "cartao",
+   "capitulo": "3 · Escolher o melhor item",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 3 de 4",
+    "titulo": "Escolher o melhor item",
+    "subtitulo": "Seleção de itens: comparar fornecedores e gravar a escolha"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Depois: escolher o melhor item."
+    }
+   ]
+  },
+  {
+   "id": "c3-selecao",
+   "modulo": 1,
+   "tipo": "tela",
+   "capitulo": "3 · Escolher o melhor item",
+   "estado": "aval-s2",
+   "salvar": "aval-s3",
+   "inicio": {
+    "url": "/app/booking",
+    "antes": [
+     {
+      "acao": "clicar",
+      "alvo": {
+       "seletor": "main a[href^='/app/booking/lots/']"
+      },
+      "espera": {
+       "url": "/app/booking/lots/",
+       "rede": true
+      }
+     }
+    ]
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Com o book fechado, os itens já podem ser comparados. No menu, clica em \"Seleção de itens\".",
+     "alvo": {
+      "seletor": "aside a[href='/app/booking/selection']"
+     },
+     "rotulo": "Seleção de itens",
+     "resumo": "Abra a \"Seleção de itens\"",
+     "acao": "clicar",
+     "destaque_em": {
+      "em": "menu"
+     },
+     "espera": {
+      "url": "/app/booking/selection",
+      "rede": true
+     }
+    },
+    {
+     "id": "p2",
+     "fala": "Vamos comparar as jarras de vidro. No campo de busca, digite jar, que é jarra em inglês, como vem na planilha.",
+     "alvo": {
+      "seletor": "main form input[name=q]"
+     },
+     "rotulo": "Buscar",
+     "resumo": "Digite o que procura na busca",
+     "acao": "digitar",
+     "valor": "jar",
+     "destaque_em": {
+      "em": "campo"
+     },
+     "acao_em": {
+      "apos": "digite"
+     }
+    },
+    {
+     "id": "p3",
+     "fala": "Clica em \"Filtrar\".",
+     "alvo": {
+      "papel": "button",
+      "nome": "Filtrar"
+     },
+     "rotulo": "Filtrar",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Filtrar\"",
+     "acao": "clicar",
+     "espera": {
+      "url": "q=jar",
+      "rede": true
+     },
+     "pausa": 0.6
+    },
+    {
+     "id": "p4",
+     "fala": "Ficaram dois itens: a jarra de um fornecedor e a jarra do outro.",
+     "alvo": {
+      "seletor": "table:has([data-selection-item])"
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "cursor": false
+    },
+    {
+     "id": "p5",
+     "fala": "Marca a caixinha no alto da tabela, à esquerda, para pegar os dois de uma vez.",
+     "alvo": {
+      "seletor": "input[data-basket-all]"
+     },
+     "rotulo": "Marcar todos",
+     "rotulo_lado": "direita",
+     "resumo": "Marque os itens parecidos",
+     "acao": "marcar",
+     "destaque_em": {
+      "em": "caixinha"
+     },
+     "zoom": 1.3,
+     "espera": {
+      "seletor": "[data-selection-group]"
+     }
+    },
+    {
+     "id": "p6",
+     "fala": "Embaixo apareceu a barra com os itens marcados. Clica em \"Agrupar para seleção\".",
+     "alvo": {
+      "seletor": "[data-selection-group]"
+     },
+     "rotulo": "Agrupar para seleção",
+     "rotulo_lado": "acima",
+     "resumo": "Clique em \"Agrupar para seleção\"",
+     "acao": "clicar",
+     "destaque_em": {
+      "em": "barra"
+     },
+     "espera": {
+      "url": "tab=selection&ids=",
+      "rede": true
+     }
+    },
+    {
+     "id": "p7",
+     "fala": "Agora os dois estão lado a lado, com preço, pedido mínimo e medidas. Uma das jarras tem o preço menor: US$ 2,10.",
+     "alvo": {
+      "seletor": "table[data-selection-items]"
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "cursor": false
+    },
+    {
+     "id": "p8",
+     "fala": "Na linha dela, clica em \"Escolher\".",
+     "alvo": {
+      "seletor": "[data-selection-choose-button]",
+      "dentro": {
+       "seletor": "[data-selection-item]",
+       "contem": "SZ-JR15"
+      }
+     },
+     "rotulo": "Escolher",
+     "rotulo_lado": "direita",
+     "resumo": "Clique em \"Escolher\" no item que ganhou",
+     "acao": "clicar",
+     "zoom": 1.3,
+     "espera": {
+      "seletor": "[data-selection-needs]",
+      "ms": 400
+     }
+    },
+    {
+     "id": "p9",
+     "fala": "Mais abaixo, em \"Quantidade (peças)\": se você deixar em branco, vale a quantidade da planilha.",
+     "alvo": {
+      "seletor": "[data-selection-quantity]"
+     },
+     "rotulo": "Quantidade (peças)",
+     "rotulo_lado": "acima",
+     "acao": "mostrar",
+     "destaque_em": {
+      "em": "Quantidade"
+     }
+    },
+    {
+     "id": "p10",
+     "fala": "Em \"O que a Wellmix precisa no produto\", escreva o que você quer: cor, embalagem, logo. O fornecedor vai ler esse texto.",
+     "alvo": {
+      "seletor": "[data-selection-needs]"
+     },
+     "rotulo": "O que a Wellmix precisa no produto",
+     "rotulo_lado": "acima",
+     "resumo": "Escreva o que a Wellmix precisa no produto",
+     "acao": "digitar",
+     "valor": "Caixa com a marca Wellmix e tampa na cor preta.",
+     "destaque_em": 0.3,
+     "acao_em": {
+      "apos": "quer"
+     }
+    },
+    {
+     "id": "p11",
+     "fala": "Agora clica em \"Gravar escolha\".",
+     "alvo": {
+      "seletor": "[data-selection-submit]"
+     },
+     "rotulo": "Gravar escolha",
+     "rotulo_lado": "direita",
+     "resumo": "Clique em \"Gravar escolha\"",
+     "acao": "clicar",
+     "espera": {
+      "url": "saved=1",
+      "rede": true
+     },
+     "pausa": 0.8
+    },
+    {
+     "id": "p12",
+     "fala": "A escolha foi gravada. Atenção: nada foi enviado ao fornecedor ainda.",
+     "alvo": {
+      "seletor": "[data-selection-saved]"
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "pausa": 0.6
+    }
+   ]
+  },
+  {
+   "id": "c4-cartao",
+   "modulo": 1,
+   "tipo": "cartao",
+   "capitulo": "4 · Abrir a solicitação",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 4 de 4",
+    "titulo": "Abrir a solicitação ao fornecedor",
+    "subtitulo": "É aqui que o fornecedor fica sabendo"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Por fim: abrir a solicitação ao fornecedor."
+    }
+   ]
+  },
+  {
+   "id": "c4-solicitacao",
+   "modulo": 1,
+   "tipo": "tela",
+   "capitulo": "4 · Abrir a solicitação",
+   "estado": "aval-s3",
+   "salvar": "aval-s4",
+   "inicio": {
+    "url": "/app/booking/selection?tab=blocks"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "O grupo aparece como resolvido, com a jarra escolhida em verde.",
+     "alvo": {
+      "seletor": "[data-selection-resolved=saved]"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p2",
+     "fala": "Para avisar o fornecedor, clica em \"Abrir solicitação de todos\", o botão vermelho à direita.",
+     "alvo": {
+      "seletor": "[data-selection-open-all]"
+     },
+     "rotulo": "Abrir solicitação de todos",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Abrir solicitação de todos\"",
+     "acao": "clicar",
+     "destaque_em": {
+      "em": "Abrir"
+     },
+     "espera": {
+      "url": "/app/supplier-requests/.+created=1",
+      "rede": true
+     }
+    },
+    {
+     "id": "p3",
+     "fala": "Pronto: nasceu a solicitação ao fornecedor, com a situação \"Aberta\". O fornecedor foi avisado e responde pelo portal.",
+     "alvo": {
+      "texto": "Solicitação aberta. O fornecedor foi avisado",
+      "exato": false
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p4",
+     "fala": "Repara no selo SLA, lá no alto: é o prazo para ele responder.",
+     "alvo": {
+      "texto": "SLA até",
+      "exato": false
+     },
+     "rotulo": "Prazo de resposta",
+     "rotulo_lado": "direita",
+     "acao": "mostrar",
+     "zoom": 1.3,
+     "destaque_em": {
+      "em": "selo"
+     }
+    },
+    {
+     "id": "p5",
+     "fala": "E aqui está o texto que você escreveu, do jeito que ele vai ler.",
+     "alvo": {
+      "texto": "Caixa com a marca Wellmix e tampa na cor preta.",
+      "exato": false
+     },
+     "acao": "mostrar",
+     "pausa": 0.8
+    }
+   ]
+  },
+  {
+   "id": "z1-suavez",
+   "modulo": 1,
+   "tipo": "cartao",
+   "capitulo": "Sua vez",
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Do book à solicitação",
+    "itens": [
+     "Em Produto novo → Books, clique em \"Importar book\" e suba a planilha",
+     "Preencha o NCM de cada item e clique em \"Fechar e analisar\"",
+     "Em Seleção de itens, busque, marque e agrupe os itens parecidos",
+     "Clique em \"Escolher\", escreva o que a Wellmix precisa e grave a escolha",
+     "Clique em \"Abrir solicitação de todos\""
+    ]
+   },
+   "duracao_min": 6,
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora é com você. Pause o vídeo e faça esses cinco passos no portal."
+    }
+   ]
+  },
+  {
+   "id": "z2-fim",
+   "modulo": 1,
+   "tipo": "cartao",
+   "capitulo": "Resumo",
+   "cartao": {
+    "tipo": "encerramento",
+    "titulo": "Solicitação aberta",
+    "subtitulo": "Planilha importada, book fechado, item escolhido e fornecedor avisado."
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Resumindo: planilha importada, book fechado, item escolhido e solicitação aberta. Agora é só acompanhar a resposta do fornecedor em \"Negociações\"."
+    }
+   ]
+  }
+ ]
+}

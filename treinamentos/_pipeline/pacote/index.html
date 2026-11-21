@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITULO__</title>
+<link rel="stylesheet" href="assets/player.css">
+</head>
+<body>
+<header class="topo">
+  <img src="assets/logo.svg" alt="Wellmix">
+  <div><p class="sobre">Treinamento do Portal Wellmix</p><h1 id="titulo"></h1></div>
+  <a class="guia" href="guia-rapido.html">Guia rápido</a>
+</header>
+<nav class="modulos" id="modulos" aria-label="Módulos"></nav>
+<nav class="abas" role="tablist">
+  <button role="tab" id="aba-video" aria-selected="true" data-aba="video">Vídeo</button>
+  <button role="tab" id="aba-pratica" aria-selected="false" data-aba="pratica">Prática</button>
+  <button role="tab" id="aba-quiz" aria-selected="false" data-aba="quiz">Quiz</button>
+</nav>
+<main>
+  <section id="painel-video" class="painel">
+    <div class="palco">
+      <video id="video" controls playsinline preload="metadata"></video>
+      <div id="suavez" class="suavez" hidden>
+        <div class="cartao">
+          <p class="sobre">Sua vez</p>
+          <h2 id="suavez-titulo"></h2>
+          <ol id="suavez-itens"></ol>
+          <div class="acoes">
+            <button id="suavez-praticar" class="secundario">Praticar na simulação</button>
+            <button id="suavez-continuar" class="primario">Continuar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="capitulos"><h2>Capítulos</h2><ol id="capitulos"></ol>
+      <label class="legendas"><input type="checkbox" id="legendas" checked> Legendas</label></aside>
+  </section>
+  <section id="painel-pratica" class="painel" hidden>
+    <div id="sim-lista" class="lista"></div>
+    <div id="sim" hidden>
+      <div class="sim-topo"><button id="sim-voltar" class="secundario">Voltar às práticas</button>
+        <p id="sim-passo" class="passo"></p></div>
+      <p id="sim-instrucao" class="instrucao"></p>
+      <div id="sim-tela" class="sim-tela"><img id="sim-img" alt="Tela do portal"><div id="sim-marca" class="sim-marca" hidden></div>
+        <form id="sim-digitar" class="sim-digitar" hidden><label for="sim-campo" id="sim-rotulo"></label>
+          <input id="sim-campo" autocomplete="off"><button class="primario">OK</button></form></div>
+      <p id="sim-dica" class="dica" role="status"></p>
+    </div>
+  </section>
+  <section id="painel-quiz" class="painel" hidden>
+    <div id="quiz"></div>
+  </section>
+</main>
+<footer class="rodape"><p>Narração em voz sintética. Telas gravadas em ambiente de demonstração, com dados fictícios.</p></footer>
+<script src="assets/dados.js"></script>
+<script src="assets/player.js"></script>
+</body>
+</html>
