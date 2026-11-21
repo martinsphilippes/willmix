@@ -1,4 +1,6 @@
 import type { Translate } from "@/i18n";
+import type { DictionaryKey } from "@/i18n/dictionaries";
+import { SHEET_CURRENCIES } from "@/lib/db/schema";
 import type { QuoteAnswerLabels } from "./quote-answer-form";
 
 /** Os textos da resposta da cotação, na língua de quem responde. */
@@ -10,6 +12,14 @@ export function answerLabels(t: Translate): QuoteAnswerLabels {
     schedule: t("quote.item.schedule"),
     desiredAt: t("quote.item.desiredAt"),
     unitPrice: t("quote.unitPrice"),
+    priceHint: t("quote.priceHint", { typed: "{typed}", example: "{example}" }),
+    currencyAll: t("quote.currencyAll"),
+    currencyNames: Object.fromEntries(
+      SHEET_CURRENCIES.map((c) => [
+        c,
+        t(`currency.name.${c}` as DictionaryKey),
+      ]),
+    ),
     currency: t("strategy.currency"),
     incoterm: t("strategy.last.incoterm"),
     leadTime: t("strategy.last.leadTime"),

@@ -12,7 +12,9 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
+import { MoneyInput } from "@/components/money-input";
 import { parseNumberInput } from "@/lib/number-input";
+import { formatMoneyDigits, moneySeparators } from "@/lib/money-mask";
 import {
   boxesForSheet,
   dimsCbm,
@@ -36,7 +38,16 @@ import type {
  * obrigatórias. Os campos ficam fora do <form> (atributo `form`) para a
  * foto ter o próprio formulário no meio; o que falta aparece embaixo e o
  * envio só sai completo (o servidor confere de novo).
+ *
+ * Moeda e preço (dono, 20/11/2026; docs/PURCHASE_DEMAND.md, "Moeda e preço
+ * na cotação"): a moeda fica ao lado do preço unitário (RMB por padrão,
+ * Dólar, Euro e Real), uma só para todos os itens da cotação; o preço é
+ * digitado só com números e a vírgula entra sozinha, com o símbolo e o
+ * separador da moeda (4000 = ¥ 40.00).
  */
+
+/** Primeiro as moedas de quem vende da China: Yuan (RMB) e Dólar. */
+const FIRST_CURRENCIES = ["RMB", "USD"];
 
 export interface QuoteSheetProduct {
   productId: string;
@@ -66,6 +77,12 @@ export interface QuoteAnswerLabels {
   schedule: string;
   desiredAt: string;
   unitPrice: string;
+  /** "Digite só os números: {typed} vira {example}." */
+  priceHint: string;
+  /** Mais de um item: a moeda vale para todos. */
+  currencyAll: string;
+  /** Nome de cada moeda no seletor ("Yuan (RMB)"). */
+  currencyNames: Record<string, string>;
   currency: string;
   incoterm: string;
   leadTime: string;
@@ -230,6 +247,15 @@ export function QuoteAnswerForm({
   );
   const [terms, setTerms] = useState(commercial);
   const [tried, setTried] = useState(false);
+  const currencyOptions = [
+    ...FIRST_CURRENCIES.filter((c) => currencies.includes(c)),
+    ...currencies.filter((c) => !FIRST_CURRENCIES.includes(c)),
+  ];
+  // Exemplo da digitação na moeda escolhida: 4000 → 40.00 (ou 40,00).
+  const priceHint = fill(L.priceHint, {
+    typed: "4000",
+    example: formatMoneyDigits("4000", moneySeparators(terms.currency)),
+  });
   const setSheet = (pid: string, patch: Partial<SheetText>) =>
     setSheets((all) => ({ ...all, [pid]: { ...all[pid], ...patch } }));
 
@@ -409,35 +435,66 @@ export function QuoteAnswerForm({
                   </p>
                 ) : null}
               </div>
-              <div className="w-40 shrink-0">
-                <Field label={L.unitPrice}>
-                  <input
-                    type="hidden"
-                    form={formId}
-                    name="productId"
-                    value={p.productId}
-                  />
-                  <Input
-                    form={formId}
-                    name={`price.${p.productId}`}
-                    inputMode="decimal"
-                    value={prices[p.productId] ?? ""}
+              <div
+                className="w-full shrink-0 space-y-1 sm:w-72"
+                data-quote-price-box={p.productId}
+              >
+                {/* Rótulo só do preço: a moeda tem o próprio nome (aria). */}
+                <label
+                  htmlFor={`quote-price-${p.productId}`}
+                  className="block text-xs font-medium leading-5 text-zinc-700"
+                >
+                  {L.unitPrice}
+                </label>
+                <input
+                  type="hidden"
+                  form={formId}
+                  name="productId"
+                  value={p.productId}
+                />
+                <div
+                  className="flex items-center gap-2"
+                  data-missing={
+                    lacks(`${p.productId}.price`) ? "true" : undefined
+                  }
+                >
+                  <Select
+                    value={terms.currency}
                     onChange={(e) =>
-                      setPrices((all) => ({
-                        ...all,
-                        [p.productId]: e.target.value,
-                      }))
+                      setTerms({ ...terms, currency: e.target.value })
                     }
-                    data-quote-price={p.productId}
-                    data-missing={
-                      lacks(`${p.productId}.price`) ? "true" : undefined
+                    aria-label={L.currency}
+                    className="w-auto shrink-0"
+                    data-quote-currency={p.productId}
+                  >
+                    {currencyOptions.map((c) => (
+                      <option key={c} value={c}>
+                        {L.currencyNames[c] ?? c}
+                      </option>
+                    ))}
+                  </Select>
+                  <MoneyInput
+                    id={`quote-price-${p.productId}`}
+                    name={`price.${p.productId}`}
+                    form={formId}
+                    currency={terms.currency}
+                    autoDecimal
+                    value={prices[p.productId] ?? ""}
+                    onValueChange={(v) =>
+                      setPrices((all) => ({ ...all, [p.productId]: v }))
                     }
-                    className={cx(
-                      lacks(`${p.productId}.price`) &&
-                        "border-red-400 bg-red-50",
-                    )}
+                    error={lacks(`${p.productId}.price`)}
+                    inputData={{ "data-quote-price": p.productId }}
+                    className="min-w-0 flex-1"
                   />
-                </Field>
+                </div>
+                <p
+                  className="text-xs text-zinc-500"
+                  data-quote-price-hint={p.productId}
+                >
+                  {priceHint}
+                  {products.length > 1 ? ` ${L.currencyAll}` : null}
+                </p>
               </div>
             </div>
 
@@ -782,22 +839,8 @@ export function QuoteAnswerForm({
       })}
 
       <section className="rounded-xl border border-zinc-200 bg-white p-3 sm:p-4">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Field label={L.currency}>
-            <Select
-              form={formId}
-              name="currency"
-              value={terms.currency}
-              onChange={(e) => setTerms({ ...terms, currency: e.target.value })}
-              data-quote-currency
-            >
-              {currencies.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </Select>
-          </Field>
+        {/* A moeda fica ao lado do preço de cada item (uma para todos). */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field label={L.incoterm}>
             <Select
               form={formId}
@@ -873,6 +916,7 @@ export function QuoteAnswerForm({
           className="mt-3 space-y-2"
         >
           <input type="hidden" name="quoteId" value={quoteId} />
+          <input type="hidden" name="currency" value={terms.currency} />
           {missing.length ? (
             <div
               className={cx(

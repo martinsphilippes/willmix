@@ -209,7 +209,9 @@ export default async function PurchaseQuotePage({
               photoAction={addQuoteScalePhotoAction}
               products={answerProducts}
               commercial={{
-                currency: response.currency ?? "USD",
+                // Sem resposta ainda: RMB (dono, 20/11/2026); o fornecedor
+                // troca ao lado do preço.
+                currency: response.currency ?? "RMB",
                 incoterm: response.incoterm ?? "FOB",
                 leadTimeDays: response.leadTimeDays?.toString() ?? "",
                 port: response.port ?? "",
