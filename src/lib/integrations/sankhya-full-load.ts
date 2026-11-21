@@ -191,11 +191,35 @@ export interface FullLoadResult {
  * Vercel) e
  * devolve o progresso. Rodar de novo continua de onde parou.
  */
+/**
+ * Carga antiga do histórico de pedidos (TGFCAB das TOPs de importação, um
+ * pedido por documento): errada, criou um pedido por TOP da mesma compra.
+ * Os 16.268 pedidos dela foram apagados em 21/11/2026 (dono) e ela fica
+ * desligada até a carga nova (docs/SANKHYA_INTEGRACAO.md, seção 9). Só roda
+ * com a chave `sankhya.legacyOrders` = "enabled" (os testes da regra antiga).
+ */
+export const LEGACY_ORDERS_KEY = "sankhya.legacyOrders";
+
+export async function legacyOrdersEnabled() {
+  return (await readSetting<string>(LEGACY_ORDERS_KEY)) === "enabled";
+}
+
 export async function runFullLoad(
   user: User,
   entity: FullLoadEntity,
   budgetMs = 30_000,
 ): Promise<FullLoadResult> {
+  if (entity === "orders" && !(await legacyOrdersEnabled())) {
+    const progress: FullLoadProgress = {
+      ...(await getFullLoadProgress("orders")),
+      done: true,
+      remaining: 0,
+      missing: [
+        "Carga antiga desligada (21/11/2026): substituída pela carga nova dos pedidos",
+      ],
+    };
+    return { progress, lines: [] };
+  }
   if (entity === "productCartons") {
     const { runCartonLoad } = await import("./sankhya-cartons");
     return { progress: await runCartonLoad(user, budgetMs), lines: [] };

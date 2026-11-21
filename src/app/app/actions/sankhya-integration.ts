@@ -300,6 +300,14 @@ export async function sankhyaImportSampleAction(form: FormData) {
   const user = await admin();
   let target: string;
   try {
+    // A amostra grava notas como pedidos pela regra antiga (um pedido por
+    // documento): desligada com a carga antiga (21/11/2026).
+    const { legacyOrdersEnabled } =
+      await import("@/lib/integrations/sankhya-full-load");
+    if (!(await legacyOrdersEnabled()))
+      throw new Error(
+        "Carga antiga de pedidos desligada (21/11/2026): os pedidos vêm pela carga nova (docs/SANKHYA_INTEGRACAO.md).",
+      );
     const n = z.coerce
       .number()
       .int()
