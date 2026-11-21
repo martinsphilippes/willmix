@@ -1,7 +1,8 @@
 -- Ensaio da reconstrução dos pedidos de compra do Sankhya (docs/SANKHYA_INTEGRACAO.md,
 -- seções 3.1, 4 e 5). Lê só a cópia bruta (sankhya_stage_rows) e grava o resultado em
 -- sankhya_projection (apaga e refaz só essa tabela). Não toca em pedidos do portal.
--- São três comandos (apagar, pedidos, embarques); cada um tem os próprios "with".
+-- São quatro comandos (apagar, pedidos, embarques e as compras 33 -> 30); cada um tem os
+-- próprios "with".
 -- Rodar de novo depois de copiar as views: o resultado é sempre o da cópia atual.
 begin;
 delete from public.sankhya_projection;
@@ -203,4 +204,98 @@ select 'shipment:' || s.n, 'shipment', s.n::text,
   now()
 from ship s
 left join carried c on c.d = s.n;
+-- Compras de 2020 a 2022 pelo caminho 117 -> 33 -> 30 -> 35 (dono, 21/11/2026: "traga como
+-- histórico encerrado"): um pedido por documento 30, com a cadeia (117, 33) e os itens do 30,
+-- sempre encerrado. Os 10 que vêm da cadeia nova (1103 -> 30) já são os "Caminho antigo" do
+-- primeiro comando e ficam fora daqui.
+with recursive
+h as (
+  select nunota n, row r,
+    (row->>'CODTIPOPER')::int top,
+    row->>'PEDIDO_PENDENTE' = 'S' pend
+  from public.sankhya_stage_rows where dataset = 'purchaseHeaders'
+),
+lk as (
+  select (row->>'NUNOTAORIG')::bigint o, (row->>'SEQUENCIAORIG')::int os,
+         (row->>'NUNOTA')::bigint d, coalesce((row->>'QTDATENDIDA')::numeric, 0) q,
+         (row->>'TOP_DESTINO')::int topd
+  from public.sankhya_stage_rows where dataset = 'purchaseLinks'
+),
+ld as (select distinct o, d from lk where o <> d),
+leaf as (
+  select h.* from h where h.top = 30
+  and not exists (
+    select 1 from ld join h a on a.n = ld.o
+    where ld.d = h.n and a.top in (1100, 1101, 1102, 1103, 1104, 1107))
+),
+anc(leaf, n, depth) as (
+  select n, n, 0 from leaf
+  union
+  select a.leaf, ld.o, a.depth + 1
+  from anc a join ld on ld.d = a.n join h p on p.n = ld.o and p.top in (117, 33, 30)
+  where a.depth < 6
+),
+chain as (
+  select a.leaf, jsonb_agg(jsonb_build_object(
+      'nunota', p.n, 'top', p.top, 'pending', p.pend,
+      'date', p.r->>'DATA_PEDIDO', 'numnota', p.r->>'NUMNOTA')
+      order by a.depth desc) docs
+  from anc a join h p on p.n = a.n group by a.leaf
+),
+outs as (
+  select o leaf, array_agg(distinct d) docs from lk where topd = 35 group by o
+),
+shipped as (select o, os, sum(q) q from lk where topd = 35 group by o, os),
+items as (
+  select i.nunota leaf, jsonb_agg(jsonb_build_object(
+      'seq', (i.row->>'SEQUENCIA')::int,
+      'codprod', i.row->>'CODPROD',
+      'name', i.row->>'DESCRICAO_PRODUTO',
+      'ref', i.row->>'REFERENCIA_FORNECEDOR',
+      'unit', i.row->>'UNIDADE_NEGOCIADA',
+      'qty', (i.row->>'QTD_NEGOCIADA')::numeric,
+      'shipped', coalesce(s.q, 0),
+      'pendingQty', greatest((i.row->>'QTD_NEGOCIADA')::numeric - coalesce(s.q, 0), 0),
+      'itemPending', i.row->>'ITEM_PENDENTE' = 'S',
+      'price', (i.row->>'PRECO_UNITARIO_ORIGEM')::numeric,
+      'boxes', (i.row->>'QTD_CAIXAS_CALCULADA')::numeric)
+      order by (i.row->>'SEQUENCIA')::int) list,
+    sum(coalesce(s.q, 0)) shipped_total,
+    sum((i.row->>'QTD_NEGOCIADA')::numeric) qty_total
+  from public.sankhya_stage_rows i
+  join leaf on leaf.n = i.nunota
+  left join shipped s on s.o = i.nunota and s.os = (i.row->>'SEQUENCIA')::int
+  where i.dataset = 'purchaseItems'
+  group by i.nunota
+)
+insert into public.sankhya_projection
+  ("id", "kind", "key", "situation", "milestone", "top", "supplierCode", "supplierName",
+   "shipmentState", "data", "computedAt")
+select 'order:' || l.n, 'order', l.n::text, 'closed', null, 30,
+  l.r->>'COD_FORNECEDOR', l.r->>'NOME_FORNECEDOR',
+  case
+    when coalesce(it.shipped_total, 0) <= 0 then 'none'
+    when coalesce(it.shipped_total, 0) < coalesce(it.qty_total, 0) then 'partial'
+    else 'shipped'
+  end,
+  jsonb_build_object(
+    'chain', c.docs, 'items', coalesce(it.list, '[]'::jsonb),
+    'qtyTotal', coalesce(it.qty_total, 0), 'shippedTotal', coalesce(it.shipped_total, 0),
+    'shipments', coalesce(to_jsonb(o.docs), '[]'::jsonb),
+    'statusShipping', l.r->>'STATUS_SHIPPING', 'receipt', l.r->>'STATUS_RECEBIMENTO',
+    'receivedAt', l.r->>'DATA_RECEBIMENTO',
+    'quality', l.r->>'STATUS_QUALIDADE', 'inspectedAt', l.r->>'DATA_INSPECAO',
+    'customsChannel', l.r->>'CANAL_ADUANEIRO',
+    'currency', l.r->>'MOEDA_ORIGEM', 'total', (l.r->>'VALOR_TOTAL_PEDIDO_ORIGEM')::numeric,
+    'incoterm', l.r->>'INCOTERM', 'etd', l.r->>'ETD', 'eta', l.r->>'ETA',
+    'orderedAt', l.r->>'DATA_PEDIDO', 'changedAt', l.r->>'DATA_ALTERACAO_PEDIDO',
+    'numnota', l.r->>'NUMNOTA',
+    'legacy', '33-30', 'pendingInSankhya', l.pend),
+  now()
+from leaf l
+left join chain c on c.leaf = l.n
+left join outs o on o.leaf = l.n
+left join items it on it.leaf = l.n
+on conflict ("id") do nothing;
+
 commit;

@@ -400,22 +400,34 @@ async function loadOrdersChunk(
   }
 }
 
-/** NUNOTA de cada documento das cadeias → NUNOTA da ponta (o pedido). */
+/**
+ * NUNOTA de cada documento das cadeias → NUNOTA da ponta (o pedido). No
+ * "Caminho antigo" (1103 → 30), o 30 que saiu da ponta também leva ao
+ * pedido: é dele que o embarque (35) sai.
+ */
 async function chainLeaves(store: Store) {
   const rows = await listColumns(
     store,
     "sankhya_projection",
-    ["kind", "key", "data"],
-    { jsonKeys: { data: ["chain"] } },
+    ["kind", "key", "situation", "data"],
+    { jsonKeys: { data: ["chain", "shipments"] } },
   );
   const out = new Map<string, string>();
   for (const r of rows) {
     if (r.kind !== "order") continue;
-    const chain = (r.data as { chain?: Array<{ nunota?: unknown }> } | null)
-      ?.chain;
-    for (const d of Array.isArray(chain) ? chain : [])
-      if (d?.nunota !== undefined && String(d.nunota) !== r.key)
-        out.set(String(d.nunota), r.key);
+    const data = r.data as {
+      chain?: Array<{ nunota?: unknown }>;
+      shipments?: unknown[];
+    } | null;
+    const docs = [
+      ...(Array.isArray(data?.chain) ? data!.chain.map((d) => d?.nunota) : []),
+      ...(r.situation === "legacy_path" && Array.isArray(data?.shipments)
+        ? data!.shipments
+        : []),
+    ];
+    for (const n of docs)
+      if (n !== undefined && n !== null && String(n) !== r.key)
+        out.set(String(n), r.key);
   }
   return out;
 }
