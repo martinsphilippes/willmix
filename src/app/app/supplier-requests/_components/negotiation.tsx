@@ -1,21 +1,25 @@
-import type { SupplierRequest, SupplierRequestEvent } from "@/lib/db/schema";
+import type { ReactNode } from "react";
+import type { SupplierRequest } from "@/lib/db/schema";
 import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
 import type { SuperplanInput } from "@/lib/superplan";
 import { ProposalFields } from "./proposal-fields";
 import type { Translate } from "@/i18n";
 import { canPropose, pendingProposal } from "@/lib/supplier-requests";
 import type { SupplierRequestSla } from "@/lib/services/supplier-request-negotiation";
-import { Badge, Card, Field, Input, Select, Textarea } from "@/components/ui";
+import { Badge, Field, Textarea } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { ActionForm } from "@/components/action-form";
 import {
-  proposeSupplierRequestAction,
-  respondProposalAction,
+  proposeSupplierRequestStateAction,
+  respondProposalStateAction,
 } from "../../actions/supplier-requests";
+import { OfferRowFields } from "./offer-row";
 
 /*
  * Negociação da solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md,
- * "Negociação"): o histórico de contrapropostas e mensagens, a contraproposta
- * da Wellmix, a resposta do fornecedor a ela e a conversa com arquivos.
+ * "Negociação" e "Tela da negociação reorganizada"): a contraproposta da
+ * Wellmix e a resposta do fornecedor a ela, na seção "Negociação e conversa"
+ * (o histórico fica na lateral; a conversa, logo abaixo destes formulários).
  */
 
 /** Data e hora (o SLA é em minutos). */
@@ -54,83 +58,21 @@ export function SlaBadge({
   );
 }
 
-function OfferFields({
-  t,
-  values,
-  currencyDefault,
-  incotermDefault,
-  raw,
-}: {
-  t: Translate;
-  values: Pick<
-    SupplierRequestEvent,
-    "price" | "currency" | "moq" | "leadTimeDays" | "incoterm"
-  > | null;
-  currencyDefault: string;
-  incotermDefault: string;
-  raw: (n: number | null | undefined) => string;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      <Field label={t("supplierRequests.detail.answer.price")}>
-        <Input
-          name="price"
-          inputMode="decimal"
-          defaultValue={raw(values?.price)}
-          data-negotiation-price
-        />
-      </Field>
-      <Field label={t("supplierRequests.detail.answer.currency")}>
-        <Select
-          name="currency"
-          defaultValue={values?.currency ?? currencyDefault}
-        >
-          {SHEET_CURRENCIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Field label={t("supplierRequests.detail.answer.moq")}>
-        <Input
-          name="moq"
-          inputMode="numeric"
-          defaultValue={raw(values?.moq)}
-          data-negotiation-moq
-        />
-      </Field>
-      <Field label={t("supplierRequests.detail.answer.leadTime")}>
-        <Input
-          name="leadTimeDays"
-          inputMode="numeric"
-          defaultValue={raw(values?.leadTimeDays)}
-          data-negotiation-lead-time
-        />
-      </Field>
-      <Field label={t("supplierRequests.detail.answer.incoterm")}>
-        <Select
-          name="incoterm"
-          defaultValue={values?.incoterm ?? incotermDefault}
-          data-negotiation-incoterm
-        >
-          {SHEET_INCOTERMS.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </Select>
-      </Field>
-    </div>
-  );
-}
-
-export function NegotiationCard({
+/**
+ * Formulários da seção "Negociação e conversa": a contraproposta da Wellmix
+ * (em preparação até enviar) e a resposta do fornecedor a ela. Mesmos campos,
+ * regras e Server Actions de antes, nas variantes que devolvem o erro: dando
+ * errado, o que foi digitado fica. `fromTo` diz quem envia e quem recebe.
+ */
+export function NegotiationForms({
   request: r,
   wellmix,
   t,
   simulation = null,
   showPrice = true,
+  fromTo,
+  errors,
+  fallbackError,
 }: {
   request: SupplierRequest;
   wellmix: boolean;
@@ -142,165 +84,194 @@ export function NegotiationCard({
    * (ela propõe MOQ, prazo e FOB/EXW; dono, 15/11/2026).
    */
   showPrice?: boolean;
+  fromTo: ReactNode;
+  errors: Record<string, string>;
+  fallbackError: string;
 }) {
   const events = r.negotiation ?? [];
   const proposal = pendingProposal(events);
-  const decimal = t.intl.startsWith("pt") ? "," : ".";
-  const raw = (n: number | null | undefined) =>
-    n === null || n === undefined ? "" : String(n).replace(".", decimal);
   const currencyDefault = r.supplierCurrency ?? r.item.currency ?? "USD";
   const incotermDefault = r.supplierIncoterm ?? r.item.incoterm ?? "FOB";
   const showPropose = wellmix && canPropose(r);
   // Só o fornecedor responde à contraproposta (a Wellmix não responde por ele).
   const showRespond = !wellmix && !!proposal && r.status === "answered";
 
-  // Histórico na linha do tempo e mensagens no chat flutuante: aqui ficam
-  // só a contraproposta e a resposta a ela.
   if (!proposal && !showPropose) return null;
   return (
-    // Fica na coluna estreita da direita, embaixo do Booking (pedido do
-    // dono): cartão compacto e os formulários um embaixo do outro.
-    <Card title={t("supplierRequests.negotiation.title")} dense>
-      <div id="conversa" data-negotiation>
-        {proposal ? (
-          <p
-            className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900"
-            data-negotiation-pending
-          >
-            {t(
-              wellmix
-                ? "supplierRequests.negotiation.pendingWellmix"
-                : "supplierRequests.negotiation.pendingSupplier",
-            )}
+    <div id="conversa" className="space-y-3" data-negotiation>
+      {proposal ? (
+        <p
+          className="rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-900"
+          data-negotiation-pending
+        >
+          {t(
+            wellmix
+              ? "supplierRequests.negotiation.pendingWellmix"
+              : "supplierRequests.negotiation.pendingSupplier",
+          )}
+        </p>
+      ) : null}
+
+      {showPropose ? (
+        <ActionForm
+          action={proposeSupplierRequestStateAction}
+          errors={errors}
+          fallbackError={fallbackError}
+          pendingLabel={t("supplierRequests.negotiation.sending")}
+          // Contraproposta gravada: o formulário renasce com os valores novos.
+          key={`propose-${events.length}`}
+          className="space-y-2 rounded-lg border border-zinc-200 p-2.5"
+          data-negotiation-propose-form
+        >
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <h4 className="text-sm font-semibold text-zinc-900">
+              {t("supplierRequests.negotiation.propose")}
+            </h4>
+            <span className="rounded-full bg-sky-100 px-2 py-px text-[10px] font-semibold uppercase tracking-wide text-sky-800">
+              {t("negotiationScreen.counter.draft")}
+            </span>
+          </div>
+          <p className="mb-2 text-xs text-zinc-500">
+            {t("supplierRequests.negotiation.proposeHint")}
           </p>
-        ) : null}
-
-        <div className="grid gap-4">
-          {showPropose ? (
-            <form
-              action={proposeSupplierRequestAction}
-              className="space-y-2"
-              data-negotiation-propose-form
-            >
-              <h3 className="text-sm font-semibold">
-                {t("supplierRequests.negotiation.propose")}
-              </h3>
-              <p className="text-xs text-zinc-500">
-                {t("supplierRequests.negotiation.proposeHint")}
-              </p>
-              <input type="hidden" name="id" value={r.id} />
-              <ProposalFields
-                showPrice={showPrice}
-                values={{
-                  price: showPrice ? r.supplierPrice : null,
-                  currency: showPrice
-                    ? (r.supplierCurrency ?? currencyDefault)
-                    : "",
-                  moq: r.supplierMoq,
-                  leadTimeDays: r.supplierLeadTimeDays,
-                  incoterm: incotermDefault,
-                }}
-                currencies={SHEET_CURRENCIES}
-                incoterms={SHEET_INCOTERMS}
-                base={showPrice ? (simulation?.base ?? null) : null}
-                bookingMinimum={
-                  showPrice ? (simulation?.bookingMinimum ?? null) : null
-                }
-                intl={t.intl}
-                labels={{
-                  price: t("supplierRequests.detail.answer.price"),
-                  currency: t("supplierRequests.detail.answer.currency"),
-                  moq: t("supplierRequests.detail.answer.moq"),
-                  leadTime: t("supplierRequests.detail.answer.leadTime"),
-                  incoterm: t("supplierRequests.detail.answer.incoterm"),
-                  simTitle: t("supplierRequests.negotiation.sim.title"),
-                  simCost: t("supplierRequests.negotiation.sim.cost"),
-                  simMinimum: t("supplierRequests.negotiation.sim.minimum"),
-                  simBooking: t("supplierRequests.negotiation.sim.booking"),
-                  simTarget: t("supplierRequests.negotiation.sim.target"),
-                  simTargetHint: t(
-                    "supplierRequests.negotiation.sim.targetHint",
-                  ),
-                  simNeeded: t("supplierRequests.negotiation.sim.needed"),
-                  simUse: t("supplierRequests.negotiation.sim.use"),
-                  simUnreachable: t(
-                    "supplierRequests.negotiation.sim.unreachable",
-                  ),
-                  simCurrency: t("supplierRequests.negotiation.sim.currency"),
-                  simMissing: t("supplierRequests.negotiation.sim.missing"),
-                  simHint: t("supplierRequests.negotiation.sim.hint"),
-                }}
+          <input type="hidden" name="id" value={r.id} />
+          <div className="space-y-2">
+            <ProposalFields
+              showPrice={showPrice}
+              values={{
+                price: showPrice ? r.supplierPrice : null,
+                currency: showPrice
+                  ? (r.supplierCurrency ?? currencyDefault)
+                  : "",
+                moq: r.supplierMoq,
+                leadTimeDays: r.supplierLeadTimeDays,
+                incoterm: incotermDefault,
+              }}
+              currencies={SHEET_CURRENCIES}
+              incoterms={SHEET_INCOTERMS}
+              base={showPrice ? (simulation?.base ?? null) : null}
+              bookingMinimum={
+                showPrice ? (simulation?.bookingMinimum ?? null) : null
+              }
+              intl={t.intl}
+              labels={{
+                price: t("negotiationScreen.f.price"),
+                currency: t("negotiationScreen.f.currency"),
+                moq: t("negotiationScreen.f.moq"),
+                leadTime: t("negotiationScreen.f.leadTime"),
+                incoterm: t("negotiationScreen.f.incoterm"),
+                simTitle: t("supplierRequests.negotiation.sim.title"),
+                simCost: t("supplierRequests.negotiation.sim.cost"),
+                simMinimum: t("supplierRequests.negotiation.sim.minimum"),
+                simBooking: t("supplierRequests.negotiation.sim.booking"),
+                simTarget: t("supplierRequests.negotiation.sim.target"),
+                simTargetHint: t("supplierRequests.negotiation.sim.targetHint"),
+                simNeeded: t("supplierRequests.negotiation.sim.needed"),
+                simUse: t("supplierRequests.negotiation.sim.use"),
+                simUnreachable: t(
+                  "supplierRequests.negotiation.sim.unreachable",
+                ),
+                simCurrency: t("supplierRequests.negotiation.sim.currency"),
+                simMissing: t("supplierRequests.negotiation.sim.missing"),
+                simHint: t("supplierRequests.negotiation.sim.hint"),
+              }}
+            />
+            <Field label={t("supplierRequests.negotiation.comment")}>
+              <Textarea
+                name="text"
+                rows={2}
+                maxLength={4000}
+                required
+                className="max-h-48 min-h-9 resize-y"
+                data-negotiation-text
               />
-              <Field label={t("supplierRequests.negotiation.comment")}>
-                <Textarea
-                  name="text"
-                  rows={3}
-                  maxLength={4000}
-                  required
-                  data-negotiation-text
-                />
-              </Field>
+            </Field>
+            {fromTo}
+            <SubmitButton
+              className="min-h-9"
+              pendingText={t("supplierRequests.negotiation.sending")}
+              data-negotiation-propose-submit
+            >
+              {t("supplierRequests.negotiation.proposeSubmit")}
+            </SubmitButton>
+          </div>
+        </ActionForm>
+      ) : null}
+
+      {showRespond && proposal ? (
+        <ActionForm
+          action={respondProposalStateAction}
+          errors={errors}
+          fallbackError={fallbackError}
+          pendingLabel={t("supplierRequests.negotiation.sending")}
+          key={`respond-${proposal.id}`}
+          className="space-y-2 rounded-lg border border-zinc-200 p-2.5"
+          data-negotiation-respond-form
+        >
+          <h4 className="mb-1 text-sm font-semibold text-zinc-900">
+            {t("supplierRequests.negotiation.respond")}
+          </h4>
+          <p className="mb-2 text-xs text-zinc-500">
+            {t("supplierRequests.negotiation.respondHint")}
+          </p>
+          <input type="hidden" name="id" value={r.id} />
+          <div className="space-y-2">
+            <OfferRowFields
+              t={t}
+              values={{
+                price: proposal.price,
+                currency: proposal.currency ?? currencyDefault,
+                moq: proposal.moq,
+                leadTimeDays: proposal.leadTimeDays,
+                incoterm: proposal.incoterm ?? incotermDefault,
+              }}
+              marks={{
+                price: "data-negotiation-price",
+                moq: "data-negotiation-moq",
+                leadTime: "data-negotiation-lead-time",
+                incoterm: "data-negotiation-incoterm",
+              }}
+            />
+            <Field label={t("supplierRequests.negotiation.commentOptional")}>
+              <Textarea
+                name="text"
+                rows={2}
+                maxLength={4000}
+                className="max-h-48 min-h-9 resize-y"
+              />
+            </Field>
+            {fromTo}
+            <div className="flex flex-wrap gap-2">
               <SubmitButton
-                pendingText={t("supplierRequests.negotiation.sending")}
-                data-negotiation-propose-submit
+                className="min-h-9"
+                name="action"
+                value="accept"
+                data-negotiation-respond="accept"
               >
-                {t("supplierRequests.negotiation.proposeSubmit")}
+                {t("supplierRequests.negotiation.accept")}
               </SubmitButton>
-            </form>
-          ) : null}
-
-          {showRespond ? (
-            <form
-              action={respondProposalAction}
-              className="space-y-2"
-              data-negotiation-respond-form
-            >
-              <h3 className="text-sm font-semibold">
-                {t("supplierRequests.negotiation.respond")}
-              </h3>
-              <p className="text-xs text-zinc-500">
-                {t("supplierRequests.negotiation.respondHint")}
-              </p>
-              <input type="hidden" name="id" value={r.id} />
-              <OfferFields
-                t={t}
-                values={proposal}
-                currencyDefault={currencyDefault}
-                incotermDefault={incotermDefault}
-                raw={raw}
-              />
-              <Field label={t("supplierRequests.negotiation.commentOptional")}>
-                <Textarea name="text" rows={2} maxLength={4000} />
-              </Field>
-              <div className="flex flex-wrap gap-2">
-                <SubmitButton
-                  name="action"
-                  value="accept"
-                  data-negotiation-respond="accept"
-                >
-                  {t("supplierRequests.negotiation.accept")}
-                </SubmitButton>
-                <SubmitButton
-                  name="action"
-                  value="counter"
-                  variant="secondary"
-                  data-negotiation-respond="counter"
-                >
-                  {t("supplierRequests.negotiation.counter")}
-                </SubmitButton>
-                <SubmitButton
-                  name="action"
-                  value="reject"
-                  variant="danger"
-                  data-negotiation-respond="reject"
-                >
-                  {t("supplierRequests.negotiation.reject")}
-                </SubmitButton>
-              </div>
-            </form>
-          ) : null}
-        </div>
-      </div>
-    </Card>
+              <SubmitButton
+                className="min-h-9"
+                name="action"
+                value="counter"
+                variant="secondary"
+                data-negotiation-respond="counter"
+              >
+                {t("supplierRequests.negotiation.counter")}
+              </SubmitButton>
+              <SubmitButton
+                className="min-h-9"
+                name="action"
+                value="reject"
+                variant="danger"
+                data-negotiation-respond="reject"
+              >
+                {t("supplierRequests.negotiation.reject")}
+              </SubmitButton>
+            </div>
+          </div>
+        </ActionForm>
+      ) : null}
+    </div>
   );
 }

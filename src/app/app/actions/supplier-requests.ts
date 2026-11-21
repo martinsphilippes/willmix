@@ -4,7 +4,9 @@ import { z } from "zod";
 import { SHEET_CURRENCIES, SHEET_INCOTERMS, YES_NO } from "@/lib/db/schema";
 import type { AiReferencePrompts } from "@/lib/db/schema";
 import { parseNumberInput } from "@/lib/number-input";
-import { requireUser, run, str, withQuery } from "./helpers";
+import type { User } from "@/lib/db";
+import type { FormActionState } from "@/lib/form-action-state";
+import { requireUser, run, runState, str, withQuery } from "./helpers";
 
 /*
  * Seleção de itens e solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md):
@@ -225,66 +227,99 @@ export async function openGroupRequestsAction(form: FormData) {
   });
 }
 
-export async function answerSupplierRequestAction(form: FormData) {
-  const user = await requireUser();
+/** Tela de volta de uma solicitação (a tabela ou o produto). */
+const backFor = (form: FormData) => {
   const raw = str(form, "id");
-  const back = ID.safeParse(raw).success
+  return ID.safeParse(raw).success
     ? detail(raw, form)
     : "/app/supplier-requests";
-  await run(back, async () => {
-    const input = z
-      .object({
-        id: ID,
-        canDo: z.enum(YES_NO),
-        currency: z.enum(SHEET_CURRENCIES).nullable(),
-        incoterm: z.enum(SHEET_INCOTERMS).nullable(),
-        note: z.string().max(4000).nullable(),
-      })
-      .parse({
-        id: raw,
-        canDo: str(form, "canDo"),
-        currency: str(form, "currency") || null,
-        incoterm: str(form, "incoterm") || null,
-        note: str(form, "note") || null,
-      });
-    const { answerSupplierRequest } =
-      await import("@/lib/services/supplier-requests");
-    await answerSupplierRequest(user, input.id, {
-      canDo: input.canDo,
-      currency: input.currency,
-      incoterm: input.incoterm,
-      note: input.note,
-      price: number(form, "price"),
-      moq: number(form, "moq", true),
-      leadTimeDays: number(form, "leadTimeDays", true),
+};
+
+/** Resposta do fornecedor: grava e diz para onde voltar. */
+async function answerDo(user: User, form: FormData, back: string) {
+  const raw = str(form, "id");
+  const input = z
+    .object({
+      id: ID,
+      canDo: z.enum(YES_NO),
+      currency: z.enum(SHEET_CURRENCIES).nullable(),
+      incoterm: z.enum(SHEET_INCOTERMS).nullable(),
+      note: z.string().max(4000).nullable(),
+    })
+    .parse({
+      id: raw,
+      canDo: str(form, "canDo"),
+      currency: str(form, "currency") || null,
+      incoterm: str(form, "incoterm") || null,
+      note: str(form, "note") || null,
     });
-    return withQuery(back, "answered", "1");
+  const { answerSupplierRequest } =
+    await import("@/lib/services/supplier-requests");
+  await answerSupplierRequest(user, input.id, {
+    canDo: input.canDo,
+    currency: input.currency,
+    incoterm: input.incoterm,
+    note: input.note,
+    price: number(form, "price"),
+    moq: number(form, "moq", true),
+    leadTimeDays: number(form, "leadTimeDays", true),
   });
+  return withQuery(back, "answered", "1");
+}
+
+export async function answerSupplierRequestAction(form: FormData) {
+  const user = await requireUser();
+  const back = backFor(form);
+  await run(back, () => answerDo(user, form, back));
+}
+
+/**
+ * A mesma resposta, pela tela da negociação: com erro, o que foi digitado
+ * fica nos campos (docs/SUPPLIER_REQUESTS.md, "Tela da negociação
+ * reorganizada").
+ */
+export async function answerSupplierRequestStateAction(
+  _prev: FormActionState,
+  form: FormData,
+): Promise<FormActionState> {
+  const user = await requireUser();
+  const back = backFor(form);
+  return runState(back, () => answerDo(user, form, back));
+}
+
+/** Decisão da Wellmix (aprovar, recusar, cancelar): grava e diz para onde voltar. */
+async function decideDo(user: User, form: FormData, back: string) {
+  const input = z
+    .object({
+      id: ID,
+      decision: z.enum(["approved", "declined", "cancelled"]),
+      note: z.string().max(500).nullable(),
+    })
+    .parse({
+      id: str(form, "id"),
+      decision: str(form, "decision"),
+      note: str(form, "note") || null,
+    });
+  const { decideSupplierRequest } =
+    await import("@/lib/services/supplier-requests");
+  await decideSupplierRequest(user, input.id, input.decision, input.note);
+  return withQuery(back, "decided", input.decision);
 }
 
 export async function decideSupplierRequestAction(form: FormData) {
   const user = await requireUser();
-  const raw = str(form, "id");
-  const back = ID.safeParse(raw).success
-    ? detail(raw, form)
-    : "/app/supplier-requests";
-  await run(back, async () => {
-    const input = z
-      .object({
-        id: ID,
-        decision: z.enum(["approved", "declined", "cancelled"]),
-        note: z.string().max(500).nullable(),
-      })
-      .parse({
-        id: raw,
-        decision: str(form, "decision"),
-        note: str(form, "note") || null,
-      });
-    const { decideSupplierRequest } =
-      await import("@/lib/services/supplier-requests");
-    await decideSupplierRequest(user, input.id, input.decision, input.note);
-    return withQuery(back, "decided", input.decision);
-  });
+  const back = backFor(form);
+  await run(back, () => decideDo(user, form, back));
+}
+
+/** A mesma decisão, pela tela da negociação (com erro, a observação fica). */
+export async function decideSupplierRequestStateAction(
+  _prev: FormActionState,
+  form: FormData,
+): Promise<FormActionState> {
+  const user = await requireUser();
+  const back = backFor(form);
+  return runState(back, () => decideDo(user, form, back));
 }
 
 /**
@@ -438,33 +473,60 @@ function backOf(form: FormData) {
   };
 }
 
+/** Contraproposta da Wellmix (comentário obrigatório): grava e diz para onde voltar. */
+async function proposeDo(user: User, form: FormData) {
+  const { id, back, ok } = backOf(form);
+  if (!ok) throw new Error("invalid_input");
+  const { proposeCounter } =
+    await import("@/lib/services/supplier-request-negotiation");
+  await proposeCounter(user, id, offerOf(form));
+  return withQuery(back, "negotiation", "proposal");
+}
+
 /** A Wellmix devolve com contraproposta (comentário obrigatório). */
 export async function proposeSupplierRequestAction(form: FormData) {
   const user = await requireUser();
+  await run(backOf(form).back, () => proposeDo(user, form));
+}
+
+/**
+ * A mesma contraproposta, pela tela da negociação: com erro, os valores e o
+ * comentário ficam nos campos para corrigir e enviar de novo.
+ */
+export async function proposeSupplierRequestStateAction(
+  _prev: FormActionState,
+  form: FormData,
+): Promise<FormActionState> {
+  const user = await requireUser();
+  return runState(backOf(form).back, () => proposeDo(user, form));
+}
+
+/** Resposta do fornecedor à contraproposta: grava e diz para onde voltar. */
+async function respondDo(user: User, form: FormData) {
   const { id, back, ok } = backOf(form);
-  await run(back, async () => {
-    if (!ok) throw new Error("invalid_input");
-    const { proposeCounter } =
-      await import("@/lib/services/supplier-request-negotiation");
-    await proposeCounter(user, id, offerOf(form));
-    return withQuery(back, "negotiation", "proposal");
-  });
+  if (!ok) throw new Error("invalid_input");
+  const action = z
+    .enum(["accept", "counter", "reject"])
+    .parse(str(form, "action"));
+  const { respondToProposal } =
+    await import("@/lib/services/supplier-request-negotiation");
+  await respondToProposal(user, id, action, offerOf(form));
+  return withQuery(back, "negotiation", action);
 }
 
 /** O fornecedor (ou a Wellmix por ele) aceita, responde com outra proposta ou recusa. */
 export async function respondProposalAction(form: FormData) {
   const user = await requireUser();
-  const { id, back, ok } = backOf(form);
-  await run(back, async () => {
-    if (!ok) throw new Error("invalid_input");
-    const action = z
-      .enum(["accept", "counter", "reject"])
-      .parse(str(form, "action"));
-    const { respondToProposal } =
-      await import("@/lib/services/supplier-request-negotiation");
-    await respondToProposal(user, id, action, offerOf(form));
-    return withQuery(back, "negotiation", action);
-  });
+  await run(backOf(form).back, () => respondDo(user, form));
+}
+
+/** A mesma resposta à contraproposta, pela tela da negociação (com erro, os campos ficam). */
+export async function respondProposalStateAction(
+  _prev: FormActionState,
+  form: FormData,
+): Promise<FormActionState> {
+  const user = await requireUser();
+  return runState(backOf(form).back, () => respondDo(user, form));
 }
 
 /**
@@ -494,23 +556,35 @@ export async function respondOfferAction(form: FormData) {
 }
 
 /** Mensagem livre da conversa, com ou sem arquivo (foto, PDF ou Excel). */
+/** Mensagem da conversa (texto e, se houver, o arquivo): grava e diz para onde voltar. */
+async function messageDo(user: User, form: FormData) {
+  const { id, back, ok } = backOf(form);
+  if (!ok) throw new Error("invalid_input");
+  const text = z
+    .string()
+    .max(4000)
+    .nullable()
+    .parse(str(form, "text") || null);
+  const raw = form.get("file");
+  const file = raw instanceof File && raw.size > 0 ? raw : null;
+  const { postRequestMessage } =
+    await import("@/lib/services/supplier-request-negotiation");
+  await postRequestMessage(user, id, { text, file });
+  return withQuery(back, "negotiation", "message") + "#conversa";
+}
+
 export async function postSupplierRequestMessageAction(form: FormData) {
   const user = await requireUser();
-  const { id, back, ok } = backOf(form);
-  await run(back, async () => {
-    if (!ok) throw new Error("invalid_input");
-    const text = z
-      .string()
-      .max(4000)
-      .nullable()
-      .parse(str(form, "text") || null);
-    const raw = form.get("file");
-    const file = raw instanceof File && raw.size > 0 ? raw : null;
-    const { postRequestMessage } =
-      await import("@/lib/services/supplier-request-negotiation");
-    await postRequestMessage(user, id, { text, file });
-    return withQuery(back, "negotiation", "message") + "#conversa";
-  });
+  await run(backOf(form).back, () => messageDo(user, form));
+}
+
+/** A mesma mensagem, pela conversa da negociação (com erro, o texto e o arquivo ficam). */
+export async function postSupplierRequestMessageStateAction(
+  _prev: FormActionState,
+  form: FormData,
+): Promise<FormActionState> {
+  const user = await requireUser();
+  return runState(backOf(form).back, () => messageDo(user, form));
 }
 
 /* ------------------------------------------------------------------------ */

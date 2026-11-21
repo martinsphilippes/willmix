@@ -93,6 +93,7 @@ import * as sourcingStandby from "./sourcing-standby";
 import * as portalAccess from "./portal-access";
 import * as supplierTasks from "./supplier-tasks";
 import * as turns from "./turns";
+import * as negotiationScreen from "./negotiation-screen";
 import * as superplanLogic from "./superplan-logic";
 import * as dieCutStep from "./die-cut-step";
 import * as sheetProgress from "./sheet-progress";
@@ -357,6 +358,7 @@ export const modulesPt = {
   ...tradePlan.pt,
   ...salesPanel.pt,
   ...turns.pt,
+  ...negotiationScreen.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...messages.en,
@@ -535,6 +537,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...tradePlan.en,
   ...salesPanel.en,
   ...turns.en,
+  ...negotiationScreen.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...messages.zh,
@@ -713,4 +716,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...tradePlan.zh,
   ...salesPanel.zh,
   ...turns.zh,
+  ...negotiationScreen.zh,
 };

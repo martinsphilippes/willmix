@@ -3,7 +3,6 @@ import { SentMark } from "@/components/sent-mark";
 import { requestTimeline } from "@/lib/services/entity-timeline";
 import Link from "next/link";
 import { RequestColorPlan } from "@/components/color-lines";
-import type { ReactNode } from "react";
 import {
   PurchaseScheduleTable,
   roundsLine,
@@ -13,7 +12,6 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
-import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
 import {
   pendingProposal,
   supplierCanAnswer,
@@ -29,14 +27,12 @@ import {
 } from "@/lib/services/supplier-requests";
 import { getT } from "@/i18n/server";
 import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
-import { fallbackError } from "@/i18n/error-text";
+import { errorTextsFor, fallbackError } from "@/i18n/error-text";
 import {
   Alert,
   Badge,
   Card,
-  DescriptionList,
   Field,
-  Input,
   LinkButton,
   PageHeader,
   Select,
@@ -47,17 +43,37 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import {
-  answerSupplierRequestAction,
-  decideSupplierRequestAction,
+  answerSupplierRequestStateAction,
+  decideSupplierRequestStateAction,
   openSupplierRequestAction,
   resolveLinkedRequestAction,
 } from "../../actions/supplier-requests";
+import { ActionForm } from "@/components/action-form";
+import { requestItemSpecs } from "@/lib/supplier-request-specs";
+import {
+  negotiationPeople,
+  type NegotiationPerson,
+} from "@/lib/services/supplier-request-people";
+import {
+  FromTo,
+  InfoCell,
+  InfoGrid,
+  ItemSheetGrid,
+  NegotiationSection,
+  SupplierResponseStrip,
+  recipientText,
+} from "../_components/negotiation-sections";
+import { OfferRowFields } from "../_components/offer-row";
+import {
+  NegotiationConversation,
+  type ConversationMessage,
+} from "../_components/negotiation-conversation";
 import { agreedConditions } from "@/lib/services/supplier-request-product";
 import {
   analyzeNegotiatedItem,
   superplanBaseForItem,
 } from "@/lib/services/superplan-analysis";
-import { STATUS_TONE, answerText } from "../_components/status";
+import { STATUS_TONE } from "../_components/status";
 import {
   RequestProductCard,
   type RequestProductData,
@@ -71,11 +87,10 @@ import {
   slaOf,
   supplierRequestSlaMinutes,
 } from "@/lib/services/supplier-request-negotiation";
-import { NegotiationCard, SlaBadge } from "../_components/negotiation";
+import { NegotiationForms, SlaBadge } from "../_components/negotiation";
 import { can, canSeePurchasePrice } from "@/lib/auth/function-access";
 import { SupplierRequestTable } from "../_components/supplier-table";
 import { RequestTimeline } from "../_components/timeline";
-import { RequestChat, type ChatMessage } from "../_components/request-chat";
 import { dateTime } from "../_components/negotiation";
 import { canPostMessage, canPropose } from "@/lib/supplier-requests";
 import { RequestAiReferences } from "@/components/selection-ai-prompts";
@@ -154,7 +169,6 @@ export default async function SupplierRequestPage({
     n === null
       ? "—"
       : n.toLocaleString(intl, { maximumFractionDigits: digits });
-  const col = (k: string) => t(`bookingLots.item.col.${k}` as DictionaryKey);
 
   const error = one("error");
   const errorKey = [`supplierRequests.error.${error}`, `common.${error}`].find(
@@ -391,7 +405,7 @@ export default async function SupplierRequestPage({
   );
   const linkedWaiting = linked.filter((l) => l.askedBy !== null).length;
   // Ficha negociada: com a resposta "faz", os valores combinados (resposta,
-  // contraproposta aceita ou nova proposta do responsável) entram na ficha,
+  // contraproposta aceita ou nova proposta do responsável) entram no resumo,
   // com o do booking riscado ao lado; a Wellmix vê o Superplan refeito com
   // eles (docs/SUPPLIER_REQUESTS.md, "Ficha negociada").
   const deal = r.supplierCanDo === "yes" ? agreedConditions(r) : null;
@@ -404,29 +418,21 @@ export default async function SupplierRequestPage({
           },
         )
       : null;
-  const priceText = (
-    price: number | null,
-    currency: string | null,
-    incoterm: string | null,
-  ) =>
-    price === null
-      ? "—"
-      : `${num(price)} ${currency ?? ""} ${incoterm ?? ""}`
-          .replace(/\s+/g, " ")
-          .trim();
   /** Valor negociado, com o do booking riscado ao lado quando mudou. */
   const changed = (now: string, before: string, key: string) =>
     now === before ? (
       now
     ) : (
-      <span key={key} className="flex flex-wrap items-baseline gap-2">
+      <span key={key} className="flex flex-wrap items-baseline gap-x-2">
         <strong data-negotiated-value={key}>{now}</strong>
-        <s className="text-xs text-zinc-400" data-negotiated-before={key}>
+        <s
+          className="text-xs font-normal text-zinc-400"
+          data-negotiated-before={key}
+        >
           {before}
         </s>
       </span>
     );
-  const bookingPrice = priceText(it.price, it.currency, it.incoterm);
   const cheaperThan = negotiated?.costBrl ?? null;
   // Contraproposta: a Wellmix simula o Superplan do item no navegador.
   const simulation =
@@ -449,26 +455,676 @@ export default async function SupplierRequestPage({
       ? supplierRequestDecisions(r.status, r.supplierCanDo, proposalPending)
       : [];
   const sla = slaOf(r, await supplierRequestSlaMinutes());
-  const decimal = intl.startsWith("pt") ? "," : ".";
-  const raw = (n: number | null) =>
-    n === null ? "" : String(n).replace(".", decimal);
 
   // Respostas antigas (antes do histórico de respostas): da auditoria.
   const timelineLegacy = await legacyAnswers([r]);
 
-  // Conversa no chat flutuante: as mensagens livres, de quem é cada uma.
+  // Tela da negociação reorganizada (docs/SUPPLIER_REQUESTS.md): quem fala
+  // (nome e login, com a regra de privacidade de 18/11/2026) e a ficha do
+  // produto pela mesma regra da tabela (cópia da solicitação + item do Book).
+  const [people, bookSpecs] = await Promise.all([
+    negotiationPeople(user, r),
+    requestBookSpecs(user, [r]),
+  ]);
+  const book = bookSpecs.get(r.id) ?? null;
+  const specs = requestItemSpecs(r, book);
+  const supplierName =
+    supplier?.name ?? t("supplierRequests.negotiation.side.supplier");
+  // Erro de envio na própria tela, sem recarregar (o que foi digitado fica).
+  const errorTexts = errorTextsFor(t, ["supplierRequests.error", "common"]);
+  const errorFallback = `${t("common.error")} ({code})`;
+  const fromTo = <FromTo people={people} supplierName={supplierName} t={t} />;
+  const nameOf = (p: NegotiationPerson | null | undefined) =>
+    !p
+      ? "—"
+      : p.userId === user.id
+        ? `${p.name} · ${t("negotiationScreen.you")}`
+        : p.name;
+  const loginOf = (p: NegotiationPerson | null | undefined) =>
+    p ? (p.login ? `${p.name} (${p.login})` : p.name) : "—";
+
+  // Conversa: as mensagens livres, de quem é cada uma e para quem foi o aviso.
   const mySide = wellmix ? "wellmix" : "supplier";
-  const chatMessages: ChatMessage[] = (r.negotiation ?? [])
+  const conversation: ConversationMessage[] = (r.negotiation ?? [])
     .filter((e) => e.kind === "message")
-    .map((e) => ({
-      id: e.id,
-      mine: e.side === mySide,
-      sideLabel: t(`supplierRequests.negotiation.side.${e.side}`),
-      at: dateTime(e.at, t),
-      text: e.text ?? null,
-      documentId: e.documentId ?? null,
-      fileName: e.fileName ?? null,
-    }));
+    .map((e) => {
+      const author = people.byId[e.byUserId];
+      const sideLabel = t(`supplierRequests.negotiation.side.${e.side}`);
+      return {
+        id: e.id,
+        mine: e.side === mySide,
+        side: e.side,
+        sideLabel,
+        author: author ? nameOf(author) : sideLabel,
+        login: author?.login ?? null,
+        to: recipientText(e.side, people, supplierName, t),
+        at: dateTime(e.at, t),
+        text: e.text ?? null,
+        documentId: e.documentId ?? null,
+        fileName: e.fileName ?? null,
+      };
+    });
+  const decidedBy = r.decidedByUserId ? people.byId[r.decidedByUserId] : null;
+  // Seções numeradas na ordem do dono; as da Wellmix não aparecem para o
+  // fornecedor, e a numeração segue sem buracos.
+  let sectionNo = 0;
+  const nextSection = () => ++sectionNo;
+
+  const summarySection = (
+    <NegotiationSection
+      n={nextSection()}
+      title={t("negotiationScreen.s.summary")}
+      mark="summary"
+    >
+      <div className="flex gap-3">
+        {it.photoDocumentId ? (
+          <a
+            href={`/api/files/${it.photoDocumentId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="shrink-0"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+            <img
+              src={`/api/files/${it.photoDocumentId}`}
+              alt=""
+              className="h-20 w-20 rounded-lg border border-zinc-200 object-cover"
+            />
+          </a>
+        ) : null}
+        <div className="min-w-0 flex-1 space-y-2">
+          <p className="min-w-0" data-negotiation-product>
+            <span className="block break-words text-sm font-semibold text-zinc-900">
+              {it.description ?? it.productName ?? "—"}
+            </span>
+            <span className="block text-xs text-zinc-500">
+              {[it.factoryItemCode, it.itemNumber].filter(Boolean).join(" · ")}
+            </span>
+          </p>
+          <InfoGrid>
+            <InfoCell
+              label={t("negotiationScreen.f.quantity")}
+              mark="quantity"
+              wide
+            >
+              <span className="flex flex-col">
+                <strong>
+                  {t("supplierRequests.detail.pieces", {
+                    n: r.quantity.toLocaleString(intl),
+                  })}
+                </strong>
+                {r.schedule?.items.length ? (
+                  <span className="text-xs font-normal text-zinc-600">
+                    {roundsLine(r.schedule, t)}
+                  </span>
+                ) : null}
+              </span>
+            </InfoCell>
+            {seesPrice ? (
+              <>
+                <InfoCell label={t("negotiationScreen.f.price")} mark="price">
+                  {deal
+                    ? changed(num(deal.price), num(it.price), "price")
+                    : num(it.price)}
+                </InfoCell>
+                <InfoCell
+                  label={t("negotiationScreen.f.currency")}
+                  mark="currency"
+                >
+                  {deal
+                    ? changed(
+                        deal.currency ?? "—",
+                        it.currency ?? "—",
+                        "currency",
+                      )
+                    : (it.currency ?? "—")}
+                </InfoCell>
+              </>
+            ) : null}
+            <InfoCell label={t("negotiationScreen.f.incoterm")} mark="incoterm">
+              {deal
+                ? changed(deal.incoterm ?? "—", it.incoterm ?? "—", "incoterm")
+                : (it.incoterm ?? "—")}
+            </InfoCell>
+            <InfoCell label={t("negotiationScreen.f.moq")} mark="moq">
+              {deal
+                ? changed(num(deal.moq, 0), num(it.moq, 0), "moq")
+                : num(it.moq, 0)}
+            </InfoCell>
+            <InfoCell label={t("negotiationScreen.f.leadTime")} mark="leadTime">
+              {deal ? num(deal.leadTimeDays, 0) : "—"}
+            </InfoCell>
+          </InfoGrid>
+          <p
+            className="text-[11px] text-zinc-500"
+            data-negotiated-hint={deal ? "" : undefined}
+          >
+            {deal
+              ? t("supplierRequests.detail.negotiatedHint")
+              : t("negotiationScreen.f.sourceBook")}
+          </p>
+        </div>
+      </div>
+      {negotiated ? (
+        <div
+          className="mt-3 rounded-lg border border-brand-100 bg-brand-50/40 p-2.5"
+          data-negotiated-superplan
+        >
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+            {t("supplierRequests.detail.negotiatedSuperplan")}
+          </h4>
+          <div className="mt-1 flex flex-wrap items-start gap-4">
+            {negotiated.costBrl !== null ? (
+              <span className="flex flex-wrap items-baseline gap-2">
+                <strong className="text-sm text-zinc-900" data-negotiated-cost>
+                  {t("supplierRequests.detail.chosenCost", {
+                    price: formatMoney(negotiated.costBrl, "BRL", t),
+                  })}
+                </strong>
+                {chosen?.analysis?.costBrl != null &&
+                chosen.analysis.costBrl !== negotiated.costBrl ? (
+                  <s className="text-xs text-zinc-400">
+                    {formatMoney(chosen.analysis.costBrl, "BRL", t)}
+                  </s>
+                ) : null}
+              </span>
+            ) : null}
+            <BookingItemSuperplan analysis={negotiated} t={t} />
+          </div>
+          <p className="mt-1 text-[11px] text-zinc-500">
+            {t("supplierRequests.detail.negotiatedSuperplanHint")}
+          </p>
+        </div>
+      ) : null}
+      <div className="mt-3">
+        <h4 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+          {t("supplierRequests.detail.needs")}
+        </h4>
+        <p
+          className="mt-1 whitespace-pre-wrap text-[13px] text-zinc-900"
+          data-supplier-request-needs
+        >
+          {r.needs ?? t("supplierRequests.detail.needsNone")}
+        </p>
+        <PurchaseScheduleTable schedule={r.schedule} t={t} />
+        {/* Variações de cor: cada cor na própria linha, por data. */}
+        <RequestColorPlan
+          plan={r.colorPlan}
+          schedule={r.schedule}
+          name={
+            it.description ??
+            it.productName ??
+            it.factoryItemCode ??
+            t("productName.unnamed")
+          }
+          t={t}
+        />
+      </div>
+    </NegotiationSection>
+  );
+
+  const sheetSection = (
+    <NegotiationSection
+      n={nextSection()}
+      title={t("negotiationScreen.s.sheet")}
+      mark="sheet"
+    >
+      <ItemSheetGrid
+        specs={specs}
+        item={it}
+        ncm={wellmix ? (book?.ncm ?? null) : null}
+        bookHref={wellmix ? `/app/booking/lots/${r.bookingLotId}` : null}
+        t={t}
+      />
+    </NegotiationSection>
+  );
+
+  const answerSection = (
+    <NegotiationSection
+      n={nextSection()}
+      title={t("negotiationScreen.s.answer")}
+      mark="answer"
+    >
+      <SupplierResponseStrip
+        request={r}
+        people={people}
+        supplierName={supplierName}
+        seesPrice={seesPrice}
+        t={t}
+      />
+      {canAnswer ? (
+        <ActionForm
+          action={answerSupplierRequestStateAction}
+          errors={errorTexts}
+          fallbackError={errorFallback}
+          pendingLabel={t("supplierRequests.detail.answer.pending")}
+          // Resposta gravada: o formulário renasce com os valores novos.
+          key={`answer-${r.respondedAt ?? "none"}`}
+          className="mt-2 rounded-lg border border-zinc-200 p-2.5"
+          data-supplier-answer-form
+        >
+          <input type="hidden" name="id" value={r.id} />
+          <div className="space-y-2">
+            {r.supplierCanDo ? (
+              <p className="text-xs text-zinc-500">
+                {t("supplierRequests.detail.answer.change")}
+              </p>
+            ) : null}
+            <div className="max-w-xs">
+              <Field label={t("supplierRequests.detail.answer.canDo")}>
+                <Select
+                  name="canDo"
+                  className="min-h-9"
+                  required
+                  defaultValue={r.supplierCanDo ?? ""}
+                  data-supplier-answer-cando
+                >
+                  <option value="" disabled>
+                    {t("common.select")}
+                  </option>
+                  <option value="yes">
+                    {t("supplierRequests.detail.answer.yes")}
+                  </option>
+                  <option value="no">
+                    {t("supplierRequests.detail.answer.no")}
+                  </option>
+                </Select>
+              </Field>
+            </div>
+            <OfferRowFields
+              t={t}
+              values={{
+                price: r.supplierPrice,
+                currency: r.supplierCurrency ?? it.currency ?? "USD",
+                moq: r.supplierMoq,
+                leadTimeDays: r.supplierLeadTimeDays,
+                incoterm: r.supplierIncoterm ?? it.incoterm ?? "FOB",
+              }}
+              marks={{
+                price: "data-supplier-answer-price",
+                incoterm: "data-supplier-answer-incoterm",
+              }}
+            />
+            <Field label={t("supplierRequests.detail.answer.note")}>
+              <Textarea
+                name="note"
+                rows={2}
+                maxLength={4000}
+                defaultValue={r.supplierNote ?? ""}
+                className="max-h-48 min-h-9 resize-y"
+              />
+            </Field>
+            {fromTo}
+            <div className="flex flex-wrap items-center gap-3">
+              <SubmitButton
+                className="min-h-9"
+                pendingText={t("supplierRequests.detail.answer.pending")}
+                data-supplier-answer-submit
+              >
+                {t("supplierRequests.detail.answer.submit")}
+              </SubmitButton>
+              {/* "✓ Enviado" (dono, 14/11/2026): há resposta gravada e
+                  nenhum campo mudou desde então. A chave refaz o
+                  componente a cada envio gravado. */}
+              <SentMark
+                key={r.respondedAt ?? "none"}
+                saved={!!r.supplierCanDo}
+                label={t("supplierRequests.detail.answer.sent")}
+              />
+            </div>
+          </div>
+        </ActionForm>
+      ) : null}
+    </NegotiationSection>
+  );
+
+  const decisionSection = wellmix ? (
+    <NegotiationSection
+      n={nextSection()}
+      title={t("negotiationScreen.s.decision")}
+      mark="decision"
+    >
+      <div className="space-y-2">
+        {r.decidedAt ? (
+          <p className="text-[13px] text-zinc-600" data-supplier-decided>
+            {decidedBy
+              ? t("negotiationScreen.decision.by", {
+                  date: dateTime(r.decidedAt, t),
+                  name: loginOf(decidedBy),
+                })
+              : t("supplierRequests.detail.decide.at", {
+                  date: dateTime(r.decidedAt, t),
+                })}
+            {r.decisionNote ? ` · ${r.decisionNote}` : ""}
+          </p>
+        ) : null}
+        {r.status === "open" ? (
+          <p className="text-xs text-zinc-500" data-supplier-decide-waiting>
+            {t("supplierRequests.detail.decide.waiting")}
+          </p>
+        ) : null}
+        {proposalPending ? (
+          <p className="text-xs text-amber-800" data-supplier-decide-blocked>
+            {t("supplierRequests.negotiation.approveBlocked")}
+          </p>
+        ) : null}
+        {decisions.length ? (
+          <ActionForm
+            action={decideSupplierRequestStateAction}
+            errors={errorTexts}
+            fallbackError={errorFallback}
+            pendingLabel={t("supplierRequests.negotiation.sending")}
+            key={`decide-${r.status}-${r.decidedAt ?? ""}`}
+            data-supplier-decide-form
+          >
+            <input type="hidden" name="id" value={r.id} />
+            <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+              <div className="min-w-56 flex-1">
+                <Field label={t("supplierRequests.detail.decide.note")}>
+                  <Textarea
+                    name="note"
+                    rows={1}
+                    maxLength={500}
+                    className="max-h-32 min-h-9 resize-y"
+                    aria-describedby="decide-note-hint"
+                  />
+                </Field>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {decisions.map((d) => (
+                  <SubmitButton
+                    key={d}
+                    className="min-h-9"
+                    name="decision"
+                    value={d}
+                    variant={
+                      d === "approved"
+                        ? "primary"
+                        : d === "declined"
+                          ? "danger"
+                          : "secondary"
+                    }
+                    data-supplier-decide={d}
+                  >
+                    {t(`supplierRequests.detail.decide.${d}` as DictionaryKey)}
+                  </SubmitButton>
+                ))}
+              </div>
+            </div>
+            {/* Opção A do dono (21/11/2026): a regra de sempre, agora dita
+                na tela: o fornecedor vê esta observação no Histórico de
+                interações (o aviso a ele não leva a observação). */}
+            <p
+              id="decide-note-hint"
+              className="mt-1 text-[11px] text-zinc-500"
+              data-supplier-decide-note-hint
+            >
+              {t("negotiationScreen.decision.noteHint")}
+            </p>
+          </ActionForm>
+        ) : null}
+      </div>
+    </NegotiationSection>
+  ) : null;
+
+  const negotiationSection = (
+    <NegotiationSection
+      n={nextSection()}
+      title={t("negotiationScreen.s.negotiation")}
+      mark="negotiation"
+      id="conversa"
+    >
+      <div className="space-y-3">
+        <NegotiationForms
+          request={r}
+          wellmix={wellmix}
+          t={t}
+          simulation={simulation}
+          showPrice={seesPrice}
+          fromTo={fromTo}
+          errors={errorTexts}
+          fallbackError={errorFallback}
+        />
+        <NegotiationConversation
+          requestId={r.id}
+          messages={conversation}
+          canPost={canPostMessage(r.status)}
+          defaultOpen={negotiationNotice === "message"}
+          sendingAs={loginOf(people.me)}
+          sendingTo={recipientText(people.me.side, people, supplierName, t)}
+          errors={errorTexts}
+          fallbackError={errorFallback}
+          labels={{
+            title: t("negotiationScreen.chat.title", {
+              n: conversation.length,
+            }),
+            who: t("negotiationScreen.chat.who"),
+            empty: t("supplierRequests.chat.empty"),
+            placeholder: t("supplierRequests.chat.placeholder"),
+            attach: t("negotiationScreen.chat.attach"),
+            send: t("negotiationScreen.chat.send"),
+            sending: t("supplierRequests.negotiation.sending"),
+            file: t("supplierRequests.negotiation.file"),
+            closed: t("supplierRequests.chat.closed"),
+            sendingAs: t("negotiationScreen.chat.sendingAs"),
+            sendingTo: t("negotiationScreen.chat.sendingTo"),
+            to: t("negotiationScreen.to"),
+            login: t("negotiationScreen.login"),
+          }}
+        />
+      </div>
+    </NegotiationSection>
+  );
+
+  const alternativesSection = wellmix ? (
+    <NegotiationSection
+      n={nextSection()}
+      title={`${t("negotiationScreen.s.alternatives")} (${alternatives.length})`}
+      mark="alternatives"
+    >
+      <p className="mb-1 text-xs text-zinc-500">
+        {t("supplierRequests.detail.alternativesHint")}
+      </p>
+      {alternatives.length ? (
+        <ul className="divide-y divide-zinc-100 text-[13px]">
+          {alternatives.map(({ item, lot: l, supplier: s }) => (
+            <li
+              key={item.id}
+              className="flex flex-wrap items-baseline justify-between gap-2 py-2"
+              data-supplier-request-alternative={item.id}
+            >
+              <span className="min-w-0">
+                <span className="font-medium">
+                  {item.description ?? item.productName ?? "—"}
+                </span>{" "}
+                <span className="text-xs text-zinc-500">
+                  {[item.factoryItemCode, s?.name, l?.origin]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              </span>
+              <span className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+                {seesPrice ? (
+                  <span className="tabular-nums">
+                    {num(item.price)} {item.currency ?? ""}
+                  </span>
+                ) : null}
+                {seesPrice && item.analysis?.costBrl != null ? (
+                  <span className="font-semibold text-zinc-800">
+                    {t("supplierRequests.detail.chosenCost", {
+                      price: formatMoney(item.analysis.costBrl, "BRL", t),
+                    })}
+                  </span>
+                ) : null}
+                {seesPrice && item.analysis?.minimumBrl != null ? (
+                  <span>
+                    {t("bookingLots.item.minimum", {
+                      price: formatMoney(item.analysis.minimumBrl, "BRL", t),
+                    })}
+                  </span>
+                ) : null}
+                {l ? (
+                  <Link
+                    href={`/app/booking/lots/${l.id}`}
+                    className={linkClass}
+                  >
+                    nº {l.number}
+                  </Link>
+                ) : null}
+                {cheaperThan !== null &&
+                item.analysis?.costBrl != null &&
+                item.analysis.costBrl < cheaperThan ? (
+                  <Badge tone="warning">
+                    <span data-alternative-cheaper={item.id}>
+                      {t("supplierRequests.detail.alternativeCheaper")}
+                    </span>
+                  </Badge>
+                ) : null}
+                {deal ? (
+                  // Nova referência: abre a solicitação para a
+                  // alternativa, com o item atual e as outras de
+                  // alternativa (mesma quantidade e necessidade).
+                  <form action={openSupplierRequestAction}>
+                    <input type="hidden" name="chosen" value={item.id} />
+                    {[
+                      ...(chosen ? [chosen.id] : []),
+                      ...alternatives.map((a) => a.item.id),
+                    ]
+                      .filter((x) => x !== item.id)
+                      .map((x) => (
+                        <input
+                          key={x}
+                          type="hidden"
+                          name="alternatives"
+                          value={x}
+                        />
+                      ))}
+                    <input
+                      type="hidden"
+                      name="quantity"
+                      value={String(r.quantity)}
+                    />
+                    <input type="hidden" name="needs" value={r.needs ?? ""} />
+                    <SubmitButton
+                      variant="secondary"
+                      className="px-2.5 py-1 text-xs"
+                      data-alternative-open={item.id}
+                    >
+                      {t("supplierRequests.detail.alternativeOpen")}
+                    </SubmitButton>
+                  </form>
+                ) : null}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[13px] text-zinc-500">
+          {t("supplierRequests.detail.alternativesNone")}
+        </p>
+      )}
+    </NegotiationSection>
+  ) : null;
+
+  const linkedCard = linked.length ? (
+    <Card
+      dense
+      title={t("supplierRequests.detail.linked.title", {
+        n: linked.length,
+      })}
+    >
+      <p className="mb-2 text-xs text-zinc-500">
+        {t("supplierRequests.detail.linked.hint")}
+      </p>
+      <ul className="divide-y divide-zinc-100 text-[13px]" data-linked>
+        {linked.map(({ request: o, supplier: s, askedBy }) => (
+          <li
+            key={o.id}
+            className="flex flex-col gap-2 py-2"
+            data-linked-request={o.id}
+          >
+            <span className="flex flex-wrap items-baseline justify-between gap-2">
+              <span>
+                <Link
+                  href={`/app/supplier-requests/${o.id}?view=item`}
+                  className={linkClass}
+                >
+                  nº {o.number}
+                </Link>{" "}
+                <span className="font-medium">
+                  {o.item.description ?? o.item.productName ?? "—"}
+                </span>{" "}
+                <span className="text-xs text-zinc-500">
+                  {[o.item.factoryItemCode, s?.name]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              </span>
+              <Badge tone={STATUS_TONE[o.status]}>
+                {t(`supplierRequests.status.${o.status}` as DictionaryKey)}
+              </Badge>
+            </span>
+            {askedBy !== null && canResolve ? (
+              <span
+                className="flex flex-wrap items-center gap-2 text-xs text-amber-800"
+                data-linked-asked={o.id}
+              >
+                {t("supplierRequests.detail.linked.askShort", {
+                  n: askedBy,
+                })}
+                {resolveButtons(o.id)}
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  ) : null;
+
+  const bookCard = wellmix ? (
+    <Card title={t("supplierRequests.detail.booking")} dense>
+      <div className="space-y-1 text-[13px]" data-negotiation-book>
+        {lot ? (
+          <Link href={`/app/booking/lots/${lot.id}`} className={linkClass}>
+            {t("supplierRequests.detail.bookingOf", {
+              n: lot.number,
+              file: lot.fileName,
+            })}
+          </Link>
+        ) : null}
+        {selections.map((g) => (
+          <Link
+            key={g.id}
+            href={selectionHref(g)}
+            className={cx(linkClass, "block")}
+            data-supplier-request-selection
+          >
+            {t("entityLinks.selection")}
+          </Link>
+        ))}
+        {seesPrice && chosen?.analysis ? (
+          <div className="pt-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+              {t("supplierRequests.detail.chosenSuperplan")}
+            </p>
+            <span className="mt-1 flex flex-col gap-1">
+              {chosen.analysis.costBrl !== null ? (
+                <span
+                  className="text-sm font-semibold text-zinc-900"
+                  data-supplier-request-chosen-cost
+                >
+                  {t("supplierRequests.detail.chosenCost", {
+                    price: formatMoney(chosen.analysis.costBrl, "BRL", t),
+                  })}
+                </span>
+              ) : null}
+              <BookingItemSuperplan analysis={chosen.analysis} t={t} />
+            </span>
+          </div>
+        ) : null}
+      </div>
+    </Card>
+  ) : null;
 
   return (
     <>
@@ -536,670 +1192,55 @@ export default async function SupplierRequestPage({
         </div>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
-        <div className="space-y-4 lg:col-span-2">
-          <Card title={t("supplierRequests.detail.request")}>
-            <div className="flex flex-wrap gap-4">
-              {it.photoDocumentId ? (
-                <a
-                  href={`/api/files/${it.photoDocumentId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
-                  <img
-                    src={`/api/files/${it.photoDocumentId}`}
-                    alt=""
-                    className="h-32 w-32 rounded-lg border border-zinc-200 object-cover"
-                  />
-                </a>
-              ) : null}
-              <div className="min-w-60 flex-1">
-                <DescriptionList
-                  items={[
-                    [
-                      t("supplierRequests.detail.item"),
-                      <span key="i" className="flex flex-col">
-                        <span className="font-medium">
-                          {it.description ?? it.productName ?? "—"}
-                        </span>
-                        <span className="text-xs text-zinc-500">
-                          {[it.factoryItemCode, it.itemNumber]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </span>
-                      </span>,
-                    ],
-                    [
-                      t("supplierRequests.detail.quantity"),
-                      <span key="q" className="flex flex-col">
-                        <strong>
-                          {t("supplierRequests.detail.pieces", {
-                            n: r.quantity.toLocaleString(intl),
-                          })}
-                        </strong>
-                        {r.schedule?.items.length ? (
-                          <span className="text-xs text-zinc-600">
-                            {roundsLine(r.schedule, t)}
-                          </span>
-                        ) : null}
-                      </span>,
-                    ],
-                    ...(deal
-                      ? ([
-                          ...(seesPrice
-                            ? [
-                                [
-                                  t("supplierRequests.detail.negotiatedPrice"),
-                                  changed(
-                                    priceText(
-                                      deal.price,
-                                      deal.currency,
-                                      deal.incoterm,
-                                    ),
-                                    bookingPrice,
-                                    "price",
-                                  ),
-                                ],
-                              ]
-                            : []),
-                          [
-                            col("moq"),
-                            changed(num(deal.moq, 0), num(it.moq, 0), "moq"),
-                          ],
-                          ...(deal.leadTimeDays !== null
-                            ? [
-                                [
-                                  t("supplierRequests.detail.answer.leadTime"),
-                                  num(deal.leadTimeDays, 0),
-                                ] as [string, ReactNode],
-                              ]
-                            : []),
-                        ] as Array<[string, ReactNode]>)
-                      : ([
-                          ...(seesPrice
-                            ? [
-                                [
-                                  t("supplierRequests.detail.bookingPrice"),
-                                  bookingPrice,
-                                ],
-                              ]
-                            : []),
-                          [col("moq"), num(it.moq, 0)],
-                        ] as Array<[string, ReactNode]>)),
-                  ]}
-                />
-                {deal ? (
-                  <p
-                    className="mt-1 text-xs text-zinc-500"
-                    data-negotiated-hint
-                  >
-                    {t("supplierRequests.detail.negotiatedHint")}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-            {negotiated ? (
-              <div
-                className="mt-4 rounded-lg border border-brand-100 bg-brand-50/40 p-3"
-                data-negotiated-superplan
-              >
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  {t("supplierRequests.detail.negotiatedSuperplan")}
-                </h3>
-                <div className="mt-1 flex flex-wrap items-start gap-4">
-                  {negotiated.costBrl !== null ? (
-                    <span className="flex flex-wrap items-baseline gap-2">
-                      <strong
-                        className="text-sm text-zinc-900"
-                        data-negotiated-cost
-                      >
-                        {t("supplierRequests.detail.chosenCost", {
-                          price: formatMoney(negotiated.costBrl, "BRL", t),
-                        })}
-                      </strong>
-                      {chosen?.analysis?.costBrl != null &&
-                      chosen.analysis.costBrl !== negotiated.costBrl ? (
-                        <s className="text-xs text-zinc-400">
-                          {formatMoney(chosen.analysis.costBrl, "BRL", t)}
-                        </s>
-                      ) : null}
-                    </span>
-                  ) : null}
-                  <BookingItemSuperplan analysis={negotiated} t={t} />
-                </div>
-                <p className="mt-1 text-xs text-zinc-500">
-                  {t("supplierRequests.detail.negotiatedSuperplanHint")}
-                </p>
-              </div>
-            ) : null}
-            <div className="mt-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                {t("supplierRequests.detail.needs")}
-              </h3>
-              <p
-                className="mt-1 whitespace-pre-wrap text-sm text-zinc-900"
-                data-supplier-request-needs
-              >
-                {r.needs ?? t("supplierRequests.detail.needsNone")}
-              </p>
-              <PurchaseScheduleTable schedule={r.schedule} t={t} />
-              {/* Variações de cor: cada cor na própria linha, por data. */}
-              <RequestColorPlan
-                plan={r.colorPlan}
-                schedule={r.schedule}
-                name={
-                  it.description ??
-                  it.productName ??
-                  it.factoryItemCode ??
-                  t("productName.unnamed")
-                }
-                t={t}
-              />
-            </div>
-            <div className="mt-4">
-              <DescriptionList
-                items={[
-                  [col("masterCartonQty"), num(it.masterCartonQty, 0)],
-                  [col("innerQty"), num(it.innerQty, 0)],
-                  [col("netWeightPcKg"), num(it.netWeightPcKg)],
-                  [col("grossWeightPcKg"), num(it.grossWeightPcKg)],
-                  [col("cbmPerCarton"), num(it.cbmPerCarton)],
-                  [
-                    t("supplierRequests.selection.col.size"),
-                    [it.lengthCm, it.widthCm, it.heightCm]
-                      .map((n) => num(n, 2))
-                      .join(" × "),
-                  ],
-                  [
-                    col("capacityMl"),
-                    it.capacityMl === null && it.sizeText
-                      ? it.sizeText
-                      : num(it.capacityMl, 0),
-                  ],
-                  [col("packageType"), it.packageType ?? "—"],
-                  [col("material"), it.material ?? "—"],
-                  [col("colorAssortment"), it.colorAssortment ?? "—"],
-                  [col("powerDetail"), it.powerDetail ?? "—"],
-                ]}
-              />
+      {/* Centro (~75%) com o card "O que está sendo negociado" e lateral
+          (~25%) só com o Histórico de interações e o Book. Abaixo de 1280px
+          (iPad), a lateral vem depois do conteúdo principal. */}
+      <div
+        className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(15rem,1fr)] xl:items-start"
+        data-negotiation-layout
+      >
+        <div className="min-w-0 space-y-4" data-negotiation-center>
+          <Card title={t("supplierRequests.detail.request")} dense>
+            <div className="space-y-3" data-negotiation-main>
+              {summarySection}
+              {sheetSection}
+              {answerSection}
+              {decisionSection}
+              {negotiationSection}
+              {alternativesSection}
             </div>
           </Card>
-
           <RequestAiReferences assets={r.aiAssets} t={t} />
-
-          {wellmix ? (
-            <Card
-              title={t("supplierRequests.detail.alternatives", {
-                n: alternatives.length,
-              })}
-            >
-              <p className="mb-2 text-xs text-zinc-500">
-                {t("supplierRequests.detail.alternativesHint")}
-              </p>
-              {alternatives.length ? (
-                <ul className="divide-y divide-zinc-100 text-sm">
-                  {alternatives.map(({ item, lot: l, supplier: s }) => (
-                    <li
-                      key={item.id}
-                      className="flex flex-wrap items-baseline justify-between gap-2 py-2"
-                      data-supplier-request-alternative={item.id}
-                    >
-                      <span>
-                        <span className="font-medium">
-                          {item.description ?? item.productName ?? "—"}
-                        </span>{" "}
-                        <span className="text-xs text-zinc-500">
-                          {[item.factoryItemCode, s?.name, l?.origin]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </span>
-                      </span>
-                      <span className="flex items-center gap-2 text-xs text-zinc-600">
-                        {seesPrice ? (
-                          <span className="tabular-nums">
-                            {num(item.price)} {item.currency ?? ""}
-                          </span>
-                        ) : null}
-                        {seesPrice && item.analysis?.costBrl != null ? (
-                          <span className="font-semibold text-zinc-800">
-                            {t("supplierRequests.detail.chosenCost", {
-                              price: formatMoney(
-                                item.analysis.costBrl,
-                                "BRL",
-                                t,
-                              ),
-                            })}
-                          </span>
-                        ) : null}
-                        {seesPrice && item.analysis?.minimumBrl != null ? (
-                          <span>
-                            {t("bookingLots.item.minimum", {
-                              price: formatMoney(
-                                item.analysis.minimumBrl,
-                                "BRL",
-                                t,
-                              ),
-                            })}
-                          </span>
-                        ) : null}
-                        {l ? (
-                          <Link
-                            href={`/app/booking/lots/${l.id}`}
-                            className={linkClass}
-                          >
-                            nº {l.number}
-                          </Link>
-                        ) : null}
-                        {cheaperThan !== null &&
-                        item.analysis?.costBrl != null &&
-                        item.analysis.costBrl < cheaperThan ? (
-                          <Badge tone="warning">
-                            <span data-alternative-cheaper={item.id}>
-                              {t("supplierRequests.detail.alternativeCheaper")}
-                            </span>
-                          </Badge>
-                        ) : null}
-                        {deal ? (
-                          // Nova referência: abre a solicitação para a
-                          // alternativa, com o item atual e as outras de
-                          // alternativa (mesma quantidade e necessidade).
-                          <form action={openSupplierRequestAction}>
-                            <input
-                              type="hidden"
-                              name="chosen"
-                              value={item.id}
-                            />
-                            {[
-                              ...(chosen ? [chosen.id] : []),
-                              ...alternatives.map((a) => a.item.id),
-                            ]
-                              .filter((x) => x !== item.id)
-                              .map((x) => (
-                                <input
-                                  key={x}
-                                  type="hidden"
-                                  name="alternatives"
-                                  value={x}
-                                />
-                              ))}
-                            <input
-                              type="hidden"
-                              name="quantity"
-                              value={String(r.quantity)}
-                            />
-                            <input
-                              type="hidden"
-                              name="needs"
-                              value={r.needs ?? ""}
-                            />
-                            <SubmitButton
-                              variant="secondary"
-                              data-alternative-open={item.id}
-                            >
-                              {t("supplierRequests.detail.alternativeOpen")}
-                            </SubmitButton>
-                          </form>
-                        ) : null}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-zinc-500">
-                  {t("supplierRequests.detail.alternativesNone")}
-                </p>
-              )}
-            </Card>
-          ) : null}
-
-          {linked.length ? (
-            <Card
-              title={t("supplierRequests.detail.linked.title", {
-                n: linked.length,
-              })}
-            >
-              <p className="mb-2 text-xs text-zinc-500">
-                {t("supplierRequests.detail.linked.hint")}
-              </p>
-              <ul className="divide-y divide-zinc-100 text-sm" data-linked>
-                {linked.map(({ request: o, supplier: s, askedBy }) => (
-                  <li
-                    key={o.id}
-                    className="flex flex-col gap-2 py-2"
-                    data-linked-request={o.id}
-                  >
-                    <span className="flex flex-wrap items-baseline justify-between gap-2">
-                      <span>
-                        <Link
-                          href={`/app/supplier-requests/${o.id}?view=item`}
-                          className={linkClass}
-                        >
-                          nº {o.number}
-                        </Link>{" "}
-                        <span className="font-medium">
-                          {o.item.description ?? o.item.productName ?? "—"}
-                        </span>{" "}
-                        <span className="text-xs text-zinc-500">
-                          {[o.item.factoryItemCode, s?.name]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </span>
-                      </span>
-                      <Badge tone={STATUS_TONE[o.status]}>
-                        {t(
-                          `supplierRequests.status.${o.status}` as DictionaryKey,
-                        )}
-                      </Badge>
-                    </span>
-                    {askedBy !== null && canResolve ? (
-                      <span
-                        className="flex flex-wrap items-center gap-2 text-xs text-amber-800"
-                        data-linked-asked={o.id}
-                      >
-                        {t("supplierRequests.detail.linked.askShort", {
-                          n: askedBy,
-                        })}
-                        {resolveButtons(o.id)}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          ) : null}
+          {linkedCard}
         </div>
 
-        <div className="space-y-4">
-          <Card title={t("supplierRequests.detail.answer.title")} dense>
-            {r.supplierCanDo ? (
-              <div className="mb-3 space-y-1 text-sm" data-supplier-answer>
-                <p className="font-semibold">{answerText(t, r, seesPrice)}</p>
-                {r.supplierMoq !== null ? (
-                  <p>
-                    {t("supplierRequests.detail.answer.moq")}:{" "}
-                    {num(r.supplierMoq, 0)}
-                  </p>
-                ) : null}
-                {r.supplierLeadTimeDays !== null ? (
-                  <p>
-                    {t("supplierRequests.detail.answer.leadTime")}:{" "}
-                    {num(r.supplierLeadTimeDays, 0)}
-                  </p>
-                ) : null}
-                {r.supplierIncoterm ? (
-                  <p data-supplier-answer-incoterm-value>
-                    {t("supplierRequests.detail.answer.incoterm")}:{" "}
-                    {r.supplierIncoterm}
-                  </p>
-                ) : null}
-                {r.supplierNote ? (
-                  <p className="whitespace-pre-wrap text-zinc-700">
-                    {r.supplierNote}
-                  </p>
-                ) : null}
-                {r.respondedAt ? (
-                  <p className="text-xs text-zinc-500">
-                    {t("supplierRequests.detail.answer.at", {
-                      date: dateTime(r.respondedAt, t),
-                    })}
-                  </p>
-                ) : null}
-              </div>
-            ) : (
-              <p className="mb-3 text-sm text-zinc-500">
-                {t("supplierRequests.detail.answer.none")}
-              </p>
-            )}
-            {canAnswer ? (
-              <form
-                action={answerSupplierRequestAction}
-                className="space-y-2"
-                data-supplier-answer-form
-              >
-                <input type="hidden" name="id" value={r.id} />
-                {r.supplierCanDo ? (
-                  <p className="text-xs text-zinc-500">
-                    {t("supplierRequests.detail.answer.change")}
-                  </p>
-                ) : null}
-                <Field label={t("supplierRequests.detail.answer.canDo")}>
-                  <Select
-                    name="canDo"
-                    required
-                    defaultValue={r.supplierCanDo ?? ""}
-                    data-supplier-answer-cando
-                  >
-                    <option value="" disabled>
-                      {t("common.select")}
-                    </option>
-                    <option value="yes">
-                      {t("supplierRequests.detail.answer.yes")}
-                    </option>
-                    <option value="no">
-                      {t("supplierRequests.detail.answer.no")}
-                    </option>
-                  </Select>
-                </Field>
-                <div className="grid grid-cols-2 gap-2">
-                  <Field label={t("supplierRequests.detail.answer.price")}>
-                    <Input
-                      name="price"
-                      inputMode="decimal"
-                      defaultValue={raw(r.supplierPrice)}
-                      data-supplier-answer-price
-                    />
-                  </Field>
-                  <Field label={t("supplierRequests.detail.answer.currency")}>
-                    <Select
-                      name="currency"
-                      defaultValue={r.supplierCurrency ?? it.currency ?? "USD"}
-                    >
-                      {SHEET_CURRENCIES.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                  <Field label={t("supplierRequests.detail.answer.moq")}>
-                    <Input
-                      name="moq"
-                      inputMode="numeric"
-                      defaultValue={raw(r.supplierMoq)}
-                    />
-                  </Field>
-                  <Field label={t("supplierRequests.detail.answer.leadTime")}>
-                    <Input
-                      name="leadTimeDays"
-                      inputMode="numeric"
-                      defaultValue={raw(r.supplierLeadTimeDays)}
-                    />
-                  </Field>
-                  <Field label={t("supplierRequests.detail.answer.incoterm")}>
-                    <Select
-                      name="incoterm"
-                      defaultValue={r.supplierIncoterm ?? it.incoterm ?? "FOB"}
-                      data-supplier-answer-incoterm
-                    >
-                      {SHEET_INCOTERMS.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                </div>
-                <Field label={t("supplierRequests.detail.answer.note")}>
-                  <Textarea
-                    name="note"
-                    rows={3}
-                    maxLength={4000}
-                    defaultValue={r.supplierNote ?? ""}
-                  />
-                </Field>
-                <div className="flex flex-wrap items-center gap-3">
-                  <SubmitButton
-                    pendingText={t("supplierRequests.detail.answer.pending")}
-                    data-supplier-answer-submit
-                  >
-                    {t("supplierRequests.detail.answer.submit")}
-                  </SubmitButton>
-                  {/* "✓ Enviado" (dono, 14/11/2026): há resposta gravada e
-                      nenhum campo mudou desde então. A chave refaz o
-                      componente a cada envio gravado. */}
-                  <SentMark
-                    key={r.respondedAt ?? "none"}
-                    saved={!!r.supplierCanDo}
-                    label={t("supplierRequests.detail.answer.sent")}
-                  />
-                </div>
-              </form>
-            ) : null}
-          </Card>
-
-          {/* Histórico de interações logo abaixo da resposta do fornecedor. */}
-          <RequestTimeline
-            request={
-              wellmix
-                ? r
-                : {
-                    ...r,
-                    // "Continuar negociando" é decisão interna da Wellmix.
-                    negotiation: (r.negotiation ?? []).filter(
-                      (e) => e.kind !== "keep",
-                    ),
-                  }
-            }
-            legacyAnswers={timelineLegacy.get(r.id) ?? []}
-            showPrice={seesPrice}
-            t={t}
-          />
-
-          {wellmix ? (
-            <Card title={t("supplierRequests.detail.decide.title")} dense>
-              {r.decidedAt ? (
-                <p className="mb-2 text-sm text-zinc-600">
-                  {t("supplierRequests.detail.decide.at", {
-                    date: dateTime(r.decidedAt, t),
-                  })}
-                  {r.decisionNote ? ` · ${r.decisionNote}` : ""}
-                </p>
-              ) : null}
-              {r.status === "open" ? (
-                <p
-                  className="mb-2 text-xs text-zinc-500"
-                  data-supplier-decide-waiting
-                >
-                  {t("supplierRequests.detail.decide.waiting")}
-                </p>
-              ) : null}
-              {proposalPending ? (
-                <p
-                  className="mb-2 text-xs text-amber-800"
-                  data-supplier-decide-blocked
-                >
-                  {t("supplierRequests.negotiation.approveBlocked")}
-                </p>
-              ) : null}
-              {decisions.length ? (
-                <form
-                  action={decideSupplierRequestAction}
-                  className="space-y-2"
-                  data-supplier-decide-form
-                >
-                  <input type="hidden" name="id" value={r.id} />
-                  <Field label={t("supplierRequests.detail.decide.note")}>
-                    <Input name="note" maxLength={500} />
-                  </Field>
-                  <div className="flex flex-wrap gap-2">
-                    {decisions.map((d) => (
-                      <SubmitButton
-                        key={d}
-                        name="decision"
-                        value={d}
-                        variant={
-                          d === "approved"
-                            ? "primary"
-                            : d === "declined"
-                              ? "danger"
-                              : "secondary"
-                        }
-                        data-supplier-decide={d}
-                      >
-                        {t(
-                          `supplierRequests.detail.decide.${d}` as DictionaryKey,
-                        )}
-                      </SubmitButton>
-                    ))}
-                  </div>
-                </form>
-              ) : null}
-            </Card>
-          ) : null}
-
-          {wellmix ? (
-            <Card title={t("supplierRequests.detail.booking")} dense>
-              <div className="space-y-1 text-sm">
-                {lot ? (
-                  <Link
-                    href={`/app/booking/lots/${lot.id}`}
-                    className={linkClass}
-                  >
-                    {t("supplierRequests.detail.bookingOf", {
-                      n: lot.number,
-                      file: lot.fileName,
-                    })}
-                  </Link>
-                ) : null}
-                {selections.map((g) => (
-                  <Link
-                    key={g.id}
-                    href={selectionHref(g)}
-                    className={cx(linkClass, "block")}
-                    data-supplier-request-selection
-                  >
-                    {t("entityLinks.selection")}
-                  </Link>
-                ))}
-                {seesPrice && chosen?.analysis ? (
-                  <div className="pt-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      {t("supplierRequests.detail.chosenSuperplan")}
-                    </p>
-                    <span className="mt-1 flex flex-col gap-1">
-                      {chosen.analysis.costBrl !== null ? (
-                        <span
-                          className="text-sm font-semibold text-zinc-900"
-                          data-supplier-request-chosen-cost
-                        >
-                          {t("supplierRequests.detail.chosenCost", {
-                            price: formatMoney(
-                              chosen.analysis.costBrl,
-                              "BRL",
-                              t,
-                            ),
-                          })}
-                        </span>
-                      ) : null}
-                      <BookingItemSuperplan analysis={chosen.analysis} t={t} />
-                    </span>
-                  </div>
-                ) : null}
-              </div>
-            </Card>
-          ) : null}
-
-          {/* Contraproposta: na coluna da direita, embaixo do Booking (a
-              conversa fica no chat flutuante). */}
-          <NegotiationCard
-            request={r}
-            wellmix={wellmix}
-            t={t}
-            simulation={simulation}
-            showPrice={seesPrice}
-          />
-        </div>
+        <aside
+          className={cx(
+            "grid min-w-0 gap-4 md:items-start xl:grid-cols-1",
+            bookCard && "md:grid-cols-2",
+          )}
+          data-negotiation-aside
+        >
+          <div id="historico" className="min-w-0 scroll-mt-20">
+            <RequestTimeline
+              request={
+                wellmix
+                  ? r
+                  : {
+                      ...r,
+                      // "Continuar negociando" é decisão interna da Wellmix.
+                      negotiation: (r.negotiation ?? []).filter(
+                        (e) => e.kind !== "keep",
+                      ),
+                    }
+              }
+              legacyAnswers={timelineLegacy.get(r.id) ?? []}
+              showPrice={seesPrice}
+              t={t}
+            />
+          </div>
+          {bookCard}
+        </aside>
       </div>
       {wellmix && r.orderId ? (
         <div className="mt-4" data-supplier-request-order>
@@ -1231,24 +1272,6 @@ export default async function SupplierRequestPage({
           <RequestProductCard data={productData} t={t} />
         </div>
       ) : null}
-      <RequestChat
-        requestId={r.id}
-        messages={chatMessages}
-        canPost={canPostMessage(r.status)}
-        defaultOpen={negotiationNotice === "message"}
-        labels={{
-          open: t("supplierRequests.chat.open"),
-          title: t("supplierRequests.chat.title", { n: r.number }),
-          close: t("supplierRequests.chat.close"),
-          empty: t("supplierRequests.chat.empty"),
-          placeholder: t("supplierRequests.chat.placeholder"),
-          attach: t("supplierRequests.negotiation.attach"),
-          send: t("supplierRequests.chat.send"),
-          sending: t("supplierRequests.negotiation.sending"),
-          file: t("supplierRequests.negotiation.file"),
-          closed: t("supplierRequests.chat.closed"),
-        }}
-      />
     </>
   );
 }

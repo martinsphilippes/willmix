@@ -1,7 +1,14 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
-import { useEffect, useRef, useState, type ComponentProps } from "react";
+import {
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+} from "react";
+import { ActionPendingContext } from "./action-pending";
 import { Button, cx, linkClass } from "./ui";
 
 /** Avisa a barra de progresso do topo que o envio terminou (navigation-progress). */
@@ -72,10 +79,13 @@ export function SubmitButton({
 }) {
   const status = useFormStatus();
   const external = useExternalFormPending(form);
+  // Dentro de um ActionForm: o envio é dele (o React não o informa).
+  const actionPending = useContext(ActionPendingContext);
   // Com `form`, o botão fica fora do formulário (ex.: depois do card de fotos,
   // que tem formulários próprios) e o React não informa o envio.
-  const pending = form ? external : status.pending;
-  useFormDoneSignal(form ? false : pending);
+  const pending = form ? external : status.pending || actionPending;
+  // O ActionForm avisa o fim do envio dele; aqui, só o do React.
+  useFormDoneSignal(form ? false : status.pending);
   return (
     <Button
       type="submit"
