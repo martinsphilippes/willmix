@@ -21,6 +21,7 @@ import {
   sankhyaIso,
   sankhyaItemId,
   sankhyaOrderId,
+  shipmentLines,
   type ProjectionOrder,
   type ProjectionShipment,
 } from "@/lib/integrations/sankhya-orders-plan";
@@ -162,9 +163,14 @@ async function openRequirements(
   order: Order,
   row: ProjectionOrder,
   held: boolean,
+  options: { create: boolean },
 ) {
-  const { createOrderRequirements } = await import("@/lib/workflow/engine");
-  await createOrderRequirements(order, undefined, { shadow: true });
+  // Pedido novo: cria os itens. Já carregado: só avança o que o Sankhya
+  // mostra que passou (nunca reabre nem desfaz o que o portal fez).
+  if (options.create) {
+    const { createOrderRequirements } = await import("@/lib/workflow/engine");
+    await createOrderRequirements(order, undefined, { shadow: true });
+  }
   const current = milestoneOf(row.milestone);
   const done = current
     ? doneMilestones(current, row.data?.quality)
@@ -332,9 +338,9 @@ async function loadOrdersChunk(
         productId: productByCode.get(item.codprod ?? "")?.id ?? null,
       })),
     );
-    if (row.situation === "in_progress" && !before) {
-      await openRequirements(store, order, row, held);
-      progress.withPending++;
+    if (row.situation === "in_progress") {
+      await openRequirements(store, order, row, held, { create: !before });
+      if (!before) progress.withPending++;
     }
   }
 }
@@ -352,7 +358,7 @@ async function loadShipmentsChunk(
   const orderIds = [
     ...new Set(
       rows.flatMap((r) =>
-        (r.data?.orders ?? []).map((o) => sankhyaOrderId(o.order)),
+        shipmentLines(r.data?.orders).map((o) => sankhyaOrderId(o.order)),
       ),
     ),
   ];
@@ -412,7 +418,7 @@ async function loadShipmentsChunk(
         ...fields,
       } as never);
     progress.containers++;
-    const lines = (d.orders ?? []).flatMap((o) => {
+    const lines = shipmentLines(d.orders).flatMap((o) => {
       const orderId = sankhyaOrderId(o.order);
       if (!loaded.has(orderId)) return [];
       const item = itemById.get(sankhyaItemId(o.order, o.seq));

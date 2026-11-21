@@ -154,18 +154,22 @@ const PORTAL_ONLY: readonly MilestoneKey[] = [
 
 /**
  * Marcos dados como feitos no pedido em andamento: os anteriores ao marco
- * atual (pela ordem do portal), menos os que só o portal tem e a Inspeção,
- * que só é feita quando o Sankhya diz "Inspecionado".
+ * atual (pela ordem do portal). Antes do embarque, ficam abertos os que só o
+ * portal tem (Certificação, Amostras, Booking) e a Inspeção, feita só quando
+ * o Sankhya diz "Inspecionado". Com a carga já embarcada (marco depois do
+ * Booking: Carregamento, Embarque, Desembaraço, Nota, Entrega), tudo o que
+ * vem antes já passou e fica feito.
  */
 export function doneMilestones(
   current: MilestoneKey,
   quality: string | null | undefined,
 ): Set<MilestoneKey> {
   const rank = MILESTONE_KEYS.indexOf(current);
+  const shipped = rank > MILESTONE_KEYS.indexOf("booking");
   const out = new Set<MilestoneKey>();
   for (const key of MILESTONE_KEYS.slice(0, rank)) {
-    if (PORTAL_ONLY.includes(key)) continue;
-    if (key === "inspection") continue;
+    if (!shipped && PORTAL_ONLY.includes(key)) continue;
+    if (!shipped && key === "inspection") continue;
     out.add(key);
   }
   if (/^inspecionado$/i.test((quality ?? "").trim())) out.add("inspection");
@@ -268,4 +272,27 @@ export function containerStatusOf(row: ProjectionShipment): ContainerStatus {
   if (row.milestone === "customs") return "arrived";
   if (row.data?.statusShipping === "3") return "shipped";
   return "loading";
+}
+
+/**
+ * O que o embarque leva de cada item: o Sankhya pode dividir o mesmo item do
+ * pedido em mais de uma linha do 35 (duas ligações na TGFVAR); aqui as
+ * quantidades são somadas, uma linha por pedido e item. Lista ausente: vazia.
+ */
+export function shipmentLines(
+  orders: unknown,
+): Array<{ order: number; seq: number; qty: number }> {
+  if (!Array.isArray(orders)) return [];
+  const out = new Map<string, { order: number; seq: number; qty: number }>();
+  for (const o of orders as Array<Record<string, unknown>>) {
+    const order = Number(o?.order);
+    const seq = Number(o?.seq);
+    if (!Number.isFinite(order) || !Number.isFinite(seq)) continue;
+    const key = `${order}-${seq}`;
+    const qty = Number(o?.qty) || 0;
+    const hit = out.get(key);
+    if (hit) hit.qty += qty;
+    else out.set(key, { order, seq, qty });
+  }
+  return [...out.values()];
 }

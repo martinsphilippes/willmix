@@ -116,7 +116,11 @@ beforeAll(async () => {
     shipmentState: null,
     computedAt: "2026-11-21T12:00:00.000Z",
     data: {
-      orders: [{ order: 2000, seq: 1, qty: 40 }],
+      // O mesmo item em duas linhas do 35 (Sankhya divide): soma 30 + 10.
+      orders: [
+        { order: 2000, seq: 1, qty: 30 },
+        { order: 2000, seq: 1, qty: 10 },
+      ],
       statusShipping: "3",
       etd: "10112026 00:00:00",
       numnota: "0",
@@ -159,6 +163,20 @@ describe("regras da carga (funções puras)", () => {
     expect(plan.channelPause("Amarelo")).toBeNull();
   });
 
+  it("linhas do embarque: soma o item repetido e aceita lista ausente", () => {
+    expect(
+      plan.shipmentLines([
+        { order: 1, seq: 5, qty: 816 },
+        { order: 1, seq: 5, qty: 264 },
+        { order: 2, seq: 1, qty: 10 },
+      ]),
+    ).toEqual([
+      { order: 1, seq: 5, qty: 1080 },
+      { order: 2, seq: 1, qty: 10 },
+    ]);
+    expect(plan.shipmentLines(null)).toEqual([]);
+  });
+
   it("marcos feitos: os anteriores, sem os só do portal e sem a inspeção", () => {
     const done = plan.doneMilestones("production", null);
     expect(done.has("contract")).toBe(true);
@@ -170,6 +188,12 @@ describe("regras da carga (funções puras)", () => {
     expect(
       plan.doneMilestones("production", "Inspecionado").has("inspection"),
     ).toBe(true);
+    // Carga já embarcada: inspeção e booking já passaram.
+    const shipped = plan.doneMilestones("loading", null);
+    expect(shipped.has("inspection")).toBe(true);
+    expect(shipped.has("booking")).toBe(true);
+    expect(shipped.has("samples")).toBe(true);
+    expect(shipped.has("loading")).toBe(false);
   });
 });
 
