@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ZodError, type z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import type { User } from "@/lib/db";
+import type { FormActionState } from "@/lib/form-action-state";
 
 /*
  * Utilitários compartilhados pelas Server Actions (src/app/app/actions.ts e
@@ -145,6 +146,30 @@ export async function run(back: string, fn: () => Promise<string | void>) {
     if (result) target = result;
   } catch (error) {
     target = withError(back, errorCode(back, error), invalidFieldNames(error));
+  }
+  revalidatePath("/app", "layout");
+  redirect(target);
+}
+
+/**
+ * Executa a ação de um formulário que fica na tela (`ActionForm`): com erro,
+ * devolve o código (a página não recarrega e o que foi digitado fica nos
+ * campos); dando certo, vai para o destino de sempre, como `run`.
+ */
+export async function runState(
+  back: string,
+  fn: () => Promise<string | void>,
+): Promise<FormActionState> {
+  let target = back;
+  try {
+    const result = await fn();
+    if (result) target = result;
+  } catch (error) {
+    return {
+      error: errorCode(back, error),
+      fields: invalidFieldNames(error),
+      at: Date.now(),
+    };
   }
   revalidatePath("/app", "layout");
   redirect(target);
