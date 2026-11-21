@@ -21,6 +21,8 @@ import { servesFamilies } from "@/lib/party-families";
 import { notify } from "./notifications";
 import { storePhotoDocument, type PhotoSource } from "./documents";
 import { clearQuoteDraft } from "./quote-draft";
+import type { SupplierStep } from "@/lib/supplier-steps";
+import type { TaskText } from "@/lib/task-text";
 import { innerFromDemands, quoteInnerState } from "@/lib/quote-inner";
 import {
   prepareQuoteSheets,
@@ -1133,6 +1135,10 @@ export async function quoteTaskDrafts(user: User, now = new Date()) {
     detail: string;
     link: string;
     dueAt: string | null;
+    /** Etapa do fornecedor (a cotação acende "Responder a solicitação"). */
+    supplierStep?: SupplierStep;
+    sinceAt?: string | null;
+    text?: TaskText;
   };
   const drafts: Draft[] = [];
   const store = getStore();
@@ -1141,14 +1147,37 @@ export async function quoteTaskDrafts(user: User, now = new Date()) {
       user,
       now,
     ))
-      if (state === "open" && quote.status === "open")
+      if (state === "open" && quote.status === "open") {
+        // Nas Pendências do fornecedor, a cotação acende a etapa "Responder
+        // a solicitação" (amarelo no prazo, vermelho atrasada) e, ao tocar
+        // nela, a lista mostra a cotação (dono, 21/11/2026). Desde: o
+        // convite; o texto no idioma de quem lê, com a quantidade.
+        const first = quote.items[0];
+        const more = quote.items.length - 1;
         drafts.push({
           kind: "purchase_quote_answer",
           title: `Cotação de compra nº ${quote.number}`,
           detail: quote.items.map((i) => i.name).join(", "),
           link: `/app/purchase-quotes/${quote.id}`,
           dueAt: response.dueAt,
+          supplierStep: "request",
+          sinceAt: response.invitedAt ?? null,
+          text: {
+            title: "quote.one",
+            detail:
+              more > 0
+                ? "quote.task.answer.detailMore"
+                : "quote.task.answer.detail",
+            values: {
+              n: quote.number,
+              product: first?.name ?? "",
+              unit: first?.unit ?? "",
+              more,
+            },
+            numbers: { qty: first?.quantity ?? 0 },
+          },
         });
+      }
     return drafts;
   }
   if (!isWellmix(user)) return drafts;

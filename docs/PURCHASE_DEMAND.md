@@ -376,6 +376,23 @@ Pedido do dono, com o desenho da tela: o inner só quando o cliente pede, o avis
 - **Esquema (aditivo)**: coluna `requests.innerRequirement` (JSON) e a tabela `materials` (índice único pelo nome). O resto fica no JSON que já existia (`purchase_quotes.items`, `purchase_quote_responses.items`, `supplier_product_sheets.data`).
 - **Testes**: `tests/unit/quote-inner-materials.test.ts` (inner das demandas: ninguém, o mesmo, diferente, sem número; o que o fornecedor vê; "Sim" exige o número; a Composição vira o catálogo; a vencedora com o inner do cliente; a Wellmix define e a pendência some; material inventado ou desativado recusado no servidor; "Sem peso" grava nulo; o catálogo carregado uma vez, nome repetido, só o Cadastro), `tests/unit/supplier-sheet.test.ts` (as regras puras novas), `tests/unit/quote-draft.test.ts` (os campos novos no rascunho) e a E2E `tests/e2e/purchase-quote.spec.ts` (material pelo seletor; depois de recarregar, o material volta; "Sem peso" trava o campo e, desmarcado, o número volta).
 
+## Cotação nas Pendências do fornecedor (dono, 21/11/2026)
+
+Pergunta do dono (21/11/2026, print das Pendências do PETER): com o pedido em cotação, a barra "Etapas que chegam até você" não mostrava a cotação. A pendência aparecia na lista, mas nenhuma etapa acendia: a barra vai do Book à Invoice, e a cotação de compra ficava fora dela.
+
+Decisão do dono: a cotação a responder acende a etapa **"Responder a solicitação"**, em amarelo ("A fazer, no prazo"), ou em vermelho quando atrasada. Ao tocar na etapa, a lista mostra a pendência da cotação, que abre a resposta.
+
+- **Como ficou**:
+  - a pendência da cotação (`purchase_quote_answer`) tem a etapa do fornecedor `request` (`supplier.request`): conta na etapa, na cor dela, e aparece no filtro dela; a coluna Etapa diz "Responder a solicitação";
+  - "Com você desde" mostra a data do convite (antes "—");
+  - título e detalhe no idioma de quem lê: "Cotação de compra nº N" (`quote.one`) e "produto · quantidade unidade", com "e mais N produto(s)" quando a cotação tem mais de um (`quote.task.answer.*`);
+  - a ajuda da etapa "Responder a solicitação" cita a cotação ("Na cotação de compra, responda preço, moeda, ficha técnica e condições até o prazo").
+- **O que não muda**: as etapas e a numeração da barra, o tipo da pendência, quem a recebe e o prazo.
+- **Peças**: `quoteTaskDrafts` (`src/lib/services/purchase-quote.ts`) e os textos em `purchase-demand.ts` e `supplier-tasks.ts`.
+- **Testes**:
+  - `tests/unit/quote-supplier-step.test.ts`: etapa, "desde" do convite e textos em pt e zh;
+  - `tests/e2e/purchase-quote.spec.ts`: o fornecedor C vê "Responder a solicitação" amarela com 1, toca e abre a cotação pela lista.
+
 ## Andamento
 
 | PR  | Entrega                                                                                          | Situação |

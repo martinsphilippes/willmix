@@ -217,6 +217,27 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   await page.goto(`/app/purchase-quotes/${quoteId}`);
   await expect(page.locator("[data-quote-response]")).toHaveCount(3);
 
+  // Cotação nas Pendências do fornecedor (dono, 21/11/2026): acende a etapa
+  // "Responder a solicitação" em amarelo; ao tocar, a lista mostra a
+  // cotação, que abre a resposta. (O C só tem esta pendência.)
+  await login(page, "supplier.c@china.com");
+  await page.goto("/app/tasks");
+  const step = page.locator('[data-supplier-step="request"]');
+  await expect(step).toHaveAttribute("data-supplier-step-tone", "warning");
+  await expect(step).toHaveAttribute("data-supplier-step-count", "1");
+  await step.click();
+  await page.waitForURL(/[?&]type=supplier\.request/);
+  const quoteRow = page.locator("[data-task-row]", {
+    has: page.locator(`a[href="/app/purchase-quotes/${quoteId}"]`),
+  });
+  await expect(quoteRow).toHaveAttribute("data-task-group", "supplier.request");
+  await quoteRow
+    .locator(`a[href="/app/purchase-quotes/${quoteId}"]`)
+    .first()
+    .click();
+  await page.waitForURL(new RegExp(`/app/purchase-quotes/${quoteId}`));
+  await expect(page.locator("[data-quote-answer-form]")).toBeVisible();
+
   // A e B respondem; C não. A em RMB (o padrão), B em Dólar.
   await answer(page, "supplier.a@china.com", quoteId!, "210", "RMB", true);
   // O aviso diz até quando dá para corrigir: a hora em Brasília e na China

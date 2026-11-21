@@ -47,7 +47,7 @@ export const pt = {
   "tasks.group.supplier.booking": "Analisar o Book",
   "tasks.group.supplier.request": "Responder a solicitação",
   "supplierTasks.help.request":
-    "Diga se faz o item pedido pela Wellmix e em que condições (preço, pedido mínimo e prazo); se vier contraproposta, aceite, proponha de novo ou recuse.",
+    "Diga se faz o item pedido pela Wellmix e em que condições (preço, pedido mínimo e prazo); se vier contraproposta, aceite, proponha de novo ou recuse. Na cotação de compra, responda preço, moeda, ficha técnica e condições até o prazo.",
   "supplierTasks.request.title": "Solicitação nº {n}: {product}",
   "supplierTasks.request.detail":
     "{qty} {unit} · diga se faz o item e em que condições",
@@ -129,7 +129,7 @@ export const en: Record<keyof typeof pt, string> = {
   "tasks.group.supplier.booking": "Review the Book",
   "tasks.group.supplier.request": "Answer the request",
   "supplierTasks.help.request":
-    "Say whether you make the item Wellmix asked for and on what terms (price, minimum order and lead time); if a counter-proposal arrives, accept it, propose again or decline.",
+    "Say whether you make the item Wellmix asked for and on what terms (price, minimum order and lead time); if a counter-proposal arrives, accept it, propose again or decline. In a purchase quote, send price, currency, technical sheet and terms before the deadline.",
   "supplierTasks.request.title": "Request no. {n}: {product}",
   "supplierTasks.request.detail":
     "{qty} {unit} · say whether you make the item and on what terms",
@@ -209,7 +209,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "tasks.group.supplier.booking": "审核 Book",
   "tasks.group.supplier.request": "答复询问",
   "supplierTasks.help.request":
-    "请说明是否能做 Wellmix 询问的产品以及条件（价格、起订量和交期）；如收到还价，请接受、重新报价或拒绝。",
+    "请说明是否能做 Wellmix 询问的产品以及条件（价格、起订量和交期）；如收到还价，请接受、重新报价或拒绝。采购询价请在截止前回复价格、币种、技术资料和条件。",
   "supplierTasks.request.title": "询问 {n} 号：{product}",
   "supplierTasks.request.detail": "{qty} {unit} · 请说明是否能做及条件",
   "supplierTasks.request.counter": "Wellmix 已还价：请接受、重新报价或拒绝",
