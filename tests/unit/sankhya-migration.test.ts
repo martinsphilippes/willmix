@@ -23,6 +23,9 @@ let admin: User;
 beforeAll(async () => {
   const { users } = await seedDemo();
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
+  // A carga antiga do histórico (um pedido por documento) está desligada
+  // desde 21/11/2026; estes testes cobrem a regra antiga de propósito.
+  await st.writeSetting("sankhya.legacyOrders", "enabled");
   await st.saveSankhyaCredentials(
     {
       environment: "production",
