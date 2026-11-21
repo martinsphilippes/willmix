@@ -331,18 +331,29 @@ Pedido do dono (21/11/2026, com o print do iPad): o card da resposta da cotaçã
 - **Letra dos campos** de 13 px também no iPad, como na Estratégia de compra (`data-compact-fields`); no iPhone segue 16 px para o Safari não dar zoom.
 - **O que não muda**: os nomes dos campos do formulário, as regras (o que falta, os avisos, o rascunho automático) e os testes (`data-sheet-field`).
 
+## Correção da resposta até o prazo (dono, 21/11/2026)
+
+Pergunta do dono, com o print da cotação nº 1 em produção: "Como assim dá para alterar enquanto o prazo não acabar? Qual prazo?". O prazo é o da resposta de cada fornecedor (`purchaseQuoteHours`, padrão 24 h a partir do convite; o "Vence em" do topo, em Brasília e na China). Decisão do dono: **opção 1**, manter a correção com o texto claro e a tela travada no prazo.
+
+- **Regra única** (`quoteEditable` em `src/lib/services/purchase-quote.ts`): o fornecedor envia e corrige enquanto a cotação está aberta e o prazo dele corre. A escolha da vencedora (ou o cancelamento) trava antes do prazo. O servidor já recusava fora disso (`quote_closed`, `quote_expired`), também na foto e no rascunho automático.
+- **O aviso depois do envio** diz até quando: "Cotação enviada. Você pode corrigir até 21/11, 23:12 (Brasília) · 22/11, 10:12 (China), enquanto a Wellmix não escolher a vencedora." Na recusa, o mesmo prazo para mudar de ideia. Os horários saem de `dueTimes` (`src/app/app/purchase-quotes/_time.tsx`), o mesmo do "Vence em".
+- **Tela travada** (o defeito corrigido: depois do prazo, quem já tinha respondido ainda via o formulário e só no envio recebia "O prazo para responder acabou"): passado o prazo, ou escolhida a vencedora, o formulário sai e fica a resposta enviada, só leitura (`QuoteAnswerSummary`): o motivo da trava, o preço de cada produto, a ficha técnica, a foto na balança e as condições (moeda, incoterm, prazo de produção, porto, pedido mínimo e observação). Sem resposta, "Você não respondeu esta cotação"; recusada, "Você recusou esta cotação".
+- **A regra do peso bruto** (caixa mais leve que as peças) continua só como aviso.
+- **Testes**: `tests/unit/purchase-quote.test.ts` (a regra: aberta e no prazo, no limite exato, vencedora escolhida e cancelada; a resposta trocada no prazo e recusada depois) e `tests/e2e/purchase-quote.spec.ts` (o aviso com a hora de Brasília depois do envio; passado o prazo, o fornecedor A vê a resposta enviada, com o preço, e nenhum formulário).
+
 ## Andamento
 
-| PR  | Entrega                                                                                        | Situação |
-| --- | ---------------------------------------------------------------------------------------------- | -------- |
-| 1   | Mapa (MAPA_PROCESSO.md gerado do data.json), decisões e este documento                         | feito    |
-| 2   | Demanda única: encomenda pelas 4 portas, divisão do carrinho, reposição manual, função Vendas  | feito    |
-| 3   | Estratégia de compra, aprovação e pedido de compra direto                                      | feito    |
-| 4   | Cotação de compra: fornecedor × linha, 24 h, isolamento, quadro comparativo                    | feito    |
-| 5   | Limpeza dos restos da RFQ                                                                      | feito    |
-| 6   | Estratégia de Compra por produto: envio pela Encomenda, destinatários, resultado e reenvio     | feito    |
-| 7   | Estratégia por solicitação: uma escolha para todos os produtos, lista do País × Família        | feito    |
-| 8   | Embalagem e cubagem na Estratégia; estratégia parada por encomenda cancelada                   | feito    |
-| 9   | Encerrar a estratégia parada (Comprador e Diretoria; as abertas voltam para a fila)            | feito    |
-| 10  | Grade de estratégias: três colunas de cards compactos, Detalhes e Gerar pedido em painel       | feito    |
-| 11  | Ficha técnica na cotação: quem nunca vendeu informa, quem já vendeu ratifica uma vez; Cadastro | feito    |
+| PR  | Entrega                                                                                          | Situação |
+| --- | ------------------------------------------------------------------------------------------------ | -------- |
+| 1   | Mapa (MAPA_PROCESSO.md gerado do data.json), decisões e este documento                           | feito    |
+| 2   | Demanda única: encomenda pelas 4 portas, divisão do carrinho, reposição manual, função Vendas    | feito    |
+| 3   | Estratégia de compra, aprovação e pedido de compra direto                                        | feito    |
+| 4   | Cotação de compra: fornecedor × linha, 24 h, isolamento, quadro comparativo                      | feito    |
+| 5   | Limpeza dos restos da RFQ                                                                        | feito    |
+| 6   | Estratégia de Compra por produto: envio pela Encomenda, destinatários, resultado e reenvio       | feito    |
+| 7   | Estratégia por solicitação: uma escolha para todos os produtos, lista do País × Família          | feito    |
+| 8   | Embalagem e cubagem na Estratégia; estratégia parada por encomenda cancelada                     | feito    |
+| 9   | Encerrar a estratégia parada (Comprador e Diretoria; as abertas voltam para a fila)              | feito    |
+| 10  | Grade de estratégias: três colunas de cards compactos, Detalhes e Gerar pedido em painel         | feito    |
+| 11  | Ficha técnica na cotação: quem nunca vendeu informa, quem já vendeu ratifica uma vez; Cadastro   | feito    |
+| 12  | Correção da resposta até o prazo: aviso com a hora exata e a tela travada com a resposta enviada | feito    |

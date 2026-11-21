@@ -183,6 +183,11 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
 
   // A e B respondem; C não. A em RMB (o padrão), B em Dólar.
   await answer(page, "supplier.a@china.com", quoteId!, "210", "RMB", true);
+  // O aviso diz até quando dá para corrigir: a hora em Brasília e na China
+  // (dono, 21/11/2026, opção 1; A está em chinês).
+  await expect(page.locator("[data-quote-answered]")).toContainText(
+    /Brasília|巴西利亚/,
+  );
   await answer(page, "supplier.b@china.com", quoteId!, "185", "USD");
 
   // Isolamento: A abre a dele, sem o preço do B, sem o nome do B nem o cliente.
@@ -203,6 +208,18 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
     await page.goto(`/app/purchase-quotes/${quoteId}`);
     await expect(board).toBeVisible({ timeout: 2000 });
   }).toPass({ timeout: 120_000, intervals: [5000] });
+  // Passado o prazo, A vê só a resposta que enviou, sem o formulário (dono,
+  // 21/11/2026, opção 1).
+  await login(page, "supplier.a@china.com");
+  await page.goto(`/app/purchase-quotes/${quoteId}`);
+  await expect(page.locator('[data-quote-locked="deadline"]')).toBeVisible();
+  await expect(page.locator("[data-quote-answer-form]")).toHaveCount(0);
+  await expect(
+    page.locator('[data-quote-sent-item="prod-jarra"] [data-quote-sent-price]'),
+  ).toContainText(/RMB 2[.,]1/);
+  await login(page, "operador@wellmix.com");
+  await page.goto(`/app/purchase-quotes/${quoteId}`);
+  await expect(board).toBeVisible();
   await expect(
     page.locator('[data-quote-response-state="expired"]'),
   ).toHaveCount(1);
