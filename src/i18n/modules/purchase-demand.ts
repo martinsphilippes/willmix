@@ -169,6 +169,9 @@ export const pt = {
   "quote.unitsPerBox": "Peças por caixa",
   "quote.boxes": "Caixas",
   "quote.one": "Cotação de compra nº {n}",
+  "quote.task.answer.detail": "{product} · {qty} {unit}",
+  "quote.task.answer.detailMore":
+    "{product} · {qty} {unit} e mais {more} produto(s)",
   "quote.supplier": "Fornecedor",
   "quote.compare": "Quadro comparativo",
   "quote.lastPurchase": "Última compra (referência)",
@@ -457,6 +460,9 @@ export const en: Record<keyof typeof pt, string> = {
   "quote.unitsPerBox": "Pieces per carton",
   "quote.boxes": "Cartons",
   "quote.one": "Purchase quote no. {n}",
+  "quote.task.answer.detail": "{product} · {qty} {unit}",
+  "quote.task.answer.detailMore":
+    "{product} · {qty} {unit} and {more} more product(s)",
   "quote.supplier": "Supplier",
   "quote.compare": "Comparison",
   "quote.lastPurchase": "Last purchase (reference)",
@@ -727,6 +733,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "quote.unitsPerBox": "每箱件数",
   "quote.boxes": "箱数",
   "quote.one": "第 {n} 号采购询价",
+  "quote.task.answer.detail": "{product} · {qty} {unit}",
+  "quote.task.answer.detailMore":
+    "{product} · {qty} {unit}，另有 {more} 个产品",
   "quote.supplier": "供应商",
   "quote.compare": "比价表",
   "quote.lastPurchase": "上次采购（参考）",
