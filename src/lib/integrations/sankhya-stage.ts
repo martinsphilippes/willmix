@@ -47,6 +47,11 @@ export const NOT_IMPORT_TOPS = [7, 176, 1120];
 
 const PAGE = 4000;
 
+/** TOPs com o TRACK_ID no cabeçalho, mais as do caminho 117 → 33 → 30. */
+export const TRACK_TOPS = [
+  1002, 1003, 140, 1100, 1101, 1102, 1103, 1104, 1107, 117, 33, 30,
+];
+
 export const STAGE_DATASETS = [
   "purchaseHeaders",
   "purchaseItems",
@@ -54,6 +59,7 @@ export const STAGE_DATASETS = [
   "saleHeaders",
   "saleItems",
   "saleLinks",
+  "purchaseTracks",
 ] as const;
 export type StageDataset = (typeof STAGE_DATASETS)[number];
 
@@ -65,6 +71,7 @@ export const STAGE_ENTITY: Record<StageDataset, FullLoadEntity> = {
   saleHeaders: "stageSaleHeaders",
   saleItems: "stageSaleItems",
   saleLinks: "stageSaleLinks",
+  purchaseTracks: "stagePurchaseTracks",
 };
 
 export const datasetOfEntity = (entity: string): StageDataset | null =>
@@ -96,6 +103,11 @@ export function stagePageSql(
     case "purchaseLinks":
     case "saleLinks":
       throw new Error(`${dataset}: use stageLinksSql`);
+    // TRACK_ID de cada documento de compra (docs/SANKHYA_TRACK_ID.md), direto
+    // da TGFCAB: a view do cabeçalho com as etapas por track ficou lenta
+    // demais para copiar inteira (21/11/2026: nem 100 linhas em 25 s).
+    case "purchaseTracks":
+      return `SELECT TOP ${top} C.NUNOTA, C.CODTIPOPER, C.AD_TRACKID AS TRACK_ID FROM TGFCAB C WHERE C.CODTIPOPER IN (${TRACK_TOPS.join(", ")}) AND ${after(nunota, seq, "C.NUNOTA", null)} ORDER BY C.NUNOTA`;
     case "saleHeaders":
       return `SELECT TOP ${top} * FROM sankhya.VW_AD_PEDCLIENTE_CAB_WELL WHERE ${after(nunota, seq, "NUNOTA", null)} ORDER BY NUNOTA`;
     case "saleItems":
@@ -184,7 +196,11 @@ const col = (row: SankhyaRow, name: string) => {
 /** Chave da linha na origem. */
 export function stageRowKey(dataset: StageDataset, row: SankhyaRow): string {
   const n = num(col(row, "NUNOTA"));
-  if (dataset === "purchaseHeaders" || dataset === "saleHeaders")
+  if (
+    dataset === "purchaseHeaders" ||
+    dataset === "saleHeaders" ||
+    dataset === "purchaseTracks"
+  )
     return String(n);
   const s = num(col(row, "SEQUENCIA"));
   if (dataset === "purchaseItems" || dataset === "saleItems")
@@ -217,7 +233,9 @@ export function cutPage(
   size = PAGE,
 ): { rows: SankhyaRow[]; nunota: number; seq: number; done: boolean } {
   const seqOf = (r: SankhyaRow) =>
-    dataset === "purchaseHeaders" || dataset === "saleHeaders"
+    dataset === "purchaseHeaders" ||
+    dataset === "saleHeaders" ||
+    dataset === "purchaseTracks"
       ? 0
       : num(col(r, "SEQUENCIA"));
   const done = rows.length < size;

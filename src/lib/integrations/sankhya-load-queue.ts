@@ -50,6 +50,7 @@ export const SERVER_LOAD_ORDER: FullLoadEntity[] = [
   "stageSaleHeaders",
   "stageSaleItems",
   "stageSaleLinks",
+  "stagePurchaseTracks",
 ];
 
 export interface ServerLoadState {

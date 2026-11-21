@@ -120,6 +120,8 @@ export const pt = {
     "Análise: itens de compra (VW_AD_PEDCOMPRA_ITEM_WELL, cópia bruta)",
   "sankhyaLoad.full.entity.stagePurchaseLinks":
     "Análise: de que documento cada compra foi gerada (TGFVAR, depois dos cabeçalhos)",
+  "sankhyaLoad.full.entity.stagePurchaseTracks":
+    "Análise: TRACK_ID de cada documento de compra (TGFCAB, só NUNOTA, TOP e track)",
   "sankhyaLoad.full.entity.stageSaleHeaders":
     "Análise: cabeçalhos de venda (VW_AD_PEDCLIENTE_CAB_WELL, cópia bruta)",
   "sankhyaLoad.full.entity.stageSaleLinks":
@@ -465,6 +467,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Analysis: purchase items (VW_AD_PEDCOMPRA_ITEM_WELL, raw copy)",
   "sankhyaLoad.full.entity.stagePurchaseLinks":
     "Analysis: which document each purchase came from (TGFVAR, after the headers)",
+  "sankhyaLoad.full.entity.stagePurchaseTracks":
+    "Analysis: TRACK_ID of each purchase document (TGFCAB, only NUNOTA, TOP and track)",
   "sankhyaLoad.full.entity.stageSaleHeaders":
     "Analysis: sales headers (VW_AD_PEDCLIENTE_CAB_WELL, raw copy)",
   "sankhyaLoad.full.entity.stageSaleLinks":
@@ -803,6 +807,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "分析：采购单明细（VW_AD_PEDCOMPRA_ITEM_WELL，原始副本）",
   "sankhyaLoad.full.entity.stagePurchaseLinks":
     "分析：每笔采购由哪个单据生成（TGFVAR，在抬头之后）",
+  "sankhyaLoad.full.entity.stagePurchaseTracks":
+    "分析：每个采购单据的 TRACK_ID（TGFCAB，仅 NUNOTA、TOP 和 track）",
   "sankhyaLoad.full.entity.stageSaleHeaders":
     "分析：销售单抬头（VW_AD_PEDCLIENTE_CAB_WELL，原始副本）",
   "sankhyaLoad.full.entity.stageSaleLinks":
