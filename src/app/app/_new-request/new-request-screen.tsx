@@ -9,7 +9,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { can, canSeeMoney } from "@/lib/auth/function-access";
-import { canOpen } from "@/lib/auth/screens";
+import { canOpen, canOpenNewRequest } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { listByIds } from "@/lib/db/lookup";
 import { getT } from "@/i18n/server";
@@ -32,6 +32,7 @@ import { KeyboardSubmitGuard } from "@/components/keyboard-submit-guard";
 import { PhotoInput } from "@/components/photo-input";
 import { RequestItems } from "@/components/request-items";
 import { RequestCustomerField } from "@/components/request-customer-field";
+import { quickCustomerLabels } from "@/components/quick-customer-labels";
 import { economicGroupLabels } from "@/components/economic-group-labels";
 import { RequestCustomerProvider } from "@/components/request-customer-context";
 import {
@@ -1089,6 +1090,14 @@ export async function renderNewRequest({
                       none: "—",
                     }}
                     groupLabels={groupLabels}
+                    // "+" do cadastro rápido de cliente (dono, 21/11/2026;
+                    // docs/ORDER_TERMS.md, seção 11.25): quem lança a
+                    // solicitação cadastra na própria tela.
+                    quick={
+                      canOpenNewRequest(user)
+                        ? quickCustomerLabels(t)
+                        : undefined
+                    }
                   />
                 </div>
                 <RequestPeopleFields

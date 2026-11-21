@@ -6,6 +6,10 @@ import type { SearchOption, SearchPickerLabels } from "./search-picker";
 import { useRequestCustomer } from "./request-customer-context";
 import { GroupCustomerExtra } from "./economic-group-ui";
 import type { EconomicGroupLabels } from "./economic-group-labels";
+import {
+  QuickCustomerButton,
+  type QuickCustomerLabels,
+} from "./quick-customer";
 
 /**
  * Cliente da nova solicitação (Wellmix): busca pelo nome (~26 mil clientes
@@ -25,7 +29,13 @@ export function RequestCustomerField({
   summary,
   allowStock = true,
   groupLabels,
+  quick,
 }: {
+  /**
+   * Cadastro rápido de cliente pelo "+" ao lado da busca (dono, 21/11/2026;
+   * docs/ORDER_TERMS.md, seção 11.25). Sem os textos, sem o "+".
+   */
+  quick?: QuickCustomerLabels;
   /**
    * Pedido para um grupo econômico (docs/ECONOMIC_GROUPS.md): "+ x empresas
    * do grupo" e a distribuição padrão ao lado do cliente. Sem eles, nada.
@@ -56,25 +66,57 @@ export function RequestCustomerField({
   // volta em branco (nova montagem, sem o cliente de antes).
   const [pickerKey, setPickerKey] = useState(0);
   const [cleared, setCleared] = useState(false);
+  // Cliente do cadastro rápido: o campo remonta já com ele escolhido.
+  const [quickChosen, setQuickChosen] = useState<SearchOption | null>(null);
+  const [quickDone, setQuickDone] = useState<string | null>(null);
   const stock = allowStock && (shared ? shared.stock : localStock);
   return (
     <div className="space-y-1.5" data-request-customer>
       {stock ? (
         <input type="hidden" name="customerId" value={stockValue} />
       ) : null}
-      <PartyPicker
-        key={pickerKey}
-        name={stock ? undefined : "customerId"}
-        type="customer"
-        activeOnly
-        required={!stock}
-        disabled={stock}
-        initial={cleared ? null : initial}
-        ariaLabel={ariaLabel}
-        labels={labels}
-        onChoose={(option) => shared?.setCustomer(option)}
-        onDeselect={() => shared?.setCustomer(null)}
-      />
+      <div className="flex items-start gap-1.5">
+        <PartyPicker
+          key={pickerKey}
+          name={stock ? undefined : "customerId"}
+          type="customer"
+          activeOnly
+          required={!stock}
+          disabled={stock}
+          initial={cleared ? null : (quickChosen ?? initial)}
+          ariaLabel={ariaLabel}
+          labels={labels}
+          className="min-w-0 flex-1"
+          onChoose={(option) => {
+            setQuickDone(null);
+            shared?.setCustomer(option);
+          }}
+          onDeselect={() => {
+            setQuickDone(null);
+            shared?.setCustomer(null);
+          }}
+        />
+        {quick && !stock ? (
+          <QuickCustomerButton
+            labels={quick}
+            onChosen={(option, created) => {
+              setQuickChosen(option);
+              setCleared(false);
+              setPickerKey((k) => k + 1);
+              setQuickDone(created ? option.name : null);
+              shared?.setCustomer(option);
+            }}
+          />
+        ) : null}
+      </div>
+      {quick && quickDone && !stock ? (
+        <p
+          className="text-xs font-medium text-emerald-700"
+          data-quick-customer-done
+        >
+          {quick.done.replace("{name}", quickDone)}
+        </p>
+      ) : null}
       {summary && !stock && shared?.customer ? (
         <div className="text-xs text-zinc-600" data-request-customer-summary>
           <span className="font-medium text-zinc-800">
@@ -100,6 +142,8 @@ export function RequestCustomerField({
               if (on) {
                 shared?.setCustomer(null);
                 setCleared(true);
+                setQuickChosen(null);
+                setQuickDone(null);
                 setPickerKey((k) => k + 1);
               }
             }}

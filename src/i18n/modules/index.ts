@@ -165,6 +165,7 @@ import * as messages from "./messages";
 import * as purchaseHistory from "./purchase-history";
 import * as customerRca from "./customer-rca";
 import * as listPicker from "./list-picker";
+import * as quickCustomer from "./quick-customer";
 import * as orderTerms from "./order-terms";
 import * as requestSheet from "./request-sheet";
 import * as requestOrderPlan from "./request-order-plan";
@@ -344,6 +345,7 @@ export const modulesPt = {
   ...purchaseHistory.pt,
   ...customerRca.pt,
   ...listPicker.pt,
+  ...quickCustomer.pt,
   ...orderTerms.pt,
   ...requestSheet.pt,
   ...requestOrderPlan.pt,
@@ -526,6 +528,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...purchaseHistory.en,
   ...customerRca.en,
   ...listPicker.en,
+  ...quickCustomer.en,
   ...orderTerms.en,
   ...requestSheet.en,
   ...requestOrderPlan.en,
@@ -708,6 +711,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...purchaseHistory.zh,
   ...customerRca.zh,
   ...listPicker.zh,
+  ...quickCustomer.zh,
   ...orderTerms.zh,
   ...requestSheet.zh,
   ...requestOrderPlan.zh,
