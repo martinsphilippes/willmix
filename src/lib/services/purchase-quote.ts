@@ -71,6 +71,20 @@ export function responseState(
   return Date.parse(r.dueAt) <= now.getTime() ? "expired" : "open";
 }
 
+/**
+ * O fornecedor ainda pode enviar ou corrigir a resposta (dono, 21/11/2026):
+ * a cotação aberta e o prazo dele correndo. Enviada, a resposta continua
+ * corrigível até o prazo; a escolha da vencedora (ou o cancelamento) trava
+ * antes. Vale para a tela e para o servidor.
+ */
+export function quoteEditable(
+  quote: Pick<PurchaseQuote, "status">,
+  response: Pick<PurchaseQuoteResponse, "dueAt">,
+  now: Date,
+): boolean {
+  return quote.status === "open" && Date.parse(response.dueAt) > now.getTime();
+}
+
 /** Encerrada para escolha: ninguém mais pode responder (todos responderam ou o prazo de todos passou). */
 export function quoteClosed(
   responses: Pick<PurchaseQuoteResponse, "status" | "dueAt">[],
