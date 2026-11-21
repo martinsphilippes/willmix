@@ -20,6 +20,7 @@ import { audit } from "./audit";
 import { servesFamilies } from "@/lib/party-families";
 import { notify } from "./notifications";
 import { storePhotoDocument, type PhotoSource } from "./documents";
+import { clearQuoteDraft } from "./quote-draft";
 import {
   prepareQuoteSheets,
   saveQuoteSheets,
@@ -632,6 +633,9 @@ export async function answerQuote(
   // A ficha de cada par, depois da resposta gravada (uma vez por par).
   if (prepared.length)
     await saveQuoteSheets(user, quote, updated, prepared, now);
+  // Enviada ou recusada: o rascunho automático do login acabou (dono,
+  // 20/11/2026). Falhar aqui não desfaz a resposta.
+  await clearQuoteDraft(user, quote.id).catch(() => undefined);
   await audit(
     user,
     input.decline ? "purchase_quote.decline" : "purchase_quote.answer",

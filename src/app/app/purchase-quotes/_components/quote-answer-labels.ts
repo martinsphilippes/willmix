@@ -85,5 +85,10 @@ export function answerLabels(t: Translate): QuoteAnswerLabels {
     photoUploading: t("photo.uploading", { percent: "{percent}" }),
     photoFailed: t("photo.failed"),
     noInner: t("supplierSheet.noInner"),
+    draftRestored: t("quote.draft.restored"),
+    draftHint: t("quote.draft.hint"),
+    draftSaving: t("quote.draft.saving"),
+    draftSaved: t("quote.draft.saved", { time: "{time}" }),
+    draftError: t("quote.draft.error"),
   };
 }

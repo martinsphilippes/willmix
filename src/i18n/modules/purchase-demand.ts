@@ -197,6 +197,13 @@ export const pt = {
   "quote.unitPrice": "Preço unitário",
   "quote.priceHint": "Digite só os números: {typed} vira {example}.",
   "quote.currencyAll": "A moeda vale para todos os itens desta cotação.",
+  "quote.draft.restored":
+    "Recuperamos o que você tinha digitado (salvo automaticamente). Confira e envie quando estiver pronto.",
+  "quote.draft.hint": "Tudo o que você digita é salvo automaticamente.",
+  "quote.draft.saving": "Salvando o rascunho…",
+  "quote.draft.saved": "Rascunho salvo às {time}",
+  "quote.draft.error":
+    "Não deu para salvar o rascunho agora; tentamos de novo na próxima alteração.",
   "quote.port": "Porto de embarque",
   "quote.answer": "Enviar a cotação",
   "quote.decline": "Não vou cotar",
@@ -468,6 +475,13 @@ export const en: Record<keyof typeof pt, string> = {
   "quote.unitPrice": "Unit price",
   "quote.priceHint": "Type only the digits: {typed} becomes {example}.",
   "quote.currencyAll": "The currency applies to every item in this quote.",
+  "quote.draft.restored":
+    "We restored what you had typed (saved automatically). Check it and send when ready.",
+  "quote.draft.hint": "Everything you type is saved automatically.",
+  "quote.draft.saving": "Saving the draft…",
+  "quote.draft.saved": "Draft saved at {time}",
+  "quote.draft.error":
+    "Couldn't save the draft right now; we'll try again on your next change.",
   "quote.port": "Port of loading",
   "quote.answer": "Send the quote",
   "quote.decline": "I will not quote",
@@ -721,6 +735,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "quote.unitPrice": "单价",
   "quote.priceHint": "只需输入数字：{typed} 即为 {example}。",
   "quote.currencyAll": "该币种适用于本报价的所有产品。",
+  "quote.draft.restored":
+    "已恢复您之前输入的内容（自动保存）。请检查后再提交。",
+  "quote.draft.hint": "您输入的内容会自动保存。",
+  "quote.draft.saving": "正在保存草稿…",
+  "quote.draft.saved": "草稿已于 {time} 保存",
+  "quote.draft.error": "暂时无法保存草稿，下次修改时会重试。",
   "quote.port": "装运港",
   "quote.answer": "提交报价",
   "quote.decline": "我不报价",

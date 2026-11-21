@@ -1,6 +1,14 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+} from "react";
 import {
   Alert,
   Badge,
@@ -44,6 +52,12 @@ import type {
  * Dólar, Euro e Real), uma só para todos os itens da cotação; o preço é
  * digitado só com números e a vírgula entra sozinha, com o símbolo e o
  * separador da moeda (4000 = ¥ 40.00).
+ *
+ * Rascunho automático (dono, 20/11/2026; docs/PURCHASE_DEMAND.md, "Rascunho
+ * automático da cotação"): a cada pausa da digitação, tudo o que está na tela
+ * vai para o servidor (por login) e volta quando a página abre de novo; a foto
+ * na balança salva antes de subir. Assim, uma página recarregada (versão nova
+ * do portal no ar, iPad que recarrega a aba) não perde nada.
  */
 
 /** A ordem do seletor (dono, 20/11/2026): RMB, Dólar, Euro e Real. */
@@ -127,6 +141,96 @@ export interface QuoteAnswerLabels {
   photoUploading: string;
   photoFailed: string;
   noInner: string;
+  /** Rascunho automático: recuperado, salvando, salvo às {time}, falhou. */
+  draftRestored: string;
+  draftHint: string;
+  draftSaving: string;
+  draftSaved: string;
+  draftError: string;
+}
+
+/** O que o rascunho guarda: os campos pelo nome do formulário, só texto. */
+export type QuoteDraftValues = Record<string, string>;
+
+type DraftSave = (input: {
+  quoteId: string;
+  values: QuoteDraftValues;
+}) => Promise<{ ok: boolean; savedAt: string | null }>;
+
+/** Espera depois da última tecla para salvar o rascunho. */
+const DRAFT_DELAY_MS = 700;
+/** Depois de enviar a resposta, nada de rascunho (o envio o apaga). */
+const DRAFT_PAUSE_AFTER_SEND_MS = 8000;
+
+const TEXT_SHEET_KEYS = [
+  "masterBoxQty",
+  "innerBoxQty",
+  "boxLengthCm",
+  "boxWidthCm",
+  "boxHeightCm",
+  "cbm",
+  "netWeightKg",
+  "grossWeightBoxKg",
+  "material",
+  "factoryItemCode",
+] as const;
+const FLAG_SHEET_KEYS = ["noInner", "noFactoryCode", "confirm"] as const;
+
+const noSubscribe = () => () => {};
+
+/**
+ * Salva o rascunho a cada pausa (só quando algo mudou desde o último salvo)
+ * e devolve a situação para a tela, mais `flush` (salvar já: antes da foto)
+ * e `pause` (a resposta foi enviada).
+ */
+function useDraftAutosave(
+  quoteId: string,
+  values: QuoteDraftValues,
+  save: DraftSave | null,
+  restoredAt: string | null,
+) {
+  const snapshot = JSON.stringify(values);
+  const latest = useRef(values);
+  // O que já está no servidor (a tela aberta não salva sem mudança).
+  const saved = useRef(snapshot);
+  const inFlight = useRef<string | null>(null);
+  const pausedAt = useRef(0);
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">(
+    restoredAt ? "saved" : "idle",
+  );
+  const [savedAt, setSavedAt] = useState<string | null>(restoredAt);
+  // O mesmo `saved`, para a tela: há mudança ainda não salva?
+  const [savedSnap, setSavedSnap] = useState(snapshot);
+
+  const flush = useCallback(async () => {
+    if (!save) return;
+    if (Date.now() - pausedAt.current < DRAFT_PAUSE_AFTER_SEND_MS) return;
+    const current = latest.current;
+    const snap = JSON.stringify(current);
+    if (snap === saved.current || snap === inFlight.current) return;
+    inFlight.current = snap;
+    setStatus("saving");
+    const result = await save({ quoteId, values: current }).catch(() => null);
+    if (inFlight.current === snap) inFlight.current = null;
+    if (result?.ok) {
+      saved.current = snap;
+      setSavedSnap(snap);
+      if (result.savedAt) setSavedAt(result.savedAt);
+      setStatus("saved");
+    } else setStatus("error");
+  }, [quoteId, save]);
+
+  useEffect(() => {
+    latest.current = values;
+    if (!save || snapshot === saved.current) return;
+    const timer = setTimeout(() => void flush(), DRAFT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [snapshot, values, save, flush]);
+
+  const pause = useCallback(() => {
+    pausedAt.current = Date.now();
+  }, []);
+  return { status, savedAt, flush, pause, dirty: snapshot !== savedSnap };
 }
 
 type SheetText = {
@@ -191,10 +295,16 @@ export function QuoteAnswerForm({
   labels: L,
   intl,
   cbmTolerancePercent,
+  draft = null,
+  draftAction = null,
 }: {
   quoteId: string;
   action: (form: FormData) => void | Promise<void>;
   photoAction: (form: FormData) => void | Promise<void>;
+  /** O rascunho salvo deste login (volta para a tela). */
+  draft?: { values: QuoteDraftValues; savedAt: string } | null;
+  /** Salva o rascunho (sem recarregar a página). */
+  draftAction?: DraftSave | null;
   products: QuoteSheetProduct[];
   commercial: {
     currency: string;
@@ -220,33 +330,94 @@ export function QuoteAnswerForm({
         });
   const show = (n: number, digits = 4) =>
     n.toLocaleString(intl, { maximumFractionDigits: digits });
+  // O rascunho deste login, quando há, vale mais que o que veio do servidor
+  // (é o que estava na tela por último; enviar a resposta o apaga).
+  const restored = draft?.values ?? {};
+  const pick = (key: string, fallback: string) =>
+    typeof restored[key] === "string" ? restored[key] : fallback;
+  const pickFlag = (key: string, fallback: boolean) =>
+    typeof restored[key] === "string" ? restored[key] === "1" : fallback;
   const [prices, setPrices] = useState<Record<string, string>>(() =>
-    Object.fromEntries(products.map((p) => [p.productId, p.price])),
+    Object.fromEntries(
+      products.map((p) => [p.productId, pick(`price.${p.productId}`, p.price)]),
+    ),
   );
   const [sheets, setSheets] = useState<Record<string, SheetText>>(() =>
     Object.fromEntries(
-      products.map((p) => [
-        p.productId,
-        {
-          masterBoxQty: fmt(p.draft.masterBoxQty),
-          innerBoxQty: fmt(p.draft.innerBoxQty),
-          noInner: p.draft.noInner,
-          boxLengthCm: fmt(p.draft.boxLengthCm),
-          boxWidthCm: fmt(p.draft.boxWidthCm),
-          boxHeightCm: fmt(p.draft.boxHeightCm),
-          cbm: fmt(p.draft.cbm),
-          netWeightKg: fmt(p.draft.netWeightKg),
-          grossWeightBoxKg: fmt(p.draft.grossWeightBoxKg),
-          material: p.draft.material,
-          factoryItemCode: p.draft.factoryItemCode,
-          noFactoryCode: p.draft.noFactoryCode,
-          confirm: false,
-        },
-      ]),
+      products.map((p) => {
+        const k = (field: string) => `sheet.${p.productId}.${field}`;
+        return [
+          p.productId,
+          {
+            masterBoxQty: pick(k("masterBoxQty"), fmt(p.draft.masterBoxQty)),
+            innerBoxQty: pick(k("innerBoxQty"), fmt(p.draft.innerBoxQty)),
+            noInner: pickFlag(k("noInner"), p.draft.noInner),
+            boxLengthCm: pick(k("boxLengthCm"), fmt(p.draft.boxLengthCm)),
+            boxWidthCm: pick(k("boxWidthCm"), fmt(p.draft.boxWidthCm)),
+            boxHeightCm: pick(k("boxHeightCm"), fmt(p.draft.boxHeightCm)),
+            cbm: pick(k("cbm"), fmt(p.draft.cbm)),
+            netWeightKg: pick(k("netWeightKg"), fmt(p.draft.netWeightKg)),
+            grossWeightBoxKg: pick(
+              k("grossWeightBoxKg"),
+              fmt(p.draft.grossWeightBoxKg),
+            ),
+            material: pick(k("material"), p.draft.material),
+            factoryItemCode: pick(
+              k("factoryItemCode"),
+              p.draft.factoryItemCode,
+            ),
+            noFactoryCode: pickFlag(k("noFactoryCode"), p.draft.noFactoryCode),
+            confirm: pickFlag(k("confirm"), false),
+          },
+        ];
+      }),
     ),
   );
-  const [terms, setTerms] = useState(commercial);
+  const [terms, setTerms] = useState(() => ({
+    currency: currencies.includes(pick("currency", ""))
+      ? pick("currency", "")
+      : commercial.currency,
+    incoterm: incoterms.includes(pick("incoterm", ""))
+      ? pick("incoterm", "")
+      : commercial.incoterm,
+    leadTimeDays: pick("leadTimeDays", commercial.leadTimeDays),
+    port: pick("port", commercial.port),
+    moq: pick("moq", commercial.moq),
+    note: pick("note", commercial.note),
+  }));
   const [tried, setTried] = useState(false);
+  // Tudo o que está na tela, pelo nome do formulário (o rascunho).
+  const draftValues = useMemo(() => {
+    const out: QuoteDraftValues = { ...terms };
+    for (const [pid, price] of Object.entries(prices))
+      out[`price.${pid}`] = price;
+    for (const [pid, sheet] of Object.entries(sheets)) {
+      for (const key of TEXT_SHEET_KEYS)
+        out[`sheet.${pid}.${key}`] = sheet[key];
+      for (const key of FLAG_SHEET_KEYS)
+        out[`sheet.${pid}.${key}`] = sheet[key] ? "1" : "0";
+    }
+    return out;
+  }, [prices, sheets, terms]);
+  const autosave = useDraftAutosave(
+    quoteId,
+    draftValues,
+    draftAction,
+    draft?.savedAt ?? null,
+  );
+  // A hora do rascunho no fuso de quem vê: só depois de abrir no aparelho.
+  const onClient = useSyncExternalStore(
+    noSubscribe,
+    () => true,
+    () => false,
+  );
+  const savedTime =
+    onClient && autosave.savedAt
+      ? new Date(autosave.savedAt).toLocaleTimeString(intl, {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : null;
   const currencyOptions = [
     ...CURRENCY_ORDER.filter((c) => currencies.includes(c)),
     ...currencies.filter((c) => !CURRENCY_ORDER.includes(c)),
@@ -305,8 +476,15 @@ export function QuoteAnswerForm({
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     const submitter = (event.nativeEvent as SubmitEvent).submitter;
-    if (submitter?.getAttribute("name") === "decline") return;
-    if (!missing.length) return;
+    if (submitter?.getAttribute("name") === "decline") {
+      autosave.pause();
+      return;
+    }
+    if (!missing.length) {
+      // Vai enviar: o rascunho para (o envio o apaga no servidor).
+      autosave.pause();
+      return;
+    }
     event.preventDefault();
     setTried(true);
     // Leva até o primeiro campo que falta (depois de a tela marcar).
@@ -323,6 +501,11 @@ export function QuoteAnswerForm({
 
   return (
     <div className="space-y-4" data-quote-answer-form data-quote-form={quoteId}>
+      {draft ? (
+        <div data-quote-draft-restored>
+          <Alert tone="info">{L.draftRestored}</Alert>
+        </div>
+      ) : null}
       {showsDisclaimer ? (
         <div data-quote-disclaimer>
           <Alert tone="brand">
@@ -811,6 +994,9 @@ export function QuoteAnswerForm({
                 ) : null}
                 <form
                   action={photoAction}
+                  // Antes de a foto subir, o rascunho vai para o servidor: se
+                  // a página recarregar, o que foi digitado volta.
+                  onSubmit={() => void autosave.flush()}
                   className="shrink-0"
                   data-quote-photo-form={p.productId}
                 >
@@ -935,7 +1121,7 @@ export function QuoteAnswerForm({
               </ul>
             </div>
           ) : null}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <SubmitButton data-quote-submit>{L.answer}</SubmitButton>
             <SubmitButton
               name="decline"
@@ -945,6 +1131,26 @@ export function QuoteAnswerForm({
             >
               {L.decline}
             </SubmitButton>
+            <p
+              className={cx(
+                "text-xs",
+                autosave.status === "error"
+                  ? "text-amber-800"
+                  : "text-zinc-500",
+              )}
+              role="status"
+              aria-live="polite"
+              data-quote-draft-status={autosave.status}
+              data-quote-draft-dirty={autosave.dirty ? "1" : "0"}
+            >
+              {autosave.status === "saving"
+                ? L.draftSaving
+                : autosave.status === "error"
+                  ? L.draftError
+                  : autosave.status === "saved" && savedTime
+                    ? fill(L.draftSaved, { time: savedTime })
+                    : L.draftHint}
+            </p>
           </div>
         </form>
       </section>

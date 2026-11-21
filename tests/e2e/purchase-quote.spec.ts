@@ -63,7 +63,7 @@ async function typePrice(
   await expect(symbol).toHaveText("¥");
   await expect(
     form.locator('[data-quote-price-hint="prod-jarra"]'),
-  ).toContainText("4000 vira 40.00");
+  ).toContainText(/4000\D+40\.00/); // no idioma do fornecedor (zh)
   await price.click();
   await price.pressSequentially(digits);
   const shown = `${digits.slice(0, -2) || "0"}.${digits.slice(-2)}`;
@@ -85,6 +85,7 @@ async function answer(
   quoteId: string,
   digits: string,
   currency: "RMB" | "USD" = "RMB",
+  reload = false,
 ) {
   await login(page, email);
   await page.goto("/app/purchase-quotes");
@@ -104,6 +105,30 @@ async function answer(
   await expect(
     form.locator('[data-sheet-your-box="prod-jarra"]'),
   ).toContainText("167");
+  if (reload) {
+    // Rascunho automático (dono, 20/11/2026): o que foi digitado vai para o
+    // servidor a cada pausa; a página recarregada (versão nova no ar, iPad)
+    // traz tudo de volta.
+    await expect(
+      form.locator(
+        '[data-quote-draft-status="saved"][data-quote-draft-dirty="0"]',
+      ),
+    ).toBeVisible();
+    await page.reload();
+    await expect(form.locator("[data-quote-draft-restored]")).toBeVisible();
+    await expect(form.locator('[data-quote-price="prod-jarra"]')).toHaveValue(
+      `${digits.slice(0, -2) || "0"}.${digits.slice(-2)}`,
+    );
+    await expect(
+      form.locator('[data-sheet-field="prod-jarra.masterBoxQty"]'),
+    ).toHaveValue("24");
+    await expect(
+      form.locator('[data-sheet-field="prod-jarra.factoryItemCode"]'),
+    ).toHaveValue("JR-01");
+    await expect(
+      form.locator('[data-quote-currency="prod-jarra"]'),
+    ).toHaveValue(currency);
+  }
   await form.locator("[data-quote-lead]").fill("35");
   await form.locator("[data-quote-port]").fill("Ningbo");
   await form.locator("[data-quote-moq]").fill("500");
@@ -157,7 +182,7 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   await expect(page.locator("[data-quote-response]")).toHaveCount(3);
 
   // A e B respondem; C não. A em RMB (o padrão), B em Dólar.
-  await answer(page, "supplier.a@china.com", quoteId!, "210");
+  await answer(page, "supplier.a@china.com", quoteId!, "210", "RMB", true);
   await answer(page, "supplier.b@china.com", quoteId!, "185", "USD");
 
   // Isolamento: A abre a dele, sem o preço do B, sem o nome do B nem o cliente.
