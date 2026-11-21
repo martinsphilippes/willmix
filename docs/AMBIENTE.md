@@ -47,6 +47,15 @@ O nome oficial é **Wellmix** (empresa, portal e equipe). Ocorrências de `willm
 
 Dados de demonstração: `scripts/appwrite-rename-brand.ts` atualiza o nome do banco e as contas `@willmix.com` → `@wellmix.com` (senha `wellmix123`) sem recriar nada.
 
+## Build na Vercel sem cache (21/11/2026)
+
+`VERCEL_FORCE_NO_BUILD_CACHE=1` nas variáveis do projeto `wellmix` na Vercel, em Production e em Preview (autorização do dono, 21/11/2026).
+
+- **Por quê**: nesse dia, todo build que restaurava o cache do deploy anterior travava em "Creating an optimized production build" (Next 16.3.6 com Turbopack, Node 26 na Vercel) até o limite de 45 minutos, com ou sem o código novo. Como a Vercel faz um build por vez, cada um travado segurava a fila, inclusive a produção. Sem cache, o mesmo commit compila em cerca de 50 s.
+- **Custo**: cada deploy compila do zero, alguns minutos a mais que com cache.
+- **Para voltar ao cache** (decisão do dono): apagar a variável nas duas (Production e Preview) e conferir no log do próximo deploy que "Restored build cache" vem seguido de "Compiled successfully" em segundos. Se travar de novo, recolocar.
+- **Sinal do problema**: deploy em "Building" com a última linha do log em "Creating an optimized production build ..." por mais de 2 a 3 minutos (o normal com cache é ~16 s). Cancelar e refazer o deploy sem cache.
+
 ## Appwrite pausado por inatividade
 
 No plano gratuito (Free), o Appwrite pausa o projeto depois de 7 dias seguidos sem atividade de desenvolvimento no console. O uso do portal não conta: o portal tem um cron diário (lembretes) que consulta o banco pela chave de API, e o projeto foi pausado mesmo assim (out/2026); relatos no fórum do Appwrite dizem o mesmo. Enquanto pausado, nenhum login funciona e nenhuma tela carrega dados. Os dados não somem na pausa, mas o Appwrite apaga projetos gratuitos que ficam pausados por 90 dias (avisa o dono por e-mail antes).
