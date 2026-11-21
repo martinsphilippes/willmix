@@ -46,8 +46,8 @@ import type {
  * separador da moeda (4000 = ¥ 40.00).
  */
 
-/** Primeiro as moedas de quem vende da China: Yuan (RMB) e Dólar. */
-const FIRST_CURRENCIES = ["RMB", "USD"];
+/** A ordem do seletor (dono, 20/11/2026): RMB, Dólar, Euro e Real. */
+const CURRENCY_ORDER = ["RMB", "USD", "EUR", "BRL"];
 
 export interface QuoteSheetProduct {
   productId: string;
@@ -248,8 +248,8 @@ export function QuoteAnswerForm({
   const [terms, setTerms] = useState(commercial);
   const [tried, setTried] = useState(false);
   const currencyOptions = [
-    ...FIRST_CURRENCIES.filter((c) => currencies.includes(c)),
-    ...currencies.filter((c) => !FIRST_CURRENCIES.includes(c)),
+    ...CURRENCY_ORDER.filter((c) => currencies.includes(c)),
+    ...currencies.filter((c) => !CURRENCY_ORDER.includes(c)),
   ];
   // Exemplo da digitação na moeda escolhida: 4000 → 40.00 (ou 40,00).
   const priceHint = fill(L.priceHint, {

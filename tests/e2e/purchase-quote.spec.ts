@@ -53,6 +53,13 @@ async function typePrice(
   const price = form.locator('[data-quote-price="prod-jarra"]');
   const symbol = box.locator("[data-money-symbol]");
   await expect(select).toHaveValue("RMB");
+  // A ordem pedida pelo dono: RMB, Dólar, Euro e Real.
+  await expect(select.locator("option")).toHaveText([
+    /RMB/,
+    /USD/,
+    /EUR/,
+    /BRL/,
+  ]);
   await expect(symbol).toHaveText("¥");
   await expect(
     form.locator('[data-quote-price-hint="prod-jarra"]'),

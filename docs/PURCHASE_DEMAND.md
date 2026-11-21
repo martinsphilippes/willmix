@@ -275,7 +275,7 @@ Pedido do dono (20/11/2026, com o print da Estratégia de compra): no "Sem login
 Pedido do dono (20/11/2026, com o print da resposta da cotação de compra no iPad): o preço unitário tem de aceitar RMB ou Dólar, com RMB fixado como padrão; o campo segue o símbolo da moeda escolhida e a vírgula das casas entra sozinha (a pessoa digita 4000 e o campo mostra 40,00), com vírgula ou ponto conforme a moeda.
 
 - **Moeda ao lado do preço**:
-  - o seletor fica junto do preço unitário de cada item: Yuan (RMB) primeiro e selecionado quando o fornecedor ainda não respondeu, depois Dólar (USD), Euro e Real (as quatro que já existiam);
+  - o seletor fica junto do preço unitário de cada item, na ordem pedida pelo dono: RMB (selecionado quando o fornecedor ainda não respondeu), Dólar, Euro e Real (as quatro que já existiam);
   - a moeda é uma só por resposta, para todos os itens (o quadro compara por resposta); com mais de um item, trocar num item troca em todos, e o aviso embaixo diz isso;
   - o seletor "Moeda" das condições comerciais (embaixo) saiu: o campo continua o mesmo (`currency` da resposta), só mudou de lugar.
 - **Digitação do preço (caixa registradora)**:
