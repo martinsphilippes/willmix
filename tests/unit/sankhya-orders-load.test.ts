@@ -227,6 +227,10 @@ describe("carga dos pedidos do Sankhya", () => {
     expect(o.requestId).toBeNull();
     expect(o.sankhyaCode).toBe("2000");
     expect(o.sankhyaTrackId).toBe("2000");
+    // O número do pedido é o do Sankhya (o TRACK_ID).
+    expect(o.number).toBe(2000);
+    // O pedido nunca fica em espera (aparece nas listas); a espera é só das pendências.
+    expect(o.held ?? null).toBeNull();
     expect(o.erpNumber).toBe("4455");
     expect(o.fobCurrency).toBe("USD");
     expect(o.sankhyaSituation).toBe("in_progress");
