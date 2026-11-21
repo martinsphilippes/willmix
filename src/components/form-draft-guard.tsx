@@ -348,13 +348,29 @@ function apply(form: HTMLFormElement, values: Record<string, string>) {
       Number(a instanceof HTMLSelectElement),
   );
   let changed = 0;
+  // Restauração em andamento: a moeda devolvida pelo rascunho não converte
+  // o valor (só a troca feita pela pessoa converte; dono, 21/11/2026).
+  form.dataset.draftRestoring = "1";
+  try {
+    restoreFields(fields, values, () => changed++);
+  } finally {
+    delete form.dataset.draftRestoring;
+  }
+  return changed > 0;
+}
+
+function restoreFields(
+  fields: Field[],
+  values: Record<string, string>,
+  count: () => void,
+) {
   for (const el of fields) {
     const value = values[fieldKey(el)];
     if (isCheckbox(el)) {
       // O clique de verdade: o React e o que depende da caixa acompanham.
       if (el.checked !== (value === "1")) {
         el.click();
-        changed++;
+        count();
       }
       continue;
     }
@@ -362,9 +378,8 @@ function apply(form: HTMLFormElement, values: Record<string, string>) {
     setNativeValue(el, value);
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
-    changed++;
+    count();
   }
-  return changed > 0;
 }
 
 /** Troca o valor de um jeito que o React percebe (campos controlados também). */

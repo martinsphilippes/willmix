@@ -1,6 +1,7 @@
 import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
 import type { Translate } from "@/i18n";
 import { Field, Input, Select } from "@/components/ui";
+import { FxFieldWatch } from "@/components/fx-field-watch";
 
 /*
  * Linha de oferta dos formulários da negociação (docs/SUPPLIER_REQUESTS.md,
@@ -61,6 +62,8 @@ export function OfferRowFields({
                 defaultValue={raw(values.price)}
                 {...mark("price")}
               />
+              {/* Trocar a moeda converte o preço (dono, 21/11/2026). */}
+              <FxFieldWatch price="price" currency="currency" locale={t.intl} />
             </Field>
             <Field label={t("negotiationScreen.f.currency")}>
               <Select

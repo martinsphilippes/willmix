@@ -5,6 +5,7 @@ import {
   grantTeamScreen,
   login,
   openReplenishment,
+  setManualFx,
 } from "./helpers";
 
 /*
@@ -69,12 +70,28 @@ async function typePrice(
   const shown = `${digits.slice(0, -2) || "0"}.${digits.slice(-2)}`;
   await expect(price).toHaveValue(shown);
   if (currency === "USD") {
-    // Real: a vírgula no lugar do ponto; Dólar: o ponto de novo.
+    // Trocar a moeda converte o preço pelo câmbio do dia (dono, 21/11/2026;
+    // docs/PURCHASE_DEMAND.md, "Conversão ao trocar a moeda"). "Manter os
+    // valores digitados" volta ao número, no formato da moeda nova: Real com
+    // vírgula, Dólar com ponto.
+    const fx = (await (await form.page().request.get("/api/fx")).json()) as {
+      rates: Record<string, number>;
+    };
+    const typed = Number(shown);
+    const round2 = (n: number) => (Math.round(n * 100) / 100).toFixed(2);
     await select.selectOption("BRL");
     await expect(symbol).toHaveText("R$");
+    await expect(price).toHaveValue(
+      round2(typed * fx.rates.RMB).replace(".", ","),
+    );
+    await expect(box.locator("[data-fx-note]")).toBeVisible();
+    await box.locator("[data-fx-keep]").click();
     await expect(price).toHaveValue(shown.replace(".", ","));
+    await expect(box.locator("[data-fx-note]")).toHaveCount(0);
     await select.selectOption("USD");
     await expect(symbol).toHaveText("US$");
+    await expect(price).toHaveValue(round2(typed / fx.rates.USD));
+    await box.locator("[data-fx-keep]").click();
     await expect(price).toHaveValue(shown);
   }
 }
@@ -158,6 +175,8 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
 }) => {
   test.slow();
   await setQuoteHours(page, "0.02");
+  // Câmbio garantido para a conversão da moeda (o do dia, quando há, vale).
+  await setManualFx(page);
   // A, B e C marcam a família das utilidades (Grupo de produto (família)):
   // aparecem vinculados na Estratégia de Compra e entram na cotação.
   for (const id of ["fornecedor-a", "fornecedor-b", "fornecedor-c"])
