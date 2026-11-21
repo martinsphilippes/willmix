@@ -197,6 +197,7 @@ export const pt = {
   "quote.unitPrice": "Preço unitário",
   "quote.priceHint": "Digite só os números: {typed} vira {example}.",
   "quote.currencyAll": "A moeda vale para todos os itens desta cotação.",
+  "quote.unit.days": "dias",
   "quote.draft.restored":
     "Recuperamos o que você tinha digitado (salvo automaticamente). Confira e envie quando estiver pronto.",
   "quote.draft.hint": "Tudo o que você digita é salvo automaticamente.",
@@ -475,6 +476,7 @@ export const en: Record<keyof typeof pt, string> = {
   "quote.unitPrice": "Unit price",
   "quote.priceHint": "Type only the digits: {typed} becomes {example}.",
   "quote.currencyAll": "The currency applies to every item in this quote.",
+  "quote.unit.days": "days",
   "quote.draft.restored":
     "We restored what you had typed (saved automatically). Check it and send when ready.",
   "quote.draft.hint": "Everything you type is saved automatically.",
@@ -735,6 +737,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "quote.unitPrice": "单价",
   "quote.priceHint": "只需输入数字：{typed} 即为 {example}。",
   "quote.currencyAll": "该币种适用于本报价的所有产品。",
+  "quote.unit.days": "天",
   "quote.draft.restored":
     "已恢复您之前输入的内容（自动保存）。请检查后再提交。",
   "quote.draft.hint": "您输入的内容会自动保存。",
