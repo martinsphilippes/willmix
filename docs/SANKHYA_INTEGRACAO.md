@@ -390,7 +390,7 @@ O que o track muda:
 
 Passos:
 
-1. O dono copia de novo, na Carga do Sankhya ("Análise: cabeçalhos de compra" e "Análise: itens de compra"), as views com o track. A cópia grava por cima das mesmas linhas.
+1. O dono copia, na Carga do Sankhya, **"Análise: TRACK_ID de cada documento de compra"**: NUNOTA, TOP e `AD_TRACKID` direto da TGFCAB, nas TOPs 1002, 1003, 140, 1100 a 1107, 117, 33 e 30 (entidade `stagePurchaseTracks`, conjunto `purchaseTracks`). A view do cabeçalho com as etapas por track ficou lenta demais para copiar inteira (21/11/2026: a cópia chegou à página mínima de 100 linhas e nenhuma passou dos 25 s). O resto da view já está na cópia de 20/11. As etapas e o track dos itens do embarque saem da cópia, pela TGFVAR até a 1104, como no documento do técnico.
 2. Conferir no banco os números do documento do técnico (tracks por TOP, ligações com o mesmo track, tracks com mais de uma 1104, embarques com vários tracks) e quanto cada um dos três casos muda.
 3. Refazer o ensaio por track (um pedido por track das TOPs 1100 a 1104, etapas pela view, embarques pelo track do item) e mostrar ao dono o antes e depois.
 4. Com o dono de acordo, a carga grava por track. Os pedidos da carga de 21/11 (todos em espera, sem trabalho no portal) dão lugar aos pedidos por track, e as compras 33 → 30 sem track seguem como estão.
