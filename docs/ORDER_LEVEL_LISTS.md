@@ -264,8 +264,8 @@ Pedido do dono (19/11/2026): o rascunho salvo por outro login não aparecia para
 - **Agora**:
   - **Lista de Encomendas** (`listDraftsForList(user, "requests")`): o administrador (`role = admin`) vê os rascunhos de todos os logins: os da Nova solicitação, de TS e de Venda. Os cards (Total, Rascunhos), a busca, os filtros e o CSV contam todos eles.
   - **Quem salvou**: a Próxima ação mostra quem salvou cada rascunho ("Concluir e enviar", depois "Otávio Operador · Wellmix"), na lista, no CSV e nos detalhes. O login (e-mail) aparece só para o administrador, como antes. Login que não existe mais: "—".
-  - **Detalhes** (`/app/requests/batch/<id do rascunho>`, `getListedDraft`): abrem para quem salvou e para o administrador, também pela URL direta. Para o administrador, o aviso diz quem salvou e que só essa pessoa continua e envia (`data-draft-owner="other"`; para quem salvou, `"me"`).
-  - **"Continuar edição"**: só para quem salvou (`DraftDetails.mine`, `ListedDraft.mine`). O formulário só reabre o rascunho do próprio login (`getRequestDraft`), e o envio continua sendo dele, com o mesmo número. Ver não é continuar.
+  - **Detalhes** (`/app/requests/batch/<id do rascunho>`, `getListedDraft`): abrem para quem salvou e para o administrador, também pela URL direta. Para o administrador, o aviso diz quem salvou (`data-draft-owner="other"`; para quem salvou, `"me"`) e, desde 21/11/2026, que ele também pode concluir e enviar.
+  - **"Continuar edição"**: até 21/11/2026, só para quem salvou. Agora também para o administrador; veja "Concluir e enviar pelo botão", logo abaixo.
   - **Conversa do rascunho**: o administrador também abre pelo ícone, na conversa dele com um login do cliente. No envio, todos os assuntos do rascunho passam para a solicitação.
 - **Não muda**:
   - Quem não é administrador continua vendo só os seus rascunhos (lista, detalhes e URL direta, que responde 404).
@@ -276,6 +276,33 @@ Pedido do dono (19/11/2026): o rascunho salvo por outro login não aparecia para
   - `tests/unit/request-screens.test.ts`: a lista do administrador com os rascunhos dos outros (quem salvou, `mine`); a de quem não é administrador, só os seus; a Reposição sem mudança.
   - `tests/unit/draft-chat.test.ts`: o administrador abre a conversa do rascunho de outro login, na conversa dele; outro login, não.
   - `tests/e2e/request-draft-details.spec.ts`: o rascunho do Otávio na lista da Ana (administradora), com quem salvou; os detalhes pelo número e recarregando, sem "Continuar edição"; o Otávio com "Continuar edição"; a Vera (que não é administradora) sem a linha e com 404 pela URL.
+
+### Concluir e enviar pelo botão (dono, 21/11/2026)
+
+Pedido do dono (21/11/2026, com o print de Encomendas no login de administrador): os rascunhos 4 e 8 não davam para concluir. A Próxima ação dizia "Concluir e enviar", mas era só texto; deveria ser um botão que levasse ao lugar certo para concluir e enviar.
+
+- **Causa**:
+  - os dois rascunhos foram salvos pelo login "Well" (administrador), e o print era de outro login de administrador;
+  - só quem salvou continuava, então os detalhes não mostravam "Continuar edição" para ele, e o formulário recusava reabrir o rascunho;
+  - na lista, "Concluir e enviar" não era link.
+- **Agora**:
+  - **Botão na lista**: em Encomendas, "Concluir e enviar" na Próxima ação é um botão (`data-request-draft-resume`) que abre o formulário da tela de onde o rascunho veio (Nova solicitação, TS ou Venda), com tudo o que foi salvo (`draftResumeHref`). Embaixo, quem salvou, como antes.
+  - **Detalhes**: o "Concluir e enviar" do Próximo passo (`data-draft-next-resume`) e o "Continuar edição" levam ao mesmo formulário.
+  - **Quem continua** (`canContinueDraft`, `src/lib/services/request-drafts.ts`):
+    - quem salvou;
+    - o administrador, que já via os rascunhos de todos;
+    - só enquanto a pessoa abre a tela de onde o rascunho veio.
+  - **Mesma regra em todo o caminho**: a lista (`ListedDraft.canContinue`), os detalhes (`canResume`), o formulário que reabre (`getRequestDraft`), o salvamento (automático e "Salvar rascunho"), o envio (número reservado e conversa) e o apagar do rascunho enviado.
+  - **O rascunho continua de quem salvou**: quando o administrador completa e salva, `userId` não muda. Quem salvou segue vendo e continuando o dele.
+  - **Aviso no formulário** (`data-request-draft-other`): "Rascunho salvo por {nome}…". No envio, a solicitação sai com o administrador como solicitante (o solicitante é sempre quem envia, pela sessão).
+  - **Envio**: a solicitação nasce com o número do rascunho, as conversas do rascunho passam para ela e o rascunho sai da lista, como no envio por quem salvou.
+- **Não muda**:
+  - Quem não é administrador continua vendo e continuando só os seus rascunhos. Outro operador, mesmo abrindo a tela, não reabre, não salva por cima e não envia pelo rascunho dos outros; o envio dele sai com um número novo, e o rascunho fica.
+  - O rascunho da entrada da Reposição continua só de quem salvou.
+- **Testes**:
+  - `tests/unit/request-screens.test.ts`: o administrador continua o rascunho do Comprador (lista com `canContinue`, formulário, salvar mantendo o dono e o número); outro Comprador, não. O administrador envia pelo rascunho do Comprador: o número reservado, ele como solicitante, e o rascunho sai. O outro Comprador envia com número novo, e o rascunho fica.
+  - `tests/unit/request-draft-details.test.ts`: "Continuar edição" (`canResume`) e o endereço do formulário para o administrador.
+  - `tests/e2e/request-draft-details.spec.ts`: o botão na lista e nos detalhes leva ao formulário; o aviso de quem salvou; a Ana completa e envia, a solicitação nasce com o número do rascunho e o rascunho sai da lista.
 
 ## 10. Resolver pelo balão "Quem pode agir" (dono, 20/11/2026)
 

@@ -1531,9 +1531,24 @@ export default async function RequestsPage({
                     {wellmix ? (
                       <Td className={cell}>
                         <span className="block" data-request-next="draft">
-                          <span className="block font-medium leading-snug text-zinc-900">
-                            {t("reqList.draft.next")}
-                          </span>
+                          {/* "Concluir e enviar" é o botão que abre o
+                              formulário de onde o rascunho veio, com tudo
+                              o que foi salvo, para completar e enviar (dono,
+                              21/11/2026): quem salvou e o administrador. */}
+                          {row.draft.canContinue ? (
+                            <LinkButton
+                              href={row.draft.href}
+                              variant="primary"
+                              className="px-2.5 py-1 text-xs"
+                              data-request-draft-resume=""
+                            >
+                              {t("reqList.draft.next")}
+                            </LinkButton>
+                          ) : (
+                            <span className="block font-medium leading-snug text-zinc-900">
+                              {t("reqList.draft.next")}
+                            </span>
+                          )}
                           {respCell(draftOwnerOf(row.draft))}
                         </span>
                       </Td>
