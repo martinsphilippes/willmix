@@ -369,6 +369,32 @@ Cada etapa é um PR com testes e E2E. Nada apaga dados até a etapa 5.
 7. **Escrita do avanço de etapa** (regras de Processos com o de-para marco → TOP), testada primeiro no modo simulado e depois ligada.
 8. **Nota de venda e nota de entrada** pela leitura (seção 6.3).
 
+## 9.1 TRACK_ID: o código do pedido (21/11/2026)
+
+O técnico do Sankhya acrescentou às views de compra o `TRACK_ID` (`TGFCAB.AD_TRACKID`), o número que segue o pedido de importação do começo ao fim. O que ele conferiu está em docs/SANKHYA_TRACK_ID.md. **Um pedido do portal = um `TRACK_ID`; a NUNOTA é só a etapa.**
+
+Situação da primeira carga (21/11/2026, 16:24): 6.422 pedidos (6.023 das cadeias 1100 → 1104 e 399 das compras 33 → 30), 86.081 itens, 1.510 embarques com 38.306 linhas (5 embarques sem linha: amostras 140 e a 94). Os 366 em andamento estão no marco certo: 88 em Carregamento, 3 em Desembaraço, 129 em Inspeção, 82 em Booking, 15 em Arte e 47 em Pedido novo. Essa carga usou a cadeia da TGFVAR, porque a cópia das views (20/11, 23:53) é de antes do track.
+
+O que o track muda:
+
+1. **Chave do pedido:** o track, no lugar da ponta da cadeia. Da 1002 à 1104 o track passa igual em 100% das ligações. A cadeia que usamos dá o mesmo pedido quando as etapas estão ligadas. A diferença aparece nos 58 tracks com 2 a 5 documentos 1104 (o mesmo pedido dividido), que a carga atual separa em pedidos diferentes.
+2. **Etapa e embarque pela view:** a CAB traz `ETAPA_PREORDER` … `ETAPA_PRODUCAO` (S/N) e `ETAPA_EMBARQUE`, `ETAPA_PRENOTA` e `ETAPA_ENTRADA` (N/P/S), somando todas as 1104 do track. Isso substitui o que hoje sai do `STATUS_SHIPPING` e da soma da TGFVAR.
+3. **Embarque por item:** no 35, na pré-nota e na entrada, o track vem no item (`VW_AD_PEDCOMPRA_ITEM_WELL.TRACK_ID`). Assim cada linha do embarque cai direto no pedido, sem subir a TGFVAR.
+4. **As perguntas dos três casos:**
+   - "Aguardando definição", 1104 pendente sem `STATUS_SHIPPING`: passa a ser lida pelas etapas da view.
+   - "Sem documento seguinte": o track mostra se outra 1104 do mesmo pedido seguiu.
+   - "Interrompido": o track mostra se o pedido continuou em outro documento.
+   - O que ainda sobrar sem explicação vira pergunta com o track.
+   - Os "gêmeos" de mesmo fornecedor, valor e quantidade têm tracks diferentes: são pedidos separados até a Wellmix dizer que algum foi relançamento.
+5. **Cotação 1002 e amostras 1003 e 140** têm track: é por ele que se ligam ao pedido (D10).
+
+Passos:
+
+1. O dono copia de novo, na Carga do Sankhya ("Análise: cabeçalhos de compra" e "Análise: itens de compra"), as views com o track. A cópia grava por cima das mesmas linhas.
+2. Conferir no banco os números do documento do técnico (tracks por TOP, ligações com o mesmo track, tracks com mais de uma 1104, embarques com vários tracks) e quanto cada um dos três casos muda.
+3. Refazer o ensaio por track (um pedido por track das TOPs 1100 a 1104, etapas pela view, embarques pelo track do item) e mostrar ao dono o antes e depois.
+4. Com o dono de acordo, a carga grava por track. Os pedidos da carga de 21/11 (todos em espera, sem trabalho no portal) dão lugar aos pedidos por track, e as compras 33 → 30 sem track seguem como estão.
+
 ## 10. Em aberto
 
 1. Confirmação da Wellmix do de-para da seção 5.1 (D7). Até lá vale a proposta, validada na tela com casos reais.
