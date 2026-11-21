@@ -38,6 +38,10 @@ export const pt = {
   "reqFix.error.not_found":
     "Encomenda ou cliente não encontrado. Atualize a tela.",
   "reqFix.error.invalid_input": "Confira o login, o nome e a senha.",
+  "reqQuick.send.label": "Ação rápida: Enviar para cotação",
+  "reqQuick.send.title": "Próxima ação: Enviar para cotação",
+  "reqQuick.send.detail":
+    "A encomenda ({n} produto(s)) entra na fila da Estratégia de compra.",
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
@@ -72,6 +76,10 @@ export const en: Record<keyof typeof pt, string> = {
   "reqFix.error.forbidden": "Only the administrator creates customer logins.",
   "reqFix.error.not_found": "Order or customer not found. Refresh the screen.",
   "reqFix.error.invalid_input": "Check the login, the name and the password.",
+  "reqQuick.send.label": "Quick action: Send to quotation",
+  "reqQuick.send.title": "Next action: Send to quotation",
+  "reqQuick.send.detail":
+    "The order ({n} product(s)) joins the Purchase strategy queue.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -103,4 +111,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqFix.error.forbidden": "只有管理员可以创建客户登录。",
   "reqFix.error.not_found": "未找到订单或客户。请刷新页面。",
   "reqFix.error.invalid_input": "请检查登录名、名称和密码。",
+  "reqQuick.send.label": "快捷操作：发送询价",
+  "reqQuick.send.title": "下一步：发送询价",
+  "reqQuick.send.detail": "该订货（{n} 个产品）进入采购策略队列。",
 };

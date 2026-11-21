@@ -1006,6 +1006,23 @@ export async function pendingTasksFor(
     wellmix && !options.team && can(user, "purchaseStrategy.choose");
   const { awaitingStrategySend, inStrategyQueue } =
     await import("./purchase-strategy");
+  // "Enviar para cotação" com o número da encomenda e o cliente (dono,
+  // 20/11/2026): só o produto não deixava reconhecer a encomenda.
+  const toSendCustomerIds = [
+    ...new Set(
+      newRequests
+        .filter((r) => !r.purchaseDecisionId && awaitingStrategySend(r))
+        .map((r) => r.customerId),
+    ),
+  ];
+  const customerNames = new Map(
+    (toSendCustomerIds.length
+      ? await (
+          await import("@/lib/db/lookup")
+        ).listByIds(store, "parties", toSendCustomerIds)
+      : []
+    ).map((p) => [p.id, p.name]),
+  );
   for (const request of newRequests.filter((r) => !r.purchaseDecisionId)) {
     // Encomenda do cliente ainda não enviada (dono, 18/11/2026): "Enviar
     // para cotação", para quem abre Encomendas (o Comprador também).
@@ -1024,26 +1041,42 @@ export async function pendingTasksFor(
               ? "replenishment_request"
               : "new_request",
           title: toSend
-            ? `Enviar para cotação: ${request.productName}`
+            ? request.number
+              ? `Enviar para cotação: encomenda nº ${request.number} · ${customerNames.get(request.customerId) ?? "—"}`
+              : `Enviar para cotação: ${request.productName}`
             : `${
                 request.origin === "replenishment"
                   ? "Reposição"
                   : "Encomenda nova"
               }: ${request.productName}`,
           detail: toSend
-            ? `Encomenda · ${request.quantity.toLocaleString("pt-BR")} ${request.unit}`
+            ? request.number
+              ? `${request.productName} · ${request.quantity.toLocaleString("pt-BR")} ${request.unit}`
+              : `Encomenda · ${request.quantity.toLocaleString("pt-BR")} ${request.unit}`
             : `${request.quantity.toLocaleString("pt-BR")} ${request.unit}`,
           ...(toSend
             ? {
-                text: {
-                  title: "strategy.task.toSend.title",
-                  detail: "strategy.task.toSend.detail",
-                  values: {
-                    product: request.productName,
-                    unit: request.unit,
-                  },
-                  numbers: { quantity: request.quantity },
-                },
+                text: request.number
+                  ? {
+                      title: "strategy.task.toSend.titleNumbered",
+                      detail: "strategy.task.toSend.detailProduct",
+                      values: {
+                        n: request.number,
+                        customer: customerNames.get(request.customerId) ?? "—",
+                        product: request.productName,
+                        unit: request.unit,
+                      },
+                      numbers: { quantity: request.quantity },
+                    }
+                  : {
+                      title: "strategy.task.toSend.title",
+                      detail: "strategy.task.toSend.detail",
+                      values: {
+                        product: request.productName,
+                        unit: request.unit,
+                      },
+                      numbers: { quantity: request.quantity },
+                    },
               }
             : {}),
           link: `/app/requests/${request.id}`,

@@ -153,6 +153,7 @@ import {
   dueText,
 } from "@/components/request-responsible-tip";
 import { ClampText } from "@/components/clamp-text";
+import { SituationQuickSend } from "@/components/request-quick-action";
 
 const BULK_FORM = "requests-bulk-delete";
 /** Colunas de total (dono, 18/11/2026): ordenar por elas lê os totais de todas as linhas. */
@@ -353,19 +354,29 @@ export default async function RequestsPage({
         count: (cur?.count ?? 0) + 1,
       });
     }
+    // Ação rápida (dono, 20/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 11):
+    // "Aguardando Wellmix" com a encomenda esperando o "Enviar para cotação",
+    // para quem pode enviar, abre o envio ali mesmo.
+    const toSend = list.filter((r) => canSend(r)).map((r) => r.id);
     return [...parts.values()].map(({ party, status, count: n }) =>
       party ? (
         <span
           key={party}
-          title={t(`reqStatusLabel.${status}`)}
+          title={
+            party === "wellmix" && toSend.length
+              ? undefined
+              : t(`reqStatusLabel.${status}`)
+          }
           data-request-turn={party}
         >
-          <Badge tone={turnTone(party)}>
-            {customer && party === "customer"
-              ? t("turn.waiting.you")
-              : t(turnWaitingKey(party))}
-            {n > 1 ? ` ×${n}` : ""}
-          </Badge>
+          <SituationQuickSend ids={party === "wellmix" ? toSend : []} t={t}>
+            <Badge tone={turnTone(party)}>
+              {customer && party === "customer"
+                ? t("turn.waiting.you")
+                : t(turnWaitingKey(party))}
+              {n > 1 ? ` ×${n}` : ""}
+            </Badge>
+          </SituationQuickSend>
         </span>
       ) : (
         <Badge key={status} tone={requestStatusTone(status)}>

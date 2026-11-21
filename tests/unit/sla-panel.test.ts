@@ -79,6 +79,10 @@ beforeAll(async () => {
   );
 });
 
+/** O item do painel fala deste produto (no título ou no detalhe)? */
+const mentions = (item: { title: string; detail: string }, text: string) =>
+  item.title.includes(text) || item.detail.includes(text);
+
 async function request(name: string, productId: string | null = null) {
   return r.createRequest(joao, {
     customerId: "cliente-joao",
@@ -98,9 +102,9 @@ describe("painel de SLA por divisão", () => {
     const early = await request("Jarra antes da divisão", "prod-jarra");
     expect(early.ownerUserId ?? null).toBeNull();
     const forAdmin = await slaBoardFor(admin, UNASSIGNED);
-    expect(forAdmin.items.some((i) => i.title.includes("Jarra antes"))).toBe(
-      true,
-    );
+    // O produto vem no título ou no detalhe ("Enviar para cotação:
+    // encomenda nº N · cliente", com o produto no detalhe; 20/11/2026).
+    expect(forAdmin.items.some((i) => mentions(i, "Jarra antes"))).toBe(true);
     const forAnalyst = await slaBoardFor(analyst, UNASSIGNED);
     expect(forAnalyst.selected).toBe(analyst.id);
     expect(forAnalyst.unassigned).toBeNull();
@@ -152,7 +156,7 @@ describe("painel de SLA por divisão", () => {
 
     const mgr = await slaBoardFor(manager, kids.id);
     expect(mgr.selected).toBe(kids.id);
-    expect(mgr.items.some((i) => i.title.includes("Boneca"))).toBe(true);
+    expect(mgr.items.some((i) => mentions(i, "Boneca"))).toBe(true);
   });
 
   it("o pedido herda o analista da solicitação", async () => {
