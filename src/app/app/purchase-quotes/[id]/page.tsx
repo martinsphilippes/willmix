@@ -12,6 +12,7 @@ import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
 import { lastPurchases } from "@/lib/services/purchase-strategy";
 import {
   quoteClosed,
+  quoteEditable,
   quoteEmpty,
   responseState,
   supplierQuoteView,
@@ -44,7 +45,8 @@ import {
   saveQuoteDraftAction,
 } from "../../actions/purchase-demand";
 import { loadQuoteDraft } from "@/lib/services/quote-draft";
-import { QuoteDeadline } from "../_time";
+import { QuoteDeadline, dueTimes } from "../_time";
+import { QuoteAnswerSummary } from "../_components/quote-answer-summary";
 import {
   QuoteAnswerForm,
   type QuoteSheetProduct,
@@ -122,7 +124,10 @@ export default async function PurchaseQuotePage({
     // Para quem nunca vendeu, a cotação não mostra a nossa caixa: as caixas
     // saem da caixa que ele informar (dono, 20/11/2026).
     const state = responseState(response, now);
-    const editable = quote.status === "open" && state !== "expired";
+    // Enviada ou não, dá para responder e corrigir até o prazo dele, enquanto
+    // a Wellmix não escolhe a vencedora (dono, 21/11/2026, opção 1).
+    const editable = quoteEditable(quote, response, now);
+    const times = dueTimes(t, response.dueAt);
     // Ficha técnica de cada produto (dono, 20/11/2026): pedida na primeira
     // vez do par; quem já vendeu confere o que temos (o aviso de revalidação).
     // Rascunho automático deste login (dono, 20/11/2026): o que estava
@@ -189,13 +194,14 @@ export default async function PurchaseQuotePage({
           subtitle={t("quote.supplier.hint", { hours: quote.hours })}
         />
         <ActionError t={t} code={errorCode} text={errorText} fields={null} />
-        {typeof sp.answered === "string" ? (
+        {typeof sp.answered === "string" && editable ? (
           <div className="mb-3" role="status" data-quote-answered>
             <Alert tone="success">
               {t(
                 sp.answered === "declined"
                   ? "quote.supplier.declinedDone"
                   : "quote.supplier.answeredDone",
+                times,
               )}
             </Alert>
           </div>
@@ -232,9 +238,13 @@ export default async function PurchaseQuotePage({
               draftAction={saveQuoteDraftAction}
             />
           ) : (
-            <p className="text-sm text-zinc-600" data-quote-locked>
-              {t("quote.supplier.locked")}
-            </p>
+            <QuoteAnswerSummary
+              t={t}
+              items={quote.items}
+              response={response}
+              reason={quote.status === "open" ? "deadline" : "closed"}
+              times={times}
+            />
           )}
         </Card>
       </div>

@@ -128,6 +128,44 @@ describe("prazo de 24 h", () => {
   });
 });
 
+describe("correção da resposta (dono, 21/11/2026, opção 1)", () => {
+  it("corrige até o prazo dele, com a cotação aberta; a escolha da vencedora trava antes", () => {
+    const r = { dueAt: "2026-11-17T12:00:00.000Z" };
+    const at = (iso: string) => new Date(iso);
+    expect(
+      quotes.quoteEditable({ status: "open" }, r, at("2026-11-17T11:59:00Z")),
+    ).toBe(true);
+    expect(
+      quotes.quoteEditable({ status: "open" }, r, at("2026-11-17T12:00:00Z")),
+    ).toBe(false);
+    expect(
+      quotes.quoteEditable({ status: "chosen" }, r, at("2026-11-17T10:00:00Z")),
+    ).toBe(false);
+    expect(
+      quotes.quoteEditable(
+        { status: "cancelled" },
+        r,
+        at("2026-11-17T10:00:00Z"),
+      ),
+    ).toBe(false);
+  });
+
+  it("enviada, a resposta é trocada no prazo; depois do prazo, não", async () => {
+    const { quote } = await openQuote();
+    await quotes.answerQuote(supplierA, quote.id, answer(2.4), plus(1));
+    await quotes.answerQuote(supplierA, quote.id, answer(2.2), plus(2));
+    const [r] = await getStore().list("purchase_quote_responses", {
+      filter: { quoteId: quote.id, supplierId: supplierA.partyId! },
+    });
+    expect(r.prices?.[0].unitPrice).toBe(2.2);
+    expect(quotes.quoteEditable(quote, r, plus(23.9))).toBe(true);
+    expect(quotes.quoteEditable(quote, r, plus(24))).toBe(false);
+    await expect(
+      quotes.answerQuote(supplierA, quote.id, answer(1.9), plus(24.01)),
+    ).rejects.toThrow("quote_expired");
+  });
+});
+
 describe("isolamento entre fornecedores (servidor)", () => {
   it("cada um lê só a própria resposta; o convidado não vê os outros nem o cliente", async () => {
     const { quote } = await openQuote();
