@@ -39,6 +39,25 @@ export const pt = {
     "Encomenda ou cliente não encontrado. Atualize a tela.",
   "reqFix.error.invalid_input": "Confira o login, o nome e a senha.",
   "reqQuick.send.label": "Ação rápida: Enviar para cotação",
+  "partnerLogin.open": "Gerar o login aqui",
+  "partnerLogin.loading": "Preparando…",
+  "partnerLogin.title": "Login de acesso de {name}",
+  "partnerLogin.loginHint":
+    "Já vem o e-mail do cadastro ou um nome de usuário. Pode trocar.",
+  "partnerLogin.passwordHint":
+    "Pelo menos {n} caracteres. O parceiro troca no 1º acesso.",
+  "partnerLogin.locale": "Idioma",
+  "partnerLogin.submit": "Criar login do parceiro",
+  "partnerLogin.cancel": "Fechar",
+  "partnerLogin.done":
+    "Login criado no cadastro do parceiro: ele já recebe a cotação. Passe a ele o endereço do portal, o login e a senha.",
+  "partnerLogin.changeHint":
+    "A senha é provisória: o parceiro troca no 1º acesso. Ela não aparece de novo depois de recarregar a tela.",
+  "partnerLogin.error.forbidden":
+    "Só o administrador cria o login do parceiro.",
+  "partnerLogin.error.not_found": "Parceiro não encontrado. Recarregue a tela.",
+  "partnerLogin.error.user_role_mismatch":
+    "O tipo deste parceiro ainda não tem login (Tipos e acessos).",
   "reqQuick.send.title": "Próxima ação: Enviar para cotação",
   "reqQuick.send.detail":
     "A encomenda ({n} produto(s)) entra na fila da Estratégia de compra.",
@@ -77,6 +96,25 @@ export const en: Record<keyof typeof pt, string> = {
   "reqFix.error.not_found": "Order or customer not found. Refresh the screen.",
   "reqFix.error.invalid_input": "Check the login, the name and the password.",
   "reqQuick.send.label": "Quick action: Send to quotation",
+  "partnerLogin.open": "Create the login here",
+  "partnerLogin.loading": "Preparing…",
+  "partnerLogin.title": "Access login for {name}",
+  "partnerLogin.loginHint":
+    "Pre-filled with the record e-mail or a username. You can change it.",
+  "partnerLogin.passwordHint":
+    "At least {n} characters. The partner changes it on first sign-in.",
+  "partnerLogin.locale": "Language",
+  "partnerLogin.submit": "Create partner login",
+  "partnerLogin.cancel": "Close",
+  "partnerLogin.done":
+    "Login created in the partner record: they now receive the quotation. Send them the portal address, the login and the password.",
+  "partnerLogin.changeHint":
+    "The password is temporary: the partner changes it on first sign-in. It is not shown again after you reload the screen.",
+  "partnerLogin.error.forbidden":
+    "Only the administrator creates partner logins.",
+  "partnerLogin.error.not_found": "Partner not found. Reload the screen.",
+  "partnerLogin.error.user_role_mismatch":
+    "This partner type has no login yet (Types and access).",
   "reqQuick.send.title": "Next action: Send to quotation",
   "reqQuick.send.detail":
     "The order ({n} product(s)) joins the Purchase strategy queue.",
@@ -112,6 +150,22 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqFix.error.not_found": "未找到订单或客户。请刷新页面。",
   "reqFix.error.invalid_input": "请检查登录名、名称和密码。",
   "reqQuick.send.label": "快捷操作：发送询价",
+  "partnerLogin.open": "在此生成登录",
+  "partnerLogin.loading": "正在准备…",
+  "partnerLogin.title": "{name} 的访问登录",
+  "partnerLogin.loginHint": "已预填档案中的邮箱或用户名，可以修改。",
+  "partnerLogin.passwordHint": "至少 {n} 个字符。合作伙伴首次登录时修改。",
+  "partnerLogin.locale": "语言",
+  "partnerLogin.submit": "创建合作伙伴登录",
+  "partnerLogin.cancel": "关闭",
+  "partnerLogin.done":
+    "已在合作伙伴档案中创建登录：现在可以接收询价。请把门户地址、登录名和密码发给对方。",
+  "partnerLogin.changeHint":
+    "这是临时密码：合作伙伴首次登录时修改。重新加载页面后将不再显示。",
+  "partnerLogin.error.forbidden": "只有管理员可以创建合作伙伴登录。",
+  "partnerLogin.error.not_found": "未找到合作伙伴。请重新加载页面。",
+  "partnerLogin.error.user_role_mismatch":
+    "该合作伙伴类型还没有登录（类型与权限）。",
   "reqQuick.send.title": "下一步：发送询价",
   "reqQuick.send.detail": "该订货（{n} 个产品）进入采购策略队列。",
 };

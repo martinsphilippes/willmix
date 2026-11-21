@@ -32,6 +32,10 @@ import {
   type LastTexts,
 } from "./strategy-card";
 import { QuickDialog } from "@/components/quick-dialog";
+import {
+  PartnerLoginFix,
+  type PartnerLoginFixTexts,
+} from "@/components/partner-login-fix";
 
 /*
  * Estratégia de Compra (dono, 18/11/2026; docs/PURCHASE_DEMAND.md,
@@ -213,12 +217,18 @@ export function StrategyQueue({
   checks: initialChecks,
   texts,
   canChoose,
+  partnerLogin = null,
 }: {
   lines: StrategyLineData[];
   groups: StrategyGroupData[];
   checks: Record<string, RecipientCheck>;
   texts: StrategyTexts;
   canChoose: boolean;
+  /**
+   * Gerar o login do parceiro aqui (dono, 20/11/2026): só o administrador
+   * (nulo para os outros, que seguem pelo "Abrir o cadastro").
+   */
+  partnerLogin?: { texts: PartnerLoginFixTexts; minPassword: number } | null;
 }) {
   const [state, formAction, pending] = useActionState(
     sendStrategyAction,
@@ -226,6 +236,9 @@ export function StrategyQueue({
   );
   const [checks, setChecks] = useState(initialChecks);
   const [checking, setChecking] = useState<string[]>([]);
+  // Formulários do login abertos (linha:parceiro): ficam na tela mesmo
+  // depois de o parceiro virar Apto, com o login e a senha para copiar.
+  const [loginFixOpen, setLoginFixOpen] = useState<string[]>([]);
   const [note, setNote] = useState("");
   const [reviewing, setReviewing] = useState(false);
   const [byLine, setByLine] = useState<Record<string, LineState>>(() =>
@@ -302,6 +315,36 @@ export function StrategyQueue({
       }),
     );
     startTransition(() => formAction(data));
+  };
+
+  /**
+   * Login criado aqui (dono, 20/11/2026): o parceiro é conferido de novo e,
+   * Apto, fica marcado nos produtos em que é da família ou foi escolhido na
+   * busca (o mesmo padrão de quem já vinha Apto).
+   */
+  const recheck = async (partyId: string) => {
+    const res = await fetch(
+      `/api/purchase-strategy/recipient?id=${encodeURIComponent(partyId)}`,
+    );
+    if (!res.ok) return;
+    const { check } = (await res.json()) as { check: RecipientCheck };
+    setChecks((prev) => ({ ...prev, [partyId]: check }));
+    if (!check.ok) return;
+    setByLine((prev) =>
+      Object.fromEntries(
+        Object.entries(prev).map(([key, st]) => {
+          const g = groups.find((x) => x.key === key);
+          const listed =
+            !!g?.linkedIds.includes(partyId) || st.extra.includes(partyId);
+          return [
+            key,
+            listed && !st.recipients.includes(partyId)
+              ? { ...st, recipients: [...st.recipients, partyId] }
+              : st,
+          ];
+        }),
+      ),
+    );
   };
 
   /** Parceiro escolhido na busca: entra marcado e é conferido no servidor. */
@@ -400,6 +443,26 @@ export function StrategyQueue({
                 </span>
               ))}
             </span>
+          ) : null}
+          {/* Gerar o login aqui (administrador; dono, 20/11/2026). */}
+          {partnerLogin &&
+          check &&
+          (check.issues.includes("no_login") ||
+            loginFixOpen.includes(`${line.key}:${id}`)) ? (
+            <PartnerLoginFix
+              partyId={id}
+              partyName={check.name}
+              minPassword={partnerLogin.minPassword}
+              texts={partnerLogin.texts}
+              onOpen={() =>
+                setLoginFixOpen((open) =>
+                  open.includes(`${line.key}:${id}`)
+                    ? open
+                    : [...open, `${line.key}:${id}`],
+                )
+              }
+              onCreated={() => void recheck(id)}
+            />
           ) : null}
         </span>
       </li>
