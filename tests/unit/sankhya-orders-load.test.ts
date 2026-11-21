@@ -101,6 +101,8 @@ beforeAll(async () => {
     order("2040", "awaiting_definition", null, { reason: "no_successor" }),
     order("2050", "in_progress", "production", {}),
     order("2060", "in_progress", "loading", {}),
+    // Caminho antigo: a ponta é o 1103 e o embarque sai do 30 seguinte (2075).
+    order("2070", "legacy_path", null, { shipments: [2075] }),
   ];
   // Fornecedor sem cadastro: pulado com o motivo.
   rows[5].supplierCode = "SEM-CADASTRO";
@@ -122,13 +124,23 @@ beforeAll(async () => {
         { order: 2000, seq: 1, qty: 30 },
         // Saiu do documento do meio da cadeia (1999 → 2000): vai para o 2000.
         { order: 1999, seq: 1, qty: 10 },
+        { order: 2075, seq: 1, qty: 5 },
       ],
       statusShipping: "3",
       etd: "10112026 00:00:00",
       numnota: "0",
     },
   } as never);
-  for (const key of ["2000", "2010", "2020", "2030", "2040", "2050", "2060"])
+  for (const key of [
+    "2000",
+    "2010",
+    "2020",
+    "2030",
+    "2040",
+    "2050",
+    "2060",
+    "2070",
+  ])
     await store.create("sankhya_stage_rows", {
       dataset: "purchaseHeaders",
       rowKey: key,
@@ -207,7 +219,7 @@ describe("carga dos pedidos do Sankhya", () => {
   it("grava pedidos, itens e o embarque pelo ensaio", async () => {
     const p = await runAll();
     expect(p.phase).toBe("done");
-    expect(p.created).toBe(6);
+    expect(p.created).toBe(7);
     expect(p.skipped.map((s) => s.key)).toEqual(["2050"]);
     const store = getStore();
     const o = (await store.get("orders", "snk-2000"))!;
@@ -237,6 +249,7 @@ describe("carga dos pedidos do Sankhya", () => {
     });
     expect(lines.map((l) => [l.orderItemId, l.quantity, l.boxCount])).toEqual([
       ["snk-2000-1", 40, 4],
+      ["snk-2070-1", 5, 1],
     ]);
   });
 
@@ -291,7 +304,7 @@ describe("carga dos pedidos do Sankhya", () => {
     ).length;
     const p = await runAll();
     expect(p.created).toBe(0);
-    expect(p.updated).toBe(6);
+    expect(p.updated).toBe(7);
     expect((await store.list("orders")).length).toBe(before);
     expect(
       (await store.list("requirements", { filter: { orderId: "snk-2000" } }))
@@ -303,6 +316,6 @@ describe("carga dos pedidos do Sankhya", () => {
           filter: { containerId: "snk-35-3000" },
         })
       ).length,
-    ).toBe(1);
+    ).toBe(2);
   });
 });
