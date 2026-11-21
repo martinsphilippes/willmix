@@ -1,0 +1,561 @@
+{
+  "_como_funciona": "Cada termo é trocado pela grafia de FALA antes da síntese (e antes da conferência por STT). Na tela e nas legendas continua a grafia original. 'fala_por_motor' vale só para aquele motor; 'caixa': true exige maiúsculas/minúsculas iguais; 'regex': true trata 'escrito' como expressão regular. 'status': definitivo = decidido pelo dono; proposto = aguardando confirmação na PARADA A. 'fonemas_kokoro': trocas feitas sobre os fonemas (só no motor Kokoro). 'stt_equivalentes': grafias que o reconhecedor de fala usa e que contam como iguais ao roteiro na conferência.",
+  "marca": {
+    "escrito": "Wellmix",
+    "fala": "Uélmiks",
+    "ipa": "uˈɛwmiks",
+    "silabas": "UÉL-miks (tônica em UÉL)",
+    "status": "definitivo",
+    "nota": "Decisão do dono: Wellmix se pronuncia UÉLMIX. Não perguntar de novo."
+  },
+  "termos": [
+    {
+      "escrito": "Wellmix",
+      "fala": "Uélmiks",
+      "status": "definitivo",
+      "fala_por_motor": {
+        "supertonic": "Uélmix",
+        "chatterbox": "Uélmix",
+        "qwen": "Uélmix"
+      }
+    },
+    {
+      "escrito": "NF-e",
+      "fala": "ene-efe-é",
+      "status": "proposto",
+      "nota": "Alternativa: 'nota fiscal eletrônica'."
+    },
+    {
+      "escrito": "NFe",
+      "fala": "ene-efe-é",
+      "status": "proposto"
+    },
+    {
+      "escrito": "CNPJ",
+      "fala": "cê-ene-pê-jota",
+      "status": "proposto"
+    },
+    {
+      "escrito": "CPF",
+      "fala": "cê-pê-efe",
+      "status": "proposto"
+    },
+    {
+      "escrito": "DANFE",
+      "fala": "dânfe",
+      "status": "proposto"
+    },
+    {
+      "escrito": "NCM",
+      "fala": "ene-cê-eme",
+      "status": "proposto"
+    },
+    {
+      "escrito": "ICMS",
+      "fala": "i-cê-eme-esse",
+      "status": "proposto"
+    },
+    {
+      "escrito": "IPI",
+      "fala": "i-pê-í",
+      "status": "proposto"
+    },
+    {
+      "escrito": "II",
+      "fala": "imposto de importação",
+      "caixa": true,
+      "status": "proposto"
+    },
+    {
+      "escrito": "DI",
+      "fala": "dê-í",
+      "caixa": true,
+      "status": "proposto",
+      "nota": "Declaração de importação."
+    },
+    {
+      "escrito": "LPCO",
+      "fala": "éle-pê-cê-ó",
+      "status": "proposto"
+    },
+    {
+      "escrito": "CE Mercante",
+      "fala": "cê-é mercante",
+      "status": "proposto"
+    },
+    {
+      "escrito": "BL",
+      "fala": "bi-éle",
+      "caixa": true,
+      "status": "proposto",
+      "nota": "No comex brasileiro diz-se 'bi-éle' (do inglês B/L). Alternativa: 'bê-éle'."
+    },
+    {
+      "escrito": "FOB",
+      "fala": "fóbi",
+      "caixa": true,
+      "status": "proposto"
+    },
+    {
+      "escrito": "EXW",
+      "fala": "éks-uôrks",
+      "caixa": true,
+      "status": "proposto",
+      "nota": "Ex Works. Alternativa: soletrar 'é-xis-dáblio'."
+    },
+    {
+      "escrito": "CBM",
+      "fala": "metros cúbicos",
+      "caixa": true,
+      "status": "proposto",
+      "nota": "Alternativa: soletrar 'cê-bê-eme'."
+    },
+    {
+      "escrito": "ETD",
+      "fala": "é-tê-dê",
+      "caixa": true,
+      "status": "proposto",
+      "nota": "Data prevista de embarque. Alternativa: 'í-tí-dí'."
+    },
+    {
+      "escrito": "ETA",
+      "fala": "é-tê-á",
+      "caixa": true,
+      "status": "proposto",
+      "nota": "Data prevista de chegada. Alternativa: 'éta'."
+    },
+    {
+      "escrito": "SKU",
+      "fala": "ésse-cá-u",
+      "caixa": true,
+      "status": "proposto",
+      "nota": "Alternativa: 'escú' ou 'és-quêi-iú'."
+    },
+    {
+      "escrito": "MOQ",
+      "fala": "pedido mínimo",
+      "caixa": true,
+      "status": "proposto",
+      "nota": "Alternativa: soletrar 'eme-ó-quê'."
+    },
+    {
+      "escrito": "SLA",
+      "fala": "ésse-éle-á",
+      "caixa": true,
+      "status": "proposto"
+    },
+    {
+      "escrito": "KPI",
+      "fala": "cá-pê-í",
+      "caixa": true,
+      "status": "proposto"
+    },
+    {
+      "escrito": "KPIs",
+      "fala": "cá-pê-ís",
+      "caixa": true,
+      "status": "proposto"
+    },
+    {
+      "escrito": "OCP",
+      "fala": "ó-cê-pê",
+      "caixa": true,
+      "status": "proposto",
+      "nota": "Organismo de certificação de produto."
+    },
+    {
+      "escrito": "ERP",
+      "fala": "é-erre-pê",
+      "caixa": true,
+      "status": "proposto"
+    },
+    {
+      "escrito": "RIC",
+      "fala": "rique",
+      "caixa": true,
+      "status": "proposto",
+      "nota": "Recibo de intercâmbio de container. Alternativa: soletrar."
+    },
+    {
+      "escrito": "PDF",
+      "fala": "pê-dê-efe",
+      "status": "proposto"
+    },
+    {
+      "escrito": "CSV",
+      "fala": "cê-esse-vê",
+      "status": "proposto"
+    },
+    {
+      "escrito": "QR Code",
+      "fala": "quiú-ár côde",
+      "status": "proposto"
+    },
+    {
+      "escrito": "PWA",
+      "fala": "aplicativo",
+      "caixa": true,
+      "status": "proposto"
+    },
+    {
+      "escrito": "Sankhya",
+      "fala": "Sânquia",
+      "status": "proposto",
+      "nota": "ERP da Wellmix. Confirmar com o dono."
+    },
+    {
+      "escrito": "CODPROD",
+      "fala": "código do produto",
+      "status": "proposto"
+    },
+    {
+      "escrito": "Superplan",
+      "fala": "Súper-plan",
+      "status": "proposto"
+    },
+    {
+      "escrito": "Control Tower",
+      "fala": "Contrôl Táuer",
+      "status": "proposto"
+    },
+    {
+      "escrito": "Overview",
+      "fala": "ôver-viú",
+      "status": "proposto"
+    },
+    {
+      "escrito": "Booking",
+      "fala": "búquin",
+      "status": "proposto"
+    },
+    {
+      "escrito": "Bookings",
+      "fala": "búquins",
+      "status": "proposto"
+    },
+    {
+      "escrito": "Book",
+      "fala": "buque",
+      "caixa": true,
+      "status": "proposto"
+    },
+    {
+      "escrito": "Books",
+      "fala": "buques",
+      "caixa": true,
+      "status": "proposto"
+    },
+    {
+      "escrito": "Die Cut",
+      "fala": "dai-cât",
+      "status": "proposto",
+      "nota": "A faca (molde) da caixa."
+    },
+    {
+      "escrito": "Pantone",
+      "fala": "pantône",
+      "status": "proposto"
+    },
+    {
+      "escrito": "Inmetro",
+      "fala": "inmétro",
+      "status": "proposto"
+    },
+    {
+      "escrito": "Comex",
+      "fala": "comécs",
+      "status": "proposto"
+    },
+    {
+      "escrito": "container",
+      "fala": "contêiner",
+      "status": "proposto"
+    },
+    {
+      "escrito": "containers",
+      "fala": "contêineres",
+      "status": "proposto"
+    },
+    {
+      "escrito": "invoice",
+      "fala": "ínvois",
+      "status": "proposto"
+    },
+    {
+      "escrito": "packing list",
+      "fala": "péquin list",
+      "status": "proposto"
+    },
+    {
+      "escrito": "draft",
+      "fala": "dráft",
+      "status": "proposto"
+    },
+    {
+      "escrito": "follow",
+      "fala": "fólou",
+      "status": "proposto"
+    },
+    {
+      "escrito": "layout",
+      "fala": "leiáute",
+      "status": "proposto"
+    },
+    {
+      "escrito": "e-mail",
+      "fala": "i-mêil",
+      "status": "proposto"
+    },
+    {
+      "escrito": "login",
+      "fala": "lóguin",
+      "status": "proposto"
+    },
+    {
+      "escrito": "upload",
+      "fala": "âp-lôud",
+      "status": "proposto"
+    },
+    {
+      "escrito": "download",
+      "fala": "dáun-lôud",
+      "status": "proposto"
+    },
+    {
+      "escrito": "WeChat",
+      "fala": "uí-tchét",
+      "status": "proposto"
+    },
+    {
+      "escrito": "WhatsApp",
+      "fala": "uóts-ép",
+      "status": "proposto"
+    },
+    {
+      "escrito": "jar",
+      "fala": "djár",
+      "caixa": true,
+      "status": "proposto",
+      "nota": "Palavra digitada na busca (jarra em inglês)."
+    },
+    {
+      "escrito": "Enter",
+      "fala": "ênter",
+      "caixa": true,
+      "status": "proposto"
+    },
+    {
+      "escrito": "book",
+      "fala": "buque",
+      "caixa": true,
+      "status": "proposto"
+    },
+    {
+      "escrito": "books",
+      "fala": "buques",
+      "caixa": true,
+      "status": "proposto"
+    },
+    {
+      "escrito": "show room",
+      "fala": "xôu rum",
+      "status": "proposto",
+      "nota": "Espaço de exposição da Wellmix no Brasil."
+    },
+    {
+      "escrito": "trading",
+      "fala": "trêidin",
+      "status": "proposto",
+      "nota": "Como a tela chama quem embarca o pedido (o login do fornecedor)."
+    }
+  ],
+  "fonemas_kokoro": [
+    {
+      "de": "ˌuˈɛʊmiks",
+      "para": "wˈɛʊmiks",
+      "nota": "Wellmix em duas sílabas: UÉL-miks (o G2P separava u-ÉL-miks)."
+    },
+    {
+      "de": "uˈɛʊmiks",
+      "para": "wˈɛʊmiks"
+    }
+  ],
+  "stt_equivalentes": [
+    {
+      "ouvido": "NFE",
+      "escrito": "NF-e"
+    },
+    {
+      "ouvido": "NF",
+      "escrito": "NF-e"
+    },
+    {
+      "ouvido": "email",
+      "escrito": "e-mail"
+    },
+    {
+      "ouvido": "pra",
+      "escrito": "para"
+    },
+    {
+      "ouvido": "book",
+      "escrito": "buque"
+    },
+    {
+      "ouvido": "books",
+      "escrito": "buques"
+    },
+    {
+      "ouvido": "superplan",
+      "escrito": "Súper plan"
+    },
+    {
+      "ouvido": "super plan",
+      "escrito": "Súper plan"
+    },
+    {
+      "ouvido": "jar",
+      "escrito": "djár"
+    },
+    {
+      "ouvido": "enter",
+      "escrito": "ênter"
+    },
+    {
+      "ouvido": "SLA",
+      "escrito": "ésse éle á"
+    },
+    {
+      "ouvido": "NCM",
+      "escrito": "ene cê eme"
+    },
+    {
+      "ouvido": "fichar",
+      "escrito": "fechar"
+    },
+    {
+      "ouvido": "bulky",
+      "escrito": "buque"
+    },
+    {
+      "ouvido": "superplão",
+      "escrito": "Súper plan"
+    },
+    {
+      "ouvido": "superplã",
+      "escrito": "Súper plan"
+    },
+    {
+      "ouvido": "newsbooks",
+      "escrito": "meus buques"
+    },
+    {
+      "ouvido": "meus books",
+      "escrito": "meus buques"
+    },
+    {
+      "ouvido": "die cut",
+      "escrito": "dai cât"
+    },
+    {
+      "ouvido": "diecut",
+      "escrito": "dai cât"
+    },
+    {
+      "ouvido": "x",
+      "escrito": "xis"
+    },
+    {
+      "ouvido": "showroom",
+      "escrito": "xôu rum"
+    },
+    {
+      "ouvido": "show room",
+      "escrito": "xôu rum"
+    },
+    {
+      "ouvido": "die-cut",
+      "escrito": "dai cât"
+    },
+    {
+      "ouvido": "dye cut",
+      "escrito": "dai cât"
+    },
+    {
+      "ouvido": "ETD",
+      "escrito": "é tê dê"
+    },
+    {
+      "ouvido": "TD",
+      "escrito": "tê dê"
+    },
+    {
+      "ouvido": "SKU",
+      "escrito": "ésse cá u"
+    },
+    {
+      "ouvido": "BL",
+      "escrito": "bi éle"
+    },
+    {
+      "ouvido": "invoice",
+      "escrito": "ínvois"
+    },
+    {
+      "ouvido": "a em voz",
+      "escrito": "a ínvois"
+    },
+    {
+      "ouvido": "em voz",
+      "escrito": "ínvois"
+    },
+    {
+      "ouvido": "packing list",
+      "escrito": "péquin list"
+    },
+    {
+      "ouvido": "checklist",
+      "escrito": "check list"
+    },
+    {
+      "ouvido": "cheque list",
+      "escrito": "check list"
+    },
+    {
+      "ouvido": "cheque de carga",
+      "escrito": "check de carga"
+    },
+    {
+      "ouvido": "treiding",
+      "escrito": "trading"
+    },
+    {
+      "ouvido": "trêidin",
+      "escrito": "trading"
+    },
+    {
+      "ouvido": "treidin",
+      "escrito": "trading"
+    },
+    {
+      "ouvido": "xworks",
+      "escrito": "EXW"
+    },
+    {
+      "ouvido": "x works",
+      "escrito": "EXW"
+    },
+    {
+      "ouvido": "ex works",
+      "escrito": "EXW"
+    },
+    {
+      "ouvido": "exworks",
+      "escrito": "EXW"
+    },
+    {
+      "ouvido": "x-works",
+      "escrito": "EXW"
+    }
+  ]
+}

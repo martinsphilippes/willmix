@@ -1,0 +1,233 @@
+{
+ "corte": 0.8,
+ "perguntas": [
+  {
+   "id": "f1",
+   "tipo": "ordenar",
+   "tema": "O caminho inteiro, do book ao embarque",
+   "rever": {
+    "cena": "m2-c1-responder",
+    "passo": "p1"
+   },
+   "enunciado": "Ponha na ordem em que acontecem as tarefas do fornecedor, da primeira à última.",
+   "itens": [
+    "Responder à solicitação da Wellmix",
+    "Enviar a amostragem",
+    "Fazer o Die Cut",
+    "Assinar o contrato do pedido",
+    "Registrar a inspeção do produto",
+    "Registrar o container vazio na fábrica"
+   ],
+   "feedback": "Primeiro a negociação (solicitação e amostragem). Depois o pedido (Die Cut e contrato), a produção com a inspeção e, por fim, o container."
+  },
+  {
+   "id": "f2",
+   "tipo": "cenario",
+   "tema": "Por onde começar o dia",
+   "rever": {
+    "cena": "c1-pendencias",
+    "passo": "p1"
+   },
+   "enunciado": "Você entra no portal de manhã com três pedidos em andamento. Como saber o que fazer primeiro?",
+   "alternativas": [
+    "Esperar um e-mail da Wellmix",
+    "Olhar \"Minhas pendências\" e usar o ícone de abrir na linha de cada tarefa",
+    "Abrir a Conta corrente",
+    "Abrir cada pedido e procurar o que falta"
+   ],
+   "correta": 1,
+   "feedback": "Tudo o que depende de você aparece em \"Minhas pendências\", com o prazo. O ícone de abrir leva direto ao lugar da tarefa."
+  },
+  {
+   "id": "f6",
+   "tipo": "clique",
+   "tema": "Confirmar o sinal",
+   "rever": {
+    "cena": "m4-c4-sinal",
+    "passo": "p6"
+   },
+   "enunciado": "Você conferiu no banco: o sinal chegou. Clique no lugar certo para avisar a Wellmix.",
+   "imagem": {
+    "cena": "m4-c4-sinal",
+    "passo": "p6"
+   },
+   "feedback": "\"Confirmar recebimento\" quita o sinal. Com isso, a produção fica liberada e a inspeção abre para você."
+  },
+  {
+   "id": "f7",
+   "tipo": "cenario",
+   "tema": "Onde confirmar um pagamento",
+   "rever": {
+    "cena": "m4-c4-sinal",
+    "passo": "p3"
+   },
+   "enunciado": "Em que tela você confirma o recebimento de um pagamento?",
+   "alternativas": [
+    "Nos documentos do embarque",
+    "No cartão \"Produção\"",
+    "Na Conta corrente",
+    "Em \"Solicitações ao fornecedor\""
+   ],
+   "correta": 2,
+   "feedback": "A Conta corrente mostra o total, o recebido e o saldo, e os pagamentos a confirmar."
+  },
+  {
+   "id": "f8",
+   "tipo": "cenario",
+   "tema": "Mudança de data",
+   "rever": {
+    "cena": "m5-c1-cuidado",
+    "passo": "p4"
+   },
+   "enunciado": "A produção atrasou e o ETD vai mudar. O que o portal exige para gravar a nova data?",
+   "alternativas": [
+    "Uma foto da fábrica",
+    "O motivo da mudança, escrito no campo ao lado",
+    "Nada: é só trocar a data",
+    "Um novo contrato"
+   ],
+   "correta": 1,
+   "feedback": "Depois do primeiro ETD, toda mudança de data pede o motivo. Sem ele, nada é gravado. A Wellmix é avisada a cada mudança."
+  },
+  {
+   "id": "f9",
+   "tipo": "clique",
+   "tema": "Corrigir um número da inspeção",
+   "rever": {
+    "cena": "m5-c2-cuidado",
+    "passo": "p5"
+   },
+   "enunciado": "Na inspeção, você digitou o peso errado e o item ficou concluído. Clique no lugar que deixa corrigir.",
+   "imagem": {
+    "cena": "m5-c2-cuidado",
+    "passo": "p5"
+   },
+   "feedback": "\"Nova medição\" abre o campo de novo. O portal não avisa quando o número está fora do esperado: confira antes de enviar."
+  },
+  {
+   "id": "f10",
+   "tipo": "cenario",
+   "tema": "O que trava o carregamento",
+   "rever": {
+    "cena": "m6-c2-devolucao",
+    "passo": "p6"
+   },
+   "enunciado": "O container vazio já está na fábrica, mas a amostra que foi para a agência de marketing ainda não voltou. O que isso muda?",
+   "alternativas": [
+    "O contrato precisa ser assinado de novo",
+    "O container só pode ser carregado depois que essa amostra volta e você valida a devolução",
+    "A invoice é cancelada",
+    "Nada: o carregamento não depende da amostra"
+   ],
+   "correta": 1,
+   "feedback": "A devolução da amostra é validada por você. O container só pode ser carregado depois disso."
+  },
+  {
+   "id": "f11",
+   "tipo": "ordenar",
+   "tema": "Os documentos do embarque",
+   "rever": {
+    "cena": "m7-c1-checklist",
+    "passo": "p1"
+   },
+   "enunciado": "Os documentos do embarque são quatro, em ordem. Ponha na ordem certa.",
+   "itens": [
+    "Check list de carga",
+    "Packing list",
+    "Invoice",
+    "O último documento, preenchido pela companhia marítima"
+   ],
+   "feedback": "O check list conta as caixas, o packing list sai dele, a invoice é conferida com o packing list e o último documento é da companhia marítima."
+  },
+  {
+   "id": "f12",
+   "tipo": "cenario",
+   "tema": "Quando o número não bate",
+   "rever": {
+    "cena": "m7-c3-cuidado",
+    "passo": "p6"
+   },
+   "enunciado": "Você enviou a invoice e o portal respondeu que não bateu, com o quadro \"Diferenças encontradas\". O que fazer?",
+   "alternativas": [
+    "Acertar o número apontado no quadro e enviar de novo",
+    "Pedir um novo pedido",
+    "Apagar o packing list",
+    "Enviar de novo sem mudar nada"
+   ],
+   "correta": 0,
+   "feedback": "O quadro mostra o item, o campo, o valor esperado e o informado. Acerte o número e envie de novo."
+  },
+  {
+   "id": "f13",
+   "tipo": "cenario",
+   "tema": "Tarefas que não são suas",
+   "rever": {
+    "cena": "m7-c3-invoice",
+    "passo": "p9"
+   },
+   "enunciado": "Qual destas tarefas NÃO é feita pelo fornecedor?",
+   "alternativas": [
+    "Enviar o packing list",
+    "Declarar que o produto está conforme o pedido",
+    "Registrar o lacre do container",
+    "Preencher o último documento do embarque"
+   ],
+   "correta": 3,
+   "feedback": "O último documento do embarque é preenchido pela companhia marítima. O fornecedor só acompanha."
+  },
+  {
+   "id": "f14",
+   "tipo": "cenario",
+   "tema": "Acompanhar sem pendência",
+   "rever": {
+    "cena": "m8-c1-pedidos",
+    "passo": "p1"
+   },
+   "enunciado": "Tudo o que dependia de você foi enviado e a lista de pendências está vazia. Como ver em que etapa está o pedido?",
+   "alternativas": [
+    "Enviando o book de novo",
+    "Só perguntando por mensagem",
+    "Não dá para ver",
+    "Em \"Meus books\", \"Pedidos\": abra o pedido e veja \"Etapas e pendências do pedido\""
+   ],
+   "correta": 3,
+   "feedback": "A lista \"Pedidos\" mostra todos os pedidos, com a etapa e o progresso. Dentro do pedido, \"Marcos do pedido\" mostra onde ele está."
+  },
+  {
+   "id": "f15",
+   "tipo": "cenario",
+   "tema": "Compra EXW",
+   "rever": {
+    "cena": "m9-c1-origem",
+    "passo": "p3"
+   },
+   "enunciado": "Num pedido EXW, o cartão \"Container na origem\" tem três passos antes do container vazio. Quais são?",
+   "alternativas": [
+    "Check list, packing list e invoice",
+    "Retirada, envio ao Brasil e envio à China",
+    "Transportadora, previsão do container e custos do transporte na origem",
+    "Faca, foto em alta e prazo"
+   ],
+   "correta": 2,
+   "feedback": "Na compra EXW você informa a transportadora, a previsão do container e os custos do transporte, que a Wellmix valida."
+  },
+  {
+   "id": "f16",
+   "tipo": "cenario",
+   "tema": "Compra programada",
+   "rever": {
+    "cena": "m9-c3-pai",
+    "passo": "p7"
+   },
+   "enunciado": "Uma compra programada tem três programações. Como ela aparece para você?",
+   "alternativas": [
+    "Um pedido pai, com o total e o Die Cut, e um pedido filho por programação, cada um com o seu contrato",
+    "Um pedido só, com três contratos",
+    "Três books",
+    "Três solicitações separadas"
+   ],
+   "correta": 0,
+   "feedback": "O pedido pai guarda o total, a negociação e as artes. Cada programação vira um pedido filho, com contrato, sinal, produção e embarque próprios."
+  }
+ ]
+}
