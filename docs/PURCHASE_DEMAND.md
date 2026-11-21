@@ -316,6 +316,20 @@ Pedido do dono (20/11/2026, com dois prints do iPad): o fornecedor preencheu a f
   - `tests/e2e/purchase-quote.spec.ts`: o fornecedor A digita, espera "salvo", recarrega a página e encontra o preço, a ficha e a moeda de volta.
 - **Sugestão para o dono (não feito)**: ligar a proteção de versão da Vercel ("Skew Protection", em Settings → Advanced do projeto). Com ela, quem está com a página aberta continua falando com a versão em que abriu, e nenhuma tela de nenhum formulário recarrega quando sai uma versão nova. Vale para o portal todo, não só para a cotação. É uma configuração do projeto na Vercel e pode depender do plano.
 
+## Card da cotação mais enxuto (dono, 21/11/2026)
+
+Pedido do dono (21/11/2026, com o print do iPad): o card da resposta da cotação tinha muito espaço aberto; caixas de digitação menores, mais minimalista e bonito.
+
+- **Ficha técnica em quatro linhas**, com o nome da linha à esquerda e os campos lado a lado, cada um do tamanho do número e com a unidade dentro da caixa:
+  - **Peças por caixa**: master e inner (pçs), com "Sem inner";
+  - **Caixa master**: C × L × A (cm) ou o CBM (m³), com "Pelas medidas: … m³" embaixo;
+  - **Peso**: líquido por peça e bruto da caixa (kg);
+  - **Material e código**: material, código na fábrica e "Sem código".
+- O texto de ajuda da ficha fica na mesma linha do título. O nome completo de cada campo continua para o leitor de tela e aparece ao passar o mouse.
+- **Condições comerciais numa linha**: incoterm, prazo de produção (com "dias" dentro), porto e pedido mínimo, cada um do tamanho do que se digita; a observação logo abaixo.
+- **Letra dos campos** de 13 px também no iPad, como na Estratégia de compra (`data-compact-fields`); no iPhone segue 16 px para o Safari não dar zoom.
+- **O que não muda**: os nomes dos campos do formulário, as regras (o que falta, os avisos, o rascunho automático) e os testes (`data-sheet-field`).
+
 ## Andamento
 
 | PR  | Entrega                                                                                        | Situação |
