@@ -281,7 +281,7 @@ Pedido do dono (20/11/2026, com o print da resposta da cotação de compra no iP
   - o seletor "Moeda" das condições comerciais (embaixo) saiu: o campo continua o mesmo (`currency` da resposta), só mudou de lugar.
 - **Digitação do preço (caixa registradora)**:
   - só números; a cada número a vírgula se ajusta (4 → 0.04, 40 → 0.40, 400 → 4.00, 4000 → 40.00), e apagar tira o último número;
-  - separador da moeda: Yuan e Dólar com ponto decimal (¥ 1,234.56, US$ 1,234.56); Real e Euro com vírgula (R$ 1.234,56, € 1.234,56); trocar a moeda refaz o texto com o mesmo número;
+  - separador da moeda: Yuan e Dólar com ponto decimal (¥ 1,234.56, US$ 1,234.56); Real e Euro com vírgula (R$ 1.234,56, € 1.234,56); trocar a moeda refazia o texto com o mesmo número (desde 21/11/2026 converte o valor pelo câmbio do dia, com "Manter os valores digitados" para o mesmo número; ver "Conversão ao trocar a moeda");
   - duas casas decimais; até 999.999.999,99;
   - colar um número no campo vale como está escrito ("40,50", "US$ 1,234.56", "4000" = quatro mil);
   - embaixo do campo, o exemplo na moeda escolhida: "Digite só os números: 4000 vira 40.00".
@@ -292,7 +292,7 @@ Pedido do dono (20/11/2026, com o print da resposta da cotação de compra no iP
   - a tela em `quote-answer-form.tsx` e os textos `quote.priceHint` e `quote.currencyAll`.
 - **Testes**:
   - `tests/unit/money-mask.test.ts`: a digitação número a número, apagar, os separadores por moeda, o valor lido pelo servidor, o preço gravado de volta no campo, o texto colado e o limite;
-  - `tests/e2e/purchase-quote.spec.ts`: RMB e ¥ por padrão, 210 digitado vira 2.10, Real com vírgula, Dólar com ponto, e a moeda de cada fornecedor no quadro da Wellmix.
+  - `tests/e2e/purchase-quote.spec.ts`: RMB e ¥ por padrão, 210 digitado vira 2.10, a troca para Real e para Dólar converte (21/11/2026) e o "Manter" mostra o mesmo número com vírgula no Real e ponto no Dólar, e a moeda de cada fornecedor no quadro da Wellmix.
 - **Para depois** (não pedido): as mesmas casas automáticas nos outros campos de preço do portal (é ligar `autoDecimal`) e três casas para itens muito baratos (US$ 0,085), se aparecer.
 
 ## Conversão ao trocar a moeda (dono, 21/11/2026)
@@ -313,7 +313,7 @@ Pedido do dono (21/11/2026, com o vídeo da ficha do produto no iPad): no quadro
   - `src/components/fx-field-watch.tsx`: formulários de campo simples (a oferta da negociação);
   - `FormDraftGuard` marca o formulário enquanto devolve um rascunho (`data-draft-restoring`): a moeda que volta não converte;
   - `src/app/api/fx/route.ts`, o `MoneyInput`, `quote-answer-form.tsx`, `proposal-fields.tsx` e os textos `moneyFx.*`.
-- **Testes**: `tests/unit/fx-convert.test.ts` e `tests/e2e/currency-conversion.spec.ts` (ficha do produto: Dólar → Real, "Manter", Real → Yuan e o aviso que sai ao digitar).
+- **Testes**: `tests/unit/fx-convert.test.ts`, `tests/e2e/currency-conversion.spec.ts` (ficha do produto: Dólar → Real, "Manter", Real → Yuan e o aviso que sai ao digitar) e `tests/e2e/purchase-quote.spec.ts` (a resposta da cotação: RMB → Real → Dólar convertendo, com "Manter os valores digitados").
 - **Para depois**: os outros campos de preço em texto simples ao lado de uma moeda (ex.: o lote do pedido) convertem quando migrarem para o `MoneyInput` ou ganharem o `FxFieldWatch`.
 
 ## Rascunho automático da cotação (dono, 20/11/2026)
