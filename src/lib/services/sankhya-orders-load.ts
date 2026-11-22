@@ -24,6 +24,11 @@ import {
   orderNumberOf,
   sankhyaOrderId,
   shipmentLines,
+  isReplenishmentTrack,
+  sankhyaReplenishmentId,
+  trackMilestone,
+  trackSituation,
+  type TrackShipment,
   type ProjectionOrder,
   type ProjectionShipment,
 } from "@/lib/integrations/sankhya-orders-plan";
@@ -63,6 +68,10 @@ export interface OrdersLoadProgress {
   updated: number;
   withPending: number;
   containers: number;
+  /** Itens de 1100 que viraram reposição (abertas e encerradas). */
+  replenishments?: number;
+  /** Pedidos de 1100 de cargas anteriores que saíram de Pedidos. */
+  removedOrders?: number;
   skipped: Array<{ key: string; reason: string }>;
   startedAt: string | null;
   finishedAt: string | null;
@@ -81,6 +90,8 @@ const EMPTY: OrdersLoadProgress = {
   updated: 0,
   withPending: 0,
   containers: 0,
+  replenishments: 0,
+  removedOrders: 0,
   skipped: [],
   startedAt: null,
   finishedAt: null,
@@ -179,8 +190,11 @@ async function openRequirements(
     await createOrderRequirements(order, undefined, { shadow: true });
   }
   const current = milestoneOf(row.milestone);
+  const inspected =
+    /^inspecionado$/i.test((row.data?.quality ?? "").trim()) ||
+    !!sankhyaIso(row.data?.inspectedAt);
   const done = current
-    ? doneMilestones(current, row.data?.quality)
+    ? doneMilestones(current, inspected ? "Inspecionado" : row.data?.quality)
     : new Set<string>();
   const at = sankhyaIso(row.data?.changedAt) ?? new Date().toISOString();
   const requirements = await store.list("requirements", {
@@ -285,16 +299,162 @@ async function upsertRows<K extends "order_items" | "container_items">(
   }
 }
 
+/** Embarques (35) de cada track do bloco, pelo ensaio dos embarques. */
+async function trackShipments(store: Store, rows: ProjectionOrder[]) {
+  const keys = [
+    ...new Set(
+      rows.flatMap((r) =>
+        (Array.isArray(r.data?.shipments) ? r.data!.shipments : []).map(String),
+      ),
+    ),
+  ];
+  const found = keys.length
+    ? await chunkRows<ProjectionShipment>(
+        store,
+        keys.map((k) => `shipment:${k}`),
+      )
+    : [];
+  const byKey = new Map<string, TrackShipment>(
+    found.map((s) => [
+      s.key,
+      {
+        open: s.situation === "in_progress",
+        customs: s.milestone === "customs",
+        prenota: !!s.data?.prenota,
+        eta: sankhyaIso(s.data?.eta),
+        channel: s.data?.customsChannel ?? null,
+      },
+    ]),
+  );
+  return new Map(
+    rows.map((r) => [
+      r.key,
+      (Array.isArray(r.data?.shipments) ? r.data!.shipments : [])
+        .map((n) => byKey.get(String(n)))
+        .filter((s): s is TrackShipment => !!s),
+    ]),
+  );
+}
+
+/** A linha do ensaio com a situação e o marco do de-para (seção 9.4). */
+function effectiveRow(
+  row: ProjectionOrder,
+  ships: Map<string, TrackShipment[]>,
+): ProjectionOrder {
+  if (isReplenishmentTrack(row)) return row;
+  const situation = trackSituation(row);
+  if (situation !== "in_progress") return { ...row, situation };
+  return {
+    ...row,
+    situation,
+    milestone: trackMilestone(row, ships.get(row.key) ?? []),
+  };
+}
+
+/**
+ * Track que parou na 1100 (Pre-order): uma reposição por item, para o
+ * estoque Wellmix, com o número = TRACK_ID. Pendente no Sankhya: aberta
+ * (REQUESTED) em /app/replenishment; sem pendência: encerrada (CANCELLED),
+ * como histórico. Rodar de novo atualiza a situação e a quantidade.
+ */
+async function loadReplenishment(
+  user: User,
+  store: Store,
+  row: ProjectionOrder,
+  productByCode: Map<string | null | undefined, { id: string }>,
+  progress: OrdersLoadProgress,
+) {
+  const { ensureStockParty } = await import("@/lib/services/stock-party");
+  const stock = await ensureStockParty(user);
+  const open = row.situation === "in_progress";
+  const number = orderNumberOf(row);
+  const desiredAt = sankhyaIso(row.data?.orderedAt);
+  const items = row.data?.items ?? [];
+  const ids = items.map((i) =>
+    sankhyaReplenishmentId(row.key, i.doc ?? mainKeyOf(row), i.seq),
+  );
+  const have = new Map(
+    (await listByIds(store, "requests", ids)).map((r) => [r.id, r]),
+  );
+  for (const [n, item] of items.entries()) {
+    const id = ids[n];
+    const name = item.name?.trim() || `Produto ${item.codprod ?? "—"}`;
+    const fields = {
+      productId: productByCode.get(item.codprod ?? "")?.id ?? null,
+      productName: name.slice(0, 160),
+      quantity: Number(item.qty) || 0,
+      unit: (item.unit?.trim() || "UN").slice(0, 20),
+      sankhyaCode: `${item.doc ?? mainKeyOf(row)}-${item.seq}`,
+      ...(desiredAt ? { desiredAt } : {}),
+    };
+    const before = have.get(id);
+    if (before) {
+      // A situação segue o Sankhya enquanto a reposição não andou no portal.
+      const status =
+        before.status === "REQUESTED" || before.status === "CANCELLED"
+          ? open
+            ? "REQUESTED"
+            : "CANCELLED"
+          : before.status;
+      await store.update("requests", id, { ...fields, status } as never);
+    } else {
+      await store.create("requests", {
+        id,
+        ...fields,
+        number: number ?? undefined,
+        customerId: stock.id,
+        createdByUserId: user.id,
+        requestedForUserId: null,
+        description: name,
+        specification: item.ref ? `Ref. fornecedor: ${item.ref}` : null,
+        deadline: null,
+        status: open ? "REQUESTED" : "CANCELLED",
+        orderId: null,
+        sellPrice: null,
+        sellCurrency: null,
+        downPaymentAmount: null,
+        origin: "replenishment",
+        sourceOrderId: null,
+        notes: `Importada do Sankhya (Pre-order 1100): TRACK_ID ${row.data?.track ?? "—"}, NUNOTA ${item.doc ?? mainKeyOf(row)}, item ${item.seq}${row.supplierName ? `, fornecedor ${row.supplierName}` : ""}`,
+      } as never);
+    }
+    progress.replenishments = (progress.replenishments ?? 0) + 1;
+  }
+}
+
+/** Tabelas que a carga grava por pedido (o pedido de 1100 sai com elas). */
+const LOADED_ORDER_TABLES = [
+  "order_items",
+  "requirements",
+  "order_milestones",
+  "import_steps",
+  "order_summaries",
+  "stages",
+  "process_events",
+  "container_items",
+] as const;
+
+/** Tira um pedido gravado por carga anterior (track que é reposição). */
+async function removeLoadedOrder(store: Store, orderId: string) {
+  for (const table of LOADED_ORDER_TABLES) {
+    const rows = await store.list(table, { filter: { orderId } as never });
+    for (const r of rows) await store.remove(table, r.id);
+  }
+  await store.remove("orders", orderId);
+}
+
 async function loadOrdersChunk(
   user: User,
   store: Store,
   keys: string[],
   progress: OrdersLoadProgress,
 ) {
-  const rows = await chunkRows<ProjectionOrder>(
+  const loaded = await chunkRows<ProjectionOrder>(
     store,
     keys.map((k) => `order:${k}`),
   );
+  const ships = await trackShipments(store, loaded);
+  const rows = loaded.map((r) => effectiveRow(r, ships));
   const [emps, existing, suppliers, products] = await Promise.all([
     companiesOf(store, rows.map(mainKeyOf)),
     listByIds(store, "orders", keys.map(sankhyaOrderId)),
@@ -330,6 +490,17 @@ async function loadOrdersChunk(
       if (progress.skipped.length < MAX_SKIPPED)
         progress.skipped.push({ key: row.key, reason });
     };
+    if (isReplenishmentTrack(row)) {
+      // 1100 não é pedido: vira reposição (aberta se pendente no Sankhya,
+      // encerrada como histórico se não) e sai de Pedidos.
+      await loadReplenishment(user, store, row, productByCode, progress);
+      const old = existingById.get(sankhyaOrderId(row.key));
+      if (old) {
+        await removeLoadedOrder(store, old.id);
+        progress.removedOrders = (progress.removedOrders ?? 0) + 1;
+      }
+      continue;
+    }
     const supplier = supplierByCode.get(row.supplierCode ?? "");
     if (!supplier) {
       skip(`fornecedor ${row.supplierCode ?? "—"} não cadastrado`);
@@ -356,6 +527,12 @@ async function loadOrdersChunk(
         CODEMP: emp,
         TOP: row.top ?? "",
         ...(row.data?.reason ? { MOTIVO: row.data.reason } : {}),
+        // ETA da 1104 = chegada no destino final (depósito; dono, 21/11/2026):
+        // a previsão de entrega na Nota fiscal e transporte.
+        ...(sankhyaIso(row.data?.eta)
+          ? { ETA_FINAL: sankhyaIso(row.data?.eta)! }
+          : {}),
+        ...(row.milestone ? { MARCO: row.milestone } : {}),
       },
       // O pedido aparece nas listas na situação real; só as pendências ficam
       // em espera até o go-live, sem avisos (docs/SANKHYA_INTEGRACAO.md, 5.2;
@@ -417,8 +594,11 @@ async function loadOrdersChunk(
       })),
     );
     if (row.situation === "in_progress") {
-      await openRequirements(store, order, row, held, { create: !before });
-      if (!before) progress.withPending++;
+      // Novo, ou antes sem pendências ("Aguardando definição" que entrou no
+      // de-para): cria os itens do portal.
+      const create = !before || before.sankhyaSituation !== "in_progress";
+      await openRequirements(store, order, row, held, { create });
+      if (create) progress.withPending++;
     }
   }
 }

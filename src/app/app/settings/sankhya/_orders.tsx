@@ -548,6 +548,14 @@ function LoadCard({
                 containers: load.containers,
               })}
             </p>
+            {load.replenishments || load.removedOrders ? (
+              <p className="text-zinc-600">
+                {t("sankhyaOrders.load.replenishments", {
+                  n: load.replenishments ?? 0,
+                  removed: load.removedOrders ?? 0,
+                })}
+              </p>
+            ) : null}
             {load.finishedAt ? (
               <p className="text-zinc-600">
                 {t("sankhyaOrders.load.finished", {

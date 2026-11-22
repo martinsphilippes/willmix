@@ -43,6 +43,9 @@ export interface ProjectionOrder {
     quality?: string | null;
     inspectedAt?: string | null;
     customsChannel?: string | null;
+    etd?: string | null;
+    /** ETA da 1104: chegada no destino final (depósito). */
+    eta?: string | null;
     currency?: string | null;
     total?: number | string | null;
     incoterm?: string | null;
@@ -327,3 +330,128 @@ export function shipmentLines(
   }
   return [...out.values()];
 }
+
+/** Embarque (35) do track, no que o marco do pedido precisa. */
+export interface TrackShipment {
+  /** 35 ou pré-nota ainda pendente no Sankhya. */
+  open: boolean;
+  /** Pré-nota (TOP 1) pendente: no desembaraço. */
+  customs: boolean;
+  /** Já tem pré-nota (pendente ou emitida). */
+  prenota: boolean;
+  eta: string | null;
+  channel: string | null;
+}
+
+const DAY = 86_400_000;
+/** ETD da 1104 vale para "navio saiu" só até 30 dias atrás (ETD velho não é atualizado). */
+export const ETD_FRESH_DAYS = 30;
+
+const isInspected = (quality: string | null | undefined) =>
+  /^inspecionado$/i.test((quality ?? "").trim());
+const isPartialInspection = (quality: string | null | undefined) =>
+  /^inspe[cç][aã]o parcial$/i.test((quality ?? "").trim());
+
+/** Marco do embarque (linhas 10 a 12 do de-para), ou nulo se já fechado. */
+function shipmentMilestone(
+  s: TrackShipment,
+  today: number,
+): MilestoneKey | null {
+  if (!s.open) return null;
+  if (s.customs) return "customs";
+  if (s.prenota) return "invoice-transport";
+  const eta = s.eta ? Date.parse(s.eta) : NaN;
+  if (channelOrAny(s.channel) || (Number.isFinite(eta) && today >= eta))
+    return "customs";
+  return "shipment";
+}
+const channelOrAny = (c: string | null | undefined) => !!(c ?? "").trim();
+
+/**
+ * Marco do pedido no portal pelo de-para aprovado pelo dono (21/11/2026,
+ * docs/SANKHYA_INTEGRACAO.md, seção 9.4): o documento mais adiantado do
+ * track, os status da 1104 e as datas de inspeção, ETD e ETA. Só para o
+ * pedido em andamento; a 1100 (reposição) não chega aqui.
+ *
+ * - 1101 → Pedido novo; 1102 → Arte; 1103 → Revisão (marco Contrato).
+ * - 1104 pendente: STATUS_SHIPPING 8 → Sinal; "Inspeção parcial" → Inspeção;
+ *   inspecionado → Booking, ou Embarque se o ETD passou há até 30 dias e nada
+ *   embarcou; senão → Produção. Parte embarcada não muda o marco (selo
+ *   "Embarque parcial" pelo shipmentState).
+ * - 1104 sem pendência (tudo embarcado): "Recebimento parcial" → Entrega;
+ *   senão o embarque aberto menos adiantado: pré-nota pendente, canal ou ETA
+ *   do 35 passado → Desembaraço; pré-nota emitida → Nota fiscal e transporte;
+ *   em trânsito → Embarque.
+ */
+export function trackMilestone(
+  row: Pick<ProjectionOrder, "top" | "data" | "milestone">,
+  ships: TrackShipment[],
+  now: Date = new Date(),
+): MilestoneKey | null {
+  const d = row.data ?? {};
+  const top = Number(row.top);
+  if (top === 1101) return "new-order";
+  if (top === 1102) return "art";
+  if (top === 1103) return "contract";
+  if (top !== 1104 && top !== 1107) return milestoneOf(row.milestone);
+  const today = now.getTime();
+  const main = (d.chain ?? []).filter((c) => Number(c.top) === top);
+  const pending = main.length
+    ? main.some((c) => !!c.pending)
+    : !!d.chain?.at(-1)?.pending;
+  if (pending) {
+    if (String(d.statusShipping ?? "").trim() === "8") return "down-payment";
+    if (isPartialInspection(d.quality)) return "inspection";
+    if (isInspected(d.quality) || sankhyaIso(d.inspectedAt)) {
+      const etdIso = sankhyaIso(d.etd);
+      const etd = etdIso ? Date.parse(etdIso) : NaN;
+      const nothingShipped = !ships.length;
+      if (
+        nothingShipped &&
+        Number.isFinite(etd) &&
+        today >= etd &&
+        today - etd <= ETD_FRESH_DAYS * DAY
+      )
+        return "shipment";
+      return "booking";
+    }
+    return "production";
+  }
+  if (/^recebimento parcial$/i.test((d.receipt ?? "").trim()))
+    return "delivery";
+  const order = MILESTONE_KEYS as readonly MilestoneKey[];
+  const stages = ships
+    .map((s) => shipmentMilestone(s, today))
+    .filter((m): m is MilestoneKey => !!m)
+    .sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  if (stages.length) return stages[0];
+  if (channelOrAny(d.customsChannel) && !d.receipt) return "customs";
+  return milestoneOf(row.milestone) ?? "shipment";
+}
+
+/**
+ * Situação do pedido no portal depois do de-para: a 1104 pendente sem
+ * STATUS_SHIPPING (o "caso 1", 191 pedidos) segue em andamento pela inspeção
+ * e pelo ETD (dono, 21/11/2026); a 1101 pendente também.
+ */
+export function trackSituation(
+  row: Pick<ProjectionOrder, "situation" | "top" | "data">,
+): SankhyaOrderSituation {
+  if (row.situation !== "awaiting_definition") return row.situation;
+  if (row.data?.reason === "no_status_shipping") return "in_progress";
+  const top = Number(row.top);
+  const last = row.data?.chain?.at(-1);
+  if (top === 1101 && last?.pending) return "in_progress";
+  return row.situation;
+}
+
+/** Track que parou na 1100: não é pedido, é reposição (dono, 21/11/2026). */
+export const isReplenishmentTrack = (row: Pick<ProjectionOrder, "top">) =>
+  Number(row.top) === 1100;
+
+/** Reposição do Sankhya: uma por item da 1100, id fixo pelo track e sequência. */
+export const sankhyaReplenishmentId = (
+  track: string | number,
+  doc: string | number,
+  seq: number,
+) => `snk-r${track}-${doc}-${seq}`;
