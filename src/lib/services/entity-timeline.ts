@@ -197,7 +197,8 @@ export async function requestTimeline(
         state: "done",
         detail: { key: "flow.np.fromBook" },
         lateDays: 0,
-        href: lotHref,
+        // Só a cotação que veio de um book leva ao book.
+        ...(r.bookingLotId ? { href: lotHref } : {}),
       },
       {
         key: "selection",

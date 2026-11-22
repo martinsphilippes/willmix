@@ -318,12 +318,17 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
       ...(c.overdue ? { badgeAlert: true } : {}),
     };
   };
-  const link = (l: NavLink) => ({
+  const leaf = (l: NavLink) => ({
     href: l.href,
     label: t(l.key),
     ...(l.icon ? { icon: l.icon } : {}),
     ...(l.match ? { match: l.match } : {}),
     ...badgeOf(l),
+  });
+  // Item com subitens (ex.: Entrada): abre e fecha dentro do grupo.
+  const link = (l: NavLink) => ({
+    ...leaf(l),
+    ...(l.children ? { id: l.key, items: l.children.map(leaf) } : {}),
   });
   const nav = navFor(user);
   // Barra lateral e menu do celular sem Mensagens e Notificações (só nos

@@ -26,6 +26,10 @@ import type { TaskText } from "@/lib/task-text";
 import { innerFromDemands, quoteInnerState } from "@/lib/quote-inner";
 import { AUTO_ACTOR_ID } from "@/lib/purchase-demand";
 import {
+  appendQuoteEvent,
+  pendingQuoteProposals,
+} from "@/lib/quote-negotiation";
+import {
   prepareQuoteSheets,
   saveQuoteSheets,
   setQuoteScalePhoto,
@@ -652,6 +656,22 @@ export async function answerQuote(
     ...patch,
     answeredAt: now.toISOString(),
     answeredByUserId: user.id,
+    // Cada envio fica no histórico de propostas e contrapropostas da
+    // cotação (dono, 22/11/2026; docs/QUOTATION.md).
+    negotiation: appendQuoteEvent(response, {
+      id: crypto.randomUUID(),
+      at: now.toISOString(),
+      kind: input.decline ? "decline" : "answer",
+      side: "supplier",
+      byUserId: user.id,
+      prices: patch.prices ?? null,
+      currency: patch.currency ?? null,
+      incoterm: patch.incoterm ?? null,
+      moq: patch.moq ?? null,
+      leadTimeDays: patch.leadTimeDays ?? null,
+      port: patch.port ?? null,
+      text: patch.note ?? null,
+    }),
   });
   // A ficha de cada par, depois da resposta gravada (uma vez por par).
   if (prepared.length)
@@ -1150,7 +1170,15 @@ export async function quoteTaskDrafts(user: User, now = new Date()) {
       user,
       now,
     ))
-      if (state === "open" && quote.status === "open") {
+      if (
+        quote.status === "open" &&
+        (state === "open" ||
+          // Contraproposta da Wellmix esperando: ele corrige a resposta
+          // dentro do prazo novo (dono, 22/11/2026; docs/QUOTATION.md).
+          (state === "answered" &&
+            pendingQuoteProposals(response).length > 0 &&
+            Date.parse(response.dueAt) > now.getTime()))
+      ) {
         // Nas Pendências do fornecedor, a cotação acende a etapa "Responder
         // a solicitação" (amarelo no prazo, vermelho atrasada) e, ao tocar
         // nela, a lista mostra a cotação (dono, 21/11/2026). Desde: o

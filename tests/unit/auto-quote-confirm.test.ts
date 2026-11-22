@@ -312,13 +312,49 @@ describe("cliente confirma: a cotação sai sozinha", () => {
     expect(await strategy.autoQuoteConfirmed([after])).toEqual([]);
   });
 
-  it("produto fora do catálogo: segue o Enviar para cotação de antes", async () => {
+  it("produto fora do catálogo: só entra na fila, sem cotação e sem aviso duplicado", async () => {
+    const store = getStore();
     const [r] = await sale(["fora:Produto novo"]);
     await confirm(r);
     const [after] = await fresh([r.id]);
+    // Entrada direta na fila (sem o Enviar para cotação), sem estratégia.
     expect(after.status).toBe("REQUESTED");
-    expect(after.strategySentAt ?? null).toBeNull();
-    expect(strategy.awaitingStrategySend(after)).toBe(true);
+    expect(after.strategySentAt).toBeTruthy();
+    expect(after.purchaseDecisionId ?? null).toBeNull();
+    expect(strategy.awaitingStrategySend(after)).toBe(false);
+    expect(strategy.inStrategyQueue(after)).toBe(true);
+    // Um aviso só a quem escolhe a estratégia (o da entrada na fila).
+    const notices = (
+      await store.list("notifications", { filter: { channel: "inapp" } })
+    ).filter(
+      (n) =>
+        n.body.includes(`nº ${after.number} `) ||
+        n.subject.includes(`nº ${after.number} confirmada`),
+    );
+    expect(
+      notices.some((n) =>
+        n.subject.includes("confirmado(s) pelo cliente na Estratégia"),
+      ),
+    ).toBe(true);
+    expect(notices.some((n) => n.subject.includes("aberta sozinha"))).toBe(
+      false,
+    );
+  });
+
+  it("cotação que saiu sozinha: sem o aviso da fila (um aviso só ao Comprador)", async () => {
+    const store = getStore();
+    const [r] = await sale(["prod-jarra"]);
+    await confirm(r);
+    const [after] = await fresh([r.id]);
+    expect(after.status).toBe("RFQ_OPEN");
+    const queueNotices = (
+      await store.list("notifications", { filter: { channel: "inapp" } })
+    ).filter(
+      (n) =>
+        n.subject.includes("confirmado(s) pelo cliente na Estratégia") &&
+        n.body.includes(`nº ${after.number} `),
+    );
+    expect(queueNotices).toEqual([]);
   });
 });
 

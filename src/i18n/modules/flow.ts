@@ -152,7 +152,10 @@ export const pt = {
   "flow.work.title": "Resolver aqui",
   "flow.work.order": "Pedido #{n}",
   "flow.work.openOrder": "Abrir o pedido completo",
-  "nav.group.newProduct": "Produto novo",
+  "nav.group.newProduct": "Cotação",
+  "nav.entry": "Entrada",
+  "nav.entry.book": "Book",
+  "nav.quotation": "Cotação",
   "nav.group.order": "Pedido",
   "nav.group.arrival": "Entrega",
   "nav.group.sales": "Vendas",
@@ -179,7 +182,7 @@ export const pt = {
   "settings.superplan.body":
     "Estudo de viabilidade de um produto (passo B3 do mapa). Saiu do menu lateral e fica aqui.",
   "settings.superplan.open": "Abrir o Superplan",
-  "flow.block.new-product": "Produto novo",
+  "flow.block.new-product": "Cotação",
   "flow.block.order": "Pedido",
   "flow.block.production": "Produção",
   "flow.block.delivery": "Entrega",
@@ -207,9 +210,9 @@ export const pt = {
   "flow.step.new-product.purchase-quotes": "Cotação de compra",
   "flow.help.new-product.purchase-quotes":
     "Cotação de preço aberta pelo sistema com os fornecedores das linhas, 24 h para cada um responder; o Comprador escolhe e a Diretoria de compras aprova.",
-  "flow.step.new-product.negotiations": "Negociações",
+  "flow.step.new-product.negotiations": "Cotação",
   "flow.help.new-product.negotiations":
-    "Solicitações ao fornecedor: análise, negociação e amostragem até a aprovação da amostra.",
+    "Cotação com os fornecedores: convites, respostas, quadro comparativo, negociação e amostragem até o fornecedor do pedido.",
   "flow.step.order.orders": "Pedidos",
   "flow.help.order.orders":
     "Pedidos de compra: confirmação, programação de compra e ficha do pedido.",
@@ -451,7 +454,10 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.work.title": "Resolve here",
   "flow.work.order": "Order #{n}",
   "flow.work.openOrder": "Open the full order",
-  "nav.group.newProduct": "New product",
+  "nav.group.newProduct": "Quotation",
+  "nav.entry": "Intake",
+  "nav.entry.book": "Book",
+  "nav.quotation": "Quotation",
   "nav.group.order": "Order",
   "nav.group.arrival": "Delivery",
   "nav.group.sales": "Sales",
@@ -478,7 +484,7 @@ export const en: Record<keyof typeof pt, string> = {
   "settings.superplan.body":
     "Product feasibility study (map step B3). It left the sidebar and lives here.",
   "settings.superplan.open": "Open Superplan",
-  "flow.block.new-product": "New product",
+  "flow.block.new-product": "Quotation",
   "flow.block.order": "Order",
   "flow.block.production": "Production",
   "flow.block.delivery": "Delivery",
@@ -506,9 +512,9 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.step.new-product.purchase-quotes": "Purchase quote",
   "flow.help.new-product.purchase-quotes":
     "Price quote opened by the system with the lines' suppliers, 24 h for each to answer; the Buyer picks and the Purchasing board approves.",
-  "flow.step.new-product.negotiations": "Negotiations",
+  "flow.step.new-product.negotiations": "Quotation",
   "flow.help.new-product.negotiations":
-    "Supplier requests: review, negotiation and sampling up to sample approval.",
+    "Quotation with suppliers: invitations, answers, comparison board, negotiation and sampling up to the supplier of the order.",
   "flow.step.order.orders": "Orders",
   "flow.help.order.orders":
     "Purchase orders: confirmation, purchase schedule and order sheet.",
@@ -742,7 +748,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.work.title": "在此处理",
   "flow.work.order": "订单 #{n}",
   "flow.work.openOrder": "打开完整订单",
-  "nav.group.newProduct": "新产品",
+  "nav.group.newProduct": "询价",
+  "nav.entry": "入口",
+  "nav.entry.book": "Book",
+  "nav.quotation": "询价",
   "nav.group.order": "订单",
   "nav.group.arrival": "交付",
   "nav.group.sales": "销售",
@@ -769,7 +778,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "settings.superplan.body":
     "产品可行性研究（流程图 B3）。已从侧边栏移到这里。",
   "settings.superplan.open": "打开 Superplan",
-  "flow.block.new-product": "新产品",
+  "flow.block.new-product": "询价",
   "flow.block.order": "订单",
   "flow.block.production": "生产",
   "flow.block.delivery": "交付",
@@ -796,9 +805,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.step.new-product.purchase-quotes": "采购询价",
   "flow.help.new-product.purchase-quotes":
     "系统向产品线的供应商发起询价，每家 24 小时内回复；采购员选择，采购总监批准。",
-  "flow.step.new-product.negotiations": "谈判",
+  "flow.step.new-product.negotiations": "询价",
   "flow.help.new-product.negotiations":
-    "供应商请求：分析、谈判和打样，直到样品批准。",
+    "与供应商询价：邀请、回复、比价表、谈判和打样，直到确定订单的供应商。",
   "flow.step.order.orders": "订单",
   "flow.help.order.orders": "采购订单：确认、采购排期和订单表。",
   "flow.step.order.certification": "认证",

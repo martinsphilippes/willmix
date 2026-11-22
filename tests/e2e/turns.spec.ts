@@ -12,10 +12,11 @@ import {
  * De quem é a vez (dono, 18/11/2026; docs/TURNS.md): a venda pela Wellmix
  * aguardando o cliente aparece em "Em aberto" com a situação "Aguardando
  * cliente" e o Próximo passo "Confirmar pedido"; o cliente recebe a ação nas
- * Pendências dele; confirmada, a pendência dele some e a cotação sai sozinha
- * (dono, 22/11/2026: sem o "Enviar para cotação"), com a vez no fornecedor e
- * o filtro "Com quem está" coerente. A encomenda aberta pelo próprio cliente
- * continua com o "Enviar para cotação" da Wellmix.
+ * Pendências dele; confirmada, a pendência dele some, a encomenda entra direto
+ * na Estratégia e a cotação sai sozinha (dono, 22/11/2026: sem o "Enviar para
+ * cotação"), com a vez no fornecedor e o filtro "Com quem está" coerente. A
+ * encomenda aberta pelo próprio cliente continua com o "Enviar para cotação"
+ * da Wellmix.
  */
 
 async function newSaleForJoao(page: Page) {
@@ -131,6 +132,12 @@ test("venda aguardando o cliente: Em aberto e com o cliente; ele confirma pelas 
       `[data-task-row] a[href="/app/requests/${requestId}"]:not([data-open-link])`,
     ),
   ).toHaveCount(0);
+  // Não ficou esperando estratégia: a cotação já saiu.
+  await page.goto("/app/purchase-strategy");
+  await expect(page.locator('[data-strategy-tabs="waiting"]')).toBeVisible();
+  await expect(page.locator(`[data-strategy-line="${requestId}"]`)).toHaveCount(
+    0,
+  );
 });
 
 test("Pedidos: a coluna e o filtro Com quem está seguem a mesma regra", async ({

@@ -182,7 +182,7 @@ export default async function StrategySendPage({
                   <p className="mt-1 text-xs text-zinc-700">
                     {t("strategy.send.direct")}{" "}
                     <Link
-                      href={`/app/purchase-strategy#decision-${line.decisionId}`}
+                      href={`/app/purchase-strategy?tab=open#decision-${line.decisionId}`}
                       className={linkClass}
                       data-strategy-send-decision={line.decisionId}
                     >

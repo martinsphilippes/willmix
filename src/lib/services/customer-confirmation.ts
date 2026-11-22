@@ -255,14 +255,15 @@ export async function confirmCustomerOrder(
     released.push(updated);
   }
   for (const r of released) await releaseRequest(user, r);
-  // Cotação na hora (dono, 22/11/2026; docs/PURCHASE_DEMAND.md, "Cotação na
-  // confirmação do cliente"): a encomenda entra sozinha na Estratégia de
-  // Compra e a cotação sai para o fornecedor da última compra e os parceiros
-  // da família. Erro aqui não desfaz a confirmação: a encomenda fica na fila.
+  // Confirmado pelo cliente, segue direto para a Estratégia de Compra, sem
+  // o "Enviar para cotação" da Wellmix, e a cotação sai na hora para o
+  // fornecedor da última compra e os parceiros da família (dono, 22/11/2026;
+  // docs/PURCHASE_DEMAND.md, "Cotação na confirmação do cliente"). Erro aqui
+  // não desfaz a confirmação: a encomenda fica na fila.
   if (released.length) {
-    const { autoQuoteConfirmed } = await import("./purchase-strategy");
-    await autoQuoteConfirmed(released).catch((error) =>
-      console.error("[confirm] cotação automática", error),
+    const { enterStrategyOnConfirm } = await import("./purchase-strategy");
+    await enterStrategyOnConfirm(user, released).catch((error) =>
+      console.error("[confirm] Estratégia de Compra", error),
     );
   }
   // RCA escolhido pelo vendedor fecha a venda: padrão do cliente por 30
