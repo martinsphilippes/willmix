@@ -32,6 +32,8 @@ O que depende do tempo é calculado contra o "agora" da leitura:
 
 Por isso a passagem do tempo não precisa de job.
 
+O "agora" é o mesmo nos dois caminhos, e o dia é o de Brasília (`brazilDay`): no caminho das tabelas, os quadros pedem as parcelas de Contas a pagar no dia do "agora" dado (`listPayables({ today })`), não no dia do relógio. Antes, quando a rodada passava das 03:00 UTC (meia-noite em Brasília), o caminho das tabelas dava a parcela de ontem como vencida e o do resumo como a vencer (22/11/2026; `tests/unit/order-summary-midnight.test.ts`).
+
 Continuam lidas na hora, por serem pequenas:
 
 - multas em aberto;
