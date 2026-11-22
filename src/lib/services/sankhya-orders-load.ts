@@ -486,12 +486,19 @@ async function removeLoadedOrder(store: Store, orderId: string) {
   await store.remove("orders", orderId);
 }
 
+/**
+ * Grava um bloco de pedidos e devolve quantas chaves do bloco ficaram prontas.
+ * Passado o prazo do passo, para no pedido seguinte (22/11/2026: 10 pedidos
+ * em andamento, cada um com as pendências a criar, passavam dos 60 s da
+ * página, e o bloco inteiro era refeito a cada "Continuar").
+ */
 async function loadOrdersChunk(
   user: User,
   store: Store,
   keys: string[],
   progress: OrdersLoadProgress,
-) {
+  deadline = Number.POSITIVE_INFINITY,
+): Promise<number> {
   const loaded = await chunkRows<ProjectionOrder>(
     store,
     keys.map((k) => `order:${k}`),
@@ -528,7 +535,13 @@ async function loadOrdersChunk(
   const held = await holdState();
   const { lineAgencyOf } = await import("@/lib/services/line-agency");
   const now = new Date().toISOString();
+  let handled = 0;
   for (const row of rows.sort((a, b) => Number(a.key) - Number(b.key))) {
+    if (handled > 0 && Date.now() >= deadline) {
+      const at = keys.indexOf(row.key);
+      return at >= 0 ? at : keys.length;
+    }
+    handled++;
     const skip = (reason: string) => {
       if (progress.skipped.length < MAX_SKIPPED)
         progress.skipped.push({ key: row.key, reason });
@@ -644,6 +657,7 @@ async function loadOrdersChunk(
       if (create) progress.withPending++;
     }
   }
+  return keys.length;
 }
 
 /**
@@ -836,8 +850,13 @@ export async function runOrdersLoadStep(
     do {
       const slice = keys.slice(progress.done, progress.done + ORDER_CHUNK);
       if (!slice.length) break;
-      await loadOrdersChunk(user, store, slice, progress);
-      progress.done += slice.length;
+      progress.done += await loadOrdersChunk(
+        user,
+        store,
+        slice,
+        progress,
+        deadline,
+      );
       await writeSetting(ORDERS_LOAD_KEY, progress);
     } while (Date.now() < deadline);
     if (progress.done >= keys.length) {

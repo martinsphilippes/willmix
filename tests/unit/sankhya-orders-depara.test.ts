@@ -269,3 +269,54 @@ describe("1100 vira reposição na carga", () => {
     ).toBe(before);
   });
 });
+
+describe("passo da carga respeita o prazo", () => {
+  it("sem tempo, grava um pedido por passo e termina sem refazer", async () => {
+    const { users } = await seedDemo();
+    const admin = users.find((u) => u.email === "admin@wellmix.com")!;
+    const store = getStore();
+    for (const key of ["7200", "7300", "7400"])
+      await store.create("sankhya_projection", {
+        id: `order:${key}`,
+        kind: "order",
+        key,
+        situation: "in_progress",
+        milestone: null,
+        top: 1100,
+        supplierCode: null,
+        supplierName: null,
+        shipmentState: "none",
+        computedAt: NOW.toISOString(),
+        data: {
+          track: key,
+          chain: [{ nunota: Number(key), top: 1100, pending: true }],
+          items: [
+            {
+              seq: 1,
+              codprod: "X",
+              name: "ITEM",
+              unit: "UN",
+              qty: 1,
+              shipped: 0,
+              pendingQty: 1,
+              price: 1,
+            },
+          ],
+        },
+      } as never);
+    let p = await load.runOrdersLoadStep(admin, { restart: true });
+    const total = p.total;
+    expect(total).toBeGreaterThanOrEqual(3);
+    const seen: number[] = [];
+    for (let i = 0; i < 50 && p.phase === "orders"; i++) {
+      p = await load.runOrdersLoadStep(admin, { budgetMs: 0 });
+      seen.push(p.phase === "orders" ? p.done : total);
+    }
+    // Cada passo avança pelo menos um pedido, sem pular nem voltar.
+    expect(seen.length).toBe(total);
+    expect(seen[0]).toBe(1);
+    for (let i = 1; i < seen.length; i++)
+      expect(seen[i]).toBeGreaterThanOrEqual(seen[i - 1]);
+    expect(p.phase).not.toBe("orders");
+  });
+});
