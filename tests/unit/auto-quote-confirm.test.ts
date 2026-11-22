@@ -290,6 +290,28 @@ describe("cliente confirma: a cotação sai sozinha", () => {
     expect(queued[0].body).toContain("nenhum parceiro");
   });
 
+  it("entrada na fila já gravada por outro caminho: a cotação sai do mesmo jeito", async () => {
+    const store = getStore();
+    const [r] = await sale(["prod-panela"]);
+    // Confirmada e já na fila (como a entrada direta faria), sem estratégia.
+    const at = new Date().toISOString();
+    const queuedAlready = await store.update("requests", r.id, {
+      status: "REQUESTED",
+      strategySentAt: at,
+      strategySentByUserId: admin.id,
+    });
+    const [outcome] = await strategy.autoQuoteConfirmed([queuedAlready]);
+    expect(outcome.state).toBe("sent");
+    const [after] = await fresh([r.id]);
+    // A entrada que já existia fica como estava.
+    expect(after.strategySentAt).toBe(at);
+    expect(after.strategySentByUserId).toBe(admin.id);
+    expect(after.status).toBe("RFQ_OPEN");
+    expect(after.purchaseDecisionId).toBeTruthy();
+    // Chamada de novo, não abre outra cotação.
+    expect(await strategy.autoQuoteConfirmed([after])).toEqual([]);
+  });
+
   it("produto fora do catálogo: segue o Enviar para cotação de antes", async () => {
     const [r] = await sale(["fora:Produto novo"]);
     await confirm(r);

@@ -1612,7 +1612,15 @@ export async function autoQuoteConfirmed(
   released: readonly Request[],
 ): Promise<AutoQuoteOutcome[]> {
   const store = getStore();
-  const candidates = released.filter(awaitingStrategySend);
+  // Encomenda do cliente ainda sem estratégia, com ou sem a entrada na fila
+  // já gravada por outro caminho: a cotação sai do mesmo jeito.
+  const candidates = released.filter(
+    (r) =>
+      r.status === "REQUESTED" &&
+      !r.purchaseDecisionId &&
+      demandKind(r) === "order" &&
+      !isStockCustomer(r.customerId),
+  );
   const byKey = new Map<string, Request[]>();
   for (const r of candidates)
     byKey.set(requestKey(r), [...(byKey.get(requestKey(r)) ?? []), r]);
@@ -1623,9 +1631,18 @@ export async function autoQuoteConfirmed(
     // então segue o "Enviar para cotação" de antes.
     if (group.some((d) => !d.productId)) continue;
     const now = new Date().toISOString();
-    // O "Enviar para cotação" sozinho: entra na fila da Estratégia.
+    // O "Enviar para cotação" sozinho: entra na fila da Estratégia (a que já
+    // entrou fica como está).
+    const current = await store.list("requests", {
+      filter: { id: group.map((d) => d.id) },
+    });
     const stamped: Request[] = [];
     for (const r of group) {
+      const row = current.find((c) => c.id === r.id) ?? r;
+      if (row.strategySentAt) {
+        stamped.push(row);
+        continue;
+      }
       stamped.push(
         await store.update("requests", r.id, {
           strategySentAt: now,
