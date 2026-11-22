@@ -21,6 +21,30 @@ test("Pedidos com o resumo em uso: produto, itens da página e filtro de produto
   const orderRow = page.locator('[data-orders-row^="order:"]').first();
   await expect(orderRow).toBeVisible();
   const key = (await orderRow.getAttribute("data-orders-row"))!;
+  // Tabela padrão de pedidos (dono, 22/11/2026; docs/ORDER_TABLES.md): as
+  // colunas das condições na ordem do dono, entre o número e o cliente.
+  const heads = await page
+    .locator("[data-orders-panel] thead tr")
+    .first()
+    .locator("[data-order-head]")
+    .evaluateAll((els) => els.map((el) => el.getAttribute("data-order-head")));
+  expect(heads).toEqual([
+    "negotiationDate",
+    "saleType",
+    "paymentTerm",
+    "paymentMethod",
+    "billing",
+    "vip",
+    "group",
+    "customerCode",
+    "status",
+    "deliveries",
+    "cbm",
+    "value",
+  ]);
+  await expect(
+    orderRow.locator('[data-order-col="negotiationDate"]'),
+  ).not.toHaveText("—");
   // Lista no nível do pedido (dono, 18/11/2026): a coluna mostra quantos
   // produtos; o nome do 1º item, do resumo, fica na dica da célula.
   const products = orderRow.locator("[data-orders-products]");
@@ -37,6 +61,11 @@ test("Pedidos com o resumo em uso: produto, itens da página e filtro de produto
   const items = panel.locator("[data-orders-item]");
   await expect(items.first()).toBeVisible();
   await expect(items.first()).toContainText(product);
+  // Tabela padrão de itens: a descrição numa linha e nada para abrir.
+  await expect(
+    items.first().locator("[data-orders-item-description]"),
+  ).toContainText(product);
+  await expect(panel.locator("[data-row-more-toggle]")).toHaveCount(0);
 
   // Filtro de produto: procura nos itens de todos os pedidos.
   await page.goto(`/app/orders?p=${encodeURIComponent(product)}`);

@@ -34,10 +34,14 @@ Saíram da lista (seguem na página do pedido e no CSV): Peças, Master, Inner, 
 ### Onde já está aplicada
 
 - **Encomendas** (`/app/requests`), para a Wellmix e para o cliente.
+- **Pedidos** (`/app/orders`). As condições (tipo de venda, pagamento, faturamento, VIP, grupo, cliente nº, entregas, m³ e valor) vêm da solicitação ligada a cada pedido (`orders.requestId`), lidas só para as linhas da página (`src/lib/services/order-cells.ts`). Pedido que veio só do Sankhya, sem solicitação no portal, mostra "—" nessas colunas. Nesta tela:
+  - Status = de quem é a vez (encerrado ou cancelado, isso mesmo); Situação = o marco atual (com "Travado" quando está); Prazo resposta = o prazo do marco.
+  - Quem vê o quê: fornecedor e demais parceiros só veem Nº, Data, Status, Situação, Prazo e Itens (o que já viam); o cliente vê também as condições, as entregas e o m³ do pedido dele; VIP, grupo, cliente e fornecedor só a Wellmix; o valor, só com "Ver valores e margem".
+  - Saíram da tabela: Progresso (a barra), a situação da linha (Em andamento, Travado…) e Atualizado. Os três filtros seguem valendo, acima da tabela.
 
 ### Onde falta aplicar
 
-Pedidos (`/app/orders`), Cotação (`/app/supplier-requests`), Reposição, Ordens de venda e as listas dos passos do fluxo. Nessas, o cliente e as condições do pedido chegam pela solicitação ligada (`orders.requestId`; `demandIds` na cotação e na solicitação ao fornecedor).
+Cotação (`/app/supplier-requests`), Reposição, Ordens de venda e as listas dos passos do fluxo. Nessas, o cliente e as condições do pedido chegam pela solicitação ligada (`demandIds` na cotação e na solicitação ao fornecedor), com o mesmo `loadOrderCells`.
 
 ## 2. Tabela de itens do pedido
 
@@ -64,7 +68,7 @@ Pedidos (`/app/orders`), Cotação (`/app/supplier-requests`), Reposição, Orde
 - No nível do produto não há linha que abra mais informação; o nome leva à ficha do produto.
 - Saíram desta tabela MOQ, Programações e Pedido (seguem nos totais do pedido, na ficha do produto e no CSV).
 
-Aplicada na **página do pedido da encomenda** (`/app/requests/batch/<id>`, enviada e rascunho). Falta nas páginas do pedido de compra, da cotação e da ordem de venda.
+Aplicada na **página do pedido da encomenda** (`/app/requests/batch/<id>`, enviada e rascunho) e no **painel de itens da tela Pedidos** (os itens da linha escolhida). No painel de Pedidos saíram Cód. do item, Cor, Peso, Preço unitário de compra, Valor, Fornecedor, Pedido e Progresso (seguem na página do pedido); os dois preços Wellmix aparecem quando o pedido é de um produto só com solicitação no portal. Falta nas páginas do pedido de compra, da cotação e da ordem de venda.
 
 ## 3. Decisões do dono (22/11/2026)
 

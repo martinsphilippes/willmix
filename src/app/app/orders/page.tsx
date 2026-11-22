@@ -2,6 +2,12 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { canSeeSupplier, isWellmix } from "@/lib/auth/permissions";
+import { canSeeMoney } from "@/lib/auth/function-access";
+import { ORDER_COLUMNS, ORDER_ITEM_COLUMNS } from "@/lib/order-table";
+import {
+  loadOrderCells,
+  type OrderCellsResult,
+} from "@/lib/services/order-cells";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { REQUEST_STATUSES } from "@/lib/db/schema";
@@ -229,6 +235,88 @@ export default async function OrdersPage({
   const stepIndex = (step: JourneyStep | null) =>
     step ? JOURNEY_STEPS.indexOf(step) : Number.POSITIVE_INFINITY;
 
+  /* Tabela padrão (dono, 22/11/2026; docs/ORDER_TABLES.md): o que vem da
+     solicitação ligada a cada pedido, lido só para as linhas da página. */
+  const seeTerms = wellmix || user.role === "customer";
+  const seeValue = wellmix && canSeeMoney(user);
+  let cells: OrderCellsResult = { byKey: new Map(), byRequest: new Map() };
+  const turnText = (turn: TurnParty | null) =>
+    turn
+      ? (user.role === "customer" && turn === "customer") ||
+        (user.role === "supplier" &&
+          (turn === "supplier" || turn === "trading"))
+        ? t("turn.waiting.you")
+        : t(turnWaitingKey(turn))
+      : "";
+  const standardItem = (r: (typeof rows)[number], i: PipelineItem) => {
+    const own = r.requestId ? cells.byRequest.get(r.requestId) : undefined;
+    // Preço e embalagem da solicitação só valem para o produto dela (o
+    // pedido do Sankhya com vários itens não tem solicitação por item).
+    const single = r.items.length === 1 ? own : undefined;
+    const product = i.productId ? (productById.get(i.productId) ?? null) : null;
+    const inner = single?.packing?.inner?.value ?? product?.innerBoxQty ?? null;
+    const price = (value: number | null | undefined) =>
+      seeValue && value !== null && value !== undefined
+        ? money(value, single?.currency ?? "BRL")
+        : null;
+    return {
+      description: [i.name, i.variant, wellmix ? i.specification : null]
+        .map((part) => (part ?? "").replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+        .join(" · "),
+      turn: r.turn ?? "",
+      turnLabel: turnText(r.turn),
+      turnTone: r.turn ? turnTone(r.turn) : ("neutral" as const),
+      priceIpi: price(single?.prices.ipi),
+      priceIpiFreight: price(single?.prices.ipiFreight),
+      perInner: wellmix && inner ? num(inner, 0) : null,
+      pieces: `${i.quantity.toLocaleString(t.intl)} ${i.unit}`.trim(),
+    };
+  };
+  const standardRow = (
+    members: (typeof rows)[number][],
+    key: string,
+  ): NonNullable<OrdersTableRow["std"]> => {
+    const c = seeTerms ? cells.byKey.get(key) : undefined;
+    const created = members
+      .map((r) => r.createdAt)
+      .filter((d): d is string => !!d)
+      .sort()[0];
+    const tracks = [
+      ...new Set(members.map((r) => r.track).filter((v): v is string => !!v)),
+    ];
+    return {
+      track: tracks.join(", "),
+      negotiationDate: formatDate(c?.negotiationDate ?? created ?? null, t),
+      saleType: c?.terms.saleType
+        ? t(`orderTable.saleType.${c.terms.saleType}`)
+        : "",
+      paymentTerm: c?.terms.installments ? String(c.terms.installments) : "",
+      paymentMethod: c?.terms.paymentName ?? "",
+      billing: c?.terms.billing
+        ? t(`orderTable.billing.${c.terms.billing}`)
+        : "",
+      vip:
+        wellmix && c?.terms.vip
+          ? t(`orderTerms.tier.${c.terms.vip}` as DictionaryKey)
+          : "",
+      group: wellmix ? (c?.group ?? "") : "",
+      customerCode: wellmix ? (c?.customerCode ?? "") : "",
+      deliveries: c ? String(c.deliveries) : "",
+      cbm:
+        c && c.cbm.value !== null
+          ? `${num(c.cbm.value, 3)}${c.cbm.missing.length ? " *" : ""}`
+          : "",
+      value:
+        seeValue && c
+          ? c.sale.amounts
+              .map((a) => money(a.amount, a.currency))
+              .filter(Boolean)
+              .join(" · ")
+          : "",
+    };
+  };
+
   /** Item completo (linhas da página): textos formatados e detalhe. */
   const itemRow = (
     r: (typeof rows)[number],
@@ -252,6 +340,7 @@ export default async function OrdersPage({
     dueLabel: formatDate(r.dueAt, t),
     due: brazilDay(r.dueAt),
     detail: itemDetail(i),
+    ...standardItem(r, i),
   });
   const buildRow = (
     members: (typeof rows)[number][],
@@ -342,6 +431,7 @@ export default async function OrdersPage({
         ),
       ),
       itemsTotals: detailed ? itemsTotals(sorted) : null,
+      ...(detailed ? { std: standardRow(sorted, first.groupKey) } : {}),
       customer: first.customer ?? "",
       supplier: suppliers.join(", "),
       phase: phaseLabel(lead),
@@ -350,13 +440,7 @@ export default async function OrdersPage({
       // Quem está com a vez (docs/TURNS.md): a do produto que segura o
       // grupo; para quem vê, "Aguardando você" quando é a vez dele.
       turn: lead.turn ?? "",
-      turnLabel: lead.turn
-        ? (user.role === "customer" && lead.turn === "customer") ||
-          (user.role === "supplier" &&
-            (lead.turn === "supplier" || lead.turn === "trading"))
-          ? t("turn.waiting.you")
-          : t(turnWaitingKey(lead.turn))
-        : "",
+      turnLabel: turnText(lead.turn),
       turnTone: lead.turn ? turnTone(lead.turn) : "neutral",
       state,
       progress: stepPercent(journeyLead.journey),
@@ -445,6 +529,17 @@ export default async function OrdersPage({
     productById = new Map(products.map((p) => [p.id, p]));
     photos = productPhotos;
   }
+  if (seeTerms)
+    cells = await loadOrderCells(
+      pageEntries.map((e) => ({
+        key: e.members[0].groupKey,
+        requestIds: [
+          ...new Set(
+            e.members.map((r) => r.requestId).filter((v): v is string => !!v),
+          ),
+        ],
+      })),
+    );
   const tableRows: OrdersTableRow[] = pageEntries.map((e) =>
     buildRow(e.members, true),
   );
@@ -492,6 +587,8 @@ export default async function OrdersPage({
           rows={tableRows}
           showCustomer={showCustomer}
           showSupplier={showSupplier}
+          showTerms={seeTerms}
+          showValue={seeValue}
           today={today}
           paging={{
             page,
@@ -601,6 +698,27 @@ export default async function OrdersPage({
             amount: t("supp.sale.col.amount"),
             total: t("sale.total"),
             more: t("sale.more"),
+            std: Object.fromEntries(
+              ORDER_COLUMNS.map((key) => [
+                key,
+                t(
+                  `orderTable.head.${
+                    key === "customerName"
+                      ? "customer"
+                      : key === "sla"
+                        ? "deadline"
+                        : key
+                  }` as DictionaryKey,
+                ),
+              ]),
+            ),
+            stdItem: Object.fromEntries(
+              ORDER_ITEM_COLUMNS.map((key) => [
+                key,
+                t(`orderItems.head.${key}` as DictionaryKey),
+              ]),
+            ),
+            track: t("orderTable.track", { id: "{id}" }),
           }}
         />
       )}
