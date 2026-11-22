@@ -107,40 +107,41 @@ test("Encomendas: totais na lista, na página da encomenda e no CSV", async ({
   await login(page, "admin@wellmix.com");
   await page.goto("/app/requests");
   const titles = await headerTitles(page);
-  // Cabeçalhos curtos (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md,
-  // seção 6); o MOQ saiu da tabela e segue na página e no CSV.
+  // Tabela padrão no nível do pedido (dono, 22/11/2026;
+  // docs/ORDER_TABLES.md), na ordem do dono. Peças, Master, Inner,
+  // Cont./prog., Analista e MOQ saíram da lista (seguem na página e no CSV).
   const order = [
-    "Solicitação",
-    "Cliente",
-    "Itens",
-    "Valor",
-    "Peças",
-    "Master",
-    "Inner",
-    "CBM (m³)",
+    "Nº do pedido",
+    "Data negociação",
+    "Tipo de venda",
+    "Prazo pgto.",
+    "Forma pgto.",
+    "Faturamento",
+    "VIP",
+    "Grupo econômico",
+    "Cliente nº",
+    "Cliente nome",
+    "Status",
     "Situação",
-    "Cont./prog.",
+    "Prazo resposta",
+    "Itens",
     "Entregas",
-    "Próxima ação",
-    "Prazo",
-    "Analista",
-    "Data",
+    "Total CBM (m³)",
+    "Valor total",
+    "Fornecedor",
   ].map((title) => titles.findIndex((t) => t === title));
   expect(order.every((i) => i >= 0)).toBe(true);
   expect([...order].sort((a, b) => a - b)).toEqual(order);
+  for (const gone of ["Peças", "Master", "Inner", "Cont./prog.", "Analista"])
+    expect(titles.some((t) => t.startsWith(gone))).toBe(false);
   expect(titles.some((t) => t.startsWith("MOQ"))).toBe(false);
 
   const row = page.locator(`[data-batch-row]:has(a[href="${path}"])`);
   await expect(row).toHaveCount(1);
   const total = (key: string) => row.locator(`[data-request-total="${key}"]`);
-  await expect(total("pieces")).toHaveText("2.820");
-  await expect(total("pieces")).not.toHaveAttribute("data-total-partial");
-  // Caixas (45 da boneca + 60 da piscina) e parcial: o copo não tem caixa.
-  await expect(total("boxes")).toHaveAttribute("data-total-value", "105");
-  await expect(total("boxes")).toHaveAttribute("data-total-partial", "");
-  await expect(total("boxes")).toHaveAttribute("title", new RegExp(TAG));
-  await expect(total("inner")).toHaveAttribute("data-total-value", "360");
-  await expect(total("inner")).toHaveAttribute("title", /Piscina/);
+  // Peças, caixas e inner saíram da lista; ficam na página do pedido.
+  for (const gone of ["pieces", "boxes", "inner"])
+    await expect(total(gone)).toHaveCount(0);
   await expect(total("cbm")).toContainText("12,609");
   await expect(total("cbm")).toHaveAttribute("data-total-value", "12.609");
   await expect(total("moq")).toHaveCount(0);
@@ -148,7 +149,6 @@ test("Encomendas: totais na lista, na página da encomenda e no CSV", async ({
   await expect(total("price")).toHaveText("—");
   await expect(total("price")).toHaveAttribute("data-total-empty", "");
   // Ordenação numérica: o texto de ordem é o número com ponto.
-  await expect(row.locator('td[data-sort="2820.000000"]')).toHaveCount(1);
   await expect(row.locator('td[data-sort="12.609000"]')).toHaveCount(1);
 
   // A página da encomenda dá os mesmos números, produto a produto.
@@ -194,10 +194,15 @@ test("Encomendas: totais na lista, na página da encomenda e no CSV", async ({
   const own = await headerTitles(page);
   expect(own.some((t) => t.startsWith("Valor"))).toBe(false);
   expect(own.some((t) => t.startsWith("MOQ"))).toBe(false);
-  expect(own.some((t) => t.startsWith("Peças"))).toBe(true);
+  // Quem é de fora não vê as colunas internas (cliente, VIP, grupo,
+  // fornecedor, situação do passo).
+  for (const hidden of ["VIP", "Grupo econômico", "Cliente", "Fornecedor"])
+    expect(own.some((t) => t.startsWith(hidden))).toBe(false);
+  expect(own).toContain("Status");
+  expect(own).toContain("Entregas");
   const ownRow = page.locator(`tr:has(a[href="${path}"])`).first();
-  await expect(ownRow.locator('[data-request-total="pieces"]')).toHaveText(
-    "2.820",
+  await expect(ownRow.locator('[data-request-total="cbm"]')).toContainText(
+    "12,609",
   );
 
   // iPad (deitado e em pé): a página não rola de lado; só a tabela.

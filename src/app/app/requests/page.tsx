@@ -1,3 +1,4 @@
+import { orderTermsCells } from "@/lib/order-table";
 import { indexBy, listByIds, listColumns } from "@/lib/db/lookup";
 import { ServerPager, SortTh } from "@/components/server-table";
 import {
@@ -87,7 +88,6 @@ import {
   type RequestSituation,
 } from "@/lib/services/request-list";
 import { getSettings } from "@/lib/settings";
-import { containersText } from "@/lib/request-rounds";
 import {
   loadRequestPacking,
   packingRounds,
@@ -277,17 +277,22 @@ export default async function RequestsPage({
       : [];
   const orderById = indexBy(orders, "id");
   // Fornecedor do pedido do tipo Trading: a vez aparece como Trading.
-  const tradingIds = new Set(
-    (
-      await listByIds(
-        store,
-        "parties",
-        orders.map((o) => o.supplierId),
-      )
-    )
-      .filter((p) => p.type === "trading")
-      .map((p) => p.id),
+  const orderSuppliers = await listByIds(
+    store,
+    "parties",
+    orders.map((o) => o.supplierId),
   );
+  const tradingIds = new Set(
+    orderSuppliers.filter((p) => p.type === "trading").map((p) => p.id),
+  );
+  /** Fornecedor do pedido (coluna interna), quando já está definido. */
+  const supplierNameById = new Map(orderSuppliers.map((p) => [p.id, p.name]));
+  const supplierOf = (r: Request) => {
+    const order = r.orderId ? orderById.get(r.orderId) : null;
+    return order?.supplierId
+      ? (supplierNameById.get(order.supplierId) ?? null)
+      : null;
+  };
   /* Wellmix: quem age e o prazo de cada pedido pelos marcos (fase 5g). As
      fotos e os itens dos pedidos são lidos depois, só para as linhas da
      página (composição do pedido, mais abaixo). */
@@ -909,32 +914,6 @@ export default async function RequestsPage({
       {roundsOf.get(e)?.rounds ?? 1}
     </span>
   );
-  const containersCell = (e: Entry) => {
-    const info = roundsOf.get(e);
-    if (!info?.containers)
-      return (
-        <span
-          className="text-zinc-400"
-          title={t("reqList.containers.missing")}
-          data-request-containers=""
-        >
-          —
-        </span>
-      );
-    return (
-      <span
-        className="whitespace-nowrap tabular-nums"
-        title={t("reqList.containers.hint", {
-          code: referenceContainer?.code ?? "",
-        })}
-        data-request-containers=""
-      >
-        {containersText(info.containers, (n) =>
-          t("reqList.containers.each", { n }),
-        )}
-      </span>
-    );
-  };
   const pageListHref = (patch: { sort?: string | null; page?: number }) => {
     const p = new URLSearchParams();
     if (situation !== "all") p.set("situ", situation);
@@ -953,8 +932,8 @@ export default async function RequestsPage({
      explicação acessível por mouse, toque e teclado (InfoTip). */
   const headLabel = (key: string) =>
     key === "cbm"
-      ? unitLabel(t("reqList.head.cbm"))
-      : t(`reqList.head.${key}` as DictionaryKey);
+      ? unitLabel(t("orderTable.head.cbm"))
+      : t(`orderTable.head.${key}` as DictionaryKey);
   const headHint = (key: string) => (
     <InfoTip
       label={t("reqList.head.hintLabel", {
@@ -962,7 +941,7 @@ export default async function RequestsPage({
       })}
       data-request-head-hint={key}
     >
-      {t(`reqList.head.${key}.hint` as DictionaryKey)}
+      {t(`orderTable.head.${key}.hint` as DictionaryKey)}
     </InfoTip>
   );
   const head = "whitespace-nowrap px-2 py-1.5";
@@ -1444,28 +1423,35 @@ export default async function RequestsPage({
                   />
                 </Th>
               ) : null}
-              {/* Solicitação | Cliente | Itens | Valor | Peças | Master |
-                  Inner | CBM (m³) | Situação | Cont./prog. | Entregas |
-                  Próxima ação | Prazo | Analista | Data (dono, 19/11/2026).
-                  MOQ e Pedido saíram da tabela (seguem na página da
-                  solicitação e no CSV). */}
+              {/* Tabela padrão no nível do pedido (dono, 22/11/2026;
+                  docs/ORDER_TABLES.md), na ordem de ORDER_COLUMNS: Nº do
+                  pedido | Data da negociação | Tipo de venda | Prazo de
+                  pagamento | Forma de pagamento | Tipo de faturamento | VIP |
+                  Grupo econômico | Cliente nº | Cliente | Status | Situação |
+                  Prazo de resposta | Itens | Entregas | Total CBM | Valor
+                  total | Fornecedor. Quem é de fora segue sem as colunas
+                  internas. As que saíram continuam na página do pedido e no
+                  CSV. */}
               {header("number", "number", "w-px")}
+              {header("negotiationDate", "date")}
+              {header("saleType", null)}
+              {header("paymentTerm", null, "text-right")}
+              {header("paymentMethod", null)}
+              {header("billing", null)}
+              {wellmix ? header("vip", null) : null}
+              {wellmix ? header("group", null) : null}
+              {wellmix ? header("customerCode", null, "text-right") : null}
               {wellmix
                 ? header("customer", "customer", "min-w-[11rem]", false)
                 : null}
-              {header("items", null, "text-right")}
-              {seeSale ? header("value", "price", "text-right") : null}
-              {header("pieces", "pieces", "text-right")}
-              {header("master", "boxes", "text-right")}
-              {header("inner", "inner", "text-right")}
-              {header("cbm", "cbm", "text-right")}
-              {header("situation", "status")}
-              {header("containers", null, "text-right")}
-              {header("deliveries", "rounds", "text-right")}
-              {wellmix ? header("next", "next", "min-w-[13rem]") : null}
+              {header("status", "status")}
+              {wellmix ? header("step", "next", "min-w-[13rem]") : null}
               {header("deadline", "deadline")}
-              {wellmix ? header("owner", "owner") : null}
-              {wellmix ? header("date", "date") : null}
+              {header("items", null, "text-right")}
+              {header("deliveries", "rounds", "text-right")}
+              {header("cbm", "cbm", "text-right")}
+              {seeSale ? header("value", "price", "text-right") : null}
+              {wellmix ? header("supplier", null) : null}
               <Th className="px-2 py-1.5" />
             </tr>
           </thead>
@@ -1500,6 +1486,24 @@ export default async function RequestsPage({
                         <span data-request-number>{draft.number ?? "—"}</span>
                       </TextLink>
                     </Td>
+                    {/* As mesmas colunas das enviadas (tabela padrão); o
+                        rascunho ainda não tem condições nem totais. */}
+                    <Td className={cx(cell, "whitespace-nowrap tabular-nums")}>
+                      {formatDate(draft.createdAt, t)}
+                    </Td>
+                    <Td className={cx(cell, "text-zinc-400")}>—</Td>
+                    <Td className={cx(cell, "text-zinc-400")}>—</Td>
+                    <Td className={cx(cell, "text-zinc-400")}>—</Td>
+                    <Td className={cx(cell, "text-zinc-400")}>—</Td>
+                    {wellmix ? (
+                      <Td className={cx(cell, "text-zinc-400")}>—</Td>
+                    ) : null}
+                    {wellmix ? (
+                      <Td className={cx(cell, "text-zinc-400")}>—</Td>
+                    ) : null}
+                    {wellmix ? (
+                      <Td className={cx(cell, "text-zinc-400")}>—</Td>
+                    ) : null}
                     {wellmix ? (
                       <Td className={cx(cell, "min-w-[11rem]")}>
                         <ClampText
@@ -1511,23 +1515,9 @@ export default async function RequestsPage({
                         />
                       </Td>
                     ) : null}
-                    <Td className={cx(cell, "text-right tabular-nums")}>
-                      {draft.itemCount}
-                    </Td>
-                    {seeSale ? (
-                      <Td className={cx(cell, "text-right text-zinc-400")}>
-                        —
-                      </Td>
-                    ) : null}
-                    <Td className={cx(cell, "text-right text-zinc-400")}>—</Td>
-                    <Td className={cx(cell, "text-right text-zinc-400")}>—</Td>
-                    <Td className={cx(cell, "text-right text-zinc-400")}>—</Td>
-                    <Td className={cx(cell, "text-right text-zinc-400")}>—</Td>
                     <Td className={cx(cell, "whitespace-nowrap")}>
                       <Badge tone="neutral">{t("requestDraft.status")}</Badge>
                     </Td>
-                    <Td className={cx(cell, "text-right text-zinc-400")}>—</Td>
-                    <Td className={cx(cell, "text-right text-zinc-400")}>—</Td>
                     {wellmix ? (
                       <Td className={cell}>
                         <span className="block" data-request-next="draft">
@@ -1554,15 +1544,18 @@ export default async function RequestsPage({
                       </Td>
                     ) : null}
                     <Td className={cx(cell, "text-zinc-400")}>—</Td>
-                    {wellmix ? (
-                      <Td className={cx(cell, "text-zinc-400")}>—</Td>
+                    <Td className={cx(cell, "text-right tabular-nums")}>
+                      {draft.itemCount}
+                    </Td>
+                    <Td className={cx(cell, "text-zinc-400")}>—</Td>
+                    <Td className={cx(cell, "text-zinc-400")}>—</Td>
+                    {seeSale ? (
+                      <Td className={cx(cell, "text-right text-zinc-400")}>
+                        —
+                      </Td>
                     ) : null}
                     {wellmix ? (
-                      <Td
-                        className={cx(cell, "whitespace-nowrap tabular-nums")}
-                      >
-                        {formatDate(draft.createdAt, t)}
-                      </Td>
+                      <Td className={cx(cell, "text-zinc-400")}>—</Td>
                     ) : null}
                     <Td className={cx(cell, "text-right")}>
                       <div className="flex items-center justify-end gap-1">
@@ -1604,6 +1597,11 @@ export default async function RequestsPage({
               const sortOf = (key: TotalKey) => totalSortText(tot[key].value);
               const due = entryDue(row.card);
               const demand = demandOf(first);
+              const party = partyById.get(first.customerId) ?? null;
+              const terms = orderTermsCells(
+                first,
+                isStockCustomer(first.customerId),
+              );
               return (
                 <tr
                   key={entry.kind === "batch" ? entry.groupId : first.id}
@@ -1658,6 +1656,60 @@ export default async function RequestsPage({
                       <span data-request-number>{number ?? "—"}</span>
                     </TextLink>
                   </Td>
+                  <Td
+                    className={cx(cell, "whitespace-nowrap tabular-nums")}
+                    data-order-col="negotiationDate"
+                  >
+                    {formatDate(first.createdAt, t)}
+                  </Td>
+                  <Td
+                    className={cx(cell, "whitespace-nowrap")}
+                    data-order-col="saleType"
+                  >
+                    {terms.saleType
+                      ? t(`orderTable.saleType.${terms.saleType}`)
+                      : "—"}
+                  </Td>
+                  <Td
+                    className={cx(cell, "text-right tabular-nums")}
+                    data-order-col="paymentTerm"
+                  >
+                    {terms.installments ?? "—"}
+                  </Td>
+                  <Td className={cell} data-order-col="paymentMethod">
+                    {terms.paymentName ?? "—"}
+                  </Td>
+                  <Td
+                    className={cx(cell, "whitespace-nowrap")}
+                    data-order-col="billing"
+                  >
+                    {terms.billing
+                      ? t(`orderTable.billing.${terms.billing}`)
+                      : "—"}
+                  </Td>
+                  {wellmix ? (
+                    <Td
+                      className={cx(cell, "whitespace-nowrap")}
+                      data-order-col="vip"
+                    >
+                      {terms.vip
+                        ? t(`orderTerms.tier.${terms.vip}` as DictionaryKey)
+                        : "—"}
+                    </Td>
+                  ) : null}
+                  {wellmix ? (
+                    <Td className={cell} data-order-col="group">
+                      {party?.economicGroupName ?? "—"}
+                    </Td>
+                  ) : null}
+                  {wellmix ? (
+                    <Td
+                      className={cx(cell, "text-right tabular-nums")}
+                      data-order-col="customerCode"
+                    >
+                      {party?.sankhyaCode ?? "—"}
+                    </Td>
+                  ) : null}
                   {wellmix ? (
                     <Td className={cx(cell, "min-w-[11rem]")}>
                       <ClampText
@@ -1667,7 +1719,35 @@ export default async function RequestsPage({
                       />
                     </Td>
                   ) : null}
+                  {/* Status: o que o pedido está esperando (de quem é a
+                      vez). Selos numa linha. */}
+                  <Td className={cx(cell, "whitespace-nowrap")}>
+                    <span
+                      className="flex flex-wrap gap-1"
+                      data-request-situation
+                    >
+                      {situationCell(rows)}
+                    </span>
+                  </Td>
+                  {/* Situação: o momento do passo em que ele está. */}
+                  {wellmix ? (
+                    <Td className={cx(cell, "min-w-[13rem]")}>
+                      {nextCell(entry)}
+                    </Td>
+                  ) : null}
+                  <Td className={cell} data-sort={dueSortText(due)}>
+                    {dueCell(due)}
+                  </Td>
                   <Td className={cx(cell, "text-right")}>{skusCell(entry)}</Td>
+                  <Td className={cx(cell, "text-right")}>
+                    {roundsCell(entry)}
+                  </Td>
+                  <Td
+                    className={cx(cell, "text-right")}
+                    data-sort={sortOf("cbm")}
+                  >
+                    <TotalValue t={t} part={tot.cbm} total="cbm" />
+                  </Td>
                   {seeSale ? (
                     <Td
                       className={cx(cell, "text-right")}
@@ -1678,61 +1758,11 @@ export default async function RequestsPage({
                       <SaleTotalValue t={t} sale={tot.sale} />
                     </Td>
                   ) : null}
-                  <Td
-                    className={cx(cell, "text-right")}
-                    data-sort={sortOf("pieces")}
-                  >
-                    <TotalValue t={t} part={tot.pieces} total="pieces" />
-                  </Td>
-                  <Td
-                    className={cx(cell, "text-right")}
-                    data-sort={sortOf("boxes")}
-                  >
-                    <TotalValue t={t} part={tot.boxes} total="boxes" />
-                  </Td>
-                  <Td
-                    className={cx(cell, "text-right")}
-                    data-sort={sortOf("inner")}
-                  >
-                    <TotalValue t={t} part={tot.inner} total="inner" />
-                  </Td>
-                  <Td
-                    className={cx(cell, "text-right")}
-                    data-sort={sortOf("cbm")}
-                  >
-                    <TotalValue t={t} part={tot.cbm} total="cbm" />
-                  </Td>
-                  {/* Selos numa linha (sem quebrar o texto de cada um). */}
-                  <Td className={cx(cell, "whitespace-nowrap")}>
-                    <span
-                      className="flex flex-wrap gap-1"
-                      data-request-situation
-                    >
-                      {situationCell(rows)}
-                    </span>
-                  </Td>
-                  <Td className={cx(cell, "text-right")}>
-                    {containersCell(entry)}
-                  </Td>
-                  <Td className={cx(cell, "text-right")}>
-                    {roundsCell(entry)}
-                  </Td>
+                  {/* Fornecedor: só a equipe, a partir de quando o pedido o
+                      define. */}
                   {wellmix ? (
-                    <Td className={cx(cell, "min-w-[13rem]")}>
-                      {nextCell(entry)}
-                    </Td>
-                  ) : null}
-                  <Td className={cell} data-sort={dueSortText(due)}>
-                    {dueCell(due)}
-                  </Td>
-                  {wellmix ? (
-                    <Td className={cx(cell, "whitespace-nowrap")}>
-                      {ownerName(first.ownerUserId)}
-                    </Td>
-                  ) : null}
-                  {wellmix ? (
-                    <Td className={cx(cell, "whitespace-nowrap tabular-nums")}>
-                      {formatDate(first.createdAt, t)}
+                    <Td className={cell} data-order-col="supplier">
+                      {supplierOf(first) ?? "—"}
                     </Td>
                   ) : null}
                   <Td className={cx(cell, "text-right")}>
