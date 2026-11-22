@@ -70,6 +70,8 @@ export interface OrdersLoadProgress {
   containers: number;
   /** Itens de 1100 que viraram reposição (abertas e encerradas). */
   replenishments?: number;
+  /** Pre-orders (1100) sem pendência: reprovadas, fora do portal. */
+  rejectedPreOrders?: number;
   /** Pedidos de 1100 de cargas anteriores que saíram de Pedidos. */
   removedOrders?: number;
   skipped: Array<{ key: string; reason: string }>;
@@ -354,8 +356,8 @@ function effectiveRow(
 /**
  * Track que parou na 1100 (Pre-order): uma reposição por item, para o
  * estoque Wellmix, com o número = TRACK_ID. Pendente no Sankhya: aberta
- * (REQUESTED) em /app/replenishment; sem pendência: encerrada (CANCELLED),
- * como histórico. Rodar de novo atualiza a situação e a quantidade.
+ * (REQUESTED) em /app/replenishment; sem pendência é Pre-order reprovada e
+ * não entra (dono, 22/11/2026). Rodar de novo atualiza a quantidade.
  */
 async function loadReplenishment(
   user: User,
@@ -364,11 +366,7 @@ async function loadReplenishment(
   productByCode: Map<string | null | undefined, { id: string }>,
   progress: OrdersLoadProgress,
 ) {
-  const { ensureStockParty } = await import("@/lib/services/stock-party");
-  const stock = await ensureStockParty(user);
   const open = row.situation === "in_progress";
-  const number = orderNumberOf(row);
-  const desiredAt = sankhyaIso(row.data?.orderedAt);
   const items = row.data?.items ?? [];
   const ids = items.map((i) =>
     sankhyaReplenishmentId(row.key, i.doc ?? mainKeyOf(row), i.seq),
@@ -376,6 +374,23 @@ async function loadReplenishment(
   const have = new Map(
     (await listByIds(store, "requests", ids)).map((r) => [r.id, r]),
   );
+  if (!open) {
+    // Pre-order sem pendência = reprovada: não entra no portal (dono,
+    // 22/11/2026). A que uma carga anterior gravou sai, se não andou no portal.
+    const stale = [...have.values()].filter(
+      (r) => r.status === "REQUESTED" || r.status === "CANCELLED",
+    );
+    for (let i = 0; i < stale.length; i += 20)
+      await Promise.all(
+        stale.slice(i, i + 20).map((r) => store.remove("requests", r.id)),
+      );
+    progress.rejectedPreOrders = (progress.rejectedPreOrders ?? 0) + 1;
+    return;
+  }
+  const { ensureStockParty } = await import("@/lib/services/stock-party");
+  const stock = await ensureStockParty(user);
+  const number = orderNumberOf(row);
+  const desiredAt = sankhyaIso(row.data?.orderedAt);
   // Em lote (22/11/2026): uma 1100 chega a 919 itens, e gravar um a um passava
   // dos 60 s da página. Novas vão juntas; as que existem só mudam se o
   // Sankhya mudou (a situação segue o Sankhya enquanto não andou no portal).

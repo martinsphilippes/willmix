@@ -472,7 +472,7 @@ Substitui a tabela da seção 5.1. Cada pedido fica na linha mais adiantada que 
 - A carga só avança marcos: nunca reabre o que já foi dado como feito.
 - **1100 → reposição:** é uma reposição por item, para o Estoque Wellmix, com id `snk-r<track>-<NUNOTA>-<SEQUENCIA>`, número = TRACK_ID e data desejada = `DATA_PEDIDO` da 1100.
   - Pendente no Sankhya (47 tracks): fica aberta (`REQUESTED`) na fila de `/app/replenishment`.
-  - Sem pendência (1.058): fica encerrada (`CANCELLED`) como histórico, fora da fila.
+  - Sem pendência (1.058): é Pre-order reprovada e **não entra no portal** (dono, 22/11/2026: "nem deveriam ser carregadas"). A carga apaga a reposição que uma rodada anterior gravou, se ela não andou no portal.
   - O pedido `snk-t<track>` de cargas anteriores sai, com itens, pendências, marcos, passos, resumo e eventos.
   - Rodar de novo atualiza a situação enquanto a reposição não andou no portal.
   - Na primeira carga (22/11/2026) a retirada um a um passou do tempo da página no bloco com muitos pedidos de 1100. Os 1.082 pedidos foram tirados direto no banco, e a retirada passou a ser em paralelo.

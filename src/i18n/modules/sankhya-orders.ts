@@ -18,7 +18,7 @@ export const pt = {
   "sankhyaOrders.load.counts":
     "{created} pedidos criados, {updated} atualizados, {pending} com pendências, {containers} embarques.",
   "sankhyaOrders.load.replenishments":
-    "Pre-order (1100): {n} itens viraram reposição; {removed} pedidos de cargas anteriores saíram de Pedidos.",
+    "Pre-order (1100): {n} itens viraram reposição; {rejected} reprovadas ficaram fora do portal; {removed} pedidos de cargas anteriores saíram de Pedidos.",
   "sankhyaOrders.load.finished": "Terminou em {at}.",
   "sankhyaOrders.load.skipped": "{n} pedidos pulados (motivo de cada um)",
   "sankhyaOrders.load.error":
@@ -100,7 +100,7 @@ export const en: typeof pt = {
   "sankhyaOrders.load.counts":
     "{created} orders created, {updated} updated, {pending} with tasks, {containers} shipments.",
   "sankhyaOrders.load.replenishments":
-    "Pre-order (1100): {n} items became replenishments; {removed} orders from earlier loads left Orders.",
+    "Pre-order (1100): {n} items became replenishments; {rejected} rejected ones stayed out of the portal; {removed} orders from earlier loads left Orders.",
   "sankhyaOrders.load.finished": "Finished at {at}.",
   "sankhyaOrders.load.skipped": "{n} orders skipped (reason for each)",
   "sankhyaOrders.load.error":
@@ -182,7 +182,7 @@ export const zh: typeof pt = {
   "sankhyaOrders.load.counts":
     "已创建 {created} 个订单，更新 {updated} 个，{pending} 个有待办，{containers} 个装运。",
   "sankhyaOrders.load.replenishments":
-    "预订单（1100）：{n} 个品项转为补货；{removed} 个之前载入的订单已移出订单列表。",
+    "预订单（1100）：{n} 个品项转为补货；{rejected} 个已驳回的未进入门户；{removed} 个之前载入的订单已移出订单列表。",
   "sankhyaOrders.load.finished": "完成于 {at}。",
   "sankhyaOrders.load.skipped": "跳过 {n} 个订单（各自原因）",
   "sankhyaOrders.load.error":
