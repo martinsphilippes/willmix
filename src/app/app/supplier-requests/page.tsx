@@ -136,6 +136,41 @@ export default async function SupplierRequestsPage({
         filter: { id: [...new Set(quoteResponses.map((r) => r.supplierId))] },
       })
     : [];
+  // Origem da cotação (dono, 22/11/2026): três, e todas passam pela
+  // Estratégia de compra e pela Cotação: Book, Encomenda ou Reposição. Sem
+  // book, vale a demanda de onde ela nasceu (a reposição do Planner ou a
+  // encomenda do cliente); com as duas na mesma cotação, as duas aparecem.
+  const demandIds = wellmix
+    ? [
+        ...new Set([
+          ...quotes.flatMap((q) => q.demandIds ?? []),
+          ...(entries ?? []).flatMap((e) =>
+            e.request.bookingLotId ? [] : (e.request.demandIds ?? []),
+          ),
+        ]),
+      ]
+    : [];
+  const demands = demandIds.length
+    ? await store
+        .list("requests", { filter: { id: demandIds } })
+        .catch(() => [])
+    : [];
+  const replenishment = new Set(
+    demands.filter((d) => d.origin === "replenishment").map((d) => d.id),
+  );
+  const originText = (bookingLotId: string | null, ids: string[] | null) => {
+    if (bookingLotId) return t("quotation.origin.book");
+    const list = ids ?? [];
+    const kinds = [
+      list.some((id) => !replenishment.has(id)) || !list.length
+        ? t("quotation.origin.order")
+        : null,
+      list.some((id) => replenishment.has(id))
+        ? t("quotation.origin.replenishment")
+        : null,
+    ].filter(Boolean);
+    return kinds.join(" · ");
+  };
   const openQuotes = quotes.filter((q) => q.status !== "cancelled");
   const closedQuotes = quotes.filter((q) => q.status === "cancelled");
   const tabQuotes = closedTab ? closedQuotes : openQuotes;
@@ -358,7 +393,9 @@ export default async function SupplierRequestsPage({
                         {q.number}
                       </Link>
                     </Td>
-                    <Td>{t("quotation.origin.demand")}</Td>
+                    <Td data-quotation-origin>
+                      {originText(null, q.demandIds)}
+                    </Td>
                     <Td>
                       <span className="flex flex-wrap gap-1">
                         <Badge
@@ -482,10 +519,9 @@ export default async function SupplierRequestsPage({
                     </Td>
                     {wellmix ? (
                       <Td data-quotation-origin>
-                        {t(
-                          r.bookingLotId
-                            ? "quotation.origin.book"
-                            : "quotation.origin.demand",
+                        {originText(
+                          r.bookingLotId || null,
+                          r.demandIds ?? null,
                         )}
                       </Td>
                     ) : null}

@@ -433,6 +433,8 @@ test("cotação unificada: quadro comparativo do produto, contraproposta em mass
   ).toBeVisible();
   const row = page.locator(`[data-quotation-quote-row="${quoteId}"]`);
   await expect(row).toBeVisible();
+  // Origem: três (Book, Encomenda ou Reposição); esta veio da Reposição.
+  await expect(row.locator("[data-quotation-origin]")).toHaveText("Reposição");
   await row.locator("[data-quotation-quote-open]").click();
   await page.waitForURL(new RegExp(`/app/supplier-requests/${quoteId}$`));
   await expect(page.locator("[data-quote-board]")).toBeVisible();

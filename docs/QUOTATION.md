@@ -28,7 +28,7 @@ Para a Wellmix, o título é **Cotação** e a tabela mostra todas as cotações
 - as **solicitações ao fornecedor** (uma linha por solicitação, como antes);
 - as **cotações de compra** ainda com os fornecedores (aberta, com vencedora escolhida ou sem resposta): número, quantos fornecedores, produtos, peças, quantos responderam, o prazo e de quem é a vez. A cotação de compra **aprovada** não aparece em dobro: ela segue na linha da solicitação que nasceu dela. A cancelada vai para Encerradas.
 
-A coluna **Origem** diz de onde a cotação veio: "Book" ou "Encomenda ou reposição".
+A coluna **Origem** diz de onde a cotação veio. São três origens, e todas passam pela Estratégia de compra e pela Cotação: **Book**, **Encomenda** ou **Reposição** (dono, 22/11/2026). Sem book, vale a demanda de onde a cotação nasceu (`requests.origin`: `replenishment` é Reposição; as outras, Encomenda); cotação que junta as duas mostra as duas.
 
 Abas: **Em andamento**, **Encerradas** e **Convites de book** (a mesma tabela de `/app/supplier-requests/invites`, em `_components/invites-table.tsx`).
 
@@ -90,9 +90,39 @@ Nas solicitações ao fornecedor, a contraproposta, a conversa e o histórico s�
 - A cotação de compra aprovada continua virando a solicitação ao fornecedor da vencedora, e é nela que seguem a decisão, a amostragem, o produto e o pedido de compra.
 - Permissões: tela `quotes` para tudo; escolher e aprovar a vencedora, decidir a solicitação e ver preço de compra como antes.
 
-## 7. Em aberto (para o dono decidir)
+## 7. Conferência: o que a etapa Negociação fazia e onde ficou
+
+Pedido do dono (22/11/2026): trocar o nome para Cotação não pode perder processo. Cada coisa que a Wellmix fazia na tela da Negociação, e onde está agora:
+
+| O que a Negociação fazia                                                      | Onde ficou                                                                                                    |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Lista com as abas "Em negociação" e "Encerradas"                              | A mesma lista, com as abas "Em andamento" e "Encerradas" (e mais as cotações de compra e a aba dos convites). |
+| "Gerar pedido" e o quadro "Gerar pedido de compra" na aba Encerradas          | Igual, na aba Encerradas.                                                                                     |
+| Tabela dos produtos da solicitação (ações rápidas, SLA, amostragem por linha) | Igual (`/app/supplier-requests/[id]`).                                                                        |
+| Resumo do produto, condições negociadas e o Superplan refeito                 | Card "Produto da cotação".                                                                                    |
+| Ficha do produto                                                              | Card "Produto da cotação" (o link do Book só com book).                                                       |
+| Resposta do fornecedor (oferta de hoje)                                       | Linha dele no Quadro comparativo.                                                                             |
+| Rodadas anteriores (respostas e contrapropostas)                              | Ícone de propostas e contrapropostas da linha (modal) e o Histórico à direita.                                |
+| Devolver com contraproposta, com a estimativa do Superplan                    | Bloco à direita, agora também para vários fornecedores de uma vez.                                            |
+| Aviso de contraproposta esperando o fornecedor e a trava do "Aprovar"         | Selo "Contraproposta enviada" na linha; a trava do "Aprovar" continua na Decisão.                             |
+| Conversa com o fornecedor, com anexo (foto, PDF, Excel)                       | Ícone de conversa da linha (modal), com o mesmo anexo.                                                        |
+| Decisão da Wellmix (aprovar, recusar, cancelar, com a observação)             | Igual, abaixo do quadro.                                                                                      |
+| Alternativas e "Abrir solicitação para esta"                                  | Igual, abaixo da Decisão.                                                                                     |
+| Solicitações ligadas ("continuar negociando" ou recusar)                      | Igual; as ligadas também aparecem como linhas do quadro.                                                      |
+| Amostragem (fotos e vídeos, validar)                                          | Igual, no alto da tela, depois da aprovação.                                                                  |
+| Produto (criar, associar, liberar na vitrine, código do Sankhya)              | Igual, no fim da tela.                                                                                        |
+| Aviso do pedido de compra (gerar ou abrir o pedido)                           | Igual.                                                                                                        |
+| Book, seleção e o Superplan do item escolhido                                 | Card Book, à direita (só quando há book).                                                                     |
+| Histórico de interações                                                       | Igual, à direita.                                                                                             |
+| Linha do tempo entre os blocos (Cotação, Pedido, Produção, Entrega)           | Igual.                                                                                                        |
+| Aviso de fornecedor sem login e "gerar o login"                               | Igual.                                                                                                        |
+| SLA (prazo, atraso e os avisos de atraso)                                     | Igual.                                                                                                        |
+| Pendências e contador do menu                                                 | As mesmas pendências, contando no item Cotação.                                                               |
+
+Nenhuma ação saiu. O que mudou de lugar foi a resposta do fornecedor (da faixa para a linha do quadro), a conversa (para o modal) e a contraproposta (para a direita). Para o fornecedor, nada mudou. O E2E do caminho principal (book → seleção → solicitação → negociação → amostragem → produto → pedido de compra) passa com a tela nova.
+
+## 8. Em aberto (para o dono decidir)
 
 1. **Número**: a solicitação ao fornecedor e a cotação de compra têm numerações separadas, então pode haver duas "nº 3" na lista (a coluna Origem e o título da tela as diferenciam). Unificar a numeração mexe em dados gravados.
-2. **Origem**: a lista diz "Encomenda ou reposição" sem separar as duas.
-3. **Nome para o fornecedor**: ele continua vendo "Solicitações ao fornecedor" e "Cotações de compra" no menu dele.
-4. **Uma cotação só do começo ao fim**: hoje a cotação de compra aprovada cria a solicitação da vencedora (dois registros para a mesma cotação). Juntar os dois num registro só é mudança de fluxo e de dados.
+2. **Nome para o fornecedor**: ele continua vendo "Solicitações ao fornecedor" e "Cotações de compra" no menu dele.
+3. **Uma cotação só do começo ao fim**: hoje a cotação de compra aprovada cria a solicitação da vencedora (dois registros para a mesma cotação). Juntar os dois num registro só é mudança de fluxo e de dados.
