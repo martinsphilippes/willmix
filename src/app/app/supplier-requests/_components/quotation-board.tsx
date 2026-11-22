@@ -66,12 +66,6 @@ export interface BoardRow {
   history: ReactNode | null;
   /** O modal da conversa abre sozinho (acabou de enviar a mensagem). */
   chatOpen?: boolean;
-  /**
-   * Amostra deste fornecedor para o produto (dono, 22/11/2026;
-   * docs/SUPPLIER_SAMPLING.md): o selo da situação e, quando há o que ver ou
-   * validar, o modal com o cartão da amostragem.
-   */
-  sample?: ReactNode;
 }
 
 export interface BoardReference {
@@ -104,7 +98,6 @@ export function QuotationBoard({
       ? "—"
       : n.toLocaleString(t.intl, { maximumFractionDigits: digits });
   const selectable = rows.some((r) => r.target);
-  const sampled = rows.some((r) => r.sample !== undefined);
   return (
     <Card title={t("quote.compare")} dense>
       <div data-quotation-board>
@@ -130,7 +123,6 @@ export function QuotationBoard({
               <Th>{t("negotiationScreen.f.moq")}</Th>
               <Th>{t("negotiationScreen.f.leadTime")}</Th>
               <Th>{t("quote.conditions")}</Th>
-              {sampled ? <Th>{t("quoteSampling.col")}</Th> : null}
               <Th>
                 <span className="sr-only">
                   {t("quotation.board.col.actions")}
@@ -159,7 +151,6 @@ export function QuotationBoard({
                 <Td className="text-xs text-zinc-600">
                   {reference.note ?? "—"}
                 </Td>
-                {sampled ? <Td /> : null}
                 <Td />
               </tr>
             ) : null}
@@ -225,9 +216,6 @@ export function QuotationBoard({
                 <Td className="max-w-56 whitespace-normal text-xs text-zinc-600">
                   {r.conditions ?? "—"}
                 </Td>
-                {sampled ? (
-                  <Td data-quotation-sample>{r.sample ?? "—"}</Td>
-                ) : null}
                 <Td>
                   <span className="flex items-center justify-end gap-0.5">
                     {r.chat ? (

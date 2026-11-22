@@ -18,8 +18,6 @@ import {
 import { quoteInnerState } from "@/lib/quote-inner";
 import { itemLogistics } from "@/lib/services/item-logistics";
 import { productPhotoList } from "@/lib/services/product-list";
-import { PhotoGallery } from "@/components/photo-gallery";
-import { galleryProps } from "@/components/photo-gallery-props";
 import {
   Alert,
   Badge,
@@ -39,18 +37,10 @@ import {
 } from "./quotation-board";
 import { QuoteChat } from "./board-chat";
 import { InfoCell, InfoGrid } from "./negotiation-sections";
-import { SamplingPanel } from "./sampling";
 import { ItemImagesCard } from "./item-images";
-import { SAMPLING_TONE } from "./status";
-import { QuickDialog } from "@/components/quick-dialog";
 import { quoteSamplingOf } from "@/lib/quote-sampling";
 import { soldBeforeProducts } from "@/lib/services/supplier-sheets";
-import {
-  addQuoteSamplingFileAction,
-  removeQuoteSamplingFileAction,
-  reviewQuoteSamplingAction,
-  submitQuoteSamplingAction,
-} from "../../actions/quotation";
+import { reviewQuoteSamplingAction } from "../../actions/quotation";
 
 /*
  * A cotação de compra dentro da Cotação unificada (dono, 22/11/2026;
@@ -212,66 +202,6 @@ export async function QuotationQuotePage({
         />
       ),
       chatOpen: chatOpen === key,
-      sample: (() => {
-        const known = knownSuppliers.has(r.supplierId);
-        const sampling = quoteSamplingOf(r, productId, known);
-        if (!sampling)
-          return known && r.status !== "declined" ? (
-            <span
-              title={t("quoteSampling.skippedHint")}
-              data-quote-sample="skipped"
-            >
-              <Badge tone="neutral">{t("quoteSampling.skipped")}</Badge>
-            </span>
-          ) : (
-            "—"
-          );
-        return (
-          <span
-            className="flex items-center gap-1"
-            data-quote-sample={sampling.status}
-          >
-            <QuickDialog
-              size="lg"
-              label={
-                <Badge tone={SAMPLING_TONE[sampling.status]}>
-                  {t(`sampling.status.${sampling.status}` as DictionaryKey)}
-                </Badge>
-              }
-              hint={t("quoteSampling.open", { name: supplierName })}
-              title={t("quoteSampling.modalTitle", { name: supplierName })}
-              closeLabel={t("quotation.close")}
-              className="border-0 bg-transparent p-0"
-              data-quote-sample-open={r.id}
-            >
-              <div className="max-h-[75vh] overflow-y-auto p-3">
-                <SamplingPanel
-                  sampling={sampling}
-                  wellmix
-                  canValidate={canValidate}
-                  slaDays={null}
-                  early
-                  anchor={null}
-                  actions={{
-                    add: addQuoteSamplingFileAction,
-                    remove: removeQuoteSamplingFileAction,
-                    submit: submitQuoteSamplingAction,
-                    review: reviewQuoteSamplingAction,
-                  }}
-                  fields={
-                    <>
-                      <input type="hidden" name="quoteId" value={quote.id} />
-                      <input type="hidden" name="product" value={productId} />
-                      <input type="hidden" name="responseId" value={r.id} />
-                    </>
-                  }
-                  t={t}
-                />
-              </div>
-            </QuickDialog>
-          </span>
-        );
-      })(),
     };
   });
   const last = refs?.get(productId) ?? null;
@@ -331,15 +261,6 @@ export async function QuotationQuotePage({
         <div className="min-w-0 space-y-4">
           <Card title={t("quotation.item.product")} dense>
             <div className="flex gap-3" data-quotation-product>
-              <div className="shrink-0">
-                <PhotoGallery
-                  name={name}
-                  {...galleryProps(
-                    t,
-                    product ? productPhotoList(product, photos) : [],
-                  )}
-                />
-              </div>
               <div className="min-w-0 flex-1 space-y-2">
                 <p className="break-words text-sm font-semibold text-zinc-900">
                   {name}
@@ -409,6 +330,30 @@ export async function QuotationQuotePage({
                     r.supplierId,
                   sampling: quoteSamplingOf(r, productId, known),
                   skipped: known,
+                  review: canValidate
+                    ? {
+                        action: reviewQuoteSamplingAction,
+                        fields: (
+                          <>
+                            <input
+                              type="hidden"
+                              name="quoteId"
+                              value={quote.id}
+                            />
+                            <input
+                              type="hidden"
+                              name="product"
+                              value={productId}
+                            />
+                            <input
+                              type="hidden"
+                              name="responseId"
+                              value={r.id}
+                            />
+                          </>
+                        ),
+                      }
+                    : null,
                 };
               })}
             t={t}

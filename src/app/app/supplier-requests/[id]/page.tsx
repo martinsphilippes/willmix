@@ -47,6 +47,7 @@ import {
   decideSupplierRequestStateAction,
   openSupplierRequestAction,
   resolveLinkedRequestAction,
+  reviewSamplingAction,
 } from "../../actions/supplier-requests";
 import { ActionForm } from "@/components/action-form";
 import { requestItemSpecs } from "@/lib/supplier-request-specs";
@@ -556,7 +557,8 @@ export default async function SupplierRequestPage({
       mark="summary"
     >
       <div className="flex gap-3">
-        {it.photoDocumentId ? (
+        {/* A Wellmix vê a foto no card Imagens, à direita (um lugar só). */}
+        {it.photoDocumentId && !wellmix ? (
           <a
             href={`/api/files/${it.photoDocumentId}`}
             target="_blank"
@@ -1352,13 +1354,14 @@ export default async function SupplierRequestPage({
       </Card>
     ) : null;
 
+  const samplingDays = await samplingSlaDays();
   const samplingCard = samplingFor(r) ? (
     <div className="mb-4">
       <SamplingCard
         request={r}
         wellmix={wellmix}
         canValidate={wellmix && can(user, "sampling.validate")}
-        slaDays={await samplingSlaDays()}
+        slaDays={samplingDays}
         t={t}
       />
     </div>
@@ -1420,7 +1423,9 @@ export default async function SupplierRequestPage({
       {/* Amostragem (fotos e vídeos da amostra): depois da aprovação, no
           alto, com o prazo; antes dela, o fornecedor já pode adiantar e o
           cartão fica abaixo da negociação (dono, 22/11/2026). */}
-      {r.status === "approved" ? samplingCard : null}
+      {/* Só para o fornecedor: a Wellmix vê e valida a amostra no card
+          Imagens, à direita (um lugar só). */}
+      {!wellmix && r.status === "approved" ? samplingCard : null}
 
       {wellmix ? (
         /* Wellmix (dono, 22/11/2026; docs/QUOTATION.md): no centro, o
@@ -1475,6 +1480,20 @@ export default async function SupplierRequestPage({
                   s?.name ?? t("supplierRequests.negotiation.side.supplier"),
                 sampling: samplingFor(o),
                 skipped: !!o.sampling?.skipped,
+                // O prazo conta depois da aprovação da solicitação.
+                slaDays: o.status === "approved" ? samplingDays : null,
+                anchor: o.id === r.id ? "amostragem" : undefined,
+                review: can(user, "sampling.validate")
+                  ? {
+                      action: reviewSamplingAction,
+                      fields: (
+                        <>
+                          <input type="hidden" name="id" value={o.id} />
+                          <input type="hidden" name="board" value={r.id} />
+                        </>
+                      ),
+                    }
+                  : null,
               }))}
               t={t}
             />
@@ -1547,7 +1566,7 @@ export default async function SupplierRequestPage({
           </aside>
         </div>
       )}
-      {r.status !== "approved" && samplingCard ? (
+      {!wellmix && r.status !== "approved" && samplingCard ? (
         <div className="mt-4" data-sampling-early>
           {samplingCard}
         </div>

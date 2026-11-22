@@ -269,12 +269,16 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   await page.goto(
     `/app/supplier-requests/${quoteId}?view=item&product=prod-jarra`,
   );
-  await page
-    .locator('[data-quote-sample="submitted"] [data-quote-sample-open]')
-    .click();
-  await page.locator("dialog[open] [data-sampling-review=approve]").click();
+  // A amostragem fica num lugar só da tela: o card Imagens, à direita, com
+  // a amostra de cada fornecedor e o aprovar ou reprovar.
+  const sampleB = page.locator("[data-item-images] [data-sampling=submitted]");
+  await expect(sampleB.locator("[data-sampling-file]")).toHaveCount(1);
+  await sampleB.locator("[data-sampling-review=approve]").click();
   await page.waitForURL(/[?&]sampling=approved/);
-  await expect(page.locator('[data-quote-sample="approved"]')).toHaveCount(1);
+  await expect(
+    page.locator("[data-item-images] [data-sampling=approved]"),
+  ).toHaveCount(1);
+  await expect(page.locator("[data-quotation-sample]")).toHaveCount(0);
   // Imagens sempre à vista na tela do item (fora do chat): a referência da
   // Wellmix e a amostra de cada fornecedor, com o botão de copiar para
   // colar no chat.
@@ -288,7 +292,7 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   // O chat fica só com as mensagens; a imagem entra como anexo.
   await page
     .locator("[data-quotation-row]", {
-      has: page.locator('[data-quote-sample="approved"]'),
+      has: page.locator("[data-quotation-price]", { hasText: /1[.,]85/ }),
     })
     .locator("[data-quotation-chat]")
     .click();

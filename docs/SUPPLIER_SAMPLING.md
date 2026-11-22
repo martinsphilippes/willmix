@@ -59,7 +59,7 @@ Regras confirmadas pelo dono:
 
 - Na cotação dele (`/app/purchase-quotes/[id]`), o card **"Fotos do produto e amostragem"** mostra, por produto, as fotos do nosso cadastro e o cartão da amostragem (subir fotos e vídeos, enviar para a validação). O conhecido do produto vê o aviso de que não precisa enviar.
 - A amostragem fica na resposta do fornecedor, por produto (`purchase_quote_responses.sampling`, coluna nova e aditiva). Mesmas situações e rodadas da amostragem da solicitação (`pending` → `submitted` → `approved` ou `rejected`). Sem prazo próprio: corre enquanto a cotação está aberta ou com a vencedora escolhida.
-- A Wellmix valida no **quadro comparativo do produto** (`/app/supplier-requests/<cotação>?view=item&product=…`): a coluna **Amostra** mostra a situação de cada fornecedor (ou "Dispensada"), e o selo abre o cartão num modal, com aprovar e reprovar (ação "Validar a amostragem").
+- A Wellmix valida na **tela do produto da cotação** (`/app/supplier-requests/<cotação>?view=item&product=…`), no card Imagens da coluna da direita: a amostra de cada fornecedor (ou "Dispensada"), com aprovar e reprovar (ação "Validar a amostragem"). Veja "Imagens na tela do item".
 - **Escolha da vencedora**: quem não tem a amostra de todos os produtos aprovada (nem é conhecido) aparece desabilitado na lista, com o motivo; o serviço recusa (`quote_winner_sampling`).
 - **Passagem para a solicitação**: aprovada a vencedora, a solicitação ao fornecedor nasce com a amostragem já resolvida (a aprovada na cotação, com os arquivos, ou a dispensada, `sampling.skipped`). Ela não pede a amostra de novo, e o pedido de compra fica liberado.
 - **Pendências e avisos**: a cotação continua nas Pendências do fornecedor enquanto ele tem amostra a enviar ou reprovada; a Wellmix (quem abriu a cotação) é avisada do envio, e o fornecedor, da aprovação e da reprovação.
@@ -67,7 +67,7 @@ Regras confirmadas pelo dono:
 
 ### Na solicitação ao fornecedor (book)
 
-- Com a solicitação **em andamento** (aberta ou respondida), o cartão da Amostragem já aparece (abaixo da negociação) e o fornecedor pode enviar; a Wellmix pode validar antes de decidir (`samplingFor`).
+- Com a solicitação **em andamento** (aberta ou respondida), o fornecedor já vê o cartão da Amostragem (abaixo da negociação) e pode enviar; a Wellmix vê e valida no card Imagens, antes mesmo de decidir (`samplingFor`).
 - **Sem prazo antes da aprovação**: o SLA de 1 dia, o "Atrasada", a pendência e o aviso de atraso continuam contando só depois da aprovação.
 - **Na aprovação** (`samplingOnApproval`): a amostra já enviada ou aprovada segue como está; a pendente recomeça o prazo, mantendo os arquivos que ele já subiu.
 - A aprovação da solicitação **não** passou a exigir a amostra aprovada: aprovar e depois validar a amostra continua funcionando, com a trava do produto e do pedido de compra. A regra "só vence com a amostra aprovada" vale na escolha da vencedora da cotação de compra, que é onde há uma vencedora entre vários.
@@ -83,7 +83,7 @@ A amostra pode ser aprovada depois, mas precisa poder ser enviada antes, para os
 
 - Cada foto abre grande num clique e tem o botão de **copiar** (`CopyImageButton`): a imagem vai para a área de transferência e pode ser **colada no chat**, para citar um ponto.
 - A imagem colada no campo de mensagem vira o **anexo** da mensagem (`attachPastedImage`), nas duas conversas: a da solicitação ao fornecedor (que já aceitava anexo) e a da cotação de compra (que passou a aceitar foto, PDF e Excel; o fornecedor da resposta abre o anexo, `supplierSeesQuoteFile`).
-- Aprovar e reprovar a amostra continua no selo da coluna "Amostra" do quadro comparativo.
+- **Um lugar só** (dono, 22/11/2026: nada de dois blocos da mesma página falando da mesma coisa). Na tela da Wellmix, o card Imagens é o único lugar da amostragem: a situação, o prazo, o motivo da reprovação, as rodadas anteriores e o **aprovar ou reprovar** ficam no grupo do fornecedor. Não há cartão de Amostragem à parte, nem coluna "Amostra" no quadro comparativo, nem a foto repetida no card "Produto da cotação".
 - Para o fornecedor, as imagens estão na cotação dele, no card "Fotos do produto e amostragem": a referência da Wellmix e, em "Sua amostra", o que ele enviou.
 
 ### Onde está

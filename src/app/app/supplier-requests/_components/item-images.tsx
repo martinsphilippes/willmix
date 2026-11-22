@@ -2,8 +2,15 @@ import type { ReactNode } from "react";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { SupplierRequestSampling } from "@/lib/db/schema";
-import { samplingRoundFiles } from "@/lib/supplier-request-sampling";
-import { Badge, Card } from "@/components/ui";
+import {
+  samplingCanReview,
+  samplingDueAt,
+  samplingLate,
+  samplingRoundFiles,
+} from "@/lib/supplier-request-sampling";
+import { Badge, Card, Field, Textarea, cx } from "@/components/ui";
+import { SubmitButton } from "@/components/submit-button";
+import { dateTime } from "./negotiation";
 import { CopyImageButton } from "@/components/copy-image-button";
 import { SAMPLING_TONE } from "./status";
 
@@ -17,6 +24,11 @@ import { SAMPLING_TONE } from "./status";
  *   atual, com a situação, mesmo antes de aprovada.
  * Cada foto abre grande num clique e tem o botão de copiar, para colar no
  * chat e citar um ponto. Fora do chat, que fica só com as mensagens.
+ *
+ * É o único lugar da amostragem na tela da Wellmix (dono, 22/11/2026: nada
+ * de dois blocos falando da mesma coisa): a situação, o prazo, o motivo da
+ * reprovação, as rodadas anteriores e o aprovar ou reprovar ficam no grupo
+ * do fornecedor, sem cartão de Amostragem à parte nem coluna no quadro.
  */
 
 export interface ItemSample {
@@ -26,21 +38,40 @@ export interface ItemSample {
   sampling: SupplierRequestSampling | null;
   /** Fornecedor conhecido do produto: a amostragem é dispensada. */
   skipped?: boolean;
+  /** Prazo da amostra (dias) quando ele já conta; nulo: sem prazo. */
+  slaDays?: number | null;
+  /** Âncora do grupo (os avisos da amostragem levam a `#amostragem`). */
+  anchor?: string;
+  /**
+   * Validar a amostra enviada: a ação e os campos ocultos que dizem de quem
+   * ela é. Nulo: quem vê não valida (sem a ação "Validar a amostragem").
+   */
+  review?: {
+    action: (form: FormData) => Promise<void>;
+    fields: ReactNode;
+  } | null;
 }
 
 function Thumb({
   src,
   video = false,
   alt,
+  mark,
   t,
 }: {
   src: string;
   video?: boolean;
   alt: string;
+  /** Arquivo da rodada atual da amostra (a marca do cartão antigo). */
+  mark?: string;
   t: Translate;
 }) {
   return (
-    <li className="relative" data-item-image={video ? "video" : "photo"}>
+    <li
+      className="relative"
+      data-item-image={video ? "video" : "photo"}
+      data-sampling-file={mark}
+    >
       {video ? (
         <video
           src={src}
@@ -73,13 +104,23 @@ function Thumb({
 const Group = ({
   title,
   mark,
+  anchor,
+  status,
   children,
 }: {
   title: ReactNode;
   mark: string;
+  anchor?: string;
+  /** Situação da amostragem do grupo (as mesmas marcas do cartão antigo). */
+  status?: string;
   children: ReactNode;
 }) => (
-  <section data-item-images-group={mark}>
+  <section
+    id={anchor}
+    className="scroll-mt-24"
+    data-item-images-group={mark}
+    data-sampling={status}
+  >
     <h3 className="mb-1.5 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-zinc-700">
       {title}
     </h3>
@@ -136,26 +177,66 @@ export function ItemImagesCard({
           )}
         </Group>
         {sampled.map((x) => {
-          const files = x.sampling ? samplingRoundFiles(x.sampling) : [];
+          const sm = x.sampling;
+          const files = sm ? samplingRoundFiles(sm) : [];
+          const previous = sm
+            ? sm.files.filter((f) => f.round !== sm.round)
+            : [];
+          const days = x.slaDays ?? null;
+          const dueAt = sm && days !== null ? samplingDueAt(sm, days) : null;
+          const late = !!sm && days !== null && samplingLate(sm, days);
+          const lastReject = sm
+            ? [...sm.history].reverse().find((e) => e.kind === "reject")
+            : null;
+          const lastSubmit = sm
+            ? [...sm.history].reverse().find((e) => e.kind === "submit")
+            : null;
           return (
             <Group
               key={x.key}
               mark={x.key}
+              anchor={x.anchor}
+              status={sm?.status}
               title={
                 <>
                   {t("itemImages.sampleOf", { name: x.supplierName })}
-                  {x.sampling ? (
-                    <Badge tone={SAMPLING_TONE[x.sampling.status]}>
-                      {t(
-                        `sampling.status.${x.sampling.status}` as DictionaryKey,
-                      )}
+                  {sm ? (
+                    <Badge tone={SAMPLING_TONE[sm.status]}>
+                      <span data-sampling-status>
+                        {t(`sampling.status.${sm.status}` as DictionaryKey)}
+                      </span>
                     </Badge>
                   ) : (
                     <Badge tone="neutral">{t("quoteSampling.skipped")}</Badge>
                   )}
+                  {sm && sm.round > 1 ? (
+                    <span className="font-normal text-zinc-500">
+                      {t("sampling.round", { n: sm.round })}
+                    </span>
+                  ) : null}
                 </>
               }
             >
+              {dueAt ? (
+                <p
+                  className={cx(
+                    "mb-1 text-[11px]",
+                    late ? "font-semibold text-red-700" : "text-zinc-500",
+                  )}
+                  data-sampling-due={late ? "late" : "ok"}
+                >
+                  {late ? `${t("sampling.late")} · ` : ""}
+                  {t("sampling.due", { date: dateTime(dueAt, t) })}
+                </p>
+              ) : null}
+              {sm?.status === "rejected" && lastReject?.text ? (
+                <p
+                  className="mb-1.5 rounded-md border border-red-200 bg-red-50 p-1.5 text-xs text-red-800"
+                  data-sampling-reject-reason
+                >
+                  {lastReject.text}
+                </p>
+              ) : null}
               {files.length ? (
                 <ul className={grid}>
                   {files.map((f) => (
@@ -164,6 +245,7 @@ export function ItemImagesCard({
                       src={`/api/files/${f.documentId}`}
                       video={f.kind === "video"}
                       alt={f.fileName}
+                      mark={f.documentId}
                       t={t}
                     />
                   ))}
@@ -177,6 +259,79 @@ export function ItemImagesCard({
                   )}
                 </p>
               )}
+              {lastSubmit?.text && sm?.status !== "rejected" ? (
+                <p className="mt-1 whitespace-pre-wrap text-xs text-zinc-700">
+                  {lastSubmit.text}
+                </p>
+              ) : null}
+              {sm?.status === "approved" && !x.skipped ? (
+                <p className="mt-1 text-[11px] text-emerald-700">
+                  {t("sampling.approvedAt", {
+                    date: dateTime(sm.reviewedAt, t),
+                  })}
+                </p>
+              ) : null}
+              {sm && samplingCanReview(sm) ? (
+                x.review ? (
+                  <form
+                    action={x.review.action}
+                    className="mt-2 space-y-1.5"
+                    data-sampling-review-form
+                  >
+                    {x.review.fields}
+                    <Field label={t("sampling.review.note")}>
+                      <Textarea
+                        name="note"
+                        rows={1}
+                        maxLength={2000}
+                        className="max-h-32 min-h-9 resize-y"
+                      />
+                    </Field>
+                    <div className="flex flex-wrap gap-1.5">
+                      <SubmitButton
+                        className="px-2.5 py-1 text-xs"
+                        name="decision"
+                        value="approve"
+                        data-sampling-review="approve"
+                      >
+                        {t("sampling.review.approve")}
+                      </SubmitButton>
+                      <SubmitButton
+                        className="px-2.5 py-1 text-xs"
+                        name="decision"
+                        value="reject"
+                        variant="danger"
+                        data-sampling-review="reject"
+                      >
+                        {t("sampling.review.reject")}
+                      </SubmitButton>
+                    </div>
+                  </form>
+                ) : (
+                  <p className="mt-1 text-[11px] text-zinc-500">
+                    {t("sampling.review.noPermission")}
+                  </p>
+                )
+              ) : null}
+              {previous.length ? (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                    {t("sampling.files.previous")} ·{" "}
+                    {t("sampling.files.count", { n: previous.length })}
+                  </summary>
+                  <ul className={cx(grid, "mt-1.5")}>
+                    {previous.map((f) => (
+                      <Thumb
+                        key={f.documentId}
+                        src={`/api/files/${f.documentId}`}
+                        video={f.kind === "video"}
+                        alt={f.fileName}
+                        t={t}
+                      />
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
             </Group>
           );
         })}
