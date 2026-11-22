@@ -177,6 +177,15 @@ describe("1100 vira reposição na carga", () => {
       "sankhya_projection",
       pre("7100", "interrupted", false) as never,
     );
+    // Reposição de uma reprovada gravada por uma carga anterior: sai.
+    await store.create("requests", {
+      id: plan.sankhyaReplenishmentId("7100", 7101, 2),
+      origin: "replenishment",
+      status: "CANCELLED",
+      productName: "TAMPA",
+      quantity: 200,
+      unit: "UN",
+    } as never);
     // Pedido de 1100 gravado por uma carga anterior: sai de Pedidos.
     await store.create("orders", {
       id: "snk-t7000",
@@ -198,10 +207,11 @@ describe("1100 vira reposição na carga", () => {
     return p;
   }
 
-  it("abertas e encerradas, número = track, sem pedido", async () => {
+  it("pendente vira reposição aberta; a reprovada fica fora; sem pedido", async () => {
     const p = await runAll();
     expect(p.phase).toBe("done");
-    expect(p.replenishments).toBe(4);
+    expect(p.replenishments).toBe(2);
+    expect(p.rejectedPreOrders).toBe(1);
     expect(p.removedOrders).toBe(1);
     const store = getStore();
     expect(await store.get("orders", "snk-t7000")).toBeNull();
@@ -218,16 +228,16 @@ describe("1100 vira reposição na carga", () => {
     expect(open.quantity).toBe(500);
     expect(open.productId).toBeTruthy();
     expect(open.desiredAt).toBe("2027-01-15T00:00:00.000Z");
-    const closed = (await store.get(
-      "requests",
-      plan.sankhyaReplenishmentId("7100", 7101, 2),
-    ))!;
-    expect(closed.status).toBe("CANCELLED");
-    expect(closed.productId).toBeNull();
+    for (const seq of [1, 2])
+      expect(
+        await store.get(
+          "requests",
+          plan.sankhyaReplenishmentId("7100", 7101, seq),
+        ),
+      ).toBeNull();
     const { listDemands } = await import("@/lib/services/purchase-demand");
     const ids = (await listDemands("replenishment")).map((r) => r.id);
     expect(ids).toContain(open.id);
-    expect(ids).not.toContain(closed.id);
   });
 
   it("rodar de novo não duplica", async () => {
