@@ -466,10 +466,18 @@ function offerOf(form: FormData) {
 function backOf(form: FormData) {
   const raw = str(form, "id");
   const ok = ID.safeParse(raw).success;
+  // Quadro comparativo (dono, 22/11/2026; docs/QUOTATION.md): a ação de uma
+  // solicitação ligada volta para a tela do produto de onde ela foi feita.
+  const board = str(form, "board");
   return {
     id: raw,
-    back: ok ? detail(raw, form) : "/app/supplier-requests",
+    back: !ok
+      ? "/app/supplier-requests"
+      : ID.safeParse(board).success
+        ? `/app/supplier-requests/${board}?view=item`
+        : detail(raw, form),
     ok,
+    board: ok && ID.safeParse(board).success,
   };
 }
 
@@ -558,7 +566,7 @@ export async function respondOfferAction(form: FormData) {
 /** Mensagem livre da conversa, com ou sem arquivo (foto, PDF ou Excel). */
 /** Mensagem da conversa (texto e, se houver, o arquivo): grava e diz para onde voltar. */
 async function messageDo(user: User, form: FormData) {
-  const { id, back, ok } = backOf(form);
+  const { id, back, ok, board } = backOf(form);
   if (!ok) throw new Error("invalid_input");
   const text = z
     .string()
@@ -570,7 +578,14 @@ async function messageDo(user: User, form: FormData) {
   const { postRequestMessage } =
     await import("@/lib/services/supplier-request-negotiation");
   await postRequestMessage(user, id, { text, file });
-  return withQuery(back, "negotiation", "message") + "#conversa";
+  // No quadro comparativo, o modal da conversa desse fornecedor reabre.
+  return (
+    withQuery(
+      board ? withQuery(back, "chat", `request:${id}`) : back,
+      "negotiation",
+      "message",
+    ) + "#conversa"
+  );
 }
 
 export async function postSupplierRequestMessageAction(form: FormData) {

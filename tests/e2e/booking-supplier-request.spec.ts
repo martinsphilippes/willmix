@@ -342,10 +342,15 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   );
   await expect(page.locator("[data-supplier-table-incoterm]")).toHaveCount(1);
   await page.goto(itemUrl);
-  const plannerAnswer = page.locator("[data-supplier-answer]");
-  await expect(plannerAnswer).toContainText("Faz");
+  // Para a Wellmix, a resposta do fornecedor está no quadro comparativo
+  // (dono, 22/11/2026; docs/QUOTATION.md), sem a coluna do preço.
+  const plannerAnswer = page.locator("[data-quotation-row]");
+  await expect(plannerAnswer).toHaveCount(1);
+  await expect(plannerAnswer.locator("[data-quotation-price]")).toHaveCount(0);
   await expect(plannerAnswer).not.toContainText("1,40");
-  const plannerAnswerStep = page.locator('[data-timeline-entry="answer"]');
+  const plannerAnswerStep = page.locator(
+    '#historico [data-timeline-entry="answer"]',
+  );
   await expect(plannerAnswerStep).not.toHaveCount(0);
   await expect(plannerAnswerStep.first()).not.toContainText("1,40");
   const plannerPropose = page.locator("[data-negotiation-propose-form]");
@@ -461,8 +466,18 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await propose.locator("[data-negotiation-lead-time]").fill("35");
   await propose.locator("[data-negotiation-incoterm]").selectOption("FOB");
   await propose.locator("[data-negotiation-text]").fill("Fechamos a 1,30?");
+  // "Devolver com contraproposta" fica à direita e vai para os marcados
+  // no quadro comparativo (esta cotação já vem marcada).
+  await expect(page.locator("[data-quotation-select]")).toBeChecked();
   await page.click("[data-negotiation-propose-submit]");
-  await page.waitForURL(/[?&]negotiation=proposal/);
+  await page.waitForURL(/[?&]countered=1/);
+  await expect(page.locator("[data-quotation-pending]")).toHaveCount(1);
+  // O ícone do histórico abre a sequência de propostas num modal.
+  await page.locator("[data-quotation-history]").click();
+  await expect(
+    page.locator('dialog[open] [data-timeline-entry="proposal"]'),
+  ).toContainText("Fechamos a 1,30?");
+  await page.keyboard.press("Escape");
   await expect(page.locator("[data-supplier-decide=approved]")).toHaveCount(0);
   await expect(page.locator("[data-supplier-decide-blocked]")).toBeVisible();
 

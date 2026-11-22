@@ -4,6 +4,8 @@ Pedido do dono (14/11/2026): o menu lateral segue os blocos do mapa do processo 
 
 ## Estrutura
 
+> **22/11/2026 (docs/QUOTATION.md):** o bloco "Produto novo" passou a se chamar **Cotação**, com Overview, **Entrada** (Book, Reposição e Encomendas, que abre e fecha), Seleção de itens, Estratégia de compra e **Cotação**, que juntou Convites de book, Cotação de compra e Negociações num item só. A tabela abaixo descreve o bloco como era até então.
+
 | Bloco (mapa)        | Itens                                                                                                                                                                                                                  |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Produto novo (Book) | Overview, Books, Seleção de itens, Convites de book, Encomendas (B14), Estratégia de compra (B10?), Reposição (B10), Cotação de compra (B13), Negociações (solicitações ao fornecedor, com a amostragem)               |

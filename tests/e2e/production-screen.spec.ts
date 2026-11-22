@@ -33,7 +33,7 @@ test("Produção: menu, Overview, Telas e links e acesso pelo endereço", async 
   expect(order.slice(0, 4)).toEqual([
     "/app",
     "/app/tasks",
-    "Produto novo",
+    "Cotação",
     "Pedido",
   ]);
   expect(order[order.indexOf("Pedido") + 1]).toBe("Produção");

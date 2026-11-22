@@ -201,6 +201,30 @@ export async function proposeCounter(
 }
 
 /**
+ * A mesma contraproposta a várias solicitações de uma vez (quadro
+ * comparativo; dono, 22/11/2026, docs/QUOTATION.md). Confere todas antes de
+ * enviar: se uma não pode receber, nenhuma recebe.
+ */
+export async function proposeCounterMany(
+  user: User,
+  ids: string[],
+  input: OfferInput,
+): Promise<SupplierRequest[]> {
+  const unique = [...new Set(ids)];
+  for (const id of unique) {
+    const { request, side } = await load(user, id);
+    if (side !== "wellmix") throw new SupplierRequestError("not_found");
+    if (pendingProposal(request.negotiation))
+      throw new SupplierRequestError("supplier_request_proposal_pending");
+    if (!canPropose(request))
+      throw new SupplierRequestError("supplier_request_propose_invalid");
+  }
+  const out: SupplierRequest[] = [];
+  for (const id of unique) out.push(await proposeCounter(user, id, input));
+  return out;
+}
+
+/**
  * Resposta do fornecedor à contraproposta (só ele; a Wellmix não responde
  * por ele, `supplier_request_supplier_only`): aceitar (os valores propostos viram a resposta), outra
  * proposta (novos valores; preço obrigatório) ou recusar (fica a anterior).

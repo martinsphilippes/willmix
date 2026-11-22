@@ -52,19 +52,18 @@ export const FLOW_STEPS: FlowStep[] = [
   // Produto novo (Book do mapa).
   s("new-product", "books", "booking", "/app/booking"),
   s("new-product", "selection", "booking", "/app/booking/selection"),
-  // Convites de book (até 15/11/2026 o menu os chamava de "Cotações").
-  s("new-product", "quotes", "quotes", "/app/supplier-requests/invites"),
   // Compra por demanda (mapa B14 e B10; dono, 15/11/2026;
   // docs/PURCHASE_DEMAND.md): encomendas do cliente e reposição do Planner.
   s("new-product", "demands", "requests", "/app/requests"),
   s("new-product", "replenishment", "requests", "/app/replenishment"),
   // Estratégia de Compra (mapa B10?; dono, 18/11/2026): tela própria. Por
   // produto: cotar com a última compra ou com outros parceiros, ou o pedido
-  // direto (com a aprovação da Diretoria). No menu, logo abaixo de Reposição
-  // e acima de Cotação de compra (dono, 19/11/2026).
+  // direto (com a aprovação da Diretoria).
   s("new-product", "strategy", "purchaseStrategy", "/app/purchase-strategy"),
-  // Cotação de compra (mapa B13): aberta pelo sistema, 24 h por fornecedor.
-  s("new-product", "purchase-quotes", "quotes", "/app/purchase-quotes"),
+  // Cotação (dono, 22/11/2026; docs/QUOTATION.md): um passo só para o que
+  // eram três telas do mesmo marco (Convites de book, Cotação de compra e
+  // Negociações). A chave continua "negotiations" (endereços e indicadores
+  // gravados); as telas antigas seguem abrindo pelo endereço.
   s("new-product", "negotiations", "quotes", "/app/supplier-requests"),
   // Pedido.
   // Pedidos: o passo em que o pedido é criado (dono, 14/11/2026), com tela
@@ -295,7 +294,7 @@ function importStep(stepKey: string): Ref | null {
 
 /** Tipo da pendência → passo (as que não vêm de item de etapa). */
 const KIND_STEP: Partial<Record<string, Ref>> = {
-  booking_invite: "new-product/quotes",
+  booking_invite: "new-product/negotiations",
   sourcing_demand: "new-product/books",
   supplier_request: "new-product/negotiations",
   sampling: "new-product/negotiations",
@@ -337,11 +336,11 @@ const KIND_STEP: Partial<Record<string, Ref>> = {
   purchase_strategy_approve: "new-product/strategy",
   purchase_strategy_order: "new-product/strategy",
   purchase_strategy_send: "new-product/strategy",
-  purchase_quote_answer: "new-product/purchase-quotes",
-  purchase_quote_choose: "new-product/purchase-quotes",
-  purchase_quote_inner: "new-product/purchase-quotes",
-  purchase_quote_empty: "new-product/purchase-quotes",
-  purchase_quote_approve: "new-product/purchase-quotes",
+  purchase_quote_answer: "new-product/negotiations",
+  purchase_quote_choose: "new-product/negotiations",
+  purchase_quote_inner: "new-product/negotiations",
+  purchase_quote_empty: "new-product/negotiations",
+  purchase_quote_approve: "new-product/negotiations",
   // Ficha técnica corrigida pelo fornecedor: o Cadastro, em Cadastros → Produtos.
   supplier_sheet_review: "registry/products",
   after_sales: "sales/sale",
