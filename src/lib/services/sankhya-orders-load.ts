@@ -178,6 +178,9 @@ async function holdState() {
   return historyHoldActive();
 }
 
+const LOAD_DONE_NOTE = "Marco concluído no Sankhya (carga dos pedidos)";
+const LOAD_STEP_VALUE = "Concluído no Sankhya (carga dos pedidos)";
+
 /** Pendências do pedido em andamento: cria os itens e dá os marcos anteriores como feitos. */
 async function openRequirements(
   store: Store,
@@ -193,9 +196,13 @@ async function openRequirements(
     await createOrderRequirements(order, undefined, { shadow: true });
   }
   const current = milestoneOf(row.milestone);
+  // Inspeção feita: "Inspecionado", ou a data sem ser parcial (22/11/2026: na
+  // "Inspecao parcial" a DATA_INSPECAO já vem preenchida e não conta).
+  const quality = (row.data?.quality ?? "").trim();
+  const partial = /^inspe[cç][aã]o parcial$/i.test(quality);
   const inspected =
-    /^inspecionado$/i.test((row.data?.quality ?? "").trim()) ||
-    !!sankhyaIso(row.data?.inspectedAt);
+    /^inspecionado$/i.test(quality) ||
+    (!partial && !!sankhyaIso(row.data?.inspectedAt));
   const done = current
     ? doneMilestones(current, inspected ? "Inspecionado" : row.data?.quality)
     : new Set<string>();
@@ -206,13 +213,22 @@ async function openRequirements(
   const writes: Array<() => Promise<unknown>> = [];
   for (const req of requirements) {
     const key = milestoneOfItem(req);
+    // O que a própria carga deu como feito e o de-para diz que ainda não
+    // passou volta a pendente (22/11/2026); o feito no portal fica.
+    const reopen =
+      req.status === "done" &&
+      req.note === LOAD_DONE_NOTE &&
+      !done.has(key ?? "");
     const patch = {
       ...(req.status === "pending" && key && done.has(key)
         ? {
             status: "done" as const,
-            note: "Marco concluído no Sankhya (carga dos pedidos)",
+            note: LOAD_DONE_NOTE,
             submittedAt: at,
           }
+        : {}),
+      ...(reopen
+        ? { status: "pending" as const, note: null, submittedAt: null }
         : {}),
       ...(held ? { held: true } : {}),
     };
@@ -243,7 +259,6 @@ async function closeImportSteps(
   done: ReadonlySet<string>,
   at: string,
 ) {
-  if (!done.size) return;
   const [
     { IMPORT_STEPS },
     { flowStepOfImportKey, stepId },
@@ -259,19 +274,22 @@ async function closeImportSteps(
     const milestone = step ? milestoneOfStep(stepId(step)) : null;
     return !!milestone && done.has(milestone);
   });
+  const existing = await store.list("import_steps", { filter: { orderId } });
+  // Passo que a própria carga validou e o de-para diz que ainda não passou:
+  // sai (o que o portal gravou fica).
+  const wanted = new Set(keys);
+  for (const s of existing)
+    if (s.value === LOAD_STEP_VALUE && !wanted.has(s.key))
+      await store.remove("import_steps", s.id);
   if (!keys.length) return;
-  const have = new Set(
-    (await store.list("import_steps", { filter: { orderId } })).map(
-      (s) => s.key,
-    ),
-  );
+  const have = new Set(existing.map((s) => s.key));
   for (const key of keys) {
     if (have.has(key)) continue;
     await store.create("import_steps", {
       orderId,
       key,
       status: "validated",
-      value: "Concluído no Sankhya (carga dos pedidos)",
+      value: LOAD_STEP_VALUE,
       amount: null,
       currency: null,
       documentId: null,
