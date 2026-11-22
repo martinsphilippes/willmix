@@ -3863,6 +3863,14 @@ export interface PurchaseQuoteResponse extends BaseRow {
    * de hoje).
    */
   negotiation?: QuoteNegotiationEvent[] | null;
+  /**
+   * Amostragem dentro da cotação (dono, 22/11/2026;
+   * docs/SUPPLIER_SAMPLING.md): por produto, as fotos e os vídeos da
+   * amostra que este fornecedor enviou e a validação da Wellmix. Sem a
+   * chave do produto: ainda não começou (ou o fornecedor é conhecido do
+   * produto e a amostragem é dispensada).
+   */
+  sampling?: Record<string, SupplierRequestSampling> | null;
 }
 
 /** Um passo da negociação de um fornecedor numa cotação de compra. */
@@ -4163,6 +4171,12 @@ export interface SupplierRequestSampling {
   reviewedByUserId?: string | null;
   /** Aviso de prazo estourado da rodada atual (uma vez só por rodada). */
   lateNotifiedAt?: string | null;
+  /**
+   * Dispensada (dono, 22/11/2026; docs/SUPPLIER_SAMPLING.md): o fornecedor
+   * já vendeu este produto à Wellmix, então não há amostra a enviar. Fica
+   * como aprovada, sem arquivos.
+   */
+  skipped?: boolean | null;
 }
 
 /**
@@ -6706,6 +6720,8 @@ export const TABLES: Record<TableName, TableDef> = {
       items: json(),
       // Respostas, contrapropostas e conversa na cotação (dono, 22/11/2026).
       negotiation: json(),
+      // Amostragem por produto dentro da cotação (dono, 22/11/2026).
+      sampling: jsonLarge(),
     },
     indexes: [
       { key: "by_quote", type: "key", columns: ["quoteId"] },

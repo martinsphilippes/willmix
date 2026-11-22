@@ -58,6 +58,8 @@ import type { Translate } from "@/i18n";
 import { ClampText } from "@/components/clamp-text";
 import { HoverZoomPhoto } from "@/components/hover-zoom-photo";
 import { quoteItemHref } from "@/lib/quote-item-href";
+import { quoteSamplingReady } from "@/lib/quote-sampling";
+import { soldBeforeProducts } from "@/lib/services/supplier-sheets";
 
 /*
  * Ficha técnica das respostas (dono, 21/11/2026): linha fina e minimalista,
@@ -197,6 +199,25 @@ export async function QuoteBoard({
   // informou, as caixas e o m³ pela caixa dele e os avisos do cadastro.
   const cells = await boardSheetCells(quote, responses);
   const answered = responses.filter((r) => r.status === "answered");
+  // Só vence quem tem a amostra de todos os produtos aprovada ou é
+  // conhecido do produto (dono, 22/11/2026; docs/SUPPLIER_SAMPLING.md).
+  const sampleReady = new Map(
+    await Promise.all(
+      answered.map(
+        async (r) =>
+          [
+            r.id,
+            quoteSamplingReady(
+              r,
+              productIds,
+              await soldBeforeProducts(r.supplierId, productIds).catch(
+                () => new Set<string>(),
+              ),
+            ),
+          ] as const,
+      ),
+    ),
+  );
   const n = (v: number, digits = 3) =>
     v.toLocaleString(t.intl, { maximumFractionDigits: digits });
   const roundsOf = (item: PurchaseQuoteItem) =>
@@ -764,20 +785,40 @@ export async function QuoteBoard({
           >
             <input type="hidden" name="quoteId" value={quote.id} />
             {homeField}
-            {responses
-              .filter((r) => r.status === "answered")
-              .map((r) => (
-                <label key={r.id} className="flex items-center gap-2 text-sm">
+            <p
+              className="text-xs text-zinc-500"
+              data-quote-choose-sampling-hint
+            >
+              {t("quoteSampling.choose.hint")}
+            </p>
+            {answered.map((r) => {
+              const ready = sampleReady.get(r.id) ?? false;
+              return (
+                <label
+                  key={r.id}
+                  className={cx(
+                    "flex items-center gap-2 text-sm",
+                    !ready && "text-zinc-400",
+                  )}
+                >
                   <input
                     type="radio"
                     name="responseId"
                     value={r.id}
                     required
+                    disabled={!ready}
                     data-quote-winner-option={r.supplierId}
+                    data-quote-winner-ready={ready ? "1" : "0"}
                   />
                   {supplierName(r.supplierId)}
+                  {ready ? null : (
+                    <span className="text-xs text-amber-800">
+                      ({t("quoteSampling.choose.blocked")})
+                    </span>
+                  )}
                 </label>
-              ))}
+              );
+            })}
             <Field label={t("demand.notes")}>
               <Textarea name="note" rows={2} />
             </Field>

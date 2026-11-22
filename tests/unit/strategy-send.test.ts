@@ -20,6 +20,8 @@ import { orderFromRequest } from "./helpers/order";
  */
 withTempStore();
 
+const { approveQuoteSample } = await import("./helpers/sampling");
+
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const { PARTY_EXTRA_DEFAULTS } = await import("@/lib/db/schema");
@@ -546,6 +548,8 @@ describe("envio da Estratégia de Compra", () => {
     });
     const byParty = (id: string) => all.find((r) => r.supplierId === id)!;
     expect(byParty("fornecedor-a").status).toBe("answered");
+    // Só vence quem tem a amostra aprovada (dono, 22/11/2026).
+    await approveQuoteSample(quote.id, byParty(traderParty).id);
     const chosen = await quotes.chooseWinner(
       buyer,
       quote.id,

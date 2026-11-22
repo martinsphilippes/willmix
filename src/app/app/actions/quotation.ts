@@ -6,7 +6,7 @@ import { parseNumberInput } from "@/lib/number-input";
 import type { FormActionState } from "@/lib/form-action-state";
 import { assertScreen } from "@/lib/auth/screens";
 import { isWellmix } from "@/lib/auth/permissions";
-import { requireUser, runState, str, withQuery } from "./helpers";
+import { requireUser, run, runState, str, withQuery } from "./helpers";
 
 /*
  * Cotação unificada (dono, 22/11/2026; docs/QUOTATION.md): a contraproposta
@@ -135,5 +135,126 @@ export async function postQuoteMessageStateAction(
     return isWellmix(user)
       ? withQuery(back, "chat", `response:${updated.id}`) + "#conversa"
       : withQuery(back, "message", "1") + "#negociacao";
+  });
+}
+
+/* ---- Amostragem dentro da cotação de compra (docs/SUPPLIER_SAMPLING.md) ---- */
+
+/** De quem é a amostragem (cotação, produto e, para a Wellmix, a resposta) e para onde voltar. */
+function quoteSamplingOf(form: FormData, wellmix: boolean) {
+  const quoteId = str(form, "quoteId");
+  const productId = str(form, "product");
+  const ok = ID.safeParse(quoteId).success && ID.safeParse(productId).success;
+  const back = !ok
+    ? "/app/supplier-requests"
+    : wellmix
+      ? `/app/supplier-requests/${quoteId}?view=item&product=${productId}`
+      : `/app/purchase-quotes/${quoteId}`;
+  return { quoteId, productId, ok, back };
+}
+
+const samplingDone = (back: string, notice: string) =>
+  withQuery(back, "sampling", notice) + "#amostragem";
+
+/** O fornecedor adiciona uma foto ou um vídeo da amostra do produto. */
+export async function addQuoteSamplingFileAction(form: FormData) {
+  const user = await requireUser();
+  const { quoteId, productId, ok, back } = quoteSamplingOf(
+    form,
+    isWellmix(user),
+  );
+  await run(back, async () => {
+    if (!ok) throw new Error("invalid_input");
+    const raw = form.get("file");
+    const file = raw instanceof File && raw.size > 0 ? raw : null;
+    const uploaded = str(form, "uploadedFileId");
+    const uploadedFileId = uploaded
+      ? z
+          .string()
+          .regex(/^[A-Za-z0-9_.-]{1,64}$/)
+          .parse(uploaded)
+      : null;
+    const { addQuoteSamplingFile } =
+      await import("@/lib/services/quote-sampling");
+    await addQuoteSamplingFile(user, quoteId, productId, {
+      file,
+      uploadedFileId,
+    });
+    return samplingDone(back, "file");
+  });
+}
+
+/** O fornecedor tira da rodada um arquivo ainda não enviado. */
+export async function removeQuoteSamplingFileAction(form: FormData) {
+  const user = await requireUser();
+  const { quoteId, productId, ok, back } = quoteSamplingOf(
+    form,
+    isWellmix(user),
+  );
+  await run(back, async () => {
+    if (!ok) throw new Error("invalid_input");
+    const { removeQuoteSamplingFile } =
+      await import("@/lib/services/quote-sampling");
+    await removeQuoteSamplingFile(
+      user,
+      quoteId,
+      productId,
+      ID.parse(str(form, "documentId")),
+    );
+    return samplingDone(back, "removed");
+  });
+}
+
+/** O fornecedor envia a rodada para a validação da Wellmix. */
+export async function submitQuoteSamplingAction(form: FormData) {
+  const user = await requireUser();
+  const { quoteId, productId, ok, back } = quoteSamplingOf(
+    form,
+    isWellmix(user),
+  );
+  await run(back, async () => {
+    if (!ok) throw new Error("invalid_input");
+    const note = z
+      .string()
+      .max(2000)
+      .nullable()
+      .parse(str(form, "note") || null);
+    const { submitQuoteSampling } =
+      await import("@/lib/services/quote-sampling");
+    await submitQuoteSampling(user, quoteId, productId, note);
+    return samplingDone(back, "submitted");
+  });
+}
+
+/** A Wellmix aprova ou reprova a amostra de um fornecedor na cotação. */
+export async function reviewQuoteSamplingAction(form: FormData) {
+  const user = await requireUser();
+  const { quoteId, productId, ok, back } = quoteSamplingOf(
+    form,
+    isWellmix(user),
+  );
+  await run(back, async () => {
+    if (!ok) throw new Error("invalid_input");
+    const decision = z.enum(["approve", "reject"]).parse(str(form, "decision"));
+    const note = z
+      .string()
+      .max(2000)
+      .nullable()
+      .parse(str(form, "note") || null);
+    const { reviewQuoteSampling } =
+      await import("@/lib/services/quote-sampling");
+    await reviewQuoteSampling(
+      user,
+      quoteId,
+      productId,
+      ID.parse(str(form, "responseId")),
+      decision,
+      note,
+    );
+    return withQuery(
+      back,
+      "sampling",
+      decision === "approve" ? "approved" : "rejected",
+    );
   });
 }

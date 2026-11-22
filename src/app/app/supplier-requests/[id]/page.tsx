@@ -110,7 +110,7 @@ import { lastPurchases } from "@/lib/services/purchase-strategy";
 import { QuotationQuotePage } from "../_components/quote-pages";
 import { SamplingCard } from "../_components/sampling";
 import { samplingSlaDays } from "@/lib/services/supplier-request-sampling";
-import { samplingApproved } from "@/lib/supplier-request-sampling";
+import { samplingApproved, samplingFor } from "@/lib/supplier-request-sampling";
 import {
   entityLinkAccess,
   linksForSupplierRequest,
@@ -1349,6 +1349,18 @@ export default async function SupplierRequestPage({
       </Card>
     ) : null;
 
+  const samplingCard = samplingFor(r) ? (
+    <div className="mb-4">
+      <SamplingCard
+        request={r}
+        wellmix={wellmix}
+        canValidate={wellmix && can(user, "sampling.validate")}
+        slaDays={await samplingSlaDays()}
+        t={t}
+      />
+    </div>
+  ) : null;
+
   return (
     <>
       <PageHeader
@@ -1402,18 +1414,10 @@ export default async function SupplierRequestPage({
         </div>
       ) : null}
 
-      {/* Amostragem: a etapa depois da aprovação (fotos e vídeos da amostra). */}
-      {r.status === "approved" ? (
-        <div className="mb-4">
-          <SamplingCard
-            request={r}
-            wellmix={wellmix}
-            canValidate={wellmix && can(user, "sampling.validate")}
-            slaDays={await samplingSlaDays()}
-            t={t}
-          />
-        </div>
-      ) : null}
+      {/* Amostragem (fotos e vídeos da amostra): depois da aprovação, no
+          alto, com o prazo; antes dela, o fornecedor já pode adiantar e o
+          cartão fica abaixo da negociação (dono, 22/11/2026). */}
+      {r.status === "approved" ? samplingCard : null}
 
       {wellmix ? (
         /* Wellmix (dono, 22/11/2026; docs/QUOTATION.md): no centro, o
@@ -1520,6 +1524,11 @@ export default async function SupplierRequestPage({
           </aside>
         </div>
       )}
+      {r.status !== "approved" && samplingCard ? (
+        <div className="mt-4" data-sampling-early>
+          {samplingCard}
+        </div>
+      ) : null}
       {wellmix && r.orderId ? (
         <div className="mt-4" data-supplier-request-order>
           <Alert tone="info">

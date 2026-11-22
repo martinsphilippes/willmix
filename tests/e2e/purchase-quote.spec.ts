@@ -247,6 +247,35 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   );
   await answer(page, "supplier.b@china.com", quoteId!, "185", "USD");
 
+  // Amostragem dentro da cotação (dono, 22/11/2026;
+  // docs/SUPPLIER_SAMPLING.md): o B vê as fotos do produto e envia a amostra
+  // sem esperar a escolha; a Wellmix valida no quadro comparativo do produto.
+  const sample = page.locator('[data-quote-sampling-product="prod-jarra"]');
+  await expect(
+    sample.locator('[data-quote-product-photos="prod-jarra"]'),
+  ).toBeVisible();
+  await sample
+    .locator("[data-sampling-upload] input[type=file]")
+    .setInputFiles({
+      name: "amostra.png",
+      mimeType: "image/png",
+      buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    });
+  await page.waitForURL(/[?&]sampling=file/);
+  await sample.locator("[data-sampling-submit]").click();
+  await page.waitForURL(/[?&]sampling=submitted/);
+  await expect(sample.locator("[data-sampling=submitted]")).toBeVisible();
+  await login(page, "admin@wellmix.com");
+  await page.goto(
+    `/app/supplier-requests/${quoteId}?view=item&product=prod-jarra`,
+  );
+  await page
+    .locator('[data-quote-sample="submitted"] [data-quote-sample-open]')
+    .click();
+  await page.locator("dialog[open] [data-sampling-review=approve]").click();
+  await page.waitForURL(/[?&]sampling=approved/);
+  await expect(page.locator('[data-quote-sample="approved"]')).toHaveCount(1);
+
   // Isolamento: A abre a dele, sem o preço do B, sem o nome do B nem o cliente.
   await login(page, "supplier.a@china.com");
   await page.goto(`/app/purchase-quotes/${quoteId}`);
@@ -295,6 +324,14 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
     await expect(row.locator("[data-quote-sheet-boxes]")).toHaveText("167");
     await expect(row.locator("[data-quote-sheet-cbm]")).toHaveText(/14[,.]028/);
   }
+  // Só vence quem tem a amostra aprovada (ou é conhecido do produto): o A,
+  // que não enviou a amostra, não pode ser escolhido.
+  await expect(
+    board.locator('[data-quote-winner-option="fornecedor-b"]'),
+  ).toHaveAttribute("data-quote-winner-ready", "1");
+  await expect(
+    board.locator('[data-quote-winner-option="fornecedor-a"]'),
+  ).toBeDisabled();
   await board.locator('[data-quote-winner-option="fornecedor-b"]').check();
   await board.locator("[data-quote-choose]").click();
   await page.waitForURL(/[?&]chosen=1/);

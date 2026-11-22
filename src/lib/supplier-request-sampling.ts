@@ -66,6 +66,63 @@ export function samplingOf(
   };
 }
 
+/**
+ * A amostragem como a tela e o envio a veem (dono, 22/11/2026;
+ * docs/SUPPLIER_SAMPLING.md, "Amostragem desde a cotação"): a da aprovada
+ * (`samplingOf`) e, com a solicitação ainda em andamento, a que o
+ * fornecedor já pode adiantar desde o começo da cotação do item (a gravada
+ * ou uma pendente aberta na criação). As travas (produto, pedido de compra)
+ * e o prazo continuam valendo só depois da aprovação (`samplingOf`).
+ */
+export function samplingFor(
+  request: Pick<
+    SupplierRequest,
+    "status" | "decidedAt" | "updatedAt" | "createdAt" | "sampling"
+  >,
+): SupplierRequestSampling | null {
+  if (request.status === "approved") return samplingOf(request);
+  if (request.status !== "open" && request.status !== "answered") return null;
+  return (
+    request.sampling ?? {
+      status: "pending",
+      round: 1,
+      openedAt: request.createdAt,
+      files: [],
+      history: [],
+    }
+  );
+}
+
+/**
+ * A amostragem na aprovação: a que ele já adiantou segue como está (enviada
+ * ou aprovada não volta atrás); a pendente recomeça o prazo na aprovação.
+ */
+export function samplingOnApproval(
+  existing: SupplierRequestSampling | null | undefined,
+  at: string,
+  byUserId: string,
+): SupplierRequestSampling {
+  if (!existing) return openSampling(at, byUserId);
+  if (existing.status === "pending" || existing.status === "rejected")
+    return {
+      ...existing,
+      openedAt: at,
+      lateNotifiedAt: null,
+      history: [
+        ...existing.history,
+        {
+          id: crypto.randomUUID(),
+          at,
+          kind: "open",
+          side: "wellmix",
+          byUserId,
+          round: existing.round,
+        },
+      ],
+    };
+  return existing;
+}
+
 /** Amostragem nova, aberta na aprovação. */
 export function openSampling(
   at: string,

@@ -11,6 +11,8 @@ import { sheetFor } from "./quote-sheet-fixture";
  */
 withTempStore();
 
+const { approveQuoteSample } = await import("./helpers/sampling");
+
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const requests = await import("@/lib/services/requests");
@@ -182,6 +184,8 @@ describe("contraproposta em massa na cotação", () => {
     expect(
       rules.pendingQuoteProposals(await responseOf(quote.id, supplierA)),
     ).toEqual([]);
+    // Só vence quem tem a amostra aprovada (dono, 22/11/2026).
+    await approveQuoteSample(quote.id, a.id);
     await quotes.chooseWinner(buyer, quote.id, a.id, null, plus(25));
     await expect(
       negotiation.proposeQuoteCounter(buyer, quote.id, counter([a.id])),

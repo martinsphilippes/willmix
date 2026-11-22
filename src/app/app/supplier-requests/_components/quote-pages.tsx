@@ -39,6 +39,17 @@ import {
 } from "./quotation-board";
 import { QuoteChat } from "./board-chat";
 import { InfoCell, InfoGrid } from "./negotiation-sections";
+import { SamplingPanel } from "./sampling";
+import { SAMPLING_TONE } from "./status";
+import { QuickDialog } from "@/components/quick-dialog";
+import { quoteSamplingOf } from "@/lib/quote-sampling";
+import { soldBeforeProducts } from "@/lib/services/supplier-sheets";
+import {
+  addQuoteSamplingFileAction,
+  removeQuoteSamplingFileAction,
+  reviewQuoteSamplingAction,
+  submitQuoteSamplingAction,
+} from "../../actions/quotation";
 
 /*
  * A cotação de compra dentro da Cotação unificada (dono, 22/11/2026;
@@ -108,6 +119,28 @@ export async function QuotationQuotePage({
       : Promise.resolve([]),
   ]);
   const names = Object.fromEntries(authors.map((u) => [u.id, u.name]));
+  // Fornecedor conhecido do produto (já vendeu à Wellmix): sem amostragem.
+  const knownSuppliers = new Set(
+    (
+      await Promise.all(
+        responses.map(async (r) =>
+          (
+            await soldBeforeProducts(r.supplierId, [productId]).catch(
+              () => new Set<string>(),
+            )
+          ).has(productId)
+            ? r.supplierId
+            : null,
+        ),
+      )
+    ).filter((x): x is string => !!x),
+  );
+  const canValidate = can(user, "sampling.validate");
+  const samplingNotice =
+    typeof query.sampling === "string" &&
+    ["approved", "rejected"].includes(query.sampling)
+      ? (query.sampling as "approved" | "rejected")
+      : null;
   const errors = errorTextsFor(t, [
     "quotation.error",
     "quote.error",
@@ -171,6 +204,66 @@ export async function QuotationQuotePage({
         />
       ),
       chatOpen: chatOpen === key,
+      sample: (() => {
+        const known = knownSuppliers.has(r.supplierId);
+        const sampling = quoteSamplingOf(r, productId, known);
+        if (!sampling)
+          return known && r.status !== "declined" ? (
+            <span
+              title={t("quoteSampling.skippedHint")}
+              data-quote-sample="skipped"
+            >
+              <Badge tone="neutral">{t("quoteSampling.skipped")}</Badge>
+            </span>
+          ) : (
+            "—"
+          );
+        return (
+          <span
+            className="flex items-center gap-1"
+            data-quote-sample={sampling.status}
+          >
+            <QuickDialog
+              size="lg"
+              label={
+                <Badge tone={SAMPLING_TONE[sampling.status]}>
+                  {t(`sampling.status.${sampling.status}` as DictionaryKey)}
+                </Badge>
+              }
+              hint={t("quoteSampling.open", { name: supplierName })}
+              title={t("quoteSampling.modalTitle", { name: supplierName })}
+              closeLabel={t("quotation.close")}
+              className="border-0 bg-transparent p-0"
+              data-quote-sample-open={r.id}
+            >
+              <div className="max-h-[75vh] overflow-y-auto p-3">
+                <SamplingPanel
+                  sampling={sampling}
+                  wellmix
+                  canValidate={canValidate}
+                  slaDays={null}
+                  early
+                  anchor={null}
+                  actions={{
+                    add: addQuoteSamplingFileAction,
+                    remove: removeQuoteSamplingFileAction,
+                    submit: submitQuoteSamplingAction,
+                    review: reviewQuoteSamplingAction,
+                  }}
+                  fields={
+                    <>
+                      <input type="hidden" name="quoteId" value={quote.id} />
+                      <input type="hidden" name="product" value={productId} />
+                      <input type="hidden" name="responseId" value={r.id} />
+                    </>
+                  }
+                  t={t}
+                />
+              </div>
+            </QuickDialog>
+          </span>
+        );
+      })(),
     };
   });
   const last = refs?.get(productId) ?? null;
@@ -213,6 +306,13 @@ export async function QuotationQuotePage({
         <div className="mb-3" role="status" data-quotation-countered>
           <Alert tone="success">
             {t("quotation.counter.sent", { n: countered })}
+          </Alert>
+        </div>
+      ) : null}
+      {samplingNotice ? (
+        <div className="mb-3" role="status" data-quote-sampling-notice>
+          <Alert tone="success">
+            {t(`quoteSampling.notice.${samplingNotice}`)}
           </Alert>
         </div>
       ) : null}

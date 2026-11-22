@@ -16,15 +16,16 @@ import {
  */
 withTempStore();
 
+const { approveQuoteSample } = await import("./helpers/sampling");
+
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const requests = await import("@/lib/services/requests");
 const strategy = await import("@/lib/services/purchase-strategy");
 const quotes = await import("@/lib/services/purchase-quote");
 const materials = await import("@/lib/services/materials");
-const { parseInnerRequirement } = await import(
-  "@/app/app/actions/request-items"
-);
+const { parseInnerRequirement } =
+  await import("@/app/app/actions/request-items");
 type User = import("@/lib/db").User;
 
 describe("inner pelas demandas (puro)", () => {
@@ -43,9 +44,11 @@ describe("inner pelas demandas (puro)", () => {
       ]),
     ).toEqual({ qty: null, issue: "conflict", requested: [12, 24] });
     // Um pediu e o outro não: também é a Wellmix quem define (0 = sem inner).
-    expect(
-      innerFromDemands([{ innerRequirement: { qty: 24 } }, {}]),
-    ).toEqual({ qty: null, issue: "conflict", requested: [0, 24] });
+    expect(innerFromDemands([{ innerRequirement: { qty: 24 } }, {}])).toEqual({
+      qty: null,
+      issue: "conflict",
+      requested: [0, 24],
+    });
     // Pedido sem o número: nada é inventado.
     expect(innerFromDemands([{ innerRequirement: { qty: null } }])).toEqual({
       qty: null,
@@ -104,8 +107,10 @@ describe("catálogo de materiais (puro)", () => {
     expect(hit.ids).toEqual(["mat-plastico", "mat-papel"]);
     expect(hit.unknown).toEqual([]);
     expect(
-      matchMaterials("plástico polipropileno e componentes eletronicos", catalog)
-        .ids,
+      matchMaterials(
+        "plástico polipropileno e componentes eletronicos",
+        catalog,
+      ).ids,
     ).toEqual(["mat-polipropileno-pp", "mat-componentes-eletronicos"]);
     // O que não bate fica à vista para quem revisa, sem inventar.
     expect(matchMaterials("Vidro + unobtainium", catalog)).toEqual({
@@ -218,6 +223,8 @@ describe("na cotação de compra", () => {
       })
     )[0];
     expect(pair.data.innerBoxQty).toBeNull();
+    // Só vence quem tem a amostra aprovada (dono, 22/11/2026).
+    await approveQuoteSample(quote.id, rA.id);
     await quotes.chooseWinner(buyer, quote.id, rA.id, null, plus(25));
     const approved = await quotes.decideWinner(director, quote.id, {
       approve: true,
@@ -242,8 +249,7 @@ describe("na cotação de compra", () => {
     const tasks = await quotes.quoteTaskDrafts(buyer, plus(1));
     expect(
       tasks.some(
-        (d) =>
-          d.kind === "purchase_quote_inner" && d.link.endsWith(quote.id),
+        (d) => d.kind === "purchase_quote_inner" && d.link.endsWith(quote.id),
       ),
     ).toBe(true);
     // O fornecedor responde sem travar (a Wellmix vai confirmar). A já tem a
@@ -274,8 +280,7 @@ describe("na cotação de compra", () => {
     const after = await quotes.quoteTaskDrafts(buyer, plus(2));
     expect(
       after.some(
-        (d) =>
-          d.kind === "purchase_quote_inner" && d.link.endsWith(quote.id),
+        (d) => d.kind === "purchase_quote_inner" && d.link.endsWith(quote.id),
       ),
     ).toBe(false);
     // "Não exigir inner": o fornecedor não vê nada de inner.

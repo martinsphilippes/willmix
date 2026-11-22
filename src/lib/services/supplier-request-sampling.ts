@@ -17,6 +17,7 @@ import {
   samplingCanReview,
   samplingCanSubmit,
   samplingCanUpload,
+  samplingFor,
   samplingKind,
   samplingOf,
   samplingRoundFiles,
@@ -58,7 +59,9 @@ async function load(user: User, id: string) {
     !!user.partyId &&
     request.supplierId === user.partyId;
   if (!wellmix && !own) throw new SupplierRequestError("not_found");
-  const sampling = samplingOf(request);
+  // Desde o começo da cotação do item (dono, 22/11/2026): em andamento, ele
+  // já pode adiantar a amostra.
+  const sampling = samplingFor(request);
   if (!sampling) throw new SupplierRequestError("sampling_not_open");
   return { request, sampling, wellmix };
 }

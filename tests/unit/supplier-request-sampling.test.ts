@@ -147,13 +147,6 @@ describe("regras da amostragem", () => {
 describe("amostragem da solicitação ao fornecedor", () => {
   it("o responsável envia fotos e vídeos; a Wellmix reprova e depois aprova", async () => {
     const request = await approvedRequest();
-    // Antes da aprovação, não há amostragem.
-    await expect(
-      sampling.addSamplingFile(supplierA, request.id, {
-        file: photo(),
-        uploadedFileId: null,
-      }),
-    ).rejects.toThrow("sampling_not_open");
     await svc.answerSupplierRequest(supplierA, request.id, {
       canDo: "yes",
       price: 1.1,
@@ -399,5 +392,80 @@ describe("prazo e bloqueio da amostragem (decisões do dono, 12/11/2026)", () =>
         g.candidates.some((c) => c.request.id === request.id),
       ),
     ).toBe(true);
+  });
+});
+
+describe("amostragem desde o começo da cotação do item (dono, 22/11/2026)", () => {
+  it("o fornecedor adianta a amostra antes da decisão; a aprovação não a desfaz", async () => {
+    const request = await approvedRequest(); // aberta, ainda sem decisão
+    expect(request.status).toBe("open");
+    // Em andamento, ele já pode enviar; as travas seguem pela aprovação.
+    const { samplingFor, samplingOf } =
+      await import("@/lib/supplier-request-sampling");
+    expect(samplingOf(request)).toBeNull();
+    expect(samplingFor(request)).toMatchObject({ status: "pending", round: 1 });
+    await sampling.addSamplingFile(supplierA, request.id, {
+      file: photo(),
+      uploadedFileId: null,
+    });
+    await sampling.submitSampling(supplierA, request.id, "Adiantada");
+    // A Wellmix valida antes mesmo de decidir a solicitação.
+    await sampling.reviewSampling(admin, request.id, "approve", null);
+    await svc.answerSupplierRequest(supplierA, request.id, {
+      canDo: "yes",
+      price: 1.1,
+      currency: "USD",
+      moq: 1000,
+      leadTimeDays: 30,
+      note: null,
+    });
+    const approved = await svc.decideSupplierRequest(
+      admin,
+      request.id,
+      "approved",
+      null,
+    );
+    // Aprovada a solicitação, a amostra já aprovada continua valendo.
+    expect(approved.sampling).toMatchObject({ status: "approved", round: 1 });
+    expect(approved.sampling!.files).toHaveLength(1);
+  });
+
+  it("a pendente adiantada recomeça o prazo na aprovação, com os arquivos", async () => {
+    const { samplingOnApproval } =
+      await import("@/lib/supplier-request-sampling");
+    const early = {
+      status: "pending" as const,
+      round: 1,
+      openedAt: "2026-11-01T00:00:00.000Z",
+      files: [
+        {
+          documentId: "d1",
+          fileName: "a.png",
+          mime: "image/png",
+          kind: "photo" as const,
+          round: 1,
+          at: "2026-11-02T00:00:00.000Z",
+          byUserId: "u1",
+        },
+      ],
+      history: [],
+    };
+    const after = samplingOnApproval(early, "2026-11-10T00:00:00.000Z", "w1");
+    expect(after.openedAt).toBe("2026-11-10T00:00:00.000Z");
+    expect(after.files).toHaveLength(1);
+    expect(
+      samplingOnApproval(null, "2026-11-10T00:00:00.000Z", "w1"),
+    ).toMatchObject({ status: "pending", files: [] });
+  });
+
+  it("recusada ou cancelada: sem amostragem", async () => {
+    const request = await approvedRequest();
+    await svc.decideSupplierRequest(admin, request.id, "cancelled", null);
+    await expect(
+      sampling.addSamplingFile(supplierA, request.id, {
+        file: photo(),
+        uploadedFileId: null,
+      }),
+    ).rejects.toThrow("sampling_not_open");
   });
 });

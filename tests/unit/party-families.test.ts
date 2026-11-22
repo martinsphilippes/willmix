@@ -23,6 +23,8 @@ vi.mock("@/lib/services/sankhya-product-families", () => ({
 
 withTempStore();
 
+const { approveQuoteSample } = await import("./helpers/sampling");
+
 const { getStore } = await import("@/lib/db");
 const { PARTY_EXTRA_DEFAULTS } = await import("@/lib/db/schema");
 const { seedDemo } = await import("@/lib/seed");
@@ -414,6 +416,8 @@ describe("cotação de compra pelas famílias", () => {
       plus(1),
     );
     const mine = responses.find((r) => r.supplierId === party.factory)!;
+    // Só vence quem tem a amostra aprovada (dono, 22/11/2026).
+    await approveQuoteSample(quoteId, mine.id);
     await quotes.chooseWinner(buyer, quoteId, mine.id, null, plus(25));
     const approved = await quotes.decideWinner(director, quoteId, {
       approve: true,
