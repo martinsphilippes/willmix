@@ -436,10 +436,16 @@ const LOADED_ORDER_TABLES = [
 
 /** Tira um pedido gravado por carga anterior (track que é reposição). */
 async function removeLoadedOrder(store: Store, orderId: string) {
-  for (const table of LOADED_ORDER_TABLES) {
-    const rows = await store.list(table, { filter: { orderId } as never });
-    for (const r of rows) await store.remove(table, r.id);
-  }
+  // Em paralelo (22/11/2026: um a um, o bloco de 10 pedidos passava dos 60 s).
+  await Promise.all(
+    LOADED_ORDER_TABLES.map(async (table) => {
+      const rows = await store.list(table, { filter: { orderId } as never });
+      for (let i = 0; i < rows.length; i += 20)
+        await Promise.all(
+          rows.slice(i, i + 20).map((r) => store.remove(table, r.id)),
+        );
+    }),
+  );
   await store.remove("orders", orderId);
 }
 
