@@ -111,6 +111,22 @@ export function forecastUnitPrice(
 }
 
 /** Peças da solicitação para a cotação: a programação, senão a quantidade (só em peças). */
+/**
+ * Os preços Wellmix (não WD) por peça que a cotação V2 devolveu: sem frete
+ * ("Valor com IPI") e com frete ("Valor IPI com frete"). Vazio sem previsão.
+ */
+export function wellmixPrices(
+  answer: unknown,
+): Pick<RequestPriceForecast, "wellmixPrice" | "wellmixWithFreight"> {
+  const a = (answer ?? {}) as { productPrice?: unknown; withFreight?: unknown };
+  const n = (v: unknown) =>
+    typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null;
+  return {
+    wellmixPrice: n(a.productPrice),
+    wellmixWithFreight: n(a.withFreight),
+  };
+}
+
 export function forecastPieces(
   request: Pick<Request, "quantity" | "unit" | "schedule">,
 ): number | null {
@@ -191,6 +207,8 @@ export async function recordPriceForecasts(
             ? (answer.status ?? null)
             : null,
         at: now.toISOString(),
+        // Os dois preços Wellmix da mesma resposta, para a tabela de itens.
+        ...wellmixPrices(answer),
       };
       await store.update("requests", r.id, { priceForecast: forecast });
       saved++;

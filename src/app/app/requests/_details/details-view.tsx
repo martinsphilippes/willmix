@@ -1,3 +1,5 @@
+import { ClampText } from "@/components/clamp-text";
+import { itemPrices } from "@/lib/order-table";
 import type { ReactNode } from "react";
 import type { Translate } from "@/i18n";
 import type { RequestPriceForecast } from "@/lib/order-terms";
@@ -12,7 +14,6 @@ import {
   Td,
   TextLink,
   Th,
-  formatDate,
   rowClass,
 } from "@/components/ui";
 import { PhotoGallery } from "@/components/photo-gallery";
@@ -56,9 +57,15 @@ export interface DetailsProduct {
   forecast: RequestPriceForecast | null;
   /** Programações (entregas) do produto; 1 sem programação. */
   rounds: number;
+  /** Situação: o momento do passo em que o produto está. */
   status: ReactNode;
+  /** Status: o que ele está esperando (de quem é a vez); nulo: "—". */
+  turn?: ReactNode;
+  /** Prazo de resposta (SLA) da ação esperada. */
   deadline: ReactNode;
   order: ReactNode;
+  /** Descrição do produto (a especificação pedida), quando há. */
+  description?: string | null;
   /** Ações depois do "Abrir" (conversa, excluir, enviado em…). */
   actions?: ReactNode;
   /** Dica do preço quando não há previsão gravada. */
@@ -174,7 +181,6 @@ export function DetailsTotals({
 export function DetailsProductsTable({
   t,
   items,
-  wellmix,
   seeSale,
 }: {
   t: Translate;
@@ -186,44 +192,83 @@ export function DetailsProductsTable({
     <Table>
       <thead>
         <tr>
-          <Th className="w-14">{t("reqBatch.col.photo")}</Th>
-          <Th>{t("common.product")}</Th>
-          <Th className="text-right">{t("reqBatch.col.perBox")}</Th>
-          <Th className="text-right">{t("reqBatch.col.pieces")}</Th>
-          <Th className="text-right">{t("reqBatch.col.boxes")}</Th>
-          <Th className="text-right">{t("reqBatch.col.inner")}</Th>
-          <Th className="text-right">{unitLabel(t("reqBatch.col.cbm"))}</Th>
-          {wellmix ? (
-            <Th className="text-right">{t("reqBatch.col.moq")}</Th>
-          ) : null}
+          {/* Tabela padrão de itens do pedido (dono, 22/11/2026;
+              docs/ORDER_TABLES.md), na ordem de ORDER_ITEM_COLUMNS. MOQ,
+              Programações e Pedido saíram daqui (seguem na ficha completa
+              do produto e no CSV). */}
+          <Th className="w-px text-right">{t("orderItems.head.sequence")}</Th>
+          <Th className="w-14">{t("orderItems.head.photo")}</Th>
+          <Th>{t("orderItems.head.step")}</Th>
+          <Th>{t("orderItems.head.status")}</Th>
+          <Th>{t("orderItems.head.sla")}</Th>
+          <Th>{t("orderItems.head.code")}</Th>
+          <Th>{t("orderItems.head.description")}</Th>
           {seeSale ? (
-            <Th className="text-right">{t("reqBatch.col.price")}</Th>
+            <>
+              <Th className="text-right">{t("orderItems.head.priceNoIpi")}</Th>
+              <Th className="text-right">{t("orderItems.head.priceIpi")}</Th>
+              <Th className="text-right">
+                {t("orderItems.head.priceIpiFreight")}
+              </Th>
+            </>
           ) : null}
-          <Th className="text-right">{t("reqBatch.col.rounds")}</Th>
-          <Th>{t("common.status")}</Th>
-          <Th>{t("requests.deadline")}</Th>
-          <Th>{t("requests.order")}</Th>
+          <Th className="text-right">{t("orderItems.head.perBox")}</Th>
+          <Th className="text-right">{t("orderItems.head.perInner")}</Th>
+          <Th className="text-right">{t("orderItems.head.boxes")}</Th>
+          <Th className="text-right">{t("orderItems.head.pieces")}</Th>
+          <Th className="text-right">{unitLabel(t("orderItems.head.cbm"))}</Th>
           <Th />
         </tr>
       </thead>
       <tbody>
-        {items.map((item) => {
+        {items.map((item, index) => {
           // Peças por caixa, caixas (por programação), inner e CBM: a
           // embalagem do produto (a mesma regra da lista e da ficha).
           const pk = item.packing;
           const line = item.line;
-          const forecast = item.forecast;
+          const prices = itemPrices(item.forecast);
+          const price = (value: number | null, mark: string) => (
+            <Td
+              className="whitespace-nowrap text-right tabular-nums"
+              data-batch-price={mark}
+            >
+              <span
+                title={
+                  value === null
+                    ? mark === "noIpi"
+                      ? t("orderItems.noIpiHint")
+                      : (item.noPriceHint ?? t("reqList.total.price.none"))
+                    : undefined
+                }
+              >
+                {value === null ? "—" : moneyValue(t, value, "BRL")}
+              </span>
+            </Td>
+          );
           return (
             <tr
               key={item.key}
               className={rowClass}
               data-batch-item={item.itemId}
             >
+              <Td className="w-px text-right tabular-nums" data-batch-seq>
+                {index + 1}
+              </Td>
               <Td className="w-14">
                 <PhotoGallery
                   name={item.name}
                   {...galleryProps(t, item.photos)}
                 />
+              </Td>
+              <Td className="whitespace-nowrap">{item.status}</Td>
+              <Td className="whitespace-nowrap" data-batch-turn>
+                {item.turn ?? "—"}
+              </Td>
+              <Td className="whitespace-nowrap tabular-nums">
+                {item.deadline}
+              </Td>
+              <Td className="whitespace-nowrap font-mono text-xs">
+                {item.sku ?? "—"}
               </Td>
               <Td className="min-w-40 font-medium text-zinc-900">
                 <TextLink
@@ -233,17 +278,32 @@ export function DetailsProductsTable({
                 >
                   {item.name}
                 </TextLink>
-                {item.sku ? (
-                  <span className="block font-mono text-xs font-normal text-zinc-500">
-                    {item.sku}
-                  </span>
-                ) : null}
                 {item.variantName ? (
                   <span className="block text-xs font-normal text-zinc-500">
                     {item.variantName}
                   </span>
                 ) : null}
+                {item.description ? (
+                  // Uma linha, com "mais": a especificação longa não estica
+                  // a tabela.
+                  <span className="block text-xs font-normal text-zinc-500">
+                    <ClampText
+                      lines={1}
+                      text={item.description}
+                      more={t("reqList.more")}
+                      less={t("reqList.less")}
+                      className="max-w-[22rem]"
+                    />
+                  </span>
+                ) : null}
               </Td>
+              {seeSale ? (
+                <>
+                  {price(prices.noIpi, "noIpi")}
+                  {price(prices.ipi, "ipi")}
+                  {price(prices.ipiFreight, "ipiFreight")}
+                </>
+              ) : null}
               <Td
                 className="whitespace-nowrap text-right tabular-nums"
                 data-batch-per-box
@@ -252,15 +312,9 @@ export function DetailsProductsTable({
               </Td>
               <Td
                 className="whitespace-nowrap text-right tabular-nums"
-                data-batch-pieces
+                data-batch-per-inner
               >
-                {/* Peças de todas as programações; em outra unidade (kg,
-                    m), a quantidade como foi pedida; sem quantidade, "—". */}
-                {line.pieces !== null
-                  ? num(t, line.pieces, 2)
-                  : item.quantity !== null
-                    ? `${num(t, item.quantity, 2)} ${item.unit}`
-                    : "—"}
+                {pk?.inner ? num(t, pk.inner.value) : "—"}
               </Td>
               <Td
                 className="whitespace-nowrap text-right tabular-nums"
@@ -286,9 +340,15 @@ export function DetailsProductsTable({
               </Td>
               <Td
                 className="whitespace-nowrap text-right tabular-nums"
-                data-batch-inner
+                data-batch-pieces
               >
-                {line.innerBoxes !== null ? num(t, line.innerBoxes) : "—"}
+                {/* Peças de todas as programações; em outra unidade (kg,
+                    m), a quantidade como foi pedida; sem quantidade, "—". */}
+                {line.pieces !== null
+                  ? num(t, line.pieces, 2)
+                  : item.quantity !== null
+                    ? `${num(t, item.quantity, 2)} ${item.unit}`
+                    : "—"}
               </Td>
               <Td
                 className="whitespace-nowrap text-right tabular-nums"
@@ -318,48 +378,6 @@ export function DetailsProductsTable({
                     : "—"}
                 </span>
               </Td>
-              {wellmix ? (
-                <Td
-                  className="whitespace-nowrap text-right tabular-nums"
-                  data-batch-moq
-                >
-                  {line.moq !== null ? num(t, line.moq) : "—"}
-                </Td>
-              ) : null}
-              {seeSale ? (
-                <Td
-                  className="whitespace-nowrap text-right tabular-nums"
-                  data-batch-price
-                >
-                  <span
-                    title={
-                      forecast
-                        ? t("reqBatch.price.hint", {
-                            price: moneyValue(
-                              t,
-                              forecast.unitPrice,
-                              forecast.currency,
-                            ),
-                            pieces: num(t, forecast.pieces),
-                            date: formatDate(forecast.at, t),
-                          })
-                        : (item.noPriceHint ?? t("reqList.total.price.none"))
-                    }
-                  >
-                    {forecast
-                      ? moneyValue(t, forecast.total, forecast.currency)
-                      : "—"}
-                  </span>
-                </Td>
-              ) : null}
-              <Td className="whitespace-nowrap text-right tabular-nums">
-                {item.rounds}
-              </Td>
-              <Td className="whitespace-nowrap">{item.status}</Td>
-              <Td className="whitespace-nowrap tabular-nums">
-                {item.deadline}
-              </Td>
-              <Td className="whitespace-nowrap">{item.order}</Td>
               <Td className="text-right">
                 <div className="flex items-center justify-end gap-1">
                   <OpenLink href={item.href} label={item.openLabel} />
