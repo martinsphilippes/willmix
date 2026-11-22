@@ -6,6 +6,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { cx } from "@/components/ui";
 import { postSupplierRequestMessageStateAction } from "../../actions/supplier-requests";
 import { ChatBubbleIcon, ClipIcon, SendIcon } from "./icons";
+import { attachPastedImage } from "@/lib/paste-image";
 
 /*
  * Conversa da solicitação ao fornecedor dentro da seção "Negociação e
@@ -229,6 +230,7 @@ function MessageForm({
   };
 }) {
   const [fileName, setFileName] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
   return (
     <ActionForm
       action={postSupplierRequestMessageStateAction}
@@ -276,6 +278,7 @@ function MessageForm({
             name="file"
             accept={ACCEPT}
             className="sr-only"
+            ref={fileInput}
             onChange={(e) =>
               setFileName(e.currentTarget.files?.[0]?.name ?? "")
             }
@@ -294,6 +297,12 @@ function MessageForm({
               e.preventDefault();
               e.currentTarget.form?.requestSubmit();
             }
+          }}
+          // Imagem colada (copiada do card "Imagens" da tela do item, dono,
+          // 22/11/2026): vira o anexo da mensagem.
+          onPaste={(e) => {
+            const name = attachPastedImage(e, fileInput.current);
+            if (name) setFileName(name);
           }}
           data-negotiation-message-text
         />

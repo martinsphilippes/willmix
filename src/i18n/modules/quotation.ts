@@ -110,13 +110,20 @@ export const pt = {
     "A amostra ainda não foi enviada para a validação.",
   "quote.error.sampling_reason_required": "Para reprovar, escreva o motivo.",
   "quote.error.sampling_supplier_only": "Só o fornecedor envia a amostra.",
-  "sampling.strip.title": "Amostra do fornecedor",
-  "sampling.strip.reference": "Referência da Wellmix",
-  "sampling.strip.from.product": "(fotos do cadastro do produto)",
-  "sampling.strip.from.book": "(foto do item do book)",
   "quoteSampling.yourSample": "Sua amostra",
   "quoteSampling.reference":
     "Referência da Wellmix: fotos do nosso cadastro, para você fazer a amostra.",
+  "itemImages.title": "Imagens",
+  "itemImages.hint":
+    "Clique para abrir. O botão no canto copia a imagem para colar no chat.",
+  "itemImages.reference": "Referência da Wellmix",
+  "itemImages.from.product": " (fotos do cadastro do produto)",
+  "itemImages.from.book": " (foto do item do book)",
+  "itemImages.noReference": "Sem foto de referência.",
+  "itemImages.sampleOf": "Amostra de {name}",
+  "itemImages.noSample": "Ainda não enviou a amostra.",
+  "itemImages.copy": "Copiar a imagem para colar no chat",
+  "itemImages.copied": "Imagem copiada",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -221,13 +228,20 @@ export const en: Record<keyof typeof pt, string> = {
     "The sample has not been sent for validation yet.",
   "quote.error.sampling_reason_required": "Write the reason to reject.",
   "quote.error.sampling_supplier_only": "Only the supplier sends the sample.",
-  "sampling.strip.title": "Supplier sample",
-  "sampling.strip.reference": "Wellmix reference",
-  "sampling.strip.from.product": "(photos from the product record)",
-  "sampling.strip.from.book": "(photo of the book item)",
   "quoteSampling.yourSample": "Your sample",
   "quoteSampling.reference":
     "Wellmix reference: photos from our records, for you to make the sample.",
+  "itemImages.title": "Images",
+  "itemImages.hint":
+    "Click to open. The corner button copies the image so you can paste it in the chat.",
+  "itemImages.reference": "Wellmix reference",
+  "itemImages.from.product": " (photos from the product record)",
+  "itemImages.from.book": " (photo of the book item)",
+  "itemImages.noReference": "No reference photo.",
+  "itemImages.sampleOf": "Sample from {name}",
+  "itemImages.noSample": "No sample sent yet.",
+  "itemImages.copy": "Copy the image to paste in the chat",
+  "itemImages.copied": "Image copied",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -326,10 +340,16 @@ export const zh: Record<keyof typeof pt, string> = {
   "quote.error.sampling_not_submitted": "样品尚未提交验证。",
   "quote.error.sampling_reason_required": "驳回请填写原因。",
   "quote.error.sampling_supplier_only": "只有供应商可以发送样品。",
-  "sampling.strip.title": "供应商样品",
-  "sampling.strip.reference": "Wellmix 参考",
-  "sampling.strip.from.product": "（产品资料中的照片）",
-  "sampling.strip.from.book": "（Book 条目的照片）",
   "quoteSampling.yourSample": "您的样品",
   "quoteSampling.reference": "Wellmix 参考：我们资料中的照片，供您制作样品。",
+  "itemImages.title": "图片",
+  "itemImages.hint": "点击可打开。角上的按钮可复制图片，粘贴到聊天中。",
+  "itemImages.reference": "Wellmix 参考",
+  "itemImages.from.product": "（产品资料中的照片）",
+  "itemImages.from.book": "（Book 条目的照片）",
+  "itemImages.noReference": "没有参考照片。",
+  "itemImages.sampleOf": "{name} 的样品",
+  "itemImages.noSample": "尚未发送样品。",
+  "itemImages.copy": "复制图片以粘贴到聊天",
+  "itemImages.copied": "图片已复制",
 };

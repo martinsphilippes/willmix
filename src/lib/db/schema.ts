@@ -3893,6 +3893,10 @@ export interface QuoteNegotiationEvent {
   leadTimeDays?: number | null;
   port?: string | null;
   text?: string | null;
+  /** Mensagem: o anexo (foto, PDF ou Excel), também a imagem colada. */
+  documentId?: string | null;
+  fileName?: string | null;
+  mime?: string | null;
 }
 
 /** Fornecedor × linha de produto (quem atende cada linha; docs/PURCHASE_DEMAND.md). */

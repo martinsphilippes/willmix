@@ -416,6 +416,9 @@ export async function canAccessDocument(
       // Foto do item de um booking numa solicitação a ele (docs/SUPPLIER_REQUESTS.md).
       const { supplierSeesRequestPhoto } = await import("./supplier-requests");
       if (await supplierSeesRequestPhoto(user, doc.id)) return true;
+      // Anexo da conversa da cotação de compra dele.
+      const { supplierSeesQuoteFile } = await import("./quote-negotiation");
+      if (await supplierSeesQuoteFile(user.partyId, doc.id)) return true;
       // Cotação de compra (dono, 22/11/2026; docs/SUPPLIER_SAMPLING.md): o
       // convidado vê as fotos do cadastro dos produtos que cota, para fazer
       // a amostra.

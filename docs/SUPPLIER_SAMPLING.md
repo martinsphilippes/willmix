@@ -72,13 +72,19 @@ Regras confirmadas pelo dono:
 - **Na aprovação** (`samplingOnApproval`): a amostra já enviada ou aprovada segue como está; a pendente recomeça o prazo, mantendo os arquivos que ele já subiu.
 - A aprovação da solicitação **não** passou a exigir a amostra aprovada: aprovar e depois validar a amostra continua funcionando, com a trava do produto e do pedido de compra. A regra "só vence com a amostra aprovada" vale na escolha da vencedora da cotação de compra, que é onde há uma vencedora entre vários.
 
-### A amostra faz parte da conversa (dono, 22/11/2026)
+### Imagens na tela do item (dono, 22/11/2026)
 
-A amostra pode ser aprovada depois, mas precisa poder ser enviada antes, para os dois lados conversarem sobre o que estão vendo. Por isso:
+A amostra pode ser aprovada depois, mas precisa poder ser enviada antes, para os dois lados negociarem vendo o que está em discussão. As imagens **não ficam dentro do chat** (tirariam o espaço de digitar): ficam na tela do item da cotação, na coluna da direita, sempre à vista (card **Imagens**, `_components/item-images.tsx`), em grupos com nome:
 
-- o fornecedor sobe e envia a amostra desde o começo (regras acima), sem depender de nenhuma decisão;
-- no modal da **conversa** de cada fornecedor, no quadro comparativo, as fotos e os vídeos da rodada atual aparecem acima das mensagens (`SampleStrip`), com a situação da amostra, mesmo antes de aprovada;
-- na cotação do fornecedor, a conversa com a Wellmix abre assim que ele sobe o primeiro arquivo da amostra.
+| Grupo                       | O que é                                                                                                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Referência da Wellmix**   | O que a Wellmix mandou ao fornecedor: as fotos do cadastro do produto ou a foto do item do book.                                                              |
+| **Amostra de <fornecedor>** | As fotos e os vídeos que cada fornecedor já subiu na rodada atual, com a situação, mesmo antes de aprovada. O conhecido do produto aparece como "Dispensada". |
+
+- Cada foto abre grande num clique e tem o botão de **copiar** (`CopyImageButton`): a imagem vai para a área de transferência e pode ser **colada no chat**, para citar um ponto.
+- A imagem colada no campo de mensagem vira o **anexo** da mensagem (`attachPastedImage`), nas duas conversas: a da solicitação ao fornecedor (que já aceitava anexo) e a da cotação de compra (que passou a aceitar foto, PDF e Excel; o fornecedor da resposta abre o anexo, `supplierSeesQuoteFile`).
+- Aprovar e reprovar a amostra continua no selo da coluna "Amostra" do quadro comparativo.
+- Para o fornecedor, as imagens estão na cotação dele, no card "Fotos do produto e amostragem": a referência da Wellmix e, em "Sua amostra", o que ele enviou.
 
 ### Onde está
 

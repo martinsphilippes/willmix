@@ -275,18 +275,36 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   await page.locator("dialog[open] [data-sampling-review=approve]").click();
   await page.waitForURL(/[?&]sampling=approved/);
   await expect(page.locator('[data-quote-sample="approved"]')).toHaveCount(1);
-  // A amostra faz parte da conversa: no modal da conversa do B, a foto que
-  // ele enviou aparece acima das mensagens.
+  // Imagens sempre à vista na tela do item (fora do chat): a referência da
+  // Wellmix e a amostra de cada fornecedor, com o botão de copiar para
+  // colar no chat.
+  const images = page.locator("[data-item-images]");
+  await expect(
+    images.locator('[data-item-images-group="reference"]'),
+  ).toBeVisible();
+  await expect(
+    images.locator('[data-item-image="photo"] [data-copy-image]'),
+  ).not.toHaveCount(0);
+  // O chat fica só com as mensagens; a imagem entra como anexo.
   await page
     .locator("[data-quotation-row]", {
       has: page.locator('[data-quote-sample="approved"]'),
     })
     .locator("[data-quotation-chat]")
     .click();
+  const sampleChat = page.locator("dialog[open] [data-quote-chat]");
+  await expect(sampleChat.locator("[data-item-image]")).toHaveCount(0);
+  await sampleChat.locator("[data-quote-chat-file]").setInputFiles({
+    name: "detalhe.png",
+    mimeType: "image/png",
+    buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+  });
+  await sampleChat.locator("[data-quote-chat-text]").fill("Veja a tampa.");
+  await sampleChat.locator("[data-quote-chat-submit]").click();
+  await page.waitForURL(/[?&]chat=response/);
   await expect(
-    page.locator("dialog[open] [data-sample-strip] [data-sample-strip-file]"),
-  ).toHaveCount(1);
-  await page.keyboard.press("Escape");
+    page.locator("[data-quote-chat-attachment]").first(),
+  ).toBeAttached();
 
   // Isolamento: A abre a dele, sem o preço do B, sem o nome do B nem o cliente.
   await login(page, "supplier.a@china.com");

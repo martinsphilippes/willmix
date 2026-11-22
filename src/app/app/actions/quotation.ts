@@ -131,6 +131,10 @@ export async function postQuoteMessageStateAction(
       responseId: responseId ? ID.parse(responseId) : null,
       productId: product ? ID.parse(product) : null,
       text: z.string().max(4000).parse(str(form, "text")),
+      file: (() => {
+        const raw = form.get("file");
+        return raw instanceof File && raw.size > 0 ? raw : null;
+      })(),
     });
     return isWellmix(user)
       ? withQuery(back, "chat", `response:${updated.id}`) + "#conversa"

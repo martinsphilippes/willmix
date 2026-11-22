@@ -108,7 +108,8 @@ import {
 } from "@/lib/quote-negotiation";
 import { lastPurchases } from "@/lib/services/purchase-strategy";
 import { QuotationQuotePage } from "../_components/quote-pages";
-import { SampleStrip, SamplingCard } from "../_components/sampling";
+import { SamplingCard } from "../_components/sampling";
+import { ItemImagesCard } from "../_components/item-images";
 import { samplingSlaDays } from "@/lib/services/supplier-request-sampling";
 import { samplingApproved, samplingFor } from "@/lib/supplier-request-sampling";
 import {
@@ -1139,13 +1140,6 @@ export default async function SupplierRequestPage({
         href: o.id === r.id ? null : `/app/supplier-requests/${o.id}?view=item`,
         chat: (
           <>
-            {/* A amostra faz parte da conversa (dono, 22/11/2026). */}
-            <SampleStrip
-              sampling={samplingFor(o)}
-              reference={o.item.photoDocumentId ? [o.item.photoDocumentId] : []}
-              referenceFrom={o.bookingLotId ? "book" : "product"}
-              t={t}
-            />
             <RequestChat
               user={user}
               request={o}
@@ -1464,6 +1458,26 @@ export default async function SupplierRequestPage({
             className="grid min-w-0 gap-4 md:grid-cols-2 md:items-start xl:sticky xl:top-[calc(var(--wm-header)+1rem)] xl:max-h-[calc(100vh-var(--wm-header)-2rem)] xl:grid-cols-1 xl:overflow-y-auto xl:px-1 xl:pb-1"
             data-negotiation-aside
           >
+            {/* Imagens sempre à vista enquanto se negocia: a referência da
+                Wellmix e a amostra de cada fornecedor (dono, 22/11/2026). */}
+            <ItemImagesCard
+              reference={it.photoDocumentId ? [it.photoDocumentId] : []}
+              referenceFrom={r.bookingLotId ? "book" : "product"}
+              samples={[
+                { request: r, supplier },
+                ...linked.map((l) => ({
+                  request: l.request,
+                  supplier: l.supplier,
+                })),
+              ].map(({ request: o, supplier: s }) => ({
+                key: `request:${o.id}`,
+                supplierName:
+                  s?.name ?? t("supplierRequests.negotiation.side.supplier"),
+                sampling: samplingFor(o),
+                skipped: !!o.sampling?.skipped,
+              }))}
+              t={t}
+            />
             {bookCard}
             <div id="conversa" className="min-w-0 scroll-mt-20">
               <BoardCounterForm

@@ -39,7 +39,8 @@ import {
 } from "./quotation-board";
 import { QuoteChat } from "./board-chat";
 import { InfoCell, InfoGrid } from "./negotiation-sections";
-import { SampleStrip, SamplingPanel } from "./sampling";
+import { SamplingPanel } from "./sampling";
+import { ItemImagesCard } from "./item-images";
 import { SAMPLING_TONE } from "./status";
 import { QuickDialog } from "@/components/quick-dialog";
 import { quoteSamplingOf } from "@/lib/quote-sampling";
@@ -188,17 +189,6 @@ export async function QuotationQuotePage({
       pending: pendingQuoteProposals(r).some((e) => e.productId === productId),
       chat: (
         <>
-          {/* A amostra faz parte da conversa: os dois falam do que veem. */}
-          <SampleStrip
-            sampling={quoteSamplingOf(
-              r,
-              productId,
-              knownSuppliers.has(r.supplierId),
-            )}
-            reference={referencePhotos}
-            referenceFrom="product"
-            t={t}
-          />
           <QuoteChat
             quoteId={quote.id}
             responseId={r.id}
@@ -404,7 +394,25 @@ export async function QuotationQuotePage({
             t={t}
           />
         </div>
-        <aside className="min-w-0 xl:sticky xl:top-[calc(var(--wm-header)+1rem)]">
+        <aside className="min-w-0 space-y-4 xl:sticky xl:top-[calc(var(--wm-header)+1rem)] xl:max-h-[calc(100vh-var(--wm-header)-2rem)] xl:overflow-y-auto xl:px-1 xl:pb-1">
+          <ItemImagesCard
+            reference={referencePhotos}
+            referenceFrom="product"
+            samples={responses
+              .filter((r) => r.status !== "declined")
+              .map((r) => {
+                const known = knownSuppliers.has(r.supplierId);
+                return {
+                  key: `response:${r.id}`,
+                  supplierName:
+                    suppliers.find((p) => p.id === r.supplierId)?.name ??
+                    r.supplierId,
+                  sampling: quoteSamplingOf(r, productId, known),
+                  skipped: known,
+                };
+              })}
+            t={t}
+          />
           <BoardCounterForm
             kind="quote"
             boardId={quote.id}
