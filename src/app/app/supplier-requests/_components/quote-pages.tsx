@@ -151,6 +151,11 @@ export async function QuotationQuotePage({
   const chatOpen = typeof query.chat === "string" ? query.chat : "";
   const name = productNameText(t, item.name);
 
+  // Referência da Wellmix: as fotos do cadastro do produto (as mesmas que o
+  // fornecedor vê na cotação dele).
+  const referencePhotos = (product ? productPhotoList(product, photos) : [])
+    .slice(0, 6)
+    .map((x) => x.documentId);
   const rows: BoardRow[] = responses.map((r) => {
     const state = responseState(r, now);
     const supplierName =
@@ -190,6 +195,8 @@ export async function QuotationQuotePage({
               productId,
               knownSuppliers.has(r.supplierId),
             )}
+            reference={referencePhotos}
+            referenceFrom="product"
             t={t}
           />
           <QuoteChat

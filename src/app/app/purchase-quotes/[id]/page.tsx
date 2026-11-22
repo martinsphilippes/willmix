@@ -339,19 +339,19 @@ export default async function PurchaseQuotePage({
                             {name}
                           </span>
                           <span className="block text-xs text-zinc-500">
-                            {t("quoteSampling.photosHint")}
+                            {t("quoteSampling.reference")}
                           </span>
                         </span>
                       </div>
                       {sampling && samplingOpen ? (
                         <SamplingPanel
+                          title={t("quoteSampling.yourSample")}
                           sampling={sampling}
                           wellmix={false}
                           canValidate={false}
                           slaDays={null}
                           early
                           anchor={null}
-                          title={quote.items.length > 1 ? name : undefined}
                           actions={{
                             add: addQuoteSamplingFileAction,
                             remove: removeQuoteSamplingFileAction,

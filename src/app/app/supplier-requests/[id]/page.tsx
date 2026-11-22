@@ -1140,7 +1140,12 @@ export default async function SupplierRequestPage({
         chat: (
           <>
             {/* A amostra faz parte da conversa (dono, 22/11/2026). */}
-            <SampleStrip sampling={samplingFor(o)} t={t} />
+            <SampleStrip
+              sampling={samplingFor(o)}
+              reference={o.item.photoDocumentId ? [o.item.photoDocumentId] : []}
+              referenceFrom={o.bookingLotId ? "book" : "product"}
+              t={t}
+            />
             <RequestChat
               user={user}
               request={o}

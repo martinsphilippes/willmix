@@ -110,7 +110,13 @@ export const pt = {
     "A amostra ainda não foi enviada para a validação.",
   "quote.error.sampling_reason_required": "Para reprovar, escreva o motivo.",
   "quote.error.sampling_supplier_only": "Só o fornecedor envia a amostra.",
-  "sampling.strip.title": "Amostra enviada pelo fornecedor",
+  "sampling.strip.title": "Amostra do fornecedor",
+  "sampling.strip.reference": "Referência da Wellmix",
+  "sampling.strip.from.product": "(fotos do cadastro do produto)",
+  "sampling.strip.from.book": "(foto do item do book)",
+  "quoteSampling.yourSample": "Sua amostra",
+  "quoteSampling.reference":
+    "Referência da Wellmix: fotos do nosso cadastro, para você fazer a amostra.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -215,7 +221,13 @@ export const en: Record<keyof typeof pt, string> = {
     "The sample has not been sent for validation yet.",
   "quote.error.sampling_reason_required": "Write the reason to reject.",
   "quote.error.sampling_supplier_only": "Only the supplier sends the sample.",
-  "sampling.strip.title": "Sample sent by the supplier",
+  "sampling.strip.title": "Supplier sample",
+  "sampling.strip.reference": "Wellmix reference",
+  "sampling.strip.from.product": "(photos from the product record)",
+  "sampling.strip.from.book": "(photo of the book item)",
+  "quoteSampling.yourSample": "Your sample",
+  "quoteSampling.reference":
+    "Wellmix reference: photos from our records, for you to make the sample.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -314,5 +326,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "quote.error.sampling_not_submitted": "样品尚未提交验证。",
   "quote.error.sampling_reason_required": "驳回请填写原因。",
   "quote.error.sampling_supplier_only": "只有供应商可以发送样品。",
-  "sampling.strip.title": "供应商发送的样品",
+  "sampling.strip.title": "供应商样品",
+  "sampling.strip.reference": "Wellmix 参考",
+  "sampling.strip.from.product": "（产品资料中的照片）",
+  "sampling.strip.from.book": "（Book 条目的照片）",
+  "quoteSampling.yourSample": "您的样品",
+  "quoteSampling.reference": "Wellmix 参考：我们资料中的照片，供您制作样品。",
 };
