@@ -128,28 +128,16 @@ async function chooseFor(
   const line = page.locator(`[data-strategy-line="${demandId}"]`);
   await expect(line).toBeVisible();
   await line.locator(`[data-strategy-choice="${choice}"]`).check();
-  await page.locator("[data-strategy-review]").click();
   await expect(
     page.locator(`[data-strategy-summary-line="${demandId}"]`),
   ).toBeVisible();
-  await page.locator("[data-strategy-confirm]").click();
+  await page.locator(`[data-strategy-confirm="${demandId}"]`).click();
   await page.waitForURL(/\/app\/purchase-strategy\/sends\/[^/?]+\?done=1/);
   const marker =
     choice === "last_supplier"
       ? "data-strategy-send-decision"
       : "data-strategy-send-quote";
   return (await page.locator(`[${marker}]`).first().getAttribute(marker))!;
-}
-
-/** Encomendas → marca a encomenda → "Enviar para cotação". */
-async function sendToQuotation(page: Page, demandId: string) {
-  await page.goto("/app/requests");
-  await page
-    .locator(`input[type="checkbox"][name="ids"][value="${demandId}"]`)
-    .check();
-  page.once("dialog", (dialog) => dialog.accept());
-  await page.locator('[data-bulk-lead="strategy"] button').click();
-  await page.waitForURL(/[?&]strategySent=1/);
 }
 
 async function approve(page: Page, decisionId: string) {
@@ -264,18 +252,20 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   // O cliente não vê fornecedor nem custo na encomenda.
   await expect(page.locator("main")).not.toContainText("Shenzhen");
   await login(page, "operador@wellmix.com");
-  // Ainda encomenda: está na lista de Encomendas, esperando o envio.
-  // (a linha abre a página do pedido; docs/ORDER_LEVEL_LISTS.md)
+  // Está na lista de Encomendas (a linha abre a página do pedido;
+  // docs/ORDER_LEVEL_LISTS.md) e já na Estratégia de Compra, sem o "Enviar
+  // para cotação" (dono, 22/11/2026).
   await page.goto("/app/requests");
   await expect(
     page.locator(`a[href="/app/requests/batch/${encomenda}"]`).first(),
   ).toBeVisible();
-  // Só entra na Estratégia de Compra depois de "Enviar para cotação".
+  await expect(page.locator('[data-bulk-lead="strategy"]')).toHaveCount(0);
   await page.goto("/app/purchase-strategy");
-  await expect(page.locator(`[data-strategy-line="${encomenda}"]`)).toHaveCount(
-    0,
-  );
-  await sendToQuotation(page, encomenda);
+  // Sem escolha, o lembrete fica abaixo do card; não há barra geral.
+  await expect(
+    page.locator(`[data-strategy-choose-hint="${encomenda}"]`),
+  ).toBeVisible();
+  await expect(page.locator("[data-strategy-review]")).toHaveCount(0);
   const decisionC = await chooseFor(page, encomenda, "last_supplier");
   await approve(page, decisionC);
   await login(page, "operador@wellmix.com");
@@ -338,7 +328,6 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   await createdRequestId(page);
   const cancelled = new URL(page.url()).pathname.split("/").pop()!;
   await login(page, "operador@wellmix.com");
-  await sendToQuotation(page, cancelled);
   const decisionE = await chooseFor(page, cancelled, "last_supplier");
   await approve(page, decisionE);
   await login(page, "operador@wellmix.com");
