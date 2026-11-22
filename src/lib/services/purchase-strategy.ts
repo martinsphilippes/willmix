@@ -1030,6 +1030,11 @@ export async function enterStrategy(
   user: User,
   request: Request,
 ): Promise<Request> {
+  // Encomenda que vira cotação na hora (dono, 22/11/2026): quem grava a
+  // entrada é a cotação automática (`quoteNewDemands`, "Virou cotação
+  // sozinha"); aqui fica só a de produto fora do catálogo.
+  if (request.productId && (await getSettings()).autoQuoteOrders)
+    return request;
   if (
     request.strategySentAt ||
     // A confirmada pelo cliente segue pela cotação automática
