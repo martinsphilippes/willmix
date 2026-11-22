@@ -497,4 +497,65 @@ test("TS: pedido para um grupo econômico, com a distribuição padrão e as qua
     page.locator('[data-request-company="cliente-grupo-loja2"]'),
   ).toContainText("1.872");
   await expect(page.locator("[data-request-company]")).toHaveCount(3);
+
+  // Caixas master, cubagem e containers de cada programação, logo abaixo da
+  // linha do produto (dono, 22/11/2026): 60 e 40 caixas da boneca (0,1202 m³
+  // cada) e um container 40HC em cada programação.
+  const companies = page.locator("[data-request-companies]");
+  const line = (key: string) =>
+    companies.locator(`[data-request-companies-packing="${key}"]`);
+  await expect(
+    line("boxes").locator("[data-request-companies-round]"),
+  ).toHaveText(["60", "40"]);
+  await expect(
+    line("boxes").locator("[data-request-companies-total]"),
+  ).toHaveText("100");
+  await expect(
+    line("cbm").locator("[data-request-companies-round]"),
+  ).toHaveText(["7,212", "4,808"]);
+  await expect(
+    line("cbm").locator("[data-request-companies-total]"),
+  ).toHaveText("12,02");
+  await expect(line("containers")).toContainText("Containers (40HC)");
+  await expect(
+    line("containers").locator("[data-request-companies-round]"),
+  ).toHaveText(["1", "1"]);
+  await expect(
+    line("containers").locator("[data-request-companies-total]"),
+  ).toHaveText("2");
+  // Na Programação de compra, as mesmas caixas, cubagem e containers em
+  // cada programação, com o total (dono, 22/11/2026).
+  const schedule = page.locator("[data-request-schedule-table]");
+  const scheduleCell = (key: string) =>
+    schedule.locator(`[data-request-schedule-packing="${key}"]`);
+  await expect(
+    schedule.locator('[data-request-schedule-col="containers"]'),
+  ).toHaveText("Containers (40HC)");
+  for (const [key, text] of [
+    ["boxes:1", "60"],
+    ["boxes:2", "40"],
+    ["boxes:total", "100"],
+    ["cbm:1", "7,212"],
+    ["cbm:2", "4,808"],
+    ["cbm:total", "12,02"],
+    ["containers:1", "1"],
+    ["containers:2", "1"],
+    ["containers:total", "2"],
+  ] as const)
+    await expect(scheduleCell(key)).toHaveText(text);
+  // A tabela vem antes da Programação de compra (logo abaixo do produto).
+  expect(
+    await page.evaluate(() => {
+      const table = document.querySelector("[data-request-companies]");
+      const schedule = document.querySelector("[data-request-schedule-table]");
+      return (
+        !!table &&
+        !!schedule &&
+        !!(
+          table.compareDocumentPosition(schedule) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+        )
+      );
+    }),
+  ).toBe(true);
 });

@@ -87,6 +87,8 @@ O carregador (`loadRequestSheet`) só lê o que o perfil pode ver, e o montador 
 
 Desde 15/11/2026 (docs/LINHA_DE_VISAO.md, seção 7), a compra com o fornecedor, o custo registrado e as condições do fornecedor seguem "Ver preço de compra" (`canSeePurchasePrice`); a análise do Superplan e a venda continuam só com "Ver valores e margem"; o cliente vê a venda dele.
 
+Exceção desde 22/11/2026 (decisão do dono; docs/ECONOMIC_GROUPS.md, "Caixas, cubagem e containers por programação"): o login do cliente vê as caixas master, a cubagem e os containers de cada programação da solicitação dele, na Programação de compra e na tabela das empresas do grupo. A ficha continua sem a embalagem para ele (códigos, caixa, medidas, cubagem e ficha atual).
+
 ## 5. O que já é preenchido automaticamente
 
 Sem ninguém digitar nada, a ficha já traz:
