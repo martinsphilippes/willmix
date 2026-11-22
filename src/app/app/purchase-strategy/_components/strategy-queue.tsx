@@ -297,6 +297,7 @@ export function StrategyQueue({
     };
   });
   const hasProblem = summary.some((x) => x.problem);
+  type SummaryLine = (typeof summary)[number];
 
   const confirm = () => {
     const data = new FormData();
@@ -697,6 +698,59 @@ export function StrategyQueue({
     </div>
   );
 
+  /** Resumo do envio de uma solicitação: fica abaixo do card dela. */
+  const summaryBlock = ({ line, choice, ok, out, problem }: SummaryLine) => (
+    <div
+      className={cx(
+        "rounded-lg border bg-white px-2.5 py-2 text-xs shadow-sm",
+        problem ? "border-red-300" : "border-brand-300",
+      )}
+      data-strategy-summary
+      data-strategy-summary-line={line.demandIds[0]}
+      data-strategy-summary-lines={line.demandIds.join(" ")}
+    >
+      <p className="font-semibold text-zinc-900">
+        {texts.summaryTitle}{" "}
+        <span className="font-normal text-zinc-500">
+          · {texts.choices[choice]}
+        </span>
+      </p>
+      {choice === "last_supplier" ? (
+        <p className="text-zinc-600">{texts.direct}</p>
+      ) : (
+        <>
+          {ok.length ? (
+            <p className="text-emerald-800">
+              {fill(texts.receives, { n: ok.length })}:{" "}
+              {ok.map((id) => checks[id]?.name ?? id).join(", ")}
+            </p>
+          ) : null}
+          {out.length ? (
+            <p className="text-amber-800">
+              {fill(texts.blockedOut, { n: out.length })}:{" "}
+              {out
+                .map(
+                  (id) =>
+                    `${checks[id]?.name ?? id} (${(checks[id]?.issues ?? [])
+                      .map((i) => texts.issues[i] ?? i)
+                      .join(" ")})`,
+                )
+                .join(", ")}
+            </p>
+          ) : null}
+          {problem ? (
+            <p
+              className="font-semibold text-red-700"
+              data-strategy-summary-problem
+            >
+              {problem}
+            </p>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+
   const lineCard = (line: StrategyGroupData) => {
     const s = byLine[line.key];
     const lastCheck = line.last ? checks[line.last.supplierId] : undefined;
@@ -709,217 +763,230 @@ export function StrategyQueue({
     const hidden = members.length - shown.length;
     // Última compra do card: a comum à solicitação; um produto só, a dele.
     const last = line.last ?? (members.length === 1 ? members[0].last : null);
+    const own = summary.find((x) => x.line.key === line.key);
     return (
-      <section
-        key={line.key}
-        className={cx(
-          cardClass,
-          s.choice !== "skip" && "border-brand-300 bg-brand-50/30",
-          line.blocked && "border-amber-300",
-        )}
-        data-strategy-group={line.key}
-        data-strategy-line={line.demandIds[0]}
-        data-strategy-lines={line.demandIds.join(" ")}
-        data-strategy-line-choice={s.choice}
-      >
-        {/* Solicitação e situação; cliente e identificações. */}
-        <div className="flex flex-wrap items-center gap-1">
-          <h3 className="text-[13px] font-semibold text-zinc-900">
-            {line.title}
-          </h3>
-          <Badge tone="warning">{texts.card.waiting}</Badge>
-          {batch ? (
-            <Link
-              href={batch.href}
-              className={cx(linkClass, "text-[11px]")}
-              data-strategy-batch
-            >
-              {batch.label}
-            </Link>
-          ) : null}
-        </div>
-        {line.customerName ? (
-          <p
-            className="truncate font-medium text-zinc-900"
-            title={line.customerName}
-          >
-            <span className="text-[10px] uppercase tracking-wide text-zinc-500">
-              {texts.card.customer}:{" "}
-            </span>
-            {line.customerName}
-          </p>
-        ) : null}
-        {line.origin ? (
-          <p className="truncate text-[11px] text-zinc-600" title={line.origin}>
-            <span data-strategy-origin>{line.origin}</span>
-          </p>
-        ) : null}
-        <div className="space-y-1.5">{shown.map(productCompact)}</div>
-        {hidden > 0 ? (
-          <p className="text-[11px] text-zinc-600" data-strategy-more={hidden}>
-            {fill(texts.card.more, { n: hidden })}
-          </p>
-        ) : null}
-        {line.blocked ? null : (
-          <>
-            {compactLast(last)}
-            {!line.last && line.lastReason && members.length > 1 ? (
-              <p className="text-[11px] text-zinc-500">{line.lastReason}</p>
+      // O card e, logo abaixo e na mesma largura, o resumo do envio dele
+      // (dono, 22/11/2026).
+      <div key={line.key} className="flex min-w-0 flex-col gap-1.5">
+        <section
+          className={cx(
+            cardClass,
+            s.choice !== "skip" && "border-brand-300 bg-brand-50/30",
+            line.blocked && "border-amber-300",
+          )}
+          data-strategy-group={line.key}
+          data-strategy-line={line.demandIds[0]}
+          data-strategy-lines={line.demandIds.join(" ")}
+          data-strategy-line-choice={s.choice}
+        >
+          {/* Solicitação e situação; cliente e identificações. */}
+          <div className="flex flex-wrap items-center gap-1">
+            <h3 className="text-[13px] font-semibold text-zinc-900">
+              {line.title}
+            </h3>
+            <Badge tone="warning">{texts.card.waiting}</Badge>
+            {batch ? (
+              <Link
+                href={batch.href}
+                className={cx(linkClass, "text-[11px]")}
+                data-strategy-batch
+              >
+                {batch.label}
+              </Link>
             ) : null}
-          </>
-        )}
-        {line.blocked ? (
-          <p className="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800">
-            {line.blocked}
-          </p>
-        ) : (
-          <>
-            {canChoose ? (
-              <fieldset className="space-y-0.5 border-t border-zinc-100 pt-1.5">
-                <legend className="mb-0.5 text-[10px] uppercase tracking-wide text-zinc-500">
-                  {texts.choose}
-                </legend>
-                {option(line, s, "skip")}
-                {!line.last && line.lastReason ? (
-                  <p
-                    className="pl-6 text-xs text-zinc-500"
-                    data-strategy-last-reason
-                  >
-                    {line.lastReason}
-                  </p>
-                ) : null}
-                {option(line, s, "quote_last", !line.last)}
-                {s.choice === "quote_last" && line.last ? (
-                  <div className="pl-6">
-                    <p className="text-xs text-zinc-600">
-                      {fill(texts.lastHint, { name: line.last.supplierName })}
+          </div>
+          {line.customerName ? (
+            <p
+              className="truncate font-medium text-zinc-900"
+              title={line.customerName}
+            >
+              <span className="text-[10px] uppercase tracking-wide text-zinc-500">
+                {texts.card.customer}:{" "}
+              </span>
+              {line.customerName}
+            </p>
+          ) : null}
+          {line.origin ? (
+            <p
+              className="truncate text-[11px] text-zinc-600"
+              title={line.origin}
+            >
+              <span data-strategy-origin>{line.origin}</span>
+            </p>
+          ) : null}
+          <div className="space-y-1.5">{shown.map(productCompact)}</div>
+          {hidden > 0 ? (
+            <p
+              className="text-[11px] text-zinc-600"
+              data-strategy-more={hidden}
+            >
+              {fill(texts.card.more, { n: hidden })}
+            </p>
+          ) : null}
+          {line.blocked ? null : (
+            <>
+              {compactLast(last)}
+              {!line.last && line.lastReason && members.length > 1 ? (
+                <p className="text-[11px] text-zinc-500">{line.lastReason}</p>
+              ) : null}
+            </>
+          )}
+          {line.blocked ? (
+            <p className="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800">
+              {line.blocked}
+            </p>
+          ) : (
+            <>
+              {canChoose ? (
+                <fieldset className="space-y-0.5 border-t border-zinc-100 pt-1.5">
+                  <legend className="mb-0.5 text-[10px] uppercase tracking-wide text-zinc-500">
+                    {texts.choose}
+                  </legend>
+                  {option(line, s, "skip")}
+                  {!line.last && line.lastReason ? (
+                    <p
+                      className="pl-6 text-xs text-zinc-500"
+                      data-strategy-last-reason
+                    >
+                      {line.lastReason}
                     </p>
-                    <ul>
-                      {lastCheck
-                        ? recipientRow(line, line.last.supplierId, s, false)
-                        : null}
-                    </ul>
-                  </div>
-                ) : null}
-                {option(line, s, "quote")}
-                {s.choice === "quote" ? (
-                  <div className="space-y-1.5 pl-5" data-strategy-recipients>
-                    <div className="flex flex-wrap gap-3 text-xs">
-                      <button
-                        type="button"
-                        className={linkClass}
-                        onClick={() =>
-                          set(line.key, {
-                            recipients: all.filter((id) => checks[id]?.ok),
-                          })
-                        }
-                        data-strategy-all-ok
-                      >
-                        {texts.allOk}
-                      </button>
-                      <button
-                        type="button"
-                        className={linkClass}
-                        onClick={() => set(line.key, { recipients: [] })}
-                      >
-                        {texts.clear}
-                      </button>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-zinc-700">
-                        {fill(texts.originList, {
-                          origin: line.origin || texts.noFamily,
-                        })}
+                  ) : null}
+                  {option(line, s, "quote_last", !line.last)}
+                  {s.choice === "quote_last" && line.last ? (
+                    <div className="pl-6">
+                      <p className="text-xs text-zinc-600">
+                        {fill(texts.lastHint, { name: line.last.supplierName })}
                       </p>
-                      {line.linkedIds.length ? (
-                        <ul className="divide-y divide-zinc-100">
-                          {line.linkedIds.map((id) =>
-                            recipientRow(line, id, s, true),
-                          )}
-                        </ul>
-                      ) : (
-                        <p
-                          className="text-xs text-zinc-500"
-                          data-strategy-no-linked
+                      <ul>
+                        {lastCheck
+                          ? recipientRow(line, line.last.supplierId, s, false)
+                          : null}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {option(line, s, "quote")}
+                  {s.choice === "quote" ? (
+                    <div className="space-y-1.5 pl-5" data-strategy-recipients>
+                      <div className="flex flex-wrap gap-3 text-xs">
+                        <button
+                          type="button"
+                          className={linkClass}
+                          onClick={() =>
+                            set(line.key, {
+                              recipients: all.filter((id) => checks[id]?.ok),
+                            })
+                          }
+                          data-strategy-all-ok
                         >
-                          {fill(texts.originNone, {
+                          {texts.allOk}
+                        </button>
+                        <button
+                          type="button"
+                          className={linkClass}
+                          onClick={() => set(line.key, { recipients: [] })}
+                        >
+                          {texts.clear}
+                        </button>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-zinc-700">
+                          {fill(texts.originList, {
                             origin: line.origin || texts.noFamily,
                           })}
                         </p>
-                      )}
-                    </div>
-                    {line.suggestedIds.length ? (
-                      <div data-strategy-suggested>
-                        <p className="text-xs font-medium text-zinc-700">
-                          {texts.suggested}
-                        </p>
-                        <ul className="divide-y divide-zinc-100">
-                          {line.suggestedIds.map((id) =>
-                            recipientRow(line, id, s, true),
-                          )}
-                        </ul>
+                        {line.linkedIds.length ? (
+                          <ul className="divide-y divide-zinc-100">
+                            {line.linkedIds.map((id) =>
+                              recipientRow(line, id, s, true),
+                            )}
+                          </ul>
+                        ) : (
+                          <p
+                            className="text-xs text-zinc-500"
+                            data-strategy-no-linked
+                          >
+                            {fill(texts.originNone, {
+                              origin: line.origin || texts.noFamily,
+                            })}
+                          </p>
+                        )}
                       </div>
-                    ) : null}
-                    {extra.length ? (
+                      {line.suggestedIds.length ? (
+                        <div data-strategy-suggested>
+                          <p className="text-xs font-medium text-zinc-700">
+                            {texts.suggested}
+                          </p>
+                          <ul className="divide-y divide-zinc-100">
+                            {line.suggestedIds.map((id) =>
+                              recipientRow(line, id, s, true),
+                            )}
+                          </ul>
+                        </div>
+                      ) : null}
+                      {extra.length ? (
+                        <div>
+                          <p className="text-xs font-medium text-zinc-700">
+                            {texts.added}
+                          </p>
+                          <ul className="divide-y divide-zinc-100">
+                            {extra.map((id) => recipientRow(line, id, s, true))}
+                          </ul>
+                        </div>
+                      ) : null}
                       <div>
-                        <p className="text-xs font-medium text-zinc-700">
-                          {texts.added}
+                        <p className="mb-1 text-xs text-zinc-600">
+                          {texts.search}
                         </p>
-                        <ul className="divide-y divide-zinc-100">
-                          {extra.map((id) => recipientRow(line, id, s, true))}
-                        </ul>
+                        <SearchPicker
+                          endpoint="/api/parties/search?type=supplier&also=trading,supplier_partner,factory&active=1"
+                          marker="strategy-recipient-picker"
+                          kind="quote"
+                          dense
+                          labels={texts.picker}
+                          ariaLabel={texts.search}
+                          onChoose={(o) => {
+                            if (o) void addFromSearch(line.key, o.id);
+                          }}
+                        />
                       </div>
-                    ) : null}
-                    <div>
-                      <p className="mb-1 text-xs text-zinc-600">
-                        {texts.search}
-                      </p>
-                      <SearchPicker
-                        endpoint="/api/parties/search?type=supplier&also=trading,supplier_partner,factory&active=1"
-                        marker="strategy-recipient-picker"
-                        kind="quote"
-                        dense
-                        labels={texts.picker}
-                        ariaLabel={texts.search}
-                        onChoose={(o) => {
-                          if (o) void addFromSearch(line.key, o.id);
-                        }}
-                      />
                     </div>
-                  </div>
-                ) : null}
-                {option(line, s, "last_supplier", !line.last)}
-                {s.choice === "last_supplier" ? (
-                  <p className="pl-6 text-xs text-zinc-600">
-                    {texts.directHint}
+                  ) : null}
+                  {option(line, s, "last_supplier", !line.last)}
+                  {s.choice === "last_supplier" ? (
+                    <p className="pl-6 text-xs text-zinc-600">
+                      {texts.directHint}
+                    </p>
+                  ) : null}
+                </fieldset>
+              ) : null}
+            </>
+          )}
+          <div className="mt-auto flex flex-wrap gap-1.5 border-t border-zinc-100 pt-1.5">
+            <QuickDialog
+              label={texts.card.details}
+              title={fill(texts.card.detailsTitle, { title: line.title })}
+              closeLabel={texts.card.close}
+              size="lg"
+              data-strategy-details={line.key}
+            >
+              <div className="space-y-3">
+                {line.customerName || line.origin ? (
+                  <p className="text-xs text-zinc-600">
+                    {[line.customerName, line.origin]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
                 ) : null}
-              </fieldset>
-            ) : null}
-          </>
-        )}
-        <div className="mt-auto flex flex-wrap gap-1.5 border-t border-zinc-100 pt-1.5">
-          <QuickDialog
-            label={texts.card.details}
-            title={fill(texts.card.detailsTitle, { title: line.title })}
-            closeLabel={texts.card.close}
-            size="lg"
-            data-strategy-details={line.key}
-          >
-            <div className="space-y-3">
-              {line.customerName || line.origin ? (
-                <p className="text-xs text-zinc-600">
-                  {[line.customerName, line.origin].filter(Boolean).join(" · ")}
-                </p>
-              ) : null}
-              {members.map(productBlock)}
-              {!line.last && line.lastReason ? (
-                <p className="text-xs text-zinc-600">{line.lastReason}</p>
-              ) : null}
-            </div>
-          </QuickDialog>
-        </div>
-      </section>
+                {members.map(productBlock)}
+                {!line.last && line.lastReason ? (
+                  <p className="text-xs text-zinc-600">{line.lastReason}</p>
+                ) : null}
+              </div>
+            </QuickDialog>
+          </div>
+        </section>
+        {own ? summaryBlock(own) : null}
+      </div>
     );
   };
 
@@ -945,10 +1012,7 @@ export function StrategyQueue({
       {canChoose && lines.length ? (
         <div className="sticky bottom-0 z-10 space-y-2 rounded-xl border border-zinc-200 bg-white/95 p-2.5 shadow-lg backdrop-blur">
           {reviewing && chosen.length ? (
-            <div data-strategy-summary>
-              <h2 className="text-sm font-semibold text-zinc-900">
-                {texts.summaryTitle}
-              </h2>
+            <div data-strategy-confirm-bar>
               <p className="mb-2 text-xs text-zinc-600">{texts.summaryHint}</p>
               {state.error ? (
                 <div className="mb-2">
@@ -959,63 +1023,6 @@ export function StrategyQueue({
                   </Alert>
                 </div>
               ) : null}
-              <ul className="max-h-72 space-y-2 overflow-y-auto pr-1">
-                {summary.map(({ line, choice, ok, out, problem }) => (
-                  <li
-                    key={line.key}
-                    className="rounded-lg border border-zinc-200 px-3 py-2 text-sm"
-                    data-strategy-summary-line={line.demandIds[0]}
-                    data-strategy-summary-lines={line.demandIds.join(" ")}
-                  >
-                    <p className="font-medium text-zinc-900">
-                      {line.title}{" "}
-                      <span className="text-xs font-normal text-zinc-500">
-                        · {texts.choices[choice]}
-                      </span>
-                    </p>
-                    <p className="text-xs text-zinc-600">
-                      {linesOf(line)
-                        .map((m) => m.productName)
-                        .join(", ")}
-                    </p>
-                    {choice === "last_supplier" ? (
-                      <p className="text-xs text-zinc-600">{texts.direct}</p>
-                    ) : (
-                      <>
-                        {ok.length ? (
-                          <p className="text-xs text-emerald-800">
-                            {fill(texts.receives, { n: ok.length })}:{" "}
-                            {ok.map((id) => checks[id]?.name ?? id).join(", ")}
-                          </p>
-                        ) : null}
-                        {out.length ? (
-                          <p className="text-xs text-amber-800">
-                            {fill(texts.blockedOut, { n: out.length })}:{" "}
-                            {out
-                              .map(
-                                (id) =>
-                                  `${checks[id]?.name ?? id} (${(
-                                    checks[id]?.issues ?? []
-                                  )
-                                    .map((i) => texts.issues[i] ?? i)
-                                    .join(" ")})`,
-                              )
-                              .join(", ")}
-                          </p>
-                        ) : null}
-                        {problem ? (
-                          <p
-                            className="text-xs font-semibold text-red-700"
-                            data-strategy-summary-problem
-                          >
-                            {problem}
-                          </p>
-                        ) : null}
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
               <label className="mt-2 block">
                 <span className="mb-1 block text-xs font-medium text-zinc-700">
                   {texts.note}

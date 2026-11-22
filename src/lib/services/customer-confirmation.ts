@@ -255,6 +255,14 @@ export async function confirmCustomerOrder(
     released.push(updated);
   }
   for (const r of released) await releaseRequest(user, r);
+  // Confirmado pelo cliente, segue direto para a Estratégia de Compra, sem
+  // o "Enviar para cotação" da Wellmix (dono, 22/11/2026).
+  if (released.length) {
+    const { enterStrategyOnConfirm } = await import("./purchase-strategy");
+    await enterStrategyOnConfirm(user, released).catch((error) =>
+      console.error("[confirm] Estratégia de Compra", error),
+    );
+  }
   // RCA escolhido pelo vendedor fecha a venda: padrão do cliente por 30
   // dias (dono, 19/11/2026; docs/CUSTOMER_RCA.md seção 7). Um por lote.
   if (released.length) {
