@@ -529,6 +529,20 @@ export default async function SettingsPage({
                       data-setting-purchase-quote-hours
                     />
                   </Field>
+                  {/* Encomenda vira cotação sozinha (dono, 22/11/2026). */}
+                  <Field
+                    label={t("autoQuote.settings.label")}
+                    hint={t("autoQuote.settings.hint")}
+                  >
+                    <Select
+                      name="autoQuoteOrders"
+                      defaultValue={String(s.autoQuoteOrders)}
+                      data-setting-auto-quote
+                    >
+                      <option value="true">{t("common.yes")}</option>
+                      <option value="false">{t("common.no")}</option>
+                    </Select>
+                  </Field>
                   {/* Carteira: prazo único de atendimento ao cliente
                       (docs/TRADE_COMERCIAL.md). */}
                   <Field
