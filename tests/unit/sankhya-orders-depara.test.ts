@@ -238,6 +238,17 @@ describe("1100 vira reposição na carga", () => {
     const { listDemands } = await import("@/lib/services/purchase-demand");
     const ids = (await listDemands("replenishment")).map((r) => r.id);
     expect(ids).toContain(open.id);
+    // Uma solicitação só, com os produtos dentro (dono, 22/11/2026).
+    const second = (await store.get(
+      "requests",
+      plan.sankhyaReplenishmentId("7000", 7001, 2),
+    ))!;
+    expect(open.groupId).toBe("snk-r7000");
+    expect(second.groupId).toBe("snk-r7000");
+    const { groupRequestRows } = await import("@/lib/services/request-groups");
+    const entries = groupRequestRows(await listDemands("replenishment"));
+    expect(entries).toHaveLength(1);
+    expect(entries[0].kind).toBe("batch");
   });
 
   it("rodar de novo não duplica", async () => {

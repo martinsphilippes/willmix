@@ -2,6 +2,13 @@
 
 Pedido do dono (18/11/2026), com as respostas às perguntas: vale para Encomendas, Pedidos, Solicitações ao fornecedor, Ordens de venda e Cotações de compra; o ícone de abrir, para todas as tabelas; o produto clicado dentro do pedido abre o pedido filtrado naquele produto.
 
+## 0. Regra geral do sistema (dono, 22/11/2026: "esse deve ser o padrão no sistema inteiro")
+
+- Uma solicitação com vários produtos é **uma** solicitação: todos os produtos têm o mesmo `groupId` (lote). Ter muitos produtos nunca a divide em várias.
+- Toda lista de solicitações ou pedidos mostra **uma linha por solicitação**. Ao abrir, a página do lote (`/app/requests/batch/<groupId>`) lista os produtos dela. Isso vale para Encomendas, **Reposição** (`/app/replenishment`, desde 22/11/2026), Pedidos, Solicitações ao fornecedor, Ordens de venda, Cotações e as Pendências (uma por lote, `request-turns.ts`).
+- Quem cria solicitações com vários produtos grava o lote junto. A Nova solicitação usa `createRequestBatch`. A carga do Sankhya grava a reposição da 1100 com `groupId` = `snk-r<TRACK_ID>` (`sankhyaReplenishmentGroupId`), a mesma página do lote para todos os itens do track.
+- Exceção, por decisão do dono: a Estratégia de compra é **por produto** (docs/PURCHASE_DEMAND.md, 18/11/2026).
+
 ## 1. A lista é do pedido, não do produto
 
 Um pedido pode ter milhares de produtos, então as listas não mostram foto, nome ou quantidade de produto.
