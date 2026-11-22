@@ -677,6 +677,53 @@ export function packingTotalsLine(
   };
 }
 
+/** Caixas master, m³ e containers de cada programação de um produto. */
+export interface RoundPacking {
+  /** Caixas master de cada programação (nulo sem caixa ou sem como contar). */
+  boxes: number[] | null;
+  /** m³ de cada programação (caixas × m³ da caixa; nulo sem m³). */
+  cbm: number[] | null;
+  /** Containers de cada programação, no container de referência. */
+  containers: number[] | null;
+  totals: {
+    boxes: number | null;
+    cbm: number | null;
+    containers: number | null;
+  };
+}
+
+/**
+ * A embalagem de um produto programação a programação (dono, 22/11/2026;
+ * docs/ECONOMIC_GROUPS.md, "Caixas, cubagem e containers por programação"):
+ * as mesmas caixas e o mesmo m³ da ficha e dos totais da encomenda, e os
+ * containers pela regra de sempre (`packingRounds`), no maior container das
+ * Configurações. Falta o dado: nulo ("—" na tela), nunca zero.
+ */
+export function roundPackingOf(
+  row: Pick<Request, "id" | "productName" | "quantity" | "schedule">,
+  packing: RequestPacking | undefined,
+  capacityCbm: number | null,
+): RoundPacking {
+  const p = packing?.countable ? packing : null;
+  const boxes = p?.boxes ? (p.boxes.perRound ?? [p.boxes.value]) : null;
+  const perBox = p?.cbmPerBox?.value ?? null;
+  const cbm =
+    boxes && perBox !== null ? boxes.map((b) => r4(b * perBox)) : null;
+  const containers = p
+    ? packingRounds([row], new Map([[row.id, p]]), capacityCbm).containers
+    : null;
+  return {
+    boxes,
+    cbm,
+    containers,
+    totals: {
+      boxes: p?.boxes?.value ?? null,
+      cbm: p?.cbmTotal ?? null,
+      containers: containers ? containers.reduce((a, b) => a + b, 0) : null,
+    },
+  };
+}
+
 /**
  * Programações e containers de cada programação pela embalagem (a mesma
  * caixa e o mesmo m³ dos totais e da ficha; dono, 18/11/2026, decisão 3).

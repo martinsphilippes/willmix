@@ -4,19 +4,27 @@ import { getStore } from "@/lib/db";
 import { listByIds } from "@/lib/db/lookup";
 import { taxIdText } from "@/lib/economic-group";
 import { companyName } from "@/lib/services/economic-groups";
+import type { RoundPacking } from "@/lib/services/request-packing";
 import { Table, Td, Th } from "./ui";
 
 /**
  * Empresas do grupo econômico na solicitação (docs/ECONOMIC_GROUPS.md): as
  * peças de cada empresa em cada entrega e o total. Nada no pedido de um
- * cliente só.
+ * cliente só. Abaixo das empresas (dono, 22/11/2026): as caixas master, a
+ * cubagem e os containers de cada programação, pela embalagem da ficha.
  */
 export async function RequestCompanyAllocations({
   request,
   t,
+  packing,
 }: {
   request: Pick<Request, "companyAllocations">;
   t: Translate;
+  /**
+   * Caixas, m³ e containers de cada programação (`roundPackingOf`) e o
+   * container de referência ("40HC"). Sem ele, só as empresas.
+   */
+  packing?: { rounds: RoundPacking; container: string | null } | null;
 }) {
   const rows = request.companyAllocations ?? [];
   if (!rows.length) return null;
@@ -28,6 +36,45 @@ export async function RequestCompanyAllocations({
   const byId = new Map(parties.map((p) => [p.id, p]));
   const rounds = Math.max(...rows.map((r) => r.quantities.length));
   const fmt = (n: number) => n.toLocaleString(t.intl);
+  const cbmText = (n: number) =>
+    n.toLocaleString(t.intl, { maximumFractionDigits: 3 });
+  const dash = <span className="text-zinc-400">—</span>;
+  /** Uma linha por programação (caixas, m³ ou containers) com o total. */
+  const packingRow = (
+    key: string,
+    label: string,
+    values: number[] | null,
+    total: number | null,
+    text: (n: number) => string,
+    title?: string,
+  ) => (
+    <tr
+      key={key}
+      className="bg-zinc-50/70"
+      data-request-companies-packing={key}
+    >
+      <Td colSpan={2} className="font-medium text-zinc-700">
+        <span title={title}>{label}</span>
+      </Td>
+      {rounds > 1
+        ? Array.from({ length: rounds }, (_, i) => (
+            <Td
+              key={i}
+              className="text-right tabular-nums"
+              data-request-companies-round={i + 1}
+            >
+              {values && values[i] !== undefined ? text(values[i]) : dash}
+            </Td>
+          ))
+        : null}
+      <Td
+        className="text-right font-semibold tabular-nums"
+        data-request-companies-total=""
+      >
+        {total !== null ? text(total) : dash}
+      </Td>
+    </tr>
+  );
   return (
     <section
       className="mt-3 border-t border-zinc-100 pt-2.5"
@@ -71,6 +118,36 @@ export async function RequestCompanyAllocations({
               </tr>
             );
           })}
+          {packing ? (
+            <>
+              {packingRow(
+                "boxes",
+                t("econGroup.request.boxes"),
+                packing.rounds.boxes,
+                packing.rounds.totals.boxes,
+                fmt,
+              )}
+              {packingRow(
+                "cbm",
+                t("econGroup.request.cbm"),
+                packing.rounds.cbm,
+                packing.rounds.totals.cbm,
+                cbmText,
+              )}
+              {packingRow(
+                "containers",
+                t("econGroup.request.containers", {
+                  code: packing.container ?? "—",
+                }),
+                packing.rounds.containers,
+                packing.rounds.totals.containers,
+                fmt,
+                t("econGroup.request.containersHint", {
+                  code: packing.container ?? "—",
+                }),
+              )}
+            </>
+          ) : null}
         </tbody>
       </Table>
     </section>
