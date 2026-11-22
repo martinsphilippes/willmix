@@ -172,6 +172,13 @@ export const DEFAULT_SETTINGS = {
   deliveryFreightDefaultBrl: 8000 as number | null,
   /** Dias para lembrar antes do vencimento e depois. */
   reminderDaysBeforeDue: 1,
+  /**
+   * Lembretes ao cliente para confirmar a encomenda (dono, 22/11/2026;
+   * docs/ORDER_TERMS.md, "Lembrete da confirmação"): um por dia, no job
+   * diário, enquanto a encomenda espera o cliente; depois do último, o
+   * vendedor é avisado uma vez. 0 = sem lembretes.
+   */
+  customerConfirmReminderMax: 3,
   /* ---- Evolução incremental (docs/EVOLUTION_PLAN.md) ---- */
   /** Tolerância de dimensões (cm) entre snapshot da compra e inspeção (%). */
   dimensionTolerancePercent: 5,

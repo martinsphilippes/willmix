@@ -45,6 +45,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { deleteRequestsAction } from "../../../actions/requests";
 import { sendToStrategyAction } from "../../../actions/purchase-demand";
 import { awaitingStrategySend } from "@/lib/services/purchase-strategy";
+import { AUTO_ACTOR_ID } from "@/lib/purchase-demand";
 import { canOpen } from "@/lib/auth/screens";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -318,6 +319,22 @@ export default async function RequestBatchPage({
               </span>
             </span>
           ))}
+          {/* Lembretes da confirmação do cliente (dono, 22/11/2026). */}
+          {isWellmix(user) &&
+          rows[0].status === "AWAITING_CUSTOMER" &&
+          rows[0].orderTerms?.confirmReminders?.count ? (
+            <span
+              className="text-xs text-zinc-500"
+              data-batch-confirm-reminders={
+                rows[0].orderTerms.confirmReminders.count
+              }
+            >
+              {t("confirmReminder.status", {
+                count: rows[0].orderTerms.confirmReminders.count,
+                date: formatDate(rows[0].orderTerms.confirmReminders.lastAt, t),
+              })}
+            </span>
+          ) : null}
         </>
       }
       actions={
@@ -490,9 +507,12 @@ export default async function RequestBatchPage({
             <>
               {!sendable.includes(r) && r.strategySentAt && isWellmix(user) ? (
                 <span className="text-xs text-zinc-500" data-batch-sent={r.id}>
-                  {t("reqSend.sentAt", {
-                    date: formatDate(r.strategySentAt, t),
-                  })}
+                  {t(
+                    r.strategySentByUserId === AUTO_ACTOR_ID
+                      ? "reqSend.sentAuto"
+                      : "reqSend.sentAt",
+                    { date: formatDate(r.strategySentAt, t) },
+                  )}
                 </span>
               ) : null}
               {canDeleteRequest(user, r) ? (
