@@ -1387,6 +1387,12 @@ export async function renderNewRequest({
                           format: "{format}",
                         }),
                         priceNoFormat: t("priceForecast.priceNoFormat"),
+                        priceOfNoFreight: t("priceForecast.priceOfNoFreight", {
+                          format: "{format}",
+                        }),
+                        priceNoFormatNoFreight: t(
+                          "priceForecast.priceNoFormatNoFreight",
+                        ),
                         auditClose: t("priceForecast.auditClose"),
                         auditIntro: t("priceForecast.auditIntro"),
                         auditParam: t("priceForecast.auditParam"),
@@ -1420,7 +1426,7 @@ export async function renderNewRequest({
                         }),
                         freightNull: t("priceForecast.freightNull"),
                         price: t("priceForecast.price"),
-                        rowTotal: t("priceForecast.rowTotal"),
+                        rowTotal: t("priceForecast.rowTotalWithFreight"),
                         noQuantity: t("priceForecast.noQuantity"),
                         formats: {
                           wd: t("orderTerms.format.wd"),

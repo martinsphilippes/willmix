@@ -49,7 +49,7 @@ test("Nova solicitação TS: produto da base, descrição, cálculo da previsão
         withFreight: 10,
         wdBase: null,
         wdPercent: null,
-        wdPrice: null,
+        wdPrice: 10.63,
         wdWithFreight: 11.43,
         goalReached: true,
         audit: {
@@ -60,6 +60,7 @@ test("Nova solicitação TS: produto da base, descrição, cálculo da previsão
           ],
           outputs: [
             ["CUSTO_BASE_VENDA", 5],
+            ["PRECO_WD_REFERENCIA", 10.63],
             ["PRECO_WD_COM_FRETE_REFERENCIA", 11.43],
           ],
         },
@@ -173,17 +174,26 @@ test("Nova solicitação TS: produto da base, descrição, cálculo da previsão
   await expect(
     forecast.locator("[data-price-forecast-price-label]"),
   ).toHaveText("Preço WD - com frete");
+  // E o mesmo preço sem frete, logo acima (dono, 22/11/2026).
+  await expect(
+    forecast.locator('[data-price-forecast-line="priceNoFreight"]'),
+  ).toHaveText(/10,63/);
+  await expect(
+    forecast.locator("[data-price-forecast-price-no-freight-label]"),
+  ).toHaveText("Preço WD - sem frete");
   await forecast.locator("[data-price-forecast-audit-open]").click();
   const audit = page.locator("[data-price-forecast-audit]");
   await expect(audit).toBeVisible();
   await expect(
     audit.locator('[data-price-forecast-audit-input="CODPROD"]'),
   ).toContainText("Código do produto no Sankhya");
-  await expect(
-    audit.locator(
-      '[data-price-forecast-audit-output="PRECO_WD_COM_FRETE_REFERENCIA"]',
-    ),
-  ).toContainText("Na tela");
+  for (const column of [
+    "PRECO_WD_REFERENCIA",
+    "PRECO_WD_COM_FRETE_REFERENCIA",
+  ])
+    await expect(
+      audit.locator(`[data-price-forecast-audit-output="${column}"]`),
+    ).toContainText("Na tela");
   // "Exportar JSON" no canto do modal: a resposta da API para o Sankhya.
   const [download] = await Promise.all([
     page.waitForEvent("download"),

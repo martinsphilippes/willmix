@@ -420,6 +420,23 @@ Decisões do dono (21/11/2026):
   - `tests/unit/quick-customer.test.ts`: como grava, a escolha devolvida, a trava com e sem máscara e do inativo, as validações e quem pode;
   - `tests/e2e/quick-customer.spec.ts`: a Vera (Vendas) cadastra pelo "+", o cliente fica escolhido na mesma tela, o mesmo CNPJ oferece o existente e a busca acha o cliente novo.
 
+## 11.26 Preço sem frete e com frete do formato (dono, 22/11/2026)
+
+Pedido do dono: ao consultar o preço na API, a tela traz sempre os dois preços do formato escolhido, sem frete e com frete. Vale para as três telas da Nova solicitação (`/app/new-request/ts`, `/app/new-request/sale` e `/app/requests/new`), que usam o mesmo quadro.
+
+- **A consulta não muda:** a cotação V2 do Sankhya (`FN_AD_ENC_COTACAO_V2_WELL`) já devolve as quatro colunas, e `/api/price-forecast` já manda todas para a tela. Muda só o que o quadro verde mostra.
+- **Quais colunas:**
+
+  | Formato | Sem frete | Com frete |
+  | --- | --- | --- |
+  | WD | `PRECO_WD_REFERENCIA` | `PRECO_WD_COM_FRETE_REFERENCIA` |
+  | Wellmix (Pleno…Super) ou sem formato | `PRECO_PRODUTO_META` | `PRECO_COM_FRETE_REFERENCIA` |
+
+- **Na tela:** três linhas, nesta ordem: "Preço WD - sem frete" (ou "Preço Wellmix · Hiper - sem frete"), "Preço WD - com frete" e "Valor total - com frete". Sem formato escolhido, "Preço - sem frete" e "Preço - com frete". Coluna sem valor mostra "—".
+- **O que continua com frete:** o Valor total da linha (preço com frete × quantidade), a soma do pedido nas condições, a previsão de pagamento e o Preço total gravado no envio (`requests.priceForecast`, seção 11.16).
+- **"Ver o cálculo":** as duas colunas que estão na tela aparecem destacadas, com "Na tela".
+- **Código:** `src/components/price-forecast.tsx` (`priceNoFreight`, `shownColumns`); textos `priceForecast.priceOfNoFreight`, `priceForecast.priceNoFormatNoFreight` e `priceForecast.rowTotalWithFreight` em `src/i18n/modules/new-request-ui.ts`. Os testes E2E `order-terms.spec.ts` (Wellmix · Hiper) e `new-request-round.spec.ts` (WD) conferem os dois preços.
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.
