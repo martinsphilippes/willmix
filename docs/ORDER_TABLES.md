@@ -41,18 +41,36 @@ Pedidos (`/app/orders`), Cotação (`/app/supplier-requests`), Reposição, Orde
 
 ## 2. Tabela de itens do pedido
 
-Na ordem: Sequência, Foto, Situação, Status, Prazo de resposta (SLA), Código Wellmix, Descrição, Valor s/ IPI, Valor com IPI, Valor IPI com frete, Qtd. peças na caixa, Qtd. peças na inner, Qtd. pedido em caixas, Qtd. pedido em peças, CBM total. No nível do produto não há linha que abra mais informação.
+| #   | Coluna              | O que mostra                                         | De onde vem hoje                                                  |
+| --- | ------------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
+| 1   | Seq.                | A ordem do produto no pedido                         | Ordem em que foram pedidos                                        |
+| 2   | Foto                |                                                      | Fotos do cadastro do produto                                      |
+| 3   | Situação            | O momento do passo em que o produto está             | `requestDisplayStatus`                                            |
+| 4   | Status              | O que ele espera (de quem é a vez)                   | `requestNextStep().who`                                           |
+| 5   | Prazo resposta      | Prazo (SLA) da ação esperada                         | `stepDue`; sem ação com prazo, o prazo da solicitação             |
+| 6   | Código Wellmix      |                                                      | `products.sku`                                                    |
+| 7   | Descrição           | Nome, variação e a especificação pedida (numa linha) | `requests.productName`, `specification`                           |
+| 8   | Valor s/ IPI        | "—": o portal ainda não tem (dono, 22/11/2026)       | —                                                                 |
+| 9   | Valor com IPI       | Preço Wellmix (não WD) por peça, sem frete           | `priceForecast.wellmixPrice` (`PRECO_PRODUTO_META`)               |
+| 10  | Valor IPI com frete | Preço Wellmix por peça, com frete                    | `priceForecast.wellmixWithFreight` (`PRECO_COM_FRETE_REFERENCIA`) |
+| 11  | Pçs na caixa        | Peças por caixa master                               | `RequestPacking.perBox`                                           |
+| 12  | Pçs na inner        | Peças por caixa inner                                | `RequestPacking.inner`                                            |
+| 13  | Qtd. caixas         | Caixas master do pedido                              | `RequestPacking.boxes`                                            |
+| 14  | Qtd. peças          | Peças do pedido                                      | `TotalsLine.pieces`                                               |
+| 15  | CBM total (m³)      |                                                      | `RequestPacking.cbmTotal`                                         |
 
-Ainda não aplicada em nenhuma tela.
+- Os três valores só aparecem para quem tem "Ver valores e margem".
+- Os dois preços Wellmix passaram a ser gravados junto com a previsão de venda (`wellmixPrices`, campos novos dentro de `requests.priceForecast`, sem coluna nova no banco). Previsão gravada antes disso mostra só o "com frete", e só quando o formato não era WD.
+- No nível do produto não há linha que abra mais informação; o nome leva à ficha do produto.
+- Saíram desta tabela MOQ, Programações e Pedido (seguem nos totais do pedido, na ficha do produto e no CSV).
 
-## 3. O que o portal não tem hoje (decisões do dono)
+Aplicada na **página do pedido da encomenda** (`/app/requests/batch/<id>`, enviada e rascunho). Falta nas páginas do pedido de compra, da cotação e da ordem de venda.
 
-| Coluna                         | Situação                                                                                                                                                                                                        |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Nº do pedido igual ao Sankhya  | A solicitação, o pedido, a cotação e a solicitação ao fornecedor têm numerações próprias; o pedido tem ainda o nº do Sankhya (`erpNumber`) e o Track ID. Hoje a lista de Encomendas mostra o nº da solicitação. |
-| Data da negociação             | Não há campo próprio. Usei a data em que o pedido foi lançado no portal.                                                                                                                                        |
-| Wellmix STK                    | Não é um valor gravado. Mostro STK quando o cliente é o estoque da Wellmix ou a origem é reposição.                                                                                                             |
-| Prazo de pagamento do cadastro | O cadastro do cliente não tem prazo de pagamento padrão. Mostro o nº de parcelas da forma escolhida no pedido.                                                                                                  |
-| Forma de pagamento "Boleto"    | O portal não grava o meio (boleto). Mostro o nome da forma de pagamento do pedido.                                                                                                                              |
-| VIP                            | Fica no pedido, não no cadastro do cliente. Existe um sexto nível, Evo.                                                                                                                                         |
-| Valor s/ IPI e com IPI         | Não são gravados; só o preço unitário com frete da previsão. O Sankhya devolve valores com IPI na cotação, mas o portal não os guarda.                                                                          |
+## 3. Decisões do dono (22/11/2026)
+
+1. **Nº do pedido**: o número do portal; quando o pedido existe no Sankhya, o Track ID aparece junto.
+2. **Prazo e forma de pagamento**: os que ficaram registrados no pedido (a forma escolhida e o número de parcelas). Sem campo novo no cadastro do cliente.
+3. **IPI**: o valor com IPI é o preço Wellmix (não WD). Sem IPI o portal não tem por enquanto ("—").
+4. **Largura**: a tabela de pedidos tem 18 colunas e rola para o lado; fica assim.
+
+O que o portal continua sem ter: uma data de negociação própria (uso a data em que o pedido foi lançado), o valor "Wellmix STK" gravado (mostro STK no estoque da Wellmix e na reposição) e o VIP no cadastro do cliente (fica no pedido; há um sexto nível, Evo).

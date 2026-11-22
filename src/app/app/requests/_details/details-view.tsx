@@ -1,3 +1,4 @@
+import { ClampText } from "@/components/clamp-text";
 import { itemPrices } from "@/lib/order-table";
 import type { ReactNode } from "react";
 import type { Translate } from "@/i18n";
@@ -283,8 +284,16 @@ export function DetailsProductsTable({
                   </span>
                 ) : null}
                 {item.description ? (
+                  // Uma linha, com "mais": a especificação longa não estica
+                  // a tabela.
                   <span className="block text-xs font-normal text-zinc-500">
-                    {item.description}
+                    <ClampText
+                      lines={1}
+                      text={item.description}
+                      more={t("reqList.more")}
+                      less={t("reqList.less")}
+                      className="max-w-[22rem]"
+                    />
                   </span>
                 ) : null}
               </Td>

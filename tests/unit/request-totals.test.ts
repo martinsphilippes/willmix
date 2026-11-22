@@ -497,6 +497,11 @@ describe("previsão de venda gravada no envio", () => {
       deliveryFreightBrl: 8000,
       status: "PRONTA",
       at: now.toISOString(),
+      // Os preços Wellmix da mesma resposta, para a tabela padrão de itens
+      // (docs/ORDER_TABLES.md): sem frete (aqui a resposta não trouxe) e
+      // com frete.
+      wellmixPrice: null,
+      wellmixWithFreight: 12.5,
     });
   });
 
