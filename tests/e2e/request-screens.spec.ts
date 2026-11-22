@@ -19,15 +19,25 @@ import {
 
 const sidebar = (page: Page) => page.locator("[data-sidebar-nav]").first();
 
-/** Os links do grupo Produto novo, na ordem do menu lateral. */
+/**
+ * Os links do grupo Cotação (antes "Produto novo"; dono, 22/11/2026,
+ * docs/QUOTATION.md), na ordem do menu lateral, com "Entrada" aberta
+ * (Book, Reposição e Encomendas).
+ */
 async function newProductLinks(page: Page) {
   await page.goto("/app");
-  const group = sidebar(page).locator('[data-nav-group="Produto novo"]');
+  const group = sidebar(page).locator('[data-nav-group="Cotação"]');
   await expect(group).toBeVisible();
   const toggle = group.locator("button").first();
   if ((await toggle.getAttribute("aria-expanded")) === "false")
     await toggle.click();
   await expect(group.locator("[data-nav-link]").first()).toBeVisible();
+  const entry = group.locator("[data-nav-subgroup-toggle]");
+  if (
+    (await entry.count()) &&
+    (await entry.getAttribute("aria-expanded")) === "false"
+  )
+    await entry.click();
   return group
     .locator("[data-nav-link]")
     .evaluateAll((links) => links.map((a) => a.getAttribute("href")));

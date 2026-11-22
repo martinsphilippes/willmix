@@ -65,6 +65,12 @@ export interface NavLink {
    * um endereço: Equipe Acessos e Parceiros também em /app/parties).
    */
   match?: string[];
+  /**
+   * Subitens (dono, 22/11/2026): o item abre e fecha uma lista dentro do
+   * grupo (ex.: "Entrada" com Book, Reposição e Encomendas). O item não tem
+   * tela própria: `href` é o do primeiro subitem, só para a chave.
+   */
+  children?: NavLink[];
 }
 
 /** Mensagens (chat com a Wellmix / com as empresas): todo papel que entra no portal. */
@@ -148,7 +154,7 @@ function group(
   items: NavLink[],
 ): NavEntry[] {
   if (items.length === 0) return [];
-  return items.length === 1
+  return items.length === 1 && !items[0].children
     ? [{ ...items[0], icon: items[0].icon ?? icon }]
     : [{ key, icon, items }];
 }
@@ -193,6 +199,54 @@ const OPENS_FROM: Record<string, string> = {
   "/app/requests": REQUEST_SCREEN.ts.path,
   "/app/replenishment": REQUEST_SCREEN.sale.path,
 };
+
+/**
+ * Itens da seção Cotação (dono, 22/11/2026; docs/QUOTATION.md): Overview,
+ * "Entrada" (Book, Reposição e Encomendas, que abre e fecha), Seleção de
+ * itens, Estratégia de compra e Cotação, que junta as três telas do mesmo
+ * passo (Cotação de compra, Negociação e Convites de book).
+ */
+const ENTRY_HREFS = ["/app/booking", "/app/replenishment", "/app/requests"];
+const ENTRY_KEYS: Record<string, DictionaryKey> = {
+  "/app/booking": "nav.entry.book",
+};
+function quotationEntries(has: Set<Screen>): NavLink[] {
+  const links = withOpenedScreens(
+    pick(has, [
+      ...flowEntries("new-product"),
+      // Fora do menu (MENU_HIDDEN): Sourcing.
+      ["sourcing", { href: "/app/sourcing", key: "nav.sourcing" }],
+    ]),
+  ).map((link) =>
+    link.href === "/app/supplier-requests"
+      ? {
+          ...link,
+          key: "nav.quotation" as DictionaryKey,
+          // As telas antigas do mesmo passo acendem o item.
+          match: [
+            ...(link.match ?? []),
+            "/app/purchase-quotes",
+            "/app/supplier-requests/invites",
+          ],
+        }
+      : link,
+  );
+  const children = ENTRY_HREFS.flatMap((href) =>
+    links
+      .filter((l) => l.href === href)
+      .map((l) => ({ ...l, key: ENTRY_KEYS[href] ?? l.key })),
+  );
+  const rest = links.filter((l) => !ENTRY_HREFS.includes(l.href));
+  if (!children.length) return rest;
+  const entry: NavLink = {
+    href: children[0].href,
+    key: "nav.entry",
+    children,
+  };
+  // "Entrada" logo abaixo do Overview.
+  const at = rest[0]?.key === "flow.overview" ? 1 : 0;
+  return [...rest.slice(0, at), entry, ...rest.slice(at)];
+}
 
 function withOpenedScreens(links: NavLink[]): NavLink[] {
   return links.map((link) =>
@@ -268,19 +322,10 @@ export function navFor(
       ]),
       // Blocos na ordem do mapa do processo (docs/FLOW_MENU.md): cada passo
       // com o contador do que espera ação do login.
-      // Produto novo: do book à negociação com o fornecedor. O Superplan foi
-      // para Configurações (dono, 14/11/2026).
-      ...group(
-        "nav.group.newProduct",
-        "cart",
-        withOpenedScreens(
-          pick(has, [
-            ...flowEntries("new-product"),
-            // Fora do menu (MENU_HIDDEN): Sourcing.
-            ["sourcing", { href: "/app/sourcing", key: "nav.sourcing" }],
-          ]),
-        ),
-      ),
+      // Cotação (antes "Produto novo"; dono, 22/11/2026): das entradas (Book,
+      // Reposição e Encomendas) à cotação com os fornecedores. O Superplan
+      // foi para Configurações (dono, 14/11/2026).
+      ...group("nav.group.newProduct", "cart", quotationEntries(has)),
       // Pedido: do pedido de compra ao contrato assinado.
       ...group("nav.group.order", "box", pick(has, flowEntries("order"))),
       // Produção: da pré-produção ao embarque.
@@ -572,15 +617,18 @@ export function navFooterFor(
   ];
 }
 
+/** Os links de um item: ele mesmo ou, com subitens, só os subitens. */
+const leavesOf = (link: NavLink): NavLink[] => link.children ?? [link];
+
 /** Todos os links, na ordem, sem os grupos (celular e testes); o item pai vem antes dos subitens. */
 export function flattenNav(entries: NavEntry[]): NavLink[] {
   return entries.flatMap((e) =>
     isNavGroup(e)
       ? [
           ...(e.href ? [{ href: e.href, key: e.key, icon: e.icon }] : []),
-          ...e.items,
+          ...e.items.flatMap(leavesOf),
         ]
-      : [e],
+      : leavesOf(e),
   );
 }
 

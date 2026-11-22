@@ -1,5 +1,7 @@
 # Seleção de itens e solicitação ao fornecedor
 
+> **22/11/2026 (docs/QUOTATION.md):** para a Wellmix, esta tela é a **Cotação**. A lista mostra também as cotações de compra e os convites de book, e a tela do produto troca o card "O que está sendo negociado" pelo produto da cotação com o quadro comparativo (conversa e histórico de cada fornecedor num modal) e a contraproposta em massa à direita. Para o fornecedor, nada mudou.
+
 Decisão do dono (10/11/2026): depois de carregar muitos bookings (docs/BOOKING.md, seção 0), a Wellmix compara itens parecidos de vários bookings, escolhe o melhor caso e abre a **solicitação ao fornecedor** dele. Nesta etapa **não nasce produto, cliente nem estoque**: a Wellmix está avaliando itens que estão na fábrica do fornecedor e perguntando se ele faz o que ela precisa. O produto só é criado (ou associado a um existente) depois que a solicitação for aprovada com o fornecedor; essa é a etapa seguinte, ainda não construída.
 
 O dono também registrou que a "Solicitação" que já existia (a do cliente, `requests`) deveria ter sido sempre ao fornecedor. Como ela sustenta todo o fluxo de cotação, pedido e embarque (e o E2E), a solicitação ao fornecedor nasceu como registro próprio (`supplier_requests`), sem mexer na antiga. Rever a solicitação antiga é uma decisão à parte.

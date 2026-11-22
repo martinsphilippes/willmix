@@ -94,6 +94,20 @@ import { RequestTimeline } from "../_components/timeline";
 import { dateTime } from "../_components/negotiation";
 import { canPostMessage, canPropose } from "@/lib/supplier-requests";
 import { RequestAiReferences } from "@/components/selection-ai-prompts";
+import {
+  BoardCounterForm,
+  QuotationBoard,
+  QuoteHistoryList,
+  type BoardReference,
+  type BoardRow,
+} from "../_components/quotation-board";
+import { QuoteChat, RequestChat } from "../_components/board-chat";
+import {
+  quoteProductHistory,
+  quoteProductMessages,
+} from "@/lib/quote-negotiation";
+import { lastPurchases } from "@/lib/services/purchase-strategy";
+import { QuotationQuotePage } from "../_components/quote-pages";
 import { SamplingCard } from "../_components/sampling";
 import { samplingSlaDays } from "@/lib/services/supplier-request-sampling";
 import { samplingApproved } from "@/lib/supplier-request-sampling";
@@ -142,9 +156,26 @@ export default async function SupplierRequestPage({
         {t("supplierRequests.selection.schemaMissing")}
       </Alert>
     );
-  if (!detail) notFound();
+  if (!detail) {
+    // Cotação unificada (dono, 22/11/2026; docs/QUOTATION.md): o mesmo
+    // endereço abre a cotação de compra ainda com os fornecedores (antes de
+    // virar a solicitação da vencedora). Só a Wellmix; o fornecedor segue
+    // na cotação dele.
+    const quote = isWellmix(user)
+      ? await getStore()
+          .get("purchase_quotes", id)
+          .catch(() => null)
+      : null;
+    if (!quote) notFound();
+    return <QuotationQuotePage user={user} quote={quote} query={query} t={t} />;
+  }
   const { request: r, supplier, lot, chosen, alternatives } = detail;
   const wellmix = isWellmix(user);
+  // Para a Wellmix, a solicitação é a Cotação (dono, 22/11/2026).
+  const pageTitle = t(
+    wellmix ? "quotation.detail.title" : "supplierRequests.detail.title",
+    { n: r.number },
+  );
   // Preço de compra (dono, 15/11/2026; docs/LINHA_DE_VISAO.md, seção 7): a
   // Wellmix com "Ver preço de compra"; o fornecedor vê o dele. Sem a
   // permissão, também sem o Superplan (custo e mínimo saem do preço).
@@ -208,6 +239,9 @@ export default async function SupplierRequestPage({
         `supplierRequests.negotiation.notice.${negotiationNotice}` as DictionaryKey,
       ),
     );
+  const countered = Number(one("countered"));
+  if (Number.isInteger(countered) && countered > 0)
+    notices.push(t("quotation.counter.sent", { n: countered }));
   const linkedNotice = one("linked");
   if (linkedNotice === "keep" || linkedNotice === "decline")
     notices.push(t(`supplierRequests.detail.linked.notice.${linkedNotice}`));
@@ -266,7 +300,7 @@ export default async function SupplierRequestPage({
       <>
         <PageHeader
           t={t}
-          title={t("supplierRequests.detail.title", { n: r.number })}
+          title={pageTitle}
           subtitle={[
             wellmix ? supplier?.name : null,
             t(
@@ -280,7 +314,11 @@ export default async function SupplierRequestPage({
             .join(" · ")}
           actions={
             <LinkButton href="/app/supplier-requests">
-              {t("supplierRequests.detail.back")}
+              {t(
+                wellmix
+                  ? "quotation.detail.back"
+                  : "supplierRequests.detail.back",
+              )}
             </LinkButton>
           }
         />
@@ -673,13 +711,22 @@ export default async function SupplierRequestPage({
         specs={specs}
         item={it}
         ncm={wellmix ? (book?.ncm ?? null) : null}
-        bookHref={wellmix ? `/app/booking/lots/${r.bookingLotId}` : null}
+        // Só quando a cotação veio de um book (dono, 22/11/2026).
+        bookHref={
+          wellmix && r.bookingLotId
+            ? `/app/booking/lots/${r.bookingLotId}`
+            : null
+        }
         t={t}
       />
     </NegotiationSection>
   );
 
-  const answerSection = (
+  // Resposta do fornecedor e "Negociação e conversa": seções da tela do
+  // fornecedor. Para a Wellmix, o quadro comparativo mostra a proposta de
+  // cada um, com a conversa e o histórico nos modais e a contraproposta no
+  // bloco à direita (dono, 22/11/2026; docs/QUOTATION.md).
+  const answerSection = wellmix ? null : (
     <NegotiationSection
       n={nextSection()}
       title={t("negotiationScreen.s.answer")}
@@ -867,7 +914,7 @@ export default async function SupplierRequestPage({
     </NegotiationSection>
   ) : null;
 
-  const negotiationSection = (
+  const negotiationSection = wellmix ? null : (
     <NegotiationSection
       n={nextSection()}
       title={t("negotiationScreen.s.negotiation")}
@@ -1026,6 +1073,181 @@ export default async function SupplierRequestPage({
     </NegotiationSection>
   ) : null;
 
+  // Quadro comparativo (dono, 22/11/2026; docs/QUOTATION.md), só da Wellmix:
+  // esta cotação, as ligadas (o item e as alternativas, com os outros
+  // fornecedores) e, quando ela nasceu de uma cotação de compra, o que os
+  // outros convidados responderam. Cada linha com a conversa e o histórico
+  // do par fornecedor × produto num modal e a caixa da contraproposta.
+  let boardRows: BoardRow[] = [];
+  let boardReference: BoardReference | null = null;
+  if (wellmix) {
+    const boardRequests = [
+      { request: r, supplier },
+      ...linked.map((l) => ({ request: l.request, supplier: l.supplier })),
+    ];
+    const boardLegacy = await legacyAnswers(
+      boardRequests.map((x) => x.request),
+    );
+    const chatOpen = one("chat");
+    boardRows = boardRequests.map(({ request: o, supplier: s }) => {
+      const name = s?.name ?? t("supplierRequests.negotiation.side.supplier");
+      const offer =
+        o.supplierCanDo === "yes"
+          ? agreedConditions(o)
+          : {
+              price: o.item.price ?? null,
+              currency: o.item.currency ?? null,
+              incoterm: o.item.incoterm ?? null,
+              moq: o.item.moq ?? null,
+              leadTimeDays: null,
+            };
+      const waiting = !!pendingProposal(o.negotiation);
+      const key = `request:${o.id}`;
+      return {
+        key,
+        target: canPropose(o) && !waiting ? key : null,
+        checked: o.id === r.id,
+        supplierName: name,
+        current: o.id === r.id,
+        state: (
+          <>
+            <Badge tone={STATUS_TONE[o.status]}>
+              {t(`supplierRequests.status.${o.status}` as DictionaryKey)}
+            </Badge>
+            {o.supplierCanDo === "no" ? (
+              <Badge tone="danger">
+                {t("supplierRequests.detail.answer.no")}
+              </Badge>
+            ) : null}
+          </>
+        ),
+        price: seesPrice ? offer.price : null,
+        currency: offer.currency,
+        incoterm: offer.incoterm,
+        moq: offer.moq,
+        leadTimeDays: offer.leadTimeDays,
+        conditions:
+          [
+            o.id === r.id
+              ? null
+              : (o.item.description ?? o.item.productName ?? null),
+            o.supplierNote,
+          ]
+            .filter(Boolean)
+            .join(" · ") || null,
+        pending: waiting,
+        href: o.id === r.id ? null : `/app/supplier-requests/${o.id}?view=item`,
+        chat: (
+          <RequestChat
+            user={user}
+            request={o}
+            supplierName={name}
+            board={r.id}
+            errors={errorTexts}
+            fallbackError={errorFallback}
+            t={t}
+          />
+        ),
+        messages: (o.negotiation ?? []).filter((e) => e.kind === "message")
+          .length,
+        history: (
+          <RequestTimeline
+            request={o}
+            legacyAnswers={boardLegacy.get(o.id) ?? []}
+            showPrice={seesPrice}
+            t={t}
+          />
+        ),
+        chatOpen: chatOpen === key,
+      };
+    });
+    // Da cotação de compra: os outros convidados, só para comparar (a
+    // cotação já foi decidida; a conversa com eles fica só para leitura).
+    const store = getStore();
+    const won = r.quoteResponseId
+      ? await store
+          .get("purchase_quote_responses", r.quoteResponseId)
+          .catch(() => null)
+      : null;
+    if (won && r.productId) {
+      const productId = r.productId;
+      const responses = await store.list("purchase_quote_responses", {
+        filter: { quoteId: won.quoteId },
+      });
+      const others = responses.filter((x) => x.id !== won.id);
+      const parties = others.length
+        ? await store.list("parties", {
+            filter: { id: [...new Set(others.map((x) => x.supplierId))] },
+          })
+        : [];
+      if (boardRows[0]) boardRows[0].winner = true;
+      boardRows.push(
+        ...others.map((x): BoardRow => {
+          const messages = quoteProductMessages(x, productId);
+          const state = x.status === "invited" ? "expired" : x.status;
+          return {
+            key: `response:${x.id}`,
+            target: null,
+            supplierName:
+              parties.find((p) => p.id === x.supplierId)?.name ?? x.supplierId,
+            state: (
+              <Badge tone={state === "answered" ? "success" : "neutral"}>
+                {t(`quote.response.${state}` as DictionaryKey)}
+              </Badge>
+            ),
+            price: seesPrice
+              ? (x.prices?.find((p) => p.productId === productId)?.unitPrice ??
+                null)
+              : null,
+            currency: x.currency,
+            incoterm: x.incoterm,
+            moq: x.moq,
+            leadTimeDays: x.leadTimeDays,
+            conditions: [x.port, x.note].filter(Boolean).join(" · ") || null,
+            chat: messages.length ? (
+              <QuoteChat
+                quoteId={won.quoteId}
+                responseId={x.id}
+                productId={productId}
+                messages={messages}
+                mySide="wellmix"
+                names={{}}
+                canPost={false}
+                errors={errorTexts}
+                fallbackError={errorFallback}
+                t={t}
+              />
+            ) : null,
+            messages: messages.length,
+            history: (
+              <QuoteHistoryList
+                entries={quoteProductHistory(x, productId)}
+                showPrice={seesPrice}
+                t={t}
+              />
+            ),
+          };
+        }),
+      );
+    }
+    const last = r.productId
+      ? (await lastPurchases([r.productId]).catch(() => null))?.get(r.productId)
+      : null;
+    if (last)
+      boardReference = {
+        label: t("quote.lastPurchase"),
+        price: last.unitPrice,
+        currency: last.currency,
+        incoterm: last.incoterm,
+        moq: last.moq,
+        leadTimeDays: last.leadTimeDays,
+        note: last.supplierName,
+      };
+  }
+  const counterTargets = boardRows
+    .map((x) => x.target)
+    .filter((x): x is string => !!x);
+
   const linkedCard = linked.length ? (
     <Card
       dense
@@ -1081,56 +1303,57 @@ export default async function SupplierRequestPage({
     </Card>
   ) : null;
 
-  const bookCard = wellmix ? (
-    <Card title={t("supplierRequests.detail.booking")} dense>
-      <div className="space-y-1 text-[13px]" data-negotiation-book>
-        {lot ? (
-          <Link href={`/app/booking/lots/${lot.id}`} className={linkClass}>
-            {t("supplierRequests.detail.bookingOf", {
-              n: lot.number,
-              file: lot.fileName,
-            })}
-          </Link>
-        ) : null}
-        {selections.map((g) => (
-          <Link
-            key={g.id}
-            href={selectionHref(g)}
-            className={cx(linkClass, "block")}
-            data-supplier-request-selection
-          >
-            {t("entityLinks.selection")}
-          </Link>
-        ))}
-        {seesPrice && chosen?.analysis ? (
-          <div className="pt-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-              {t("supplierRequests.detail.chosenSuperplan")}
-            </p>
-            <span className="mt-1 flex flex-col gap-1">
-              {chosen.analysis.costBrl !== null ? (
-                <span
-                  className="text-sm font-semibold text-zinc-900"
-                  data-supplier-request-chosen-cost
-                >
-                  {t("supplierRequests.detail.chosenCost", {
-                    price: formatMoney(chosen.analysis.costBrl, "BRL", t),
-                  })}
-                </span>
-              ) : null}
-              <BookingItemSuperplan analysis={chosen.analysis} t={t} />
-            </span>
-          </div>
-        ) : null}
-      </div>
-    </Card>
-  ) : null;
+  const bookCard =
+    wellmix && (lot || selections.length || (seesPrice && chosen?.analysis)) ? (
+      <Card title={t("supplierRequests.detail.booking")} dense>
+        <div className="space-y-1 text-[13px]" data-negotiation-book>
+          {lot ? (
+            <Link href={`/app/booking/lots/${lot.id}`} className={linkClass}>
+              {t("supplierRequests.detail.bookingOf", {
+                n: lot.number,
+                file: lot.fileName,
+              })}
+            </Link>
+          ) : null}
+          {selections.map((g) => (
+            <Link
+              key={g.id}
+              href={selectionHref(g)}
+              className={cx(linkClass, "block")}
+              data-supplier-request-selection
+            >
+              {t("entityLinks.selection")}
+            </Link>
+          ))}
+          {seesPrice && chosen?.analysis ? (
+            <div className="pt-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                {t("supplierRequests.detail.chosenSuperplan")}
+              </p>
+              <span className="mt-1 flex flex-col gap-1">
+                {chosen.analysis.costBrl !== null ? (
+                  <span
+                    className="text-sm font-semibold text-zinc-900"
+                    data-supplier-request-chosen-cost
+                  >
+                    {t("supplierRequests.detail.chosenCost", {
+                      price: formatMoney(chosen.analysis.costBrl, "BRL", t),
+                    })}
+                  </span>
+                ) : null}
+                <BookingItemSuperplan analysis={chosen.analysis} t={t} />
+              </span>
+            </div>
+          ) : null}
+        </div>
+      </Card>
+    ) : null;
 
   return (
     <>
       <PageHeader
         t={t}
-        title={t("supplierRequests.detail.title", { n: r.number })}
+        title={pageTitle}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             <Badge tone={STATUS_TONE[r.status]}>
@@ -1192,56 +1415,111 @@ export default async function SupplierRequestPage({
         </div>
       ) : null}
 
-      {/* Centro (~75%) com o card "O que está sendo negociado" e lateral
-          (~25%) só com o Histórico de interações e o Book. Abaixo de 1280px
-          (iPad), a lateral vem depois do conteúdo principal. */}
-      <div
-        className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(15rem,1fr)] xl:items-start"
-        data-negotiation-layout
-      >
-        <div className="min-w-0 space-y-4" data-negotiation-center>
-          <Card title={t("supplierRequests.detail.request")} dense>
-            <div className="space-y-3" data-negotiation-main>
-              {summarySection}
-              {sheetSection}
-              {answerSection}
-              {decisionSection}
-              {negotiationSection}
-              {alternativesSection}
-            </div>
-          </Card>
-          <RequestAiReferences assets={r.aiAssets} t={t} />
-          {linkedCard}
-        </div>
-
-        <aside
-          className={cx(
-            "grid min-w-0 gap-4 md:items-start xl:grid-cols-1",
-            bookCard && "md:grid-cols-2",
-          )}
-          data-negotiation-aside
+      {wellmix ? (
+        /* Wellmix (dono, 22/11/2026; docs/QUOTATION.md): no centro, o
+           produto da cotação e o quadro comparativo; à direita, fixos, o
+           Book (quando a cotação veio de um), "Devolver com contraproposta"
+           e o histórico desta cotação. */
+        <div
+          className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(17rem,1fr)] xl:items-start"
+          data-negotiation-layout
+          data-quotation-item
         >
-          <div id="historico" className="min-w-0 scroll-mt-20">
-            <RequestTimeline
-              request={
-                wellmix
-                  ? r
-                  : {
-                      ...r,
-                      // "Continuar negociando" é decisão interna da Wellmix.
-                      negotiation: (r.negotiation ?? []).filter(
-                        (e) => e.kind !== "keep",
-                      ),
-                    }
-              }
-              legacyAnswers={timelineLegacy.get(r.id) ?? []}
+          <div className="min-w-0 space-y-4" data-negotiation-center>
+            <Card title={t("quotation.item.product")} dense>
+              <div className="space-y-3" data-negotiation-main>
+                {summarySection}
+                {sheetSection}
+              </div>
+            </Card>
+            <QuotationBoard
+              rows={boardRows}
+              reference={boardReference}
               showPrice={seesPrice}
               t={t}
             />
+            <Card dense>
+              <div className="space-y-3">
+                {decisionSection}
+                {alternativesSection}
+              </div>
+            </Card>
+            <RequestAiReferences assets={r.aiAssets} t={t} />
+            {linkedCard}
           </div>
-          {bookCard}
-        </aside>
-      </div>
+          <aside
+            className="grid min-w-0 gap-4 md:grid-cols-2 md:items-start xl:sticky xl:top-[calc(var(--wm-header)+1rem)] xl:max-h-[calc(100vh-var(--wm-header)-2rem)] xl:grid-cols-1 xl:overflow-y-auto xl:px-1 xl:pb-1"
+            data-negotiation-aside
+          >
+            {bookCard}
+            <div id="conversa" className="min-w-0 scroll-mt-20">
+              <BoardCounterForm
+                kind="request"
+                boardId={r.id}
+                targets={counterTargets}
+                values={{
+                  price: r.supplierPrice,
+                  currency: r.supplierCurrency ?? r.item.currency ?? "USD",
+                  moq: r.supplierMoq,
+                  leadTimeDays: r.supplierLeadTimeDays,
+                  incoterm: r.supplierIncoterm ?? r.item.incoterm ?? "FOB",
+                }}
+                simulation={simulation}
+                showPrice={seesPrice}
+                errors={errorTexts}
+                fallbackError={errorFallback}
+                formKey={`counter-${boardRows
+                  .map((x) => (x.pending ? "1" : "0"))
+                  .join("")}-${(r.negotiation ?? []).length}`}
+                t={t}
+              />
+            </div>
+            <div id="historico" className="min-w-0 scroll-mt-20">
+              <RequestTimeline
+                request={r}
+                legacyAnswers={timelineLegacy.get(r.id) ?? []}
+                showPrice={seesPrice}
+                t={t}
+              />
+            </div>
+          </aside>
+        </div>
+      ) : (
+        /* Fornecedor: a tela de sempre. Centro (~75%) com o card "O que
+           está sendo negociado" e lateral (~25%) com o Histórico. */
+        <div
+          className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(15rem,1fr)] xl:items-start"
+          data-negotiation-layout
+        >
+          <div className="min-w-0 space-y-4" data-negotiation-center>
+            <Card title={t("supplierRequests.detail.request")} dense>
+              <div className="space-y-3" data-negotiation-main>
+                {summarySection}
+                {sheetSection}
+                {answerSection}
+                {negotiationSection}
+              </div>
+            </Card>
+            <RequestAiReferences assets={r.aiAssets} t={t} />
+          </div>
+          <aside className="grid min-w-0 gap-4" data-negotiation-aside>
+            <div id="historico" className="min-w-0 scroll-mt-20">
+              <RequestTimeline
+                request={{
+                  ...r,
+                  // "Continuar negociando" é decisão interna da Wellmix.
+                  negotiation: (r.negotiation ?? []).filter(
+                    (e) => e.kind !== "keep",
+                  ),
+                }}
+                legacyAnswers={timelineLegacy.get(r.id) ?? []}
+                showPrice={seesPrice}
+                t={t}
+              />
+            </div>
+          </aside>
+        </div>
+      )}
       {wellmix && r.orderId ? (
         <div className="mt-4" data-supplier-request-order>
           <Alert tone="info">

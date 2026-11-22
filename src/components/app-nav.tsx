@@ -35,6 +35,10 @@ export interface NavItemView {
   badgeAlert?: boolean;
   /** Outros endereços em que o item também acende (src/lib/nav.ts, NavLink.match). */
   match?: string[];
+  /** Chave estável do item com subitens. */
+  id?: string;
+  /** Subitens: o item abre e fecha dentro do grupo (ex.: Entrada). */
+  items?: NavItemView[];
 }
 export interface NavEntryView {
   /** Chave estável do grupo (para lembrar se está aberto). */
@@ -204,9 +208,13 @@ function CountBadge({
   );
 }
 
+/** Os links de verdade: o item ou, com subitens, os subitens. */
+const leaves = (items: NavItemView[]): NavItemView[] =>
+  items.flatMap((i) => i.items ?? [i]);
 const groupBadge = (items: NavItemView[]) =>
-  items.reduce((sum, i) => sum + (i.badge ?? 0), 0);
-const groupAlert = (items: NavItemView[]) => items.some((i) => i.badgeAlert);
+  leaves(items).reduce((sum, i) => sum + (i.badge ?? 0), 0);
+const groupAlert = (items: NavItemView[]) =>
+  leaves(items).some((i) => i.badgeAlert);
 
 /** Fecha quando a rota muda (voltar/avançar, navegação por código). */
 function useCloseOnNavigate(close: () => void) {
@@ -252,11 +260,14 @@ function NavRow({
   item,
   collapsed,
   nested,
+  deep,
   onNavigate,
 }: {
   item: NavItemView;
   collapsed: boolean;
   nested?: boolean;
+  /** Subitem de um item que abre e fecha (um nível a mais de recuo). */
+  deep?: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
@@ -270,7 +281,7 @@ function NavRow({
       onClick={onNavigate}
       data-nav-link={item.href}
       className={`${rowBase} ${current ? rowActive : rowIdle} ${
-        nested ? "py-1.5 pl-10" : ""
+        nested ? (deep ? "py-1.5 pl-14" : "py-1.5 pl-10") : ""
       } ${collapsed ? "justify-center px-0" : ""}`}
     >
       {nested ? null : <Icon name={item.icon} className="h-5 w-5 shrink-0" />}
@@ -282,6 +293,109 @@ function NavRow({
         alert={item.badgeAlert}
       />
     </Link>
+  );
+}
+
+/**
+ * Item com subitens dentro de um grupo (dono, 22/11/2026: "Entrada" com
+ * Book, Reposição e Encomendas): o nome abre e fecha a lista; com um subitem
+ * na tela atual, abre sozinho.
+ */
+function NavSubGroup({
+  item,
+  items,
+  onNavigate,
+}: {
+  item: NavItemView;
+  items: NavItemView[];
+  onNavigate?: () => void;
+}) {
+  const pathname = usePathname();
+  const id = useId();
+  const active = items.some((i) => isActiveLink(i, pathname));
+  const [open, setOpen] = useState(active);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- abre ao entrar numa tela do subitem
+    if (active) setOpen(true);
+  }, [active]);
+  const badge = groupBadge(items);
+  const alert = groupAlert(items);
+  return (
+    <div data-nav-subgroup={item.label}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen((v) => !v)}
+        data-nav-subgroup-toggle={item.id ?? item.label}
+        className={`${rowBase} py-1.5 pl-10 ${
+          active ? "font-semibold text-brand-700" : rowIdle
+        }`}
+      >
+        <span className="truncate">{item.label}</span>
+        {open ? null : <CountBadge n={badge} alert={alert} />}
+        <svg
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden
+          className={`h-4 w-4 shrink-0 text-zinc-400 transition ${
+            badge > 0 && !open ? "" : "ml-auto"
+          } ${open ? "rotate-180" : ""}`}
+        >
+          <path
+            fillRule="evenodd"
+            d="M5.3 7.3a1 1 0 0 1 1.4 0L10 10.6l3.3-3.3a1 1 0 1 1 1.4 1.4l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 0-1.4Z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </button>
+      {open ? (
+        <div id={id} role="group" className="mt-0.5 space-y-0.5">
+          {items.map((sub) => (
+            <NavRow
+              key={sub.href}
+              item={sub}
+              collapsed={false}
+              nested
+              deep
+              onNavigate={onNavigate}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Linhas de dentro de um grupo: links e itens com subitens. */
+function GroupItems({
+  items,
+  onNavigate,
+}: {
+  items: NavItemView[];
+  onNavigate?: () => void;
+}) {
+  return (
+    <>
+      {items.map((item) =>
+        item.items ? (
+          <NavSubGroup
+            key={`sub:${item.id ?? item.label}`}
+            item={item}
+            items={item.items}
+            onNavigate={onNavigate}
+          />
+        ) : (
+          <NavRow
+            key={item.href}
+            item={item}
+            collapsed={false}
+            nested
+            onNavigate={onNavigate}
+          />
+        ),
+      )}
+    </>
   );
 }
 
@@ -303,7 +417,7 @@ function NavGroupRow({
 }) {
   const pathname = usePathname();
   const id = useId();
-  const active = items.some((i) => isActiveLink(i, pathname));
+  const active = leaves(items).some((i) => isActiveLink(i, pathname));
   const badge = groupBadge(items);
   const alert = groupAlert(items);
   if (entry.href)
@@ -362,15 +476,7 @@ function NavGroupRow({
       </button>
       {open && !collapsed ? (
         <div id={id} role="group" className="mt-0.5 space-y-0.5">
-          {items.map((item) => (
-            <NavRow
-              key={item.href}
-              item={item}
-              collapsed={false}
-              nested
-              onNavigate={onNavigate}
-            />
-          ))}
+          <GroupItems items={items} onNavigate={onNavigate} />
         </div>
       ) : null}
     </div>
@@ -464,15 +570,7 @@ function ParentGroupRow({
       </div>
       {open && !collapsed ? (
         <div id={listId} role="group" className="mt-0.5 space-y-0.5">
-          {items.map((item) => (
-            <NavRow
-              key={item.href}
-              item={item}
-              collapsed={false}
-              nested
-              onNavigate={onNavigate}
-            />
-          ))}
+          <GroupItems items={items} onNavigate={onNavigate} />
         </div>
       ) : null}
     </div>
@@ -504,7 +602,7 @@ function NavList({
   const pathname = usePathname();
   const current = entries.find(
     (e) =>
-      e.items?.some((i) => isActiveLink(i, pathname)) ||
+      (e.items && leaves(e.items).some((i) => isActiveLink(i, pathname))) ||
       (!!e.items && !!e.href && isActiveHref(e.href, pathname)),
   )?.id;
   // Já no servidor o grupo da tela atual vem aberto (sem piscar).
