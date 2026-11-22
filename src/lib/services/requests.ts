@@ -647,6 +647,14 @@ export async function releaseRequest(user: User, request: Request) {
       link: `/app/sourcing?tab=items&status=draft`,
     });
   }
+  // A encomenda segue direto para a Estratégia de Compra, sem o "Enviar
+  // para cotação" da Wellmix (dono, 22/11/2026).
+  try {
+    const { enterStrategy } = await import("./purchase-strategy");
+    await enterStrategy(user, request);
+  } catch (error) {
+    console.error("[request] Estratégia de Compra", error);
+  }
   // Encomenda ou reposição recebida (docs/PURCHASE_DEMAND.md): a Wellmix
   // fica sabendo (e-mail e WhatsApp simulados).
   await notifyWellmix({

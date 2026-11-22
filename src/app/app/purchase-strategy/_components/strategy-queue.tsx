@@ -152,6 +152,8 @@ export interface StrategyTexts {
   fix: string;
   review: string;
   reviewNone: string;
+  /** Abaixo do card sem escolha: o que falta para enviar esta solicitação. */
+  chooseOne: string;
   summaryTitle: string;
   summaryHint: string;
   receives: string;
@@ -239,8 +241,9 @@ export function StrategyQueue({
   // Formulários do login abertos (linha:parceiro): ficam na tela mesmo
   // depois de o parceiro virar Apto, com o login e a senha para copiar.
   const [loginFixOpen, setLoginFixOpen] = useState<string[]>([]);
-  const [note, setNote] = useState("");
-  const [reviewing, setReviewing] = useState(false);
+  // A observação e o envio são de cada solicitação (dono, 22/11/2026).
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [sendingKey, setSendingKey] = useState<string | null>(null);
   const [byLine, setByLine] = useState<Record<string, LineState>>(() =>
     Object.fromEntries(
       groups.map((g) => [
@@ -296,25 +299,26 @@ export function StrategyQueue({
         : null,
     };
   });
-  const hasProblem = summary.some((x) => x.problem);
   type SummaryLine = (typeof summary)[number];
 
-  const confirm = () => {
+  /** Confirma o envio de uma solicitação só: a do card. */
+  const confirm = (line: StrategyGroupData) => {
+    const s = byLine[line.key];
     const data = new FormData();
     data.set(
       "payload",
       JSON.stringify({
-        lines: chosen.map((line) => {
-          const s = byLine[line.key];
-          return {
+        lines: [
+          {
             demandIds: line.demandIds,
             choice: s.choice,
             recipientIds: s.choice === "quote" ? s.recipients : [],
-          };
-        }),
-        note: note.trim() || null,
+          },
+        ],
+        note: (notes[line.key] ?? "").trim() || null,
       }),
     );
+    setSendingKey(line.key);
     startTransition(() => formAction(data));
   };
 
@@ -577,7 +581,6 @@ export function StrategyQueue({
         disabled={disabled || !canChoose}
         onChange={() => {
           set(line.key, { choice: value });
-          setReviewing(false);
         }}
         className="h-3.5 w-3.5 accent-brand-600 pointer-coarse:h-5 pointer-coarse:w-5"
         data-strategy-choice={value}
@@ -748,7 +751,56 @@ export function StrategyQueue({
           ) : null}
         </>
       )}
+      {canChoose ? (
+        <>
+          {state.error && sendingKey === line.key && !pending ? (
+            <div className="mt-1.5">
+              <Alert tone="danger">
+                <span data-strategy-send-error={state.error}>
+                  {state.message}
+                </span>
+              </Alert>
+            </div>
+          ) : null}
+          <label className="mt-1.5 block">
+            <span className="mb-1 block font-medium text-zinc-700">
+              {texts.note}
+            </span>
+            <Textarea
+              value={notes[line.key] ?? ""}
+              onChange={(e) =>
+                setNotes((prev) => ({ ...prev, [line.key]: e.target.value }))
+              }
+              rows={2}
+              maxLength={2000}
+              className="shadow-none"
+            />
+          </label>
+          <div className="mt-1.5">
+            <Button
+              type="button"
+              onClick={() => confirm(line)}
+              disabled={pending || !!problem}
+              data-strategy-confirm={line.demandIds[0]}
+            >
+              {pending && sendingKey === line.key
+                ? texts.working
+                : texts.confirm}
+            </Button>
+          </div>
+        </>
+      ) : null}
     </div>
+  );
+
+  /** Sem escolha ainda: o lembrete fica no lugar do resumo, abaixo do card. */
+  const pendingBlock = (line: StrategyGroupData) => (
+    <p
+      className="rounded-lg border border-dashed border-zinc-300 bg-white px-2.5 py-1.5 text-xs text-zinc-500"
+      data-strategy-choose-hint={line.demandIds[0]}
+    >
+      {texts.chooseOne}
+    </p>
   );
 
   const lineCard = (line: StrategyGroupData) => {
@@ -985,7 +1037,11 @@ export function StrategyQueue({
             </QuickDialog>
           </div>
         </section>
-        {own ? summaryBlock(own) : null}
+        {own
+          ? summaryBlock(own)
+          : canChoose && !line.blocked
+            ? pendingBlock(line)
+            : null}
       </div>
     );
   };
@@ -1006,75 +1062,6 @@ export function StrategyQueue({
           {texts.card.emptyStrip}
         </p>
       )}
-
-      {canChoose && lines.length ? (
-        <div className="sticky bottom-0 z-10 space-y-2 rounded-xl border border-zinc-200 bg-white/95 p-2.5 shadow-lg backdrop-blur">
-          {reviewing && chosen.length ? (
-            <div data-strategy-confirm-bar>
-              <p className="mb-2 text-xs text-zinc-600">{texts.summaryHint}</p>
-              {state.error ? (
-                <div className="mb-2">
-                  <Alert tone="danger">
-                    <span data-strategy-send-error={state.error}>
-                      {state.message}
-                    </span>
-                  </Alert>
-                </div>
-              ) : null}
-              <label className="mt-2 block">
-                <span className="mb-1 block text-xs font-medium text-zinc-700">
-                  {texts.note}
-                </span>
-                <Textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  rows={2}
-                  maxLength={2000}
-                  className="shadow-none"
-                />
-              </label>
-              {hasProblem ? (
-                <p className="mt-2 text-xs font-semibold text-red-700">
-                  {texts.fixFirst}
-                </p>
-              ) : null}
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  onClick={confirm}
-                  disabled={pending || hasProblem}
-                  data-strategy-confirm
-                >
-                  {pending ? texts.working : texts.confirm}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setReviewing(false)}
-                  disabled={pending}
-                  data-strategy-back
-                >
-                  {texts.back}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs text-zinc-600">
-                {chosen.length ? null : texts.reviewNone}
-              </p>
-              <Button
-                type="button"
-                onClick={() => setReviewing(true)}
-                disabled={!chosen.length}
-                data-strategy-review
-              >
-                {fill(texts.review, { n: chosen.length })}
-              </Button>
-            </div>
-          )}
-        </div>
-      ) : null}
     </div>
   );
 }

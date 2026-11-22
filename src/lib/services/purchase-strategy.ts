@@ -121,41 +121,32 @@ export async function lastPurchases(
 type QueueFields = Pick<
   Request,
   "status" | "purchaseDecisionId" | "origin" | "customerId" | "strategySentAt"
-> &
-  Partial<Pick<Request, "orderTerms">>;
-
-/**
- * Pedido já confirmado pelo cliente (venda pela Wellmix): segue direto para
- * a Estratégia de Compra, sem o "Enviar para cotação" (dono, 22/11/2026).
- * Vale também para as confirmadas antes da regra, que ainda esperavam o envio.
- */
-const customerConfirmed = (r: QueueFields) => !!r.orderTerms?.confirmation;
+>;
 
 /**
  * A demanda está na fila da Estratégia de Compra? Aberta e sem estratégia em
- * curso; a reposição entra sozinha e a encomenda do cliente só depois do
- * "Enviar para cotação" em Encomendas (dono, 18/11/2026) ou, na venda pela
- * Wellmix, direto com a confirmação do cliente (dono, 22/11/2026). A compra para
- * estoque aberta na Nova solicitação segue o caminho dela.
+ * curso. A reposição e a encomenda do cliente entram sozinhas: a venda pela
+ * Wellmix com a confirmação do cliente e a encomenda aberta pelo próprio
+ * cliente assim que nasce, sem o "Enviar para cotação" (dono, 22/11/2026;
+ * antes, só depois do envio em Encomendas). Vale também para as que ainda
+ * esperavam o envio. A compra para estoque aberta na Nova solicitação segue
+ * o caminho dela.
  */
 export function inStrategyQueue(r: QueueFields): boolean {
   if (r.status !== "REQUESTED" || r.purchaseDecisionId) return false;
   const kind = demandKind(r);
   if (kind === "replenishment") return true;
-  if (kind !== "order" || isStockCustomer(r.customerId)) return false;
-  return !!r.strategySentAt || customerConfirmed(r);
+  return kind === "order" && !isStockCustomer(r.customerId);
 }
 
-/** Encomenda do cliente esperando o "Enviar para cotação" (Encomendas). */
+/**
+ * Encomenda esperando o "Enviar para cotação": nenhuma desde 22/11/2026 (a
+ * encomenda segue direto para a Estratégia). A função fica para as telas e
+ * pendências que ainda perguntam; o envio manual não aparece mais.
+ */
 export function awaitingStrategySend(r: QueueFields): boolean {
-  return (
-    r.status === "REQUESTED" &&
-    !r.purchaseDecisionId &&
-    demandKind(r) === "order" &&
-    !isStockCustomer(r.customerId) &&
-    !r.strategySentAt &&
-    !customerConfirmed(r)
-  );
+  void r;
+  return false;
 }
 
 /** Demandas que esperam a estratégia (a fila da Estratégia de Compra). */
@@ -1026,6 +1017,42 @@ export async function enterStrategyOnConfirm(
       );
   }
   return entered;
+}
+
+/**
+ * A encomenda entra na fila da Estratégia de Compra na hora em que chega à
+ * Wellmix (criada pelo cliente ou confirmada por ele), sem o "Enviar para
+ * cotação" (dono, 22/11/2026). Grava a data da entrada; o aviso à Wellmix é
+ * o da encomenda nova (`releaseRequest`).
+ */
+export async function enterStrategy(
+  user: User,
+  request: Request,
+): Promise<Request> {
+  if (
+    request.strategySentAt ||
+    // A confirmada pelo cliente segue pela cotação automática
+    // (`enterStrategyOnConfirm`), que grava a entrada.
+    request.orderTerms?.confirmation ||
+    demandKind(request) !== "order" ||
+    !inStrategyQueue(request)
+  )
+    return request;
+  const now = new Date().toISOString();
+  const updated = await getStore().update("requests", request.id, {
+    strategySentAt: now,
+    strategySentByUserId: user.id,
+  });
+  await audit(
+    user,
+    "purchase_strategy.send_request",
+    "request",
+    request.id,
+    `Encomenda nº ${request.number ?? "—"} (${request.productName}): entrou direto na Estratégia de Compra`,
+    { strategySentAt: null },
+    { strategySentAt: now },
+  );
+  return updated;
 }
 
 /** Uma linha da Estratégia de Compra: um produto de uma demanda. */
