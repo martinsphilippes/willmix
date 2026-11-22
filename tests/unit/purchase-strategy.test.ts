@@ -350,11 +350,11 @@ describe("pendências da estratégia de compra nos três idiomas", () => {
       choose,
       of(
         "purchase_strategy_approve",
-        `/app/purchase-strategy#decision-${approve.id}`,
+        `/app/purchase-strategy?tab=open#decision-${approve.id}`,
       ),
       of(
         "purchase_strategy_order",
-        `/app/purchase-strategy#decision-${order.id}`,
+        `/app/purchase-strategy?tab=open#decision-${order.id}`,
       ),
     ];
     expect(picked.every(Boolean)).toBe(true);

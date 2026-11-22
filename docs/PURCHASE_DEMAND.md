@@ -218,6 +218,14 @@ Para caberem três linhas de cards no Mac e no Full HD, o card de "Em andamento"
 - **Fila**: os cards usam a mesma última compra em duas linhas.
 - **Dicas dos rótulos curtos**: ficam dentro do próprio card, com até 10rem. A grade rola para os lados e cortaria o que sai dela; por isso nada em volta de uma dica pode cortar o texto (sem `truncate`).
 
+## Abas, resumo por card e entrada direta (dono, 22/11/2026)
+
+- **Pedido confirmado pelo cliente segue direto**: na venda pela Wellmix, a confirmação do cliente já põe a encomenda na fila da Estratégia de Compra, sem o "Enviar para cotação" da Wellmix. A confirmação grava `requests.strategySentAt` (com a Auditoria `purchase_strategy.send_request`) e avisa quem escolhe a estratégia (`enterStrategyOnConfirm`). A regra da fila (`inStrategyQueue`) também aceita a confirmação gravada (`orderTerms.confirmation`), então as confirmadas antes desta mudança entram sem ninguém reenviar. A encomenda aberta pelo próprio cliente (sem confirmação) continua com o "Enviar para cotação" em Encomendas.
+- **Uma aba por estágio** (`/app/purchase-strategy?tab=`): **Esperando estratégia** (`waiting`, a fila), **Em andamento** (`open`, as estratégias esperando aprovação ou pedido) e **Enviadas** (`sent`), cada uma com a contagem. Sem `tab`, abre a fila; depois de escolher ou decidir, abre "Em andamento". Os endereços antigos `#decision-<id>` sem a aba são levados para "Em andamento" (`_components/hash-tab.tsx`).
+- **Enviadas**: uma linha por cotação de cada envio (os 30 envios mais recentes). A linha abre a **cotação de fato** (`/app/purchase-quotes/<id>`); o pedido direto abre a estratégia em "Em andamento"; a que não saiu abre o resultado do envio. A coluna "Envio" continua levando ao resultado por destinatário (`/app/purchase-strategy/sends/<id>`).
+- **Resumo do envio por card**: cada solicitação com uma escolha mostra o seu "Resumo do envio" logo abaixo do próprio card, na mesma largura (quem recebe, quem fica de fora e o problema, se houver). A barra fixa do rodapé ficou só com "Revisar o envio", a observação e "Confirmar o envio".
+- Prática para as próximas telas: estágios diferentes de um mesmo fluxo ficam em abas, não empilhados na mesma tela.
+
 ## Ficha técnica na cotação (dono, 20/11/2026)
 
 Pedido do dono: o fornecedor que nunca negociou o produto informa a ficha técnica na cotação e o que já negociou confere e ratifica o que temos, uma vez só, com o aviso de que o portal novo está revalidando o cadastro. Decisões do dono ("1 a 6 recomendado"; depois "Sankhya fora", "porto sempre", "Sem código", "regra nova só na foto da balança", "dados da empresa ficam como estão"):
