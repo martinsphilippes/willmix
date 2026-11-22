@@ -12,9 +12,11 @@ import {
  * De quem é a vez (dono, 18/11/2026; docs/TURNS.md): a venda pela Wellmix
  * aguardando o cliente aparece em "Em aberto" com a situação "Aguardando
  * cliente" e o Próximo passo "Confirmar pedido"; o cliente recebe a ação nas
- * Pendências dele; confirmada, a pendência dele some e a vez volta para a
- * Wellmix, já na Estratégia de compra (dono, 22/11/2026), com o filtro "Com
- * quem está" coerente.
+ * Pendências dele; confirmada, a pendência dele some, a encomenda entra direto
+ * na Estratégia e a cotação sai sozinha (dono, 22/11/2026: sem o "Enviar para
+ * cotação"), com a vez no fornecedor e o filtro "Com quem está" coerente. A
+ * encomenda aberta pelo próprio cliente continua com o "Enviar para cotação"
+ * da Wellmix.
  */
 
 async function newSaleForJoao(page: Page) {
@@ -40,7 +42,22 @@ async function newSaleForJoao(page: Page) {
   return new URL(page.url()).pathname.split("/").pop()!;
 }
 
-test("venda aguardando o cliente: Em aberto e com o cliente; ele confirma pelas Pendências e a vez volta à Wellmix", async ({
+/** Encomenda aberta pelo próprio cliente: segue com o "Enviar para cotação". */
+async function customerEncomenda(page: Page) {
+  await login(page, "joao@lojista.com");
+  await page.goto("/app/requests/new");
+  const item = page.locator('[data-request-item="0"]');
+  const product = item.locator('[data-product-picker="catalog"]');
+  await product.locator("[data-product-picker-input]").fill("boneca");
+  await product.locator('[data-product-picker-option="prod-boneca"]').click();
+  // Produto do catálogo: a quantidade já vem no pedido mínimo (em caixas).
+  await expect(item.locator("[data-selection-quantity]")).not.toHaveValue("");
+  await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
+  await createdRequestId(page);
+  return new URL(page.url()).pathname.split("/").pop()!;
+}
+
+test("venda aguardando o cliente: Em aberto e com o cliente; ele confirma pelas Pendências e a cotação sai sozinha", async ({
   page,
 }) => {
   await login(page, "admin@wellmix.com");
@@ -94,24 +111,33 @@ test("venda aguardando o cliente: Em aberto e com o cliente; ele confirma pelas 
     page.locator(`[data-task-row] a[href="/app/requests/${requestId}"]`),
   ).toHaveCount(0);
 
-  // A Wellmix: "Aguardando Wellmix" e a encomenda já na Estratégia de compra,
-  // sem o "Enviar para cotação" (dono, 22/11/2026); o filtro "Cliente" não a
+  // Cotação na confirmação (dono, 22/11/2026): entrou sozinha na Estratégia
+  // e a cotação já saiu para os fornecedores, sem o "Enviar para cotação".
+  // A vez é do fornecedor (responder a cotação); o filtro "Cliente" não a
   // mostra mais.
   await login(page, "admin@wellmix.com");
-  await page.goto("/app/requests?vez=wellmix");
-  await expect(row.locator('[data-request-turn="wellmix"]')).toContainText(
-    "Aguardando Wellmix",
+  await page.goto(`/app/requests/batch/${requestId}`);
+  await expect(page.locator(`[data-batch-sent="${requestId}"]`)).toContainText(
+    "Entrou sozinha na Estratégia",
   );
-  await expect(row.locator('[data-request-next="strategy"]')).toBeVisible();
-  await expect(row.locator('[data-request-next="send"]')).toHaveCount(0);
+  await page.goto("/app/requests?vez=supplier");
+  await expect(row.locator('[data-request-turn="supplier"]')).toBeVisible();
+  await expect(row.locator('[data-request-next="quote_answer"]')).toBeVisible();
   await page.goto("/app/requests?vez=customer");
   await expect(row).toHaveCount(0);
-  // Está na aba "Esperando estratégia" da Estratégia de compra.
+  // Nenhuma pendência "Enviar para cotação" para ela.
+  await page.goto("/app/tasks?type=new_request");
+  await expect(
+    page.locator(
+      `[data-task-row] a[href="/app/requests/${requestId}"]:not([data-open-link])`,
+    ),
+  ).toHaveCount(0);
+  // Não ficou esperando estratégia: a cotação já saiu.
   await page.goto("/app/purchase-strategy");
   await expect(page.locator('[data-strategy-tabs="waiting"]')).toBeVisible();
-  await expect(
-    page.locator(`[data-strategy-line="${requestId}"]`),
-  ).toBeVisible();
+  await expect(page.locator(`[data-strategy-line="${requestId}"]`)).toHaveCount(
+    0,
+  );
 });
 
 test("Pedidos: a coluna e o filtro Com quem está seguem a mesma regra", async ({
@@ -333,16 +359,7 @@ test("encomenda aberta pelo cliente: segue direto para a Estratégia de compra, 
 }) => {
   // Dono, 22/11/2026: a encomenda aberta pelo cliente também vai direto para
   // a Estratégia de compra; ninguém precisa enviar para cotação.
-  await login(page, "joao@lojista.com");
-  await page.goto("/app/requests/new");
-  const item = page.locator('[data-request-item="0"]');
-  const product = item.locator('[data-product-picker="catalog"]');
-  await product.locator("[data-product-picker-input]").fill("boneca");
-  await product.locator('[data-product-picker-option="prod-boneca"]').click();
-  await expect(item.locator("[data-selection-quantity]")).not.toHaveValue("");
-  await page.getByRole("button", { name: /enviar|send/i }).click();
-  await createdRequestId(page);
-  const requestId = new URL(page.url()).pathname.split("/").pop()!;
+  const requestId = await customerEncomenda(page);
   await login(page, "admin@wellmix.com");
   // Sem a pendência "Enviar para cotação" e sem o envio no selo.
   await page.goto("/app/tasks?type=new_request");

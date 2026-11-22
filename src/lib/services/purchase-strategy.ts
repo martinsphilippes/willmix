@@ -22,7 +22,11 @@ import {
 import { translator } from "@/i18n";
 import { canViewRequest, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
-import { closedDemands, demandKind } from "@/lib/purchase-demand";
+import {
+  AUTO_ACTOR_ID,
+  closedDemands,
+  demandKind,
+} from "@/lib/purchase-demand";
 import {
   choiceQuotes,
   receivesQuote,
@@ -862,7 +866,9 @@ export async function strategyTaskDrafts(openRequests: Request[]) {
         },
         link: `/app/purchase-strategy/sends/${send.id}`,
         dueAt: null,
-        ownerUserId: send.createdByUserId,
+        // Envio automático (cliente confirmou): de quem escolhe a estratégia.
+        ownerUserId:
+          send.createdByUserId === AUTO_ACTOR_ID ? null : send.createdByUserId,
       }),
     );
   return drafts;
@@ -948,6 +954,72 @@ export async function sendToStrategy(
 }
 
 /**
+ * Pedido confirmado pelo cliente (venda pela Wellmix): entra na fila da
+ * Estratégia de Compra na hora, sem o "Enviar para cotação" (dono,
+ * 22/11/2026), e a cotação sai sozinha para o fornecedor da última compra e
+ * os parceiros da família (`autoQuoteConfirmed`, dono, 22/11/2026), que grava
+ * a entrada e avisa o Comprador. O que ela não trata (produto fora do
+ * catálogo, ou erro antes de começar) só entra na fila: grava a data da
+ * entrada e avisa quem escolhe a estratégia, como antes.
+ */
+export async function enterStrategyOnConfirm(
+  user: User,
+  confirmed: readonly Request[],
+): Promise<Request[]> {
+  const store = getStore();
+  const outcomes = await autoQuoteConfirmed(confirmed).catch((error) => {
+    console.error("[strategy] cotação na confirmação do cliente", error);
+    return [] as AutoQuoteOutcome[];
+  });
+  const handled = new Set(
+    outcomes.flatMap((o) =>
+      o.state === "sent"
+        ? o.send.lines.flatMap((l) => l.demandIds ?? [l.demandId])
+        : o.demandIds,
+    ),
+  );
+  const now = new Date().toISOString();
+  const entered: Request[] = [];
+  for (const confirmedRow of confirmed) {
+    if (handled.has(confirmedRow.id)) continue;
+    // Lida de novo: a cotação automática pode ter gravado a entrada.
+    const r = (await store.get("requests", confirmedRow.id)) ?? confirmedRow;
+    if (r.strategySentAt || !inStrategyQueue(r)) continue;
+    const updated = await store.update("requests", r.id, {
+      strategySentAt: now,
+      strategySentByUserId: user.id,
+    });
+    await audit(
+      user,
+      "purchase_strategy.send_request",
+      "request",
+      r.id,
+      `Encomenda nº ${r.number ?? "—"} (${r.productName}) confirmada pelo cliente: entrou direto na Estratégia de Compra`,
+      { strategySentAt: null },
+      { strategySentAt: now },
+    );
+    entered.push(updated);
+  }
+  if (entered.length) {
+    const strategists = await teamHolders("purchaseStrategy.choose");
+    if (strategists.length)
+      await notify(
+        { userIds: strategists.map((u) => u.id) },
+        {
+          kind: "action",
+          link: "/app/purchase-strategy",
+          subject: `${entered.length} produto(s) confirmado(s) pelo cliente na Estratégia de Compra`,
+          body: entered
+            .map((r) => `nº ${r.number ?? "—"} ${r.productName}`)
+            .join(", ")
+            .slice(0, 500),
+        },
+      );
+  }
+  return entered;
+}
+
+/**
  * A encomenda entra na fila da Estratégia de Compra na hora em que chega à
  * Wellmix (criada pelo cliente ou confirmada por ele), sem o "Enviar para
  * cotação" (dono, 22/11/2026). Grava a data da entrada; o aviso à Wellmix é
@@ -959,6 +1031,9 @@ export async function enterStrategy(
 ): Promise<Request> {
   if (
     request.strategySentAt ||
+    // A confirmada pelo cliente segue pela cotação automática
+    // (`enterStrategyOnConfirm`), que grava a entrada.
+    request.orderTerms?.confirmation ||
     demandKind(request) !== "order" ||
     !inStrategyQueue(request)
   )
@@ -1304,7 +1379,8 @@ const blockedResult = (
  * para a aprovação da Diretoria de compras, como antes.
  */
 async function runLine(
-  user: User,
+  /** Nulo = o portal sozinho (cotação na confirmação do cliente). */
+  actor: User | null,
   sendId: string,
   sendNumber: number,
   line: StrategySendLine,
@@ -1339,7 +1415,7 @@ async function runLine(
     // Cotar não passa mais pela aprovação (D2): a Diretoria aprova a
     // vencedora. O pedido direto continua com a aprovação de antes.
     status: quotes ? "approved" : "pending",
-    chosenByUserId: user.id,
+    chosenByUserId: actor?.id ?? AUTO_ACTOR_ID,
     chosenAt: at,
     approvedByUserId: null,
     approvedAt: quotes ? at : null,
@@ -1356,7 +1432,7 @@ async function runLine(
       purchaseDecisionId: decision.id,
     });
   await audit(
-    user,
+    actor,
     "purchase_strategy.choose",
     "purchase_decision",
     decision.id,
@@ -1380,7 +1456,7 @@ async function runLine(
   const { openQuoteWithRecipients } = await import("./purchase-quote");
   let opened: Awaited<ReturnType<typeof openQuoteWithRecipients>>;
   try {
-    opened = await openQuoteWithRecipients(user, decision, okIds, now);
+    opened = await openQuoteWithRecipients(actor, decision, okIds, now);
   } catch (error) {
     // A estratégia ficou gravada; a cotação, não: o "Tentar de novo" retoma.
     console.error("[strategy] cotação do envio", error);
@@ -1508,12 +1584,32 @@ export async function sendStrategy(
     if (!line.recipientIds.some((id) => checks.get(id)?.ok))
       throw new PurchaseStrategyError("strategy_send_no_ok_recipient");
   }
+  return executeSend(user, lines, demands, references, checks, input.note);
+}
+
+/**
+ * Grava o envio e executa cada linha (a estratégia, a cotação e o resultado
+ * de cada destinatário). As linhas já vêm conferidas: pelo `sendStrategy`
+ * (o Comprador) ou pela cotação da confirmação do cliente (o portal sozinho,
+ * `actor` nulo).
+ */
+async function executeSend(
+  actor: User | null,
+  lines: StrategySendLine[],
+  demands: readonly Request[],
+  references: ReadonlyMap<string, LastPurchase>,
+  checks: Map<string, RecipientCheck>,
+  note: string | null,
+): Promise<PurchaseStrategySend> {
+  const store = getStore();
+  const demandsOf = (ids: readonly string[]) =>
+    ids.map((id) => demands.find((d) => d.id === id)!);
   const now = new Date().toISOString();
   const send = await store.create("purchase_strategy_sends", {
     number: await store.nextNumber("purchase_strategy_send_number"),
     status: "ok",
     lines,
-    createdByUserId: user.id,
+    createdByUserId: actor?.id ?? AUTO_ACTOR_ID,
     lastRunAt: now,
     runs: 0,
   });
@@ -1522,14 +1618,14 @@ export async function sendStrategy(
     try {
       done.push(
         await runLine(
-          user,
+          actor,
           send.id,
           send.number,
           line,
           demandsOf(line.demandIds ?? [line.demandId]),
           references,
           checks,
-          input.note,
+          note,
         ),
       );
     } catch (error) {
@@ -1553,14 +1649,298 @@ export async function sendStrategy(
     (sum, l) => sum + l.recipients.filter((r) => r.status === "sent").length,
     0,
   );
+  const products = done.reduce(
+    (sum, l) => sum + (l.demandIds ?? [l.demandId]).length,
+    0,
+  );
   await audit(
-    user,
+    actor,
     "purchase_strategy.send",
     "purchase_strategy_send",
     send.id,
-    `Envio nº ${send.number} da Estratégia de Compra: ${done.length} solicitação(ões), ${demandIds.length} produto(s), ${sentCount} convite(s) enviado(s), ${pendingRecipients(saved)} parceiro(s) sem receber`,
+    `Envio nº ${send.number} da Estratégia de Compra${actor ? "" : " (automático: o cliente confirmou a encomenda)"}: ${done.length} solicitação(ões), ${products} produto(s), ${sentCount} convite(s) enviado(s), ${pendingRecipients(saved)} parceiro(s) sem receber`,
   );
   return saved;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Cotação na confirmação do cliente (dono, 22/11/2026)                     */
+/* docs/PURCHASE_DEMAND.md, "Cotação na confirmação do cliente"             */
+/* ------------------------------------------------------------------------ */
+
+/** A observação da estratégia que o portal escolhe sozinho. */
+export const AUTO_QUOTE_NOTE =
+  "Envio automático: o cliente confirmou a encomenda (dono, 22/11/2026).";
+
+/** O que aconteceu com cada solicitação confirmada pelo cliente. */
+export type AutoQuoteOutcome =
+  | { state: "sent"; requestKey: string; send: PurchaseStrategySend }
+  | {
+      state: "queued";
+      requestKey: string;
+      /** Por que a cotação não saiu sozinha (código de `autoQuote.reason.*`). */
+      reason: string;
+      demandIds: string[];
+    };
+
+/**
+ * Os destinatários da cotação automática (dono, 22/11/2026): o fornecedor da
+ * última compra de cada produto, primeiro, e todos os parceiros da família
+ * (a lista do País × Família da tela, `strategySuppliers`), cada um uma vez
+ * só e só dos tipos que cotam. Quem não está apto (sem login, inativo)
+ * continua na lista: fica de fora no resultado do envio, com o motivo, e
+ * recebe depois com "Tentar de novo".
+ */
+export function autoQuoteRecipients(
+  lastSupplierIds: readonly (string | null | undefined)[],
+  familyIds: readonly string[],
+  checks: ReadonlyMap<string, Pick<RecipientCheck, "type">>,
+): string[] {
+  return unique([...lastSupplierIds, ...familyIds])
+    .filter((id) => receivesQuote(checks.get(id)?.type))
+    .slice(0, MAX_RECIPIENTS);
+}
+
+/**
+ * O cliente confirmou a encomenda (dono, 22/11/2026): ela entra sozinha na
+ * Estratégia de Compra, sem o "Enviar para cotação", e a cotação sai na hora
+ * para o fornecedor da última compra e todos os parceiros da família, pelo
+ * mesmo caminho do envio do Comprador (o resultado por destinatário e o
+ * "Tentar de novo"). Sem nenhum parceiro apto ou com erro, a encomenda fica
+ * na fila da Estratégia e o Comprador é avisado; com produto fora do
+ * catálogo, fica de fora daqui e só entra na fila (`enterStrategyOnConfirm`).
+ * Erro aqui não desfaz a confirmação.
+ */
+export async function autoQuoteConfirmed(
+  released: readonly Request[],
+): Promise<AutoQuoteOutcome[]> {
+  const store = getStore();
+  // Encomenda do cliente ainda sem estratégia, com ou sem a entrada na fila
+  // já gravada por outro caminho: a cotação sai do mesmo jeito.
+  const candidates = released.filter(
+    (r) =>
+      r.status === "REQUESTED" &&
+      !r.purchaseDecisionId &&
+      demandKind(r) === "order" &&
+      !isStockCustomer(r.customerId),
+  );
+  const byKey = new Map<string, Request[]>();
+  for (const r of candidates)
+    byKey.set(requestKey(r), [...(byKey.get(requestKey(r)) ?? []), r]);
+  const t = translator("pt");
+  const outcomes: AutoQuoteOutcome[] = [];
+  for (const [key, group] of byKey) {
+    // Produto fora do catálogo (as antigas): a cotação não tem o que cotar;
+    // a encomenda só entra na fila (`enterStrategyOnConfirm`).
+    if (group.some((d) => !d.productId)) continue;
+    const now = new Date().toISOString();
+    // O "Enviar para cotação" sozinho: entra na fila da Estratégia (a que já
+    // entrou fica como está).
+    const current = await store.list("requests", {
+      filter: { id: group.map((d) => d.id) },
+    });
+    const stamped: Request[] = [];
+    for (const r of group) {
+      const row = current.find((c) => c.id === r.id) ?? r;
+      if (row.strategySentAt) {
+        stamped.push(row);
+        continue;
+      }
+      stamped.push(
+        await store.update("requests", r.id, {
+          strategySentAt: now,
+          strategySentByUserId: AUTO_ACTOR_ID,
+        }),
+      );
+      await audit(
+        null,
+        "purchase_strategy.send_request",
+        "request",
+        r.id,
+        `Encomenda nº ${r.number ?? "—"} (${r.productName}) confirmada pelo cliente: entrou sozinha na Estratégia de Compra`,
+        { strategySentAt: null },
+        { strategySentAt: now },
+      );
+    }
+    const queued = (reason: string): AutoQuoteOutcome => ({
+      state: "queued",
+      requestKey: key,
+      reason,
+      demandIds: stamped.map((d) => d.id),
+    });
+    try {
+      // Lido de novo: outra estratégia pode ter pegado a encomenda.
+      const rows = await store.list("requests", {
+        filter: { id: stamped.map((d) => d.id) },
+      });
+      const demands = stamped
+        .map((d) => rows.find((r) => r.id === d.id))
+        .filter((r): r is Request => !!r);
+      if (
+        demands.length !== stamped.length ||
+        demands.some((d) => !inStrategyQueue(d))
+      ) {
+        outcomes.push(queued("strategy_demand_taken"));
+        continue;
+      }
+      await assertWholeRequest(demands);
+      const productIds = unique(demands.map((d) => d.productId));
+      const [references, origin] = await Promise.all([
+        lastPurchases(productIds),
+        strategySuppliers(demands),
+      ]);
+      const lastIds = productIds.map((id) => references.get(id)?.supplierId);
+      const { checkRecipients } = await import("./purchase-recipients");
+      const checks = await checkRecipients(
+        unique([...lastIds, ...origin.supplierIds]),
+        t,
+      );
+      const recipientIds = autoQuoteRecipients(
+        lastIds,
+        origin.supplierIds,
+        checks,
+      );
+      if (!recipientIds.some((id) => checks.get(id)?.ok)) {
+        outcomes.push(
+          queued(
+            recipientIds.length
+              ? "strategy_send_no_ok_recipient"
+              : "strategy_send_recipients",
+          ),
+        );
+        continue;
+      }
+      const line: StrategySendLine = {
+        demandId: demands[0].id,
+        demandIds: demands.map((d) => d.id),
+        productId: productIds[0],
+        choice: "quote",
+        recipientIds,
+        decisionId: null,
+        quoteId: null,
+        error: null,
+        recipients: [],
+      };
+      const send = await executeSend(
+        null,
+        [line],
+        demands,
+        references,
+        checks,
+        AUTO_QUOTE_NOTE,
+      );
+      outcomes.push({ state: "sent", requestKey: key, send });
+    } catch (error) {
+      console.error("[strategy] cotação na confirmação do cliente", error);
+      outcomes.push(
+        queued(
+          error instanceof PurchaseStrategyError
+            ? error.message
+            : "strategy_send_failed",
+        ),
+      );
+    }
+  }
+  if (outcomes.length)
+    await notifyAutoQuote(outcomes, candidates).catch((error) =>
+      console.error("[strategy] aviso da cotação automática", error),
+    );
+  return outcomes;
+}
+
+/** Motivos com texto próprio no aviso; os outros saem como erro. */
+const AUTO_QUOTE_REASON_KEY = {
+  strategy_send_no_ok_recipient:
+    "autoQuote.reason.strategy_send_no_ok_recipient",
+  strategy_send_recipients: "autoQuote.reason.strategy_send_recipients",
+  strategy_whole_request: "autoQuote.reason.strategy_whole_request",
+} as const;
+
+/**
+ * Avisa quem cuida da Estratégia e da cotação (Comprador): a cotação que
+ * saiu sozinha (com quantos receberam e quantos ficaram de fora) ou a
+ * encomenda que ficou na fila, com o motivo.
+ */
+async function notifyAutoQuote(
+  outcomes: readonly AutoQuoteOutcome[],
+  demands: readonly Request[],
+) {
+  const [strategists, buyers] = await Promise.all([
+    teamHolders("purchaseStrategy.choose"),
+    teamHolders("purchaseQuote.choose"),
+  ]);
+  const userIds = unique([...strategists, ...buyers].map((u) => u.id));
+  if (!userIds.length) return;
+  const customers = await listByIds(
+    getStore(),
+    "parties",
+    unique(demands.map((d) => d.customerId)),
+  );
+  for (const outcome of outcomes) {
+    const mine = demands.filter((d) => requestKey(d) === outcome.requestKey);
+    const first = mine[0];
+    if (!first) continue;
+    const values = {
+      n: first.number ?? "—",
+      customer: customers.find((c) => c.id === first.customerId)?.name ?? "—",
+      products: mine.length,
+    };
+    if (outcome.state === "sent") {
+      const sent = outcome.send.lines.reduce(
+        (sum, l) =>
+          sum + l.recipients.filter((r) => r.status === "sent").length,
+        0,
+      );
+      const out = pendingRecipients(outcome.send);
+      const quoteNumber = outcome.send.lines[0]?.quoteId
+        ? (
+            await getStore()
+              .get("purchase_quotes", outcome.send.lines[0].quoteId)
+              .catch(() => null)
+          )?.number
+        : null;
+      await notify(
+        { userIds },
+        {
+          kind: out ? "action" : "info",
+          link: `/app/purchase-strategy/sends/${outcome.send.id}`,
+          text: (tr) => ({
+            subject: tr("autoQuote.notify.sent.subject", {
+              ...values,
+              quote: quoteNumber ?? "—",
+            }),
+            body: tr(
+              out
+                ? "autoQuote.notify.sent.bodyOut"
+                : "autoQuote.notify.sent.body",
+              { ...values, sent, out },
+            ),
+          }),
+        },
+      );
+      continue;
+    }
+    // Já em outra estratégia: o Comprador não tem o que escolher.
+    if (outcome.reason === "strategy_demand_taken") continue;
+    const reasonKey =
+      AUTO_QUOTE_REASON_KEY[
+        outcome.reason as keyof typeof AUTO_QUOTE_REASON_KEY
+      ] ?? "autoQuote.reason.other";
+    await notify(
+      { userIds: strategists.map((u) => u.id) },
+      {
+        kind: "action",
+        link: "/app/purchase-strategy",
+        text: (tr) => ({
+          subject: tr("autoQuote.notify.queued.subject", values),
+          body: tr("autoQuote.notify.queued.body", {
+            ...values,
+            reason: tr(reasonKey),
+          }),
+        }),
+      },
+    );
+  }
 }
 
 /** O envio (resultado por destinatário); antes do esquema, nenhum. */

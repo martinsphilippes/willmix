@@ -24,6 +24,7 @@ import { clearQuoteDraft } from "./quote-draft";
 import type { SupplierStep } from "@/lib/supplier-steps";
 import type { TaskText } from "@/lib/task-text";
 import { innerFromDemands, quoteInnerState } from "@/lib/quote-inner";
+import { AUTO_ACTOR_ID } from "@/lib/purchase-demand";
 import {
   appendQuoteEvent,
   pendingQuoteProposals,
@@ -309,7 +310,8 @@ export function quoteItemsFor(
  * por estratégia: chamada de novo, devolve a que já existe.
  */
 export async function createQuoteForDecision(
-  user: User,
+  /** Nulo = o portal sozinho (cotação na confirmação do cliente). */
+  user: User | null,
   decision: PurchaseDecision,
 ): Promise<{ quote: PurchaseQuote; fresh: boolean }> {
   const store = getStore();
@@ -341,7 +343,7 @@ export async function createQuoteForDecision(
     items,
     status: "open",
     hours,
-    openedByUserId: user.id,
+    openedByUserId: user?.id ?? AUTO_ACTOR_ID,
     winnerResponseId: null,
     chosenByUserId: null,
     chosenAt: null,
@@ -364,7 +366,8 @@ export async function createQuoteForDecision(
  * convite que deu certo, o Comprador é avisado (como na cotação sem resposta).
  */
 export async function openQuoteWithRecipients(
-  user: User,
+  /** Nulo = o portal sozinho (cotação na confirmação do cliente). */
+  user: User | null,
   decision: PurchaseDecision,
   recipientIds: readonly string[],
   now = new Date(),
