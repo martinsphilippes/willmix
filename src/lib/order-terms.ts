@@ -521,6 +521,14 @@ export interface RequestPriceForecast {
   status: string | null;
   /** Quando foi calculada (ISO). */
   at: string;
+  /**
+   * Preço Wellmix por peça, sem frete (`PRECO_PRODUTO_META`): o "Valor com
+   * IPI" da tabela de itens (dono, 22/11/2026; docs/ORDER_TABLES.md).
+   * Ausente nas previsões gravadas antes.
+   */
+  wellmixPrice?: number | null;
+  /** Preço Wellmix por peça com frete (`PRECO_COM_FRETE_REFERENCIA`): o "Valor IPI com frete". */
+  wellmixWithFreight?: number | null;
 }
 
 /** Forma de pagamento na solicitação (cópia; dono, 16/11/2026). */

@@ -108,3 +108,30 @@ export function orderTermsCells(
     vip: terms?.saleFormat === "wellmix" ? (terms.wellmixTier ?? null) : null,
   };
 }
+
+/**
+ * Os três valores do item (dono, 22/11/2026): sem IPI o portal não tem;
+ * "com IPI" é o preço Wellmix (não WD) sem frete; "IPI com frete" é o preço
+ * Wellmix com frete. Previsão gravada antes dos campos novos: só o "com
+ * frete", e só quando o formato não era WD.
+ */
+export function itemPrices(
+  forecast:
+    | {
+        unitPrice: number;
+        basis: string;
+        wellmixPrice?: number | null;
+        wellmixWithFreight?: number | null;
+      }
+    | null
+    | undefined,
+): { noIpi: null; ipi: number | null; ipiFreight: number | null } {
+  if (!forecast) return { noIpi: null, ipi: null, ipiFreight: null };
+  return {
+    noIpi: null,
+    ipi: forecast.wellmixPrice ?? null,
+    ipiFreight:
+      forecast.wellmixWithFreight ??
+      (forecast.basis === "with_freight" ? forecast.unitPrice : null),
+  };
+}

@@ -1,3 +1,5 @@
+import { stepDue } from "@/lib/request-responsible";
+import { dueText } from "@/components/request-responsible-tip";
 import { canEditSentRequest } from "@/lib/services/request-edit";
 import { reopenSentRequestAction } from "../../../actions/request-drafts";
 import { notFound, redirect } from "next/navigation";
@@ -470,6 +472,10 @@ export default async function RequestBatchPage({
       seeSale={seeSale}
       items={rows.map((r): DetailsProduct => {
         const status = requestDisplayStatus(r, cancelled);
+        const itemStep = steps.get(r.id) ?? null;
+        const itemDue = itemStep
+          ? stepDue(itemStep, r, ctx?.purchaseOf(r) ?? null)
+          : null;
         const order = r.orderId ? orders.find((o) => o.id === r.orderId) : null;
         const product = productOf(r);
         const name = productNameText(t, r.productName);
@@ -489,12 +495,23 @@ export default async function RequestBatchPage({
           unit: r.unit,
           forecast: r.priceForecast ?? null,
           rounds: Math.max(1, r.schedule?.items?.length ?? 0),
+          // Situação: o momento do passo; Status: o que o produto espera
+          // (de quem é a vez); Prazo: o da ação esperada (dono,
+          // 22/11/2026; docs/ORDER_TABLES.md).
           status: (
             <Badge tone={requestStatusTone(status)}>
               {t(`reqStatusLabel.${status}`)}
             </Badge>
           ),
-          deadline: formatDate(r.deadline, t),
+          turn: itemStep?.who ? (
+            <Badge tone={turnTone(itemStep.who)}>
+              {user.role === "customer" && itemStep.who === "customer"
+                ? t("turn.waiting.you")
+                : t(turnWaitingKey(itemStep.who))}
+            </Badge>
+          ) : null,
+          deadline: itemDue ? dueText(t, itemDue) : formatDate(r.deadline, t),
+          description: r.specification ?? r.description ?? null,
           order:
             order && canViewOrder(user, order) ? (
               <TextLink href={`/app/orders/${order.id}`}>

@@ -166,12 +166,14 @@ test("Encomendas: totais na lista, na página da encomenda e no CSV", async ({
   await expect(doll.locator("[data-batch-per-box]")).toHaveText("48");
   await expect(doll.locator("[data-batch-pieces]")).toHaveText("2.160");
   await expect(doll.locator("[data-batch-boxes]")).toHaveText("45");
-  await expect(doll.locator("[data-batch-inner]")).toHaveText("360");
+  // Peças por inner (a tabela padrão de itens mostra a inner, não as caixas).
+  await expect(doll.locator("[data-batch-per-inner]")).not.toHaveText("—");
   await expect(doll.locator("[data-batch-cbm]")).toHaveText("5,409");
-  await expect(doll.locator("[data-batch-moq]")).toHaveText("2.000");
+  // MOQ saiu da tabela de itens (segue no total e na ficha do produto).
+  await expect(doll.locator("[data-batch-moq]")).toHaveCount(0);
   const pool = item(/Piscina/);
   await expect(pool.locator("[data-batch-boxes]")).toHaveText("60");
-  await expect(pool.locator("[data-batch-inner]")).toHaveText("—");
+  await expect(pool.locator("[data-batch-per-inner]")).toHaveText("—");
   const cup = item(new RegExp(TAG));
   await expect(cup.locator("[data-batch-boxes]")).toHaveText("—");
   await expect(cup.locator("[data-batch-cbm]")).toHaveText("—");

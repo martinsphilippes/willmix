@@ -287,6 +287,8 @@ export default async function RequestsPage({
   );
   /** Fornecedor do pedido (coluna interna), quando já está definido. */
   const supplierNameById = new Map(orderSuppliers.map((p) => [p.id, p.name]));
+  const trackOf = (r: Request) =>
+    (r.orderId ? orderById.get(r.orderId)?.sankhyaTrackId : null) ?? null;
   const supplierOf = (r: Request) => {
     const order = r.orderId ? orderById.get(r.orderId) : null;
     return order?.supplierId
@@ -1655,6 +1657,16 @@ export default async function RequestsPage({
                     >
                       <span data-request-number>{number ?? "—"}</span>
                     </TextLink>
+                    {/* Virou pedido no Sankhya: o Track ID, que é o código
+                        do pedido de importação (dono, 22/11/2026). */}
+                    {trackOf(first) ? (
+                      <span
+                        className="block text-[11px] font-normal text-zinc-500"
+                        data-order-track
+                      >
+                        {t("orderTable.track", { id: trackOf(first)! })}
+                      </span>
+                    ) : null}
                   </Td>
                   <Td
                     className={cx(cell, "whitespace-nowrap tabular-nums")}

@@ -3,6 +3,7 @@ import {
   INTERNAL_ORDER_COLUMNS,
   ORDER_COLUMNS,
   ORDER_ITEM_COLUMNS,
+  itemPrices,
   orderTermsCells,
 } from "@/lib/order-table";
 
@@ -102,6 +103,34 @@ describe("tabela padrão de pedidos", () => {
     // Solicitação antiga, sem condições: nada inventado.
     expect(
       orderTermsCells({ orderTerms: null, origin: "manual" }, false).saleType,
+    ).toBeNull();
+  });
+});
+
+describe("valores do item", () => {
+  it("com IPI é o preço Wellmix (não WD); sem IPI o portal não tem", () => {
+    expect(itemPrices(null)).toEqual({
+      noIpi: null,
+      ipi: null,
+      ipiFreight: null,
+    });
+    expect(
+      itemPrices({
+        unitPrice: 12,
+        basis: "wd_with_freight",
+        wellmixPrice: 9.5,
+        wellmixWithFreight: 10.2,
+      }),
+    ).toEqual({ noIpi: null, ipi: 9.5, ipiFreight: 10.2 });
+    // Previsão gravada antes dos campos novos: só o "com frete", e só
+    // quando o formato não era WD (o preço WD não é o valor com IPI).
+    expect(itemPrices({ unitPrice: 10.2, basis: "with_freight" })).toEqual({
+      noIpi: null,
+      ipi: null,
+      ipiFreight: 10.2,
+    });
+    expect(
+      itemPrices({ unitPrice: 12, basis: "wd_with_freight" }).ipiFreight,
     ).toBeNull();
   });
 });
