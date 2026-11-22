@@ -1,5 +1,7 @@
 # Compra por demanda: reposição, encomenda, estratégia e cotação
 
+> **22/11/2026 (docs/QUOTATION.md):** a cotação de compra aparece para a Wellmix dentro da **Cotação** (`/app/supplier-requests`), com o quadro comparativo por produto, a conversa e a contraproposta por fornecedor ainda antes de escolher a vencedora (`purchase_quote_responses.negotiation`). `/app/purchase-quotes` continua abrindo.
+
 Desenho do dono de 15/11/2026 (mapa do processo, layout 15; docs/MAPA_PROCESSO.md). Reposição (B10) e Encomenda do cliente (B14) entram na mesma decisão, "Qual a estratégia de compra?" (B10?), que leva direto ao pedido de compra (P2) ou à Cotação de compra (B13), cuja vencedora vira a Solicitação ao fornecedor (B7). As decisões estão em docs/OPEN_DECISIONS.md.
 
 Situação: **PRs 1 a 5 entregues (15/11/2026)**. As seções abaixo descrevem o alvo; cada PR marca o que entregou em "Andamento".

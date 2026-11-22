@@ -3856,6 +3856,35 @@ export interface PurchaseQuoteResponse extends BaseRow {
    * antes da resposta (sobe na hora); a ficha, no envio. Nulo nas antigas.
    */
   items?: QuoteResponseItem[] | null;
+  /**
+   * Negociação dentro da cotação (dono, 22/11/2026; docs/QUOTATION.md): cada
+   * resposta enviada, as contrapropostas da Wellmix por produto e a conversa
+   * com este fornecedor. Nulo nas antigas (o histórico mostra só a resposta
+   * de hoje).
+   */
+  negotiation?: QuoteNegotiationEvent[] | null;
+}
+
+/** Um passo da negociação de um fornecedor numa cotação de compra. */
+export interface QuoteNegotiationEvent {
+  id: string;
+  at: string;
+  /** Resposta do fornecedor, recusa dele, contraproposta da Wellmix ou mensagem. */
+  kind: "answer" | "decline" | "proposal" | "message";
+  side: "wellmix" | "supplier";
+  byUserId: string;
+  /** Produto da contraproposta ou da conversa; nulo na resposta (vale para todos). */
+  productId?: string | null;
+  /** Resposta: o preço de cada produto naquele envio. */
+  prices?: QuoteResponsePrice[] | null;
+  /** Contraproposta: o preço unitário proposto para o produto. */
+  price?: number | null;
+  currency?: string | null;
+  incoterm?: string | null;
+  moq?: number | null;
+  leadTimeDays?: number | null;
+  port?: string | null;
+  text?: string | null;
 }
 
 /** Fornecedor × linha de produto (quem atende cada linha; docs/PURCHASE_DEMAND.md). */
@@ -6675,6 +6704,8 @@ export const TABLES: Record<TableName, TableDef> = {
       reminderSentAt: datetime(),
       // Ficha técnica e foto de cada produto (dono, 20/11/2026).
       items: json(),
+      // Respostas, contrapropostas e conversa na cotação (dono, 22/11/2026).
+      negotiation: json(),
     },
     indexes: [
       { key: "by_quote", type: "key", columns: ["quoteId"] },

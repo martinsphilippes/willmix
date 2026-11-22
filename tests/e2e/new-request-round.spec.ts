@@ -181,6 +181,14 @@ test("Nova solicitação TS: produto da base, descrição, cálculo da previsão
   await expect(
     forecast.locator("[data-price-forecast-price-no-freight-label]"),
   ).toHaveText("Preço WD - sem frete");
+  // O total sem frete: preço WD sem frete × peças, em itálico e cinza escuro
+  // (não preto).
+  const totalNoFreight = forecast.locator(
+    '[data-price-forecast-line="totalNoFreight"]',
+  );
+  await expect(totalNoFreight).toHaveText(/R\$/);
+  await expect(totalNoFreight).toHaveCSS("font-style", "italic");
+  await expect(totalNoFreight).not.toHaveCSS("color", "rgb(0, 0, 0)");
   await forecast.locator("[data-price-forecast-audit-open]").click();
   const audit = page.locator("[data-price-forecast-audit]");
   await expect(audit).toBeVisible();

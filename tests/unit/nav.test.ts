@@ -26,7 +26,14 @@ const ADMIN = { role: "admin" as const };
 const view = (user: Parameters<typeof navFor>[0]) =>
   sidebarNav(navFor(user)).map((e) =>
     isNavGroup(e)
-      ? { group: e.key, items: e.items.map((i) => i.href) }
+      ? {
+          group: e.key,
+          items: e.items.map((i) =>
+            i.children
+              ? { sub: i.key, items: i.children.map((c) => c.href) }
+              : i.href,
+          ),
+        }
       : { link: e.href },
   );
 const hrefsOf = (user: Parameters<typeof navFor>[0]) =>
@@ -34,19 +41,16 @@ const hrefsOf = (user: Parameters<typeof navFor>[0]) =>
 const TOP = ["/app", "/app/tasks"];
 
 /** Blocos do fluxo do admin, na ordem do mapa (docs/FLOW_MENU.md). */
+// Seção Cotação (antes "Produto novo"; dono, 22/11/2026,
+// docs/QUOTATION.md): Overview, Entrada (Book, Reposição e Encomendas, que
+// abre e fecha), Seleção de itens, Estratégia de compra e Cotação, que junta
+// Cotação de compra, Negociação e Convites de book.
+const ENTRY = ["/app/booking", "/app/replenishment", "/app/requests"];
 const NEW_PRODUCT = [
   "/app/flow/new-product",
-  // TS e Venda - Encomenda saíram do menu (dono, 16/11/2026): abrem pelo
-  // "+ Adicionar" de Encomendas e de Reposição (docs/REQUEST_SCREENS.md).
-  "/app/booking",
+  { sub: "nav.entry", items: ENTRY },
   "/app/booking/selection",
-  "/app/supplier-requests/invites",
-  "/app/requests",
-  "/app/replenishment",
-  // Estratégia de Compra abaixo de Reposição e acima de Cotação de compra
-  // (dono, 19/11/2026).
   "/app/purchase-strategy",
-  "/app/purchase-quotes",
   "/app/supplier-requests",
 ];
 const ORDER = [

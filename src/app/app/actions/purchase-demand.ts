@@ -193,6 +193,16 @@ const quoteBack = (id: string) =>
     ? `/app/purchase-quotes/${id}`
     : "/app/purchase-quotes";
 
+/**
+ * Tela da Wellmix de onde a ação veio: a Cotação unificada
+ * (/app/supplier-requests/<cotação>, campo `home`; dono, 22/11/2026) ou a
+ * tela de sempre da cotação de compra.
+ */
+const quoteHome = (form: FormData, id: string) =>
+  ID.safeParse(id).success && str(form, "home") === "quotation"
+    ? `/app/supplier-requests/${id}`
+    : quoteBack(id);
+
 /** O fornecedor responde (preço por item e condição de envio) ou recusa. */
 export async function answerQuoteAction(form: FormData) {
   const user = await requireUser();
@@ -329,7 +339,7 @@ export async function addQuoteScalePhotoAction(form: FormData) {
 export async function setQuoteInnerAction(form: FormData) {
   const user = await requireUser();
   const id = str(form, "quoteId");
-  await run(quoteBack(id), async () => {
+  await run(quoteHome(form, id), async () => {
     assertScreen(user, "quotes");
     const quoteId = ID.parse(id);
     const productId = ID.parse(str(form, "productId"));
@@ -344,7 +354,7 @@ export async function setQuoteInnerAction(form: FormData) {
             .parse(parseNumberInput(str(form, "innerQty"), { int: true }));
     const { setQuoteItemInner } = await import("@/lib/services/purchase-quote");
     await setQuoteItemInner(user, quoteId, productId, qty);
-    return `/app/purchase-quotes/${quoteId}?inner=1`;
+    return `${quoteHome(form, quoteId)}?inner=1`;
   });
 }
 
@@ -352,14 +362,14 @@ export async function setQuoteInnerAction(form: FormData) {
 export async function chooseQuoteWinnerAction(form: FormData) {
   const user = await requireUser();
   const id = str(form, "quoteId");
-  await run(quoteBack(id), async () => {
+  await run(quoteHome(form, id), async () => {
     assertScreen(user, "quotes");
     const quoteId = ID.parse(id);
     const responseId = ID.parse(str(form, "responseId"));
     const note = field(form, "note", z.string().trim().max(2000)) || null;
     const { chooseWinner } = await import("@/lib/services/purchase-quote");
     await chooseWinner(user, quoteId, responseId, note);
-    return `/app/purchase-quotes/${quoteId}?chosen=1`;
+    return `${quoteHome(form, quoteId)}?chosen=1`;
   });
 }
 
@@ -367,7 +377,7 @@ export async function chooseQuoteWinnerAction(form: FormData) {
 export async function decideQuoteWinnerAction(form: FormData) {
   const user = await requireUser();
   const id = str(form, "quoteId");
-  await run(quoteBack(id), async () => {
+  await run(quoteHome(form, id), async () => {
     assertScreen(user, "quotes");
     const quoteId = ID.parse(id);
     const approve = z.enum(["approve", "reject"]).parse(str(form, "decision"));
@@ -377,7 +387,7 @@ export async function decideQuoteWinnerAction(form: FormData) {
       approve: approve === "approve",
       note,
     });
-    return `/app/purchase-quotes/${quoteId}?decided=${approve}`;
+    return `${quoteHome(form, quoteId)}?decided=${approve}`;
   });
 }
 
@@ -385,7 +395,7 @@ export async function decideQuoteWinnerAction(form: FormData) {
 export async function quoteNoAnswerAction(form: FormData) {
   const user = await requireUser();
   const id = str(form, "quoteId");
-  await run(quoteBack(id), async () => {
+  await run(quoteHome(form, id), async () => {
     assertScreen(user, "quotes");
     const quoteId = ID.parse(id);
     const what = z
@@ -394,7 +404,7 @@ export async function quoteNoAnswerAction(form: FormData) {
     const q = await import("@/lib/services/purchase-quote");
     if (what === "reopen") {
       await q.reopenQuote(user, quoteId);
-      return `/app/purchase-quotes/${quoteId}?reopened=1`;
+      return `${quoteHome(form, quoteId)}?reopened=1`;
     }
     if (what === "invite") {
       const supplierIds = z
@@ -403,7 +413,7 @@ export async function quoteNoAnswerAction(form: FormData) {
         .max(30)
         .parse(form.getAll("supplierId").map(String).filter(Boolean));
       await q.inviteMore(user, quoteId, supplierIds);
-      return `/app/purchase-quotes/${quoteId}?invited=1`;
+      return `${quoteHome(form, quoteId)}?invited=1`;
     }
     await q.backToStrategy(user, quoteId);
     return "/app/purchase-strategy?back=1";

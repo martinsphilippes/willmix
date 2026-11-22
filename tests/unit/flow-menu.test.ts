@@ -18,7 +18,14 @@ const ids = (task: Parameters<typeof flowStepsOf>[0]) =>
 
 describe("passos do menu", () => {
   it("tipo da pendência → passo", () => {
-    expect(ids({ kind: "booking_invite" })).toEqual(["new-product/quotes"]);
+    // Convites de book, Cotação de compra e Negociação são o mesmo passo
+    // (Cotação; dono, 22/11/2026, docs/QUOTATION.md).
+    expect(ids({ kind: "booking_invite" })).toEqual([
+      "new-product/negotiations",
+    ]);
+    expect(ids({ kind: "purchase_quote_choose" })).toEqual([
+      "new-product/negotiations",
+    ]);
     expect(ids({ kind: "supplier_request" })).toEqual([
       "new-product/negotiations",
     ]);

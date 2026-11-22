@@ -2069,6 +2069,7 @@ alter table public."purchase_quote_responses" add column if not exists "answered
 alter table public."purchase_quote_responses" add column if not exists "answeredByUserId" text;
 alter table public."purchase_quote_responses" add column if not exists "reminderSentAt" timestamptz;
 alter table public."purchase_quote_responses" add column if not exists "items" jsonb;
+alter table public."purchase_quote_responses" add column if not exists "negotiation" jsonb;
 create index if not exists "purchase_quote_responses_by_quote" on public."purchase_quote_responses" ("quoteId");
 create index if not exists "purchase_quote_responses_by_supplier" on public."purchase_quote_responses" ("supplierId");
 create unique index if not exists "purchase_quote_responses_quote_supplier_unique" on public."purchase_quote_responses" ("quoteId", "supplierId");

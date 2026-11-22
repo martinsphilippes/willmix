@@ -94,6 +94,7 @@ import * as portalAccess from "./portal-access";
 import * as supplierTasks from "./supplier-tasks";
 import * as turns from "./turns";
 import * as negotiationScreen from "./negotiation-screen";
+import * as quotation from "./quotation";
 import * as quoteInnerMaterials from "./quote-inner-materials";
 import * as superplanLogic from "./superplan-logic";
 import * as dieCutStep from "./die-cut-step";
@@ -365,6 +366,7 @@ export const modulesPt = {
   ...salesPanel.pt,
   ...turns.pt,
   ...negotiationScreen.pt,
+  ...quotation.pt,
   ...quoteInnerMaterials.pt,
   ...moneyFx.pt,
 };
@@ -548,6 +550,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...salesPanel.en,
   ...turns.en,
   ...negotiationScreen.en,
+  ...quotation.en,
   ...quoteInnerMaterials.en,
   ...moneyFx.en,
 };
@@ -731,6 +734,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...salesPanel.zh,
   ...turns.zh,
   ...negotiationScreen.zh,
+  ...quotation.zh,
   ...quoteInnerMaterials.zh,
   ...moneyFx.zh,
 };

@@ -785,6 +785,13 @@ test("Previsão de preço (cotação V2): manda formato, nível e quem chama; mo
   await expect(
     forecast.locator('[data-price-forecast-line="total"]'),
   ).toHaveText(/R\$/);
+  // O total sem frete (dono, 22/11/2026): menor, em itálico e cinza escuro;
+  // a soma do pedido (abaixo) segue com frete.
+  const totalNoFreight = forecast.locator(
+    '[data-price-forecast-line="totalNoFreight"]',
+  );
+  await expect(totalNoFreight).toHaveText(/R\$/);
+  await expect(totalNoFreight).toHaveCSS("font-style", "italic");
   for (const gone of ["product", "withFreight", "wd", "retail"])
     await expect(
       forecast.locator(`[data-price-forecast-line="${gone}"]`),
