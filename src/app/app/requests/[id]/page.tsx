@@ -48,12 +48,18 @@ import {
   Select,
   TextLink,
   cx,
+  formatDate,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { setRequesterAction } from "../../actions";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
 import { RequestCompanyAllocations } from "@/components/request-company-allocations";
+import { getSettings } from "@/lib/settings";
+import {
+  loadRequestPacking,
+  roundPackingOf,
+} from "@/lib/services/request-packing";
 import { ChatButtons } from "@/components/chat-buttons";
 
 export default async function RequestDetailPage({
@@ -98,6 +104,30 @@ export default async function RequestDetailPage({
        (docs/REQUEST_SHEET.md). */
     loadRequestSheet(user, request, siblings, t),
   ]);
+  /* Caixas master, cubagem e containers de cada programação na tabela das
+     empresas do grupo econômico e na Programação de compra (dono,
+     22/11/2026; docs/ECONOMIC_GROUPS.md): a mesma embalagem da ficha e o
+     mesmo container de referência (o maior das Configurações) da página do
+     lote. O cliente também vê (decisão do dono). Só quando há uma das duas. */
+  const roundsPacking =
+    request.companyAllocations?.length || request.schedule?.items.length
+      ? await Promise.all([loadRequestPacking([request]), getSettings()]).then(
+          ([packing, settings]) => {
+            const reference =
+              [...settings.containerTypes].sort(
+                (a, b) => b.capacityCbm - a.capacityCbm,
+              )[0] ?? null;
+            return {
+              rounds: roundPackingOf(
+                request,
+                packing.get(request.id),
+                reference?.capacityCbm ?? null,
+              ),
+              container: reference?.code ?? null,
+            };
+          },
+        )
+      : null;
   /* Pedido cancelado: a solicitação segue ORDERED (histórico), mas o selo, a
      linha do tempo e o aviso mostram o cancelamento. */
   const order = request.orderId
@@ -395,7 +425,26 @@ export default async function RequestDetailPage({
         </div>
       ) : request.status === "AWAITING_CUSTOMER" && wellmix ? (
         <div className="mt-4" data-request-awaiting-customer>
-          <Alert tone="warning">{t("customerConfirm.awaitingWellmix")}</Alert>
+          <Alert tone="warning">
+            {t("customerConfirm.awaitingWellmix")}
+            {/* Lembretes da confirmação (dono, 22/11/2026). */}
+            {request.orderTerms?.confirmReminders?.count ? (
+              <span
+                className="mt-1 block text-xs"
+                data-request-confirm-reminders={
+                  request.orderTerms.confirmReminders.count
+                }
+              >
+                {t("confirmReminder.status", {
+                  count: request.orderTerms.confirmReminders.count,
+                  date: formatDate(
+                    request.orderTerms.confirmReminders.lastAt,
+                    t,
+                  ),
+                })}
+              </span>
+            ) : null}
+          </Alert>
         </div>
       ) : null}
 
@@ -420,13 +469,20 @@ export default async function RequestDetailPage({
               summaryHref={`/app/requests/${encodeURIComponent(id)}#solicitacoes`}
               fullHref={`/app/requests/${encodeURIComponent(id)}?ficha=completa#solicitacoes`}
             />
+            {/* Pedido para um grupo econômico (docs/ECONOMIC_GROUPS.md): logo
+                abaixo da linha do produto, com as caixas master, a cubagem e
+                os containers de cada programação (dono, 22/11/2026). */}
+            <RequestCompanyAllocations
+              request={request}
+              t={t}
+              packing={roundsPacking}
+            />
             <RequestScheduleTable
               schedule={request.schedule}
               unit={request.unit}
               t={t}
+              packing={roundsPacking}
             />
-            {/* Pedido para um grupo econômico (docs/ECONOMIC_GROUPS.md). */}
-            <RequestCompanyAllocations request={request} t={t} />
             {/* Condições do pedido (docs/ORDER_TERMS.md): só a Wellmix vê. */}
             {wellmix ? (
               <RequestOrderTermsView terms={request.orderTerms} t={t} />

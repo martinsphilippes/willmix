@@ -85,6 +85,14 @@ export async function GET(request: Request) {
       console.error("[reminders] customer-charges", error);
       return null;
     });
+  // Confirmação do cliente (dono, 22/11/2026; docs/ORDER_TERMS.md): um
+  // lembrete por dia, até o limite das Configurações; com o último, o vendedor.
+  const confirmReminders = await import("@/lib/services/confirm-reminders")
+    .then((m) => m.remindCustomerConfirmations())
+    .catch((error) => {
+      console.error("[reminders] customer-confirm", error);
+      return null;
+    });
   // Cotação de compra (docs/PURCHASE_DEMAND.md): lembrete antes de vencer e
   // o aviso de "sem resposta" (também correm a cada abertura das telas).
   const purchaseQuotes = await import("@/lib/services/purchase-quote")
@@ -95,6 +103,7 @@ export async function GET(request: Request) {
     });
   return NextResponse.json({
     ...result,
+    confirmReminders,
     purchaseQuotes,
     chargesToIssue,
     chargesSynced,

@@ -27,6 +27,7 @@ import {
 import { ActionError } from "@/components/action-error";
 import { REQUEST_SCREEN, REPLENISHMENT_QUERY } from "@/lib/request-screens";
 import { listDraftsForList } from "@/lib/services/request-drafts";
+import { groupRequestRows } from "@/lib/services/request-groups";
 
 /*
  * Reposição (mapa B10; dono, 15/11/2026; docs/PURCHASE_DEMAND.md): a fila do
@@ -63,7 +64,7 @@ export default async function ReplenishmentPage({
   const errorCode = typeof error === "string" ? error : "";
   const errorKey = `demand.error.${errorCode}` as DictionaryKey;
   const errorText = errorCode && t(errorKey) !== errorKey ? t(errorKey) : null;
-  const open = rows.filter(isOpenDemand);
+  const open = groupRequestRows(rows.filter(isOpenDemand));
   return (
     <div data-replenishment-page={open.length}>
       <PageHeader
@@ -134,44 +135,81 @@ export default async function ReplenishmentPage({
                   </Td>
                 </tr>
               ))}
-              {rows.map((r) => (
-                <tr
-                  key={r.id}
-                  className={rowClass}
-                  data-replenishment-row={r.id}
-                >
-                  <Td className="tabular-nums">
-                    <Link href={`/app/requests/${r.id}`} className={linkClass}>
-                      {r.number ? `#${r.number}` : "—"}
-                    </Link>
-                  </Td>
-                  <Td>{productNameText(t, r.productName)}</Td>
-                  <Td className="whitespace-nowrap tabular-nums">
-                    {r.quantity.toLocaleString(t.intl)} {r.unit}
-                  </Td>
-                  <Td>
-                    <Badge tone="neutral">
-                      {t(
-                        r.sourceOrderId
-                          ? "demand.source.afterSales"
-                          : "demand.source.planner",
+              {groupRequestRows(rows).map((entry) => {
+                // Uma linha por solicitação (dono, 22/11/2026): a reposição
+                // com vários produtos abre a página do lote, como em
+                // Encomendas; um produto só abre a mesma página pelo id.
+                const members =
+                  entry.kind === "batch" ? entry.rows : [entry.row];
+                const r = members[0];
+                const units = new Set(members.map((m) => m.unit));
+                const total = members.reduce((n, m) => n + m.quantity, 0);
+                const desired = members
+                  .map((m) => m.desiredAt)
+                  .filter((d): d is string => !!d)
+                  .sort()[0];
+                const anyOpen = members.some(isOpenDemand);
+                const href = `/app/requests/batch/${encodeURIComponent(
+                  entry.kind === "batch" ? entry.groupId : (r.groupId ?? r.id),
+                )}`;
+                return (
+                  <tr
+                    key={entry.kind === "batch" ? entry.groupId : r.id}
+                    className={rowClass}
+                    data-replenishment-row={
+                      entry.kind === "batch" ? entry.groupId : r.id
+                    }
+                  >
+                    <Td className="tabular-nums">
+                      <Link href={href} className={linkClass}>
+                        {r.number ? `#${r.number}` : "—"}
+                      </Link>
+                    </Td>
+                    <Td>
+                      {members.length > 1 ? (
+                        <>
+                          {t("reqBatch.count", { n: members.length })}
+                          <span className="block text-xs text-zinc-500">
+                            {members
+                              .slice(0, 2)
+                              .map((m) => productNameText(t, m.productName))
+                              .join(", ")}
+                            {members.length > 2 ? "…" : ""}
+                          </span>
+                        </>
+                      ) : (
+                        productNameText(t, r.productName)
                       )}
-                    </Badge>
-                  </Td>
-                  <Td className="whitespace-nowrap">
-                    {r.desiredAt ? formatDate(r.desiredAt, t) : "—"}
-                  </Td>
-                  <Td>
-                    <Badge tone={isOpenDemand(r) ? "warning" : "success"}>
-                      {t(
-                        isOpenDemand(r)
-                          ? "demand.status.waitingStrategy"
-                          : "demand.status.ordered",
-                      )}
-                    </Badge>
-                  </Td>
-                </tr>
-              ))}
+                    </Td>
+                    <Td className="whitespace-nowrap tabular-nums">
+                      {units.size === 1
+                        ? `${total.toLocaleString(t.intl)} ${r.unit}`
+                        : "—"}
+                    </Td>
+                    <Td>
+                      <Badge tone="neutral">
+                        {t(
+                          r.sourceOrderId
+                            ? "demand.source.afterSales"
+                            : "demand.source.planner",
+                        )}
+                      </Badge>
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      {desired ? formatDate(desired, t) : "—"}
+                    </Td>
+                    <Td>
+                      <Badge tone={anyOpen ? "warning" : "success"}>
+                        {t(
+                          anyOpen
+                            ? "demand.status.waitingStrategy"
+                            : "demand.status.ordered",
+                        )}
+                      </Badge>
+                    </Td>
+                  </tr>
+                );
+              })}
             </tbody>
           </Table>
         ) : (

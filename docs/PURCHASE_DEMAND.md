@@ -218,6 +218,14 @@ Para caberem três linhas de cards no Mac e no Full HD, o card de "Em andamento"
 - **Fila**: os cards usam a mesma última compra em duas linhas.
 - **Dicas dos rótulos curtos**: ficam dentro do próprio card, com até 10rem. A grade rola para os lados e cortaria o que sai dela; por isso nada em volta de uma dica pode cortar o texto (sem `truncate`).
 
+## Abas, resumo por card e entrada direta (dono, 22/11/2026)
+
+- **Pedido confirmado pelo cliente segue direto**: na venda pela Wellmix, a confirmação do cliente já põe a encomenda na fila da Estratégia de Compra, sem o "Enviar para cotação" da Wellmix. A confirmação grava `requests.strategySentAt` (com a Auditoria `purchase_strategy.send_request`) e avisa quem escolhe a estratégia (`enterStrategyOnConfirm`). A regra da fila (`inStrategyQueue`) também aceita a confirmação gravada (`orderTerms.confirmation`), então as confirmadas antes desta mudança entram sem ninguém reenviar. A encomenda aberta pelo próprio cliente (sem confirmação) continua com o "Enviar para cotação" em Encomendas. Desde o #647 (seção "Cotação na confirmação do cliente"), a `enterStrategyOnConfirm` chama antes a cotação automática; só o que ela não trata (produto fora do catálogo, ou erro antes de começar) fica apenas na fila, com este aviso.
+- **Uma aba por estágio** (`/app/purchase-strategy?tab=`): **Esperando estratégia** (`waiting`, a fila), **Em andamento** (`open`, as estratégias esperando aprovação ou pedido) e **Enviadas** (`sent`), cada uma com a contagem. Sem `tab`, abre a fila; depois de escolher ou decidir, abre "Em andamento". Os endereços antigos `#decision-<id>` sem a aba são levados para "Em andamento" (`_components/hash-tab.tsx`).
+- **Enviadas**: uma linha por cotação de cada envio (os 30 envios mais recentes). A linha abre a **cotação de fato** (`/app/purchase-quotes/<id>`); o pedido direto abre a estratégia em "Em andamento"; a que não saiu abre o resultado do envio. A coluna "Envio" continua levando ao resultado por destinatário (`/app/purchase-strategy/sends/<id>`).
+- **Resumo do envio por card**: cada solicitação com uma escolha mostra o seu "Resumo do envio" logo abaixo do próprio card, na mesma largura (quem recebe, quem fica de fora e o problema, se houver). A barra fixa do rodapé ficou só com "Revisar o envio", a observação e "Confirmar o envio".
+- Prática para as próximas telas: estágios diferentes de um mesmo fluxo ficam em abas, não empilhados na mesma tela.
+
 ## Ficha técnica na cotação (dono, 20/11/2026)
 
 Pedido do dono: o fornecedor que nunca negociou o produto informa a ficha técnica na cotação e o que já negociou confere e ratifica o que temos, uma vez só, com o aviso de que o portal novo está revalidando o cadastro. Decisões do dono ("1 a 6 recomendado"; depois "Sankhya fora", "porto sempre", "Sem código", "regra nova só na foto da balança", "dados da empresa ficam como estão"):
@@ -394,6 +402,22 @@ Decisão do dono: a cotação a responder acende a etapa **"Responder a solicita
 - **Testes**:
   - `tests/unit/quote-supplier-step.test.ts`: etapa, "desde" do convite e textos em pt e zh;
   - `tests/e2e/purchase-quote.spec.ts`: o fornecedor C vê "Responder a solicitação" amarela com 1, toca e abre a cotação pela lista.
+
+## Cotação na confirmação do cliente (dono, 22/11/2026)
+
+Pedido do dono: "manda direto para a Estratégia, quero que já vá direto essa cotação para os fornecedores, tanto o da última compra como todos os outros parceiros da mesma família do produto, da linha".
+
+- **Quando:** o cliente confirma a encomenda TS lançada pela Wellmix ("Confirmar pedido", docs/ORDER_TERMS.md seção 4). Ela é chamada pela entrada direta na fila (`enterStrategyOnConfirm`, seção "Abas, resumo por card e entrada direta"). A encomenda aberta pelo próprio cliente segue com o "Enviar para cotação"; a de produto fora do catálogo só entra na fila, sem cotação (não há o que cotar).
+- **O que acontece, sem ninguém clicar** (`autoQuoteConfirmed`, `src/lib/services/purchase-strategy.ts`):
+  1. a encomenda entra na Estratégia de Compra, como no "Enviar para cotação": `strategySentAt` e `strategySentByUserId = "system"`. O lote vai inteiro;
+  2. a estratégia é "cotar com outros fornecedores" para a solicitação inteira, com os destinatários abaixo. Sai pelo mesmo caminho do envio do Comprador: estratégia aprovada sem aprovação antes da cotação (D2), a cotação com os itens e o prazo de cada parceiro (24 h) e o resultado por destinatário em `/app/purchase-strategy/sends/<id>`, com "Tentar de novo";
+  3. o Comprador (quem escolhe a estratégia e quem escolhe a vencedora) recebe "Cotação nº X aberta sozinha: encomenda nº N confirmada pelo cliente", com quantos receberam e quantos ficaram de fora. O link leva ao resultado do envio.
+- **Destinatários** (`autoQuoteRecipients`): primeiro o fornecedor da última compra de cada produto (`lastPurchases`), depois todos os parceiros da família, a mesma lista do País × Família da tela (`strategySuppliers`). Essa lista junta quem marcou a família no cadastro, o fornecedor principal dos produtos ativos das linhas da família e os ligados aos produtos. Cada parceiro entra uma vez só e só dos quatro tipos que cotam, com o limite de 200.
+- **Quem não está apto** (sem login ativo, inativo, tipo desligado ou sem a tela de cotações): fica de fora no resultado, com o motivo, como no envio manual. A pendência "Envio da estratégia com pendência" vai para quem escolhe a estratégia; depois de regularizar, "Tentar de novo" convida sem duplicar.
+- **Quando a cotação não sai sozinha:** sem nenhum parceiro apto, sem parceiro algum, com a encomenda já em outra estratégia, ou com erro ao abrir a cotação. A encomenda fica na fila da Estratégia, com a pendência de sempre ("Escolher a estratégia"), e quem escolhe a estratégia recebe "Encomenda nº N confirmada pelo cliente: escolha a estratégia", com o motivo. A confirmação do cliente nunca é desfeita por isso.
+- **Quem aparece:** o portal sozinho. `chosenByUserId`, `openedByUserId` e `createdByUserId` do envio ficam com `"system"` (`AUTO_ACTOR_ID`, `src/lib/purchase-demand.ts`), e a auditoria fica sem login ("Sistema"). A tela do resultado mostra "Envio automático em …: o cliente confirmou a encomenda" e a página da encomenda, "Entrou sozinha na Estratégia em … (o cliente confirmou)". A observação da estratégia é `AUTO_QUOTE_NOTE`.
+- **O pedido direto** (fornecedor da última compra sem cotação) não é automático: o Comprador ainda pode escolhê-lo para uma encomenda que ficou na fila.
+- **Testes:** `tests/unit/auto-quote-confirm.test.ts` e `tests/e2e/turns.spec.ts`. O E2E do envio manual com o selo "Aguardando Wellmix" passou a usar a encomenda aberta pelo próprio cliente.
 
 ## Andamento
 

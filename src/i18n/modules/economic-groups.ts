@@ -75,6 +75,12 @@ export const pt = {
   "econGroup.pieces.hint":
     "Peças: as caixas saem delas, arredondadas para cima ({n} peças por caixa).",
   "econGroup.request.total": "Total",
+  // Caixas, cubagem e containers por programação (dono, 22/11/2026).
+  "econGroup.request.boxes": "Caixas master",
+  "econGroup.request.cbm": "Cubagem (m³)",
+  "econGroup.request.containers": "Containers ({code})",
+  "econGroup.request.containersHint":
+    "Quantos containers {code} cada programação ocupa, com as caixas master inteiras (a mesma conta da Composição de containers).",
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
@@ -150,6 +156,11 @@ export const en: Record<keyof typeof pt, string> = {
   "econGroup.pieces.hint":
     "Pieces: the cartons come from them, rounded up ({n} pieces per carton).",
   "econGroup.request.total": "Total",
+  "econGroup.request.boxes": "Master cartons",
+  "econGroup.request.cbm": "Cubage (m³)",
+  "econGroup.request.containers": "Containers ({code})",
+  "econGroup.request.containersHint":
+    "How many {code} containers each delivery takes, with whole master cartons (the same count as the Container composition).",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -220,4 +231,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "econGroup.matrix.spread": "按交货百分比分配合计",
   "econGroup.pieces.hint": "件数：按件数计算箱数，向上取整（每箱 {n} 件）。",
   "econGroup.request.total": "合计",
+  "econGroup.request.boxes": "外箱数",
+  "econGroup.request.cbm": "体积（m³）",
+  "econGroup.request.containers": "集装箱（{code}）",
+  "econGroup.request.containersHint":
+    "每批占用多少个 {code} 集装箱，按整箱外箱计算（与集装箱组成的计算相同）。",
 };

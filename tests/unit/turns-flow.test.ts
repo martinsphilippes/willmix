@@ -7,7 +7,7 @@ import { withTempStore } from "./setup";
  * cliente, e vira "Confirmar pedido" só para o login dele que pode
  * confirmar; trocar o login com acesso muda quem recebe; sem login que
  * possa confirmar, o administrador recebe o caso; confirmada, a pendência
- * do cliente some e a próxima ação ("Enviar para cotação") vai para quem
+ * do cliente some e a encomenda segue direto para a Estratégia (sem o envio de quem
  * pode fazê-la, nunca para quem não pode.
  */
 withTempStore();
@@ -192,7 +192,7 @@ describe("venda aguardando o cliente", () => {
     });
   });
 
-  it("confirmada: a pendência do cliente some e a próxima vai para quem envia para cotação", async () => {
+  it("confirmada: a pendência do cliente some e a encomenda segue direto para a Estratégia de Compra", async () => {
     const [request] = await sale(["Garrafa de teste"]);
     await confirmation.confirmCustomerOrder(joao, request.id, {
       accept: true,
@@ -200,21 +200,25 @@ describe("venda aguardando o cliente", () => {
       carrierName: "",
     });
     expect(await confirmTasks(joao, [request])).toEqual([]);
+    // Sem o "Enviar para cotação" da Wellmix (dono, 22/11/2026): a próxima
+    // ação já é escolher a estratégia, e a entrada na fila fica gravada.
     expect((await steps([request]))[0]).toEqual({
-      key: "send",
+      key: "strategy",
       who: "wellmix",
     });
+    expect(
+      (await getStore().get("requests", request.id))?.strategySentAt,
+    ).toBeTruthy();
     const sendTask = (tasks: Awaited<ReturnType<typeof pendingTasksFor>>) =>
       tasks.filter(
         (t) =>
           t.kind === "new_request" && t.link === `/app/requests/${request.id}`,
       );
-    // Quem abre Encomendas recebe "Enviar para cotação" (uma vez só).
+    // Ninguém recebe mais a pendência "Enviar para cotação".
     expect(
       sendTask(tasksForFunctions(buyer, await pendingTasksFor(buyer))),
-    ).toHaveLength(1);
-    expect(sendTask(await pendingTasksFor(admin))).toHaveLength(1);
-    // Quem não pode enviar (Comex interno) não recebe.
+    ).toEqual([]);
+    expect(sendTask(await pendingTasksFor(admin))).toEqual([]);
     expect(
       sendTask(tasksForFunctions(comex, await pendingTasksFor(comex))),
     ).toEqual([]);

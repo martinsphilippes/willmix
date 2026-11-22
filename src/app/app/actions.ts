@@ -1543,6 +1543,12 @@ export async function saveSettingsAction(form: FormData) {
         if (!Number.isInteger(n) || n < 1 || n > 30)
           throw new Error("sampling_sla_invalid");
         value = n;
+      } else if (key === "customerConfirmReminderMax") {
+        // Lembretes da confirmação do cliente (docs/ORDER_TERMS.md).
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n < 0 || n > 10)
+          throw new Error("customer_reminder_invalid");
+        value = n;
       } else if (key === "attendanceSlaDays") {
         // Prazo de atendimento ao cliente (docs/TRADE_COMERCIAL.md).
         const n = Number(raw);

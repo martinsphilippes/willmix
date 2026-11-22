@@ -60,6 +60,24 @@ Decisões: vale para qualquer pedido (também de um cliente só); o padrão fica
 
 Nas telas do pedido do grupo (distribuição padrão, seletor de empresa, preenchimento em massa, matriz e a tabela "Empresas do grupo econômico" da solicitação), a empresa aparece pela **razão social** (`parties.legalName`, a `RAZAO_SOCIAL` da view); sem ela, pelo nome (`companyName` em src/lib/services/economic-groups.ts).
 
+## Caixas, cubagem e containers por programação (dono, 22/11/2026)
+
+Pedido do dono (com o print da solicitação vista pelo cliente): na tabela "Empresas do grupo econômico" e na "Programação de compra", a quantidade de caixas master, a cubagem e os containers de cada programação; e a tabela das empresas logo abaixo da linha do produto.
+
+- **Tabela das empresas** (`RequestCompanyAllocations`): abaixo das empresas, as linhas Caixas master, Cubagem (m³) e Containers ({container}), com o total à direita. Fica logo abaixo da linha do produto (a ficha), antes da Programação de compra, na página da solicitação (`/app/requests/<id>`) e no produto do rascunho.
+- **Programação de compra** (`RequestScheduleTable`): as colunas Caixas master, Cubagem (m³) e Containers ({container}) depois da Quantidade, com o total na última linha. Vale também para a solicitação sem grupo econômico.
+- **A conta** (`roundPackingOf`, `src/lib/services/request-packing.ts`) é a regra única de embalagem da ficha completa e dos totais da encomenda (docs/ORDER_LEVEL_LISTS.md, seção 5):
+  - as caixas master de cada programação, pelas peças por caixa;
+  - a cubagem, caixas × m³ da caixa;
+  - os containers pela mesma conta da Composição de containers (`packingRounds`, caixas master inteiras), no maior container das Configurações (hoje o 40HC, 68 m³).
+  - Falta o dado (sem caixa, sem m³, outra unidade): "—", nunca zero.
+  - Entrega em branco no rascunho: "—".
+- **Quem vê** (decisão do dono, 22/11/2026): a Wellmix e também o cliente, nas duas tabelas da solicitação dele. É a exceção à regra da ficha (docs/REQUEST_SHEET.md, seção 4). O resto da embalagem na ficha (códigos, medidas, ficha atual) continua só para a Wellmix.
+- **Testes:**
+  - `tests/unit/round-packing.test.ts`: as caixas, o m³ e os containers por programação, mais de um container, sem programação e falta de dado;
+  - `tests/e2e/request-screens.spec.ts`: a TS do grupo com 60 e 40 caixas, 7,212 e 4,808 m³, 1 container 40HC em cada, nas duas tabelas, e a tabela das empresas antes da Programação de compra;
+  - `tests/e2e/schedule-packing.spec.ts`: o João (cliente) envia a boneca em 3 entregas (20, 15 e 10 caixas) e vê na Programação de compra as caixas, a cubagem (2,404, 1,803 e 1,202 m³) e 1 container 40HC em cada; a ficha continua sem a embalagem para ele.
+
 ## O que é gravado
 
 - `requests.companyAllocations` (JSON): por produto, `[{ customerId, quantities: [peças por entrega] }]`. A soma por entrega é a `schedule` do produto. O cliente da solicitação é a empresa que representa o grupo.

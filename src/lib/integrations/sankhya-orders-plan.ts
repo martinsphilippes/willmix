@@ -455,3 +455,7 @@ export const sankhyaReplenishmentId = (
   doc: string | number,
   seq: number,
 ) => `snk-r${track}-${doc}-${seq}`;
+
+/** Lote da reposição do Sankhya: todos os itens da 1100 do mesmo track. */
+export const sankhyaReplenishmentGroupId = (track: string | number) =>
+  `snk-r${track}`;

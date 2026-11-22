@@ -26,7 +26,11 @@ import {
 } from "@/components/request-responsible-tip";
 import { ListReturnLink } from "@/components/list-return";
 import { ChatOpenButton } from "@/components/chat-open-button";
-import type { PackingSourceKind } from "@/lib/services/request-packing";
+import {
+  roundPackingOf,
+  type PackingSourceKind,
+  type RoundPacking,
+} from "@/lib/services/request-packing";
 import type { DetailsProduct, RequestDetailsScreenProps } from "./details-view";
 import {
   draftDetailsModel,
@@ -191,6 +195,24 @@ export async function draftScreenProps(
             ? `/app/products/${encodeURIComponent(focus.product.productId)}`
             : null
         }
+        companiesPacking={
+          focus.product.companyAllocations?.length ||
+          focus.product.schedule?.items.length
+            ? {
+                rounds: roundPackingOf(
+                  {
+                    id: `draft-${focus.product.position}`,
+                    productName: focus.product.productName,
+                    quantity: focus.product.quantity ?? 0,
+                    schedule: focus.product.schedule,
+                  },
+                  focus.packing,
+                  reference?.capacityCbm ?? null,
+                ),
+                container: reference?.code ?? null,
+              }
+            : null
+        }
       />
     ) : null,
     hint: t("reqDraft.pageHint"),
@@ -272,6 +294,7 @@ function DraftItemCard({
   base,
   wellmix,
   catalogHref,
+  companiesPacking,
 }: {
   t: Translate;
   row: DraftPackedProduct;
@@ -279,6 +302,8 @@ function DraftItemCard({
   base: string;
   wellmix: boolean;
   catalogHref: string | null;
+  /** Caixas, m³ e containers de cada programação (dono, 22/11/2026). */
+  companiesPacking: { rounds: RoundPacking; container: string | null } | null;
 }) {
   const { product: p, packing: pk, line } = row;
   const dash = <span className="text-zinc-400">—</span>;
@@ -462,15 +487,19 @@ function DraftItemCard({
             </div>
           ))}
         </dl>
+        {/* As empresas do grupo logo abaixo do produto, com as caixas, a
+            cubagem e os containers de cada programação (dono, 22/11/2026). */}
+        <RequestCompanyAllocations
+          request={{ companyAllocations: p.companyAllocations }}
+          t={t}
+          packing={companiesPacking}
+        />
         <RequestScheduleTable
           schedule={p.schedule}
           unit={p.unit}
           t={t}
           typed={p.scheduleTyped}
-        />
-        <RequestCompanyAllocations
-          request={{ companyAllocations: p.companyAllocations }}
-          t={t}
+          packing={companiesPacking}
         />
       </Card>
     </div>

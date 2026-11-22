@@ -26,6 +26,14 @@ export const ORDER_ORIGINS: readonly RequestOrigin[] = [
 
 export type DemandKind = "order" | "replenishment";
 
+/**
+ * Quem aparece no que o portal faz sozinho (dono, 22/11/2026): a encomenda
+ * que entra na Estratégia e a cotação que sai na confirmação do cliente
+ * ficam com "system" no lugar de um login (`strategySentByUserId`,
+ * `chosenByUserId`, `openedByUserId`, `createdByUserId` do envio).
+ */
+export const AUTO_ACTOR_ID = "system";
+
 /** Reposição (B10) ou encomenda (B14)? Nulo: não é demanda de compra. */
 export function demandKind(
   request: Pick<Request, "origin">,

@@ -421,6 +421,22 @@ export default async function SettingsPage({
                       defaultValue={s.reminderDaysBeforeDue}
                     />
                   </Field>
+                  {/* Lembretes da confirmação do cliente (dono, 22/11/2026). */}
+                  <Field
+                    label={t("confirmReminder.settings.label")}
+                    hint={t("confirmReminder.settings.hint")}
+                  >
+                    <Input
+                      name="customerConfirmReminderMax"
+                      type="number"
+                      min={0}
+                      max={10}
+                      step={1}
+                      required
+                      defaultValue={s.customerConfirmReminderMax}
+                      data-setting-confirm-reminders
+                    />
+                  </Field>
                   <Field label={t("settings.label.sankhyaMode")}>
                     <Select name="sankhyaMode" defaultValue={s.sankhyaMode}>
                       <option value="MOCK">{t("settings.option.MOCK")}</option>

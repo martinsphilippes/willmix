@@ -9,6 +9,7 @@ import { productNameText } from "@/i18n";
 import { errorTextFor } from "@/i18n/error-text";
 import { getStore, type StrategyRecipientStatus } from "@/lib/db";
 import { listByIds } from "@/lib/db/lookup";
+import { AUTO_ACTOR_ID } from "@/lib/purchase-demand";
 import { partyTypeLabel } from "@/lib/partner-types";
 import {
   canChooseStrategy,
@@ -79,7 +80,9 @@ export default async function StrategySendPage({
       "purchase_quotes",
       send.lines.map((l) => l.quoteId).filter((q): q is string => !!q),
     ),
-    store.get("users", send.createdByUserId),
+    send.createdByUserId === AUTO_ACTOR_ID
+      ? null
+      : store.get("users", send.createdByUserId),
     getPartnerTypeCatalog(),
   ]);
   const errorCode = typeof sp.error === "string" ? sp.error : "";
@@ -113,10 +116,19 @@ export default async function StrategySendPage({
         </div>
       ) : null}
       <p className="mb-3 text-xs text-zinc-600">
-        {t("strategy.send.by", {
-          name: creator?.name ?? "—",
-          date: formatDate(send.createdAt, t),
-        })}{" "}
+        {/* Envio do portal sozinho (cliente confirmou; dono, 22/11/2026). */}
+        {send.createdByUserId === AUTO_ACTOR_ID ? (
+          <span data-strategy-send-auto>
+            {t("strategy.send.byAuto", {
+              date: formatDate(send.createdAt, t),
+            })}
+          </span>
+        ) : (
+          t("strategy.send.by", {
+            name: creator?.name ?? "—",
+            date: formatDate(send.createdAt, t),
+          })
+        )}{" "}
         · {t("strategy.send.runs", { n: send.runs })}
       </p>
 
@@ -170,7 +182,7 @@ export default async function StrategySendPage({
                   <p className="mt-1 text-xs text-zinc-700">
                     {t("strategy.send.direct")}{" "}
                     <Link
-                      href={`/app/purchase-strategy#decision-${line.decisionId}`}
+                      href={`/app/purchase-strategy?tab=open#decision-${line.decisionId}`}
                       className={linkClass}
                       data-strategy-send-decision={line.decisionId}
                     >

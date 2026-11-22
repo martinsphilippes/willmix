@@ -663,20 +663,29 @@ export async function releaseRequest(user: User, request: Request) {
   });
 }
 
+/**
+ * Quem confirma o pedido e recebe os avisos: o login do cliente com acesso
+ * ou, sem login escolhido, todos os logins ativos do cliente (dono,
+ * 18/11/2026). Também o lembrete da confirmação (confirm-reminders.ts).
+ */
+export async function customerConfirmUserIds(
+  request: Pick<Request, "requestedForUserId" | "customerId">,
+): Promise<string[]> {
+  if (request.requestedForUserId) return [request.requestedForUserId];
+  return (
+    await getStore().list("users", {
+      filter: {
+        role: "customer",
+        partyId: request.customerId,
+        active: true,
+      },
+    })
+  ).map((u) => u.id);
+}
+
 /** Avisa o login do cliente (ou todos os dele) que há um pedido para confirmar. */
 async function notifyCustomerToConfirm(request: Request) {
-  // Sem login escolhido: todos os logins ativos do cliente (dono, 18/11/2026).
-  const userIds = request.requestedForUserId
-    ? [request.requestedForUserId]
-    : (
-        await getStore().list("users", {
-          filter: {
-            role: "customer",
-            partyId: request.customerId,
-            active: true,
-          },
-        })
-      ).map((u) => u.id);
+  const userIds = await customerConfirmUserIds(request);
   if (!userIds.length) return;
   const { notify } = await import("./notifications");
   await notify(
