@@ -40,6 +40,7 @@ import { notify } from "./notifications";
 import { isStockCustomer } from "./stock-party";
 import { countryKey } from "@/lib/order-terms";
 import { servesFamilies } from "@/lib/party-families";
+import { getSettings } from "@/lib/settings";
 
 /*
  * Estratégia de compra (mapa B10?, dono 15/11/2026; docs/PURCHASE_DEMAND.md).
@@ -1029,6 +1030,11 @@ export async function enterStrategy(
   user: User,
   request: Request,
 ): Promise<Request> {
+  // Encomenda que vira cotação na hora (dono, 22/11/2026): quem grava a
+  // entrada é a cotação automática (`quoteNewDemands`, "Virou cotação
+  // sozinha"); aqui fica só a de produto fora do catálogo.
+  if (request.productId && (await getSettings()).autoQuoteOrders)
+    return request;
   if (
     request.strategySentAt ||
     // A confirmada pelo cliente segue pela cotação automática
@@ -1456,7 +1462,11 @@ async function runLine(
   const { openQuoteWithRecipients } = await import("./purchase-quote");
   let opened: Awaited<ReturnType<typeof openQuoteWithRecipients>>;
   try {
-    opened = await openQuoteWithRecipients(actor, decision, okIds, now);
+    // Envio automático: o aviso da cotação sem convite é o da encomenda
+    // (`notifyAutoQuote`), com o motivo; o "sem resposta" genérico fica.
+    opened = await openQuoteWithRecipients(actor, decision, okIds, now, {
+      quietEmpty: !actor,
+    });
   } catch (error) {
     // A estratégia ficou gravada; a cotação, não: o "Tentar de novo" retoma.
     console.error("[strategy] cotação do envio", error);
@@ -1658,7 +1668,7 @@ async function executeSend(
     "purchase_strategy.send",
     "purchase_strategy_send",
     send.id,
-    `Envio nº ${send.number} da Estratégia de Compra${actor ? "" : " (automático: o cliente confirmou a encomenda)"}: ${done.length} solicitação(ões), ${products} produto(s), ${sentCount} convite(s) enviado(s), ${pendingRecipients(saved)} parceiro(s) sem receber`,
+    `Envio nº ${send.number} da Estratégia de Compra${actor ? "" : " (automático: a encomenda virou cotação sozinha)"}: ${done.length} solicitação(ões), ${products} produto(s), ${sentCount} convite(s) enviado(s), ${pendingRecipients(saved)} parceiro(s) sem receber`,
   );
   return saved;
 }
@@ -1670,7 +1680,7 @@ async function executeSend(
 
 /** A observação da estratégia que o portal escolhe sozinho. */
 export const AUTO_QUOTE_NOTE =
-  "Envio automático: o cliente confirmou a encomenda (dono, 22/11/2026).";
+  "Envio automático: a encomenda virou cotação sozinha (dono, 22/11/2026).";
 
 /** O que aconteceu com cada solicitação confirmada pelo cliente. */
 export type AutoQuoteOutcome =
@@ -1702,19 +1712,26 @@ export function autoQuoteRecipients(
 }
 
 /**
- * O cliente confirmou a encomenda (dono, 22/11/2026): ela entra sozinha na
- * Estratégia de Compra, sem o "Enviar para cotação", e a cotação sai na hora
- * para o fornecedor da última compra e todos os parceiros da família, pelo
- * mesmo caminho do envio do Comprador (o resultado por destinatário e o
- * "Tentar de novo"). Sem nenhum parceiro apto ou com erro, a encomenda fica
- * na fila da Estratégia e o Comprador é avisado; com produto fora do
- * catálogo, fica de fora daqui e só entra na fila (`enterStrategyOnConfirm`).
- * Erro aqui não desfaz a confirmação.
+ * A encomenda vira cotação na hora (dono, 22/11/2026: "quero que já vire
+ * cotação, para vários fornecedores... baseado na família, linha, produto",
+ * sem a etapa da Wellmix na Estratégia de compra). Vale para a encomenda
+ * aberta pelo cliente (a solicitação inteira, `quoteNewDemands`) e para a
+ * venda pela Wellmix confirmada por ele (`enterStrategyOnConfirm`). A
+ * cotação sai pelo mesmo caminho do envio do Comprador (o resultado por
+ * destinatário e o "Tentar de novo") para o fornecedor da última compra e
+ * todos os parceiros da família, da linha e do produto. Sem nenhum parceiro
+ * apto, a cotação nasce sem convite: o Comprador gera os logins e usa
+ * "Tentar de novo", ou convida outros na cotação. Fica na fila da Estratégia
+ * só a de produto fora do catálogo (não há o que cotar) e a que deu erro.
+ * Desligada nas Configurações (`autoQuoteOrders`), nada sai sozinho e a
+ * encomenda espera na Estratégia, como antes. Erro aqui não desfaz a
+ * encomenda nem a confirmação.
  */
 export async function autoQuoteConfirmed(
   released: readonly Request[],
 ): Promise<AutoQuoteOutcome[]> {
   const store = getStore();
+  if (!(await getSettings()).autoQuoteOrders) return [];
   // Encomenda do cliente ainda sem estratégia, com ou sem a entrada na fila
   // já gravada por outro caminho: a cotação sai do mesmo jeito.
   const candidates = released.filter(
@@ -1757,7 +1774,7 @@ export async function autoQuoteConfirmed(
         "purchase_strategy.send_request",
         "request",
         r.id,
-        `Encomenda nº ${r.number ?? "—"} (${r.productName}) confirmada pelo cliente: entrou sozinha na Estratégia de Compra`,
+        `Encomenda nº ${r.number ?? "—"} (${r.productName}): virou cotação sozinha, sem a Estratégia de Compra`,
         { strategySentAt: null },
         { strategySentAt: now },
       );
@@ -1800,16 +1817,8 @@ export async function autoQuoteConfirmed(
         origin.supplierIds,
         checks,
       );
-      if (!recipientIds.some((id) => checks.get(id)?.ok)) {
-        outcomes.push(
-          queued(
-            recipientIds.length
-              ? "strategy_send_no_ok_recipient"
-              : "strategy_send_recipients",
-          ),
-        );
-        continue;
-      }
+      // Sem nenhum apto, a cotação nasce do mesmo jeito, sem convite: quem
+      // ficou de fora aparece no resultado e recebe com "Tentar de novo".
       const line: StrategySendLine = {
         demandId: demands[0].id,
         demandIds: demands.map((d) => d.id),
@@ -1831,7 +1840,7 @@ export async function autoQuoteConfirmed(
       );
       outcomes.push({ state: "sent", requestKey: key, send });
     } catch (error) {
-      console.error("[strategy] cotação na confirmação do cliente", error);
+      console.error("[strategy] cotação automática da encomenda", error);
       outcomes.push(
         queued(
           error instanceof PurchaseStrategyError
@@ -1848,11 +1857,25 @@ export async function autoQuoteConfirmed(
   return outcomes;
 }
 
+/**
+ * A encomenda aberta pelo cliente vira cotação na hora em que chega à
+ * Wellmix (dono, 22/11/2026): a solicitação inteira de uma vez (o lote, no
+ * fim da criação; a de um produto só, no `releaseRequest`). A confirmada
+ * pelo cliente segue pela `enterStrategyOnConfirm`.
+ */
+export async function quoteNewDemands(
+  requests: readonly Request[],
+): Promise<AutoQuoteOutcome[]> {
+  const fresh = requests.filter((r) => !r.orderTerms?.confirmation);
+  if (!fresh.length) return [];
+  return autoQuoteConfirmed(fresh).catch((error) => {
+    console.error("[strategy] cotação automática da encomenda", error);
+    return [] as AutoQuoteOutcome[];
+  });
+}
+
 /** Motivos com texto próprio no aviso; os outros saem como erro. */
 const AUTO_QUOTE_REASON_KEY = {
-  strategy_send_no_ok_recipient:
-    "autoQuote.reason.strategy_send_no_ok_recipient",
-  strategy_send_recipients: "autoQuote.reason.strategy_send_recipients",
   strategy_whole_request: "autoQuote.reason.strategy_whole_request",
 } as const;
 
@@ -1899,20 +1922,29 @@ async function notifyAutoQuote(
               .catch(() => null)
           )?.number
         : null;
+      // Ninguém pôde receber: a cotação nasceu sem convite (o Comprador gera
+      // os logins e usa "Tentar de novo", ou convida outros na cotação).
+      const empty = sent === 0;
       await notify(
         { userIds },
         {
-          kind: out ? "action" : "info",
+          kind: out || empty ? "action" : "info",
           link: `/app/purchase-strategy/sends/${outcome.send.id}`,
           text: (tr) => ({
-            subject: tr("autoQuote.notify.sent.subject", {
-              ...values,
-              quote: quoteNumber ?? "—",
-            }),
+            subject: tr(
+              empty
+                ? "autoQuote.notify.empty.subject"
+                : "autoQuote.notify.sent.subject",
+              { ...values, quote: quoteNumber ?? "—" },
+            ),
             body: tr(
-              out
-                ? "autoQuote.notify.sent.bodyOut"
-                : "autoQuote.notify.sent.body",
+              empty
+                ? out
+                  ? "autoQuote.notify.empty.body"
+                  : "autoQuote.notify.empty.bodyNone"
+                : out
+                  ? "autoQuote.notify.sent.bodyOut"
+                  : "autoQuote.notify.sent.body",
               { ...values, sent, out },
             ),
           }),

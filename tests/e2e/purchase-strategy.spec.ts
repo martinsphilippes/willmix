@@ -6,6 +6,7 @@ import {
   openReplenishment,
   selectAndOpenSupplierRequest,
   createdRequestId,
+  setAutoQuote,
 } from "./helpers";
 
 /*
@@ -153,6 +154,10 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   page,
 }) => {
   test.slow();
+  // Este teste exercita a Estratégia manual (pedido direto com a última
+  // compra): a encomenda não vira cotação sozinha aqui (dono, 22/11/2026).
+  await login(page, "admin@wellmix.com");
+  await setAutoQuote(page, false);
   const firstOrder = await firstPurchase(page);
   expect(firstOrder).toContain("/app/orders/");
 
@@ -351,4 +356,7 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   await page.waitForURL(/[?&]closed=\d+/);
   await expect(page.locator("[data-strategy-closed]")).toBeVisible();
   await expect(page.locator(`#decision-${decisionE}`)).toHaveCount(0);
+  // A chave volta ao padrão (a encomenda vira cotação sozinha).
+  await login(page, "admin@wellmix.com");
+  await setAutoQuote(page, true);
 });

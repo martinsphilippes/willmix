@@ -1,35 +1,38 @@
 /*
- * Cotação na confirmação do cliente e lembrete da confirmação (dono,
- * 22/11/2026; docs/PURCHASE_DEMAND.md, "Cotação na confirmação do cliente",
- * e docs/ORDER_TERMS.md, "Lembrete da confirmação"): a encomenda confirmada
- * entra sozinha na Estratégia de Compra e a cotação sai para o fornecedor da
- * última compra e os parceiros da família; enquanto o cliente não confirma,
- * um lembrete por dia até o limite das Configurações, e com o último o
- * vendedor é avisado.
+ * Encomenda vira cotação na hora e lembrete da confirmação (dono,
+ * 22/11/2026; docs/PURCHASE_DEMAND.md, "Encomenda vira cotação na hora", e
+ * docs/ORDER_TERMS.md, "Lembrete da confirmação"): a encomenda (aberta pelo
+ * cliente ou confirmada por ele) vira cotação na hora para o fornecedor da
+ * última compra e os parceiros da família, sem a etapa da Estratégia;
+ * enquanto o cliente não confirma, um lembrete por dia até o limite das
+ * Configurações, e com o último o vendedor é avisado.
  */
 export const pt = {
   "autoQuote.notify.sent.subject":
-    "Cotação nº {quote} aberta sozinha: encomenda nº {n} confirmada pelo cliente",
+    "Cotação nº {quote} aberta sozinha: encomenda nº {n} · {customer}",
   "autoQuote.notify.sent.body":
     "{customer}, {products} produto(s). Convites enviados a {sent} parceiro(s): o fornecedor da última compra e os parceiros da família.",
   "autoQuote.notify.sent.bodyOut":
     '{customer}, {products} produto(s). Convites enviados a {sent} parceiro(s); {out} ficaram de fora (sem login ativo, inativos ou sem a tela de cotações). Regularize e use "Tentar de novo".',
-  "autoQuote.notify.queued.subject":
-    "Encomenda nº {n} confirmada pelo cliente: escolha a estratégia",
+  "autoQuote.notify.empty.subject":
+    "Cotação nº {quote} aberta sem convite: encomenda nº {n} · {customer}",
+  "autoQuote.notify.empty.body":
+    '{products} produto(s). Nenhum fornecedor da família pôde receber: {out} sem login ativo, inativos ou sem a tela de cotações. Gere os logins e use "Tentar de novo", ou convide outros na cotação.',
+  "autoQuote.notify.empty.bodyNone":
+    "{products} produto(s). Não há fornecedor da última compra nem parceiro da família, da linha ou do produto: convide os fornecedores na cotação.",
+  "autoQuote.notify.queued.subject": "Encomenda nº {n}: escolha a estratégia",
   "autoQuote.notify.queued.body":
     "{customer}, {products} produto(s). A cotação não saiu sozinha: {reason}",
-  "autoQuote.reason.strategy_send_no_ok_recipient":
-    "nenhum parceiro da família nem o fornecedor da última compra está apto (sem login ativo, inativo ou sem a tela de cotações).",
-  "autoQuote.reason.strategy_send_recipients":
-    "não há fornecedor da última compra nem parceiro cadastrado na família do produto.",
   "autoQuote.reason.strategy_whole_request":
     "a solicitação tem outros produtos na fila; envie todos juntos.",
   "autoQuote.reason.other":
     "erro ao abrir a cotação; escolha a estratégia na tela.",
   "strategy.send.byAuto":
-    "Envio automático em {date}: o cliente confirmou a encomenda",
-  "reqSend.sentAuto":
-    "Entrou sozinha na Estratégia em {date} (o cliente confirmou)",
+    "Envio automático em {date}: a encomenda virou cotação sozinha",
+  "reqSend.sentAuto": "Virou cotação sozinha em {date}",
+  "autoQuote.settings.label": "Encomenda vira cotação sozinha",
+  "autoQuote.settings.hint":
+    "Sim: a encomenda (aberta pelo cliente ou confirmada por ele) vira cotação na hora para o fornecedor da última compra e os parceiros da família, sem a Estratégia de compra. Não: espera na Estratégia.",
   "confirmReminder.notify.subject": "Lembrete: confirme o pedido nº {n}",
   "confirmReminder.notify.body":
     "A Wellmix lançou um pedido para você e ele ainda espera a sua confirmação. Leia o aviso e confirme no portal. Lembrete {count} de {max}.",
@@ -51,27 +54,30 @@ export const pt = {
 
 export const en: Record<keyof typeof pt, string> = {
   "autoQuote.notify.sent.subject":
-    "Quotation no. {quote} opened by itself: order no. {n} confirmed by the customer",
+    "Quotation no. {quote} opened by itself: order no. {n} · {customer}",
   "autoQuote.notify.sent.body":
     "{customer}, {products} product(s). Invitations sent to {sent} partner(s): the supplier of the last purchase and the partners of the family.",
   "autoQuote.notify.sent.bodyOut":
     '{customer}, {products} product(s). Invitations sent to {sent} partner(s); {out} were left out (no active login, inactive or without the quotations screen). Fix them and use "Try again".',
-  "autoQuote.notify.queued.subject":
-    "Order no. {n} confirmed by the customer: choose the strategy",
+  "autoQuote.notify.empty.subject":
+    "Quotation no. {quote} opened without invitations: order no. {n} · {customer}",
+  "autoQuote.notify.empty.body":
+    '{products} product(s). No supplier of the family could receive it: {out} without an active login, inactive or without the quotations screen. Create the logins and use "Try again", or invite others on the quotation.',
+  "autoQuote.notify.empty.bodyNone":
+    "{products} product(s). There is no supplier of the last purchase nor any partner of the family, line or product: invite the suppliers on the quotation.",
+  "autoQuote.notify.queued.subject": "Order no. {n}: choose the strategy",
   "autoQuote.notify.queued.body":
     "{customer}, {products} product(s). The quotation did not go out by itself: {reason}",
-  "autoQuote.reason.strategy_send_no_ok_recipient":
-    "no partner of the family nor the supplier of the last purchase is ready (no active login, inactive or without the quotations screen).",
-  "autoQuote.reason.strategy_send_recipients":
-    "there is no supplier of the last purchase nor any partner registered for the product family.",
   "autoQuote.reason.strategy_whole_request":
     "the request has other products in the queue; send them all together.",
   "autoQuote.reason.other":
     "error opening the quotation; choose the strategy on the screen.",
   "strategy.send.byAuto":
-    "Automatic send on {date}: the customer confirmed the order",
-  "reqSend.sentAuto":
-    "Entered the Strategy by itself on {date} (the customer confirmed)",
+    "Automatic send on {date}: the order became a quotation by itself",
+  "reqSend.sentAuto": "Became a quotation by itself on {date}",
+  "autoQuote.settings.label": "Order becomes a quotation by itself",
+  "autoQuote.settings.hint":
+    "Yes: the order (opened by the customer or confirmed by them) becomes a quotation right away for the supplier of the last purchase and the partners of the family, without the purchase strategy. No: it waits in the strategy.",
   "confirmReminder.notify.subject": "Reminder: confirm order no. {n}",
   "confirmReminder.notify.body":
     "Wellmix placed an order for you and it is still waiting for your confirmation. Read the notice and confirm on the portal. Reminder {count} of {max}.",
@@ -93,23 +99,28 @@ export const en: Record<keyof typeof pt, string> = {
 
 export const zh: Record<keyof typeof pt, string> = {
   "autoQuote.notify.sent.subject":
-    "询价单 {quote} 已自动发出：客户已确认第 {n} 号订购",
+    "询价单 {quote} 已自动发出：第 {n} 号订购 · {customer}",
   "autoQuote.notify.sent.body":
     "{customer}，{products} 个产品。已向 {sent} 个合作伙伴发出邀请：上次采购的供应商和该品类的合作伙伴。",
   "autoQuote.notify.sent.bodyOut":
     "{customer}，{products} 个产品。已向 {sent} 个合作伙伴发出邀请；{out} 个未收到（没有有效账号、已停用或没有询价页面）。处理后请使用“重试”。",
-  "autoQuote.notify.queued.subject": "客户已确认第 {n} 号订购：请选择采购策略",
+  "autoQuote.notify.empty.subject":
+    "询价单 {quote} 已打开但无人受邀：第 {n} 号订购 · {customer}",
+  "autoQuote.notify.empty.body":
+    "{products} 个产品。该品类的供应商都无法接收：{out} 个没有有效账号、已停用或没有询价页面。请创建账号后使用“重试”，或在询价单中邀请其他供应商。",
+  "autoQuote.notify.empty.bodyNone":
+    "{products} 个产品。没有上次采购的供应商，也没有该品类、产品线或产品的合作伙伴：请在询价单中邀请供应商。",
+  "autoQuote.notify.queued.subject": "第 {n} 号订购：请选择采购策略",
   "autoQuote.notify.queued.body":
     "{customer}，{products} 个产品。询价未能自动发出：{reason}",
-  "autoQuote.reason.strategy_send_no_ok_recipient":
-    "该品类的合作伙伴和上次采购的供应商都无法接收（没有有效账号、已停用或没有询价页面）。",
-  "autoQuote.reason.strategy_send_recipients":
-    "没有上次采购的供应商，也没有登记在该产品品类下的合作伙伴。",
   "autoQuote.reason.strategy_whole_request":
     "该申请在队列中还有其他产品；请一起发送。",
   "autoQuote.reason.other": "打开询价时出错；请在页面上选择采购策略。",
-  "strategy.send.byAuto": "{date} 自动发送：客户已确认订购",
-  "reqSend.sentAuto": "{date} 已自动进入采购策略（客户已确认）",
+  "strategy.send.byAuto": "{date} 自动发送：订购已自动转为询价",
+  "reqSend.sentAuto": "{date} 已自动转为询价",
+  "autoQuote.settings.label": "订购自动转为询价",
+  "autoQuote.settings.hint":
+    "是：订购（客户提交或客户确认的）立即转为询价，发给上次采购的供应商和该品类的合作伙伴，无需采购策略。否：在采购策略中等待。",
   "confirmReminder.notify.subject": "提醒：请确认第 {n} 号订单",
   "confirmReminder.notify.body":
     "Wellmix 为您下了一个订单，仍在等待您的确认。请阅读提示并在门户中确认。第 {count} 次提醒，共 {max} 次。",
