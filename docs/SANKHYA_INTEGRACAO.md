@@ -468,8 +468,8 @@ Substitui a tabela da seção 5.1. Cada pedido fica na linha mais adiantada que 
 - **Linha 9, cuidado com o ETD velho:** o ETD da 1104 não é atualizado (61 dos 99 pedidos pendentes sem inspeção tinham o ETD no passado). Por isso a linha 9 vale só para pedido inspecionado, sem nada embarcado e com o ETD de até 30 dias atrás. ETD mais antigo fica em Booking.
 - **Vários embarques:** com a 1104 sem pendência, o pedido fica no marco do embarque aberto menos adiantado. Com a 1104 pendente e parte embarcada, o marco segue as linhas 5 a 9, com o selo "Embarque parcial".
 - **Caso 1:** a 1104 pendente sem `STATUS_SHIPPING` (191 pedidos) e a 1101 pendente entram em andamento pelas linhas 2 e 6 a 9. Na carga seguinte, quem estava em "Aguardando definição" ganha as pendências do portal.
-- **Inspeção feita:** conta o "Inspecionado" ou a `DATA_INSPECAO` preenchida.
-- A carga só avança marcos: nunca reabre o que já foi dado como feito.
+- **Inspeção feita:** conta o "Inspecionado", ou a `DATA_INSPECAO` preenchida fora da "Inspeção parcial" (22/11/2026: na parcial a data já vem preenchida, e 142 pedidos tinham ficado em Booking por isso).
+- A carga nunca reabre o que foi feito no portal. O que ela mesma deu como feito e o de-para diz que ainda não passou volta a pendente, assim como os passos que ela validou (22/11/2026, para corrigir as cargas anteriores).
 - **1100 → reposição:** é uma reposição por item, para o Estoque Wellmix, com id `snk-r<track>-<NUNOTA>-<SEQUENCIA>`, número = TRACK_ID e data desejada = `DATA_PEDIDO` da 1100.
   - Pendente no Sankhya (47 tracks): fica aberta (`REQUESTED`) na fila de `/app/replenishment`.
   - Sem pendência (1.058): é Pre-order reprovada e **não entra no portal** (dono, 22/11/2026: "nem deveriam ser carregadas"). A carga apaga a reposição que uma rodada anterior gravou, se ela não andou no portal.
