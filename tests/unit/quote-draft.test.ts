@@ -40,6 +40,12 @@ const code = async (fn: () => Promise<unknown>) => {
 
 beforeAll(async () => {
   const { users } = await seedDemo();
+  // A encomenda não vira cotação sozinha aqui (dono, 22/11/2026): estes
+  // testes exercitam a Estratégia manual ou outro assunto.
+  await (await import("@/lib/settings")).setSetting(
+    "autoQuoteOrders",
+    false,
+  );
   const by = (email: string) => users.find((u) => u.email === email)!;
   buyer = by("operador@wellmix.com");
   director = by("diretoria@wellmix.com");

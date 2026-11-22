@@ -372,11 +372,17 @@ export async function createQuoteForDecision(
  * convite que deu certo, o Comprador é avisado (como na cotação sem resposta).
  */
 export async function openQuoteWithRecipients(
-  /** Nulo = o portal sozinho (cotação na confirmação do cliente). */
+  /** Nulo = o portal sozinho (a encomenda que vira cotação na hora). */
   user: User | null,
   decision: PurchaseDecision,
   recipientIds: readonly string[],
   now = new Date(),
+  /**
+   * `quietEmpty`: sem nenhum convite, quem chama já avisa o Comprador com o
+   * motivo (a cotação automática da encomenda); o "sem resposta" fica marcado
+   * como avisado.
+   */
+  opts: { quietEmpty?: boolean } = {},
 ): Promise<{ quote: PurchaseQuote; results: InviteResult[] }> {
   const { quote, fresh } = await createQuoteForDecision(user, decision);
   const results = await inviteSuppliers(quote, [...new Set(recipientIds)], now);
@@ -389,8 +395,13 @@ export async function openQuoteWithRecipients(
       quote.id,
       `Cotação de compra nº ${quote.number} aberta pela Estratégia de Compra para ${sent} parceiro(s), ${quote.hours} h cada: ${quote.items.map((i) => i.name).join(", ")}`,
     );
-  if (fresh && !results.some((r) => r.status !== "failed"))
-    await notifyEmpty(quote, now);
+  if (fresh && !results.some((r) => r.status !== "failed")) {
+    if (opts.quietEmpty)
+      await getStore().update("purchase_quotes", quote.id, {
+        emptyNotifiedAt: now.toISOString(),
+      });
+    else await notifyEmpty(quote, now);
+  }
   return { quote, results };
 }
 

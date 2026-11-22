@@ -13,6 +13,12 @@ import { cx } from "./ui";
  * compra): uma linha só, cortada com "…", e o "mais" ao lado, na mesma linha,
  * para a linha da tabela ficar fina. A célula precisa de uma largura máxima
  * (`className`, ex.: "max-w-[12rem]") para o corte acontecer.
+ *
+ * Ficha completa da solicitação (dono, 22/11/2026): `preserveLines` mantém as
+ * quebras de linha do texto quando aberto, e `detail` (a conta do valor) fica
+ * recolhido junto e aparece embaixo ao abrir; com ele, o "mais" aparece mesmo
+ * quando o texto cabe. O detalhe continua na página (só escondido), para a
+ * busca e o leitor de tela.
  */
 export function ClampText({
   text,
@@ -20,6 +26,8 @@ export function ClampText({
   less,
   className,
   lines = 2,
+  preserveLines = false,
+  detail = null,
 }: {
   text: string;
   /** "mais" */
@@ -29,6 +37,10 @@ export function ClampText({
   className?: string;
   /** Linhas antes do "mais": 2 (padrão) ou 1. */
   lines?: 1 | 2;
+  /** Aberto, mantém as quebras de linha do texto. */
+  preserveLines?: boolean;
+  /** Texto menor que só aparece aberto (ex.: a conta do valor). */
+  detail?: string | null;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const boxRef = useRef<HTMLSpanElement>(null);
@@ -54,7 +66,7 @@ export function ClampText({
     return () => observer?.disconnect();
   }, [text, open]);
   const toggle =
-    cut || open ? (
+    cut || open || detail ? (
       <button
         type="button"
         aria-expanded={open}
@@ -71,6 +83,17 @@ export function ClampText({
         {open ? less : more}
       </button>
     ) : null;
+  const extra = detail ? (
+    <span
+      className={cx(
+        "mt-0.5 block text-[11px] leading-snug text-zinc-500",
+        !open && "hidden",
+      )}
+      data-clamp-detail=""
+    >
+      {detail}
+    </span>
+  ) : null;
   if (lines === 1)
     return (
       <span
@@ -83,15 +106,20 @@ export function ClampText({
         )}
         style={open && width ? { width } : undefined}
         data-clamp-lines="1"
+        data-clamp-open={open ? "" : undefined}
       >
         <span
           ref={ref}
           title={text}
-          className={cx(open ? "mr-1" : "min-w-0 truncate")}
+          className={cx(
+            open ? "mr-1" : "min-w-0 truncate",
+            open && preserveLines && "whitespace-pre-line",
+          )}
         >
           {text}
         </span>
         {toggle}
+        {extra}
       </span>
     );
   return (
@@ -99,11 +127,16 @@ export function ClampText({
       <span
         ref={ref}
         title={text}
-        className={cx("block", !open && "line-clamp-2")}
+        className={cx(
+          "block",
+          !open && "line-clamp-2",
+          open && preserveLines && "whitespace-pre-line",
+        )}
       >
         {text}
       </span>
       {toggle}
+      {extra}
     </span>
   );
 }

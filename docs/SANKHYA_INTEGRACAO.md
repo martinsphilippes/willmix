@@ -468,8 +468,8 @@ Substitui a tabela da seção 5.1. Cada pedido fica na linha mais adiantada que 
 - **Linha 9, cuidado com o ETD velho:** o ETD da 1104 não é atualizado (61 dos 99 pedidos pendentes sem inspeção tinham o ETD no passado). Por isso a linha 9 vale só para pedido inspecionado, sem nada embarcado e com o ETD de até 30 dias atrás. ETD mais antigo fica em Booking.
 - **Vários embarques:** com a 1104 sem pendência, o pedido fica no marco do embarque aberto menos adiantado. Com a 1104 pendente e parte embarcada, o marco segue as linhas 5 a 9, com o selo "Embarque parcial".
 - **Caso 1:** a 1104 pendente sem `STATUS_SHIPPING` (191 pedidos) e a 1101 pendente entram em andamento pelas linhas 2 e 6 a 9. Na carga seguinte, quem estava em "Aguardando definição" ganha as pendências do portal.
-- **Inspeção feita:** conta o "Inspecionado" ou a `DATA_INSPECAO` preenchida.
-- A carga só avança marcos: nunca reabre o que já foi dado como feito.
+- **Inspeção feita:** conta o "Inspecionado", ou a `DATA_INSPECAO` preenchida fora da "Inspeção parcial" (22/11/2026: na parcial a data já vem preenchida, e 142 pedidos tinham ficado em Booking por isso).
+- A carga nunca reabre o que foi feito no portal. O que ela mesma deu como feito e o de-para diz que ainda não passou volta a pendente, assim como os passos que ela validou (22/11/2026, para corrigir as cargas anteriores).
 - **1100 → reposição:** é uma reposição por item, para o Estoque Wellmix, com id `snk-r<track>-<NUNOTA>-<SEQUENCIA>`, número = TRACK_ID e data desejada = `DATA_PEDIDO` da 1100.
   - Pendente no Sankhya (47 tracks): fica aberta (`REQUESTED`) na fila de `/app/replenishment`.
   - Sem pendência (1.058): é Pre-order reprovada e **não entra no portal** (dono, 22/11/2026: "nem deveriam ser carregadas"). A carga apaga a reposição que uma rodada anterior gravou, se ela não andou no portal.
@@ -477,6 +477,7 @@ Substitui a tabela da seção 5.1. Cada pedido fica na linha mais adiantada que 
   - Rodar de novo atualiza a situação enquanto a reposição não andou no portal.
   - Na primeira carga (22/11/2026) a retirada um a um passou do tempo da página no bloco com muitos pedidos de 1100. Os 1.082 pedidos foram tirados direto no banco, e a retirada passou a ser em paralelo.
   - No mesmo dia, as 1100 com centenas de itens (até 919; 22.597 itens nas 1.105) também passavam do tempo, gravadas uma a uma. As reposições novas passaram a ser gravadas em lote, e as que já existem só são regravadas se o Sankhya mudou.
+  - Ainda em 22/11, perto do fim, blocos de 10 pedidos em andamento, cada um com as pendências a criar, passavam dos 60 s. Como o andamento só era salvo no fim do bloco, o bloco era refeito a cada "Continuar". Agora o passo para no pedido em que o prazo vence e salva até ali.
   - Quando a 1100 passar a 1101 no Sankhya, ela vira pedido com o mesmo track. Isso entra no sincronismo de 15 minutos (seção 7, ainda por fazer).
 
 ## 10. Em aberto

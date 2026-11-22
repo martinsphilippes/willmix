@@ -235,12 +235,15 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
 
   // Cotação nas Pendências do fornecedor (dono, 21/11/2026): acende a etapa
   // "Responder a solicitação" em amarelo; ao tocar, a lista mostra a
-  // cotação, que abre a resposta. (O C só tem esta pendência.)
+  // cotação, que abre a resposta. (O C pode ter outras: a encomenda vira
+  // cotação sozinha e as dos testes anteriores também o convidam.)
   await login(page, "supplier.c@china.com");
   await page.goto("/app/tasks");
   const step = page.locator('[data-supplier-step="request"]');
   await expect(step).toHaveAttribute("data-supplier-step-tone", "warning");
-  await expect(step).toHaveAttribute("data-supplier-step-count", "1");
+  expect(
+    Number(await step.getAttribute("data-supplier-step-count")),
+  ).toBeGreaterThanOrEqual(1);
   await step.click();
   await page.waitForURL(/[?&]type=supplier\.request/);
   const quoteRow = page.locator("[data-task-row]", {

@@ -6,6 +6,7 @@ import {
   fillCustomerContacts,
   fillOrderTerms,
   login,
+  setAutoQuote,
 } from "./helpers";
 
 /*
@@ -61,6 +62,8 @@ test("venda aguardando o cliente: Em aberto e com o cliente; ele confirma pelas 
   page,
 }) => {
   await login(page, "admin@wellmix.com");
+  // A chave do padrão: a encomenda vira cotação sozinha (dono, 22/11/2026).
+  await setAutoQuote(page, true);
   const requestId = await newSaleForJoao(page);
 
   // Detalhe: a vez é do cliente e o Próximo passo é Confirmar pedido.
@@ -111,14 +114,14 @@ test("venda aguardando o cliente: Em aberto e com o cliente; ele confirma pelas 
     page.locator(`[data-task-row] a[href="/app/requests/${requestId}"]`),
   ).toHaveCount(0);
 
-  // Cotação na confirmação (dono, 22/11/2026): entrou sozinha na Estratégia
-  // e a cotação já saiu para os fornecedores, sem o "Enviar para cotação".
-  // A vez é do fornecedor (responder a cotação); o filtro "Cliente" não a
+  // Encomenda vira cotação na hora (dono, 22/11/2026): sem a Estratégia e
+  // sem o "Enviar para cotação", a cotação já saiu para os fornecedores. A
+  // vez é do fornecedor (responder a cotação); o filtro "Cliente" não a
   // mostra mais.
   await login(page, "admin@wellmix.com");
   await page.goto(`/app/requests/batch/${requestId}`);
   await expect(page.locator(`[data-batch-sent="${requestId}"]`)).toContainText(
-    "Entrou sozinha na Estratégia",
+    "Virou cotação sozinha",
   );
   await page.goto("/app/requests?vez=supplier");
   await expect(row.locator('[data-request-turn="supplier"]')).toBeVisible();
@@ -354,11 +357,13 @@ test("tela baixa (iPad em janela menor): o balão cabe na tela e o formulário i
   ).toHaveText(buyer);
 });
 
-test("encomenda aberta pelo cliente: segue direto para a Estratégia de compra, sem o Enviar para cotação", async ({
+test("encomenda aberta pelo cliente: vira cotação na hora, sem a Estratégia de compra", async ({
   page,
 }) => {
-  // Dono, 22/11/2026: a encomenda aberta pelo cliente também vai direto para
-  // a Estratégia de compra; ninguém precisa enviar para cotação.
+  // Dono, 22/11/2026: a encomenda aberta pelo cliente vira cotação na hora,
+  // como a venda confirmada; ninguém escolhe a estratégia nem envia.
+  await login(page, "admin@wellmix.com");
+  await setAutoQuote(page, true);
   const requestId = await customerEncomenda(page);
   await login(page, "admin@wellmix.com");
   // Sem a pendência "Enviar para cotação" e sem o envio no selo.
@@ -368,16 +373,19 @@ test("encomenda aberta pelo cliente: segue direto para a Estratégia de compra, 
       `[data-task-row] a[href="/app/requests/${requestId}"]:not([data-open-link])`,
     ),
   ).toHaveCount(0);
+  await page.goto(`/app/requests/batch/${requestId}`);
+  await expect(page.locator(`[data-batch-sent="${requestId}"]`)).toContainText(
+    "Virou cotação sozinha",
+  );
+  // A vez é do fornecedor: responder a cotação.
   await page.goto("/app/requests?situ=open");
   const row = page.locator(`[data-request-row="${requestId}"]`);
-  await expect(row.locator('[data-request-turn="wellmix"]')).toContainText(
-    "Aguardando Wellmix",
-  );
-  await expect(row.locator('[data-request-next="strategy"]')).toBeVisible();
+  await expect(row.locator('[data-request-turn="supplier"]')).toBeVisible();
+  await expect(row.locator('[data-request-next="quote_answer"]')).toBeVisible();
   await expect(row.locator("[data-request-quick]")).toHaveCount(0);
-  // Já está na aba "Esperando estratégia".
+  // Não fica esperando estratégia.
   await page.goto("/app/purchase-strategy");
-  await expect(
-    page.locator(`[data-strategy-line="${requestId}"]`),
-  ).toBeVisible();
+  await expect(page.locator(`[data-strategy-line="${requestId}"]`)).toHaveCount(
+    0,
+  );
 });

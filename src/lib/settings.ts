@@ -59,6 +59,14 @@ export const DEFAULT_SETTINGS = {
    */
   purchaseQuoteHours: 24,
   /**
+   * Encomenda vira cotação sozinha (dono, 22/11/2026; docs/PURCHASE_DEMAND.md,
+   * "Encomenda vira cotação na hora"): a encomenda aberta pelo cliente e a
+   * venda confirmada por ele viram cotação na hora para o fornecedor da
+   * última compra e os parceiros da família, sem a etapa da Estratégia de
+   * compra. Desligada, a encomenda espera na Estratégia, como antes.
+   */
+  autoQuoteOrders: true,
+  /**
    * SLA da amostragem, em dias corridos: da aprovação da solicitação (ou da
    * reprovação da amostra) até o responsável enviar as fotos e vídeos
    * (docs/SUPPLIER_SAMPLING.md). Decisão do dono (12/11/2026): 1 dia.

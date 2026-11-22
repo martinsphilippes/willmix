@@ -46,6 +46,12 @@ const reload = async (u: User) => (await getStore().get("users", u.id))!;
 
 beforeAll(async () => {
   const { users } = await seedDemo();
+  // A encomenda não vira cotação sozinha aqui (dono, 22/11/2026): estes
+  // testes exercitam a Estratégia manual ou outro assunto.
+  await (await import("@/lib/settings")).setSetting(
+    "autoQuoteOrders",
+    false,
+  );
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
   analyst = await wellmixUser("ana.analista@wellmix.com", "Ana Analista");

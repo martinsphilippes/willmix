@@ -269,3 +269,139 @@ describe("1100 vira reposição na carga", () => {
     ).toBe(before);
   });
 });
+
+describe("passo da carga respeita o prazo", () => {
+  it("sem tempo, grava um pedido por passo e termina sem refazer", async () => {
+    const { users } = await seedDemo();
+    const admin = users.find((u) => u.email === "admin@wellmix.com")!;
+    const store = getStore();
+    for (const key of ["7200", "7300", "7400"])
+      await store.create("sankhya_projection", {
+        id: `order:${key}`,
+        kind: "order",
+        key,
+        situation: "in_progress",
+        milestone: null,
+        top: 1100,
+        supplierCode: null,
+        supplierName: null,
+        shipmentState: "none",
+        computedAt: NOW.toISOString(),
+        data: {
+          track: key,
+          chain: [{ nunota: Number(key), top: 1100, pending: true }],
+          items: [
+            {
+              seq: 1,
+              codprod: "X",
+              name: "ITEM",
+              unit: "UN",
+              qty: 1,
+              shipped: 0,
+              pendingQty: 1,
+              price: 1,
+            },
+          ],
+        },
+      } as never);
+    let p = await load.runOrdersLoadStep(admin, { restart: true });
+    const total = p.total;
+    expect(total).toBeGreaterThanOrEqual(3);
+    const seen: number[] = [];
+    for (let i = 0; i < 50 && p.phase === "orders"; i++) {
+      p = await load.runOrdersLoadStep(admin, { budgetMs: 0 });
+      seen.push(p.phase === "orders" ? p.done : total);
+    }
+    // Cada passo avança pelo menos um pedido, sem pular nem voltar.
+    expect(seen.length).toBe(total);
+    expect(seen[0]).toBe(1);
+    for (let i = 1; i < seen.length; i++)
+      expect(seen[i]).toBeGreaterThanOrEqual(seen[i - 1]);
+    expect(p.phase).not.toBe("orders");
+  });
+});
+
+describe("inspeção parcial", () => {
+  it("a data da inspeção parcial não dá a inspeção como feita, e a carga desfaz o que marcou", async () => {
+    const { users } = await seedDemo();
+    const admin = users.find((u) => u.email === "admin@wellmix.com")!;
+    const store = getStore();
+    await store.create("parties", {
+      type: "supplier",
+      name: "FORNECEDOR P",
+      taxId: null,
+      active: true,
+      sankhyaCode: "SNK-FP",
+    } as never);
+    await store.create("parties", {
+      type: "customer",
+      name: "WELLMIX - P",
+      taxId: null,
+      active: true,
+      sankhyaCode: "EMP-5",
+    } as never);
+    await store.create("sankhya_stage_rows", {
+      dataset: "purchaseHeaders",
+      rowKey: "8000",
+      nunota: 8000,
+      row: { NUNOTA: 8000, CODEMP: "5" },
+    } as never);
+    const data = {
+      track: "8000",
+      mainKey: "8000",
+      chain: [{ nunota: 8000, top: 1104, pending: true }],
+      items: [
+        {
+          seq: 1,
+          doc: 8000,
+          codprod: "Z",
+          name: "ITEM",
+          unit: "UN",
+          qty: 10,
+          shipped: 0,
+          pendingQty: 10,
+          price: 1,
+        },
+      ],
+      quality: "Inspecao parcial",
+      inspectedAt: "09112026 00:00:00",
+    };
+    await store.create("sankhya_projection", {
+      id: "order:8000",
+      kind: "order",
+      key: "8000",
+      situation: "in_progress",
+      milestone: null,
+      top: 1104,
+      supplierCode: "SNK-FP",
+      supplierName: "FORNECEDOR P",
+      shipmentState: "none",
+      computedAt: NOW.toISOString(),
+      data,
+    } as never);
+    const run = async () => {
+      let p = await load.runOrdersLoadStep(admin, { restart: true });
+      for (let i = 0; i < 20 && p.phase !== "done"; i++)
+        p = await load.runOrdersLoadStep(admin);
+    };
+    await run();
+    const { milestoneOfItem } = await import("@/lib/milestone-release");
+    const inspection = async () =>
+      (
+        await store.list("requirements", { filter: { orderId: "snk-t8000" } })
+      ).filter((r) => milestoneOfItem(r) === "inspection");
+    const first = await inspection();
+    expect(first.length).toBeGreaterThan(0);
+    expect(first.every((r) => r.status === "pending")).toBe(true);
+    // Uma carga anterior que marcou a inspeção como feita: a próxima desfaz.
+    for (const r of first)
+      await store.update("requirements", r.id, {
+        status: "done",
+        note: "Marco concluído no Sankhya (carga dos pedidos)",
+      } as never);
+    await run();
+    expect((await inspection()).every((r) => r.status === "pending")).toBe(
+      true,
+    );
+  });
+});

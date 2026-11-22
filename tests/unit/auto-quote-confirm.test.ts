@@ -10,8 +10,11 @@ import { orderFromRequest } from "./helpers/order";
  *   "Enviar para cotação") e a cotação sai na hora para o fornecedor da
  *   última compra e todos os parceiros da família; quem não está apto fica
  *   de fora no resultado, com o motivo;
- * - sem nenhum parceiro apto, fica na fila da Estratégia e o Comprador é
- *   avisado; produto fora do catálogo segue o "Enviar para cotação" de antes;
+ * - a encomenda aberta pelo cliente também vira cotação na hora (um produto ou
+ *   o lote inteiro numa cotação só), sem passar pela Estratégia;
+ * - sem nenhum parceiro apto, a cotação nasce sem convite e o Comprador é
+ *   avisado para gerar os logins; só o produto fora do catálogo fica na fila;
+ * - desligada nas Configurações, a encomenda espera na Estratégia, como antes;
  * - enquanto o cliente não confirma: um lembrete por dia até o limite das
  *   Configurações; com o último, o vendedor é avisado uma vez.
  */
@@ -109,6 +112,8 @@ const notificationsTo = async (userId: string, subjectStart: string) =>
 
 beforeAll(async () => {
   const { users } = await seedDemo();
+  // A preparação (compra anterior) não vira cotação; os testes ligam abaixo.
+  await setSetting("autoQuoteOrders", false);
   const by = (email: string) => users.find((u) => u.email === email)!;
   admin = by("admin@wellmix.com");
   seller = by("vendas@wellmix.com");
@@ -142,6 +147,7 @@ beforeAll(async () => {
     currency: "USD",
   });
   await getStore().update("requests", previous.id, { status: "ORDERED" });
+  await setSetting("autoQuoteOrders", true);
 });
 
 describe("destinatários da cotação automática", () => {
@@ -241,7 +247,7 @@ describe("cliente confirma: a cotação sai sozinha", () => {
     expect(retry?.ownerUserId).toBeNull();
   });
 
-  it("sem nenhum parceiro apto: fica na fila da Estratégia e o Comprador é avisado", async () => {
+  it("sem nenhum parceiro apto: a cotação nasce sem convite e o Comprador é avisado para gerar os logins", async () => {
     const store = getStore();
     // Família Decoração com um fornecedor sem login.
     const lonely = await party("supplier", "Fornecedor sem login");
@@ -272,22 +278,49 @@ describe("cliente confirma: a cotação sai sozinha", () => {
     });
     await confirm(r);
     const [after] = await fresh([r.id]);
-    expect(after.status).toBe("REQUESTED");
-    expect(after.strategySentByUserId).toBe(AUTO_ACTOR_ID);
-    expect(after.purchaseDecisionId ?? null).toBeNull();
-    expect(strategy.inStrategyQueue(after)).toBe(true);
-    // A pendência de sempre: escolher a estratégia.
-    const drafts = await strategy.strategyTaskDrafts([after]);
-    expect(drafts.some((d) => d.kind === "purchase_strategy")).toBe(true);
-    const queued = (
-      await store.list("notifications", { filter: { channel: "inapp" } })
-    ).filter((n) =>
-      n.subject.startsWith(
-        `Encomenda nº ${after.number} confirmada pelo cliente`,
-      ),
+    // Já é cotação (dono, 22/11/2026): não fica esperando na Estratégia.
+    expect(after.status).toBe("RFQ_OPEN");
+    expect(after.purchaseDecisionId).toBeTruthy();
+    expect(strategy.inStrategyQueue(after)).toBe(false);
+    const decision = (await store.get(
+      "purchase_decisions",
+      after.purchaseDecisionId!,
+    ))!;
+    const quote = (await store.get("purchase_quotes", decision.quoteId!))!;
+    expect(
+      await store.list("purchase_quote_responses", {
+        filter: { quoteId: quote.id },
+      }),
+    ).toEqual([]);
+    // Quem ficou de fora aparece no resultado, com o motivo.
+    const send = (await store.get(
+      "purchase_strategy_sends",
+      decision.sendId!,
+    ))!;
+    expect(send.lines[0].recipients).toEqual([
+      expect.objectContaining({
+        partyId: lonely,
+        status: "blocked",
+        reasons: ["no_login"],
+      }),
+    ]);
+    // Um aviso só, com o motivo e o caminho (não o "sem resposta" genérico).
+    const inbox = await store.list("notifications", {
+      filter: { channel: "inapp" },
+    });
+    const notices = inbox.filter((n) =>
+      n.subject.startsWith(`Cotação nº ${quote.number} aberta sem convite`),
     );
-    expect(queued.length).toBeGreaterThan(0);
-    expect(queued[0].body).toContain("nenhum parceiro");
+    expect(notices.length).toBeGreaterThan(0);
+    expect(notices[0].body).toContain("Gere os logins");
+    expect(notices[0].link).toBe(`/app/purchase-strategy/sends/${send.id}`);
+    expect(
+      inbox.filter(
+        (n) =>
+          n.subject === `Cotação de compra nº ${quote.number} sem resposta`,
+      ),
+    ).toEqual([]);
+    expect(quote.emptyNotifiedAt).toBeTruthy();
   });
 
   it("entrada na fila já gravada por outro caminho: a cotação sai do mesmo jeito", async () => {
@@ -355,6 +388,88 @@ describe("cliente confirma: a cotação sai sozinha", () => {
         n.body.includes(`nº ${after.number} `),
     );
     expect(queueNotices).toEqual([]);
+  });
+});
+
+describe("encomenda aberta pelo cliente: vira cotação na hora", () => {
+  it("um produto: a cotação sai ao criar, sem passar pela Estratégia", async () => {
+    const store = getStore();
+    const r = await requests.createRequest(joao, {
+      customerId: joao.partyId!,
+      productId: "prod-panela",
+      productName: "prod-panela",
+      description: "Encomenda do cliente",
+      quantity: 900,
+      unit: "un",
+    });
+    const [after] = await fresh([r.id]);
+    expect(after.status).toBe("RFQ_OPEN");
+    expect(strategy.inStrategyQueue(after)).toBe(false);
+    const decision = (await store.get(
+      "purchase_decisions",
+      after.purchaseDecisionId!,
+    ))!;
+    expect(decision).toMatchObject({
+      choice: "quote",
+      chosenByUserId: AUTO_ACTOR_ID,
+    });
+    // A última compra (fornecedor A) e quem marcou a família (a Trading).
+    const invited = await store.list("purchase_quote_responses", {
+      filter: { quoteId: decision.quoteId! },
+    });
+    expect(invited.map((x) => x.supplierId)).toEqual(
+      expect.arrayContaining(["fornecedor-a", traderParty]),
+    );
+  });
+
+  it("lote com dois produtos: uma cotação só, com os dois", async () => {
+    const store = getStore();
+    const lot = await requests.createRequestBatch(
+      joao,
+      { customerId: joao.partyId!, deadline: null, notes: null },
+      ["prod-panela", "prod-jarra"].map((productId) => ({
+        productId,
+        productName: productId,
+        description: "Lote do cliente",
+        specification: null,
+        quantity: 600,
+        unit: "un",
+        sourcingDemand: false,
+      })),
+    );
+    const after = await fresh(lot.map((r) => r.id));
+    expect(after.every((r) => r.status === "RFQ_OPEN")).toBe(true);
+    const decisionIds = new Set(after.map((r) => r.purchaseDecisionId));
+    expect(decisionIds.size).toBe(1);
+    const decision = (await store.get(
+      "purchase_decisions",
+      [...decisionIds][0]!,
+    ))!;
+    const quote = (await store.get("purchase_quotes", decision.quoteId!))!;
+    expect(quote.items.map((i) => i.productId).sort()).toEqual([
+      "prod-jarra",
+      "prod-panela",
+    ]);
+  });
+
+  it("desligada nas Configurações: a encomenda espera na Estratégia, como antes", async () => {
+    await setSetting("autoQuoteOrders", false);
+    try {
+      const r = await requests.createRequest(joao, {
+        customerId: joao.partyId!,
+        productId: "prod-jarra",
+        productName: "prod-jarra",
+        description: "Encomenda com a chave desligada",
+        quantity: 300,
+        unit: "un",
+      });
+      const [after] = await fresh([r.id]);
+      expect(after.status).toBe("REQUESTED");
+      expect(after.purchaseDecisionId ?? null).toBeNull();
+      expect(strategy.inStrategyQueue(after)).toBe(true);
+    } finally {
+      await setSetting("autoQuoteOrders", true);
+    }
   });
 });
 

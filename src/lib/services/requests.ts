@@ -221,6 +221,13 @@ export async function createRequestBatch(
       groupId,
       `Lote com ${items.length} produtos: ${items.map((i) => i.productName).join(", ")}`,
     );
+  // Encomenda com vários produtos (dono, 22/11/2026): vira cotação na hora,
+  // a solicitação inteira de uma vez (a de um produto só já saiu no
+  // `releaseRequest`).
+  if (groupId) {
+    const { quoteNewDemands } = await import("./purchase-strategy");
+    await quoteNewDemands(created);
+  }
   // Produto sem NCM: o despachante recebe a pendência e um aviso só.
   await (await import("./request-ncm")).notifyNcmPending(created);
   // Venda ao cliente (condições do pedido): a previsão de venda de cada
@@ -326,6 +333,11 @@ export async function addProductsToRequest(
     base.id,
     `Produtos acrescentados à solicitação${base.number ? ` nº ${base.number}` : ""}: ${created.map((r) => r.productName).join(", ")}`,
   );
+  // Os produtos acrescentados também viram cotação na hora (dono, 22/11/2026).
+  {
+    const { quoteNewDemands } = await import("./purchase-strategy");
+    await quoteNewDemands(created);
+  }
   // As condições do pedido valem para o lote todo: o produto acrescentado
   // também ganha a previsão de venda (totais de Encomendas, 18/11/2026).
   if (base.orderTerms)
@@ -669,6 +681,13 @@ export async function releaseRequest(user: User, request: Request) {
     body: `${request.quantity.toLocaleString("pt-BR")} ${request.unit}.`,
     link: `/app/requests/${request.id}`,
   });
+  // A encomenda de um produto só vira cotação na hora (dono, 22/11/2026). O
+  // lote sai inteiro no fim da criação (`createRequestBatch`) e a venda
+  // confirmada pelo cliente, pela `enterStrategyOnConfirm`.
+  if (!request.groupId && !request.orderTerms?.confirmation) {
+    const { quoteNewDemands } = await import("./purchase-strategy");
+    await quoteNewDemands([request]);
+  }
 }
 
 /**

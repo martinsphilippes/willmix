@@ -9,6 +9,8 @@ import type {
   SheetSource,
 } from "@/lib/services/request-sheet";
 import { cx, formatDate, OpenLink, TextLink } from "./ui";
+import { ClampText } from "./clamp-text";
+import { HoverZoomPhoto } from "./hover-zoom-photo";
 
 /*
  * "Solicitações" no detalhe da solicitação (dono, 15/11/2026;
@@ -28,6 +30,12 @@ import { cx, formatDate, OpenLink, TextLink } from "./ui";
  * que o perfil não vê não aparece; o aviso de quem vê fica embaixo. Tudo o
  * que chega aqui já passou pelas permissões no servidor
  * (src/lib/services/request-sheet.ts).
+ *
+ * Linha fina (dono, 22/11/2026): na ficha completa, cada produto ocupa uma
+ * linha da altura da foto. O texto que não cabe termina em "…" com o "ver
+ * mais" ao lado, que abre só aquela célula (as quebras de linha voltam e a
+ * conta do valor aparece embaixo); a origem fica ao lado do valor. A foto do
+ * produto (a da vitrine do catálogo) abre a primeira coluna nos dois modos.
  */
 
 const TAG_STYLE: Partial<Record<SheetSource["kind"], string>> = {
@@ -39,17 +47,17 @@ function SourceTag({
   source,
   t,
   linked = false,
-  stacked = false,
+  inline = true,
 }: {
   source: SheetSource;
   t: Translate;
   linked?: boolean;
-  /** Embaixo do valor (ficha completa), em vez de ao lado. */
-  stacked?: boolean;
+  /** Depois do valor, no mesmo texto (com a margem); falso: já num flex. */
+  inline?: boolean;
 }) {
   const className = cx(
     "whitespace-nowrap rounded px-1 text-[10px] font-medium ring-1",
-    stacked ? "mt-1 block w-fit" : "ml-1.5 inline-block align-baseline",
+    inline ? "ml-1.5 inline-block align-baseline" : "inline-block",
     TAG_STYLE[source.kind] ?? "bg-zinc-100 text-zinc-600 ring-zinc-200",
   );
   const title =
@@ -95,15 +103,12 @@ function FieldValue({
   t,
   linked = false,
   compact = false,
-  stacked = false,
 }: {
   field: SheetField;
   t: Translate;
   linked?: boolean;
   /** Na linha resumida: sem a conta (ela fica na ficha completa). */
   compact?: boolean;
-  /** Ficha completa: a origem embaixo do valor. */
-  stacked?: boolean;
 }) {
   return (
     <>
@@ -115,12 +120,7 @@ function FieldValue({
         </span>
       )}
       {field.source ? (
-        <SourceTag
-          source={field.source}
-          t={t}
-          linked={linked}
-          stacked={stacked}
-        />
+        <SourceTag source={field.source} t={t} linked={linked} />
       ) : null}
       {field.note && !compact ? (
         <span className="mt-0.5 block text-[11px] leading-snug text-zinc-500">
@@ -199,6 +199,120 @@ function ProductName({ row, t }: { row: SheetRow; t: Translate }) {
   );
 }
 
+/** "ver mais" / "ver menos" das células recolhidas. */
+const clampLabels = (t: Translate) => ({
+  more: t("requestSheet.more"),
+  less: t("requestSheet.less"),
+});
+
+/** Miniatura do produto (a foto grande ao passar o mouse); sem foto, o quadro vazio. */
+function Thumb({ row }: { row: SheetRow }) {
+  return (
+    <span className="shrink-0" data-sheet-thumb={row.photoId ? "" : "empty"}>
+      <HoverZoomPhoto photoId={row.photoId ?? null} size="h-9 w-9" />
+    </span>
+  );
+}
+
+/**
+ * Primeira coluna da ficha completa, numa linha só (dono, 22/11/2026): a
+ * foto, o nome cortado com "ver mais" e, embaixo, o código, a variação e de
+ * qual solicitação é a linha; os avisos numa linha, também com "ver mais".
+ */
+function ProductThin({ row, t }: { row: SheetRow; t: Translate }) {
+  const labels = clampLabels(t);
+  return (
+    <div className="flex items-center gap-2">
+      <Thumb row={row} />
+      <div className="min-w-0 flex-1">
+        <ClampText
+          text={row.name}
+          lines={1}
+          {...labels}
+          className={cx(
+            "max-w-full text-[13px] font-medium",
+            row.current ? "text-zinc-900" : "text-zinc-700",
+          )}
+        />
+        <div className="flex min-w-0 items-center gap-1.5 text-[11px] leading-tight text-zinc-500">
+          {row.code ? (
+            <span className="shrink-0 tabular-nums" data-sheet-code>
+              {row.code}
+            </span>
+          ) : null}
+          {row.variant ? (
+            <span className="min-w-0 truncate" data-request-variant>
+              {row.variant}
+            </span>
+          ) : null}
+          {row.current ? (
+            <span className="shrink-0 font-medium text-brand-700">
+              {t("requestSheet.thisRequest")}
+            </span>
+          ) : (
+            <OpenLink
+              href={`/app/requests/${row.requestId}`}
+              label={t("requestSheet.openRequest")}
+              className="shrink-0"
+              data-sheet-open-request
+            />
+          )}
+        </div>
+        {row.warnings.length ? (
+          <div data-sheet-warning>
+            <ClampText
+              text={`⚠ ${row.warnings.join(" · ")}`}
+              lines={1}
+              {...labels}
+              className="max-w-full text-[11px] text-amber-800"
+            />
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Valor de uma célula da ficha completa numa linha (dono, 22/11/2026): o
+ * texto cortado com "ver mais", a origem ao lado e a conta recolhida.
+ */
+function ThinValue({ field, t }: { field: SheetField; t: Translate }) {
+  const labels = clampLabels(t);
+  return (
+    <div className="flex max-w-[20rem] items-baseline gap-1.5">
+      {field.value === null ? (
+        <>
+          <Missing t={t} />
+          {field.note ? (
+            <ClampText
+              text={field.note}
+              lines={1}
+              {...labels}
+              className="min-w-0 flex-1 text-[11px] text-zinc-500"
+            />
+          ) : null}
+        </>
+      ) : (
+        <span className="min-w-0 flex-1" data-sheet-value>
+          <ClampText
+            text={field.value}
+            lines={1}
+            preserveLines
+            detail={field.note}
+            {...labels}
+          />
+        </span>
+      )}
+      {field.source ? (
+        <span className="shrink-0">
+          <SourceTag source={field.source} t={t} linked inline={false} />
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function Warnings({ row }: { row: SheetRow }) {
   return row.warnings.map((w, i) => (
     <p
@@ -257,7 +371,12 @@ function SummaryRow({
           column={col("product") as Column}
           className="col-span-full @4xl:col-span-1"
         >
-          <ProductName row={row} t={t} />
+          <div className="flex items-start gap-2">
+            <Thumb row={row} />
+            <div className="min-w-0">
+              <ProductName row={row} t={t} />
+            </div>
+          </div>
         </Cell>
         {main("pieces", row.main.pieces)}
         {main("boxes", row.main.boxes)}
@@ -433,8 +552,9 @@ const BAND =
   "border-b border-zinc-200 px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap text-zinc-700";
 const HEAD =
   "border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide whitespace-nowrap text-zinc-500";
-const CELL =
-  "border-b border-zinc-100 px-3 py-2 align-top text-sm text-zinc-800";
+/** Linha fina da ficha completa (dono, 22/11/2026): da altura da foto. */
+const THIN =
+  "border-b border-zinc-100 px-3 py-1.5 align-top text-[13px] text-zinc-800";
 
 function FullTable({ view, t }: { view: RequestSheetView; t: Translate }) {
   const groups = fullGroups(view);
@@ -494,21 +614,20 @@ function FullTable({ view, t }: { view: RequestSheetView; t: Translate }) {
               >
                 <td
                   className={cx(
-                    CELL,
+                    THIN,
                     STICKY,
                     row.current ? "bg-white" : "bg-zinc-50",
                   )}
                   data-sheet-cell="product"
                 >
                   {/* Estreita no celular (sobra lugar para os dados que
-                      rolam); larga a partir de ~670 px de cartão. */}
-                  <div className="w-28 @2xl:w-auto @2xl:min-w-40 @2xl:max-w-60">
-                    <ProductName row={row} t={t} />
-                    <Warnings row={row} />
+                      rolam); mais larga a partir de ~670 px de cartão. */}
+                  <div className="w-44 @2xl:w-64">
+                    <ProductThin row={row} t={t} />
                   </div>
                 </td>
                 <td
-                  className={cx(CELL, "whitespace-nowrap tabular-nums")}
+                  className={cx(THIN, "whitespace-nowrap tabular-nums")}
                   data-sheet-field="deadline"
                 >
                   {row.main.deadline ? (
@@ -523,15 +642,11 @@ function FullTable({ view, t }: { view: RequestSheetView; t: Translate }) {
                     return (
                       <td
                         key={`${g.key}.${f.key}`}
-                        className={cx(
-                          CELL,
-                          "min-w-32 max-w-80",
-                          i === 0 && edge,
-                        )}
+                        className={cx(THIN, "min-w-28", i === 0 && edge)}
                         data-sheet-field={f.key}
                       >
                         {field ? (
-                          <FieldValue field={field} t={t} linked stacked />
+                          <ThinValue field={field} t={t} />
                         ) : (
                           <Missing t={t} />
                         )}
