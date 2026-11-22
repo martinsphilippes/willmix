@@ -114,6 +114,10 @@ export default async function PurchaseQuotePage({
       ["file", "removed", "submitted"].includes(sp.sampling)
         ? (sp.sampling as "file" | "removed" | "submitted")
         : null;
+    // Com a amostra enviada, a conversa já abre: os dois falam do que veem.
+    const sampleStarted = Object.values(response.sampling ?? {}).some(
+      (x) => x.files.length > 0,
+    );
     const counters = pendingQuoteProposals(response);
     const chat = quoteProductMessages(response, null);
     // Ficha técnica de cada produto (dono, 20/11/2026): pedida na primeira
@@ -216,7 +220,7 @@ export default async function PurchaseQuotePage({
         {/* Negociação dentro da cotação (dono, 22/11/2026;
             docs/QUOTATION.md): a contraproposta da Wellmix por produto (ele
             corrige a resposta abaixo e reenvia) e a conversa com ela. */}
-        {counters.length || chat.length ? (
+        {counters.length || chat.length || sampleStarted ? (
           <div id="negociacao" className="mb-4 scroll-mt-20">
             <Card title={t("quotation.supplier.title")}>
               <div className="space-y-3" data-quote-negotiation>

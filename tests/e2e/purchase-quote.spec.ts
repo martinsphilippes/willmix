@@ -275,6 +275,18 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   await page.locator("dialog[open] [data-sampling-review=approve]").click();
   await page.waitForURL(/[?&]sampling=approved/);
   await expect(page.locator('[data-quote-sample="approved"]')).toHaveCount(1);
+  // A amostra faz parte da conversa: no modal da conversa do B, a foto que
+  // ele enviou aparece acima das mensagens.
+  await page
+    .locator("[data-quotation-row]", {
+      has: page.locator('[data-quote-sample="approved"]'),
+    })
+    .locator("[data-quotation-chat]")
+    .click();
+  await expect(
+    page.locator("dialog[open] [data-sample-strip] [data-sample-strip-file]"),
+  ).toHaveCount(1);
+  await page.keyboard.press("Escape");
 
   // Isolamento: A abre a dele, sem o preço do B, sem o nome do B nem o cliente.
   await login(page, "supplier.a@china.com");

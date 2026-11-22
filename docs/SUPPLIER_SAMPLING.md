@@ -72,6 +72,14 @@ Regras confirmadas pelo dono:
 - **Na aprovação** (`samplingOnApproval`): a amostra já enviada ou aprovada segue como está; a pendente recomeça o prazo, mantendo os arquivos que ele já subiu.
 - A aprovação da solicitação **não** passou a exigir a amostra aprovada: aprovar e depois validar a amostra continua funcionando, com a trava do produto e do pedido de compra. A regra "só vence com a amostra aprovada" vale na escolha da vencedora da cotação de compra, que é onde há uma vencedora entre vários.
 
+### A amostra faz parte da conversa (dono, 22/11/2026)
+
+A amostra pode ser aprovada depois, mas precisa poder ser enviada antes, para os dois lados conversarem sobre o que estão vendo. Por isso:
+
+- o fornecedor sobe e envia a amostra desde o começo (regras acima), sem depender de nenhuma decisão;
+- no modal da **conversa** de cada fornecedor, no quadro comparativo, as fotos e os vídeos da rodada atual aparecem acima das mensagens (`SampleStrip`), com a situação da amostra, mesmo antes de aprovada;
+- na cotação do fornecedor, a conversa com a Wellmix abre assim que ele sobe o primeiro arquivo da amostra.
+
 ### Onde está
 
 | Parte        | Arquivo                                                                 |

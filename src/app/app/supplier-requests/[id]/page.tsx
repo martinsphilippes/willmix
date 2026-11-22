@@ -108,7 +108,7 @@ import {
 } from "@/lib/quote-negotiation";
 import { lastPurchases } from "@/lib/services/purchase-strategy";
 import { QuotationQuotePage } from "../_components/quote-pages";
-import { SamplingCard } from "../_components/sampling";
+import { SampleStrip, SamplingCard } from "../_components/sampling";
 import { samplingSlaDays } from "@/lib/services/supplier-request-sampling";
 import { samplingApproved, samplingFor } from "@/lib/supplier-request-sampling";
 import {
@@ -1138,15 +1138,19 @@ export default async function SupplierRequestPage({
         pending: waiting,
         href: o.id === r.id ? null : `/app/supplier-requests/${o.id}?view=item`,
         chat: (
-          <RequestChat
-            user={user}
-            request={o}
-            supplierName={name}
-            board={r.id}
-            errors={errorTexts}
-            fallbackError={errorFallback}
-            t={t}
-          />
+          <>
+            {/* A amostra faz parte da conversa (dono, 22/11/2026). */}
+            <SampleStrip sampling={samplingFor(o)} t={t} />
+            <RequestChat
+              user={user}
+              request={o}
+              supplierName={name}
+              board={r.id}
+              errors={errorTexts}
+              fallbackError={errorFallback}
+              t={t}
+            />
+          </>
         ),
         messages: (o.negotiation ?? []).filter((e) => e.kind === "message")
           .length,

@@ -39,7 +39,7 @@ import {
 } from "./quotation-board";
 import { QuoteChat } from "./board-chat";
 import { InfoCell, InfoGrid } from "./negotiation-sections";
-import { SamplingPanel } from "./sampling";
+import { SampleStrip, SamplingPanel } from "./sampling";
 import { SAMPLING_TONE } from "./status";
 import { QuickDialog } from "@/components/quick-dialog";
 import { quoteSamplingOf } from "@/lib/quote-sampling";
@@ -182,18 +182,29 @@ export async function QuotationQuotePage({
       conditions: [r.port, r.note].filter(Boolean).join(" · ") || null,
       pending: pendingQuoteProposals(r).some((e) => e.productId === productId),
       chat: (
-        <QuoteChat
-          quoteId={quote.id}
-          responseId={r.id}
-          productId={productId}
-          messages={messages}
-          mySide="wellmix"
-          names={names}
-          canPost={canMessageQuote(quote.status, r)}
-          errors={errors}
-          fallbackError={fallbackError}
-          t={t}
-        />
+        <>
+          {/* A amostra faz parte da conversa: os dois falam do que veem. */}
+          <SampleStrip
+            sampling={quoteSamplingOf(
+              r,
+              productId,
+              knownSuppliers.has(r.supplierId),
+            )}
+            t={t}
+          />
+          <QuoteChat
+            quoteId={quote.id}
+            responseId={r.id}
+            productId={productId}
+            messages={messages}
+            mySide="wellmix"
+            names={names}
+            canPost={canMessageQuote(quote.status, r)}
+            errors={errors}
+            fallbackError={fallbackError}
+            t={t}
+          />
+        </>
       ),
       messages: messages.length,
       history: (

@@ -110,6 +110,7 @@ export const pt = {
     "A amostra ainda não foi enviada para a validação.",
   "quote.error.sampling_reason_required": "Para reprovar, escreva o motivo.",
   "quote.error.sampling_supplier_only": "Só o fornecedor envia a amostra.",
+  "sampling.strip.title": "Amostra enviada pelo fornecedor",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -214,6 +215,7 @@ export const en: Record<keyof typeof pt, string> = {
     "The sample has not been sent for validation yet.",
   "quote.error.sampling_reason_required": "Write the reason to reject.",
   "quote.error.sampling_supplier_only": "Only the supplier sends the sample.",
+  "sampling.strip.title": "Sample sent by the supplier",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -312,4 +314,5 @@ export const zh: Record<keyof typeof pt, string> = {
   "quote.error.sampling_not_submitted": "样品尚未提交验证。",
   "quote.error.sampling_reason_required": "驳回请填写原因。",
   "quote.error.sampling_supplier_only": "只有供应商可以发送样品。",
+  "sampling.strip.title": "供应商发送的样品",
 };

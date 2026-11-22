@@ -407,3 +407,63 @@ export function SamplingPanel({
     </section>
   );
 }
+
+/**
+ * A amostra dentro da conversa (dono, 22/11/2026): as fotos e os vídeos que
+ * o fornecedor já subiu, acima das mensagens, para os dois lados
+ * conversarem sobre o que estão vendo. Mostra também a que ainda não foi
+ * aprovada (a aprovação pode vir depois). Sem arquivos, nada aparece.
+ */
+export function SampleStrip({
+  sampling: s,
+  t,
+}: {
+  sampling: SupplierRequestSampling | null;
+  t: Translate;
+}) {
+  const files = s ? samplingRoundFiles(s) : [];
+  if (!s || !files.length) return null;
+  return (
+    <div
+      className="mb-2 rounded-lg border border-zinc-200 bg-zinc-50 p-2"
+      data-sample-strip={s.status}
+    >
+      <p className="mb-1.5 flex flex-wrap items-center gap-2 text-xs font-semibold text-zinc-700">
+        {t("sampling.strip.title")}
+        <Badge tone={SAMPLING_TONE[s.status]}>
+          {t(`sampling.status.${s.status}` as DictionaryKey)}
+        </Badge>
+        <span className="font-normal text-zinc-500">
+          {t("sampling.round", { n: s.round })}
+        </span>
+      </p>
+      <ul className="flex gap-2 overflow-x-auto">
+        {files.map((f) => {
+          const src = `/api/files/${f.documentId}`;
+          return (
+            <li key={f.documentId} className="shrink-0" data-sample-strip-file>
+              {f.kind === "video" ? (
+                <video
+                  src={src}
+                  controls
+                  preload="metadata"
+                  playsInline
+                  className="h-24 w-32 rounded-md border border-zinc-200 bg-black object-contain"
+                />
+              ) : (
+                <a href={src} target="_blank" rel="noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+                  <img
+                    src={src}
+                    alt={t("sampling.files.open", { name: f.fileName })}
+                    className="h-24 w-32 rounded-md border border-zinc-200 object-cover"
+                  />
+                </a>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
