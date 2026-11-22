@@ -57,6 +57,12 @@ export interface PriceForecastLabels {
   /** "Preço {format} - com frete" e, sem formato, "Preço - com frete". */
   priceOf?: string;
   priceNoFormat?: string;
+  /**
+   * O mesmo preço sem frete (dono, 22/11/2026): "Preço {format} - sem
+   * frete" e, sem formato, "Preço - sem frete".
+   */
+  priceOfNoFreight?: string;
+  priceNoFormatNoFreight?: string;
   /** Vê o preço máximo de compra (custo): só com "Ver valores e margem". */
   canSolve?: boolean;
   /** Cotação de encomenda V2 (dono, 16/11/2026). */
@@ -102,10 +108,10 @@ function queued<T>(task: () => Promise<T>): Promise<T> {
  * (dono, 15 e 16/11/2026; docs/ORDER_TERMS.md 11.8): a conta é da cotação
  * V2 do Sankhya e roda sozinha quando o produto é escolhido e sempre que
  * muda algo que vai para ela (quantidade, cliente, formato, nível, quem
- * chama o transportador, valor do transporte). Mostra só o **Preço**: o
- * preço com frete (referência) quando a Wellmix chama o transportador, e o
- * preço WD quando é o cliente; e o **Valor total** (preço × quantidade),
- * que as condições do pedido somam. "Informar o preço de venda desejado"
+ * chama o transportador, valor do transporte). Mostra os dois preços do
+ * formato escolhido, **sem frete** e **com frete** (dono, 22/11/2026;
+ * docs/ORDER_TERMS.md 11.26), e o **Valor total** (preço com frete ×
+ * quantidade), que as condições do pedido somam. "Informar o preço de venda desejado"
  * só na compra para estoque. Sem a API, a tela diz e nada é estimado.
  */
 export function PriceForecast({
@@ -204,10 +210,12 @@ export function PriceForecast({
     shown.value.kind === "forecast"
       ? shown.value
       : null;
-  // Preço na tela, sempre com frete (dono, 16/11/2026): formato WD →
-  // PRECO_WD_COM_FRETE_REFERENCIA; os demais (Wellmix ou o cliente chamando
-  // o transportador) → PRECO_COM_FRETE_REFERENCIA. O frete é o "Valor do
-  // transporte (R$)" digitado ou, sem ele, o padrão das Configurações.
+  // Os dois preços do formato escolhido (dono, 22/11/2026): sem frete e
+  // com frete. Formato WD → PRECO_WD_REFERENCIA e
+  // PRECO_WD_COM_FRETE_REFERENCIA; os demais (Wellmix ou sem formato) →
+  // PRECO_PRODUTO_META e PRECO_COM_FRETE_REFERENCIA. O frete é o "Valor do
+  // transporte (R$)" digitado ou, sem ele, o padrão das Configurações. O
+  // valor total segue com frete (dono, 16/11/2026).
   const wd = terms?.saleFormat === "wd";
   const formatName = !terms?.saleFormat
     ? null
@@ -220,10 +228,19 @@ export function PriceForecast({
     formatName && labels.priceOf
       ? labels.priceOf.replace("{format}", formatName)
       : (labels.priceNoFormat ?? labels.price ?? "Preço");
+  const priceNoFreightLabel =
+    formatName && labels.priceOfNoFreight
+      ? labels.priceOfNoFreight.replace("{format}", formatName)
+      : (labels.priceNoFormatNoFreight ?? null);
   const price = forecast
     ? wd
       ? (forecast.wdWithFreight ?? null)
       : (forecast.withFreight ?? null)
+    : null;
+  const priceNoFreight = forecast
+    ? wd
+      ? (forecast.wdPrice ?? null)
+      : (forecast.productPrice ?? null)
     : null;
   const total = price !== null && piecesOk ? price * pieces : null;
   // Memória de cálculo (só vem para quem vê valores e margem).
@@ -231,9 +248,9 @@ export function PriceForecast({
     shown && shown.value !== "error" && shown.value.mode === "api"
       ? (shown.value.audit ?? null)
       : null;
-  const shownColumn = wd
-    ? "PRECO_WD_COM_FRETE_REFERENCIA"
-    : "PRECO_COM_FRETE_REFERENCIA";
+  const shownColumns = wd
+    ? ["PRECO_WD_REFERENCIA", "PRECO_WD_COM_FRETE_REFERENCIA"]
+    : ["PRECO_PRODUTO_META", "PRECO_COM_FRETE_REFERENCIA"];
 
   // O valor total da linha vai para a soma do pedido.
   const setRowTotal = shared?.setRowTotal;
@@ -371,8 +388,24 @@ export function PriceForecast({
                 role="status"
                 data-price-forecast-result="forecast"
               >
-                {/* Qual preço está na tela (dono, 20/11/2026): o do formato
-                    escolhido, sempre com frete. */}
+                {/* Os dois preços do formato escolhido (dono, 22/11/2026):
+                    sem frete e com frete. */}
+                {priceNoFreightLabel ? (
+                  <>
+                    <dt
+                      className="text-emerald-800"
+                      data-price-forecast-price-no-freight-label
+                    >
+                      {priceNoFreightLabel}
+                    </dt>
+                    <dd
+                      className="font-semibold tabular-nums"
+                      data-price-forecast-line="priceNoFreight"
+                    >
+                      {money(priceNoFreight)}
+                    </dd>
+                  </>
+                ) : null}
                 <dt
                   className="text-emerald-800"
                   data-price-forecast-price-label
@@ -447,7 +480,7 @@ export function PriceForecast({
               <AuditBody
                 audit={audit}
                 labels={labels}
-                shownColumn={shownColumn}
+                shownColumns={shownColumns}
               />
             </QuickDialog>
           ) : null}
@@ -490,11 +523,12 @@ function exportAnswer(productId: string, answer: PriceForecastAnswer | null) {
 function AuditBody({
   audit,
   labels,
-  shownColumn,
+  shownColumns,
 }: {
   audit: SuperplanAudit;
   labels: PriceForecastLabels;
-  shownColumn: string;
+  /** As colunas que estão na tela (sem frete e com frete). */
+  shownColumns: readonly string[];
 }) {
   const value = (v: string | number | null) =>
     v === null || v === ""
@@ -519,7 +553,7 @@ function AuditBody({
         </thead>
         <tbody className="divide-y divide-zinc-100">
           {rows.map(([name, v]) => {
-            const used = name === shownColumn;
+            const used = shownColumns.includes(name);
             return (
               <tr
                 key={name}

@@ -768,10 +768,20 @@ test("Previsão de preço (cotação V2): manda formato, nível e quem chama; mo
     .first();
   // Sem botão (dono, 16/11/2026): escolhido o produto, a conta roda sozinha.
   await expect(forecast.locator("[data-price-forecast-submit]")).toHaveCount(0);
-  // Só "Preço" e "Valor total": sempre com frete (dono, 16/11/2026), mesmo
-  // com o cliente chamando (PRECO_COM_FRETE_REFERENCIA).
+  // Preço com frete (dono, 16/11/2026), mesmo com o cliente chamando
+  // (PRECO_COM_FRETE_REFERENCIA), e o mesmo preço sem frete (dono,
+  // 22/11/2026: PRECO_PRODUTO_META), com o nome do formato e do nível.
   const priceLine = forecast.locator('[data-price-forecast-line="price"]');
   await expect(priceLine).toHaveText(/10,00/);
+  await expect(
+    forecast.locator('[data-price-forecast-line="priceNoFreight"]'),
+  ).toHaveText(/9,20/);
+  await expect(
+    forecast.locator("[data-price-forecast-price-no-freight-label]"),
+  ).toHaveText(/sem frete/);
+  await expect(
+    forecast.locator("[data-price-forecast-price-label]"),
+  ).toHaveText(/com frete/);
   await expect(
     forecast.locator('[data-price-forecast-line="total"]'),
   ).toHaveText(/R\$/);
