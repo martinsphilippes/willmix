@@ -1427,6 +1427,7 @@ export async function renderNewRequest({
                         freightNull: t("priceForecast.freightNull"),
                         price: t("priceForecast.price"),
                         rowTotal: t("priceForecast.rowTotalWithFreight"),
+                        rowTotalNoFreight: t("priceForecast.rowTotalNoFreight"),
                         noQuantity: t("priceForecast.noQuantity"),
                         formats: {
                           wd: t("orderTerms.format.wd"),

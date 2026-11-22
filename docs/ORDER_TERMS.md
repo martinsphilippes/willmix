@@ -432,8 +432,10 @@ Pedido do dono: ao consultar o preço na API, a tela traz sempre os dois preços
   | WD | `PRECO_WD_REFERENCIA` | `PRECO_WD_COM_FRETE_REFERENCIA` |
   | Wellmix (Pleno…Super) ou sem formato | `PRECO_PRODUTO_META` | `PRECO_COM_FRETE_REFERENCIA` |
 
-- **Na tela:** três linhas, nesta ordem: "Preço WD - sem frete" (ou "Preço Wellmix · Hiper - sem frete"), "Preço WD - com frete" e "Valor total - com frete". Sem formato escolhido, "Preço - sem frete" e "Preço - com frete". Coluna sem valor mostra "—".
+- **Na tela:** nesta ordem, "Preço WD - sem frete" (ou "Preço Wellmix · Hiper - sem frete"), "Preço WD - com frete", "Valor total - com frete" e "Valor total - sem frete" (menor, abaixo). Sem formato escolhido, "Preço - sem frete" e "Preço - com frete". Coluna sem valor mostra "—".
 - **O que continua com frete:** o Valor total da linha (preço com frete × quantidade), a soma do pedido nas condições, a previsão de pagamento e o Preço total gravado no envio (`requests.priceForecast`, seção 11.16).
+- **Valor total - sem frete** (dono, 22/11/2026, depois do merge): abaixo do "Valor total - com frete", o preço sem frete × quantidade, em letra menor, itálico e cinza escuro (não preto). É só consulta: não entra na soma do pedido nem na previsão de pagamento. Sem quantidade, mostra o mesmo aviso do total com frete.
+- **Decisão do dono (22/11/2026):** no formato Wellmix, o preço sem frete é `PRECO_PRODUTO_META`.
 - **"Ver o cálculo":** as duas colunas que estão na tela aparecem destacadas, com "Na tela".
 - **Código:** `src/components/price-forecast.tsx` (`priceNoFreight`, `shownColumns`); textos `priceForecast.priceOfNoFreight`, `priceForecast.priceNoFormatNoFreight` e `priceForecast.rowTotalWithFreight` em `src/i18n/modules/new-request-ui.ts`. Os testes E2E `order-terms.spec.ts` (Wellmix · Hiper) e `new-request-round.spec.ts` (WD) conferem os dois preços.
 

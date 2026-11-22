@@ -84,6 +84,11 @@ export interface PriceForecastLabels {
   /** "Preço" e "Valor total" (preço × quantidade) do produto. */
   price?: string;
   rowTotal?: string;
+  /**
+   * "Valor total - sem frete" (dono, 22/11/2026): abaixo do com frete, em
+   * letra menor, itálico e cinza escuro; não entra na soma do pedido.
+   */
+  rowTotalNoFreight?: string;
   /** Sem a quantidade, o valor total espera. */
   noQuantity?: string;
 }
@@ -243,6 +248,8 @@ export function PriceForecast({
       : (forecast.productPrice ?? null)
     : null;
   const total = price !== null && piecesOk ? price * pieces : null;
+  const totalNoFreight =
+    priceNoFreight !== null && piecesOk ? priceNoFreight * pieces : null;
   // Memória de cálculo (só vem para quem vê valores e margem).
   const audit =
     shown && shown.value !== "error" && shown.value.mode === "api"
@@ -431,6 +438,26 @@ export function PriceForecast({
                       ? (labels.noQuantity ?? "—")
                       : "—"}
                 </dd>
+                {/* O total sem frete (dono, 22/11/2026): menor, em itálico e
+                    cinza escuro, só para consulta (a soma do pedido segue com
+                    frete). */}
+                {labels.rowTotalNoFreight ? (
+                  <>
+                    <dt className="text-[11px] italic text-zinc-600">
+                      {labels.rowTotalNoFreight}
+                    </dt>
+                    <dd
+                      className="text-[11px] italic tabular-nums text-zinc-600"
+                      data-price-forecast-line="totalNoFreight"
+                    >
+                      {totalNoFreight !== null
+                        ? money(totalNoFreight)
+                        : priceNoFreight !== null
+                          ? (labels.noQuantity ?? "—")
+                          : "—"}
+                    </dd>
+                  </>
+                ) : null}
                 {shown.value.status === "FRETE_PENDENTE" &&
                 labels.freightPending ? (
                   <p
