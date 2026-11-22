@@ -393,6 +393,22 @@ Decisão do dono: a cotação a responder acende a etapa **"Responder a solicita
   - `tests/unit/quote-supplier-step.test.ts`: etapa, "desde" do convite e textos em pt e zh;
   - `tests/e2e/purchase-quote.spec.ts`: o fornecedor C vê "Responder a solicitação" amarela com 1, toca e abre a cotação pela lista.
 
+## Cotação na confirmação do cliente (dono, 22/11/2026)
+
+Pedido do dono: "manda direto para a Estratégia, quero que já vá direto essa cotação para os fornecedores, tanto o da última compra como todos os outros parceiros da mesma família do produto, da linha".
+
+- **Quando:** o cliente confirma a encomenda TS lançada pela Wellmix ("Confirmar pedido", docs/ORDER_TERMS.md seção 4). A encomenda aberta pelo próprio cliente e a de produto fora do catálogo seguem com o "Enviar para cotação" de antes.
+- **O que acontece, sem ninguém clicar** (`autoQuoteConfirmed`, `src/lib/services/purchase-strategy.ts`):
+  1. a encomenda entra na Estratégia de Compra, como no "Enviar para cotação": `strategySentAt` e `strategySentByUserId = "system"`. O lote vai inteiro;
+  2. a estratégia é "cotar com outros fornecedores" para a solicitação inteira, com os destinatários abaixo. Sai pelo mesmo caminho do envio do Comprador: estratégia aprovada sem aprovação antes da cotação (D2), a cotação com os itens e o prazo de cada parceiro (24 h) e o resultado por destinatário em `/app/purchase-strategy/sends/<id>`, com "Tentar de novo";
+  3. o Comprador (quem escolhe a estratégia e quem escolhe a vencedora) recebe "Cotação nº X aberta sozinha: encomenda nº N confirmada pelo cliente", com quantos receberam e quantos ficaram de fora. O link leva ao resultado do envio.
+- **Destinatários** (`autoQuoteRecipients`): primeiro o fornecedor da última compra de cada produto (`lastPurchases`), depois todos os parceiros da família, a mesma lista do País × Família da tela (`strategySuppliers`). Essa lista junta quem marcou a família no cadastro, o fornecedor principal dos produtos ativos das linhas da família e os ligados aos produtos. Cada parceiro entra uma vez só e só dos quatro tipos que cotam, com o limite de 200.
+- **Quem não está apto** (sem login ativo, inativo, tipo desligado ou sem a tela de cotações): fica de fora no resultado, com o motivo, como no envio manual. A pendência "Envio da estratégia com pendência" vai para quem escolhe a estratégia; depois de regularizar, "Tentar de novo" convida sem duplicar.
+- **Quando a cotação não sai sozinha:** sem nenhum parceiro apto, sem parceiro algum, com a encomenda já em outra estratégia, ou com erro ao abrir a cotação. A encomenda fica na fila da Estratégia, com a pendência de sempre ("Escolher a estratégia"), e quem escolhe a estratégia recebe "Encomenda nº N confirmada pelo cliente: escolha a estratégia", com o motivo. A confirmação do cliente nunca é desfeita por isso.
+- **Quem aparece:** o portal sozinho. `chosenByUserId`, `openedByUserId` e `createdByUserId` do envio ficam com `"system"` (`AUTO_ACTOR_ID`, `src/lib/purchase-demand.ts`), e a auditoria fica sem login ("Sistema"). A tela do resultado mostra "Envio automático em …: o cliente confirmou a encomenda" e a página da encomenda, "Entrou sozinha na Estratégia em … (o cliente confirmou)". A observação da estratégia é `AUTO_QUOTE_NOTE`.
+- **O pedido direto** (fornecedor da última compra sem cotação) não é automático: o Comprador ainda pode escolhê-lo para uma encomenda que ficou na fila.
+- **Testes:** `tests/unit/auto-quote-confirm.test.ts` e `tests/e2e/turns.spec.ts`. O E2E do envio manual com o selo "Aguardando Wellmix" passou a usar a encomenda aberta pelo próprio cliente.
+
 ## Andamento
 
 | PR  | Entrega                                                                                          | Situação |

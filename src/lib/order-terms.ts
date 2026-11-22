@@ -124,6 +124,17 @@ export interface CustomerConfirmation {
   carrier?: RedispatchCarrier | null;
 }
 
+/**
+ * Lembretes ao cliente para confirmar a encomenda (dono, 22/11/2026;
+ * docs/ORDER_TERMS.md, "Lembrete da confirmação"): quantos já saíram, o
+ * último e quando o vendedor foi avisado (uma vez, com o último lembrete).
+ */
+export interface ConfirmReminders {
+  count: number;
+  lastAt: string;
+  sellerNotifiedAt: string | null;
+}
+
 /** Condições do pedido gravadas em cada solicitação do lote (`requests.orderTerms`). */
 export interface OrderTerms {
   operationType: OperationType;
@@ -185,6 +196,8 @@ export interface OrderTerms {
   noReturnsAccepted?: boolean;
   /** Confirmação do cliente; nula = aguardando o cliente. */
   confirmation?: CustomerConfirmation | null;
+  /** Lembretes da confirmação (nenhum = ainda não saiu nenhum). */
+  confirmReminders?: ConfirmReminders | null;
   /**
    * RCA do pedido (dono, 19/11/2026; docs/CUSTOMER_RCA.md seção 7): o
    * vendedor do Sankhya (CODVEND). `customer` = o do cadastro do cliente

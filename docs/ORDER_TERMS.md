@@ -439,6 +439,22 @@ Pedido do dono: ao consultar o preço na API, a tela traz sempre os dois preços
 - **"Ver o cálculo":** as duas colunas que estão na tela aparecem destacadas, com "Na tela".
 - **Código:** `src/components/price-forecast.tsx` (`priceNoFreight`, `shownColumns`); textos `priceForecast.priceOfNoFreight`, `priceForecast.priceNoFormatNoFreight` e `priceForecast.rowTotalWithFreight` em `src/i18n/modules/new-request-ui.ts`. Os testes E2E `order-terms.spec.ts` (Wellmix · Hiper) e `new-request-round.spec.ts` (WD) conferem os dois preços.
 
+## 11.27 Cotação na confirmação e lembrete da confirmação (dono, 22/11/2026)
+
+Pedido do dono: "1 - manda direto para a Estratégia, quero que já vá direto essa cotação para os fornecedores, tanto o da última compra como todos os outros parceiros da mesma família do produto, da linha. 2 - criar o lembrete da confirmação do cliente".
+
+- **Cotação na confirmação:** o cliente confirma e a encomenda entra sozinha na Estratégia de Compra, sem o "Enviar para cotação"; a cotação sai na hora. As regras estão em docs/PURCHASE_DEMAND.md, "Cotação na confirmação do cliente".
+- **Lembrete da confirmação** (`src/lib/services/confirm-reminders.ts`, regras em `src/lib/confirm-reminders.ts`):
+  - roda no job diário `/api/jobs/reminders` (8h de Brasília);
+  - um lembrete por dia para cada encomenda que espera o cliente há pelo menos um dia (20 h de folga para o horário do job). O lote inteiro recebe um aviso só;
+  - vai para o mesmo login do aviso inicial: o login com acesso ou, sem ele, todos os logins ativos do cliente. Chega pelo portal, e-mail e WhatsApp (os dois ainda simulados), no idioma do login: "Lembrete: confirme o pedido nº N";
+  - para no limite das Configurações, "Lembretes ao cliente para confirmar a encomenda" (`customerConfirmReminderMax`, padrão 3, de 0 a 10; 0 desliga);
+  - com o último lembrete, o vendedor que lançou a encomenda é avisado uma vez ("Cliente ainda não confirmou: encomenda nº N · cliente"); sem ele ativo, o administrador;
+  - cliente sem login ativo: não há quem lembrar e a contagem não anda (o administrador já tem "Login do cliente a definir");
+  - a contagem fica em `orderTerms.confirmReminders` (`count`, `lastAt`, `sellerNotifiedAt`) de cada solicitação do lote, sem coluna nova. "Editar a encomenda" refaz as condições e zera a contagem; a encomenda refeita volta a avisar o cliente;
+  - a Wellmix vê na encomenda, abaixo do "Aguardando o cliente", "Lembretes enviados ao cliente: N · último em …"; a auditoria registra cada lembrete (`request.confirm_reminder`, sem login: "Sistema").
+- **Testes:** `tests/unit/auto-quote-confirm.test.ts` (regras e job com o relógio) e `tests/e2e/turns.spec.ts`.
+
 ## 12. Em aberto (para o dono)
 
 - **Telefone do representante/vendedor:** o login do portal não tem telefone; a regra "não pode ser igual ao do representante" confere só o e-mail.

@@ -48,6 +48,7 @@ import {
   Select,
   TextLink,
   cx,
+  formatDate,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { setRequesterAction } from "../../actions";
@@ -395,7 +396,26 @@ export default async function RequestDetailPage({
         </div>
       ) : request.status === "AWAITING_CUSTOMER" && wellmix ? (
         <div className="mt-4" data-request-awaiting-customer>
-          <Alert tone="warning">{t("customerConfirm.awaitingWellmix")}</Alert>
+          <Alert tone="warning">
+            {t("customerConfirm.awaitingWellmix")}
+            {/* Lembretes da confirmação (dono, 22/11/2026). */}
+            {request.orderTerms?.confirmReminders?.count ? (
+              <span
+                className="mt-1 block text-xs"
+                data-request-confirm-reminders={
+                  request.orderTerms.confirmReminders.count
+                }
+              >
+                {t("confirmReminder.status", {
+                  count: request.orderTerms.confirmReminders.count,
+                  date: formatDate(
+                    request.orderTerms.confirmReminders.lastAt,
+                    t,
+                  ),
+                })}
+              </span>
+            ) : null}
+          </Alert>
         </div>
       ) : null}
 

@@ -12,8 +12,10 @@ import {
  * De quem é a vez (dono, 18/11/2026; docs/TURNS.md): a venda pela Wellmix
  * aguardando o cliente aparece em "Em aberto" com a situação "Aguardando
  * cliente" e o Próximo passo "Confirmar pedido"; o cliente recebe a ação nas
- * Pendências dele; confirmada, a pendência dele some e a vez volta para a
- * Wellmix ("Enviar para cotação"), com o filtro "Com quem está" coerente.
+ * Pendências dele; confirmada, a pendência dele some e a cotação sai sozinha
+ * (dono, 22/11/2026: sem o "Enviar para cotação"), com a vez no fornecedor e
+ * o filtro "Com quem está" coerente. A encomenda aberta pelo próprio cliente
+ * continua com o "Enviar para cotação" da Wellmix.
  */
 
 async function newSaleForJoao(page: Page) {
@@ -39,7 +41,22 @@ async function newSaleForJoao(page: Page) {
   return new URL(page.url()).pathname.split("/").pop()!;
 }
 
-test("venda aguardando o cliente: Em aberto e com o cliente; ele confirma pelas Pendências e a vez volta à Wellmix", async ({
+/** Encomenda aberta pelo próprio cliente: segue com o "Enviar para cotação". */
+async function customerEncomenda(page: Page) {
+  await login(page, "joao@lojista.com");
+  await page.goto("/app/requests/new");
+  const item = page.locator('[data-request-item="0"]');
+  const product = item.locator('[data-product-picker="catalog"]');
+  await product.locator("[data-product-picker-input]").fill("boneca");
+  await product.locator('[data-product-picker-option="prod-boneca"]').click();
+  // Produto do catálogo: a quantidade já vem no pedido mínimo (em caixas).
+  await expect(item.locator("[data-selection-quantity]")).not.toHaveValue("");
+  await page.getByRole("button", { name: /^(Enviar|Send)$/ }).click();
+  await createdRequestId(page);
+  return new URL(page.url()).pathname.split("/").pop()!;
+}
+
+test("venda aguardando o cliente: Em aberto e com o cliente; ele confirma pelas Pendências e a cotação sai sozinha", async ({
   page,
 }) => {
   await login(page, "admin@wellmix.com");
@@ -93,28 +110,27 @@ test("venda aguardando o cliente: Em aberto e com o cliente; ele confirma pelas 
     page.locator(`[data-task-row] a[href="/app/requests/${requestId}"]`),
   ).toHaveCount(0);
 
-  // A Wellmix: "Aguardando Wellmix" e "Enviar para cotação", nas Pendências
-  // de quem envia; o filtro "Cliente" não a mostra mais.
+  // Cotação na confirmação (dono, 22/11/2026): entrou sozinha na Estratégia
+  // e a cotação já saiu para os fornecedores, sem o "Enviar para cotação".
+  // A vez é do fornecedor (responder a cotação); o filtro "Cliente" não a
+  // mostra mais.
   await login(page, "admin@wellmix.com");
-  await page.goto("/app/requests?vez=wellmix");
-  await expect(row.locator('[data-request-turn="wellmix"]')).toContainText(
-    "Aguardando Wellmix",
+  await page.goto(`/app/requests/batch/${requestId}`);
+  await expect(page.locator(`[data-batch-sent="${requestId}"]`)).toContainText(
+    "Entrou sozinha na Estratégia",
   );
-  await expect(row.locator('[data-request-next="send"]')).toContainText(
-    "Enviar para cotação",
-  );
+  await page.goto("/app/requests?vez=supplier");
+  await expect(row.locator('[data-request-turn="supplier"]')).toBeVisible();
+  await expect(row.locator('[data-request-next="quote_answer"]')).toBeVisible();
   await page.goto("/app/requests?vez=customer");
   await expect(row).toHaveCount(0);
-  // A pendência "Enviar para cotação" de quem envia (a lista pagina: com
-  // muitas pendências, a linha pode estar em outra página).
+  // Nenhuma pendência "Enviar para cotação" para ela.
   await page.goto("/app/tasks?type=new_request");
   await expect(
-    page
-      .locator(
-        `[data-task-row] a[href="/app/requests/${requestId}"]:not([data-open-link])`,
-      )
-      .first(),
-  ).toContainText("Enviar para cotação");
+    page.locator(
+      `[data-task-row] a[href="/app/requests/${requestId}"]:not([data-open-link])`,
+    ),
+  ).toHaveCount(0);
 });
 
 test("Pedidos: a coluna e o filtro Com quem está seguem a mesma regra", async ({
@@ -334,18 +350,16 @@ test("tela baixa (iPad em janela menor): o balão cabe na tela e o formulário i
 test("Aguardando Wellmix: a pendência traz o nº e o cliente, e o selo da Situação envia para cotação num toque", async ({
   page,
 }) => {
-  // Dono, 20/11/2026: a encomenda confirmada não era reconhecida nas
-  // Pendências (só o produto) e a Situação não deixava seguir dali.
-  await login(page, "admin@wellmix.com");
-  const requestId = await newSaleForJoao(page);
+  // Dono, 20/11/2026: a encomenda não era reconhecida nas Pendências (só o
+  // produto) e a Situação não deixava seguir dali. Desde 22/11/2026 a venda
+  // confirmada pelo cliente vai sozinha para a cotação; o envio manual fica
+  // para a encomenda aberta pelo próprio cliente.
+  const requestId = await customerEncomenda(page);
   const number = (
     await page.locator("[data-request-number]").first().textContent()
   )
     ?.replace(/\D/g, "")
     .trim();
-  await login(page, "joao@lojista.com");
-  await page.goto(`/app/requests/${requestId}`);
-  await confirmAsCustomer(page, requestId);
 
   // Pendências: "Enviar para cotação: encomenda nº N · cliente".
   await login(page, "admin@wellmix.com");
