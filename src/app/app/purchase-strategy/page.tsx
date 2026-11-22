@@ -386,6 +386,7 @@ export default async function PurchaseStrategyPage({
     fix: t("strategy.issue.fix"),
     review: t("strategy.review"),
     reviewNone: t("strategy.review.none"),
+    chooseOne: t("strategy.card.chooseOne"),
     summaryTitle: t("strategy.summary.title"),
     summaryHint: t("strategy.summary.hint"),
     receives: t("strategy.summary.receives"),

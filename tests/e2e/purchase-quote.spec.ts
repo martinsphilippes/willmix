@@ -211,8 +211,7 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   expect(Math.abs(cardBox.x - summaryBox.x)).toBeLessThan(2);
   expect(Math.abs(cardBox.width - summaryBox.width)).toBeLessThan(2);
   expect(summaryBox.y).toBeGreaterThanOrEqual(cardBox.y + cardBox.height - 1);
-  await page.locator("[data-strategy-review]").click();
-  await page.locator("[data-strategy-confirm]").click();
+  await page.locator(`[data-strategy-confirm="${demandId}"]`).click();
   await page.waitForURL(/\/app\/purchase-strategy\/sends\/[^/?]+\?done=1/);
   // Resultado por destinatário: os três receberam.
   await expect(
@@ -486,8 +485,7 @@ test("cotação unificada: quadro comparativo do produto, contraproposta em mass
   await page.goto("/app/purchase-strategy");
   const line = page.locator(`[data-strategy-line="${demandId}"]`);
   await line.locator('[data-strategy-choice="quote"]').check();
-  await page.locator("[data-strategy-review]").click();
-  await page.locator("[data-strategy-confirm]").click();
+  await page.locator(`[data-strategy-confirm="${demandId}"]`).click();
   await page.waitForURL(/\/app\/purchase-strategy\/sends\/[^/?]+\?done=1/);
   const quoteId = await page
     .locator("[data-strategy-send-quote]")

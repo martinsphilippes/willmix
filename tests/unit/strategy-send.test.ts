@@ -78,9 +78,10 @@ async function encomenda(
     unit: "un",
     ...extra,
   });
-  if (!send) return r;
-  const { sent } = await strategy.sendToStrategy(admin, [r.id]);
-  return sent[0];
+  // A encomenda entra direto na fila (dono, 22/11/2026); `send` ficou de
+  // quando existia o "Enviar para cotação".
+  void send;
+  return (await getStore().get("requests", r.id)) ?? r;
 }
 
 beforeAll(async () => {
@@ -119,24 +120,12 @@ beforeAll(async () => {
 });
 
 describe("Enviar para cotação (Encomendas)", () => {
-  it("a encomenda só entra na fila depois de enviada; enviar de novo não muda nada", async () => {
+  it("a encomenda entra direto na fila, sem o envio; enviar à mão não muda nada", async () => {
+    // Dono, 22/11/2026: a encomenda não espera mais o "Enviar para cotação".
     const d = await encomenda("prod-jarra", {}, false);
-    expect(strategy.awaitingStrategySend(d)).toBe(true);
-    expect(strategy.inStrategyQueue(d)).toBe(false);
-    expect((await strategy.waitingDemands()).map((r) => r.id)).not.toContain(
-      d.id,
-    );
-    await expect(
-      strategy.chooseStrategy(buyer, {
-        demandIds: [d.id],
-        choice: "quote",
-        note: null,
-      }),
-    ).rejects.toThrow("strategy_demand_not_sent");
-
-    const first = await strategy.sendToStrategy(buyer, [d.id, d.id]);
-    expect(first.sent.map((r) => r.id)).toEqual([d.id]);
-    expect(first.sent[0].strategySentByUserId).toBe(buyer.id);
+    expect(strategy.awaitingStrategySend(d)).toBe(false);
+    expect(strategy.inStrategyQueue(d)).toBe(true);
+    expect(d.strategySentAt).toBeTruthy();
     expect((await strategy.waitingDemands()).map((r) => r.id)).toContain(d.id);
     const again = await strategy.sendToStrategy(buyer, [d.id]);
     expect(again).toMatchObject({ sent: [], skipped: 1 });
@@ -159,24 +148,15 @@ describe("Enviar para cotação (Encomendas)", () => {
     expect(strategy.awaitingStrategySend(r)).toBe(false);
   });
 
-  it("a encomenda ainda não enviada vira a pendência “Enviar para cotação”, também para o Comprador", async () => {
+  it("ninguém recebe mais a pendência “Enviar para cotação”: a encomenda nova já é de quem escolhe a estratégia", async () => {
     const d = await encomenda("prod-boneca", { quantity: 2000 }, false);
     const { pendingTasksFor } = await import("@/lib/services/tasks");
     const mine = (await pendingTasksFor(buyer)).filter(
       (x) => x.link === `/app/requests/${d.id}`,
     );
-    // Com o número da encomenda e o cliente (dono, 20/11/2026): só o
-    // produto não deixava reconhecer a encomenda; o produto vai no detalhe.
-    const customer = (await getStore().get("parties", d.customerId))!.name;
-    const title = `Enviar para cotação: encomenda nº ${d.number} · ${customer}`;
-    expect(mine[0]).toMatchObject({ kind: "new_request", title });
-    expect(t(mine[0].text!.title, mine[0].text!.values)).toBe(title);
-    expect(
-      t(mine[0].text!.detail, {
-        ...mine[0].text!.values,
-        quantity: (2000).toLocaleString(t.intl),
-      }),
-    ).toBe(`prod-boneca · ${(2000).toLocaleString(t.intl)} un`);
+    expect(mine.filter((x) => x.kind === "new_request")).toEqual([]);
+    const drafts = await strategy.strategyTaskDrafts([d]);
+    expect(drafts.some((x) => x.kind === "purchase_strategy")).toBe(true);
   });
 });
 
@@ -625,7 +605,7 @@ describe("envio da Estratégia de Compra", () => {
     expect(send.lines[0].recipients).toEqual([]);
   });
 
-  it("recusa o que não pode: vazio, repetido, sem apto, tipo que não cota, não enviada", async () => {
+  it("recusa o que não pode: vazio, repetido, sem apto, tipo que não cota", async () => {
     const send = (
       lines: Parameters<typeof strategy.sendStrategy>[1]["lines"],
     ) => strategy.sendStrategy(buyer, { lines, note: null }, t);
@@ -650,16 +630,6 @@ describe("envio da Estratégia de Compra", () => {
     await expect(
       send([{ demandId: d.id, choice: "quote_last", recipientIds: [] }]),
     ).rejects.toThrow("strategy_no_last_purchase");
-    const unsent = await encomenda("prod-jarra", {}, false);
-    await expect(
-      send([
-        {
-          demandId: unsent.id,
-          choice: "quote",
-          recipientIds: ["fornecedor-a"],
-        },
-      ]),
-    ).rejects.toThrow("strategy_demand_not_sent");
     // Nada foi gravado: a demanda continua na fila.
     expect(
       strategy.inStrategyQueue((await getStore().get("requests", d.id))!),

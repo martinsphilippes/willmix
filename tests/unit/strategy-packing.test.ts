@@ -232,8 +232,8 @@ describe("estratégia com a embalagem da ficha e a encomenda cancelada", () => {
       quantity,
       unit: "un",
     });
-    const { sent } = await strategy.sendToStrategy(admin, [r.id]);
-    return sent[0] ?? r;
+    // A encomenda entra direto na fila (dono, 22/11/2026).
+    return (await getStore().get("requests", r.id)) ?? r;
   };
 
   /** Solicitação com vários produtos (lote) enviada para cotação. */
@@ -253,11 +253,9 @@ describe("estratégia com a embalagem da ficha e a encomenda cancelada", () => {
     );
     for (const r of lot)
       await getStore().update("requests", r.id, { status: "REQUESTED" });
-    const { sent } = await strategy.sendToStrategy(
-      admin,
-      lot.map((r) => r.id),
-    );
-    return sent;
+    return getStore().list("requests", {
+      filter: { id: lot.map((r) => r.id) },
+    });
   };
 
   /** Escolha "fornecedor da última compra" e aprovação da Diretoria. */
