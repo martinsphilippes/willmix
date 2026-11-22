@@ -114,6 +114,23 @@ export async function setManualFx(page: Page) {
   await page.waitForURL(/\/app\/settings\?ok=1/);
 }
 
+/**
+ * "Encomenda vira cotação sozinha" nas Configurações (dono, 22/11/2026;
+ * docs/PURCHASE_DEMAND.md, "Encomenda vira cotação na hora"). Os testes do
+ * fluxo manual da Estratégia desligam a chave e os da cotação na hora a
+ * ligam, cada um no começo (o servidor é o mesmo para todos). Precisa do
+ * login de administrador.
+ */
+export async function setAutoQuote(page: Page, on: boolean) {
+  await page.goto("/app/settings");
+  const select = page.locator("[data-setting-auto-quote]");
+  await select.selectOption(on ? "true" : "false");
+  await select.evaluate((el) =>
+    (el as HTMLSelectElement).form!.requestSubmit(),
+  );
+  await page.waitForURL(/\/app\/settings\?ok=1/);
+}
+
 const BOOKING_HEADER = [
   "DATE",
   "LOCAL",
