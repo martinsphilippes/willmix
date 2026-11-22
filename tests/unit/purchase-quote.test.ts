@@ -10,6 +10,8 @@ import { sheetFor } from "./quote-sheet-fixture";
  */
 withTempStore();
 
+const { approveQuoteSample } = await import("./helpers/sampling");
+
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const requests = await import("@/lib/services/requests");
@@ -205,6 +207,8 @@ describe("escolha, aprovação e a solicitação ao fornecedor", () => {
       filter: { quoteId: quote.id, supplierId: supplierC.partyId! },
     });
     // Todos responderam: a escolha abre antes do prazo.
+    // Só vence quem tem a amostra aprovada (dono, 22/11/2026).
+    await approveQuoteSample(quote.id, rC.id);
     await quotes.chooseWinner(buyer, quote.id, rC.id, "Melhor preço", plus(6));
     // O Comprador não aprova (sem a ação).
     await expect(
@@ -245,6 +249,8 @@ describe("escolha, aprovação e a solicitação ao fornecedor", () => {
     await expect(
       quotes.chooseWinner(buyer, quote.id, rA.id, null, plus(10)),
     ).rejects.toThrow("quote_still_open");
+    // Só vence quem tem a amostra aprovada (dono, 22/11/2026).
+    await approveQuoteSample(quote.id, rA.id);
     const chosen = await quotes.chooseWinner(
       buyer,
       quote.id,

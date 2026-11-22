@@ -24,6 +24,8 @@ import type { SupplierSheetBaseline } from "@/lib/db/schema";
  */
 withTempStore();
 
+const { approveQuoteSample } = await import("./helpers/sampling");
+
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const requests = await import("@/lib/services/requests");
@@ -92,9 +94,9 @@ describe("regras puras da ficha técnica", () => {
     expect(data.grossWeightBoxKg).toBeNull();
     expect(data.grossWeightUnknown).toBe(true);
     // Sem marcar e sem o número: falta.
-    expect(
-      missingSheet({ ...full, grossWeightBoxKg: null }, catalog),
-    ).toEqual(["grossWeightBoxKg"]);
+    expect(missingSheet({ ...full, grossWeightBoxKg: null }, catalog)).toEqual([
+      "grossWeightBoxKg",
+    ]);
     // Peso informado: a marca fica falsa.
     expect(normalizeSheet(full, catalog)!.grossWeightUnknown).toBe(false);
   });
@@ -104,7 +106,10 @@ describe("regras puras da ficha técnica", () => {
       missingSheet({ ...full, materialIds: ["inventado"] }, catalog),
     ).toEqual(["material"]);
     const data = normalizeSheet(
-      { ...full, materialIds: ["mat-plastico", MATERIAL_VIDRO, "mat-plastico"] },
+      {
+        ...full,
+        materialIds: ["mat-plastico", MATERIAL_VIDRO, "mat-plastico"],
+      },
       catalog,
     )!;
     expect(data.materialIds).toEqual(["mat-plastico", MATERIAL_VIDRO]);
@@ -149,9 +154,7 @@ describe("regras puras da ficha técnica", () => {
     // 24 peças × 0,6 kg = 14,4 kg dentro de uma caixa de 12,5 kg.
     expect(keys({ ...full, netWeightKg: 0.6 })).toEqual(["gross_below_net"]);
     // Sem peso: não há o que comparar.
-    expect(keys({ ...full, netWeightKg: 0.6, grossUnknown: true })).toEqual(
-      [],
-    );
+    expect(keys({ ...full, netWeightKg: 0.6, grossUnknown: true })).toEqual([]);
   });
 
   const ours: SupplierSheetBaseline = {
@@ -685,6 +688,8 @@ describe("na cotação de compra", () => {
     await quotes.answerQuote(supplierC, quote.id, answer(1.8, []), plus(1));
     await quotes.answerQuote(supplierA, quote.id, answer(2.5, []), plus(1));
     const rC = await responseOf(quote.id, supplierC);
+    // Só vence quem tem a amostra aprovada (dono, 22/11/2026).
+    await approveQuoteSample(quote.id, rC.id);
     await quotes.chooseWinner(buyer, quote.id, rC.id, null, plus(2));
     const approved = await quotes.decideWinner(director, quote.id, {
       approve: true,

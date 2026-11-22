@@ -263,6 +263,69 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   );
   await answer(page, "supplier.b@china.com", quoteId!, "185", "USD");
 
+  // Amostragem dentro da cotação (dono, 22/11/2026;
+  // docs/SUPPLIER_SAMPLING.md): o B vê as fotos do produto e envia a amostra
+  // sem esperar a escolha; a Wellmix valida no quadro comparativo do produto.
+  const sample = page.locator('[data-quote-sampling-product="prod-jarra"]');
+  await expect(
+    sample.locator('[data-quote-product-photos="prod-jarra"]'),
+  ).toBeVisible();
+  await sample
+    .locator("[data-sampling-upload] input[type=file]")
+    .setInputFiles({
+      name: "amostra.png",
+      mimeType: "image/png",
+      buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    });
+  await page.waitForURL(/[?&]sampling=file/);
+  await sample.locator("[data-sampling-submit]").click();
+  await page.waitForURL(/[?&]sampling=submitted/);
+  await expect(sample.locator("[data-sampling=submitted]")).toBeVisible();
+  await login(page, "admin@wellmix.com");
+  await page.goto(
+    `/app/supplier-requests/${quoteId}?view=item&product=prod-jarra`,
+  );
+  // A amostragem fica num lugar só da tela: o card Imagens, à direita, com
+  // a amostra de cada fornecedor e o aprovar ou reprovar.
+  const sampleB = page.locator("[data-item-images] [data-sampling=submitted]");
+  await expect(sampleB.locator("[data-sampling-file]")).toHaveCount(1);
+  await sampleB.locator("[data-sampling-review=approve]").click();
+  await page.waitForURL(/[?&]sampling=approved/);
+  await expect(
+    page.locator("[data-item-images] [data-sampling=approved]"),
+  ).toHaveCount(1);
+  await expect(page.locator("[data-quotation-sample]")).toHaveCount(0);
+  // Imagens sempre à vista na tela do item (fora do chat): a referência da
+  // Wellmix e a amostra de cada fornecedor, com o botão de copiar para
+  // colar no chat.
+  const images = page.locator("[data-item-images]");
+  await expect(
+    images.locator('[data-item-images-group="reference"]'),
+  ).toBeVisible();
+  await expect(
+    images.locator('[data-item-image="photo"] [data-copy-image]'),
+  ).not.toHaveCount(0);
+  // O chat fica só com as mensagens; a imagem entra como anexo.
+  await page
+    .locator("[data-quotation-row]", {
+      has: page.locator("[data-quotation-price]", { hasText: /1[.,]85/ }),
+    })
+    .locator("[data-quotation-chat]")
+    .click();
+  const sampleChat = page.locator("dialog[open] [data-quote-chat]");
+  await expect(sampleChat.locator("[data-item-image]")).toHaveCount(0);
+  await sampleChat.locator("[data-quote-chat-file]").setInputFiles({
+    name: "detalhe.png",
+    mimeType: "image/png",
+    buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+  });
+  await sampleChat.locator("[data-quote-chat-text]").fill("Veja a tampa.");
+  await sampleChat.locator("[data-quote-chat-submit]").click();
+  await page.waitForURL(/[?&]chat=response/);
+  await expect(
+    page.locator("[data-quote-chat-attachment]").first(),
+  ).toBeAttached();
+
   // Isolamento: A abre a dele, sem o preço do B, sem o nome do B nem o cliente.
   await login(page, "supplier.a@china.com");
   await page.goto(`/app/purchase-quotes/${quoteId}`);
@@ -311,6 +374,14 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
     await expect(row.locator("[data-quote-sheet-boxes]")).toHaveText("167");
     await expect(row.locator("[data-quote-sheet-cbm]")).toHaveText(/14[,.]028/);
   }
+  // Só vence quem tem a amostra aprovada (ou é conhecido do produto): o A,
+  // que não enviou a amostra, não pode ser escolhido.
+  await expect(
+    board.locator('[data-quote-winner-option="fornecedor-b"]'),
+  ).toHaveAttribute("data-quote-winner-ready", "1");
+  await expect(
+    board.locator('[data-quote-winner-option="fornecedor-a"]'),
+  ).toBeDisabled();
   await board.locator('[data-quote-winner-option="fornecedor-b"]').check();
   await board.locator("[data-quote-choose]").click();
   await page.waitForURL(/[?&]chosen=1/);

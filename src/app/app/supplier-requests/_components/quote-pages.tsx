@@ -18,8 +18,6 @@ import {
 import { quoteInnerState } from "@/lib/quote-inner";
 import { itemLogistics } from "@/lib/services/item-logistics";
 import { productPhotoList } from "@/lib/services/product-list";
-import { PhotoGallery } from "@/components/photo-gallery";
-import { galleryProps } from "@/components/photo-gallery-props";
 import {
   Alert,
   Badge,
@@ -39,6 +37,10 @@ import {
 } from "./quotation-board";
 import { QuoteChat } from "./board-chat";
 import { InfoCell, InfoGrid } from "./negotiation-sections";
+import { ItemImagesCard } from "./item-images";
+import { quoteSamplingOf } from "@/lib/quote-sampling";
+import { soldBeforeProducts } from "@/lib/services/supplier-sheets";
+import { reviewQuoteSamplingAction } from "../../actions/quotation";
 
 /*
  * A cotação de compra dentro da Cotação unificada (dono, 22/11/2026;
@@ -108,6 +110,28 @@ export async function QuotationQuotePage({
       : Promise.resolve([]),
   ]);
   const names = Object.fromEntries(authors.map((u) => [u.id, u.name]));
+  // Fornecedor conhecido do produto (já vendeu à Wellmix): sem amostragem.
+  const knownSuppliers = new Set(
+    (
+      await Promise.all(
+        responses.map(async (r) =>
+          (
+            await soldBeforeProducts(r.supplierId, [productId]).catch(
+              () => new Set<string>(),
+            )
+          ).has(productId)
+            ? r.supplierId
+            : null,
+        ),
+      )
+    ).filter((x): x is string => !!x),
+  );
+  const canValidate = can(user, "sampling.validate");
+  const samplingNotice =
+    typeof query.sampling === "string" &&
+    ["approved", "rejected"].includes(query.sampling)
+      ? (query.sampling as "approved" | "rejected")
+      : null;
   const errors = errorTextsFor(t, [
     "quotation.error",
     "quote.error",
@@ -118,6 +142,11 @@ export async function QuotationQuotePage({
   const chatOpen = typeof query.chat === "string" ? query.chat : "";
   const name = productNameText(t, item.name);
 
+  // Referência da Wellmix: as fotos do cadastro do produto (as mesmas que o
+  // fornecedor vê na cotação dele).
+  const referencePhotos = (product ? productPhotoList(product, photos) : [])
+    .slice(0, 6)
+    .map((x) => x.documentId);
   const rows: BoardRow[] = responses.map((r) => {
     const state = responseState(r, now);
     const supplierName =
@@ -149,18 +178,20 @@ export async function QuotationQuotePage({
       conditions: [r.port, r.note].filter(Boolean).join(" · ") || null,
       pending: pendingQuoteProposals(r).some((e) => e.productId === productId),
       chat: (
-        <QuoteChat
-          quoteId={quote.id}
-          responseId={r.id}
-          productId={productId}
-          messages={messages}
-          mySide="wellmix"
-          names={names}
-          canPost={canMessageQuote(quote.status, r)}
-          errors={errors}
-          fallbackError={fallbackError}
-          t={t}
-        />
+        <>
+          <QuoteChat
+            quoteId={quote.id}
+            responseId={r.id}
+            productId={productId}
+            messages={messages}
+            mySide="wellmix"
+            names={names}
+            canPost={canMessageQuote(quote.status, r)}
+            errors={errors}
+            fallbackError={fallbackError}
+            t={t}
+          />
+        </>
       ),
       messages: messages.length,
       history: (
@@ -216,6 +247,13 @@ export async function QuotationQuotePage({
           </Alert>
         </div>
       ) : null}
+      {samplingNotice ? (
+        <div className="mb-3" role="status" data-quote-sampling-notice>
+          <Alert tone="success">
+            {t(`quoteSampling.notice.${samplingNotice}`)}
+          </Alert>
+        </div>
+      ) : null}
       <div
         className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(17rem,1fr)] xl:items-start"
         data-quotation-item
@@ -223,15 +261,6 @@ export async function QuotationQuotePage({
         <div className="min-w-0 space-y-4">
           <Card title={t("quotation.item.product")} dense>
             <div className="flex gap-3" data-quotation-product>
-              <div className="shrink-0">
-                <PhotoGallery
-                  name={name}
-                  {...galleryProps(
-                    t,
-                    product ? productPhotoList(product, photos) : [],
-                  )}
-                />
-              </div>
               <div className="min-w-0 flex-1 space-y-2">
                 <p className="break-words text-sm font-semibold text-zinc-900">
                   {name}
@@ -286,7 +315,49 @@ export async function QuotationQuotePage({
             t={t}
           />
         </div>
-        <aside className="min-w-0 xl:sticky xl:top-[calc(var(--wm-header)+1rem)]">
+        <aside className="min-w-0 space-y-4 xl:sticky xl:top-[calc(var(--wm-header)+1rem)] xl:max-h-[calc(100vh-var(--wm-header)-2rem)] xl:overflow-y-auto xl:px-1 xl:pb-1">
+          <ItemImagesCard
+            reference={referencePhotos}
+            referenceFrom="product"
+            samples={responses
+              .filter((r) => r.status !== "declined")
+              .map((r) => {
+                const known = knownSuppliers.has(r.supplierId);
+                return {
+                  key: `response:${r.id}`,
+                  supplierName:
+                    suppliers.find((p) => p.id === r.supplierId)?.name ??
+                    r.supplierId,
+                  sampling: quoteSamplingOf(r, productId, known),
+                  skipped: known,
+                  review: canValidate
+                    ? {
+                        action: reviewQuoteSamplingAction,
+                        fields: (
+                          <>
+                            <input
+                              type="hidden"
+                              name="quoteId"
+                              value={quote.id}
+                            />
+                            <input
+                              type="hidden"
+                              name="product"
+                              value={productId}
+                            />
+                            <input
+                              type="hidden"
+                              name="responseId"
+                              value={r.id}
+                            />
+                          </>
+                        ),
+                      }
+                    : null,
+                };
+              })}
+            t={t}
+          />
           <BoardCounterForm
             kind="quote"
             boardId={quote.id}

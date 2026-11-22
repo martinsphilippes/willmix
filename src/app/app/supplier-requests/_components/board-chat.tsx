@@ -7,7 +7,6 @@ import type {
 import { canPostMessage } from "@/lib/supplier-requests";
 import { negotiationPeople } from "@/lib/services/supplier-request-people";
 import { ActionForm } from "@/components/action-form";
-import { SubmitButton } from "@/components/submit-button";
 import { cx } from "@/components/ui";
 import { postQuoteMessageStateAction } from "../../actions/quotation";
 import {
@@ -16,7 +15,7 @@ import {
 } from "./negotiation-conversation";
 import { recipientText } from "./negotiation-sections";
 import { dateTime } from "./negotiation";
-import { SendIcon } from "./icons";
+import { ChatComposer } from "./chat-composer";
 
 /*
  * Conversa do par fornecedor × produto no quadro comparativo (dono,
@@ -164,9 +163,33 @@ export function QuoteChat({
                       {t(`supplierRequests.negotiation.side.${m.side}`)}
                     </span>
                   </p>
-                  <p className="mt-1 whitespace-pre-wrap break-words">
-                    {m.text}
-                  </p>
+                  {m.text ? (
+                    <p className="mt-1 whitespace-pre-wrap break-words">
+                      {m.text}
+                    </p>
+                  ) : null}
+                  {m.documentId ? (
+                    <a
+                      href={`/api/files/${m.documentId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 block"
+                      data-quote-chat-attachment
+                    >
+                      {m.mime?.startsWith("image/") ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão
+                        <img
+                          src={`/api/files/${m.documentId}`}
+                          alt={m.fileName ?? ""}
+                          className="max-h-40 rounded-md border border-zinc-200 object-contain"
+                        />
+                      ) : (
+                        <span className="text-sky-700 underline">
+                          {m.fileName ?? t("supplierRequests.negotiation.file")}
+                        </span>
+                      )}
+                    </a>
+                  ) : null}
                   <p className="mt-1 text-[11px] text-zinc-500">
                     {dateTime(m.at, t)}
                   </p>
@@ -198,27 +221,13 @@ export function QuoteChat({
           {productId ? (
             <input type="hidden" name="product" value={productId} />
           ) : null}
-          <div className="flex items-end gap-1.5">
-            <textarea
-              name="text"
-              rows={2}
-              maxLength={4000}
-              required
-              placeholder={t("supplierRequests.chat.placeholder")}
-              aria-label={t("supplierRequests.chat.placeholder")}
-              className="max-h-40 min-h-9 flex-1 resize-y rounded-lg border border-zinc-300 px-2.5 py-1.5 text-[13px] leading-5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-              data-quote-chat-text
-            />
-            <SubmitButton
-              className="h-9 shrink-0 px-3"
-              aria-label={t("negotiationScreen.chat.send")}
-              title={t("negotiationScreen.chat.send")}
-              pendingText="…"
-              data-quote-chat-submit
-            >
-              <SendIcon />
-            </SubmitButton>
-          </div>
+          <ChatComposer
+            labels={{
+              placeholder: t("supplierRequests.chat.placeholder"),
+              attach: t("negotiationScreen.chat.attach"),
+              send: t("negotiationScreen.chat.send"),
+            }}
+          />
         </ActionForm>
       ) : (
         <p className="border-t border-zinc-200 p-3 text-center text-xs text-zinc-500">
