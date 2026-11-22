@@ -39,6 +39,7 @@ const ACCEPT =
 
 export function NegotiationConversation({
   requestId,
+  board,
   messages,
   canPost,
   defaultOpen,
@@ -49,6 +50,11 @@ export function NegotiationConversation({
   labels,
 }: {
   requestId: string;
+  /**
+   * Quadro comparativo (docs/QUOTATION.md): a solicitação da tela em que a
+   * conversa está aberta (num modal); o envio volta para ela.
+   */
+  board?: string;
   messages: ConversationMessage[];
   canPost: boolean;
   defaultOpen: boolean;
@@ -180,6 +186,7 @@ export function NegotiationConversation({
             // Mensagem gravada: o formulário renasce vazio.
             key={messages.length}
             requestId={requestId}
+            board={board}
             sendingAs={sendingAs}
             sendingTo={sendingTo}
             errors={errors}
@@ -199,6 +206,7 @@ export function NegotiationConversation({
 /** Campo de mensagem com anexo, "Enviando como" e "Enviando para". */
 function MessageForm({
   requestId,
+  board,
   sendingAs,
   sendingTo,
   errors,
@@ -206,6 +214,7 @@ function MessageForm({
   labels,
 }: {
   requestId: string;
+  board?: string;
   sendingAs: string;
   sendingTo: string;
   errors: Record<string, string>;
@@ -230,6 +239,7 @@ function MessageForm({
       data-negotiation-message-form
     >
       <input type="hidden" name="id" value={requestId} />
+      {board ? <input type="hidden" name="board" value={board} /> : null}
       <input type="hidden" name="view" value="item" />
       <input type="hidden" name="chat" value="1" />
       <p

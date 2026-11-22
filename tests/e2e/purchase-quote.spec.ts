@@ -356,3 +356,165 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
 
   await setQuoteHours(page, "24");
 });
+
+/*
+ * Cotação unificada (dono, 22/11/2026; docs/QUOTATION.md): a cotação de
+ * compra aparece na Cotação (/app/supplier-requests), o produto abre com o
+ * quadro comparativo dos fornecedores, a contraproposta vai a todos de uma
+ * vez, e a conversa e a sequência de propostas de cada fornecedor abrem num
+ * modal. O fornecedor vê a contraproposta e a conversa só na cotação dele.
+ */
+test("cotação unificada: quadro comparativo do produto, contraproposta em massa, conversa e histórico por fornecedor", async ({
+  page,
+}) => {
+  test.slow();
+  await login(page, "admin@wellmix.com");
+  await setManualFx(page);
+  for (const id of ["fornecedor-a", "fornecedor-b"])
+    await serveUtilities(page, id);
+
+  await login(page, "operador@wellmix.com");
+  // Menu: a seção Cotação com "Entrada" (Book, Reposição e Encomendas) e um
+  // item só para a cotação.
+  await page.goto("/app/purchase-strategy");
+  const sidebar = page.locator("[data-sidebar]");
+  const entry = sidebar.locator("[data-nav-subgroup-toggle]");
+  await expect(entry).toBeVisible();
+  if ((await entry.getAttribute("aria-expanded")) !== "true")
+    await entry.click();
+  for (const href of ["/app/booking", "/app/replenishment", "/app/requests"])
+    await expect(sidebar.locator(`[data-nav-link="${href}"]`)).toBeVisible();
+  await expect(
+    sidebar.locator('[data-nav-link="/app/supplier-requests"]'),
+  ).toBeVisible();
+  await expect(
+    sidebar.locator('[data-nav-link="/app/purchase-quotes"]'),
+  ).toHaveCount(0);
+  await expect(
+    sidebar.locator('[data-nav-link="/app/supplier-requests/invites"]'),
+  ).toHaveCount(0);
+
+  const demandId = await openReplenishment(page, "UTL-001", "4000");
+  await page.goto("/app/purchase-strategy");
+  const line = page.locator(`[data-strategy-line="${demandId}"]`);
+  await line.locator('[data-strategy-choice="quote"]').check();
+  await page.locator("[data-strategy-review]").click();
+  await page.locator("[data-strategy-confirm]").click();
+  await page.waitForURL(/\/app\/purchase-strategy\/sends\/[^/?]+\?done=1/);
+  const quoteId = await page
+    .locator("[data-strategy-send-quote]")
+    .getAttribute("data-strategy-send-quote");
+  expect(quoteId).toBeTruthy();
+
+  // A e B respondem (em RMB; a ficha técnica só quando a tela pede).
+  for (const [email, digits] of [
+    ["supplier.a@china.com", "210"],
+    ["supplier.b@china.com", "185"],
+  ] as const) {
+    await login(page, email);
+    await page.goto(`/app/purchase-quotes/${quoteId}`);
+    const answerForm = page.locator("[data-quote-answer-form]");
+    const price = answerForm.locator('[data-quote-price="prod-jarra"]');
+    await price.click();
+    await price.pressSequentially(digits);
+    await fillQuoteSheet(answerForm, "prod-jarra");
+    await answerForm.locator("[data-quote-lead]").fill("35");
+    await answerForm.locator("[data-quote-port]").fill("Ningbo");
+    await answerForm.locator("[data-quote-moq]").fill("500");
+    await answerForm.locator("[data-quote-submit]").click();
+    await page.waitForURL(/[?&]answered=1/);
+  }
+
+  // A cotação de compra está na lista da Cotação, com a aba dos convites.
+  await login(page, "operador@wellmix.com");
+  await page.goto("/app/supplier-requests");
+  await expect(
+    page.locator('[data-supplier-request-tab="invites"]'),
+  ).toBeVisible();
+  const row = page.locator(`[data-quotation-quote-row="${quoteId}"]`);
+  await expect(row).toBeVisible();
+  await row.locator("[data-quotation-quote-open]").click();
+  await page.waitForURL(new RegExp(`/app/supplier-requests/${quoteId}$`));
+  await expect(page.locator("[data-quote-board]")).toBeVisible();
+
+  // O produto da cotação: o quadro comparativo, uma linha por fornecedor.
+  await page.locator('[data-quote-item-open="prod-jarra"]').click();
+  await page.waitForURL(/[?&]view=item&product=prod-jarra/);
+  await expect(page.locator("[data-quotation-product]")).toBeVisible();
+  const rows = page.locator("[data-quotation-row]");
+  expect(await rows.count()).toBeGreaterThanOrEqual(2);
+  // Só quem respondeu pode receber a contraproposta.
+  await expect(page.locator("[data-quotation-select]")).toHaveCount(2);
+
+  // Sem marcar ninguém, "Enviar aos marcados" não envia e o texto fica.
+  const form = page.locator("[data-negotiation-propose-form]");
+  await form.locator("[data-negotiation-price]").fill("1,5");
+  await form.locator("[data-negotiation-text]").fill("Conseguem a 1,50?");
+  await form.locator("[data-negotiation-propose-submit]").click();
+  await expect(
+    form.locator('[data-action-form-error="quote_counter_none"]'),
+  ).toBeVisible();
+  await expect(form.locator("[data-negotiation-text]")).toHaveValue(
+    "Conseguem a 1,50?",
+  );
+  // "Enviar a todos": os dois recebem.
+  await form.locator("[data-quotation-counter-all]").click();
+  await page.waitForURL(/[?&]countered=2/);
+  await expect(page.locator("[data-quotation-countered]")).toBeVisible();
+  await expect(page.locator("[data-quotation-pending]")).toHaveCount(2);
+
+  // Sequência de propostas e contrapropostas do primeiro fornecedor, no modal.
+  const first = page.locator("[data-quotation-row]", {
+    has: page.locator("[data-quotation-pending]"),
+  });
+  await first.first().locator("[data-quotation-history]").click();
+  const history = page.locator("dialog[open] [data-quotation-history-list]");
+  await expect(
+    history.locator('[data-quotation-history-entry="answer"]'),
+  ).toHaveCount(1);
+  await expect(
+    history.locator('[data-quotation-history-entry="proposal"]'),
+  ).toContainText("Conseguem a 1,50?");
+  await page.keyboard.press("Escape");
+
+  // Conversa com o fornecedor A sobre o produto, no modal.
+  const rowA = page.locator("[data-quotation-row]", {
+    has: page.locator("[data-quotation-price]", { hasText: /2[.,]1/ }),
+  });
+  await rowA.locator("[data-quotation-chat]").click();
+  const chat = page.locator("dialog[open] [data-quote-chat]");
+  await chat.locator("[data-quote-chat-text]").fill("A caixa é com 24?");
+  await chat.locator("[data-quote-chat-submit]").click();
+  await page.waitForURL(/[?&]chat=response/);
+  await expect(
+    page.locator('[data-quote-chat-message="mine"]', {
+      hasText: "A caixa é com 24?",
+    }),
+  ).toHaveCount(1);
+
+  // O fornecedor A vê a contraproposta e a mensagem na cotação dele, com o
+  // formulário aberto para corrigir, e responde na conversa.
+  await login(page, "supplier.a@china.com");
+  await page.goto(`/app/purchase-quotes/${quoteId}`);
+  const mine = page.locator("[data-quote-negotiation]");
+  await expect(mine.locator('[data-quote-counter="prod-jarra"]')).toContainText(
+    "Conseguem a 1,50?",
+  );
+  await expect(page.locator("[data-quote-answer-form]")).toBeVisible();
+  await expect(mine.locator('[data-quote-chat-message="other"]')).toContainText(
+    "A caixa é com 24?",
+  );
+  // Nada do outro fornecedor.
+  expect(await page.locator("main").innerText()).not.toMatch(/1[.,]85/);
+  await mine.locator("[data-quote-chat-text]").fill("Sim, 24 por caixa.");
+  await mine.locator("[data-quote-chat-submit]").click();
+  await page.waitForURL(/[?&]message=1/);
+  await expect(mine.locator('[data-quote-chat-message="mine"]')).toContainText(
+    "Sim, 24 por caixa.",
+  );
+  // A contraproposta entrou nas Pendências dele.
+  await page.goto("/app/tasks");
+  await expect(
+    page.locator(`a[href="/app/purchase-quotes/${quoteId}"]`).first(),
+  ).toBeVisible();
+});

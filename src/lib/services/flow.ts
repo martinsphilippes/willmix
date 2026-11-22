@@ -948,7 +948,10 @@ export async function newProductData(
       number: lot.number,
       href: `/app/booking/lots/${lot.id}#entity-timeline`,
       partyId: lot.supplierId ?? lot.partnerId ?? null,
-      steps: [...(step ? [step] : []), ...(open.length ? ["quotes"] : [])],
+      steps: [
+        ...(step ? [step] : []),
+        ...(open.length ? ["negotiations"] : []),
+      ],
       statusKey: `bookingLots.status.${lot.status}`,
       since: lot.statusChangedAt ?? lot.createdAt ?? null,
       lateDays: Math.max(0, ...open.map((i) => lateDaysSince(i.dueAt, now))),

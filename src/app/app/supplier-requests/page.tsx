@@ -52,6 +52,15 @@ import {
   rowClass,
 } from "@/components/ui";
 import { can, canSeePurchasePrice } from "@/lib/auth/function-access";
+import { getStore, type PurchaseQuote } from "@/lib/db";
+import {
+  quoteClosed,
+  quoteEmpty,
+  sweepQuotes,
+} from "@/lib/services/purchase-quote";
+import { turnTone, turnWaitingKey } from "@/lib/turn";
+import { QuoteDeadline } from "../purchase-quotes/_time";
+import { InvitesTable } from "./_components/invites-table";
 
 /*
  * Solicitações ao fornecedor (docs/SUPPLIER_REQUESTS.md): a Wellmix vê todas;
@@ -100,11 +109,39 @@ export default async function SupplierRequestsPage({
       (a, b) => b.capacityCbm - a.capacityCbm,
     )[0] ??
     null;
+  const now = new Date();
   const closedTab = query.tab === "closed";
+  // Cotação unificada (dono, 22/11/2026; docs/QUOTATION.md), só da Wellmix:
+  // a lista mostra todas as cotações (as solicitações ao fornecedor e as
+  // cotações de compra ainda com os fornecedores) e, numa aba, os convites
+  // de book. A cotação de compra aprovada segue na linha da solicitação que
+  // nasceu dela; a cancelada vai para Encerradas.
+  const invitesTab = wellmix && query.tab === "invites";
+  if (wellmix) await sweepQuotes(now).catch(() => null);
+  const store = getStore();
+  const quotes = wellmix
+    ? (
+        await store
+          .list("purchase_quotes", { orderBy: "createdAt", direction: "desc" })
+          .catch(() => [] as PurchaseQuote[])
+      ).filter((q) => q.status !== "approved")
+    : [];
+  const quoteResponses = quotes.length
+    ? await store.list("purchase_quote_responses", {
+        filter: { quoteId: quotes.map((q) => q.id) },
+      })
+    : [];
+  const quoteSuppliers = quoteResponses.length
+    ? await store.list("parties", {
+        filter: { id: [...new Set(quoteResponses.map((r) => r.supplierId))] },
+      })
+    : [];
+  const openQuotes = quotes.filter((q) => q.status !== "cancelled");
+  const closedQuotes = quotes.filter((q) => q.status === "cancelled");
+  const tabQuotes = closedTab ? closedQuotes : openQuotes;
   // "Gerar pedido" de uma linha: os produtos dela vêm marcados no quadro.
   const pickParam = typeof query.pick === "string" ? query.pick : "";
   const pick = pickParam ? new Set(pickParam.split(",").filter(Boolean)) : null;
-  const now = new Date();
   const error = typeof query.error === "string" ? query.error : "";
   const errorKey = [
     `purchaseOrder.error.${error}`,
@@ -144,10 +181,12 @@ export default async function SupplierRequestsPage({
     <>
       <PageHeader
         t={t}
-        title={t("supplierRequests.list.title")}
+        title={t(
+          wellmix ? "quotation.list.title" : "supplierRequests.list.title",
+        )}
         subtitle={t(
           wellmix
-            ? "supplierRequests.list.subtitle"
+            ? "quotation.list.subtitle"
             : "supplierRequests.list.subtitleSupplier",
         )}
       />
@@ -163,15 +202,27 @@ export default async function SupplierRequestsPage({
       >
         {(
           [
-            ["open", "/app/supplier-requests", openRequests.length],
+            [
+              "open",
+              "/app/supplier-requests",
+              openRequests.length + openQuotes.length,
+            ],
             [
               "closed",
               "/app/supplier-requests?tab=closed",
-              closedRequests.length,
+              closedRequests.length + closedQuotes.length,
             ],
+            ...(wellmix
+              ? ([
+                  ["invites", "/app/supplier-requests?tab=invites", null],
+                ] as const)
+              : []),
           ] as const
         ).map(([id, href, n]) => {
-          const active = (id === "closed") === closedTab;
+          const active =
+            id === "invites"
+              ? invitesTab
+              : !invitesTab && (id === "closed") === closedTab;
           return (
             <Link
               key={id}
@@ -184,7 +235,12 @@ export default async function SupplierRequestsPage({
                   : "border-transparent text-zinc-600 hover:text-zinc-900"
               }`}
             >
-              {t(`supplierRequests.tabs.${id}` as DictionaryKey)} ({n})
+              {t(
+                (wellmix
+                  ? `quotation.tabs.${id}`
+                  : `supplierRequests.tabs.${id}`) as DictionaryKey,
+              )}
+              {n === null ? "" : ` (${n})`}
             </Link>
           );
         })}
@@ -200,22 +256,34 @@ export default async function SupplierRequestsPage({
           />
         </div>
       ) : null}
-      {entries === null ? (
+      {invitesTab ? (
+        <div data-quotation-invites>
+          <InvitesTable user={user} t={t} />
+        </div>
+      ) : entries === null ? (
         <Alert tone="warning">
           {t("supplierRequests.selection.schemaMissing")}
         </Alert>
-      ) : requests.length ? (
+      ) : requests.length || tabQuotes.length ? (
         <Card>
           <p className="mb-2 text-sm text-zinc-600" data-supplier-request-count>
-            {t("supplierRequests.list.count", {
-              n: requests.length,
-              products: tabProducts,
-            })}
+            {t(
+              wellmix ? "quotation.list.count" : "supplierRequests.list.count",
+              {
+                n: requests.length + tabQuotes.length,
+                products:
+                  tabProducts +
+                  new Set(
+                    tabQuotes.flatMap((q) => q.items.map((i) => i.productId)),
+                  ).size,
+              },
+            )}
           </p>
           <Table>
             <thead>
               <tr>
                 <Th>{t("supplierRequests.col.number")}</Th>
+                {wellmix ? <Th>{t("quotation.col.origin")}</Th> : null}
                 <Th>{t("supplierRequests.col.status")}</Th>
                 {wellmix ? <Th>{t("supplierRequests.col.supplier")}</Th> : null}
                 <Th>{t("supplierRequests.col.products")}</Th>
@@ -242,6 +310,120 @@ export default async function SupplierRequestsPage({
               </tr>
             </thead>
             <tbody>
+              {tabQuotes.map((q) => {
+                // Cotação de compra ainda com os fornecedores: uma linha,
+                // com quantos responderam e de quem é a vez.
+                const mine = quoteResponses.filter((r) => r.quoteId === q.id);
+                const state =
+                  q.status !== "open"
+                    ? q.status
+                    : quoteEmpty(mine, now)
+                      ? "empty"
+                      : quoteClosed(mine, now)
+                        ? "closed"
+                        : "open";
+                const due =
+                  state === "open"
+                    ? (mine
+                        .filter((r) => r.status === "invited")
+                        .map((r) => r.dueAt)
+                        .sort()
+                        .at(-1) ?? null)
+                    : null;
+                const names = mine.map(
+                  (r) =>
+                    quoteSuppliers.find((p) => p.id === r.supplierId)?.name ??
+                    "—",
+                );
+                const pieces = q.items.reduce((sum, i) => sum + i.quantity, 0);
+                const rounds = Math.max(
+                  1,
+                  ...q.items.map((i) => i.schedule?.items?.length ?? 1),
+                );
+                const href = `/app/supplier-requests/${q.id}`;
+                const turn =
+                  state === "open"
+                    ? "supplier"
+                    : state === "cancelled"
+                      ? null
+                      : "wellmix";
+                return (
+                  <tr
+                    key={q.id}
+                    className={rowClass}
+                    data-quotation-quote-row={q.id}
+                  >
+                    <Td>
+                      <Link href={href} className={linkClass}>
+                        {q.number}
+                      </Link>
+                    </Td>
+                    <Td>{t("quotation.origin.demand")}</Td>
+                    <Td>
+                      <span className="flex flex-wrap gap-1">
+                        <Badge
+                          tone={
+                            state === "empty"
+                              ? "danger"
+                              : state === "open"
+                                ? "warning"
+                                : "neutral"
+                          }
+                        >
+                          {t(`quote.status.${state}` as DictionaryKey)}
+                        </Badge>
+                        {turn ? (
+                          <span data-quote-turn={turn}>
+                            <Badge tone={turnTone(turn)}>
+                              {t(turnWaitingKey(turn))}
+                            </Badge>
+                          </span>
+                        ) : null}
+                      </span>
+                    </Td>
+                    <Td className="max-w-56 whitespace-normal">
+                      <span title={names.join(", ")}>
+                        {names.length === 1
+                          ? names[0]
+                          : t("quotation.list.suppliers", { n: names.length })}
+                      </span>
+                    </Td>
+                    <Td className="tabular-nums" data-quote-products={q.id}>
+                      {new Set(q.items.map((i) => i.productId)).size}
+                    </Td>
+                    <Td className="whitespace-nowrap tabular-nums">
+                      {t("supplierRequests.detail.pieces", {
+                        n: pieces.toLocaleString(t.intl),
+                      })}
+                    </Td>
+                    <Td className="tabular-nums">{rounds}</Td>
+                    <Td>—</Td>
+                    <Td>
+                      {t("supplierRequests.list.answered", {
+                        n: mine.filter((r) => r.status === "answered").length,
+                        total: mine.length,
+                      })}
+                      {due ? (
+                        <span className="block">
+                          <QuoteDeadline t={t} dueAt={due} now={now} />
+                        </span>
+                      ) : null}
+                    </Td>
+                    <Td className="whitespace-nowrap tabular-nums">
+                      {dateTime(q.createdAt, t)}
+                    </Td>
+                    <Td>—</Td>
+                    {closedTab && showPurchase ? <Td>—</Td> : null}
+                    <Td>
+                      <OpenLink
+                        href={href}
+                        label={t("tasks.open")}
+                        data-quotation-quote-open={q.id}
+                      />
+                    </Td>
+                  </tr>
+                );
+              })}
               {requests.map((products) => {
                 const r = products[0];
                 const supplier = supplierOf.get(r.id) ?? null;
@@ -298,6 +480,15 @@ export default async function SupplierRequestsPage({
                         {r.number}
                       </Link>
                     </Td>
+                    {wellmix ? (
+                      <Td data-quotation-origin>
+                        {t(
+                          r.bookingLotId
+                            ? "quotation.origin.book"
+                            : "quotation.origin.demand",
+                        )}
+                      </Td>
+                    ) : null}
                     <Td>
                       <span className="flex flex-wrap gap-1">
                         {statuses.map((status) => (
@@ -439,11 +630,17 @@ export default async function SupplierRequestsPage({
       ) : (
         <Empty>
           {t(
-            entries.length
+            entries.length || quotes.length
               ? closedTab
-                ? "supplierRequests.tabs.emptyClosed"
-                : "supplierRequests.tabs.emptyOpen"
-              : "supplierRequests.list.empty",
+                ? wellmix
+                  ? "quotation.tabs.emptyClosed"
+                  : "supplierRequests.tabs.emptyClosed"
+                : wellmix
+                  ? "quotation.tabs.emptyOpen"
+                  : "supplierRequests.tabs.emptyOpen"
+              : wellmix
+                ? "quotation.list.empty"
+                : "supplierRequests.list.empty",
           )}
         </Empty>
       )}
