@@ -994,9 +994,7 @@ export function StrategyQueue({
     <div className="space-y-2" data-strategy-queue={lines.length}>
       {groups.length ? (
         <section>
-          <h2 className="mb-1.5 text-sm font-semibold text-zinc-900">
-            {texts.queueTitle}
-          </h2>
+          {/* O título e a contagem estão na aba (dono, 22/11/2026). */}
           <StrategyGrid marker="queue">{groups.map(lineCard)}</StrategyGrid>
         </section>
       ) : (
