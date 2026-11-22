@@ -2,14 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Fragment,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   Badge,
   cx,
@@ -21,7 +14,6 @@ import {
 } from "./ui";
 import { ChatOpenButton } from "./chat-open-button";
 import { PhotoGallery, type GalleryPhoto } from "./photo-gallery";
-import { RowMoreDetails, RowMoreToggle, oneLine } from "./row-more";
 import { chatTargetFromHref } from "@/lib/chat-target";
 import { TableTools } from "@/components/table-tools";
 import {
@@ -82,6 +74,17 @@ export interface OrdersTableItem {
    * fornecedor). Só a Wellmix: para os demais o servidor nem manda.
    */
   detail?: OrdersItemDetail | null;
+  /** Tabela padrão de itens (docs/ORDER_TABLES.md). */
+  description?: string;
+  /** De quem é a vez (o que o item espera). */
+  turn?: string;
+  turnLabel?: string;
+  turnTone?: "brand" | "warning" | "info" | "danger" | "neutral";
+  /** Preço Wellmix sem frete e com frete (só com "Ver valores e margem"). */
+  priceIpi?: string | null;
+  priceIpiFreight?: string | null;
+  perInner?: string | null;
+  pieces?: string | null;
 }
 
 /** Valores já formatados no servidor (nulo = "—"). */
@@ -150,6 +153,21 @@ export interface OrdersTableRow {
   turnTone: "brand" | "warning" | "info" | "danger" | "neutral";
   /** Total da tabela de itens (só com os detalhes da Wellmix). */
   itemsTotals?: OrdersItemsTotals | null;
+  /** Tabela padrão de pedidos (docs/ORDER_TABLES.md); vazio = "—". */
+  std?: {
+    track: string;
+    negotiationDate: string;
+    saleType: string;
+    paymentTerm: string;
+    paymentMethod: string;
+    billing: string;
+    vip: string;
+    group: string;
+    customerCode: string;
+    deliveries: string;
+    cbm: string;
+    value: string;
+  };
 }
 
 export interface OrdersTableLabels {
@@ -223,6 +241,11 @@ export interface OrdersTableLabels {
   cbm: string;
   amount: string;
   total: string;
+  /** Cabeçalhos das tabelas padrão (pedidos e itens), pela chave da coluna. */
+  std: Record<string, string>;
+  stdItem: Record<string, string>;
+  /** "Track ID {id}" */
+  track: string;
   /** Setinha da linha do item: abre os textos inteiros embaixo. */
   more: string;
 }
@@ -237,6 +260,8 @@ export function OrdersTable({
   rows,
   showCustomer,
   showSupplier,
+  showTerms,
+  showValue,
   labels,
   initial,
   today,
@@ -245,6 +270,10 @@ export function OrdersTable({
   rows: OrdersTableRow[];
   showCustomer: boolean;
   showSupplier: boolean;
+  /** Condições do pedido (tipo de venda, pagamento, entregas e m³): Wellmix e cliente. */
+  showTerms: boolean;
+  /** Valor do pedido: só com "Ver valores e margem". */
+  showValue: boolean;
   labels: OrdersTableLabels;
   /** Filtros e ordem vindos do endereço. */
   initial: Partial<Filters> & { sort?: string };
@@ -418,6 +447,22 @@ export function OrdersTable({
       </button>
     </th>
   );
+  /** Coluna padrão sem ordenação (o dado só existe nas linhas da página). */
+  const plain = (key: string) => (
+    <th
+      className="whitespace-nowrap border-b border-zinc-200 bg-zinc-50/80 px-2.5 pt-2 text-left align-bottom text-[11px] font-semibold uppercase tracking-wide text-zinc-500"
+      data-order-head={key}
+    >
+      {labels.std[key]}
+    </th>
+  );
+  const columnCount =
+    6 + // nº, data, status, situação, prazo, itens
+    1 + // abrir e conversa
+    (showTerms ? 6 : 0) +
+    (showCustomer ? 4 : 0) +
+    (showValue ? 1 : 0) +
+    (showSupplier ? 1 : 0);
   const filterCell = (children: React.ReactNode) => (
     <th className="border-b border-zinc-200 bg-zinc-50/80 px-2.5 pb-2 pt-1 text-left align-top">
       {children}
@@ -476,33 +521,98 @@ export function OrdersTable({
           </button>
         ) : null}
       </div>
+      {/* Filtros de colunas que saíram da tabela padrão (situação da linha,
+          progresso e atualização): seguem valendo, aqui em cima. */}
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+        <label className="inline-flex items-center gap-1">
+          {labels.state}
+          {select(
+            "st",
+            labels.state,
+            states.map((s) => [s, labels.states[s]]),
+          )}
+        </label>
+        <label className="inline-flex items-center gap-1">
+          {labels.progress}
+          <select
+            value={filters.pr}
+            onChange={(e) => setFilter("pr", e.target.value)}
+            aria-label={labels.progress}
+            className={control}
+            data-orders-filter="pr"
+          >
+            <option value="">{labels.all}</option>
+            {[
+              [labels.journey.groupRequest, "req"],
+              [labels.journey.groupOrder, "ord"],
+            ].map(([group, prefix]) => {
+              const options = labels.journey.steps.filter(([value]) =>
+                value.startsWith(prefix),
+              );
+              return options.length ? (
+                <optgroup key={prefix} label={group}>
+                  {options.map(([value, text]) => (
+                    <option key={value} value={value}>
+                      {text}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null;
+            })}
+            <option value="cancelled">{labels.journey.cancelled}</option>
+          </select>
+        </label>
+        <label className="inline-flex items-center gap-1">
+          {labels.updated}
+          {select("u", labels.updated, [
+            ["today", labels.updatedOptions.today],
+            ["week", labels.updatedOptions.week],
+            ["month", labels.updatedOptions.month],
+          ])}
+        </label>
+      </div>
+      {/* Tabela padrão de pedidos (dono, 22/11/2026; docs/ORDER_TABLES.md):
+          as mesmas colunas, na mesma ordem, de toda lista de pedidos. */}
       <TableTools
-        tableClassName="min-w-[56rem]"
+        tableClassName="min-w-[96rem]"
         sortable={false}
         searchable={false}
         paginated={!paging}
       >
         <thead>
           <tr>
-            {head("number", labels.number, "w-24")}
-            {head("product", labels.products ?? labels.product)}
-            {showCustomer ? head("customer", labels.customer) : null}
-            {showSupplier ? head("supplier", labels.supplier) : null}
-            {head("phase", labels.phase)}
-            {head("state", labels.state)}
-            <th className="px-2.5 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
-              {labels.turn}
-            </th>
-            {head("progress", labels.progress, "w-44")}
-            {head("due", labels.due)}
-            {head("updated", labels.updated)}
-            <th className="w-10 px-2.5 py-2" />
+            {head("number", labels.std.number, "w-24")}
+            {plain("negotiationDate")}
+            {showTerms ? plain("saleType") : null}
+            {showTerms ? plain("paymentTerm") : null}
+            {showTerms ? plain("paymentMethod") : null}
+            {showTerms ? plain("billing") : null}
+            {showCustomer ? plain("vip") : null}
+            {showCustomer ? plain("group") : null}
+            {showCustomer ? plain("customerCode") : null}
+            {showCustomer ? head("customer", labels.std.customerName) : null}
+            {plain("status")}
+            {head("phase", labels.std.step)}
+            {head("due", labels.std.sla)}
+            {head("product", labels.std.items)}
+            {showTerms ? plain("deliveries") : null}
+            {showTerms ? plain("cbm") : null}
+            {showValue ? plain("value") : null}
+            {showSupplier ? head("supplier", labels.std.supplier) : null}
+            <th className="w-10 border-b border-zinc-200 bg-zinc-50/80 px-2.5 py-2" />
           </tr>
           <tr>
-            {filterCell(text("n", labels.number))}
-            {filterCell(text("p", labels.product))}
+            {filterCell(text("n", labels.std.number))}
+            {filterCell(null)}
+            {showTerms ? filterCell(null) : null}
+            {showTerms ? filterCell(null) : null}
+            {showTerms ? filterCell(null) : null}
+            {showTerms ? filterCell(null) : null}
+            {showCustomer ? filterCell(null) : null}
+            {showCustomer ? filterCell(null) : null}
+            {showCustomer ? filterCell(null) : null}
             {showCustomer ? filterCell(text("c", labels.customer)) : null}
-            {showSupplier ? filterCell(text("s", labels.supplier)) : null}
+            {filterCell(select("w", labels.turn, turns))}
             {filterCell(
               <select
                 value={filters.ph}
@@ -532,64 +642,25 @@ export function OrdersTable({
               </select>,
             )}
             {filterCell(
-              select(
-                "st",
-                labels.state,
-                states.map((s) => [s, labels.states[s]]),
-              ),
-            )}
-            {filterCell(select("w", labels.turn, turns))}
-            {filterCell(
-              <select
-                value={filters.pr}
-                onChange={(e) => setFilter("pr", e.target.value)}
-                aria-label={labels.progress}
-                className={control}
-                data-orders-filter="pr"
-              >
-                <option value="">{labels.all}</option>
-                {[
-                  [labels.journey.groupRequest, "req"],
-                  [labels.journey.groupOrder, "ord"],
-                ].map(([group, prefix]) => {
-                  const options = labels.journey.steps.filter(([value]) =>
-                    value.startsWith(prefix),
-                  );
-                  return options.length ? (
-                    <optgroup key={prefix} label={group}>
-                      {options.map(([value, text]) => (
-                        <option key={value} value={value}>
-                          {text}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ) : null;
-                })}
-                <option value="cancelled">{labels.journey.cancelled}</option>
-              </select>,
-            )}
-            {filterCell(
               select("d", labels.due, [
                 ["overdue", labels.dueOptions.overdue],
                 ["week", labels.dueOptions.week],
                 ["none", labels.dueOptions.none],
               ]),
             )}
-            {filterCell(
-              select("u", labels.updated, [
-                ["today", labels.updatedOptions.today],
-                ["week", labels.updatedOptions.week],
-                ["month", labels.updatedOptions.month],
-              ]),
-            )}
-            <td className="px-2.5 py-2" />
+            {filterCell(text("p", labels.product))}
+            {showTerms ? filterCell(null) : null}
+            {showTerms ? filterCell(null) : null}
+            {showValue ? filterCell(null) : null}
+            {showSupplier ? filterCell(text("s", labels.supplier)) : null}
+            {filterCell(null)}
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-100">
           {shown.length === 0 ? (
             <tr>
               <td
-                colSpan={8 + (showCustomer ? 1 : 0) + (showSupplier ? 1 : 0)}
+                colSpan={columnCount}
                 className="px-3 py-6 text-center text-zinc-500"
               >
                 {labels.empty}
@@ -602,6 +673,10 @@ export function OrdersTable({
                 r.due < today &&
                 (r.state === "active" || r.state === "blocked");
               const selected = current?.key === r.key;
+              const std = r.std;
+              const td = "whitespace-nowrap px-2.5 py-2";
+              const numTd = cx(td, "text-right tabular-nums");
+              const dash = (v: string | undefined) => v || "—";
               return (
                 <tr
                   key={r.key}
@@ -621,7 +696,7 @@ export function OrdersTable({
                     setPicked(r.key);
                   }}
                 >
-                  <td className="whitespace-nowrap px-2.5 py-2">
+                  <td className={td}>
                     <Link href={r.href} className={linkClass}>
                       {r.number}
                     </Link>
@@ -630,62 +705,126 @@ export function OrdersTable({
                         {r.subtitle}
                       </span>
                     ) : null}
+                    {std?.track ? (
+                      <span
+                        className="block text-[11px] text-zinc-500"
+                        data-order-track
+                      >
+                        {labels.track.replace("{id}", std.track)}
+                      </span>
+                    ) : null}
                   </td>
                   <td
-                    className="whitespace-nowrap px-2.5 py-2 text-right tabular-nums"
+                    className={cx(td, "tabular-nums")}
+                    data-order-col="negotiationDate"
+                  >
+                    {dash(std?.negotiationDate)}
+                  </td>
+                  {showTerms ? (
+                    <>
+                      <td className={td} data-order-col="saleType">
+                        {dash(std?.saleType)}
+                      </td>
+                      <td className={numTd} data-order-col="paymentTerm">
+                        {dash(std?.paymentTerm)}
+                      </td>
+                      <td
+                        className="px-2.5 py-2"
+                        data-order-col="paymentMethod"
+                      >
+                        {dash(std?.paymentMethod)}
+                      </td>
+                      <td className={td} data-order-col="billing">
+                        {dash(std?.billing)}
+                      </td>
+                    </>
+                  ) : null}
+                  {showCustomer ? (
+                    <>
+                      <td className={td} data-order-col="vip">
+                        {dash(std?.vip)}
+                      </td>
+                      <td className="px-2.5 py-2" data-order-col="group">
+                        {dash(std?.group)}
+                      </td>
+                      <td className={numTd} data-order-col="customerCode">
+                        {dash(std?.customerCode)}
+                      </td>
+                      <td
+                        className="min-w-32 px-2.5 py-2"
+                        data-order-col="customerName"
+                      >
+                        {r.customer || "—"}
+                      </td>
+                    </>
+                  ) : null}
+                  {/* Status: o que o pedido espera (de quem é a vez);
+                      encerrado ou cancelado, isso mesmo. */}
+                  <td className={td} data-orders-turn={r.turn || undefined}>
+                    {r.turn ? (
+                      <Badge tone={r.turnTone}>{r.turnLabel}</Badge>
+                    ) : r.state === "done" || r.state === "cancelled" ? (
+                      <Badge tone={STATE_TONE[r.state]}>
+                        {labels.states[r.state]}
+                      </Badge>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  {/* Situação: o momento do passo em que ele está. */}
+                  <td className={td} data-order-col="step">
+                    {r.phase}
+                    {r.state === "blocked" ? (
+                      <>
+                        {" "}
+                        <Badge tone={STATE_TONE.blocked}>
+                          {labels.states.blocked}
+                        </Badge>
+                      </>
+                    ) : null}
+                  </td>
+                  <td
+                    className={cx(
+                      td,
+                      "tabular-nums",
+                      overdue && "font-semibold text-red-700",
+                    )}
+                    data-order-col="sla"
+                  >
+                    {r.dueLabel}
+                  </td>
+                  <td
+                    className={numTd}
                     title={r.product}
                     data-orders-products={r.productCount ?? r.items.length}
                   >
                     {r.productCount ?? r.items.length}
                   </td>
-                  {showCustomer ? (
-                    <td className="min-w-32 px-2.5 py-2">
-                      {r.customer || "—"}
+                  {showTerms ? (
+                    <>
+                      <td className={numTd} data-order-col="deliveries">
+                        {dash(std?.deliveries)}
+                      </td>
+                      <td className={numTd} data-order-col="cbm">
+                        {dash(std?.cbm)}
+                      </td>
+                    </>
+                  ) : null}
+                  {showValue ? (
+                    <td className={numTd} data-order-col="value">
+                      {dash(std?.value)}
                     </td>
                   ) : null}
                   {showSupplier ? (
-                    <td className="min-w-32 px-2.5 py-2">
+                    <td
+                      className="min-w-32 px-2.5 py-2"
+                      data-order-col="supplier"
+                    >
                       {r.supplier || "—"}
                     </td>
                   ) : null}
-                  <td className="whitespace-nowrap px-2.5 py-2">{r.phase}</td>
-                  <td className="whitespace-nowrap px-2.5 py-2">
-                    <Badge tone={STATE_TONE[r.state]}>
-                      {labels.states[r.state]}
-                    </Badge>
-                  </td>
-                  <td
-                    className="whitespace-nowrap px-2.5 py-2"
-                    data-orders-turn={r.turn || undefined}
-                  >
-                    {r.turn ? (
-                      <Badge tone={r.turnTone}>{r.turnLabel}</Badge>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-2.5 py-2">
-                    <JourneyBar
-                      progress={r.progress}
-                      label={r.stepLabel}
-                      step={r.step}
-                      cancelled={r.state === "cancelled"}
-                      stoppedAt={labels.journey.stoppedAt}
-                    />
-                  </td>
-                  <td
-                    className={cx(
-                      "whitespace-nowrap px-2.5 py-2 tabular-nums",
-                      overdue && "font-semibold text-red-700",
-                    )}
-                  >
-                    {r.dueLabel}
-                  </td>
-                  <td className="whitespace-nowrap px-2.5 py-2 tabular-nums text-zinc-600">
-                    {r.updatedLabel}
-                  </td>
                   {/* Conversa do pedido/solicitação: sempre na última coluna. */}
-                  <td className="whitespace-nowrap px-2.5 py-2 text-right">
+                  <td className={cx(td, "text-right")}>
                     <OpenLink
                       href={r.href}
                       label={
@@ -739,7 +878,7 @@ export function OrdersTable({
       <ItemsPanel
         row={current}
         labels={labels}
-        showSupplier={showSupplier}
+        showValue={showValue}
         today={today}
       />
     </div>
@@ -747,36 +886,28 @@ export function OrdersTable({
 }
 
 /**
- * Painel de itens da linha escolhida (embaixo da lista, como no Sankhya).
- * Para a Wellmix, as colunas da folha do fornecedor (foto, código, cód. do
- * item, especificação, cor, peso, quantidade por caixa, caixas, volume e
- * valor) e a linha de total; os demais veem a tabela de sempre.
+ * Painel de itens da linha escolhida (embaixo da lista, como no Sankhya), na
+ * tabela padrão de itens do pedido (dono, 22/11/2026; docs/ORDER_TABLES.md).
+ * Foto, código, embalagem e m³ só saem do servidor para a Wellmix; os
+ * valores, só com "Ver valores e margem". No nível do item não há o que abrir.
  */
 function ItemsPanel({
   row,
   labels,
-  showSupplier,
+  showValue,
   today,
 }: {
   row: OrdersTableRow | null;
   labels: OrdersTableLabels;
-  showSupplier: boolean;
+  showValue: boolean;
   today: string;
 }) {
-  const withPrice = !!row?.items.some((i) => i.price !== null);
   const detailed = !!row?.items.some((i) => i.detail);
-  // Colunas da tabela de itens (a faixa do "ver mais" ocupa todas).
-  const columns =
-    3 + // nº, produto, variação
-    (detailed ? 9 : 0) + // imagem, código, cód. do item, especificação, cor, peso, qtd. por caixa, caixas, volume
-    1 + // quantidade
-    (withPrice ? 1 : 0) +
-    (withPrice && detailed ? 1 : 0) +
-    (showSupplier ? 1 : 0) +
-    6; // pedido, etapa, progresso, situação, prazo, conversa
   const cell = "whitespace-nowrap px-2.5 py-2";
   const num = cx(cell, "text-right tabular-nums");
-  const dash = (v: string | null | undefined) => v ?? "—";
+  const dash = (v: string | null | undefined) => v || "—";
+  const h = labels.stdItem;
+  const th = "whitespace-nowrap px-2.5 py-2";
   return (
     <section
       className="mt-4 rounded-xl border border-zinc-200/80 bg-white"
@@ -805,49 +936,41 @@ function ItemsPanel({
           <table
             className={cx(
               "w-full text-left text-sm",
-              detailed ? "min-w-[72rem]" : "min-w-[40rem]",
+              detailed ? "min-w-[80rem]" : "min-w-[40rem]",
             )}
             data-orders-items-detailed={detailed ? "" : undefined}
           >
             <thead>
               <tr className="align-bottom text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                <th className="px-2.5 py-2">{labels.seq}</th>
+                <th className={th}>{h.sequence}</th>
                 {detailed ? (
-                  <th className="w-14 px-2.5 py-2">{labels.image}</th>
+                  <th className={cx(th, "w-14")}>{h.photo}</th>
                 ) : null}
-                <th className="px-2.5 py-2">{labels.product}</th>
-                <th className="px-2.5 py-2">{labels.variant}</th>
-                {detailed ? (
+                <th className={th}>{h.step}</th>
+                <th className={th}>{h.status}</th>
+                <th className={th}>{h.sla}</th>
+                {detailed ? <th className={th}>{h.code}</th> : null}
+                <th className={th}>{h.description}</th>
+                {showValue ? (
                   <>
-                    <th className="px-2.5 py-2">{labels.code}</th>
-                    <th className="px-2.5 py-2">{labels.itemCode}</th>
-                    <th className="px-2.5 py-2">{labels.spec}</th>
-                    <th className="px-2.5 py-2">{labels.color}</th>
-                    <th className="px-2.5 py-2 text-right">{labels.weight}</th>
+                    <th className={cx(th, "text-right")}>{h.priceNoIpi}</th>
+                    <th className={cx(th, "text-right")}>{h.priceIpi}</th>
+                    <th className={cx(th, "text-right")}>
+                      {h.priceIpiFreight}
+                    </th>
                   </>
                 ) : null}
-                <th className="px-2.5 py-2 text-right">{labels.quantity}</th>
                 {detailed ? (
                   <>
-                    <th className="px-2.5 py-2 text-right">{labels.perBox}</th>
-                    <th className="px-2.5 py-2 text-right">{labels.boxes}</th>
-                    <th className="px-2.5 py-2 text-right">{labels.cbm}</th>
+                    <th className={cx(th, "text-right")}>{h.perBox}</th>
+                    <th className={cx(th, "text-right")}>{h.perInner}</th>
+                    <th className={cx(th, "text-right")}>{h.boxes}</th>
                   </>
                 ) : null}
-                {withPrice ? (
-                  <th className="px-2.5 py-2 text-right">{labels.price}</th>
+                <th className={cx(th, "text-right")}>{h.pieces}</th>
+                {detailed ? (
+                  <th className={cx(th, "text-right")}>{h.cbm}</th>
                 ) : null}
-                {withPrice && detailed ? (
-                  <th className="px-2.5 py-2 text-right">{labels.amount}</th>
-                ) : null}
-                {showSupplier ? (
-                  <th className="px-2.5 py-2">{labels.supplier}</th>
-                ) : null}
-                <th className="px-2.5 py-2">{labels.ref}</th>
-                <th className="px-2.5 py-2">{labels.phase}</th>
-                <th className="w-40 px-2.5 py-2">{labels.progress}</th>
-                <th className="px-2.5 py-2">{labels.state}</th>
-                <th className="px-2.5 py-2">{labels.due}</th>
                 <th className="w-10 px-2.5 py-2" />
               </tr>
             </thead>
@@ -858,171 +981,122 @@ function ItemsPanel({
                   item.due < today &&
                   (item.state === "active" || item.state === "blocked");
                 const d = item.detail ?? null;
+                const description = item.description ?? item.name;
                 return (
-                  <Fragment key={i}>
-                    <tr
-                      className={cx(
-                        rowClass,
-                        detailed && item.state === "cancelled" && "opacity-60",
-                      )}
-                      data-orders-item
-                    >
-                      {/* Linha fina: o que não cabe termina em "…"; a setinha abre tudo embaixo. */}
-                      <td className={cx(cell, "tabular-nums text-zinc-500")}>
-                        <RowMoreToggle label={labels.more} />
-                        {i + 1}
+                  <tr
+                    key={i}
+                    className={cx(
+                      rowClass,
+                      item.state === "cancelled" && "opacity-60",
+                    )}
+                    data-orders-item
+                  >
+                    <td className={cx(cell, "tabular-nums text-zinc-500")}>
+                      {i + 1}
+                    </td>
+                    {detailed ? (
+                      <td className="w-14 px-2.5 py-1.5">
+                        {d ? (
+                          <PhotoGallery
+                            name={item.name}
+                            photos={d.photos}
+                            labels={d.gallery}
+                          />
+                        ) : (
+                          "—"
+                        )}
                       </td>
-                      {detailed ? (
-                        <td className="w-14 px-2.5 py-1.5">
-                          {d ? (
-                            <PhotoGallery
-                              name={item.name}
-                              photos={d.photos}
-                              labels={d.gallery}
-                            />
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                      ) : null}
-                      <td className="max-w-56 px-2.5 py-2 font-medium text-zinc-900">
-                        <span className={oneLine}>{item.name}</span>
-                      </td>
-                      <td className="max-w-40 px-2.5 py-2 text-zinc-600">
-                        <span className={oneLine}>{item.variant ?? "—"}</span>
-                      </td>
-                      {detailed ? (
-                        <>
-                          <td className={cell}>
-                            <span className="font-mono text-xs text-zinc-700">
-                              {dash(d?.sku)}
-                            </span>
-                          </td>
-                          <td className={cell}>
-                            <span className="font-mono text-xs text-zinc-700">
-                              {dash(d?.supplierSku)}
-                            </span>
-                          </td>
-                          <td className="px-2.5 py-2">
-                            <span
-                              className="block max-w-48 truncate"
-                              title={d?.specification ?? undefined}
-                              data-orders-item-spec
-                            >
-                              {dash(d?.specification)}
-                            </span>
-                          </td>
-                          <td className="px-2.5 py-2">
-                            <span className={cx(oneLine, "max-w-32")}>
-                              {dash(d?.color)}
-                            </span>
-                          </td>
-                          <td className={num} data-orders-item-weight>
-                            {dash(d?.weight)}
-                          </td>
-                        </>
-                      ) : null}
-                      <td
-                        className={cx(num, detailed && "font-semibold")}
-                        data-orders-item-qty
-                      >
-                        {item.quantity}
-                      </td>
-                      {detailed ? (
-                        <>
-                          <td className={num}>{dash(d?.perBox)}</td>
-                          <td className={num} data-orders-item-boxes>
-                            {dash(d?.boxes)}
-                          </td>
-                          <td className={num} data-orders-item-cbm>
-                            {dash(d?.cbm)}
-                          </td>
-                        </>
-                      ) : null}
-                      {withPrice ? (
-                        <td className={num}>{item.price ?? "—"}</td>
-                      ) : null}
-                      {withPrice && detailed ? (
-                        <td className={num}>{dash(d?.amount)}</td>
-                      ) : null}
-                      {showSupplier ? (
-                        <td className="max-w-40 px-2.5 py-2">
-                          <span className={oneLine}>
-                            {item.supplier || "—"}
-                          </span>
-                        </td>
-                      ) : null}
-                      <td className={cell}>
-                        <Link href={item.href} className={linkClass}>
-                          {item.ref}
-                        </Link>
-                      </td>
-                      <td className={cell}>{item.phase}</td>
-                      <td className="w-40 px-2.5 py-2">
-                        <JourneyBar
-                          progress={item.progress}
-                          label={item.stepLabel}
-                          step={item.step}
-                          cancelled={item.state === "cancelled"}
-                          stoppedAt={labels.journey.stoppedAt}
-                        />
-                      </td>
-                      <td className={cell}>
+                    ) : null}
+                    {/* Situação: o momento do passo em que o item está. */}
+                    <td className={cell}>
+                      <Link href={item.href} className={linkClass}>
+                        {item.phase || "—"}
+                      </Link>
+                    </td>
+                    {/* Status: o que ele espera (de quem é a vez). */}
+                    <td className={cell}>
+                      {item.turn ? (
+                        <Badge tone={item.turnTone ?? "neutral"}>
+                          {item.turnLabel}
+                        </Badge>
+                      ) : item.state === "done" ||
+                        item.state === "cancelled" ? (
                         <Badge tone={STATE_TONE[item.state]}>
                           {labels.states[item.state]}
                         </Badge>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td
+                      className={cx(
+                        cell,
+                        "tabular-nums",
+                        late && "font-semibold text-red-700",
+                      )}
+                    >
+                      {item.dueLabel || "—"}
+                    </td>
+                    {detailed ? (
+                      <td className={cell}>
+                        <span className="font-mono text-xs text-zinc-700">
+                          {dash(d?.sku)}
+                        </span>
                       </td>
-                      <td
-                        className={cx(
-                          cell,
-                          "tabular-nums",
-                          late && "font-semibold text-red-700",
-                        )}
+                    ) : null}
+                    <td className="max-w-80 px-2.5 py-2 font-medium text-zinc-900">
+                      <span
+                        className="block truncate"
+                        title={description}
+                        data-orders-item-description
                       >
-                        {item.dueLabel}
+                        {description}
+                      </span>
+                    </td>
+                    {showValue ? (
+                      <>
+                        <td className={num}>—</td>
+                        <td className={num}>{dash(item.priceIpi)}</td>
+                        <td className={num}>{dash(item.priceIpiFreight)}</td>
+                      </>
+                    ) : null}
+                    {detailed ? (
+                      <>
+                        <td className={num}>{dash(d?.perBox)}</td>
+                        <td className={num}>{dash(item.perInner)}</td>
+                        <td className={num} data-orders-item-boxes>
+                          {dash(d?.boxes)}
+                        </td>
+                      </>
+                    ) : null}
+                    <td
+                      className={cx(num, "font-semibold")}
+                      data-orders-item-qty
+                    >
+                      {item.pieces ?? item.quantity}
+                    </td>
+                    {detailed ? (
+                      <td className={num} data-orders-item-cbm>
+                        {dash(d?.cbm)}
                       </td>
-                      {/* Conversa do item (desce até o produto): última coluna. */}
-                      <td className={cx(cell, "text-right")}>
-                        {chatTargetFromHref(item.href) ? (
-                          <ChatOpenButton
-                            target={
-                              item.orderItemId
-                                ? {
-                                    ...chatTargetFromHref(item.href)!,
-                                    orderItemId: item.orderItemId,
-                                  }
-                                : chatTargetFromHref(item.href)!
-                            }
-                            label={labels.chat}
-                          />
-                        ) : null}
-                      </td>
-                    </tr>
-                    <RowMoreDetails
-                      colSpan={columns}
-                      items={[
-                        [labels.product, item.name],
-                        [labels.variant, item.variant],
-                        ...(detailed
-                          ? ([
-                              [labels.code, d?.sku],
-                              [labels.itemCode, d?.supplierSku],
-                              [labels.color, d?.color],
-                            ] as Array<[string, string | null | undefined]>)
-                          : []),
-                        ...(showSupplier
-                          ? ([[labels.supplier, item.supplier]] as Array<
-                              [string, string]
-                            >)
-                          : []),
-                        ...(detailed
-                          ? ([[labels.spec, d?.specification, true]] as Array<
-                              [string, string | null | undefined, boolean]
-                            >)
-                          : []),
-                      ]}
-                    />
-                  </Fragment>
+                    ) : null}
+                    {/* Conversa do item (desce até o produto): última coluna. */}
+                    <td className={cx(cell, "text-right")}>
+                      {chatTargetFromHref(item.href) ? (
+                        <ChatOpenButton
+                          target={
+                            item.orderItemId
+                              ? {
+                                  ...chatTargetFromHref(item.href)!,
+                                  orderItemId: item.orderItemId,
+                                }
+                              : chatTargetFromHref(item.href)!
+                          }
+                          label={labels.chat}
+                        />
+                      ) : null}
+                    </td>
+                  </tr>
                 );
               })}
               {detailed && row.itemsTotals ? (
@@ -1030,23 +1104,17 @@ function ItemsPanel({
                   className="bg-amber-50/60 font-semibold"
                   data-orders-items-total
                 >
-                  {/* Nº, imagem, produto, variação, código, cód. do item, especificação e cor. */}
-                  <td colSpan={8} className={cell}>
+                  {/* Seq., foto, situação, status, prazo, código e descrição
+                      (e os três valores). */}
+                  <td colSpan={7 + (showValue ? 3 : 0)} className={cell}>
                     {labels.total}
                   </td>
-                  <td className={num}>{dash(row.itemsTotals.weight)}</td>
-                  <td className={num}>{dash(row.itemsTotals.quantity)}</td>
+                  <td />
                   <td />
                   <td className={num}>{dash(row.itemsTotals.boxes)}</td>
+                  <td className={num}>{dash(row.itemsTotals.quantity)}</td>
                   <td className={num}>{dash(row.itemsTotals.cbm)}</td>
-                  {withPrice ? (
-                    <>
-                      <td />
-                      <td className={num}>{dash(row.itemsTotals.amount)}</td>
-                    </>
-                  ) : null}
-                  {/* Pedido, etapa, progresso, situação, prazo, conversa (e fornecedor). */}
-                  <td colSpan={6 + (showSupplier ? 1 : 0)} />
+                  <td />
                 </tr>
               ) : null}
             </tbody>
@@ -1054,52 +1122,6 @@ function ItemsPanel({
         </div>
       )}
     </section>
-  );
-}
-
-/** Barra da viagem com o nome do passo; no cancelado, cinza e onde parou. */
-function JourneyBar({
-  progress,
-  label,
-  step,
-  cancelled,
-  stoppedAt,
-}: {
-  progress: number | null;
-  label: string | null;
-  step: string | null;
-  cancelled: boolean;
-  /** "Parou em: {step}" */
-  stoppedAt: string;
-}) {
-  if (progress === null) return <span className="text-zinc-400">—</span>;
-  return (
-    <div className="min-w-0" data-orders-journey={step ?? ""}>
-      <div className="flex h-5 items-center gap-2">
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
-          <div
-            className={cx(
-              "h-full rounded-full",
-              cancelled ? "bg-zinc-400" : "bg-brand-600",
-            )}
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <span className="w-9 shrink-0 text-right text-xs font-semibold tabular-nums text-zinc-600">
-          {progress}%
-        </span>
-      </div>
-      {label ? (
-        <span
-          className={cx(
-            "block text-[11px] leading-tight",
-            cancelled ? "text-zinc-400" : "text-zinc-600",
-          )}
-        >
-          {cancelled ? stoppedAt.replace("{step}", label) : label}
-        </span>
-      ) : null}
-    </div>
   );
 }
 

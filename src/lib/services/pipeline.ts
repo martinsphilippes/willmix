@@ -121,6 +121,14 @@ export interface PipelineRow {
   /** Moeda FOB do pedido e especificação da solicitação (itens lidos depois). */
   fobCurrency?: string | null;
   specification?: string | null;
+  /**
+   * Tabela padrão de pedidos (docs/ORDER_TABLES.md): a solicitação da linha
+   * (as condições do pedido vêm dela), o dia em que nasceu e o Track ID do
+   * Sankhya.
+   */
+  requestId?: string | null;
+  createdAt?: string;
+  track?: string | null;
 }
 
 /** Colunas do item que o painel usa. */
@@ -309,6 +317,7 @@ export async function pipelineFor(
         "requestId",
         "fobCurrency",
         "cancelStageKey",
+        "sankhyaTrackId",
       ],
       { orderBy: "number", direction: "desc" },
     ),
@@ -557,6 +566,9 @@ export async function pipelineFor(
       dueAt: cancelled || closed ? null : (milestoneDueOf(now.m) ?? null),
       updatedAt: o.updatedAt,
       turn: orderTurn(o),
+      requestId: request?.id ?? null,
+      createdAt: request?.createdAt ?? o.createdAt,
+      track: o.sankhyaTrackId ?? null,
     });
   }
 
@@ -597,6 +609,9 @@ export async function pipelineFor(
       dueAt: r.status === "CANCELLED" ? null : r.deadline,
       updatedAt: r.updatedAt,
       turn: requestTurn.get(r.id) ?? null,
+      requestId: r.id,
+      createdAt: r.createdAt,
+      track: null,
     });
   }
 
