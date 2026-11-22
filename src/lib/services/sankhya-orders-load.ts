@@ -26,6 +26,7 @@ import {
   shipmentLines,
   isReplenishmentTrack,
   sankhyaReplenishmentId,
+  sankhyaReplenishmentGroupId,
   trackMilestone,
   trackSituation,
   type TrackShipment,
@@ -406,6 +407,9 @@ async function loadReplenishment(
       unit: (item.unit?.trim() || "UN").slice(0, 20),
       sankhyaCode: `${item.doc ?? mainKeyOf(row)}-${item.seq}`,
       desiredAt,
+      // Uma solicitação por track, com os produtos dentro (dono, 22/11/2026):
+      // o mesmo lote de /app/requests/batch/<groupId>.
+      groupId: sankhyaReplenishmentGroupId(row.key),
     };
     const before = have.get(id);
     if (before) {
