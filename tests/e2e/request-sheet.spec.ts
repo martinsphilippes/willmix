@@ -127,6 +127,20 @@ test("Solicitações: uma linha por produto, ficha completa em linha horizontal,
   );
   await expect(field(page, "perBox")).toContainText("48");
   await expect(field(page, "perBox")).toContainText("Solicitação");
+  // Linha fina (dono, 22/11/2026): a foto do produto (ou o quadro vazio)
+  // abre a linha e cada valor fica numa linha só; o "ver mais" abre só a
+  // célula (aqui, a conta da programação) e o "ver menos" fecha.
+  await expect(
+    current(page).locator('[data-sheet-cell="product"] [data-sheet-thumb]'),
+  ).toHaveCount(1);
+  expect((await current(page).boundingBox())!.height).toBeLessThanOrEqual(64);
+  const pieces = field(page, "pieces");
+  await expect(pieces.locator("[data-clamp-detail]")).toBeHidden();
+  await pieces.locator("[data-clamp-toggle]").click();
+  await expect(pieces.locator("[data-clamp-detail]")).toBeVisible();
+  await expect(pieces.locator("[data-clamp-toggle]")).toHaveText("ver menos");
+  await pieces.locator("[data-clamp-toggle]").click();
+  await expect(pieces.locator("[data-clamp-detail]")).toBeHidden();
   // Valores: só a venda; Pagamento: só o do cliente.
   await expect(field(page, "saleUnit")).toHaveCount(1);
   await expect(field(page, "quote")).toHaveCount(0);

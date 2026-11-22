@@ -114,6 +114,68 @@ beforeAll(async () => {
   joao = users.find((u) => u.email === "joao@lojista.com")!;
 });
 
+/** Foto do cadastro do produto (documento + vínculo), como a tela grava. */
+async function photo(productId: string, kind: string, isPrimary = false) {
+  const store = getStore();
+  const doc = await store.create("documents", {
+    orderId: null,
+    requestId: null,
+    requirementId: null,
+    type: "photo",
+    name: `${kind}.png`,
+    mime: "image/png",
+    size: 10,
+    storageKey: `foto-${kind}-${productId}`,
+    version: 1,
+    previousDocumentId: null,
+    uploadedByUserId: admin.id,
+    visibility: "internal",
+    productId,
+    sourcingItemId: null,
+    kitId: null,
+    imageHash: null,
+  } as never);
+  await store.create("product_photos", {
+    productId,
+    sourcingItemId: null,
+    orderId: null,
+    documentId: doc.id,
+    kind,
+    caption: null,
+    takenAt: new Date().toISOString(),
+    takenByUserId: admin.id,
+    derivedFromPhotoId: null,
+    isPrimary,
+  } as never);
+  return doc.id;
+}
+
+describe("foto do produto na primeira coluna (dono, 22/11/2026)", () => {
+  it("a da vitrine, nunca o cartão; o cliente só a de produto ativo", async () => {
+    const p = await product({ name: "PRODUTO COM FOTO", sku: "WB-FOTO" });
+    // O cartão do fornecedor é a principal, mas nunca vai para a ficha.
+    await photo(p.id, "business_card", true);
+    const shown = await photo(p.id, "commercial");
+    const r = await request(p.id);
+    const forAdmin = await sheetOf(admin, r);
+    expect(forAdmin.rows[0].photoId).toBe(shown);
+    const forCustomer = await sheetOf(joao, r);
+    expect(forCustomer.rows[0].photoId).toBe(shown);
+    // Produto inativo: o cliente não abre a foto (sem miniatura quebrada).
+    await getStore().update("products", p.id, { active: false });
+    expect((await sheetOf(joao, r)).rows[0].photoId).toBeNull();
+    expect((await sheetOf(admin, r)).rows[0].photoId).toBe(shown);
+    // Sem foto, ou sem produto do catálogo: nula.
+    const bare = await product({ name: "SEM FOTO", sku: "WB-NOFOTO" });
+    expect(
+      (await sheetOf(admin, await request(bare.id))).rows[0].photoId,
+    ).toBeNull();
+    expect(
+      (await sheetOf(admin, await request(null))).rows[0].photoId,
+    ).toBeNull();
+  });
+});
+
 describe("especificação gravada", () => {
   it("bastão: linhas, eixos do cabeçalho e unidade", () => {
     const spec = parseRequestSpec(BASTAO_SPEC);

@@ -174,6 +174,11 @@ export interface SheetRow {
   warnings: string[];
   schedule: RequestSchedule | null;
   unit: string;
+  /**
+   * Foto do produto na primeira coluna (dono, 22/11/2026): a primeira da
+   * vitrine do catálogo, a mesma que o cliente pode abrir; nula sem foto.
+   */
+  photoId?: string | null;
 }
 
 export interface RequestSheetView {
@@ -1288,17 +1293,61 @@ export async function loadRequestSheet(
         : Promise.resolve(null),
     ),
   );
+  const photos = await sheetPhotos(user, requests).catch((error) => {
+    console.error("[request-sheet] fotos", error);
+    return new Map<string, string>();
+  });
   return {
     access,
-    rows: rows.map((inputs, i) =>
-      buildSheetRow(
+    rows: rows.map((inputs, i) => ({
+      ...buildSheetRow(
         { ...inputs, customerPayment: payments[i] },
         access,
         t,
         inputs.request.id === request.id,
       ),
-    ),
+      photoId: inputs.request.productId
+        ? (photos.get(inputs.request.productId) ?? null)
+        : null,
+    })),
   };
+}
+
+/**
+ * A foto de cada produto da ficha (dono, 22/11/2026): a primeira da vitrine
+ * do catálogo (`catalogShowcasePhotos`: nunca o cartão do fornecedor nem a
+ * foto de referência). Fora da Wellmix, só a que a pessoa pode abrir: a de
+ * produto ativo e não escondido pelo Book (a regra de `canAccessDocument`),
+ * para a miniatura não aparecer quebrada.
+ */
+async function sheetPhotos(
+  user: User,
+  requests: readonly Request[],
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const productIds = [
+    ...new Set(
+      requests.map((r) => r.productId).filter((v): v is string => !!v),
+    ),
+  ];
+  if (!productIds.length) return out;
+  const { catalogShowcasePhotos } = await import("./documents");
+  const showcase = await catalogShowcasePhotos(productIds);
+  let allowed = (id: string) => showcase.has(id);
+  if (!isWellmix(user)) {
+    const { hiddenBookingProductIds } = await import("./booking-visibility");
+    const [products, hidden] = await Promise.all([
+      listByIds(getStore(), "products", productIds),
+      hiddenBookingProductIds(),
+    ]);
+    const active = new Set(products.filter((p) => p.active).map((p) => p.id));
+    allowed = (id) => showcase.has(id) && active.has(id) && !hidden.has(id);
+  }
+  for (const id of productIds) {
+    const first = allowed(id) ? showcase.get(id)?.[0] : undefined;
+    if (first) out.set(id, first.documentId);
+  }
+  return out;
 }
 
 /**
