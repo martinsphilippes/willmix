@@ -1,4 +1,9 @@
-import type { SamplingFile, SupplierRequest } from "@/lib/db/schema";
+import type { ReactNode } from "react";
+import type {
+  SamplingFile,
+  SupplierRequest,
+  SupplierRequestSampling,
+} from "@/lib/db/schema";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -9,7 +14,7 @@ import {
   samplingCanUpload,
   samplingDueAt,
   samplingLate,
-  samplingOf,
+  samplingFor,
   samplingRoundFiles,
 } from "@/lib/supplier-request-sampling";
 import { Badge, Card, Field, Textarea, cx } from "@/components/ui";
@@ -34,12 +39,14 @@ function FileTile({
   file,
   t,
   removable,
-  requestId,
+  fields,
+  removeAction,
 }: {
   file: SamplingFile;
   t: Translate;
   removable: boolean;
-  requestId: string;
+  fields: ReactNode;
+  removeAction: SamplingActions["remove"];
 }) {
   const src = `/api/files/${file.documentId}`;
   return (
@@ -83,8 +90,8 @@ function FileTile({
           {file.fileName}
         </a>
         {removable ? (
-          <form action={removeSamplingFileAction}>
-            <input type="hidden" name="id" value={requestId} />
+          <form action={removeAction}>
+            {fields}
             <input type="hidden" name="documentId" value={file.documentId} />
             <button
               type="submit"
@@ -102,6 +109,22 @@ function FileTile({
   );
 }
 
+/** As quatro ações da amostragem (as da solicitação ou as da cotação). */
+export interface SamplingActions {
+  add: (form: FormData) => Promise<void>;
+  remove: (form: FormData) => Promise<void>;
+  submit: (form: FormData) => Promise<void>;
+  review: (form: FormData) => Promise<void>;
+}
+
+const REQUEST_ACTIONS: SamplingActions = {
+  add: addSamplingFileAction,
+  remove: removeSamplingFileAction,
+  submit: submitSamplingAction,
+  review: reviewSamplingAction,
+};
+
+/** A amostragem de uma solicitação ao fornecedor. */
 export function SamplingCard({
   request: r,
   wellmix,
@@ -117,10 +140,56 @@ export function SamplingCard({
   slaDays: number;
   t: Translate;
 }) {
-  const s = samplingOf(r);
+  const s = samplingFor(r);
   if (!s) return null;
-  const dueAt = samplingDueAt(s, slaDays);
-  const late = samplingLate(s, slaDays);
+  return (
+    <SamplingPanel
+      sampling={s}
+      wellmix={wellmix}
+      canValidate={canValidate}
+      // O prazo só conta depois da aprovação; antes, ele pode adiantar.
+      slaDays={r.status === "approved" ? slaDays : null}
+      early={r.status !== "approved"}
+      actions={REQUEST_ACTIONS}
+      fields={<input type="hidden" name="id" value={r.id} />}
+      t={t}
+    />
+  );
+}
+
+/**
+ * Cartão da amostragem (da solicitação ou de um produto da cotação de
+ * compra): arquivos da rodada, envio, validação e rodadas anteriores.
+ * `fields` são os campos ocultos que dizem de quem é a amostragem.
+ */
+export function SamplingPanel({
+  sampling: s,
+  wellmix,
+  canValidate,
+  slaDays,
+  early = false,
+  actions,
+  fields,
+  title,
+  anchor = "amostragem",
+  t,
+}: {
+  sampling: SupplierRequestSampling;
+  wellmix: boolean;
+  canValidate: boolean;
+  /** Nulo: sem prazo (amostragem adiantada, antes da decisão). */
+  slaDays: number | null;
+  /** Antes da decisão da Wellmix: ele já pode enviar. */
+  early?: boolean;
+  actions: SamplingActions;
+  fields: ReactNode;
+  /** Nome ao lado do título (o produto, na cotação com vários). */
+  title?: string;
+  anchor?: string | null;
+  t: Translate;
+}) {
+  const dueAt = slaDays === null ? null : samplingDueAt(s, slaDays);
+  const late = slaDays !== null && samplingLate(s, slaDays);
   const current = samplingRoundFiles(s);
   const previous = s.files.filter((f) => f.round !== s.round);
   const canUpload = !wellmix && samplingCanUpload(s);
@@ -129,11 +198,18 @@ export function SamplingCard({
   // A rodada aprovada/enviada mostra os arquivos dela; a reprovada abre a
   // seguinte (os da reprovada ficam em "Rodadas anteriores").
   return (
-    <section id="amostragem" className="scroll-mt-24" data-sampling={s.status}>
+    <section
+      id={anchor ?? undefined}
+      className="scroll-mt-24"
+      data-sampling={s.status}
+    >
       <Card
         title={
           <span className="flex flex-wrap items-center gap-2">
             {t("sampling.title")}
+            {title ? (
+              <span className="font-normal text-zinc-600">· {title}</span>
+            ) : null}
             <Badge tone={SAMPLING_TONE[s.status]}>
               <span data-sampling-status>
                 {t(`sampling.status.${s.status}` as DictionaryKey)}
@@ -160,7 +236,15 @@ export function SamplingCard({
         }
       >
         <p className="mb-3 text-sm text-zinc-600">
-          {t(wellmix ? "sampling.intro.wellmix" : "sampling.intro.supplier")}
+          {t(
+            early
+              ? wellmix
+                ? "sampling.intro.earlyWellmix"
+                : "sampling.intro.earlySupplier"
+              : wellmix
+                ? "sampling.intro.wellmix"
+                : "sampling.intro.supplier",
+          )}
         </p>
 
         {s.status === "rejected" && lastReject?.text ? (
@@ -183,7 +267,8 @@ export function SamplingCard({
                 file={f}
                 t={t}
                 removable={canUpload}
-                requestId={r.id}
+                fields={fields}
+                removeAction={actions.remove}
               />
             ))}
           </ul>
@@ -200,8 +285,8 @@ export function SamplingCard({
 
         {canUpload ? (
           <div className="mt-4 space-y-3" data-sampling-upload>
-            <form action={addSamplingFileAction}>
-              <input type="hidden" name="id" value={r.id} />
+            <form action={actions.add}>
+              {fields}
               <FileAutoInput
                 name="file"
                 accept={SAMPLING_ACCEPT}
@@ -217,11 +302,11 @@ export function SamplingCard({
               {t("sampling.upload.hint", { max: SAMPLING_MAX_FILES })}
             </p>
             <form
-              action={submitSamplingAction}
+              action={actions.submit}
               className="space-y-2"
               data-sampling-submit-form
             >
-              <input type="hidden" name="id" value={r.id} />
+              {fields}
               <Field label={t("sampling.submit.note")}>
                 <Textarea name="note" rows={2} maxLength={2000} />
               </Field>
@@ -262,11 +347,11 @@ export function SamplingCard({
         {wellmix && samplingCanReview(s) ? (
           canValidate ? (
             <form
-              action={reviewSamplingAction}
+              action={actions.review}
               className="mt-4 space-y-2"
               data-sampling-review-form
             >
-              <input type="hidden" name="id" value={r.id} />
+              {fields}
               <Field label={t("sampling.review.note")}>
                 <Textarea name="note" rows={2} maxLength={2000} />
               </Field>
@@ -308,7 +393,8 @@ export function SamplingCard({
                   file={f}
                   t={t}
                   removable={false}
-                  requestId={r.id}
+                  fields={fields}
+                  removeAction={actions.remove}
                 />
               ))}
             </ul>

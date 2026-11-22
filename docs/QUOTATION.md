@@ -109,7 +109,7 @@ Pedido do dono (22/11/2026): trocar o nome para Cotação não pode perder proce
 | Decisão da Wellmix (aprovar, recusar, cancelar, com a observação)             | Igual, abaixo do quadro.                                                                                      |
 | Alternativas e "Abrir solicitação para esta"                                  | Igual, abaixo da Decisão.                                                                                     |
 | Solicitações ligadas ("continuar negociando" ou recusar)                      | Igual; as ligadas também aparecem como linhas do quadro.                                                      |
-| Amostragem (fotos e vídeos, validar)                                          | Igual, no alto da tela, depois da aprovação.                                                                  |
+| Amostragem (fotos e vídeos, validar)                                          | Igual depois da aprovação; desde 22/11/2026 também pode começar na cotação (docs/SUPPLIER_SAMPLING.md).       |
 | Produto (criar, associar, liberar na vitrine, código do Sankhya)              | Igual, no fim da tela.                                                                                        |
 | Aviso do pedido de compra (gerar ou abrir o pedido)                           | Igual.                                                                                                        |
 | Book, seleção e o Superplan do item escolhido                                 | Card Book, à direita (só quando há book).                                                                     |

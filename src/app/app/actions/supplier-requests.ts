@@ -670,8 +670,10 @@ export async function submitSamplingAction(form: FormData) {
 /** A Wellmix aprova ou reprova a amostra (motivo obrigatório para reprovar). */
 export async function reviewSamplingAction(form: FormData) {
   const user = await requireUser();
-  const { id, ok } = backOf(form);
-  const back = ok ? sampling(id) : "/app/supplier-requests";
+  // Validada pelo card Imagens de outra solicitação (a ligada): volta para a
+  // tela em que a Wellmix está (`board`).
+  const { id, ok, board, back: home } = backOf(form);
+  const back = !ok ? "/app/supplier-requests" : board ? home : sampling(id);
   await run(back, async () => {
     if (!ok) throw new Error("invalid_input");
     const decision = z.enum(["approve", "reject"]).parse(str(form, "decision"));

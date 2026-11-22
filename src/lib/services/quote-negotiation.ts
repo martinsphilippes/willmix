@@ -164,7 +164,12 @@ export async function proposeQuoteCounter(
 export async function postQuoteMessage(
   user: User,
   quoteId: string,
-  input: { responseId: string | null; productId: string | null; text: string },
+  input: {
+    responseId: string | null;
+    productId: string | null;
+    text: string;
+    file?: File | null;
+  },
   now = new Date(),
 ): Promise<PurchaseQuoteResponse> {
   const store = getStore();
@@ -181,11 +186,30 @@ export async function postQuoteMessage(
   if (!canMessageQuote(quote.status, response))
     throw new PurchaseQuoteError("quote_closed");
   const text = clip(input.text);
-  if (!text) throw new PurchaseQuoteError("supplier_request_message_empty");
+  const file = input.file && input.file.size > 0 ? input.file : null;
+  if (!text && !file)
+    throw new PurchaseQuoteError("supplier_request_message_empty");
   const item = input.productId
     ? quote.items.find((i) => i.productId === input.productId)
     : null;
   if (input.productId && !item) throw new PurchaseQuoteError("not_found");
+  // Anexo (foto, PDF ou Excel; também a imagem colada): só a Wellmix e o
+  // fornecedor desta resposta abrem (`supplierSeesQuoteFile`).
+  let attachment: Pick<
+    QuoteNegotiationEvent,
+    "documentId" | "fileName" | "mime"
+  > = {};
+  if (file) {
+    const { NEGOTIATION_MIME } = await import("./supplier-request-negotiation");
+    if (!NEGOTIATION_MIME.includes((file.type || "").toLowerCase()))
+      throw new PurchaseQuoteError("supplier_request_file_type");
+    const { uploadDocument } = await import("./documents");
+    const doc = await uploadDocument(user, file, {
+      type: "attachment",
+      visibility: "internal",
+    });
+    attachment = { documentId: doc.id, fileName: doc.name, mime: doc.mime };
+  }
   const updated = await store.update("purchase_quote_responses", response.id, {
     negotiation: appendQuoteEvent(
       response,
@@ -193,6 +217,7 @@ export async function postQuoteMessage(
         kind: "message",
         productId: item?.productId ?? null,
         text,
+        ...attachment,
       }),
     ),
   });
@@ -203,7 +228,13 @@ export async function postQuoteMessage(
     quote.id,
     `Cotação de compra nº ${quote.number}: mensagem`,
   );
-  await notifyMessage(quote, updated, wellmix, item?.productId ?? null, text);
+  await notifyMessage(
+    quote,
+    updated,
+    wellmix,
+    item?.productId ?? null,
+    text ?? attachment.fileName ?? "",
+  );
   return updated;
 }
 
@@ -241,4 +272,17 @@ async function notifyMessage(
       }),
     },
   ).catch((error) => console.error("notify(quote.message)", error));
+}
+
+/** O fornecedor abre o anexo de uma mensagem da conversa da cotação dele. */
+export async function supplierSeesQuoteFile(
+  supplierId: string,
+  documentId: string,
+): Promise<boolean> {
+  const responses = await getStore()
+    .list("purchase_quote_responses", { filter: { supplierId } })
+    .catch(() => [] as PurchaseQuoteResponse[]);
+  return responses.some((r) =>
+    (r.negotiation ?? []).some((e) => e.documentId === documentId),
+  );
 }

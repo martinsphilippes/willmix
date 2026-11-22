@@ -47,6 +47,7 @@ import {
   decideSupplierRequestStateAction,
   openSupplierRequestAction,
   resolveLinkedRequestAction,
+  reviewSamplingAction,
 } from "../../actions/supplier-requests";
 import { ActionForm } from "@/components/action-form";
 import { requestItemSpecs } from "@/lib/supplier-request-specs";
@@ -109,8 +110,9 @@ import {
 import { lastPurchases } from "@/lib/services/purchase-strategy";
 import { QuotationQuotePage } from "../_components/quote-pages";
 import { SamplingCard } from "../_components/sampling";
+import { ItemImagesCard } from "../_components/item-images";
 import { samplingSlaDays } from "@/lib/services/supplier-request-sampling";
-import { samplingApproved } from "@/lib/supplier-request-sampling";
+import { samplingApproved, samplingFor } from "@/lib/supplier-request-sampling";
 import {
   entityLinkAccess,
   linksForSupplierRequest,
@@ -555,7 +557,8 @@ export default async function SupplierRequestPage({
       mark="summary"
     >
       <div className="flex gap-3">
-        {it.photoDocumentId ? (
+        {/* A Wellmix vê a foto no card Imagens, à direita (um lugar só). */}
+        {it.photoDocumentId && !wellmix ? (
           <a
             href={`/api/files/${it.photoDocumentId}`}
             target="_blank"
@@ -1138,15 +1141,17 @@ export default async function SupplierRequestPage({
         pending: waiting,
         href: o.id === r.id ? null : `/app/supplier-requests/${o.id}?view=item`,
         chat: (
-          <RequestChat
-            user={user}
-            request={o}
-            supplierName={name}
-            board={r.id}
-            errors={errorTexts}
-            fallbackError={errorFallback}
-            t={t}
-          />
+          <>
+            <RequestChat
+              user={user}
+              request={o}
+              supplierName={name}
+              board={r.id}
+              errors={errorTexts}
+              fallbackError={errorFallback}
+              t={t}
+            />
+          </>
         ),
         messages: (o.negotiation ?? []).filter((e) => e.kind === "message")
           .length,
@@ -1349,6 +1354,19 @@ export default async function SupplierRequestPage({
       </Card>
     ) : null;
 
+  const samplingDays = await samplingSlaDays();
+  const samplingCard = samplingFor(r) ? (
+    <div className="mb-4">
+      <SamplingCard
+        request={r}
+        wellmix={wellmix}
+        canValidate={wellmix && can(user, "sampling.validate")}
+        slaDays={samplingDays}
+        t={t}
+      />
+    </div>
+  ) : null;
+
   return (
     <>
       <PageHeader
@@ -1402,18 +1420,12 @@ export default async function SupplierRequestPage({
         </div>
       ) : null}
 
-      {/* Amostragem: a etapa depois da aprovação (fotos e vídeos da amostra). */}
-      {r.status === "approved" ? (
-        <div className="mb-4">
-          <SamplingCard
-            request={r}
-            wellmix={wellmix}
-            canValidate={wellmix && can(user, "sampling.validate")}
-            slaDays={await samplingSlaDays()}
-            t={t}
-          />
-        </div>
-      ) : null}
+      {/* Amostragem (fotos e vídeos da amostra): depois da aprovação, no
+          alto, com o prazo; antes dela, o fornecedor já pode adiantar e o
+          cartão fica abaixo da negociação (dono, 22/11/2026). */}
+      {/* Só para o fornecedor: a Wellmix vê e valida a amostra no card
+          Imagens, à direita (um lugar só). */}
+      {!wellmix && r.status === "approved" ? samplingCard : null}
 
       {wellmix ? (
         /* Wellmix (dono, 22/11/2026; docs/QUOTATION.md): no centro, o
@@ -1451,6 +1463,40 @@ export default async function SupplierRequestPage({
             className="grid min-w-0 gap-4 md:grid-cols-2 md:items-start xl:sticky xl:top-[calc(var(--wm-header)+1rem)] xl:max-h-[calc(100vh-var(--wm-header)-2rem)] xl:grid-cols-1 xl:overflow-y-auto xl:px-1 xl:pb-1"
             data-negotiation-aside
           >
+            {/* Imagens sempre à vista enquanto se negocia: a referência da
+                Wellmix e a amostra de cada fornecedor (dono, 22/11/2026). */}
+            <ItemImagesCard
+              reference={it.photoDocumentId ? [it.photoDocumentId] : []}
+              referenceFrom={r.bookingLotId ? "book" : "product"}
+              samples={[
+                { request: r, supplier },
+                ...linked.map((l) => ({
+                  request: l.request,
+                  supplier: l.supplier,
+                })),
+              ].map(({ request: o, supplier: s }) => ({
+                key: `request:${o.id}`,
+                supplierName:
+                  s?.name ?? t("supplierRequests.negotiation.side.supplier"),
+                sampling: samplingFor(o),
+                skipped: !!o.sampling?.skipped,
+                // O prazo conta depois da aprovação da solicitação.
+                slaDays: o.status === "approved" ? samplingDays : null,
+                anchor: o.id === r.id ? "amostragem" : undefined,
+                review: can(user, "sampling.validate")
+                  ? {
+                      action: reviewSamplingAction,
+                      fields: (
+                        <>
+                          <input type="hidden" name="id" value={o.id} />
+                          <input type="hidden" name="board" value={r.id} />
+                        </>
+                      ),
+                    }
+                  : null,
+              }))}
+              t={t}
+            />
             {bookCard}
             <div id="conversa" className="min-w-0 scroll-mt-20">
               <BoardCounterForm
@@ -1520,6 +1566,11 @@ export default async function SupplierRequestPage({
           </aside>
         </div>
       )}
+      {!wellmix && r.status !== "approved" && samplingCard ? (
+        <div className="mt-4" data-sampling-early>
+          {samplingCard}
+        </div>
+      ) : null}
       {wellmix && r.orderId ? (
         <div className="mt-4" data-supplier-request-order>
           <Alert tone="info">

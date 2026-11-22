@@ -36,7 +36,13 @@ import {
   SupplierSheetError,
   type PreparedQuoteSheet,
   type QuoteSheetInput,
+  soldBeforeProducts,
 } from "./supplier-sheets";
+import {
+  quoteSamplingReady,
+  quoteSamplingToSend,
+  skippedSampling,
+} from "@/lib/quote-sampling";
 
 /*
  * Cotação de compra (mapa B13; dono, 15/11/2026; docs/PURCHASE_DEMAND.md).
@@ -763,6 +769,12 @@ export async function chooseWinner(
   const winner = responses.find((r) => r.id === responseId);
   if (!winner || winner.status !== "answered")
     throw new PurchaseQuoteError("quote_winner_invalid");
+  // Só vence quem tem a amostra de todos os produtos aprovada, ou é
+  // conhecido do produto (dono, 22/11/2026; docs/SUPPLIER_SAMPLING.md).
+  const productIds = quote.items.map((i) => i.productId);
+  const known = await soldBeforeProducts(winner.supplierId, productIds);
+  if (!quoteSamplingReady(winner, productIds, known))
+    throw new PurchaseQuoteError("quote_winner_sampling");
   const updated = await getStore().update("purchase_quotes", quote.id, {
     status: "chosen",
     winnerResponseId: winner.id,
@@ -893,7 +905,21 @@ async function supplierRequestsFromWinner(
   const out: SupplierRequest[] = [];
   const currency = SHEET_CURRENCIES.find((c) => c === winner.currency) ?? null;
   const incoterm = SHEET_INCOTERMS.find((c) => c === winner.incoterm) ?? null;
+  // A amostragem vai com a vencedora: a aprovada na cotação ou, para o
+  // fornecedor conhecido do produto, a dispensada (dono, 22/11/2026). Assim
+  // a solicitação não pede a amostra de novo.
+  const known = await soldBeforeProducts(
+    winner.supplierId,
+    quote.items.map((i) => i.productId),
+  );
   for (const item of quote.items) {
+    const sampled = winner.sampling?.[item.productId];
+    const sampling =
+      sampled?.status === "approved"
+        ? sampled
+        : known.has(item.productId)
+          ? skippedSampling(now.toISOString())
+          : null;
     const price =
       winner.prices?.find((p) => p.productId === item.productId)?.unitPrice ??
       null;
@@ -968,6 +994,7 @@ async function supplierRequestsFromWinner(
       productLinkedByUserId: user.id,
       quoteResponseId: winner.id,
       demandIds: quote.demandIds,
+      ...(sampling ? { sampling } : {}),
     });
     out.push(request);
   }
@@ -1177,7 +1204,18 @@ export async function quoteTaskDrafts(user: User, now = new Date()) {
           // dentro do prazo novo (dono, 22/11/2026; docs/QUOTATION.md).
           (state === "answered" &&
             pendingQuoteProposals(response).length > 0 &&
-            Date.parse(response.dueAt) > now.getTime()))
+            Date.parse(response.dueAt) > now.getTime()) ||
+          // Amostra a enviar (ou reprovada): a cotação continua nas
+          // Pendências dele até a Wellmix ter o que validar.
+          (state === "answered" &&
+            quoteSamplingToSend(
+              response,
+              quote.items.map((i) => i.productId),
+              await soldBeforeProducts(
+                response.supplierId,
+                quote.items.map((i) => i.productId),
+              ),
+            ).length > 0))
       ) {
         // Nas Pendências do fornecedor, a cotação acende a etapa "Responder
         // a solicitação" (amarelo no prazo, vermelho atrasada) e, ao tocar

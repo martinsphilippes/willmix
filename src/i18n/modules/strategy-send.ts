@@ -102,6 +102,8 @@ export const pt = {
     "Há produtos sem destinatário apto. Ajuste antes de confirmar.",
   "strategy.note": "Observação (vai junto da estratégia)",
   "strategy.tabs.label": "Etapas da Estratégia de compra",
+  "strategy.card.chooseOne":
+    "Escolha acima o que fazer com esta solicitação para ver o resumo e confirmar o envio.",
   "strategy.tabs.waiting": "Esperando estratégia",
   "strategy.tabs.open": "Em andamento",
   "strategy.tabs.sent": "Enviadas",
@@ -263,6 +265,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Some products have no eligible recipient. Adjust them before confirming.",
   "strategy.note": "Note (goes with the strategy)",
   "strategy.tabs.label": "Purchase strategy stages",
+  "strategy.card.chooseOne":
+    "Choose above what to do with this request to see the summary and confirm the send.",
   "strategy.tabs.waiting": "Waiting for a strategy",
   "strategy.tabs.open": "In progress",
   "strategy.tabs.sent": "Sent",
@@ -414,6 +418,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.summary.fixFirst": "有产品没有符合条件的接收方。请先调整再确认。",
   "strategy.note": "备注（随策略一起保存）",
   "strategy.tabs.label": "采购策略阶段",
+  "strategy.card.chooseOne":
+    "请在上方选择如何处理此申请，以查看摘要并确认发送。",
   "strategy.tabs.waiting": "等待策略",
   "strategy.tabs.open": "进行中",
   "strategy.tabs.sent": "已发送",

@@ -44,6 +44,18 @@ import {
   quoteProductMessages,
 } from "@/lib/quote-negotiation";
 import { errorTextsFor } from "@/i18n/error-text";
+import { quoteSamplingOf } from "@/lib/quote-sampling";
+import { soldBeforeProducts } from "@/lib/services/supplier-sheets";
+import { SamplingPanel } from "../../supplier-requests/_components/sampling";
+import {
+  addQuoteSamplingFileAction,
+  removeQuoteSamplingFileAction,
+  reviewQuoteSamplingAction,
+  submitQuoteSamplingAction,
+} from "../../actions/quotation";
+import { PhotoGallery } from "@/components/photo-gallery";
+import { galleryProps } from "@/components/photo-gallery-props";
+import { productPhotoList } from "@/lib/services/product-list";
 
 /*
  * Uma cotação de compra (mapa B13; docs/PURCHASE_DEMAND.md).
@@ -80,6 +92,32 @@ export default async function PurchaseQuotePage({
     // a Wellmix não escolhe a vencedora (dono, 21/11/2026, opção 1).
     const editable = quoteEditable(quote, response, now);
     const times = dueTimes(t, response.dueAt);
+    // Fotos do produto e amostragem (dono, 22/11/2026;
+    // docs/SUPPLIER_SAMPLING.md): desde o convite, ele vê as fotos do nosso
+    // cadastro e envia a amostra de cada produto; o fornecedor conhecido do
+    // produto (já vendeu à Wellmix) não envia.
+    const quoteProductIds = quote.items.map((i) => i.productId);
+    const [known, sampleProducts, samplePhotos] = await Promise.all([
+      soldBeforeProducts(response.supplierId, quoteProductIds).catch(
+        () => new Set<string>(),
+      ),
+      getStore()
+        .list("products", { filter: { id: quoteProductIds } })
+        .catch(() => []),
+      getStore()
+        .list("product_photos", { filter: { productId: quoteProductIds } })
+        .catch(() => []),
+    ]);
+    const samplingOpen = quote.status === "open" || quote.status === "chosen";
+    const samplingNotice =
+      typeof sp.sampling === "string" &&
+      ["file", "removed", "submitted"].includes(sp.sampling)
+        ? (sp.sampling as "file" | "removed" | "submitted")
+        : null;
+    // Com a amostra enviada, a conversa já abre: os dois falam do que veem.
+    const sampleStarted = Object.values(response.sampling ?? {}).some(
+      (x) => x.files.length > 0,
+    );
     const counters = pendingQuoteProposals(response);
     const chat = quoteProductMessages(response, null);
     // Ficha técnica de cada produto (dono, 20/11/2026): pedida na primeira
@@ -182,7 +220,7 @@ export default async function PurchaseQuotePage({
         {/* Negociação dentro da cotação (dono, 22/11/2026;
             docs/QUOTATION.md): a contraproposta da Wellmix por produto (ele
             corrige a resposta abaixo e reenvia) e a conversa com ela. */}
-        {counters.length || chat.length ? (
+        {counters.length || chat.length || sampleStarted ? (
           <div id="negociacao" className="mb-4 scroll-mt-20">
             <Card title={t("quotation.supplier.title")}>
               <div className="space-y-3" data-quote-negotiation>
@@ -254,6 +292,99 @@ export default async function PurchaseQuotePage({
                   fallbackError={`${t("common.error")} ({code})`}
                   t={t}
                 />
+              </div>
+            </Card>
+          </div>
+        ) : null}
+        {response.status !== "declined" ? (
+          <div id="amostragem" className="mb-4 scroll-mt-20">
+            <Card title={t("quoteSampling.productsTitle")}>
+              <div className="space-y-4" data-quote-sampling>
+                {samplingNotice ? (
+                  <div role="status" data-quote-sampling-notice>
+                    <Alert tone="success">
+                      {t(`quoteSampling.notice.${samplingNotice}`)}
+                    </Alert>
+                  </div>
+                ) : null}
+                {quote.items.map((item) => {
+                  const product =
+                    sampleProducts.find((p) => p.id === item.productId) ?? null;
+                  const name = productNameText(t, item.name);
+                  const sampling = quoteSamplingOf(
+                    response,
+                    item.productId,
+                    known.has(item.productId),
+                  );
+                  return (
+                    <div
+                      key={item.productId}
+                      className="space-y-2"
+                      data-quote-sampling-product={item.productId}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span data-quote-product-photos={item.productId}>
+                          <PhotoGallery
+                            name={name}
+                            {...galleryProps(
+                              t,
+                              product
+                                ? productPhotoList(product, samplePhotos)
+                                : [],
+                            )}
+                          />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold text-zinc-900">
+                            {name}
+                          </span>
+                          <span className="block text-xs text-zinc-500">
+                            {t("quoteSampling.reference")}
+                          </span>
+                        </span>
+                      </div>
+                      {sampling && samplingOpen ? (
+                        <SamplingPanel
+                          title={t("quoteSampling.yourSample")}
+                          sampling={sampling}
+                          wellmix={false}
+                          canValidate={false}
+                          slaDays={null}
+                          early
+                          anchor={null}
+                          actions={{
+                            add: addQuoteSamplingFileAction,
+                            remove: removeQuoteSamplingFileAction,
+                            submit: submitQuoteSamplingAction,
+                            review: reviewQuoteSamplingAction,
+                          }}
+                          fields={
+                            <>
+                              <input
+                                type="hidden"
+                                name="quoteId"
+                                value={quote.id}
+                              />
+                              <input
+                                type="hidden"
+                                name="product"
+                                value={item.productId}
+                              />
+                            </>
+                          }
+                          t={t}
+                        />
+                      ) : sampling ? null : (
+                        <p
+                          className="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600"
+                          data-quote-sampling-skipped={item.productId}
+                        >
+                          {t("quoteSampling.supplierSkipped")}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </Card>
           </div>

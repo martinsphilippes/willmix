@@ -36,8 +36,8 @@ const demand = async (productId: string, quantity = 1000) => {
     quantity,
     unit: "un",
   });
-  const { sent } = await strategy.sendToStrategy(admin, [r.id]);
-  return sent[0] ?? r;
+  // A encomenda entra direto na fila (dono, 22/11/2026).
+  return (await getStore().get("requests", r.id)) ?? r;
 };
 
 /**
@@ -68,11 +68,9 @@ const lotOf = async (...items: Array<[string, number]>) => {
   );
   for (const r of lot)
     await getStore().update("requests", r.id, { status: "REQUESTED" });
-  const { sent } = await strategy.sendToStrategy(
-    admin,
-    lot.map((r) => r.id),
-  );
-  return sent;
+  return getStore().list("requests", {
+    filter: { id: lot.map((r) => r.id) },
+  });
 };
 
 beforeAll(async () => {

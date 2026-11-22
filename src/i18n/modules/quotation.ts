@@ -66,6 +66,64 @@ export const pt = {
     "Corrija a sua resposta abaixo e envie de novo até {br} (Brasília) · {cn} (China).",
   "quotation.supplier.counterClosed":
     "O prazo para corrigir a resposta acabou; fale com a Wellmix pela conversa.",
+  "sampling.intro.earlySupplier":
+    "Você já pode enviar as fotos e os vídeos da amostra deste item (feita em impressora 3D: detalhes, medidas, encaixes), sem esperar a decisão da Wellmix. A amostra física não é enviada.",
+  "sampling.intro.earlyWellmix":
+    "O fornecedor já pode enviar a amostra enquanto a cotação corre. Quando ele enviar, confira e aprove, ou reprove com o motivo para ele mandar de novo.",
+  "quoteSampling.col": "Amostra",
+  "quoteSampling.skipped": "Dispensada",
+  "quoteSampling.skippedHint":
+    "Fornecedor conhecido deste produto (já vendeu à Wellmix): sem amostragem.",
+  "quoteSampling.none": "—",
+  "quoteSampling.open": "Ver a amostra de {name}",
+  "quoteSampling.modalTitle": "Amostragem · {name}",
+  "quoteSampling.photos": "Fotos do produto",
+  "quoteSampling.photosHint":
+    "Fotos do nosso cadastro, para você fazer a amostra.",
+  "quoteSampling.supplierSkipped":
+    "Você já forneceu este produto à Wellmix: não precisa enviar amostra.",
+  "quoteSampling.productsTitle": "Fotos do produto e amostragem",
+  "quoteSampling.choose.hint":
+    "Só pode ser a vencedora quem tem a amostra de todos os produtos aprovada ou é fornecedor conhecido do produto.",
+  "quoteSampling.choose.blocked": "amostra ainda não aprovada",
+  "quoteSampling.notice.file": "Arquivo adicionado à amostragem.",
+  "quoteSampling.notice.removed": "Arquivo retirado.",
+  "quoteSampling.notice.submitted":
+    "Amostra enviada para a validação da Wellmix.",
+  "quoteSampling.notice.approved": "Amostra aprovada.",
+  "quoteSampling.notice.rejected":
+    "Amostra reprovada; o fornecedor foi avisado.",
+  "quoteSampling.notify.submitted.subject":
+    "Cotação nº {n}: amostra de {product} enviada",
+  "quoteSampling.notify.approved.subject": "Cotação nº {n}: amostra aprovada",
+  "quoteSampling.notify.rejected.subject": "Cotação nº {n}: amostra reprovada",
+  "quote.error.quote_winner_sampling":
+    "A amostra deste fornecedor ainda não foi aprovada: só vence quem tem a amostra aprovada ou é conhecido do produto.",
+  "quote.error.sampling_not_open": "Não há amostragem para este produto.",
+  "quote.error.sampling_closed": "Esta rodada da amostragem já foi enviada.",
+  "quote.error.sampling_too_many": "Limite de arquivos da rodada atingido.",
+  "quote.error.sampling_file_type":
+    "Envie foto (JPG, PNG, WEBP, HEIC) ou vídeo (MP4, MOV, WEBM, 3GP).",
+  "quote.error.sampling_file_missing":
+    "Adicione ao menos uma foto ou um vídeo.",
+  "quote.error.sampling_not_submitted":
+    "A amostra ainda não foi enviada para a validação.",
+  "quote.error.sampling_reason_required": "Para reprovar, escreva o motivo.",
+  "quote.error.sampling_supplier_only": "Só o fornecedor envia a amostra.",
+  "quoteSampling.yourSample": "Sua amostra",
+  "quoteSampling.reference":
+    "Referência da Wellmix: fotos do nosso cadastro, para você fazer a amostra.",
+  "itemImages.title": "Imagens",
+  "itemImages.hint":
+    "Clique para abrir. O botão no canto copia a imagem para colar no chat.",
+  "itemImages.reference": "Referência da Wellmix",
+  "itemImages.from.product": " (fotos do cadastro do produto)",
+  "itemImages.from.book": " (foto do item do book)",
+  "itemImages.noReference": "Sem foto de referência.",
+  "itemImages.sampleOf": "Amostra de {name}",
+  "itemImages.noSample": "Ainda não enviou a amostra.",
+  "itemImages.copy": "Copiar a imagem para colar no chat",
+  "itemImages.copied": "Imagem copiada",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -128,6 +186,62 @@ export const en: Record<keyof typeof pt, string> = {
     "Update your answer below and send it again by {br} (Brasília) · {cn} (China).",
   "quotation.supplier.counterClosed":
     "The deadline to update the answer has passed; talk to Wellmix in the conversation.",
+  "sampling.intro.earlySupplier":
+    "You can already send photos and videos of the sample of this item (3D-printed: details, dimensions, fittings), without waiting for Wellmix's decision. The physical sample is not shipped.",
+  "sampling.intro.earlyWellmix":
+    "The supplier can already send the sample while the quotation is running. When they do, check and approve, or reject with the reason so they send again.",
+  "quoteSampling.col": "Sample",
+  "quoteSampling.skipped": "Not required",
+  "quoteSampling.skippedHint":
+    "Known supplier of this product (already sold it to Wellmix): no sampling.",
+  "quoteSampling.none": "—",
+  "quoteSampling.open": "See the sample of {name}",
+  "quoteSampling.modalTitle": "Sampling · {name}",
+  "quoteSampling.photos": "Product photos",
+  "quoteSampling.photosHint":
+    "Photos from our records, for you to make the sample.",
+  "quoteSampling.supplierSkipped":
+    "You have already supplied this product to Wellmix: no sample is needed.",
+  "quoteSampling.productsTitle": "Product photos and sampling",
+  "quoteSampling.choose.hint":
+    "Only a supplier with the sample of every product approved, or a known supplier of the product, can be the winner.",
+  "quoteSampling.choose.blocked": "sample not approved yet",
+  "quoteSampling.notice.file": "File added to the sampling.",
+  "quoteSampling.notice.removed": "File removed.",
+  "quoteSampling.notice.submitted": "Sample sent for Wellmix validation.",
+  "quoteSampling.notice.approved": "Sample approved.",
+  "quoteSampling.notice.rejected":
+    "Sample rejected; the supplier was notified.",
+  "quoteSampling.notify.submitted.subject":
+    "Quotation no. {n}: sample of {product} sent",
+  "quoteSampling.notify.approved.subject": "Quotation no. {n}: sample approved",
+  "quoteSampling.notify.rejected.subject": "Quotation no. {n}: sample rejected",
+  "quote.error.quote_winner_sampling":
+    "This supplier's sample is not approved yet: only a supplier with an approved sample, or a known supplier of the product, can win.",
+  "quote.error.sampling_not_open": "There is no sampling for this product.",
+  "quote.error.sampling_closed": "This sampling round was already sent.",
+  "quote.error.sampling_too_many": "File limit of the round reached.",
+  "quote.error.sampling_file_type":
+    "Send a photo (JPG, PNG, WEBP, HEIC) or a video (MP4, MOV, WEBM, 3GP).",
+  "quote.error.sampling_file_missing": "Add at least one photo or video.",
+  "quote.error.sampling_not_submitted":
+    "The sample has not been sent for validation yet.",
+  "quote.error.sampling_reason_required": "Write the reason to reject.",
+  "quote.error.sampling_supplier_only": "Only the supplier sends the sample.",
+  "quoteSampling.yourSample": "Your sample",
+  "quoteSampling.reference":
+    "Wellmix reference: photos from our records, for you to make the sample.",
+  "itemImages.title": "Images",
+  "itemImages.hint":
+    "Click to open. The corner button copies the image so you can paste it in the chat.",
+  "itemImages.reference": "Wellmix reference",
+  "itemImages.from.product": " (photos from the product record)",
+  "itemImages.from.book": " (photo of the book item)",
+  "itemImages.noReference": "No reference photo.",
+  "itemImages.sampleOf": "Sample from {name}",
+  "itemImages.noSample": "No sample sent yet.",
+  "itemImages.copy": "Copy the image to paste in the chat",
+  "itemImages.copied": "Image copied",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -188,4 +302,54 @@ export const zh: Record<keyof typeof pt, string> = {
     "请在下方修改您的回复并于 {br}（巴西利亚）· {cn}（中国）前重新发送。",
   "quotation.supplier.counterClosed":
     "修改回复的期限已过；请通过对话联系 Wellmix。",
+  "sampling.intro.earlySupplier":
+    "您现在就可以发送该商品样品（3D 打印：细节、尺寸、配合）的照片和视频，无需等待 Wellmix 的决定。实物样品无需寄送。",
+  "sampling.intro.earlyWellmix":
+    "询价进行期间供应商即可发送样品。收到后请检查并批准，或填写原因驳回，让其重新发送。",
+  "quoteSampling.col": "样品",
+  "quoteSampling.skipped": "免样",
+  "quoteSampling.skippedHint":
+    "该产品的已知供应商（已向 Wellmix 供货）：无需打样。",
+  "quoteSampling.none": "—",
+  "quoteSampling.open": "查看 {name} 的样品",
+  "quoteSampling.modalTitle": "样品 · {name}",
+  "quoteSampling.photos": "产品照片",
+  "quoteSampling.photosHint": "我们资料中的照片，供您制作样品。",
+  "quoteSampling.supplierSkipped":
+    "您已向 Wellmix 供应过该产品：无需发送样品。",
+  "quoteSampling.productsTitle": "产品照片与样品",
+  "quoteSampling.choose.hint":
+    "只有所有产品样品均已批准，或为该产品已知供应商的，才能中选。",
+  "quoteSampling.choose.blocked": "样品尚未批准",
+  "quoteSampling.notice.file": "文件已添加到样品。",
+  "quoteSampling.notice.removed": "文件已移除。",
+  "quoteSampling.notice.submitted": "样品已提交 Wellmix 验证。",
+  "quoteSampling.notice.approved": "样品已批准。",
+  "quoteSampling.notice.rejected": "样品已驳回；已通知供应商。",
+  "quoteSampling.notify.submitted.subject": "询价 {n} 号：{product} 样品已发送",
+  "quoteSampling.notify.approved.subject": "询价 {n} 号：样品已批准",
+  "quoteSampling.notify.rejected.subject": "询价 {n} 号：样品被驳回",
+  "quote.error.quote_winner_sampling":
+    "该供应商的样品尚未批准：只有样品已批准或为该产品已知供应商的才能中选。",
+  "quote.error.sampling_not_open": "该产品没有打样环节。",
+  "quote.error.sampling_closed": "本轮样品已提交。",
+  "quote.error.sampling_too_many": "已达到本轮文件上限。",
+  "quote.error.sampling_file_type":
+    "请发送照片（JPG、PNG、WEBP、HEIC）或视频（MP4、MOV、WEBM、3GP）。",
+  "quote.error.sampling_file_missing": "请至少添加一张照片或一个视频。",
+  "quote.error.sampling_not_submitted": "样品尚未提交验证。",
+  "quote.error.sampling_reason_required": "驳回请填写原因。",
+  "quote.error.sampling_supplier_only": "只有供应商可以发送样品。",
+  "quoteSampling.yourSample": "您的样品",
+  "quoteSampling.reference": "Wellmix 参考：我们资料中的照片，供您制作样品。",
+  "itemImages.title": "图片",
+  "itemImages.hint": "点击可打开。角上的按钮可复制图片，粘贴到聊天中。",
+  "itemImages.reference": "Wellmix 参考",
+  "itemImages.from.product": "（产品资料中的照片）",
+  "itemImages.from.book": "（Book 条目的照片）",
+  "itemImages.noReference": "没有参考照片。",
+  "itemImages.sampleOf": "{name} 的样品",
+  "itemImages.noSample": "尚未发送样品。",
+  "itemImages.copy": "复制图片以粘贴到聊天",
+  "itemImages.copied": "图片已复制",
 };
