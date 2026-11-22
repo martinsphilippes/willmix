@@ -243,8 +243,9 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   const requestId = requestUrl.split("/").pop()!;
   const itemUrl = `${requestUrl}?view=item`;
 
-  // Overview do Produto novo pelos books e solicitações (docs/FLOW_MENU.md):
-  // a solicitação aberta está em Negociações e abre na linha do tempo dela;
+  // Overview da Cotação (antes "Produto novo") pelos books e solicitações
+  // (docs/FLOW_MENU.md): a solicitação aberta está em Cotação e abre na
+  // linha do tempo dela;
   // os books fechados estão na Seleção de itens.
   await page.goto("/app/flow/new-product");
   await expect(page.locator("[data-flow-kpis]")).toBeVisible();
