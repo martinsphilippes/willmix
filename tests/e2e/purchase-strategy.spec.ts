@@ -154,7 +154,7 @@ async function sendToQuotation(page: Page, demandId: string) {
 
 async function approve(page: Page, decisionId: string) {
   await login(page, "diretoria@wellmix.com");
-  await page.goto("/app/purchase-strategy");
+  await page.goto("/app/purchase-strategy?tab=open");
   const section = page.locator(`#decision-${decisionId}`);
   await expect(section).toHaveAttribute("data-strategy-decision", "pending");
   await section.locator("[data-strategy-approve]").click();
@@ -182,7 +182,7 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   await approve(page, decisionA);
   // O Comprador gera o pedido com as condições da última compra.
   await login(page, "operador@wellmix.com");
-  await page.goto("/app/purchase-strategy");
+  await page.goto("/app/purchase-strategy?tab=open");
   // Rótulo curto do card (dono, 19/11/2026): a explicação aparece por cima,
   // inteira (nada em volta a corta; a grade rola para os lados e cortaria o
   // que sai do card).
@@ -279,7 +279,7 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   const decisionC = await chooseFor(page, encomenda, "last_supplier");
   await approve(page, decisionC);
   await login(page, "operador@wellmix.com");
-  await page.goto("/app/purchase-strategy");
+  await page.goto("/app/purchase-strategy?tab=open");
   await page.locator(`[data-strategy-open-order="${decisionC}"]`).click();
   await page.locator(`#decision-${decisionC} [data-strategy-order]`).click();
   await page.waitForURL(/\/app\/orders\/[^/?]+\?created=1/);
@@ -351,7 +351,7 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
     .first()
     .click();
   await page.waitForURL(/[?&]deleted=1/);
-  await page.goto("/app/purchase-strategy");
+  await page.goto("/app/purchase-strategy?tab=open");
   const stopped = page.locator(`#decision-${decisionE}`);
   await expect(stopped).toHaveAttribute("data-strategy-blocked", "1");
   await expect(stopped.locator("[data-strategy-order-form]")).toHaveCount(0);

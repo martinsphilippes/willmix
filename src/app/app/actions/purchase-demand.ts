@@ -74,7 +74,7 @@ export async function chooseStrategyAction(form: FormData) {
     const note = field(form, "note", z.string().trim().max(2000)) || null;
     const { chooseStrategy } = await import("@/lib/services/purchase-strategy");
     const decision = await chooseStrategy(user, { demandIds, choice, note });
-    return `/app/purchase-strategy?chosen=${decision.number}#decision-${decision.id}`;
+    return `/app/purchase-strategy?tab=open&chosen=${decision.number}#decision-${decision.id}`;
   });
 }
 
@@ -111,7 +111,7 @@ export async function decideStrategyAction(form: FormData) {
     // "Cotar" aprovada: o sistema abriu a cotação de compra; a tela vai a ela.
     const fresh = await getStore().get("purchase_decisions", decision.id);
     if (fresh?.quoteId) return `/app/purchase-quotes/${fresh.quoteId}?opened=1`;
-    return `/app/purchase-strategy?decided=${decision.number}#decision-${decision.id}`;
+    return `/app/purchase-strategy?tab=open&decided=${decision.number}#decision-${decision.id}`;
   });
 }
 

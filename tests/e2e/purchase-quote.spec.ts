@@ -200,10 +200,18 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   await boxC.uncheck();
   await expect(boxC).not.toBeChecked();
   await boxC.check();
+  // O resumo do envio fica logo abaixo do card da solicitação, na mesma
+  // largura (dono, 22/11/2026).
+  const summary = page.locator(`[data-strategy-summary-line="${demandId}"]`);
+  await expect(summary).toContainText("(3)");
+  const [cardBox, summaryBox] = [
+    (await line.boundingBox())!,
+    (await summary.boundingBox())!,
+  ];
+  expect(Math.abs(cardBox.x - summaryBox.x)).toBeLessThan(2);
+  expect(Math.abs(cardBox.width - summaryBox.width)).toBeLessThan(2);
+  expect(summaryBox.y).toBeGreaterThanOrEqual(cardBox.y + cardBox.height - 1);
   await page.locator("[data-strategy-review]").click();
-  await expect(
-    page.locator(`[data-strategy-summary-line="${demandId}"]`),
-  ).toContainText("(3)");
   await page.locator("[data-strategy-confirm]").click();
   await page.waitForURL(/\/app\/purchase-strategy\/sends\/[^/?]+\?done=1/);
   // Resultado por destinatário: os três receberam.
@@ -214,6 +222,15 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
     .locator("[data-strategy-send-quote]")
     .getAttribute("data-strategy-send-quote");
   expect(quoteId).toBeTruthy();
+  // Uma aba por estágio (dono, 22/11/2026): o resumo do envio fica abaixo do
+  // card (já saiu da fila) e, em "Enviadas", a linha abre a cotação de fato.
+  await page.goto("/app/purchase-strategy?tab=sent");
+  await expect(page.locator('[data-strategy-tabs="sent"]')).toBeVisible();
+  await expect(page.locator("[data-strategy-queue]")).toHaveCount(0);
+  await page
+    .locator(`[data-strategy-sent-row="${quoteId}"] [data-strategy-sent-open]`)
+    .click();
+  await page.waitForURL(new RegExp(`/app/purchase-quotes/${quoteId}`));
   await page.goto(`/app/purchase-quotes/${quoteId}`);
   await expect(page.locator("[data-quote-response]")).toHaveCount(3);
 

@@ -117,12 +117,21 @@ export async function lastPurchases(
 type QueueFields = Pick<
   Request,
   "status" | "purchaseDecisionId" | "origin" | "customerId" | "strategySentAt"
->;
+> &
+  Partial<Pick<Request, "orderTerms">>;
+
+/**
+ * Pedido já confirmado pelo cliente (venda pela Wellmix): segue direto para
+ * a Estratégia de Compra, sem o "Enviar para cotação" (dono, 22/11/2026).
+ * Vale também para as confirmadas antes da regra, que ainda esperavam o envio.
+ */
+const customerConfirmed = (r: QueueFields) => !!r.orderTerms?.confirmation;
 
 /**
  * A demanda está na fila da Estratégia de Compra? Aberta e sem estratégia em
  * curso; a reposição entra sozinha e a encomenda do cliente só depois do
- * "Enviar para cotação" em Encomendas (dono, 18/11/2026). A compra para
+ * "Enviar para cotação" em Encomendas (dono, 18/11/2026) ou, na venda pela
+ * Wellmix, direto com a confirmação do cliente (dono, 22/11/2026). A compra para
  * estoque aberta na Nova solicitação segue o caminho dela.
  */
 export function inStrategyQueue(r: QueueFields): boolean {
@@ -130,7 +139,7 @@ export function inStrategyQueue(r: QueueFields): boolean {
   const kind = demandKind(r);
   if (kind === "replenishment") return true;
   if (kind !== "order" || isStockCustomer(r.customerId)) return false;
-  return !!r.strategySentAt;
+  return !!r.strategySentAt || customerConfirmed(r);
 }
 
 /** Encomenda do cliente esperando o "Enviar para cotação" (Encomendas). */
@@ -140,7 +149,8 @@ export function awaitingStrategySend(r: QueueFields): boolean {
     !r.purchaseDecisionId &&
     demandKind(r) === "order" &&
     !isStockCustomer(r.customerId) &&
-    !r.strategySentAt
+    !r.strategySentAt &&
+    !customerConfirmed(r)
   );
 }
 
@@ -394,7 +404,7 @@ export async function chooseStrategy(
       { userIds: approvers.map((u) => u.id) },
       {
         kind: "action",
-        link: `/app/purchase-strategy#decision-${decision.id}`,
+        link: `/app/purchase-strategy?tab=open#decision-${decision.id}`,
         subject: `Aprovar estratégia de compra nº ${decision.number}`,
         body: `${label} para ${demands.length} demanda(s).`,
       },
@@ -444,7 +454,7 @@ export async function decideStrategy(
     { userIds: [decision.chosenByUserId] },
     {
       kind: input.approve ? "action" : "alert",
-      link: `/app/purchase-strategy#decision-${decision.id}`,
+      link: `/app/purchase-strategy?tab=open#decision-${decision.id}`,
       subject: `Estratégia de compra nº ${decision.number} ${input.approve ? "aprovada" : "recusada"}`,
       body: input.approve
         ? decision.choice === "last_supplier"
@@ -830,7 +840,7 @@ export async function strategyTaskDrafts(openRequests: Request[]) {
                 : "strategy.choice.quote",
             values,
           },
-          link: `/app/purchase-strategy#decision-${d.id}`,
+          link: `/app/purchase-strategy?tab=open#decision-${d.id}`,
           dueAt: null,
         }),
       );
@@ -843,7 +853,7 @@ export async function strategyTaskDrafts(openRequests: Request[]) {
             detail: "strategy.choice.last_supplier",
             values,
           },
-          link: `/app/purchase-strategy#decision-${d.id}`,
+          link: `/app/purchase-strategy?tab=open#decision-${d.id}`,
           dueAt: null,
         }),
       );
@@ -944,6 +954,54 @@ export async function sendToStrategy(
     sent,
     skipped: picked.filter((r) => !sent.some((x) => x.id === r.id)).length,
   };
+}
+
+/**
+ * Pedido confirmado pelo cliente (venda pela Wellmix): entra na fila da
+ * Estratégia de Compra na hora, sem o "Enviar para cotação" (dono,
+ * 22/11/2026). Grava a data da entrada e avisa quem escolhe a estratégia.
+ */
+export async function enterStrategyOnConfirm(
+  user: User,
+  confirmed: readonly Request[],
+): Promise<Request[]> {
+  const store = getStore();
+  const now = new Date().toISOString();
+  const entered: Request[] = [];
+  for (const r of confirmed) {
+    if (r.strategySentAt || !inStrategyQueue(r)) continue;
+    const updated = await store.update("requests", r.id, {
+      strategySentAt: now,
+      strategySentByUserId: user.id,
+    });
+    await audit(
+      user,
+      "purchase_strategy.send_request",
+      "request",
+      r.id,
+      `Encomenda nº ${r.number ?? "—"} (${r.productName}) confirmada pelo cliente: entrou direto na Estratégia de Compra`,
+      { strategySentAt: null },
+      { strategySentAt: now },
+    );
+    entered.push(updated);
+  }
+  if (entered.length) {
+    const strategists = await teamHolders("purchaseStrategy.choose");
+    if (strategists.length)
+      await notify(
+        { userIds: strategists.map((u) => u.id) },
+        {
+          kind: "action",
+          link: "/app/purchase-strategy",
+          subject: `${entered.length} produto(s) confirmado(s) pelo cliente na Estratégia de Compra`,
+          body: entered
+            .map((r) => `nº ${r.number ?? "—"} ${r.productName}`)
+            .join(", ")
+            .slice(0, 500),
+        },
+      );
+  }
+  return entered;
 }
 
 /** Uma linha da Estratégia de Compra: um produto de uma demanda. */
@@ -1335,7 +1393,7 @@ async function runLine(
         { userIds: approvers.map((u) => u.id) },
         {
           kind: "action",
-          link: `/app/purchase-strategy#decision-${decision.id}`,
+          link: `/app/purchase-strategy?tab=open#decision-${decision.id}`,
           subject: `Aprovar estratégia de compra nº ${decision.number}`,
           body: `Pedido direto com o fornecedor da última compra: ${demands.map((d) => d.productName).join(", ")}.`,
         },
