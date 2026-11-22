@@ -322,9 +322,17 @@ export async function listPayables(
      * as pendências (tasks.ts) só olham os outros. Contas a pagar lê todos.
      */
     live?: boolean;
+    /**
+     * Dia (AAAA-MM-DD, Brasília) da situação das parcelas (vencida, a
+     * vencer, agendada). Sem ele, hoje pelo relógio. Quem monta uma tela num
+     * "agora" dado (os quadros da Control Tower) passa o dia desse "agora",
+     * como o caminho do resumo faz (docs/RESUMOS.md).
+     */
+    today?: string;
   } = {},
 ): Promise<OrderPayable[]> {
   const store = getStore();
+  const today = filter.today ?? todayInBrazil();
   // Com a chave presente (mesmo vazia), só os pedidos daquele fornecedor.
   // Sem a cópia do registro do ERP (sankhyaRefs), que era mais da metade de
   // pedidos, pagamentos, itens e parceiros (com milhares de pedidos do
@@ -365,7 +373,6 @@ export async function listPayables(
       { filter: { id: supplierIds } },
     );
     const supplierById = new Map(suppliers.map((s) => [s.id, s]));
-    const today = todayInBrazil();
     return orders.map((order) => {
       const f = facts.get(order.id);
       return payableFor(
@@ -410,7 +417,6 @@ export async function listPayables(
         filter: { id: supplierIds },
       }),
     ]);
-  const today = todayInBrazil();
   const by = <T extends { orderId: string | null }>(rows: T[]) => {
     const map = new Map<string, T[]>();
     for (const row of rows) {
