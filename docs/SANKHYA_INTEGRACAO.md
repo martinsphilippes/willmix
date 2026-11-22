@@ -475,6 +475,7 @@ Substitui a tabela da seção 5.1. Cada pedido fica na linha mais adiantada que 
   - Sem pendência (1.058): fica encerrada (`CANCELLED`) como histórico, fora da fila.
   - O pedido `snk-t<track>` de cargas anteriores sai, com itens, pendências, marcos, passos, resumo e eventos.
   - Rodar de novo atualiza a situação enquanto a reposição não andou no portal.
+  - Na primeira carga (22/11/2026) a retirada um a um passou do tempo da página no bloco com muitos pedidos de 1100. Os 1.082 pedidos foram tirados direto no banco, e a retirada passou a ser em paralelo.
   - Quando a 1100 passar a 1101 no Sankhya, ela vira pedido com o mesmo track. Isso entra no sincronismo de 15 minutos (seção 7, ainda por fazer).
 
 ## 10. Em aberto
