@@ -256,7 +256,10 @@ export async function confirmCustomerOrder(
   }
   for (const r of released) await releaseRequest(user, r);
   // Confirmado pelo cliente, segue direto para a Estratégia de Compra, sem
-  // o "Enviar para cotação" da Wellmix (dono, 22/11/2026).
+  // o "Enviar para cotação" da Wellmix, e a cotação sai na hora para o
+  // fornecedor da última compra e os parceiros da família (dono, 22/11/2026;
+  // docs/PURCHASE_DEMAND.md, "Cotação na confirmação do cliente"). Erro aqui
+  // não desfaz a confirmação: a encomenda fica na fila.
   if (released.length) {
     const { enterStrategyOnConfirm } = await import("./purchase-strategy");
     await enterStrategyOnConfirm(user, released).catch((error) =>
