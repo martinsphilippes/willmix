@@ -476,6 +476,7 @@ Substitui a tabela da seção 5.1. Cada pedido fica na linha mais adiantada que 
   - O pedido `snk-t<track>` de cargas anteriores sai, com itens, pendências, marcos, passos, resumo e eventos.
   - Rodar de novo atualiza a situação enquanto a reposição não andou no portal.
   - Na primeira carga (22/11/2026) a retirada um a um passou do tempo da página no bloco com muitos pedidos de 1100. Os 1.082 pedidos foram tirados direto no banco, e a retirada passou a ser em paralelo.
+  - No mesmo dia, as 1100 com centenas de itens (até 919; 22.597 itens nas 1.105) também passavam do tempo, gravadas uma a uma. As reposições novas passaram a ser gravadas em lote, e as que já existem só são regravadas se o Sankhya mudou.
   - Quando a 1100 passar a 1101 no Sankhya, ela vira pedido com o mesmo track. Isso entra no sincronismo de 15 minutos (seção 7, ainda por fazer).
 
 ## 10. Em aberto
