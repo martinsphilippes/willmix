@@ -319,6 +319,22 @@ export default async function RequestBatchPage({
               </span>
             </span>
           ))}
+          {/* Lembretes da confirmação do cliente (dono, 22/11/2026). */}
+          {isWellmix(user) &&
+          rows[0].status === "AWAITING_CUSTOMER" &&
+          rows[0].orderTerms?.confirmReminders?.count ? (
+            <span
+              className="text-xs text-zinc-500"
+              data-batch-confirm-reminders={
+                rows[0].orderTerms.confirmReminders.count
+              }
+            >
+              {t("confirmReminder.status", {
+                count: rows[0].orderTerms.confirmReminders.count,
+                date: formatDate(rows[0].orderTerms.confirmReminders.lastAt, t),
+              })}
+            </span>
+          ) : null}
         </>
       }
       actions={
