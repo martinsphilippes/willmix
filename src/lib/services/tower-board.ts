@@ -867,8 +867,13 @@ export async function loadTowerBoard(options: {
     ids.length
       ? safe(store.list("receivings", { filter: { orderId: ids } }))
       : none<Receiving>(),
+    // Parcelas na situação do dia do "agora" dado (não o relógio), como no
+    // caminho do resumo (`installmentStatusOn`): na virada da meia-noite de
+    // Brasília os dois davam vencida × a vencer.
     options.finance
-      ? import("./supplier-terms").then((m) => m.listPayables())
+      ? import("./supplier-terms").then((m) =>
+          m.listPayables({ today: brazilDay(now) as string }),
+        )
       : Promise.resolve([]),
     options.finance
       ? import("./finance").then((m) => m.loadFinance({ estimate: false }))

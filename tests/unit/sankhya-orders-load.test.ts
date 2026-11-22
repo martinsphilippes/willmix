@@ -101,7 +101,14 @@ beforeAll(async () => {
     order("2030", "in_progress", "customs", { customsChannel: "Vermelho" }),
     order("2040", "awaiting_definition", null, { reason: "no_successor" }),
     order("2050", "in_progress", "production", {}),
-    order("2060", "in_progress", "loading", {}),
+    // 1104 sem pendência (tudo embarcado) e o 35 em trânsito: Embarque.
+    order("2060", "in_progress", "loading", {
+      chain: [
+        { nunota: 2059, top: 1100, pending: false },
+        { nunota: 2060, top: 1104, pending: false },
+      ],
+      shipments: [3000],
+    }),
     // Caminho antigo: a ponta é o 1103 e o embarque sai do 30 seguinte (2075).
     order("2070", "legacy_path", null, { shipments: [2075] }),
   ];

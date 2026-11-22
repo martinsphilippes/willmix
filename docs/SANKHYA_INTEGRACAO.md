@@ -239,7 +239,7 @@ Como relaxar o "obrigatório" é uma mudança num campo existente, ela vai num P
 
 ## 5. Etapas, marcos e pendências
 
-### 5.1 De-para do Sankhya para o marco (proposta para a Wellmix validar)
+### 5.1 De-para do Sankhya para o marco (proposta inicial; a aprovada está na seção 9.4)
 
 Os 16 marcos do portal (docs/MILESTONES.md) são: Pedido novo, Certificação, Material de arte, Arte, Contrato, Sinal, Pré-produção, Inspeção, Amostras, Produção, Booking e logística, Carregamento e documentos, Embarque, Desembaraço, Nota fiscal e transporte, Entrega e recebimento.
 
@@ -443,6 +443,40 @@ O track junta as partes de um mesmo pedido e confirma que os "gêmeos" são pedi
 - **Duas rodadas ao mesmo tempo** (aba fechada com a rodada ainda no servidor e "Continuar" de novo; 21/11/2026, "duplicate key … snk-t46553"): a carga ganhou uma trava (`lockUntil` no andamento, o tempo do passo mais 30 s), e o pedido que outra rodada já gravou segue como atualização em vez de erro.
 - **Número = TRACK_ID (D14):** a carga grava `orders.number` = track (sem track, o NUNOTA da ponta), também nos pedidos já gravados. No banco, em 21/11/2026, os 6.256 pedidos foram renumerados assim (6.240 pelo track e 16 pelo NUNOTA), e o contador `order_number` foi para 10.000.000.
 - **Limpeza da carga de 21/11:** `scripts/sankhya-orders-reset.sql` apaga os pedidos `snk-…`, os embarques `snk-35-…` e tudo o que aponta para eles, nas 36 tabelas com `orderId`, e zera o andamento da carga. Os pedidos do portal, os cadastros e a cópia das views ficam.
+
+### 9.4 De-para aprovado e a 1100 como reposição (dono, 21/11/2026: "Aprovado, pode seguir com a tabela e a reposição")
+
+Substitui a tabela da seção 5.1. Cada pedido fica na linha mais adiantada que já aconteceu. "Hoje" é a data da carga. A regra fica em `trackMilestone` e `trackSituation` (`src/lib/integrations/sankhya-orders-plan.ts`), e o ensaio (`scripts/sankhya-projection.sql`) mostra a mesma tabela, sem as datas.
+
+| #   | Situação no Sankhya                                                | Marco no portal                                                                |
+| --- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| 1   | 1100 pendente                                                      | Não é pedido: **reposição aberta** (`/app/replenishment`)                      |
+| 2   | 1101 pendente                                                      | Pedido novo                                                                    |
+| 3   | 1102 pendente                                                      | Arte                                                                           |
+| 4   | 1103 pendente                                                      | Revisão (marco Contrato, antes da assinatura)                                  |
+| 5   | 1104 pendente, `STATUS_SHIPPING` 8                                 | Sinal                                                                          |
+| 6   | 1104 pendente, `STATUS_SHIPPING` 1 ou vazio, sem inspeção          | Produção                                                                       |
+| 7   | 1104 com `STATUS_QUALIDADE` "Inspeção parcial"                     | Inspeção                                                                       |
+| 8   | 1104 "Inspecionado" ou com `DATA_INSPECAO`                         | Booking                                                                        |
+| 9   | Como 8, nada embarcado e o ETD da 1104 passou há no máximo 30 dias | Embarque (o 35 sai uns 14 dias depois do navio)                                |
+| 10  | 1104 sem pendência, embarque 35 aberto, ETA do 35 no futuro        | Embarque, com os documentos de carga a conferir                                |
+| 11  | Hoje ≥ ETA do 35, pré-nota pendente ou canal preenchido            | Desembaraço (Vermelho ou Cinza pausa)                                          |
+| 12  | Pré-nota emitida, 35 ainda pendente                                | Nota fiscal e transporte; a previsão é o ETA da 1104 (`sankhyaRefs.ETA_FINAL`) |
+| 13  | `STATUS_RECEBIMENTO` "Recebimento parcial"                         | Entrega e recebimento, parcial                                                 |
+| 14  | Recebido e nada pendente no track                                  | Encerrado                                                                      |
+
+- **Linha 9, cuidado com o ETD velho:** o ETD da 1104 não é atualizado (61 dos 99 pedidos pendentes sem inspeção tinham o ETD no passado). Por isso a linha 9 vale só para pedido inspecionado, sem nada embarcado e com o ETD de até 30 dias atrás. ETD mais antigo fica em Booking.
+- **Vários embarques:** com a 1104 sem pendência, o pedido fica no marco do embarque aberto menos adiantado. Com a 1104 pendente e parte embarcada, o marco segue as linhas 5 a 9, com o selo "Embarque parcial".
+- **Caso 1:** a 1104 pendente sem `STATUS_SHIPPING` (191 pedidos) e a 1101 pendente entram em andamento pelas linhas 2 e 6 a 9. Na carga seguinte, quem estava em "Aguardando definição" ganha as pendências do portal.
+- **Inspeção feita:** conta o "Inspecionado" ou a `DATA_INSPECAO` preenchida.
+- A carga só avança marcos: nunca reabre o que já foi dado como feito.
+- **1100 → reposição:** é uma reposição por item, para o Estoque Wellmix, com id `snk-r<track>-<NUNOTA>-<SEQUENCIA>`, número = TRACK_ID e data desejada = `DATA_PEDIDO` da 1100.
+  - Pendente no Sankhya (47 tracks): fica aberta (`REQUESTED`) na fila de `/app/replenishment`.
+  - Sem pendência (1.058): fica encerrada (`CANCELLED`) como histórico, fora da fila.
+  - O pedido `snk-t<track>` de cargas anteriores sai, com itens, pendências, marcos, passos, resumo e eventos.
+  - Rodar de novo atualiza a situação enquanto a reposição não andou no portal.
+  - Na primeira carga (22/11/2026) a retirada um a um passou do tempo da página no bloco com muitos pedidos de 1100. Os 1.082 pedidos foram tirados direto no banco, e a retirada passou a ser em paralelo.
+  - Quando a 1100 passar a 1101 no Sankhya, ela vira pedido com o mesmo track. Isso entra no sincronismo de 15 minutos (seção 7, ainda por fazer).
 
 ## 10. Em aberto
 

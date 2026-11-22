@@ -100,8 +100,9 @@ orders as (
 classified as (
   select *,
     case
-      when top in (1100, 1102, 1103) and pend then 'in_progress'
-      when top = 1104 and pend and ss is null then 'awaiting_definition'
+      -- De-para aprovado (dono, 21/11/2026; docs/SANKHYA_INTEGRACAO.md, 9.4): a 1101 pendente e
+      -- a 1104 pendente sem STATUS_SHIPPING (o "caso 1") seguem em andamento.
+      when top in (1100, 1101, 1102, 1103) and pend then 'in_progress'
       when top = 1104 and pend then 'in_progress'
       when not pend and top in (1100, 1101, 1102) and out_tops is null then 'interrupted'
       when not pend and top = 1103 and out_tops && array[30, 94] then 'legacy_path'
@@ -126,15 +127,18 @@ select 'order:' || leaf, 'order', leaf::text, situation,
   case
     when situation in ('interrupted', 'legacy_path', 'closed') then null
     when situation = 'awaiting_definition' then null
-    when top = 1100 then 'new-order'
-    when top = 1101 then 'contract'
+    -- 1100 é reposição (a carga não cria pedido); o marco final, com as datas de inspeção, ETD
+    -- e ETA, sai da carga (trackMilestone em src/lib/integrations/sankhya-orders-plan.ts).
+    when top = 1100 then null
+    when top = 1101 then 'new-order'
     when top = 1102 then 'art'
-    when top = 1103 then 'pre-production'
+    when top = 1103 then 'contract'
     when top = 1104 and pend and ss = '8' then 'down-payment'
+    when top = 1104 and pend and qual ~* '^inspe[cç][aã]o parcial$' then 'inspection'
+    when top = 1104 and pend and (qual ~* '^inspecionado$' or nullif(r->>'DATA_INSPECAO', '') is not null) then 'booking'
     when top = 1104 and pend then 'production'
+    when rec = 'Recebimento parcial' then 'delivery'
     when coalesce(customs_open, false) or canal is not null and rec is null then 'customs'
-    when rec = 'Recebimento parcial' then 'invoice-transport'
-    when coalesce(ship_open, false) then 'loading'
     else 'shipment'
   end,
   top, forn, r->>'NOME_FORNECEDOR',
