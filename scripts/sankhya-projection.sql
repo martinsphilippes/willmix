@@ -40,6 +40,7 @@ anc(leaf, n, depth) as (
 chain as (
   select a.leaf, jsonb_agg(jsonb_build_object(
       'nunota', p.n, 'top', p.top, 'pending', p.pend,
+      'confirmed', p.r->>'STATUS_NOTA' = 'L',
       'date', p.r->>'DATA_PEDIDO', 'numnota', p.r->>'NUMNOTA')
       order by a.depth desc) docs
   from anc a join pre p on p.n = a.n group by a.leaf
@@ -104,10 +105,11 @@ classified as (
       -- a 1104 pendente sem STATUS_SHIPPING (o "caso 1") seguem em andamento.
       when top in (1100, 1101, 1102, 1103) and pend then 'in_progress'
       when top = 1104 and pend then 'in_progress'
-      when not pend and top in (1100, 1101, 1102) and out_tops is null then 'interrupted'
       when not pend and top = 1103 and out_tops && array[30, 94] then 'legacy_path'
-      -- 1104 sem pendência e sem documento seguinte: nem embarque nem recebimento.
-      when not pend and out_tops is null then 'awaiting_definition'
+      -- Sem pendência e sem documento seguinte: encerrado no meio do processo (cancelado), em
+      -- qualquer etapa (técnico do Sankhya e dono, 23/11/2026). Não entra no portal. A 1104 com
+      -- entrada direta pela TOP 32 no mesmo track vira "encerrado" na junção por track, abaixo.
+      when not pend and out_tops is null then 'interrupted'
       -- Tudo embarcado e nenhum embarque aberto: encerrado (com ou sem a coluna de recebimento).
       when not pend and not coalesce(ship_open, false) then 'closed'
       when not pend then 'in_progress'
@@ -133,6 +135,7 @@ select 'order:' || leaf, 'order', leaf::text, situation,
     when top = 1101 then 'new-order'
     when top = 1102 then 'art'
     when top = 1103 then 'contract'
+    when top = 1104 and pend and r->>'STATUS_NOTA' = 'A' and nullif(r->>'DATA_INSPECAO', '') is null then 'contract'
     when top = 1104 and pend and ss = '8' then 'down-payment'
     when top = 1104 and pend and qual ~* '^inspe[cç][aã]o parcial$' then 'inspection'
     when top = 1104 and pend and (qual ~* '^inspecionado$' or nullif(r->>'DATA_INSPECAO', '') is not null) then 'booking'
@@ -323,16 +326,23 @@ tot as (
   from lfi group by trk),
 items as (select x.trk, jsonb_agg(i || jsonb_build_object('doc', x.key::bigint) order by x.key::bigint, (i->>'seq')::int) list from lfi x, jsonb_array_elements(case when jsonb_typeof(x.data->'items') = 'array' then x.data->'items' else '[]'::jsonb end) i group by x.trk),
 ships as (select x.trk, jsonb_agg(distinct s) list from lf x, jsonb_array_elements(case when jsonb_typeof(x.data->'shipments') = 'array' then x.data->'shipments' else '[]'::jsonb end) s group by x.trk),
-chain as (select t.tr trk, jsonb_agg(jsonb_build_object('nunota', t.n, 'top', t.top, 'pending', h.r->>'PEDIDO_PENDENTE' = 'S', 'date', h.r->>'DATA_PEDIDO', 'numnota', h.r->>'NUMNOTA') order by t.n) docs from t left join h on h.n = t.n where t.tr is not null group by t.tr)
+chain as (select t.tr trk, jsonb_agg(jsonb_build_object('nunota', t.n, 'top', t.top, 'pending', h.r->>'PEDIDO_PENDENTE' = 'S', 'confirmed', h.r->>'STATUS_NOTA' = 'L', 'date', h.r->>'DATA_PEDIDO', 'numnota', h.r->>'NUMNOTA') order by t.n) docs from t left join h on h.n = t.n where t.tr is not null and t.top <> 32 group by t.tr),
+-- Entrada direta pela TOP 32 (Pré-venda INV +) no mesmo track: a compra seguiu por outro caminho.
+direct as (select tr trk, max(n) doc from t where top = 32 and tr is not null group by tr)
 insert into public.sankhya_projection ("id", "kind", "key", "situation", "milestone", "top", "supplierCode", "supplierName", "shipmentState", "data", "computedAt")
-select 'track:' || a.trk, 'track', a.trk, a.situation, a.milestone, a.top, m."supplierCode", m."supplierName",
+select 'track:' || a.trk, 'track', a.trk,
+  case when a.situation = 'interrupted' and a.top in (1104, 1107) and d.doc is not null then 'closed' else a.situation end,
+  a.milestone, a.top, m."supplierCode", m."supplierName",
   case when coalesce(tt.shipped_total, 0) <= 0 then 'none' when tt.all_shipped then 'shipped' else 'partial' end,
   m.data || jsonb_build_object('track', a.trk, 'mainKey', m.key, 'leaves', a.leaves,
     'chain', coalesce(c.docs, m.data->'chain'), 'items', coalesce(i.list, '[]'::jsonb), 'shipments', coalesce(s.list, '[]'::jsonb),
-    'qtyTotal', coalesce(tt.qty_total, 0), 'shippedTotal', coalesce(tt.shipped_total, 0)),
+    'qtyTotal', coalesce(tt.qty_total, 0), 'shippedTotal', coalesce(tt.shipped_total, 0))
+    || case when a.situation = 'interrupted' and a.top in (1104, 1107) and d.doc is not null
+         then jsonb_build_object('directEntry', d.doc, 'reason', 'direct_entry') else '{}'::jsonb end,
   now()
 from agg a join ranked m on m.trk = a.trk and m.rk = 1
-left join tot tt on tt.trk = a.trk left join items i on i.trk = a.trk left join ships s on s.trk = a.trk left join chain c on c.trk = a.trk;
+left join tot tt on tt.trk = a.trk left join items i on i.trk = a.trk left join ships s on s.trk = a.trk left join chain c on c.trk = a.trk
+left join direct d on d.trk = a.trk;
 delete from public.sankhya_projection where kind = 'order';
 update public.sankhya_projection set kind = 'order', id = 'order:' || key where kind = 'track';
 update public.sankhya_projection s set data = jsonb_set(s.data, '{orders}', coalesce((
