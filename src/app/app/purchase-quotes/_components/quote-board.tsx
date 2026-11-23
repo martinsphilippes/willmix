@@ -1,3 +1,4 @@
+import { quoteProductTerms } from "@/lib/quote-negotiation";
 import Link from "next/link";
 import {
   can,
@@ -611,11 +612,22 @@ export async function QuoteBoard({
                           r.incoterm === "EXW" && r.incotermValue != null
                             ? `EXW (${r.currency ?? ""} ${r.incotermValue.toLocaleString(t.intl, { maximumFractionDigits: 4 })})`
                             : r.incoterm,
-                          r.leadTimeDays !== null
-                            ? t("strategy.days", { n: r.leadTimeDays })
-                            : null,
                           r.port,
-                          r.moq !== null ? `MOQ ${r.moq}` : null,
+                          // Prazo e mínimo de cada produto (dono, 23/11/2026).
+                          ...quote.items.map((i) => {
+                            const own = quoteProductTerms(r, i.productId);
+                            const parts = [
+                              own.leadTimeDays !== null
+                                ? t("strategy.days", { n: own.leadTimeDays })
+                                : null,
+                              own.moq !== null ? `MOQ ${own.moq}` : null,
+                            ].filter(Boolean);
+                            return parts.length
+                              ? quote.items.length > 1
+                                ? `${productNameText(t, i.name)}: ${parts.join(", ")}`
+                                : parts.join(" · ")
+                              : null;
+                          }),
                           r.note,
                         ]
                           .filter(Boolean)

@@ -28,6 +28,8 @@ import { AUTO_ACTOR_ID } from "@/lib/purchase-demand";
 import {
   appendQuoteEvent,
   pendingQuoteProposals,
+  quoteProductTerms,
+  quoteTermsSummary,
 } from "@/lib/quote-negotiation";
 import {
   prepareQuoteSheets,
@@ -584,7 +586,17 @@ export async function supplierInvitations(user: User, now = new Date()) {
 
 export interface QuoteAnswer {
   decline: boolean;
-  prices: Array<{ productId: string; unitPrice: number }>;
+  /**
+   * Preço de cada produto e, desde 23/11/2026, o prazo de produção e o
+   * pedido mínimo dele. Sem eles no produto, valem os da cotação
+   * (`leadTimeDays` e `moq` abaixo: o formato de antes).
+   */
+  prices: Array<{
+    productId: string;
+    unitPrice: number;
+    leadTimeDays?: number | null;
+    moq?: number | null;
+  }>;
   currency: string | null;
   incoterm: string | null;
   /** Valor do Incoterm no EXW (dono, 23/11/2026); ignorado nos outros. */
@@ -628,8 +640,28 @@ export async function answerQuote(
       const p = input.prices.find((x) => x.productId === item.productId);
       if (!p || !Number.isFinite(p.unitPrice) || p.unitPrice < 0)
         throw new PurchaseQuoteError("quote_price_required");
-      return { productId: item.productId, unitPrice: p.unitPrice };
+      // Prazo e pedido mínimo por produto (dono, 23/11/2026); sem eles no
+      // produto, os da cotação. Obrigatórios em todo produto.
+      const leadTimeDays = p.leadTimeDays ?? input.leadTimeDays;
+      const moq = p.moq ?? input.moq;
+      if (
+        leadTimeDays === null ||
+        leadTimeDays === undefined ||
+        !Number.isInteger(leadTimeDays) ||
+        leadTimeDays < 0
+      )
+        throw new PurchaseQuoteError("quote_lead_required");
+      if (moq === null || moq === undefined || !(moq > 0))
+        throw new PurchaseQuoteError("quote_moq_required");
+      return {
+        productId: item.productId,
+        unitPrice: p.unitPrice,
+        leadTimeDays,
+        moq,
+      };
     });
+    // O resumo da resposta (o maior prazo e o maior mínimo).
+    const summary = quoteTermsSummary(prices);
     if (
       !input.currency ||
       !(SHEET_CURRENCIES as readonly string[]).includes(input.currency)
@@ -641,15 +673,8 @@ export async function answerQuote(
     )
       throw new PurchaseQuoteError("quote_incoterm_required");
     // Comercial obrigatório em toda cotação (dono, 20/11/2026): prazo de
-    // produção, pedido mínimo e porto (também no EXW).
-    if (
-      input.leadTimeDays === null ||
-      !Number.isInteger(input.leadTimeDays) ||
-      input.leadTimeDays < 0
-    )
-      throw new PurchaseQuoteError("quote_lead_required");
-    if (input.moq === null || !(input.moq > 0))
-      throw new PurchaseQuoteError("quote_moq_required");
+    // produção e pedido mínimo (conferidos acima, por produto) e o porto
+    // (também no EXW).
     if (!input.port?.trim())
       throw new PurchaseQuoteError("quote_port_required");
     try {
@@ -666,9 +691,9 @@ export async function answerQuote(
       incoterm: input.incoterm,
       incotermValue:
         input.incoterm === "EXW" ? (input.incotermValue ?? null) : null,
-      leadTimeDays: input.leadTimeDays,
+      leadTimeDays: summary.leadTimeDays,
       port: input.port.trim(),
-      moq: input.moq,
+      moq: summary.moq,
       note: input.note,
       items: prepared.map((p) => p.item),
     };
@@ -981,7 +1006,7 @@ async function supplierRequestsFromWinner(
         capacityMl: null,
         packageType: null,
         material: sheet?.material ?? null,
-        moq: winner.moq,
+        moq: quoteProductTerms(winner, item.productId).moq,
         colorAssortment: null,
         powerDetail: null,
         photoDocumentId: null,
@@ -993,8 +1018,10 @@ async function supplierRequestsFromWinner(
       supplierCanDo: "yes",
       supplierPrice: price,
       supplierCurrency: currency,
-      supplierMoq: winner.moq,
-      supplierLeadTimeDays: winner.leadTimeDays,
+      // Prazo e mínimo do produto (dono, 23/11/2026).
+      supplierMoq: quoteProductTerms(winner, item.productId).moq,
+      supplierLeadTimeDays: quoteProductTerms(winner, item.productId)
+        .leadTimeDays,
       supplierIncoterm: incoterm,
       supplierNote: winner.note,
       respondedAt: winner.answeredAt ?? now.toISOString(),

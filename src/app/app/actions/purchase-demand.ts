@@ -212,6 +212,17 @@ export async function answerQuoteAction(form: FormData) {
     const quoteId = ID.parse(id);
     const decline = str(form, "decline") === "1";
     const productIds = form.getAll("productId").map(String);
+    const productNumber = (key: string, int = false) => {
+      const raw = str(form, key);
+      if (!raw) return null;
+      const value = parseNumberInput(raw, { int });
+      return value === null ||
+        !Number.isFinite(value) ||
+        value < 0 ||
+        value > 1e9
+        ? null
+        : value;
+    };
     const prices = decline
       ? []
       : productIds.map((productId) => ({
@@ -221,6 +232,10 @@ export async function answerQuoteAction(form: FormData) {
             .nonnegative()
             .max(1e9)
             .parse(parseNumberInput(str(form, `price.${productId}`))),
+          // Prazo e pedido mínimo do produto (dono, 23/11/2026); o
+          // formulário antigo mandava um só para a cotação (abaixo).
+          leadTimeDays: productNumber(`leadTime.${productId}`, true),
+          moq: productNumber(`moq.${productId}`),
         }));
     const optionalNumber = (key: string, int = false) => {
       const raw = str(form, key);

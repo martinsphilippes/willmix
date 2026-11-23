@@ -3719,6 +3719,14 @@ export interface PurchaseQuote extends BaseRow {
 export interface QuoteResponsePrice {
   productId: string;
   unitPrice: number;
+  /**
+   * Prazo de produção (dias) e pedido mínimo deste produto (dono,
+   * 23/11/2026): por produto, dentro da resposta. Ausentes nas respostas
+   * antigas, que tinham um só para a cotação (`leadTimeDays` e `moq` da
+   * resposta): leia por `quoteProductTerms`.
+   */
+  leadTimeDays?: number | null;
+  moq?: number | null;
 }
 
 /*

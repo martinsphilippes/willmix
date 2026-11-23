@@ -1,6 +1,7 @@
 import type {
   PurchaseQuoteResponse,
   QuoteNegotiationEvent,
+  QuoteResponsePrice,
 } from "@/lib/db/schema";
 
 /*
@@ -49,6 +50,46 @@ const priceOf = (
 ) => prices?.find((p) => p.productId === productId)?.unitPrice ?? null;
 
 /**
+ * Prazo de produção e pedido mínimo de um produto na resposta (dono,
+ * 23/11/2026): o do produto; nas respostas antigas, o da cotação inteira.
+ */
+export function quoteProductTerms(
+  source: {
+    prices?: readonly QuoteResponsePrice[] | null;
+    leadTimeDays?: number | null;
+    moq?: number | null;
+  },
+  productId: string,
+): { leadTimeDays: number | null; moq: number | null } {
+  const own = source.prices?.find((p) => p.productId === productId);
+  return {
+    leadTimeDays: own?.leadTimeDays ?? source.leadTimeDays ?? null,
+    moq: own?.moq ?? source.moq ?? null,
+  };
+}
+
+/**
+ * Prazo e pedido mínimo da resposta inteira (o resumo gravado na resposta,
+ * para as telas e os registros que ainda leem um número só): o maior prazo
+ * e o maior mínimo entre os produtos.
+ */
+export function quoteTermsSummary(prices: readonly QuoteResponsePrice[]): {
+  leadTimeDays: number | null;
+  moq: number | null;
+} {
+  const max = (values: Array<number | null | undefined>) => {
+    const known = values.filter(
+      (v): v is number => typeof v === "number" && Number.isFinite(v),
+    );
+    return known.length ? Math.max(...known) : null;
+  };
+  return {
+    leadTimeDays: max(prices.map((p) => p.leadTimeDays)),
+    moq: max(prices.map((p) => p.moq)),
+  };
+}
+
+/**
  * Propostas e contrapropostas do produto, da mais antiga para a mais nova.
  * Resposta de antes do histórico (sem eventos): a resposta de hoje, uma vez.
  */
@@ -73,8 +114,10 @@ export function quoteProductHistory(
           : priceOf(e.prices, productId),
       currency: e.currency ?? null,
       incoterm: e.incoterm ?? null,
-      moq: e.moq ?? null,
-      leadTimeDays: e.leadTimeDays ?? null,
+      // Na resposta, o prazo e o mínimo são os do produto.
+      ...(e.kind === "proposal"
+        ? { moq: e.moq ?? null, leadTimeDays: e.leadTimeDays ?? null }
+        : quoteProductTerms(e, productId)),
       port: e.port ?? null,
       text: e.text ?? null,
     });
@@ -92,8 +135,7 @@ export function quoteProductHistory(
       price: priceOf(response.prices, productId),
       currency: response.currency,
       incoterm: response.incoterm,
-      moq: response.moq,
-      leadTimeDays: response.leadTimeDays,
+      ...quoteProductTerms(response, productId),
       port: response.port,
       text: response.note,
     });

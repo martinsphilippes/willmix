@@ -78,6 +78,9 @@ export interface QuoteSheetProduct {
   scheduleText: string | null;
   desiredText: string | null;
   price: string;
+  /** Prazo de produção e pedido mínimo deste produto (dono, 23/11/2026). */
+  leadTimeDays: string;
+  moq: string;
   /** Quantidade de cada programação (ou a quantidade toda). */
   rounds: number[];
   soldBefore: boolean;
@@ -498,8 +501,6 @@ export function QuoteAnswerForm({
       ? pick("incoterm", "")
       : commercial.incoterm,
     incotermValue: pick("incotermValue", commercial.incotermValue),
-    leadTimeDays: pick("leadTimeDays", commercial.leadTimeDays),
-    moq: pick("moq", commercial.moq),
     note: pick("note", commercial.note),
   }));
   // Portos de embarque (dono, 23/11/2026): o fornecedor pode trabalhar com
@@ -509,6 +510,28 @@ export function QuoteAnswerForm({
     return list.length ? list : [""];
   });
   const portText = joinPorts(ports);
+  // Prazo de produção e pedido mínimo: por produto (dono, 23/11/2026). O
+  // rascunho de antes tinha um só para a cotação: vale como ponto de partida.
+  const [productTerms, setProductTerms] = useState<
+    Record<string, { leadTimeDays: string; moq: string }>
+  >(() =>
+    Object.fromEntries(
+      products.map((p) => [
+        p.productId,
+        {
+          leadTimeDays: pick(
+            `leadTime.${p.productId}`,
+            p.leadTimeDays || pick("leadTimeDays", commercial.leadTimeDays),
+          ),
+          moq: pick(`moq.${p.productId}`, p.moq || pick("moq", commercial.moq)),
+        },
+      ]),
+    ),
+  );
+  const setProductTerm = (
+    pid: string,
+    patch: Partial<{ leadTimeDays: string; moq: string }>,
+  ) => setProductTerms((all) => ({ ...all, [pid]: { ...all[pid], ...patch } }));
   const [tried, setTried] = useState(false);
   // Trocar a moeda converte os preços já digitados (dono, 21/11/2026): pelo
   // câmbio do dia do portal, com o aviso em cada preço e "Manter os valores
@@ -558,6 +581,10 @@ export function QuoteAnswerForm({
     const out: QuoteDraftValues = { ...terms, port: portText };
     for (const [pid, price] of Object.entries(prices))
       out[`price.${pid}`] = price;
+    for (const [pid, own] of Object.entries(productTerms)) {
+      out[`leadTime.${pid}`] = own.leadTimeDays;
+      out[`moq.${pid}`] = own.moq;
+    }
     for (const [pid, sheet] of Object.entries(sheets)) {
       for (const key of TEXT_SHEET_KEYS)
         out[`sheet.${pid}.${key}`] = sheet[key];
@@ -566,7 +593,7 @@ export function QuoteAnswerForm({
       out[`sheet.${pid}.materialIds`] = sheet.materialIds.join(",");
     }
     return out;
-  }, [prices, sheets, terms, portText]);
+  }, [prices, sheets, terms, portText, productTerms]);
   const autosave = useDraftAutosave(
     quoteId,
     draftValues,
@@ -610,6 +637,17 @@ export function QuoteAnswerForm({
       parts.push(L.missingPrice);
       missingKeys.add(`${p.productId}.price`);
     }
+    const own = productTerms[p.productId];
+    const lead = readNumber(own?.leadTimeDays ?? "", true);
+    if (lead === null || !Number.isInteger(lead)) {
+      parts.push(L.leadTime);
+      missingKeys.add(`${p.productId}.leadTimeDays`);
+    }
+    const moq = readNumber(own?.moq ?? "");
+    if (moq === null || moq <= 0) {
+      parts.push(L.moq);
+      missingKeys.add(`${p.productId}.moq`);
+    }
     if (p.ask) {
       const s = sheets[p.productId];
       for (const r of missingSheet(toDraft(s), catalog)) {
@@ -626,11 +664,6 @@ export function QuoteAnswerForm({
         fill(L.missingProduct, { product: p.name, fields: parts.join(", ") }),
       );
   }
-  const lead = readNumber(terms.leadTimeDays, true);
-  if (lead === null || !Number.isInteger(lead)) {
-    missing.push(L.leadTime);
-    missingKeys.add("leadTimeDays");
-  }
   if (!portText) {
     missing.push(L.port);
     missingKeys.add("port");
@@ -641,11 +674,6 @@ export function QuoteAnswerForm({
   if (exw && (exwValue === null || exwValue < 0)) {
     missing.push(L.incotermValue);
     missingKeys.add("incotermValue");
-  }
-  const moq = readNumber(terms.moq);
-  if (moq === null || moq <= 0) {
-    missing.push(L.moq);
-    missingKeys.add("moq");
   }
   const lacks = (key: string) => tried && missingKeys.has(key);
 
@@ -675,7 +703,7 @@ export function QuoteAnswerForm({
   // Termos comerciais (dono, 23/11/2026): aparecem na primeira seção do
   // produto aberto; valem para a cotação inteira (os campos de envio ficam
   // no formulário, embaixo).
-  const termsBlock = (
+  const termsBlock = (pid: string) => (
     <div
       className="space-y-1 border-t border-zinc-100 pt-3"
       data-quote-terms-fields
@@ -732,7 +760,7 @@ export function QuoteAnswerForm({
           <span
             className={cx(
               "flex h-9 items-center rounded-md border shadow-sm transition focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-100",
-              lacks("leadTimeDays")
+              lacks(`${pid}.leadTimeDays`)
                 ? "border-red-400 bg-red-50"
                 : "border-zinc-300 bg-white",
             )}
@@ -741,12 +769,12 @@ export function QuoteAnswerForm({
               id={`quote-${quoteId}-lead`}
               inputMode="numeric"
               autoComplete="off"
-              value={terms.leadTimeDays}
+              value={productTerms[pid]?.leadTimeDays ?? ""}
               onChange={(e) =>
-                setTerms({ ...terms, leadTimeDays: e.target.value })
+                setProductTerm(pid, { leadTimeDays: e.target.value })
               }
               data-quote-lead
-              data-missing={lacks("leadTimeDays") ? "true" : undefined}
+              data-missing={lacks(`${pid}.leadTimeDays`) ? "true" : undefined}
               className="h-full w-full min-w-0 rounded-md border-0 bg-transparent px-2.5 text-right text-[13px] tabular-nums text-zinc-900 focus:outline-none"
             />
             <span className="shrink-0 pr-2.5 text-xs text-zinc-500">
@@ -759,7 +787,7 @@ export function QuoteAnswerForm({
           <span
             className={cx(
               "flex h-9 items-center rounded-md border shadow-sm transition focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-100",
-              lacks("moq")
+              lacks(`${pid}.moq`)
                 ? "border-red-400 bg-red-50"
                 : "border-zinc-300 bg-white",
             )}
@@ -768,10 +796,10 @@ export function QuoteAnswerForm({
               id={`quote-${quoteId}-moq`}
               inputMode="numeric"
               autoComplete="off"
-              value={terms.moq}
-              onChange={(e) => setTerms({ ...terms, moq: e.target.value })}
+              value={productTerms[pid]?.moq ?? ""}
+              onChange={(e) => setProductTerm(pid, { moq: e.target.value })}
               data-quote-moq
-              data-missing={lacks("moq") ? "true" : undefined}
+              data-missing={lacks(`${pid}.moq`) ? "true" : undefined}
               className="h-full w-full min-w-0 rounded-md border-0 bg-transparent px-2.5 text-right text-[13px] tabular-nums text-zinc-900 focus:outline-none"
             />
             <span className="shrink-0 pr-2.5 text-xs text-zinc-500">
@@ -1131,7 +1159,9 @@ export function QuoteAnswerForm({
                     ) : null}
                   </div>
                 </div>
-                {p.productId === focusProductId ? termsBlock : null}
+                {p.productId === focusProductId
+                  ? termsBlock(p.productId)
+                  : null}
 
                 {p.ask ? (
                   <div
@@ -1589,14 +1619,27 @@ export function QuoteAnswerForm({
             name="incotermValue"
             value={exw ? terms.incotermValue : ""}
           />
-          <input type="hidden" name="leadTimeDays" value={terms.leadTimeDays} />
+          {/* Prazo e pedido mínimo de cada produto (dono, 23/11/2026). */}
+          {products.map((p) => (
+            <span key={p.productId} hidden>
+              <input
+                type="hidden"
+                name={`leadTime.${p.productId}`}
+                value={productTerms[p.productId]?.leadTimeDays ?? ""}
+              />
+              <input
+                type="hidden"
+                name={`moq.${p.productId}`}
+                value={productTerms[p.productId]?.moq ?? ""}
+              />
+            </span>
+          ))}
           <input
             type="hidden"
             name="port"
             value={portText}
             data-quote-port-value
           />
-          <input type="hidden" name="moq" value={terms.moq} />
           <input type="hidden" name="note" value={terms.note} />
           {missing.length ? (
             <div
