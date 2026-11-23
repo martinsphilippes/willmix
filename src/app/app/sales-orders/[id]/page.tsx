@@ -151,6 +151,8 @@ export default async function SalesOrderPage({
                         : returnCancelled
                           ? "salesOrder.done.returnCancelled"
                           : null;
+  const itemHead = (key: string) =>
+    t(`orderItems.head.${key}` as DictionaryKey);
   const total = order.lines.reduce(
     (s, l) => s + (l.unitPrice ?? 0) * l.quantity,
     0,
@@ -198,13 +200,25 @@ export default async function SalesOrderPage({
           <Table tools={false}>
             <thead>
               <tr>
-                <Th>
-                  <span className="sr-only">{t("salesOrder.photo")}</span>
-                </Th>
-                <Th>{t("salesOrder.product")}</Th>
-                <Th className="text-right">{t("salesOrder.quantity")}</Th>
-                <Th className="text-right">{t("salesOrder.unitsPerBox")}</Th>
-                <Th className="text-right">{t("salesOrder.boxes")}</Th>
+                {/* Tabela padrão de itens (dono, 22 e 23/11/2026;
+                    docs/ORDER_TABLES.md): as colunas padrão primeiro e as
+                    da ordem de venda (preço da ordem, reserva e remover)
+                    no fim. A ordem não tem os preços com e sem IPI: "—". */}
+                <Th className="text-right">{itemHead("sequence")}</Th>
+                <Th>{itemHead("photo")}</Th>
+                <Th>{itemHead("step")}</Th>
+                <Th>{itemHead("status")}</Th>
+                <Th>{itemHead("sla")}</Th>
+                <Th>{itemHead("code")}</Th>
+                <Th>{itemHead("description")}</Th>
+                <Th className="text-right">{itemHead("priceNoIpi")}</Th>
+                <Th className="text-right">{itemHead("priceIpi")}</Th>
+                <Th className="text-right">{itemHead("priceIpiFreight")}</Th>
+                <Th className="text-right">{itemHead("perBox")}</Th>
+                <Th className="text-right">{itemHead("perInner")}</Th>
+                <Th className="text-right">{itemHead("boxes")}</Th>
+                <Th className="text-right">{itemHead("pieces")}</Th>
+                <Th className="text-right">{itemHead("cbm")}</Th>
                 <Th className="text-right">
                   {t("salesOrder.unitPrice")} ({order.currency})
                 </Th>
@@ -229,6 +243,7 @@ export default async function SalesOrderPage({
                 );
                 return (
                   <tr key={`${l.productId}-${i}`} data-sales-order-line={i}>
+                    <Td className="text-right tabular-nums">{i + 1}</Td>
                     <Td className="w-14">
                       <PhotoGallery
                         name={l.name}
@@ -237,6 +252,18 @@ export default async function SalesOrderPage({
                           product ? productPhotoList(product, photos) : [],
                         )}
                       />
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      {t(`salesOrder.status.${order.status}` as DictionaryKey)}
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      {order.status === "draft"
+                        ? t("turn.waiting.wellmix")
+                        : "—"}
+                    </Td>
+                    <Td>—</Td>
+                    <Td className="whitespace-nowrap font-mono text-xs text-zinc-700">
+                      {product?.sku ?? "—"}
                     </Td>
                     <Td>
                       <input
@@ -256,6 +283,30 @@ export default async function SalesOrderPage({
                         l.name
                       )}
                     </Td>
+                    <Td className="text-right">—</Td>
+                    <Td className="text-right">—</Td>
+                    <Td className="text-right">—</Td>
+                    <Td
+                      className="text-right tabular-nums"
+                      data-sales-order-units-per-box={i}
+                    >
+                      {logistics.unitsPerBox !== null
+                        ? logistics.unitsPerBox.toLocaleString(t.intl)
+                        : "—"}
+                    </Td>
+                    <Td className="text-right tabular-nums">
+                      {product?.innerBoxQty
+                        ? product.innerBoxQty.toLocaleString(t.intl)
+                        : "—"}
+                    </Td>
+                    <Td
+                      className="text-right tabular-nums"
+                      data-sales-order-boxes={i}
+                    >
+                      {logistics.unitsPerBox !== null
+                        ? logistics.boxes.toLocaleString(t.intl)
+                        : "—"}
+                    </Td>
                     <Td className="text-right">
                       {editable ? (
                         <Input
@@ -270,20 +321,11 @@ export default async function SalesOrderPage({
                         `${l.quantity} ${l.unit}`
                       )}
                     </Td>
-                    <Td
-                      className="text-right tabular-nums"
-                      data-sales-order-units-per-box={i}
-                    >
-                      {logistics.unitsPerBox !== null
-                        ? logistics.unitsPerBox.toLocaleString(t.intl)
-                        : "—"}
-                    </Td>
-                    <Td
-                      className="text-right tabular-nums"
-                      data-sales-order-boxes={i}
-                    >
-                      {logistics.unitsPerBox !== null
-                        ? logistics.boxes.toLocaleString(t.intl)
+                    <Td className="text-right tabular-nums">
+                      {logistics.cbm !== null
+                        ? logistics.cbm.toLocaleString(t.intl, {
+                            maximumFractionDigits: 3,
+                          })
                         : "—"}
                     </Td>
                     <Td className="text-right">

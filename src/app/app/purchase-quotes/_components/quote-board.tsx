@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { can, canSeePurchasePrice } from "@/lib/auth/function-access";
+import {
+  can,
+  canSeeMoney,
+  canSeePurchasePrice,
+} from "@/lib/auth/function-access";
+import { itemPrices } from "@/lib/order-table";
+import { turnTone, turnWaitingKey } from "@/lib/turn";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { productNameText } from "@/i18n";
 import { getStore } from "@/lib/db";
@@ -22,6 +28,7 @@ import {
   Textarea,
   Th,
   cx,
+  formatDate,
   linkClass,
   rowClass,
 } from "@/components/ui";
@@ -81,6 +88,9 @@ function boxCells(
     <>
       <Td className="tabular-nums" data-quote-units-per-box={item.productId}>
         {l.unitsPerBox !== null ? n(l.unitsPerBox) : "—"}
+      </Td>
+      <Td className="tabular-nums">
+        {product?.innerBoxQty ? n(product.innerBoxQty) : "—"}
       </Td>
       <Td className="tabular-nums" data-quote-boxes={item.productId}>
         {l.unitsPerBox !== null ? n(l.boxes) : "—"}
@@ -184,6 +194,46 @@ export async function QuoteBoard({
   ).find((k) => typeof sp[k] === "string");
   // Caixa inner a definir (dono, 21/11/2026): pedida sem o número ou
   // diferente entre as encomendas; o Comprador define aqui.
+  /* Tabela padrão de itens (docs/ORDER_TABLES.md): Situação, Status e Prazo
+     da cotação, e os preços Wellmix da encomenda de cada produto (só com
+     "Ver valores e margem"). */
+  const itemHead = (key: string) =>
+    t(`orderItems.head.${key}` as DictionaryKey);
+  const seesSale = canSeeMoney(user);
+  const stdState =
+    quote.status !== "open"
+      ? quote.status
+      : empty
+        ? "empty"
+        : closed
+          ? "closed"
+          : "open";
+  const stdTurn =
+    stdState === "open"
+      ? ("supplier" as const)
+      : stdState === "cancelled" || stdState === "approved"
+        ? null
+        : ("wellmix" as const);
+  const stdDue =
+    stdState === "open"
+      ? (responses
+          .filter((r) => r.status === "invited")
+          .map((r) => r.dueAt)
+          .sort()
+          .at(-1) ?? null)
+      : null;
+  const salePrice = (
+    demand: (typeof demands)[number] | undefined,
+    key: "ipi" | "ipiFreight",
+  ) => {
+    const value = itemPrices(demand?.priceForecast ?? null)[key];
+    return value !== null
+      ? `${demand?.priceForecast?.currency ?? "BRL"} ${value.toLocaleString(
+          t.intl,
+          { minimumFractionDigits: 2, maximumFractionDigits: 4 },
+        )}`
+      : "—";
+  };
   const innerText = (item: PurchaseQuoteItem) => {
     const state = quoteInnerState(item.inner);
     return state.kind === "required"
@@ -260,13 +310,29 @@ export async function QuoteBoard({
         <Table tools={false}>
           <thead>
             <tr>
-              <Th>
-                <span className="sr-only">{t("quote.photo")}</span>
-              </Th>
-              <Th>{t("common.product")}</Th>
-              <Th>{t("common.quantity")}</Th>
-              <Th>{t("quote.unitsPerBox")}</Th>
-              <Th>{t("quote.boxes")}</Th>
+              {/* Tabela padrão de itens (dono, 22 e 23/11/2026;
+                  docs/ORDER_TABLES.md): as colunas padrão primeiro e a da
+                  cotação (inner exigida pelo cliente) no fim. Situação,
+                  Status e Prazo são os da cotação. */}
+              <Th>{itemHead("sequence")}</Th>
+              <Th>{itemHead("photo")}</Th>
+              <Th>{itemHead("step")}</Th>
+              <Th>{itemHead("status")}</Th>
+              <Th>{itemHead("sla")}</Th>
+              <Th>{itemHead("code")}</Th>
+              <Th>{itemHead("description")}</Th>
+              {seesSale ? (
+                <>
+                  <Th>{itemHead("priceNoIpi")}</Th>
+                  <Th>{itemHead("priceIpi")}</Th>
+                  <Th>{itemHead("priceIpiFreight")}</Th>
+                </>
+              ) : null}
+              <Th>{itemHead("perBox")}</Th>
+              <Th>{itemHead("perInner")}</Th>
+              <Th>{itemHead("boxes")}</Th>
+              <Th>{itemHead("pieces")}</Th>
+              <Th>{itemHead("cbm")}</Th>
               <Th>{t("quote.inner.col")}</Th>
               <Th>
                 <span className="sr-only">{t("chat.open")}</span>
@@ -274,7 +340,7 @@ export async function QuoteBoard({
             </tr>
           </thead>
           <tbody>
-            {quote.items.map((item) => {
+            {quote.items.map((item, index) => {
               const product = productOf(item.productId);
               const name = productNameText(t, item.name);
               const demand = demands.find(
@@ -286,6 +352,7 @@ export async function QuoteBoard({
                   className={rowClass}
                   data-quote-product={item.productId}
                 >
+                  <Td className="tabular-nums">{index + 1}</Td>
                   <Td className="w-14">
                     <PhotoGallery
                       name={name}
@@ -294,6 +361,24 @@ export async function QuoteBoard({
                         product ? productPhotoList(product, photos) : [],
                       )}
                     />
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    {t(`quote.status.${stdState}` as DictionaryKey)}
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    {stdTurn ? (
+                      <Badge tone={turnTone(stdTurn)}>
+                        {t(turnWaitingKey(stdTurn))}
+                      </Badge>
+                    ) : (
+                      "—"
+                    )}
+                  </Td>
+                  <Td className="whitespace-nowrap tabular-nums">
+                    {stdDue ? formatDate(stdDue, t) : "—"}
+                  </Td>
+                  <Td className="whitespace-nowrap font-mono text-xs text-zinc-700">
+                    {product?.sku ?? "—"}
                   </Td>
                   <Td>
                     {product && canOpenProducts ? (
@@ -307,10 +392,30 @@ export async function QuoteBoard({
                       name
                     )}
                   </Td>
-                  <Td className="tabular-nums">
+                  {seesSale ? (
+                    <>
+                      <Td>—</Td>
+                      <Td className="whitespace-nowrap tabular-nums">
+                        {salePrice(demand, "ipi")}
+                      </Td>
+                      <Td className="whitespace-nowrap tabular-nums">
+                        {salePrice(demand, "ipiFreight")}
+                      </Td>
+                    </>
+                  ) : null}
+                  {boxCells(t, item, product)}
+                  <Td className="whitespace-nowrap tabular-nums">
                     {item.quantity.toLocaleString(t.intl)} {item.unit}
                   </Td>
-                  {boxCells(t, item, product)}
+                  <Td className="whitespace-nowrap tabular-nums">
+                    {(() => {
+                      const cbm = itemLogistics({
+                        quantity: item.quantity,
+                        product,
+                      }).cbm;
+                      return cbm !== null ? n(cbm) : "—";
+                    })()}
+                  </Td>
                   <Td
                     className="text-xs"
                     data-quote-inner-state={quoteInnerState(item.inner).kind}
