@@ -449,8 +449,9 @@ Pedidos do dono, no mesmo dia: primeiro "manda direto para a Estratégia, quero 
 A Estratégia de compra (`/app/purchase-strategy`) tem duas formas de ver, à escolha de quem trabalha: **Cards** (como sempre) e **Tabela**. O seletor fica à direita das abas.
 
 - Vale nas abas **Esperando estratégia** e **Em andamento**; **Enviadas** já é uma tabela.
-- **Tabela, Esperando estratégia**: uma linha por solicitação (Solicitação, Cliente, País › Família, Produtos, Última compra e a Estratégia marcada). "Abrir" mostra embaixo o mesmo card, com a escolha, os destinatários, o resumo e o "Confirmar o envio". A linha com escolha marcada fica destacada.
-- **Tabela, Em andamento**: uma linha por estratégia (número, situação, modalidade, solicitações, cliente, produtos e fornecedor). "Abrir" mostra o card com as ações (aprovar, recusar, encerrar, gerar o pedido, detalhes). Endereço com `#decision-<id>` já abre a linha.
+- **Tabela, Esperando estratégia**: uma linha por solicitação (Solicitação, Cliente, País › Família, Produtos, Peças, Caixas master, CBM, Última compra e a Estratégia marcada). "Abrir" mostra embaixo o mesmo card, com a escolha, os destinatários, o resumo e o "Confirmar o envio". A linha com escolha marcada fica destacada.
+- **Tabela, Em andamento**: uma linha por estratégia (número, situação, modalidade, solicitações, cliente, produtos, peças, caixas master, CBM e fornecedor). "Abrir" mostra o card com as ações (aprovar, recusar, encerrar, gerar o pedido, detalhes). Endereço com `#decision-<id>` já abre a linha.
+- **Peças, Caixas master e CBM** (23/11/2026): a soma dos produtos da solicitação, com os mesmos números do card (`sumPackingTotals`, `src/lib/strategy-packing.ts`). Um produto sem a leitura de um dos números deixa aquele total "—": soma parcial não aparece como total.
 - O card fica montado mesmo recolhido: o que foi marcado nele não se perde ao fechar a linha.
 - A escolha vai no endereço (`?view=cards|table`) e fica lembrada no navegador (cookie `strategyView`, um ano): a tela abre do mesmo jeito da próxima vez. Sem escolha: cards.
 - Nada muda nas regras nem nas ações; é só a forma de listar. Código: `_components/strategy-view.tsx` (`StrategyViewToggle`, `StrategyTable`, `StrategyTableRow`).

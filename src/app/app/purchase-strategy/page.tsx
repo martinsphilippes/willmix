@@ -68,6 +68,7 @@ import {
   StrategyViewToggle,
 } from "./_components/strategy-view";
 import { STRATEGY_VIEW_COOKIE, type StrategyView } from "@/lib/strategy-view";
+import { sumPackingTotals } from "@/lib/strategy-packing";
 import { closedDemands, type ClosedDemandReason } from "@/lib/purchase-demand";
 import {
   demandPackings,
@@ -572,6 +573,18 @@ export default async function PurchaseStrategyPage({
     </li>
   );
 
+  const tableNumber = (value: number | null, name: string, digits = 0) =>
+    value === null ? (
+      "—"
+    ) : (
+      <span
+        key={name}
+        className="block text-right tabular-nums"
+        data-strategy-row-number={name}
+      >
+        {value.toLocaleString(t.intl, { maximumFractionDigits: digits })}
+      </span>
+    );
   /* Em andamento: cada estratégia com o seu card e, para a tabela, o resumo
      da linha (dono, 23/11/2026: cards ou tabela, à escolha). */
   const decisionItems =
@@ -1085,6 +1098,10 @@ export default async function PurchaseStrategyPage({
             title,
             customers,
             products: packLines.map((l) => nameOf(l.productId)),
+            // Peças, caixas master e m³ da estratégia: a soma dos produtos.
+            sum: sumPackingTotals(
+              packLines.map((l) => lineTotals(l, l.quantity)),
+            ),
             supplier: ref?.supplierName ?? null,
             blocked,
             requestNumbers: demands
@@ -1196,6 +1213,9 @@ export default async function PurchaseStrategyPage({
                 t("strategyTable.customer"),
                 t("strategyTable.origin"),
                 t("strategyTable.products"),
+                t("strategyTable.pieces"),
+                t("strategyTable.boxes"),
+                t("strategyTable.cbm"),
                 t("strategyTable.last"),
                 t("strategyTable.choice"),
               ],
@@ -1259,6 +1279,9 @@ export default async function PurchaseStrategyPage({
                   t("strategyTable.requests"),
                   t("strategyTable.customer"),
                   t("strategyTable.products"),
+                  t("strategyTable.pieces"),
+                  t("strategyTable.boxes"),
+                  t("strategyTable.cbm"),
                   t("strategyTable.supplier"),
                 ]}
               >
@@ -1267,7 +1290,7 @@ export default async function PurchaseStrategyPage({
                     key={item.d.id}
                     rowKey={item.d.id}
                     anchorId={`decision-${item.d.id}`}
-                    columns={8}
+                    columns={11}
                     labels={{
                       open: t("strategyTable.open"),
                       close: t("strategyTable.close"),
@@ -1305,6 +1328,9 @@ export default async function PurchaseStrategyPage({
                               n: item.products.length,
                             })}
                       </span>,
+                      tableNumber(item.sum.pieces, "pieces"),
+                      tableNumber(item.sum.masterBoxes, "boxes"),
+                      tableNumber(item.sum.cbm, "cbm", 3),
                       item.supplier ?? "—",
                     ]}
                   >

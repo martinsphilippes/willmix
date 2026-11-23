@@ -186,6 +186,17 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
     has: page.locator("text=Shenzhen"),
   });
   await expect(tableRow.first()).toBeVisible();
+  // Peças, caixas master e CBM da solicitação na linha (dono, 23/11/2026):
+  // 3.000 caixas de 48 peças = 144.000 peças e 360 m³.
+  await expect(
+    tableRow.first().locator("[data-strategy-row-pieces]"),
+  ).toHaveText("144.000");
+  await expect(
+    tableRow.first().locator("[data-strategy-row-boxes]"),
+  ).toHaveText("3.000");
+  await expect(tableRow.first().locator("[data-strategy-row-cbm]")).toHaveText(
+    "360",
+  );
   await expect(line).toBeHidden();
   const rowKey = await line.evaluate((el) =>
     el
@@ -212,6 +223,15 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
     `[data-strategy-table="open"] [data-strategy-row="${decisionA}"]`,
   );
   await expect(openRow).toContainText("Shenzhen");
+  await expect(
+    openRow.locator('[data-strategy-row-number="pieces"]'),
+  ).toHaveText("144.000");
+  await expect(
+    openRow.locator('[data-strategy-row-number="boxes"]'),
+  ).toHaveText("3.000");
+  await expect(openRow.locator('[data-strategy-row-number="cbm"]')).toHaveText(
+    "360",
+  );
   await expect(page.locator(`#decision-${decisionA}`)).toBeHidden();
   await page.locator(`[data-strategy-row-toggle="${decisionA}"]`).click();
   await expect(page.locator(`#decision-${decisionA}`)).toBeVisible();
