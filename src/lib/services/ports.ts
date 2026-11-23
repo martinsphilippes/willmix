@@ -25,7 +25,12 @@ export async function supplierPortOptions(
   country: string | null | undefined,
 ): Promise<string[]> {
   if (!country?.trim()) return [];
-  if (!cache || Date.now() - cache.at > TTL_MS)
-    cache = { at: Date.now(), rows: await load() };
+  if (!cache || Date.now() - cache.at > TTL_MS) {
+    const rows = await load();
+    // Leitura vazia (falha passageira) não fica guardada: tenta de novo na
+    // próxima abertura.
+    if (!rows.length) return [];
+    cache = { at: Date.now(), rows };
+  }
   return portsOfCountry(cache.rows, country);
 }
