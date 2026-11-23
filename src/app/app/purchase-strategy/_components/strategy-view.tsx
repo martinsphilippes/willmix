@@ -1,8 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { cx } from "@/components/ui";
+import { STRATEGY_VIEW_COOKIE, type StrategyView } from "@/lib/strategy-view";
 
 /*
  * Duas formas de ver a Estratégia de compra (dono, 23/11/2026;
@@ -17,9 +23,6 @@ const subscribeHash = (notify: () => void) => {
   return () => window.removeEventListener("hashchange", notify);
 };
 
-export type StrategyView = "cards" | "table";
-export const STRATEGY_VIEW_COOKIE = "strategyView";
-
 /** Lembra a escolha no navegador (um ano). */
 function remember(value: StrategyView) {
   try {
@@ -31,13 +34,20 @@ function remember(value: StrategyView) {
 
 export function StrategyViewToggle({
   view,
+  chosen,
   hrefs,
   labels,
 }: {
+  /** A visualização veio do endereço (alguém escolheu): lembrar. */
+  chosen: boolean;
   view: StrategyView;
   hrefs: Record<StrategyView, string>;
   labels: { label: string; cards: string; table: string };
 }) {
+  // Escolha pelo endereço: fica lembrada para a próxima vez.
+  useEffect(() => {
+    if (chosen) remember(view);
+  }, [chosen, view]);
   return (
     <div
       role="group"

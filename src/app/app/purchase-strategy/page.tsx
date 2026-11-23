@@ -63,12 +63,11 @@ import { QuickDialog } from "@/components/quick-dialog";
 import { HashTab } from "./_components/hash-tab";
 import { cookies } from "next/headers";
 import {
-  STRATEGY_VIEW_COOKIE,
   StrategyTable,
   StrategyTableRow,
   StrategyViewToggle,
-  type StrategyView,
 } from "./_components/strategy-view";
+import { STRATEGY_VIEW_COOKIE, type StrategyView } from "@/lib/strategy-view";
 import { closedDemands, type ClosedDemandReason } from "@/lib/purchase-demand";
 import {
   demandPackings,
@@ -1086,7 +1085,7 @@ export default async function PurchaseStrategyPage({
             title,
             customers,
             products: packLines.map((l) => nameOf(l.productId)),
-            supplier: ref?.supplierId ? partyName(ref.supplierId) : null,
+            supplier: ref?.supplierName ?? null,
             blocked,
             requestNumbers: demands
               .map((r) => r.number)
@@ -1161,6 +1160,7 @@ export default async function PurchaseStrategyPage({
           <div className="pb-1.5">
             <StrategyViewToggle
               view={view}
+              chosen={viewParam === "table" || viewParam === "cards"}
               hrefs={{
                 cards: `/app/purchase-strategy?tab=${tab}&view=cards`,
                 table: `/app/purchase-strategy?tab=${tab}&view=table`,
