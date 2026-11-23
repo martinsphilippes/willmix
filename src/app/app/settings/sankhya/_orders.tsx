@@ -550,11 +550,13 @@ function LoadCard({
             </p>
             {load.replenishments ||
             load.removedOrders ||
-            load.rejectedPreOrders ? (
+            load.rejectedPreOrders ||
+            load.cancelledTracks ? (
               <p className="text-zinc-600">
                 {t("sankhyaOrders.load.replenishments", {
                   n: load.replenishments ?? 0,
                   rejected: load.rejectedPreOrders ?? 0,
+                  cancelled: load.cancelledTracks ?? 0,
                   removed: load.removedOrders ?? 0,
                 })}
               </p>

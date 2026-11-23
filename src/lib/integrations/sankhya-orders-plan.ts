@@ -33,6 +33,8 @@ export interface ProjectionOrder {
       nunota: number;
       top: number;
       pending?: boolean;
+      /** STATUS_NOTA = L: documento confirmado (A é rascunho da etapa). */
+      confirmed?: boolean | null;
       date?: string | null;
       numnota?: string | null;
     }> | null;
@@ -368,6 +370,20 @@ function shipmentMilestone(
 const channelOrAny = (c: string | null | undefined) => !!(c ?? "").trim();
 
 /**
+ * STATUS_SHIPPING (`AD_STATUSSHIPPING`, lista marcada à mão no cabeçalho;
+ * técnico do Sankhya, 23/11/2026) que adianta o marco da 1104 pendente:
+ * 10 Booking solicitado e 11 Aguardando embarque. O 1 (Produção), o
+ * 2 (Inspeção) e o vazio seguem os eventos (no portal o pedido em produção
+ * já aparece em Inspeção); o 8 (Aguardando aceite fornecedor) tem regra
+ * própria; 3 Embarcado, 4 Registro, 5 Outras despesas, 6 Finalizado,
+ * 7 Aguardando documento final e 9 Compra programada não mudam o marco.
+ */
+export const STATUS_SHIPPING_MILESTONE: Record<
+  string,
+  MilestoneKey | undefined
+> = { "10": "booking", "11": "loading" };
+
+/**
  * Marco do pedido no portal pelo de-para aprovado pelo dono (21/11/2026,
  * docs/SANKHYA_INTEGRACAO.md, seção 9.4): o documento mais adiantado do
  * track, os status da 1104 e as datas de inspeção, ETD e ETA. Só para o
@@ -395,27 +411,41 @@ export function trackMilestone(
   if (top === 1103) return "contract";
   if (top !== 1104 && top !== 1107) return milestoneOf(row.milestone);
   const today = now.getTime();
+  const ss = String(d.statusShipping ?? "").trim();
   const main = (d.chain ?? []).filter((c) => Number(c.top) === top);
   const pending = main.length
     ? main.some((c) => !!c.pending)
     : !!d.chain?.at(-1)?.pending;
   if (pending) {
-    if (String(d.statusShipping ?? "").trim() === "8") return "down-payment";
-    if (isPartialInspection(d.quality)) return "inspection";
-    if (isInspected(d.quality) || sankhyaIso(d.inspectedAt)) {
+    const byEvents = ((): MilestoneKey => {
+      const partial = isPartialInspection(d.quality);
+      const inspected =
+        isInspected(d.quality) || (!partial && !!sankhyaIso(d.inspectedAt));
+      // 1104 ainda em rascunho (STATUS_NOTA = A): a etapa atingida é a 1103
+      // e falta fechar o contrato (técnico do Sankhya, 23/11/2026).
+      const draft = main.length > 0 && main.every((c) => c.confirmed === false);
+      if (draft && !inspected && !partial) return "contract";
+      // 8 = Aguardando aceite do fornecedor; marcado à mão, perde para a
+      // inspeção já feita (o track 116371 estava "Inspecionado" com 8).
+      if (ss === "8" && !inspected && !partial) return "down-payment";
+      if (partial) return "inspection";
+      if (!inspected) return "production";
       const etdIso = sankhyaIso(d.etd);
       const etd = etdIso ? Date.parse(etdIso) : NaN;
-      const nothingShipped = !ships.length;
       if (
-        nothingShipped &&
+        !ships.length &&
         Number.isFinite(etd) &&
         today >= etd &&
         today - etd <= ETD_FRESH_DAYS * DAY
       )
         return "shipment";
       return "booking";
-    }
-    return "production";
+    })();
+    // O STATUS_SHIPPING quase não anda (23/11/2026: na prática só 1, 3 e 8);
+    // quando marca uma etapa à frente dos eventos, vale a dele.
+    const byStatus = STATUS_SHIPPING_MILESTONE[ss];
+    const rank = (m: MilestoneKey) => MILESTONE_KEYS.indexOf(m);
+    return byStatus && rank(byStatus) > rank(byEvents) ? byStatus : byEvents;
   }
   if (/^recebimento parcial$/i.test((d.receipt ?? "").trim()))
     return "delivery";
@@ -459,3 +489,11 @@ export const sankhyaReplenishmentId = (
 /** Lote da reposição do Sankhya: todos os itens da 1100 do mesmo track. */
 export const sankhyaReplenishmentGroupId = (track: string | number) =>
   `snk-r${track}`;
+
+/**
+ * Track encerrado no meio do processo (cancelado): sem pendência e sem
+ * documento seguinte, em qualquer etapa. Não entra no portal (dono,
+ * 23/11/2026), como a 1100 reprovada.
+ */
+export const isCancelledTrack = (row: Pick<ProjectionOrder, "situation">) =>
+  row.situation === "interrupted";

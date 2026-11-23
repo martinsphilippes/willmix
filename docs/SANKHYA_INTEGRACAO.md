@@ -480,6 +480,36 @@ Substitui a tabela da seção 5.1. Cada pedido fica na linha mais adiantada que 
   - Ainda em 22/11, perto do fim, blocos de 10 pedidos em andamento, cada um com as pendências a criar, passavam dos 60 s. Como o andamento só era salvo no fim do bloco, o bloco era refeito a cada "Continuar". Agora o passo para no pedido em que o prazo vence e salva até ali.
   - Quando a 1100 passar a 1101 no Sankhya, ela vira pedido com o mesmo track. Isso entra no sincronismo de 15 minutos (seção 7, ainda por fazer).
 
+### 9.5 Respostas do técnico: confirmado × rascunho, cancelados, TOP 32 e STATUS_SHIPPING (23/11/2026)
+
+Conferido pelo técnico na produção do Sankhya, sobre 12 tracks de exemplo e os dois com `STATUS_SHIPPING` 8.
+
+- **Etapa do track = último documento confirmado** (`STATUS_NOTA = L`). O documento com `A` é rascunho da etapa seguinte e não conta como etapa atingida.
+- **Sem pendência e sem documento seguinte = encerrado no meio do processo (cancelado)**, em qualquer etapa (1100 a 1104). O Sankhya não tem campo de cancelamento nem motivo. Dono, 23/11/2026: esses **não entram no portal**, como as 1100 reprovadas. No ensaio ficam como "Interrompido", e a carga tira o pedido que uma rodada anterior gravou (`isCancelledTrack`, contador `cancelledTracks`).
+- **Exceção, a TOP 32 (Pré-venda INV +):** a 1104 sem embarque cujo track tem um documento 32 seguiu por outro caminho (entrada direta, sem ligação na TGFVAR). Entra no portal como **encerrado**, com `reason = direct_entry` e o documento em `directEntry`. Por isso a cópia `purchaseTracks` passou a trazer a TOP 32. Volume do técnico: 916 tracks com 1104 confirmada, sem pendência e sem embarque; 272 com TOP 32 e 644 sem nada depois.
+- **1104 pendente ainda em rascunho (`A`):** a etapa atingida é a 1103, então o marco é Contrato, a não ser que a inspeção já tenha acontecido.
+- "Aguardando definição" deixa de existir na prática: todos os casos viraram andamento, encerrado ou cancelado.
+
+**STATUS_SHIPPING** (`AD_STATUSSHIPPING`, lista do cabeçalho marcada à mão; vazio = ninguém marcou):
+
+| Valor | Significado                  | Uso no portal                                                            |
+| ----- | ---------------------------- | ------------------------------------------------------------------------ |
+| 1     | Produção                     | Segue os eventos (inspeção, ETD)                                         |
+| 2     | Inspeção                     | Segue os eventos (no portal o pedido em produção já aparece em Inspeção) |
+| 3     | Embarcado                    | No embarque 35: container embarcado                                      |
+| 4     | Registro                     | Não muda o marco (só 34 embarques de 2020)                               |
+| 5     | Outras Despesas              | Não muda o marco (sem uso)                                               |
+| 6     | Finalizado                   | Não muda o marco (10 embarques)                                          |
+| 7     | Aguardando Documento Final   | Não muda o marco (sem uso)                                               |
+| 8     | Aguardando Aceite Fornecedor | 1104 pendente sem inspeção: Sinal (o aceite e o sinal andam juntos)      |
+| 9     | Compra Programada            | Não muda o marco (1 track de 2021)                                       |
+| 10    | Booking solicitado           | Adianta o marco para Booking                                             |
+| 11    | Aguardando embarque          | Adianta o marco para Carregamento e documentos                           |
+
+**O status não segue a ordem dos números nem acompanha o pedido.** Na cópia de 20/11/2026, das 3.692 notas 1104: 2.715 estão vazias, 967 com 1, 6 com 3, 2 com 8, 1 com 9 e 1 com 10; nenhuma com 2, 7 ou 11. Das 955 com "1 Produção", 330 já estão "Inspecionado" e 745 já receberam a carga, ou seja, o campo fica parado no primeiro valor. Nos embarques 35, 1.450 de 1.510 estão com 3. Por isso o marco continua saindo dos documentos e dos eventos (inspeção, ETD, ETA, pré-nota, recebimento), e o status só entra quando marca algo à frente deles (10 e 11) ou no 8.
+
+- **Tracks 116371 e 117616 (8):** 1104 confirmada, aguardando o aceite do fornecedor, sem embarque. O 116371 já está "Inspecionado", então o 8 perde para a inspeção e ele fica em Booking; o 117616 fica em Sinal.
+
 ## 10. Em aberto
 
 1. Confirmação da Wellmix do de-para da seção 5.1 (D7). Até lá vale a proposta, validada na tela com casos reais.

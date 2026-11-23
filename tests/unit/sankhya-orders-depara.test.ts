@@ -94,6 +94,31 @@ describe("marco pelo de-para (função pura)", () => {
     ).toBe("delivery");
   });
 
+  it("rascunho da 1104, aceite do fornecedor e STATUS_SHIPPING à frente", () => {
+    const draftChain = [
+      { nunota: 1, top: 1104, pending: true, confirmed: false },
+    ];
+    const draft = (data: Record<string, unknown> = {}) => ({
+      top: 1104,
+      milestone: null,
+      data: { chain: draftChain, ...data },
+    });
+    // 1104 em rascunho (STATUS_NOTA = A): falta fechar o contrato.
+    expect(m(draft())).toBe("contract");
+    expect(m(draft({ quality: "Inspecionado" }))).toBe("booking");
+    // 8 (aguardando aceite) perde para a inspeção já feita.
+    expect(m(row(1104, { statusShipping: "8", quality: "Inspecionado" }))).toBe(
+      "booking",
+    );
+    // O status marcado à mão só vale quando está à frente dos eventos.
+    expect(m(row(1104, { statusShipping: "10" }))).toBe("booking");
+    expect(
+      m(row(1104, { statusShipping: "11", quality: "Inspecionado" })),
+    ).toBe("loading");
+    expect(plan.isCancelledTrack({ situation: "interrupted" })).toBe(true);
+    expect(plan.isCancelledTrack({ situation: "closed" })).toBe(false);
+  });
+
   it("1104 sem STATUS_SHIPPING e 1101 pendente seguem em andamento", () => {
     expect(
       plan.trackSituation({

@@ -24,6 +24,7 @@ import {
   orderNumberOf,
   sankhyaOrderId,
   shipmentLines,
+  isCancelledTrack,
   isReplenishmentTrack,
   sankhyaReplenishmentId,
   sankhyaReplenishmentGroupId,
@@ -73,6 +74,8 @@ export interface OrdersLoadProgress {
   replenishments?: number;
   /** Pre-orders (1100) sem pendência: reprovadas, fora do portal. */
   rejectedPreOrders?: number;
+  /** Tracks cancelados no meio do processo (1101 a 1104): fora do portal. */
+  cancelledTracks?: number;
   /** Pedidos de 1100 de cargas anteriores que saíram de Pedidos. */
   removedOrders?: number;
   skipped: Array<{ key: string; reason: string }>;
@@ -564,6 +567,17 @@ async function loadOrdersChunk(
       if (progress.skipped.length < MAX_SKIPPED)
         progress.skipped.push({ key: row.key, reason });
     };
+    if (!isReplenishmentTrack(row) && isCancelledTrack(row)) {
+      // Cancelado no meio do processo: não entra no portal (dono,
+      // 23/11/2026). O pedido que uma carga anterior gravou sai.
+      const old = existingById.get(sankhyaOrderId(row.key));
+      if (old) {
+        await removeLoadedOrder(store, old.id);
+        progress.removedOrders = (progress.removedOrders ?? 0) + 1;
+      }
+      progress.cancelledTracks = (progress.cancelledTracks ?? 0) + 1;
+      continue;
+    }
     if (isReplenishmentTrack(row)) {
       // 1100 não é pedido: vira reposição (aberta se pendente no Sankhya,
       // encerrada como histórico se não) e sai de Pedidos.
