@@ -27,8 +27,6 @@ import {
   formatDate,
   rowClass,
 } from "@/components/ui";
-import { QuickDialog } from "@/components/quick-dialog";
-import { ChatIcon } from "@/components/chat-open-button";
 import { ActionError } from "@/components/action-error";
 import {
   addQuoteScalePhotoAction,
@@ -335,33 +333,24 @@ export default async function PurchaseQuotePage({
         quote.items.find((i) => i.productId === productId)?.name ?? "",
       );
       const messages = quoteProductMessages(response, productId);
+      // A conversa já aberta, na coluna fixa da direita (dono, 23/11/2026).
       return (
-        <QuickDialog
-          label={
-            <>
-              <ChatIcon className="h-4 w-4" />
-              {t("quote.products.chat")}
-              {messages.length ? ` (${messages.length})` : ""}
-            </>
-          }
-          title={t("quote.products.chatTitle", { product: name })}
-          closeLabel={t("strategyCard.close")}
-          size="lg"
-          data-quote-product-chat={productId}
-        >
-          <QuoteChat
-            quoteId={quote.id}
-            responseId={null}
-            productId={productId}
-            messages={messages}
-            mySide="supplier"
-            names={{}}
-            canPost={canMessageQuote(quote.status, response)}
-            errors={chatErrors}
-            fallbackError={`${t("common.error")} ({code})`}
-            t={t}
-          />
-        </QuickDialog>
+        <Card title={t("quote.products.chatTitle", { product: name })}>
+          <div data-quote-product-chat={productId}>
+            <QuoteChat
+              quoteId={quote.id}
+              responseId={null}
+              productId={productId}
+              messages={messages}
+              mySide="supplier"
+              names={{}}
+              canPost={canMessageQuote(quote.status, response)}
+              errors={chatErrors}
+              fallbackError={`${t("common.error")} ({code})`}
+              t={t}
+            />
+          </div>
+        </Card>
       );
     };
     const samplingBlock = (item: (typeof quote.items)[number]) => {
@@ -438,9 +427,6 @@ export default async function PurchaseQuotePage({
           {t(`quote.response.${state}` as DictionaryKey)}
         </Badge>
         <QuoteDeadline t={t} dueAt={response.dueAt} now={now} />
-        {/* A conversa do produto fica no alto, à direita do prazo (dono,
-            23/11/2026). */}
-        {focus ? <span className="ml-auto">{productChat(focus)}</span> : null}
       </div>
     );
     const answerForm = editable ? (
@@ -520,33 +506,45 @@ export default async function PurchaseQuotePage({
             }
           />
           {notices}
-          {mine.length ? (
-            <div id="negociacao" className="mb-4 scroll-mt-20 space-y-3">
-              {mine.map(counterCard)}
-            </div>
-          ) : null}
-          <div className="mb-4">
-            <Card>
-              {stateBar}
-              {answerForm}
-            </Card>
-          </div>
-          {response.status !== "declined" ? (
-            <div id="amostragem" className="scroll-mt-20">
-              <Card title={t("quoteSampling.productsTitle")}>
-                <div className="space-y-4" data-quote-sampling>
-                  {samplingNotice ? (
-                    <div role="status" data-quote-sampling-notice>
-                      <Alert tone="success">
-                        {t(`quoteSampling.notice.${samplingNotice}`)}
-                      </Alert>
+          {/* Duas colunas (dono, 23/11/2026): à esquerda, o formulário e a
+              amostra; à direita, fixa na rolagem, a conversa deste produto
+              já aberta (em tela estreita, ela vai para baixo). */}
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
+            <div className="min-w-0">
+              {mine.length ? (
+                <div className="mb-4 space-y-3">{mine.map(counterCard)}</div>
+              ) : null}
+              <div className="mb-4">
+                <Card>
+                  {stateBar}
+                  {answerForm}
+                </Card>
+              </div>
+              {response.status !== "declined" ? (
+                <div id="amostragem" className="scroll-mt-20">
+                  <Card title={t("quoteSampling.productsTitle")}>
+                    <div className="space-y-4" data-quote-sampling>
+                      {samplingNotice ? (
+                        <div role="status" data-quote-sampling-notice>
+                          <Alert tone="success">
+                            {t(`quoteSampling.notice.${samplingNotice}`)}
+                          </Alert>
+                        </div>
+                      ) : null}
+                      {samplingBlock(item)}
                     </div>
-                  ) : null}
-                  {samplingBlock(item)}
+                  </Card>
                 </div>
-              </Card>
+              ) : null}
             </div>
-          ) : null}
+            <aside
+              id="negociacao"
+              className="min-w-0 scroll-mt-20 lg:sticky lg:top-20 lg:z-10 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
+              data-quote-product-side
+            >
+              {productChat(focus)}
+            </aside>
+          </div>
         </div>
       );
     }
