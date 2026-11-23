@@ -175,9 +175,15 @@ test("reposição aberta pelo + Adicionar entra na fila", async ({ page }) => {
   await page.waitForURL(/\/app\/replenishment\?opened=/);
   await expect(page.locator("[data-replenishment-opened]")).toBeVisible();
   const opened = new URL(page.url()).searchParams.get("opened");
+  // Tabela padrão de pedidos (docs/ORDER_TABLES.md): a linha mostra quantos
+  // itens (o produto fica na dica) e o tipo de venda da reposição.
+  const openedRow = page.locator(`[data-replenishment-row="${opened}"]`);
   await expect(
-    page.locator(`[data-replenishment-row="${opened}"]`),
-  ).toContainText("Boneca");
+    openedRow.locator("[data-replenishment-products] span"),
+  ).toHaveAttribute("title", /Boneca/);
+  await expect(openedRow.locator('[data-order-col="saleType"]')).toHaveText(
+    "Wellmix STK",
+  );
   // Na lista geral, com a etiqueta de reposição.
   await page.goto("/app/requests?kind=replenishment");
   await expect(

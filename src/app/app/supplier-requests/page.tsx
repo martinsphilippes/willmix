@@ -51,7 +51,18 @@ import {
   linkClass,
   rowClass,
 } from "@/components/ui";
-import { can, canSeePurchasePrice } from "@/lib/auth/function-access";
+import {
+  can,
+  canSeeMoney,
+  canSeePurchasePrice,
+} from "@/lib/auth/function-access";
+import { loadOrderCells } from "@/lib/services/order-cells";
+import {
+  OrderStandardHeads,
+  OrderTermsTds,
+  OrderTotalsTds,
+  orderHeadText,
+} from "@/components/order-standard-cells";
 import { getStore, type PurchaseQuote } from "@/lib/db";
 import {
   quoteClosed,
@@ -212,6 +223,34 @@ export default async function SupplierRequestsPage({
     ? await purchaseOrderCustomer()
     : null;
 
+  /* Tabela padrão de pedidos (dono, 22 e 23/11/2026; docs/ORDER_TABLES.md),
+     só para a Wellmix: as colunas padrão primeiro, na ordem, e as próprias
+     da cotação (Origem, Resposta, Finalizada e o pedido) no fim. O
+     fornecedor segue com a lista dele, sem cliente nem venda. Cada cotação
+     nasce de uma solicitação só (um cliente); a de book não tem cliente. */
+  const seeValue = wellmix && canSeeMoney(user);
+  const cells = wellmix
+    ? await loadOrderCells([
+        ...tabQuotes.map((q) => ({
+          key: `q:${q.id}`,
+          requestIds: q.demandIds ?? [],
+        })),
+        ...requests.map((products) => ({
+          key: `r:${products[0].id}`,
+          requestIds: products[0].bookingLotId
+            ? []
+            : [...new Set(products.flatMap((p) => p.demandIds ?? []))],
+        })),
+      ]).catch(() => null)
+    : null;
+  const numTd = "whitespace-nowrap text-right tabular-nums";
+  const termsCells = (key: string, createdAt: string) => (
+    <OrderTermsTds t={t} cells={cells?.byKey.get(key)} createdAt={createdAt} />
+  );
+  const totalCells = (key: string) => (
+    <OrderTotalsTds t={t} cells={cells?.byKey.get(key)} seeValue={seeValue} />
+  );
+
   return (
     <>
       <PageHeader
@@ -316,33 +355,51 @@ export default async function SupplierRequestsPage({
           </p>
           <Table>
             <thead>
-              <tr>
-                <Th>{t("supplierRequests.col.number")}</Th>
-                {wellmix ? <Th>{t("quotation.col.origin")}</Th> : null}
-                <Th>{t("supplierRequests.col.status")}</Th>
-                {wellmix ? <Th>{t("supplierRequests.col.supplier")}</Th> : null}
-                <Th>{t("supplierRequests.col.products")}</Th>
-                <Th>{t("supplierRequests.col.quantity")}</Th>
-                <Th>{t("supplierRequests.col.rounds")}</Th>
-                <Th>
-                  <span
-                    title={t("supplierRequests.col.containersHint", {
-                      code: container?.code ?? "—",
-                    })}
-                  >
-                    {t("supplierRequests.col.containersPerRound")}
-                  </span>
-                </Th>
-                <Th>{t("supplierRequests.col.answer")}</Th>
-                <Th>{t("supplierRequests.col.createdAt")}</Th>
-                <Th>{t("supplierRequests.col.finishedAt")}</Th>
-                {closedTab && showPurchase ? (
-                  <Th>{t("supplierRequests.col.order")}</Th>
-                ) : null}
-                <Th>
-                  <span className="sr-only">{t("tasks.open")}</span>
-                </Th>
-              </tr>
+              {wellmix ? (
+                <tr data-order-table="quotation">
+                  <Th>{orderHeadText(t, "number")}</Th>
+                  <OrderStandardHeads t={t} seeValue={seeValue} />
+                  <Th>{t("quotation.col.origin")}</Th>
+                  <Th>{t("supplierRequests.col.answer")}</Th>
+                  <Th>{t("supplierRequests.col.finishedAt")}</Th>
+                  {closedTab && showPurchase ? (
+                    <Th>{t("supplierRequests.col.order")}</Th>
+                  ) : null}
+                  <Th>
+                    <span className="sr-only">{t("tasks.open")}</span>
+                  </Th>
+                </tr>
+              ) : (
+                <tr>
+                  <Th>{t("supplierRequests.col.number")}</Th>
+                  {wellmix ? <Th>{t("quotation.col.origin")}</Th> : null}
+                  <Th>{t("supplierRequests.col.status")}</Th>
+                  {wellmix ? (
+                    <Th>{t("supplierRequests.col.supplier")}</Th>
+                  ) : null}
+                  <Th>{t("supplierRequests.col.products")}</Th>
+                  <Th>{t("supplierRequests.col.quantity")}</Th>
+                  <Th>{t("supplierRequests.col.rounds")}</Th>
+                  <Th>
+                    <span
+                      title={t("supplierRequests.col.containersHint", {
+                        code: container?.code ?? "—",
+                      })}
+                    >
+                      {t("supplierRequests.col.containersPerRound")}
+                    </span>
+                  </Th>
+                  <Th>{t("supplierRequests.col.answer")}</Th>
+                  <Th>{t("supplierRequests.col.createdAt")}</Th>
+                  <Th>{t("supplierRequests.col.finishedAt")}</Th>
+                  {closedTab && showPurchase ? (
+                    <Th>{t("supplierRequests.col.order")}</Th>
+                  ) : null}
+                  <Th>
+                    <span className="sr-only">{t("tasks.open")}</span>
+                  </Th>
+                </tr>
+              )}
             </thead>
             <tbody>
               {tabQuotes.map((q) => {
@@ -370,7 +427,6 @@ export default async function SupplierRequestsPage({
                     quoteSuppliers.find((p) => p.id === r.supplierId)?.name ??
                     "—",
                 );
-                const pieces = q.items.reduce((sum, i) => sum + i.quantity, 0);
                 const rounds = Math.max(
                   1,
                   ...q.items.map((i) => i.schedule?.items?.length ?? 1),
@@ -393,61 +449,64 @@ export default async function SupplierRequestsPage({
                         {q.number}
                       </Link>
                     </Td>
+                    {termsCells(`q:${q.id}`, q.createdAt)}
+                    {/* Status: de quem é a vez. */}
+                    <Td className="whitespace-nowrap">
+                      {turn ? (
+                        <span data-quote-turn={turn}>
+                          <Badge tone={turnTone(turn)}>
+                            {t(turnWaitingKey(turn))}
+                          </Badge>
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                    {/* Situação: o momento da cotação. */}
+                    <Td className="whitespace-nowrap">
+                      <Badge
+                        tone={
+                          state === "empty"
+                            ? "danger"
+                            : state === "open"
+                              ? "warning"
+                              : "neutral"
+                        }
+                      >
+                        {t(`quote.status.${state}` as DictionaryKey)}
+                      </Badge>
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      {due ? (
+                        <QuoteDeadline t={t} dueAt={due} now={now} />
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                    <Td className={numTd} data-quote-products={q.id}>
+                      {new Set(q.items.map((i) => i.productId)).size}
+                    </Td>
+                    <Td className={numTd}>{rounds}</Td>
+                    {totalCells(`q:${q.id}`)}
+                    <Td className="max-w-56 whitespace-normal">
+                      <span title={names.join(", ")}>
+                        {names.length === 0
+                          ? "—"
+                          : names.length === 1
+                            ? names[0]
+                            : t("quotation.list.suppliers", {
+                                n: names.length,
+                              })}
+                      </span>
+                    </Td>
                     <Td data-quotation-origin>
                       {originText(null, q.demandIds)}
                     </Td>
-                    <Td>
-                      <span className="flex flex-wrap gap-1">
-                        <Badge
-                          tone={
-                            state === "empty"
-                              ? "danger"
-                              : state === "open"
-                                ? "warning"
-                                : "neutral"
-                          }
-                        >
-                          {t(`quote.status.${state}` as DictionaryKey)}
-                        </Badge>
-                        {turn ? (
-                          <span data-quote-turn={turn}>
-                            <Badge tone={turnTone(turn)}>
-                              {t(turnWaitingKey(turn))}
-                            </Badge>
-                          </span>
-                        ) : null}
-                      </span>
-                    </Td>
-                    <Td className="max-w-56 whitespace-normal">
-                      <span title={names.join(", ")}>
-                        {names.length === 1
-                          ? names[0]
-                          : t("quotation.list.suppliers", { n: names.length })}
-                      </span>
-                    </Td>
-                    <Td className="tabular-nums" data-quote-products={q.id}>
-                      {new Set(q.items.map((i) => i.productId)).size}
-                    </Td>
-                    <Td className="whitespace-nowrap tabular-nums">
-                      {t("supplierRequests.detail.pieces", {
-                        n: pieces.toLocaleString(t.intl),
-                      })}
-                    </Td>
-                    <Td className="tabular-nums">{rounds}</Td>
-                    <Td>—</Td>
-                    <Td>
+                    <Td className="whitespace-nowrap">
                       {t("supplierRequests.list.answered", {
                         n: mine.filter((r) => r.status === "answered").length,
                         total: mine.length,
                       })}
-                      {due ? (
-                        <span className="block">
-                          <QuoteDeadline t={t} dueAt={due} now={now} />
-                        </span>
-                      ) : null}
-                    </Td>
-                    <Td className="whitespace-nowrap tabular-nums">
-                      {dateTime(q.createdAt, t)}
                     </Td>
                     <Td>—</Td>
                     {closedTab && showPurchase ? <Td>—</Td> : null}
@@ -506,6 +565,156 @@ export default async function SupplierRequestsPage({
                   closedTab && showPurchase
                     ? requestOrderState(products)
                     : null;
+                const answerCell = (
+                  <Td>
+                    {many
+                      ? t("supplierRequests.list.answered", {
+                          n: answered,
+                          total: products.length,
+                        })
+                      : answerText(t, r, seesPrice)}
+                    {orderIds.map((orderId) => (
+                      <Link
+                        key={orderId}
+                        href={`/app/orders/${orderId}`}
+                        className={`${linkClass} block text-xs`}
+                        data-supplier-request-order={orderId}
+                      >
+                        {t("purchaseOrder.list.order")}
+                      </Link>
+                    ))}
+                  </Td>
+                );
+                const finishedCell = (
+                  <Td
+                    className="whitespace-nowrap"
+                    data-supplier-request-finished={r.id}
+                  >
+                    {finished ? (
+                      <>
+                        <span className="block tabular-nums">
+                          {dateTime(finished, t)}
+                        </span>
+                        <span className="mt-0.5 inline-flex">
+                          <Badge tone={late ? "danger" : "success"}>
+                            {t(
+                              late
+                                ? "supplierRequests.list.finishedLate"
+                                : "supplierRequests.list.finishedOnTime",
+                            )}
+                          </Badge>
+                        </span>
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </Td>
+                );
+                const orderCell = orderState ? (
+                  <Td data-request-order-state={orderState.kind}>
+                    {orderState.kind === "ready" ? (
+                      <LinkButton
+                        href={`/app/supplier-requests?tab=closed&pick=${orderState.requestIds.join(",")}#pedido-de-compra`}
+                        variant="primary"
+                        data-request-to-order={r.id}
+                      >
+                        {t("supplierRequests.toOrder.submit")}
+                      </LinkButton>
+                    ) : orderState.kind === "missingProduct" ? (
+                      <span className="block max-w-48 whitespace-normal text-xs text-zinc-500">
+                        {t("supplierRequests.toOrder.missingProduct", {
+                          n: orderState.missing,
+                        })}
+                      </span>
+                    ) : orderState.kind === "waitingSample" ? (
+                      <span className="block max-w-48 whitespace-normal text-xs text-zinc-500">
+                        {t("supplierRequests.toOrder.waitingSample", {
+                          n: orderState.waiting,
+                        })}
+                      </span>
+                    ) : orderState.kind === "ordered" ? (
+                      <span className="text-xs text-zinc-500">
+                        {t("supplierRequests.toOrder.ordered")}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </Td>
+                ) : null;
+                const openCell = (
+                  <Td>
+                    <OpenLink
+                      href={href}
+                      label={t("tasks.open")}
+                      data-supplier-request-open={r.id}
+                    />
+                  </Td>
+                );
+                // Wellmix: a tabela padrão, com as colunas da cotação no fim.
+                if (wellmix)
+                  return (
+                    <tr
+                      key={r.id}
+                      className={rowClass}
+                      data-supplier-request-row={r.id}
+                    >
+                      <Td>
+                        <Link href={href} className={linkClass}>
+                          {r.number}
+                        </Link>
+                      </Td>
+                      {termsCells(`r:${r.id}`, r.createdAt)}
+                      {/* Status: de quem é a vez. */}
+                      <Td className="whitespace-nowrap">
+                        {turn ? (
+                          <Badge tone={turnTone(turn)}>
+                            {t(turnWaitingKey(turn))}
+                          </Badge>
+                        ) : (
+                          "—"
+                        )}
+                      </Td>
+                      {/* Situação: o momento de cada produto. */}
+                      <Td>
+                        <span className="flex flex-wrap gap-1">
+                          {statuses.map((status) => (
+                            <Badge key={status} tone={STATUS_TONE[status]}>
+                              {t(
+                                `supplierRequests.status.${status}` as DictionaryKey,
+                              )}
+                              {many
+                                ? ` · ${products.filter((p) => p.status === status).length}`
+                                : ""}
+                            </Badge>
+                          ))}
+                        </span>
+                      </Td>
+                      <Td className="whitespace-nowrap">
+                        {sla ? <SlaBadge sla={sla} t={t} /> : "—"}
+                      </Td>
+                      <Td
+                        className={numTd}
+                        data-supplier-request-products={r.id}
+                      >
+                        {distinct.toLocaleString(t.intl)}
+                      </Td>
+                      <Td className={numTd} data-supplier-request-rounds={r.id}>
+                        {rounds}
+                      </Td>
+                      {totalCells(`r:${r.id}`)}
+                      <Td>{supplier?.name ?? "—"}</Td>
+                      <Td data-quotation-origin>
+                        {originText(
+                          r.bookingLotId || null,
+                          r.demandIds ?? null,
+                        )}
+                      </Td>
+                      {answerCell}
+                      {finishedCell}
+                      {orderCell}
+                      {openCell}
+                    </tr>
+                  );
                 return (
                   <tr
                     key={r.id}
@@ -575,88 +784,13 @@ export default async function SupplierRequestsPage({
                           : `${containers.min}–${containers.max}`
                         : "—"}
                     </Td>
-                    <Td>
-                      {many
-                        ? t("supplierRequests.list.answered", {
-                            n: answered,
-                            total: products.length,
-                          })
-                        : answerText(t, r, seesPrice)}
-                      {orderIds.map((orderId) => (
-                        <Link
-                          key={orderId}
-                          href={`/app/orders/${orderId}`}
-                          className={`${linkClass} block text-xs`}
-                          data-supplier-request-order={orderId}
-                        >
-                          {t("purchaseOrder.list.order")}
-                        </Link>
-                      ))}
-                    </Td>
+                    {answerCell}
                     <Td className="whitespace-nowrap tabular-nums">
                       {dateTime(r.createdAt, t)}
                     </Td>
-                    <Td
-                      className="whitespace-nowrap"
-                      data-supplier-request-finished={r.id}
-                    >
-                      {finished ? (
-                        <>
-                          <span className="block tabular-nums">
-                            {dateTime(finished, t)}
-                          </span>
-                          <span className="mt-0.5 inline-flex">
-                            <Badge tone={late ? "danger" : "success"}>
-                              {t(
-                                late
-                                  ? "supplierRequests.list.finishedLate"
-                                  : "supplierRequests.list.finishedOnTime",
-                              )}
-                            </Badge>
-                          </span>
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </Td>
-                    {orderState ? (
-                      <Td data-request-order-state={orderState.kind}>
-                        {orderState.kind === "ready" ? (
-                          <LinkButton
-                            href={`/app/supplier-requests?tab=closed&pick=${orderState.requestIds.join(",")}#pedido-de-compra`}
-                            variant="primary"
-                            data-request-to-order={r.id}
-                          >
-                            {t("supplierRequests.toOrder.submit")}
-                          </LinkButton>
-                        ) : orderState.kind === "missingProduct" ? (
-                          <span className="block max-w-48 whitespace-normal text-xs text-zinc-500">
-                            {t("supplierRequests.toOrder.missingProduct", {
-                              n: orderState.missing,
-                            })}
-                          </span>
-                        ) : orderState.kind === "waitingSample" ? (
-                          <span className="block max-w-48 whitespace-normal text-xs text-zinc-500">
-                            {t("supplierRequests.toOrder.waitingSample", {
-                              n: orderState.waiting,
-                            })}
-                          </span>
-                        ) : orderState.kind === "ordered" ? (
-                          <span className="text-xs text-zinc-500">
-                            {t("supplierRequests.toOrder.ordered")}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </Td>
-                    ) : null}
-                    <Td>
-                      <OpenLink
-                        href={href}
-                        label={t("tasks.open")}
-                        data-supplier-request-open={r.id}
-                      />
-                    </Td>
+                    {finishedCell}
+                    {orderCell}
+                    {openCell}
                   </tr>
                 );
               })}
