@@ -1,7 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { isStockCustomer } from "@/lib/services/stock-party";
 import { ActionError } from "@/components/action-error";
-import { RequestSheetTable } from "@/components/request-sheet-table";
+import { RequestProductSheet } from "@/components/request-product-sheet";
+import { requestChatPreview } from "@/lib/services/request-chat-preview";
 import { loadRequestSheet } from "@/lib/services/request-sheet";
 import { fallbackError } from "@/i18n/error-text";
 import {
@@ -77,7 +78,6 @@ export default async function RequestDetailPage({
     at: errorToken,
     fromCart,
     sale,
-    ficha,
     confirmed,
   } = await searchParams;
   const request = await getRequestForUser(user, id);
@@ -89,7 +89,7 @@ export default async function RequestDetailPage({
     canViewRequest(user, r),
   );
   const wellmix = isWellmix(user);
-  const [customer, documents, customerLogins, sheet] = await Promise.all([
+  const [customer, documents, customerLogins, sheet, chat] = await Promise.all([
     store.get("parties", request.customerId),
     store.list("documents", { filter: { requestId: request.id } }),
     // Logins deste cliente, para a Wellmix indicar o solicitante.
@@ -99,10 +99,12 @@ export default async function RequestDetailPage({
           orderBy: "name",
         })
       : Promise.resolve([]),
-    /* Ficha completa: uma linha por produto (esta e as do lote que o login
-       vê), com a origem de cada dado e as permissões aplicadas no servidor
-       (docs/REQUEST_SHEET.md). */
-    loadRequestSheet(user, request, siblings, t),
+    /* Só este produto (dono, 23/11/2026): a tela é o detalhamento dele no
+       pedido; os outros produtos ficam na página do pedido. A origem de cada
+       dado e as permissões são as da ficha (docs/REQUEST_SHEET.md). */
+    loadRequestSheet(user, request, [], t),
+    // A conversa à vista: as últimas mensagens que o login pode abrir.
+    requestChatPreview(user, request.id).catch(() => null),
   ]);
   /* Caixas master, cubagem e containers de cada programação na tabela das
      empresas do grupo econômico e na Programação de compra (dono,
@@ -193,8 +195,6 @@ export default async function RequestDetailPage({
     wellmix &&
     !isStockCustomer(request.customerId) &&
     (customerLogins.length > 0 || !!request.requestedForUserId);
-  /* Cartões de ação da Wellmix (NCM): lado a lado em telas grandes. */
-  const actionCards = [!!ncmInfo].filter(Boolean).length;
   return (
     <>
       {fromCart === "1" ? (
@@ -282,23 +282,6 @@ export default async function RequestDetailPage({
             >
               {t("reqBatch.backToOrder")}
             </TextLink>
-            {/* Mensagens: assunto desta solicitação na conversa da empresa.
-                "Conversar com a empresa" (Wellmix) abre o chat numa caixa
-                flutuante na própria tela (dono, 14/11/2026). */}
-            <ChatButtons
-              back={`/app/requests/${request.id}`}
-              requestId={request.id}
-              targets={[
-                wellmix
-                  ? {
-                      partyId: request.customerId,
-                      label: t("messages.chatCompany"),
-                      title: customer?.name,
-                      floating: true,
-                    }
-                  : { label: t("messages.chatWellmix"), floating: true },
-              ]}
-            />
             {/* Wellmix: mais produtos nesta solicitação antes do pedido
                 (entram no mesmo lote, com o mesmo número). */}
             {canAddProducts(user, request) ? (
@@ -448,27 +431,15 @@ export default async function RequestDetailPage({
         </div>
       ) : null}
 
-      {/* Solicitações: uma linha por produto e a ficha completa de cada um,
-          na largura toda; depois os cartões de ação da Wellmix
-          lado a lado; cotações e proposta na largura toda. A linha do tempo
-          resumida saiu para todos (decisão do dono): a situação fica no
-          selo do alto e a Wellmix acompanha pelas Etapas da solicitação. */}
-      <div className="mt-4 flex flex-col gap-4">
-        <div className="contents">
-          <Card title={t("requests.title")}>
-            {/* Uma linha por produto com os dados principais; "Ver ficha
-                completa" (botão no alto da tabela, para todas as linhas; dono,
-                15/11/2026) continua cada linha para a direita com Produto,
-                Embalagem e cubagem, Valores e Pagamento. A programação de
-                compra desta solicitação logo abaixo. */}
-            <div id="solicitacoes" className="scroll-mt-24" />
-            <RequestSheetTable
-              view={sheet}
-              t={t}
-              full={ficha === "completa"}
-              summaryHref={`/app/requests/${encodeURIComponent(id)}#solicitacoes`}
-              fullHref={`/app/requests/${encodeURIComponent(id)}?ficha=completa#solicitacoes`}
-            />
+      {/* O produto neste pedido (dono, 23/11/2026): à esquerda, o produto em
+          quadros (sem a tabela da ficha completa) e, embaixo, a programação,
+          as condições e os anexos; à direita, sempre à vista, a conversa e a
+          classificação fiscal. */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+        <div className="flex min-w-0 flex-col gap-4">
+          <div id="solicitacoes" className="scroll-mt-24" />
+          <RequestProductSheet view={sheet} t={t} />
+          <Card title={t("requestProduct.details")}>
             {/* Pedido para um grupo econômico (docs/ECONOMIC_GROUPS.md): logo
                 abaixo da linha do produto, com as caixas master, a cubagem e
                 os containers de cada programação (dono, 22/11/2026). */}
@@ -537,48 +508,101 @@ export default async function RequestDetailPage({
           </Card>
         </div>
 
-        {actionCards > 0 ? (
-          <div
-            className={cx(
-              "contents md:grid md:grid-cols-2 md:items-start md:gap-4",
-            )}
-          >
-            {/* Classificação fiscal: NCM → II (TEC) e IPI (TIPI) no valor ao cliente.
-                Em 2 colunas (md) ocupa duas linhas: RFQ e solicitante ficam
-                um abaixo do outro, sem buraco. */}
-            {ncmInfo ? (
-              <div className="min-w-0 md:row-span-2 lg:row-span-1">
-                <RequestNcmCard
-                  t={t}
+        <aside
+          className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-20"
+          data-request-side
+        >
+          <Card title={t("requestProduct.chat.title")}>
+            <div data-request-chat={chat?.total ?? 0}>
+              {chat?.messages.length ? (
+                <ul className="flex flex-col gap-2">
+                  {chat.messages.map((m) => (
+                    <li
+                      key={m.id}
+                      className={cx(
+                        "rounded-lg px-3 py-2 text-sm",
+                        m.mine
+                          ? "ml-6 bg-brand-50 text-zinc-900"
+                          : "mr-6 bg-zinc-100 text-zinc-900",
+                      )}
+                      data-request-chat-message
+                    >
+                      <span className="block text-[11px] text-zinc-500">
+                        {m.mine ? t("requestProduct.chat.you") : m.author}
+                        {" · "}
+                        {formatDate(m.at, t)}
+                      </span>
+                      <span className="whitespace-pre-line break-words">
+                        {m.body}
+                      </span>
+                      {m.attachment ? (
+                        <span className="mt-0.5 block text-xs text-zinc-500">
+                          📎 {t("requestProduct.chat.attachment")}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-zinc-500">
+                  {t("requestProduct.chat.empty")}
+                </p>
+              )}
+              {chat && chat.total > chat.messages.length ? (
+                <p className="mt-2 text-xs text-zinc-500">
+                  {t("requestProduct.chat.count", { n: chat.total })}
+                </p>
+              ) : null}
+              <div className="mt-3">
+                <ChatButtons
+                  back={`/app/requests/${request.id}`}
                   requestId={request.id}
-                  ncm={ncmInfo}
-                  suggestions={ncmSuggestionList}
-                  suggestionsPending={ncmPendingAuto}
-                  hasTable={fiscalLoaded}
-                  editable={!request.orderId}
-                  queue={ncmQueue}
-                  confirmedBy={
-                    ncmConfirmer
-                      ? `${ncmConfirmer.name} (${t(`role.${ncmConfirmer.role}` as DictionaryKey)})`
-                      : null
-                  }
-                  notice={
-                    ncmConfirmed
-                      ? t("ncm.confirmedOk")
-                      : typeof ncmSuggested === "string"
-                        ? t("ncm.suggestedOk", { count: ncmSuggested })
-                        : null
-                  }
-                  aiNotice={
-                    ncmAiReason
-                      ? t("ncm.aiUnavailable", { reason: ncmAiReason })
-                      : null
-                  }
+                  targets={[
+                    wellmix
+                      ? {
+                          partyId: request.customerId,
+                          label: t("messages.chatCompany"),
+                          title: customer?.name,
+                          floating: true,
+                        }
+                      : { label: t("messages.chatWellmix"), floating: true },
+                  ]}
                 />
               </div>
-            ) : null}
-          </div>
-        ) : null}
+            </div>
+          </Card>
+          {ncmInfo ? (
+            <div className="min-w-0 md:row-span-2 lg:row-span-1">
+              <RequestNcmCard
+                t={t}
+                requestId={request.id}
+                ncm={ncmInfo}
+                suggestions={ncmSuggestionList}
+                suggestionsPending={ncmPendingAuto}
+                hasTable={fiscalLoaded}
+                editable={!request.orderId}
+                queue={ncmQueue}
+                confirmedBy={
+                  ncmConfirmer
+                    ? `${ncmConfirmer.name} (${t(`role.${ncmConfirmer.role}` as DictionaryKey)})`
+                    : null
+                }
+                notice={
+                  ncmConfirmed
+                    ? t("ncm.confirmedOk")
+                    : typeof ncmSuggested === "string"
+                      ? t("ncm.suggestedOk", { count: ncmSuggested })
+                      : null
+                }
+                aiNotice={
+                  ncmAiReason
+                    ? t("ncm.aiUnavailable", { reason: ncmAiReason })
+                    : null
+                }
+              />
+            </div>
+          ) : null}
+        </aside>
       </div>
     </>
   );

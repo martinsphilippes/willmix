@@ -43,7 +43,7 @@ const TAG_STYLE: Partial<Record<SheetSource["kind"], string>> = {
   calculated: "bg-sky-50 text-sky-800 ring-sky-200",
 };
 
-function SourceTag({
+export function SourceTag({
   source,
   t,
   linked = false,
@@ -85,7 +85,7 @@ function SourceTag({
 }
 
 /** "—" para dado ausente; o leitor de tela e a dica dizem "Não informado". */
-function Missing({ t }: { t: Translate }) {
+export function Missing({ t }: { t: Translate }) {
   return (
     <span
       className="text-zinc-400"

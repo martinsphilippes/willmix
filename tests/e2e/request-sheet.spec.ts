@@ -2,15 +2,13 @@ import { expect, test, type Page } from "@playwright/test";
 import { login } from "./helpers";
 
 /*
- * Ficha completa da solicitação (dono, 15/11/2026; docs/REQUEST_SHEET.md e
- * docs/LINHA_DE_VISAO.md): na seção "Solicitações", uma linha por produto (a
- * solicitação com vários produtos mostra todos) com os dados principais. O
- * botão "Ver ficha completa", no alto da tabela, abre todas as linhas juntas:
- * a linha de cada produto continua para a direita, em linha horizontal, com
- * Produto, Embalagem e cubagem, Valores e Pagamento lado a lado e o produto
- * fixo à esquerda; só a tabela rola de lado, a página não (iPad e celular).
- * Sem dado: "—". Cada perfil vê o que já via: custo e compra só com "Ver
- * preço de compra"; o cliente, o que a solicitação dele gravou e a venda.
+ * O produto neste pedido (dono, 23/11/2026; docs/REQUEST_SHEET.md, seção 7):
+ * a tela de um produto mostra só ele, mesmo quando o pedido tem vários (os
+ * outros ficam na página do pedido). Sem tabela: no alto, a foto e os números
+ * principais; embaixo, um quadro por grupo (Produto, Embalagem e cubagem,
+ * Valores e Pagamento), com a origem de cada dado; a conversa fica à vista na
+ * lateral. Sem dado: "—". Cada perfil vê o que já via: custo e compra só com
+ * "Ver preço de compra"; o cliente, o que a solicitação dele gravou e a venda.
  *
  * Cadastro de demonstração: a boneca tem 48 peças por caixa master, caixa de
  * 52 × 34 × 68 cm (0,1202 m³) e custo de US$ 3,20; a piscina, 6 por caixa.
@@ -47,16 +45,6 @@ const cell = (page: Page, key: string) =>
 const field = (page: Page, key: string) =>
   current(page).locator(`[data-sheet-field="${key}"]`);
 
-/** "Ver ficha completa", no alto da tabela: abre todas as linhas juntas. */
-async function openFull(page: Page) {
-  await page.locator('[data-sheet-mode-link="full"]').click();
-  await page.waitForURL(/[?&]ficha=completa/);
-  await expect(page.locator("[data-request-sheet]")).toHaveAttribute(
-    "data-sheet-mode",
-    "full",
-  );
-}
-
 /** A página não rola de lado (nada cortado) na largura atual. */
 async function noSideScroll(page: Page) {
   const extra = await page.evaluate(
@@ -67,7 +55,7 @@ async function noSideScroll(page: Page) {
   expect(extra).toBeLessThanOrEqual(1);
 }
 
-test("Solicitações: uma linha por produto, ficha completa em linha horizontal, permissões e telas estreitas", async ({
+test("Produto no pedido: só ele na tela, em quadros, com a conversa à vista, permissões e telas estreitas", async ({
   page,
 }) => {
   // 1. O cliente pede dois produtos de uma vez, num pedido em 2
@@ -96,12 +84,14 @@ test("Solicitações: uma linha por produto, ficha completa em linha horizontal,
   await page.waitForURL(/\/app\/requests\/(?!new|batch)[^/?]+$/);
   const url = page.url();
 
-  // 2. Cliente: as duas linhas; a desta solicitação com o total da
-  // programação; sem caixa, cubagem, custo nem compra (é da Wellmix). Sem
-  // dado: "—" (dono, 15/11/2026; docs/LINHA_DE_VISAO.md).
+  // 2. Cliente: só este produto na tela (o pedido tem dois; o outro fica
+  // na página do pedido), com o total da programação; sem caixa, cubagem,
+  // custo nem compra (é da Wellmix). Sem dado: "—".
   const sheet = page.locator("[data-request-sheet]");
-  await expect(sheet).toHaveAttribute("data-sheet-mode", "summary");
-  await expect(sheet.locator("[data-sheet-row]")).toHaveCount(2);
+  await expect(sheet).toHaveAttribute("data-sheet-mode", "product");
+  await expect(page.locator("[data-sheet-row]")).toHaveCount(1);
+  await expect(sheet).not.toContainText("Piscina");
+  await expect(page.locator("[data-batch-siblings]")).toContainText("Piscina");
   await expect(cell(page, "pieces")).toContainText("14.400 peças");
   await expect(cell(page, "pieces")).toContainText("Programação");
   for (const key of ["boxes", "cbm", "cost", "purchase"])
@@ -110,37 +100,25 @@ test("Solicitações: uma linha por produto, ficha completa em linha horizontal,
   await expect(
     cell(page, "sale").locator("[data-sheet-missing]"),
   ).toHaveAttribute("title", "Não informado");
-  // A programação de compra continua abaixo da tabela, com o mesmo total.
+  // A programação de compra continua na tela, com o mesmo total.
   await expect(page.locator("[data-request-schedule-table]")).toContainText(
     "14.400",
   );
-  // Ver ficha completa (botão no alto da tabela, vale para todas as linhas):
-  // a linha de cada produto continua para a direita, com os quatro grupos
-  // lado a lado; nunca um bloco embaixo da linha.
-  await openFull(page);
+  // Os quatro grupos em quadros, já abertos (sem "Ver ficha completa").
+  await expect(page.locator('[data-sheet-mode-link="full"]')).toHaveCount(0);
   await expect(
     page.locator("[data-sheet-full] [data-sheet-group]"),
   ).toHaveCount(4);
-  await expect(sheet.locator("[data-sheet-row]")).toHaveCount(2);
   await expect(field(page, "measure.0")).toContainText(
     "Comprimento 12 cm · Largura 8 cm · Altura 32 cm",
   );
   await expect(field(page, "perBox")).toContainText("48");
   await expect(field(page, "perBox")).toContainText("Solicitação");
-  // Linha fina (dono, 22/11/2026): a foto do produto (ou o quadro vazio)
-  // abre a linha e cada valor fica numa linha só; o "ver mais" abre só a
-  // célula (aqui, a conta da programação) e o "ver menos" fecha.
-  await expect(
-    current(page).locator('[data-sheet-cell="product"] [data-sheet-thumb]'),
-  ).toHaveCount(1);
-  expect((await current(page).boundingBox())!.height).toBeLessThanOrEqual(64);
-  const pieces = field(page, "pieces");
-  await expect(pieces.locator("[data-clamp-detail]")).toBeHidden();
-  await pieces.locator("[data-clamp-toggle]").click();
-  await expect(pieces.locator("[data-clamp-detail]")).toBeVisible();
-  await expect(pieces.locator("[data-clamp-toggle]")).toHaveText("ver menos");
-  await pieces.locator("[data-clamp-toggle]").click();
-  await expect(pieces.locator("[data-clamp-detail]")).toBeHidden();
+  await expect(current(page).locator("[data-sheet-thumb]")).toHaveCount(1);
+  // A conversa à vista na lateral, com o botão de conversar.
+  const chat = page.locator("[data-request-side] [data-request-chat]");
+  await expect(chat).toBeVisible();
+  await expect(chat.locator("[data-chat-floating-open]")).toBeVisible();
   // Valores: só a venda; Pagamento: só o do cliente.
   await expect(field(page, "saleUnit")).toHaveCount(1);
   await expect(field(page, "quote")).toHaveCount(0);
@@ -149,13 +127,10 @@ test("Solicitações: uma linha por produto, ficha completa em linha horizontal,
   await expect(current(page)).not.toContainText("Ficha atual");
   await expect(current(page)).not.toContainText("3,20");
 
-  // 3. Celular: a linha resumida vira cartão; a ficha completa rola dentro da
-  // tabela (a página não rola de lado), com o produto fixo à esquerda.
+  // 3. Celular: os quadros um embaixo do outro; a página não rola de lado.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(url);
   await expect(cell(page, "pieces")).toBeVisible();
-  await noSideScroll(page);
-  await openFull(page);
   await expect(page.locator("[data-sheet-full]")).toBeVisible();
   await noSideScroll(page);
 
@@ -171,7 +146,6 @@ test("Solicitações: uma linha por produto, ficha completa em linha horizontal,
   await expect(cell(page, "cost")).toContainText("US$ 3,20");
   await expect(cell(page, "cost")).toContainText("Ficha atual");
   await expect(cell(page, "purchase")).toContainText("—");
-  await openFull(page);
   await expect(field(page, "sku")).toContainText("Ficha atual");
   // O cadastro grava o CBM da caixa (das medidas, ao salvar): gravado, não calculado.
   await expect(field(page, "cbmPerBox")).toContainText("0,1202 m³");
@@ -180,17 +154,7 @@ test("Solicitações: uma linha por produto, ficha completa em linha horizontal,
   await expect(field(page, "negotiated")).toContainText("—");
   await expect(field(page, "supplier")).toContainText("Guangzhou Supplier B");
   await expect(field(page, "terms")).toContainText("—");
-  // A outra linha do lote, na mesma tabela, com o link da solicitação dela.
-  const other = page.locator("[data-sheet-row]:not([data-sheet-current])");
-  await expect(other.locator("[data-sheet-open-request]")).toHaveAttribute(
-    "aria-label",
-    "Abrir a solicitação",
-  );
-  await expect(other.locator('[data-sheet-field="pieces"]')).toContainText(
-    "300 peças",
-  );
-
-  // 5. iPad: a ficha completa rola dentro da tabela; a página não.
+  // 5. iPad: os quadros cabem na tela; a página não rola de lado.
   await page.setViewportSize({ width: 820, height: 1180 });
   await page.reload();
   await expect(field(page, "cost")).toBeVisible();
@@ -214,7 +178,6 @@ test("Solicitações: uma linha por produto, ficha completa em linha horizontal,
   await expect(cell(page, "boxes")).toContainText("300 caixas");
   for (const key of ["cost", "purchase", "sale"])
     await expect(cell(page, key)).toHaveCount(0);
-  await openFull(page);
   await expect(page.locator('[data-sheet-restricted="values"]')).toContainText(
     "Ver preço de compra",
   );
