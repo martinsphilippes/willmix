@@ -328,3 +328,29 @@ Tudo fica na auditoria: `product.create`, `product.link_booking`, `product.showc
 ## Solicitação nascida da cotação de compra (15/11/2026)
 
 A cotação de compra vencedora, aprovada pela Diretoria de compras (docs/PURCHASE_DEMAND.md), cria a solicitação ao fornecedor sem item de book (`bookingItemId` e `bookingLotId` vazios): uma por produto, com o mesmo número, o produto do catálogo já ligado (`productAction: "linked"`) e a resposta preenchida com o preço, a moeda, o incoterm, o prazo de produção e o pedido mínimo cotados (`status: "answered"`). Guarda `quoteResponseId` e as demandas (`demandIds`). A Wellmix decide, a amostragem e o pedido de compra seguem como sempre; o pedido de compra leva as demandas (`orders.demandIds`).
+
+## Solicitações do cliente e Books no menu do fornecedor (dono, 23/11/2026)
+
+Pedido do dono para a tela do fornecedor (login externo):
+
+- **Books**, primeira opção de "Meus books" (`/app/booking`, `nav.partnerBooks`):
+  os books da empresa dele (responsável ou, sem responsável, o fornecedor),
+  com o botão **Importar book** acima da tabela. É a mesma tela que a Trading,
+  a Factory, o Supplier e o GP já tinham (`PartnerBookingList`,
+  `src/lib/services/booking-partner.ts`), semelhante ao Book da Wellmix, mas
+  só com os books dele e **sem a Seleção de itens** (atividade só interna).
+  O Fornecedor passou a vir com a tela Booking de fábrica
+  (`PROFILE_EXTRA["role:supplier"]`, `src/lib/partner-access.ts`); o
+  administrador ainda pode tirá-la na Gestão de telas. Perfil do Fornecedor
+  já gravado pelo administrador depois das telas extras (`extrasDecided`)
+  continua como ele marcou.
+- **Solicitações do cliente** (`/app/supplier-requests`,
+  `nav.customerRequests`): os **Convites de book** e as **Solicitações ao
+  fornecedor** numa tela e numa tabela só, com a coluna **Tipo** ("Convite de
+  book" ou "Solicitação"). O convite em aberto fica em "Em negociação" (com o
+  item e o prazo); o respondido e o cancelado, em "Encerradas". O item
+  "Convites de book" saiu do menu do fornecedor; o endereço antigo
+  (`/app/supplier-requests/invites`) continua abrindo e acende "Solicitações
+  do cliente", e o convite volta para ela.
+- A Wellmix não muda: segue com a Cotação unificada (docs/QUOTATION.md), com
+  os convites na aba própria.

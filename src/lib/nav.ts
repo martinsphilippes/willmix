@@ -473,17 +473,20 @@ export function navFor(
   const own = pick(
     has,
     [
-      // Trading (e quem mais recebe a tela): os bookings da empresa dele.
-      ["booking", { href: "/app/booking", key: "nav.booking" }],
-      // Convite para subir um booking concorrente de um item.
+      // Books (dono, 23/11/2026): a primeira opção de "Meus books", os books
+      // da empresa dele (Fornecedor, Trading e quem mais recebe a tela).
+      ["booking", { href: "/app/booking", key: "nav.partnerBooks" }],
+      // Solicitações do cliente (dono, 23/11/2026): os convites para subir
+      // um book concorrente e o que a Wellmix pergunta sobre um item do book
+      // dele, numa tela e numa tabela só. A tela antiga dos convites segue
+      // abrindo pelo endereço e acende este item.
       [
         "quotes",
-        { href: "/app/supplier-requests/invites", key: "nav.bookingInvites" },
-      ],
-      // O que a Wellmix pergunta sobre um item do booking dele.
-      [
-        "quotes",
-        { href: "/app/supplier-requests", key: "nav.supplierRequests" },
+        {
+          href: "/app/supplier-requests",
+          key: "nav.customerRequests",
+          match: ["/app/supplier-requests/invites"],
+        },
       ],
       // Cotação de compra (mapa B13): os convites de preço do fornecedor.
       ["quotes", { href: "/app/purchase-quotes", key: "nav.purchaseQuotes" }],

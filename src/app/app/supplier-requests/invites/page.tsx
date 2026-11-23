@@ -31,7 +31,7 @@ export default async function BookingInvitesPage() {
         )}
         actions={
           <LinkButton href="/app/supplier-requests">
-            {t(wellmix ? "nav.quotation" : "nav.supplierRequests")}
+            {t(wellmix ? "nav.quotation" : "nav.customerRequests")}
           </LinkButton>
         }
       />

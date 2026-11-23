@@ -91,7 +91,12 @@ describe("regras puras", () => {
       expect(lib.hasProfileExtras(key)).toBe(true);
     }
     expect(lib.hasProfileExtras("type:x")).toBe(false);
-    expect(lib.hasProfileExtras("role:supplier")).toBe(false);
+    // O Fornecedor também vem com o Booking ("Books", dono, 23/11/2026).
+    expect(lib.defaultScreens("role:supplier")).toEqual([
+      ...ROLE_SCREENS.supplier,
+      "booking",
+    ]);
+    expect(lib.hasProfileExtras("role:supplier")).toBe(true);
     // O Booking é uma tela interna adaptada: pode ser liberada a um login
     // externo e tem dados para quem entra como o Fornecedor (responsável ou
     // fornecedor do booking); nos outros papéis abre vazia. Não vem aberta
@@ -104,7 +109,7 @@ describe("regras puras", () => {
     expect(lib.isLimitedFor("booking", "role:supplier")).toBe(false);
     expect(lib.isLimitedFor("booking", "role:customer")).toBe(true);
     expect(lib.isLimitedFor("booking", "role:agency")).toBe(true);
-    expect(lib.defaultScreens("role:supplier")).not.toContain("booking");
+    expect(lib.defaultScreens("role:supplier")).toContain("booking");
     // Perfil do Trading gravado antes de o Booking existir: ganha a tela;
     // depois de o administrador gravar de novo, vale o que ele marcou.
     const old = {
@@ -292,12 +297,10 @@ describe("serviço e sessão", () => {
   it("o login de Trading nasce com as telas do Fornecedor mais o Booking", async () => {
     const now = await screensNow(trader);
     expect(now.open).toEqual([...ROLE_SCREENS.supplier, "booking"].sort());
-    // O menu é o do Fornecedor mais a entrada do Booking.
+    // O menu é o do Fornecedor, que também tem o Booking ("Books", dono,
+    // 23/11/2026).
     expect(now.links).toContain("/app/booking");
-    expect(now.links.filter((l) => l !== "/app/booking")).toEqual(
-      (await screensNow(supplier)).links,
-    );
-    expect((await screensNow(supplier)).links).not.toContain("/app/booking");
+    expect(now.links).toEqual((await screensNow(supplier)).links);
     const profiles = await svc.listAccessProfiles();
     const trading = profiles.find((p) => p.key === "type:trading")!;
     expect(trading.users).toBe(1);
@@ -351,7 +354,7 @@ describe("serviço e sessão", () => {
     expect(now.links).not.toContain("/app/quotes");
     // O Fornecedor de sempre não mudou.
     expect((await screensNow(supplier)).open).toEqual(
-      [...ROLE_SCREENS.supplier].sort(),
+      [...ROLE_SCREENS.supplier, "booking"].sort(),
     );
     const audits = await getStore().list("audit_log", {
       filter: { action: "partner_access.set", entityId: "type:trading" },
@@ -442,7 +445,7 @@ describe("serviço e sessão", () => {
     await svc.resetProfileScreens(admin, "role:supplier");
     await svc.resetProfileScreens(admin, "type:trading");
     expect((await screensNow(supplier)).open).toEqual(
-      [...ROLE_SCREENS.supplier].sort(),
+      [...ROLE_SCREENS.supplier, "booking"].sort(),
     );
     expect((await screensNow(trader)).open).toEqual(
       [...ROLE_SCREENS.supplier, "booking"].sort(),

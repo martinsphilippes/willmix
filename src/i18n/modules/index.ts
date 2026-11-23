@@ -132,6 +132,7 @@ import * as booking from "./booking";
 import * as bookingScreen from "./booking-screen";
 import * as bookingLots from "./booking-lots";
 import * as bookingInvites from "./booking-invites";
+import * as customerRequests from "./customer-requests";
 import * as supplierRequests from "./supplier-requests";
 import * as supplierRequestProduct from "./supplier-request-product";
 import * as placeholderName from "./placeholder-name";
@@ -316,6 +317,7 @@ export const modulesPt = {
   ...bookingScreen.pt,
   ...bookingLots.pt,
   ...bookingInvites.pt,
+  ...customerRequests.pt,
   ...supplierRequests.pt,
   ...supplierRequestProduct.pt,
   ...placeholderName.pt,
@@ -502,6 +504,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...bookingScreen.en,
   ...bookingLots.en,
   ...bookingInvites.en,
+  ...customerRequests.en,
   ...supplierRequests.en,
   ...supplierRequestProduct.en,
   ...placeholderName.en,
@@ -688,6 +691,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...bookingScreen.zh,
   ...bookingLots.zh,
   ...bookingInvites.zh,
+  ...customerRequests.zh,
   ...supplierRequests.zh,
   ...supplierRequestProduct.zh,
   ...placeholderName.zh,

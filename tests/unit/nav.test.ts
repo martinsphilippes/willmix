@@ -14,6 +14,8 @@ import { parentFor } from "@/components/back-button";
 import { canOpen } from "@/lib/auth/screens";
 import { teamAreaSections } from "@/components/team-area-nav";
 import { ROLES, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
+import { attachAccess } from "@/lib/auth/access-cache";
+import { ROLE_SCREENS } from "@/lib/auth/screens";
 
 /* Menu lateral (12/11/2026; blocos do mapa desde 14/11/2026,
    docs/FLOW_MENU.md): Control Tower e Pendências no alto, blocos na ordem do
@@ -306,8 +308,9 @@ describe("menu lateral", () => {
       ...top,
       {
         group: "nav.group.myBookings",
+        // Convites de book dentro de "Solicitações do cliente" (dono,
+        // 23/11/2026): uma entrada só.
         items: [
-          "/app/supplier-requests/invites",
           "/app/supplier-requests",
           "/app/purchase-quotes",
           "/app/orders",
@@ -715,5 +718,33 @@ describe("Vitrine pelas caixas de acesso", () => {
       (r) => r !== "admin" && r !== "operator" && r !== "customer",
     ))
       expect(hrefsOf({ role })).not.toContain("/app/explore");
+  });
+
+  it("fornecedor: Books é a primeira opção de Meus books e os convites ficam em Solicitações do cliente", () => {
+    // Na sessão, o Fornecedor vem com a tela Booking (dono, 23/11/2026).
+    const supplier = { role: "supplier" as const };
+    attachAccess(supplier, {
+      screens: [],
+      actions: [],
+      external: [...ROLE_SCREENS.supplier, "booking"],
+      menuHidden: [],
+    });
+    const group = navFor(supplier).find(
+      (e) => isNavGroup(e) && e.key === "nav.group.myBookings",
+    );
+    expect(group && isNavGroup(group) ? group.items[0] : null).toMatchObject({
+      href: "/app/booking",
+      key: "nav.partnerBooks",
+    });
+    const links = flattenNav(navFor(supplier));
+    expect(links.map((l) => l.href)).not.toContain(
+      "/app/supplier-requests/invites",
+    );
+    const requests = links.find((l) => l.href === "/app/supplier-requests");
+    expect(requests?.key).toBe("nav.customerRequests");
+    // A tela antiga dos convites acende "Solicitações do cliente".
+    expect(isActiveLink(requests!, "/app/supplier-requests/invites/abc")).toBe(
+      true,
+    );
   });
 });
