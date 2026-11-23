@@ -176,16 +176,18 @@ export async function PartnerBookingList({
     <>
       <PageHeader
         t={t}
-        title={t("bookingLots.title")}
+        title={t("partnerBooks.title")}
         subtitle={t("bookingLots.partner.subtitle")}
         actions={
+          // "Importar book" (dono, 23/11/2026), como na tela da Wellmix, sem
+          // a Seleção de itens (só interna).
           canLaunch && lots !== null ? (
             <LinkButton
               href="/app/booking/import"
               variant="primary"
               data-partner-booking-launch
             >
-              {t("bookingLots.partner.launch")}
+              {t("bookingLots.import")}
             </LinkButton>
           ) : null
         }

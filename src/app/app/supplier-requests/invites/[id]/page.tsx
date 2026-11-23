@@ -91,8 +91,16 @@ export default async function BookingInviteDetailPage({
           </span>
         }
         actions={
-          <LinkButton href="/app/supplier-requests/invites">
-            {t("bookingInvites.detail.back")}
+          // O fornecedor volta para "Solicitações do cliente" (dono,
+          // 23/11/2026), onde os convites estão junto com as solicitações.
+          <LinkButton
+            href={
+              wellmix
+                ? "/app/supplier-requests/invites"
+                : "/app/supplier-requests"
+            }
+          >
+            {t(wellmix ? "bookingInvites.detail.back" : "nav.customerRequests")}
           </LinkButton>
         }
       />

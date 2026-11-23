@@ -147,9 +147,9 @@ beforeAll(async () => {
 });
 
 describe("tela Booking do Trading", () => {
-  it("o Trading tem a tela Booking; o Fornecedor comum não", () => {
+  it("o Trading e o Fornecedor têm a tela Booking (Books, dono, 23/11/2026)", () => {
     expect(screensFor(trader).has("booking")).toBe(true);
-    expect(screensFor(supplier).has("booking")).toBe(false);
+    expect(screensFor(supplier).has("booking")).toBe(true);
   });
 
   it("lista só os bookings da empresa dele, sem dados da Wellmix", async () => {
@@ -374,9 +374,17 @@ describe("tela Booking do Trading", () => {
   });
 
   it("sem a tela, ou sendo da Wellmix, a visão do parceiro recusa", async () => {
-    await expect(svc.listPartnerBookingLots(supplier)).rejects.toThrow();
+    // Fornecedor a quem o administrador tirou a tela na Gestão de telas.
+    const noScreen = { ...supplier };
+    attachAccess(noScreen, {
+      screens: [],
+      actions: [],
+      external: [...ROLE_SCREENS.supplier],
+      menuHidden: [],
+    });
+    await expect(svc.listPartnerBookingLots(noScreen)).rejects.toThrow();
     await expect(svc.listPartnerBookingLots(admin)).rejects.toThrow();
-    await expect(svc.getPartnerBookingLot(supplier, mine)).rejects.toThrow();
+    await expect(svc.getPartnerBookingLot(noScreen, mine)).rejects.toThrow();
   });
 
   it("as rotinas internas do Booking continuam só da Wellmix", async () => {
@@ -388,8 +396,17 @@ describe("tela Booking do Trading", () => {
 describe("lançar booking pelo parceiro", () => {
   it("quem pode lançar: login externo de empresa ativa que responde por booking", async () => {
     expect(await svc.canLaunchBooking(trader)).toBe(true);
+    // O Fornecedor também lança (Books, dono, 23/11/2026).
+    expect(await svc.canLaunchBooking(supplier)).toBe(true);
     // Sem a tela, a Wellmix e o cliente com a tela liberada: não.
-    expect(await svc.canLaunchBooking(supplier)).toBe(false);
+    const noScreen = { ...supplier };
+    attachAccess(noScreen, {
+      screens: [],
+      actions: [],
+      external: [...ROLE_SCREENS.supplier],
+      menuHidden: [],
+    });
+    expect(await svc.canLaunchBooking(noScreen)).toBe(false);
     expect(await svc.canLaunchBooking(admin)).toBe(false);
     const customer = (await getStore().list("users")).find(
       (u) => u.role === "customer" && u.partyId,
@@ -415,7 +432,7 @@ describe("lançar booking pelo parceiro", () => {
     ).rejects.toThrow();
     await expect(
       svc.launchPartnerBooking(
-        supplier,
+        noScreen,
         sheet("fornecedor.xlsx", [row("Fábrica Z", "FO-1", "1.00")]),
       ),
     ).rejects.toThrow();

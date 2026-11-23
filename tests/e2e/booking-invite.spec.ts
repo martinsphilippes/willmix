@@ -36,9 +36,25 @@ test("seleção → abrir cotação → convidado sobe o booking concorrente", a
   await page.waitForURL(/invited=1/);
   await expect(page.locator('[data-booking-invite-row="open"]')).toHaveCount(1);
 
-  // O convidado vê o convite, com o pedido da Wellmix, e sobe a planilha.
+  // O convidado vê o convite em "Solicitações do cliente" (na mesma tabela
+  // das solicitações, dono, 23/11/2026), com o pedido da Wellmix, e sobe a
+  // planilha. "Books" é a primeira opção de "Meus books".
   await login(page, "supplier.b@china.com");
-  await page.goto("/app/supplier-requests/invites");
+  // (Ele usa o portal em inglês.)
+  await page.goto("/app/booking");
+  await expect(page.getByRole("heading", { name: "Books" })).toBeVisible();
+  await expect(page.locator("[data-partner-booking-launch]")).toHaveText(
+    "Import book",
+  );
+  const sidebar = page.locator("[data-sidebar]");
+  await expect(sidebar.locator('[data-nav-link="/app/booking"]')).toBeVisible();
+  await expect(
+    sidebar.locator('[data-nav-link="/app/supplier-requests/invites"]'),
+  ).toHaveCount(0);
+  await page.goto("/app/supplier-requests");
+  await expect(
+    page.getByRole("heading", { name: "Customer requests" }),
+  ).toBeVisible();
   await page
     .locator('[data-booking-invite-row="open"]', { hasText: TAG })
     .locator("[data-booking-invite-open]")

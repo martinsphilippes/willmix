@@ -38,9 +38,12 @@ const ADAPTED: Partial<Record<Screen, readonly ExternalRole[]>> = {
  * Booking: Trading (dono, 11/11/2026) e Factory, Supplier e GP (dono,
  * 12/11/2026): os quatro tipos em destaque de Outros parceiros lançam os
  * bookings da própria empresa. Tipo criado no painel e o Fornecedor recebem
- * pela Gestão de telas.
+ * pela Gestão de telas. O Fornecedor também passou a vir com ela (dono,
+ * 23/11/2026: "Books", a primeira opção de "Meus books"): ele lança e vê os
+ * books da empresa dele, sem a Seleção de itens, que é só da Wellmix.
  */
 const PROFILE_EXTRA: Record<string, readonly Screen[]> = {
+  "role:supplier": ["booking"],
   "type:trading": ["booking"],
   "type:factory": ["booking"],
   "type:supplier_partner": ["booking"],
@@ -154,8 +157,10 @@ export const isProfileKey = (key: string) =>
 /** Padrão de fábrica: o do papel; nos tipos novos, o do Fornecedor. */
 export function defaultScreens(profileKey: string): Screen[] {
   return [
-    ...(ROLE_SCREENS[baseRoleOf(profileKey)] ?? []),
-    ...(PROFILE_EXTRA[profileKey] ?? []),
+    ...new Set([
+      ...(ROLE_SCREENS[baseRoleOf(profileKey)] ?? []),
+      ...(PROFILE_EXTRA[profileKey] ?? []),
+    ]),
   ];
 }
 
