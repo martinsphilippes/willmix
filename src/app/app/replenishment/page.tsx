@@ -3,7 +3,15 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { canOpen } from "@/lib/auth/screens";
-import { can } from "@/lib/auth/function-access";
+import { can, canSeeMoney } from "@/lib/auth/function-access";
+import { loadOrderCells } from "@/lib/services/order-cells";
+import {
+  OrderStandardHeads,
+  OrderTermsTds,
+  OrderTotalsTds,
+  orderHeadText,
+} from "@/components/order-standard-cells";
+import { turnTone, turnWaitingKey } from "@/lib/turn";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -65,6 +73,23 @@ export default async function ReplenishmentPage({
   const errorKey = `demand.error.${errorCode}` as DictionaryKey;
   const errorText = errorCode && t(errorKey) !== errorKey ? t(errorKey) : null;
   const open = groupRequestRows(rows.filter(isOpenDemand));
+  /* Tabela padrão de pedidos (dono, 22 e 23/11/2026; docs/ORDER_TABLES.md):
+     as colunas padrão primeiro e as da Reposição (Fonte e Data desejada) no
+     fim. As condições vêm da própria solicitação de reposição. */
+  const seeValue = canSeeMoney(user);
+  const entries = groupRequestRows(rows);
+  const keyOf = (entry: (typeof entries)[number]) =>
+    entry.kind === "batch" ? entry.groupId : entry.row.id;
+  const cells = await loadOrderCells(
+    entries.map((entry) => ({
+      key: keyOf(entry),
+      requestIds: (entry.kind === "batch" ? entry.rows : [entry.row]).map(
+        (r) => r.id,
+      ),
+    })),
+  ).catch(() => null);
+  const dashes = (n: number) =>
+    Array.from({ length: n }, (_, i) => <Td key={i}>—</Td>);
   return (
     <div data-replenishment-page={open.length}>
       <PageHeader
@@ -95,12 +120,10 @@ export default async function ReplenishmentPage({
           <Table>
             <thead>
               <tr>
-                <Th>{t("demand.number")}</Th>
-                <Th>{t("common.product")}</Th>
-                <Th>{t("common.quantity")}</Th>
+                <Th>{orderHeadText(t, "number")}</Th>
+                <OrderStandardHeads t={t} seeValue={seeValue} />
                 <Th>{t("demand.source")}</Th>
                 <Th>{t("demand.desiredAt")}</Th>
-                <Th>{t("demand.status")}</Th>
               </tr>
             </thead>
             <tbody>
@@ -115,35 +138,37 @@ export default async function ReplenishmentPage({
                       {t("requestDraft.resume")}
                     </Link>
                   </Td>
+                  <Td className="whitespace-nowrap tabular-nums">
+                    {formatDate(draft.updatedAt, t)}
+                  </Td>
+                  {/* Condições e cliente: o rascunho ainda não tem. */}
+                  {dashes(8)}
+                  <Td>—</Td>
                   <Td>
-                    {draft.title}
+                    <Badge tone="neutral">{t("requestDraft.status")}</Badge>
                     <span className="block text-xs text-zinc-500">
-                      {t("requestDraft.listHint")}
+                      {draft.title}
                     </span>
                   </Td>
-                  <Td className="whitespace-nowrap tabular-nums">
-                    {t("reqBatch.count", { n: draft.itemCount })}
+                  <Td>—</Td>
+                  <Td className="whitespace-nowrap text-right tabular-nums">
+                    {draft.itemCount}
                   </Td>
+                  {dashes(seeValue ? 4 : 3)}
                   <Td>
                     <Badge tone="neutral">{t("demand.source.planner")}</Badge>
                   </Td>
-                  <Td className="whitespace-nowrap">
-                    {formatDate(draft.updatedAt, t)}
-                  </Td>
-                  <Td>
-                    <Badge tone="neutral">{t("requestDraft.status")}</Badge>
-                  </Td>
+                  <Td>—</Td>
                 </tr>
               ))}
-              {groupRequestRows(rows).map((entry) => {
+              {entries.map((entry) => {
                 // Uma linha por solicitação (dono, 22/11/2026): a reposição
                 // com vários produtos abre a página do lote, como em
                 // Encomendas; um produto só abre a mesma página pelo id.
                 const members =
                   entry.kind === "batch" ? entry.rows : [entry.row];
                 const r = members[0];
-                const units = new Set(members.map((m) => m.unit));
-                const total = members.reduce((n, m) => n + m.quantity, 0);
+                const cell = cells?.byKey.get(keyOf(entry));
                 const desired = members
                   .map((m) => m.desiredAt)
                   .filter((d): d is string => !!d)
@@ -165,27 +190,47 @@ export default async function ReplenishmentPage({
                         {r.number ? `#${r.number}` : "—"}
                       </Link>
                     </Td>
-                    <Td>
-                      {members.length > 1 ? (
-                        <>
-                          {t("reqBatch.count", { n: members.length })}
-                          <span className="block text-xs text-zinc-500">
-                            {members
-                              .slice(0, 2)
-                              .map((m) => productNameText(t, m.productName))
-                              .join(", ")}
-                            {members.length > 2 ? "…" : ""}
-                          </span>
-                        </>
+                    <OrderTermsTds t={t} cells={cell} createdAt={r.createdAt} />
+                    {/* Status: de quem é a vez. */}
+                    <Td className="whitespace-nowrap">
+                      {anyOpen ? (
+                        <Badge tone={turnTone("wellmix")}>
+                          {t(turnWaitingKey("wellmix"))}
+                        </Badge>
                       ) : (
-                        productNameText(t, r.productName)
+                        "—"
                       )}
                     </Td>
-                    <Td className="whitespace-nowrap tabular-nums">
-                      {units.size === 1
-                        ? `${total.toLocaleString(t.intl)} ${r.unit}`
-                        : "—"}
+                    {/* Situação: o momento da reposição. */}
+                    <Td className="whitespace-nowrap">
+                      <Badge tone={anyOpen ? "warning" : "success"}>
+                        {t(
+                          anyOpen
+                            ? "demand.status.waitingStrategy"
+                            : "demand.status.ordered",
+                        )}
+                      </Badge>
                     </Td>
+                    <Td className="whitespace-nowrap tabular-nums">
+                      {anyOpen && r.deadline ? formatDate(r.deadline, t) : "—"}
+                    </Td>
+                    <Td
+                      className="whitespace-nowrap text-right tabular-nums"
+                      data-replenishment-products={members.length}
+                    >
+                      <span
+                        title={members
+                          .map((m) => productNameText(t, m.productName))
+                          .join(", ")}
+                      >
+                        {members.length}
+                      </span>
+                    </Td>
+                    <Td className="whitespace-nowrap text-right tabular-nums">
+                      {cell?.deliveries ?? "—"}
+                    </Td>
+                    <OrderTotalsTds t={t} cells={cell} seeValue={seeValue} />
+                    <Td>{cell?.supplier ?? "—"}</Td>
                     <Td>
                       <Badge tone="neutral">
                         {t(
@@ -197,15 +242,6 @@ export default async function ReplenishmentPage({
                     </Td>
                     <Td className="whitespace-nowrap">
                       {desired ? formatDate(desired, t) : "—"}
-                    </Td>
-                    <Td>
-                      <Badge tone={anyOpen ? "warning" : "success"}>
-                        {t(
-                          anyOpen
-                            ? "demand.status.waitingStrategy"
-                            : "demand.status.ordered",
-                        )}
-                      </Badge>
                     </Td>
                   </tr>
                 );

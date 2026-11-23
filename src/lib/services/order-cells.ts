@@ -1,6 +1,6 @@
 import "server-only";
 import { getStore } from "@/lib/db";
-import { listByIds } from "@/lib/db/lookup";
+import { listByIds, listColumns } from "@/lib/db/lookup";
 import type { Request } from "@/lib/db/schema";
 import { itemPrices, orderTermsCells } from "@/lib/order-table";
 import type { OrderTermsCells } from "@/lib/order-table";
@@ -35,6 +35,8 @@ export interface OrderCells {
   deliveries: number;
   cbm: TotalPart;
   sale: SaleTotal;
+  /** Fornecedor do pedido de compra, a partir de quando ele existe. */
+  supplier: string | null;
 }
 
 /** O que a tabela de itens lê da solicitação de cada produto. */
@@ -67,6 +69,24 @@ export async function loadOrderCells(
     loadRequestPacking(requests),
   ]);
   const partyById = new Map(parties.map((p) => [p.id, p]));
+  // Fornecedor: o do pedido que a solicitação virou.
+  const orderIds = [
+    ...new Set(requests.map((r) => r.orderId).filter((v): v is string => !!v)),
+  ];
+  const orders = orderIds.length
+    ? await listColumns(store, "orders", ["supplierId"], {
+        filter: { id: orderIds },
+      })
+    : [];
+  const suppliers = await listByIds(store, "parties", [
+    ...new Set(orders.map((o) => o.supplierId).filter(Boolean)),
+  ]);
+  const supplierOf = (r: Request) => {
+    const order = r.orderId ? orders.find((o) => o.id === r.orderId) : null;
+    return order?.supplierId
+      ? (suppliers.find((p) => p.id === order.supplierId)?.name ?? null)
+      : null;
+  };
   for (const r of requests)
     byRequest.set(r.id, {
       prices: itemPrices(r.priceForecast ?? null),
@@ -99,6 +119,8 @@ export async function loadOrderCells(
       deliveries: packingRounds(rows, packing, null).rounds,
       cbm: totals.cbm,
       sale: totals.sale,
+      supplier:
+        [...new Set(rows.map(supplierOf).filter(Boolean))].join(", ") || null,
     });
   }
   return { byKey, byRequest };

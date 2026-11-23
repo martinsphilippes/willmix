@@ -39,9 +39,15 @@ Saíram da lista (seguem na página do pedido e no CSV): Peças, Master, Inner, 
   - Quem vê o quê: fornecedor e demais parceiros só veem Nº, Data, Status, Situação, Prazo e Itens (o que já viam); o cliente vê também as condições, as entregas e o m³ do pedido dele; VIP, grupo, cliente e fornecedor só a Wellmix; o valor, só com "Ver valores e margem".
   - Saíram da tabela: Progresso (a barra), a situação da linha (Em andamento, Travado…) e Atualizado. Os três filtros seguem valendo, acima da tabela.
 
+- **Cotação** (`/app/supplier-requests`), **Reposição** (`/app/replenishment`) e **Ordens de venda** (`/app/sales-orders`), só para a Wellmix (dono, 23/11/2026): as colunas padrão primeiro, na ordem, e as colunas próprias de cada tela no fim. Cabeçalhos e células comuns em `src/components/order-standard-cells.tsx`.
+  - **Cotação**: no fim, Origem, Resposta, Finalizada e, em Encerradas, o pedido ("Gerar pedido"). Saíram Quantidade, Containers por programação e "Criada em" (virou Data negociação). Status = de quem é a vez; Situação = o momento da cotação ou de cada produto; Prazo resposta = o prazo do convite ou o SLA. O fornecedor segue com a lista dele, sem as colunas de cliente e de venda.
+  - **Um cliente por cotação**: cada cotação nasce de uma solicitação só, inteira (regra de 18/11/2026, `assertWholeRequest`), então o cliente e as condições vêm dessa solicitação. A cotação de book não tem cliente ("—"). Conferido em produção em 23/11/2026: nenhuma cotação com mais de uma solicitação.
+  - **Reposição**: no fim, Fonte e Data desejada. Saíram Produto e Quantidade (o produto fica na dica da coluna Itens e na página da solicitação). Tipo de venda = Wellmix STK.
+  - **Ordens de venda**: no fim, Sankhya e Entrega. A ordem sai do estoque e não tem solicitação ligada: Tipo de venda = Venda, Forma de pagamento = a condição da ordem, Valor = soma das linhas; Prazo, Faturamento, VIP, Entregas, m³ e Fornecedor ficam "—".
+
 ### Onde falta aplicar
 
-Cotação (`/app/supplier-requests`), Reposição, Ordens de venda e as listas dos passos do fluxo. Nessas, o cliente e as condições do pedido chegam pela solicitação ligada (`demandIds` na cotação e na solicitação ao fornecedor), com o mesmo `loadOrderCells`.
+As listas dos passos do fluxo (telas dos blocos do menu).
 
 ## 2. Tabela de itens do pedido
 
