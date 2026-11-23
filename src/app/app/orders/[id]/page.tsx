@@ -17,6 +17,8 @@ import {
   type MilestoneKey,
 } from "@/lib/milestones";
 import { partyOfRole, turnTone, turnWaitingKey } from "@/lib/turn";
+import { itemPrices } from "@/lib/order-table";
+import { itemLogistics } from "@/lib/services/item-logistics";
 import { milestonesOf } from "@/lib/services/milestones";
 import {
   milestoneOfItem,
@@ -1225,6 +1227,20 @@ export default async function OrderPage({
     ((user.role === "customer" && headTurn === "customer") ||
       (user.role === "supplier" &&
         (headTurn === "supplier" || headTurn === "trading")));
+  /* Tabela padrão de itens (docs/ORDER_TABLES.md): os cabeçalhos, o prazo
+     do marco atual e os preços Wellmix da solicitação (só quando o pedido é
+     de um produto só; com "Ver valores e margem"). */
+  const itemHead = (key: string) =>
+    t(`orderItems.head.${key}` as DictionaryKey);
+  const itemDue =
+    headRow?.dueAt ??
+    orderViews.find((v) => v.key === headMilestone)?.dueAt ??
+    null;
+  const itemSale = wellmix && canSeeMoney(user);
+  const itemSalePrices = itemPrices(
+    items.length === 1 ? (sourceRequest?.priceForecast ?? null) : null,
+  );
+  const itemSaleCurrency = sourceRequest?.priceForecast?.currency ?? "BRL";
   const overdue =
     isOrderOpen(order.status) &&
     isOverdue(
@@ -2501,18 +2517,40 @@ export default async function OrderPage({
               </Alert>
             </div>
           ) : null}
+          {/* Tabela padrão de itens do pedido (dono, 22 e 23/11/2026;
+              docs/ORDER_TABLES.md): as colunas padrão primeiro e as do
+              pedido de compra (preço de compra e total) no fim. Situação,
+              Status e Prazo são os do pedido (todos os itens andam juntos). */}
           <Table>
             <thead>
-              <tr>
-                <Th className="w-10 text-right">{t("orderView.col.n")}</Th>
+              <tr data-order-items-standard>
+                <Th className="w-10 text-right">{itemHead("sequence")}</Th>
                 {itemMedia ? (
-                  <Th className="w-14">{t("orderView.col.photo")}</Th>
+                  <Th className="w-14">{itemHead("photo")}</Th>
                 ) : null}
-                <Th>{t("orderView.col.product")}</Th>
-                <Th>{t("orderView.col.variant")}</Th>
-                <Th className="text-right">{t("orderView.col.perBox")}</Th>
-                <Th className="text-right">{t("orderView.col.qty")}</Th>
-                <Th className="text-right">{t("orderView.col.boxes")}</Th>
+                <Th>{itemHead("step")}</Th>
+                <Th>{itemHead("status")}</Th>
+                <Th>{itemHead("sla")}</Th>
+                {itemMedia ? <Th>{itemHead("code")}</Th> : null}
+                <Th>{itemHead("description")}</Th>
+                {itemSale ? (
+                  <>
+                    <Th className="text-right">{itemHead("priceNoIpi")}</Th>
+                    <Th className="text-right">{itemHead("priceIpi")}</Th>
+                    <Th className="text-right">
+                      {itemHead("priceIpiFreight")}
+                    </Th>
+                  </>
+                ) : null}
+                <Th className="text-right">{itemHead("perBox")}</Th>
+                {itemMedia ? (
+                  <Th className="text-right">{itemHead("perInner")}</Th>
+                ) : null}
+                <Th className="text-right">{itemHead("boxes")}</Th>
+                <Th className="text-right">{itemHead("pieces")}</Th>
+                {wellmix ? (
+                  <Th className="text-right">{itemHead("cbm")}</Th>
+                ) : null}
                 {purchasePrice ? (
                   <>
                     <Th className="text-right">
@@ -2535,6 +2573,17 @@ export default async function OrderPage({
                   itemBoxQty.get(i.productId ?? "") ??
                   null;
                 const itemHref = `/app/orders/${order.id}?item=${encodeURIComponent(i.id)}#order-items`;
+                const cbm = product
+                  ? itemLogistics({
+                      quantity: i.quantity,
+                      variant: i.variant,
+                      product,
+                    }).cbm
+                  : null;
+                const salePrice = (value: number | null) =>
+                  value !== null
+                    ? formatMoney(value, itemSaleCurrency, t)
+                    : "—";
                 return (
                   <tr key={i.id} className={rowClass} data-order-item>
                     <Td className="text-right tabular-nums">{index + 1}</Td>
@@ -2546,6 +2595,36 @@ export default async function OrderPage({
                         />
                       </Td>
                     ) : null}
+                    <Td className="whitespace-nowrap">
+                      {headMilestone && !isCancelled
+                        ? milestoneTitle(t, headMilestone)
+                        : stageName(order.status)}
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      {headTurn ? (
+                        <Badge tone={turnTone(headTurn)}>
+                          {headTurnMine
+                            ? t("turn.waiting.you")
+                            : t(turnWaitingKey(headTurn))}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                    <Td
+                      className={
+                        overdue
+                          ? "whitespace-nowrap font-semibold tabular-nums text-red-700"
+                          : "whitespace-nowrap tabular-nums"
+                      }
+                    >
+                      {headTurn && itemDue ? formatDate(itemDue, t) : "—"}
+                    </Td>
+                    {itemMedia ? (
+                      <Td className="whitespace-nowrap font-mono text-xs text-zinc-700">
+                        {product?.sku ?? "—"}
+                      </Td>
+                    ) : null}
                     <Td className="min-w-44 font-medium">
                       {/* O produto neste pedido (só ele, com a conversa dele). */}
                       <TextLink
@@ -2555,9 +2634,9 @@ export default async function OrderPage({
                       >
                         {i.name}
                       </TextLink>
-                      {product?.sku ? (
-                        <span className="block font-mono text-xs font-normal text-zinc-500">
-                          {product.sku}
+                      {i.variant ? (
+                        <span className="block text-xs font-normal text-zinc-600">
+                          {variantCell(i)}
                         </span>
                       ) : null}
                       {/* Variações de cor: cada cor na própria linha, do
@@ -2569,16 +2648,30 @@ export default async function OrderPage({
                         intl={t.intl}
                       />
                     </Td>
-                    <Td className="min-w-40">{variantCell(i)}</Td>
+                    {itemSale ? (
+                      <>
+                        <Td className="text-right">—</Td>
+                        <Td className="whitespace-nowrap text-right tabular-nums">
+                          {salePrice(itemSalePrices.ipi)}
+                        </Td>
+                        <Td className="whitespace-nowrap text-right tabular-nums">
+                          {salePrice(itemSalePrices.ipiFreight)}
+                        </Td>
+                      </>
+                    ) : null}
                     <Td
                       className="whitespace-nowrap text-right tabular-nums"
                       data-order-item-per-box
                     >
                       {perBox !== null ? perBox.toLocaleString(t.intl) : "—"}
                     </Td>
-                    <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
-                      {i.quantity.toLocaleString(t.intl)} {i.unit}
-                    </Td>
+                    {itemMedia ? (
+                      <Td className="whitespace-nowrap text-right tabular-nums">
+                        {product?.innerBoxQty
+                          ? product.innerBoxQty.toLocaleString(t.intl)
+                          : "—"}
+                      </Td>
+                    ) : null}
                     <Td
                       className="whitespace-nowrap text-right tabular-nums"
                       data-order-item-boxes
@@ -2588,6 +2681,18 @@ export default async function OrderPage({
                         ? boxesFor(i.quantity, perBox).toLocaleString(t.intl)
                         : "—"}
                     </Td>
+                    <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
+                      {i.quantity.toLocaleString(t.intl)} {i.unit}
+                    </Td>
+                    {wellmix ? (
+                      <Td className="whitespace-nowrap text-right tabular-nums">
+                        {cbm !== null
+                          ? cbm.toLocaleString(t.intl, {
+                              maximumFractionDigits: 3,
+                            })
+                          : "—"}
+                      </Td>
+                    ) : null}
                     {purchasePrice ? (
                       <>
                         <Td className="whitespace-nowrap text-right tabular-nums">

@@ -74,7 +74,13 @@ As listas dos passos do fluxo (telas dos blocos do menu).
 - No nível do produto não há linha que abra mais informação; o nome leva à ficha do produto.
 - Saíram desta tabela MOQ, Programações e Pedido (seguem nos totais do pedido, na ficha do produto e no CSV).
 
-Aplicada na **página do pedido da encomenda** (`/app/requests/batch/<id>`, enviada e rascunho) e no **painel de itens da tela Pedidos** (os itens da linha escolhida). No painel de Pedidos saíram Cód. do item, Cor, Peso, Preço unitário de compra, Valor, Fornecedor, Pedido e Progresso (seguem na página do pedido); os dois preços Wellmix aparecem quando o pedido é de um produto só com solicitação no portal. Falta nas páginas do pedido de compra, da cotação e da ordem de venda.
+Aplicada na **página do pedido da encomenda** (`/app/requests/batch/<id>`, enviada e rascunho) e no **painel de itens da tela Pedidos** (os itens da linha escolhida). No painel de Pedidos saíram Cód. do item, Cor, Peso, Preço unitário de compra, Valor, Fornecedor, Pedido e Progresso (seguem na página do pedido); os dois preços Wellmix aparecem quando o pedido é de um produto só com solicitação no portal. Aplicada também (23/11/2026), com as colunas padrão primeiro e as próprias da tela no fim:
+
+- **Página do pedido** (`/app/orders/<id>`, "Itens do pedido"): no fim, Preço unitário e Total de compra (FOB), só com "Ver preço de compra". Situação, Status e Prazo são os do pedido (o marco atual, de quem é a vez e o prazo do marco), iguais em todos os itens. A variação foi para dentro da Descrição. Foto, Código e Pçs na inner só para quem já via a foto (Wellmix e certificadora); m³ só a Wellmix; os preços Wellmix só com "Ver valores e margem" e quando o pedido é de um produto só.
+- **Cotação** ("Produtos da cotação", só Wellmix): no fim, Inner exigida. Situação, Status e Prazo são os da cotação; os preços Wellmix vêm da encomenda de cada produto.
+- **Ordem de venda** (`/app/sales-orders/<id>`): no fim, Preço unitário da ordem, Reserva e Remover. Os três valores padrão ficam "—" (a ordem não guarda preço com e sem IPI); a quantidade segue editável na coluna Qtd. peças.
+
+Falta nas listas dos passos do fluxo.
 
 ## 3. Decisões do dono (22/11/2026)
 
@@ -84,3 +90,7 @@ Aplicada na **página do pedido da encomenda** (`/app/requests/batch/<id>`, envi
 4. **Largura**: a tabela de pedidos tem 18 colunas e rola para o lado; fica assim.
 
 O que o portal continua sem ter: uma data de negociação própria (uso a data em que o pedido foi lançado), o valor "Wellmix STK" gravado (mostro STK no estoque da Wellmix e na reposição) e o VIP no cadastro do cliente (fica no pedido; há um sexto nível, Evo).
+
+## 4. Preço de compra nunca para o cliente (dono, 23/11/2026)
+
+O preço original, negociado com o fornecedor, **nunca** aparece para o cliente, em nenhuma tabela. Nas tabelas padrão, o preço de compra (Preço unitário e Total FOB na página do pedido) só sai por `canSeeOrderPurchasePrice` (a Wellmix com "Ver preço de compra", o fornecedor do pedido e o despachante do pedido); os três valores padrão são preços de venda Wellmix, e mesmo esses só com "Ver valores e margem". O teste `tests/unit/purchase-price-customer.test.ts` trava que o login de cliente fica de fora em qualquer combinação. Coluna nova com preço de compra: sempre atrás dessa mesma função, nunca atrás de "é Wellmix ou é dono do pedido".
