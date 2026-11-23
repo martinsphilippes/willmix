@@ -480,3 +480,12 @@ Decisão do dono: prazo de produção e pedido mínimo são **de cada produto** 
 - **Resposta antiga** (um prazo e um mínimo para a cotação): vale para todos os produtos dela. Toda leitura passa por `quoteProductTerms(resposta, produto)` (`src/lib/quote-negotiation.ts`).
 - **Fornecedor**: os dois campos ficam na tela de cada produto e são obrigatórios em todos; a resposta enviada mostra o prazo e o mínimo de cada produto.
 - **Wellmix**: o quadro comparativo do produto, o histórico de propostas e a coluna de condições mostram o prazo e o mínimo daquele produto; a solicitação ao fornecedor que nasce da cotação vencedora leva os do produto dela.
+
+### Ajustes finos da tela do produto (dono, 23/11/2026)
+
+1. **Largura dos campos**: cada campo ocupa só o espaço que o rótulo pede numa linha (rótulo sem quebra, `w-min` com um mínimo para o número); as linhas quebram sozinhas em tela estreita.
+2. **Porto de embarque** na mesma linha dos outros termos comerciais; os portos adicionados ficam embaixo dele, sem empurrar os campos ao lado. É uma **lista buscável dos portos do país do fornecedor**, tirada do cadastro (os portos do vínculo produto × fornecedor da carga do Sankhya, `product_suppliers.sankhyaPorts`; `src/lib/ports.ts` e `src/lib/services/ports.ts`, do mais usado para o menos usado). O que não é da lista sai ao deixar o campo. País sem porto cadastrado (ou parceiro sem país): o campo fica de texto livre, para não travar a resposta.
+3. **Observações** abaixo da ficha técnica.
+4. **Peso bruto por peça** abaixo do peso bruto da caixa master (peso da caixa ÷ peças por caixa), calculado na hora.
+5. **Conversar sobre este produto** no alto, à direita do prazo.
+6. **No cadastro da Wellmix** (coluna do produto): peças por caixa master, pesos, medidas da caixa, CBM e material do cadastro, para todo fornecedor convidado. Isto muda a regra de 20/11/2026 ("quem nunca vendeu não vê a nossa caixa"), a pedido do dono. O código na fábrica não aparece (é de outro fornecedor). A explicação do "Sem peso" virou dica do campo.

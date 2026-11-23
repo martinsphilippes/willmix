@@ -31,6 +31,8 @@ export function answerLabels(t: Translate): QuoteAnswerLabels {
     incotermValueHint: t("quote.incotermValueHint"),
     termsShared: t("quote.termsShared"),
     sendTitle: t("quote.products.sendTitle"),
+    grossPerPiece: t("quote.grossPerPiece", { kg: "{kg}" }),
+    catalogTitle: t("quote.catalogTitle"),
     backToProducts: t("quote.products.back"),
     moq: t("strategy.last.moq"),
     note: t("demand.notes"),

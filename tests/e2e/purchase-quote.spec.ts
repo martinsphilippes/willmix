@@ -203,6 +203,29 @@ async function answer(
     "Ningbo / Shanghai",
   );
   await form.locator("[data-quote-moq]").fill("500");
+  // Ajustes finos (dono, 23/11/2026): o peso bruto por peça aparece abaixo
+  // do peso da caixa; as observações ficam abaixo da ficha técnica; a
+  // conversa do produto fica no alto, ao lado do prazo.
+  if (await form.locator('[data-quote-sheet="prod-jarra"]').count()) {
+    await expect(
+      form.locator('[data-sheet-gross-per-piece="prod-jarra"]'),
+    ).toBeVisible();
+    const below = await form.evaluate((root) => {
+      const sheet = root.querySelector('[data-quote-sheet="prod-jarra"]')!;
+      const note = root.querySelector("[data-quote-note]")!;
+      return (
+        note.getBoundingClientRect().top >= sheet.getBoundingClientRect().bottom
+      );
+    });
+    expect(below).toBe(true);
+  }
+  await expect(
+    form.locator(
+      '[data-quote-item-summary="prod-jarra"] [data-quote-product-chat]',
+    ),
+  ).toHaveCount(0);
+  if (process.env.SHOT_Q)
+    await page.screenshot({ path: process.env.SHOT_Q, fullPage: true });
   // EXW abre o valor do Incoterm, que passa a ser exigido; no FOB, some.
   await form.locator("[data-quote-incoterm]").selectOption("EXW");
   await expect(form.locator("[data-quote-incoterm-value]")).toBeVisible();
