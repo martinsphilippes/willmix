@@ -224,6 +224,22 @@ async function answer(
       '[data-quote-item-summary="prod-jarra"] [data-quote-product-chat]',
     ),
   ).toHaveCount(0);
+  // A conversa do produto fica aberta na coluna fixa da direita (dono,
+  // 23/11/2026), ao lado do formulário.
+  const side = page.locator("[data-quote-product-side]");
+  await expect(
+    side.locator('[data-quote-product-chat="prod-jarra"]'),
+  ).toBeVisible();
+  const beside = await page.evaluate(() => {
+    const aside = document
+      .querySelector("[data-quote-product-side]")!
+      .getBoundingClientRect();
+    const form = document
+      .querySelector("[data-quote-answer-form]")!
+      .getBoundingClientRect();
+    return aside.left >= form.right - 1;
+  });
+  expect(beside).toBe(true);
   if (process.env.SHOT_Q)
     await page.screenshot({ path: process.env.SHOT_Q, fullPage: true });
   // EXW abre o valor do Incoterm, que passa a ser exigido; no FOB, some.
