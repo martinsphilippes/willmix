@@ -31,6 +31,8 @@ export interface OrderCells {
   group: string | null;
   customerCode: string | null;
   customerName: string | null;
+  /** Produtos diferentes do pedido. */
+  items: number;
   /** Entregas programadas no pedido. */
   deliveries: number;
   cbm: TotalPart;
@@ -116,6 +118,7 @@ export async function loadOrderCells(
           ? String(party.sankhyaCode)
           : null,
       customerName: party?.name ?? null,
+      items: new Set(rows.map((r) => r.productId ?? `n:${r.productName}`)).size,
       deliveries: packingRounds(rows, packing, null).rounds,
       cbm: totals.cbm,
       sale: totals.sale,
