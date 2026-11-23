@@ -227,7 +227,8 @@ describe("carga dos pedidos do Sankhya", () => {
   it("grava pedidos, itens e o embarque pelo ensaio", async () => {
     const p = await runAll();
     expect(p.phase).toBe("done");
-    expect(p.created).toBe(7);
+    expect(p.created).toBe(6);
+    expect(p.cancelledTracks).toBe(1);
     expect(p.skipped.map((s) => s.key)).toEqual(["2050"]);
     const store = getStore();
     const o = (await store.get("orders", "snk-t2000"))!;
@@ -280,13 +281,12 @@ describe("carga dos pedidos do Sankhya", () => {
       filter: { orderId: closed.id },
     });
     expect(it.receivedQty).toBe(100);
-    const interrupted = (await store.get("orders", "snk-t2020"))!;
-    expect(interrupted.status).toBe("CLOSED");
-    expect(interrupted.sankhyaSituation).toBe("interrupted");
+    // Cancelado no meio do processo: não entra no portal (dono, 23/11/2026).
+    expect(await store.get("orders", "snk-t2020")).toBeNull();
     const waiting = (await store.get("orders", "snk-t2040"))!;
     expect(waiting.status).toBe("ORDER_CREATED");
     expect(waiting.sankhyaSituation).toBe("awaiting_definition");
-    for (const id of ["snk-t2010", "snk-t2020", "snk-t2040"])
+    for (const id of ["snk-t2010", "snk-t2040"])
       expect(
         await store.list("requirements", { filter: { orderId: id } }),
       ).toEqual([]);
@@ -339,7 +339,7 @@ describe("carga dos pedidos do Sankhya", () => {
     ).length;
     const p = await runAll();
     expect(p.created).toBe(0);
-    expect(p.updated).toBe(7);
+    expect(p.updated).toBe(6);
     expect((await store.list("orders")).length).toBe(before);
     expect(
       (await store.list("requirements", { filter: { orderId: "snk-t2000" } }))

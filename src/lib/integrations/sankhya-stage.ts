@@ -47,9 +47,14 @@ export const NOT_IMPORT_TOPS = [7, 176, 1120];
 
 const PAGE = 4000;
 
-/** TOPs com o TRACK_ID no cabeçalho, mais as do caminho 117 → 33 → 30. */
+/**
+ * TOPs com o TRACK_ID no cabeçalho, mais as do caminho 117 → 33 → 30 e a 32
+ * (Pré-venda INV +, a entrada direta que não deixa ligação na TGFVAR: é ela
+ * que mostra que a 1104 sem embarque seguiu por outro caminho; técnico do
+ * Sankhya, 23/11/2026).
+ */
 export const TRACK_TOPS = [
-  1002, 1003, 140, 1100, 1101, 1102, 1103, 1104, 1107, 117, 33, 30,
+  1002, 1003, 140, 1100, 1101, 1102, 1103, 1104, 1107, 117, 33, 30, 32,
 ];
 
 export const STAGE_DATASETS = [
