@@ -129,6 +129,13 @@ export interface QuoteAnswerLabels {
   portN: string;
   portAdd: string;
   portRemove: string;
+  /** Textos da lista de portos (a mesma mecânica do Material). */
+  portPicker: {
+    placeholder: string;
+    empty: string;
+    missing: string;
+    remove: string;
+  };
   /** Valor do Incoterm no EXW. */
   incotermValue: string;
   incotermValueHint: string;
@@ -524,9 +531,23 @@ export function QuoteAnswerForm({
   // mais de um; vão juntos no mesmo campo, separados por " / ".
   const [ports, setPorts] = useState<string[]>(() => {
     const list = splitPorts(pick("port", commercial.port));
-    return list.length ? list : [""];
+    // Com a lista do país, vale a grafia dela ("Ningbo" → "NINGBO"); o que
+    // não é da lista sai.
+    const known = portOptions.length
+      ? list.flatMap((name) => {
+          const match = portOptions.find(
+            (o) => o.toLocaleLowerCase() === name.toLocaleLowerCase(),
+          );
+          return match ? [match] : [];
+        })
+      : list;
+    return known.length ? known : [""];
   });
   const portText = joinPorts(ports);
+  const portPickerOptions = useMemo(
+    () => portOptions.map((name) => ({ id: name, label: name, search: name })),
+    [portOptions],
+  );
   // Prazo de produção e pedido mínimo: por produto (dono, 23/11/2026). O
   // rascunho de antes tinha um só para a cotação: vale como ponto de partida.
   const [productTerms, setProductTerms] = useState<
@@ -826,86 +847,112 @@ export function QuoteAnswerForm({
         </div>
         {/* Portos de embarque, na mesma linha dos outros termos: os que
               entram a mais ficam embaixo, sem empurrar os campos ao lado. */}
-        <div className="w-min min-w-[13rem]" data-quote-ports={ports.length}>
-          <FieldLabel htmlFor={`quote-${quoteId}-port`}>{L.port}</FieldLabel>
-          <div className="space-y-2">
-            {ports.map((value, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <input
-                  id={index === 0 ? `quote-${quoteId}-port` : undefined}
-                  maxLength={36}
-                  autoComplete="off"
-                  // Lista buscável dos portos do país do fornecedor (cadastro
-                  // do Sankhya); sem portos cadastrados para o país, texto.
-                  list={
-                    portOptions.length ? `quote-${quoteId}-ports` : undefined
-                  }
-                  onBlur={() => {
-                    if (!portOptions.length || !value.trim()) return;
-                    const match = portOptions.find(
-                      (o) =>
-                        o.toLocaleLowerCase() ===
-                        value.trim().toLocaleLowerCase(),
-                    );
-                    // Só os portos da lista: o que não é da lista sai.
-                    setPorts(
-                      ports.map((p, i) => (i === index ? (match ?? "") : p)),
-                    );
-                  }}
-                  value={value}
-                  aria-label={fill(L.portN, { n: String(index + 1) })}
-                  onChange={(e) =>
-                    setPorts(
-                      ports.map((p, i) => (i === index ? e.target.value : p)),
-                    )
-                  }
-                  {...(index === 0 ? { "data-quote-port": "" } : {})}
-                  data-quote-port-item={index}
-                  data-missing={
-                    index === 0 && lacks("port") ? "true" : undefined
-                  }
-                  className={cx(
-                    textBox,
-                    index === 0 && lacks("port")
-                      ? "border-red-400 bg-red-50"
-                      : "border-zinc-300 bg-white",
-                  )}
-                />
-                {ports.length > 1 ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setPorts(ports.filter((_, i) => i !== index))
-                    }
-                    aria-label={L.portRemove}
-                    title={L.portRemove}
-                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-50"
-                    data-quote-port-remove={index}
-                  >
-                    ×
-                  </button>
-                ) : null}
-              </div>
-            ))}
+        {portOptions.length ? (
+          // Lista dos portos do país do fornecedor (dono, 23/11/2026): a
+          // mesma mecânica do Material, a digitação só busca e ele escolhe
+          // um ou mais portos da lista.
+          <div
+            className="min-w-[16rem] max-w-md flex-1"
+            data-quote-ports={ports.filter(Boolean).length}
+            data-quote-ports-list
+          >
+            <FieldLabel>{L.port}</FieldLabel>
+            <MaterialPicker
+              options={portPickerOptions}
+              value={ports.filter(Boolean)}
+              onChange={(names) =>
+                setPorts(names.length ? names.slice(0, MAX_PORTS) : [""])
+              }
+              name="portList"
+              form={formId}
+              lacking={lacks("port")}
+              changed={false}
+              labels={{ field: L.port, ...L.portPicker }}
+              dataField="port"
+            />
           </div>
-          {portOptions.length ? (
-            <datalist id={`quote-${quoteId}-ports`} data-quote-port-options>
-              {portOptions.map((o) => (
-                <option key={o} value={o} />
+        ) : (
+          <div className="w-min min-w-[13rem]" data-quote-ports={ports.length}>
+            <FieldLabel htmlFor={`quote-${quoteId}-port`}>{L.port}</FieldLabel>
+            <div className="space-y-2">
+              {ports.map((value, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    id={index === 0 ? `quote-${quoteId}-port` : undefined}
+                    maxLength={36}
+                    autoComplete="off"
+                    // Lista buscável dos portos do país do fornecedor (cadastro
+                    // do Sankhya); sem portos cadastrados para o país, texto.
+                    list={
+                      portOptions.length ? `quote-${quoteId}-ports` : undefined
+                    }
+                    onBlur={() => {
+                      if (!portOptions.length || !value.trim()) return;
+                      const match = portOptions.find(
+                        (o) =>
+                          o.toLocaleLowerCase() ===
+                          value.trim().toLocaleLowerCase(),
+                      );
+                      // Só os portos da lista: o que não é da lista sai.
+                      setPorts(
+                        ports.map((p, i) => (i === index ? (match ?? "") : p)),
+                      );
+                    }}
+                    value={value}
+                    aria-label={fill(L.portN, { n: String(index + 1) })}
+                    onChange={(e) =>
+                      setPorts(
+                        ports.map((p, i) => (i === index ? e.target.value : p)),
+                      )
+                    }
+                    {...(index === 0 ? { "data-quote-port": "" } : {})}
+                    data-quote-port-item={index}
+                    data-missing={
+                      index === 0 && lacks("port") ? "true" : undefined
+                    }
+                    className={cx(
+                      textBox,
+                      index === 0 && lacks("port")
+                        ? "border-red-400 bg-red-50"
+                        : "border-zinc-300 bg-white",
+                    )}
+                  />
+                  {ports.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPorts(ports.filter((_, i) => i !== index))
+                      }
+                      aria-label={L.portRemove}
+                      title={L.portRemove}
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-50"
+                      data-quote-port-remove={index}
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </div>
               ))}
-            </datalist>
-          ) : null}
-          {ports.length < MAX_PORTS ? (
-            <button
-              type="button"
-              onClick={() => setPorts([...ports, ""])}
-              className="mt-2 text-xs font-medium text-brand-700 underline underline-offset-2"
-              data-quote-port-add
-            >
-              + {L.portAdd}
-            </button>
-          ) : null}
-        </div>
+            </div>
+            {portOptions.length ? (
+              <datalist id={`quote-${quoteId}-ports`} data-quote-port-options>
+                {portOptions.map((o) => (
+                  <option key={o} value={o} />
+                ))}
+              </datalist>
+            ) : null}
+            {ports.length < MAX_PORTS ? (
+              <button
+                type="button"
+                onClick={() => setPorts([...ports, ""])}
+                className="mt-2 text-xs font-medium text-brand-700 underline underline-offset-2"
+                data-quote-port-add
+              >
+                + {L.portAdd}
+              </button>
+            ) : null}
+          </div>
+        )}
       </div>
     </div>
   );

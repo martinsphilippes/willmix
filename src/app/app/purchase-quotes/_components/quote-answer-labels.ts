@@ -27,6 +27,12 @@ export function answerLabels(t: Translate): QuoteAnswerLabels {
     portN: t("quote.port.n", { n: "{n}" }),
     portAdd: t("quote.port.add"),
     portRemove: t("quote.port.remove"),
+    portPicker: {
+      placeholder: t("quote.port.search"),
+      empty: t("quote.port.empty"),
+      missing: t("quote.port.missing"),
+      remove: t("quote.port.removeNamed", { name: "{name}" }),
+    },
     incotermValue: t("quote.incotermValue"),
     incotermValueHint: t("quote.incotermValueHint"),
     termsShared: t("quote.termsShared"),
