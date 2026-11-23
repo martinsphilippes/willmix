@@ -60,7 +60,6 @@ import {
   bulkFillLabels,
   colRem,
   FIRST_COL_REM,
-  STICKY_FIRST,
   STICKY_FIRST_PLAIN,
   STICKY_PHOTO,
 } from "@/lib/booking-bulk-ui";
@@ -107,6 +106,9 @@ const lotTitle = (
   bookingLotPreparing(lot.status)
     ? t("bookingLots.partner.unsent")
     : t("bookingLots.partner.lot", { n: lot.number });
+
+/** Coluna da foto na tabela de conferência (a mesma largura da consulta). */
+const PHOTO_COL_REM = 6.5;
 
 /**
  * Colunas do booking em preenchimento: todos os campos da planilha, um por
@@ -157,6 +159,47 @@ const num = (t: Translate, n: number | null | undefined, digits = 0) =>
   n === null || n === undefined
     ? "—"
     : n.toLocaleString(t.intl, { maximumFractionDigits: digits });
+
+/**
+ * Foto do item e cartão do fabricante que vieram na planilha, em miniatura
+ * (abrem o arquivo). Nas duas tabelas do parceiro: a de conferência (antes de
+ * enviar; dono, 23/11/2026: as fotos não apareciam ali) e a de consulta.
+ * Nulo: o item não tem foto nem cartão.
+ */
+function itemPhotos(
+  t: Translate,
+  i: Pick<PartnerBookingItem, "photoDocumentId" | "cardDocumentId">,
+): ReactNode {
+  const docs = [i.photoDocumentId, i.cardDocumentId].filter(
+    (d): d is string => !!d,
+  );
+  if (!docs.length) return null;
+  return (
+    <span className="flex gap-1" data-partner-booking-photos={docs.length}>
+      {docs.map((doc) => (
+        <a
+          key={doc}
+          href={`/api/files/${doc}`}
+          target="_blank"
+          rel="noreferrer"
+          title={
+            doc === i.cardDocumentId
+              ? t("bookingLots.item.card")
+              : t("bookingLots.item.col.photo")
+          }
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+          <img
+            src={`/api/files/${doc}?thumb=1`}
+            alt=""
+            className="h-10 w-10 rounded border border-zinc-200 bg-white object-cover"
+            loading="lazy"
+          />
+        </a>
+      ))}
+    </span>
+  );
+}
 
 export async function PartnerBookingList({
   user,
@@ -646,16 +689,20 @@ function PreparingItems({
             >
               <colgroup>
                 <col style={{ width: `${FIRST_COL_REM}rem` }} />
+                <col style={{ width: `${PHOTO_COL_REM}rem` }} />
                 {EDIT_COLUMNS.map(({ field, width }) => (
                   <col key={field} style={{ width: `${colRem(width)}rem` }} />
                 ))}
               </colgroup>
               <thead>
                 <tr data-table-sort-row="">
-                  <th className={cx(th, STICKY_FIRST, "bg-zinc-50")}>
+                  <th className={cx(th, STICKY_FIRST_PLAIN, "bg-zinc-50")}>
                     <span className="flex items-center gap-2">
                       <BulkSelectAll />#
                     </span>
+                  </th>
+                  <th className={cx(th, STICKY_PHOTO, "bg-zinc-50")}>
+                    {t("bookingLots.item.col.photo")}
                   </th>
                   {EDIT_COLUMNS.map(({ field }) => (
                     <th key={field} className={th}>
@@ -667,9 +714,10 @@ function PreparingItems({
                   ))}
                 </tr>
                 <tr data-bulk-fill-row="">
-                  <th className={cx(bulkTh, STICKY_FIRST, "bg-white")}>
+                  <th className={cx(bulkTh, STICKY_FIRST_PLAIN, "bg-white")}>
                     <BulkLoadButton />
                   </th>
+                  <th className={cx(bulkTh, STICKY_PHOTO, "bg-white")} />
                   {EDIT_COLUMNS.map(({ field }) => (
                     <th key={field} className={bulkTh}>
                       <BulkFieldInput
@@ -700,7 +748,7 @@ function PreparingItems({
                       className={cx(
                         td,
                         "tabular-nums text-zinc-500",
-                        STICKY_FIRST,
+                        STICKY_FIRST_PLAIN,
                         "bg-white",
                       )}
                     >
@@ -708,6 +756,14 @@ function PreparingItems({
                         <BulkRowCheck itemId={item.id} n={String(index + 1)} />
                         <span>{index + 1}</span>
                       </label>
+                    </td>
+                    <td
+                      className={cx(td, STICKY_PHOTO, "bg-white")}
+                      data-partner-booking-photo={item.id}
+                    >
+                      {itemPhotos(t, item) ?? (
+                        <span className="text-zinc-400">—</span>
+                      )}
                     </td>
                     {EDIT_COLUMNS.map(({ field, width }) => (
                       <td key={field} className={td}>
@@ -780,38 +836,7 @@ function SentItems({
     v && v.trim() ? v.trim() : missing;
   const number = (v: number | null | undefined, digits = 0) =>
     v === null || v === undefined ? missing : num(t, v, digits);
-  const photos = (i: PartnerBookingItem) => {
-    const docs = [i.photoDocumentId, i.cardDocumentId].filter(
-      (d): d is string => !!d,
-    );
-    return docs.length ? (
-      <span className="flex gap-1">
-        {docs.map((doc) => (
-          <a
-            key={doc}
-            href={`/api/files/${doc}`}
-            target="_blank"
-            rel="noreferrer"
-            title={
-              doc === i.cardDocumentId
-                ? t("bookingLots.item.card")
-                : field("photo")
-            }
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
-            <img
-              src={`/api/files/${doc}?thumb=1`}
-              alt=""
-              className="h-10 w-10 rounded border border-zinc-200 bg-white object-cover"
-              loading="lazy"
-            />
-          </a>
-        ))}
-      </span>
-    ) : (
-      missing
-    );
-  };
+  const photos = (i: PartnerBookingItem) => itemPhotos(t, i) ?? missing;
   const columns: SentColumn[] = [
     {
       key: "line",

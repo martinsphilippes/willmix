@@ -354,3 +354,8 @@ Pedido do dono para a tela do fornecedor (login externo):
   do cliente", e o convite volta para ela.
 - A Wellmix não muda: segue com a Cotação unificada (docs/QUOTATION.md), com
   os convites na aba própria.
+- Fotos na conferência (dono, 23/11/2026): o book que o fornecedor importa
+  já mostra a foto (e o cartão do fabricante) de cada item na tabela de
+  conferência, antes de "Enviar para Wellmix Conferir", na coluna Foto presa
+  na rolagem, como na tabela depois do envio. A importação já gravava as
+  fotos; só a tabela de conferência não tinha a coluna.
