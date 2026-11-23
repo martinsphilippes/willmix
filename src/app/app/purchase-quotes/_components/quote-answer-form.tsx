@@ -1113,10 +1113,14 @@ export function QuoteAnswerForm({
             // que já foi preenchido, sem aparecer.
             hidden={p.productId !== focusProductId}
           >
-            <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+            {/* Com a conversa na coluna da direita (dono, 23/11/2026), o
+                resumo do produto só fica ao lado dos campos em tela bem
+                larga; antes disso fica em cima, e os campos usam a largura
+                toda. */}
+            <div className="grid 2xl:grid-cols-[minmax(0,1fr)_minmax(0,2.4fr)]">
               {/* Coluna esquerda (um terço): o produto pedido. */}
               <div
-                className="min-w-0 space-y-2 border-b border-zinc-100 p-3 sm:p-4 md:border-b-0 md:border-r"
+                className="min-w-0 space-y-2 border-b border-zinc-100 p-3 sm:p-4 2xl:border-b-0 2xl:border-r"
                 data-quote-item-summary={p.productId}
               >
                 <p className="font-semibold leading-5 text-zinc-900">
