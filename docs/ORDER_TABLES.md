@@ -90,3 +90,7 @@ Falta nas listas dos passos do fluxo.
 4. **Largura**: a tabela de pedidos tem 18 colunas e rola para o lado; fica assim.
 
 O que o portal continua sem ter: uma data de negociação própria (uso a data em que o pedido foi lançado), o valor "Wellmix STK" gravado (mostro STK no estoque da Wellmix e na reposição) e o VIP no cadastro do cliente (fica no pedido; há um sexto nível, Evo).
+
+## 4. Preço de compra nunca para o cliente (dono, 23/11/2026)
+
+O preço original, negociado com o fornecedor, **nunca** aparece para o cliente, em nenhuma tabela. Nas tabelas padrão, o preço de compra (Preço unitário e Total FOB na página do pedido) só sai por `canSeeOrderPurchasePrice` (a Wellmix com "Ver preço de compra", o fornecedor do pedido e o despachante do pedido); os três valores padrão são preços de venda Wellmix, e mesmo esses só com "Ver valores e margem". O teste `tests/unit/purchase-price-customer.test.ts` trava que o login de cliente fica de fora em qualquer combinação. Coluna nova com preço de compra: sempre atrás dessa mesma função, nunca atrás de "é Wellmix ou é dono do pedido".
