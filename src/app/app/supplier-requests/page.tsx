@@ -48,6 +48,7 @@ import {
   Table,
   Td,
   Th,
+  formatDate,
   linkClass,
   rowClass,
 } from "@/components/ui";
@@ -72,6 +73,7 @@ import {
 import { turnTone, turnWaitingKey } from "@/lib/turn";
 import { QuoteDeadline } from "../purchase-quotes/_time";
 import { InvitesTable } from "./_components/invites-table";
+import { inviteLate, listInvitesFor } from "@/lib/services/booking-invites";
 
 /*
  * Solicitações ao fornecedor (docs/SUPPLIER_REQUESTS.md): a Wellmix vê todas;
@@ -81,6 +83,13 @@ import { InvitesTable } from "./_components/invites-table";
  * leva ao quadro "Gerar pedido de compra" (por fornecedor, para juntar outras
  * solicitações do mesmo fornecedor e ajustar a quantidade).
  */
+
+/** Cor da situação do convite de book (a mesma da tabela dos convites). */
+const INVITE_TONE: Record<string, "warning" | "success" | "neutral"> = {
+  open: "warning",
+  answered: "success",
+  cancelled: "neutral",
+};
 
 export default async function SupplierRequestsPage({
   searchParams,
@@ -214,7 +223,19 @@ export default async function SupplierRequestsPage({
   const closedRequests = allRequests.filter((list) => requestClosed(list));
   const openRequests = allRequests.filter((list) => !requestClosed(list));
   const requests = closedTab ? closedRequests : openRequests;
-  const tabProducts = new Set(requests.flat().map((p) => p.bookingItemId)).size;
+  /* Solicitações do cliente (dono, 23/11/2026; docs/SUPPLIER_REQUESTS.md):
+     para o fornecedor, os convites de book entram na mesma tabela das
+     solicitações. Em aberto ficam em "Em negociação"; o respondido e o
+     cancelado, em "Encerradas". */
+  const invites = wellmix ? [] : ((await listInvitesFor(user)) ?? []);
+  const openInvites = invites
+    .filter((i) => i.status === "open")
+    .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+  const closedInvites = invites.filter((i) => i.status !== "open");
+  const tabInvites = closedTab ? closedInvites : openInvites;
+  const tabProducts =
+    new Set(requests.flat().map((p) => p.bookingItemId)).size +
+    new Set(tabInvites.map((i) => i.bookingItemId)).size;
   // Pedido de compra (docs/PURCHASE_ORDER.md), só na aba Encerradas: os
   // produtos aprovados de cada fornecedor que ainda não estão em pedido.
   const purchase =
@@ -255,13 +276,9 @@ export default async function SupplierRequestsPage({
     <>
       <PageHeader
         t={t}
-        title={t(
-          wellmix ? "quotation.list.title" : "supplierRequests.list.title",
-        )}
+        title={t(wellmix ? "quotation.list.title" : "customerRequests.title")}
         subtitle={t(
-          wellmix
-            ? "quotation.list.subtitle"
-            : "supplierRequests.list.subtitleSupplier",
+          wellmix ? "quotation.list.subtitle" : "customerRequests.subtitle",
         )}
       />
       {errorText ? (
@@ -279,12 +296,14 @@ export default async function SupplierRequestsPage({
             [
               "open",
               "/app/supplier-requests",
-              openRequests.length + openQuotes.length,
+              openRequests.length + openQuotes.length + openInvites.length,
             ],
             [
               "closed",
               "/app/supplier-requests?tab=closed",
-              closedRequests.length + closedQuotes.length,
+              closedRequests.length +
+                closedQuotes.length +
+                closedInvites.length,
             ],
             ...(wellmix
               ? ([
@@ -338,20 +357,17 @@ export default async function SupplierRequestsPage({
         <Alert tone="warning">
           {t("supplierRequests.selection.schemaMissing")}
         </Alert>
-      ) : requests.length || tabQuotes.length ? (
+      ) : requests.length || tabQuotes.length || tabInvites.length ? (
         <Card>
           <p className="mb-2 text-sm text-zinc-600" data-supplier-request-count>
-            {t(
-              wellmix ? "quotation.list.count" : "supplierRequests.list.count",
-              {
-                n: requests.length + tabQuotes.length,
-                products:
-                  tabProducts +
-                  new Set(
-                    tabQuotes.flatMap((q) => q.items.map((i) => i.productId)),
-                  ).size,
-              },
-            )}
+            {t(wellmix ? "quotation.list.count" : "customerRequests.count", {
+              n: requests.length + tabQuotes.length + tabInvites.length,
+              products:
+                tabProducts +
+                new Set(
+                  tabQuotes.flatMap((q) => q.items.map((i) => i.productId)),
+                ).size,
+            })}
           </p>
           <Table>
             <thead>
@@ -372,6 +388,7 @@ export default async function SupplierRequestsPage({
               ) : (
                 <tr>
                   <Th>{t("supplierRequests.col.number")}</Th>
+                  <Th>{t("customerRequests.col.kind")}</Th>
                   {wellmix ? <Th>{t("quotation.col.origin")}</Th> : null}
                   <Th>{t("supplierRequests.col.status")}</Th>
                   {wellmix ? (
@@ -516,6 +533,79 @@ export default async function SupplierRequestsPage({
                         label={t("tasks.open")}
                         data-quotation-quote-open={q.id}
                       />
+                    </Td>
+                  </tr>
+                );
+              })}
+              {tabInvites.map((i) => {
+                // Convite de book (só o fornecedor vê nesta tabela): um item,
+                // a quantidade dele e o prazo para subir o book.
+                const href = `/app/supplier-requests/invites/${i.id}`;
+                return (
+                  <tr
+                    key={i.id}
+                    className={rowClass}
+                    data-booking-invite-row={i.status}
+                    data-customer-request-invite={i.id}
+                  >
+                    <Td className="tabular-nums">
+                      <Link
+                        href={href}
+                        className={linkClass}
+                        data-booking-invite-open={i.id}
+                      >
+                        {i.number}
+                      </Link>
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      {t("customerRequests.kind.invite")}
+                    </Td>
+                    <Td>
+                      <span className="flex flex-wrap gap-1">
+                        <Badge tone={INVITE_TONE[i.status]}>
+                          {t(
+                            `bookingInvites.status.${i.status}` as DictionaryKey,
+                          )}
+                        </Badge>
+                        {inviteLate(i) ? (
+                          <Badge tone="danger">
+                            {t("bookingInvites.late")}
+                          </Badge>
+                        ) : null}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-zinc-500">
+                        {i.item.description ?? i.item.productName ?? "—"}
+                        {i.status === "open"
+                          ? ` · ${t("customerRequests.due", {
+                              date: formatDate(i.dueAt, t),
+                            })}`
+                          : ""}
+                      </span>
+                    </Td>
+                    <Td className="tabular-nums">1</Td>
+                    <Td className="whitespace-nowrap tabular-nums">
+                      {i.item.quantity
+                        ? t("supplierRequests.detail.pieces", {
+                            n: i.item.quantity.toLocaleString(t.intl),
+                          })
+                        : "—"}
+                    </Td>
+                    <Td>—</Td>
+                    <Td>—</Td>
+                    <Td>
+                      {i.status === "answered"
+                        ? t("bookingInvites.status.answered")
+                        : "—"}
+                    </Td>
+                    <Td className="whitespace-nowrap tabular-nums">
+                      {dateTime(i.createdAt, t)}
+                    </Td>
+                    <Td className="whitespace-nowrap tabular-nums">
+                      {i.answeredAt ? dateTime(i.answeredAt, t) : "—"}
+                    </Td>
+                    {closedTab && showPurchase ? <Td>—</Td> : null}
+                    <Td>
+                      <OpenLink href={href} label={t("tasks.open")} />
                     </Td>
                   </tr>
                 );
@@ -726,6 +816,9 @@ export default async function SupplierRequestsPage({
                         {r.number}
                       </Link>
                     </Td>
+                    <Td className="whitespace-nowrap">
+                      {t("customerRequests.kind.request")}
+                    </Td>
                     {wellmix ? (
                       <Td data-quotation-origin>
                         {originText(
@@ -800,7 +893,7 @@ export default async function SupplierRequestsPage({
       ) : (
         <Empty>
           {t(
-            entries.length || quotes.length
+            entries.length || quotes.length || invites.length
               ? closedTab
                 ? wellmix
                   ? "quotation.tabs.emptyClosed"
