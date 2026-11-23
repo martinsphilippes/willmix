@@ -166,13 +166,11 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
     "data-differs",
     "1",
   );
-  await expect(page.locator('[data-access-compare="booking"]')).toHaveAttribute(
-    "data-differs",
-    "1",
-  );
+  // O Booking não difere mais: o Fornecedor também vem com ele ("Books",
+  // dono, 23/11/2026).
   await expect(page.locator("[data-access-compare-diff]")).toHaveAttribute(
     "data-access-compare-diff",
-    "2",
+    "1",
   );
 
   // Como Factory: Solicitações ao fornecedor recusa, mesmo pelo endereço; a Gestão de telas
@@ -313,9 +311,13 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
   await page.waitForURL(/saved=user/);
 
   // Gestão de telas: o Booking já vem aberto no Trading (e na Factory, no
-  // Supplier e no GP); no Fornecedor pode ser liberado (deixou de ser
-  // "interna da Wellmix").
-  for (const profile of ["type:trading", "type:gp", "type:supplier_partner"]) {
+  // Supplier e no GP) e, desde 23/11/2026, também no Fornecedor ("Books").
+  for (const profile of [
+    "type:trading",
+    "type:gp",
+    "type:supplier_partner",
+    "role:supplier",
+  ]) {
     await openAccess(page, `/app/parties/access?profile=${profile}`);
     await expect(
       page.locator('[data-access-screen="booking"]'),
@@ -324,11 +326,6 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
       0,
     );
   }
-  await openAccess(page, "/app/parties/access?profile=role:supplier");
-  await expect(page.locator('[data-access-screen="booking"]')).toHaveAttribute(
-    "data-access-state",
-    "blocked",
-  );
 
   // Dois bookings: um de outro fornecedor e um com a Trading de responsável.
   await importAndClose(
