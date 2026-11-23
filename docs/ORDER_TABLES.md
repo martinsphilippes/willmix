@@ -45,9 +45,7 @@ Saíram da lista (seguem na página do pedido e no CSV): Peças, Master, Inner, 
   - **Reposição**: no fim, Fonte e Data desejada. Saíram Produto e Quantidade (o produto fica na dica da coluna Itens e na página da solicitação). Tipo de venda = Wellmix STK.
   - **Ordens de venda**: no fim, Sankhya e Entrega. A ordem sai do estoque e não tem solicitação ligada: Tipo de venda = Venda, Forma de pagamento = a condição da ordem, Valor = soma das linhas; Prazo, Faturamento, VIP, Entregas, m³ e Fornecedor ficam "—".
 
-### Onde falta aplicar
-
-As listas dos passos do fluxo (telas dos blocos do menu).
+- **Passos do fluxo** (aba "Todos no passo" de cada tela de passo, `src/components/flow-all.tsx`), só para a Wellmix (23/11/2026): colunas padrão primeiro e, no fim, "Em aberto no passo" e "Há quantos dias". Status = o papel do primeiro item aberto no passo; Situação = o marco do pedido; Prazo resposta fica "—" (o item do passo não guarda prazo próprio). O parceiro segue com a lista dele. A aba Pendências do passo é uma lista de tarefas, não de pedidos, e não muda.
 
 ## 2. Tabela de itens do pedido
 

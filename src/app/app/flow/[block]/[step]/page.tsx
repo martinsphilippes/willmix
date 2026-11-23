@@ -20,6 +20,7 @@ import {
 import { ServerPager } from "@/components/server-table";
 import { FlowAll } from "@/components/flow-all";
 import { isWellmix } from "@/lib/auth/permissions";
+import { canSeeMoney } from "@/lib/auth/function-access";
 import { partnerStepsOf, stepId } from "@/lib/flow";
 import { FlowCases } from "@/components/flow-cases";
 import { FlowStepWork } from "@/components/flow-step-work";
@@ -214,6 +215,7 @@ export default async function FlowStepPage({
           entities={entities}
           t={t}
           partner={!wellmix}
+          seeValue={wellmix && canSeeMoney(user)}
           paged={!!stepAll}
           emptyText={query ? t("flow.all.searchEmpty") : undefined}
         />
