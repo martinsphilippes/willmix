@@ -443,3 +443,14 @@ Pedidos do dono, no mesmo dia: primeiro "manda direto para a Estratégia, quero 
 | 12  | Correção da resposta até o prazo: aviso com a hora exata e a tela travada com a resposta enviada | feito    |
 | 13  | Inner do cliente, material do catálogo, "Sem peso" e a cotação em duas colunas                   | feito    |
 | 14  | Conversão ao trocar a moeda: campos de valor, cotação e negociação, com o aviso e o "Manter"     | feito    |
+
+## Cards ou tabela (dono, 23/11/2026)
+
+A Estratégia de compra (`/app/purchase-strategy`) tem duas formas de ver, à escolha de quem trabalha: **Cards** (como sempre) e **Tabela**. O seletor fica à direita das abas.
+
+- Vale nas abas **Esperando estratégia** e **Em andamento**; **Enviadas** já é uma tabela.
+- **Tabela, Esperando estratégia**: uma linha por solicitação (Solicitação, Cliente, País › Família, Produtos, Última compra e a Estratégia marcada). "Abrir" mostra embaixo o mesmo card, com a escolha, os destinatários, o resumo e o "Confirmar o envio". A linha com escolha marcada fica destacada.
+- **Tabela, Em andamento**: uma linha por estratégia (número, situação, modalidade, solicitações, cliente, produtos e fornecedor). "Abrir" mostra o card com as ações (aprovar, recusar, encerrar, gerar o pedido, detalhes). Endereço com `#decision-<id>` já abre a linha.
+- O card fica montado mesmo recolhido: o que foi marcado nele não se perde ao fechar a linha.
+- A escolha vai no endereço (`?view=cards|table`) e fica lembrada no navegador (cookie `strategyView`, um ano): a tela abre do mesmo jeito da próxima vez. Sem escolha: cards.
+- Nada muda nas regras nem nas ações; é só a forma de listar. Código: `_components/strategy-view.tsx` (`StrategyViewToggle`, `StrategyTable`, `StrategyTableRow`).

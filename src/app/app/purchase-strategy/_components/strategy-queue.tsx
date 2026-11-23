@@ -31,6 +31,7 @@ import {
   type CardTexts,
   type LastTexts,
 } from "./strategy-card";
+import { StrategyTable, StrategyTableRow } from "./strategy-view";
 import { QuickDialog } from "@/components/quick-dialog";
 import {
   PartnerLoginFix,
@@ -220,7 +221,18 @@ export function StrategyQueue({
   texts,
   canChoose,
   partnerLogin = null,
+  view = "cards",
+  tableTexts = null,
 }: {
+  /** Por cards (como sempre) ou em tabela (dono, 23/11/2026). */
+  view?: "cards" | "table";
+  tableTexts?: {
+    heads: string[];
+    open: string;
+    close: string;
+    /** "{n} produto(s)". */
+    productsN: string;
+  } | null;
   lines: StrategyLineData[];
   groups: StrategyGroupData[];
   checks: Record<string, RecipientCheck>;
@@ -1051,7 +1063,58 @@ export function StrategyQueue({
       {groups.length ? (
         <section>
           {/* O título e a contagem estão na aba (dono, 22/11/2026). */}
-          <StrategyGrid marker="queue">{groups.map(lineCard)}</StrategyGrid>
+          {view === "table" && tableTexts ? (
+            // Tabela: uma linha por solicitação; "Abrir" mostra embaixo o
+            // mesmo card, com a escolha, os destinatários e o envio.
+            <StrategyTable heads={tableTexts.heads} marker="queue">
+              {groups.map((line) => {
+                const members = linesOf(line);
+                const last =
+                  line.last ?? (members.length === 1 ? members[0].last : null);
+                const choice = byLine[line.key].choice;
+                return (
+                  <StrategyTableRow
+                    key={line.key}
+                    rowKey={line.key}
+                    columns={tableTexts.heads.length + 1}
+                    labels={{ open: tableTexts.open, close: tableTexts.close }}
+                    highlight={choice !== "skip"}
+                    cells={[
+                      <span key="t" className="font-semibold text-zinc-900">
+                        {line.title}
+                      </span>,
+                      line.customerName ?? "—",
+                      line.origin ?? "—",
+                      <span
+                        key="p"
+                        title={members.map((m) => m.productName).join(", ")}
+                      >
+                        {members.length === 1
+                          ? members[0].productName
+                          : fill(tableTexts.productsN, { n: members.length })}
+                      </span>,
+                      last
+                        ? [last.supplierName, last.price]
+                            .filter(Boolean)
+                            .join(" · ")
+                        : "—",
+                      line.blocked ? (
+                        <span key="c" className="text-amber-800">
+                          {line.blocked}
+                        </span>
+                      ) : (
+                        texts.choices[choice]
+                      ),
+                    ]}
+                  >
+                    {lineCard(line)}
+                  </StrategyTableRow>
+                );
+              })}
+            </StrategyTable>
+          ) : (
+            <StrategyGrid marker="queue">{groups.map(lineCard)}</StrategyGrid>
+          )}
         </section>
       ) : (
         // Fila vazia: uma faixa baixa, sem card (dono, 19/11/2026).

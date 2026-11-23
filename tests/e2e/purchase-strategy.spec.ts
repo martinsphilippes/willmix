@@ -170,12 +170,52 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   const line = page.locator(`[data-strategy-line="${replenishment}"]`);
   await expect(line.locator("[data-strategy-last]")).toContainText("Shenzhen");
   await expect(line.locator("[data-strategy-last]")).toContainText("1,4");
+  // Cards ou tabela (dono, 23/11/2026): a tabela lista a solicitação numa
+  // linha e "Abrir" mostra embaixo o mesmo card; a escolha fica lembrada e
+  // "Cards" volta à tela de sempre.
+  await expect(page.locator("[data-strategy-view]")).toHaveAttribute(
+    "data-strategy-view",
+    "cards",
+  );
+  await page.locator('[data-strategy-view-option="table"]').click();
+  await page.waitForURL(/[?&]view=table/);
+  const queueTable = page.locator('[data-strategy-table="queue"]');
+  await expect(queueTable).toBeVisible();
+  await expect(page.locator('[data-strategy-grid="queue"]')).toHaveCount(0);
+  const tableRow = queueTable.locator("[data-strategy-row]", {
+    has: page.locator("text=Shenzhen"),
+  });
+  await expect(tableRow.first()).toBeVisible();
+  await expect(line).toBeHidden();
+  const rowKey = await line.evaluate((el) =>
+    el
+      .closest("[data-strategy-row-card]")!
+      .getAttribute("data-strategy-row-card"),
+  );
+  await page.locator(`[data-strategy-row-toggle="${rowKey}"]`).click();
+  await expect(line).toBeVisible();
+  // Lembrada: abrir a tela sem o endereço continua em tabela.
+  await page.goto("/app/purchase-strategy");
+  await expect(page.locator('[data-strategy-table="queue"]')).toBeVisible();
+  await page.locator('[data-strategy-view-option="cards"]').click();
+  await page.waitForURL(/[?&]view=cards/);
+  await expect(page.locator('[data-strategy-grid="queue"]')).toBeVisible();
+  await expect(line).toBeVisible();
   const decisionA = await chooseFor(page, replenishment, "last_supplier");
   // A Diretoria de compras aprova.
   await approve(page, decisionA);
   // O Comprador gera o pedido com as condições da última compra.
   await login(page, "operador@wellmix.com");
-  await page.goto("/app/purchase-strategy?tab=open");
+  // Em andamento em tabela: a estratégia numa linha; "Abrir" mostra o card.
+  await page.goto("/app/purchase-strategy?tab=open&view=table");
+  const openRow = page.locator(
+    `[data-strategy-table="open"] [data-strategy-row="${decisionA}"]`,
+  );
+  await expect(openRow).toContainText("Shenzhen");
+  await expect(page.locator(`#decision-${decisionA}`)).toBeHidden();
+  await page.locator(`[data-strategy-row-toggle="${decisionA}"]`).click();
+  await expect(page.locator(`#decision-${decisionA}`)).toBeVisible();
+  await page.goto("/app/purchase-strategy?tab=open&view=cards");
   // Rótulo curto do card (dono, 19/11/2026): a explicação aparece por cima,
   // inteira (nada em volta a corta; a grade rola para os lados e cortaria o
   // que sai do card).
