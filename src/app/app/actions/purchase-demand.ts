@@ -277,6 +277,7 @@ export async function answerQuoteAction(form: FormData) {
       prices,
       currency: decline ? null : str(form, "currency").toUpperCase() || null,
       incoterm: decline ? null : str(form, "incoterm").toUpperCase() || null,
+      incotermValue: decline ? null : optionalNumber("incotermValue"),
       leadTimeDays: decline ? null : optionalNumber("leadTimeDays", true),
       port: decline
         ? null

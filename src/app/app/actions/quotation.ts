@@ -121,7 +121,9 @@ export async function postQuoteMessageStateAction(
       ? `/app/supplier-requests/${quote}?view=item${
           ID.safeParse(product).success ? `&product=${product}` : ""
         }`
-      : `/app/purchase-quotes/${quote}`;
+      : `/app/purchase-quotes/${quote}${
+          ID.safeParse(product).success ? `?item=${product}` : ""
+        }`;
   return runState(back, async () => {
     assertScreen(user, "quotes");
     const responseId = str(form, "responseId");
@@ -153,7 +155,7 @@ function quoteSamplingOf(form: FormData, wellmix: boolean) {
     ? "/app/supplier-requests"
     : wellmix
       ? `/app/supplier-requests/${quoteId}?view=item&product=${productId}`
-      : `/app/purchase-quotes/${quoteId}`;
+      : `/app/purchase-quotes/${quoteId}?item=${productId}`;
   return { quoteId, productId, ok, back };
 }
 

@@ -10,6 +10,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
+import Link from "next/link";
 import { Alert, Badge, Select, Textarea, cx } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
@@ -116,6 +117,18 @@ export interface QuoteAnswerLabels {
   incoterm: string;
   leadTime: string;
   port: string;
+  /** Vários portos (dono, 23/11/2026): "Porto de embarque {n}". */
+  portN: string;
+  portAdd: string;
+  portRemove: string;
+  /** Valor do Incoterm no EXW. */
+  incotermValue: string;
+  incotermValueHint: string;
+  /** Moeda e termos valem para todos os produtos da cotação. */
+  termsShared: string;
+  /** Título do envio e o "voltar" da tela do produto. */
+  sendTitle: string;
+  backToProducts: string;
   moq: string;
   note: string;
   answer: string;
@@ -297,6 +310,20 @@ type NumberKey =
   | "netWeightKg"
   | "grossWeightBoxKg";
 
+/** Portos num campo só: separados por " / ", sem vazios nem repetidos. */
+const PORT_SEPARATOR = " / ";
+const MAX_PORTS = 4;
+const splitPorts = (text: string) =>
+  text
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+const joinPorts = (list: readonly string[]) =>
+  [...new Set(list.map((part) => part.replace(/\//g, " ").trim()))]
+    .filter(Boolean)
+    .join(PORT_SEPARATOR)
+    .slice(0, 120);
+
 const fill = (text: string, values: Record<string, string>) =>
   text.replace(/\{(\w+)\}/g, (_, k: string) => values[k] ?? "");
 
@@ -363,7 +390,20 @@ export function QuoteAnswerForm({
   cbmTolerancePercent,
   draft = null,
   draftAction = null,
+  focusProductId = null,
+  listHref = null,
+  headerSlot = null,
 }: {
+  /**
+   * Um produto por tela (dono, 23/11/2026): o produto aberto. Nulo = a
+   * lista dos produtos da cotação, onde fica só o envio (os campos seguem
+   * no formulário, escondidos, com o que já foi preenchido).
+   */
+  focusProductId?: string | null;
+  /** A lista dos produtos da cotação (o "voltar" da tela do produto). */
+  listHref?: string | null;
+  /** Ao lado do nome do produto (a conversa deste produto). */
+  headerSlot?: ReactNode;
   quoteId: string;
   action: (form: FormData) => void | Promise<void>;
   photoAction: (form: FormData) => void | Promise<void>;
@@ -377,7 +417,10 @@ export function QuoteAnswerForm({
   commercial: {
     currency: string;
     incoterm: string;
+    /** Valor do Incoterm no EXW (dono, 23/11/2026). */
+    incotermValue: string;
     leadTimeDays: string;
+    /** Um ou mais portos, separados por " / ". */
     port: string;
     moq: string;
     note: string;
@@ -454,11 +497,18 @@ export function QuoteAnswerForm({
     incoterm: incoterms.includes(pick("incoterm", ""))
       ? pick("incoterm", "")
       : commercial.incoterm,
+    incotermValue: pick("incotermValue", commercial.incotermValue),
     leadTimeDays: pick("leadTimeDays", commercial.leadTimeDays),
-    port: pick("port", commercial.port),
     moq: pick("moq", commercial.moq),
     note: pick("note", commercial.note),
   }));
+  // Portos de embarque (dono, 23/11/2026): o fornecedor pode trabalhar com
+  // mais de um; vão juntos no mesmo campo, separados por " / ".
+  const [ports, setPorts] = useState<string[]>(() => {
+    const list = splitPorts(pick("port", commercial.port));
+    return list.length ? list : [""];
+  });
+  const portText = joinPorts(ports);
   const [tried, setTried] = useState(false);
   // Trocar a moeda converte os preços já digitados (dono, 21/11/2026): pelo
   // câmbio do dia do portal, com o aviso em cada preço e "Manter os valores
@@ -505,7 +555,7 @@ export function QuoteAnswerForm({
   }
   // Tudo o que está na tela, pelo nome do formulário (o rascunho).
   const draftValues = useMemo(() => {
-    const out: QuoteDraftValues = { ...terms };
+    const out: QuoteDraftValues = { ...terms, port: portText };
     for (const [pid, price] of Object.entries(prices))
       out[`price.${pid}`] = price;
     for (const [pid, sheet] of Object.entries(sheets)) {
@@ -516,7 +566,7 @@ export function QuoteAnswerForm({
       out[`sheet.${pid}.materialIds`] = sheet.materialIds.join(",");
     }
     return out;
-  }, [prices, sheets, terms]);
+  }, [prices, sheets, terms, portText]);
   const autosave = useDraftAutosave(
     quoteId,
     draftValues,
@@ -581,9 +631,16 @@ export function QuoteAnswerForm({
     missing.push(L.leadTime);
     missingKeys.add("leadTimeDays");
   }
-  if (!terms.port.trim()) {
+  if (!portText) {
     missing.push(L.port);
     missingKeys.add("port");
+  }
+  // EXW: o valor do Incoterm (dono, 23/11/2026).
+  const exw = terms.incoterm === "EXW";
+  const exwValue = readNumber(terms.incotermValue);
+  if (exw && (exwValue === null || exwValue < 0)) {
+    missing.push(L.incotermValue);
+    missingKeys.add("incotermValue");
   }
   const moq = readNumber(terms.moq);
   if (moq === null || moq <= 0) {
@@ -614,6 +671,181 @@ export function QuoteAnswerForm({
         ?.scrollIntoView({ block: "center", behavior: "smooth" }),
     );
   }
+
+  // Termos comerciais (dono, 23/11/2026): aparecem na primeira seção do
+  // produto aberto; valem para a cotação inteira (os campos de envio ficam
+  // no formulário, embaixo).
+  const termsBlock = (
+    <div
+      className="space-y-1 border-t border-zinc-100 pt-3"
+      data-quote-terms-fields
+    >
+      <p className="text-sm font-semibold text-zinc-900">{L.termsTitle}</p>
+      {products.length > 1 ? (
+        <p className="text-xs text-zinc-500">{L.termsShared}</p>
+      ) : null}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="min-w-0">
+          <FieldLabel htmlFor={`quote-${quoteId}-incoterm`}>
+            {L.incoterm}
+          </FieldLabel>
+          <Select
+            id={`quote-${quoteId}-incoterm`}
+            value={terms.incoterm}
+            onChange={(e) => setTerms({ ...terms, incoterm: e.target.value })}
+            className="h-9! w-full"
+            data-quote-incoterm
+          >
+            {incoterms.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </Select>
+        </div>
+        {exw ? (
+          <div
+            className="min-w-0"
+            data-missing={lacks("incotermValue") ? "true" : undefined}
+            data-quote-incoterm-value-box
+          >
+            <FieldLabel htmlFor={`quote-${quoteId}-incoterm-value`}>
+              {L.incotermValue}
+            </FieldLabel>
+            <MoneyInput
+              id={`quote-${quoteId}-incoterm-value`}
+              currency={terms.currency}
+              autoDecimal
+              value={terms.incotermValue}
+              onValueChange={(v) => setTerms({ ...terms, incotermValue: v })}
+              error={lacks("incotermValue")}
+              inputData={{ "data-quote-incoterm-value": "" }}
+              className="min-w-0"
+            />
+            <p className="mt-1 text-xs text-zinc-500">{L.incotermValueHint}</p>
+          </div>
+        ) : null}
+        <div className="min-w-0">
+          <FieldLabel htmlFor={`quote-${quoteId}-lead`}>
+            {L.leadTime}
+          </FieldLabel>
+          <span
+            className={cx(
+              "flex h-9 items-center rounded-md border shadow-sm transition focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-100",
+              lacks("leadTimeDays")
+                ? "border-red-400 bg-red-50"
+                : "border-zinc-300 bg-white",
+            )}
+          >
+            <input
+              id={`quote-${quoteId}-lead`}
+              inputMode="numeric"
+              autoComplete="off"
+              value={terms.leadTimeDays}
+              onChange={(e) =>
+                setTerms({ ...terms, leadTimeDays: e.target.value })
+              }
+              data-quote-lead
+              data-missing={lacks("leadTimeDays") ? "true" : undefined}
+              className="h-full w-full min-w-0 rounded-md border-0 bg-transparent px-2.5 text-right text-[13px] tabular-nums text-zinc-900 focus:outline-none"
+            />
+            <span className="shrink-0 pr-2.5 text-xs text-zinc-500">
+              {L.unitDays}
+            </span>
+          </span>
+        </div>
+        <div className="min-w-0">
+          <FieldLabel htmlFor={`quote-${quoteId}-moq`}>{L.moq}</FieldLabel>
+          <span
+            className={cx(
+              "flex h-9 items-center rounded-md border shadow-sm transition focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-100",
+              lacks("moq")
+                ? "border-red-400 bg-red-50"
+                : "border-zinc-300 bg-white",
+            )}
+          >
+            <input
+              id={`quote-${quoteId}-moq`}
+              inputMode="numeric"
+              autoComplete="off"
+              value={terms.moq}
+              onChange={(e) => setTerms({ ...terms, moq: e.target.value })}
+              data-quote-moq
+              data-missing={lacks("moq") ? "true" : undefined}
+              className="h-full w-full min-w-0 rounded-md border-0 bg-transparent px-2.5 text-right text-[13px] tabular-nums text-zinc-900 focus:outline-none"
+            />
+            <span className="shrink-0 pr-2.5 text-xs text-zinc-500">
+              {L.unitPieces}
+            </span>
+          </span>
+        </div>
+      </div>
+      {/* Portos de embarque: um por linha, com adicionar e remover. */}
+      <div className="mt-3" data-quote-ports={ports.length}>
+        <FieldLabel htmlFor={`quote-${quoteId}-port`}>{L.port}</FieldLabel>
+        <div className="space-y-2">
+          {ports.map((value, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <input
+                id={index === 0 ? `quote-${quoteId}-port` : undefined}
+                maxLength={36}
+                autoComplete="off"
+                value={value}
+                aria-label={fill(L.portN, { n: String(index + 1) })}
+                onChange={(e) =>
+                  setPorts(
+                    ports.map((p, i) => (i === index ? e.target.value : p)),
+                  )
+                }
+                {...(index === 0 ? { "data-quote-port": "" } : {})}
+                data-quote-port-item={index}
+                data-missing={index === 0 && lacks("port") ? "true" : undefined}
+                className={cx(
+                  textBox,
+                  "max-w-sm",
+                  index === 0 && lacks("port")
+                    ? "border-red-400 bg-red-50"
+                    : "border-zinc-300 bg-white",
+                )}
+              />
+              {ports.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setPorts(ports.filter((_, i) => i !== index))}
+                  aria-label={L.portRemove}
+                  title={L.portRemove}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-50"
+                  data-quote-port-remove={index}
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+        {ports.length < MAX_PORTS ? (
+          <button
+            type="button"
+            onClick={() => setPorts([...ports, ""])}
+            className="mt-2 text-xs font-medium text-brand-700 underline underline-offset-2"
+            data-quote-port-add
+          >
+            + {L.portAdd}
+          </button>
+        ) : null}
+      </div>
+      <div className="mt-3">
+        <FieldLabel htmlFor={`quote-${quoteId}-note`}>{L.note}</FieldLabel>
+        <Textarea
+          id={`quote-${quoteId}-note`}
+          rows={2}
+          maxLength={2000}
+          value={terms.note}
+          onChange={(e) => setTerms({ ...terms, note: e.target.value })}
+        />
+      </div>
+    </div>
+  );
 
   // O aviso vale para quem preenche a ficha de algum produto.
   const showsNotice = products.some((p) => p.ask);
@@ -753,6 +985,9 @@ export function QuoteAnswerForm({
             key={p.productId}
             className="rounded-xl border border-zinc-200 bg-white"
             data-quote-item={p.productId}
+            // Um produto por tela: os outros seguem no formulário, com o
+            // que já foi preenchido, sem aparecer.
+            hidden={p.productId !== focusProductId}
           >
             <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
               {/* Coluna esquerda (um terço): o produto pedido. */}
@@ -763,6 +998,7 @@ export function QuoteAnswerForm({
                 <p className="font-semibold leading-5 text-zinc-900">
                   {p.name}
                 </p>
+                {headerSlot}
                 <p className="text-sm text-zinc-700">
                   <span className="font-medium">{L.quantity}:</span>{" "}
                   {p.quantityText}
@@ -817,8 +1053,11 @@ export function QuoteAnswerForm({
                   </div>
                 ) : null}
 
+                {/* Preço e termos comerciais (dono, 23/11/2026): primeiro a
+                    moeda, depois o preço; os termos comerciais ficam aqui,
+                    na primeira seção. */}
                 <div
-                  className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]"
+                  className="grid gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)]"
                   data-quote-price-box={p.productId}
                 >
                   <input
@@ -827,6 +1066,25 @@ export function QuoteAnswerForm({
                     name="productId"
                     value={p.productId}
                   />
+                  <div className="min-w-0">
+                    <FieldLabel htmlFor={`quote-currency-${p.productId}`}>
+                      {L.currency}
+                    </FieldLabel>
+                    <Select
+                      id={`quote-currency-${p.productId}`}
+                      value={terms.currency}
+                      onFocus={prefetchFx}
+                      onChange={(e) => changeCurrency(e.target.value)}
+                      className="h-9! w-full"
+                      data-quote-currency={p.productId}
+                    >
+                      {currencyOptions.map((c) => (
+                        <option key={c} value={c}>
+                          {L.currencyNames[c] ?? c}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
                   <div
                     className="min-w-0"
                     data-missing={
@@ -857,7 +1115,6 @@ export function QuoteAnswerForm({
                       data-quote-price-hint={p.productId}
                     >
                       {priceHint}
-                      {products.length > 1 ? ` ${L.currencyAll}` : null}
                     </p>
                     {fxNote?.texts[p.productId] ? (
                       <FxNoteLine
@@ -873,26 +1130,8 @@ export function QuoteAnswerForm({
                       />
                     ) : null}
                   </div>
-                  <div className="min-w-0">
-                    <FieldLabel htmlFor={`quote-currency-${p.productId}`}>
-                      {L.currency}
-                    </FieldLabel>
-                    <Select
-                      id={`quote-currency-${p.productId}`}
-                      value={terms.currency}
-                      onFocus={prefetchFx}
-                      onChange={(e) => changeCurrency(e.target.value)}
-                      className="h-9! w-full"
-                      data-quote-currency={p.productId}
-                    >
-                      {currencyOptions.map((c) => (
-                        <option key={c} value={c}>
-                          {L.currencyNames[c] ?? c}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
                 </div>
+                {p.productId === focusProductId ? termsBlock : null}
 
                 {p.ask ? (
                   <div
@@ -922,20 +1161,12 @@ export function QuoteAnswerForm({
                       </div>
                     ) : null}
 
-                    {/* Linha 1: peças por master, código na fábrica e material. */}
+                    {/* Linha 1: código na fábrica e peças por caixa master
+                        (dono, 23/11/2026). */}
                     <div
-                      className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.1fr)_minmax(0,1.5fr)]"
+                      className="grid gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)]"
                       data-sheet-row="pieces"
                     >
-                      <div className="min-w-0">
-                        {numberBox("masterBoxQty", {
-                          label: L.f.master,
-                          unit: L.unitPieces,
-                          int: true,
-                          lacking: lacks(`${p.productId}.masterBoxQty`),
-                        })}
-                        {hintFor("masterBoxQty")}
-                      </div>
                       <div className="min-w-0">
                         <FieldLabel htmlFor={`quote-${p.productId}-code`}>
                           {L.f.code}
@@ -989,30 +1220,14 @@ export function QuoteAnswerForm({
                         </div>
                         {hintFor("factoryItemCode")}
                       </div>
-                      <div className="min-w-0 sm:col-span-2 xl:col-span-1">
-                        <FieldLabel>{L.f.material}</FieldLabel>
-                        <MaterialPicker
-                          options={materials}
-                          value={s.materialIds}
-                          onChange={(ids) =>
-                            setSheet(p.productId, { materialIds: ids })
-                          }
-                          name={`sheet.${p.productId}.materialIds`}
-                          form={formId}
-                          lacking={lacks(`${p.productId}.material`)}
-                          changed={changed.has("material")}
-                          labels={{ field: L.f.material, ...L.material }}
-                          dataField={`${p.productId}.material`}
-                        />
-                        {legacy ? (
-                          <p
-                            className="mt-1 text-xs text-amber-800"
-                            data-material-legacy={p.productId}
-                          >
-                            {fill(L.material.legacy, { text: legacy })}
-                          </p>
-                        ) : null}
-                        {hintFor("material")}
+                      <div className="min-w-0">
+                        {numberBox("masterBoxQty", {
+                          label: L.f.master,
+                          unit: L.unitPieces,
+                          int: true,
+                          lacking: lacks(`${p.productId}.masterBoxQty`),
+                        })}
+                        {hintFor("masterBoxQty")}
                       </div>
                     </div>
                     {/* Caixa inner só quando o cliente exige (dono, 21/11/2026):
@@ -1056,41 +1271,9 @@ export function QuoteAnswerForm({
                       </p>
                     ) : null}
 
-                    {/* Linha 2: a caixa master, três medidas em cm ou o CBM. */}
-                    <div data-sheet-row="box">
-                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                        {numberBox("boxLengthCm", {
-                          label: L.f.length,
-                          lacking: lacks(`${p.productId}.box`),
-                        })}
-                        {numberBox("boxWidthCm", {
-                          label: L.f.width,
-                          lacking: lacks(`${p.productId}.box`),
-                        })}
-                        {numberBox("boxHeightCm", {
-                          label: L.f.height,
-                          lacking: lacks(`${p.productId}.box`),
-                        })}
-                        {numberBox("cbm", {
-                          label: L.f.cbm,
-                          lacking: lacks(`${p.productId}.box`),
-                        })}
-                      </div>
-                      {hintFor("boxLengthCm")}
-                      {hintFor("cbm") ?? (
-                        <p className="mt-1 text-xs text-zinc-500">
-                          {fromDims !== null
-                            ? fill(L.fields.cbmFromDims, {
-                                cbm: show(fromDims, 4),
-                              })
-                            : L.fields.cbmHint}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Linha 3: pesos, com "Sem peso" ao lado do bruto. */}
+                    {/* Linha 2: pesos, com "Sem peso" ao lado do bruto, e o CBM no fim. */}
                     <div
-                      className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+                      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)]"
                       data-sheet-row="weight"
                     >
                       <div className="min-w-0">
@@ -1146,8 +1329,70 @@ export function QuoteAnswerForm({
                           {L.grossUnknownHint}
                         </p>
                       </div>
+                      <div className="min-w-0">
+                        {numberBox("cbm", {
+                          label: L.f.cbm,
+                          lacking: lacks(`${p.productId}.box`),
+                        })}
+                      </div>
                     </div>
 
+                    {/* Linha 3: as três medidas da caixa master, em cm. */}
+                    <div data-sheet-row="box">
+                      <div className="grid grid-cols-3 gap-3 sm:max-w-md">
+                        {numberBox("boxLengthCm", {
+                          label: L.f.length,
+                          lacking: lacks(`${p.productId}.box`),
+                        })}
+                        {numberBox("boxWidthCm", {
+                          label: L.f.width,
+                          lacking: lacks(`${p.productId}.box`),
+                        })}
+                        {numberBox("boxHeightCm", {
+                          label: L.f.height,
+                          lacking: lacks(`${p.productId}.box`),
+                        })}
+                      </div>
+                      {hintFor("boxLengthCm")}
+                      {hintFor("cbm") ?? (
+                        <p className="mt-1 text-xs text-zinc-500">
+                          {fromDims !== null
+                            ? fill(L.fields.cbmFromDims, {
+                                cbm: show(fromDims, 4),
+                              })
+                            : L.fields.cbmHint}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Linha 4: o material. */}
+                    <div data-sheet-row="material">
+                      <div className="min-w-0">
+                        <FieldLabel>{L.f.material}</FieldLabel>
+                        <MaterialPicker
+                          options={materials}
+                          value={s.materialIds}
+                          onChange={(ids) =>
+                            setSheet(p.productId, { materialIds: ids })
+                          }
+                          name={`sheet.${p.productId}.materialIds`}
+                          form={formId}
+                          lacking={lacks(`${p.productId}.material`)}
+                          changed={changed.has("material")}
+                          labels={{ field: L.f.material, ...L.material }}
+                          dataField={`${p.productId}.material`}
+                        />
+                        {legacy ? (
+                          <p
+                            className="mt-1 text-xs text-amber-800"
+                            data-material-legacy={p.productId}
+                          >
+                            {fill(L.material.legacy, { text: legacy })}
+                          </p>
+                        ) : null}
+                        {hintFor("material")}
+                      </div>
+                    </div>
                     {box ? (
                       <p
                         className="text-xs text-zinc-600"
@@ -1326,121 +1571,8 @@ export function QuoteAnswerForm({
         data-quote-terms
       >
         <p className="mb-2 text-sm font-semibold text-zinc-900">
-          {L.termsTitle}
+          {L.sendTitle}
         </p>
-        {/* A moeda fica ao lado do preço de cada item (uma para todos). */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.6fr)_minmax(0,1fr)]">
-          <div className="min-w-0">
-            <FieldLabel htmlFor={`quote-${quoteId}-incoterm`}>
-              {L.incoterm}
-            </FieldLabel>
-            <Select
-              id={`quote-${quoteId}-incoterm`}
-              form={formId}
-              name="incoterm"
-              value={terms.incoterm}
-              onChange={(e) => setTerms({ ...terms, incoterm: e.target.value })}
-              className="h-9! w-full"
-              data-quote-incoterm
-            >
-              {incoterms.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="min-w-0">
-            <FieldLabel htmlFor={`quote-${quoteId}-lead`}>
-              {L.leadTime}
-            </FieldLabel>
-            <span
-              className={cx(
-                "flex h-9 items-center rounded-md border shadow-sm transition focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-100",
-                lacks("leadTimeDays")
-                  ? "border-red-400 bg-red-50"
-                  : "border-zinc-300 bg-white",
-              )}
-            >
-              <input
-                id={`quote-${quoteId}-lead`}
-                form={formId}
-                name="leadTimeDays"
-                inputMode="numeric"
-                autoComplete="off"
-                value={terms.leadTimeDays}
-                onChange={(e) =>
-                  setTerms({ ...terms, leadTimeDays: e.target.value })
-                }
-                data-quote-lead
-                data-missing={lacks("leadTimeDays") ? "true" : undefined}
-                className="h-full w-full min-w-0 rounded-md border-0 bg-transparent px-2.5 text-right text-[13px] tabular-nums text-zinc-900 focus:outline-none"
-              />
-              <span className="shrink-0 pr-2.5 text-xs text-zinc-500">
-                {L.unitDays}
-              </span>
-            </span>
-          </div>
-          <div className="min-w-0">
-            <FieldLabel htmlFor={`quote-${quoteId}-port`}>{L.port}</FieldLabel>
-            <input
-              id={`quote-${quoteId}-port`}
-              form={formId}
-              name="port"
-              maxLength={120}
-              autoComplete="off"
-              value={terms.port}
-              onChange={(e) => setTerms({ ...terms, port: e.target.value })}
-              data-quote-port
-              data-missing={lacks("port") ? "true" : undefined}
-              className={cx(
-                textBox,
-                lacks("port")
-                  ? "border-red-400 bg-red-50"
-                  : "border-zinc-300 bg-white",
-              )}
-            />
-          </div>
-          <div className="min-w-0">
-            <FieldLabel htmlFor={`quote-${quoteId}-moq`}>{L.moq}</FieldLabel>
-            <span
-              className={cx(
-                "flex h-9 items-center rounded-md border shadow-sm transition focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-100",
-                lacks("moq")
-                  ? "border-red-400 bg-red-50"
-                  : "border-zinc-300 bg-white",
-              )}
-            >
-              <input
-                id={`quote-${quoteId}-moq`}
-                form={formId}
-                name="moq"
-                inputMode="numeric"
-                autoComplete="off"
-                value={terms.moq}
-                onChange={(e) => setTerms({ ...terms, moq: e.target.value })}
-                data-quote-moq
-                data-missing={lacks("moq") ? "true" : undefined}
-                className="h-full w-full min-w-0 rounded-md border-0 bg-transparent px-2.5 text-right text-[13px] tabular-nums text-zinc-900 focus:outline-none"
-              />
-              <span className="shrink-0 pr-2.5 text-xs text-zinc-500">
-                {L.unitPieces}
-              </span>
-            </span>
-          </div>
-        </div>
-        <div className="mt-3">
-          <FieldLabel htmlFor={`quote-${quoteId}-note`}>{L.note}</FieldLabel>
-          <Textarea
-            id={`quote-${quoteId}-note`}
-            form={formId}
-            name="note"
-            rows={2}
-            maxLength={2000}
-            value={terms.note}
-            onChange={(e) => setTerms({ ...terms, note: e.target.value })}
-          />
-        </div>
         <form
           id={formId}
           action={action}
@@ -1449,6 +1581,23 @@ export function QuoteAnswerForm({
         >
           <input type="hidden" name="quoteId" value={quoteId} />
           <input type="hidden" name="currency" value={terms.currency} />
+          {/* Os termos comerciais vão sempre por aqui: valem para a cotação
+              inteira e a tela de cada produto só os mostra. */}
+          <input type="hidden" name="incoterm" value={terms.incoterm} />
+          <input
+            type="hidden"
+            name="incotermValue"
+            value={exw ? terms.incotermValue : ""}
+          />
+          <input type="hidden" name="leadTimeDays" value={terms.leadTimeDays} />
+          <input
+            type="hidden"
+            name="port"
+            value={portText}
+            data-quote-port-value
+          />
+          <input type="hidden" name="moq" value={terms.moq} />
+          <input type="hidden" name="note" value={terms.note} />
           {missing.length ? (
             <div
               className={cx(
@@ -1468,6 +1617,16 @@ export function QuoteAnswerForm({
             </div>
           ) : null}
           <div className="flex flex-wrap items-center gap-2">
+            {focusProductId && listHref ? (
+              <Link
+                href={listHref}
+                onClick={() => void autosave.flush()}
+                className="inline-flex h-9 items-center rounded-lg border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+                data-quote-back-to-products
+              >
+                {L.backToProducts}
+              </Link>
+            ) : null}
             <SubmitButton data-quote-submit>{L.answer}</SubmitButton>
             <SubmitButton
               name="decline"

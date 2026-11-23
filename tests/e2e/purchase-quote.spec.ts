@@ -108,7 +108,31 @@ async function answer(
   await page.goto("/app/purchase-quotes");
   await page.locator(`[data-quote-invite="${quoteId}"] a`).first().click();
   await page.waitForURL(new RegExp(`/app/purchase-quotes/${quoteId}`));
+  // Um produto por tela (dono, 23/11/2026): a cotação abre na lista dos
+  // produtos (tabela padrão de itens); o produto abre a tela só dele.
+  const productRow = page.locator('[data-quote-product-row="prod-jarra"]');
+  await expect(productRow).toBeVisible();
+  await expect(page.locator('[data-quote-item="prod-jarra"]')).toBeHidden();
+  await productRow.locator('[data-quote-product-open="prod-jarra"]').click();
+  await page.waitForURL(/[?&]item=prod-jarra/);
   const form = page.locator("[data-quote-answer-form]");
+  await expect(form.locator('[data-quote-item="prod-jarra"]')).toBeVisible();
+  // A conversa deste produto abre por um botão na tela.
+  await expect(
+    page.locator('[data-quote-product-chat="prod-jarra"]'),
+  ).toBeVisible();
+  // Primeiro a moeda, depois o preço; os termos comerciais na mesma seção.
+  const order = await form
+    .locator('[data-quote-price-box="prod-jarra"]')
+    .evaluate((box) =>
+      [...box.querySelectorAll("select, input:not([type=hidden])")].map(
+        (el) => el.tagName,
+      ),
+    );
+  expect(order[0]).toBe("SELECT");
+  await expect(
+    form.locator('[data-quote-item="prod-jarra"] [data-quote-terms-fields]'),
+  ).toBeVisible();
   await typePrice(form, digits, currency);
   // Ficha técnica (dono, 20/11/2026): sem ela e sem o comercial, o envio não
   // sai e a tela diz o que falta.
@@ -165,9 +189,36 @@ async function answer(
   }
   await form.locator("[data-quote-lead]").fill("35");
   await form.locator("[data-quote-port]").fill("Ningbo");
+  // Mais de um porto (dono, 23/11/2026): adiciona, preenche e remove; os
+  // portos vão juntos na resposta.
+  await form.locator("[data-quote-port-add]").click();
+  await form.locator('[data-quote-port-item="1"]').fill("Shanghai");
+  await expect(form.locator("[data-quote-port-value]")).toHaveValue(
+    "Ningbo / Shanghai",
+  );
+  await form.locator("[data-quote-port-add]").click();
+  await form.locator('[data-quote-port-item="2"]').fill("Xiamen");
+  await form.locator('[data-quote-port-remove="2"]').click();
+  await expect(form.locator("[data-quote-port-value]")).toHaveValue(
+    "Ningbo / Shanghai",
+  );
   await form.locator("[data-quote-moq]").fill("500");
+  // EXW abre o valor do Incoterm, que passa a ser exigido; no FOB, some.
+  await form.locator("[data-quote-incoterm]").selectOption("EXW");
+  await expect(form.locator("[data-quote-incoterm-value]")).toBeVisible();
+  await form.locator("[data-quote-submit]").click();
+  await expect(form.locator("[data-sheet-missing]")).toBeVisible();
+  await expect(page).not.toHaveURL(/[?&]answered=1/);
+  await form.locator("[data-quote-incoterm]").selectOption("FOB");
+  await expect(form.locator("[data-quote-incoterm-value]")).toHaveCount(0);
   await form.locator("[data-quote-submit]").click();
   await page.waitForURL(/[?&]answered=1/);
+  // De volta à lista dos produtos, com o preço enviado e "Preenchido".
+  await expect(
+    page.locator(
+      '[data-quote-product-row="prod-jarra"] [data-quote-product-filled="1"]',
+    ),
+  ).toBeVisible();
 }
 
 test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria aprova, nasce a solicitação ao fornecedor", async ({
@@ -269,6 +320,8 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   // Amostragem dentro da cotação (dono, 22/11/2026;
   // docs/SUPPLIER_SAMPLING.md): o B vê as fotos do produto e envia a amostra
   // sem esperar a escolha; a Wellmix valida no quadro comparativo do produto.
+  await page.locator('[data-quote-product-open="prod-jarra"]').click();
+  await page.waitForURL(/[?&]item=prod-jarra/);
   const sample = page.locator('[data-quote-sampling-product="prod-jarra"]');
   await expect(
     sample.locator('[data-quote-product-photos="prod-jarra"]'),
@@ -501,7 +554,7 @@ test("cotação unificada: quadro comparativo do produto, contraproposta em mass
     ["supplier.b@china.com", "185"],
   ] as const) {
     await login(page, email);
-    await page.goto(`/app/purchase-quotes/${quoteId}`);
+    await page.goto(`/app/purchase-quotes/${quoteId}?item=prod-jarra`);
     const answerForm = page.locator("[data-quote-answer-form]");
     const price = answerForm.locator('[data-quote-price="prod-jarra"]');
     await price.click();

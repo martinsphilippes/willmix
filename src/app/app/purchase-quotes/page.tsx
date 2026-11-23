@@ -22,10 +22,12 @@ import {
   Table,
   Td,
   Th,
+  formatDate,
   linkClass,
   rowClass,
 } from "@/components/ui";
 import { QuoteDeadline } from "./_time";
+import { orderHeadText } from "@/components/order-standard-cells";
 
 /*
  * Cotação de compra (mapa B13; dono, 15/11/2026; docs/PURCHASE_DEMAND.md).
@@ -57,51 +59,101 @@ export default async function PurchaseQuotesPage() {
         <Card>
           {rows.length ? (
             <Table>
+              {/* Tabela padrão de pedidos (dono, 23/11/2026;
+                  docs/ORDER_TABLES.md) para o fornecedor: as colunas dele, na
+                  ordem padrão. Cliente, condições de venda e valor de venda
+                  não saem para quem é de fora; o valor é o da resposta dele. */}
               <thead>
-                <tr>
-                  <Th>{t("quote.number")}</Th>
-                  <Th>{t("quote.items")}</Th>
-                  <Th>{t("quote.deadline")}</Th>
-                  <Th>{t("quote.state")}</Th>
+                <tr data-order-table="supplier-quotes">
+                  <Th>{orderHeadText(t, "number")}</Th>
+                  <Th>{orderHeadText(t, "negotiationDate")}</Th>
+                  <Th>{orderHeadText(t, "status")}</Th>
+                  <Th>{orderHeadText(t, "step")}</Th>
+                  <Th>{orderHeadText(t, "sla")}</Th>
+                  <Th className="text-right">{orderHeadText(t, "items")}</Th>
+                  <Th className="text-right">
+                    {orderHeadText(t, "deliveries")}
+                  </Th>
+                  <Th className="text-right">{orderHeadText(t, "value")}</Th>
                   <Th>
                     <span className="sr-only">{t("tasks.open")}</span>
                   </Th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ quote, response, state }) => (
-                  <tr
-                    key={response.id}
-                    className={rowClass}
-                    data-quote-invite={quote.id}
-                  >
-                    <Td>
-                      <Link
-                        href={`/app/purchase-quotes/${quote.id}`}
-                        className={linkClass}
+                {rows.map(({ quote, response, state }) => {
+                  const total = (response.prices ?? []).reduce((sum, p) => {
+                    const item = quote.items.find(
+                      (i) => i.productId === p.productId,
+                    );
+                    return sum + p.unitPrice * (item?.quantity ?? 0);
+                  }, 0);
+                  const rounds = Math.max(
+                    1,
+                    ...quote.items.map((i) => i.schedule?.items?.length ?? 1),
+                  );
+                  return (
+                    <tr
+                      key={response.id}
+                      className={rowClass}
+                      data-quote-invite={quote.id}
+                    >
+                      <Td>
+                        <Link
+                          href={`/app/purchase-quotes/${quote.id}`}
+                          className={linkClass}
+                        >
+                          #{quote.number}
+                        </Link>
+                      </Td>
+                      <Td className="whitespace-nowrap tabular-nums">
+                        {formatDate(response.invitedAt, t)}
+                      </Td>
+                      {/* Status: de quem é a vez. */}
+                      <Td className="whitespace-nowrap">
+                        {state === "open" ? (
+                          <Badge tone="warning">
+                            {t("quote.products.waitingYou")}
+                          </Badge>
+                        ) : state === "answered" && quote.status === "open" ? (
+                          <Badge tone="info">
+                            {t("quote.products.waitingWellmix")}
+                          </Badge>
+                        ) : (
+                          "—"
+                        )}
+                      </Td>
+                      {/* Situação: o momento da resposta dele. */}
+                      <Td className="whitespace-nowrap">
+                        <Badge tone={state === "open" ? "warning" : "neutral"}>
+                          {t(`quote.response.${state}` as DictionaryKey)}
+                        </Badge>
+                      </Td>
+                      <Td>
+                        <QuoteDeadline t={t} dueAt={response.dueAt} now={now} />
+                      </Td>
+                      <Td
+                        className="text-right tabular-nums"
+                        data-quote-products={quote.id}
                       >
-                        #{quote.number}
-                      </Link>
-                    </Td>
-                    <Td className="tabular-nums" data-quote-products={quote.id}>
-                      {productCount(quote)}
-                    </Td>
-                    <Td>
-                      <QuoteDeadline t={t} dueAt={response.dueAt} now={now} />
-                    </Td>
-                    <Td>
-                      <Badge tone={state === "open" ? "warning" : "neutral"}>
-                        {t(`quote.response.${state}` as DictionaryKey)}
-                      </Badge>
-                    </Td>
-                    <Td>
-                      <OpenLink
-                        href={`/app/purchase-quotes/${quote.id}`}
-                        label={t("tasks.open")}
-                      />
-                    </Td>
-                  </tr>
-                ))}
+                        {productCount(quote)}
+                      </Td>
+                      <Td className="text-right tabular-nums">{rounds}</Td>
+                      <Td className="whitespace-nowrap text-right tabular-nums">
+                        {response.status === "answered" &&
+                        response.prices?.length
+                          ? `${response.currency ?? ""} ${total.toLocaleString(t.intl, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim()
+                          : "—"}
+                      </Td>
+                      <Td>
+                        <OpenLink
+                          href={`/app/purchase-quotes/${quote.id}`}
+                          label={t("tasks.open")}
+                        />
+                      </Td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </Table>
           ) : (

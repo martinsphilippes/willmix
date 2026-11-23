@@ -2061,6 +2061,7 @@ alter table public."purchase_quote_responses" add column if not exists "dueAt" t
 alter table public."purchase_quote_responses" add column if not exists "prices" jsonb;
 alter table public."purchase_quote_responses" add column if not exists "currency" text;
 alter table public."purchase_quote_responses" add column if not exists "incoterm" text;
+alter table public."purchase_quote_responses" add column if not exists "incotermValue" double precision;
 alter table public."purchase_quote_responses" add column if not exists "leadTimeDays" bigint;
 alter table public."purchase_quote_responses" add column if not exists "port" text;
 alter table public."purchase_quote_responses" add column if not exists "moq" double precision;

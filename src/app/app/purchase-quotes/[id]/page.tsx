@@ -13,7 +13,21 @@ import {
   supplierQuoteView,
   sweepQuotes,
 } from "@/lib/services/purchase-quote";
-import { Alert, Badge, Card, PageHeader, formatDate } from "@/components/ui";
+import {
+  Alert,
+  Badge,
+  Card,
+  OpenLink,
+  PageHeader,
+  Table,
+  Td,
+  TextLink,
+  Th,
+  formatDate,
+  rowClass,
+} from "@/components/ui";
+import { QuickDialog } from "@/components/quick-dialog";
+import { ChatIcon } from "@/components/chat-open-button";
 import { ActionError } from "@/components/action-error";
 import {
   addQuoteScalePhotoAction,
@@ -32,7 +46,11 @@ import {
   quoteSheetLines,
   sheetTolerances,
 } from "@/lib/services/supplier-sheets";
-import { draftFromBaseline, draftFromData } from "@/lib/supplier-sheet";
+import {
+  boxesForSheet,
+  draftFromBaseline,
+  draftFromData,
+} from "@/lib/supplier-sheet";
 import { isPieceUnit } from "@/lib/moq";
 import { listMaterials } from "@/lib/services/materials";
 import { materialName } from "@/lib/materials";
@@ -197,13 +215,223 @@ export default async function PurchaseQuotePage({
             : null,
       };
     });
-    return (
-      <div data-quote-supplier={quote.id}>
-        <PageHeader
-          t={t}
-          title={t("quote.one", { n: quote.number })}
-          subtitle={t("quote.supplier.hint", { hours: quote.hours })}
-        />
+    /* Um produto por tela (dono, 23/11/2026): a cotação abre na lista dos
+       produtos (tabela padrão de itens, docs/ORDER_TABLES.md) e cada um abre
+       a tela só dele (`?item=<produto>`), com o preço, os termos comerciais,
+       a ficha técnica, a amostra e a conversa daquele produto. */
+    const focus =
+      typeof sp.item === "string" &&
+      quote.items.some((i) => i.productId === sp.item)
+        ? sp.item
+        : null;
+    const listHref = `/app/purchase-quotes/${quote.id}`;
+    const itemHref = (productId: string) =>
+      `${listHref}?item=${encodeURIComponent(productId)}`;
+    const chatErrors = errorTextsFor(t, [
+      "quotation.error",
+      "quote.error",
+      "supplierRequests.error",
+      "common",
+    ]);
+    const counterCard = (e: (typeof counters)[number]) => (
+      <div
+        key={e.id}
+        className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"
+        data-quote-counter={e.productId ?? ""}
+      >
+        <p className="font-semibold">
+          {t("quotation.supplier.counter", {
+            product: productNameText(
+              t,
+              quote.items.find((i) => i.productId === e.productId)?.name ?? "",
+            ),
+          })}
+        </p>
+        <p className="mt-1 flex flex-wrap gap-1">
+          {[
+            e.price != null
+              ? `${e.price.toLocaleString(t.intl, { maximumFractionDigits: 4 })} ${e.currency ?? ""}`.trim()
+              : null,
+            e.incoterm ?? null,
+            e.moq != null ? `MOQ ${e.moq.toLocaleString(t.intl)}` : null,
+            e.leadTimeDays != null
+              ? t("strategy.days", { n: e.leadTimeDays })
+              : null,
+          ]
+            .filter((v): v is string => !!v)
+            .map((chip) => (
+              <span
+                key={chip}
+                className="rounded-md border border-amber-300 bg-white px-1.5 py-0.5 text-xs tabular-nums"
+              >
+                {chip}
+              </span>
+            ))}
+        </p>
+        {e.text ? <p className="mt-1 whitespace-pre-wrap">{e.text}</p> : null}
+        <p className="mt-1 text-xs">
+          {t(
+            editable
+              ? "quotation.supplier.counterHint"
+              : "quotation.supplier.counterClosed",
+            times,
+          )}
+        </p>
+      </div>
+    );
+    /** A conversa deste produto na cotação, numa janela (botão na tela). */
+    const productChat = (productId: string) => {
+      const name = productNameText(
+        t,
+        quote.items.find((i) => i.productId === productId)?.name ?? "",
+      );
+      const messages = quoteProductMessages(response, productId);
+      return (
+        <QuickDialog
+          label={
+            <>
+              <ChatIcon className="h-4 w-4" />
+              {t("quote.products.chat")}
+              {messages.length ? ` (${messages.length})` : ""}
+            </>
+          }
+          title={t("quote.products.chatTitle", { product: name })}
+          closeLabel={t("strategyCard.close")}
+          size="lg"
+          data-quote-product-chat={productId}
+        >
+          <QuoteChat
+            quoteId={quote.id}
+            responseId={null}
+            productId={productId}
+            messages={messages}
+            mySide="supplier"
+            names={{}}
+            canPost={canMessageQuote(quote.status, response)}
+            errors={chatErrors}
+            fallbackError={`${t("common.error")} ({code})`}
+            t={t}
+          />
+        </QuickDialog>
+      );
+    };
+    const samplingBlock = (item: (typeof quote.items)[number]) => {
+      const product =
+        sampleProducts.find((p) => p.id === item.productId) ?? null;
+      const name = productNameText(t, item.name);
+      const sampling = quoteSamplingOf(
+        response,
+        item.productId,
+        known.has(item.productId),
+      );
+      return (
+        <div
+          key={item.productId}
+          className="space-y-2"
+          data-quote-sampling-product={item.productId}
+        >
+          <div className="flex items-center gap-3">
+            <span data-quote-product-photos={item.productId}>
+              <PhotoGallery
+                name={name}
+                {...galleryProps(
+                  t,
+                  product ? productPhotoList(product, samplePhotos) : [],
+                )}
+              />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-zinc-900">
+                {name}
+              </span>
+              <span className="block text-xs text-zinc-500">
+                {t("quoteSampling.reference")}
+              </span>
+            </span>
+          </div>
+          {sampling && samplingOpen ? (
+            <SamplingPanel
+              title={t("quoteSampling.yourSample")}
+              sampling={sampling}
+              wellmix={false}
+              canValidate={false}
+              slaDays={null}
+              early
+              anchor={null}
+              actions={{
+                add: addQuoteSamplingFileAction,
+                remove: removeQuoteSamplingFileAction,
+                submit: submitQuoteSamplingAction,
+                review: reviewQuoteSamplingAction,
+              }}
+              fields={
+                <>
+                  <input type="hidden" name="quoteId" value={quote.id} />
+                  <input type="hidden" name="product" value={item.productId} />
+                </>
+              }
+              t={t}
+            />
+          ) : sampling ? null : (
+            <p
+              className="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600"
+              data-quote-sampling-skipped={item.productId}
+            >
+              {t("quoteSampling.supplierSkipped")}
+            </p>
+          )}
+        </div>
+      );
+    };
+    const stateBar = (
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <Badge tone={state === "open" ? "warning" : "neutral"}>
+          {t(`quote.response.${state}` as DictionaryKey)}
+        </Badge>
+        <QuoteDeadline t={t} dueAt={response.dueAt} now={now} />
+      </div>
+    );
+    const answerForm = editable ? (
+      <QuoteAnswerForm
+        quoteId={quote.id}
+        action={answerQuoteAction}
+        photoAction={addQuoteScalePhotoAction}
+        products={answerProducts}
+        materials={materialOptions}
+        commercial={{
+          // Sem resposta ainda: RMB (dono, 20/11/2026); o fornecedor
+          // troca ao lado do preço.
+          currency: response.currency ?? "RMB",
+          incoterm: response.incoterm ?? "FOB",
+          incotermValue: response.incotermValue?.toString() ?? "",
+          leadTimeDays: response.leadTimeDays?.toString() ?? "",
+          port: response.port ?? "",
+          moq: response.moq?.toString() ?? "",
+          note: response.note ?? "",
+        }}
+        currencies={SHEET_CURRENCIES}
+        incoterms={SHEET_INCOTERMS}
+        labels={answerLabels(t)}
+        intl={t.intl}
+        cbmTolerancePercent={tolerances.cbmPercent}
+        draft={draft}
+        draftAction={saveQuoteDraftAction}
+        focusProductId={focus}
+        listHref={listHref}
+        headerSlot={focus ? productChat(focus) : null}
+      />
+    ) : (
+      <QuoteAnswerSummary
+        t={t}
+        items={quote.items}
+        response={response}
+        reason={quote.status === "open" ? "deadline" : "closed"}
+        times={times}
+        materials={catalog}
+      />
+    );
+    const notices = (
+      <>
         <ActionError t={t} code={errorCode} text={errorText} fields={null} />
         {typeof sp.answered === "string" && editable ? (
           <div className="mb-3" role="status" data-quote-answered>
@@ -217,64 +445,121 @@ export default async function PurchaseQuotePage({
             </Alert>
           </div>
         ) : null}
+      </>
+    );
+
+    if (focus) {
+      const item = quote.items.find((i) => i.productId === focus)!;
+      const index = quote.items.indexOf(item);
+      const mine = counters.filter((e) => e.productId === focus);
+      return (
+        <div data-quote-supplier={quote.id} data-quote-supplier-item={focus}>
+          <PageHeader
+            t={t}
+            title={productNameText(t, item.name)}
+            subtitle={`${t("quote.one", { n: quote.number })} · ${t(
+              "quote.products.of",
+              { n: index + 1, total: quote.items.length },
+            )}`}
+            actions={
+              <TextLink href={listHref} data-quote-products-back>
+                ← {t("quote.products.back")}
+              </TextLink>
+            }
+          />
+          {notices}
+          {mine.length ? (
+            <div id="negociacao" className="mb-4 scroll-mt-20 space-y-3">
+              {mine.map(counterCard)}
+            </div>
+          ) : null}
+          <div className="mb-4">
+            <Card>
+              {stateBar}
+              {answerForm}
+            </Card>
+          </div>
+          {response.status !== "declined" ? (
+            <div id="amostragem" className="scroll-mt-20">
+              <Card title={t("quoteSampling.productsTitle")}>
+                <div className="space-y-4" data-quote-sampling>
+                  {samplingNotice ? (
+                    <div role="status" data-quote-sampling-notice>
+                      <Alert tone="success">
+                        {t(`quoteSampling.notice.${samplingNotice}`)}
+                      </Alert>
+                    </div>
+                  ) : null}
+                  {samplingBlock(item)}
+                </div>
+              </Card>
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+
+    // Lista: a tabela padrão de itens, com o que o fornecedor já preencheu.
+    const draftValue = (key: string) =>
+      typeof draft?.values[key] === "string" ? draft.values[key] : "";
+    const tableRows = quote.items.map((item, index) => {
+      const p = answerProducts.find((x) => x.productId === item.productId)!;
+      const product =
+        sampleProducts.find((x) => x.id === item.productId) ?? null;
+      const sent = response.prices?.find((x) => x.productId === item.productId);
+      const typed = draftValue(`price.${item.productId}`);
+      const perBox =
+        Number(draftValue(`sheet.${item.productId}.masterBoxQty`)) ||
+        p.draft.masterBoxQty ||
+        null;
+      const cbmBox = p.draft.cbm ?? null;
+      const box =
+        perBox && cbmBox
+          ? boxesForSheet(p.rounds, { masterBoxQty: perBox, cbm: cbmBox })
+          : null;
+      const boxes =
+        box?.boxes ??
+        (perBox && p.rounds.length
+          ? p.rounds.reduce((sum, q) => sum + Math.ceil(q / perBox), 0)
+          : null);
+      return {
+        item,
+        index,
+        product,
+        name: p.name,
+        price: sent
+          ? `${response.currency ?? ""} ${sent.unitPrice.toLocaleString(t.intl, { maximumFractionDigits: 4 })}`.trim()
+          : null,
+        filled: !!sent || !!typed.trim(),
+        counter: counters.some((e) => e.productId === item.productId),
+        perBox,
+        inner: p.inner.kind === "required" ? p.inner.qty : null,
+        boxes,
+        cbm: box?.cbm ?? null,
+      };
+    });
+    const n = (value: number | null, digits = 0) =>
+      value === null
+        ? "—"
+        : value.toLocaleString(t.intl, { maximumFractionDigits: digits });
+    const itemHead = (key: string) =>
+      t(`orderItems.head.${key}` as DictionaryKey);
+    return (
+      <div data-quote-supplier={quote.id}>
+        <PageHeader
+          t={t}
+          title={t("quote.one", { n: quote.number })}
+          subtitle={t("quote.supplier.hint", { hours: quote.hours })}
+        />
+        {notices}
         {/* Negociação dentro da cotação (dono, 22/11/2026;
-            docs/QUOTATION.md): a contraproposta da Wellmix por produto (ele
-            corrige a resposta abaixo e reenvia) e a conversa com ela. */}
+            docs/QUOTATION.md): a contraproposta da Wellmix por produto e a
+            conversa geral com ela. A de cada produto fica na tela dele. */}
         {counters.length || chat.length || sampleStarted ? (
           <div id="negociacao" className="mb-4 scroll-mt-20">
             <Card title={t("quotation.supplier.title")}>
               <div className="space-y-3" data-quote-negotiation>
-                {counters.map((e) => (
-                  <div
-                    key={e.id}
-                    className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"
-                    data-quote-counter={e.productId ?? ""}
-                  >
-                    <p className="font-semibold">
-                      {t("quotation.supplier.counter", {
-                        product: productNameText(
-                          t,
-                          quote.items.find((i) => i.productId === e.productId)
-                            ?.name ?? "",
-                        ),
-                      })}
-                    </p>
-                    <p className="mt-1 flex flex-wrap gap-1">
-                      {[
-                        e.price != null
-                          ? `${e.price.toLocaleString(t.intl, { maximumFractionDigits: 4 })} ${e.currency ?? ""}`.trim()
-                          : null,
-                        e.incoterm ?? null,
-                        e.moq != null
-                          ? `MOQ ${e.moq.toLocaleString(t.intl)}`
-                          : null,
-                        e.leadTimeDays != null
-                          ? t("strategy.days", { n: e.leadTimeDays })
-                          : null,
-                      ]
-                        .filter((v): v is string => !!v)
-                        .map((chip) => (
-                          <span
-                            key={chip}
-                            className="rounded-md border border-amber-300 bg-white px-1.5 py-0.5 text-xs tabular-nums"
-                          >
-                            {chip}
-                          </span>
-                        ))}
-                    </p>
-                    {e.text ? (
-                      <p className="mt-1 whitespace-pre-wrap">{e.text}</p>
-                    ) : null}
-                    <p className="mt-1 text-xs">
-                      {t(
-                        editable
-                          ? "quotation.supplier.counterHint"
-                          : "quotation.supplier.counterClosed",
-                        times,
-                      )}
-                    </p>
-                  </div>
-                ))}
+                {counters.map(counterCard)}
                 <QuoteChat
                   quoteId={quote.id}
                   responseId={null}
@@ -283,12 +568,7 @@ export default async function PurchaseQuotePage({
                   mySide="supplier"
                   names={{}}
                   canPost={canMessageQuote(quote.status, response)}
-                  errors={errorTextsFor(t, [
-                    "quotation.error",
-                    "quote.error",
-                    "supplierRequests.error",
-                    "common",
-                  ])}
+                  errors={chatErrors}
                   fallbackError={`${t("common.error")} ({code})`}
                   t={t}
                 />
@@ -296,141 +576,125 @@ export default async function PurchaseQuotePage({
             </Card>
           </div>
         ) : null}
-        {response.status !== "declined" ? (
-          <div id="amostragem" className="mb-4 scroll-mt-20">
-            <Card title={t("quoteSampling.productsTitle")}>
-              <div className="space-y-4" data-quote-sampling>
-                {samplingNotice ? (
-                  <div role="status" data-quote-sampling-notice>
-                    <Alert tone="success">
-                      {t(`quoteSampling.notice.${samplingNotice}`)}
-                    </Alert>
-                  </div>
-                ) : null}
-                {quote.items.map((item) => {
-                  const product =
-                    sampleProducts.find((p) => p.id === item.productId) ?? null;
-                  const name = productNameText(t, item.name);
-                  const sampling = quoteSamplingOf(
-                    response,
-                    item.productId,
-                    known.has(item.productId),
-                  );
-                  return (
-                    <div
-                      key={item.productId}
-                      className="space-y-2"
-                      data-quote-sampling-product={item.productId}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span data-quote-product-photos={item.productId}>
-                          <PhotoGallery
-                            name={name}
-                            {...galleryProps(
-                              t,
-                              product
-                                ? productPhotoList(product, samplePhotos)
-                                : [],
-                            )}
-                          />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-sm font-semibold text-zinc-900">
-                            {name}
-                          </span>
-                          <span className="block text-xs text-zinc-500">
-                            {t("quoteSampling.reference")}
-                          </span>
-                        </span>
-                      </div>
-                      {sampling && samplingOpen ? (
-                        <SamplingPanel
-                          title={t("quoteSampling.yourSample")}
-                          sampling={sampling}
-                          wellmix={false}
-                          canValidate={false}
-                          slaDays={null}
-                          early
-                          anchor={null}
-                          actions={{
-                            add: addQuoteSamplingFileAction,
-                            remove: removeQuoteSamplingFileAction,
-                            submit: submitQuoteSamplingAction,
-                            review: reviewQuoteSamplingAction,
-                          }}
-                          fields={
-                            <>
-                              <input
-                                type="hidden"
-                                name="quoteId"
-                                value={quote.id}
-                              />
-                              <input
-                                type="hidden"
-                                name="product"
-                                value={item.productId}
-                              />
-                            </>
-                          }
-                          t={t}
-                        />
-                      ) : sampling ? null : (
-                        <p
-                          className="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600"
-                          data-quote-sampling-skipped={item.productId}
-                        >
-                          {t("quoteSampling.supplierSkipped")}
-                        </p>
+        <div className="mb-4">
+          <Card title={t("quote.products.title")}>
+            {editable ? (
+              <p className="mb-2 text-sm text-zinc-600">
+                {t("quote.products.hint")}
+              </p>
+            ) : null}
+            <Table tools={false}>
+              <thead>
+                <tr data-order-items-standard>
+                  <Th className="w-10 text-right">{itemHead("sequence")}</Th>
+                  <Th className="w-14">{itemHead("photo")}</Th>
+                  <Th>{itemHead("step")}</Th>
+                  <Th>{itemHead("status")}</Th>
+                  <Th>{itemHead("sla")}</Th>
+                  <Th>{itemHead("description")}</Th>
+                  <Th className="text-right">
+                    {t("quote.products.yourPrice")}
+                  </Th>
+                  <Th className="text-right">{itemHead("perBox")}</Th>
+                  <Th className="text-right">{itemHead("perInner")}</Th>
+                  <Th className="text-right">{itemHead("boxes")}</Th>
+                  <Th className="text-right">{itemHead("pieces")}</Th>
+                  <Th className="text-right">{itemHead("cbm")}</Th>
+                  <Th>{t("quote.products.answer")}</Th>
+                  <Th>
+                    <span className="sr-only">{t("quote.products.open")}</span>
+                  </Th>
+                </tr>
+              </thead>
+              <tbody>
+                {tableRows.map((row) => (
+                  <tr
+                    key={row.item.productId}
+                    className={rowClass}
+                    data-quote-product-row={row.item.productId}
+                  >
+                    <Td className="text-right tabular-nums">{row.index + 1}</Td>
+                    <Td className="w-14">
+                      <PhotoGallery
+                        name={row.name}
+                        {...galleryProps(
+                          t,
+                          row.product
+                            ? productPhotoList(row.product, samplePhotos)
+                            : [],
+                        )}
+                      />
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      {t(`quote.response.${state}` as DictionaryKey)}
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      {editable &&
+                      (!row.filled || row.counter || state === "open") ? (
+                        <Badge tone="warning">
+                          {t("quote.products.waitingYou")}
+                        </Badge>
+                      ) : state === "answered" ? (
+                        <Badge tone="info">
+                          {t("quote.products.waitingWellmix")}
+                        </Badge>
+                      ) : (
+                        "—"
                       )}
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-          </div>
-        ) : null}
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      {editable ? (
+                        <QuoteDeadline t={t} dueAt={response.dueAt} now={now} />
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                    <Td className="min-w-44 font-medium">
+                      <TextLink
+                        href={itemHref(row.item.productId)}
+                        className="text-zinc-900 no-underline hover:underline"
+                        data-quote-product-open={row.item.productId}
+                      >
+                        {row.name}
+                      </TextLink>
+                    </Td>
+                    <Td className="whitespace-nowrap text-right tabular-nums">
+                      {row.price ?? "—"}
+                    </Td>
+                    <Td className="text-right tabular-nums">{n(row.perBox)}</Td>
+                    <Td className="text-right tabular-nums">{n(row.inner)}</Td>
+                    <Td className="text-right tabular-nums">{n(row.boxes)}</Td>
+                    <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
+                      {row.item.quantity.toLocaleString(t.intl)} {row.item.unit}
+                    </Td>
+                    <Td className="text-right tabular-nums">{n(row.cbm, 3)}</Td>
+                    <Td
+                      className="whitespace-nowrap"
+                      data-quote-product-filled={row.filled ? "1" : "0"}
+                    >
+                      <Badge tone={row.filled ? "success" : "warning"}>
+                        {t(
+                          row.filled
+                            ? "quote.products.filled"
+                            : "quote.products.pending",
+                        )}
+                      </Badge>
+                    </Td>
+                    <Td className="text-right">
+                      <OpenLink
+                        href={itemHref(row.item.productId)}
+                        label={`${t("quote.products.open")}: ${row.name}`}
+                      />
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </Card>
+        </div>
         <Card>
-          <div className="mb-3 flex flex-wrap items-center gap-3">
-            <Badge tone={state === "open" ? "warning" : "neutral"}>
-              {t(`quote.response.${state}` as DictionaryKey)}
-            </Badge>
-            <QuoteDeadline t={t} dueAt={response.dueAt} now={now} />
-          </div>
-          {editable ? (
-            <QuoteAnswerForm
-              quoteId={quote.id}
-              action={answerQuoteAction}
-              photoAction={addQuoteScalePhotoAction}
-              products={answerProducts}
-              materials={materialOptions}
-              commercial={{
-                // Sem resposta ainda: RMB (dono, 20/11/2026); o fornecedor
-                // troca ao lado do preço.
-                currency: response.currency ?? "RMB",
-                incoterm: response.incoterm ?? "FOB",
-                leadTimeDays: response.leadTimeDays?.toString() ?? "",
-                port: response.port ?? "",
-                moq: response.moq?.toString() ?? "",
-                note: response.note ?? "",
-              }}
-              currencies={SHEET_CURRENCIES}
-              incoterms={SHEET_INCOTERMS}
-              labels={answerLabels(t)}
-              intl={t.intl}
-              cbmTolerancePercent={tolerances.cbmPercent}
-              draft={draft}
-              draftAction={saveQuoteDraftAction}
-            />
-          ) : (
-            <QuoteAnswerSummary
-              t={t}
-              items={quote.items}
-              response={response}
-              reason={quote.status === "open" ? "deadline" : "closed"}
-              times={times}
-              materials={catalog}
-            />
-          )}
+          {stateBar}
+          {answerForm}
         </Card>
       </div>
     );

@@ -587,6 +587,8 @@ export interface QuoteAnswer {
   prices: Array<{ productId: string; unitPrice: number }>;
   currency: string | null;
   incoterm: string | null;
+  /** Valor do Incoterm no EXW (dono, 23/11/2026); ignorado nos outros. */
+  incotermValue?: number | null;
   leadTimeDays: number | null;
   port: string | null;
   moq: number | null;
@@ -662,6 +664,8 @@ export async function answerQuote(
       prices,
       currency: input.currency,
       incoterm: input.incoterm,
+      incotermValue:
+        input.incoterm === "EXW" ? (input.incotermValue ?? null) : null,
       leadTimeDays: input.leadTimeDays,
       port: input.port.trim(),
       moq: input.moq,
