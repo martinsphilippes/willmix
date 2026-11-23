@@ -61,6 +61,13 @@ import {
 } from "./_components/strategy-card";
 import { QuickDialog } from "@/components/quick-dialog";
 import { HashTab } from "./_components/hash-tab";
+import { cookies } from "next/headers";
+import {
+  StrategyTable,
+  StrategyTableRow,
+  StrategyViewToggle,
+} from "./_components/strategy-view";
+import { STRATEGY_VIEW_COOKIE, type StrategyView } from "@/lib/strategy-view";
 import { closedDemands, type ClosedDemandReason } from "@/lib/purchase-demand";
 import {
   demandPackings,
@@ -96,7 +103,17 @@ export default async function PurchaseStrategyPage({
     closed,
     reopened,
     tab: tabParam,
+    view: viewParam,
   } = await searchParams;
+  // Cards ou tabela (dono, 23/11/2026): o endereço manda; sem ele, a última
+  // escolha lembrada no navegador; sem nada, os cards de sempre.
+  const viewCookie = (await cookies()).get(STRATEGY_VIEW_COOKIE)?.value;
+  const view: StrategyView =
+    viewParam === "table" || viewParam === "cards"
+      ? viewParam
+      : viewCookie === "table"
+        ? "table"
+        : "cards";
   // Uma aba por estágio (dono, 22/11/2026): esperando estratégia, em
   // andamento e enviadas. Depois de escolher ou decidir, abre "Em andamento".
   const tab: StrategyTab =
@@ -555,6 +572,528 @@ export default async function PurchaseStrategyPage({
     </li>
   );
 
+  /* Em andamento: cada estratégia com o seu card e, para a tabela, o resumo
+     da linha (dono, 23/11/2026: cards ou tabela, à escolha). */
+  const decisionItems =
+    tab === "open"
+      ? decisions.map((d) => {
+          const demands = decisionDemands.filter((r) =>
+            d.demandIds.includes(r.id),
+          );
+          const ref = d.reference?.[0];
+          // Encomenda cancelada ou já em outro pedido (dono, 18/11/2026):
+          // a estratégia não é aprovada nem gera o pedido; fica gravada
+          // como está (recusar continua valendo).
+          const closed = closedDemands(d, demands);
+          const blocked = closed.size > 0;
+          // Uma linha por produto da solicitação, com a quantidade somada,
+          // a embalagem (fontes da ficha completa) e a última compra de
+          // cada um (todos do mesmo fornecedor).
+          const packLines = linePackings(demands, packings);
+          const nameOf = (productId: string) =>
+            productNameText(
+              t,
+              demands.find((r) => r.productId === productId)?.productName ?? "",
+            );
+          const refOf = (productId: string) =>
+            d.reference?.find((x) => x.productId === productId);
+          const leadTimes = packLines
+            .map((l) => refOf(l.productId)?.leadTimeDays)
+            .filter((n): n is number => typeof n === "number");
+          const leadTime = leadTimes.length ? Math.max(...leadTimes) : null;
+          const orderable =
+            d.status === "approved" &&
+            d.choice === "last_supplier" &&
+            !!ref &&
+            !blocked;
+          const showForm = orderable && canOrder;
+          const closedList = [...closed.entries()]
+            .map(([id, reason]) =>
+              t("strategyPack.closed.item", {
+                n: demands.find((r) => r.id === id)?.number ?? "—",
+                reason: t(`strategyPack.closed.${reason}` as DictionaryKey),
+              }),
+            )
+            .join(", ");
+          const title = t("strategy.decision", { n: d.number });
+          const customers = [
+            ...new Set(demands.map((r) => partyName(r.customerId))),
+          ];
+          const schedules = demands.flatMap((r) => r.schedule?.items ?? []);
+          const blockedAlert = blocked ? (
+            <div data-strategy-blocked-alert>
+              <Alert tone="warning">
+                <p className="font-semibold">
+                  {t("strategyPack.closed.title")}
+                </p>
+                <p className="mt-0.5 text-xs">
+                  {t(
+                    d.status === "pending"
+                      ? "strategyPack.closed.bodyPending"
+                      : "strategyPack.closed.body",
+                    { list: closedList },
+                  )}
+                </p>
+              </Alert>
+            </div>
+          ) : null;
+          const approveHere = d.status === "pending" && canApprove;
+          // Encerrar a estratégia aprovada que parou (dono, 19/11/2026).
+          const closeHere = blocked && d.status === "approved" && canClose;
+          // A solicitação de um lote aparece uma vez (mesmo número e situação).
+          const requestRows = [
+            ...new Map(
+              demands.map((r) => {
+                const why = closed.get(r.id);
+                return [
+                  `${r.number ?? r.id}|${why ?? r.status}`,
+                  { r, why },
+                ] as const;
+              }),
+            ).values(),
+          ];
+          const shownLines = packLines.slice(0, CARD_PRODUCTS);
+          const hiddenLines = packLines.length - shownLines.length;
+          // Detalhes: tudo o que o card resume (as contas, a explicação da
+          // parada, a programação inteira, a última compra completa e a
+          // decisão com observação).
+          const detailsButton = (
+            <QuickDialog
+              label={t("strategyCard.details")}
+              title={t("strategyCard.detailsTitle", { title })}
+              closeLabel={t("strategyCard.close")}
+              size="lg"
+              data-strategy-details={d.id}
+            >
+              <div className="space-y-3 text-sm">
+                <p className="text-xs text-zinc-600">
+                  {t(`strategy.choice.${d.choice}`)} ·{" "}
+                  {t(`strategy.status.${d.status}` as DictionaryKey)}
+                </p>
+                {d.note ? (
+                  <p className="whitespace-pre-line text-xs text-zinc-700">
+                    <span className="font-medium">
+                      {t("strategyCard.note")}:
+                    </span>{" "}
+                    {d.note}
+                  </p>
+                ) : null}
+                <ul className="divide-y divide-zinc-100">
+                  {demands.map((r) => demandRow(r, false, closed.get(r.id)))}
+                </ul>
+                {blockedAlert}
+                {packLines.map((line) => (
+                  <div key={line.productId} className="space-y-2">
+                    <p className="text-xs font-semibold text-zinc-900">
+                      {nameOf(line.productId)}
+                    </p>
+                    <PackingCells
+                      marker={`detail:${d.id}:${line.productId}`}
+                      totals={lineTotals(line, line.quantity)}
+                      basis={line.basis}
+                      texts={packingTexts}
+                      intl={t.intl}
+                      piecesText={line.quantity.toLocaleString(t.intl)}
+                      extraWarnings={packWarnings(line.warnings)}
+                    />
+                    {d.choice === "last_supplier"
+                      ? reference(refOf(line.productId))
+                      : null}
+                  </div>
+                ))}
+                {schedules.length ? (
+                  <div>
+                    <p className="text-xs font-medium text-zinc-700">
+                      {t("strategy.line.schedule")}
+                    </p>
+                    <ul className="text-xs text-zinc-700">
+                      {demands.flatMap((r) =>
+                        (r.schedule?.items ?? []).map((i) => (
+                          <li key={`${r.id}:${i.index}`}>
+                            {r.number ? `nº ${r.number} · ` : ""}
+                            {t("strategy.line.scheduleItem", {
+                              index: i.index,
+                              quantity: i.quantity.toLocaleString(t.intl),
+                              date: formatDate(i.expectedAt, t),
+                            })}
+                          </li>
+                        )),
+                      )}
+                    </ul>
+                  </div>
+                ) : null}
+                {/* Aprovar com observação (opcional) ou recusar com o
+                        motivo: o formulário de sempre, fora do card. */}
+                {approveHere ? (
+                  <form
+                    action={decideStrategyAction}
+                    className="grid gap-2 border-t border-zinc-100 pt-3"
+                    data-strategy-approve-form
+                    data-compact-fields
+                  >
+                    <input type="hidden" name="id" value={d.id} />
+                    <p className="text-xs font-semibold text-zinc-900">
+                      {t("strategyCard.decideTitle")}
+                    </p>
+                    <Field label={t("strategy.approvalNote")}>
+                      <Textarea
+                        name="note"
+                        rows={2}
+                        maxLength={2000}
+                        className="shadow-none"
+                      />
+                    </Field>
+                    <div className="flex flex-wrap gap-2">
+                      {blocked ? null : (
+                        <SubmitButton
+                          name="decision"
+                          value="approve"
+                          data-strategy-approve-note
+                        >
+                          {t("strategy.approve")}
+                        </SubmitButton>
+                      )}
+                      <SubmitButton
+                        name="decision"
+                        value="reject"
+                        variant="secondary"
+                        data-strategy-reject-note
+                      >
+                        {t("strategy.reject")}
+                      </SubmitButton>
+                    </div>
+                  </form>
+                ) : null}
+              </div>
+            </QuickDialog>
+          );
+          const card = (
+            <section
+              key={d.id}
+              id={`decision-${d.id}`}
+              className={cx(
+                cardClass,
+                "gap-1",
+                blocked && "border-amber-300 bg-amber-50/30",
+              )}
+              data-strategy-decision={d.status}
+              data-strategy-decision-choice={d.choice}
+              data-strategy-blocked={blocked ? "1" : undefined}
+            >
+              {/* Número da estratégia e situação; modalidade. */}
+              <div className="flex flex-wrap items-center gap-1">
+                <h3 className="text-[13px] font-semibold text-zinc-900">
+                  {title}
+                </h3>
+                <Badge tone={d.status === "pending" ? "warning" : "success"}>
+                  {t(`strategy.status.${d.status}` as DictionaryKey)}
+                </Badge>
+                {blocked ? (
+                  <span title={t("strategyPack.closed.title")}>
+                    <Badge tone="danger">{t("strategyCard.stopped")}</Badge>
+                  </span>
+                ) : null}
+              </div>
+              <p
+                className="truncate text-[11px] font-medium text-zinc-800"
+                title={t(`strategy.choice.${d.choice}`)}
+              >
+                {t(`strategy.choice.${d.choice}`)}
+              </p>
+              {/* Solicitação (link) e a situação dela. */}
+              <div
+                className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5"
+                data-strategy-card-requests
+              >
+                {requestRows.map(({ r, why }) => {
+                  const statusKey =
+                    `reqStatusLabel.${r.status}` as DictionaryKey;
+                  return (
+                    <span
+                      key={r.id}
+                      className="inline-flex items-center gap-1"
+                      data-strategy-demand={r.id}
+                      data-strategy-demand-closed={why}
+                    >
+                      <Link
+                        href={`/app/requests/${r.id}`}
+                        className={cx(linkClass, "font-medium")}
+                      >
+                        {t("strategyCard.request")}{" "}
+                        {r.number ? `nº ${r.number}` : "—"}
+                      </Link>
+                      {why ? (
+                        <Badge tone="danger">
+                          {t(`strategyPack.closed.${why}` as DictionaryKey)}
+                        </Badge>
+                      ) : t(statusKey) !== statusKey ? (
+                        <Badge tone="neutral">{t(statusKey)}</Badge>
+                      ) : null}
+                    </span>
+                  );
+                })}
+              </div>
+              {/* Cliente e identificações. */}
+              <div className="flex min-w-0 items-center gap-1.5">
+                <p
+                  className="min-w-0 flex-1 truncate font-medium text-zinc-900"
+                  title={customers.join(", ")}
+                >
+                  <span className="text-[10px] uppercase tracking-wide text-zinc-500">
+                    {t("strategyCard.customer")}:{" "}
+                  </span>
+                  {customers.join(", ") || "—"}
+                </p>
+                {demands[0] ? (
+                  <div className="shrink-0 [&_*]:text-[10px] [&>*]:mt-0">
+                    <DemandTags t={t} request={demands[0]} />
+                  </div>
+                ) : null}
+              </div>
+              {/* Produto e embalagem (os totais da ficha). */}
+              {shownLines.map((line) => (
+                <div
+                  key={line.productId}
+                  className="space-y-0.5"
+                  data-strategy-decision-product={line.productId}
+                >
+                  <p
+                    className="truncate font-semibold text-zinc-900"
+                    title={nameOf(line.productId)}
+                  >
+                    {nameOf(line.productId)}
+                  </p>
+                  <CompactPack
+                    marker={`${d.id}:${line.productId}`}
+                    totals={lineTotals(line, line.quantity)}
+                    basis={line.basis}
+                    piecesText={line.quantity.toLocaleString(t.intl)}
+                    texts={cardTexts}
+                    packTexts={packingTexts}
+                    intl={t.intl}
+                  />
+                </div>
+              ))}
+              {hiddenLines > 0 ? (
+                <p
+                  className="text-[11px] text-zinc-600"
+                  data-strategy-more={hiddenLines}
+                >
+                  {t("strategyCard.more", { n: hiddenLines })}
+                </p>
+              ) : null}
+              {schedules.length ? (
+                <p className="truncate text-[11px] text-zinc-600">
+                  {t("strategyCard.schedule")}:{" "}
+                  {schedules.length > 1
+                    ? t("strategyCard.scheduleCount", {
+                        n: schedules.length,
+                      })
+                    : t("strategy.line.scheduleItem", {
+                        index: schedules[0].index,
+                        quantity: schedules[0].quantity.toLocaleString(t.intl),
+                        date: formatDate(schedules[0].expectedAt, t),
+                      })}
+                </p>
+              ) : null}
+              {/* Última compra (pedido direto), em duas linhas. */}
+              {d.choice === "last_supplier" ? compactReference(ref) : null}
+              {d.note ? (
+                <p
+                  className="truncate text-[11px] text-zinc-600"
+                  title={d.note}
+                >
+                  {t("strategyCard.note")}: {d.note}
+                </p>
+              ) : null}
+              {blocked ? (
+                <p
+                  className="truncate rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800"
+                  title={t(
+                    d.status === "pending"
+                      ? "strategyPack.closed.bodyPending"
+                      : "strategyPack.closed.body",
+                    { list: closedList },
+                  )}
+                  data-strategy-blocked-summary
+                >
+                  {t("strategyCard.blocked")}
+                </p>
+              ) : null}
+              {d.status === "pending" && !canApprove ? (
+                <p className="text-[11px] text-zinc-500">
+                  {t("strategy.waitingApproval")}
+                </p>
+              ) : null}
+              {orderable && !showForm ? (
+                <p className="text-[11px] text-zinc-500">
+                  {t("strategy.waitingOrder")}
+                </p>
+              ) : null}
+              {d.status === "approved" &&
+              (d.choice === "quote" || d.choice === "quote_last") ? (
+                <p
+                  className="text-[11px] text-zinc-600"
+                  data-strategy-quote-pending
+                >
+                  {t("strategy.quotePending")}{" "}
+                  {d.quoteId ? (
+                    <Link
+                      href={`/app/purchase-quotes/${d.quoteId}`}
+                      className={linkClass}
+                      data-strategy-quote-link={d.quoteId}
+                    >
+                      {t("strategy.openQuote")}
+                    </Link>
+                  ) : null}
+                </p>
+              ) : null}
+              {/* Ações, numa linha: Aprovar (um toque), Recusar e
+                      Encerrar (pedem a observação numa caixa), Gerar pedido
+                      (formulário no painel) e Detalhes. */}
+              <div
+                className="mt-auto flex flex-wrap items-center gap-1.5 border-t border-zinc-100 pt-1"
+                data-strategy-card-actions
+              >
+                {approveHere && !blocked ? (
+                  <form action={decideStrategyAction} className="contents">
+                    <input type="hidden" name="id" value={d.id} />
+                    <SubmitButton
+                      name="decision"
+                      value="approve"
+                      className="px-2.5 py-1 text-xs"
+                      data-strategy-approve
+                    >
+                      {t("strategy.approve")}
+                    </SubmitButton>
+                  </form>
+                ) : null}
+                {approveHere ? (
+                  <QuickDialog
+                    label={t("strategy.reject")}
+                    title={t("strategyCard.rejectTitle", { n: d.number })}
+                    closeLabel={t("strategyCard.close")}
+                    data-strategy-reject-open={d.id}
+                  >
+                    <form
+                      action={decideStrategyAction}
+                      className="grid gap-2"
+                      data-compact-fields
+                    >
+                      <input type="hidden" name="id" value={d.id} />
+                      <input type="hidden" name="decision" value="reject" />
+                      <Field label={t("strategyCard.rejectNote")}>
+                        <Textarea
+                          name="note"
+                          rows={3}
+                          maxLength={2000}
+                          required
+                          className="shadow-none"
+                        />
+                      </Field>
+                      <div>
+                        <SubmitButton variant="secondary" data-strategy-reject>
+                          {t("strategy.reject")}
+                        </SubmitButton>
+                      </div>
+                    </form>
+                  </QuickDialog>
+                ) : null}
+                {closeHere ? (
+                  <QuickDialog
+                    label={t("strategyClose.button")}
+                    title={t("strategyCard.closeTitle", { n: d.number })}
+                    closeLabel={t("strategyCard.close")}
+                    data-strategy-close-open={d.id}
+                  >
+                    <form
+                      action={closeStrategyAction}
+                      className="grid gap-2"
+                      data-strategy-close-form
+                    >
+                      <input type="hidden" name="id" value={d.id} />
+                      <p className="text-xs text-zinc-600">
+                        {t("strategyClose.hint")}
+                      </p>
+                      <Field label={t("strategyClose.note")}>
+                        <Textarea
+                          name="note"
+                          rows={2}
+                          maxLength={2000}
+                          className="shadow-none"
+                        />
+                      </Field>
+                      <div>
+                        <SubmitButton
+                          variant="secondary"
+                          confirmText={t("strategyClose.confirm", {
+                            n: d.number,
+                          })}
+                          data-strategy-close
+                        >
+                          {t("strategyClose.button")}
+                        </SubmitButton>
+                      </div>
+                    </form>
+                  </QuickDialog>
+                ) : null}
+                {showForm && ref ? (
+                  <QuickDialog
+                    label={t("strategy.generateOrder")}
+                    title={t("strategyCard.orderTitle", { title })}
+                    closeLabel={t("strategyCard.close")}
+                    tone="primary"
+                    size="lg"
+                    data-strategy-open-order={d.id}
+                  >
+                    <StrategyOrderForm
+                      decisionId={d.id}
+                      lines={packLines.map((line) => {
+                        const price = refOf(line.productId)?.unitPrice;
+                        return {
+                          productId: line.productId,
+                          productName: nameOf(line.productId),
+                          quantity: line.quantity,
+                          planned: line.planned,
+                          basis: line.basis,
+                          // O preço com a precisão gravada (sem arredondar).
+                          unitPrice:
+                            seesPrice && price != null ? String(price) : "",
+                          warnings: packWarnings(line.warnings),
+                        };
+                      })}
+                      seesPrice={seesPrice}
+                      currency={ref.currency ?? "USD"}
+                      leadTime={leadTime !== null ? String(leadTime) : ""}
+                      incoterm={
+                        ref.incoterm === "EXW" || ref.incoterm === "FOB"
+                          ? ref.incoterm
+                          : ""
+                      }
+                      texts={orderTexts}
+                      intl={t.intl}
+                    />
+                  </QuickDialog>
+                ) : null}
+                {detailsButton}
+              </div>
+            </section>
+          );
+          return {
+            d,
+            card,
+            title,
+            customers,
+            products: packLines.map((l) => nameOf(l.productId)),
+            supplier: ref?.supplierName ?? null,
+            blocked,
+            requestNumbers: demands
+              .map((r) => r.number)
+              .filter((n): n is number => typeof n === "number"),
+          };
+        })
+      : [];
+
   return (
     <div data-strategy-page={lines.length} data-compact-fields>
       <PageHeader
@@ -587,34 +1126,54 @@ export default async function PurchaseStrategyPage({
         </div>
       ) : null}
       <HashTab />
-      <nav
-        aria-label={t("strategy.tabs.label")}
-        className="mb-3 flex gap-1 overflow-x-auto border-b border-zinc-200 text-sm"
-        data-strategy-tabs={tab}
-      >
-        {(
-          [
-            ["waiting", board.groups.length],
-            ["open", decisions.length],
-            ["sent", sentRows.length],
-          ] as const
-        ).map(([id, n]) => (
-          <Link
-            key={id}
-            href={`/app/purchase-strategy?tab=${id}`}
-            aria-current={tab === id ? "page" : undefined}
-            data-strategy-tab={id}
-            className={cx(
-              "-mb-px whitespace-nowrap border-b-2 px-3 py-2",
-              tab === id
-                ? "border-brand-600 font-semibold text-brand-700"
-                : "border-transparent text-zinc-600 hover:text-zinc-900",
-            )}
-          >
-            {t(`strategy.tabs.${id}` as DictionaryKey)} ({n})
-          </Link>
-        ))}
-      </nav>
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2 border-b border-zinc-200">
+        <nav
+          aria-label={t("strategy.tabs.label")}
+          className="flex gap-1 overflow-x-auto text-sm"
+          data-strategy-tabs={tab}
+        >
+          {(
+            [
+              ["waiting", board.groups.length],
+              ["open", decisions.length],
+              ["sent", sentRows.length],
+            ] as const
+          ).map(([id, n]) => (
+            <Link
+              key={id}
+              href={`/app/purchase-strategy?tab=${id}`}
+              aria-current={tab === id ? "page" : undefined}
+              data-strategy-tab={id}
+              className={cx(
+                "-mb-px whitespace-nowrap border-b-2 px-3 py-2",
+                tab === id
+                  ? "border-brand-600 font-semibold text-brand-700"
+                  : "border-transparent text-zinc-600 hover:text-zinc-900",
+              )}
+            >
+              {t(`strategy.tabs.${id}` as DictionaryKey)} ({n})
+            </Link>
+          ))}
+        </nav>
+        {/* Enviadas já é uma tabela: a escolha vale nas outras duas abas. */}
+        {tab === "sent" ? null : (
+          <div className="pb-1.5">
+            <StrategyViewToggle
+              view={view}
+              chosen={viewParam === "table" || viewParam === "cards"}
+              hrefs={{
+                cards: `/app/purchase-strategy?tab=${tab}&view=cards`,
+                table: `/app/purchase-strategy?tab=${tab}&view=table`,
+              }}
+              labels={{
+                label: t("strategyView.label"),
+                cards: t("strategyView.cards"),
+                table: t("strategyView.table"),
+              }}
+            />
+          </div>
+        )}
+      </div>
 
       {tab === "waiting" ? (
         <>
@@ -630,6 +1189,20 @@ export default async function PurchaseStrategyPage({
           ) : null}
 
           <StrategyQueue
+            view={view}
+            tableTexts={{
+              heads: [
+                t("strategyTable.request"),
+                t("strategyTable.customer"),
+                t("strategyTable.origin"),
+                t("strategyTable.products"),
+                t("strategyTable.last"),
+                t("strategyTable.choice"),
+              ],
+              open: t("strategyTable.open"),
+              close: t("strategyTable.close"),
+              productsN: t("strategyTable.productsN", { n: "{n}" }),
+            }}
             lines={lines}
             groups={groups}
             checks={Object.fromEntries(board.checks)}
@@ -676,544 +1249,74 @@ export default async function PurchaseStrategyPage({
       {tab === "open" ? (
         <section data-strategy-open={decisions.length}>
           {decisions.length ? (
-            <StrategyGrid marker="open">
-              {decisions.map((d) => {
-                const demands = decisionDemands.filter((r) =>
-                  d.demandIds.includes(r.id),
-                );
-                const ref = d.reference?.[0];
-                // Encomenda cancelada ou já em outro pedido (dono, 18/11/2026):
-                // a estratégia não é aprovada nem gera o pedido; fica gravada
-                // como está (recusar continua valendo).
-                const closed = closedDemands(d, demands);
-                const blocked = closed.size > 0;
-                // Uma linha por produto da solicitação, com a quantidade somada,
-                // a embalagem (fontes da ficha completa) e a última compra de
-                // cada um (todos do mesmo fornecedor).
-                const packLines = linePackings(demands, packings);
-                const nameOf = (productId: string) =>
-                  productNameText(
-                    t,
-                    demands.find((r) => r.productId === productId)
-                      ?.productName ?? "",
-                  );
-                const refOf = (productId: string) =>
-                  d.reference?.find((x) => x.productId === productId);
-                const leadTimes = packLines
-                  .map((l) => refOf(l.productId)?.leadTimeDays)
-                  .filter((n): n is number => typeof n === "number");
-                const leadTime = leadTimes.length
-                  ? Math.max(...leadTimes)
-                  : null;
-                const orderable =
-                  d.status === "approved" &&
-                  d.choice === "last_supplier" &&
-                  !!ref &&
-                  !blocked;
-                const showForm = orderable && canOrder;
-                const closedList = [...closed.entries()]
-                  .map(([id, reason]) =>
-                    t("strategyPack.closed.item", {
-                      n: demands.find((r) => r.id === id)?.number ?? "—",
-                      reason: t(
-                        `strategyPack.closed.${reason}` as DictionaryKey,
-                      ),
-                    }),
-                  )
-                  .join(", ");
-                const title = t("strategy.decision", { n: d.number });
-                const customers = [
-                  ...new Set(demands.map((r) => partyName(r.customerId))),
-                ];
-                const schedules = demands.flatMap(
-                  (r) => r.schedule?.items ?? [],
-                );
-                const blockedAlert = blocked ? (
-                  <div data-strategy-blocked-alert>
-                    <Alert tone="warning">
-                      <p className="font-semibold">
-                        {t("strategyPack.closed.title")}
-                      </p>
-                      <p className="mt-0.5 text-xs">
-                        {t(
-                          d.status === "pending"
-                            ? "strategyPack.closed.bodyPending"
-                            : "strategyPack.closed.body",
-                          { list: closedList },
-                        )}
-                      </p>
-                    </Alert>
-                  </div>
-                ) : null;
-                const approveHere = d.status === "pending" && canApprove;
-                // Encerrar a estratégia aprovada que parou (dono, 19/11/2026).
-                const closeHere =
-                  blocked && d.status === "approved" && canClose;
-                // A solicitação de um lote aparece uma vez (mesmo número e situação).
-                const requestRows = [
-                  ...new Map(
-                    demands.map((r) => {
-                      const why = closed.get(r.id);
-                      return [
-                        `${r.number ?? r.id}|${why ?? r.status}`,
-                        { r, why },
-                      ] as const;
-                    }),
-                  ).values(),
-                ];
-                const shownLines = packLines.slice(0, CARD_PRODUCTS);
-                const hiddenLines = packLines.length - shownLines.length;
-                // Detalhes: tudo o que o card resume (as contas, a explicação da
-                // parada, a programação inteira, a última compra completa e a
-                // decisão com observação).
-                const detailsButton = (
-                  <QuickDialog
-                    label={t("strategyCard.details")}
-                    title={t("strategyCard.detailsTitle", { title })}
-                    closeLabel={t("strategyCard.close")}
-                    size="lg"
-                    data-strategy-details={d.id}
-                  >
-                    <div className="space-y-3 text-sm">
-                      <p className="text-xs text-zinc-600">
-                        {t(`strategy.choice.${d.choice}`)} ·{" "}
-                        {t(`strategy.status.${d.status}` as DictionaryKey)}
-                      </p>
-                      {d.note ? (
-                        <p className="whitespace-pre-line text-xs text-zinc-700">
-                          <span className="font-medium">
-                            {t("strategyCard.note")}:
-                          </span>{" "}
-                          {d.note}
-                        </p>
-                      ) : null}
-                      <ul className="divide-y divide-zinc-100">
-                        {demands.map((r) =>
-                          demandRow(r, false, closed.get(r.id)),
-                        )}
-                      </ul>
-                      {blockedAlert}
-                      {packLines.map((line) => (
-                        <div key={line.productId} className="space-y-2">
-                          <p className="text-xs font-semibold text-zinc-900">
-                            {nameOf(line.productId)}
-                          </p>
-                          <PackingCells
-                            marker={`detail:${d.id}:${line.productId}`}
-                            totals={lineTotals(line, line.quantity)}
-                            basis={line.basis}
-                            texts={packingTexts}
-                            intl={t.intl}
-                            piecesText={line.quantity.toLocaleString(t.intl)}
-                            extraWarnings={packWarnings(line.warnings)}
-                          />
-                          {d.choice === "last_supplier"
-                            ? reference(refOf(line.productId))
-                            : null}
-                        </div>
-                      ))}
-                      {schedules.length ? (
-                        <div>
-                          <p className="text-xs font-medium text-zinc-700">
-                            {t("strategy.line.schedule")}
-                          </p>
-                          <ul className="text-xs text-zinc-700">
-                            {demands.flatMap((r) =>
-                              (r.schedule?.items ?? []).map((i) => (
-                                <li key={`${r.id}:${i.index}`}>
-                                  {r.number ? `nº ${r.number} · ` : ""}
-                                  {t("strategy.line.scheduleItem", {
-                                    index: i.index,
-                                    quantity: i.quantity.toLocaleString(t.intl),
-                                    date: formatDate(i.expectedAt, t),
-                                  })}
-                                </li>
-                              )),
-                            )}
-                          </ul>
-                        </div>
-                      ) : null}
-                      {/* Aprovar com observação (opcional) ou recusar com o
-                        motivo: o formulário de sempre, fora do card. */}
-                      {approveHere ? (
-                        <form
-                          action={decideStrategyAction}
-                          className="grid gap-2 border-t border-zinc-100 pt-3"
-                          data-strategy-approve-form
-                          data-compact-fields
+            view === "table" ? (
+              <StrategyTable
+                marker="open"
+                heads={[
+                  t("strategyTable.decision"),
+                  t("strategyTable.status"),
+                  t("strategyTable.choice"),
+                  t("strategyTable.requests"),
+                  t("strategyTable.customer"),
+                  t("strategyTable.products"),
+                  t("strategyTable.supplier"),
+                ]}
+              >
+                {decisionItems.map((item) => (
+                  <StrategyTableRow
+                    key={item.d.id}
+                    rowKey={item.d.id}
+                    anchorId={`decision-${item.d.id}`}
+                    columns={8}
+                    labels={{
+                      open: t("strategyTable.open"),
+                      close: t("strategyTable.close"),
+                    }}
+                    highlight={item.blocked}
+                    cells={[
+                      <span key="n" className="font-semibold text-zinc-900">
+                        {item.title}
+                      </span>,
+                      <span key="s" className="flex flex-wrap gap-1">
+                        <Badge
+                          tone={
+                            item.d.status === "pending" ? "warning" : "success"
+                          }
                         >
-                          <input type="hidden" name="id" value={d.id} />
-                          <p className="text-xs font-semibold text-zinc-900">
-                            {t("strategyCard.decideTitle")}
-                          </p>
-                          <Field label={t("strategy.approvalNote")}>
-                            <Textarea
-                              name="note"
-                              rows={2}
-                              maxLength={2000}
-                              className="shadow-none"
-                            />
-                          </Field>
-                          <div className="flex flex-wrap gap-2">
-                            {blocked ? null : (
-                              <SubmitButton
-                                name="decision"
-                                value="approve"
-                                data-strategy-approve-note
-                              >
-                                {t("strategy.approve")}
-                              </SubmitButton>
-                            )}
-                            <SubmitButton
-                              name="decision"
-                              value="reject"
-                              variant="secondary"
-                              data-strategy-reject-note
-                            >
-                              {t("strategy.reject")}
-                            </SubmitButton>
-                          </div>
-                        </form>
-                      ) : null}
-                    </div>
-                  </QuickDialog>
-                );
-                return (
-                  <section
-                    key={d.id}
-                    id={`decision-${d.id}`}
-                    className={cx(
-                      cardClass,
-                      "gap-1",
-                      blocked && "border-amber-300 bg-amber-50/30",
-                    )}
-                    data-strategy-decision={d.status}
-                    data-strategy-decision-choice={d.choice}
-                    data-strategy-blocked={blocked ? "1" : undefined}
-                  >
-                    {/* Número da estratégia e situação; modalidade. */}
-                    <div className="flex flex-wrap items-center gap-1">
-                      <h3 className="text-[13px] font-semibold text-zinc-900">
-                        {title}
-                      </h3>
-                      <Badge
-                        tone={d.status === "pending" ? "warning" : "success"}
-                      >
-                        {t(`strategy.status.${d.status}` as DictionaryKey)}
-                      </Badge>
-                      {blocked ? (
-                        <span title={t("strategyPack.closed.title")}>
+                          {t(
+                            `strategy.status.${item.d.status}` as DictionaryKey,
+                          )}
+                        </Badge>
+                        {item.blocked ? (
                           <Badge tone="danger">
                             {t("strategyCard.stopped")}
                           </Badge>
-                        </span>
-                      ) : null}
-                    </div>
-                    <p
-                      className="truncate text-[11px] font-medium text-zinc-800"
-                      title={t(`strategy.choice.${d.choice}`)}
-                    >
-                      {t(`strategy.choice.${d.choice}`)}
-                    </p>
-                    {/* Solicitação (link) e a situação dela. */}
-                    <div
-                      className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5"
-                      data-strategy-card-requests
-                    >
-                      {requestRows.map(({ r, why }) => {
-                        const statusKey =
-                          `reqStatusLabel.${r.status}` as DictionaryKey;
-                        return (
-                          <span
-                            key={r.id}
-                            className="inline-flex items-center gap-1"
-                            data-strategy-demand={r.id}
-                            data-strategy-demand-closed={why}
-                          >
-                            <Link
-                              href={`/app/requests/${r.id}`}
-                              className={cx(linkClass, "font-medium")}
-                            >
-                              {t("strategyCard.request")}{" "}
-                              {r.number ? `nº ${r.number}` : "—"}
-                            </Link>
-                            {why ? (
-                              <Badge tone="danger">
-                                {t(
-                                  `strategyPack.closed.${why}` as DictionaryKey,
-                                )}
-                              </Badge>
-                            ) : t(statusKey) !== statusKey ? (
-                              <Badge tone="neutral">{t(statusKey)}</Badge>
-                            ) : null}
-                          </span>
-                        );
-                      })}
-                    </div>
-                    {/* Cliente e identificações. */}
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <p
-                        className="min-w-0 flex-1 truncate font-medium text-zinc-900"
-                        title={customers.join(", ")}
-                      >
-                        <span className="text-[10px] uppercase tracking-wide text-zinc-500">
-                          {t("strategyCard.customer")}:{" "}
-                        </span>
-                        {customers.join(", ") || "—"}
-                      </p>
-                      {demands[0] ? (
-                        <div className="shrink-0 [&_*]:text-[10px] [&>*]:mt-0">
-                          <DemandTags t={t} request={demands[0]} />
-                        </div>
-                      ) : null}
-                    </div>
-                    {/* Produto e embalagem (os totais da ficha). */}
-                    {shownLines.map((line) => (
-                      <div
-                        key={line.productId}
-                        className="space-y-0.5"
-                        data-strategy-decision-product={line.productId}
-                      >
-                        <p
-                          className="truncate font-semibold text-zinc-900"
-                          title={nameOf(line.productId)}
-                        >
-                          {nameOf(line.productId)}
-                        </p>
-                        <CompactPack
-                          marker={`${d.id}:${line.productId}`}
-                          totals={lineTotals(line, line.quantity)}
-                          basis={line.basis}
-                          piecesText={line.quantity.toLocaleString(t.intl)}
-                          texts={cardTexts}
-                          packTexts={packingTexts}
-                          intl={t.intl}
-                        />
-                      </div>
-                    ))}
-                    {hiddenLines > 0 ? (
-                      <p
-                        className="text-[11px] text-zinc-600"
-                        data-strategy-more={hiddenLines}
-                      >
-                        {t("strategyCard.more", { n: hiddenLines })}
-                      </p>
-                    ) : null}
-                    {schedules.length ? (
-                      <p className="truncate text-[11px] text-zinc-600">
-                        {t("strategyCard.schedule")}:{" "}
-                        {schedules.length > 1
-                          ? t("strategyCard.scheduleCount", {
-                              n: schedules.length,
-                            })
-                          : t("strategy.line.scheduleItem", {
-                              index: schedules[0].index,
-                              quantity: schedules[0].quantity.toLocaleString(
-                                t.intl,
-                              ),
-                              date: formatDate(schedules[0].expectedAt, t),
-                            })}
-                      </p>
-                    ) : null}
-                    {/* Última compra (pedido direto), em duas linhas. */}
-                    {d.choice === "last_supplier"
-                      ? compactReference(ref)
-                      : null}
-                    {d.note ? (
-                      <p
-                        className="truncate text-[11px] text-zinc-600"
-                        title={d.note}
-                      >
-                        {t("strategyCard.note")}: {d.note}
-                      </p>
-                    ) : null}
-                    {blocked ? (
-                      <p
-                        className="truncate rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800"
-                        title={t(
-                          d.status === "pending"
-                            ? "strategyPack.closed.bodyPending"
-                            : "strategyPack.closed.body",
-                          { list: closedList },
-                        )}
-                        data-strategy-blocked-summary
-                      >
-                        {t("strategyCard.blocked")}
-                      </p>
-                    ) : null}
-                    {d.status === "pending" && !canApprove ? (
-                      <p className="text-[11px] text-zinc-500">
-                        {t("strategy.waitingApproval")}
-                      </p>
-                    ) : null}
-                    {orderable && !showForm ? (
-                      <p className="text-[11px] text-zinc-500">
-                        {t("strategy.waitingOrder")}
-                      </p>
-                    ) : null}
-                    {d.status === "approved" &&
-                    (d.choice === "quote" || d.choice === "quote_last") ? (
-                      <p
-                        className="text-[11px] text-zinc-600"
-                        data-strategy-quote-pending
-                      >
-                        {t("strategy.quotePending")}{" "}
-                        {d.quoteId ? (
-                          <Link
-                            href={`/app/purchase-quotes/${d.quoteId}`}
-                            className={linkClass}
-                            data-strategy-quote-link={d.quoteId}
-                          >
-                            {t("strategy.openQuote")}
-                          </Link>
                         ) : null}
-                      </p>
-                    ) : null}
-                    {/* Ações, numa linha: Aprovar (um toque), Recusar e
-                      Encerrar (pedem a observação numa caixa), Gerar pedido
-                      (formulário no painel) e Detalhes. */}
-                    <div
-                      className="mt-auto flex flex-wrap items-center gap-1.5 border-t border-zinc-100 pt-1"
-                      data-strategy-card-actions
-                    >
-                      {approveHere && !blocked ? (
-                        <form
-                          action={decideStrategyAction}
-                          className="contents"
-                        >
-                          <input type="hidden" name="id" value={d.id} />
-                          <SubmitButton
-                            name="decision"
-                            value="approve"
-                            className="px-2.5 py-1 text-xs"
-                            data-strategy-approve
-                          >
-                            {t("strategy.approve")}
-                          </SubmitButton>
-                        </form>
-                      ) : null}
-                      {approveHere ? (
-                        <QuickDialog
-                          label={t("strategy.reject")}
-                          title={t("strategyCard.rejectTitle", { n: d.number })}
-                          closeLabel={t("strategyCard.close")}
-                          data-strategy-reject-open={d.id}
-                        >
-                          <form
-                            action={decideStrategyAction}
-                            className="grid gap-2"
-                            data-compact-fields
-                          >
-                            <input type="hidden" name="id" value={d.id} />
-                            <input
-                              type="hidden"
-                              name="decision"
-                              value="reject"
-                            />
-                            <Field label={t("strategyCard.rejectNote")}>
-                              <Textarea
-                                name="note"
-                                rows={3}
-                                maxLength={2000}
-                                required
-                                className="shadow-none"
-                              />
-                            </Field>
-                            <div>
-                              <SubmitButton
-                                variant="secondary"
-                                data-strategy-reject
-                              >
-                                {t("strategy.reject")}
-                              </SubmitButton>
-                            </div>
-                          </form>
-                        </QuickDialog>
-                      ) : null}
-                      {closeHere ? (
-                        <QuickDialog
-                          label={t("strategyClose.button")}
-                          title={t("strategyCard.closeTitle", { n: d.number })}
-                          closeLabel={t("strategyCard.close")}
-                          data-strategy-close-open={d.id}
-                        >
-                          <form
-                            action={closeStrategyAction}
-                            className="grid gap-2"
-                            data-strategy-close-form
-                          >
-                            <input type="hidden" name="id" value={d.id} />
-                            <p className="text-xs text-zinc-600">
-                              {t("strategyClose.hint")}
-                            </p>
-                            <Field label={t("strategyClose.note")}>
-                              <Textarea
-                                name="note"
-                                rows={2}
-                                maxLength={2000}
-                                className="shadow-none"
-                              />
-                            </Field>
-                            <div>
-                              <SubmitButton
-                                variant="secondary"
-                                confirmText={t("strategyClose.confirm", {
-                                  n: d.number,
-                                })}
-                                data-strategy-close
-                              >
-                                {t("strategyClose.button")}
-                              </SubmitButton>
-                            </div>
-                          </form>
-                        </QuickDialog>
-                      ) : null}
-                      {showForm && ref ? (
-                        <QuickDialog
-                          label={t("strategy.generateOrder")}
-                          title={t("strategyCard.orderTitle", { title })}
-                          closeLabel={t("strategyCard.close")}
-                          tone="primary"
-                          size="lg"
-                          data-strategy-open-order={d.id}
-                        >
-                          <StrategyOrderForm
-                            decisionId={d.id}
-                            lines={packLines.map((line) => {
-                              const price = refOf(line.productId)?.unitPrice;
-                              return {
-                                productId: line.productId,
-                                productName: nameOf(line.productId),
-                                quantity: line.quantity,
-                                planned: line.planned,
-                                basis: line.basis,
-                                // O preço com a precisão gravada (sem arredondar).
-                                unitPrice:
-                                  seesPrice && price != null
-                                    ? String(price)
-                                    : "",
-                                warnings: packWarnings(line.warnings),
-                              };
+                      </span>,
+                      t(`strategy.choice.${item.d.choice}`),
+                      item.requestNumbers.length
+                        ? item.requestNumbers.map((n) => `#${n}`).join(", ")
+                        : "—",
+                      item.customers.join(", ") || "—",
+                      <span key="p" title={item.products.join(", ")}>
+                        {item.products.length === 1
+                          ? item.products[0]
+                          : t("strategyTable.productsN", {
+                              n: item.products.length,
                             })}
-                            seesPrice={seesPrice}
-                            currency={ref.currency ?? "USD"}
-                            leadTime={leadTime !== null ? String(leadTime) : ""}
-                            incoterm={
-                              ref.incoterm === "EXW" || ref.incoterm === "FOB"
-                                ? ref.incoterm
-                                : ""
-                            }
-                            texts={orderTexts}
-                            intl={t.intl}
-                          />
-                        </QuickDialog>
-                      ) : null}
-                      {detailsButton}
-                    </div>
-                  </section>
-                );
-              })}
-            </StrategyGrid>
+                      </span>,
+                      item.supplier ?? "—",
+                    ]}
+                  >
+                    {item.card}
+                  </StrategyTableRow>
+                ))}
+              </StrategyTable>
+            ) : (
+              <StrategyGrid marker="open">
+                {decisionItems.map((item) => item.card)}
+              </StrategyGrid>
+            )
           ) : (
             <p className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-500">
               {t("strategy.openEmpty")}

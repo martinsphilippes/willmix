@@ -18,6 +18,14 @@ export const pt = {
   "requestSheet.thisRequest": "Esta solicitação",
   "requestSheet.more": "ver mais",
   "requestSheet.less": "ver menos",
+  "requestProduct.title": "Produto neste pedido",
+  "requestProduct.chat.title": "Conversa",
+  "requestProduct.chat.empty":
+    "Ainda não há mensagens sobre este produto neste pedido.",
+  "requestProduct.chat.count": "{n} mensagem(ns) no total",
+  "requestProduct.chat.attachment": "Anexo",
+  "requestProduct.chat.you": "Você",
+  "requestProduct.details": "Programação, condições e anexos",
   "requestSheet.openRequest": "Abrir a solicitação",
   "requestSheet.noCurrency": "(moeda não informada)",
   "requestSheet.pieces": "{n} peças",
@@ -132,7 +140,8 @@ export const pt = {
   "requestSheet.axis.diameter": "Diâmetro",
   "requestSheet.axis.thickness": "Espessura",
   "requestSheet.note.schedule": "{n} programações: {list}",
-  "requestSheet.note.piecesFromBoxes": "{boxes} caixas × {perBox} peças por caixa",
+  "requestSheet.note.piecesFromBoxes":
+    "{boxes} caixas × {perBox} peças por caixa",
   "requestSheet.note.boxesRounds":
     "{list} caixas, uma conta por programação (÷ {perBox} peças, arredondado para cima)",
   "requestSheet.note.boxesRoundsExact":
@@ -151,7 +160,8 @@ export const pt = {
   "requestSheet.note.depositAmount": "{amount} sobre a compra total",
   "requestSheet.note.noAxes": "A especificação não diz os eixos.",
   "requestSheet.note.noUnit": "A especificação não diz a unidade.",
-  "requestSheet.negStatus.open": "Negociação aberta, sem resposta do fornecedor",
+  "requestSheet.negStatus.open":
+    "Negociação aberta, sem resposta do fornecedor",
   "requestSheet.negStatus.answered": "Respondida pelo fornecedor, em análise",
   "requestSheet.negStatus.approved": "Negociação aprovada",
   "requestSheet.negStatus.declined": "Negociação recusada",
@@ -180,6 +190,14 @@ export const en: Record<keyof typeof pt, string> = {
   "requestSheet.thisRequest": "This request",
   "requestSheet.more": "see more",
   "requestSheet.less": "see less",
+  "requestProduct.title": "Product in this order",
+  "requestProduct.chat.title": "Conversation",
+  "requestProduct.chat.empty":
+    "No messages yet about this product in this order.",
+  "requestProduct.chat.count": "{n} message(s) in total",
+  "requestProduct.chat.attachment": "Attachment",
+  "requestProduct.chat.you": "You",
+  "requestProduct.details": "Schedule, terms and attachments",
   "requestSheet.openRequest": "Open the request",
   "requestSheet.noCurrency": "(currency not informed)",
   "requestSheet.pieces": "{n} pieces",
@@ -294,7 +312,8 @@ export const en: Record<keyof typeof pt, string> = {
   "requestSheet.axis.diameter": "Diameter",
   "requestSheet.axis.thickness": "Thickness",
   "requestSheet.note.schedule": "{n} rounds: {list}",
-  "requestSheet.note.piecesFromBoxes": "{boxes} cartons × {perBox} pieces per carton",
+  "requestSheet.note.piecesFromBoxes":
+    "{boxes} cartons × {perBox} pieces per carton",
   "requestSheet.note.boxesRounds":
     "{list} cartons, one count per round (÷ {perBox} pieces, rounded up)",
   "requestSheet.note.boxesRoundsExact":
@@ -312,7 +331,8 @@ export const en: Record<keyof typeof pt, string> = {
   "requestSheet.note.depositAmount": "{amount} of the total purchase",
   "requestSheet.note.noAxes": "The specification does not name the axes.",
   "requestSheet.note.noUnit": "The specification does not name the unit.",
-  "requestSheet.negStatus.open": "Negotiation open, no answer from the supplier",
+  "requestSheet.negStatus.open":
+    "Negotiation open, no answer from the supplier",
   "requestSheet.negStatus.answered": "Answered by the supplier, under review",
   "requestSheet.negStatus.approved": "Negotiation approved",
   "requestSheet.negStatus.declined": "Negotiation declined",
@@ -340,6 +360,13 @@ export const zh: Record<keyof typeof pt, string> = {
   "requestSheet.thisRequest": "本申请",
   "requestSheet.more": "展开",
   "requestSheet.less": "收起",
+  "requestProduct.title": "此订单中的产品",
+  "requestProduct.chat.title": "对话",
+  "requestProduct.chat.empty": "此订单中该产品尚无消息。",
+  "requestProduct.chat.count": "共 {n} 条消息",
+  "requestProduct.chat.attachment": "附件",
+  "requestProduct.chat.you": "您",
+  "requestProduct.details": "排期、条件和附件",
   "requestSheet.openRequest": "打开申请",
   "requestSheet.noCurrency": "（未提供币种）",
   "requestSheet.pieces": "{n} 件",
@@ -453,9 +480,11 @@ export const zh: Record<keyof typeof pt, string> = {
   "requestSheet.axis.thickness": "厚",
   "requestSheet.note.schedule": "{n} 批：{list}",
   "requestSheet.note.piecesFromBoxes": "{boxes} 箱 × 每箱 {perBox} 件",
-  "requestSheet.note.boxesRounds": "{list} 箱，按批计算（÷ {perBox} 件，向上取整）",
+  "requestSheet.note.boxesRounds":
+    "{list} 箱，按批计算（÷ {perBox} 件，向上取整）",
   "requestSheet.note.boxesRoundsExact": "{list} 箱，按批计算（÷ {perBox} 件）",
-  "requestSheet.note.boxesTotal": "{pieces} ÷ {perBox} = {exact} → {boxes} 箱（向上取整）",
+  "requestSheet.note.boxesTotal":
+    "{pieces} ÷ {perBox} = {exact} → {boxes} 箱（向上取整）",
   "requestSheet.note.cbmFromDims": "由外箱尺寸计算（{from}）",
   "requestSheet.note.cbmOtherBox":
     "{from} 的体积是每箱 {qty} 件的外箱，而计算用每箱 {perBox} 件：不计入",

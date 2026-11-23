@@ -19,19 +19,19 @@ Revisão do dono (15/11/2026, modelo "Linha de visão de produto", `docs/LINHA_D
 
 Cada valor tem um selo com a origem. A ordem de prioridade é sempre a mesma: **o que a solicitação gravou vem primeiro**; o que falta vem do pedido, da negociação, do Book e, por último, da **ficha atual** do produto.
 
-| Selo | O que é | De onde |
-| --- | --- | --- |
-| Solicitação | Gravado nesta solicitação | `requests` (descrição, especificação, observação, NCM, venda, sinal) e a cópia da variação pedida (`requests.variant`) |
-| Variação da solicitação | Cópia da variação no momento do pedido | `requests.variant` (caixa, pesos, CBM, material, cores, embalagem, preço, MOQ) |
-| Programação | A programação de compra gravada | `requests.schedule` |
-| Pedido nº N | O pedido da solicitação (quando já virou pedido) | `orders`, `order_items` (preço de compra e de venda do produto), `purchase_sheets` do pedido (caixa, medidas, pesos, NCM, código na fábrica) |
-| Negociação nº N | A solicitação ao fornecedor do produto | `supplier_requests` do produto: a do pedido; senão a aprovada; senão a respondida; senão a aberta (a mais recente). Canceladas e recusadas ficam fora. |
-| Book nº N | O item do Book (cotação da planilha) | `booking_items`: o da negociação escolhida; senão o mais recente do produto |
-| Superplan | A análise do item do Book | `booking_items.analysis` (custo nacionalizado, venda sugerida, margem) |
-| Ficha atual | O cadastro do produto hoje (a solicitação não gravou o dado) | `products` e a ficha mestre (`purchase_sheets` com `orderId` = id do produto), lidos como o Booking e o Superplan leem (`productPurchaseView`) |
-| Linha do produto | Exigência da linha | `product_lines.requiredCertifications` e `prompts.requiredAttributes` |
-| Cadastro do fornecedor | A condição de pagamento do fornecedor | `parties.paymentTerms` e `paymentTermsNote` |
-| Calculado | Conta das regras do portal com os dados gravados | caixas, cubagem, unitário a partir do total, totais |
+| Selo                    | O que é                                                      | De onde                                                                                                                                                |
+| ----------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Solicitação             | Gravado nesta solicitação                                    | `requests` (descrição, especificação, observação, NCM, venda, sinal) e a cópia da variação pedida (`requests.variant`)                                 |
+| Variação da solicitação | Cópia da variação no momento do pedido                       | `requests.variant` (caixa, pesos, CBM, material, cores, embalagem, preço, MOQ)                                                                         |
+| Programação             | A programação de compra gravada                              | `requests.schedule`                                                                                                                                    |
+| Pedido nº N             | O pedido da solicitação (quando já virou pedido)             | `orders`, `order_items` (preço de compra e de venda do produto), `purchase_sheets` do pedido (caixa, medidas, pesos, NCM, código na fábrica)           |
+| Negociação nº N         | A solicitação ao fornecedor do produto                       | `supplier_requests` do produto: a do pedido; senão a aprovada; senão a respondida; senão a aberta (a mais recente). Canceladas e recusadas ficam fora. |
+| Book nº N               | O item do Book (cotação da planilha)                         | `booking_items`: o da negociação escolhida; senão o mais recente do produto                                                                            |
+| Superplan               | A análise do item do Book                                    | `booking_items.analysis` (custo nacionalizado, venda sugerida, margem)                                                                                 |
+| Ficha atual             | O cadastro do produto hoje (a solicitação não gravou o dado) | `products` e a ficha mestre (`purchase_sheets` com `orderId` = id do produto), lidos como o Booking e o Superplan leem (`productPurchaseView`)         |
+| Linha do produto        | Exigência da linha                                           | `product_lines.requiredCertifications` e `prompts.requiredAttributes`                                                                                  |
+| Cadastro do fornecedor  | A condição de pagamento do fornecedor                        | `parties.paymentTerms` e `paymentTermsNote`                                                                                                            |
+| Calculado               | Conta das regras do portal com os dados gravados             | caixas, cubagem, unitário a partir do total, totais                                                                                                    |
 
 Sem nenhuma fonte: **"—"** ("Não informado" na dica e no leitor de tela). Medida zerada conta como não preenchida (a carga do Sankhya grava 0 no campo vazio).
 
@@ -78,12 +78,12 @@ A especificação gravada na solicitação é lida linha por linha (`src/lib/req
 
 O carregador (`loadRequestSheet`) só lê o que o perfil pode ver, e o montador só escreve o que o perfil vê: o que fica de fora não sai do servidor.
 
-| Perfil | Vê |
-| --- | --- |
-| Wellmix com "Ver valores e margem" (`values.view`; o administrador sempre) | Tudo. |
+| Perfil                                                                                                                                                            | Vê                                                                                                                                                                                                                                                                                                                |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Wellmix com "Ver valores e margem" (`values.view`; o administrador sempre)                                                                                        | Tudo.                                                                                                                                                                                                                                                                                                             |
 | Wellmix com "Ver preço de compra" (`purchasePrice.view`; padrão: comprador, gerente de produto, planejamento, diretorias, financeiro), sem "Ver valores e margem" | Produto e Embalagem e cubagem completos; em Valores, a compra com o fornecedor e o custo registrado (o preço da última compra) com as faixas; em Pagamento, a compra com o fornecedor. Sem venda, sem a análise do Superplan (custo nacionalizado, venda sugerida, margem) e sem a forma de pagamento do cliente. |
-| Wellmix sem nenhuma das duas | Produto e Embalagem e cubagem completos (códigos, caixa, medidas, cubagem e ficha atual, como no Histórico de compras). Valores e Pagamento ficam fora da ficha completa, com o aviso de quem vê embaixo da tabela. Sem custo, compra, venda nem condições na linha. |
-| Login do cliente (só as solicitações dele) | O que a solicitação dele gravou (descrição, variação, especificação, medidas e pesos do texto), total de peças, programação, venda e sinal dele. Nada do cadastro, do Book, da negociação, do fornecedor, nem custo ou compra. |
+| Wellmix sem nenhuma das duas                                                                                                                                      | Produto e Embalagem e cubagem completos (códigos, caixa, medidas, cubagem e ficha atual, como no Histórico de compras). Valores e Pagamento ficam fora da ficha completa, com o aviso de quem vê embaixo da tabela. Sem custo, compra, venda nem condições na linha.                                              |
+| Login do cliente (só as solicitações dele)                                                                                                                        | O que a solicitação dele gravou (descrição, variação, especificação, medidas e pesos do texto), total de peças, programação, venda e sinal dele. Nada do cadastro, do Book, da negociação, do fornecedor, nem custo ou compra.                                                                                    |
 
 Desde 15/11/2026 (docs/LINHA_DE_VISAO.md, seção 7), a compra com o fornecedor, o custo registrado e as condições do fornecedor seguem "Ver preço de compra" (`canSeePurchasePrice`); a análise do Superplan e a venda continuam só com "Ver valores e margem"; o cliente vê a venda dele.
 
@@ -134,3 +134,14 @@ Pedido do dono, com o print da ficha completa no iPad (login de cliente, especif
 - `src/app/app/requests/[id]/page.tsx`: o cartão "Solicitações" usa a tabela nova no lugar da linha antiga (`RequestInfoTable`, que continua no código).
 - Textos: `src/i18n/modules/request-sheet.ts` (pt/en/zh).
 - Testes: `tests/unit/request-sheet.test.ts` (especificação, bastão nº 1, negociação e Book, lote, permissões) e `tests/e2e/request-sheet.spec.ts` (lote com dois produtos, ficha completa em linha horizontal, cliente, administrador, Comprador, Vendas, celular e iPad sem rolagem de lado).
+
+## 7. O produto neste pedido, sem a tabela (dono, 23/11/2026)
+
+Pedido do dono: a tela de um produto (`/app/requests/<id>`) estava mostrando todos os produtos do pedido na tabela da ficha; ali é o detalhamento **daquele** produto, e a tabela nem é necessária.
+
+- **Só o produto da tela**: `loadRequestSheet` é chamado sem as outras solicitações do lote. Os outros produtos ficam na página do pedido (`/app/requests/batch/<id>`), que tem a tabela padrão de itens (docs/ORDER_TABLES.md); o aviso "este pedido tem N produtos" segue levando a cada um.
+- **Sem tabela nem "Ver ficha completa"**: `src/components/request-product-sheet.tsx` mostra, no alto, a foto, o código, a variação, o prazo e os números principais (peças, caixas master, cubagem, custo registrado, compra e venda) e, embaixo, um quadro por grupo da ficha (Produto, Embalagem e cubagem, Valores e Pagamento), cada dado com a origem e a conta. O endereço `?ficha=completa` deixa de mudar a tela (tudo já aparece).
+- **Mesmos dados e mesmas permissões** da ficha (seções 1 a 6): o que o perfil não vê não sai do servidor; o grupo que ele não vê mostra o aviso. O preço de compra nunca aparece para o cliente (docs/ORDER_TABLES.md, seção 4).
+- **Conversa à vista**: na lateral, fixa na rolagem, o quadro "Conversa" com as últimas mensagens da solicitação que o login pode abrir (`src/lib/services/request-chat-preview.ts`, só leitura: não cria assunto nem marca como lido) e o botão de conversar, que abre a caixa do chat de sempre. Abaixo dela, a Classificação fiscal (NCM) da Wellmix.
+- **Embaixo dos quadros**: "Programação, condições e anexos" (empresas do grupo econômico, programação de compra, condições do pedido, anexos e o solicitante do cliente), como antes.
+- A tabela `RequestSheetTable` continua no código (não é mais usada nesta tela).
