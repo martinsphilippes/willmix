@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { PASSWORD, login } from "./helpers";
-import { xlsxBytes } from "../unit/xlsx-fixture";
+import { PNG_1X1, xlsxBytes } from "../unit/xlsx-fixture";
 
 /*
  * Book, tabela de itens (dono, 16/11/2026): o cabeçalho (títulos e a linha
@@ -61,16 +61,38 @@ const row = (n: number) => [
   "1000",
   "3000",
 ];
-const sheet = () => ({
+/**
+ * A planilha do teste. Com `photo`, uma coluna PHOTO no fim e a foto colada
+ * na primeira linha de item (como o fornecedor manda).
+ */
+const sheet = ({ photo = false }: { photo?: boolean } = {}) => ({
   name: `booking-${TAG}.xlsx`,
   mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   buffer: Buffer.from(
-    xlsxBytes([
-      {
-        name: "BOOKING",
-        cells: [HEADER, ...Array.from({ length: ROWS }, (_, i) => row(i + 1))],
-      },
-    ]),
+    xlsxBytes(
+      [
+        {
+          name: "BOOKING",
+          cells: [
+            photo ? [...HEADER, "PHOTO"] : HEADER,
+            ...Array.from({ length: ROWS }, (_, i) => row(i + 1)),
+          ],
+        },
+      ],
+      photo
+        ? {
+            images: [
+              {
+                sheet: 0,
+                col: HEADER.length,
+                row: 1,
+                bytes: PNG_1X1,
+                ext: "png",
+              },
+            ],
+          }
+        : {},
+    ),
   ),
 });
 
@@ -430,7 +452,7 @@ test("Meus books (Trading): cabeçalho congelado e Carregar no book que ela lan�
   await page.goto("/app/booking/import");
   await page
     .locator("[data-partner-booking-launch-form] input[type=file]")
-    .setInputFiles(sheet());
+    .setInputFiles(sheet({ photo: true }));
   await page.locator("[data-partner-booking-launch-submit]").click();
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   const url = new URL(page.url()).pathname;
@@ -440,6 +462,15 @@ test("Meus books (Trading): cabeçalho congelado e Carregar no book que ela lan�
     page.locator("tr[data-partner-booking-item]").nth(n - 1);
   const field = (n: number, name: string) =>
     partnerLine(n).locator(`[data-partner-item-field$=":${name}"]`);
+
+  // A foto da planilha aparece já na conferência, antes de enviar (dono,
+  // 23/11/2026); o item sem foto mostra "—".
+  await expect(
+    partnerLine(1).locator("[data-partner-booking-photo] img"),
+  ).toHaveCount(1);
+  await expect(
+    partnerLine(2).locator("[data-partner-booking-photo] img"),
+  ).toHaveCount(0);
 
   // O cabeçalho fica preso abaixo da barra vermelha.
   await scrollIntoTable(page, 600);
