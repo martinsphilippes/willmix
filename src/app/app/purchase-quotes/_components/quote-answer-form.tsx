@@ -81,6 +81,11 @@ export interface QuoteSheetProduct {
   /** Prazo de produção e pedido mínimo deste produto (dono, 23/11/2026). */
   leadTimeDays: string;
   moq: string;
+  /**
+   * O que o cadastro da Wellmix tem do produto (dono, 23/11/2026): as mesmas
+   * informações pedidas na ficha técnica, já escritas (rótulo, valor).
+   */
+  catalog: Array<[string, string]>;
   /** Quantidade de cada programação (ou a quantidade toda). */
   rounds: number[];
   soldBefore: boolean;
@@ -131,6 +136,9 @@ export interface QuoteAnswerLabels {
   termsShared: string;
   /** Título do envio e o "voltar" da tela do produto. */
   sendTitle: string;
+  /** "Peso bruto por peça: {kg} kg" e o título do que o cadastro tem. */
+  grossPerPiece: string;
+  catalogTitle: string;
   backToProducts: string;
   moq: string;
   note: string;
@@ -369,12 +377,21 @@ function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="mb-1 block text-xs font-medium leading-4 text-zinc-700"
+      className="mb-1 block whitespace-nowrap text-xs font-medium leading-4 text-zinc-700"
     >
       {children}
     </label>
   );
 }
+
+/*
+ * Largura dos campos (dono, 23/11/2026): cada campo ocupa só o espaço que o
+ * rótulo pede numa linha (`w-min` com o rótulo sem quebra), com um mínimo
+ * para o número caber. As linhas são faixas que quebram sozinhas.
+ */
+const ROW = "flex flex-wrap items-start gap-x-3 gap-y-2";
+const FIELD = "w-min min-w-[7rem]";
+const FIELD_WIDE = "w-min min-w-[11rem]";
 
 const textBox =
   "block h-9 w-full min-w-0 rounded-md border px-2.5 text-[13px] text-zinc-900 shadow-sm transition placeholder:text-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-500";
@@ -393,9 +410,9 @@ export function QuoteAnswerForm({
   cbmTolerancePercent,
   draft = null,
   draftAction = null,
+  portOptions = [],
   focusProductId = null,
   listHref = null,
-  headerSlot = null,
 }: {
   /**
    * Um produto por tela (dono, 23/11/2026): o produto aberto. Nulo = a
@@ -405,8 +422,6 @@ export function QuoteAnswerForm({
   focusProductId?: string | null;
   /** A lista dos produtos da cotação (o "voltar" da tela do produto). */
   listHref?: string | null;
-  /** Ao lado do nome do produto (a conversa deste produto). */
-  headerSlot?: ReactNode;
   quoteId: string;
   action: (form: FormData) => void | Promise<void>;
   photoAction: (form: FormData) => void | Promise<void>;
@@ -417,6 +432,8 @@ export function QuoteAnswerForm({
   products: QuoteSheetProduct[];
   /** O catálogo de materiais ativo (dono, 21/11/2026). */
   materials: QuoteMaterialOption[];
+  /** Portos do país do fornecedor (cadastro do Sankhya); vazio = texto livre. */
+  portOptions?: readonly string[];
   commercial: {
     currency: string;
     incoterm: string;
@@ -712,8 +729,8 @@ export function QuoteAnswerForm({
       {products.length > 1 ? (
         <p className="text-xs text-zinc-500">{L.termsShared}</p>
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="min-w-0">
+      <div className={ROW}>
+        <div className={FIELD}>
           <FieldLabel htmlFor={`quote-${quoteId}-incoterm`}>
             {L.incoterm}
           </FieldLabel>
@@ -733,7 +750,7 @@ export function QuoteAnswerForm({
         </div>
         {exw ? (
           <div
-            className="min-w-0"
+            className={FIELD_WIDE}
             data-missing={lacks("incotermValue") ? "true" : undefined}
             data-quote-incoterm-value-box
           >
@@ -753,7 +770,7 @@ export function QuoteAnswerForm({
             <p className="mt-1 text-xs text-zinc-500">{L.incotermValueHint}</p>
           </div>
         ) : null}
-        <div className="min-w-0">
+        <div className={FIELD}>
           <FieldLabel htmlFor={`quote-${quoteId}-lead`}>
             {L.leadTime}
           </FieldLabel>
@@ -782,7 +799,7 @@ export function QuoteAnswerForm({
             </span>
           </span>
         </div>
-        <div className="min-w-0">
+        <div className={FIELD}>
           <FieldLabel htmlFor={`quote-${quoteId}-moq`}>{L.moq}</FieldLabel>
           <span
             className={cx(
@@ -807,71 +824,103 @@ export function QuoteAnswerForm({
             </span>
           </span>
         </div>
-      </div>
-      {/* Portos de embarque: um por linha, com adicionar e remover. */}
-      <div className="mt-3" data-quote-ports={ports.length}>
-        <FieldLabel htmlFor={`quote-${quoteId}-port`}>{L.port}</FieldLabel>
-        <div className="space-y-2">
-          {ports.map((value, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <input
-                id={index === 0 ? `quote-${quoteId}-port` : undefined}
-                maxLength={36}
-                autoComplete="off"
-                value={value}
-                aria-label={fill(L.portN, { n: String(index + 1) })}
-                onChange={(e) =>
-                  setPorts(
-                    ports.map((p, i) => (i === index ? e.target.value : p)),
-                  )
-                }
-                {...(index === 0 ? { "data-quote-port": "" } : {})}
-                data-quote-port-item={index}
-                data-missing={index === 0 && lacks("port") ? "true" : undefined}
-                className={cx(
-                  textBox,
-                  "max-w-sm",
-                  index === 0 && lacks("port")
-                    ? "border-red-400 bg-red-50"
-                    : "border-zinc-300 bg-white",
-                )}
-              />
-              {ports.length > 1 ? (
-                <button
-                  type="button"
-                  onClick={() => setPorts(ports.filter((_, i) => i !== index))}
-                  aria-label={L.portRemove}
-                  title={L.portRemove}
-                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-50"
-                  data-quote-port-remove={index}
-                >
-                  ×
-                </button>
-              ) : null}
-            </div>
-          ))}
+        {/* Portos de embarque, na mesma linha dos outros termos: os que
+              entram a mais ficam embaixo, sem empurrar os campos ao lado. */}
+        <div className="w-min min-w-[13rem]" data-quote-ports={ports.length}>
+          <FieldLabel htmlFor={`quote-${quoteId}-port`}>{L.port}</FieldLabel>
+          <div className="space-y-2">
+            {ports.map((value, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <input
+                  id={index === 0 ? `quote-${quoteId}-port` : undefined}
+                  maxLength={36}
+                  autoComplete="off"
+                  // Lista buscável dos portos do país do fornecedor (cadastro
+                  // do Sankhya); sem portos cadastrados para o país, texto.
+                  list={
+                    portOptions.length ? `quote-${quoteId}-ports` : undefined
+                  }
+                  onBlur={() => {
+                    if (!portOptions.length || !value.trim()) return;
+                    const match = portOptions.find(
+                      (o) =>
+                        o.toLocaleLowerCase() ===
+                        value.trim().toLocaleLowerCase(),
+                    );
+                    // Só os portos da lista: o que não é da lista sai.
+                    setPorts(
+                      ports.map((p, i) => (i === index ? (match ?? "") : p)),
+                    );
+                  }}
+                  value={value}
+                  aria-label={fill(L.portN, { n: String(index + 1) })}
+                  onChange={(e) =>
+                    setPorts(
+                      ports.map((p, i) => (i === index ? e.target.value : p)),
+                    )
+                  }
+                  {...(index === 0 ? { "data-quote-port": "" } : {})}
+                  data-quote-port-item={index}
+                  data-missing={
+                    index === 0 && lacks("port") ? "true" : undefined
+                  }
+                  className={cx(
+                    textBox,
+                    index === 0 && lacks("port")
+                      ? "border-red-400 bg-red-50"
+                      : "border-zinc-300 bg-white",
+                  )}
+                />
+                {ports.length > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPorts(ports.filter((_, i) => i !== index))
+                    }
+                    aria-label={L.portRemove}
+                    title={L.portRemove}
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-50"
+                    data-quote-port-remove={index}
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          {portOptions.length ? (
+            <datalist id={`quote-${quoteId}-ports`} data-quote-port-options>
+              {portOptions.map((o) => (
+                <option key={o} value={o} />
+              ))}
+            </datalist>
+          ) : null}
+          {ports.length < MAX_PORTS ? (
+            <button
+              type="button"
+              onClick={() => setPorts([...ports, ""])}
+              className="mt-2 text-xs font-medium text-brand-700 underline underline-offset-2"
+              data-quote-port-add
+            >
+              + {L.portAdd}
+            </button>
+          ) : null}
         </div>
-        {ports.length < MAX_PORTS ? (
-          <button
-            type="button"
-            onClick={() => setPorts([...ports, ""])}
-            className="mt-2 text-xs font-medium text-brand-700 underline underline-offset-2"
-            data-quote-port-add
-          >
-            + {L.portAdd}
-          </button>
-        ) : null}
       </div>
-      <div className="mt-3">
-        <FieldLabel htmlFor={`quote-${quoteId}-note`}>{L.note}</FieldLabel>
-        <Textarea
-          id={`quote-${quoteId}-note`}
-          rows={2}
-          maxLength={2000}
-          value={terms.note}
-          onChange={(e) => setTerms({ ...terms, note: e.target.value })}
-        />
-      </div>
+    </div>
+  );
+
+  // Observações (dono, 23/11/2026): abaixo da ficha técnica.
+  const noteBlock = (
+    <div className="border-t border-zinc-100 pt-3" data-quote-note>
+      <FieldLabel htmlFor={`quote-${quoteId}-note`}>{L.note}</FieldLabel>
+      <Textarea
+        id={`quote-${quoteId}-note`}
+        rows={2}
+        maxLength={2000}
+        value={terms.note}
+        onChange={(e) => setTerms({ ...terms, note: e.target.value })}
+      />
     </div>
   );
 
@@ -969,7 +1018,7 @@ export function QuoteAnswerForm({
         ) => {
           const id = `quote-${p.productId}-${key}`;
           return (
-            <div className="min-w-0">
+            <div className={FIELD}>
               <FieldLabel htmlFor={id}>{opts.label}</FieldLabel>
               <span
                 className={cx(
@@ -1026,7 +1075,6 @@ export function QuoteAnswerForm({
                 <p className="font-semibold leading-5 text-zinc-900">
                   {p.name}
                 </p>
-                {headerSlot}
                 <p className="text-sm text-zinc-700">
                   <span className="font-medium">{L.quantity}:</span>{" "}
                   {p.quantityText}
@@ -1038,6 +1086,21 @@ export function QuoteAnswerForm({
                   >
                     {p.specification}
                   </p>
+                ) : null}
+                {p.catalog.length ? (
+                  <dl
+                    className="space-y-0.5 border-t border-zinc-100 pt-2 text-xs"
+                    data-quote-item-catalog={p.productId}
+                  >
+                    <dt className="font-medium text-zinc-800">
+                      {L.catalogTitle}
+                    </dt>
+                    {p.catalog.map(([label, value]) => (
+                      <dd key={label} className="text-zinc-700">
+                        <span className="text-zinc-500">{label}:</span> {value}
+                      </dd>
+                    ))}
+                  </dl>
                 ) : null}
                 {p.scheduleText ? (
                   <div
@@ -1084,17 +1147,14 @@ export function QuoteAnswerForm({
                 {/* Preço e termos comerciais (dono, 23/11/2026): primeiro a
                     moeda, depois o preço; os termos comerciais ficam aqui,
                     na primeira seção. */}
-                <div
-                  className="grid gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)]"
-                  data-quote-price-box={p.productId}
-                >
+                <div className={ROW} data-quote-price-box={p.productId}>
                   <input
                     type="hidden"
                     form={formId}
                     name="productId"
                     value={p.productId}
                   />
-                  <div className="min-w-0">
+                  <div className="w-min min-w-[9rem]">
                     <FieldLabel htmlFor={`quote-currency-${p.productId}`}>
                       {L.currency}
                     </FieldLabel>
@@ -1114,7 +1174,7 @@ export function QuoteAnswerForm({
                     </Select>
                   </div>
                   <div
-                    className="min-w-0"
+                    className="w-min min-w-[13rem]"
                     data-missing={
                       lacks(`${p.productId}.price`) ? "true" : undefined
                     }
@@ -1193,11 +1253,8 @@ export function QuoteAnswerForm({
 
                     {/* Linha 1: código na fábrica e peças por caixa master
                         (dono, 23/11/2026). */}
-                    <div
-                      className="grid gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)]"
-                      data-sheet-row="pieces"
-                    >
-                      <div className="min-w-0">
+                    <div className={ROW} data-sheet-row="pieces">
+                      <div className="w-min min-w-[17rem]">
                         <FieldLabel htmlFor={`quote-${p.productId}-code`}>
                           {L.f.code}
                         </FieldLabel>
@@ -1302,10 +1359,7 @@ export function QuoteAnswerForm({
                     ) : null}
 
                     {/* Linha 2: pesos, com "Sem peso" ao lado do bruto, e o CBM no fim. */}
-                    <div
-                      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)]"
-                      data-sheet-row="weight"
-                    >
+                    <div className={ROW} data-sheet-row="weight">
                       <div className="min-w-0">
                         {numberBox("netWeightKg", {
                           label: L.f.net,
@@ -1330,11 +1384,31 @@ export function QuoteAnswerForm({
                             {L.grossNotGiven}
                           </p>
                         ) : (
-                          hintFor("grossWeightBoxKg")
+                          <>
+                            {hintFor("grossWeightBoxKg")}
+                            {draft.grossWeightBoxKg && draft.masterBoxQty ? (
+                              <p
+                                className="mt-1 text-xs text-zinc-600"
+                                data-sheet-gross-per-piece={p.productId}
+                              >
+                                {fill(L.grossPerPiece, {
+                                  kg: show(
+                                    draft.grossWeightBoxKg / draft.masterBoxQty,
+                                    3,
+                                  ),
+                                })}
+                              </p>
+                            ) : null}
+                          </>
                         )}
                       </div>
                       <div className="min-w-0 sm:pt-5">
-                        <label className="inline-flex h-9 cursor-pointer items-center gap-2 text-[13px] font-medium text-zinc-800">
+                        <label
+                          className="inline-flex h-9 cursor-pointer items-center gap-2 whitespace-nowrap text-[13px] font-medium text-zinc-800"
+                          // A explicação fica na dica (dono, 23/11/2026):
+                          // o texto ao lado empurrava o CBM para outra linha.
+                          title={L.grossUnknownHint}
+                        >
                           <input
                             type="checkbox"
                             form={formId}
@@ -1346,18 +1420,13 @@ export function QuoteAnswerForm({
                                 grossUnknown: e.target.checked,
                               })
                             }
-                            aria-describedby={`quote-${p.productId}-gross-hint`}
+                            title={L.grossUnknownHint}
+                            aria-label={`${L.grossUnknown}: ${L.grossUnknownHint}`}
                             className="h-4 w-4 accent-brand-700"
                             data-sheet-gross-unknown={p.productId}
                           />
                           {L.grossUnknown}
                         </label>
-                        <p
-                          id={`quote-${p.productId}-gross-hint`}
-                          className="max-w-[14rem] text-xs text-zinc-500"
-                        >
-                          {L.grossUnknownHint}
-                        </p>
                       </div>
                       <div className="min-w-0">
                         {numberBox("cbm", {
@@ -1369,7 +1438,7 @@ export function QuoteAnswerForm({
 
                     {/* Linha 3: as três medidas da caixa master, em cm. */}
                     <div data-sheet-row="box">
-                      <div className="grid grid-cols-3 gap-3 sm:max-w-md">
+                      <div className={ROW}>
                         {numberBox("boxLengthCm", {
                           label: L.f.length,
                           lacking: lacks(`${p.productId}.box`),
@@ -1397,7 +1466,7 @@ export function QuoteAnswerForm({
 
                     {/* Linha 4: o material. */}
                     <div data-sheet-row="material">
-                      <div className="min-w-0">
+                      <div className="min-w-[16rem] max-w-md">
                         <FieldLabel>{L.f.material}</FieldLabel>
                         <MaterialPicker
                           options={materials}
@@ -1529,6 +1598,8 @@ export function QuoteAnswerForm({
                     ) : null}
                   </>
                 )}
+
+                {p.productId === focusProductId ? noteBlock : null}
 
                 {p.askPhoto || p.photoUrl ? (
                   <div

@@ -213,6 +213,9 @@ export const pt = {
   "quote.incotermValueHint":
     "Quanto custa levar a mercadoria da fábrica até o porto, na moeda da cotação.",
   "quote.port.add": "Adicionar porto",
+  "quote.grossPerPiece": "Peso bruto por peça: {kg} kg",
+  "quote.catalogTitle": "No cadastro da Wellmix",
+  "quote.catalog.dims": "Caixa master (cm)",
   "quote.port.remove": "Remover este porto",
   "quote.port.n": "Porto de embarque {n}",
   "quote.termsShared":
@@ -527,6 +530,9 @@ export const en: Record<keyof typeof pt, string> = {
   "quote.incotermValueHint":
     "Cost to take the goods from the factory to the port, in the quotation currency.",
   "quote.port.add": "Add a port",
+  "quote.grossPerPiece": "Gross weight per piece: {kg} kg",
+  "quote.catalogTitle": "In the Wellmix record",
+  "quote.catalog.dims": "Master carton (cm)",
   "quote.port.remove": "Remove this port",
   "quote.port.n": "Port of loading {n}",
   "quote.termsShared":
@@ -821,6 +827,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "quote.incotermValue": "贸易术语金额 (EXW)",
   "quote.incotermValueHint": "将货物从工厂运到港口的费用，按报价币种。",
   "quote.port.add": "添加港口",
+  "quote.grossPerPiece": "单件毛重：{kg} kg",
+  "quote.catalogTitle": "Wellmix 资料",
+  "quote.catalog.dims": "外箱 (cm)",
   "quote.port.remove": "移除此港口",
   "quote.port.n": "装运港 {n}",
   "quote.termsShared":

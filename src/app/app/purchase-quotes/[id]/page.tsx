@@ -1,3 +1,4 @@
+import { supplierPortOptions } from "@/lib/services/ports";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -47,6 +48,7 @@ import {
   sheetTolerances,
 } from "@/lib/services/supplier-sheets";
 import {
+  baselineFromProduct,
   boxesForSheet,
   draftFromBaseline,
   draftFromData,
@@ -143,6 +145,10 @@ export default async function PurchaseQuotePage({
     // vez do par; quem já vendeu confere o que temos (o aviso de revalidação).
     // Rascunho automático deste login (dono, 20/11/2026): o que estava
     // digitado volta para a tela.
+    const supplierParty = await getStore()
+      .get("parties", response.supplierId)
+      .catch(() => null);
+    const portOptions = await supplierPortOptions(supplierParty?.country);
     const [lines, tolerances, draft, catalog] = await Promise.all([
       quoteSheetLines(quote, response),
       sheetTolerances(),
@@ -158,6 +164,36 @@ export default async function PurchaseQuotePage({
         search: `${m.namePt} ${m.nameEn} ${m.nameZh}`,
         namePt: m.namePt,
       }));
+    const num = (value: number, digits = 3) =>
+      value.toLocaleString(t.intl, { maximumFractionDigits: digits });
+    const catalogOf = (productId: string): Array<[string, string]> => {
+      const product = sampleProducts.find((p) => p.id === productId);
+      if (!product) return [];
+      const b = baselineFromProduct(product);
+      const labels = answerLabels(t).f;
+      const rows: Array<[string, string | null]> = [
+        [
+          labels.master,
+          b.masterBoxQty !== null ? num(b.masterBoxQty, 0) : null,
+        ],
+        [labels.net, b.netWeightKg !== null ? num(b.netWeightKg) : null],
+        [
+          labels.gross,
+          b.grossWeightBoxKg !== null ? num(b.grossWeightBoxKg) : null,
+        ],
+        [
+          t("quote.catalog.dims"),
+          b.boxLengthCm !== null &&
+          b.boxWidthCm !== null &&
+          b.boxHeightCm !== null
+            ? `${num(b.boxLengthCm, 2)} × ${num(b.boxWidthCm, 2)} × ${num(b.boxHeightCm, 2)}`
+            : null,
+        ],
+        [labels.cbm, b.cbm !== null ? num(b.cbm, 4) : null],
+        [labels.material, b.material?.trim() || null],
+      ];
+      return rows.filter((r): r is [string, string] => !!r[1]);
+    };
     const answerProducts: QuoteSheetProduct[] = quote.items.map((item) => {
       const line = lines.find((l) => l.productId === item.productId)!;
       const scheduleItems = item.schedule?.items ?? [];
@@ -218,6 +254,10 @@ export default async function PurchaseQuotePage({
           : null,
         inner: line.inner,
         // Ficha de antes do catálogo (texto livre): ele escolhe de novo.
+        // O que o cadastro da Wellmix tem do produto (dono, 23/11/2026): as
+        // mesmas informações da ficha técnica. O código na fábrica fica de
+        // fora: é de outro fornecedor.
+        catalog: catalogOf(item.productId),
         legacyMaterial:
           line.ownDraft && !line.ownDraft.materialIds?.length
             ? line.ownDraft.material || null
@@ -398,6 +438,9 @@ export default async function PurchaseQuotePage({
           {t(`quote.response.${state}` as DictionaryKey)}
         </Badge>
         <QuoteDeadline t={t} dueAt={response.dueAt} now={now} />
+        {/* A conversa do produto fica no alto, à direita do prazo (dono,
+            23/11/2026). */}
+        {focus ? <span className="ml-auto">{productChat(focus)}</span> : null}
       </div>
     );
     const answerForm = editable ? (
@@ -427,7 +470,7 @@ export default async function PurchaseQuotePage({
         draftAction={saveQuoteDraftAction}
         focusProductId={focus}
         listHref={listHref}
-        headerSlot={focus ? productChat(focus) : null}
+        portOptions={portOptions}
       />
     ) : (
       <QuoteAnswerSummary
