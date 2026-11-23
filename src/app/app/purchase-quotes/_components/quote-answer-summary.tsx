@@ -68,7 +68,15 @@ export function QuoteAnswerSummary({
     response.status === "answered"
       ? [
           [t("strategy.currency"), response.currency ?? "—"],
-          [t("strategy.last.incoterm"), response.incoterm ?? "—"],
+          [
+            t("strategy.last.incoterm"),
+            response.incoterm
+              ? response.incoterm === "EXW" &&
+                response.incotermValue != null
+                ? `EXW · ${t("quote.incotermValue")}: ${response.currency ?? ""} ${response.incotermValue.toLocaleString(t.intl, { maximumFractionDigits: 4 })}`
+                : response.incoterm
+              : "—",
+          ],
           [
             t("strategy.last.leadTime"),
             response.leadTimeDays !== null

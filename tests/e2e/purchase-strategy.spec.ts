@@ -373,6 +373,9 @@ test("estratégia de compra: reposição e encomenda pelo fornecedor da última 
   await page.waitForURL(new RegExp(`/app/purchase-quotes/${quoteId}`));
   await expect(page.locator("[data-quote-answer-form]")).toBeVisible();
   await expect(page.locator("main")).not.toContainText("Loja do João");
+  // Um produto por tela (dono, 23/11/2026): a ficha fica na tela do produto.
+  await page.locator("[data-quote-product-open]").first().click();
+  await page.waitForURL(/[?&]item=/);
   // Ele já vendeu o produto (o pedido direto acima): confere o que temos,
   // com o aviso de revalidação, uma vez só (dono, 20/11/2026).
   await expect(page.locator("[data-quote-disclaimer]")).toBeVisible();

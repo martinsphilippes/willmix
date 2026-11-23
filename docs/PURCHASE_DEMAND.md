@@ -455,3 +455,19 @@ A Estratégia de compra (`/app/purchase-strategy`) tem duas formas de ver, à es
 - O card fica montado mesmo recolhido: o que foi marcado nele não se perde ao fechar a linha.
 - A escolha vai no endereço (`?view=cards|table`) e fica lembrada no navegador (cookie `strategyView`, um ano): a tela abre do mesmo jeito da próxima vez. Sem escolha: cards.
 - Nada muda nas regras nem nas ações; é só a forma de listar. Código: `_components/strategy-view.tsx` (`StrategyViewToggle`, `StrategyTable`, `StrategyTableRow`).
+
+## Cotação do fornecedor: lista padrão, um produto por tela e formulário reorganizado (dono, 23/11/2026)
+
+Pedido do dono para o lado do fornecedor:
+
+1. **Lista de cotações** (`/app/purchase-quotes`): tabela padrão de pedidos (docs/ORDER_TABLES.md) com as colunas dele, na ordem padrão: Nº, Data, Status (de quem é a vez), Situação (o momento da resposta), Prazo resposta, Itens, Entregas e Valor total (o da resposta dele). Cliente, condições de venda e valor de venda não saem para quem é de fora.
+2. **Nível dos produtos**: a cotação (`/app/purchase-quotes/<id>`) abre na lista dos produtos (tabela padrão de itens: Seq., Foto, Situação, Status, Prazo, Descrição, Seu preço, Pçs na caixa, Pçs na inner, Qtd. caixas, Qtd. peças, CBM e "Sua resposta": Preenchido ou Falta preencher). Cada produto abre a tela só dele (`?item=<produto>`). O envio da cotação fica na lista (e também na tela do produto); a resposta continua sendo uma só, com todos os produtos.
+3. **Tela do produto**:
+   - Primeira seção: **Moeda, depois Preço**, e os **Termos comerciais** (Incoterm, prazo de produção, pedido mínimo, porto e observações). Moeda e termos valem para a cotação inteira; a tela de cada produto mostra os mesmos.
+   - **EXW** abre o campo **Valor do Incoterm** (obrigatório no EXW; `purchase_quote_responses.incotermValue`, na moeda da resposta).
+   - **Porto de embarque**: "Adicionar porto" e remover (até 4); vão juntos em `port`, separados por " / ".
+   - **Ficha técnica**: linha 1, Código na fábrica e Peças por caixa master; linha 2, pesos (líquido, bruto, "Sem peso") e o CBM no fim; linha 3, as dimensões; linha 4, o Material.
+   - **Conversa**: o botão "Conversar sobre este produto" abre a conversa daquele produto na cotação.
+   - A amostra e a contraproposta do produto ficam na tela dele.
+
+Como funciona por dentro: o formulário é o mesmo (`QuoteAnswerForm`), com `focusProductId`; os produtos que não estão na tela seguem no formulário, escondidos, com o que já foi preenchido (rascunho automático por login). As ações de conversa e de amostra do fornecedor voltam para a tela do produto.

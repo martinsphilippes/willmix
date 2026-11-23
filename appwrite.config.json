@@ -12304,6 +12304,13 @@
           "size": 10
         },
         {
+          "key": "incotermValue",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
           "key": "leadTimeDays",
           "required": false,
           "array": false,

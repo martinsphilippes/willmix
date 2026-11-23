@@ -608,7 +608,9 @@ export async function QuoteBoard({
                   <Td className="text-xs text-zinc-600">
                     {r.status === "answered"
                       ? [
-                          r.incoterm,
+                          r.incoterm === "EXW" && r.incotermValue != null
+                            ? `EXW (${r.currency ?? ""} ${r.incotermValue.toLocaleString(t.intl, { maximumFractionDigits: 4 })})`
+                            : r.incoterm,
                           r.leadTimeDays !== null
                             ? t("strategy.days", { n: r.leadTimeDays })
                             : null,

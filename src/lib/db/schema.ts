@@ -3843,7 +3843,14 @@ export interface PurchaseQuoteResponse extends BaseRow {
   prices: QuoteResponsePrice[] | null;
   currency: string | null;
   incoterm: string | null;
+  /**
+   * Valor do Incoterm quando ele é EXW (dono, 23/11/2026): o que o
+   * fornecedor informa para levar a mercadoria da fábrica ao porto, na
+   * moeda da resposta. Nulo nos outros incoterms e nas respostas antigas.
+   */
+  incotermValue?: number | null;
   leadTimeDays: number | null;
+  /** Um ou mais portos de embarque, separados por " / " (dono, 23/11/2026). */
   port: string | null;
   moq: number | null;
   note: string | null;
@@ -6713,6 +6720,7 @@ export const TABLES: Record<TableName, TableDef> = {
       prices: json(),
       currency: str(3),
       incoterm: str(10),
+      incotermValue: float(),
       leadTimeDays: int(),
       port: str(120),
       moq: float(),
