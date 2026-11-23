@@ -9,6 +9,7 @@ import { can, canSeePurchasePrice } from "@/lib/auth/function-access";
 import { lastPurchases } from "@/lib/services/purchase-strategy";
 import { responseState, sweepQuotes } from "@/lib/services/purchase-quote";
 import {
+  quoteProductTerms,
   canCounterQuote,
   canMessageQuote,
   pendingQuoteProposals,
@@ -173,8 +174,8 @@ export async function QuotationQuotePage({
         : null,
       currency: r.currency,
       incoterm: r.incoterm,
-      moq: r.moq,
-      leadTimeDays: r.leadTimeDays,
+      // Prazo e mínimo do produto (dono, 23/11/2026).
+      ...quoteProductTerms(r, productId),
       conditions: [r.port, r.note].filter(Boolean).join(" · ") || null,
       pending: pendingQuoteProposals(r).some((e) => e.productId === productId),
       chat: (

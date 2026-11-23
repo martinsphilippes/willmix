@@ -1,3 +1,4 @@
+import { quoteProductTerms } from "@/lib/quote-negotiation";
 import type { Translate } from "@/i18n";
 import { productNameText } from "@/i18n";
 import type {
@@ -71,22 +72,10 @@ export function QuoteAnswerSummary({
           [
             t("strategy.last.incoterm"),
             response.incoterm
-              ? response.incoterm === "EXW" &&
-                response.incotermValue != null
+              ? response.incoterm === "EXW" && response.incotermValue != null
                 ? `EXW · ${t("quote.incotermValue")}: ${response.currency ?? ""} ${response.incotermValue.toLocaleString(t.intl, { maximumFractionDigits: 4 })}`
                 : response.incoterm
               : "—",
-          ],
-          [
-            t("strategy.last.leadTime"),
-            response.leadTimeDays !== null
-              ? t("strategy.days", { n: response.leadTimeDays })
-              : "—",
-          ],
-          [t("quote.port"), response.port ?? "—"],
-          [
-            t("strategy.last.moq"),
-            response.moq !== null ? n(response.moq, 0) : "—",
           ],
           [t("demand.notes"), response.note ?? "—"],
         ]
@@ -138,6 +127,26 @@ export function QuoteAnswerSummary({
                       <span className="block text-xs text-zinc-500">
                         {item.quantity.toLocaleString(t.intl)} {item.unit}
                       </span>
+                      {/* Prazo e pedido mínimo do produto (dono, 23/11/2026). */}
+                      {(() => {
+                        const own = quoteProductTerms(response, item.productId);
+                        const parts = [
+                          own.leadTimeDays !== null
+                            ? `${t("strategy.last.leadTime")}: ${t("strategy.days", { n: own.leadTimeDays })}`
+                            : null,
+                          own.moq !== null
+                            ? `${t("strategy.last.moq")}: ${n(own.moq, 0)}`
+                            : null,
+                        ].filter(Boolean);
+                        return parts.length ? (
+                          <span
+                            className="block text-xs text-zinc-600"
+                            data-quote-sent-terms={item.productId}
+                          >
+                            {parts.join(" · ")}
+                          </span>
+                        ) : null;
+                      })()}
                       {(() => {
                         const inner = quoteInnerState(item.inner);
                         return inner.kind === "required" ? (

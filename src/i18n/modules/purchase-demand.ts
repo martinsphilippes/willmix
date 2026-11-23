@@ -216,7 +216,7 @@ export const pt = {
   "quote.port.remove": "Remover este porto",
   "quote.port.n": "Porto de embarque {n}",
   "quote.termsShared":
-    "Moeda e termos comerciais valem para todos os produtos desta cotação.",
+    "Moeda, Incoterm e porto valem para todos os produtos desta cotação. Prazo de produção e pedido mínimo são deste produto.",
   "quote.products.title": "Produtos da cotação",
   "quote.products.hint":
     "Abra cada produto para informar o preço e a ficha técnica. Depois envie a cotação aqui embaixo.",
@@ -530,7 +530,7 @@ export const en: Record<keyof typeof pt, string> = {
   "quote.port.remove": "Remove this port",
   "quote.port.n": "Port of loading {n}",
   "quote.termsShared":
-    "Currency and commercial terms apply to every product in this quotation.",
+    "Currency, Incoterm and port apply to every product in this quotation. Lead time and minimum order are for this product.",
   "quote.products.title": "Quotation products",
   "quote.products.hint":
     "Open each product to enter the price and the technical sheet. Then send the quotation below.",
@@ -823,10 +823,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "quote.port.add": "添加港口",
   "quote.port.remove": "移除此港口",
   "quote.port.n": "装运港 {n}",
-  "quote.termsShared": "币种和商务条款适用于本次询价的所有产品。",
+  "quote.termsShared":
+    "币种、贸易术语和港口适用于本次询价的所有产品；生产周期和最小起订量仅针对此产品。",
   "quote.products.title": "询价产品",
-  "quote.products.hint":
-    "打开每个产品填写价格和技术资料，然后在下方发送报价。",
+  "quote.products.hint": "打开每个产品填写价格和技术资料，然后在下方发送报价。",
   "quote.products.yourPrice": "您的价格",
   "quote.products.answer": "您的回复",
   "quote.products.filled": "已填写",

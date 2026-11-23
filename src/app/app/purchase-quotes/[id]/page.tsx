@@ -57,6 +57,7 @@ import { materialName } from "@/lib/materials";
 import { QuoteBoard } from "../_components/quote-board";
 import { QuoteChat } from "../../supplier-requests/_components/board-chat";
 import {
+  quoteProductTerms,
   canMessageQuote,
   pendingQuoteProposals,
   quoteProductMessages,
@@ -181,6 +182,14 @@ export default async function PurchaseQuotePage({
           response.prices
             ?.find((p) => p.productId === item.productId)
             ?.unitPrice.toString() ?? "",
+        // Prazo e mínimo do produto (dono, 23/11/2026); na resposta antiga,
+        // os da cotação.
+        leadTimeDays:
+          quoteProductTerms(
+            response,
+            item.productId,
+          ).leadTimeDays?.toString() ?? "",
+        moq: quoteProductTerms(response, item.productId).moq?.toString() ?? "",
         // Caixas pela caixa dele: em peças, uma conta por programação.
         rounds: isPieceUnit(item.unit)
           ? scheduleItems.length

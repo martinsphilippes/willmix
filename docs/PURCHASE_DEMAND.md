@@ -471,3 +471,12 @@ Pedido do dono para o lado do fornecedor:
    - A amostra e a contraproposta do produto ficam na tela dele.
 
 Como funciona por dentro: o formulário é o mesmo (`QuoteAnswerForm`), com `focusProductId`; os produtos que não estão na tela seguem no formulário, escondidos, com o que já foi preenchido (rascunho automático por login). As ações de conversa e de amostra do fornecedor voltam para a tela do produto.
+
+### Prazo de produção e pedido mínimo por produto (dono, 23/11/2026)
+
+Decisão do dono: prazo de produção e pedido mínimo são **de cada produto** da cotação. Moeda, Incoterm, valor do Incoterm, porto e observações continuam um só para a cotação.
+
+- Gravados dentro do preço de cada produto (`purchase_quote_responses.prices[].leadTimeDays` e `.moq`; sem coluna nova). `leadTimeDays` e `moq` da resposta ficam como resumo (o maior prazo e o maior mínimo), para o que ainda lê um número só.
+- **Resposta antiga** (um prazo e um mínimo para a cotação): vale para todos os produtos dela. Toda leitura passa por `quoteProductTerms(resposta, produto)` (`src/lib/quote-negotiation.ts`).
+- **Fornecedor**: os dois campos ficam na tela de cada produto e são obrigatórios em todos; a resposta enviada mostra o prazo e o mínimo de cada produto.
+- **Wellmix**: o quadro comparativo do produto, o histórico de propostas e a coluna de condições mostram o prazo e o mínimo daquele produto; a solicitação ao fornecedor que nasce da cotação vencedora leva os do produto dela.
