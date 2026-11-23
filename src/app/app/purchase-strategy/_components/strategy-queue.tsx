@@ -21,6 +21,7 @@ import {
   type StrategySendState,
 } from "../../actions/purchase-demand";
 import type { PackingBasis, PackingTotals } from "@/lib/strategy-packing";
+import { sumPackingTotals } from "@/lib/strategy-packing";
 import { PackingCells, type PackingTexts } from "./packing-cells";
 import {
   CARD_PRODUCTS,
@@ -1072,6 +1073,21 @@ export function StrategyQueue({
                 const last =
                   line.last ?? (members.length === 1 ? members[0].last : null);
                 const choice = byLine[line.key].choice;
+                // Peças, caixas master e m³ da solicitação: a soma dos
+                // produtos (sem a leitura de um deles, "—").
+                const sum = sumPackingTotals(
+                  members.map((m) => m.packing?.totals ?? null),
+                );
+                const number = (value: number | null, digits = 0) =>
+                  value === null ? (
+                    "—"
+                  ) : (
+                    <span className="block text-right tabular-nums">
+                      {value.toLocaleString(texts.intl, {
+                        maximumFractionDigits: digits,
+                      })}
+                    </span>
+                  );
                 return (
                   <StrategyTableRow
                     key={line.key}
@@ -1092,6 +1108,15 @@ export function StrategyQueue({
                         {members.length === 1
                           ? members[0].productName
                           : fill(tableTexts.productsN, { n: members.length })}
+                      </span>,
+                      <span key="pc" data-strategy-row-pieces>
+                        {number(sum.pieces)}
+                      </span>,
+                      <span key="bx" data-strategy-row-boxes>
+                        {number(sum.masterBoxes)}
+                      </span>,
+                      <span key="cb" data-strategy-row-cbm>
+                        {number(sum.cbm, 3)}
                       </span>,
                       last
                         ? [last.supplierName, last.price]

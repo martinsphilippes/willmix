@@ -193,3 +193,36 @@ export function sameBasis(a: PackingBasis, b: PackingBasis): boolean {
     a.cbmOtherBox === b.cbmOtherBox
   );
 }
+
+/**
+ * Peças, caixas master e cubagem de uma solicitação inteira (a linha da
+ * tabela da Estratégia; dono, 23/11/2026): a soma dos produtos. Um produto
+ * sem a leitura de um dos números deixa aquele total nulo ("—"): soma
+ * parcial não aparece como se fosse o total.
+ */
+export function sumPackingTotals(
+  list: ReadonlyArray<Pick<
+    PackingTotals,
+    "pieces" | "masterBoxes" | "cbm"
+  > | null>,
+): { pieces: number | null; masterBoxes: number | null; cbm: number | null } {
+  if (!list.length) return { pieces: null, masterBoxes: null, cbm: null };
+  const sum = (
+    pick: (t: NonNullable<(typeof list)[number]>) => number | null,
+  ) => {
+    let total = 0;
+    for (const item of list) {
+      const value = item ? pick(item) : null;
+      if (value === null || !Number.isFinite(value)) return null;
+      total += value;
+    }
+    return total;
+  };
+  const pieces = sum((t) => (t.pieces > 0 ? t.pieces : null));
+  const cbm = sum((t) => t.cbm);
+  return {
+    pieces,
+    masterBoxes: sum((t) => t.masterBoxes),
+    cbm: cbm === null ? null : Math.round(cbm * 10_000) / 10_000,
+  };
+}
