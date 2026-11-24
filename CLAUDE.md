@@ -47,16 +47,16 @@ Velocidade: prefira a solução simples que funciona hoje; integrações sem cre
 
 ## Entrega sem perguntar (autorização do dono)
 
-Ao terminar uma tarefa, sem pedir confirmação:
+Publicar primeiro, verificar depois (dono, 24/11/2026): a mudança vai ao ar antes da verificação completa. Ao terminar uma tarefa, sem pedir confirmação:
 
-1. Rodar `npm run lint && npm run typecheck && npm test` e o E2E (`npm run test:e2e`).
-2. Abrir o PR para `wellmix`.
-3. Esperar o CI (`verify`) ficar verde e mesclar o PR.
-4. Se o PR mexeu em `src/lib/db/schema.ts`, publicar o esquema no **Supabase** (banco de produção desde 11/11/2026, projeto `rokbtrvkzllowyqzcauq`) logo depois do merge: migração só aditiva com o que falta do `supabase/schema.sql` (`scripts/supabase-missing.ts`, docs/SUPABASE.md "Publicar o esquema"), aplicada pela ferramenta do Supabase, e conferir as colunas por tabela. Se falhar, avisar o dono com o erro. O Appwrite não recebe mais o esquema.
+1. Rodar só a checagem rápida, `npm run lint && npm run typecheck` (não publicar o que nem compila).
+2. Abrir o PR para `wellmix` e mesclar logo; a Vercel publica.
+3. Se o PR mexeu em `src/lib/db/schema.ts`, publicar o esquema no **Supabase** (banco de produção desde 11/11/2026, projeto `rokbtrvkzllowyqzcauq`) logo depois do merge: migração só aditiva com o que falta do `supabase/schema.sql` (`scripts/supabase-missing.ts`, docs/SUPABASE.md "Publicar o esquema"), aplicada pela ferramenta do Supabase, e conferir as colunas por tabela. Se falhar, avisar o dono com o erro. O Appwrite não recebe mais o esquema.
+4. Depois da publicação, verificar: `npm test`, o E2E (`npm run test:e2e`), o CI (`verify`) e os erros da publicação na Vercel. Se algo falhar, corrigir na hora com um PR novo (ou desfazer o PR, se a correção não for rápida) e avisar o dono.
 
 Exceções (parar e avisar o dono em vez de mesclar):
 
-- CI ou E2E falhando.
+- A checagem rápida (lint ou typecheck) falhando.
 - Conflito com a base ou outro PR aberto mexendo na mesma tela ou regra.
 - Decisão de negócio tomada sem confirmação do dono.
 - Mudança que apaga ou altera dados, telas, rotas ou campos existentes.

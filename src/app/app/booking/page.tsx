@@ -14,7 +14,12 @@ import {
   listBookingLots,
   myBookingLocks,
 } from "@/lib/services/booking-lots";
-import { durationText, itemTypeKey, lockLate } from "@/lib/booking-locks";
+import {
+  durationText,
+  itemTypeKey,
+  lockDueText,
+  lockLate,
+} from "@/lib/booking-locks";
 import { getSettings } from "@/lib/settings";
 import { dictionaries } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
@@ -94,6 +99,7 @@ export default async function BookingLotsPage({
       lockByType: e.held?.lock.scope === "type",
       heldMinutes: e.held ? e.held.minutes : null,
       heldText: e.held ? durationText(e.held.minutes) : "",
+      heldDueText: e.held ? lockDueText(e.held.since, slaHours) : "",
       heldLate: e.held ? lockLate(e.held.minutes, slaHours) : false,
       id: e.lot.id,
       number: e.lot.number,
