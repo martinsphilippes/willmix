@@ -57,6 +57,8 @@ import {
   ResponsibleTip,
 } from "@/components/request-responsible-tip";
 import Link from "next/link";
+import { StatusLink } from "@/components/status-link";
+import { turnTone } from "@/lib/turn";
 import { roundsDates } from "@/components/purchase-rounds";
 import { dateTime } from "./negotiation";
 import {
@@ -747,11 +749,20 @@ export function SupplierRequestTable({
                   data-supplier-table-turn={turn?.party ?? "none"}
                   data-supplier-table-turn-step={turn?.step}
                 >
-                  {turn
-                    ? t(
+                  {turn ? (
+                    // O status leva ao lugar de agir (dono, 24/11/2026),
+                    // o mesmo da ação embaixo.
+                    <StatusLink
+                      tone={turnTone(turn.party)}
+                      href={supplierRequestStepHref(r.id, turn.step)}
+                    >
+                      {t(
                         `supplierRequests.negotiation.turn.${turn.party}` as DictionaryKey,
-                      )
-                    : "—"}
+                      )}
+                    </StatusLink>
+                  ) : (
+                    "—"
+                  )}
                   {/* A ação, com as mesmas palavras de Encomendas e das
                       Pendências ("Carregar a amostragem"), é o link para o
                       lugar de agir, o mesmo da pendência (dono,

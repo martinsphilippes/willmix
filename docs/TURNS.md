@@ -65,6 +65,8 @@ A vez é o papel do próximo item obrigatório do marco atual. Cada item é uma 
 
 ## 3. Onde aparece
 
+**O status leva ao lugar de agir** (dono, 24/11/2026): em toda linha de tabela, o selo de quem está com a vez é um link para onde se faz a etapa em aguardo, o mesmo lugar da pendência (`StatusLink` e `requestStepHref`; docs/ORDER_TABLES.md, seção 2). Na Próxima ação de Encomendas, todos os passos ganharam o link (antes, só os da solicitação ao fornecedor).
+
 - **Encomendas** (`/app/requests`):
   - a Situação é quem está com a vez (a situação gravada fica na dica);
   - a Próxima ação é a ação e, embaixo, quem deve agir: a pessoa, a equipe (função) ou o parceiro, pela mesma regra das Pendências, com os nomes ao tocar (dono, 19/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 6);

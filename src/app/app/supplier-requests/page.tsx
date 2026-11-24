@@ -20,6 +20,7 @@ import {
   supplierRequestTurn,
 } from "@/lib/supplier-request-sampling";
 import { dictionaries } from "@/i18n/dictionaries";
+import { StatusLink } from "@/components/status-link";
 import { SUPPLIER_REQUEST_STATUSES } from "@/lib/db/schema";
 import { fallbackError } from "@/i18n/error-text";
 import {
@@ -491,9 +492,14 @@ export default async function SupplierRequestsPage({
                     <Td className="whitespace-nowrap">
                       {turn ? (
                         <span data-quote-turn={turn}>
-                          <Badge tone={turnTone(turn)}>
+                          {/* O status leva ao quadro da cotação (dono,
+                              24/11/2026), o mesmo lugar da pendência. */}
+                          <StatusLink
+                            tone={turnTone(turn)}
+                            href={`/app/purchase-quotes/${encodeURIComponent(q.id)}`}
+                          >
                             {t(turnWaitingKey(turn))}
-                          </Badge>
+                          </StatusLink>
                         </span>
                       ) : (
                         "—"
@@ -800,9 +806,19 @@ export default async function SupplierRequestsPage({
                       >
                         {turn ? (
                           <>
-                            <Badge tone={turnTone(turn.party)}>
+                            <StatusLink
+                              tone={turnTone(turn.party)}
+                              href={
+                                turnProduct
+                                  ? supplierRequestStepHref(
+                                      turnProduct.id,
+                                      turn.step,
+                                    )
+                                  : null
+                              }
+                            >
                               {t(turnWaitingKey(turn.party))}
-                            </Badge>
+                            </StatusLink>
                             {turnAction}
                             {/* Quem age e, para o administrador, o login
                                 de quem envia (dono, 24/11/2026). */}

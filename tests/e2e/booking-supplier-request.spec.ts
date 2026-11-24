@@ -656,6 +656,12 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     "data-supplier-request-turn",
     "sampling_send",
   );
+  // O status leva ao lugar de agir (dono, 24/11/2026): o produto, no quadro
+  // da amostragem.
+  await expect(listTurn.locator("[data-status-link]")).toHaveAttribute(
+    "href",
+    /\?view=item#amostragem$/,
+  );
   // Quem age e o login de quem carrega, à vista (só o administrador).
   await expect(
     listTurn.locator('[data-request-responsible="ok"]'),
@@ -827,6 +833,11 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     "Cadastros → Produtos",
   );
   await expect(stepRow.locator("[data-flow-all-view]")).toHaveAttribute(
+    "href",
+    `/app/orders/${orderId}`,
+  );
+  // O status leva ao mesmo lugar (dono, 24/11/2026: status clicável).
+  await expect(stepRow.locator("[data-status-link]")).toHaveAttribute(
     "href",
     `/app/orders/${orderId}`,
   );

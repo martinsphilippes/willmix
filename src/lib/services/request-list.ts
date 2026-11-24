@@ -164,6 +164,13 @@ export interface NextStep {
    * link para lá, `supplierRequestStepHref`).
    */
   supplierRequestId?: string | null;
+  /**
+   * Passos da cotação de compra: a cotação, onde se age (dono, 24/11/2026:
+   * o status leva ao lugar de agir, `requestStepHref`).
+   */
+  quoteId?: string | null;
+  /** Aprovar a estratégia ou gerar o pedido direto: a decisão, na Estratégia. */
+  decisionId?: string | null;
 }
 
 /**
@@ -172,6 +179,8 @@ export interface NextStep {
  */
 export interface PurchaseProgress {
   decision: {
+    /** A decisão (o link do status para a Estratégia; dono, 24/11/2026). */
+    id?: string;
     status: PurchaseDecisionStatus;
     choice: PurchaseDecisionChoice;
     orderId: string | null;
@@ -181,6 +190,8 @@ export interface PurchaseProgress {
    * respostas (`quoteClosed`/`quoteEmpty` de services/purchase-quote.ts).
    */
   quote: {
+    /** A cotação (o link do status para o quadro dela; dono, 24/11/2026). */
+    id?: string;
     status: PurchaseQuoteStatus;
     phase: "answering" | "choose" | "empty";
     /**
@@ -214,19 +225,27 @@ export interface PurchaseProgress {
 function purchaseStep(p: PurchaseProgress | null | undefined): NextStep | null {
   const d = p?.decision;
   if (!p || !d || d.status === "rejected") return null;
+  // Com a decisão e a cotação, onde se age (o status leva ao lugar de agir,
+  // dono, 24/11/2026; `requestStepHref`).
+  const decision = d.id ? { decisionId: d.id } : {};
   if (d.status === "pending")
-    return { key: "strategy_approve", who: "wellmix" };
+    return { key: "strategy_approve", who: "wellmix", ...decision };
   if (d.choice === "last_supplier")
-    return d.orderId ? null : { key: "strategy_order", who: "wellmix" };
+    return d.orderId
+      ? null
+      : { key: "strategy_order", who: "wellmix", ...decision };
   const q = p.quote;
   if (!q || q.status === "cancelled") return null;
-  if (q.status === "chosen") return { key: "quote_approve", who: "wellmix" };
+  const quote = q.id ? { quoteId: q.id } : {};
+  if (q.status === "chosen")
+    return { key: "quote_approve", who: "wellmix", ...quote };
   if (q.status === "open")
     return q.phase === "answering"
-      ? { key: "quote_answer", who: "supplier" }
+      ? { key: "quote_answer", who: "supplier", ...quote }
       : {
           key: q.phase === "empty" ? "quote_empty" : "quote_choose",
           who: "wellmix",
+          ...quote,
         };
   // Vencedora aprovada: segue a Solicitação ao fornecedor (a negociação, a
   // amostragem e o pedido de compra), a primeira que ainda espera alguém.
@@ -264,7 +283,8 @@ function purchaseStep(p: PurchaseProgress | null | undefined): NextStep | null {
       "wellmix",
       approved.find((r) => r.sampling === "wellmix"),
     ) ??
-    (approved.length ? { key: "purchase_order", who: "wellmix" } : null)
+    // Gerar o pedido de compra: o quadro com a solicitação aprovada marcada.
+    (approved.length ? on("purchase_order", "wellmix", approved[0]) : null)
   );
 }
 
