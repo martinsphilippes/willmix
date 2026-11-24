@@ -322,7 +322,9 @@ export async function importAndClose(
   }
   await page.click("[data-booking-lot-close-submit]");
   await page.waitForURL(/[?&]closed=1/);
-  await expect(page.locator("[data-booking-item-analysis]")).toHaveCount(1);
+  // Custo no Sankhya (24/11/2026): sem o Sankhya nos testes, o item fica sem
+  // custo (nada é estimado pelo portal).
+  await expect(page.locator('[data-booking-item-cost="none"]')).toHaveCount(1);
 }
 
 /**

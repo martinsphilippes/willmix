@@ -208,7 +208,11 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
   await expect(held.locator("[data-booking-lot-holder]")).toContainText(
     "Otávio",
   );
-  await expect(held).toContainText("No prazo (3 h)");
+  // O prazo mostra a data e a hora; "No prazo (3 h)" ficou na dica (#682).
+  await expect(held.locator('[data-booking-sla="ok"]')).toHaveAttribute(
+    "title",
+    "No prazo (3 h)",
+  );
   // E libera a trava de qualquer pessoa.
   await held.locator("[data-booking-unlock-row]").click();
   await page.waitForURL(/unlocked=1/);
