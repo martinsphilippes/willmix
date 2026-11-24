@@ -545,9 +545,14 @@ export interface BookingLotRow {
   lockByType: boolean;
   heldMinutes: number | null;
   heldText: string;
-  /** Até quando fica no prazo ("24/11 19:52"; vazio sem trava). */
-  heldDueText: string;
-  heldLate: boolean;
+  /**
+   * O prazo explicado (dono, 24/11/2026; `bookClock`): desde quando está com
+   * a pessoa (ISO; nulo sem trava) e a hora em que todos os itens ficaram
+   * trabalhados (ISO; nulo se falta). A tela calcula "Faltam…", "Atrasado…"
+   * e "Feito há…" com a hora de agora, e o relógio anda sozinho.
+   */
+  heldSince: string | null;
+  workDoneAt: string | null;
 }
 
 export const BOOKING_LOT_SORT_KEYS = [

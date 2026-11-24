@@ -432,8 +432,8 @@ describe("regras puras", () => {
         lockByType: false,
         heldMinutes: null,
         heldText: "",
-        heldDueText: "",
-        heldLate: false,
+        heldSince: null,
+        workDoneAt: null,
       }) satisfies import("@/lib/booking-lots").BookingLotRow;
     const rows = [
       row(1, "Ningbo Glass", "Yiwu"),
@@ -462,5 +462,127 @@ describe("prazo da trava do book (dono, 24/11/2026)", () => {
     // Virada do dia: 23:30 + 3 h = 02:30 do dia seguinte.
     expect(lockDueText("2026-11-25T02:30:00Z", 3)).toBe("25/11 02:30");
     expect(lockDueText("data ruim", 3)).toBe("");
+  });
+});
+
+describe("o prazo do book explicado (dono, 24/11/2026)", () => {
+  // Travado às 16:52 em Brasília (19:52 UTC); prazo de 3 h: vence às 19:52.
+  const since = "2026-11-24T19:52:00Z";
+  const at = (iso: string, minutes = 0, seconds = 0) =>
+    Date.parse(iso) + minutes * 60_000 + seconds * 1000;
+  const labelsOf = async (locale: "pt" | "en" | "zh") => {
+    const { translator } = await import("@/i18n");
+    const t = translator(locale);
+    return {
+      left: t("bookWork.clock.left"),
+      late: t("bookWork.clock.late"),
+      done: t("bookWork.clock.done"),
+      doneNow: t("bookWork.clock.doneNow"),
+      until: t("bookWork.clock.until"),
+      due: t("bookWork.clock.due"),
+      doneAt: t("bookWork.clock.doneAt"),
+    };
+  };
+
+  it("no prazo: quanto falta e até quando; âmbar no último quarto", async () => {
+    const { bookClock, bookClockText } = await import("@/lib/booking-locks");
+    const pt = await labelsOf("pt");
+    const ok = bookClock({ since }, 3, at(since, 50))!;
+    expect(ok).toEqual({
+      stage: "ok",
+      minutes: 130,
+      elapsed: 50,
+      at: "24/11 19:52",
+    });
+    expect(bookClockText(ok, pt)).toEqual({
+      main: "Faltam 2 h 10 min",
+      at: "até 24/11 19:52",
+    });
+    // Acabou de travar: faltam as 3 h inteiras (30 s contam como 1 min).
+    expect(bookClock({ since }, 3, at(since, 0, 30))).toMatchObject({
+      stage: "ok",
+      minutes: 180,
+      elapsed: 0,
+    });
+    // Relógio do aparelho atrasado: nunca mais que o prazo inteiro.
+    expect(bookClock({ since }, 3, at(since, -2))).toMatchObject({
+      stage: "ok",
+      minutes: 180,
+      elapsed: 0,
+    });
+    // Últimos 45 min (um quarto de 3 h): âmbar.
+    expect(bookClock({ since }, 3, at(since, 134))?.stage).toBe("ok");
+    const soon = bookClock({ since }, 3, at(since, 135))!;
+    expect(soon).toMatchObject({ stage: "soon", minutes: 45 });
+    expect(bookClockText(soon, pt).main).toBe("Faltam 45 min");
+  });
+
+  it("atrasado: quanto passou e quando venceu", async () => {
+    const { bookClock, bookClockText } = await import("@/lib/booking-locks");
+    const late = bookClock({ since }, 3, at(since, 180 + 65))!;
+    expect(late).toEqual({
+      stage: "late",
+      minutes: 65,
+      elapsed: 245,
+      at: "24/11 19:52",
+    });
+    expect(bookClockText(late, await labelsOf("pt"))).toEqual({
+      main: "Atrasado 1 h 05 min",
+      at: "venceu 24/11 19:52",
+    });
+    // Na hora do prazo já vence, com pelo menos 1 min de atraso.
+    expect(bookClock({ since }, 3, at(since, 180))).toMatchObject({
+      stage: "late",
+      minutes: 1,
+    });
+    // Dias de atraso.
+    expect(
+      bookClockText(
+        bookClock({ since }, 3, at(since, 180 + 3 * 1440 + 4 * 60))!,
+        await labelsOf("pt"),
+      ).main,
+    ).toBe("Atrasado 3 d 4 h");
+  });
+
+  it("feito: há quanto tempo e quando, mesmo com a trava ainda na linha", async () => {
+    const { bookClock, bookClockText } = await import("@/lib/booking-locks");
+    // Todos os itens trabalhados às 19:30 em Brasília.
+    const workDoneAt = "2026-11-24T22:30:00Z";
+    const done = bookClock({ since, workDoneAt }, 3, at(workDoneAt, 40))!;
+    expect(done).toEqual({
+      stage: "done",
+      minutes: 40,
+      elapsed: 40,
+      at: "24/11 19:30",
+    });
+    expect(bookClockText(done, await labelsOf("pt"))).toEqual({
+      main: "Feito há 40 min",
+      at: "em 24/11 19:30",
+    });
+    expect(
+      bookClockText(
+        bookClock({ workDoneAt }, 3, at(workDoneAt, 0, 20))!,
+        await labelsOf("pt"),
+      ).main,
+    ).toBe("Feito agora");
+  });
+
+  it("sem trava nem feito (ou data ruim): nada; e os textos nos três idiomas", async () => {
+    const { bookClock, bookClockText } = await import("@/lib/booking-locks");
+    expect(bookClock({}, 3, Date.now())).toBeNull();
+    expect(
+      bookClock({ since: null, workDoneAt: null }, 3, Date.now()),
+    ).toBeNull();
+    expect(bookClock({ since: "data ruim" }, 3, Date.now())).toBeNull();
+    expect(bookClock({ workDoneAt: "data ruim" }, 3, Date.now())).toBeNull();
+    const ok = bookClock({ since }, 3, at(since, 50))!;
+    expect(bookClockText(ok, await labelsOf("en"))).toEqual({
+      main: "2 h 10 min left",
+      at: "until 24/11 19:52",
+    });
+    expect(bookClockText(ok, await labelsOf("zh"))).toEqual({
+      main: "剩余 2 h 10 min",
+      at: "截止 24/11 19:52",
+    });
   });
 });

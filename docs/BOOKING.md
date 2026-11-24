@@ -80,7 +80,13 @@ Sete pedidos do dono, dos dois lados (fornecedor e Wellmix). Regras puras em `sr
 7. **Travar books.** Tabela `booking_locks`. **Só o book que já saiu do rascunho** (fechado, em andamento ou concluído; dono, 24/11/2026: é quando começa a seleção dos itens; `bookingLotLockable`): no rascunho não há "Travar", e a trava pelo tipo não esconde o rascunho de ninguém. O analista trava um book (na linha dele ou na caixa "Com quem está" do book) ou todos os de um tipo de item (faixa "Travar books" acima da lista; vale também para os books do tipo que chegarem depois; o tipo é comparado sem acento nem maiúsculas). A trava do book vale mais que a do tipo.
    - **Quem vê o quê** (`visibleLots`): o analista com algum book travado vê só os dele; os outros analistas veem os que ninguém travou (o travado por outro some da lista, o endereço direto responde "não encontrado" e os itens saem da Seleção de itens dele).
    - **Supervisão**: o administrador e quem tem a ação **"Supervisionar os books"** (`booking.supervise`; de fábrica, a Diretoria de compras; o administrador libera para o cargo de gerente de compras em Funções e acessos) veem todos os books, com quem está cada um, há quanto tempo e o selo do prazo, e liberam a trava de qualquer pessoa.
-   - **Prazo**: 3 horas por book (`bookingLockSlaHours`, Configurações), contadas de quando a pessoa travou (no book que chegou depois de o tipo ser travado, da chegada). Passou, o selo fica "Atrasado". Na lista do Book, coluna "Há quanto tempo" (dono, 24/11/2026): embaixo do tempo vem só a data e a hora do fim do prazo, pequenas, verde no prazo e vermelha atrasada (`lockDueText`, `src/lib/booking-locks.ts`; antes o selo "No prazo (3 h)", que quebrava em três linhas); o texto do prazo fica no balão. Na página do book segue o selo.
+   - **Prazo**: 3 horas por book (`bookingLockSlaHours`, Configurações), contadas de quando a pessoa travou (no book que chegou depois de o tipo ser travado, da chegada). Passou, o selo fica "Atrasado". Na página do book segue o selo.
+   - **O prazo explicado na lista do Book** (dono, 24/11/2026: "a data e a hora, mas também quanto tempo está atrasado, quanto tempo tem para fazer e, quando fizer, há quanto tempo já está feito"). A coluna se chama **Prazo** (antes "Há quanto tempo"; antes ainda o selo "No prazo (3 h)", que quebrava em três linhas) e mostra, numa linha, um ponto colorido, a situação e a data e a hora (Brasília):
+     - no prazo: "Faltam 2 h 10 min · até 24/11 19:52", em verde; no último quarto do prazo (os últimos 45 min de 3 h), em âmbar, para chamar a atenção antes de vencer;
+     - atrasado: "Atrasado 1 h 05 min · venceu 24/11 19:52", em vermelho;
+     - feito (todos os itens trabalhados, `workDoneAt`, com ou sem trava antes): "✓ Feito há 40 min · em 24/11 19:30" ("Feito agora" no primeiro minuto), em cinza;
+     - sem trava e sem feito: "—".
+   - No balão da célula, o prazo e há quanto tempo está com a pessoa ("No prazo (3 h) · Com Otávio há 50 min."). O relógio anda sozinho na tela, a cada 30 s, sem recarregar a página: o verde vira âmbar e o âmbar vira vermelho na hora. Regra pura em `bookClock` e `bookClockText` (`src/lib/booking-locks.ts`).
    - **Liberar** (dono, 24/11/2026): **quem travou não libera**. Só o gestor dele (alguém da cadeia do "Responde a", `managerChain`) ou quem supervisiona os books (`canReleaseLock`). A trava **sai sozinha quando o book inteiro fica trabalhado**: ao marcar o último item (`markItemsWorked`), o book ganha `booking_lots.workDoneAt`, a trava dele é apagada, a do tipo de item deixa de valer para ele e o book volta à vista de todos (auditoria `booking_lock.work_done`). Auditoria: `booking_lock.lock` e `booking_lock.unlock`.
    - A trava organiza o trabalho (o que cada um vê); as gravações continuam conferidas pela tela Booking, como antes.
 
@@ -101,7 +107,7 @@ Pedido do dono, com o print da lista em que "Loja / Supplier" ("ASBA · NINGBO H
 - Sem quebra de linha também:
   - Status: o selo numa linha ("Em andamento" quebrava em duas);
   - "Com quem está": o nome e o "Travar para mim" ou "Liberar", lado a lado;
-  - "Há quanto tempo": o tempo e a data e a hora do prazo na mesma linha;
+  - "Prazo" (antes "Há quanto tempo"): a situação e a data e a hora na mesma linha;
   - Trabalhados: o percentual e o "x de y";
   - Previsão: os selos lado a lado, cada um numa linha ("1 Falta dado" quebrava em duas);
   - as datas.
