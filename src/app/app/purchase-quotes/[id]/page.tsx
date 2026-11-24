@@ -179,6 +179,13 @@ export default async function PurchaseQuotePage({
           labels.gross,
           b.grossWeightBoxKg !== null ? num(b.grossWeightBoxKg) : null,
         ],
+        // Peso bruto por peça (dono, 24/11/2026): o da caixa pelas peças dela.
+        [
+          t("quote.catalog.grossPerPiece"),
+          b.grossWeightBoxKg !== null && b.masterBoxQty
+            ? num(b.grossWeightBoxKg / b.masterBoxQty)
+            : null,
+        ],
         [
           t("quote.catalog.dims"),
           b.boxLengthCm !== null &&
