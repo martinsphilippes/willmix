@@ -1955,3 +1955,12 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Removido (pedido do dono)**: em produção, os 20 retratos antigos da conta do portal em `booking_items.analysis`, a data deles em `booking_lots.analyzedAt` e a chave `superplan` da tabela `settings`; no código, a origem `superplan` de `requests.origin` (nenhuma solicitação a usava) e o texto "Previsão antiga".
 - **Não mudou**: a previsão na negociação (só sem o FOB/EXW), a previsão ao fechar o book e ao trocar o NCM, as permissões.
 - Testes: `tests/unit/booking-forecast.test.ts` e `tests/unit/booking-forecast-job.test.ts` (novo).
+
+## Lista de Books: linha fina com "ver mais" (dono, 24/11/2026)
+
+- **Pedido do dono** (24/11/2026, print da lista de Books com o Supplier em sete linhas): colapsar o que deixa a linha alta, com botão de abrir e fechar, e letras menores, para a linha ficar fina.
+- **Como ficou**:
+  - letra de 12 px e espaçamento menor;
+  - texto longo numa linha com "ver mais" e "ver menos", pelo mesmo `ClampText` das outras tabelas finas, em Loja / Supplier, Fornecedor, Origem, Tipo de item, Planilha e Responsável;
+  - "Com quem está", "Há quanto tempo", Trabalhados e as datas sem quebra de linha (docs/BOOKING.md, "Lista de Books: linha fina").
+- **Aditivo**: só a apresentação da tabela (`BookingLotsTable`); os dados, a busca, a ordem e as ações são os mesmos; sem mudança no banco.
