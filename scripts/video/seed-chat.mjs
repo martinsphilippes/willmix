@@ -7,8 +7,9 @@
  *   node seed-chat.mjs --foto     só desenha a foto e mostra onde ficou
  * PORTAL escolhe o servidor (padrão: porta 3201, a base em inglês de
  * data-en.mjs). LANGUAGE escolhe o idioma do portal e das mensagens: "en"
- * (padrão) ou "pt" (a base em português de data-pt.mjs, por exemplo
- * PORTAL=http://localhost:3203 LANGUAGE=pt). PAUSA: segundos entre as
+ * (padrão), "pt" (a base em português de data-pt.mjs, por exemplo
+ * PORTAL=http://localhost:3203 LANGUAGE=pt) ou "zh" (a base em chinês de
+ * data-zh.mjs, PORTAL=http://localhost:3204 LANGUAGE=zh). PAUSA: segundos entre as
  * mensagens (padrão 65, para cada uma sair com um minuto diferente; 0 = sem
  * espera). FOTO: um JPEG pronto no lugar da foto desenhada aqui. Rodar de novo
  * não muda nada: com a primeira mensagem já na conversa, o script para.
@@ -22,8 +23,21 @@ const BASE = process.env.PORTAL ?? "http://localhost:3201";
 const PAUSA = Number(process.env.PAUSA ?? 65) * 1000;
 // Idioma do portal e das mensagens (en é o padrão; os rótulos foram conferidos
 // nas telas reais: login, botões de conversa do pedido, Configurações).
-const IDIOMA = process.env.LANGUAGE === "pt" ? "pt" : "en";
+const IDIOMA = { pt: "pt", zh: "zh" }[process.env.LANGUAGE] ?? "en";
 const T = {
+  zh: {
+    cookie: "zh",
+    locale: "zh-CN",
+    email: /邮箱/,
+    senha: /密码/,
+    entrar: "登录",
+    fornecedor: /^供应商$/,
+    // Nome de foto de celular, só com letras e números. O portal aceita nome
+    // em chinês; quem não aceita é este envio, que lê a foto de um arquivo em
+    // disco: no Chromium sem interface, caminho com caracteres chineses não
+    // abre e a mensagem não sai (medido em 24/11/2026).
+    arquivo: "IMG_2046.jpg",
+  },
   en: {
     cookie: "en",
     locale: "en-US",
@@ -57,6 +71,13 @@ const OUTROS = [
 
 /* [quem escreve, texto, com a foto?] */
 const CONVERSAS = {
+  zh: [
+    [WELLMIX, "李伟，您好。能把这个订单的大货样品照片发给我们吗？"],
+    [FORNECEDOR, "您好！照片见附件。生产将在 28 号完成。", true],
+    [WELLMIX, "收到，谢谢！颜色和 logo 的位置都确认通过。"],
+    [FORNECEDOR, "好的。我们会把验货安排在下周。"],
+    [WELLMIX, "好的。验货日期一经确认，就会登记到订单里。"],
+  ],
   en: [
     [
       WELLMIX,
@@ -269,10 +290,16 @@ try {
   } else {
     const wellmix = await entrar(browser, WELLMIX);
     const assunto = await abrirAssunto(wellmix);
-    const primeira = wellmix
-      .locator("[data-thread] li[data-message]")
-      .filter({ hasText: CONVERSA[0][1] });
-    if (await primeira.count()) {
+    // O que já está na conversa não é enviado de novo: com tudo lá, nada a
+    // fazer; com uma parte (o envio parou no meio), continua de onde parou.
+    const naConversa = async (texto) =>
+      (await wellmix
+        .locator("[data-thread] li[data-message]")
+        .filter({ hasText: texto })
+        .count()) > 0;
+    const feitas = [];
+    for (const [, texto] of CONVERSA) feitas.push(await naConversa(texto));
+    if (feitas.every(Boolean)) {
       console.log("a conversa já existe, nada a fazer:", assunto);
     } else {
       await semTraducaoDeExemplo(wellmix);
@@ -282,6 +309,10 @@ try {
         [FORNECEDOR]: await entrar(browser, FORNECEDOR),
       };
       for (const [i, [quem, texto, comFoto]] of CONVERSA.entries()) {
+        if (feitas[i]) {
+          console.log(`${i + 1}/${CONVERSA.length}`, "já estava na conversa");
+          continue;
+        }
         if (i) await new Promise((ok) => setTimeout(ok, PAUSA));
         await enviar(telas[quem], assunto, texto, comFoto ? foto : null);
         console.log(

@@ -3,7 +3,7 @@ Traz para o vídeo a narração gerada em outro lugar (por exemplo, no ElevenLab
 
     python tts/import_voice.py out/<vídeo>.tts.json \
         --manifest out/<vídeo>.voice-parts.json --audio <pasta> [--out-dir <pasta>] \
-        [--fix id=arquivo ...] [--cache out/<vídeo>.whisper.json]
+        [--fix id=arquivo ...] [--cache out/<vídeo>.whisper.json] [--lang pt|zh|en]
 
 Lê a lista de falas (a mesma de tts.py: [{"file": ..., "text": ...}]) e grava um
 WAV por fala (48 kHz, mono, PCM_16) no lugar onde o vídeo espera
@@ -13,8 +13,8 @@ A pasta <audio> pode ter:
   - um arquivo por fala, com o nome do id ("route.0.mp3", "hub.2.wav"...): é só
     converter e aparar; ou
   - um arquivo por PARTE do roteiro (parte-1, parte-2, parte-3, em mp3, wav, m4a,
-    flac...; o número da parte tem de estar no nome): o áudio é transcrito (Whisper
-    local, em português), as palavras são alinhadas às do roteiro e o áudio é
+    flac...; o nome do arquivo não importa): o áudio é transcrito (Whisper local,
+    no idioma da narração), as palavras são alinhadas às do roteiro e o áudio é
     cortado no meio do silêncio entre uma fala e a seguinte, medido no próprio som
     (o tempo das palavras do Whisper só diz onde procurar).
 --fix id=arquivo troca uma fala por um arquivo só dela (a fala refeita).
@@ -30,6 +30,12 @@ dos cortes (som de fala que ficou fora de todas as falas; corte sem silêncio
 claro por perto). Nada sai da
 máquina: o Whisper roda aqui (modelo "medium", baixado do Hugging Face na primeira
 vez; HF_HOME escolhe o cache).
+
+Idioma (--lang; sem a opção, é chinês quando o roteiro tem caracteres chineses e
+português nos outros casos). Em mandarim cada caractere conta como uma palavra
+(o que vem em letras latinas, como "Wellmix" e "ERP", continua palavra inteira),
+o tradicional vira simplificado e dois caracteres de mesma pronúncia casam (o
+Whisper troca homófonos): precisa de pypinyin e zhconv (pip install).
 """
 import argparse
 import difflib
@@ -51,6 +57,12 @@ SIL_DB = -60.0  # abaixo disto é silêncio; f, s, ch e o estalo do c e do p fic
 LOUD = 0.012  # amostra "alta" (−38 dBFS): o corpo da fala
 BREATH_DB = -42.0  # respiração fica abaixo disto (−45 a −52 dBFS na narração do ElevenLabs)
 AUDIO_EXT = (".mp3", ".wav", ".m4a", ".flac", ".ogg", ".aac", ".opus", ".webm")
+LANG = "pt"  # idioma da narração: main() troca (--lang ou pelo texto do roteiro)
+HAN = re.compile(r"[\u3400-\u9fff]")
+# Velocidade plausível de fala, para o aviso "rever": letras por segundo (pt, en) ou
+# caracteres por segundo (zh).
+SPEED = {"zh": (2.0, 8.5)}
+SPEED_DEFAULT = (7.0, 26.0)
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 
@@ -65,8 +77,49 @@ def decode(path, sr=SR):
     return np.frombuffer(raw, dtype=np.float32).copy()
 
 
+def simplified(text):
+    """Chinês tradicional → simplificado (o Whisper às vezes escreve em tradicional)."""
+    try:
+        import zhconv
+
+        return zhconv.convert(text, "zh-cn")
+    except ImportError:
+        return text
+
+
+_pinyin = {}
+
+
+def pinyin(ch):
+    """Leitura do caractere, sem o tom (para casar homófonos)."""
+    if ch not in _pinyin:
+        try:
+            from pypinyin import lazy_pinyin
+
+            _pinyin[ch] = lazy_pinyin(ch)[0]
+        except ImportError:
+            _pinyin[ch] = ch
+    return _pinyin[ch]
+
+
+def similarity(a, b):
+    """Quanto duas palavras se parecem (0 a 1). Em chinês: mesmo caractere 1; mesma
+    pronúncia 0,8; o resto 0."""
+    if a == b:
+        return 1.0
+    ha, hb = bool(HAN.match(a)), bool(HAN.match(b))
+    if ha and hb:
+        return 0.8 if pinyin(a) == pinyin(b) else 0.0
+    if ha or hb:
+        return 0.0
+    return difflib.SequenceMatcher(None, a, b).ratio()
+
+
 def norm_tokens(text):
-    """Palavras sem acento, minúsculas, sem pontuação; hífen separa (bê-éle → be, ele)."""
+    """Palavras sem acento, minúsculas, sem pontuação; hífen separa (bê-éle → be, ele).
+    Em chinês, um caractere por palavra; letras latinas e números ficam inteiros."""
+    if LANG == "zh":
+        return [m.group(0).lower() for m in re.finditer(r"[\u3400-\u9fff]|[A-Za-z]+|\d+", simplified(text))]
     t = unicodedata.normalize("NFD", text.lower())
     t = "".join(c for c in t if unicodedata.category(c) != "Mn")
     return [w for w in re.split(r"[^a-z0-9]+", t) if w]
@@ -187,7 +240,7 @@ def align(script, heard):
     """Alinha duas listas de palavras (Needleman-Wunsch); devolve, para cada palavra do
     roteiro, o índice da palavra ouvida ou None."""
     n, m = len(script), len(heard)
-    sim = lambda a, b: difflib.SequenceMatcher(None, a, b).ratio()
+    sim = similarity
     GAP = -0.7
     S = np.zeros((n + 1, m + 1))
     S[:, 0] = np.arange(n + 1) * GAP
@@ -226,7 +279,9 @@ def transcribe(x48):
     x16 = resample_poly(x48, 1, 3).astype(np.float32)  # 48 kHz → 16 kHz
     segs, _ = _model.transcribe(
         x16,
-        language="pt",
+        language=LANG,
+        # Em chinês, puxa a escrita para o simplificado do continente.
+        initial_prompt="以下是普通话的句子，使用简体中文。" if LANG == "zh" else None,
         word_timestamps=True,
         beam_size=5,
         condition_on_previous_text=False,
@@ -359,8 +414,11 @@ def main():
         "--cache",
         help="JSON com as transcrições já feitas (pelo conteúdo do áudio): refazer o corte não transcreve de novo",
     )
+    ap.add_argument("--lang", help="idioma da narração (pt, en, zh...); sem a opção, pelo texto do roteiro")
     args = ap.parse_args()
     items = json.load(open(args.list, encoding="utf-8"))
+    global LANG
+    LANG = args.lang or ("zh" if any(HAN.search(it["text"]) for it in items) else "pt")
     ids = [os.path.basename(it["file"])[: -len(".wav")] for it in items]
     by_id = {i: it for i, it in zip(ids, items)}
     out_dir = args.out_dir or os.path.dirname(items[0]["file"])
@@ -373,7 +431,9 @@ def main():
             x = trim_silence(x)
         write_clip(os.path.join(out_dir, i + ".wav"), x, source)
         d = len(x) / SR
-        cps = len(by_id[i]["text"]) / d if d else 0
+        # velocidade: caracteres chineses por segundo em mandarim, letras nos outros
+        size = len(HAN.findall(by_id[i]["text"])) if LANG == "zh" else len(by_id[i]["text"])
+        cps = size / d if d else 0
         report.append((i, match, d, cps))
 
     # 1. uma fala por arquivo?
@@ -458,7 +518,8 @@ def main():
     print(f"\n{'fala':14s} {'casou':>6s} {'dur':>6s} {'letras/s':>8s}")
     for i, m, d, cps in report:
         flag = ""
-        if m < 0.75 or d < 0.8 or d > 16 or cps < 7 or cps > 26:
+        slow, fast = SPEED.get(LANG, SPEED_DEFAULT)
+        if m < 0.75 or d < 0.8 or d > 16 or cps < slow or cps > fast:
             flag = "  ← rever"
             bad.append(i)
         print(f"{i:14s} {m:6.0%} {d:6.2f} {cps:8.1f}{flag}")

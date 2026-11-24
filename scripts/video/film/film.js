@@ -23,6 +23,26 @@ const esc = (s) =>
     /[&<>"]/g,
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
   );
+/** Chinês não separa as palavras com espaço: o navegador separa
+ *  (Intl.Segmenter). Devolve os pedaços de uma linha: palavras (`w`, com `red`
+ *  entre asteriscos) e os espaços que o texto traz entre o chinês e o que vem
+ *  em letras latinas ("Wellmix 门户"). A pontuação fica com a palavra anterior,
+ *  para nunca abrir uma linha. */
+const HAN = /[㐀-鿿]/;
+const segmenter = new Intl.Segmenter("zh", { granularity: "word" });
+function hanWords(line) {
+  const out = [];
+  line.split("*").forEach((run, i) => {
+    for (const s of segmenter.segment(run)) {
+      const last = out.at(-1);
+      if (/^\s+$/.test(s.segment)) {
+        if (last && !last.space) out.push({ space: true });
+      } else if (!s.isWordLike && last && !last.space) last.w += s.segment;
+      else out.push({ w: s.segment, red: i % 2 === 1 });
+    }
+  });
+  return out;
+}
 /** Textos fixos das cenas (rótulos que não vêm do roteiro): o roteiro pode trocá-los (`ui`). */
 const UI = {
   brazil: "Brazil",
@@ -57,24 +77,30 @@ const ctx = {
   words: (text, at = 0, step = 0.07, d = 0.8) => {
     let n = 0;
     let red = false;
+    const span = (w, isRed) =>
+      `<span class="w"><i class="${isRed ? "red" : ""}" style="--at:${(at + n++ * step).toFixed(3)}s;--d:${d}s">${esc(w)}</i></span>`;
     return text
       .split("\n")
       .map((line) =>
-        line
-          .split(/\s+/)
-          .filter(Boolean)
-          .map((raw) => {
-            let w = raw;
-            const opens = w.startsWith("*");
-            if (opens) w = w.slice(1);
-            const closes = /\*[.,!?]?$/.test(w);
-            if (closes) w = w.replace(/\*([.,!?]?)$/, "$1");
-            if (opens) red = true;
-            const html = `<span class="w"><i class="${red ? "red" : ""}" style="--at:${(at + n++ * step).toFixed(3)}s;--d:${d}s">${esc(w)}</i></span>`;
-            if (closes) red = false;
-            return html;
-          })
-          .join(" "),
+        HAN.test(line)
+          ? hanWords(line)
+              .map((p) => (p.space ? " " : span(p.w, p.red)))
+              .join("")
+          : line
+              .split(/\s+/)
+              .filter(Boolean)
+              .map((raw) => {
+                let w = raw;
+                const opens = w.startsWith("*");
+                if (opens) w = w.slice(1);
+                const closes = /\*[.,!?]?$/.test(w);
+                if (closes) w = w.replace(/\*([.,!?]?)$/, "$1");
+                if (opens) red = true;
+                const html = span(w, red);
+                if (closes) red = false;
+                return html;
+              })
+              .join(" "),
       )
       .join("<br>");
   },
@@ -174,8 +200,11 @@ window.seek = (t) => {
 const allText =
   tl.subs.map((s) => s.lines.join("")).join("") + (tl.glyphs ?? "");
 await Promise.all([
-  document.fonts.load('500 40px "Noto Sans SC"', allText),
-  document.fonts.load('700 40px "Noto Sans SC"', allText),
+  // Legenda em chinês: 500 e 700. Com texto de cena em chinês (vídeo em
+  // mandarim), também os pesos dos títulos e dos textos de apoio.
+  ...(HAN.test(tl.glyphs ?? "") ? [400, 500, 600, 700, 800] : [500, 700]).map(
+    (w) => document.fonts.load(`${w} 40px "Noto Sans SC"`, allText),
+  ),
   ...[500, 600, 700, 800].map((w) =>
     document.fonts.load(`${w} 40px "Montserrat"`, "Aáçãõ"),
   ),
