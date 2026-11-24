@@ -2,12 +2,13 @@ import { expect, test, type Page } from "@playwright/test";
 import { bookingSheet, fillBookMeta, login } from "./helpers";
 
 /*
- * Card "Planilha do book" compacto (dono, 24/11/2026; docs/BOOKING.md, "Card
- * Planilha do book"): "Moeda padrão" estreita, Moeda | Nº da loja | Nome do
- * supplier | Tipo de item numa linha no computador e no iPad deitado, duas
- * linhas no celular, sem rolagem para o lado. Só a apresentação mudou: a
- * moeda escolhida continua valendo para o preço sem moeda na linha nem no
- * cabeçalho.
+ * Card "Planilha do book" compacto, pelo desenho do dono (24/11/2026;
+ * docs/BOOKING.md, "Card Planilha do book"): "Moeda padrão" estreita com o
+ * ⓘ, Moeda | Nº da loja | Nome do supplier | Tipo de item numa linha no
+ * computador e no iPad deitado (moeda e loja estreitas, supplier e tipo
+ * dividem o resto), duas linhas no celular, sem rolagem para o lado. Só a
+ * apresentação mudou: a moeda escolhida continua valendo para o preço sem
+ * moeda na linha nem no cabeçalho.
  */
 
 const FIELDS = [
@@ -17,21 +18,21 @@ const FIELDS = [
   "[data-book-item-type]",
 ];
 
-/** Posição e tamanho dos quatro campos da linha, em px. */
-async function row(page: Page) {
-  return Promise.all(
-    FIELDS.map(async (sel) => {
-      const box = await page
-        .locator(`[data-booking-import-form] ${sel}`)
-        .boundingBox();
-      return {
-        top: Math.round(box!.y),
-        width: Math.round(box!.width),
-        height: Math.round(box!.height),
-      };
-    }),
-  );
+type Box = { top: number; left: number; right: number; width: number; height: number };
+
+async function boxOf(page: Page, sel: string): Promise<Box> {
+  const b = await page.locator(`[data-booking-import-form] ${sel}`).boundingBox();
+  return {
+    top: Math.round(b!.y),
+    left: Math.round(b!.x),
+    right: Math.round(b!.x + b!.width),
+    width: Math.round(b!.width),
+    height: Math.round(b!.height),
+  };
 }
+
+/** Os quatro campos da linha. */
+const row = (page: Page) => Promise.all(FIELDS.map((sel) => boxOf(page, sel)));
 
 const noSideScroll = (page: Page) =>
   page.evaluate(
@@ -48,28 +49,51 @@ test("Planilha do book: Moeda padrão estreita e os quatro campos numa linha; a 
   await expect(
     form.locator("[data-field-label]", { hasText: /^Moeda padrão$/ }),
   ).toBeVisible();
+  await expect(
+    form.locator("[data-field-label]", { hasText: /^Ou link do Google Sheets$/ }),
+  ).toBeVisible();
   await expect(form.locator("[data-book-import-currency-hint]")).toHaveText(
-    "Moeda padrão · Aplicada apenas aos preços sem moeda na coluna ou no cabeçalho.",
+    "Moeda padrão: aplicada apenas aos preços sem moeda na coluna ou no cabeçalho.",
   );
+  // O ⓘ ao lado de "Moeda padrão" abre a explicação.
+  await form.getByRole("button", { name: "Sobre a moeda padrão" }).click();
+  await expect(
+    page.getByText(
+      "Aplicada apenas aos preços sem moeda na coluna ou no cabeçalho.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
 
-  // Computador (1440) e iPad deitado mais estreito (1080): uma linha só, a
-  // moeda de 110 a 130 px, os outros perto de 130 px, campos de 36 a 40 px.
-  for (const width of [1440, 1080]) {
-    await page.setViewportSize({ width, height: 900 });
-    const fields = await row(page);
-    expect(new Set(fields.map((f) => f.top)).size, `${width}px`).toBe(1);
-    expect(fields[0].width).toBeGreaterThanOrEqual(110);
-    expect(fields[0].width).toBeLessThanOrEqual(130);
-    for (const f of fields.slice(1)) {
-      expect(f.width).toBeGreaterThanOrEqual(108);
-      expect(f.width).toBeLessThanOrEqual(130);
-    }
-    for (const f of fields) {
-      expect(f.height).toBeGreaterThanOrEqual(36);
-      expect(f.height).toBeLessThanOrEqual(40);
-    }
-    expect(await noSideScroll(page)).toBe(true);
+  // Computador: uma linha; moeda e loja estreitas; supplier e tipo dividem o
+  // resto até a borda do card; a dica do tipo fica sob o próprio campo.
+  const wide = await row(page);
+  expect(new Set(wide.map((f) => f.top)).size).toBe(1);
+  expect(wide[0].width).toBeGreaterThanOrEqual(110);
+  expect(wide[0].width).toBeLessThanOrEqual(130);
+  expect(wide[1].width).toBeGreaterThanOrEqual(108);
+  expect(wide[1].width).toBeLessThanOrEqual(130);
+  expect(wide[2].width).toBeGreaterThan(150);
+  expect(Math.abs(wide[2].width - wide[3].width)).toBeLessThanOrEqual(1);
+  const url = await boxOf(page, 'input[name="sheetUrl"]');
+  expect(Math.abs(wide[3].right - url.right)).toBeLessThanOrEqual(1);
+  const typeHint = await boxOf(page, "[data-book-import-type-hint]");
+  expect(Math.abs(typeHint.left - wide[3].left)).toBeLessThanOrEqual(1);
+  for (const f of wide) {
+    expect(f.height).toBeGreaterThanOrEqual(36);
+    expect(f.height).toBeLessThanOrEqual(40);
   }
+  expect(await noSideScroll(page)).toBe(true);
+
+  // iPad deitado mais estreito (1080): ainda uma linha, moeda compacta.
+  await page.setViewportSize({ width: 1080, height: 810 });
+  const ipad = await row(page);
+  expect(new Set(ipad.map((f) => f.top)).size).toBe(1);
+  expect(ipad[0].width).toBeGreaterThanOrEqual(110);
+  expect(ipad[0].width).toBeLessThanOrEqual(130);
+  expect(ipad[2].width).toBeGreaterThanOrEqual(100);
+  expect(Math.abs(ipad[2].width - ipad[3].width)).toBeLessThanOrEqual(1);
+  expect(await noSideScroll(page)).toBe(true);
 
   // Celular: duas linhas (moeda e loja; supplier e tipo), moeda compacta.
   await page.setViewportSize({ width: 390, height: 844 });

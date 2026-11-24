@@ -121,10 +121,17 @@ export const pt = {
   "bookingLots.import.currencyDefault": "Moeda padrão",
   "bookingLots.import.currencyDefaultHint":
     "Aplicada apenas aos preços sem moeda na coluna ou no cabeçalho.",
+  "bookingLots.import.currencyDefaultNote":
+    "Moeda padrão: aplicada apenas aos preços sem moeda na coluna ou no cabeçalho.",
+  "bookingLots.import.currencyInfo": "Sobre a moeda padrão",
   "bookingLots.import.fileHintCompact":
-    "Excel (.xlsx ou .xls), até 80 itens. Até 10 planilhas de uma vez formam um book só, na ordem escolhida.",
+    "Excel (.xlsx ou .xls), até 80 itens. Até 10 planilhas por importação, reunidas em um único book.",
+  "bookingLots.import.urlLabelCompact": "Ou link do Google Sheets",
   "bookingLots.import.urlHintCompact":
-    'Compartilhe como "Qualquer pessoa com o link" (Leitor) e cole aqui; sem isso, o Google não entrega a planilha. Fotos podem não vir. Com arquivo e link, vale o arquivo.',
+    "Compartilhe como “Qualquer pessoa com o link” (Leitor). O portal baixa a planilha na hora; sem esse acesso, o Google não a entrega. Fotos podem não ser importadas. Se houver arquivo e link, será usado o arquivo.",
+  "bookingLots.import.itemTypeHintCompact":
+    "Ex.: vidro, plástico, utilidades. Use o mesmo nome dos books do mesmo tipo.",
+  "bookingLots.import.itemTypeHintPrefix": "Tipo de item:",
   "bookingLots.import.submit": "Importar book",
   "bookingLots.import.submitting": "Lendo a planilha…",
   "bookingLots.import.columns.title": "Colunas lidas",
@@ -414,10 +421,17 @@ export const en: typeof pt = {
   "bookingLots.import.currencyDefault": "Default currency",
   "bookingLots.import.currencyDefaultHint":
     "Applied only to prices with no currency in the column or header.",
+  "bookingLots.import.currencyDefaultNote":
+    "Default currency: applied only to prices with no currency in the column or header.",
+  "bookingLots.import.currencyInfo": "About the default currency",
   "bookingLots.import.fileHintCompact":
-    "Excel (.xlsx or .xls), up to 80 items. Up to 10 spreadsheets at once make a single book, in the order chosen.",
+    "Excel (.xlsx or .xls), up to 80 items. Up to 10 spreadsheets per import, combined into a single book.",
+  "bookingLots.import.urlLabelCompact": "Or Google Sheets link",
   "bookingLots.import.urlHintCompact":
-    'Share it as "Anyone with the link" (Viewer) and paste it here; otherwise Google will not deliver the sheet. Photos may not come through. With both a file and a link, the file is used.',
+    "Share it as “Anyone with the link” (Viewer). The portal downloads the sheet right away; without that access, Google will not deliver it. Photos may not be imported. If there is both a file and a link, the file is used.",
+  "bookingLots.import.itemTypeHintCompact":
+    "E.g. glass, plastic, housewares. Use the same name as the books of the same type.",
+  "bookingLots.import.itemTypeHintPrefix": "Item type:",
   "bookingLots.import.submit": "Import book",
   "bookingLots.import.submitting": "Reading the spreadsheet…",
   "bookingLots.import.columns.title": "Columns read",
@@ -700,10 +714,17 @@ export const zh: typeof pt = {
   "bookingLots.import.currencyDefault": "默认币种",
   "bookingLots.import.currencyDefaultHint":
     "仅用于列和表头都没有币种的价格。",
+  "bookingLots.import.currencyDefaultNote":
+    "默认币种：仅用于列和表头都没有币种的价格。",
+  "bookingLots.import.currencyInfo": "关于默认币种",
   "bookingLots.import.fileHintCompact":
-    "Excel（.xlsx 或 .xls），最多 80 个条目。一次最多 10 个表格，按选择顺序合并为一个 Book。",
+    "Excel（.xlsx 或 .xls），最多 80 个条目。每次导入最多 10 个表格，合并为一个 Book。",
+  "bookingLots.import.urlLabelCompact": "或 Google Sheets 链接",
   "bookingLots.import.urlHintCompact":
-    "请共享为“知道链接的任何人”（查看者）并粘贴到这里；否则 Google 不会提供表格。照片可能无法导入。同时提供文件和链接时，以文件为准。",
+    "请共享为“知道链接的任何人”（查看者）。门户会立即下载表格；没有此权限时 Google 不会提供。照片可能无法导入。同时提供文件和链接时，以文件为准。",
+  "bookingLots.import.itemTypeHintCompact":
+    "例如：玻璃、塑料、日用品。同类型的 Book 请使用相同的名称。",
+  "bookingLots.import.itemTypeHintPrefix": "产品类型：",
   "bookingLots.import.submit": "导入 Book",
   "bookingLots.import.submitting": "正在读取表格…",
   "bookingLots.import.columns.title": "读取的列",

@@ -81,22 +81,32 @@ Decisões do dono (24/11/2026): a supervisão fica com a Diretoria de compras de
 
 Só a apresentação do card da Wellmix em Importar book (`/app/booking/import`). Os campos, os nomes enviados, as validações e a ação `importBookingAction` são os mesmos.
 
-- **Moeda padrão.** É o rótulo novo do seletor de moeda. Abaixo da linha vem a explicação "Aplicada apenas aos preços sem moeda na coluna ou no cabeçalho.". As opções, o USD já marcado e a regra continuam iguais: a moeda vale só para o preço sem moeda na linha nem no cabeçalho, sem conversão.
-- **Uma linha.** Moeda padrão | Nº da loja | Nome do supplier | Tipo de item ficam numa linha, com a moeda de 110 a 120 px e os outros de 108 a 130 px, sem esticar até a borda.
-  - A troca de layout segue a largura do card (`@container`, a partir de 470 px), não a da tela. Assim a linha cabe no computador e no iPad deitado, inclusive no iPad de 1080 px.
-  - Mais estreito, como no celular, ficam duas linhas, com a moeda sempre compacta.
-  - A dica do Tipo de item também fica abaixo da linha (`aria-describedby` nos dois campos).
+O layout segue o desenho do dono.
+
+- **Moeda padrão.** É o rótulo novo do seletor de moeda.
+  - Tem um ⓘ ao lado (`InfoTip`, fora do `<label>` para o toque não abrir o seletor) que mostra "Aplicada apenas aos preços sem moeda na coluna ou no cabeçalho.".
+  - Abaixo da linha vem "Moeda padrão: aplicada apenas aos preços sem moeda na coluna ou no cabeçalho.".
+  - As opções, o USD já marcado e a regra continuam iguais: a moeda vale só para o preço sem moeda na linha nem no cabeçalho, sem conversão.
+- **Uma linha.** Moeda padrão | Nº da loja | Nome do supplier | Tipo de item ficam numa linha. Moeda e loja são estreitas (112 e 124 px; 110 e 110 px em card mais estreito), e supplier e tipo dividem o resto até a borda.
+  - A troca de layout segue a largura do card (`@container`), não a da tela.
+  - A partir de 470 px de card, a linha é única. Ela cabe no computador e no iPad deitado, inclusive no iPad de 1080 px.
+  - A partir de 590 px, a dica da moeda fica sob as três primeiras colunas e a do tipo sob o próprio campo.
+  - Mais estreito, as duas dicas ficam abaixo da linha, a do tipo com o prefixo "Tipo de item:".
+  - No celular ficam duas linhas, com a moeda sempre compacta.
+  - As dicas ficam ligadas aos campos por `aria-describedby`.
 - **Padrão minimalista.**
   - Título de 20 px, rótulos de 13 px e textos auxiliares de 12 px em cinza escuro.
   - Campos de 36 px (40 px em tela de toque, `pointer-coarse`) e cantos de 10 px.
   - Card com cantos de 22 px e espaçamento interno de 20 px (24 px a partir de 1280 px).
-  - "Escolher arquivos" e "Importar book" compactos, da largura do texto.
+  - "Escolher arquivos" compacto, com 32 px e letra média; "Importar book" com 36 px; os dois na largura do texto.
   - Nos aparelhos da Apple os campos seguem com 16 px, pela regra global que evita o zoom do Safari.
-- **Textos mais curtos.** As dicas do arquivo e do link do Google Sheets usam chaves novas, só deste card (`bookingLots.import.*Compact`). Mantêm os formatos, os limites, as várias planilhas na ordem escolhida, o compartilhamento, as fotos e a regra "com arquivo e link, vale o arquivo".
+- **Textos do desenho.** "Ou link do Google Sheets" e as dicas do arquivo, do link e do tipo de item usam chaves novas, só deste card (`bookingLots.import.*Compact`). Mantêm os formatos e limites, as várias planilhas num book só, o compartilhamento, as fotos e a regra "se houver arquivo e link, será usado o arquivo". A ordem das planilhas continua a de escolha, mesmo sem o texto dizer.
 - **Só este formulário.** As peças compartilhadas ganharam opções que só este card usa: `BookMetaFields` com `layout="inline"` e `SheetFileInput` com `className`. O lançamento do parceiro, a tela do book e o convite de book continuam como estavam, sem estilo global novo.
 
 Teste: `tests/e2e/book-import-card.spec.ts` confere:
-- a linha única a 1440 px e a 1080 px;
+- os rótulos, a dica e o ⓘ;
+- a linha única a 1440 px, com supplier e tipo iguais até a borda e a dica do tipo sob o campo;
+- a linha única a 1080 px;
 - as duas linhas a 390 px;
 - que nenhuma tela rola para o lado;
 - que, com RMB escolhido e uma planilha sem moeda, o item fica em RMB.

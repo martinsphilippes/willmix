@@ -17,6 +17,7 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { SheetFileInput } from "@/components/sheet-file-input";
+import { InfoTip } from "@/components/info-tip";
 import { importBookingAction } from "../../actions/booking-lots";
 import { PartnerBookingLaunch } from "../_components/partner-booking";
 import {
@@ -25,9 +26,12 @@ import {
 } from "../_components/book-meta-fields";
 import { bookingItemTypes } from "@/lib/services/booking-lots";
 
-/** Botão "Escolher arquivos" compacto: 36 px (40 px no toque), cantos de 10 px. */
+/**
+ * Botão "Escolher arquivos" compacto, como no desenho: 32 px (40 px no
+ * toque), cantos de 10 px e letra média.
+ */
 const COMPACT_FILE =
-  "file:mr-3 file:rounded-[10px] file:px-3 file:py-[7px] pointer-coarse:file:py-[9px]";
+  "file:mr-3 file:rounded-[10px] file:px-3.5 file:py-[5px] file:font-medium pointer-coarse:file:py-[9px]";
 const CURRENCY_HINT_ID = "book-import-currency-hint";
 const ITEM_TYPE_HINT_ID = "book-import-item-type-hint";
 
@@ -113,7 +117,7 @@ export default async function BookingImportPage({
               />
             </Field>
             <Field
-              label={t("sheetImport.url")}
+              label={t("bookingLots.import.urlLabelCompact")}
               hint={
                 <span className="text-zinc-600">
                   {t("bookingLots.import.urlHintCompact")}
@@ -129,16 +133,36 @@ export default async function BookingImportPage({
                 className={BOOK_COMPACT_FIELD}
               />
             </Field>
-            {/* Os quatro campos numa linha quando o card tem espaço (pela
-                largura do card, não da tela: computador e iPad deitado);
-                mais estreito, duas linhas, com a moeda sempre compacta. */}
+            {/* Moeda padrão | Nº da loja | Nome do supplier | Tipo de item
+                numa linha (desenho do dono, 24/11/2026): moeda e loja
+                estreitas, supplier e tipo dividem o resto. A troca segue a
+                largura do card, não a da tela (computador e iPad deitado
+                numa linha; celular em duas, com a moeda compacta). Com o
+                card largo, a dica da moeda fica sob as três primeiras
+                colunas e a do tipo sob o próprio campo; mais estreito, as
+                duas ficam abaixo da linha. */}
             <div className="@container">
               <div
-                className="grid grid-cols-2 gap-3 @[470px]:grid-cols-[minmax(110px,120px)_repeat(3,minmax(108px,130px))]"
+                className="grid grid-cols-2 gap-x-3 gap-y-2.5 @[470px]:grid-cols-[110px_110px_minmax(0,1fr)_minmax(0,1fr)] @[590px]:grid-cols-[112px_124px_minmax(0,1fr)_minmax(0,1fr)] @[590px]:gap-x-4"
                 data-book-import-row
               >
-                <Field label={t("bookingLots.import.currencyDefault")}>
+                <div className="min-w-0 space-y-1">
+                  {/* Rótulo fora do <label> do campo: o ⓘ é um botão e o
+                      toque nele não pode abrir o seletor de moeda. */}
+                  <div className="flex items-center gap-1">
+                    <label
+                      htmlFor="book-import-currency"
+                      className="block text-xs font-medium leading-5 text-zinc-700"
+                      data-field-label=""
+                    >
+                      {t("bookingLots.import.currencyDefault")}
+                    </label>
+                    <InfoTip label={t("bookingLots.import.currencyInfo")}>
+                      {t("bookingLots.import.currencyDefaultHint")}
+                    </InfoTip>
+                  </div>
                   <Select
+                    id="book-import-currency"
                     name="currency"
                     defaultValue="USD"
                     aria-describedby={CURRENCY_HINT_ID}
@@ -151,26 +175,30 @@ export default async function BookingImportPage({
                       </option>
                     ))}
                   </Select>
-                </Field>
+                </div>
                 <BookMetaFields
                   t={t}
                   types={types}
                   layout="inline"
                   itemTypeHintId={ITEM_TYPE_HINT_ID}
                 />
-              </div>
-              <div className="mt-1.5 space-y-1 text-xs text-zinc-600">
-                <p id={CURRENCY_HINT_ID} data-book-import-currency-hint>
-                  <span className="font-medium text-zinc-700">
-                    {t("bookingLots.import.currencyDefault")}
-                  </span>{" "}
-                  · {t("bookingLots.import.currencyDefaultHint")}
+                <p
+                  id={CURRENCY_HINT_ID}
+                  className="col-span-2 text-xs text-zinc-600 @[470px]:col-span-4 @[590px]:col-span-3"
+                  data-book-import-currency-hint
+                >
+                  {t("bookingLots.import.currencyDefaultNote")}
                 </p>
-                <p id={ITEM_TYPE_HINT_ID}>
-                  <span className="font-medium text-zinc-700">
-                    {t("bookWork.itemType")}
-                  </span>{" "}
-                  · {t("bookWork.itemTypeHint")}
+                <p
+                  id={ITEM_TYPE_HINT_ID}
+                  className="col-span-2 -mt-1 text-xs text-zinc-600 @[470px]:col-span-4 @[590px]:col-span-1 @[590px]:mt-0"
+                  data-book-import-type-hint
+                >
+                  {/* Longe do campo (abaixo da linha), a dica diz de qual é. */}
+                  <span className="@[590px]:hidden">
+                    {t("bookingLots.import.itemTypeHintPrefix")}{" "}
+                  </span>
+                  {t("bookingLots.import.itemTypeHintCompact")}
                 </p>
               </div>
             </div>
