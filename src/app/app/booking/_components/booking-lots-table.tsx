@@ -17,6 +17,7 @@ import {
   type Tone,
 } from "@/components/ui";
 import { TableTools } from "@/components/table-tools";
+import { ClampText } from "@/components/clamp-text";
 import {
   lockBookingLotAction,
   unlockBookingAction,
@@ -26,6 +27,11 @@ import {
  * Tabela dos bookings já carregados: a busca filtra por qualquer campo
  * enquanto se digita, e cada cabeçalho ordena (clicar de novo inverte). Tudo
  * no navegador: a lista inteira vem do servidor.
+ *
+ * Linha fina (dono, 24/11/2026, com o print do Supplier em sete linhas): letra
+ * menor e cada célula numa linha só; o texto longo (Loja / Supplier,
+ * Fornecedor, Origem, Planilha, Responsável) corta com "…" e o "ver mais" ao
+ * lado abre o texto inteiro ("ver menos" fecha), com o texto também na dica.
  */
 
 export interface BookingLotsTableLabels {
@@ -37,6 +43,9 @@ export interface BookingLotsTableLabels {
   sortBy: string;
   supplierNone: string;
   signalsNone: string;
+  /** "ver mais" e "ver menos" do texto longo numa linha. */
+  more: string;
+  less: string;
   signal: { viable: string; below: string; loss: string; missing: string };
   cols: Record<BookingLotSortKey, string>;
   /** Travar, liberar, "Livre", "pelo tipo" e os selos do prazo. */
@@ -115,6 +124,19 @@ export function BookingLotsTable({
     );
 
   const muted = <span className="text-zinc-400">—</span>;
+  /** Texto longo numa linha só, com "ver mais" quando não cabe. */
+  const clamp = (text: string, width: string) =>
+    text ? (
+      <ClampText
+        text={text}
+        lines={1}
+        more={labels.more}
+        less={labels.less}
+        className={width}
+      />
+    ) : (
+      muted
+    );
   const cell = (row: BookingLotRow, key: BookingLotSortKey) => {
     switch (key) {
       case "number":
@@ -127,27 +149,39 @@ export function BookingLotsTable({
         return <Badge tone={STATUS_TONE[row.status]}>{row.statusLabel}</Badge>;
       case "supplier":
         return row.supplier ? (
-          <span className="block max-w-48 truncate" title={row.supplier}>
-            {row.supplier}
-          </span>
+          clamp(row.supplier, "max-w-[11rem]")
         ) : (
-          <span className="text-zinc-500">{labels.supplierNone}</span>
-        );
-      case "date":
-        return row.dateText || muted;
-      case "createdAt":
-        return row.createdText || muted;
-      case "fileName":
-        return (
-          <span className="block max-w-48 truncate" title={row.fileName}>
-            {row.fileName}
+          <span className="whitespace-nowrap text-zinc-500">
+            {labels.supplierNone}
           </span>
         );
+      case "sourceKind":
+        return clamp(row.sourceKind, "max-w-[11rem]");
+      case "origin":
+        return clamp(row.origin, "max-w-[8rem]");
+      case "itemType":
+        return clamp(row.itemType, "max-w-[8rem]");
+      case "owner":
+        return clamp(row.owner, "max-w-[9rem]");
+      case "date":
+        return row.dateText ? (
+          <span className="whitespace-nowrap">{row.dateText}</span>
+        ) : (
+          muted
+        );
+      case "createdAt":
+        return row.createdText ? (
+          <span className="whitespace-nowrap">{row.createdText}</span>
+        ) : (
+          muted
+        );
+      case "fileName":
+        return clamp(row.fileName, "max-w-[11rem]");
       case "workedPct":
         // Itens trabalhados na Seleção de itens: percentual e "3 de 10".
         return (
           <span
-            className="inline-flex flex-col items-end"
+            className="inline-flex items-baseline gap-1 whitespace-nowrap"
             data-booking-lot-worked={row.workedPct}
           >
             <span className="font-semibold">{row.workedPct}%</span>
@@ -159,7 +193,7 @@ export function BookingLotsTable({
         // para ela mesma e para quem supervisiona).
         return (
           <span
-            className="flex flex-col items-start gap-1"
+            className="flex flex-col items-start gap-0.5 whitespace-nowrap"
             data-booking-lot-holder={row.lockId ?? "free"}
           >
             {row.lockId ? (
@@ -207,7 +241,7 @@ export function BookingLotsTable({
         );
       case "heldMinutes":
         return row.lockId ? (
-          <span className="inline-flex flex-col items-end gap-0.5">
+          <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap">
             <span>{row.heldText}</span>
             {/* Só a data e a hora do fim do prazo, pequenas: verde no prazo,
                 vermelha atrasada (dono, 24/11/2026; antes o selo "No prazo
@@ -258,7 +292,8 @@ export function BookingLotsTable({
         );
       }
       default: {
-        const v = row[key];
+        // Os números (os textos têm o seu caso, numa linha só).
+        const v: unknown = row[key];
         return v === "" || v === null || v === undefined ? muted : String(v);
       }
     }
@@ -305,7 +340,7 @@ export function BookingLotsTable({
                         : "none"
                     }
                     className={cx(
-                      "border-b border-zinc-200 bg-zinc-50/80 px-2.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500",
+                      "border-b border-zinc-200 bg-zinc-50/80 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500",
                       numeric && "text-right",
                     )}
                   >
@@ -340,7 +375,7 @@ export function BookingLotsTable({
                   <td
                     key={key}
                     className={cx(
-                      "border-b border-zinc-100 px-2.5 py-2 align-top text-[13px] text-zinc-800",
+                      "border-b border-zinc-100 px-2 py-1.5 align-top text-xs leading-snug text-zinc-800",
                       numeric && "text-right tabular-nums",
                     )}
                   >
