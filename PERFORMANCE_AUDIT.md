@@ -6,6 +6,8 @@ Medições de produção são **somente leitura** (estatísticas do Postgres, `E
 logs e erros da Vercel). Nada foi alterado direto em produção: toda mudança vai
 por PR para `wellmix`, com testes, como manda o `CLAUDE.md`.
 
+Nota (24/11/2026): a tela `/app/superplan`, que aparece nas medições abaixo, saiu por decisão do dono; os preços vêm da API de preço do Sankhya (docs/BOOKING.md, "Previsão de preço do item"). As medições ficam como registro.
+
 ## Como retomar
 
 1. Ler a seção **Estado** e a **Matriz** abaixo.
@@ -333,7 +335,7 @@ Mesmo servidor e mesma base da varredura; mediana de 3 leituras depois de uma de
 | `/app/superplan`                        | 4,1 MB / 0,30 s  | 474 KB / 0,12 s |
 | `/app/products`                         | 2,0 MB / 0,36 s  | 529 KB / 0,28 s |
 
-Rotas de busca (local, modo memória): 30–70 ms; ficha do produto: menos de 10 ms. No banco de produção (só leitura, `EXPLAIN ANALYZE`): produto por nome com termo comum 24 ms; texto que não existe (varre os 16,8 mil produtos) 52 ms por consulta; empresa da conversa nova, pior caso (32 mil empresas) 102 ms. Antes, cada abertura dessas telas lia o cadastro inteiro. O que resta no Superplan é a própria conta e a explicação; em Produtos, a lista da página.
+Rotas de busca (local, modo memória): 30–70 ms; ficha do produto: menos de 10 ms. No banco de produção (só leitura, `EXPLAIN ANALYZE`): produto por nome com termo comum 24 ms; texto que não existe (varre os 16,8 mil produtos) 52 ms por consulta; empresa da conversa nova, pior caso (32 mil empresas) 102 ms. Antes, cada abertura dessas telas lia o cadastro inteiro. O que restava no Superplan era a própria conta e a explicação (a tela saiu em 24/11/2026); em Produtos, a lista da página.
 
 ### Aparelhos (emulação, local, volume de produção)
 
