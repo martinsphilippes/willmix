@@ -1072,7 +1072,8 @@ export default async function BookingLotPage({
                 <BookMetaFields
                   t={t}
                   types={itemTypes}
-                  sourceKind={lot.sourceKind ?? null}
+                  storeNumber={lot.storeNumber ?? null}
+                  supplierName={lot.supplierName ?? null}
                   itemType={lot.itemType ?? null}
                   required={false}
                 />
@@ -1083,12 +1084,7 @@ export default async function BookingLotPage({
             </form>
           ) : (
             <p className="mt-4 text-sm text-zinc-600">
-              {[
-                lot.sourceKind
-                  ? t(`bookWork.sourceKind.${lot.sourceKind}` as DictionaryKey)
-                  : null,
-                lot.itemType,
-              ]
+              {[lot.storeNumber, lot.supplierName, lot.itemType]
                 .filter(Boolean)
                 .join(" · ") || "—"}
             </p>

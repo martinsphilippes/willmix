@@ -9,11 +9,7 @@ import {
 } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
 import { isBookingItemField, type BookingItemField } from "@/lib/booking-lots";
-import {
-  BOOKING_LOT_STATUSES,
-  BOOKING_SOURCE_KINDS,
-  SHEET_CURRENCIES,
-} from "@/lib/db/schema";
+import { BOOKING_LOT_STATUSES, SHEET_CURRENCIES } from "@/lib/db/schema";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
 import { errorCode, requireUser, run, str, withQuery } from "./helpers";
@@ -42,17 +38,20 @@ async function screenUser() {
 const FILE_KEY = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/);
 
 /**
- * Loja/Fábrica e Tipo de item: quem importa informa os dois (dono,
- * 23/11/2026; docs/BOOKING.md, "Loja/Fábrica e Tipo de item").
+ * Nº da loja, nome do supplier e Tipo de item: quem importa informa (dono,
+ * 23 e 24/11/2026; docs/BOOKING.md, "Dinâmica dos books"). Loja e supplier
+ * são texto livre, só informativos; o tipo de item é obrigatório.
  */
 function bookMeta(form: FormData) {
   const parsed = z
     .object({
-      sourceKind: z.enum(BOOKING_SOURCE_KINDS),
+      storeNumber: z.string().trim().max(60).nullable(),
+      supplierName: z.string().trim().max(160).nullable(),
       itemType: z.string().trim().min(1).max(80),
     })
     .safeParse({
-      sourceKind: str(form, "sourceKind"),
+      storeNumber: str(form, "storeNumber") || null,
+      supplierName: str(form, "supplierName") || null,
       itemType: str(form, "itemType"),
     });
   if (!parsed.success) throw new Error("booking_meta_required");
@@ -567,12 +566,14 @@ export async function setBookingLotMetaAction(form: FormData) {
     const input = z
       .object({
         lotId: ID,
-        sourceKind: z.enum(BOOKING_SOURCE_KINDS).nullable(),
+        storeNumber: z.string().max(60).nullable(),
+        supplierName: z.string().max(160).nullable(),
         itemType: z.string().max(80).nullable(),
       })
       .parse({
         lotId: raw,
-        sourceKind: str(form, "sourceKind") || null,
+        storeNumber: str(form, "storeNumber") || null,
+        supplierName: str(form, "supplierName") || null,
         itemType: str(form, "itemType") || null,
       });
     const { setBookingLotMeta } = await import("@/lib/services/booking-lots");

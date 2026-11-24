@@ -5,10 +5,9 @@
  * book, há quanto tempo e o prazo).
  */
 export const pt = {
-  "bookWork.sourceKind": "Loja / Fábrica",
   "bookWork.meta.save": "Salvar",
-  "bookWork.sourceKind.store": "Loja",
-  "bookWork.sourceKind.factory": "Fábrica",
+  "bookWork.storeNumber": "Nº da loja",
+  "bookWork.supplierName": "Nome do supplier",
   "bookWork.itemType": "Tipo de item",
   "bookWork.itemTypeHint":
     "Ex.: vidro, plástico, utilidades. Use o mesmo nome dos outros books do mesmo tipo.",
@@ -59,18 +58,16 @@ export const pt = {
     "Este book (ou este tipo de item) já está com outra pessoa.",
   "bookWork.error.booking_lock_mine": "Já está travado com você.",
   "bookWork.error.booking_type_required": "Escolha o tipo de item.",
-  "bookWork.error.booking_meta_required":
-    "Informe Loja ou Fábrica e o Tipo de item do book.",
+  "bookWork.error.booking_meta_required": "Informe o Tipo de item do book.",
   "bookWork.error.booking_sheets_too_many":
     "São muitas planilhas de uma vez: até 10 por book.",
-  "bookingLots.error.booking_meta_required":
-    "Informe Loja ou Fábrica e o Tipo de item do book.",
+  "bookingLots.error.booking_meta_required": "Informe o Tipo de item do book.",
   "bookingLots.error.booking_sheets_too_many":
     "São muitas planilhas de uma vez: até 10 por book.",
   "settings.error.booking_lock_sla_invalid":
     "Prazo do book travado: de 0,25 a 240 horas.",
   "bookingLots.col.itemType": "Tipo de item",
-  "bookingLots.col.sourceKind": "Loja / Fábrica",
+  "bookingLots.col.sourceKind": "Loja / Supplier",
   "bookingLots.col.workedPct": "Trabalhados",
   "bookingLots.col.holder": "Com quem está",
   "bookingLots.col.heldMinutes": "Há quanto tempo",
@@ -80,10 +77,9 @@ export const pt = {
 };
 
 export const en: typeof pt = {
-  "bookWork.sourceKind": "Store / Factory",
   "bookWork.meta.save": "Save",
-  "bookWork.sourceKind.store": "Store",
-  "bookWork.sourceKind.factory": "Factory",
+  "bookWork.storeNumber": "Store no.",
+  "bookWork.supplierName": "Supplier name",
   "bookWork.itemType": "Item type",
   "bookWork.itemTypeHint":
     "E.g. glass, plastic, housewares. Use the same name as the other books of the same type.",
@@ -134,18 +130,16 @@ export const en: typeof pt = {
     "This book (or this item type) is already with someone else.",
   "bookWork.error.booking_lock_mine": "It is already locked by you.",
   "bookWork.error.booking_type_required": "Choose the item type.",
-  "bookWork.error.booking_meta_required":
-    "Choose Store or Factory and fill in the book's item type.",
+  "bookWork.error.booking_meta_required": "Fill in the book's item type.",
   "bookWork.error.booking_sheets_too_many":
     "Too many spreadsheets at once: up to 10 per book.",
-  "bookingLots.error.booking_meta_required":
-    "Choose Store or Factory and fill in the book's item type.",
+  "bookingLots.error.booking_meta_required": "Fill in the book's item type.",
   "bookingLots.error.booking_sheets_too_many":
     "Too many spreadsheets at once: up to 10 per book.",
   "settings.error.booking_lock_sla_invalid":
     "Locked book deadline: from 0.25 to 240 hours.",
   "bookingLots.col.itemType": "Item type",
-  "bookingLots.col.sourceKind": "Store / Factory",
+  "bookingLots.col.sourceKind": "Store / Supplier",
   "bookingLots.col.workedPct": "Worked",
   "bookingLots.col.holder": "Who has it",
   "bookingLots.col.heldMinutes": "For how long",
@@ -155,10 +149,9 @@ export const en: typeof pt = {
 };
 
 export const zh: typeof pt = {
-  "bookWork.sourceKind": "门店 / 工厂",
   "bookWork.meta.save": "保存",
-  "bookWork.sourceKind.store": "门店",
-  "bookWork.sourceKind.factory": "工厂",
+  "bookWork.storeNumber": "店铺号",
+  "bookWork.supplierName": "供应商名称",
   "bookWork.itemType": "产品类型",
   "bookWork.itemTypeHint":
     "例如：玻璃、塑料、日用品。同类型的 Book 请使用相同的名称。",
@@ -207,18 +200,16 @@ export const zh: typeof pt = {
   "bookWork.error.booking_lock_taken": "该 Book（或该产品类型）已由他人处理。",
   "bookWork.error.booking_lock_mine": "已由您锁定。",
   "bookWork.error.booking_type_required": "请选择产品类型。",
-  "bookWork.error.booking_meta_required":
-    "请选择门店或工厂，并填写 Book 的产品类型。",
+  "bookWork.error.booking_meta_required": "请填写 Book 的产品类型。",
   "bookWork.error.booking_sheets_too_many":
     "一次选择的表格过多：每个 Book 最多 10 个。",
-  "bookingLots.error.booking_meta_required":
-    "请选择门店或工厂，并填写 Book 的产品类型。",
+  "bookingLots.error.booking_meta_required": "请填写 Book 的产品类型。",
   "bookingLots.error.booking_sheets_too_many":
     "一次选择的表格过多：每个 Book 最多 10 个。",
   "settings.error.booking_lock_sla_invalid":
     "锁定 Book 的期限：0.25 至 240 小时。",
   "bookingLots.col.itemType": "产品类型",
-  "bookingLots.col.sourceKind": "门店 / 工厂",
+  "bookingLots.col.sourceKind": "店铺 / 供应商",
   "bookingLots.col.workedPct": "已处理",
   "bookingLots.col.holder": "由谁处理",
   "bookingLots.col.heldMinutes": "已处理多久",

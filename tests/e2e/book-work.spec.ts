@@ -134,7 +134,7 @@ test("Book do fornecedor: várias planilhas, preencher todas as linhas e seta pa
   ).toHaveCount(5);
   await page.goto("/app/booking");
   const mine = page.locator("tr[data-partner-booking]", { hasText: TYPE });
-  await expect(mine).toContainText(/Fábrica|Factory|工厂/);
+  await expect(mine).toContainText("Supplier E2E");
   await expect(mine.locator("[data-partner-booking-worked]")).toContainText(
     "0%",
   );

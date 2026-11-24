@@ -289,14 +289,7 @@ export async function PartnerBookingList({
                   </Td>
                   <Td className="min-w-48">{lot.fileName}</Td>
                   <Td>
-                    {[
-                      lot.sourceKind
-                        ? t(
-                            `bookWork.sourceKind.${lot.sourceKind}` as DictionaryKey,
-                          )
-                        : null,
-                      lot.itemType,
-                    ]
+                    {[lot.storeNumber, lot.supplierName, lot.itemType]
                       .filter(Boolean)
                       .join(" · ") || "—"}
                   </Td>
