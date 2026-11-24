@@ -2046,6 +2046,7 @@ alter table public."booking_items" add column if not exists "manufacturerOkAt" t
 alter table public."booking_items" add column if not exists "manufacturerOkByUserId" text;
 alter table public."booking_items" add column if not exists "refusedAt" timestamptz;
 alter table public."booking_items" add column if not exists "refusedByUserId" text;
+alter table public."booking_items" add column if not exists "sheetStore" text;
 create index if not exists "booking_items_by_lot" on public."booking_items" ("lotId");
 create index if not exists "booking_items_by_product" on public."booking_items" ("productId");
 create index if not exists "booking_items_created" on public."booking_items" ("createdAt");

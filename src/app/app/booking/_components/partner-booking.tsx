@@ -69,11 +69,7 @@ import {
   sendPartnerBookingAction,
 } from "../../actions/booking-lots";
 import { BookMetaFields } from "./book-meta-fields";
-import {
-  ManufacturerAlert,
-  ManufacturerCell,
-  StoreNumberAlert,
-} from "./manufacturer";
+import { ManufacturerAlert, ManufacturerCell } from "./manufacturer";
 
 /*
  * Tela Booking para o login externo (Trading, Factory, Supplier, GP; dono,
@@ -481,8 +477,7 @@ export async function PartnerBookingLotView({
   const detail = await getPartnerBookingLot(user, lotId);
   // Booking de outra empresa (ou que não existe): não se diz qual dos dois.
   if (!detail) notFound();
-  const { lot, items, partnerName, factoryName, manufacturer, sheetStore } =
-    detail;
+  const { lot, items, partnerName, factoryName, manufacturer } = detail;
   const preparing = bookingLotPreparing(lot.status);
   const known = [`bookingLots.error.${error}`, `common.${error}`].find(
     (k) => k in dictionaries.pt,
@@ -548,7 +543,6 @@ export async function PartnerBookingLotView({
           items={items}
           created={created}
           manufacturer={manufacturer}
-          sheetStore={sheetStore}
         />
       ) : (
         <SentItems t={t} items={items} worked={lot.worked} />
@@ -612,7 +606,6 @@ function PreparingItems({
   items,
   created,
   manufacturer,
-  sheetStore,
 }: {
   t: Translate;
   lot: PartnerBookingLot;
@@ -620,8 +613,6 @@ function PreparingItems({
   created: boolean;
   /** A Fábrica do book (o Fabricante de todas as linhas). */
   manufacturer: string | null;
-  /** Nº da loja da planilha, quando diferente do digitado. */
-  sheetStore: string | null;
 }) {
   // Linhas com outro fabricante na planilha: o book não é enviado.
   const mixed = items.filter((i) => i.manufacturerMismatch).length;
@@ -717,17 +708,23 @@ function PreparingItems({
           )}
         </Alert>
       </div>
-      <StoreNumberAlert
-        t={t}
-        typed={lot.storeNumber ?? null}
-        sheet={sheetStore}
-      />
       <ManufacturerAlert
         t={t}
-        lotId={lot.id}
         count={mixed}
         manufacturer={manufacturer}
-        canEdit
+        cancel={
+          // A outra saída: descartar esta importação e refazer.
+          <form action={discardPartnerBookingAction}>
+            <input type="hidden" name="lotId" value={lot.id} />
+            <SubmitButton
+              variant="secondary"
+              confirmText={t("bookWork.manufacturer.cancelAsk")}
+              data-book-manufacturer-cancel
+            >
+              {t("bookWork.manufacturer.cancel")}
+            </SubmitButton>
+          </form>
+        }
       />
       <Card
         title={t("bookingLots.partner.items", { n: String(items.length) })}
@@ -864,7 +861,7 @@ function PreparingItems({
                         lotId={lot.id}
                         itemId={item.id}
                         manufacturer={manufacturer}
-                        sheetSupplier={item.sheetSupplier ?? null}
+                        sheetStore={item.sheetStore ?? null}
                         mismatch={!!item.manufacturerMismatch}
                         canEdit
                       />
@@ -968,8 +965,15 @@ function SentItems({
       width: 8,
       align: "left",
       value: (i) => (
-        <Badge tone={i.worked ? "success" : "neutral"}>
-          {t(i.worked ? "bookWork.worked.yes" : "bookWork.worked.no")}
+        // O fornecedor vê o que foi selecionado e o que foi recusado.
+        <Badge tone={i.refused ? "danger" : i.worked ? "success" : "neutral"}>
+          {t(
+            i.refused
+              ? "bookWork.worked.refused"
+              : i.worked
+                ? "bookWork.worked.selected"
+                : "bookWork.worked.no",
+          )}
         </Badge>
       ),
     },
@@ -1232,7 +1236,9 @@ function SentItems({
               <tr
                 key={item.id}
                 data-partner-booking-row={item.id}
-                data-partner-booking-row-worked={item.worked ? "yes" : "no"}
+                data-partner-booking-row-worked={
+                  item.refused ? "refused" : item.worked ? "yes" : "no"
+                }
               >
                 {columns.map((c, index) => (
                   <td
@@ -1240,7 +1246,11 @@ function SentItems({
                     className={cx(
                       cellClass,
                       // Linha do item trabalhado: fundo verde claro.
-                      item.worked ? "bg-emerald-50" : "bg-white",
+                      item.refused
+                        ? "bg-red-50"
+                        : item.worked
+                          ? "bg-emerald-50"
+                          : "bg-white",
                       alignClass[c.align],
                       divider(index),
                       frozenClass(c.key),

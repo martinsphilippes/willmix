@@ -46,8 +46,9 @@ const HEADER = [
   "MATERIAL",
   "MOQ",
   "PURCHASE QTY IN PCS",
+  "SUPPLIER STORE NO",
 ];
-const row = (sku: string, desc: string) => [
+const row = (sku: string, desc: string, store = "") => [
   "Shenzhen Supplier A",
   "2026.10.13",
   sku,
@@ -68,6 +69,7 @@ const row = (sku: string, desc: string) => [
   "glass",
   "1000",
   "3000",
+  store,
 ];
 const file = (rows: string[][], name = "b.xlsx") =>
   new File([xlsxBytes([{ name: "BOOKING", cells: [HEADER, ...rows] }])], name, {
@@ -241,11 +243,9 @@ describe("importar o book", () => {
 });
 
 describe("fábrica, fornecedor e fabricante", () => {
-  const mixedRow = (sku: string, supplier: string) => {
-    const r = row(sku, `Item ${sku}`);
-    r[0] = supplier;
-    return r;
-  };
+  // Uma linha com o nº da loja que a planilha traz.
+  const mixedRow = (sku: string, store: string) =>
+    row(sku, `Item ${sku}`, store);
 
   it("o Supplier digitado é o Fornecedor: do cadastro, ou cadastrado depois", async () => {
     const store = getStore();
@@ -273,66 +273,63 @@ describe("fábrica, fornecedor e fabricante", () => {
     // O Supplier não é o Fabricante: a Fábrica continua sendo a da planilha,
     // e nenhuma linha diverge por causa dele.
     expect(fresh.supplierId).toBe(known.supplierId);
-    expect(await svc.lotManufacturer(fresh)).toBe("Shenzhen Supplier A");
     expect(
       await svc.manufacturerMismatches(fresh, await itemsOf(fresh.id)),
     ).toEqual([]);
   });
 
-  it("linha de outro fabricante trava o fechamento até remover ou confirmar", async () => {
+  it("linha com outro nº de loja trava o fechamento até ser removida", async () => {
     const lot = await svc.createBookingLotFromSheet(
       admin,
       file([
-        mixedRow("FB-1", "Shenzhen Supplier A"),
-        mixedRow("FB-2", "Shenzhen Supplier A Co., Ltd."),
-        mixedRow("FB-3", "Outra Fabrica"),
-        mixedRow("FB-4", "Terceira Fabrica"),
+        mixedRow("FB-1", "Z 9"),
+        mixedRow("FB-2", "z-9"),
+        mixedRow("FB-3", "B 22"),
+        mixedRow("FB-4", ""),
       ]),
       { itemType: "Fabricante", storeNumber: "Z 9" },
     );
     const { setBookingItemsNcm } = await import("@/lib/services/booking-ncm");
-    let items = await itemsOf(lot.id);
+    const items = await itemsOf(lot.id);
     await setBookingItemsNcm(
       admin,
       items.map((i) => i.id),
       "7013.37.00",
     );
-    expect(items.map((i) => i.sheetSupplier)).toEqual([
-      "Shenzhen Supplier A",
-      "Shenzhen Supplier A Co., Ltd.",
-      "Outra Fabrica",
-      "Terceira Fabrica",
+    expect(items.map((i) => i.sheetStore ?? null)).toEqual([
+      "Z 9",
+      "z-9",
+      "B 22",
+      null,
     ]);
+    // O Fabricante é o nº da loja digitado, repetido em todas as linhas.
+    expect(await svc.lotManufacturer(lot)).toBe("Z 9");
     const wrong = await svc.manufacturerMismatches(lot, items);
-    // "Co., Ltd." é o mesmo fabricante; as outras duas divergem.
-    expect(wrong.map((i) => i.factoryItemCode)).toEqual(["FB-3", "FB-4"]);
+    // "z-9" é a mesma loja; sem loja na linha não há o que comparar.
+    expect(wrong.map((i) => i.factoryItemCode)).toEqual(["FB-3"]);
     await expect(svc.closeBookingLot(admin, lot.id)).rejects.toThrow(
       "booking_manufacturer_mismatch",
     );
-    // Uma sai do book; a outra é confirmada (a planilha estava errada).
     await svc.removeBookingItem(admin, lot.id, wrong[0].id);
     expect((await getStore().get("booking_lots", lot.id))?.itemCount).toBe(3);
-    await expect(svc.closeBookingLot(admin, lot.id)).rejects.toThrow(
-      "booking_manufacturer_mismatch",
-    );
-    expect(await svc.confirmBookingManufacturer(admin, lot.id, null)).toBe(1);
-    items = await itemsOf(lot.id);
-    expect(await svc.manufacturerMismatches(lot, items)).toEqual([]);
     const closed = await svc.closeBookingLot(admin, lot.id);
     expect(closed.status).toBe("closed");
+    // A tela do book não edita mais a loja nem o Supplier: ficam como estão.
+    const kept = await svc.setBookingLotMeta(admin, lot.id, {
+      itemType: "Fabricante B",
+    });
+    expect(kept.storeNumber).toBe("Z 9");
+    expect(kept.itemType).toBe("Fabricante B");
   });
 
-  it("o parceiro não envia o book com outro fabricante", async () => {
+  it("o parceiro não envia o book com outro nº de loja", async () => {
     const lot = await partner.launchPartnerBooking(
       supplierA,
-      file([
-        mixedRow("PF-1", "Shenzhen Supplier A"),
-        mixedRow("PF-2", "Fabrica Errada"),
-      ]),
-      { itemType: "Fabricante" },
+      file([mixedRow("PF-1", "A 154678"), mixedRow("PF-2", "X 1")]),
+      { itemType: "Fabricante", storeNumber: "A 154678" },
     );
     const detail = (await partner.getPartnerBookingLot(supplierA, lot.id))!;
-    expect(detail.manufacturer).toBe("Shenzhen Supplier A");
+    expect(detail.manufacturer).toBe("A 154678");
     expect(detail.items.map((i) => i.manufacturerMismatch)).toEqual([
       false,
       true,
@@ -431,6 +428,15 @@ describe("recusar itens na tela do book", () => {
     const [a, b] = await itemsOf(lot.id);
     await svc.lockBookingLot(ana, lot.id);
     expect(await svc.refuseBookingItems(ana, lot.id, [a.id])).toBe(1);
+    // O fornecedor que publicou vê o que foi recusado.
+    expect(
+      (await partner.getPartnerBookingLot(supplierA, lot.id))!.items.map(
+        (i) => [!!i.refused, !!i.worked],
+      ),
+    ).toEqual([
+      [true, true],
+      [false, false],
+    ]);
     let items = await itemsOf(lot.id);
     expect(items.map((i) => [!!i.refusedAt, !!i.workedAt])).toEqual([
       [true, true],

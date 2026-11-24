@@ -137,7 +137,11 @@ export type PartnerBookingItem = Pick<
   worked?: boolean;
   /** Fabricante como a planilha escreveu nesta linha e se diverge do book. */
   sheetSupplier?: string | null;
+  /** Nº da loja desta linha na planilha. */
+  sheetStore?: string | null;
   manufacturerMismatch?: boolean;
+  /** Recusado pela Wellmix (o trabalhado que não é recusado foi selecionado). */
+  refused?: boolean;
 };
 
 const itemView = (i: BookingItem): PartnerBookingItem => {
@@ -311,7 +315,7 @@ export async function getPartnerBookingLot(
   const { workedShare } = await import("@/lib/booking-locks");
   const { bookManufacturer, manufacturerMismatch, storeNumberMismatch } =
     await import("@/lib/booking-lots");
-  const manufacturer = bookManufacturer(lot, nameOf(lot.supplierId));
+  const manufacturer = bookManufacturer(lot);
   return {
     lot: { ...lotView(lot), worked: workedShare(items) },
     items: items
@@ -320,6 +324,10 @@ export async function getPartnerBookingLot(
         ...itemView(i),
         worked: !!i.workedAt,
         sheetSupplier: i.sheetSupplier ?? null,
+        sheetStore: i.sheetStore ?? null,
+        // O fornecedor vê o que foi selecionado e o que foi recusado (dono,
+        // 24/11/2026), sem a análise.
+        refused: !!i.refusedAt,
         manufacturerMismatch: manufacturerMismatch(i, manufacturer),
         // O parceiro vê as fotos dos itens dos books dele (dono, 16/11/2026).
         photoDocumentId: i.photoDocumentId ?? null,

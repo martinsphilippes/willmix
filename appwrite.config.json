@@ -12245,6 +12245,14 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "sheetStore",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
         }
       ],
       "indexes": [

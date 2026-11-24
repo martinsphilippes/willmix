@@ -90,6 +90,8 @@ export function BookMetaFields({
       <Field label={t("bookWork.storeNumber")}>
         <Input
           name="storeNumber"
+          // É o Fabricante de todas as linhas: obrigatório na importação.
+          required={required}
           maxLength={60}
           defaultValue={storeNumber ?? ""}
           autoComplete="off"
