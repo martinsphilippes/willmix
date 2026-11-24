@@ -2,8 +2,8 @@
 
 Vídeos para quem trabalha dentro da Wellmix, do primeiro contato com a planilha do fornecedor até o pedido nascer. Dois papéis aparecem: o **operador** (`operador@wellmix.com`, funções **comprador** e **planner**) e o **administrador** (`admin@wellmix.com`). As duas séries seguem a mesma jarra, a **Jarra de vidro 1,5 L**, e acompanham a jornada na ordem:
 
-- **WBK, o produto antes da solicitação** (etapa 1 de 9, Produto e Booking): a planilha do fornecedor vira um booking, o booking é fechado e analisado pelo Superplan, a Wellmix compara itens parecidos e pergunta ao fornecedor se ele faz o item, decide a resposta, cria o produto, liga ao Sankhya e libera na vitrine.
-- **WSO, da solicitação do cliente à proposta e ao sinal** (etapas 3 e 4 de 9, Cotação e Sinal e pedido): a solicitação do cliente chega, vai a um fornecedor, a cotação volta, o preço ao cliente é fechado e aprovado, a proposta vai ao cliente, o sinal é confirmado e o pedido nasce. Fecham a série o interruptor da RFQ e a análise de viabilidade do Superplan.
+- **WBK, o produto antes da solicitação** (etapa 1 de 9, Produto e Booking): a planilha do fornecedor vira um booking, o booking é fechado e cada item recebe a previsão de preço do Sankhya, a Wellmix compara itens parecidos e pergunta ao fornecedor se ele faz o item, decide a resposta, cria o produto, liga ao Sankhya e libera na vitrine.
+- **WSO, da solicitação do cliente à proposta e ao sinal** (etapas 3 e 4 de 9, Cotação e Sinal e pedido): a solicitação do cliente chega, vai a um fornecedor, a cotação volta, o preço ao cliente é fechado e aprovado, a proposta vai ao cliente, o sinal é confirmado e o pedido nasce. Fecha a série o interruptor da RFQ. (A tela Superplan e o episódio WSO-05 saíram em 24/11/2026; os preços vêm da API de preço do Sankhya.)
 
 Antes de gravar: leia o [GUIA.md](GUIA.md) (formato, ambiente, elementos de tela e lista de qualidade). Os episódios seguem o modelo da seção 5 do guia e a forma do episódio CLI-02 ([02-cliente.md](02-cliente.md)). A ficha de cada episódio ganhou a linha **Quem faz**, porque aqui o papel muda de um episódio para o outro.
 
@@ -11,17 +11,17 @@ Antes de gravar: leia o [GUIA.md](GUIA.md) (formato, ambiente, elementos de tela
 
 | Conta (senha `wellmix123`)  | Papel e funções                                   | O que faz nestes vídeos                                                                                                                                                  | O que **não** vê (docs/ACCESS.md)                                                                                                                                              |
 | --------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `operador@wellmix.com`      | Operador Wellmix, funções Comprador e Planner     | Booking, Seleção de itens, Solicitações ao fornecedor, produto (bloco Produto e CODPROD), Solicitações do cliente, RFQ (envio a um fornecedor), cotação, preço ao cliente, envio para aprovação, pedido | Superplan (a tela), Financeiro, Contas a pagar, Configurações, Equipe e divisões, Auditoria, Linhas, Vitrine do cliente, Marketing, o interruptor da RFQ e do Sourcing, "Confirmar sinal recebido", os cartões financeiros do pedido (valor de venda, recebido, a receber, margem) |
-| `admin@wellmix.com`         | Administrador (todas as telas e todos os níveis)  | Superplan, interruptor da RFQ e do Sourcing, aprovação do pré-custo (todos os níveis), "Confirmar sinal recebido", valores do pedido                                     | nada                                                                                                                                                                           |
+| `operador@wellmix.com`      | Operador Wellmix, funções Comprador e Planner     | Booking, Seleção de itens, Solicitações ao fornecedor, produto (bloco Produto e CODPROD), Solicitações do cliente, RFQ (envio a um fornecedor), cotação, preço ao cliente, envio para aprovação, pedido | Financeiro, Contas a pagar, Configurações, Equipe e divisões, Auditoria, Linhas, Vitrine do cliente, Marketing, o interruptor da RFQ e do Sourcing, "Confirmar sinal recebido", os cartões financeiros do pedido (valor de venda, recebido, a receber, margem) |
+| `admin@wellmix.com`         | Administrador (todas as telas e todos os níveis)  | Interruptor da RFQ e do Sourcing, aprovação do pré-custo (todos os níveis), "Confirmar sinal recebido", valores do pedido                                     | nada                                                                                                                                                                           |
 
 Em cada episódio, `[QUEM VÊ]` diz quem faz o passo e quem não enxerga a tela. Regras que valem para a série toda:
 
-- **A Wellmix vê tudo do pedido; fornecedor e cliente nunca veem o que é interno.** O fornecedor não vê o cliente, as alternativas da seleção, o Superplan, o preço de outros fornecedores nem a margem. O cliente não vê o fornecedor, o preço FOB, as cotações, a aprovação do pré-custo nem as etapas da solicitação.
-- O operador **abre** as telas das suas funções: Booking, Solicitações, RFQ, Cotações, Pedidos, Embalagens, Containers, Produtos, Cadastros de parceiros (comprador e planner somados). O Superplan e tudo o que é financeiro são só do administrador (o administrador pode liberar telas a um login em Gestão → Equipe e divisões).
+- **A Wellmix vê tudo do pedido; fornecedor e cliente nunca veem o que é interno.** O fornecedor não vê o cliente, as alternativas da seleção, a previsão de preço, o preço de outros fornecedores nem a margem. O cliente não vê o fornecedor, o preço FOB, as cotações, a aprovação do pré-custo nem as etapas da solicitação.
+- O operador **abre** as telas das suas funções: Booking, Solicitações, RFQ, Cotações, Pedidos, Embalagens, Containers, Produtos, Cadastros de parceiros (comprador e planner somados). Tudo o que é financeiro é só do administrador (o administrador pode liberar telas a um login em Gestão → Equipe e divisões).
 - Dentro de uma tela que o operador abre, **a função continua mandando**: o planner aprova o primeiro nível do pré-custo, mas quem enviou a escolha não aprova a própria escolha (WSO-02).
 - Booking, aqui, é **a lista de produtos de uma planilha do fornecedor**, na Wellmix. Não é a reserva no navio (GUIA, seção 6).
 
-Documentos lidos para esta série: `docs/SCOPE.md`, `docs/WORKFLOW.md`, `docs/ACCESS.md`, `docs/BOOKING.md`, `docs/SUPPLIER_REQUESTS.md`, `docs/RFQ_STANDBY.md`, `docs/QUOTE_FLOW.md`, `docs/APPROVALS.md`, `docs/SUPERPLAN.md`, `docs/SANKHYA.md`. Textos de tela conferidos nos dicionários pt (`src/i18n/modules/booking-lots.ts`, `supplier-requests.ts`, `supplier-request-product.ts`, `rfq-standby.ts`, `sourcing-standby.ts`, `approvals.ts`, `superplan.ts`, `superplan-rfq.ts`, `quote-flow.ts` e `src/i18n/dictionaries.ts`), no código das telas e no que o sistema mostrou ao percorrer o caminho com as contas do guia.
+Documentos lidos para esta série: `docs/SCOPE.md`, `docs/WORKFLOW.md`, `docs/ACCESS.md`, `docs/BOOKING.md`, `docs/SUPPLIER_REQUESTS.md`, `docs/RFQ_STANDBY.md`, `docs/QUOTE_FLOW.md`, `docs/APPROVALS.md`, `docs/SANKHYA.md`. Textos de tela conferidos nos dicionários pt (`src/i18n/modules/booking-lots.ts`, `supplier-requests.ts`, `supplier-request-product.ts`, `rfq-standby.ts`, `sourcing-standby.ts`, `approvals.ts`, `booking-forecast.ts`, `quote-flow.ts` e `src/i18n/dictionaries.ts`), no código das telas e no que o sistema mostrou ao percorrer o caminho com as contas do guia.
 
 ## Antes de gravar (ambiente e dados de cena)
 
@@ -41,14 +41,13 @@ Documentos lidos para esta série: `docs/SCOPE.md`, `docs/WORKFLOW.md`, `docs/AC
 | `antes-WSO-02`      | A jarra já enviada ao fornecedor A (WSO-01) e a cotação **respondida** pelo fornecedor A (US$ 3,35, 35 dias, ficha completa)                                           |
 | `antes-WSO-03`      | A escolha do fornecedor aprovada nos dois níveis (final do WSO-02): solicitação em "Aguardando sinal"                                                                  |
 | `antes-WSO-04`      | RFQ em espera; uma solicitação ainda em "Solicitado" e outra com **duas cotações respondidas** (A e B), preparada antes, fora da gravação, com a RFQ ligada (e desligada de novo)    |
-| `antes-WSO-05`      | Produto "Jarra de vidro 1,5 L" (UTL-001) no cadastro (criado no WBK-04), com o administrador logado                                                                      |
 
 ## Índice
 
 | ID      | Episódio                                                      | Duração-alvo | Situação                                       |
 | ------- | ------------------------------------------------------------- | ------------ | ---------------------------------------------- |
 | WBK-01  | Importar um booking (planilha do fornecedor)                  | 3:30         | roteirizado, telas conferidas no build atual   |
-| WBK-02  | Fechar o booking e ler a análise do Superplan                 | 4:30         | roteirizado, telas conferidas no build atual   |
+| WBK-02  | Fechar o booking e ler a previsão de preço                    | 4:30         | roteirizado, telas conferidas no build atual   |
 | WBK-03  | Seleção de itens e solicitação ao fornecedor                  | 5:00         | roteirizado, telas conferidas no build atual   |
 | WBK-04  | Decidir a resposta do fornecedor e criar o produto            | 5:00         | roteirizado, telas conferidas (ver ⚠ do CBM)   |
 | WBK-05  | Ligar ao Sankhya e liberar na vitrine                         | 3:30         | roteirizado; busca no ERP só com credencial    |
@@ -56,7 +55,6 @@ Documentos lidos para esta série: `docs/SCOPE.md`, `docs/WORKFLOW.md`, `docs/AC
 | WSO-02  | Comparar a cotação e fechar o preço ao cliente                | 5:00         | roteirizado, telas conferidas no build atual   |
 | WSO-03  | Proposta, sinal e nascimento do pedido                        | 4:30         | roteirizado, telas conferidas no build atual   |
 | WSO-04  | RFQ em espera: o interruptor                                  | 3:30         | roteirizado, telas conferidas no build atual   |
-| WSO-05  | Superplan: a viabilidade do produto                           | 5:00         | roteirizado, telas conferidas (ver ⚠ do CBM)   |
 
 ## Dados de cena: as três planilhas de booking
 
@@ -119,7 +117,7 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 
 **Cena 3 · 0:22–0:40 · Abrir o Booking · menu → `/app/booking`**
 
-- 🎬 Imagem: o cursor abre o menu **Pedidos** e clica em **Booking**. A tela mostra o título "Booking", o subtítulo "Planilhas de booking dos fornecedores. Suba a planilha, confira fornecedor, data e itens e feche: o Superplan analisa todos os itens." e, no alto à direita, os botões "Seleção de itens" e "Importar booking".
+- 🎬 Imagem: o cursor abre o menu **Pedidos** e clica em **Booking**. A tela mostra o título "Booking", o subtítulo "Planilhas de booking dos fornecedores. Suba a planilha, confira fornecedor, data e itens e feche: a API de preço do Sankhya prevê todos os itens." e, no alto à direita, os botões "Seleção de itens" e "Importar booking".
 - 🎙 Narração: "No menu, abra Pedidos e clique em Booking. Aqui ficam as planilhas dos fornecedores. Para subir uma nova, clique em Importar booking."
 - 🔤 Na tela: `[PASSO 1/6] Abra Pedidos → Booking`; `[BOTÃO] "Importar booking"`; `[QUEM VÊ]` "Só a Wellmix, com a tela Booking. Cliente e fornecedor não veem bookings"; `[ATENÇÃO]` "Aqui, booking é a lista de produtos da planilha. Não é a reserva no navio".
 - ✂️ Edição: clique com onda de destaque; `[CORTE]` seco para a tela de importação.
@@ -161,7 +159,7 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 
 **Cena 9 · 3:00–3:15 · E agora? · `/app/booking`**
 
-- 🎬 Imagem: voltar a **Booking** com o botão "Voltar aos bookings". A lista mostra uma linha: nº 1, "Rascunho", Shenzhen, Shenzhen Supplier A, 13/10/2026, 6 itens, 2 em "Incompletos", "Sem análise" em "Superplan".
+- 🎬 Imagem: voltar a **Booking** com o botão "Voltar aos bookings". A lista mostra uma linha: nº 1, "Rascunho", Shenzhen, Shenzhen Supplier A, 13/10/2026, 6 itens, 2 em "Incompletos", "Sem previsão" em "Previsão".
 - 🎙 Narração: "O booking fica em rascunho, só com a Wellmix. Nada vai para o cadastro de produtos nem para o Sankhya: isso só acontece depois da seleção."
 - 🔤 Na tela: `[DEPOIS]` "Rascunho: só a Wellmix vê. Não existe produto, cliente nem estoque. O próximo passo é fechar o booking (WBK-02)"; `[BOTÃO] "Voltar aos bookings"`.
 - ✂️ Edição: cartão `[DEPOIS]` em tela cheia por 4 s.
@@ -170,7 +168,7 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 
 - 🎬 Imagem: fundo vermelho com a lista; no fim, a miniatura do WBK-02.
 - 🎙 Narração: "Resumindo: abra Booking, clique em Importar booking, escolha o arquivo e confira o que foi lido. No próximo vídeo, fechamos o booking e lemos a análise."
-- 🔤 Na tela: `[RESUMO]` "1 Pedidos → Booking · 2 Importar booking · 3 Escolha o arquivo e a moeda · 4 Confira fornecedor, data e o que falta"; chamada "Próximo: WBK-02 · Fechar o booking e ler a análise do Superplan".
+- 🔤 Na tela: `[RESUMO]` "1 Pedidos → Booking · 2 Importar booking · 3 Escolha o arquivo e a moeda · 4 Confira fornecedor, data e o que falta"; chamada "Próximo: WBK-02 · Fechar o booking e ler a previsão de preço".
 - ✂️ Edição: fade para a vinheta de encerramento (logo Wellmix, 3 s).
 
 ### Erros comuns
@@ -210,20 +208,20 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 
 ---
 
-## WBK-02 · Fechar o booking e ler a análise do Superplan
+## WBK-02 · Fechar o booking e ler a previsão de preço
 
-> **Promessa:** ao final do vídeo você sabe completar um booking, fechá-lo e ler o que o Superplan calculou para cada item.
+> **Promessa:** ao final do vídeo você sabe completar um booking, fechá-lo e ler a previsão de preço que o Sankhya devolveu para cada item.
 
 | Ficha                 |                                                                                                                                                                                                      |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Série e papel         | Wellmix, operador                                                                                                                                                                                    |
-| Quem faz              | Operador (comprador ou planner), com a tela Booking. O resultado do Superplan aparece dentro do Booking; **a tela Superplan** (a conta completa) é só do administrador (WSO-05)                         |
+| Quem faz              | Operador (comprador ou planner), com a tela Booking e "Ver preço de compra". A previsão de preço aparece dentro do Booking, só para a Wellmix com essa permissão |
 | Conta de gravação     | `operador@wellmix.com`, tela em pt (Chrome em pt-BR, para as datas saírem em dd/mm/aaaa)                                                                                                             |
 | Duração-alvo          | 4:30                                                                                                                                                                                                 |
 | Ponto da jornada      | Etapa 1 de 9: Produto e Booking                                                                                                                                                                      |
 | Telas e rotas         | `/app/booking`, `/app/booking/lots/[id]`                                                                                                                                                             |
 | Dados antes de gravar | Ponto `antes-WBK-02`: Bookings nº 1, 2 e 3 em Rascunho (planilhas A, B e C). O nº 1 tem 2 itens incompletos; o nº 3 vem de um fornecedor que ainda não está no cadastro                                |
-| Depois deste vídeo    | O Booking nº 1 passa a **Fechado** e cada item guarda o retrato do Superplan (selo, preço mínimo e lucro). Os itens deixam de ser editáveis. Ninguém é avisado                                        |
+| Depois deste vídeo    | O Booking nº 1 passa a **Fechado** e cada item guarda o retrato da previsão de preço do Sankhya (selo, custo, venda prevista e lucro). Os itens deixam de ser editáveis. Ninguém é avisado                                        |
 | Antes · Próximo       | WBK-01 · WBK-03                                                                                                                                                                                      |
 | Idiomas               | pt (base)                                                                                                                                                                                            |
 
@@ -231,9 +229,9 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 
 **Cena 1 · 0:00–0:10 · Gancho · `/app/booking/lots/[id]`**
 
-- 🎬 Imagem: a tabela de itens de um booking **Fechado**, rolada até as últimas colunas: em "Superplan", cada item com um selo amarelo, "Mínimo R$ 45,75" e "Lucro 18,5%".
-- 🎙 Narração: "Quando o booking fecha, cada item ganha o preço mínimo de venda, calculado pelo Superplan. Veja como chegar lá."
-- 🔤 Na tela: `[TÍTULO]` "WBK-02 · Fechar o booking e ler a análise do Superplan"; `[ZOOM 150 %]` na coluna "Superplan".
+- 🎬 Imagem: a tabela de itens de um booking **Fechado**, rolada até as últimas colunas: em "Previsão", cada item com o selo, a venda prevista e o lucro.
+- 🎙 Narração: "Quando o booking fecha, cada item ganha a previsão de preço do Sankhya. Veja como chegar lá."
+- 🔤 Na tela: `[TÍTULO]` "WBK-02 · Fechar o booking e ler a previsão de preço"; `[ZOOM 150 %]` na coluna "Previsão".
 - ✂️ Edição: vinheta de 6,5 s antes; entrada do título em 2 s; música baixa para −28 dB ao começar a voz.
 
 **Cena 2 · 0:10–0:22 · Onde estou na jornada · `/app/booking`**
@@ -245,7 +243,7 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 
 **Cena 3 · 0:22–0:45 · A lista dos bookings · `/app/booking`**
 
-- 🎬 Imagem: a tabela com uma linha por planilha: "Nº", "Status", "Origem", "Fornecedor", "Data", "Planilha", "Itens", "Incompletos", "Superplan", "Responsável" e "Carregado em". Digitar "shenzhen" em "Buscar em qualquer coluna" (a lista filtra enquanto se digita; abaixo do campo, "1 de 3 bookings"); apagar e clicar no cabeçalho "Fornecedor" para ordenar. Clicar no número 1.
+- 🎬 Imagem: a tabela com uma linha por planilha: "Nº", "Status", "Origem", "Fornecedor", "Data", "Planilha", "Itens", "Incompletos", "Previsão", "Responsável" e "Carregado em". Digitar "shenzhen" em "Buscar em qualquer coluna" (a lista filtra enquanto se digita; abaixo do campo, "1 de 3 bookings"); apagar e clicar no cabeçalho "Fornecedor" para ordenar. Clicar no número 1.
 - 🎙 Narração: "Em Booking, cada linha é uma planilha, com status, origem, fornecedor, itens e incompletos. Digite na busca para filtrar e clique no cabeçalho para ordenar. Abra o Booking número um."
 - 🔤 Na tela: `[PASSO 1/7] Abra o booking`; `[SETA]` "Itens que ainda faltam completar" em "Incompletos"; `[DICA]` "A busca vale para qualquer coluna".
 - ✂️ Edição: cortar a digitação da busca para 4 s.
@@ -271,26 +269,26 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 - 🔤 Na tela: `[PASSO 4/7] Complete os campos obrigatórios`; `[SETA]` "* obrigatório para fechar" no cabeçalho; `[ERRO COMUM]` "Valor que não dá para ler. Use número maior que zero, FOB ou EXW, e USD, RMB, BRL ou EUR."; `[SETA]` "Tudo preenchido: o booking pode ser fechado.".
 - ✂️ Edição: digitação em tempo real; cortar a espera do recarregamento.
 
-**Cena 7 · 2:15–2:50 · Tipo de negócio e fechar · `/app/booking/lots/[id]`**
+**Cena 7 · 2:15–2:50 · Fechar · `/app/booking/lots/[id]`**
 
-- 🎬 Imagem: o cartão "Fechar o booking" com "Ao fechar, o Superplan analisa todos os itens com os valores padrão (câmbio do dia, container e frete padrão) e o booking deixa de ser editável." Abrir a lista "Tipo de negócio do Superplan": vem "WELLMIX - UD - CHINA - MERCADO (padrão)" e há um tipo para cada linha (por exemplo "WELLMIX - VIDROS - CHINA - MERCADO"). Deixar o padrão e clicar em **Fechar e analisar**: o botão mostra "Analisando…" e aparece o aviso "Booking fechado. O Superplan analisou todos os itens." com o selo **Fechado**.
-- 🎙 Narração: "No cartão Fechar o booking, o tipo de negócio do Superplan define markup, comissão e meta de lucro. Para esta planilha mista, o padrão serve. Clique em Fechar e analisar e espere. Depois de fechado, os itens não mudam mais."
-- 🔤 Na tela: `[PASSO 5/7] Escolha o tipo de negócio e feche`; `[BOTÃO] "Fechar e analisar"`; `[ATENÇÃO]` "Depois de fechar, os itens não mudam mais"; `[DICA]` "Para comparar itens de bookings diferentes, use o mesmo tipo de negócio em todos"; `[ERRO COMUM]` "Há itens com campos obrigatórios vazios. Complete os campos marcados em cada item e feche de novo."
+- 🎬 Imagem: o cartão "Fechar o book" com "Ao fechar, cada item vai à API de preço do Sankhya (a mesma da Nova solicitação) com o NCM e a ficha do item, e o book deixa de ser editável." Clicar em **Fechar e analisar**: o botão mostra "Analisando…" e aparece o aviso "Book fechado. A previsão de preço de cada item está sendo pedida ao Sankhya." com o selo **Fechado**.
+- 🎙 Narração: "No cartão Fechar o book, clique em Fechar e analisar. Cada item vai ao Sankhya com o próprio NCM, os pesos, a caixa, o preço e a moeda, e a previsão chega item a item. Depois de fechado, os itens não mudam mais."
+- 🔤 Na tela: `[PASSO 5/7] Feche o booking`; `[BOTÃO] "Fechar e analisar"`; `[ATENÇÃO]` "Depois de fechar, os itens não mudam mais"; `[DICA]` "Sem NCM o item fica sem previsão"; `[ERRO COMUM]` "Há itens com campos obrigatórios vazios. Complete os campos marcados em cada item e feche de novo."
 - ✂️ Edição: `[ZOOM 150 %]` no cartão; manter 2 s no selo "Fechado".
 
-**Cena 8 · 2:50–3:35 · Ler a análise · `/app/booking/lots/[id]`**
+**Cena 8 · 2:50–3:35 · Ler a previsão · `/app/booking/lots/[id]`**
 
-- 🎬 Imagem: rolar a tabela para a direita até as colunas "Conferência" ("Completo") e "Superplan". Em cada item: o selo, o "Mínimo R$ …" (na jarra, "Mínimo R$ 45,75") e "Lucro 18,5%". Passar o cursor pelos itens da jarra, do copo e da garrafa térmica: o mínimo muda de item para item. No cartão "Superplan" (à direita do alto): "Analisado em {data} · WELLMIX - UD - CHINA - MERCADO". Voltar à lista: a coluna "Superplan" mostra "6 Abaixo da meta".
-- 🎙 Narração: "O Superplan, a análise de viabilidade, calcula o custo de trazer cada item e o preço mínimo de venda. O selo diz se o lucro bate a meta: verde, viável; amarelo, abaixo da meta; vermelho, prejuízo; e falta dado quando falta preço ou câmbio. Compare os itens pelo valor do mínimo."
-- 🔤 Na tela: `[PASSO 6/7] Leia o selo e o preço mínimo`; `[SETA]` "Viável" (verde), "Abaixo da meta" (amarelo), "Prejuízo" (vermelho), "Falta dado"; `[SETA]` "Mínimo R$: o menor preço de venda do tipo de negócio"; `[QUEM VÊ]` "Quem tem a tela Booking vê o resultado aqui. O fornecedor e o cliente nunca veem; a conta completa é só do administrador (WSO-05)"; `[ATENÇÃO]` "Hoje o selo sai igual para todos os itens: compare pelo Mínimo".
-- ✂️ Edição: `[ZOOM 150 %]` na coluna "Superplan"; legenda do selo por 4 s.
+- 🎬 Imagem: rolar a tabela para a direita até as colunas "Conferência" ("Completo") e "Previsão". Em cada item: o selo, "Venda prevista R$ …", "Com frete R$ …", "Custo R$ …" e "Lucro …%". Passar o cursor sobre um item: a dica "Previsão de preço do Sankhya em {data}". No cartão "Previsão de preço" (à direita do alto): "Previsão pedida em {data}".
+- 🎙 Narração: "A previsão vem da mesma API de preço da Nova solicitação. O selo diz se o lucro bate a meta: verde, viável; amarelo, abaixo da meta; vermelho, prejuízo. Item sem NCM, preço, moeda ou caixa fica sem previsão, com o que faltou escrito embaixo."
+- 🔤 Na tela: `[PASSO 6/7] Leia o selo e a venda prevista`; `[SETA]` "Viável" (verde), "Abaixo da meta" (amarelo), "Prejuízo" (vermelho), "Sem previsão"; `[QUEM VÊ]` "Só a Wellmix com Ver preço de compra. O fornecedor e o cliente nunca veem".
+- ✂️ Edição: `[ZOOM 150 %]` na coluna "Previsão"; legenda do selo por 4 s.
 
-**Cena 9 · 3:35–3:55 · Refazer a análise · `/app/booking/lots/[id]`**
+**Cena 9 · 3:35–3:55 · Refazer a previsão · `/app/booking/lots/[id]`**
 
-- 🎬 Imagem: no cartão "Superplan", o botão **Refazer a análise**, com o mesmo seletor de tipo de negócio ao lado. Escolher "WELLMIX - VIDROS - CHINA - MERCADO" e clicar: aparece "Análise do Superplan refeita.", a linha "Analisado em {data} · WELLMIX - VIDROS - CHINA - MERCADO" e os mínimos descem um pouco (grave num booking de ensaio ou restaure o ponto de salvamento depois).
-- 🎙 Narração: "Se o câmbio ou os parâmetros mudarem, clique em Refazer a análise. Dá até para trocar o tipo de negócio, e os preços mínimos são recalculados."
-- 🔤 Na tela: `[BOTÃO] "Refazer a análise"`; `[DICA]` "O câmbio do dia muda: refaça antes de comparar itens"; `[SETA]` "Analisado em {data} · tipo de negócio".
-- ✂️ Edição: cortar a espera do "Analisando…".
+- 🎬 Imagem: no cartão "Previsão de preço", clicar em **Refazer a previsão**: o botão mostra "Pedindo a previsão…", aparece "Previsão de preço pedida de novo." e a data do cartão muda.
+- 🎙 Narração: "Se o câmbio mudar ou um NCM for corrigido, clique em Refazer a previsão. Ao trocar o NCM de um item, a previsão dele é refeita sozinha."
+- 🔤 Na tela: `[BOTÃO] "Refazer a previsão"`; `[DICA]` "O câmbio do dia muda: refaça antes de comparar itens"; `[SETA]` "Previsão pedida em {data}".
+- ✂️ Edição: cortar a espera do "Pedindo a previsão…".
 
 **Cena 10 · 3:55–4:15 · Status do booking · `/app/booking/lots/[id]`**
 
@@ -302,8 +300,8 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 **Cena 11 · 4:15–4:30 · Resumo e próximo vídeo**
 
 - 🎬 Imagem: fundo vermelho com a lista; no fim, a miniatura do WBK-03.
-- 🎙 Narração: "Resumindo: confira fornecedor e data, complete os itens, escolha o tipo de negócio e feche. Leia o preço mínimo e compare. No próximo vídeo, escolhemos o melhor item."
-- 🔤 Na tela: `[RESUMO]` "1 Fornecedor e data · 2 Complete os campos com * · 3 Tipo de negócio e Fechar e analisar · 4 Compare pelo Mínimo"; chamada "Próximo: WBK-03 · Seleção de itens e solicitação ao fornecedor".
+- 🎙 Narração: "Resumindo: confira fornecedor e data, complete os itens e feche. Leia a previsão de preço e compare. No próximo vídeo, escolhemos o melhor item."
+- 🔤 Na tela: `[RESUMO]` "1 Fornecedor e data · 2 Complete os campos com * · 3 Fechar e analisar · 4 Leia a previsão"; chamada "Próximo: WBK-03 · Seleção de itens e solicitação ao fornecedor".
 - ✂️ Edição: fade para a vinheta de encerramento.
 
 ### Erros comuns
@@ -312,32 +310,30 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 - **Erro:** "Informe a data do booking antes de fechar." e "Data inválida." → **Correção:** preencha o campo "Data" com uma data válida.
 - **Erro:** "Há itens com campos obrigatórios vazios. Complete os campos marcados em cada item e feche de novo." → **Correção:** preencha os campos com borda âmbar (a coluna "Conferência" diz quais).
 - **Erro:** "Valor que não dá para ler. Use número maior que zero, FOB ou EXW, e USD, RMB, BRL ou EUR." → **Correção:** número maior que zero; incoterm FOB ou EXW; moeda USD, RMB, BRL ou EUR.
-- **Erro:** "Este booking não está mais em rascunho: os dados não mudam." → **Correção:** o booking já foi fechado; para outra conferência, use "Refazer a análise" ou fale com quem abriu o booking.
+- **Erro:** "Este booking não está mais em rascunho: os dados não mudam." → **Correção:** o booking já foi fechado; para outra conferência, use "Refazer a previsão" ou fale com quem abriu o booking.
 - **Erro:** "Esse status não pode vir depois do atual." → **Correção:** use um dos status da lista de "Mudar status".
-- **Aviso na análise:** "Faltou: {lista}" no lugar do preço mínimo (por exemplo, "preço em RMB ou US$ (o cadastro está em outra moeda)") → **Correção:** o item não tem preço em RMB ou US$, ou falta câmbio; o booking só aceita essas duas moedas na conta.
+- **Aviso na previsão:** "Sem previsão" com o que faltou (NCM, preço por peça, moeda, peças por caixa ou CBM da caixa) → **Correção:** complete o dado do item; com o NCM corrigido a previsão é refeita sozinha. "Sankhya não configurado: nenhum preço é previsto" quer dizer que o ambiente está sem a credencial do Sankhya (modo manual).
 
 ### Passo a passo em texto
 
 1. Em **Booking**, clique no número do booking em **Rascunho**.
 2. Em **Dados do booking**, confira **Fornecedor** e **Data**. Cada campo grava sozinho. Se o fornecedor da planilha não está no cadastro, confira o cartão **Fornecedor da planilha sem cadastro** e clique em **Cadastrar e usar neste booking**.
 3. Na tabela **Itens**, complete os campos obrigatórios (os com `*`, com borda âmbar). A coluna **Conferência** diz o que falta em cada item. O aviso "Falta para fechar" vira "Tudo preenchido: o booking pode ser fechado."
-4. No cartão **Fechar o booking**, confira o **Tipo de negócio do Superplan** (o padrão serve para planilhas mistas; troque se a planilha é de uma linha só) e clique em **Fechar e analisar**.
-5. Leia a coluna **Superplan**: o selo (**Viável**, **Abaixo da meta**, **Prejuízo** ou **Falta dado**), o **Mínimo** (preço mínimo de venda) e o **Lucro**. Compare os itens pelo valor do mínimo.
-6. Se o câmbio ou os parâmetros mudarem, clique em **Refazer a análise** (o tipo de negócio pode ser trocado ali).
+4. No cartão **Fechar o book**, clique em **Fechar e analisar**. Cada item vai à API de preço do Sankhya com o próprio NCM e a ficha.
+5. Leia a coluna **Previsão**: o selo (**Viável**, **Abaixo da meta**, **Prejuízo** ou **Sem previsão**), a **venda prevista**, o **custo** e o **lucro**.
+6. Se o câmbio mudar, clique em **Refazer a previsão**. Ao trocar o NCM de um item, a previsão dele é refeita sozinha.
 7. Em **Mudar status**, leve o booking a **Em andamento**, **Concluído** ou **Cancelado**. Ao abrir uma solicitação a um item, o booking fechado vira **Em andamento** sozinho.
 
 ### Notas de gravação
 
 - Preencha os campos faltantes ao vivo (cena 6): capacidade da panela (item 5), CBM e MOQ do pote (item 6). Para o ensaio, o valor "abc" mostra a recusa na célula.
-- O fechamento mostra números parecidos entre os itens do mesmo tipo (o lucro fica perto de 18,5% em todos). Isso é esperado hoje: a conta é feita no preço mínimo (ver ⚠ abaixo). Na narração, diga "compare pelo valor do mínimo", como no roteiro.
-- Preços mínimos de referência da planilha A no tipo de negócio padrão, com o câmbio de 11/11/2026 (mostre o que a tela der no dia; não cite números na narração): jarra R$ 45,75, moringa R$ 55,54, garrafa térmica R$ 33,61, copo R$ 8,48, panela R$ 68,09, pote R$ 18,77. Com "WELLMIX - VIDROS - CHINA - MERCADO" (cena 9) os mínimos descem cerca de 3 %.
+- A previsão só aparece com o Sankhya configurado no ambiente de gravação. No modo memória sem credencial, a coluna mostra "Sankhya não configurado: nenhum preço é previsto"; grave as cenas 8 e 9 num ambiente com o Sankhya ou deixe-as de fora. Não cite números na narração.
 - Para a cena 10, o status "Em andamento" só aparece depois do WBK-03 (a solicitação ao fornecedor). Grave a lista com os três status (Rascunho, Fechado, Em andamento) depois de gravar o WBK-03 e encaixe aqui na edição.
 
 ### Pontos a confirmar
 
 - ⚠ O botão se chama **Fechar e analisar** (`bookingLots.detail.close.submit`), não só "Fechar". A narração usa o nome real.
-- ⚠ **Selo igual em todos os itens.** Ao fechar, o Superplan calcula no preço mínimo, e nesse preço o lucro depende quase só dos parâmetros: todos os itens saem "Abaixo da meta" com lucro de 18,5%. `docs/BOOKING.md` (regra 9) diz que o sinal verde, amarelo ou vermelho só existe depois de alguém testar um preço de venda, e que a análise em lote mostra "No preço mínimo" (`booking.signal.minimum`). As telas do booking por planilha (lista, detalhe, Seleção de itens e solicitação ao fornecedor) mostram o selo do preço mínimo mesmo assim. O roteiro avisa quem assiste; confirme com o dono se a tela deve mostrar "No preço mínimo" como na fila de produtos antiga.
-- ⚠ **O operador vê o preço mínimo e o lucro %** de cada item (e, na Seleção de itens, o "Melhor preço mínimo"). `docs/BOOKING.md` seção 8 diz que custo, preço de venda e sinal só existem para quem abre o Superplan (administrador). Confirmar se, no booking por planilha, o operador deve ver o resultado do Superplan.
+- ⚠ Books fechados antes de 24/11/2026 mostram "Previsão antiga: refaça a previsão do book" até alguém clicar em Refazer a previsão.
 - ⚠ O Control Tower (Início) ainda mostra a faixa "BOOKING" com os quadrados da fila de produtos antiga (Novo, Em análise, Aprovado, Oferecido ao cliente, Reservado pelo cliente, Virou solicitação, Descartado), que não contam os bookings por planilha. Não use essa faixa nos vídeos até o dono decidir.
 - ⚠ O campo "Data" do navegador depende do idioma do Chrome (mm/dd/aaaa em inglês; dd/mm/aaaa em pt-BR).
 
@@ -399,16 +395,16 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 
 **Cena 6 · 1:30–2:15 · Comparar os itens · `/app/booking/selection?q=jarra vidro`**
 
-- 🎬 Imagem: percorrer as colunas com o cursor: "Fornecedor" (e a cidade de origem), "Booking" (nº e data, com link), "Preço" (22,9 RMB, 3,6 USD, 23,5 RMB) e "Preço (US$)" (o RMB convertido pela cotação do dia), "MOQ", "Qtd/caixa", "CBM", "Medidas (cm)", "Capacidade (ml)", "Material / embalagem", "Qtd da planilha" e "Superplan" (selo e "Mínimo R$ …"). Terminar no selo verde **Melhor preço mínimo** do item de menor preço mínimo.
-- 🎙 Narração: "Compare lado a lado. Em Preço está o valor da planilha, e em Preço em dólar, o RMB já convertido pela cotação do dia. Veja o mínimo do pedido, as peças por caixa, o CBM, as medidas e a capacidade. Na última coluna, o Superplan mostra o selo e o preço mínimo. O selo Melhor preço mínimo marca o menor entre os itens da tela, por isso filtre antes."
-- 🔤 Na tela: `[PASSO 4/8] Compare as colunas`; `[SETA]` "RMB convertido pela cotação do dia" em "Preço (US$)"; `[SETA]` "Melhor preço mínimo: o menor do Superplan entre os itens mostrados"; `[ATENÇÃO]` "Filtre antes: o destaque compara só o que está na tela"; `[DICA]` "Compare itens analisados com o mesmo tipo de negócio".
-- ✂️ Edição: `[ZOOM 150 %]` na coluna "Superplan" por 3 s.
+- 🎬 Imagem: percorrer as colunas com o cursor: "Fornecedor" (e a cidade de origem), "Booking" (nº e data, com link), "Preço" (22,9 RMB, 3,6 USD, 23,5 RMB) e "Preço (US$)" (o RMB convertido pela cotação do dia), "MOQ", "Qtd/caixa", "CBM", "Medidas (cm)", "Capacidade (ml)", "Material / embalagem", "Qtd da planilha", "Custo/peça (previsão)" e "Previsão" (selo e venda prevista). Terminar no destaque do item de menor custo por peça.
+- 🎙 Narração: "Compare lado a lado. Em Preço está o valor da planilha, e em Preço em dólar, o RMB já convertido pela cotação do dia. Veja o mínimo do pedido, as peças por caixa, o CBM, as medidas e a capacidade. Nas últimas colunas, a previsão de preço do Sankhya mostra o custo por peça, o selo e a venda prevista. O destaque marca o menor custo entre os itens da tela, por isso filtre antes."
+- 🔤 Na tela: `[PASSO 4/8] Compare as colunas`; `[SETA]` "RMB convertido pela cotação do dia" em "Preço (US$)"; `[SETA]` "O menor custo por peça entre os itens mostrados"; `[ATENÇÃO]` "Filtre antes: o destaque compara só o que está na tela"; `[DICA]` "Refaça a previsão dos books antigos antes de comparar".
+- ✂️ Edição: `[ZOOM 150 %]` na coluna "Previsão" por 3 s.
 
 **Cena 7 · 2:15–2:50 · Escolher e alternativas · `/app/booking/selection`**
 
 - 🎬 Imagem: na jarra do fornecedor A, marcar o botão de rádio da coluna **Escolher**. Nas outras duas jarras, marcar a caixa da coluna **Alternativa**. Mostrar que só um item pode ser escolhido (o rádio), e que alternativas podem ser várias. Se houver um item que já tem solicitação em andamento, mostrar o link "Solicitação nº N" na coluna "Situação" e o rádio desligado.
 - 🎙 Narração: "Marque o item escolhido: só um. A solicitação vai ao fornecedor dele. Depois, marque como alternativa os parecidos que você quer guardar: podem ser vários, até trinta. As alternativas ficam só com a Wellmix, para comparar ou abrir outra solicitação. Item que já tem solicitação em andamento mostra o número dela e não pode ser escolhido de novo."
-- 🔤 Na tela: `[PASSO 5/8] Escolha um item e marque as alternativas`; `[SETA]` "Escolher: um só" na coluna; `[SETA]` "Alternativa: vários" na coluna; `[QUEM VÊ]` "As alternativas e o Superplan ficam só com a Wellmix. O fornecedor não vê"; `[ATENÇÃO]` "Item com solicitação Aberta ou Respondida não abre outra".
+- 🔤 Na tela: `[PASSO 5/8] Escolha um item e marque as alternativas`; `[SETA]` "Escolher: um só" na coluna; `[SETA]` "Alternativa: vários" na coluna; `[QUEM VÊ]` "As alternativas e a previsão de preço ficam só com a Wellmix. O fornecedor não vê"; `[ATENÇÃO]` "Item com solicitação Aberta ou Respondida não abre outra".
 - ✂️ Edição: realce de 2 s em cada coluna.
 
 **Cena 8 · 2:50–3:25 · Quantidade e o que a Wellmix precisa · `/app/booking/selection`**
@@ -420,9 +416,9 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 
 **Cena 9 · 3:25–4:05 · A solicitação nasce · `/app/supplier-requests/[id]`**
 
-- 🎬 Imagem: clicar em **Abrir solicitação** (o botão mostra "Abrindo…"). Abre "Solicitação ao fornecedor nº 1", selo **Aberta**, fornecedor Shenzhen Supplier A, e o aviso verde "Solicitação aberta. O fornecedor foi avisado e responde no portal." Cartões: "O que a Wellmix pede" (item, quantidade 12.000 peças, preço do booking, MOQ e "O que a Wellmix precisa no produto"), "Alternativas (2)" com "Só a Wellmix vê: itens parecidos de outros bookings, para comparar ou abrir outra solicitação.", "Resposta do fornecedor" ("O fornecedor ainda não respondeu."), "Decisão da Wellmix" e "Booking" com o "Superplan do item escolhido". Em outra janela, o fornecedor A (em chinês) vê só o item, a quantidade, o preço que ele mesmo pôs na planilha ("Preço do booking") e o texto da Wellmix: sem alternativas, sem Superplan e sem a página do booking.
-- 🎙 Narração: "Pronto: nasceu a solicitação número um, aberta, para o fornecedor da jarra escolhida. Ele foi avisado e responde pelo portal. Ele vê o item, a quantidade e o seu texto, mas não vê as alternativas, o Superplan nem outros fornecedores. Para você, ficam também as alternativas e o Superplan do item."
-- 🔤 Na tela: `[PASSO 7/8] Clique em Abrir solicitação`; `[BOTÃO] "Abrir solicitação"`; `[SETA]` "Aberta: esperando o fornecedor"; `[QUEM VÊ]` "O fornecedor não vê as alternativas, o Superplan nem outros fornecedores"; `[ZOOM 150 %]` em "Alternativas (2)".
+- 🎬 Imagem: clicar em **Abrir solicitação** (o botão mostra "Abrindo…"). Abre "Solicitação ao fornecedor nº 1", selo **Aberta**, fornecedor Shenzhen Supplier A, e o aviso verde "Solicitação aberta. O fornecedor foi avisado e responde no portal." Cartões: "O que a Wellmix pede" (item, quantidade 12.000 peças, preço do booking, MOQ e "O que a Wellmix precisa no produto"), "Alternativas (2)" com "Só a Wellmix vê: itens parecidos de outros bookings, para comparar ou abrir outra solicitação.", "Resposta do fornecedor" ("O fornecedor ainda não respondeu."), "Decisão da Wellmix" e "Booking" com a "Previsão de preço do item escolhido". Em outra janela, o fornecedor A (em chinês) vê só o item, a quantidade, o preço que ele mesmo pôs na planilha ("Preço do booking") e o texto da Wellmix: sem alternativas, sem previsão de preço e sem a página do booking.
+- 🎙 Narração: "Pronto: nasceu a solicitação número um, aberta, para o fornecedor da jarra escolhida. Ele foi avisado e responde pelo portal. Ele vê o item, a quantidade e o seu texto, mas não vê as alternativas, a previsão de preço nem outros fornecedores. Para você, ficam também as alternativas e a previsão de preço do item."
+- 🔤 Na tela: `[PASSO 7/8] Clique em Abrir solicitação`; `[BOTÃO] "Abrir solicitação"`; `[SETA]` "Aberta: esperando o fornecedor"; `[QUEM VÊ]` "O fornecedor não vê as alternativas, a previsão de preço nem outros fornecedores"; `[ZOOM 150 %]` em "Alternativas (2)".
 - ✂️ Edição: `[CORTE]` seco para a janela do fornecedor por 4 s e de volta.
 
 **Cena 10 · 4:05–4:35 · Fornecedor sem acesso ao portal · `/app/supplier-requests/[id]`**
@@ -461,7 +457,7 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 
 1. No menu, abra **Pedidos** e clique em **Seleção de itens**. Só aparecem itens de bookings **Fechados**, **Em andamento** ou **Concluídos**.
 2. Em **Buscar por parte da descrição**, escreva uma ou mais palavras (por exemplo, "jarra") e clique em **Filtrar**. Para achar os parecidos de um item, clique em **ver parecidos** abaixo dele. **Limpar** volta à lista toda.
-3. Compare as colunas: **Preço** e **Preço (US$)** (o RMB é convertido pela cotação do dia), **MOQ**, **Qtd/caixa**, **CBM**, **Medidas (cm)**, **Capacidade (ml)**, **Material / embalagem**, **Qtd da planilha** e **Superplan** (selo e preço mínimo). O selo **Melhor preço mínimo** marca o menor preço mínimo entre os itens mostrados.
+3. Compare as colunas: **Preço** e **Preço (US$)** (o RMB é convertido pela cotação do dia), **MOQ**, **Qtd/caixa**, **CBM**, **Medidas (cm)**, **Capacidade (ml)**, **Material / embalagem**, **Qtd da planilha**, **Custo/peça (previsão)** e **Previsão** (selo e venda prevista). O destaque marca o menor custo por peça entre os itens mostrados.
 4. Na coluna **Escolher**, marque o item (um só). Na coluna **Alternativa**, marque os parecidos que ficam como alternativas (até 30). Item que já tem solicitação Aberta ou Respondida não pode ser escolhido de novo.
 5. No cartão **Abrir solicitação ao fornecedor**, preencha **Quantidade (peças)** (em branco, vale a da planilha) e **O que a Wellmix precisa no produto**.
 6. Clique em **Abrir solicitação**. Nasce a solicitação **Aberta** para o fornecedor do booking do item escolhido, e o booking passa a **Em andamento**.
@@ -480,8 +476,7 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 - ⚠ O link se chama **ver parecidos**, com "v" minúsculo (`supplierRequests.selection.similar`). A legenda usa o texto como está na tela.
 - ⚠ O selo "Melhor preço mínimo" compara **todos os itens mostrados**, não só os parecidos: sem filtro, destaca o item mais barato do conjunto (por exemplo, um copo). O roteiro avisa para filtrar antes. Confirmar se o destaque deve valer por grupo de parecidos.
 - ⚠ A solicitação ao fornecedor **não aparece em Pendências** do fornecedor nem do operador: o aviso é só o sino (Notificações). Confirmar se isso é intencional, já que RFQ e outras etapas aparecem em Pendências.
-- ⚠ O selo do Superplan nesta tela é o do preço mínimo e sai "Abaixo da meta" para todos os itens (ver ⚠ do WBK-02). Compare pelo "Mínimo R$".
-- ⚠ O operador vê "Superplan" e "Melhor preço mínimo" (ver ⚠ do WBK-02 sobre quem vê o resultado do Superplan).
+- ⚠ A previsão e o custo por peça só aparecem para quem tem "Ver preço de compra" (o comprador tem). Sem o Sankhya configurado no ambiente de gravação, a coluna mostra "Sem previsão" (ver WBK-02).
 
 ---
 
@@ -613,7 +608,7 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 
 ### Pontos a confirmar
 
-- ⚠ **1. Medidas e CBM da caixa saem trocados.** Ao criar o produto, as medidas **da peça** do item (12 × 12 × 24 cm) são gravadas como "Dimensões da caixa master", e o "CBM por caixa" mostra **0,0035 m³** ("Calculado das dimensões da caixa"), em vez dos **0,069 m³** do booking. O mesmo valor aparece no cartão da solicitação do cliente ("Caixa master: … 12 × 12 × 24 cm · 0,0035 m³"), na ficha da cotação (o CBM vem preenchido e travado) e no Superplan ("Volume da caixa (m³): 0,0035", que dá 21.192 peças por container em vez de 11.820). A origem parece estar em `sheetFromRequest` (`src/lib/services/supplier-request-product.ts`), que passa `lengthCm/widthCm/heightCm` do item para campos que na ficha de compra são da caixa. Não grave o zoom em "Embalagem" nem o CBM enquanto isso não for corrigido; no WSO-05 o roteiro manda corrigir o volume à mão.
+- ⚠ **1. Medidas e CBM da caixa saem trocados.** Ao criar o produto, as medidas **da peça** do item (12 × 12 × 24 cm) são gravadas como "Dimensões da caixa master", e o "CBM por caixa" mostra **0,0035 m³** ("Calculado das dimensões da caixa"), em vez dos **0,069 m³** do booking. O mesmo valor aparece no cartão da solicitação do cliente ("Caixa master: … 12 × 12 × 24 cm · 0,0035 m³"), na ficha da cotação (o CBM vem preenchido e travado) e na previsão de preço. A origem parece estar em `sheetFromRequest` (`src/lib/services/supplier-request-product.ts`), que passa `lengthCm/widthCm/heightCm` do item para campos que na ficha de compra são da caixa. Não grave o zoom em "Embalagem" nem o CBM enquanto isso não for corrigido.
 - ⚠ **2. Mensagem de erro enganosa.** Clicar em "Criar produto" sem escolher a "Linha de produto" mostra "Algum valor não dá para ler. Use números maiores que zero." (código `invalid_input`), não "Escolha uma linha de produto ativa." (`request_product_line_invalid`). A mensagem certa fica para uma linha inexistente ou inativa.
 - ⚠ **3. Jarra duplicada e SKU em branco.** O produto criado pelo booking nasce **sem SKU** (a ficha mostra o campo vazio), e a base de demonstração já tem "Jarra de vidro 1,5 L" com o SKU UTL-001: o roteiro cria o produto com o nome "Jarra de vidro 1,5 L" e manda digitar o SKU, o que só fica sem duplicata se o produto de demonstração sair do catálogo antes (nota acima). O sistema não recusa dois produtos com o mesmo SKU: o "Salvar ficha" com "UTL-001" gravou "Dados salvos." mesmo com outro produto já usando o código. Decidir como a história da jarra fica.
 - ⚠ O bloco mostra "1 itens de booking ligados" (sem plural) quando só um item é ligado (`srProduct.linkedItems`).
@@ -1138,7 +1133,7 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 | Telas e rotas         | `/app/rfq`, `/app/sourcing`, `/app/requests/[id]`, `/app/tasks`, `/app/audit`                                                                                                                                                         |
 | Dados antes de gravar | Ponto `antes-WSO-04`: RFQ **em espera**; uma solicitação ainda em **Solicitado** e outra com **duas cotações respondidas** (A e B), preparada antes com a RFQ ligada (e desligada de novo). Sourcing em espera (padrão)               |
 | Depois deste vídeo    | O interruptor fica como o administrador deixar. O que está em andamento continua valendo. A mudança fica na **auditoria**; ninguém recebe aviso                                                                                        |
-| Antes · Próximo       | WSO-01 · WSO-05                                                                                                                                                                                                                       |
+| Antes · Próximo       | WSO-01 · (fim)                                                                                                                                                                                                                        |
 | Idiomas               | pt (base)                                                                                                                                                                                                                             |
 
 ### Roteiro
@@ -1201,9 +1196,9 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 
 **Cena 9 · 3:15–3:30 · E agora? e resumo**
 
-- 🎬 Imagem: no administrador, **Gestão → Auditoria** com o módulo "Configurações": as linhas "RFQ ativada" e "RFQ colocada em espera". Depois, fundo vermelho com a lista; no fim, a miniatura do WSO-05.
-- 🎙 Narração: "Cada mudança fica na auditoria, com o antes e o depois, e ninguém é avisado. Resumindo: a RFQ em espera manda um fornecedor só; ativa, abre a disputa. Próximo: o Superplan."
-- 🔤 Na tela: `[DEPOIS]` "A mudança fica na Auditoria (Configurações). Nenhum aviso é enviado. O que está em andamento continua valendo"; `[RESUMO]` "1 Em espera: um fornecedor por produto · 2 Ativa: vários e disputa · 3 Só o administrador liga · 4 Sourcing funciona igual"; chamada "Próximo: WSO-05 · Superplan: a viabilidade do produto".
+- 🎬 Imagem: no administrador, **Gestão → Auditoria** com o módulo "Configurações": as linhas "RFQ ativada" e "RFQ colocada em espera". Depois, fundo vermelho com a lista.
+- 🎙 Narração: "Cada mudança fica na auditoria, com o antes e o depois, e ninguém é avisado. Resumindo: a RFQ em espera manda um fornecedor só; ativa, abre a disputa. Fim da série."
+- 🔤 Na tela: `[DEPOIS]` "A mudança fica na Auditoria (Configurações). Nenhum aviso é enviado. O que está em andamento continua valendo"; `[RESUMO]` "1 Em espera: um fornecedor por produto · 2 Ativa: vários e disputa · 3 Só o administrador liga · 4 Sourcing funciona igual"; encerramento da série.
 - ✂️ Edição: fade para a vinheta de encerramento.
 
 ### Erros comuns
@@ -1240,139 +1235,3 @@ Com esses dados, depois de fechados, a busca "jarra" na Seleção de itens traz 
 - ⚠ Não conferi a tela **Auditoria** com as mudanças em pt formatadas: as linhas "RFQ ativada" e "RFQ colocada em espera" aparecem com a ação `settings.rfq` na coluna "Ação" (código, não texto). O filtro "Módulo → Configurações" mostra as duas.
 - ⚠ **Fuso diferente entre telas**: a Auditoria mostra "10/11/2026, 23:41" para o que as Notificações mostram como "11/11/2026, 02:41" (a diferença é o fuso de Brasília). Confirmar qual é o fuso desejado, porque a data aparece diferente no mesmo dia.
 - ⚠ O operador com a função comprador abre a tela Sourcing, mas não vê o botão (só o administrador liga). O mesmo vale para a RFQ.
-
----
-
-## WSO-05 · Superplan: a viabilidade do produto
-
-> **Promessa:** ao final do vídeo você sabe descobrir quanto custa trazer um container do produto, qual é o preço mínimo de venda e se o lucro bate a meta, e abrir a faca e a RFQ com o fornecedor ganho.
-
-| Ficha                 |                                                                                                                                                                                                                                      |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Série e papel         | Wellmix, administrador                                                                                                                                                                                                               |
-| Quem faz              | **Só o administrador** (`ADMIN_ONLY`): ele pode liberar a tela a um login em Gestão → Equipe e divisões. O operador comprador e planner **não abre** a tela; o resultado do Superplan aparece dentro do Booking (WBK-02)                |
-| Conta de gravação     | `admin@wellmix.com`, tela em pt. Um corte com `operador@wellmix.com` mostrando o aviso de acesso                                                                                                                                       |
-| Duração-alvo          | 5:00                                                                                                                                                                                                                                 |
-| Ponto da jornada      | Etapa 1 de 9: Produto e Booking (a viabilidade vem antes do pedido; o "Abrir faca e RFQ" entra na etapa 3)                                                                                                                            |
-| Telas e rotas         | `/app/superplan` (e `?product=<id>`), `/app/requests/[id]` (a solicitação aberta pelo Superplan)                                                                                                                                      |
-| Dados antes de gravar | Ponto `antes-WSO-05`: o produto "Jarra de vidro 1,5 L" (UTL-001) criado no WBK-04, com fornecedor, preço, caixa e pesos; câmbio do dia; parâmetros do Superplan com os valores padrão; tipo de negócio padrão "WELLMIX - UD - CHINA - MERCADO" |
-| Depois deste vídeo    | Nasce a **Solicitação nº 2**, origem "Superplan" (compra para estoque), com a RFQ **só para o fornecedor ganho**. O fornecedor recebe o aviso "Superplan: envie faca, MOQ, prazo e foto em alta"; a Wellmix tem o briefing de embalagem com a faca obrigatória |
-| Antes · Próximo       | WSO-04 · (série de preparação do pedido)                                                                                                                                                                                             |
-| Idiomas               | pt (base)                                                                                                                                                                                                                            |
-
-### Roteiro
-
-**Cena 1 · 0:00–0:10 · Gancho · `/app/superplan`**
-
-- 🎬 Imagem: o painel de resultado do Superplan: o aviso amarelo "Lucro de 18,5%, abaixo da meta de 22%." com "Para lucrar 22%: preço de R$ 47,87 (markup 1,93).", e o cursor clicando em "Testar esse preço", que vira verde: "Viável: lucro de 22,0% (meta 22%)."
-- 🎙 Narração: "Vale a pena trazer esta jarra? O Superplan responde em segundos: o custo, o preço mínimo e se o lucro bate a meta."
-- 🔤 Na tela: `[TÍTULO]` "WSO-05 · Superplan: a viabilidade do produto"; `[ZOOM 150 %]` no aviso de resultado.
-- ✂️ Edição: vinheta de 6,5 s antes; entrada do título em 2 s; música baixa para −28 dB ao começar a voz.
-
-**Cena 2 · 0:10–0:22 · Onde estou na jornada · `/app/superplan`**
-
-- 🎬 Imagem: a tela **Superplan** inteira. O mapa da jornada aparece sobre ela.
-- 🎙 Narração: "A viabilidade vem antes do pedido: é onde a Wellmix decide se um produto vale o preço do fornecedor, o frete e os impostos da importação."
-- 🔤 Na tela: `[MAPA etapa 1]` com "Produto e Booking" acesa.
-- ✂️ Edição: o mapa sai em 8 s, deslizando para cima.
-
-**Cena 3 · 0:22–0:45 · Só o administrador · menu → `/app/superplan`**
-
-- 🎬 Imagem: na conta do operador, digitar `/app/superplan` no endereço: volta ao início com o aviso "Você não tem acesso a Superplan. Peça ao administrador em Gestão → Equipe e divisões." Trocar para o administrador: no menu **Pedidos**, aparece o item **Superplan**. Clicar.
-- 🎙 Narração: "O Superplan é só do administrador: o operador que tenta abrir recebe o aviso de acesso. Ele pode liberar a tela para um login em Equipe e divisões. No menu Pedidos, clique em Superplan."
-- 🔤 Na tela: `[PASSO 1/8] Abra Pedidos → Superplan`; `[QUEM VÊ]` "Só o administrador, ou quem ele liberar. O operador não vê; cliente e fornecedor nunca veem"; `[ATENÇÃO]` "O resultado de cada item aparece no Booking para quem abre o Booking (WBK-02)".
-- ✂️ Edição: `[CORTE]` seco entre as duas contas.
-
-**Cena 4 · 0:45–1:10 · Escolher o produto · `/app/superplan`**
-
-- 🎬 Imagem: o campo "Produto do cadastro", com "Sem produto (preencher à mão)" no topo e os produtos do catálogo. Escolher "UTL-001 · Jarra de vidro 1,5 L" e clicar em **Carregar**. A página recarrega com "Dados de Jarra de vidro 1,5 L." e a dica "Preenche preço, caixa, peso, volume e os impostos do NCM; tudo continua editável."
-- 🎙 Narração: "Escolha o produto do cadastro e clique em Carregar. O sistema preenche preço, caixa, peso, volume e os impostos pelo NCM. Dá para simular à mão também, sem produto."
-- 🔤 Na tela: `[PASSO 2/8] Escolha o produto e clique em Carregar`; `[BOTÃO] "Carregar"`; `[SETA]` "Tudo continua editável"; `[DICA]` "Sem produto: preencha os campos à mão".
-- ✂️ Edição: `[CORTE]` seco na recarga.
-
-**Cena 5 · 1:10–1:50 · Compra e volume da caixa · `/app/superplan`**
-
-- 🎬 Imagem: o cartão "Compra": "Preço por peça" (22,2), "Moeda" (RMB), "Peças por caixa" (12), "Peso líquido por peça (kg)", "Peso bruto por peça (kg)", "Peso médio por peça (kg)" (desligado, "Da ficha do produto (muda-se lá ou no Booking). Não entra na conta."), "Volume da caixa (m³)" e "II (%)" e "IPI (%)" vazios com o aviso "Produto sem NCM na tabela fiscal: confira II e IPI à mão." Corrigir "Volume da caixa (m³)" para 0,069 (o CBM da planilha). O resultado muda: "985 caixas · 11.820 peças por container · Limitado pelo volume (67,97 m³)."
-- 🎙 Narração: "Em Compra, confira o preço, a moeda, as peças por caixa e os pesos. Confira o volume da caixa: aqui são zero vírgula zero sessenta e nove metros cúbicos. Sem NCM na tabela fiscal, preencha o II e o IPI à mão."
-- 🔤 Na tela: `[PASSO 3/8] Confira a compra e o volume da caixa`; `[SETA]` "Volume da caixa: 0,069 m³ (do booking)"; `[SETA]` "Peso médio: só informação, não entra na conta"; `[ATENÇÃO]` "Hoje a tela pode trazer 0,0035 (ver ⚠ 1): corrija à mão"; `[ATENÇÃO]` "II e IPI vazios contam 0% e o custo sai menor".
-- ✂️ Edição: `[ZOOM 150 %]` em "Volume da caixa (m³)"; mostrar o antes e o depois do resultado.
-
-**Cena 6 · 1:50–2:20 · Container, câmbio e tipo de negócio · `/app/superplan`**
-
-- 🎬 Imagem: o cartão "Container e fretes": "Container" (40HC), "Capacidade (m³)" (68), "Peso máximo (kg)" (26500), "Frete marítimo (US$ por container)" e "Frete rodoviário até o depósito (R$)". O cartão "Câmbio": "Dólar oficial (R$)", "Dólar futuro (R$)", "RMB por dólar" e "Câmbio do dia ({data}). Dólar futuro = oficial + R$ 0,25." O cartão "Tipo de negócio": a lista (WELLMIX - UD - CHINA - MERCADO) e, preenchidos sozinhos, "Markup" (1,8), "Comissão (%)" (5), "Despesas administrativas (%)" (12) e "Meta de lucro (%)" (22). Passar por "Despesas no Brasil (por container)" ("Total das despesas: R$ 12.236,00").
-- 🎙 Narração: "O container, os fretes e o câmbio do dia já vêm preenchidos. Escolher o tipo de negócio preenche markup, comissão, despesas e a meta de lucro. As despesas do Brasil entram uma vez por container."
-- 🔤 Na tela: `[PASSO 4/8] Confira container, câmbio e tipo de negócio`; `[SETA]` "Câmbio do dia: o dólar futuro é o oficial + R$ 0,25"; `[SETA]` "Meta de lucro: a do tipo de negócio"; `[DICA]` "Percentuais e despesas padrão ficam em Parâmetros do Superplan, embaixo da tela".
-- ✂️ Edição: `[ZOOM 150 %]` no cartão "Tipo de negócio" por 3 s.
-
-**Cena 7 · 2:20–2:55 · O custo e o preço mínimo · `/app/superplan`**
-
-- 🎬 Imagem: o painel da direita. "Resultado": "985 caixas · 11.820 peças por container". "Preços por peça": "Preço mínimo (custo × 1,8)" R$ 44,53, "Preço de tabela (× 1,25)", "Sugestão atacado (× 1,6)", "Sugestão loja (× 1,8)", "Preço WD (+ 12%)" e "Custo por peça" (R$ 24,74). O cartão "Custo do container": compra, frete marítimo, valor aduaneiro, II, IPI, PIS-importação, COFINS-importação, AFRMM, despesas no Brasil, frete rodoviário e "Custo total do container".
-- 🎙 Narração: "À direita, o resultado: quantas peças cabem no container, o custo de cada peça posta no depósito e o preço mínimo de venda, que é o custo vezes o markup do tipo de negócio. Mais abaixo, o custo do container em detalhe."
-- 🔤 Na tela: `[PASSO 5/8] Leia o custo por peça e o preço mínimo`; `[SETA]` "Custo por peça = custo do container ÷ peças"; `[SETA]` "Preço mínimo = custo × markup"; `[SETA]` "Impostos da importação sobre o valor real da compra"; `[QUEM VÊ]` "Custo e margem: só o administrador e a Wellmix autorizada".
-- ✂️ Edição: `[ZOOM 150 %]` em "Preços por peça" por 3 s.
-
-**Cena 8 · 2:55–3:40 · O sinal: verde, amarelo ou vermelho · `/app/superplan`**
-
-- 🎬 Imagem: no alto do painel, o aviso amarelo "Lucro de 18,5%, abaixo da meta de 22%." com "Vendendo a R$ 44,53 por peça (preço mínimo)." e "Para lucrar 22%: preço de R$ 47,87 (markup 1,93).", com o botão "Testar esse preço". Clicar: "Viável: lucro de 22,0% (meta 22%)." em verde. No campo "Preço de venda a testar (R$ por peça)" digitar 25: o aviso vira vermelho, "Prejuízo de R$ 5,18 por peça (-20,7%)." Apagar o campo ("Vazio: usa o preço mínimo.") e voltar ao amarelo.
-- 🎙 Narração: "O aviso no alto diz o sinal. Verde, o lucro bate a meta. Amarelo, é positivo mas abaixo da meta. Vermelho, é prejuízo. A tela mostra o preço que dá a meta, e o botão Testar esse preço simula. Digite outro preço para ver o lucro."
-- 🔤 Na tela: `[PASSO 6/8] Teste um preço de venda`; `[BOTÃO] "Testar esse preço"`; `[SETA]` "Viável: lucro igual ou acima da meta"; `[SETA]` "Abaixo da meta: lucro positivo"; `[SETA]` "Prejuízo"; `[DICA]` "Vazio: a conta usa o preço mínimo".
-- ✂️ Edição: `[ZOOM 150 %]` no aviso a cada troca de cor, 2 s cada.
-
-**Cena 9 · 3:40–4:20 · Abrir faca e RFQ · `/app/superplan`**
-
-- 🎬 Imagem: o cartão "Viável? Abrir faca e RFQ com o fornecedor", com "Cria a solicitação e a RFQ só com o fornecedor ganho, com o preço e a quantidade desta simulação. Ele envia a faca (die-cut), o MOQ, o prazo e a foto em alta; a proposta espera esses quatro itens." Com o preço da meta (verde), escolher "Fornecedor ganho" (Shenzhen Supplier A (do produto)), "Para quem" ("Compra para estoque (sem cliente)", ou um cliente) e deixar "Quantidade (peças)" em branco ("Padrão: as peças que cabem no container."). Clicar em **Abrir faca e RFQ** (o botão mostra "Abrindo…"). Mostrar antes, com o preço 25: "Com prejuízo não dá para abrir: ajuste o preço ou os números." e, com lucro abaixo da meta, "Lucro abaixo da meta: dá para abrir, mas confira antes."
-- 🎙 Narração: "Se é viável, abra a faca e a RFQ com o fornecedor ganho. Escolha o fornecedor, para quem é e a quantidade. Com prejuízo, o botão não abre. Com lucro abaixo da meta, abre com aviso. Clique em Abrir faca e RFQ."
-- 🔤 Na tela: `[PASSO 7/8] Escolha o fornecedor e abra a RFQ`; `[BOTÃO] "Abrir faca e RFQ"`; `[SETA]` "Só o fornecedor ganho recebe a RFQ"; `[ERRO COMUM]` "Com prejuízo não dá para abrir: ajuste o preço ou os números."; `[ATENÇÃO]` "Lucro abaixo da meta: dá para abrir, mas confira antes."
-- ✂️ Edição: `[ZOOM 150 %]` no cartão por 3 s; `[CORTE]` na abertura da página.
-
-**Cena 10 · 4:20–4:45 · E agora? · `/app/requests/[id]`**
-
-- 🎬 Imagem: a solicitação nº 2 abre com os selos "Superplan" e "Compra para estoque" e o cliente "Estoque Wellmix", o selo **RFQ aberta** e o aviso "Aberta do Superplan: a RFQ foi para o fornecedor ganho, que envia faca, MOQ, prazo e foto em alta. Superplan: Falta: Faca (die-cut), MOQ, Prazo, Foto em alta (HD)." com o link "Abrir a cotação". A observação traz o resumo da viabilidade. Em outra janela, o fornecedor A (em chinês) com o aviso "Superplan: envie faca, MOQ, prazo e foto em alta".
-- 🎙 Narração: "Nasceu a solicitação aberta do Superplan, com o resumo da viabilidade. O fornecedor ganho recebe o aviso e envia a faca, o MOQ, o prazo e a foto em alta. Enquanto faltar um dos quatro, a proposta espera."
-- 🔤 Na tela: `[DEPOIS]` "A solicitação nº 2 nasceu com a RFQ só para o fornecedor ganho. O fornecedor foi avisado. A escolha e a aprovação esperam os quatro itens dele"; `[SETA]` "Falta: Faca (die-cut), MOQ, Prazo, Foto em alta (HD)".
-- ✂️ Edição: cartão `[DEPOIS]` em tela cheia por 4 s.
-
-**Cena 11 · 4:45–5:00 · Resumo e próximo vídeo**
-
-- 🎬 Imagem: fundo vermelho com a lista; no fim, o mapa da jornada.
-- 🎙 Narração: "Resumindo: escolha o produto, confira os dados, leia o preço mínimo, teste um preço e, se for viável, abra a faca e a RFQ. Os percentuais ficam em Parâmetros do Superplan."
-- 🔤 Na tela: `[RESUMO]` "1 Produto do cadastro e Carregar · 2 Confira compra, container e câmbio · 3 Preço mínimo e sinal · 4 Abrir faca e RFQ"; chamada "Fim da série WBK e WSO".
-- ✂️ Edição: fade para a vinheta de encerramento.
-
-### Erros comuns
-
-- **Aviso:** "Falta preencher: preço por peça, peças por caixa, volume da caixa." (a tela não mostra conta pela metade) → **Correção:** preencha os campos que a lista aponta (ou carregue um produto com os dados).
-- **Aviso:** "Produto sem NCM na tabela fiscal: confira II e IPI à mão." → **Correção:** digite o II e o IPI do NCM; sem eles, a conta usa 0% e o custo sai menor.
-- **Aviso:** "Preço do cadastro em {currency}: informe em RMB ou US$." → **Correção:** o Superplan só conta em RMB ou US$; informe o preço numa das duas.
-- **Aviso:** "Sem câmbio automático: informe os valores." → **Correção:** digite o dólar oficial, o dólar futuro e o RMB por dólar.
-- **Aviso:** "Com esses impostos e despesas, a meta de {target} não é alcançável." → **Correção:** os impostos e as despesas passam da margem; reveja o markup, as despesas ou o preço de compra.
-- **Aviso:** "ICMS da importação não configurado (Configurações → Tributos): conta como 0%." → **Correção:** o administrador configura em Configurações → Tributos.
-- **Erro:** "Com prejuízo não dá para abrir: ajuste o preço ou os números." e "Complete a simulação para abrir a faca e a RFQ." → **Correção:** ajuste o preço de venda ou complete os campos.
-- **Erro:** "Escolha um produto do cadastro para abrir a faca e a RFQ." → **Correção:** carregue um produto do cadastro (a simulação à mão não abre RFQ).
-
-### Passo a passo em texto
-
-1. O administrador abre **Pedidos → Superplan**.
-2. Em **Produto do cadastro**, escolha o produto e clique em **Carregar**: o sistema preenche preço, caixa, pesos, volume e os impostos do NCM. Sem produto, preencha os campos à mão.
-3. Em **Compra**, confira **Preço por peça**, **Moeda**, **Peças por caixa**, os pesos e o **Volume da caixa (m³)**. Preencha **II (%)** e **IPI (%)** se o NCM não está na tabela fiscal.
-4. Em **Container e fretes** e **Câmbio**, confira container, fretes e câmbio do dia. Em **Tipo de negócio**, escolha o tipo: ele preenche **Markup**, **Comissão (%)**, **Despesas administrativas (%)** e **Meta de lucro (%)**.
-5. Leia o **Resultado** (peças por container), os **Preços por peça** (o **Preço mínimo (custo × {markup})** e o **Custo por peça**) e o **Custo do container**.
-6. Leia o aviso do alto: verde (**Viável**), amarelo (lucro abaixo da meta) ou vermelho (**Prejuízo**). Clique em **Testar esse preço** (o que dá a meta) ou digite outro em **Preço de venda a testar (R$ por peça)**.
-7. Se for viável, no cartão **Viável? Abrir faca e RFQ com o fornecedor** escolha o **Fornecedor ganho**, **Para quem** e a **Quantidade (peças)** e clique em **Abrir faca e RFQ**. Com prejuízo, não abre; abaixo da meta, abre com aviso.
-8. Nasce a solicitação com origem **Superplan**, a RFQ só para o fornecedor ganho e o briefing de embalagem com a faca obrigatória. A proposta espera os quatro itens do fornecedor (faca, MOQ, prazo e foto em alta). Os percentuais ficam em **Parâmetros do Superplan**, no fim da tela (só o administrador altera).
-
-### Notas de gravação
-
-- Antes de gravar, confira o **Volume da caixa (m³)** do produto carregado: ele tem de ser 0,069 (ver ⚠ 1). Se a tela vier com 0,0035, a cena 5 mostra a correção à mão; se o defeito já tiver sido corrigido, mostre só o valor certo e tire o `[ATENÇÃO]` do ⚠.
-- Os números de referência da gravação de conferência (câmbio de 10/11/2026, tipo "WELLMIX - UD - CHINA - MERCADO", preço de 22,2 RMB, caixa de 12 peças, volume 0,069): 985 caixas, 11.820 peças por container, custo por peça R$ 24,74, preço mínimo R$ 44,53, lucro 18,5 %, preço para a meta R$ 47,87. Eles mudam com o câmbio do dia: não cite números na narração (só em legenda).
-- O preço R$ 25 dá prejuízo de R$ 5,18 por peça no mesmo exemplo; R$ 60 dá "Viável: lucro de 31,4% (meta 22%)." Use os valores que a tela mostrar no dia.
-- Para a cena 9, escolha "Compra para estoque (sem cliente)" (o padrão): a solicitação nasce com o cliente "Estoque Wellmix". Com um cliente, a solicitação nasce para ele.
-- "Abrir faca e RFQ" cria uma solicitação de verdade: restaure o ponto de salvamento depois de gravar, para a lista de solicitações voltar ao estado anterior.
-- O quadro "Como o Superplan calcula" (embaixo) e o botão "Como a conta é feita ↓" (no alto) explicam a conta em oito passos; mostre-os em dois segundos no corte, sem ler.
-
-### Pontos a confirmar
-
-- ⚠ **1. Volume da caixa trocado num produto criado pelo Booking.** Ao carregar a jarra criada pelo booking, a tela traz **"Volume da caixa (m³): 0,0035"** (as medidas da peça, 12 × 12 × 24 cm, lidas como medidas da caixa), em vez de 0,069, e o resultado sai errado: "1.766 caixas · 21.192 peças por container · Limitado pelo peso (26.490 kg)", preço mínimo R$ 41,94 e custo por peça R$ 23,30 (com 0,069 saem 985 caixas, 11.820 peças, R$ 44,53 e R$ 24,74). Causa provável: `sheetFromRequest` em `src/lib/services/supplier-request-product.ts` (WBK-04, ⚠ 1). Corrija a cena à mão ou corrija o defeito antes de gravar.
-- ⚠ A solicitação aberta do Superplan com "Para quem: Compra para estoque" nasce com o cliente "Estoque Wellmix"; confirmar se o dono quer usar esse caminho com cliente real nos vídeos.
-- ⚠ Não gravei o aviso "Lucro abaixo da meta: dá para abrir, mas confira antes." clicando em Abrir (só vi a mensagem); e não conferi a tela do fornecedor com os quatro itens (faca, MOQ, prazo e foto em alta): é outro vídeo (série do fornecedor).
-- ⚠ A conta do Superplan e o "Booking" usam os mesmos números só quando o produto tem os dados certos; o preço mínimo do produto (R$ 44,53, com 22,2 RMB) difere do que o booking guardou (R$ 45,75, com os 22,9 RMB da planilha): é o efeito do preço negociado com o fornecedor.

@@ -197,7 +197,7 @@ describe("booking por planilha", () => {
         line("2", "GL-02", "Glass jar", { height: "" }),
       ]),
     );
-    await expect(svc.closeBookingLot(admin, lot.id, null)).rejects.toThrow(
+    await expect(svc.closeBookingLot(admin, lot.id)).rejects.toThrow(
       "supplier_required",
     );
     const party = await svc.registerBookingLotSupplier(admin, lot.id, {
@@ -217,7 +217,7 @@ describe("booking por planilha", () => {
     expect((await store.get("booking_lots", lot.id))!.supplierId).toBe(
       party.id,
     );
-    await expect(svc.closeBookingLot(admin, lot.id, null)).rejects.toThrow(
+    await expect(svc.closeBookingLot(admin, lot.id)).rejects.toThrow(
       "booking_items_incomplete",
     );
     const jar = (
@@ -234,7 +234,7 @@ describe("booking por planilha", () => {
     );
     expect(saved.heightCm).toBe(21.5);
     // Sem NCM, ainda não fecha; com o NCM (Wellmix), fecha.
-    await expect(svc.closeBookingLot(admin, lot.id, null)).rejects.toThrow(
+    await expect(svc.closeBookingLot(admin, lot.id)).rejects.toThrow(
       "booking_items_incomplete",
     );
     const { setBookingItemsNcm } = await import("@/lib/services/booking-ncm");
@@ -246,7 +246,7 @@ describe("booking por planilha", () => {
       "7013.37.00",
     );
 
-    const closed = await svc.closeBookingLot(admin, lot.id, null);
+    const closed = await svc.closeBookingLot(admin, lot.id);
     expect(closed.status).toBe("closed");
     expect(closed.analyzedAt).toBeTruthy();
     const items = await store.list("booking_items", {
@@ -332,7 +332,7 @@ describe("booking por planilha", () => {
       await store.list("booking_items", { filter: { lotId: lot.id } }),
     );
     expect(lib.bookingLotReady(pending)).toBe(true);
-    const closed = await svc.closeBookingLot(admin, lot.id, null);
+    const closed = await svc.closeBookingLot(admin, lot.id);
     expect(closed.status).toBe("closed");
     expect((await store.get("booking_items", blank.id))!.innerQty).toBeNull();
     expect((await store.get("booking_items", filled.id))!.innerQty).toBe(24);
@@ -428,9 +428,11 @@ describe("regras puras", () => {
         holder: "",
         lockId: null,
         lockMine: false,
+        lockCanRelease: false,
         lockByType: false,
         heldMinutes: null,
         heldText: "",
+        heldDueText: "",
         heldLate: false,
       }) satisfies import("@/lib/booking-lots").BookingLotRow;
     const rows = [
@@ -449,5 +451,16 @@ describe("regras puras", () => {
     expect(
       lib.sortBookingLots(rows, "itemCount", "asc").map((r) => r.number),
     ).toEqual([1, 2]);
+  });
+});
+
+describe("prazo da trava do book (dono, 24/11/2026)", () => {
+  it("mostra só a data e a hora do fim do prazo, no horário de Brasília", async () => {
+    const { lockDueText } = await import("@/lib/booking-locks");
+    // 24/11 16:52 em Brasília (19:52 UTC) + 3 h = 24/11 19:52 em Brasília.
+    expect(lockDueText("2026-11-24T19:52:00Z", 3)).toBe("24/11 19:52");
+    // Virada do dia: 23:30 + 3 h = 02:30 do dia seguinte.
+    expect(lockDueText("2026-11-25T02:30:00Z", 3)).toBe("25/11 02:30");
+    expect(lockDueText("data ruim", 3)).toBe("");
   });
 });

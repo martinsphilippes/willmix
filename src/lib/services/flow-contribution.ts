@@ -22,6 +22,7 @@ import { parseSampleOrder } from "@/lib/sample-order";
 import { openImportStepKeys } from "./import-flow";
 import {
   downPaymentStateOf,
+  milestoneHomeStep,
   milestoneOfStoredItem,
   milestoneReached,
   stepOfItem,
@@ -89,20 +90,34 @@ export interface OrderFlowInput {
 export function openMilestoneItems(
   open: readonly Requirement[],
   rows: readonly MilestoneProgressRow[] | null | undefined,
-): Array<{ step: string; requirement: Requirement; since: string | null }> {
+): Array<{
+  step: string;
+  requirement: Requirement;
+  since: string | null;
+  /** O marco do item (para o passo dele no bloco, `milestoneHomeStep`). */
+  milestone: MilestoneKey;
+}> {
   const rowOf = new Map((rows ?? []).map((r) => [r.key, r]));
   const out: Array<{
     step: string;
     requirement: Requirement;
     since: string | null;
+    milestone: MilestoneKey;
   }> = [];
   for (const r of open) {
     if (r.status === "done") continue;
     const key = milestoneOfStoredItem(r);
     const row = key ? rowOf.get(key) : undefined;
-    if (!row || (row.status !== "active" && row.status !== "blocked")) continue;
+    if (!key || !row || (row.status !== "active" && row.status !== "blocked"))
+      continue;
     const step = stepOfItem(r);
-    if (step) out.push({ step, requirement: r, since: row.startedAt ?? null });
+    if (step)
+      out.push({
+        step,
+        requirement: r,
+        since: row.startedAt ?? null,
+        milestone: key,
+      });
   }
   return out;
 }
@@ -135,12 +150,23 @@ export function orderFlowEntries(input: OrderFlowInput): FlowEntry[] {
   if (!flowLive(order)) return [];
   const out: FlowEntry[] = [];
   // Itens abertos dos marcos em andamento (ou travados).
-  for (const e of openMilestoneItems(input.openRequirements, input.milestones))
-    out.push({
-      step: e.step,
-      item: { kind: "requirement", requirement: e.requirement },
-      since: e.since,
-    });
+  for (const e of openMilestoneItems(
+    input.openRequirements,
+    input.milestones,
+  )) {
+    const item = { kind: "requirement" as const, requirement: e.requirement };
+    out.push({ step: e.step, item, since: e.since });
+    // Item num passo fora dos blocos do pedido (dono, 24/11/2026, opção 1:
+    // o cadastro do produto do Pedido novo, em Cadastros → Produtos): o
+    // pedido aparece também no passo do marco (Pedido > Pedidos, "Todos no
+    // passo"), para não sumir do bloco. A pendência continua contada só no
+    // passo do item (as Pendências e os contadores vêm das tarefas).
+    if (!inProgressBlocks(e.step)) {
+      const home = milestoneHomeStep(e.milestone);
+      if (home && home !== e.step)
+        out.push({ step: home, item, since: e.since });
+    }
+  }
   // Passos do embarque, da origem, da certificação e das amostras.
   const steps = input.importSteps;
   const certification = steps.some((s) => s.key.startsWith("cert_"));

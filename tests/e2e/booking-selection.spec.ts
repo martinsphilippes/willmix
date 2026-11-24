@@ -166,10 +166,10 @@ async function importDraft(page: Page, file: ReturnType<typeof sheet>) {
 }
 
 /**
- * Câmbio manual em Configurações. O custo por peça do Superplan (R$) precisa
- * de câmbio, e o do dia vem de sites públicos que nem todo ambiente de teste
+ * Câmbio manual em Configurações. O preço em US$ da seleção precisa de
+ * câmbio, e o do dia vem de sites públicos que nem todo ambiente de teste
  * alcança (rede restrita). Com a cotação do dia ela continua valendo; sem
- * ela, vale este, e a conta sai do mesmo jeito.
+ * ela, vale este.
  */
 async function setManualFx(page: Page) {
   await page.goto("/app/settings");
@@ -222,12 +222,18 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
     "8",
     "20",
   ]);
-  // Os fechados mostram o custo por peça do Superplan (R$), com a explicação.
+  // Os fechados mostram a previsão de preço do Sankhya (custo por peça), com
+  // a explicação; sem o Sankhya nos testes, o retrato diz que nada foi
+  // previsto (nunca um preço inventado).
   await expect(page.locator("[data-selection-cost-hint]")).toBeVisible();
-  for (const code of [`${TAG}-A`, `${TAG}-B`])
+  for (const code of [`${TAG}-A`, `${TAG}-B`]) {
     await expect(
       rows.filter({ hasText: code }).locator("[data-selection-cost]"),
-    ).toContainText("R$");
+    ).toBeVisible();
+    await expect(
+      rows.filter({ hasText: code }).locator("[data-booking-item-analysis]"),
+    ).toBeVisible();
+  }
   // A aba Itens só agrupa: sem escolher nem abrir solicitação.
   await expect(page.locator("[data-selection-choose]")).toHaveCount(0);
   await expect(page.locator("[data-selection-submit]")).toHaveCount(0);

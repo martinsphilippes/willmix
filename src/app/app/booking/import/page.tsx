@@ -26,7 +26,10 @@ import {
   bookIncotermLabels,
 } from "../_components/book-meta-fields";
 import { BookIncotermFields } from "@/components/book-incoterm-fields";
-import { bookingItemTypes } from "@/lib/services/booking-lots";
+import {
+  bookingItemTypes,
+  bookingPartnerOptions,
+} from "@/lib/services/booking-lots";
 
 /**
  * Botão "Escolher arquivos" compacto, como no desenho: 32 px (40 px no
@@ -63,7 +66,10 @@ export default async function BookingImportPage({
     (k) => k in dictionaries.pt,
   ) as DictionaryKey | undefined;
   const errorText = !code ? null : known ? t(known) : fallbackError(t, code);
-  const types = await bookingItemTypes();
+  const [types, partners] = await Promise.all([
+    bookingItemTypes(),
+    bookingPartnerOptions(),
+  ]);
 
   return (
     <>
@@ -72,9 +78,20 @@ export default async function BookingImportPage({
         title={t("bookingLots.import.title")}
         subtitle={t("bookingLots.import.subtitle")}
         actions={
-          <LinkButton href="/app/booking">
-            {t("bookingLots.backToList")}
-          </LinkButton>
+          // Modelo da planilha de book, ao lado do voltar (dono, 24/11/2026).
+          <>
+            <LinkButton
+              href="/modelos/modelo-book-wellmix-2026.xls"
+              download="Modelo_Book_Wellmix_2026.xls"
+              prefetch={false}
+              data-book-template
+            >
+              {t("bookWork.template")}
+            </LinkButton>
+            <LinkButton href="/app/booking">
+              {t("bookingLots.backToList")}
+            </LinkButton>
+          </>
         }
       />
       {errorText ? (
@@ -191,6 +208,7 @@ export default async function BookingImportPage({
                   t={t}
                   types={types}
                   layout="inline"
+                  suppliers={partners.map((p) => p.name)}
                   itemTypeHintId={ITEM_TYPE_HINT_ID}
                 />
                 <p

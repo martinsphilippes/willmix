@@ -93,7 +93,7 @@ async function closedLot(supplierName: string, rows: string[][]) {
     items.map((i) => i.id),
     "7013.37.00",
   );
-  return lots.closeBookingLot(admin, lot.id, null);
+  return lots.closeBookingLot(admin, lot.id);
 }
 
 beforeAll(async () => {
@@ -1188,6 +1188,17 @@ describe("responsável pelo booking (para quem vão as solicitações)", () => {
 });
 
 describe("Seleção de itens: o melhor caso pelo custo por peça", () => {
+  it("retrato antigo (sem a previsão do Sankhya) não entra", () => {
+    expect(
+      lib.bestCostItem([
+        {
+          id: "x",
+          analysis: { costBrl: 1, minimumBrl: 2 },
+        } as unknown as Parameters<typeof lib.bestCostItem>[0][number],
+      ]),
+    ).toBeNull();
+  });
+
   type Item = Parameters<typeof lib.bestCostItem>[0][number];
   const item = (
     id: string,
@@ -1199,10 +1210,10 @@ describe("Seleção de itens: o melhor caso pelo custo por peça", () => {
       analysis:
         costBrl === null && minimumBrl === null
           ? null
-          : { costBrl, minimumBrl },
+          : { source: "price_forecast", costBrl, minimumBrl },
     }) as unknown as Item;
 
-  it("destaca o menor custo, mesmo com mínimo maior (tipo de negócio diferente)", () => {
+  it("destaca o menor custo da previsão de preço, mesmo com venda prevista maior", () => {
     expect(
       lib.bestCostItem([
         item("a", 10, 18),

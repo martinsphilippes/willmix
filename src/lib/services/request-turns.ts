@@ -172,6 +172,7 @@ export async function requestTurnContext(
         ? supplierRequests
             .filter((s) => q.supplierRequestIds!.includes(s.id))
             .map((s) => ({
+              id: s.id,
               status: s.status,
               negotiation: negotiationTurn(s),
               sampling:

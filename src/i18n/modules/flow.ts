@@ -50,6 +50,7 @@ export const pt = {
   "flow.all.open": "Aberto neste passo",
   "flow.all.since": "No passo há",
   "flow.all.view": "Ver o pedido",
+  "flow.all.elsewhere": "{where}: {item}",
   "flow.all.search":
     "Buscar em todo o passo: nº do pedido, fornecedor, cliente ou produto",
   "flow.all.searchButton": "Buscar",
@@ -179,9 +180,6 @@ export const pt = {
   "flow.due.overdue": "Atrasadas",
   "flow.due.today": "Hoje",
   "flow.due.week": "Até 7 dias",
-  "settings.superplan.body":
-    "Estudo de viabilidade de um produto (passo B3 do mapa). Saiu do menu lateral e fica aqui.",
-  "settings.superplan.open": "Abrir o Superplan",
   "flow.block.new-product": "Cotação",
   "flow.block.order": "Pedido",
   "flow.block.production": "Produção",
@@ -353,6 +351,7 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.all.open": "Open in this step",
   "flow.all.since": "In the step for",
   "flow.all.view": "View order",
+  "flow.all.elsewhere": "{where}: {item}",
   "flow.all.search":
     "Search the whole step: order no., supplier, customer or product",
   "flow.all.searchButton": "Search",
@@ -481,9 +480,6 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.due.overdue": "Overdue",
   "flow.due.today": "Today",
   "flow.due.week": "Within 7 days",
-  "settings.superplan.body":
-    "Product feasibility study (map step B3). It left the sidebar and lives here.",
-  "settings.superplan.open": "Open Superplan",
   "flow.block.new-product": "Quotation",
   "flow.block.order": "Order",
   "flow.block.production": "Production",
@@ -652,6 +648,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.all.open": "本环节未完成",
   "flow.all.since": "已在本环节",
   "flow.all.view": "查看订单",
+  "flow.all.elsewhere": "{where}：{item}",
   "flow.all.search": "在整个环节中搜索：订单号、供应商、客户或产品",
   "flow.all.searchButton": "搜索",
   "flow.all.clear": "清除",
@@ -775,9 +772,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.due.overdue": "逾期",
   "flow.due.today": "今天",
   "flow.due.week": "7 天内",
-  "settings.superplan.body":
-    "产品可行性研究（流程图 B3）。已从侧边栏移到这里。",
-  "settings.superplan.open": "打开 Superplan",
   "flow.block.new-product": "询价",
   "flow.block.order": "订单",
   "flow.block.production": "生产",

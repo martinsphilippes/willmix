@@ -187,7 +187,7 @@ describe("no booking", () => {
     expect(Object.keys(group.items[0])).not.toContain("price");
 
     // Sem NCM em todos, não fecha (fornecedor e data já vieram da planilha).
-    await expect(lots.closeBookingLot(admin, lot.id, null)).rejects.toThrow(
+    await expect(lots.closeBookingLot(admin, lot.id)).rejects.toThrow(
       "booking_items_incomplete",
     );
     // Fornecedor não preenche; NCM inválido recusa.
@@ -210,16 +210,19 @@ describe("no booking", () => {
       });
     expect(await ncm.pendingNcmGroups(broker)).toEqual([]);
 
-    // Fecha; trocar o NCM depois refaz a análise do item; apagar não pode.
-    await lots.closeBookingLot(admin, lot.id, null);
+    // Fecha; trocar o NCM depois refaz a previsão de preço do item (sem o
+    // Sankhya nos testes: "manual", nada previsto); apagar não pode.
+    await lots.closeBookingLot(admin, lot.id);
     const before = (await store.get("booking_items", bottle.id))!.analysis!;
-    expect(before.inputs?.ncmFound).toBeDefined();
+    expect(before).toMatchObject({ source: "price_forecast" });
+    expect(before.sent?.ncm).toBeTruthy();
     await new Promise((r) => setTimeout(r, 5));
     const res = await ncm.setBookingItemsNcm(admin, [bottle.id], "96170020");
     expect(res.reanalyzed).toBe(1);
     const after = (await store.get("booking_items", bottle.id))!;
     expect(after).toMatchObject({ ncm: "96170020", ncmSource: "manual" });
     expect(after.analysis!.at > before.at).toBe(true);
+    expect(after.analysis!.sent?.ncm).toBe("96170020");
     await expect(
       ncm.setBookingItemsNcm(admin, [bottle.id], ""),
     ).rejects.toThrow("booking_ncm_required");

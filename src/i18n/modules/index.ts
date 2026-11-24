@@ -97,7 +97,6 @@ import * as negotiationScreen from "./negotiation-screen";
 import * as quotation from "./quotation";
 import * as orderTable from "./order-table";
 import * as quoteInnerMaterials from "./quote-inner-materials";
-import * as superplanLogic from "./superplan-logic";
 import * as dieCutStep from "./die-cut-step";
 import * as sheetProgress from "./sheet-progress";
 import * as requirementFiles from "./requirement-files";
@@ -121,11 +120,9 @@ import * as ncmSheet from "./ncm-sheet";
 import * as i18nSweep from "./i18n-sweep";
 import * as requestSchedule from "./request-schedule";
 import * as freightTariff from "./freight-tariff";
-import * as superplan from "./superplan";
 import * as sankhya from "./sankhya";
 import * as sankhyaIntegration from "./sankhya-integration";
 import * as processes from "./processes";
-import * as superplanRfq from "./superplan-rfq";
 import * as quoteFlow from "./quote-flow";
 import * as orderSignature from "./order-signature";
 import * as booking from "./booking";
@@ -137,6 +134,7 @@ import * as supplierRequests from "./supplier-requests";
 import * as supplierRequestProduct from "./supplier-request-product";
 import * as placeholderName from "./placeholder-name";
 import * as bookingNcm from "./booking-ncm";
+import * as bookingForecast from "./booking-forecast";
 import * as purchaseDemand from "./purchase-demand";
 import * as supplierSheet from "./supplier-sheet";
 import * as strategySend from "./strategy-send";
@@ -258,7 +256,6 @@ export const modulesPt = {
   ...sourcingStandby.pt,
   ...portalAccess.pt,
   ...supplierTasks.pt,
-  ...superplanLogic.pt,
   ...dieCutStep.pt,
   ...sheetProgress.pt,
   ...requirementFiles.pt,
@@ -307,11 +304,9 @@ export const modulesPt = {
   ...sheetSafety.pt,
   ...productSpec.pt,
   ...freightTariff.pt,
-  ...superplan.pt,
   ...sankhya.pt,
   ...sankhyaIntegration.pt,
   ...processes.pt,
-  ...superplanRfq.pt,
   ...quoteFlow.pt,
   ...orderSignature.pt,
   ...booking.pt,
@@ -323,6 +318,7 @@ export const modulesPt = {
   ...supplierRequestProduct.pt,
   ...placeholderName.pt,
   ...bookingNcm.pt,
+  ...bookingForecast.pt,
   ...purchaseDemand.pt,
   ...supplierSheet.pt,
   ...strategySend.pt,
@@ -446,7 +442,6 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcingStandby.en,
   ...portalAccess.en,
   ...supplierTasks.en,
-  ...superplanLogic.en,
   ...dieCutStep.en,
   ...sheetProgress.en,
   ...requirementFiles.en,
@@ -495,11 +490,9 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sheetSafety.en,
   ...productSpec.en,
   ...freightTariff.en,
-  ...superplan.en,
   ...sankhya.en,
   ...sankhyaIntegration.en,
   ...processes.en,
-  ...superplanRfq.en,
   ...quoteFlow.en,
   ...orderSignature.en,
   ...booking.en,
@@ -511,6 +504,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...supplierRequestProduct.en,
   ...placeholderName.en,
   ...bookingNcm.en,
+  ...bookingForecast.en,
   ...purchaseDemand.en,
   ...supplierSheet.en,
   ...strategySend.en,
@@ -634,7 +628,6 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcingStandby.zh,
   ...portalAccess.zh,
   ...supplierTasks.zh,
-  ...superplanLogic.zh,
   ...dieCutStep.zh,
   ...sheetProgress.zh,
   ...requirementFiles.zh,
@@ -683,11 +676,9 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sheetSafety.zh,
   ...productSpec.zh,
   ...freightTariff.zh,
-  ...superplan.zh,
   ...sankhya.zh,
   ...sankhyaIntegration.zh,
   ...processes.zh,
-  ...superplanRfq.zh,
   ...quoteFlow.zh,
   ...orderSignature.zh,
   ...booking.zh,
@@ -699,6 +690,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...supplierRequestProduct.zh,
   ...placeholderName.zh,
   ...bookingNcm.zh,
+  ...bookingForecast.zh,
   ...purchaseDemand.zh,
   ...supplierSheet.zh,
   ...strategySend.zh,

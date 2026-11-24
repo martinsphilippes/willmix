@@ -105,7 +105,7 @@ import { releaseOf } from "@/lib/milestone-release";
  * recebimento do cronograma de pagamento, e `sreqs` leva o passo; as
  * pendências (`s`) saem pelos marcos dos itens.
  */
-export const SUMMARY_VERSION = 20;
+export const SUMMARY_VERSION = 21;
 
 /** Marcador em `settings`: a última reconstrução completa. */
 export const SUMMARY_SETTING_KEY = "orderSummaries";

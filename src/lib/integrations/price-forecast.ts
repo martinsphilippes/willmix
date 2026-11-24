@@ -7,8 +7,10 @@ import {
 
 /*
  * Previsão de preço ao cliente final (Nova solicitação, dono, 15/11/2026),
- * pela SuperPlan do Sankhya (anexo 2, "SuperPlan × Função", Amplio,
- * 14/11/2026):
+ * pelas funções de preço do Sankhya (anexo 2, Amplio, 14/11/2026). É a API
+ * de preço do portal inteiro: Nova solicitação (encomenda e reposição),
+ * itens do Book e a contraproposta da negociação (dono, 24/11/2026; a conta
+ * própria do portal saiu):
  *
  * - Ida: `sankhya.FN_AD_SUPERPLAN_WELL(69 parâmetros)` → custo e venda por
  *   peça (VENDA_IPI = custo × MKP, PRECO_TABELA_COM_IPI, SUGESTAO_ATACADO,
@@ -26,7 +28,7 @@ import {
  */
 
 /** Ordem dos 45 parâmetros de custo (anexo 2, "ORDEM"). */
-export const SUPERPLAN_COST_PARAMS = [
+export const PRICE_COST_PARAMS = [
   "NCM",
   "PESO_LIQ_PECA",
   "PESO_BRUTO_PECA",
@@ -75,7 +77,7 @@ export const SUPERPLAN_COST_PARAMS = [
 ] as const;
 
 /** Os 24 de venda, depois dos de custo (anexo 2, "ORDEM_V"). */
-export const SUPERPLAN_SALE_PARAMS = [
+export const PRICE_SALE_PARAMS = [
   "BASE_PRECO",
   "MKP",
   "PRECO_VENDA_ALVO",
@@ -102,14 +104,14 @@ export const SUPERPLAN_SALE_PARAMS = [
   "ICMS_CREDITO_PECA_INFORMADO",
 ] as const;
 
-export const SUPERPLAN_PARAMS = [
-  ...SUPERPLAN_COST_PARAMS,
-  ...SUPERPLAN_SALE_PARAMS,
+export const PRICE_PARAMS = [
+  ...PRICE_COST_PARAMS,
+  ...PRICE_SALE_PARAMS,
 ] as const;
-export type SuperplanParam = (typeof SUPERPLAN_PARAMS)[number];
+export type PriceParam = (typeof PRICE_PARAMS)[number];
 
 /** Parâmetros de texto (vão entre aspas). */
-const TEXT_PARAMS = new Set<SuperplanParam>([
+const TEXT_PARAMS = new Set<PriceParam>([
   "NCM",
   "INCOTERM",
   "MOEDA_ORIGEM",
@@ -119,20 +121,18 @@ const TEXT_PARAMS = new Set<SuperplanParam>([
   "BASE_PRECO",
 ]);
 
-export type SuperplanInput = Partial<
-  Record<SuperplanParam, string | number | null>
->;
+export type PriceInput = Partial<Record<PriceParam, string | number | null>>;
 
-export const SUPERPLAN_FN = "FN_AD_SUPERPLAN_WELL";
+export const PRICE_FN = "FN_AD_SUPERPLAN_WELL";
 /**
  * Cotação de encomenda V2 (dono, 16/11/2026; "Chamada da API de encomenda ·
- * V2", 71 argumentos; o 72º, @DESP_EXTRA_USD, desde 19/11/2026): substitui a ida da SuperPlan na previsão de preço. Os
+ * V2", 71 argumentos; o 72º, @DESP_EXTRA_USD, desde 19/11/2026): substitui a ida antiga na previsão de preço. Os
  * 69 de antes, na mesma ordem, mais @CODVEND (70) e @ROTA_ENTREGA (71); todo
  * argumento vai como CAST(valor AS tipo) e o sem valor como CAST(NULL AS tipo).
  */
 export const COTACAO_V2_FN = "FN_AD_ENC_COTACAO_V2_WELL";
 export const COTACAO_V2_PARAMS = [
-  ...SUPERPLAN_PARAMS,
+  ...PRICE_PARAMS,
   "CODVEND",
   "ROTA_ENTREGA",
   // 72º (dono, 19/11/2026): despesa extra em US$; vai como NULL (o Sankhya
@@ -196,10 +196,10 @@ export function cotacaoV2Sql(input: CotacaoV2Input): string {
   const args = COTACAO_V2_PARAMS.map((k) => v2Arg(k, input[k]));
   return `SELECT * FROM sankhya.${COTACAO_V2_FN}(${args.join(", ")})`;
 }
-export const SUPERPLAN_INVERSE_FN = "FN_AD_SUPERPLAN_INVERSA_WELL";
+export const PRICE_INVERSE_FN = "FN_AD_SUPERPLAN_INVERSA_WELL";
 
 /** Um argumento do SQL (a validação do anexo); erro = Error("invalid_input"). */
-function sqlArg(name: SuperplanParam, value: unknown): string {
+function sqlArg(name: PriceParam, value: unknown): string {
   if (value === undefined || value === null || value === "") return "DEFAULT";
   if (TEXT_PARAMS.has(name)) {
     const text = String(value);
@@ -212,11 +212,11 @@ function sqlArg(name: SuperplanParam, value: unknown): string {
 }
 
 /** SELECT da função (ida ou volta), com os 69 parâmetros na ordem. */
-export function superplanSql(
-  fn: typeof SUPERPLAN_FN | typeof SUPERPLAN_INVERSE_FN,
-  input: SuperplanInput,
+export function priceSql(
+  fn: typeof PRICE_FN | typeof PRICE_INVERSE_FN,
+  input: PriceInput,
 ): string {
-  const args = SUPERPLAN_PARAMS.map((k) => sqlArg(k, input[k]));
+  const args = PRICE_PARAMS.map((k) => sqlArg(k, input[k]));
   return `SELECT * FROM sankhya.${fn}(${args.join(", ")})`;
 }
 
@@ -297,18 +297,18 @@ export interface PriceForecastSale {
 }
 
 /**
- * Memória de cálculo da SuperPlan (auditoria, dono, 15/11/2026): o que foi
+ * Memória de cálculo da previsão (auditoria, dono, 15/11/2026): o que foi
  * enviado à função (só os parâmetros com valor; os outros vão como DEFAULT,
  * o padrão do Sankhya) e todas as colunas que ela devolveu, na ordem. Só
  * para quem vê valores e margem (tem custo).
  */
-export interface SuperplanAudit {
+export interface PriceForecastAudit {
   fn: string;
   inputs: Array<[string, string | number]>;
   outputs: Array<[string, string | number | null]>;
 }
 
-type Audited = { audit?: SuperplanAudit };
+type Audited = { audit?: PriceForecastAudit };
 
 export type PriceForecastAnswer =
   | ({ mode: "api"; kind: "forecast" } & PriceForecastSale & Audited)
@@ -365,17 +365,17 @@ function originCurrency(code: string | null | undefined): string | null {
 export function productInput(
   q: PriceForecastQuery,
   withPrice = false,
-): SuperplanInput {
+): PriceInput {
   const code = /^\d{1,10}$/.test(String(q.sankhyaCode ?? "").trim())
     ? Number(q.sankhyaCode)
     : null;
   const pieces = positive(q.quantity);
   const containers = positive(q.containers);
-  const containerInput: SuperplanInput =
+  const containerInput: PriceInput =
     containers !== null && Number.isInteger(containers)
       ? { QTD_CONTAINERS: containers }
       : {};
-  const price: SuperplanInput = {
+  const price: PriceInput = {
     PRECO_ORIGEM: positive(q.price),
     MOEDA_ORIGEM: originCurrency(q.currency),
   };
@@ -454,7 +454,7 @@ export function rowProblem(
   return m && m.toLowerCase() !== "ok" ? m : null;
 }
 
-/** A SuperPlan do Sankhya (anexo 2). */
+/** As funções de preço do Sankhya (anexo 2). */
 export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
   readonly mode = "api" as const;
   constructor(
@@ -465,12 +465,11 @@ export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
 
   /** Roda a função; sem preço no Sankhya, tenta de novo com o do portal. */
   private async run(
-    fn:
-      typeof SUPERPLAN_FN | typeof SUPERPLAN_INVERSE_FN | typeof COTACAO_V2_FN,
+    fn: typeof PRICE_FN | typeof PRICE_INVERSE_FN | typeof COTACAO_V2_FN,
     q: PriceForecastQuery,
     extra: CotacaoV2Input,
   ): Promise<
-    | { row: SankhyaRow | undefined; audit: SuperplanAudit | undefined }
+    | { row: SankhyaRow | undefined; audit: PriceForecastAudit | undefined }
     | "manual"
     | { error: string }
   > {
@@ -478,7 +477,7 @@ export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
       const sql = (input: CotacaoV2Input) =>
         fn === COTACAO_V2_FN
           ? cotacaoV2Sql(input)
-          : superplanSql(fn, input as SuperplanInput);
+          : priceSql(fn, input as PriceInput);
       let input: CotacaoV2Input = { ...productInput(q), ...extra };
       let row = (await executeQuery(sql(input), this.options)).rows[0];
       const needsPrice =
@@ -495,7 +494,7 @@ export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
       if (e instanceof SankhyaError && e.code === "sankhya_not_configured")
         return "manual";
       if (e instanceof Error && e.message === "invalid_input")
-        return { error: "entrada inválida para a SuperPlan" };
+        return { error: "entrada inválida para a previsão de preço" };
       return {
         error: e instanceof SankhyaError ? e.detail || e.code : String(e),
       };
@@ -503,7 +502,7 @@ export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
   }
 
   async forecast(q: PriceForecastQuery): Promise<PriceForecastAnswer> {
-    // Cotação de encomenda V2 (dono, 16/11/2026) no lugar da SuperPlan.
+    // Cotação de encomenda V2 (dono, 16/11/2026) no lugar da ida antiga.
     const ran = await this.run(COTACAO_V2_FN, q, commercialInput(q, true));
     if (ran === "manual") return { mode: "manual" };
     if ("error" in ran)
@@ -527,9 +526,9 @@ export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
   async solve(
     q: PriceForecastQuery & { targetFinalPriceBrl: number },
   ): Promise<PriceForecastAnswer> {
-    // A volta continua na SuperPlan inversa (69): leva o VIP e o frete de
+    // A volta continua na função inversa (69): leva o VIP e o frete de
     // entrega, que ela também tem; a rota e o vendedor são só da V2.
-    const ran = await this.run(SUPERPLAN_INVERSE_FN, q, {
+    const ran = await this.run(PRICE_INVERSE_FN, q, {
       ...commercialInput(q, false),
       PRECO_VENDA_ALVO: q.targetFinalPriceBrl,
     });
@@ -587,7 +586,7 @@ export function auditOf(
   fn: string,
   input: CotacaoV2Input,
   row: SankhyaRow | undefined,
-): SuperplanAudit {
+): PriceForecastAudit {
   return {
     fn,
     inputs: COTACAO_V2_PARAMS.flatMap((k) => {
@@ -599,7 +598,7 @@ export function auditOf(
 }
 
 /**
- * A SuperPlan do Sankhya; sem o Sankhya configurado, cada chamada responde
+ * As funções de preço do Sankhya; sem o Sankhya configurado, cada chamada responde
  * `{ mode: "manual" }` (nenhum preço inventado).
  */
 export function getPriceForecastAdapter(

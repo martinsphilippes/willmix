@@ -30,7 +30,7 @@ export const pt = {
   "bookingNcm.noBroker":
     "Nenhum despachante com acesso ao portal: preencha o NCM na coluna NCM dos itens.",
   "bookingNcm.closedHint":
-    "O NCM continua editável: ao trocar, a análise do Superplan do item é refeita.",
+    "O NCM continua editável: ao trocar, a previsão de preço do item é refeita.",
 
   "bookingNcm.page.title": "NCM dos itens de book",
   "bookingNcm.page.subtitle":
@@ -92,7 +92,7 @@ export const en: typeof pt = {
   "bookingNcm.noBroker":
     "No customs broker with portal access: fill in the NCM in the items' NCM column.",
   "bookingNcm.closedHint":
-    "The NCM stays editable: changing it redoes the item's Superplan analysis.",
+    "The NCM stays editable: changing it redoes the item's price forecast.",
 
   "bookingNcm.page.title": "Book item NCMs",
   "bookingNcm.page.subtitle":
@@ -152,8 +152,7 @@ export const zh: typeof pt = {
     "{n} 个条目在产品目录中没有相似产品，已交给报关行归类 NCM。所有条目都有 NCM 后 Book 才能关闭。",
   "bookingNcm.lotPendingLink": "查看报关行处理中的条目",
   "bookingNcm.noBroker": "没有可登录门户的报关行：请在条目的 NCM 列中填写。",
-  "bookingNcm.closedHint":
-    "NCM 仍可编辑：修改后会重新进行该条目的 Superplan 分析。",
+  "bookingNcm.closedHint": "NCM 仍可编辑：修改后会重新进行该条目的价格预测。",
 
   "bookingNcm.page.title": "Book 条目的 NCM",
   "bookingNcm.page.subtitle":

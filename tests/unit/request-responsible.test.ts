@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   FUNCTIONS_HREF,
   isOverdue,
+  partnerLogins,
   responsibleKey,
   responsibleLine,
   responsibleOf,
@@ -12,6 +13,7 @@ import {
   type FixDirectory,
   type PeopleDirectory,
   type Person,
+  type Responsible,
 } from "@/lib/request-responsible";
 import { kindGate } from "@/lib/task-owner";
 import type { PurchaseProgress } from "@/lib/services/request-list";
@@ -431,5 +433,60 @@ describe("o botão que resolve a falta no balão (dono, 20/11/2026)", () => {
         fixes(),
       ),
     ).toBe(ok);
+  });
+});
+
+describe("o login de quem envia à vista (dono, 24/11/2026)", () => {
+  const base: Responsible = {
+    party: "supplier",
+    group: "Shenzhen Supplier A",
+    people: [p("u1", "Li Wei", "li@sz.com"), p("u2", "Chen Yu", "chen@sz.com")],
+    admins: [],
+    partners: [],
+    missing: null,
+  };
+
+  it("vez do fornecedor ou da trading: os logins dele, sem repetir", () => {
+    expect(partnerLogins(base)).toEqual(["li@sz.com", "chen@sz.com"]);
+    expect(
+      partnerLogins({
+        ...base,
+        party: "trading",
+        people: [p("u1", "Li Wei", "li@sz.com"), p("u1", "Li", "li@sz.com")],
+      }),
+    ).toEqual(["li@sz.com"]);
+  });
+
+  it("quem não vê o login (fora o administrador) não vê nada à vista", () => {
+    expect(
+      partnerLogins({
+        ...base,
+        people: [p("u1", "Li Wei"), p("u2", "Chen Yu")],
+      }),
+    ).toEqual([]);
+  });
+
+  it("vários parceiros (cotação): os logins de todos", () => {
+    expect(
+      partnerLogins({
+        ...base,
+        people: [],
+        partners: [
+          {
+            id: "a",
+            name: "A",
+            dueAt: null,
+            people: [p("u1", "Li", "li@a.com")],
+          },
+          { id: "b", name: "B", dueAt: null, people: [] },
+        ],
+      }),
+    ).toEqual(["li@a.com"]);
+  });
+
+  it("vez da Wellmix, do cliente ou sem responsável: nada (a equipe fica no balão)", () => {
+    for (const party of ["wellmix", "customer", "unassigned", null] as const)
+      expect(partnerLogins({ ...base, party })).toEqual([]);
+    expect(partnerLogins(null)).toEqual([]);
   });
 });

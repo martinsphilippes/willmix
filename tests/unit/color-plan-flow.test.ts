@@ -184,7 +184,7 @@ async function closedLot(rows: string[][]) {
     items.map((i) => i.id),
     "7013.37.00",
   );
-  await lots.closeBookingLot(admin, lot.id, null);
+  await lots.closeBookingLot(admin, lot.id);
   return store.list("booking_items", { filter: { lotId: lot.id } });
 }
 

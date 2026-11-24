@@ -494,6 +494,30 @@ export interface ResponsibleLabels {
 }
 
 /**
+ * Os logins de quem vai agir na vez do parceiro (dono, 24/11/2026;
+ * docs/TURNS.md): o fornecedor (ou a trading) que responde a solicitação ou
+ * envia a amostragem, à vista embaixo de quem age. Só o que quem vê pode
+ * ver: `Person.login` vem preenchido só para o administrador. Na vez da
+ * Wellmix ou do cliente, nada (a equipe e o cliente ficam no balão).
+ */
+export function partnerLogins(r: Responsible | null | undefined): string[] {
+  if (
+    !r ||
+    !r.party ||
+    r.party === "wellmix" ||
+    r.party === "customer" ||
+    r.party === "unassigned"
+  )
+    return [];
+  const people = r.partners.length
+    ? r.partners.flatMap((p) => p.people)
+    : r.people;
+  return [
+    ...new Set(people.map((p) => p.login).filter((l): l is string => !!l)),
+  ];
+}
+
+/**
  * A 2ª linha da Próxima ação: quem age e a empresa, equipe ou papel
  * ("Ana Costa · Cliente", "Comprador (3) · Wellmix", "3 parceiros ·
  * Fornecedor"). `warn`: falta atribuição (pendência de cadastro ou do fluxo).

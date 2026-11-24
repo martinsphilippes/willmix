@@ -1393,8 +1393,6 @@ export async function saveSettingsAction(form: FormData) {
         // Gravados pelo tarifário de frete (destino escolhido e atualização automática).
         key === "freightTariffDestination" ||
         key === "freightPerCbmAuto" ||
-        // Gravado pela tela do Superplan, com validação própria.
-        key === "superplan" ||
         // Prazo por etapa (legado, fase 5e): o editor agora é por marco.
         key === "stageDueDays"
       )

@@ -7,7 +7,10 @@ import {
   PurchaseScheduleTable,
   roundsLine,
 } from "@/components/purchase-rounds";
-import { BookingItemSuperplan } from "@/components/booking-item-superplan";
+import {
+  BookingItemForecast,
+  bookingForecastOf,
+} from "@/components/booking-item-forecast";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -70,10 +73,7 @@ import {
   type ConversationMessage,
 } from "../_components/negotiation-conversation";
 import { agreedConditions } from "@/lib/services/supplier-request-product";
-import {
-  analyzeNegotiatedItem,
-  superplanBaseForItem,
-} from "@/lib/services/superplan-analysis";
+import { forecastNegotiatedItem } from "@/lib/services/booking-price-forecast";
 import { STATUS_TONE } from "../_components/status";
 import {
   RequestProductCard,
@@ -123,7 +123,7 @@ import {
 /*
  * Uma solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md). O fornecedor vê
  * o item, a quantidade e o que a Wellmix precisa, e responde (até a Wellmix
- * decidir). A Wellmix vê também o booking, o Superplan do item e as
+ * decidir). A Wellmix vê também o booking, a previsão de preço do item e as
  * alternativas e decide (a resposta é só do fornecedor).
  */
 
@@ -181,7 +181,7 @@ export default async function SupplierRequestPage({
   );
   // Preço de compra (dono, 15/11/2026; docs/LINHA_DE_VISAO.md, seção 7): a
   // Wellmix com "Ver preço de compra"; o fornecedor vê o dele. Sem a
-  // permissão, também sem o Superplan (custo e mínimo saem do preço).
+  // permissão, também sem a previsão de preço (o custo sai do preço).
   const seesPrice = !wellmix || canSeePurchasePrice(user);
   // Grupo da seleção de onde a solicitação saiu (fase 4b, docs/MILESTONES.md).
   const selections =
@@ -457,14 +457,14 @@ export default async function SupplierRequestPage({
   const linkedWaiting = linked.filter((l) => l.askedBy !== null).length;
   // Ficha negociada: com a resposta "faz", os valores combinados (resposta,
   // contraproposta aceita ou nova proposta do responsável) entram no resumo,
-  // com o do booking riscado ao lado; a Wellmix vê o Superplan refeito com
-  // eles (docs/SUPPLIER_REQUESTS.md, "Ficha negociada").
+  // com o do booking riscado ao lado; a Wellmix vê a previsão de preço do
+  // Sankhya refeita com eles (docs/SUPPLIER_REQUESTS.md, "Ficha negociada").
   const deal = r.supplierCanDo === "yes" ? agreedConditions(r) : null;
   const negotiated =
     wellmix && seesPrice && deal && chosen
-      ? await analyzeNegotiatedItem(chosen, deal, user.id).catch(
+      ? await forecastNegotiatedItem(chosen, deal, user.id).catch(
           (error: unknown) => {
-            console.error("analyzeNegotiatedItem", error);
+            console.error("forecastNegotiatedItem", error);
             return null;
           },
         )
@@ -485,18 +485,15 @@ export default async function SupplierRequestPage({
       </span>
     );
   const cheaperThan = negotiated?.costBrl ?? null;
-  // Contraproposta: a Wellmix simula o Superplan do item no navegador.
+  // Contraproposta: a Wellmix pergunta a previsão de preço do item ao
+  // Sankhya pela tela (/api/price-forecast/booking-item).
   const simulation =
     wellmix && seesPrice && chosen && canPropose(r)
-      ? await superplanBaseForItem(chosen)
-          .then((base) => ({
-            base,
-            bookingMinimum: chosen.analysis?.minimumBrl ?? null,
-          }))
-          .catch((error: unknown) => {
-            console.error("superplanBaseForItem", error);
-            return null;
-          })
+      ? {
+          itemId: chosen.id,
+          bookingMinimum:
+            bookingForecastOf(chosen.analysis)?.salePriceBrl ?? null,
+        }
       : null;
   // Só o fornecedor responde: a resposta é para a Wellmix, que não responde por ele.
   const canAnswer = !wellmix && supplierCanAnswer(r.status) && !proposalPending;
@@ -660,10 +657,10 @@ export default async function SupplierRequestPage({
       {negotiated ? (
         <div
           className="mt-3 rounded-lg border border-brand-100 bg-brand-50/40 p-2.5"
-          data-negotiated-superplan
+          data-negotiated-forecast
         >
           <h4 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-            {t("supplierRequests.detail.negotiatedSuperplan")}
+            {t("bookingForecast.negotiated")}
           </h4>
           <div className="mt-1 flex flex-wrap items-start gap-4">
             {negotiated.costBrl !== null ? (
@@ -673,18 +670,18 @@ export default async function SupplierRequestPage({
                     price: formatMoney(negotiated.costBrl, "BRL", t),
                   })}
                 </strong>
-                {chosen?.analysis?.costBrl != null &&
-                chosen.analysis.costBrl !== negotiated.costBrl ? (
+                {bookingForecastOf(chosen?.analysis)?.costBrl != null &&
+                chosen!.analysis!.costBrl !== negotiated.costBrl ? (
                   <s className="text-xs text-zinc-400">
-                    {formatMoney(chosen.analysis.costBrl, "BRL", t)}
+                    {formatMoney(chosen!.analysis!.costBrl!, "BRL", t)}
                   </s>
                 ) : null}
               </span>
             ) : null}
-            <BookingItemSuperplan analysis={negotiated} t={t} />
+            <BookingItemForecast analysis={negotiated} t={t} />
           </div>
           <p className="mt-1 text-[11px] text-zinc-500">
-            {t("supplierRequests.detail.negotiatedSuperplanHint")}
+            {t("bookingForecast.negotiatedHint")}
           </p>
         </div>
       ) : null}
@@ -1010,17 +1007,23 @@ export default async function SupplierRequestPage({
                     {num(item.price)} {item.currency ?? ""}
                   </span>
                 ) : null}
-                {seesPrice && item.analysis?.costBrl != null ? (
+                {seesPrice &&
+                bookingForecastOf(item.analysis)?.costBrl != null ? (
                   <span className="font-semibold text-zinc-800">
                     {t("supplierRequests.detail.chosenCost", {
-                      price: formatMoney(item.analysis.costBrl, "BRL", t),
+                      price: formatMoney(item.analysis!.costBrl!, "BRL", t),
                     })}
                   </span>
                 ) : null}
-                {seesPrice && item.analysis?.minimumBrl != null ? (
+                {seesPrice &&
+                bookingForecastOf(item.analysis)?.salePriceBrl != null ? (
                   <span>
-                    {t("bookingLots.item.minimum", {
-                      price: formatMoney(item.analysis.minimumBrl, "BRL", t),
+                    {t("bookingForecast.sale", {
+                      price: formatMoney(
+                        item.analysis!.salePriceBrl!,
+                        "BRL",
+                        t,
+                      ),
                     })}
                   </span>
                 ) : null}
@@ -1033,8 +1036,8 @@ export default async function SupplierRequestPage({
                   </Link>
                 ) : null}
                 {cheaperThan !== null &&
-                item.analysis?.costBrl != null &&
-                item.analysis.costBrl < cheaperThan ? (
+                bookingForecastOf(item.analysis)?.costBrl != null &&
+                item.analysis!.costBrl! < cheaperThan ? (
                   <Badge tone="warning">
                     <span data-alternative-cheaper={item.id}>
                       {t("supplierRequests.detail.alternativeCheaper")}
@@ -1341,23 +1344,23 @@ export default async function SupplierRequestPage({
               {t("entityLinks.selection")}
             </Link>
           ))}
-          {seesPrice && chosen?.analysis ? (
+          {wellmix && seesPrice && chosen?.analysis ? (
             <div className="pt-2">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                {t("supplierRequests.detail.chosenSuperplan")}
+                {t("bookingForecast.chosen")}
               </p>
               <span className="mt-1 flex flex-col gap-1">
-                {chosen.analysis.costBrl !== null ? (
+                {bookingForecastOf(chosen.analysis)?.costBrl != null ? (
                   <span
                     className="text-sm font-semibold text-zinc-900"
                     data-supplier-request-chosen-cost
                   >
                     {t("supplierRequests.detail.chosenCost", {
-                      price: formatMoney(chosen.analysis.costBrl, "BRL", t),
+                      price: formatMoney(chosen.analysis.costBrl!, "BRL", t),
                     })}
                   </span>
                 ) : null}
-                <BookingItemSuperplan analysis={chosen.analysis} t={t} />
+                <BookingItemForecast analysis={chosen.analysis} t={t} />
               </span>
             </div>
           ) : null}

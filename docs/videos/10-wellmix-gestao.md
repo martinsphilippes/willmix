@@ -1,6 +1,6 @@
 # Série WGE · Wellmix, gestão, finanças e administração
 
-Vídeos para quem comanda a operação pela Wellmix: o **administrador** (`admin@wellmix.com`, Ana Admin, tela em pt). Ele abre todas as telas: no menu **Início** (Control Tower, Pendências, Painel de SLA, Notificações, Mensagens), **Pedidos**, **Cadastros** e **Gestão** (Painel do dono, Fluxo de caixa, Painéis por área, Financeiro, Contas a pagar, Multas, Pós-venda, Marketing, Histórico, Configurações, Equipe e divisões, Auditoria). Financeiro, Contas a pagar, Configurações, Equipe e Superplan são **só do administrador**, ou de quem ele liberar tela a tela (docs/ACCESS.md).
+Vídeos para quem comanda a operação pela Wellmix: o **administrador** (`admin@wellmix.com`, Ana Admin, tela em pt). Ele abre todas as telas: no menu **Início** (Control Tower, Pendências, Painel de SLA, Notificações, Mensagens), **Pedidos**, **Cadastros** e **Gestão** (Painel do dono, Fluxo de caixa, Painéis por área, Financeiro, Contas a pagar, Multas, Pós-venda, Marketing, Histórico, Configurações, Equipe e divisões, Auditoria). Financeiro, Contas a pagar, Configurações e Equipe são **só do administrador**, ou de quem ele liberar tela a tela (docs/ACCESS.md).
 
 Antes de gravar: leia o [GUIA.md](GUIA.md) (formato, ambiente, elementos de tela e lista de qualidade). Os episódios seguem o modelo da seção 5 do guia e a qualidade do [CLI-02](02-cliente.md).
 
@@ -1315,7 +1315,7 @@ Cada episódio traz um `[QUEM VÊ]` onde isso importa. O vídeo do administrador
 | Marketing                                        |           |      ✓       |         |          |      ✓       |       ✓        |    ✓     |
 | Histórico comercial                              |     ✓     |      ✓       |    ✓    |          |      ✓       |       ✓        |          |
 | Auditoria                                        |           |              |         |          |      ✓       |       ✓        |          |
-| Financeiro, Contas a pagar, Configurações, Equipe, Superplan | só admin |         |         |          |              |                |          |
+| Financeiro, Contas a pagar, Configurações, Equipe | só admin |         |         |          |              |                |          |
 
 A função **Financeiro** abre só **Pedidos** (valida e paga o numerário dentro do pedido, sem ver pagamentos, valores nem margem; ⚠ ver pontos a confirmar do WGE-01).
 

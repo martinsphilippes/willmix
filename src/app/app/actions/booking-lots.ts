@@ -22,7 +22,7 @@ import { errorCode, requireUser, run, str, withQuery } from "./helpers";
 /*
  * Booking por planilha (docs/BOOKING.md, "Booking por planilha"): subir a
  * planilha, ajustar fornecedor, data e itens no rascunho, fechar (com a
- * análise do Superplan em todos os itens) e mudar o status. Só a Wellmix com
+ * previsão de preço do Sankhya em todos os itens) e mudar o status. Só a Wellmix com
  * a tela Booking (o serviço confere de novo).
  */
 
@@ -511,38 +511,16 @@ export async function registerBookingLotSupplierAction(form: FormData) {
   });
 }
 
-/** Fecha o booking: confere os campos e roda o Superplan em todos os itens. */
+/** Fecha o booking: confere os campos e pede a previsão de preço de todos os itens. */
 export async function closeBookingLotAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, "lotId");
   const back = ID.safeParse(raw).success ? detail(raw) : LIST;
   await run(back, async () => {
-    const input = z
-      .object({ lotId: ID, businessType: z.string().max(80).nullable() })
-      .parse({
-        lotId: raw,
-        businessType: str(form, "businessType") || null,
-      });
+    const input = z.object({ lotId: ID }).parse({ lotId: raw });
     const { closeBookingLot } = await import("@/lib/services/booking-lots");
-    await closeBookingLot(user, input.lotId, input.businessType);
+    await closeBookingLot(user, input.lotId);
     return withQuery(back, "closed", "1");
-  });
-}
-
-export async function reanalyzeBookingLotAction(form: FormData) {
-  const user = await requireUser();
-  const raw = str(form, "lotId");
-  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
-  await run(back, async () => {
-    const input = z
-      .object({ lotId: ID, businessType: z.string().max(80).nullable() })
-      .parse({
-        lotId: raw,
-        businessType: str(form, "businessType") || null,
-      });
-    const { reanalyzeBookingLot } = await import("@/lib/services/booking-lots");
-    await reanalyzeBookingLot(user, input.lotId, input.businessType);
-    return withQuery(back, "analyzed", "1");
   });
 }
 
@@ -587,14 +565,10 @@ export async function setBookingLotMetaAction(form: FormData) {
     const input = z
       .object({
         lotId: ID,
-        storeNumber: z.string().max(60).nullable(),
-        supplierName: z.string().max(160).nullable(),
         itemType: z.string().max(80).nullable(),
       })
       .parse({
         lotId: raw,
-        storeNumber: str(form, "storeNumber") || null,
-        supplierName: str(form, "supplierName") || null,
         itemType: str(form, "itemType") || null,
       });
     const { setBookingLotMeta } = await import("@/lib/services/booking-lots");
@@ -652,5 +626,86 @@ export async function unlockBookingAction(form: FormData) {
     await unlockBooking(user, lockId);
     revalidatePath(LIST);
     return withQuery(back, "unlocked", "1");
+  });
+}
+
+/* ------------------------------------------------------------------------ */
+/* Fabricante: remover a linha ou confirmar a tela (dono, 24/11/2026)        */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * "A planilha estava errada": vale o Fabricante da tela nas linhas
+ * divergentes (uma, com `itemId`, ou todas). Wellmix no rascunho; o parceiro
+ * no book que ainda preenche.
+ */
+export async function confirmBookingManufacturerAction(form: FormData) {
+  const raw = str(form, "lotId");
+  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
+  await run(back, async () => {
+    const user = await requireUser();
+    assertScreen(user, "booking");
+    const input = z
+      .object({ lotId: ID, itemId: ID.nullable() })
+      .parse({ lotId: raw, itemId: str(form, "itemId") || null });
+    if (isWellmix(user)) {
+      const { confirmBookingManufacturer } =
+        await import("@/lib/services/booking-lots");
+      await confirmBookingManufacturer(user, input.lotId, input.itemId);
+    } else {
+      const { confirmPartnerManufacturer } =
+        await import("@/lib/services/booking-partner");
+      await confirmPartnerManufacturer(user, input.lotId, input.itemId);
+    }
+    return withQuery(back, "manufacturer", "ok");
+  });
+}
+
+/** Remove um item do book (a linha de outro fabricante). */
+export async function removeBookingItemAction(form: FormData) {
+  const raw = str(form, "lotId");
+  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
+  await run(back, async () => {
+    const user = await requireUser();
+    assertScreen(user, "booking");
+    const input = z
+      .object({ lotId: ID, itemId: ID })
+      .parse({ lotId: raw, itemId: str(form, "itemId") });
+    if (isWellmix(user)) {
+      const { removeBookingItem } = await import("@/lib/services/booking-lots");
+      await removeBookingItem(user, input.lotId, input.itemId);
+    } else {
+      const { removePartnerBookingItem } =
+        await import("@/lib/services/booking-partner");
+      await removePartnerBookingItem(user, input.lotId, input.itemId);
+    }
+    return withQuery(back, "removed", "1");
+  });
+}
+
+/** Cadastra o Supplier digitado na importação e o põe como Fornecedor do book. */
+export async function registerBookingLotPartnerAction(form: FormData) {
+  const raw = str(form, "lotId");
+  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
+  await run(back, async () => {
+    const user = await screenUser();
+    const { registerBookingLotPartner } =
+      await import("@/lib/services/booking-lots");
+    await registerBookingLotPartner(user, ID.parse(raw));
+    return withQuery(back, "supplier", "created");
+  });
+}
+
+/** Recusa os itens marcados do book (não vão para a seleção; ficam trabalhados). */
+export async function refuseBookingItemsAction(
+  lotId: string,
+  itemIds: string[],
+): Promise<InlineResult> {
+  const id = ID.safeParse(lotId);
+  return inline(id.success ? id.data : null, async (user) => {
+    const input = z
+      .object({ lotId: ID, itemIds: z.array(ID).min(1).max(500) })
+      .parse({ lotId, itemIds });
+    const { refuseBookingItems } = await import("@/lib/services/booking-lots");
+    await refuseBookingItems(user, input.lotId, input.itemIds);
   });
 }

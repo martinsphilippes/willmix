@@ -34,8 +34,10 @@ const HEADER = [
   "MATERIAL",
   "MOQ",
   "PURCHASE QTY IN PCS",
+  "SUPPLIER STORE NO",
 ];
-const row = (n: number) => [
+// O nº da loja da linha: o mesmo que fillBookMeta digita na importação.
+const row = (n: number, store = "A 154678") => [
   "2026.10.13",
   "Yiwu",
   "Shenzhen Supplier A",
@@ -57,12 +59,18 @@ const row = (n: number) => [
   "glass",
   "1000",
   "3000",
+  store,
 ];
-const sheet = (name: string, rows: number[]) => ({
+const sheet = (name: string, rows: number[], store?: string) => ({
   name,
   mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   buffer: Buffer.from(
-    xlsxBytes([{ name: "BOOKING", cells: [HEADER, ...rows.map(row)] }]),
+    xlsxBytes([
+      {
+        name: "BOOKING",
+        cells: [HEADER, ...rows.map((n) => row(n, store))],
+      },
+    ]),
   ),
 });
 
@@ -76,16 +84,48 @@ test("Book do fornecedor: várias planilhas, preencher todas as linhas e seta pa
   await page.goto("/app/booking/import");
   await page
     .locator("[data-partner-booking-launch-form] input[type=file]")
-    .setInputFiles([sheet("um.xlsx", [1, 2, 3]), sheet("dois.xlsx", [4, 5])]);
+    .setInputFiles([
+      sheet("um.xlsx", [1, 2, 3]),
+      sheet("dois.xlsx", [4, 5]),
+      // Uma linha com outro nº de loja (o do book é o digitado: A 154678).
+      sheet("tres.xlsx", [9], "B 999"),
+    ]);
   await expect(page.locator("[data-sheet-import-files]")).toHaveAttribute(
     "data-sheet-import-files",
-    "2",
+    "3",
   );
   await fillBookMeta(page, TYPE);
+  // O Supplier é a empresa de quem lança: o campo nem aparece.
+  await expect(page.locator("[data-book-supplier-name]")).toHaveCount(0);
   await page.locator("[data-partner-booking-launch-submit]").click();
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   const lines = page.locator("tr[data-partner-booking-item]");
-  // O book é a soma das duas planilhas, na ordem.
+  // O book é a soma das planilhas, na ordem.
+  await expect(lines).toHaveCount(6);
+  // Fabricante: o nº da loja digitado repetido em todas as linhas; a linha
+  // com outro nº de loja fica marcada e o book não é enviado com ela.
+  await expect(page.locator("[data-book-manufacturer-alert]")).toHaveAttribute(
+    "data-book-manufacturer-alert",
+    "1",
+  );
+  await expect(page.locator('[data-book-manufacturer="mismatch"]')).toHaveCount(
+    1,
+  );
+  await expect(page.locator('[data-book-manufacturer="ok"]')).toHaveCount(5);
+  // A célula mostra o nº da loja digitado e, em vermelho, o da planilha; a
+  // outra saída é cancelar a importação para refazer.
+  const wrongCell = page.locator('[data-book-manufacturer="mismatch"]');
+  await expect(wrongCell).toContainText("A 154678");
+  await expect(wrongCell).toContainText("B 999");
+  await expect(page.locator("[data-book-manufacturer-cancel]")).toBeVisible();
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.locator('[data-partner-booking-send="top"]').click();
+  await page.waitForURL(/error=booking_manufacturer_mismatch/);
+  await expect(lines).toHaveCount(6);
+  // Remove a linha do outro fabricante: sobram as cinco.
+  await page.locator("[data-book-manufacturer-remove]").click();
+  await page.waitForURL(/removed=1/);
+  await expect(page.locator("[data-book-manufacturer-alert]")).toHaveCount(0);
   await expect(lines).toHaveCount(5);
   const field = (n: number, name: string) =>
     lines.nth(n - 1).locator(`input[data-partner-item-field$=":${name}"]`);
@@ -134,7 +174,7 @@ test("Book do fornecedor: várias planilhas, preencher todas as linhas e seta pa
   ).toHaveCount(5);
   await page.goto("/app/booking");
   const mine = page.locator("tr[data-partner-booking]", { hasText: TYPE });
-  await expect(mine).toContainText("Supplier E2E");
+  await expect(mine).toContainText("A 154678");
   await expect(mine.locator("[data-partner-booking-worked]")).toContainText(
     "0%",
   );
@@ -145,10 +185,19 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
   await login(page, "admin@wellmix.com");
   const lockType = `Trava ${TAG}`;
   await page.goto("/app/booking/import");
+  // O modelo de book para baixar, ao lado do voltar.
+  const template = await page.request.get(
+    (await page.locator("[data-book-template]").getAttribute("href"))!,
+  );
+  expect(template.ok()).toBe(true);
+  expect((await template.body()).length).toBeGreaterThan(50_000);
   await page
     .locator("[data-booking-import-form] input[type=file]")
     .setInputFiles([sheet("w1.xlsx", [6, 7]), sheet("w2.xlsx", [8])]);
   await fillBookMeta(page, lockType);
+  // Supplier que ainda não está no cadastro: fica o nome, para cadastrar
+  // depois na tela do book.
+  await page.locator("[data-book-supplier-name]").fill(`Home ${TAG}`);
   // EXW no lugar do FOB da planilha: abre o valor do EXW, que fica no book.
   await expect(page.locator("[data-book-exw-value]")).toHaveCount(0);
   await page.locator("[data-book-incoterm]").selectOption("EXW");
@@ -163,6 +212,17 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
     "2",
   );
   await expect(page.locator("[data-book-item-type]")).toHaveValue(lockType);
+  await expect(
+    page.locator("[data-booking-lot-supplier-pending]"),
+  ).toContainText(`Home ${TAG}`);
+  await page.locator("[data-booking-lot-supplier-pending] button").click();
+  await page.waitForURL(/supplier=created/);
+  await expect(page.locator("[data-booking-lot-supplier-pending]")).toHaveCount(
+    0,
+  );
+  await expect(page.locator("[data-booking-lot-heading]")).toContainText(
+    `Home ${TAG}`,
+  );
   await expect(page.locator("[data-booking-lot-incoterm]")).toContainText(
     "0,35",
   );
@@ -177,26 +237,57 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
     3,
   );
 
-  // Marca dois itens e leva direto para a Seleção de itens.
+  // No rascunho o book ainda não é trabalhado: sem selecionar nem recusar
+  // itens, e sem travar (só depois de fechado).
+  await expect(page.locator("[data-booking-to-selection]")).toHaveCount(0);
+  await expect(page.locator("[data-bulk-refuse]")).toHaveCount(0);
+  await expect(page.locator("[data-booking-lot-no-lock]")).toBeVisible();
+  await expect(page.locator("[data-booking-lock]")).toHaveCount(0);
+  const ncmInputs = page.locator("input[data-booking-item-ncm]");
+  for (let i = 0; i < (await ncmInputs.count()); i++) {
+    await ncmInputs.nth(i).fill("7013.37.00");
+    await ncmInputs.nth(i).press("Enter");
+    await expect(
+      page.locator('[data-booking-row-note="saved"]').nth(i),
+    ).toBeVisible();
+  }
+  await page.click("[data-booking-lot-close-submit]");
+  await page.waitForURL(/[?&]closed=1/);
+
+  // Fechado: marca dois itens e leva direto para a Seleção de itens.
+  const check = (n: number) =>
+    page.locator("tr[data-booking-item]").nth(n).locator("[data-bulk-check]");
   await expect(page.locator('[data-bulk-to-selection="off"]')).toBeVisible();
-  for (const n of [0, 2])
-    await page
-      .locator("tr[data-booking-item]")
-      .nth(n)
-      .locator("[data-bulk-check]")
-      .check();
+  for (const n of [0, 2]) await check(n).check();
   await page.locator('[data-bulk-to-selection="2"]').click();
   await page.waitForURL(/\/app\/booking\/selection\?.*tab=selection/);
   await expect(page.locator("main")).toContainText(`${TAG}-6`);
   await expect(page.locator("main")).toContainText(`${TAG}-8`);
   await expect(page.locator("main")).not.toContainText(`${TAG}-7`);
 
-  // O analista trava o book: só ele continua vendo.
+  // Recusar o item do meio: fica marcado como recusado e conta como
+  // trabalhado (1 de 3).
+  await page.goto(lotPath);
+  await check(1).check();
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.locator('[data-bulk-refuse="1"]').click();
+  await expect(
+    page.locator('tr[data-booking-item-worked="refused"]'),
+  ).toHaveCount(1);
+  await expect(page.locator("[data-booking-lot-worked]")).toHaveAttribute(
+    "data-booking-lot-worked",
+    "33",
+  );
+
+  // Fechado: o analista trava o book e só ele continua vendo.
   await login(page, "operador@wellmix.com");
   await page.goto(lotPath);
   await page.locator("[data-booking-lock]").click();
   await page.waitForURL(/locked=1/);
   await expect(page.locator("[data-booking-lot-held]")).toContainText("Otávio");
+  // Quem travou não libera: só o gestor (ou sozinha, com tudo trabalhado).
+  await expect(page.locator("[data-booking-no-unlock]")).toBeVisible();
+  await expect(page.locator("[data-booking-unlock]")).toHaveCount(0);
   await page.goto("/app/booking");
   await expect(page.locator("[data-booking-lot-row]")).toHaveCount(1);
   await expect(page.locator(`[data-booking-lot-row="${lotId}"]`)).toBeVisible();
@@ -208,7 +299,13 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
   await expect(held.locator("[data-booking-lot-holder]")).toContainText(
     "Otávio",
   );
-  await expect(held).toContainText("No prazo (3 h)");
+  // Há quanto tempo e o prazo (a hora-limite; o selo vai no rótulo).
+  await expect(held).toContainText(/\d+ min/);
+  // No prazo: só a data e a hora do fim do prazo, pequenas e em verde, com
+  // o texto do prazo no balão (dono, 24/11/2026; antes o selo).
+  const sla = held.locator('[data-booking-sla="ok"]');
+  await expect(sla).toHaveText(/^\d{2}\/\d{2} \d{2}:\d{2}$/);
+  await expect(sla).toHaveAttribute("title", "No prazo (3 h)");
   // E libera a trava de qualquer pessoa.
   await held.locator("[data-booking-unlock-row]").click();
   await page.waitForURL(/unlocked=1/);

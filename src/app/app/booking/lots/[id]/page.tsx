@@ -10,6 +10,9 @@ import { requireScreen } from "@/lib/auth/guard";
 import {
   bookingCapacityShown,
   bookingLotEditable,
+  bookingLotLockable,
+  bookManufacturer,
+  manufacturerMismatch,
   bookingLotMoves,
   bookingLotPending,
   bookingLotReady,
@@ -24,16 +27,17 @@ import {
   type BookingItem,
   type BookingLotStatus,
 } from "@/lib/db/schema";
-import {
-  bookingItemTypes,
-  canSuperviseBooks,
-  getBookingLot,
-} from "@/lib/services/booking-lots";
+import { bookingItemTypes, getBookingLot } from "@/lib/services/booking-lots";
 import { durationText, lockLate, workedShare } from "@/lib/booking-locks";
 import { GROUP_MAX } from "@/lib/booking-selection";
 import { getSettings } from "@/lib/settings";
-import { BookMetaFields } from "../../_components/book-meta-fields";
-import { superplanBusinessTypes } from "@/lib/services/superplan-analysis";
+import { bookIncotermLabels } from "../../_components/book-meta-fields";
+import { BookingItemForecast } from "@/components/booking-item-forecast";
+import {
+  ManufacturerAlert,
+  ManufacturerCell,
+} from "../../_components/manufacturer";
+import { BookIncotermFields } from "@/components/book-incoterm-fields";
 import { getT } from "@/i18n/server";
 import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
@@ -50,7 +54,6 @@ import {
   Select,
   cx,
   formatDate,
-  formatMoney,
   linkClass,
   type Tone,
 } from "@/components/ui";
@@ -69,9 +72,9 @@ import {
   closeBookingLotAction,
   lockBookingLotAction,
   moveBookingLotAction,
+  registerBookingLotPartnerAction,
   setBookingLotMetaAction,
   unlockBookingAction,
-  reanalyzeBookingLotAction,
   registerBookingLotSupplierAction,
   setBookingLotNoteAction,
 } from "../../../actions/booking-lots";
@@ -89,6 +92,7 @@ import {
   BulkFieldInput,
   BulkLoadButton,
   BulkRowCheck,
+  BulkRefuseButton,
   BulkSelectAll,
   BulkSelectionLink,
   BulkStatus,
@@ -110,7 +114,7 @@ import {
  * dados do booking (status, origem, fornecedor, data), a sugestão de
  * cadastro do fornecedor da planilha, os itens com todos os campos
  * (editáveis no rascunho, cada um grava sozinho), o fechamento com a análise
- * do Superplan e o status.
+ * da previsão de preço e o status.
  */
 
 const STATUS_TONE: Record<BookingLotStatus, Tone> = {
@@ -155,11 +159,8 @@ const COLUMNS: Array<{
   { field: "powerDetail", kind: "text", width: "w-32" },
 ];
 
-const SIGNAL_TONE: Record<string, Tone> = {
-  viable: "success",
-  below: "warning",
-  loss: "danger",
-};
+/** A previsão de preço do book roda depois de fechar, item a item (Sankhya). */
+export const maxDuration = 300;
 
 export default async function BookingLotPage({
   params,
@@ -205,9 +206,12 @@ export default async function BookingLotPage({
   // Itens trabalhados na Seleção de itens e com quem está o book (dono,
   // 23/11/2026; docs/BOOKING.md, "Itens trabalhados" e "Travar books").
   const worked = workedShare(items);
-  const [itemTypes, supervisor, settings] = await Promise.all([
+  // Fabricante: a Fábrica do book × o que a planilha traz em cada linha
+  // (dono, 24/11/2026). Diferente, o book não fecha.
+  const manufacturer = bookManufacturer(lot);
+  const mixed = items.filter((i) => manufacturerMismatch(i, manufacturer));
+  const [itemTypes, settings] = await Promise.all([
     bookingItemTypes(),
-    canSuperviseBooks(user),
     getSettings(),
   ]);
   const heldLate = held
@@ -237,7 +241,6 @@ export default async function BookingLotPage({
     : new Map();
   const pending = bookingLotPending(lot, items);
   const ready = bookingLotReady(pending);
-  const businessTypes = await superplanBusinessTypes();
   // Ligações de cada item (fase 4b): solicitações, produto e pedidos.
   const linkAccess = entityLinkAccess(user);
   const lotLinks = await linksForLot(lot.id);
@@ -287,12 +290,14 @@ export default async function BookingLotPage({
       }),
     ]);
   if (one("closed")) notices.push(["success", t("bookingLots.detail.closed")]);
-  if (one("analyzed"))
-    notices.push(["success", t("bookingLots.detail.analyzed")]);
   if (one("moved")) notices.push(["success", t("bookingLots.detail.moved")]);
   if (one("saved")) notices.push(["success", t("bookingLots.detail.saved")]);
   if (one("locked")) notices.push(["success", t("bookWork.lock.done")]);
   if (one("unlocked")) notices.push(["success", t("bookWork.unlock.done")]);
+  if (one("manufacturer"))
+    notices.push(["success", t("bookWork.manufacturer.confirmed")]);
+  if (one("removed"))
+    notices.push(["success", t("bookWork.manufacturer.removed")]);
   if (one("supplier") === "created")
     notices.push(["success", t("bookingLots.detail.supplierCreated")]);
 
@@ -353,31 +358,10 @@ export default async function BookingLotPage({
       : null,
   ].filter(Boolean) as string[];
 
-  const businessTypeSelect = (current: string | null) => (
-    <Select
-      name="businessType"
-      defaultValue={current ?? ""}
-      data-booking-lot-business-type
-    >
-      <option value="">
-        {t("bookingLots.detail.close.default", {
-          name: businessTypes.defaultName,
-        })}
-      </option>
-      {businessTypes.names
-        .filter((n) => n !== businessTypes.defaultName)
-        .map((n) => (
-          <option key={n} value={n}>
-            {n}
-          </option>
-        ))}
-    </Select>
-  );
-
   // Preço e moeda do Book: só com "Ver preço de compra" (dono, 15/11/2026;
-  // docs/LINHA_DE_VISAO.md); sem ela as colunas não vão à tela. O Superplan
-  // (veredito, mínimo, lucro e a reanálise) segue a mesma permissão (dono,
-  // 15/11/2026): custo e mínimo saem do preço.
+  // docs/LINHA_DE_VISAO.md); sem ela as colunas não vão à tela. A previsão de
+  // preço do Sankhya (sinal, venda prevista, lucro e o cartão "Previsão de preço")
+  // segue a mesma permissão: o custo sai do preço.
   const seesPrice = canSeePurchasePrice(user);
   const columns = seesPrice
     ? COLUMNS
@@ -449,50 +433,9 @@ export default async function BookingLotPage({
     );
   };
 
-  const analysisCell = (item: BookingItem): ReactNode => {
-    const a = item.analysis;
-    if (!a)
-      return <span className="text-zinc-500">{t("booking.signal.none")}</span>;
-    const missing = a.missing.length
-      ? a.missing
-          .map((m) => {
-            const key = `superplan.missing.${m}`;
-            return key in dictionaries.pt ? t(key as DictionaryKey) : m;
-          })
-          .join(", ")
-      : null;
-    return (
-      <span
-        className="flex flex-col items-start gap-0.5"
-        data-booking-item-analysis={a.verdict ?? "missing"}
-      >
-        <Badge tone={a.verdict ? SIGNAL_TONE[a.verdict] : "neutral"}>
-          {t(`booking.signal.${a.verdict ?? "missing"}` as DictionaryKey)}
-        </Badge>
-        {a.minimumBrl !== null ? (
-          <span className="text-xs text-zinc-600">
-            {t("bookingLots.item.minimum", {
-              price: formatMoney(a.minimumBrl, "BRL", t),
-            })}
-          </span>
-        ) : null}
-        {a.profitPct !== null ? (
-          <span className="text-xs text-zinc-600">
-            {t("bookingLots.item.profit", {
-              pct: a.profitPct.toLocaleString(intl, {
-                maximumFractionDigits: 1,
-              }),
-            })}
-          </span>
-        ) : null}
-        {missing ? (
-          <span className="max-w-40 text-xs whitespace-normal text-zinc-500">
-            {t("bookingLots.item.missingData", { list: missing })}
-          </span>
-        ) : null}
-      </span>
-    );
-  };
+  const analysisCell = (item: BookingItem): ReactNode => (
+    <BookingItemForecast analysis={item.analysis} t={t} />
+  );
 
   /* Itens: cabeçalho congelado (TableTools stickyHead) e, com algo para
      editar, o preenchimento em massa (dono, 16/11/2026): a caixa de cada
@@ -518,6 +461,7 @@ export default async function BookingLotPage({
         <col style={{ width: `${FIRST_COL_REM}rem` }} />
         <col style={{ width: "6.5rem" }} />
         <col style={{ width: "8rem" }} />
+        <col style={{ width: "13rem" }} />
         <col style={{ width: "11.5rem" }} />
         {columns.map((c) => (
           <col key={c.field} style={{ width: `${colRem(c.width)}rem` }} />
@@ -542,6 +486,7 @@ export default async function BookingLotPage({
             {colLabel("photo")}
           </th>
           <th className={th}>{t("bookWork.col.worked")}</th>
+          <th className={th}>{t("bookWork.manufacturer")}</th>
           <th className={th}>
             {t("bookingNcm.col")}
             <span className="text-brand-700"> *</span>
@@ -567,6 +512,7 @@ export default async function BookingLotPage({
               <BulkLoadButton />
             </th>
             <th className={cx(bulkTh, STICKY_PHOTO, "bg-white")} />
+            <th className={bulkTh} />
             <th className={bulkTh} />
             <th className={bulkTh}>
               {ncmEditable ? (
@@ -624,7 +570,9 @@ export default async function BookingLotPage({
                 done ? "bg-emerald-50" : "hover:bg-brand-50/40",
               )}
               data-booking-item={item.id}
-              data-booking-item-worked={done ? "yes" : "no"}
+              data-booking-item-worked={
+                item.refusedAt ? "refused" : done ? "yes" : "no"
+              }
               data-bulk-row={bulkOn ? item.id : undefined}
             >
               <td
@@ -687,14 +635,40 @@ export default async function BookingLotPage({
                 </span>
               </td>
               <td className="border-b border-zinc-100 px-2 py-2 align-top text-xs">
-                <Badge tone={done ? "success" : "neutral"}>
-                  {t(done ? "bookWork.worked.yes" : "bookWork.worked.no")}
+                <Badge
+                  tone={
+                    item.refusedAt ? "danger" : done ? "success" : "neutral"
+                  }
+                >
+                  {t(
+                    item.refusedAt
+                      ? "bookWork.worked.refused"
+                      : done
+                        ? "bookWork.worked.yes"
+                        : "bookWork.worked.no",
+                  )}
                 </Badge>
                 {item.workedAt ? (
                   <span className="mt-0.5 block text-zinc-500">
                     {formatDate(item.workedAt, t)}
                   </span>
                 ) : null}
+              </td>
+              <td
+                className={cx(
+                  "border-b border-zinc-100 px-2 py-2 align-top",
+                  manufacturerMismatch(item, manufacturer) && "bg-red-50",
+                )}
+              >
+                <ManufacturerCell
+                  t={t}
+                  lotId={lot.id}
+                  itemId={item.id}
+                  manufacturer={manufacturer}
+                  sheetStore={item.sheetStore ?? null}
+                  mismatch={manufacturerMismatch(item, manufacturer)}
+                  canEdit={editable}
+                />
               </td>
               <td
                 className="border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800"
@@ -823,9 +797,9 @@ export default async function BookingLotPage({
               {statusLabel(lot.status)}
             </Badge>
             <span>
-              {partner
+              {partner || lot.supplierName
                 ? t("bookingLots.detail.headingSupplier", {
-                    name: partner.name,
+                    name: partner?.name ?? lot.supplierName ?? "",
                   })
                 : t("bookingLots.detail.headingSupplierNone")}
             </span>
@@ -916,6 +890,27 @@ export default async function BookingLotPage({
         ) : null}
       </div>
 
+      <ManufacturerAlert
+        t={t}
+        count={mixed.length}
+        manufacturer={manufacturer}
+        cancel={
+          // A outra saída: cancelar esta importação e refazer.
+          editable ? (
+            <form action={moveBookingLotAction}>
+              <input type="hidden" name="lotId" value={lot.id} />
+              <input type="hidden" name="status" value="cancelled" />
+              <SubmitButton
+                variant="secondary"
+                confirmText={t("bookWork.manufacturer.cancelAsk")}
+                data-book-manufacturer-cancel
+              >
+                {t("bookWork.manufacturer.cancel")}
+              </SubmitButton>
+            </form>
+          ) : null
+        }
+      />
       <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
         <Card title={t("bookingLots.detail.header")} className="lg:col-span-2">
           <DescriptionList
@@ -940,6 +935,27 @@ export default async function BookingLotPage({
                   <span className="text-xs text-zinc-500">
                     {t("bookingLots.partner.hint")}
                   </span>
+                  {/* Supplier digitado na importação e ainda sem cadastro:
+                      cadastrar aqui o põe como Fornecedor do book. */}
+                  {!lot.partnerId &&
+                  lot.supplierName &&
+                  lot.status !== "cancelled" ? (
+                    <form
+                      action={registerBookingLotPartnerAction}
+                      className="flex flex-wrap items-center gap-2 text-sm"
+                      data-booking-lot-supplier-pending
+                    >
+                      <input type="hidden" name="lotId" value={lot.id} />
+                      <span className="text-amber-800">
+                        {t("bookWork.supplier.pending", {
+                          name: lot.supplierName,
+                        })}
+                      </span>
+                      <SubmitButton variant="secondary">
+                        {t("bookWork.supplier.register")}
+                      </SubmitButton>
+                    </form>
+                  ) : null}
                 </span>,
               ],
               [
@@ -1083,17 +1099,42 @@ export default async function BookingLotPage({
             >
               <input type="hidden" name="lotId" value={lot.id} />
               <div className="min-w-60 flex-1">
-                <BookMetaFields
-                  t={t}
-                  types={itemTypes}
-                  storeNumber={lot.storeNumber ?? null}
-                  supplierName={lot.supplierName ?? null}
-                  incoterm={lot.incoterm ?? null}
-                  exwValue={lot.exwValue ?? null}
-                  withIncoterm={editable}
-                  itemType={lot.itemType ?? null}
-                  required={false}
-                />
+                {/* FOB ou EXW e, ao lado, o Tipo de item (dono, 24/11/2026:
+                    sem a linha do nº da loja e do Supplier, que são os da
+                    importação). */}
+                <div className="flex flex-wrap items-start gap-3">
+                  {editable ? (
+                    <div className="min-w-60 flex-[2]">
+                      <BookIncotermFields
+                        incoterm={lot.incoterm ?? ""}
+                        exwValue={
+                          typeof lot.exwValue === "number"
+                            ? String(lot.exwValue).replace(".", decimal)
+                            : ""
+                        }
+                        required={false}
+                        labels={bookIncotermLabels(t)}
+                      />
+                    </div>
+                  ) : null}
+                  <div className="min-w-48 flex-1">
+                    <Field label={t("bookWork.itemType")}>
+                      <Input
+                        name="itemType"
+                        maxLength={80}
+                        defaultValue={lot.itemType ?? ""}
+                        list="book-item-types"
+                        autoComplete="off"
+                        data-book-item-type
+                      />
+                      <datalist id="book-item-types">
+                        {itemTypes.map((type) => (
+                          <option key={type} value={type} />
+                        ))}
+                      </datalist>
+                    </Field>
+                  </div>
+                </div>
               </div>
               <SubmitButton variant="secondary">
                 {t("bookWork.meta.save")}
@@ -1150,7 +1191,7 @@ export default async function BookingLotPage({
                     })}
                   </p>
                 ) : null}
-                {held.lock.userId === user.id || supervisor ? (
+                {held.canRelease ? (
                   <form action={unlockBookingAction}>
                     <input type="hidden" name="lockId" value={held.lock.id} />
                     <input type="hidden" name="from" value={lot.id} />
@@ -1162,9 +1203,15 @@ export default async function BookingLotPage({
                       )}
                     </SubmitButton>
                   </form>
-                ) : null}
+                ) : (
+                  // Quem travou não libera: só o gestor, ou sozinha quando
+                  // o book inteiro fica trabalhado.
+                  <p className="text-xs text-zinc-500" data-booking-no-unlock>
+                    {t("bookWork.unlock.rule")}
+                  </p>
+                )}
               </div>
-            ) : (
+            ) : bookingLotLockable(lot.status) ? (
               <form
                 action={lockBookingLotAction}
                 className="space-y-2"
@@ -1179,6 +1226,11 @@ export default async function BookingLotPage({
                   {t("bookWork.lock")}
                 </SubmitButton>
               </form>
+            ) : (
+              // Rascunho (ou cancelado): ainda não é trabalhado na seleção.
+              <p className="text-sm text-zinc-600" data-booking-lot-no-lock>
+                {t("bookWork.lock.afterDraft")}
+              </p>
             )}
           </Card>
           {editable && !lot.supplierId && hint?.name ? (
@@ -1204,7 +1256,8 @@ export default async function BookingLotPage({
                   <Field label={t("bookingLots.detail.suggest.store")}>
                     <Input
                       name="storeNumber"
-                      defaultValue={hint.store ?? ""}
+                      // O nº da loja digitado na importação é o da Fábrica.
+                      defaultValue={lot.storeNumber ?? hint.store ?? ""}
                       maxLength={60}
                     />
                   </Field>
@@ -1257,9 +1310,6 @@ export default async function BookingLotPage({
                 data-booking-lot-close
               >
                 <input type="hidden" name="lotId" value={lot.id} />
-                <Field label={t("bookingLots.detail.close.businessType")}>
-                  {businessTypeSelect(lot.businessType)}
-                </Field>
                 <SubmitButton
                   pendingText={t("bookingLots.detail.close.pending")}
                   data-booking-lot-close-submit
@@ -1271,27 +1321,22 @@ export default async function BookingLotPage({
           ) : null}
 
           {seesPrice && lot.status !== "draft" && lot.status !== "cancelled" ? (
-            <Card title={t("bookingLots.item.col.analysis")} dense>
+            <Card title={t("bookingForecast.title")} dense>
               {lot.analyzedAt ? (
                 <p className="mb-2 text-sm text-zinc-600">
-                  {t("bookingLots.detail.analysisAt", {
+                  {t("bookingForecast.lot.at", {
                     date: formatDate(lot.analyzedAt, t),
-                    type: lot.businessType ?? businessTypes.defaultName,
                   })}
                 </p>
               ) : null}
-              <form action={reanalyzeBookingLotAction} className="space-y-2">
-                <input type="hidden" name="lotId" value={lot.id} />
-                <Field label={t("bookingLots.detail.close.businessType")}>
-                  {businessTypeSelect(lot.businessType)}
-                </Field>
-                <SubmitButton
-                  variant="secondary"
-                  pendingText={t("bookingLots.detail.reanalyzePending")}
-                >
-                  {t("bookingLots.detail.reanalyze")}
-                </SubmitButton>
-              </form>
+              {/* Sem botão de refazer (dono, 24/11/2026): o job diário
+                  completa os itens que ficaram sem a previsão. */}
+              <p
+                className="text-xs text-zinc-500"
+                data-booking-lot-forecast-auto
+              >
+                {t("bookingForecast.lot.auto")}
+              </p>
             </Card>
           ) : null}
 
@@ -1363,16 +1408,22 @@ export default async function BookingLotPage({
                 labels={bulkFillLabels(t)}
               >
                 {/* Seleção direto do book (dono, 23/11/2026): os itens
-                    marcados vão para a Seleção de itens como um grupo. */}
-                <div
-                  className="mb-2 flex flex-wrap items-center gap-2"
-                  data-booking-to-selection
-                >
-                  <BulkSelectionLink max={GROUP_MAX} />
-                  <span className="text-xs text-zinc-500">
-                    {t("bookWork.toSelection.hint")}
-                  </span>
-                </div>
+                    marcados vão para a Seleção de itens como um grupo, ou
+                    são recusados (ficam trabalhados; 24/11/2026). Só com o
+                    book fora do rascunho: antes disso ele ainda não é
+                    trabalhado. */}
+                {bookingLotLockable(lot.status) ? (
+                  <div
+                    className="mb-2 flex flex-wrap items-center gap-2"
+                    data-booking-to-selection
+                  >
+                    <BulkSelectionLink max={GROUP_MAX} />
+                    <BulkRefuseButton />
+                    <span className="text-xs text-zinc-500">
+                      {t("bookWork.toSelection.hint")}
+                    </span>
+                  </div>
+                ) : null}
                 {itemsTable}
               </BookingBulkProvider>
             ) : (

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import {
+  bookingLotLockable,
   BOOKING_LOT_SORT_KEYS,
   type BookingLotRow,
   type BookingLotSortKey,
@@ -14,7 +15,12 @@ import {
   listBookingLots,
   myBookingLocks,
 } from "@/lib/services/booking-lots";
-import { durationText, itemTypeKey, lockLate } from "@/lib/booking-locks";
+import {
+  durationText,
+  itemTypeKey,
+  lockDueText,
+  lockLate,
+} from "@/lib/booking-locks";
 import { getSettings } from "@/lib/settings";
 import { dictionaries } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
@@ -72,7 +78,7 @@ export default async function BookingLotsPage({
     : errorKey
       ? t(errorKey)
       : fallbackError(t, errorCode);
-  // Sinais do Superplan: só com "Ver preço de compra" (dono, 15/11/2026);
+  // Sinais da previsão de preço: só com "Ver preço de compra" (dono, 15/11/2026);
   // sem ela as contagens nem vão ao navegador.
   const seesPrice = canSeePurchasePrice(user);
   const statusLabel = (s: string) =>
@@ -91,9 +97,11 @@ export default async function BookingLotsPage({
       holder: e.held ? (e.held.user?.name ?? "—") : "",
       lockId: e.held?.lock.id ?? null,
       lockMine: e.held?.lock.userId === user.id,
+      lockCanRelease: !!e.held?.canRelease,
       lockByType: e.held?.lock.scope === "type",
       heldMinutes: e.held ? e.held.minutes : null,
       heldText: e.held ? durationText(e.held.minutes) : "",
+      heldDueText: e.held ? lockDueText(e.held.since, slaHours) : "",
       heldLate: e.held ? lockLate(e.held.minutes, slaHours) : false,
       id: e.lot.id,
       number: e.lot.number,
@@ -120,6 +128,8 @@ export default async function BookingLotsPage({
   for (const e of entries ?? [])
     if (
       !e.held &&
+      // Só os books que já saíram do rascunho entram na trava.
+      bookingLotLockable(e.lot.status) &&
       e.lot.itemType &&
       !freeTypes.has(itemTypeKey(e.lot.itemType))
     )
@@ -183,7 +193,8 @@ export default async function BookingLotsPage({
           freeTypes={[...freeTypes.values()].sort((a, b) =>
             a.localeCompare(b, "pt"),
           )}
-          mine={mine.map(({ lock, lotNumber, minutes }) => ({
+          mine={mine.map(({ lock, lotNumber, minutes, canRelease }) => ({
+            canRelease,
             id: lock.id,
             scope: lock.scope,
             itemType: lock.itemType,
@@ -197,7 +208,6 @@ export default async function BookingLotsPage({
           <BookingLotsTable
             rows={rows}
             showSignals={seesPrice}
-            supervisor={supervisor}
             labels={{
               lock: t("bookWork.lock"),
               unlock: t("bookWork.unlock"),
@@ -212,6 +222,8 @@ export default async function BookingLotsPage({
               sortBy: t("bookingLots.sortBy"),
               supplierNone: t("bookingLots.supplierNone"),
               signalsNone: t("bookingLots.signals.none"),
+              more: t("requestSheet.more"),
+              less: t("requestSheet.less"),
               signal: {
                 viable: t("booking.signal.viable"),
                 below: t("booking.signal.below"),

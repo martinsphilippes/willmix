@@ -1,10 +1,9 @@
 import type { Translate } from "@/i18n";
 import { orderMilestoneText } from "@/lib/milestones";
-import { requirementLabel } from "@/i18n";
-import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getStore } from "@/lib/db";
-import type { FlowEntity, FlowEntityItem } from "@/lib/services/flow";
-import { orderInStepHref, type FlowStep } from "@/lib/flow";
+import type { FlowEntity } from "@/lib/services/flow";
+import { orderInStepHref, stepId, type FlowStep } from "@/lib/flow";
+import { elsewhereOf, openSummary } from "@/lib/flow-open-summary";
 import { Badge, Empty, Table, Td, TextLink, Th, rowClass } from "./ui";
 import { loadOrderCells } from "@/lib/services/order-cells";
 import {
@@ -14,6 +13,7 @@ import {
   orderHeadText,
 } from "./order-standard-cells";
 import { partyOfRole, turnTone, turnWaitingKey } from "@/lib/turn";
+import { ClampText } from "./clamp-text";
 
 /*
  * Aba "Todos no passo" (dono, 14/11/2026; docs/FLOW_MENU.md): todos os
@@ -23,13 +23,6 @@ import { partyOfRole, turnTone, turnWaitingKey } from "@/lib/turn";
  */
 
 const DAY = 86_400_000;
-
-function itemLabel(item: FlowEntityItem, t: Translate): string {
-  if (item.kind === "requirement") return requirementLabel(t, item.requirement);
-  if (item.kind === "import")
-    return t(`importFlow.step.${item.key}` as DictionaryKey);
-  return item.title ? t(item.title.detail, item.title.values) : "—";
-}
 
 export async function FlowAll({
   step,
@@ -58,6 +51,7 @@ export async function FlowAll({
   t: Translate;
   now?: Date;
 }) {
+  const here = stepId(step);
   if (!entities.length)
     return <Empty>{emptyText ?? t("flow.all.empty")}</Empty>;
   const supplierIds = [
@@ -117,7 +111,34 @@ export async function FlowAll({
             const days = Number.isFinite(since)
               ? Math.max(0, Math.floor((now.getTime() - since) / DAY))
               : null;
-            const labels = [...new Set(e.items.map((i) => itemLabel(i, t)))];
+            // Linha fina (dono, 24/11/2026): o aberto numa linha só, com o
+            // "ver mais" (e os produtos ao abrir); o fornecedor também.
+            const open = openSummary(e.items, t, here);
+            const clamp = (text: string, width: string, detail?: string) => (
+              <ClampText
+                text={text}
+                lines={1}
+                more={t("requestSheet.more")}
+                less={t("requestSheet.less")}
+                className={width}
+                detail={detail || null}
+              />
+            );
+            const supplierName = nameOf(e.order.supplierId);
+            const supplierCell =
+              supplierName === "—" ? "—" : clamp(supplierName, "max-w-[11rem]");
+            const openCell = open.text
+              ? clamp(open.text, "max-w-[18rem]", open.products.join("; "))
+              : "—";
+            // Tudo o que falta é de outro passo (o cadastro do Pedido novo):
+            // "Ver" abre o pedido, onde a pendência dele aponta; a tela do
+            // passo só mostraria os itens deste passo.
+            const elsewhere =
+              e.items.length > 0 &&
+              e.items.every((i) => elsewhereOf(i, here) !== null);
+            const viewHref = elsewhere
+              ? `/app/orders/${encodeURIComponent(e.order.id)}`
+              : orderInStepHref(step, e.order.id);
             if (!partner) {
               const cell = cells?.byKey.get(e.order.id);
               const requirements = e.items.flatMap((i) =>
@@ -141,6 +162,7 @@ export async function FlowAll({
                     t={t}
                     cells={cell}
                     createdAt={e.order.createdAt}
+                    compact
                   />
                   {/* Status: de quem é a vez no que está aberto no passo. */}
                   <Td className="whitespace-nowrap">
@@ -161,16 +183,19 @@ export async function FlowAll({
                   <Td className={num}>{cell?.items ?? "—"}</Td>
                   <Td className={num}>{cell?.deliveries ?? "—"}</Td>
                   <OrderTotalsTds t={t} cells={cell} seeValue={seeValue} />
-                  <Td>{nameOf(e.order.supplierId)}</Td>
-                  <Td className="text-xs text-zinc-600">{labels.join(", ")}</Td>
+                  <Td>{supplierCell}</Td>
+                  <Td
+                    className="text-xs text-zinc-600"
+                    data-flow-all-elsewhere={elsewhere ? "" : undefined}
+                    data-flow-all-open=""
+                  >
+                    {openCell}
+                  </Td>
                   <Td className="whitespace-nowrap">
                     {days === null ? "—" : t("flow.cases.days", { n: days })}
                   </Td>
                   <Td className="whitespace-nowrap text-right">
-                    <TextLink
-                      href={orderInStepHref(step, e.order.id)}
-                      data-flow-all-view
-                    >
+                    <TextLink href={viewHref} data-flow-all-view>
                       {t("flow.all.view")}
                     </TextLink>
                   </Td>
@@ -186,19 +211,22 @@ export async function FlowAll({
                 <Td className="whitespace-nowrap font-medium text-zinc-900">
                   #{e.order.number}
                 </Td>
-                {partner ? null : <Td>{nameOf(e.order.supplierId)}</Td>}
+                {partner ? null : <Td>{supplierCell}</Td>}
                 <Td className="whitespace-nowrap">
                   {orderMilestoneText(t, e.order.status)}
                 </Td>
-                <Td className="text-xs text-zinc-600">{labels.join(", ")}</Td>
+                <Td
+                  className="text-xs text-zinc-600"
+                  data-flow-all-elsewhere={elsewhere ? "" : undefined}
+                  data-flow-all-open=""
+                >
+                  {openCell}
+                </Td>
                 <Td className="whitespace-nowrap">
                   {days === null ? "—" : t("flow.cases.days", { n: days })}
                 </Td>
                 <Td className="whitespace-nowrap text-right">
-                  <TextLink
-                    href={orderInStepHref(step, e.order.id)}
-                    data-flow-all-view
-                  >
+                  <TextLink href={viewHref} data-flow-all-view>
                     {t("flow.all.view")}
                   </TextLink>
                 </Td>

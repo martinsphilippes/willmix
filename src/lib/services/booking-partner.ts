@@ -44,7 +44,7 @@ import type { SheetSource } from "./product-sheet-import";
  * preço dela não aparece para a fábrica citada na planilha.
  *
  * Fica de fora, de propósito: bookings de outras empresas, a análise da
- * Wellmix (Superplan, viabilidade, margem), o NCM, o produto do cadastro, as
+ * Wellmix (previsão de preço, margem), o NCM, o produto do cadastro, as
  * colunas extras da planilha e as notas internas. Depois de enviado, o
  * booking é conferido, ajustado, fechado ou cancelado pela Wellmix: as
  * rotinas dela (src/lib/services/booking-lots.ts) continuam só da Wellmix.
@@ -135,6 +135,13 @@ export type PartnerBookingItem = Pick<
   capacityMlShown?: number | null;
   /** Trabalhado pela Wellmix na Seleção de itens (só o fato, sem a análise). */
   worked?: boolean;
+  /** Fabricante como a planilha escreveu nesta linha e se diverge do book. */
+  sheetSupplier?: string | null;
+  /** Nº da loja desta linha na planilha. */
+  sheetStore?: string | null;
+  manufacturerMismatch?: boolean;
+  /** Recusado pela Wellmix (o trabalhado que não é recusado foi selecionado). */
+  refused?: boolean;
 };
 
 const itemView = (i: BookingItem): PartnerBookingItem => {
@@ -263,6 +270,10 @@ export async function getPartnerBookingLot(
   /** Nome do Fornecedor (responsável pelo book) e da Fábrica, do cadastro. */
   partnerName: string | null;
   factoryName: string | null;
+  /** O Fabricante do book (a Fábrica digitada na importação). */
+  manufacturer: string | null;
+  /** Nº da loja da planilha, quando diferente do digitado. */
+  sheetStore: string | null;
 } | null> {
   const partyId = assertPartnerBooking(user);
   const store = getStore();
@@ -302,6 +313,9 @@ export async function getPartnerBookingLot(
     return typeof ml === "number" && ml > 0 ? ml : null;
   };
   const { workedShare } = await import("@/lib/booking-locks");
+  const { bookManufacturer, manufacturerMismatch, storeNumberMismatch } =
+    await import("@/lib/booking-lots");
+  const manufacturer = bookManufacturer(lot);
   return {
     lot: { ...lotView(lot), worked: workedShare(items) },
     items: items
@@ -309,6 +323,12 @@ export async function getPartnerBookingLot(
       .map((i) => ({
         ...itemView(i),
         worked: !!i.workedAt,
+        sheetSupplier: i.sheetSupplier ?? null,
+        sheetStore: i.sheetStore ?? null,
+        // O fornecedor vê o que foi selecionado e o que foi recusado (dono,
+        // 24/11/2026), sem a análise.
+        refused: !!i.refusedAt,
+        manufacturerMismatch: manufacturerMismatch(i, manufacturer),
         // O parceiro vê as fotos dos itens dos books dele (dono, 16/11/2026).
         photoDocumentId: i.photoDocumentId ?? null,
         cardDocumentId: i.cardDocumentId ?? null,
@@ -316,6 +336,10 @@ export async function getPartnerBookingLot(
       })),
     partnerName: nameOf(lot.partnerId),
     factoryName: nameOf(lot.supplierId),
+    manufacturer,
+    sheetStore: storeNumberMismatch(lot.storeNumber, lot.supplierHint?.store)
+      ? (lot.supplierHint?.store ?? null)
+      : null,
   };
 }
 
@@ -476,7 +500,15 @@ export async function sendPartnerBooking(
   const lot = await ownPreparingLot(user, lotId);
   const party = await launcherParty(user);
   if (!party) throw new ForbiddenError();
-  const { releasePreparingLot } = await import("./booking-lots");
+  const { releasePreparingLot, manufacturerMismatches } =
+    await import("./booking-lots");
+  // Itens de outro fabricante: o book não é enviado (dono, 24/11/2026).
+  const mixed = await manufacturerMismatches(
+    lot,
+    await getStore().list("booking_items", { filter: { lotId: lot.id } }),
+  );
+  if (mixed.length)
+    throw new PartnerBookingError("booking_manufacturer_mismatch");
   const sent = await releasePreparingLot(user, lot.id);
   const { notify } = await import("./notifications");
   await notify(
@@ -537,4 +569,26 @@ export async function discardPartnerBooking(
     lot.id,
     `Book em preenchimento descartado pelo parceiro: ${lot.itemCount} itens (${lot.fileName})`,
   );
+}
+
+/** O parceiro confirma que vale o Fabricante da tela (um item ou todos). */
+export async function confirmPartnerManufacturer(
+  user: User,
+  lotId: string,
+  itemId: string | null,
+): Promise<number> {
+  const lot = await ownPreparingLot(user, lotId);
+  const { confirmManufacturerItems } = await import("./booking-lots");
+  return confirmManufacturerItems(user, lot, itemId);
+}
+
+/** O parceiro remove um item do book que ainda preenche. */
+export async function removePartnerBookingItem(
+  user: User,
+  lotId: string,
+  itemId: string,
+): Promise<void> {
+  const lot = await ownPreparingLot(user, lotId);
+  const { removeLotItem } = await import("./booking-lots");
+  await removeLotItem(user, lot, itemId);
 }

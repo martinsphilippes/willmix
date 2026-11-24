@@ -50,7 +50,7 @@ import {
  * A Wellmix compara itens parecidos dos bookings fechados, escolhe um e abre
  * a solicitação ao fornecedor dele (os parecidos ficam como alternativas). O
  * fornecedor vê só as próprias solicitações, sem as alternativas nem a
- * análise do Superplan, e responde se faz o que a Wellmix precisa e em que
+ * previsão de preço, e responde se faz o que a Wellmix precisa e em que
  * condições. Nenhum produto, cliente ou estoque nasce aqui.
  */
 
@@ -188,6 +188,9 @@ export async function listSelectionItems(
     };
   };
   const matched = items
+    // Recusado na tela do book: não vai para a seleção (o grupo aberto
+    // pelos ids, de uma escolha já gravada, não muda).
+    .filter((i) => options.ids || !i.refusedAt)
     .map(rowOf)
     .filter((r): r is SelectionRow => !!r)
     .filter((r) =>

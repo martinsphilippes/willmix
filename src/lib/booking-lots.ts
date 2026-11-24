@@ -521,7 +521,7 @@ export interface BookingLotRow {
   itemCount: number;
   /** Itens com algum campo obrigatório faltando. */
   pendingItems: number;
-  /** Sinais da análise do Superplan. */
+  /** Sinais da previsão de preço. */
   viable: number;
   below: number;
   loss: number;
@@ -540,9 +540,13 @@ export interface BookingLotRow {
   /** A trava: id, se é de quem vê, se é do tipo de item, há quanto tempo e o prazo. */
   lockId: string | null;
   lockMine: boolean;
+  /** Quem vê pode liberar (o gestor de quem travou ou quem supervisiona). */
+  lockCanRelease: boolean;
   lockByType: boolean;
   heldMinutes: number | null;
   heldText: string;
+  /** Até quando fica no prazo ("24/11 19:52"; vazio sem trava). */
+  heldDueText: string;
   heldLate: boolean;
 }
 
@@ -646,3 +650,69 @@ export function bookingRecipientId(
 ): string | null {
   return lot.partnerId ?? lot.supplierId ?? null;
 }
+
+/* ------------------------------------------------------------------------ */
+/* Fabricante: a Fábrica do book × a planilha, linha a linha                 */
+/* ------------------------------------------------------------------------ */
+
+/*
+ * Dono, 24/11/2026 (docs/BOOKING.md, "Fábrica, Fornecedor e Fabricante"): o
+ * Fabricante é identificado pelo nº da loja. Quem importa digita o nº da
+ * loja; a coluna Fabricante repete esse número em todas as linhas e compara
+ * com o nº da loja que a planilha traz em cada uma. Um book tem itens de um
+ * fabricante só: linha divergente é removida, ou a importação é cancelada
+ * para refazer. O Supplier digitado (`supplierName`) é o Fornecedor, o dono
+ * do book: não entra nesta conta.
+ */
+
+/**
+ * O Fabricante do book (dono, 24/11/2026): o nº da loja digitado na
+ * importação; sem ele (books antigos), o nº da loja mais frequente da
+ * planilha. É o que a coluna Fabricante repete em todas as linhas.
+ */
+export function bookManufacturer(
+  lot: Pick<BookingLot, "supplierHint"> & { storeNumber?: string | null },
+): string | null {
+  const clean = (v: string | null | undefined) =>
+    (v ?? "").replace(/\s+/g, " ").trim() || null;
+  return clean(lot.storeNumber) ?? clean(lot.supplierHint?.store);
+}
+
+type ManufacturerItem = {
+  sheetStore?: string | null;
+  manufacturerOkAt?: string | null;
+};
+
+/**
+ * A linha diverge: a planilha traz outro nº de loja nesta linha. Sem loja na
+ * linha (ou no book), não há o que comparar. Letras e números iguais, sem
+ * espaços nem pontuação, contam como a mesma loja ("A 154678" = "a-154678").
+ */
+export function manufacturerMismatch(
+  item: ManufacturerItem,
+  manufacturer: string | null,
+): boolean {
+  if (item.manufacturerOkAt) return false;
+  const sheet = storeKey(item.sheetStore);
+  const book = storeKey(manufacturer);
+  return !!sheet && !!book && sheet !== book;
+}
+
+/** Nº da loja digitado × o da planilha: diferentes (os dois preenchidos)? */
+export function storeNumberMismatch(
+  typed: string | null | undefined,
+  sheet: string | null | undefined,
+): boolean {
+  const a = storeKey(typed);
+  const b = storeKey(sheet);
+  return !!a && !!b && a !== b;
+}
+
+/** Situações em que o book pode ser travado: depois do rascunho, em trabalho. */
+export const LOCKABLE_LOT_STATUSES: readonly BookingLotStatus[] = [
+  "closed",
+  "in_progress",
+  "done",
+];
+export const bookingLotLockable = (status: BookingLotStatus) =>
+  LOCKABLE_LOT_STATUSES.includes(status);

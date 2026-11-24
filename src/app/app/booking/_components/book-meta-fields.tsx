@@ -51,6 +51,8 @@ export function BookMetaFields({
   listId = "book-item-types",
   layout = "grid",
   itemTypeHintId,
+  suppliers = [],
+  withSupplier = true,
 }: {
   t: Translate;
   /** Tipos de item já usados (sugestões). */
@@ -72,6 +74,14 @@ export function BookMetaFields({
   layout?: "grid" | "inline";
   /** Com `layout="inline"`: o id da dica do tipo de item (fora dos campos). */
   itemTypeHintId?: string;
+  /**
+   * Supplier (o Fornecedor, dono do book; correção do dono, 24/11/2026): os
+   * nomes do cadastro, para buscar digitando. Nome que não está na lista
+   * fica gravado e é cadastrado depois, na tela do book.
+   */
+  suppliers?: readonly string[];
+  /** Falso: o book que o parceiro lança (o Supplier é a empresa dele). */
+  withSupplier?: boolean;
 }) {
   const inline = layout === "inline";
   const fieldClass = inline ? BOOK_COMPACT_FIELD : undefined;
@@ -80,6 +90,8 @@ export function BookMetaFields({
       <Field label={t("bookWork.storeNumber")}>
         <Input
           name="storeNumber"
+          // É o Fabricante de todas as linhas: obrigatório na importação.
+          required={required}
           maxLength={60}
           defaultValue={storeNumber ?? ""}
           autoComplete="off"
@@ -87,16 +99,28 @@ export function BookMetaFields({
           data-book-store-number
         />
       </Field>
-      <Field label={t("bookWork.supplierName")}>
-        <Input
-          name="supplierName"
-          maxLength={160}
-          defaultValue={supplierName ?? ""}
-          autoComplete="off"
-          className={fieldClass}
-          data-book-supplier-name
-        />
-      </Field>
+      {withSupplier ? (
+        <Field
+          label={t("bookWork.supplierName")}
+          hint={inline ? undefined : t("bookWork.supplierNameHint")}
+        >
+          <Input
+            name="supplierName"
+            maxLength={160}
+            defaultValue={supplierName ?? ""}
+            list={`${listId}-suppliers`}
+            autoComplete="off"
+            placeholder={t("bookWork.supplierSearch")}
+            className={fieldClass}
+            data-book-supplier-name
+          />
+          <datalist id={`${listId}-suppliers`}>
+            {suppliers.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        </Field>
+      ) : null}
       <Field
         label={t("bookWork.itemType")}
         hint={inline ? undefined : t("bookWork.itemTypeHint")}

@@ -80,7 +80,7 @@ export const pt = {
   "sampling.table.col": "Amostragem",
   "sampling.table.open": "Amostragem",
   "sampling.notify.opened.subject":
-    "Solicitação nº {n} aprovada: envie a amostragem",
+    "Solicitação nº {n} aprovada: carregue a amostragem",
   "sampling.notify.opened.body":
     "A Wellmix aprovou {product}. Envie fotos e vídeos de uma amostra do item pelo portal para a validação.",
   "sampling.notify.submitted.subject":
@@ -93,7 +93,7 @@ export const pt = {
     "Solicitação nº {n}: amostra reprovada, envie de novo",
   "sampling.notify.rejected.body":
     "A Wellmix reprovou a amostra de {product}: {reason}. Envie novas fotos e vídeos pelo portal.",
-  "tasks.group.supplier.sampling": "Enviar a amostragem",
+  "tasks.group.supplier.sampling": "Carregar a amostragem",
   "supplierTasks.help.sampling":
     "Depois que a Wellmix aprova o produto, envie fotos e vídeos de uma amostra do item; se ela reprovar, envie de novo.",
   "supplierTasks.sampling.title": "Amostragem da solicitação nº {n}: {product}",
@@ -192,7 +192,7 @@ export const en: typeof pt = {
   "sampling.table.col": "Sampling",
   "sampling.table.open": "Sampling",
   "sampling.notify.opened.subject":
-    "Request no. {n} approved: send the sampling",
+    "Request no. {n} approved: upload the sampling",
   "sampling.notify.opened.body":
     "Wellmix approved {product}. Send photos and videos of a sample of the item through the portal for validation.",
   "sampling.notify.submitted.subject": "Request no. {n}: sampling to validate",
@@ -204,7 +204,7 @@ export const en: typeof pt = {
     "Request no. {n}: sample rejected, send again",
   "sampling.notify.rejected.body":
     "Wellmix rejected the sample of {product}: {reason}. Send new photos and videos through the portal.",
-  "tasks.group.supplier.sampling": "Send the sampling",
+  "tasks.group.supplier.sampling": "Upload the sampling",
   "supplierTasks.help.sampling":
     "After Wellmix approves the product, send photos and videos of a sample of the item; if it is rejected, send again.",
   "supplierTasks.sampling.title": "Sampling of request no. {n}: {product}",
@@ -299,7 +299,7 @@ export const zh: typeof pt = {
   "sampling.notice.rejected": "样品被驳回，已通知负责人重新发送。",
   "sampling.table.col": "样品",
   "sampling.table.open": "样品",
-  "sampling.notify.opened.subject": "询价 {n} 已批准：请发送样品",
+  "sampling.notify.opened.subject": "询价 {n} 已批准：请上传样品资料",
   "sampling.notify.opened.body":
     "Wellmix 已批准 {product}。请通过门户发送商品样品的照片和视频以供验证。",
   "sampling.notify.submitted.subject": "询价 {n}：样品待验证",
@@ -310,7 +310,7 @@ export const zh: typeof pt = {
   "sampling.notify.rejected.subject": "询价 {n}：样品被驳回，请重新发送",
   "sampling.notify.rejected.body":
     "Wellmix 驳回了 {product} 的样品：{reason}。请通过门户发送新的照片和视频。",
-  "tasks.group.supplier.sampling": "发送样品",
+  "tasks.group.supplier.sampling": "上传样品资料",
   "supplierTasks.help.sampling":
     "Wellmix 批准产品后，请发送商品样品的照片和视频；如被驳回，请重新发送。",
   "supplierTasks.sampling.title": "询价 {n} 的样品：{product}",
