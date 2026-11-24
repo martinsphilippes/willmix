@@ -221,6 +221,7 @@ export const pt = {
   "quote.grossPerPiece": "Peso bruto por peça: {kg} kg",
   "quote.catalogTitle": "No cadastro da Wellmix",
   "quote.catalog.dims": "Caixa master (cm)",
+  "quote.catalog.grossPerPiece": "Peso bruto por peça (kg)",
   "quote.port.remove": "Remover este porto",
   "quote.port.n": "Porto de embarque {n}",
   "quote.termsShared":
@@ -543,6 +544,7 @@ export const en: Record<keyof typeof pt, string> = {
   "quote.grossPerPiece": "Gross weight per piece: {kg} kg",
   "quote.catalogTitle": "In the Wellmix record",
   "quote.catalog.dims": "Master carton (cm)",
+  "quote.catalog.grossPerPiece": "Gross weight per piece (kg)",
   "quote.port.remove": "Remove this port",
   "quote.port.n": "Port of loading {n}",
   "quote.termsShared":
@@ -844,6 +846,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "quote.grossPerPiece": "单件毛重：{kg} kg",
   "quote.catalogTitle": "Wellmix 资料",
   "quote.catalog.dims": "外箱 (cm)",
+  "quote.catalog.grossPerPiece": "单件毛重 (kg)",
   "quote.port.remove": "移除此港口",
   "quote.port.n": "装运港 {n}",
   "quote.termsShared":
