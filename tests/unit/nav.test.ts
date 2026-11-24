@@ -143,7 +143,7 @@ describe("menu lateral", () => {
       ["/app/team", "nav.teamAccess"],
       ["/app/audit", "nav.audit"],
     ]);
-    // Superplan foi para Configurações (fora do menu lateral).
+    // A tela antiga de viabilidade saiu (24/11/2026).
     expect(hrefsOf(ADMIN)).not.toContain("/app/superplan");
     const links = flattenNav(navFor(ADMIN));
     for (const href of ["/app/parties", "/app/suppliers"])

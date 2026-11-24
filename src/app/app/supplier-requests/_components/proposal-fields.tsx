@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Field, Input, Select } from "@/components/ui";
 import {
   FxNoteLine,
@@ -8,18 +8,19 @@ import {
   useFxConversion,
 } from "@/components/fx-conversion";
 import { parseNumberInput } from "@/lib/number-input";
-import { computeSuperplan, type SuperplanInput } from "@/lib/superplan";
-import { priceForMinimum } from "@/lib/superplan-inverse";
+import type { PriceForecastAnswer } from "@/lib/integrations/price-forecast";
 
 /*
  * Campos da contraproposta da Wellmix (docs/SUPPLIER_REQUESTS.md,
- * "Contraproposta com o Superplan"): os mesmos da resposta do fornecedor
- * (preço, moeda, MOQ, prazo e FOB/EXW), numa linha só (docs/SUPPLIER_REQUESTS.md,
- * "Tela da negociação reorganizada"), e a estimativa do Superplan do item
- * nos dois sentidos, refeita no navegador a cada tecla:
- * - digita o preço sugerido → custo por peça e preço mínimo;
- * - digita o preço mínimo desejado (R$) → o preço por peça necessário (conta
- *   inversa), com o botão para usá-lo.
+ * "Contraproposta com a previsão de preço"): os mesmos da resposta do
+ * fornecedor (preço, moeda, MOQ, prazo e FOB/EXW), numa linha só
+ * (docs/SUPPLIER_REQUESTS.md, "Tela da negociação reorganizada"), e a
+ * previsão de preço do item pela API de preço do Sankhya (a mesma da Nova
+ * solicitação; dono, 24/11/2026), nos dois sentidos, quando a digitação
+ * para (/api/price-forecast/booking-item):
+ * - digita o preço sugerido → custo por peça e venda prevista;
+ * - digita o preço de venda desejado (R$) → o preço máximo de compra (conta
+ *   inversa do Sankhya), com o botão para usá-lo.
  * Só estimativa: o que vale é o que a Server Action grava.
  */
 
@@ -41,22 +42,78 @@ export interface ProposalFieldsLabels {
   simCurrency: string;
   simMissing: string;
   simHint: string;
+  simLoading: string;
+  simManual: string;
 }
+
+type SimAnswer = PriceForecastAnswer | { mode: "missing"; missing: string[] };
+
+const DEBOUNCE_MS = 600;
+const FORECAST_CURRENCIES = ["USD", "RMB", "CNY", "EUR"];
+
+/**
+ * Uma chamada de cada vez (o Sankhya recusa duas simultâneas da mesma
+ * sessão), como na previsão da Nova solicitação.
+ */
+let simQueue: Promise<unknown> = Promise.resolve();
+function queued<T>(task: () => Promise<T>): Promise<T> {
+  const run = simQueue.then(task, task);
+  simQueue = run.catch(() => undefined);
+  return run;
+}
+
+/** Pergunta à API de preço (null = falhou). */
+function useForecast(
+  itemId: string | null,
+  params: Record<string, string> | null,
+): { answer: SimAnswer | null; loading: boolean } {
+  const key = params ? new URLSearchParams(params).toString() : "";
+  const full = itemId && key ? `${itemId}?${key}` : "";
+  // A resposta guarda a consulta de onde veio: outra consulta = esperando.
+  const [state, setState] = useState<{
+    key: string;
+    answer: SimAnswer | null;
+  }>({ key: "", answer: null });
+  useEffect(() => {
+    if (!itemId || !key) return;
+    let live = true;
+    const timer = setTimeout(() => {
+      void queued(async () => {
+        let body: SimAnswer | null = null;
+        try {
+          const res = await fetch(
+            `/api/price-forecast/booking-item?itemId=${encodeURIComponent(itemId)}&${key}`,
+            { cache: "no-store" },
+          );
+          body = res.ok ? ((await res.json()) as SimAnswer) : null;
+        } catch {
+          body = null;
+        }
+        if (live) setState({ key: `${itemId}?${key}`, answer: body });
+      });
+    }, DEBOUNCE_MS);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [itemId, key]);
+  if (!full) return { answer: null, loading: false };
+  return state.key === full
+    ? { answer: state.answer, loading: false }
+    : { answer: null, loading: true };
+}
+
+/** O número digitado para a URL (ponto decimal, até 4 casas). */
+const urlNumber = (n: number) => String(Math.round(n * 10000) / 10000);
 
 const brl = (n: number, intl: string) =>
   n.toLocaleString(intl, { style: "currency", currency: "BRL" });
-
-/** Resultado da conta com outro preço/moeda (só USD e RMB entram no Superplan). */
-function simulate(base: SuperplanInput, price: number, currency: string) {
-  if (currency !== "USD" && currency !== "RMB") return null;
-  return computeSuperplan({ ...base, unitPrice: price, currency });
-}
 
 export function ProposalFields({
   values,
   currencies,
   incoterms,
-  base,
+  itemId,
   bookingMinimum,
   intl,
   labels: l,
@@ -71,9 +128,9 @@ export function ProposalFields({
   };
   currencies: readonly string[];
   incoterms: readonly string[];
-  /** Entrada do Superplan do item (sem base, sem estimativa). */
-  base: SuperplanInput | null;
-  /** Preço mínimo do booking (R$), para comparar. */
+  /** Item do book para a previsão (sem item, sem estimativa). */
+  itemId: string | null;
+  /** Venda prevista no book (R$), para comparar. */
   bookingMinimum: number | null;
   intl: string;
   labels: ProposalFieldsLabels;
@@ -99,22 +156,45 @@ export function ProposalFields({
 
   const priceNum = parseNumberInput(price);
   const targetNum = parseNumberInput(target);
-  const result = useMemo(() => {
-    if (!base || priceNum === null || !Number.isFinite(priceNum)) return null;
-    return simulate(base, priceNum, currency);
-  }, [base, priceNum, currency]);
-  const needed = useMemo(() => {
-    if (
-      !base ||
-      targetNum === null ||
-      !Number.isFinite(targetNum) ||
-      targetNum <= 0 ||
-      (currency !== "USD" && currency !== "RMB")
-    )
-      return undefined;
-    return priceForMinimum(base, currency, targetNum);
-  }, [base, targetNum, currency]);
-  const missing = result?.missing.filter((m) => m !== "price") ?? [];
+  const knownCurrency = FORECAST_CURRENCIES.includes(currency);
+  const forward = useForecast(
+    showPrice ? itemId : null,
+    knownCurrency &&
+      priceNum !== null &&
+      Number.isFinite(priceNum) &&
+      priceNum > 0
+      ? { price: urlNumber(priceNum), currency }
+      : null,
+  );
+  const inverse = useForecast(
+    showPrice ? itemId : null,
+    knownCurrency &&
+      targetNum !== null &&
+      Number.isFinite(targetNum) &&
+      targetNum > 0
+      ? { target: urlNumber(targetNum), currency }
+      : null,
+  );
+  const result =
+    forward.answer?.mode === "api" && forward.answer.kind === "forecast"
+      ? forward.answer
+      : null;
+  const needed =
+    inverse.answer?.mode === "api" && inverse.answer.kind === "solve"
+      ? inverse.answer.maxPurchasePrice
+      : undefined;
+  const inverseFailed =
+    !inverse.loading &&
+    !!inverse.answer &&
+    (needed === null ||
+      inverse.answer.mode === "missing" ||
+      (inverse.answer.mode === "api" && inverse.answer.kind === "error"));
+  const manual =
+    forward.answer?.mode === "manual" || inverse.answer?.mode === "manual";
+  const missing =
+    !forward.loading &&
+    (forward.answer?.mode === "missing" ||
+      (forward.answer?.mode === "api" && forward.answer.kind === "error"));
   const money = (n: number) =>
     n.toLocaleString(intl, { maximumFractionDigits: 4 });
 
@@ -209,7 +289,7 @@ export function ProposalFields({
         </Field>
       </div>
 
-      {base && showPrice ? (
+      {itemId && showPrice ? (
         <div
           className="space-y-2 rounded-lg border border-brand-100 bg-brand-50/40 p-2 text-xs"
           data-proposal-sim
@@ -217,22 +297,32 @@ export function ProposalFields({
           <p className="font-semibold uppercase tracking-wide text-zinc-500">
             {l.simTitle}
           </p>
-          {currency !== "USD" && currency !== "RMB" ? (
+          {!knownCurrency ? (
             <p className="text-amber-800">{l.simCurrency}</p>
-          ) : missing.length ? (
+          ) : manual ? (
+            <p className="text-zinc-600" data-proposal-sim-manual>
+              {l.simManual}
+            </p>
+          ) : forward.loading ? (
+            <p className="text-zinc-500">{l.simLoading}</p>
+          ) : missing ? (
             <p className="text-amber-800">{l.simMissing}</p>
-          ) : result?.cost && result.prices ? (
+          ) : result ? (
             <p className="flex flex-col gap-0.5" data-proposal-sim-result>
-              <span>
-                {l.simCost}:{" "}
-                <strong data-proposal-sim-cost>
-                  {brl(result.cost.perPiece, intl)}
-                </strong>
-              </span>
+              {result.cost !== null ? (
+                <span>
+                  {l.simCost}:{" "}
+                  <strong data-proposal-sim-cost>
+                    {brl(result.cost, intl)}
+                  </strong>
+                </span>
+              ) : null}
               <span>
                 {l.simMinimum}:{" "}
                 <strong data-proposal-sim-minimum>
-                  {brl(result.prices.minimum, intl)}
+                  {result.salePrice !== null
+                    ? brl(result.salePrice, intl)
+                    : "—"}
                 </strong>
                 {bookingMinimum !== null ? (
                   <span className="text-zinc-500">
@@ -251,11 +341,13 @@ export function ProposalFields({
               data-proposal-sim-target
             />
           </Field>
-          {needed === null ? (
+          {inverse.loading ? (
+            <p className="text-zinc-500">{l.simLoading}</p>
+          ) : manual ? null : inverseFailed ? (
             <p className="text-amber-800" data-proposal-sim-unreachable>
               {l.simUnreachable}
             </p>
-          ) : needed !== undefined ? (
+          ) : needed !== undefined && needed !== null ? (
             <p
               className="flex flex-wrap items-center gap-2"
               data-proposal-sim-needed
@@ -263,7 +355,11 @@ export function ProposalFields({
               <span>
                 {l.simNeeded}:{" "}
                 <strong>
-                  {money(needed)} {currency}
+                  {money(needed)}{" "}
+                  {inverse.answer?.mode === "api" &&
+                  inverse.answer.kind === "solve"
+                    ? (inverse.answer.maxPurchaseCurrency ?? currency)
+                    : currency}
                 </strong>
               </span>
               <button

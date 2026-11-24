@@ -495,6 +495,7 @@ describe("com negociação, Book, venda e condição do fornecedor", () => {
       widthCm: 10,
       heightCm: 5,
       analysis: {
+        source: "price_forecast",
         at: "2026-11-15T00:00:00.000Z",
         byUserId: admin.id,
         businessType: "importacao",
@@ -564,7 +565,7 @@ describe("com negociação, Book, venda e condição do fornecedor", () => {
     expect(fieldOf(row, "values", "incoterm").value).toBe("FOB");
     expect(shown(fieldOf(row, "values", "margin"))).toEqual({
       value: "35,5%",
-      source: "Superplan (Book nº 77)",
+      source: "Previsão de preço (Book nº 77)",
     });
     // Venda gravada na solicitação (total) e o unitário calculado.
     expect(shown(fieldOf(row, "values", "saleTotal")).source).toBe(

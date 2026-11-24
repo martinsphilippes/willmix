@@ -33,7 +33,7 @@ O pedido, assim que é gerado, cai no login da certificadora para ela gerar o se
 
 ### 3. Como funciona
 
-1. **Pedido gerado** (sinal confirmado da solicitação cujo fornecedor ganhou a RFQ; ver "Booking e Superplan" abaixo): a certificadora do pedido recebe o aviso "gerar o selo de certificação" e a pendência em Minhas pendências, com o pedido ainda em "Conferência".
+1. **Pedido gerado** (sinal confirmado da solicitação cujo fornecedor ganhou a RFQ; ver "Booking e previsão de preço" abaixo): a certificadora do pedido recebe o aviso "gerar o selo de certificação" e a pendência em Minhas pendências, com o pedido ainda em "Conferência".
 2. **Certificadora** abre o pedido, vê o cartão Certificação e envia o **arquivo do selo** (o número do selo ou do registro é opcional).
 3. **Quem faz a arte** (a agência do pedido) recebe o aviso e a pendência "aplicar o selo de certificação na arte". Baixa o selo no cartão Certificação (ou no zip "Baixar todas as artes"), aplica na arte e envia a **arte com o selo**.
 4. **Wellmix** recebe a pendência "validar o selo aplicado na arte": confere e valida, ou recusa com o motivo (a pendência volta para quem fez).
@@ -110,11 +110,11 @@ As pendências de certificação aparecem com o tipo "Certificação" e abrem di
 - Cada envio, validação, recusa e reabertura fica na auditoria (`import.step_*`, com o texto "Certificação: ...").
 - O servidor confere quem pode antes de gravar o arquivo; a agência nunca abre memorial, laudo ou registro.
 
-### 11. Booking e Superplan
+### 11. Booking e previsão de preço
 
-O **Booking** de que o dono fala é a tela **Pedidos → Booking** (`docs/BOOKING.md`): as planilhas de fornecedor, com a análise do Superplan nos itens, a Seleção de itens e a solicitação ao fornecedor. Não é o booking do navio (passo do embarque). A fila antiga de produtos (tabela `bookings`) foi removida em 11/11/2026.
+O **Booking** de que o dono fala é a tela **Pedidos → Booking** (`docs/BOOKING.md`): as planilhas de fornecedor, com a previsão de preço do Sankhya nos itens (até 24/11/2026, a análise do Superplan, que saiu), a Seleção de itens e a solicitação ao fornecedor. Não é o booking do navio (passo do embarque). A fila antiga de produtos (tabela `bookings`) foi removida em 11/11/2026.
 
-Na ordem do fluxo, o selo fica depois dele: Booking e Superplan → solicitação → fornecedor escolhido → sinal → **pedido gerado → selo**. Nada no selo depende do Booking.
+Na ordem do fluxo, o selo fica depois dele: Booking e previsão de preço → solicitação → fornecedor escolhido → sinal → **pedido gerado → selo**. Nada no selo depende do Booking.
 
 ### 11.1 Decisões do dono (10/11/2026)
 

@@ -158,6 +158,12 @@ export interface NextStep {
   late?: boolean;
   /** Pedido: o prazo da etapa atual (o do marco), quando há. */
   dueAt?: string | null;
+  /**
+   * Responder, decidir, enviar ou validar a amostragem: a solicitação ao
+   * fornecedor com a vez, onde se age (dono, 24/11/2026; a Próxima ação é o
+   * link para lá, `supplierRequestStepHref`).
+   */
+  supplierRequestId?: string | null;
 }
 
 /**
@@ -190,6 +196,8 @@ export interface PurchaseProgress {
    * (`samplingTurn`).
    */
   supplierRequests: {
+    /** A solicitação ao fornecedor (o link da Próxima ação). */
+    id?: string;
     status: SupplierRequestStatus;
     negotiation: "supplier" | "wellmix" | null;
     sampling: "supplier" | "wellmix" | null;
@@ -222,18 +230,42 @@ function purchaseStep(p: PurchaseProgress | null | undefined): NextStep | null {
         };
   // Vencedora aprovada: segue a Solicitação ao fornecedor (a negociação, a
   // amostragem e o pedido de compra), a primeira que ainda espera alguém.
+  // Com a solicitação ao fornecedor que tem a vez (o link da Próxima ação).
   const list = p.supplierRequests;
-  if (list.some((r) => r.negotiation === "supplier"))
-    return { key: "supplier_answer", who: "supplier" };
-  if (list.some((r) => r.negotiation === "wellmix"))
-    return { key: "supplier_decide", who: "wellmix" };
+  const on = (
+    key: NextStepKey,
+    who: NextStepWho,
+    found: (typeof list)[number] | undefined,
+  ): NextStep | null =>
+    !found
+      ? null
+      : found.id
+        ? { key, who, supplierRequestId: found.id }
+        : { key, who };
   const approved = list.filter((r) => r.status === "approved");
-  if (approved.some((r) => r.sampling === "supplier"))
-    return { key: "sampling_send", who: "supplier" };
-  if (approved.some((r) => r.sampling === "wellmix"))
-    return { key: "sampling_validate", who: "wellmix" };
-  if (approved.length) return { key: "purchase_order", who: "wellmix" };
-  return null;
+  return (
+    on(
+      "supplier_answer",
+      "supplier",
+      list.find((r) => r.negotiation === "supplier"),
+    ) ??
+    on(
+      "supplier_decide",
+      "wellmix",
+      list.find((r) => r.negotiation === "wellmix"),
+    ) ??
+    on(
+      "sampling_send",
+      "supplier",
+      approved.find((r) => r.sampling === "supplier"),
+    ) ??
+    on(
+      "sampling_validate",
+      "wellmix",
+      approved.find((r) => r.sampling === "wellmix"),
+    ) ??
+    (approved.length ? { key: "purchase_order", who: "wellmix" } : null)
+  );
 }
 
 /**

@@ -32,7 +32,7 @@ import { audit } from "./audit";
  *    preencher no próprio booking.
  *
  * O NCM é obrigatório para fechar o booking e continua editável depois de
- * fechado: ao mudar, a análise do Superplan do item é refeita.
+ * fechado: ao mudar, a previsão de preço do item é refeita.
  */
 
 export class BookingNcmError extends Error {}
@@ -208,7 +208,7 @@ export async function hasBroker(): Promise<boolean> {
 /**
  * NCM digitado pela Wellmix (no booking) ou pelo despachante (nos grupos).
  * Com a tabela fiscal carregada, o NCM tem de estar nela. Booking fechado ou
- * em andamento: a análise do Superplan dos itens é refeita. Vazio tira o
+ * em andamento: a previsão de preço dos itens é refeita. Vazio tira o
  * NCM (só a Wellmix, no rascunho).
  */
 export async function setBookingItemsNcm(
@@ -256,14 +256,15 @@ export async function setBookingItemsNcm(
       ncmByUserId: ncm ? user.id : null,
       updatedByUserId: user.id,
     });
-  // Fechado: refaz a análise dos itens com o NCM novo (II e IPI da tabela).
+  // Fechado: refaz a previsão de preço dos itens com o NCM novo.
   let reanalyzed = 0;
   const closed = items.filter((i) => {
     const s = lotOf.get(i.lotId)?.status;
     return s === "closed" || s === "in_progress" || s === "done";
   });
   if (closed.length) {
-    const { analyzeBookingItems } = await import("./superplan-analysis");
+    const { scheduleBookingForecasts } =
+      await import("./booking-price-forecast");
     const byLot = new Map<string, BookingItem[]>();
     for (const i of closed) {
       const list = byLot.get(i.lotId) ?? [];
@@ -272,17 +273,8 @@ export async function setBookingItemsNcm(
     }
     for (const [lotId, list] of byLot) {
       const lot = lotOf.get(lotId) as BookingLot;
-      const snapshots = await analyzeBookingItems(list, {
-        businessType: lot.businessType,
-      });
-      for (const i of list) {
-        const snap = snapshots.get(i.id);
-        if (!snap) continue;
-        await store.update("booking_items", i.id, {
-          analysis: { ...snap, at: now, byUserId: user.id },
-        });
-        reanalyzed++;
-      }
+      await scheduleBookingForecasts(lot, list, user.id);
+      reanalyzed += list.length;
     }
   }
   await audit(
