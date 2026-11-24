@@ -86,6 +86,25 @@ Sete pedidos do dono, dos dois lados (fornecedor e Wellmix). Regras puras em `sr
 
 Decisões do dono (24/11/2026): a supervisão fica com a Diretoria de compras de fábrica; o Tipo de item continua texto aberto, editável pela Wellmix; a marcação dos itens de books antigos com escolha gravada ou solicitação foi autorizada, mas não havia nenhum em produção (2 books, 46 itens, nenhuma escolha gravada; as 2 solicitações existentes não apontam para itens desses books): nada foi alterado. Em aberto: se fechar ou concluir o book deve liberar a trava sozinho; aviso (pendência) para o analista com book atrasado.
 
+### Lista de Books: linha fina (dono, 24/11/2026)
+
+Pedido do dono, com o print da lista em que "Loja / Supplier" ("ASBA · NINGBO HOME-IN IMPORT AND EXPORT CO., LTD") quebrava em sete linhas e deixava a linha alta: colapsar o que deixa a linha grande, com botão de abrir e fechar, e letras menores, para a linha ficar fina.
+
+- Letra de 12 px (antes 13) e espaçamento menor nas células e no cabeçalho (`BookingLotsTable`, `src/app/app/booking/_components/booking-lots-table.tsx`).
+- Texto longo numa linha só, cortado com "…" e com **"ver mais"** ao lado, que abre o texto inteiro ("ver menos" fecha). O texto inteiro também fica na dica do mouse. É o mesmo `ClampText` das outras tabelas finas, e vale para:
+  - Loja / Supplier;
+  - Fornecedor;
+  - Origem;
+  - Tipo de item;
+  - Planilha;
+  - Responsável.
+- Sem quebra de linha também:
+  - "Com quem está": o nome e o "Travar para mim" ou "Liberar";
+  - "Há quanto tempo": o tempo e a data e a hora do prazo na mesma linha;
+  - Trabalhados: o percentual e o "x de y";
+  - as datas.
+- A busca e a ordem da tabela continuam lendo o texto inteiro.
+
 ### Card "Planilha do book" (dono, 24/11/2026)
 
 Só a apresentação do card da Wellmix em Importar book (`/app/booking/import`). Os campos, os nomes enviados, as validações e a ação `importBookingAction` são os mesmos.

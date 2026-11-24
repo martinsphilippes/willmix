@@ -222,6 +222,8 @@ export default async function BookingLotsPage({
               sortBy: t("bookingLots.sortBy"),
               supplierNone: t("bookingLots.supplierNone"),
               signalsNone: t("bookingLots.signals.none"),
+              more: t("requestSheet.more"),
+              less: t("requestSheet.less"),
               signal: {
                 viable: t("booking.signal.viable"),
                 below: t("booking.signal.below"),
