@@ -1966,6 +1966,7 @@ alter table public."booking_lots" add column if not exists "storeNumber" text;
 alter table public."booking_lots" add column if not exists "supplierName" text;
 alter table public."booking_lots" add column if not exists "incoterm" text;
 alter table public."booking_lots" add column if not exists "exwValue" double precision;
+alter table public."booking_lots" add column if not exists "workDoneAt" timestamptz;
 alter table public."booking_lots" add column if not exists "itemType" text;
 alter table public."booking_lots" add column if not exists "sheetFiles" jsonb;
 create index if not exists "booking_lots_by_status" on public."booking_lots" ("status");

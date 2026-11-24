@@ -579,6 +579,25 @@ export interface BookingLotHold {
   since: string;
   /** Há quantos minutos (na hora da leitura). */
   minutes: number;
+  /** Quem vê pode liberar: o gestor de quem travou ou quem supervisiona. */
+  canRelease: boolean;
+}
+
+/**
+ * Quem vê libera a trava? Nunca quem travou: só o gestor dele (cadeia do
+ * "Responde a") ou quem supervisiona os books (dono, 24/11/2026).
+ */
+async function releaserOf(user: User, users: readonly User[]) {
+  const supervisor = await canSuperviseBooks(user);
+  const { managerChain } = await import("@/lib/team-hierarchy");
+  const { canReleaseLock } = await import("@/lib/booking-locks");
+  return (lockUserId: string) =>
+    canReleaseLock(
+      lockUserId,
+      user.id,
+      supervisor,
+      supervisor ? [] : managerChain(lockUserId, users).chain.map((n) => n.id),
+    );
 }
 
 const minutesSince = (since: string) =>
@@ -654,6 +673,7 @@ export async function listBookingLots(
   ]);
   const partyOf = new Map(parties.map((p) => [p.id, p]));
   const userOf = new Map(users.map((u) => [u.id, u]));
+  const canRelease = await releaserOf(user, users);
   const itemsOf = new Map<string, BookingItem[]>();
   for (const item of items) {
     const list = itemsOf.get(item.lotId) ?? [];
@@ -678,7 +698,7 @@ export async function listBookingLots(
       pendingItems: pending.items.size,
       signals,
       worked: workedShare(own),
-      held: holdOf(lot, locks, userOf),
+      held: holdOf(lot, locks, userOf, canRelease),
     };
   });
 }
@@ -687,6 +707,7 @@ function holdOf(
   lot: BookingLot,
   locks: BookingLock[],
   userOf: Map<string, User>,
+  canRelease: (lockUserId: string) => boolean,
 ): BookingLotHold | null {
   const lock = lockOfLot(lot, locks);
   if (!lock) return null;
@@ -696,6 +717,7 @@ function holdOf(
     user: userOf.get(lock.userId) ?? null,
     since,
     minutes: minutesSince(since),
+    canRelease: canRelease(lock.userId),
   };
 }
 
@@ -770,6 +792,9 @@ export async function getBookingLot(
           user: await store.get("users", held.userId),
           since: lockedSince(lot, held),
           minutes: minutesSince(lockedSince(lot, held)),
+          canRelease: (await releaserOf(user, await store.list("users")))(
+            held.userId,
+          ),
         }
       : null,
   };
@@ -1343,7 +1368,7 @@ export async function bookingItemTypes(): Promise<string[]> {
  */
 export async function markItemsWorked(
   user: User,
-  items: ReadonlyArray<Pick<BookingItem, "id" | "workedAt">>,
+  items: ReadonlyArray<Pick<BookingItem, "id" | "workedAt" | "lotId">>,
 ): Promise<void> {
   const store = getStore();
   const at = new Date().toISOString();
@@ -1354,10 +1379,38 @@ export async function markItemsWorked(
           workedAt: at,
           workedByUserId: user.id,
         });
+    // Book inteiro trabalhado: a trava se libera sozinha (dono, 24/11/2026).
+    for (const lotId of new Set(items.map((i) => i.lotId)))
+      await releaseWhenWorkDone(lotId, at);
   } catch (error) {
     const { isSchemaMissing } = await import("@/lib/db/errors");
     if (!isSchemaMissing(error)) throw error;
   }
+}
+
+/**
+ * Todos os itens do book trabalhados: marca o trabalho como completo
+ * (`workDoneAt`), o que tira a trava do book (a dele é apagada; a do tipo de
+ * item deixa de valer para ele) e o devolve à vista de todos.
+ */
+async function releaseWhenWorkDone(lotId: string, at: string) {
+  const store = getStore();
+  const lot = await store.get("booking_lots", lotId);
+  if (!lot || lot.workDoneAt) return;
+  const items = await store.list("booking_items", { filter: { lotId } });
+  if (!items.length || items.some((i) => !i.workedAt)) return;
+  await store.update("booking_lots", lot.id, { workDoneAt: at });
+  const own = (await listBookingLocks()).filter(
+    (l) => l.scope === "lot" && l.lotId === lot.id,
+  );
+  for (const lock of own) await store.remove("booking_locks", lock.id);
+  await audit(
+    null,
+    "booking_lock.work_done",
+    "booking_lot",
+    lot.id,
+    `Book nº ${lot.number}: todos os ${items.length} itens trabalhados; trava liberada`,
+  );
 }
 
 /* ------------------------------------------------------------------------ */
@@ -1442,14 +1495,19 @@ export async function lockBookingType(
   return lock;
 }
 
-/** Libera a trava: quem travou ou quem supervisiona os books. */
+/**
+ * Libera a trava: o gestor de quem travou ou quem supervisiona os books
+ * (nunca quem travou; dono, 24/11/2026). Sozinha, ela se libera quando o
+ * book inteiro fica trabalhado (`releaseWhenWorkDone`).
+ */
 export async function unlockBooking(user: User, lockId: string): Promise<void> {
   assertBooking(user);
   const store = getStore();
   const lock = await withSchema(() => store.get("booking_locks", lockId));
   if (!lock) return;
-  if (lock.userId !== user.id && !(await canSuperviseBooks(user)))
-    throw new BookingLotError("forbidden");
+  // Nunca quem travou: só o gestor dele ou quem supervisiona os books.
+  if (!(await releaserOf(user, await store.list("users")))(lock.userId))
+    throw new BookingLotError("booking_lock_release_manager");
   await store.remove("booking_locks", lock.id);
   const { durationText } = await import("@/lib/booking-locks");
   const held = durationText(minutesSince(lock.lockedAt));
@@ -1465,14 +1523,19 @@ export async function unlockBooking(user: User, lockId: string): Promise<void> {
 }
 
 /** As travas de um login, com quantos books cada uma segura agora. */
-export async function myBookingLocks(
-  user: User,
-): Promise<
-  Array<{ lock: BookingLock; lotNumber: number | null; minutes: number }>
+export async function myBookingLocks(user: User): Promise<
+  Array<{
+    lock: BookingLock;
+    lotNumber: number | null;
+    minutes: number;
+    canRelease: boolean;
+  }>
 > {
   const locks = (await listBookingLocks()).filter((l) => l.userId === user.id);
   if (!locks.length) return [];
   const store = getStore();
+  // As dele mesmo: só libera se também supervisiona os books.
+  const canRelease = await canSuperviseBooks(user);
   const out = [];
   for (const lock of locks) {
     const lot = lock.lotId ? await store.get("booking_lots", lock.lotId) : null;
@@ -1480,6 +1543,7 @@ export async function myBookingLocks(
       lock,
       lotNumber: lot?.number ?? null,
       minutes: minutesSince(lock.lockedAt),
+      canRelease,
     });
   }
   return out;

@@ -3449,6 +3449,12 @@ export interface BookingLot extends BaseRow {
    */
   incoterm?: SheetIncoterm | null;
   exwValue?: number | null;
+  /**
+   * Quando todos os itens do book ficaram trabalhados na Seleção de itens
+   * (dono, 24/11/2026): a trava se libera sozinha e o book volta a ficar à
+   * vista de todos. Nulo: ainda há item a trabalhar.
+   */
+  workDoneAt?: string | null;
   /** Tipo de item do book, escolhido na importação (dono, 23/11/2026). Antigos: nulo. */
   itemType?: string | null;
   /**
@@ -6744,6 +6750,7 @@ export const TABLES: Record<TableName, TableDef> = {
       supplierName: str(160),
       incoterm: enumOf(SHEET_INCOTERMS, false),
       exwValue: float(),
+      workDoneAt: datetime(),
       itemType: str(80),
       sheetFiles: json(),
     },

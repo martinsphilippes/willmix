@@ -236,6 +236,8 @@ const HEADERS: ReadonlyArray<[SheetColumn, string[]]> = [
       "OBS 1 LINHA",
       "OBS",
       "DESCRIPTION",
+      // Como o modelo de book da Wellmix escreve (dono, 24/11/2026).
+      "DESCRITION",
       "DESCRICAO",
       "REMARK",
       "REMARKS",

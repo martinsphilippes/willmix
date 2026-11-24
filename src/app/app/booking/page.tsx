@@ -97,6 +97,7 @@ export default async function BookingLotsPage({
       holder: e.held ? (e.held.user?.name ?? "—") : "",
       lockId: e.held?.lock.id ?? null,
       lockMine: e.held?.lock.userId === user.id,
+      lockCanRelease: !!e.held?.canRelease,
       lockByType: e.held?.lock.scope === "type",
       heldMinutes: e.held ? e.held.minutes : null,
       heldText: e.held ? durationText(e.held.minutes) : "",
@@ -192,7 +193,8 @@ export default async function BookingLotsPage({
           freeTypes={[...freeTypes.values()].sort((a, b) =>
             a.localeCompare(b, "pt"),
           )}
-          mine={mine.map(({ lock, lotNumber, minutes }) => ({
+          mine={mine.map(({ lock, lotNumber, minutes, canRelease }) => ({
+            canRelease,
             id: lock.id,
             scope: lock.scope,
             itemType: lock.itemType,
@@ -206,7 +208,6 @@ export default async function BookingLotsPage({
           <BookingLotsTable
             rows={rows}
             showSignals={seesPrice}
-            supervisor={supervisor}
             labels={{
               lock: t("bookWork.lock"),
               unlock: t("bookWork.unlock"),

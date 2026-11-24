@@ -404,6 +404,37 @@ describe("itens trabalhados", () => {
   });
 });
 
+describe("trava liberada sozinha", () => {
+  it("o book inteiro trabalhado libera a trava e volta à vista de todos", async () => {
+    const lot = await closedLot(
+      [row("WD-1", "Done tray"), row("WD-2", "Done spoon")],
+      "Trabalho completo",
+    );
+    const [a, b] = await itemsOf(lot.id);
+    await svc.lockBookingLot(ana, lot.id);
+    const open = (item: { id: string }) =>
+      requests.openSupplierRequest(admin, {
+        itemId: item.id,
+        alternativeIds: [],
+        quantity: 500,
+        needs: null,
+        searchQuery: null,
+      });
+    // Metade trabalhada: continua com a Ana.
+    await open(a);
+    expect((await svc.getBookingLot(admin, lot.id))?.held?.user?.id).toBe(
+      ana.id,
+    );
+    expect(await svc.getBookingLot(bia, lot.id)).toBeNull();
+    // Tudo trabalhado: a trava sai sozinha.
+    await open(b);
+    const done = (await svc.getBookingLot(bia, lot.id))!;
+    expect(done.held).toBeNull();
+    expect(done.lot.workDoneAt).toBeTruthy();
+    expect(await svc.myBookingLocks(ana)).toEqual([]);
+  });
+});
+
 describe("travar books", () => {
   it("regras puras: o que cada um vê e o prazo", () => {
     const lot = (id: string, itemType: string | null) => ({
@@ -542,12 +573,20 @@ describe("travar books", () => {
     }
     expect(await svc.canSuperviseBooks(ana)).toBe(false);
 
-    // Só quem travou (ou quem supervisiona) libera.
+    // Quem travou não libera (nem outra analista): só o gestor dela ou
+    // quem supervisiona os books (dono, 24/11/2026).
     const [anaLock] = await svc.myBookingLocks(ana);
-    await expect(svc.unlockBooking(bia, anaLock.lock.id)).rejects.toThrow(
-      "forbidden",
-    );
-    await svc.unlockBooking(ana, anaLock.lock.id);
+    expect(anaLock.canRelease).toBe(false);
+    for (const who of [ana, bia])
+      await expect(svc.unlockBooking(who, anaLock.lock.id)).rejects.toThrow(
+        "booking_lock_release_manager",
+      );
+    // A Bia vira gestora da Ana ("Responde a"): passa a liberar a trava dela.
+    await getStore().update("users", ana.id, { managerUserId: bia.id });
+    const forBia = (await svc.getBookingLot(director, glass.id))!.held!;
+    expect(forBia.canRelease).toBe(true);
+    await svc.unlockBooking(bia, anaLock.lock.id);
+    await getStore().update("users", ana.id, { managerUserId: null });
     const [biaLock] = await svc.myBookingLocks(bia);
     await svc.unlockBooking(director, biaLock.lock.id);
     expect(await seen(bia)).toEqual(

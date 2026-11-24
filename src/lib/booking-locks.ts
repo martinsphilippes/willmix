@@ -30,6 +30,8 @@ type LockedLot = Pick<BookingLot, "id" | "createdAt"> & {
   itemType?: string | null;
   /** Com a situação, só o book que já saiu do rascunho tem trava. */
   status?: BookingLot["status"];
+  /** Trabalho completo (todos os itens trabalhados): a trava não vale mais. */
+  workDoneAt?: string | null;
 };
 type Lock = Pick<
   BookingLock,
@@ -44,6 +46,8 @@ export function lockOfLot<L extends Lock>(
   // Só depois do rascunho (dono, 24/11/2026): o book em rascunho ainda não
   // está sendo trabalhado na seleção, e todos continuam vendo.
   if (lot.status && !bookingLotLockable(lot.status)) return null;
+  // Trabalho completo: a trava se libera sozinha (dono, 24/11/2026).
+  if (lot.workDoneAt) return null;
   const own = locks.find((l) => l.scope === "lot" && l.lotId === lot.id);
   if (own) return own;
   const key = itemTypeKey(lot.itemType);
@@ -123,4 +127,21 @@ export function workedShare(
     total: items.length,
     pct: items.length ? Math.round((worked / items.length) * 100) : 0,
   };
+}
+
+/**
+ * Quem libera a trava (dono, 24/11/2026): nunca quem travou, só o gestor
+ * dele (alguém da cadeia do "Responde a") ou quem supervisiona os books. A
+ * trava também se libera sozinha quando o book inteiro fica trabalhado.
+ */
+export function canReleaseLock(
+  lockUserId: string,
+  userId: string,
+  supervisor: boolean,
+  /** Ids da cadeia de gestores de quem travou (o direto, o dele…). */
+  managerIds: readonly string[],
+): boolean {
+  if (supervisor) return true;
+  if (lockUserId === userId) return false;
+  return managerIds.includes(userId);
 }

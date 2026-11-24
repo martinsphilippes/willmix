@@ -28,11 +28,7 @@ import {
   type BookingItem,
   type BookingLotStatus,
 } from "@/lib/db/schema";
-import {
-  bookingItemTypes,
-  canSuperviseBooks,
-  getBookingLot,
-} from "@/lib/services/booking-lots";
+import { bookingItemTypes, getBookingLot } from "@/lib/services/booking-lots";
 import { durationText, lockLate, workedShare } from "@/lib/booking-locks";
 import { GROUP_MAX } from "@/lib/booking-selection";
 import { getSettings } from "@/lib/settings";
@@ -214,9 +210,8 @@ export default async function BookingLotPage({
   // (dono, 24/11/2026). Diferente, o book não fecha.
   const manufacturer = bookManufacturer(lot, supplier?.name ?? null);
   const mixed = items.filter((i) => manufacturerMismatch(i, manufacturer));
-  const [itemTypes, supervisor, settings] = await Promise.all([
+  const [itemTypes, settings] = await Promise.all([
     bookingItemTypes(),
-    canSuperviseBooks(user),
     getSettings(),
   ]);
   const heldLate = held
@@ -1135,7 +1130,7 @@ export default async function BookingLotPage({
                     })}
                   </p>
                 ) : null}
-                {held.lock.userId === user.id || supervisor ? (
+                {held.canRelease ? (
                   <form action={unlockBookingAction}>
                     <input type="hidden" name="lockId" value={held.lock.id} />
                     <input type="hidden" name="from" value={lot.id} />
@@ -1147,7 +1142,13 @@ export default async function BookingLotPage({
                       )}
                     </SubmitButton>
                   </form>
-                ) : null}
+                ) : (
+                  // Quem travou não libera: só o gestor, ou sozinha quando
+                  // o book inteiro fica trabalhado.
+                  <p className="text-xs text-zinc-500" data-booking-no-unlock>
+                    {t("bookWork.unlock.rule")}
+                  </p>
+                )}
               </div>
             ) : bookingLotLockable(lot.status) ? (
               <form
