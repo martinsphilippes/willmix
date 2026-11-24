@@ -36,6 +36,32 @@ export const pt = {
   "orders.error.sale_unknown_item":
     "Um dos produtos não é deste pedido. Recarregue a página e grave de novo.",
   "orders.error.sale_no_items": "Pedido sem produtos: não há o que precificar.",
+  "orderSale.cargo.boxes": "Caixas",
+  "orderSale.line.boxes": "{n} caixas",
+  "orderSale.line.cbm": "{n} m³",
+  "orderSale.cargo.cbm": "Cubagem",
+  "orderSale.cargo.containers": "Containers",
+  "orderSale.cargo.missing":
+    "{n} produto(s) sem caixa master ou cubagem no cadastro ficam fora da soma.",
+  "orderSale.quote.hint":
+    "Preços por peça, em R$, com frete, pela cotação do Sankhya: WD com VIP 5 e Wellmix no nível {tier}. Não se digitam: escolha o formato e grave. O total do pedido é a soma (preço × quantidade).",
+  "orderSale.quote.tierDefault": "padrão do Sankhya",
+  "orderSale.quote.format": "Formato da venda",
+  "orderSale.quote.pick":
+    "Escolha WD ou Wellmix para ver o total e gravar a venda.",
+  "orderSale.quote.total": "Total do pedido ({format})",
+  "orderSale.quote.loading": "Buscando os preços no Sankhya… {n} de {total}",
+  "orderSale.quote.recorded": "Venda gravada: {total} ({format})",
+  "orderSale.quote.recordedTyped":
+    "Venda gravada antes, com o preço digitado: {total}",
+  "orderSale.quote.priceOf": "Preço {format} de {name}",
+  "orderSale.quote.missing": "{format}: {reason}",
+  "orderSale.quote.reason.noProduct": "produto fora do catálogo",
+  "orderSale.quote.reason.noPrice": "a cotação não devolveu preço",
+  "orderSale.quote.reason.failed":
+    "o Sankhya não respondeu; recarregue a página",
+  "orders.error.sale_api_unavailable":
+    "A cotação do Sankhya não está ligada agora. Recarregue a página para gravar a venda.",
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
@@ -71,6 +97,31 @@ export const en: Record<keyof typeof pt, string> = {
   "orders.error.sale_unknown_item":
     "One of the products is not in this order. Reload the page and save again.",
   "orders.error.sale_no_items": "Order without products: nothing to price.",
+  "orderSale.cargo.boxes": "Boxes",
+  "orderSale.line.boxes": "{n} boxes",
+  "orderSale.line.cbm": "{n} m³",
+  "orderSale.cargo.cbm": "Volume",
+  "orderSale.cargo.containers": "Containers",
+  "orderSale.cargo.missing":
+    "{n} product(s) without a master box or volume in the catalog are left out of the totals.",
+  "orderSale.quote.hint":
+    "Prices per piece, in R$, with freight, from the Sankhya quote: WD with VIP 5 and Wellmix at the {tier} level. They are not typed: choose the format and save. The order total is the sum (price × quantity).",
+  "orderSale.quote.tierDefault": "Sankhya default",
+  "orderSale.quote.format": "Sale format",
+  "orderSale.quote.pick":
+    "Choose WD or Wellmix to see the total and record the sale.",
+  "orderSale.quote.total": "Order total ({format})",
+  "orderSale.quote.loading": "Fetching prices from Sankhya… {n} of {total}",
+  "orderSale.quote.recorded": "Recorded sale: {total} ({format})",
+  "orderSale.quote.recordedTyped":
+    "Sale recorded before, with a typed price: {total}",
+  "orderSale.quote.priceOf": "{format} price of {name}",
+  "orderSale.quote.missing": "{format}: {reason}",
+  "orderSale.quote.reason.noProduct": "product not in the catalog",
+  "orderSale.quote.reason.noPrice": "the quote returned no price",
+  "orderSale.quote.reason.failed": "Sankhya did not respond; reload the page",
+  "orders.error.sale_api_unavailable":
+    "The Sankhya quote is not connected right now. Reload the page to record the sale.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -102,4 +153,26 @@ export const zh: Record<keyof typeof pt, string> = {
   "orders.error.sale_unknown_item":
     "其中一个产品不属于本订单。请刷新页面后重新保存。",
   "orders.error.sale_no_items": "订单没有产品：无需定价。",
+  "orderSale.cargo.boxes": "箱数",
+  "orderSale.line.boxes": "{n} 箱",
+  "orderSale.line.cbm": "{n} m³",
+  "orderSale.cargo.cbm": "体积",
+  "orderSale.cargo.containers": "集装箱",
+  "orderSale.cargo.missing": "{n} 个产品在目录中没有外箱或体积，未计入合计。",
+  "orderSale.quote.hint":
+    "每件价格（雷亚尔，含运费），来自 Sankhya 报价：WD 使用 VIP 5，Wellmix 使用 {tier} 等级。价格不可手动输入：选择模式后保存。订单合计为各产品之和（价格 × 数量）。",
+  "orderSale.quote.tierDefault": "Sankhya 默认",
+  "orderSale.quote.format": "销售模式",
+  "orderSale.quote.pick": "选择 WD 或 Wellmix 以查看合计并保存销售。",
+  "orderSale.quote.total": "订单合计（{format}）",
+  "orderSale.quote.loading": "正在从 Sankhya 获取价格……{n}/{total}",
+  "orderSale.quote.recorded": "已保存的销售：{total}（{format}）",
+  "orderSale.quote.recordedTyped": "之前以手动输入价格保存的销售：{total}",
+  "orderSale.quote.priceOf": "{name} 的 {format} 价格",
+  "orderSale.quote.missing": "{format}：{reason}",
+  "orderSale.quote.reason.noProduct": "产品不在目录中",
+  "orderSale.quote.reason.noPrice": "报价未返回价格",
+  "orderSale.quote.reason.failed": "Sankhya 无响应，请刷新页面",
+  "orders.error.sale_api_unavailable":
+    "Sankhya 报价目前未连接。请刷新页面后再保存销售。",
 };

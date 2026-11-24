@@ -248,6 +248,7 @@ alter table public."orders" add column if not exists "fobTotal" double precision
 alter table public."orders" add column if not exists "fobCurrency" text;
 alter table public."orders" add column if not exists "sellPrice" double precision;
 alter table public."orders" add column if not exists "sellCurrency" text;
+alter table public."orders" add column if not exists "saleFormat" text;
 alter table public."orders" add column if not exists "erpSyncStatus" text;
 alter table public."orders" add column if not exists "erpNumber" text;
 alter table public."orders" add column if not exists "agencyId" text;
@@ -337,6 +338,7 @@ alter table public."order_items" add column if not exists "quantity" double prec
 alter table public."order_items" add column if not exists "unit" text;
 alter table public."order_items" add column if not exists "unitPrice" double precision;
 alter table public."order_items" add column if not exists "sellUnitPrice" double precision;
+alter table public."order_items" add column if not exists "saleQuote" jsonb;
 alter table public."order_items" add column if not exists "variantId" text;
 alter table public."order_items" add column if not exists "variant" jsonb;
 alter table public."order_items" add column if not exists "colors" jsonb;

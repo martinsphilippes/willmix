@@ -11,6 +11,7 @@
  */
 
 import type { FreightTariffData } from "@/lib/services/freight-tariff-calc";
+import type { OrderItemSaleQuote } from "@/lib/order-sale-quote";
 import type {
   CustomerContacts,
   OrderTerms,
@@ -1298,6 +1299,12 @@ export interface Order extends BaseRow {
   fobCurrency: string | null;
   sellPrice: number | null;
   sellCurrency: string | null;
+  /**
+   * Formato da venda gravada no card "Venda ao cliente" (WD ou Wellmix; dono,
+   * 24/11/2026): o preço da cotação V2 que virou `sellUnitPrice`. Nulo = venda
+   * digitada (antes) ou ainda não gravada.
+   */
+  saleFormat?: "wd" | "wellmix" | null;
   erpSyncStatus: ErpSyncStatus;
   erpNumber: string | null;
   agencyId: string | null;
@@ -1471,6 +1478,12 @@ export interface OrderItem extends BaseRow {
    * preço, `orders.sellPrice` é a soma (preço × quantidade); docs/ORDER_SALE.md.
    */
   sellUnitPrice?: number | null;
+  /**
+   * Cotação do dia dos preços WD e Wellmix deste item (card "Venda ao
+   * cliente"; docs/ORDER_SALE.md, "Preços pela API"): guardada para não
+   * chamar o Sankhya a cada visita. Vale no dia e com as mesmas entradas.
+   */
+  saleQuote?: OrderItemSaleQuote | null;
   /** Variação pedida e a cópia dos valores dela (copiadas da solicitação). */
   variantId?: string | null;
   variant?: VariantSnapshot | null;
@@ -5098,6 +5111,7 @@ export const TABLES: Record<TableName, TableDef> = {
       fobCurrency: str(3),
       sellPrice: float(),
       sellCurrency: str(3),
+      saleFormat: str(10),
       erpSyncStatus: enumOf(ERP_SYNC_STATUSES, false),
       erpNumber: str(60),
       agencyId: id(false),
@@ -5191,6 +5205,7 @@ export const TABLES: Record<TableName, TableDef> = {
       unit: str(20, true),
       unitPrice: float(),
       sellUnitPrice: float(),
+      saleQuote: json(),
       variantId: id(false),
       variant: json(),
       colors: json(),

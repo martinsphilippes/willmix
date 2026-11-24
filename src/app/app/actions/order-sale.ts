@@ -5,6 +5,8 @@ import { can } from "@/lib/auth/function-access";
 import { ForbiddenError } from "@/lib/auth/permissions";
 import { CURRENCIES } from "@/lib/currencies";
 import { MAX_UNIT_PRICE, recordOrderSale } from "@/lib/services/order-sale";
+import { recordOrderSaleByFormat } from "@/lib/services/order-sale-quote";
+import { SALE_FORMATS } from "@/lib/order-terms";
 import { field, requireUser, run, str } from "./helpers";
 
 /*
@@ -34,7 +36,30 @@ export async function recordOrderSaleAction(form: FormData) {
       prices[itemId] =
         raw === "" ? null : PRICE.parse(Number(raw.replace(",", ".")));
     }
-    await recordOrderSale(user, orderId, { currency, prices });
+    // Preço digitado (sem o Sankhya ligado): a venda não é de um formato.
+    await recordOrderSale(user, orderId, {
+      currency,
+      prices,
+      saleFormat: null,
+    });
+    return `${back}?sale=saved#order-sale`;
+  });
+}
+
+/**
+ * Venda pelos preços da cotação (dono, 24/11/2026; docs/ORDER_SALE.md,
+ * "Preços pela API"): só o formato escolhido (WD ou Wellmix) vem da tela; o
+ * servidor refaz a cotação do dia de cada produto e grava em R$.
+ */
+export async function recordOrderSaleFormatAction(form: FormData) {
+  const user = await requireUser();
+  const orderId = str(form, "orderId").slice(0, 64);
+  const back = `/app/orders/${encodeURIComponent(orderId)}`;
+  await run(back, async () => {
+    if (!can(user, "sale.record")) throw new ForbiddenError("sale_forbidden");
+    ID.parse(orderId);
+    const format = field(form, "format", z.enum(SALE_FORMATS));
+    await recordOrderSaleByFormat(user, orderId, format);
     return `${back}?sale=saved#order-sale`;
   });
 }

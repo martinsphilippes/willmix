@@ -2746,6 +2746,8 @@ export default async function OrderPage({
           <OrderSaleContent
             order={order}
             items={items}
+            user={user}
+            products={itemProducts}
             editable={wellmix && can(user, "sale.record") && !isCancelled}
             readOnlyNote={wellmix && !can(user, "sale.record")}
             saved={saleNotice === "saved"}

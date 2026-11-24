@@ -1698,6 +1698,14 @@
           "size": 3
         },
         {
+          "key": "saleFormat",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 10
+        },
+        {
           "key": "erpSyncStatus",
           "required": false,
           "array": false,
@@ -2394,6 +2402,13 @@
           "array": false,
           "default": null,
           "type": "double"
+        },
+        {
+          "key": "saleQuote",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         },
         {
           "key": "variantId",
