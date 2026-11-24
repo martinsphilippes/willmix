@@ -20,8 +20,8 @@ A Seleção de itens **substituiu a fila de produtos** do Booking antigo: o bot�
 
 A lista só mostra negociações (cotações e books), nunca pedidos:
 
-- **Em negociação** (a primeira aba, `/app/supplier-requests`): solicitações com algum produto ainda aberto ou respondido.
-- **Encerradas** (`?tab=closed`): todos os produtos decididos (aprovado, recusado ou cancelado; `requestClosed`, `src/lib/supplier-request-closing.ts`).
+- **Em negociação** (a primeira aba, `/app/supplier-requests`; hoje "Em andamento", docs/QUOTATION.md): solicitações com algum produto ainda aberto ou respondido e, desde 24/11/2026, também as que têm algum produto aprovado com a **amostra ainda não aprovada** (pendente, enviada ou reprovada), para a amostra não sair de vista (decisão do dono, depois da cotação nº 2).
+- **Encerradas** (`?tab=closed`): todos os produtos decididos (aprovado, recusado ou cancelado) e, nos aprovados, a amostra aprovada ou dispensada; o aprovado que já está num pedido de compra também conta (`requestClosed`, `src/lib/supplier-request-closing.ts`). Até 24/11/2026 bastava estar decidida, e a aprovada esperando a amostra ia para cá.
 - Na aba Encerradas fica o quadro "Gerar pedido de compra" (por fornecedor, para juntar várias solicitações e ajustar a quantidade). A coluna **Pedido** (Wellmix com a tela Pedidos e a ação de gerar o pedido de compra) mostra **"Gerar pedido"** quando todos os produtos aprovados fora de pedido existem no cadastro e têm a amostra aprovada (`requestOrderState`); o botão leva ao quadro com os produtos dela marcados. Senão: "Falta cadastrar N produto(s)", "Esperando a amostra aprovada" ou "Já virou pedido". O pedido segue docs/PURCHASE_ORDER.md, seção 1.
 - Saiu do cabeçalho o botão "Seleção de itens" (a Seleção continua no menu e no Booking).
 
@@ -223,7 +223,7 @@ A mesma tela (`?view=item`), com as mesmas regras, permissões, cálculos, anexo
 
 ## Lista de solicitações
 
-- **Vez** (dono, 24/11/2026; docs/TURNS.md): "Aguardando fornecedor" ou "Aguardando Wellmix", a ação embaixo ("Enviar a amostragem", "Responder a solicitação"…), quem age (a peça "Quem pode agir" da tabela da cotação) e, na vez do fornecedor, o **login de quem envia** à vista ("Login: …"), só para o administrador.
+- **Vez** (dono, 24/11/2026; docs/TURNS.md): "Aguardando fornecedor" ou "Aguardando Wellmix", a ação embaixo ("Carregar a amostragem", "Responder a solicitação"…), quem age (a peça "Quem pode agir" da tabela da cotação) e, na vez do fornecedor, o **login de quem envia** à vista ("Login: …"), só para o administrador.
 - Datas com hora (aberta em, finalizada em).
 - **Finalizada em**: data e hora da decisão da Wellmix e o selo **Dentro do SLA** ou **Em atraso** (decisão depois de abertura + SLA; `finishedLate`).
 - **Produtos distintos**: no topo, quantas solicitações e quantos itens diferentes; em cada linha, quantos produtos distintos tem a tabela daquela solicitação (mesmo fornecedor e booking; `distinctProductsByGroup`).
