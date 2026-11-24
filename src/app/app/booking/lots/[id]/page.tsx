@@ -1047,6 +1047,20 @@ export default async function BookingLotPage({
               [t("bookingLots.detail.owner"), owner?.name ?? "—"],
               [t("bookingLots.detail.items"), String(items.length)],
               [
+                t("bookWork.incoterm"),
+                <span key="inc" data-booking-lot-incoterm={lot.incoterm ?? ""}>
+                  {lot.incoterm
+                    ? lot.incoterm === "EXW" && typeof lot.exwValue === "number"
+                      ? t("bookWork.exwShown", {
+                          value: lot.exwValue.toLocaleString(intl, {
+                            maximumFractionDigits: 4,
+                          }),
+                        })
+                      : lot.incoterm
+                    : "—"}
+                </span>,
+              ],
+              [
                 t("bookWork.worked.title"),
                 <span key="w" data-booking-lot-worked={worked.pct}>
                   {t("bookWork.worked.share", {
@@ -1074,6 +1088,9 @@ export default async function BookingLotPage({
                   types={itemTypes}
                   storeNumber={lot.storeNumber ?? null}
                   supplierName={lot.supplierName ?? null}
+                  incoterm={lot.incoterm ?? null}
+                  exwValue={lot.exwValue ?? null}
+                  withIncoterm={editable}
                   itemType={lot.itemType ?? null}
                   required={false}
                 />

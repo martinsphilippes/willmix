@@ -3,6 +3,7 @@ import type {
   SupplierRequest,
   SupplierRequestSampling,
 } from "@/lib/db/schema";
+import { negotiationTurn } from "./supplier-requests";
 
 /*
  * Amostragem da solicitação ao fornecedor (docs/SUPPLIER_SAMPLING.md):
@@ -170,6 +171,39 @@ export function samplingTurn(
   if (s.status === "submitted") return "wellmix";
   if (s.status === "approved") return null;
   return "supplier";
+}
+
+/** O passo com a vez na solicitação (as chaves da Próxima ação de Encomendas). */
+export type SupplierRequestStep =
+  "supplier_answer" | "supplier_decide" | "sampling_send" | "sampling_validate";
+
+/**
+ * De quem é a vez na solicitação ao fornecedor e qual é a ação (dono,
+ * 24/11/2026; docs/TURNS.md): na negociação, responder (fornecedor) ou
+ * decidir (Wellmix); aprovada, a amostragem: enviar a amostra (fornecedor,
+ * pendente ou reprovada) ou validar (Wellmix, enviada). Nulo quando não há
+ * nada a fazer (recusada, cancelada ou com a amostra aprovada). A coluna Vez
+ * da cotação e a lista de cotações usam esta regra; antes, a aprovada com a
+ * amostra pendente aparecia com "—".
+ */
+export function supplierRequestTurn(
+  request: Pick<
+    SupplierRequest,
+    "status" | "negotiation" | "decidedAt" | "updatedAt" | "sampling"
+  >,
+): { party: "supplier" | "wellmix"; step: SupplierRequestStep } | null {
+  const negotiation = negotiationTurn(request);
+  if (negotiation)
+    return {
+      party: negotiation,
+      step: negotiation === "supplier" ? "supplier_answer" : "supplier_decide",
+    };
+  const sampling = samplingTurn(samplingOf(request));
+  if (!sampling) return null;
+  return {
+    party: sampling,
+    step: sampling === "supplier" ? "sampling_send" : "sampling_validate",
+  };
 }
 
 /** Amostra aprovada: libera criar/associar o produto e o pedido de compra. */

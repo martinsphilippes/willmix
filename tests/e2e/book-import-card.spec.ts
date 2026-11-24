@@ -85,6 +85,19 @@ test("Planilha do book: Moeda padrão estreita e os quatro campos numa linha; a 
   }
   expect(await noSideScroll(page)).toBe(true);
 
+  // FOB ou EXW (#674) numa linha própria acima, estreito; com EXW, o valor
+  // ao lado, na mesma linha.
+  const incoterm = await boxOf(page, "[data-book-incoterm]");
+  expect(incoterm.width).toBeGreaterThanOrEqual(110);
+  expect(incoterm.width).toBeLessThanOrEqual(130);
+  expect(incoterm.top).toBeLessThan(wide[0].top);
+  await form.locator("[data-book-incoterm]").selectOption("EXW");
+  const exw = await boxOf(page, "[data-book-exw-value]");
+  expect(exw.top).toBe(incoterm.top);
+  expect(exw.width).toBeLessThanOrEqual(140);
+  await form.locator("[data-book-incoterm]").selectOption("FOB");
+  await expect(form.locator("[data-book-exw-value]")).toHaveCount(0);
+
   // iPad deitado mais estreito (1080): ainda uma linha, moeda compacta.
   await page.setViewportSize({ width: 1080, height: 810 });
   const ipad = await row(page);

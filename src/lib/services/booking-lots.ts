@@ -30,6 +30,7 @@ import {
   type BookingLotSupplierHint,
   type Party,
   type SheetCurrency,
+  type SheetIncoterm,
   type User,
 } from "@/lib/db";
 import {
@@ -224,6 +225,22 @@ async function keepSheetFile(
   }
 }
 
+/**
+ * FOB ou EXW do book e o valor do EXW (dono, 24/11/2026): com EXW o valor é
+ * obrigatório e acima de zero; com FOB (ou sem escolha) não há valor.
+ */
+function bookIncoterm(meta: BookingLotMeta): {
+  incoterm: SheetIncoterm | null;
+  exwValue: number | null;
+} {
+  const incoterm = meta.incoterm ?? null;
+  if (incoterm !== "EXW") return { incoterm, exwValue: null };
+  const value = meta.exwValue ?? null;
+  if (value === null || !Number.isFinite(value) || value <= 0 || value > 1e9)
+    throw new BookingLotError("booking_exw_value_required");
+  return { incoterm, exwValue: value };
+}
+
 /** Até quantas planilhas formam um book (dono, 23/11/2026). */
 export const BOOKING_SHEETS_MAX = 10;
 
@@ -232,6 +249,12 @@ export interface BookingLotMeta {
   /** Nº da loja e nome do supplier (texto livre, só informativo). */
   storeNumber?: string | null;
   supplierName?: string | null;
+  /**
+   * FOB ou EXW escolhido por quem importa: vale para todos os itens, seja
+   * qual for o que a planilha trazia. Com EXW, o valor do EXW (acima de zero).
+   */
+  incoterm?: SheetIncoterm | null;
+  exwValue?: number | null;
   /** Tipo de item do book. */
   itemType?: string | null;
 }
@@ -276,6 +299,7 @@ export async function createLotFromSheet(
   } & BookingLotMeta = {},
 ): Promise<BookingLot> {
   const sources = Array.isArray(source) ? source : [source];
+  const bookTerms = bookIncoterm(options);
   if (!sources.length) throw new SheetImportError("file_required");
   if (sources.length > BOOKING_SHEETS_MAX)
     throw new BookingLotError("booking_sheets_too_many");
@@ -369,6 +393,7 @@ export async function createLotFromSheet(
         : {}),
       ...(itemType ? { itemType } : {}),
       ...(sheetFiles.length > 1 ? { sheetFiles } : {}),
+      ...(bookTerms.incoterm ? bookTerms : {}),
     }),
   );
   // Os itens de cada planilha entram depois dos da anterior.
@@ -380,6 +405,8 @@ export async function createLotFromSheet(
     ];
     await store.create("booking_items", {
       ...itemFromGroup(group),
+      // FOB/EXW escolhido na importação: troca o da planilha em todos.
+      ...(bookTerms.incoterm ? { incoterm: bookTerms.incoterm } : {}),
       position: position++,
       lotId: lot.id,
       photoDocumentId,
@@ -1236,6 +1263,9 @@ export async function setBookingLotMeta(
     storeNumber: string | null;
     supplierName: string | null;
     itemType: string | null;
+    /** Só no rascunho: troca o FOB/EXW do book e de todos os itens. */
+    incoterm?: SheetIncoterm | null;
+    exwValue?: number | null;
   },
 ): Promise<BookingLot> {
   assertBooking(user);
@@ -1246,13 +1276,29 @@ export async function setBookingLotMeta(
   const itemType = cleanItemType(meta.itemType);
   const storeNumber = clip(meta.storeNumber, 60);
   const supplierName = clip(meta.supplierName, 160);
+  // FOB/EXW: só no rascunho (muda os itens), e só quando veio no formulário.
+  const terms =
+    meta.incoterm && bookingLotEditable(lot.status) ? bookIncoterm(meta) : null;
+  const store = getStore();
   const updated = await withSchema(() =>
-    getStore().update("booking_lots", lot.id, {
+    store.update("booking_lots", lot.id, {
       storeNumber,
       supplierName,
       itemType,
+      ...(terms ?? {}),
     }),
   );
+  if (terms?.incoterm) {
+    const items = await store.list("booking_items", {
+      filter: { lotId: lot.id },
+    });
+    for (const item of items)
+      if (item.incoterm !== terms.incoterm)
+        await store.update("booking_items", item.id, {
+          incoterm: terms.incoterm,
+          updatedByUserId: user.id,
+        });
+  }
   await audit(
     user,
     "booking_lot.meta",
@@ -1264,7 +1310,7 @@ export async function setBookingLotMeta(
       supplierName: lot.supplierName ?? null,
       itemType: lot.itemType ?? null,
     },
-    { storeNumber, supplierName, itemType },
+    { storeNumber, supplierName, itemType, ...(terms ?? {}) },
   );
   return updated;
 }

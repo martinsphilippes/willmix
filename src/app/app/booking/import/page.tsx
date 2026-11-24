@@ -23,7 +23,9 @@ import { PartnerBookingLaunch } from "../_components/partner-booking";
 import {
   BOOK_COMPACT_FIELD,
   BookMetaFields,
+  bookIncotermLabels,
 } from "../_components/book-meta-fields";
+import { BookIncotermFields } from "@/components/book-incoterm-fields";
 import { bookingItemTypes } from "@/lib/services/booking-lots";
 
 /**
@@ -133,6 +135,15 @@ export default async function BookingImportPage({
                 className={BOOK_COMPACT_FIELD}
               />
             </Field>
+            {/* FOB ou EXW (#674, obrigatório na importação) numa linha
+                própria, acima da linha do desenho: o seletor estreito e,
+                com EXW, o valor ao lado; as dicas abaixo. */}
+            <BookIncotermFields
+              required
+              compact
+              fieldClassName={BOOK_COMPACT_FIELD}
+              labels={bookIncotermLabels(t)}
+            />
             {/* Moeda padrão | Nº da loja | Nome do supplier | Tipo de item
                 numa linha (desenho do dono, 24/11/2026): moeda e loja
                 estreitas, supplier e tipo dividem o resto. A troca segue a

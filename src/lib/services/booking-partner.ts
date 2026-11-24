@@ -81,6 +81,9 @@ export type PartnerBookingLot = Pick<
   /** Loja/Fábrica e Tipo de item informados na importação (dono, 23/11/2026). */
   storeNumber: string | null;
   supplierName: string | null;
+  /** FOB ou EXW escolhido na importação e o valor do EXW. */
+  incoterm: BookingLot["incoterm"];
+  exwValue: number | null;
   itemType: string | null;
   /**
    * Itens trabalhados pela Wellmix na Seleção de itens (dono, 23/11/2026):
@@ -100,6 +103,8 @@ const lotView = (lot: BookingLot): PartnerBookingLot => ({
   createdAt: lot.createdAt,
   storeNumber: lot.storeNumber ?? null,
   supplierName: lot.supplierName ?? null,
+  incoterm: lot.incoterm ?? null,
+  exwValue: lot.exwValue ?? null,
   itemType: lot.itemType ?? null,
 });
 
@@ -366,6 +371,8 @@ export async function launchPartnerBooking(
     defaultCurrency?: SheetCurrency | null;
     storeNumber?: string | null;
     supplierName?: string | null;
+    incoterm?: BookingLot["incoterm"];
+    exwValue?: number | null;
     itemType?: string | null;
   } = {},
 ): Promise<PartnerBookingLot> {
@@ -384,6 +391,8 @@ export async function launchPartnerBooking(
     defaultCurrency: options.defaultCurrency ?? null,
     storeNumber: options.storeNumber ?? null,
     supplierName: options.supplierName ?? null,
+    incoterm: options.incoterm ?? null,
+    exwValue: options.exwValue ?? null,
     itemType: options.itemType ?? null,
     partnerId: party.id,
     ownerUserId: null,

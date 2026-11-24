@@ -9,7 +9,12 @@ import {
 } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
 import { isBookingItemField, type BookingItemField } from "@/lib/booking-lots";
-import { BOOKING_LOT_STATUSES, SHEET_CURRENCIES } from "@/lib/db/schema";
+import {
+  BOOKING_LOT_STATUSES,
+  SHEET_CURRENCIES,
+  SHEET_INCOTERMS,
+} from "@/lib/db/schema";
+import { parseNumberInput } from "@/lib/number-input";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
 import { errorCode, requireUser, run, str, withQuery } from "./helpers";
@@ -55,7 +60,23 @@ function bookMeta(form: FormData) {
       itemType: str(form, "itemType"),
     });
   if (!parsed.success) throw new Error("booking_meta_required");
-  return parsed.data;
+  // FOB ou EXW: obrigatório na importação; com EXW, o valor do EXW.
+  const terms = bookTerms(form);
+  if (!terms.incoterm) throw new Error("booking_incoterm_required");
+  return { ...parsed.data, ...terms };
+}
+
+/** FOB/EXW do formulário e, com EXW, o valor digitado (acima de zero). */
+function bookTerms(form: FormData) {
+  const incoterm = z
+    .enum(SHEET_INCOTERMS)
+    .nullable()
+    .parse(str(form, "incoterm") || null);
+  if (incoterm !== "EXW") return { incoterm, exwValue: null };
+  const exwValue = parseNumberInput(str(form, "exwValue"));
+  if (exwValue === null || !Number.isFinite(exwValue) || exwValue <= 0)
+    throw new Error("booking_exw_value_required");
+  return { incoterm, exwValue };
 }
 
 /**
@@ -577,7 +598,10 @@ export async function setBookingLotMetaAction(form: FormData) {
         itemType: str(form, "itemType") || null,
       });
     const { setBookingLotMeta } = await import("@/lib/services/booking-lots");
-    await setBookingLotMeta(user, input.lotId, input);
+    await setBookingLotMeta(user, input.lotId, {
+      ...input,
+      ...bookTerms(form),
+    });
     return withQuery(back, "saved", "1");
   });
 }

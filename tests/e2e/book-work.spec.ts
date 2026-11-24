@@ -149,6 +149,10 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
     .locator("[data-booking-import-form] input[type=file]")
     .setInputFiles([sheet("w1.xlsx", [6, 7]), sheet("w2.xlsx", [8])]);
   await fillBookMeta(page, lockType);
+  // EXW no lugar do FOB da planilha: abre o valor do EXW, que fica no book.
+  await expect(page.locator("[data-book-exw-value]")).toHaveCount(0);
+  await page.locator("[data-book-incoterm]").selectOption("EXW");
+  await page.locator("[data-book-exw-value]").fill("0,35");
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   const lotPath = new URL(page.url()).pathname;
@@ -159,6 +163,16 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
     "2",
   );
   await expect(page.locator("[data-book-item-type]")).toHaveValue(lockType);
+  await expect(page.locator("[data-booking-lot-incoterm]")).toContainText(
+    "0,35",
+  );
+  for (const n of [0, 1, 2])
+    await expect(
+      page
+        .locator("tr[data-booking-item]")
+        .nth(n)
+        .locator('[data-booking-item-field$=":incoterm"] select'),
+    ).toHaveValue("EXW");
   await expect(page.locator('tr[data-booking-item-worked="no"]')).toHaveCount(
     3,
   );

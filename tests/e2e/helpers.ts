@@ -825,6 +825,8 @@ export async function fillQuoteSheet(form: Locator, productId: string) {
  * obrigatório (dono, 23 e 24/11/2026; docs/BOOKING.md, "Dinâmica dos books").
  */
 export async function fillBookMeta(page: Page, itemType = "Teste E2E") {
+  // FOB ou EXW (dono, 24/11/2026): FOB, como as planilhas dos testes.
+  await page.locator("[data-book-incoterm]").selectOption("FOB");
   await page.locator("[data-book-store-number]").fill("A 154678");
   await page.locator("[data-book-supplier-name]").fill("Supplier E2E");
   await page.locator("[data-book-item-type]").fill(itemType);

@@ -8,6 +8,19 @@ export const pt = {
   "bookWork.meta.save": "Salvar",
   "bookWork.storeNumber": "Nº da loja",
   "bookWork.supplierName": "Nome do supplier",
+  "bookWork.incoterm": "FOB ou EXW",
+  "bookWork.incotermHint":
+    "Vale para todos os itens do book, seja qual for o que a planilha traz.",
+  "bookWork.exwValue": "Valor do EXW",
+  "bookWork.exwValueHint":
+    "Quanto custa levar a mercadoria até o porto, na moeda dos preços do book.",
+  "bookWork.exwShown": "EXW · valor do EXW: {value}",
+  "bookWork.error.booking_incoterm_required": "Escolha FOB ou EXW.",
+  "bookWork.error.booking_exw_value_required":
+    "Com EXW, informe o valor do EXW (acima de zero).",
+  "bookingLots.error.booking_incoterm_required": "Escolha FOB ou EXW.",
+  "bookingLots.error.booking_exw_value_required":
+    "Com EXW, informe o valor do EXW (acima de zero).",
   "bookWork.itemType": "Tipo de item",
   "bookWork.itemTypeHint":
     "Ex.: vidro, plástico, utilidades. Use o mesmo nome dos outros books do mesmo tipo.",
@@ -80,6 +93,19 @@ export const en: typeof pt = {
   "bookWork.meta.save": "Save",
   "bookWork.storeNumber": "Store no.",
   "bookWork.supplierName": "Supplier name",
+  "bookWork.incoterm": "FOB or EXW",
+  "bookWork.incotermHint":
+    "Applies to every item of the book, whatever the spreadsheet says.",
+  "bookWork.exwValue": "EXW value",
+  "bookWork.exwValueHint":
+    "Cost of taking the goods to the port, in the currency of the book's prices.",
+  "bookWork.exwShown": "EXW · EXW value: {value}",
+  "bookWork.error.booking_incoterm_required": "Choose FOB or EXW.",
+  "bookWork.error.booking_exw_value_required":
+    "With EXW, fill in the EXW value (above zero).",
+  "bookingLots.error.booking_incoterm_required": "Choose FOB or EXW.",
+  "bookingLots.error.booking_exw_value_required":
+    "With EXW, fill in the EXW value (above zero).",
   "bookWork.itemType": "Item type",
   "bookWork.itemTypeHint":
     "E.g. glass, plastic, housewares. Use the same name as the other books of the same type.",
@@ -152,6 +178,17 @@ export const zh: typeof pt = {
   "bookWork.meta.save": "保存",
   "bookWork.storeNumber": "店铺号",
   "bookWork.supplierName": "供应商名称",
+  "bookWork.incoterm": "FOB 或 EXW",
+  "bookWork.incotermHint": "适用于 Book 的所有产品，无论表格中填写的是什么。",
+  "bookWork.exwValue": "EXW 费用",
+  "bookWork.exwValueHint": "将货物运至港口的费用，币种与 Book 价格相同。",
+  "bookWork.exwShown": "EXW · EXW 费用：{value}",
+  "bookWork.error.booking_incoterm_required": "请选择 FOB 或 EXW。",
+  "bookWork.error.booking_exw_value_required":
+    "选择 EXW 时，请填写 EXW 费用（大于零）。",
+  "bookingLots.error.booking_incoterm_required": "请选择 FOB 或 EXW。",
+  "bookingLots.error.booking_exw_value_required":
+    "选择 EXW 时，请填写 EXW 费用（大于零）。",
   "bookWork.itemType": "产品类型",
   "bookWork.itemTypeHint":
     "例如：玻璃、塑料、日用品。同类型的 Book 请使用相同的名称。",
