@@ -1,17 +1,9 @@
 import type { Translate } from "@/i18n";
-import { orderMilestoneText, stepOfItem } from "@/lib/milestones";
-import { requirementLabel } from "@/i18n";
-import type { DictionaryKey } from "@/i18n/dictionaries";
+import { orderMilestoneText } from "@/lib/milestones";
 import { getStore } from "@/lib/db";
-import type { FlowEntity, FlowEntityItem } from "@/lib/services/flow";
-import {
-  blockLabelKey,
-  orderInStepHref,
-  stepId,
-  stepLabelKey,
-  type FlowBlock,
-  type FlowStep,
-} from "@/lib/flow";
+import type { FlowEntity } from "@/lib/services/flow";
+import { orderInStepHref, stepId, type FlowStep } from "@/lib/flow";
+import { elsewhereOf, openSummary } from "@/lib/flow-open-summary";
 import { Badge, Empty, Table, Td, TextLink, Th, rowClass } from "./ui";
 import { loadOrderCells } from "@/lib/services/order-cells";
 import {
@@ -21,6 +13,7 @@ import {
   orderHeadText,
 } from "./order-standard-cells";
 import { partyOfRole, turnTone, turnWaitingKey } from "@/lib/turn";
+import { ClampText } from "./clamp-text";
 
 /*
  * Aba "Todos no passo" (dono, 14/11/2026; docs/FLOW_MENU.md): todos os
@@ -30,33 +23,6 @@ import { partyOfRole, turnTone, turnWaitingKey } from "@/lib/turn";
  */
 
 const DAY = 86_400_000;
-
-/**
- * Passo do item quando ele é de outro passo (dono, 24/11/2026, opção 1): o
- * cadastro do produto do Pedido novo (Cadastros → Produtos) aparece também
- * em Pedido > Pedidos; nulo quando o item é do passo da lista.
- */
-function elsewhereOf(item: FlowEntityItem, here: string): string | null {
-  if (item.kind !== "requirement") return null;
-  const at = stepOfItem(item.requirement);
-  return at && at !== here ? at : null;
-}
-
-function itemLabel(item: FlowEntityItem, t: Translate, here: string): string {
-  if (item.kind === "requirement") {
-    const label = requirementLabel(t, item.requirement);
-    const at = elsewhereOf(item, here);
-    if (!at) return label;
-    const [block, key] = at.split("/");
-    return t("flow.all.elsewhere", {
-      where: `${t(blockLabelKey(block as FlowBlock))} → ${t(stepLabelKey({ block: block as FlowBlock, key }))}`,
-      item: label,
-    });
-  }
-  if (item.kind === "import")
-    return t(`importFlow.step.${item.key}` as DictionaryKey);
-  return item.title ? t(item.title.detail, item.title.values) : "—";
-}
 
 export async function FlowAll({
   step,
@@ -145,9 +111,25 @@ export async function FlowAll({
             const days = Number.isFinite(since)
               ? Math.max(0, Math.floor((now.getTime() - since) / DAY))
               : null;
-            const labels = [
-              ...new Set(e.items.map((i) => itemLabel(i, t, here))),
-            ];
+            // Linha fina (dono, 24/11/2026): o aberto numa linha só, com o
+            // "ver mais" (e os produtos ao abrir); o fornecedor também.
+            const open = openSummary(e.items, t, here);
+            const clamp = (text: string, width: string, detail?: string) => (
+              <ClampText
+                text={text}
+                lines={1}
+                more={t("requestSheet.more")}
+                less={t("requestSheet.less")}
+                className={width}
+                detail={detail || null}
+              />
+            );
+            const supplierName = nameOf(e.order.supplierId);
+            const supplierCell =
+              supplierName === "—" ? "—" : clamp(supplierName, "max-w-[11rem]");
+            const openCell = open.text
+              ? clamp(open.text, "max-w-[18rem]", open.products.join("; "))
+              : "—";
             // Tudo o que falta é de outro passo (o cadastro do Pedido novo):
             // "Ver" abre o pedido, onde a pendência dele aponta; a tela do
             // passo só mostraria os itens deste passo.
@@ -180,6 +162,7 @@ export async function FlowAll({
                     t={t}
                     cells={cell}
                     createdAt={e.order.createdAt}
+                    compact
                   />
                   {/* Status: de quem é a vez no que está aberto no passo. */}
                   <Td className="whitespace-nowrap">
@@ -200,12 +183,13 @@ export async function FlowAll({
                   <Td className={num}>{cell?.items ?? "—"}</Td>
                   <Td className={num}>{cell?.deliveries ?? "—"}</Td>
                   <OrderTotalsTds t={t} cells={cell} seeValue={seeValue} />
-                  <Td>{nameOf(e.order.supplierId)}</Td>
+                  <Td>{supplierCell}</Td>
                   <Td
                     className="text-xs text-zinc-600"
                     data-flow-all-elsewhere={elsewhere ? "" : undefined}
+                    data-flow-all-open=""
                   >
-                    {labels.join(", ")}
+                    {openCell}
                   </Td>
                   <Td className="whitespace-nowrap">
                     {days === null ? "—" : t("flow.cases.days", { n: days })}
@@ -227,15 +211,16 @@ export async function FlowAll({
                 <Td className="whitespace-nowrap font-medium text-zinc-900">
                   #{e.order.number}
                 </Td>
-                {partner ? null : <Td>{nameOf(e.order.supplierId)}</Td>}
+                {partner ? null : <Td>{supplierCell}</Td>}
                 <Td className="whitespace-nowrap">
                   {orderMilestoneText(t, e.order.status)}
                 </Td>
                 <Td
                   className="text-xs text-zinc-600"
                   data-flow-all-elsewhere={elsewhere ? "" : undefined}
+                  data-flow-all-open=""
                 >
-                  {labels.join(", ")}
+                  {openCell}
                 </Td>
                 <Td className="whitespace-nowrap">
                   {days === null ? "—" : t("flow.cases.days", { n: days })}

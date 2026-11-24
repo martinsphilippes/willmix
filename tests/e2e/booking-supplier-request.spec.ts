@@ -830,6 +830,19 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     "href",
     `/app/orders/${orderId}`,
   );
+  // Linha fina (dono, 24/11/2026): o aberto numa linha só, sem o nome do
+  // produto; o "ver mais" mostra o produto e o "ver menos" recolhe.
+  const openCell = stepRow.locator("[data-flow-all-open]");
+  await expect(openCell.locator('[data-clamp-lines="1"]')).toBeVisible();
+  const rowBox = await stepRow.boundingBox();
+  expect(rowBox?.height ?? 999).toBeLessThan(72);
+  await expect(openCell.locator("[data-clamp-detail]")).toBeHidden();
+  await openCell.locator("[data-clamp-toggle]").click();
+  await expect(openCell.locator("[data-clamp-detail]")).toContainText(
+    `Copo de vidro ${TAG}`,
+  );
+  await openCell.locator("[data-clamp-toggle]").click();
+  await expect(openCell.locator("[data-clamp-detail]")).toBeHidden();
 
   // 7. Visão do fornecedor (dono, 13/11/2026): na Preparação, só a faca, a
   // foto em alta e o prazo de cada produto, com a ajuda falando delas; o

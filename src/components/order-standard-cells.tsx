@@ -3,6 +3,7 @@ import type { Translate } from "@/i18n";
 import type { OrderColumn } from "@/lib/order-table";
 import type { OrderCells } from "@/lib/services/order-cells";
 import { Td, Th, formatDate } from "@/components/ui";
+import { ClampText } from "@/components/clamp-text";
 
 /*
  * Pedaços da tabela padrão de pedidos (dono, 22/11/2026;
@@ -69,13 +70,31 @@ export function OrderTermsTds({
   t,
   cells,
   createdAt,
+  compact = false,
 }: {
   t: Translate;
   cells: OrderCells | null | undefined;
   /** Sem solicitação ligada: o dia em que a própria linha nasceu. */
   createdAt: string | null;
+  /**
+   * Linha fina (dono, 24/11/2026; "Todos no passo"): forma de pagamento,
+   * grupo econômico e cliente numa linha só, com "ver mais" no que não cabe.
+   */
+  compact?: boolean;
 }) {
   const c = cells ?? null;
+  const text = (value: string | null | undefined) =>
+    value && compact ? (
+      <ClampText
+        text={value}
+        lines={1}
+        more={t("requestSheet.more")}
+        less={t("requestSheet.less")}
+        className="max-w-[11rem]"
+      />
+    ) : (
+      (value ?? "—")
+    );
   return (
     <>
       <Td
@@ -90,7 +109,7 @@ export function OrderTermsTds({
       <Td className={num} data-order-col="paymentTerm">
         {c?.terms.installments ?? "—"}
       </Td>
-      <Td data-order-col="paymentMethod">{c?.terms.paymentName ?? "—"}</Td>
+      <Td data-order-col="paymentMethod">{text(c?.terms.paymentName)}</Td>
       <Td className="whitespace-nowrap" data-order-col="billing">
         {c?.terms.billing ? t(`orderTable.billing.${c.terms.billing}`) : "—"}
       </Td>
@@ -99,11 +118,11 @@ export function OrderTermsTds({
           ? t(`orderTerms.tier.${c.terms.vip}` as DictionaryKey)
           : "—"}
       </Td>
-      <Td data-order-col="group">{c?.group ?? "—"}</Td>
+      <Td data-order-col="group">{text(c?.group)}</Td>
       <Td className={num} data-order-col="customerCode">
         {c?.customerCode ?? "—"}
       </Td>
-      <Td data-order-col="customerName">{c?.customerName ?? "—"}</Td>
+      <Td data-order-col="customerName">{text(c?.customerName)}</Td>
     </>
   );
 }
