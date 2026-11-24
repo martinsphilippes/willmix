@@ -1,18 +1,17 @@
+import type { ReactNode } from "react";
 import type { Translate } from "@/i18n";
 import { Alert, Badge } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
-import {
-  confirmBookingManufacturerAction,
-  removeBookingItemAction,
-} from "../../actions/booking-lots";
+import { removeBookingItemAction } from "../../actions/booking-lots";
 
 /*
- * Fabricante (dono, 24/11/2026; docs/BOOKING.md, "Fábrica, Fornecedor e
- * Fabricante"): a coluna repete em todas as linhas a Fábrica do book e
- * compara com o fabricante que a planilha traz em cada uma. Linha diferente
- * fica marcada em vermelho, e o book não é enviado nem fechado até ela ser
- * removida ou alguém confirmar que a planilha estava errada. As duas telas
- * (Wellmix e parceiro) usam os mesmos componentes.
+ * Fabricante (dono, 24/11/2026; docs/BOOKING.md, "Supplier, Fábrica e
+ * Fabricante"): a coluna repete em todas as linhas o nº da loja digitado na
+ * importação e compara com o nº da loja que a planilha traz em cada uma.
+ * Célula diferente fica marcada em vermelho, e o book não é enviado nem
+ * fechado até a linha ser removida; a outra saída é cancelar a importação
+ * para refazer. As duas telas (Wellmix e parceiro) usam os mesmos
+ * componentes.
  */
 
 /** A célula Fabricante de uma linha. */
@@ -21,17 +20,17 @@ export function ManufacturerCell({
   lotId,
   itemId,
   manufacturer,
-  sheetSupplier,
+  sheetStore,
   mismatch,
   canEdit,
 }: {
   t: Translate;
   lotId: string;
   itemId: string;
-  /** A Fábrica do book. */
+  /** O nº da loja digitado na importação (o Fabricante do book). */
   manufacturer: string | null;
-  /** Como a planilha escreveu nesta linha. */
-  sheetSupplier: string | null;
+  /** O nº da loja que a planilha traz nesta linha. */
+  sheetStore: string | null;
   mismatch: boolean;
   /** Rascunho (Wellmix) ou em preenchimento (parceiro): dá para resolver. */
   canEdit: boolean;
@@ -47,36 +46,20 @@ export function ManufacturerCell({
       {mismatch ? (
         <>
           <Badge tone="danger">
-            {t("bookWork.manufacturer.sheet", { name: sheetSupplier ?? "" })}
+            {t("bookWork.manufacturer.sheet", { name: sheetStore ?? "" })}
           </Badge>
           {canEdit ? (
-            <span className="flex flex-wrap gap-1">
-              <form action={confirmBookingManufacturerAction}>
-                <input type="hidden" name="lotId" value={lotId} />
-                <input type="hidden" name="itemId" value={itemId} />
-                <SubmitButton
-                  variant="secondary"
-                  confirmText={t("bookWork.manufacturer.confirmAsk", {
-                    sheet: sheetSupplier ?? "",
-                    name: manufacturer ?? "",
-                  })}
-                  data-book-manufacturer-confirm={itemId}
-                >
-                  {t("bookWork.manufacturer.confirm")}
-                </SubmitButton>
-              </form>
-              <form action={removeBookingItemAction}>
-                <input type="hidden" name="lotId" value={lotId} />
-                <input type="hidden" name="itemId" value={itemId} />
-                <SubmitButton
-                  variant="secondary"
-                  confirmText={t("bookWork.manufacturer.removeAsk")}
-                  data-book-manufacturer-remove={itemId}
-                >
-                  {t("bookWork.manufacturer.remove")}
-                </SubmitButton>
-              </form>
-            </span>
+            <form action={removeBookingItemAction}>
+              <input type="hidden" name="lotId" value={lotId} />
+              <input type="hidden" name="itemId" value={itemId} />
+              <SubmitButton
+                variant="secondary"
+                confirmText={t("bookWork.manufacturer.removeAsk")}
+                data-book-manufacturer-remove={itemId}
+              >
+                {t("bookWork.manufacturer.remove")}
+              </SubmitButton>
+            </form>
           ) : null}
         </>
       ) : null}
@@ -84,19 +67,21 @@ export function ManufacturerCell({
   );
 }
 
-/** O aviso acima da tabela: quantas linhas divergem e "confirmar todas". */
+/**
+ * O aviso acima da tabela: quantas linhas divergem. A saída é remover as
+ * linhas (na célula) ou cancelar a importação para refazer (`cancel`, o
+ * botão de quem chama: a Wellmix cancela o book; o parceiro descarta).
+ */
 export function ManufacturerAlert({
   t,
-  lotId,
   count,
   manufacturer,
-  canEdit,
+  cancel,
 }: {
   t: Translate;
-  lotId: string;
   count: number;
   manufacturer: string | null;
-  canEdit: boolean;
+  cancel?: ReactNode;
 }) {
   if (!count) return null;
   return (
@@ -108,42 +93,7 @@ export function ManufacturerAlert({
             name: manufacturer ?? "—",
           })}
         </span>
-        {canEdit ? (
-          <form action={confirmBookingManufacturerAction} className="mt-2">
-            <input type="hidden" name="lotId" value={lotId} />
-            <SubmitButton
-              variant="secondary"
-              confirmText={t("bookWork.manufacturer.confirmAllAsk", {
-                n: count,
-                name: manufacturer ?? "",
-              })}
-              data-book-manufacturer-confirm-all
-            >
-              {t("bookWork.manufacturer.confirmAll")}
-            </SubmitButton>
-          </form>
-        ) : null}
-      </Alert>
-    </div>
-  );
-}
-
-/** Nº da loja digitado diferente do da planilha: só avisa. */
-export function StoreNumberAlert({
-  t,
-  typed,
-  sheet,
-}: {
-  t: Translate;
-  typed: string | null;
-  /** O da planilha, quando diferente do digitado. */
-  sheet: string | null;
-}) {
-  if (!sheet) return null;
-  return (
-    <div className="mb-3" data-book-store-mismatch>
-      <Alert tone="warning">
-        {t("bookWork.store.mismatch", { typed: typed ?? "", sheet })}
+        {cancel ? <span className="mt-2 block">{cancel}</span> : null}
       </Alert>
     </div>
   );

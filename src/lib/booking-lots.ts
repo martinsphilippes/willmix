@@ -657,44 +657,44 @@ export function bookingRecipientId(
 
 /*
  * Dono, 24/11/2026 (docs/BOOKING.md, "Fábrica, Fornecedor e Fabricante"): o
- * que a planilha chama de supplier é a Fábrica do book (a do cadastro, com o
- * nº da loja; enquanto não há cadastro, a que a planilha traz). A coluna
- * Fabricante repete esse nome em todas as linhas e é comparada com o que a
- * planilha traz em cada uma. Um book tem itens de um fabricante só. O
- * Supplier digitado na importação (`supplierName`) é o Fornecedor, o dono do
- * book: não entra nesta conta (correção do dono, 24/11/2026).
+ * Fabricante é identificado pelo nº da loja. Quem importa digita o nº da
+ * loja; a coluna Fabricante repete esse número em todas as linhas e compara
+ * com o nº da loja que a planilha traz em cada uma. Um book tem itens de um
+ * fabricante só: linha divergente é removida, ou a importação é cancelada
+ * para refazer. O Supplier digitado (`supplierName`) é o Fornecedor, o dono
+ * do book: não entra nesta conta.
  */
 
 /**
- * O Fabricante do book: a Fábrica do cadastro; sem ela, o nome mais
- * frequente da planilha (a Fábrica ainda sem cadastro).
+ * O Fabricante do book (dono, 24/11/2026): o nº da loja digitado na
+ * importação; sem ele (books antigos), o nº da loja mais frequente da
+ * planilha. É o que a coluna Fabricante repete em todas as linhas.
  */
 export function bookManufacturer(
-  lot: Pick<BookingLot, "supplierHint">,
-  factoryName: string | null | undefined,
+  lot: Pick<BookingLot, "supplierHint"> & { storeNumber?: string | null },
 ): string | null {
   const clean = (v: string | null | undefined) =>
     (v ?? "").replace(/\s+/g, " ").trim() || null;
-  return clean(factoryName) ?? clean(lot.supplierHint?.name);
+  return clean(lot.storeNumber) ?? clean(lot.supplierHint?.store);
 }
 
 type ManufacturerItem = {
-  sheetSupplier?: string | null;
+  sheetStore?: string | null;
   manufacturerOkAt?: string | null;
 };
 
 /**
- * A linha diverge: a planilha traz outro fabricante e ninguém confirmou que
- * ela estava errada. Sem fabricante na linha (ou no book), não há o que
- * comparar. Nomes iguais sem pontuação nem "Co., Ltd." contam como o mesmo.
+ * A linha diverge: a planilha traz outro nº de loja nesta linha. Sem loja na
+ * linha (ou no book), não há o que comparar. Letras e números iguais, sem
+ * espaços nem pontuação, contam como a mesma loja ("A 154678" = "a-154678").
  */
 export function manufacturerMismatch(
   item: ManufacturerItem,
   manufacturer: string | null,
 ): boolean {
   if (item.manufacturerOkAt) return false;
-  const sheet = supplierKey(item.sheetSupplier);
-  const book = supplierKey(manufacturer);
+  const sheet = storeKey(item.sheetStore);
+  const book = storeKey(manufacturer);
   return !!sheet && !!book && sheet !== book;
 }
 

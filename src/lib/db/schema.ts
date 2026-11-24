@@ -3581,6 +3581,12 @@ export interface BookingItem extends BaseRow {
    */
   refusedAt?: string | null;
   refusedByUserId?: string | null;
+  /**
+   * Nº da loja como a planilha escreveu nesta linha (coluna SUPPLIER STORE
+   * NO; dono, 24/11/2026): é o que a coluna Fabricante compara com o nº da
+   * loja digitado na importação. Antigos: nulo.
+   */
+  sheetStore?: string | null;
 }
 
 /** Cópia do item do booking no momento da solicitação (o que o fornecedor vê). */
@@ -6833,6 +6839,7 @@ export const TABLES: Record<TableName, TableDef> = {
       manufacturerOkByUserId: id(false),
       refusedAt: datetime(),
       refusedByUserId: id(false),
+      sheetStore: str(60),
     },
     indexes: [
       { key: "by_lot", type: "key", columns: ["lotId"] },

@@ -162,6 +162,8 @@ export function itemFromGroup(
     // Fabricante como a planilha escreveu nesta linha (comparado com a
     // Fábrica do book).
     sheetSupplier: asText(r.supplierName, 160),
+    // Nº da loja desta linha: o que a coluna Fabricante compara.
+    sheetStore: asText(r.supplierStore, 60),
     extras:
       group.extras && Object.keys(group.extras).length ? group.extras : null,
   };
@@ -1255,8 +1257,8 @@ export async function setBookingLotMeta(
   user: User,
   lotId: string,
   meta: {
-    storeNumber: string | null;
-    supplierName: string | null;
+    storeNumber?: string | null;
+    supplierName?: string | null;
     itemType: string | null;
     /** Só no rascunho: troca o FOB/EXW do book e de todos os itens. */
     incoterm?: SheetIncoterm | null;
@@ -1269,8 +1271,16 @@ export async function setBookingLotMeta(
   if (lot.status === "cancelled")
     throw new BookingLotError("booking_lot_locked");
   const itemType = cleanItemType(meta.itemType);
-  const storeNumber = clip(meta.storeNumber, 60);
-  const supplierName = clip(meta.supplierName, 160);
+  // Nº da loja e Supplier: só mudam quando vêm no pedido (a tela do book
+  // não os edita mais; dono, 24/11/2026).
+  const storeNumber =
+    meta.storeNumber === undefined
+      ? (lot.storeNumber ?? null)
+      : clip(meta.storeNumber, 60);
+  const supplierName =
+    meta.supplierName === undefined
+      ? (lot.supplierName ?? null)
+      : clip(meta.supplierName, 160);
   // FOB/EXW: só no rascunho (muda os itens), e só quando veio no formulário.
   const terms =
     meta.incoterm && bookingLotEditable(lot.status) ? bookIncoterm(meta) : null;
@@ -1534,12 +1544,9 @@ export async function myBookingLocks(user: User): Promise<
 /* Fabricante: a Fábrica do book × a planilha (dono, 24/11/2026)             */
 /* ------------------------------------------------------------------------ */
 
-/** O Fabricante do book (a Fábrica do cadastro; sem ela, a da planilha). */
+/** O Fabricante do book: o nº da loja digitado (sem ele, o da planilha). */
 export async function lotManufacturer(lot: BookingLot): Promise<string | null> {
-  const factory = lot.supplierId
-    ? await getStore().get("parties", lot.supplierId)
-    : null;
-  return bookManufacturer(lot, factory?.name ?? null);
+  return bookManufacturer(lot);
 }
 
 /** Os itens cuja linha da planilha traz outro fabricante, ainda sem confirmação. */
