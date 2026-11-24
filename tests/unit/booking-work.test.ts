@@ -403,6 +403,14 @@ describe("itens trabalhados", () => {
       true,
       false,
     ]);
+    // Para o fornecedor: selecionado é só o escolhido (o ganhador do grupo
+    // e o item da solicitação); a alternativa comparada foi recusada.
+    expect(detail.items.map((i) => !!i.refused)).toEqual([
+      false,
+      true,
+      false,
+      false,
+    ]);
   });
 });
 
