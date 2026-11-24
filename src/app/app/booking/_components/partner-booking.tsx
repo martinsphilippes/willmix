@@ -289,7 +289,12 @@ export async function PartnerBookingList({
                   </Td>
                   <Td className="min-w-48">{lot.fileName}</Td>
                   <Td>
-                    {[lot.storeNumber, lot.supplierName, lot.itemType]
+                    {[
+                      lot.storeNumber,
+                      lot.supplierName,
+                      lot.itemType,
+                      lot.incoterm,
+                    ]
                       .filter(Boolean)
                       .join(" · ") || "—"}
                   </Td>
