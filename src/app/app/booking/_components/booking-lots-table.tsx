@@ -284,12 +284,18 @@ export function BookingLotsTable({
           ] as const
         ).filter(([k]) => row[k] > 0);
         if (!parts.length)
-          return <span className="text-zinc-500">{labels.signalsNone}</span>;
+          return (
+            <span className="whitespace-nowrap text-zinc-500">
+              {labels.signalsNone}
+            </span>
+          );
+        // Os selos lado a lado, cada um numa linha ("1 Falta dado" quebrava
+        // em duas e esticava a linha; dono, 24/11/2026).
         return (
-          <span className="flex flex-wrap gap-1">
+          <span className="flex gap-1 whitespace-nowrap">
             {parts.map(([k, tone]) => (
               <span key={k} title={labels.signal[k]}>
-                <Badge tone={tone}>
+                <Badge tone={tone} className="whitespace-nowrap">
                   {row[k]} {labels.signal[k]}
                 </Badge>
               </span>

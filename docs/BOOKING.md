@@ -103,6 +103,7 @@ Pedido do dono, com o print da lista em que "Loja / Supplier" ("ASBA · NINGBO H
   - "Com quem está": o nome e o "Travar para mim" ou "Liberar", lado a lado;
   - "Há quanto tempo": o tempo e a data e a hora do prazo na mesma linha;
   - Trabalhados: o percentual e o "x de y";
+  - Previsão: os selos lado a lado, cada um numa linha ("1 Falta dado" quebrava em duas);
   - as datas.
 - A busca e a ordem da tabela continuam lendo o texto inteiro.
 
