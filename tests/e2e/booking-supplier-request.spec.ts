@@ -642,6 +642,18 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     page.locator("[data-info-tip]").filter({ hasText: "supplier.a@china.com" }),
   ).toBeVisible();
   await page.keyboard.press("Escape");
+  // Aba (dono, 24/11/2026): aprovada com a amostra pendente continua em
+  // "Em andamento", com a ação, até a amostra ser aprovada.
+  const listRowSelector = `[data-supplier-request-row="${requestUrl.split("/").pop()}"]`;
+  await page.goto("/app/supplier-requests");
+  // Pela marcação, sem o texto (o nome da ação pode mudar; PR #677).
+  await expect(
+    page.locator(
+      `${listRowSelector} [data-supplier-request-turn="sampling_send"]`,
+    ),
+  ).toBeVisible();
+  await page.goto("/app/supplier-requests?tab=closed");
+  await expect(page.locator(listRowSelector)).toHaveCount(0);
 
   // 4.1 Amostragem: o responsável sobe uma foto da amostra e envia.
   await login(page, "supplier.a@china.com");

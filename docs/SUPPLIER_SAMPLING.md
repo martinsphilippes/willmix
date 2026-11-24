@@ -29,6 +29,8 @@ Só o responsável envia (a Wellmix, mesmo admin, não envia por ele: `sampling_
 
 Situações: `pending` (esperando a amostra) → `submitted` (esperando a validação) → `approved` ou `rejected` (volta a esperar a amostra, rodada + 1).
 
+**Aba da lista de cotações** (dono, 24/11/2026): a solicitação aprovada com a amostra ainda não aprovada (pendente, enviada ou reprovada) fica em **Em andamento**, não em Encerradas, até a amostra ser aprovada; a dispensada conta como aprovada, e a que já está num pedido de compra, como encerrada (`requestClosed`, `src/lib/supplier-request-closing.ts`).
+
 ## Banco
 
 `supplier_requests.sampling` (JSON grande, opcional): `status`, `round`, `openedAt`, `files` (`documentId`, `fileName`, `mime`, `kind` photo/video, `round`, `at`, `byUserId`), `history` (`open`/`submit`/`approve`/`reject`, com lado, rodada, texto e nº de arquivos), `submittedAt`, `reviewedAt`, `reviewedByUserId`, `lateNotifiedAt`. Auditoria: `sampling.file`, `sampling.file_remove`, `sampling.submit`, `sampling.approve`, `sampling.reject`.
