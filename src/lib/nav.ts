@@ -323,8 +323,7 @@ export function navFor(
       // Blocos na ordem do mapa do processo (docs/FLOW_MENU.md): cada passo
       // com o contador do que espera ação do login.
       // Cotação (antes "Produto novo"; dono, 22/11/2026): das entradas (Book,
-      // Reposição e Encomendas) à cotação com os fornecedores. O Superplan
-      // foi para Configurações (dono, 14/11/2026).
+      // Reposição e Encomendas) à cotação com os fornecedores.
       ...group("nav.group.newProduct", "cart", quotationEntries(has)),
       // Pedido: do pedido de compra ao contrato assinado.
       ...group("nav.group.order", "box", pick(has, flowEntries("order"))),

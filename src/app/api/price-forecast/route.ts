@@ -50,7 +50,7 @@ const QUERY = z.object({
 
 /**
  * Previsão de preço ao cliente final de um produto (Nova solicitação;
- * src/lib/integrations/price-forecast.ts, SuperPlan do Sankhya). Só a
+ * src/lib/integrations/price-forecast.ts, API de preço do Sankhya). Só a
  * Wellmix. Sem `target`: os preços de venda previstos; com `target` (só com
  * "Ver valores e margem"): o preço máximo de compra para o preço de venda
  * desejado. Sem o Sankhya configurado: `{ mode: "manual" }` (nenhum preço).

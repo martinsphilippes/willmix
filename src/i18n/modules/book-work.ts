@@ -61,6 +61,11 @@ export const pt = {
     "Este item já foi trabalhado na seleção e não pode ser removido.",
   "bookingLots.error.booking_item_in_use":
     "Este item já foi trabalhado na seleção e não pode ser removido.",
+  "bookWork.template": "Baixar o modelo de book",
+  "bookWork.unlock.rule":
+    "Quem travou não libera: só o gestor. A trava sai sozinha quando todos os itens do book estiverem trabalhados.",
+  "bookWork.error.booking_lock_release_manager":
+    "Só o gestor de quem travou (ou quem supervisiona os books) libera a trava. Ela sai sozinha quando todos os itens estiverem trabalhados.",
   "bookWork.itemType": "Tipo de item",
   "bookWork.itemTypeHint":
     "Ex.: vidro, plástico, utilidades. Use o mesmo nome dos outros books do mesmo tipo.",
@@ -87,7 +92,7 @@ export const pt = {
   "bookWork.lock.title": "Com quem está",
   "bookWork.lock.free": "Livre",
   "bookWork.lock.body":
-    "Trave o book para trabalhar nele: os outros analistas deixam de vê-lo e a sua lista passa a mostrar só o que está com você. Prazo: {h} h por book.",
+    "Trave o book para trabalhar nele: os outros analistas deixam de vê-lo e a sua lista passa a mostrar só o que está com você. Quem libera é o seu gestor; a trava sai sozinha quando todos os itens estiverem trabalhados. Prazo: {h} h por book.",
   "bookWork.lock.heldBy": "Com {name} há {time}.",
   "bookWork.lock.byType": "Travado pelo tipo de item: {type}.",
   "bookWork.lock.byTypeShort": "pelo tipo",
@@ -99,7 +104,7 @@ export const pt = {
   "bookWork.sla.late": "Atrasado (prazo de {h} h)",
   "bookWork.bar.title": "Travar books",
   "bookWork.bar.body":
-    "Trave um book (na linha dele) ou todos os de um tipo de item. O que você trava some da lista dos outros analistas, e a sua lista mostra só o que está com você. Prazo: {h} h por book.",
+    "Trave um book (na linha dele, depois de fechado) ou todos os de um tipo de item. O que você trava some da lista dos outros analistas, e a sua lista mostra só o que está com você. Quem libera é o seu gestor; a trava sai sozinha quando todos os itens do book estiverem trabalhados. Prazo: {h} h por book.",
   "bookWork.bar.supervisor":
     "Você vê todos os books, com quem está cada um e há quanto tempo. Prazo: {h} h por book. Pode liberar a trava de qualquer pessoa.",
   "bookWork.bar.mineLot": "Book nº {n}",
@@ -185,6 +190,11 @@ export const en: typeof pt = {
     "This item has already been worked in the selection and cannot be removed.",
   "bookingLots.error.booking_item_in_use":
     "This item has already been worked in the selection and cannot be removed.",
+  "bookWork.template": "Download the book template",
+  "bookWork.unlock.rule":
+    "Whoever locked it cannot release it: only their manager. The lock comes off by itself when every item of the book has been worked.",
+  "bookWork.error.booking_lock_release_manager":
+    "Only the manager of whoever locked it (or whoever supervises the books) can release the lock. It comes off by itself when every item has been worked.",
   "bookWork.itemType": "Item type",
   "bookWork.itemTypeHint":
     "E.g. glass, plastic, housewares. Use the same name as the other books of the same type.",
@@ -211,7 +221,7 @@ export const en: typeof pt = {
   "bookWork.lock.title": "Who has it",
   "bookWork.lock.free": "Free",
   "bookWork.lock.body":
-    "Lock the book to work on it: other analysts stop seeing it and your list shows only what you hold. Deadline: {h} h per book.",
+    "Lock the book to work on it: other analysts stop seeing it and your list shows only what you hold. Your manager releases it; the lock comes off by itself when every item has been worked. Deadline: {h} h per book.",
   "bookWork.lock.heldBy": "With {name} for {time}.",
   "bookWork.lock.byType": "Locked by item type: {type}.",
   "bookWork.lock.byTypeShort": "by type",
@@ -223,7 +233,7 @@ export const en: typeof pt = {
   "bookWork.sla.late": "Late ({h} h deadline)",
   "bookWork.bar.title": "Lock books",
   "bookWork.bar.body":
-    "Lock one book (on its row) or every book of an item type. What you lock leaves the other analysts' lists, and your list shows only what you hold. Deadline: {h} h per book.",
+    "Lock one book (on its row, once closed) or every book of an item type. What you lock leaves the other analysts' lists, and your list shows only what you hold. Your manager releases it; the lock comes off by itself when every item of the book has been worked. Deadline: {h} h per book.",
   "bookWork.bar.supervisor":
     "You see every book, who has each one and for how long. Deadline: {h} h per book. You can release anyone's lock.",
   "bookWork.bar.mineLot": "Book no. {n}",
@@ -301,6 +311,11 @@ export const zh: typeof pt = {
     "有些行在表格中写的是其他厂家。请删除这些行，或确认表格有误。",
   "bookWork.error.booking_item_in_use": "该产品已在选品中处理，无法删除。",
   "bookingLots.error.booking_item_in_use": "该产品已在选品中处理，无法删除。",
+  "bookWork.template": "下载 Book 模板",
+  "bookWork.unlock.rule":
+    "锁定者本人不能释放，只有其主管可以。Book 的所有产品处理完后，锁定会自动解除。",
+  "bookWork.error.booking_lock_release_manager":
+    "只有锁定者的主管（或 Book 主管）可以释放锁定。所有产品处理完后，锁定会自动解除。",
   "bookWork.itemType": "产品类型",
   "bookWork.itemTypeHint":
     "例如：玻璃、塑料、日用品。同类型的 Book 请使用相同的名称。",
@@ -326,7 +341,7 @@ export const zh: typeof pt = {
   "bookWork.lock.title": "由谁处理",
   "bookWork.lock.free": "空闲",
   "bookWork.lock.body":
-    "锁定 Book 后再处理：其他分析员将看不到它，您的列表只显示由您处理的 Book。期限：每个 Book {h} 小时。",
+    "锁定 Book 后再处理：其他分析员将看不到它，您的列表只显示由您处理的 Book。只有您的主管可以释放；所有产品处理完后锁定自动解除。期限：每个 Book {h} 小时。",
   "bookWork.lock.heldBy": "由 {name} 处理，已 {time}。",
   "bookWork.lock.byType": "按产品类型锁定：{type}。",
   "bookWork.lock.byTypeShort": "按类型",
@@ -338,7 +353,7 @@ export const zh: typeof pt = {
   "bookWork.sla.late": "超时（期限 {h} 小时）",
   "bookWork.bar.title": "锁定 Book",
   "bookWork.bar.body":
-    "可锁定单个 Book（在其所在行）或某一产品类型的全部 Book。您锁定的 Book 会从其他分析员的列表中消失，您的列表只显示由您处理的 Book。期限：每个 Book {h} 小时。",
+    "可锁定单个 Book（关闭后，在其所在行）或某一产品类型的全部 Book。您锁定的 Book 会从其他分析员的列表中消失，您的列表只显示由您处理的 Book。只有您的主管可以释放；所有产品处理完后锁定自动解除。期限：每个 Book {h} 小时。",
   "bookWork.bar.supervisor":
     "您可以看到所有 Book、各自由谁处理以及已处理多久。期限：每个 Book {h} 小时。您可以释放任何人的锁定。",
   "bookWork.bar.mineLot": "Book 编号 {n}",

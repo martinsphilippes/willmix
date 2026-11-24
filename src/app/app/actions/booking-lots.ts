@@ -22,7 +22,7 @@ import { errorCode, requireUser, run, str, withQuery } from "./helpers";
 /*
  * Booking por planilha (docs/BOOKING.md, "Booking por planilha"): subir a
  * planilha, ajustar fornecedor, data e itens no rascunho, fechar (com a
- * análise do Superplan em todos os itens) e mudar o status. Só a Wellmix com
+ * previsão de preço do Sankhya em todos os itens) e mudar o status. Só a Wellmix com
  * a tela Booking (o serviço confere de novo).
  */
 
@@ -523,20 +523,15 @@ export async function registerBookingLotSupplierAction(form: FormData) {
   });
 }
 
-/** Fecha o booking: confere os campos e roda o Superplan em todos os itens. */
+/** Fecha o booking: confere os campos e pede a previsão de preço de todos os itens. */
 export async function closeBookingLotAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, "lotId");
   const back = ID.safeParse(raw).success ? detail(raw) : LIST;
   await run(back, async () => {
-    const input = z
-      .object({ lotId: ID, businessType: z.string().max(80).nullable() })
-      .parse({
-        lotId: raw,
-        businessType: str(form, "businessType") || null,
-      });
+    const input = z.object({ lotId: ID }).parse({ lotId: raw });
     const { closeBookingLot } = await import("@/lib/services/booking-lots");
-    await closeBookingLot(user, input.lotId, input.businessType);
+    await closeBookingLot(user, input.lotId);
     return withQuery(back, "closed", "1");
   });
 }
@@ -546,14 +541,9 @@ export async function reanalyzeBookingLotAction(form: FormData) {
   const raw = str(form, "lotId");
   const back = ID.safeParse(raw).success ? detail(raw) : LIST;
   await run(back, async () => {
-    const input = z
-      .object({ lotId: ID, businessType: z.string().max(80).nullable() })
-      .parse({
-        lotId: raw,
-        businessType: str(form, "businessType") || null,
-      });
+    const input = z.object({ lotId: ID }).parse({ lotId: raw });
     const { reanalyzeBookingLot } = await import("@/lib/services/booking-lots");
-    await reanalyzeBookingLot(user, input.lotId, input.businessType);
+    await reanalyzeBookingLot(user, input.lotId);
     return withQuery(back, "analyzed", "1");
   });
 }

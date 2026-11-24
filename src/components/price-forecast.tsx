@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type {
   PriceForecastAnswer,
-  SuperplanAudit,
+  PriceForecastAudit,
 } from "@/lib/integrations/price-forecast";
 import { QuickDialog } from "./quick-dialog";
 import { useRequestCustomer } from "./request-customer-context";
@@ -552,7 +552,7 @@ function AuditBody({
   labels,
   shownColumns,
 }: {
-  audit: SuperplanAudit;
+  audit: PriceForecastAudit;
   labels: PriceForecastLabels;
   /** As colunas que estão na tela (sem frete e com frete). */
   shownColumns: readonly string[];

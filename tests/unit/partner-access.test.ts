@@ -138,13 +138,7 @@ describe("regras puras", () => {
     expect(lib.isGrantable("orders")).toBe(true);
     expect(lib.isGrantable("explore")).toBe(true);
     // Produção (13/11/2026) também é interna: fica bloqueada no catálogo.
-    for (const internal of [
-      "finance",
-      "parties",
-      "settings",
-      "superplan",
-      "production",
-    ])
+    for (const internal of ["finance", "parties", "settings", "production"])
       expect(lib.isGrantable(internal as never)).toBe(false);
     expect(() =>
       lib.setProfileScreens({}, "type:trading", {

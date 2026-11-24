@@ -15,7 +15,10 @@ import {
   supplierRequestSlaMinutes,
 } from "@/lib/services/supplier-request-negotiation";
 import { finishedLate, groupRequests } from "@/lib/supplier-requests";
-import { supplierRequestTurn } from "@/lib/supplier-request-sampling";
+import {
+  supplierRequestStepHref,
+  supplierRequestTurn,
+} from "@/lib/supplier-request-sampling";
 import { dictionaries } from "@/i18n/dictionaries";
 import { SUPPLIER_REQUEST_STATUSES } from "@/lib/db/schema";
 import { fallbackError } from "@/i18n/error-text";
@@ -644,9 +647,23 @@ export default async function SupplierRequestsPage({
                   steps.find((s) => s?.party === "supplier") ??
                   steps.find((s) => s?.party === "wellmix") ??
                   null;
+                // A ação da vez leva ao lugar de agir no produto com a vez
+                // (dono, 24/11/2026): "Validar a amostragem" abre o quadro
+                // da amostragem dele, como a pendência.
+                const turnProduct = turn ? products[steps.indexOf(turn)] : null;
+                const turnAction =
+                  turn && turnProduct ? (
+                    <Link
+                      href={supplierRequestStepHref(turnProduct.id, turn.step)}
+                      className={`${linkClass} mt-0.5 block text-xs`}
+                      data-supplier-request-turn-action={turn.step}
+                    >
+                      {t(`reqList.next.${turn.step}` as DictionaryKey)}
+                    </Link>
+                  ) : null;
                 // Quem age: o do produto com a vez mostrada.
-                const who = turn
-                  ? (responsible.get(products[steps.indexOf(turn)].id) ?? null)
+                const who = turnProduct
+                  ? (responsible.get(turnProduct.id) ?? null)
                   : null;
                 const pieces = products.reduce((sum, p) => sum + p.quantity, 0);
                 const distinct = new Set(products.map((p) => p.bookingItemId))
@@ -786,9 +803,7 @@ export default async function SupplierRequestsPage({
                             <Badge tone={turnTone(turn.party)}>
                               {t(turnWaitingKey(turn.party))}
                             </Badge>
-                            <span className="mt-0.5 block text-xs text-zinc-600">
-                              {t(`reqList.next.${turn.step}` as DictionaryKey)}
-                            </span>
+                            {turnAction}
                             {/* Quem age e, para o administrador, o login
                                 de quem envia (dono, 24/11/2026). */}
                             {who ? (
@@ -885,11 +900,18 @@ export default async function SupplierRequestsPage({
                         ))}
                         <SlaBadge sla={sla} t={t} />
                       </span>
+                      {/* De quem é a vez (a parte; antes saía a chave
+                          crua "…turn.[object Object]") e, quando é dele, a
+                          ação, que leva ao lugar de agir. */}
                       {turn ? (
-                        <span className="mt-0.5 block text-xs text-zinc-500">
+                        <span
+                          className="mt-0.5 block text-xs text-zinc-500"
+                          data-supplier-request-turn={turn.step}
+                        >
                           {t(
-                            `supplierRequests.negotiation.turn.${turn}` as DictionaryKey,
+                            `supplierRequests.negotiation.turn.${turn.party}` as DictionaryKey,
                           )}
+                          {turn.party === "supplier" ? turnAction : null}
                         </span>
                       ) : null}
                     </Td>

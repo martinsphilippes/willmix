@@ -175,6 +175,12 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
   await login(page, "admin@wellmix.com");
   const lockType = `Trava ${TAG}`;
   await page.goto("/app/booking/import");
+  // O modelo de book para baixar, ao lado do voltar.
+  const template = await page.request.get(
+    (await page.locator("[data-book-template]").getAttribute("href"))!,
+  );
+  expect(template.ok()).toBe(true);
+  expect((await template.body()).length).toBeGreaterThan(50_000);
   await page
     .locator("[data-booking-import-form] input[type=file]")
     .setInputFiles([sheet("w1.xlsx", [6, 7]), sheet("w2.xlsx", [8])]);
@@ -242,6 +248,9 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
   await page.locator("[data-booking-lock]").click();
   await page.waitForURL(/locked=1/);
   await expect(page.locator("[data-booking-lot-held]")).toContainText("Otávio");
+  // Quem travou não libera: só o gestor (ou sozinha, com tudo trabalhado).
+  await expect(page.locator("[data-booking-no-unlock]")).toBeVisible();
+  await expect(page.locator("[data-booking-unlock]")).toHaveCount(0);
   await page.goto("/app/booking");
   await expect(page.locator("[data-booking-lot-row]")).toHaveCount(1);
   await expect(page.locator(`[data-booking-lot-row="${lotId}"]`)).toBeVisible();
@@ -253,6 +262,8 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
   await expect(held.locator("[data-booking-lot-holder]")).toContainText(
     "Otávio",
   );
+  // Há quanto tempo e o prazo (a hora-limite; o selo vai no rótulo).
+  await expect(held).toContainText(/\d+ min/);
   // No prazo: só a data e a hora do fim do prazo, pequenas e em verde, com
   // o texto do prazo no balão (dono, 24/11/2026; antes o selo).
   const sla = held.locator('[data-booking-sla="ok"]');

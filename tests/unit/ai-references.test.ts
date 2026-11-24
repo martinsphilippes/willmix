@@ -210,7 +210,7 @@ describe("referências da escolha do grupo", () => {
       items.map((i) => i.id),
       "7013.37.00",
     );
-    await lots.closeBookingLot(admin, lot.id, null);
+    await lots.closeBookingLot(admin, lot.id);
     const jar = items.find((i) => i.factoryItemCode === "AI-1")!;
     const cup = items.find((i) => i.factoryItemCode === "AI-2")!;
 

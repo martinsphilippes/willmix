@@ -94,7 +94,7 @@ async function answeredRequest(sku: string) {
     filter: { lotId: lot.id },
   });
   await setBookingItemsNcm(admin, [item.id], "7013.37.00");
-  await lots.closeBookingLot(admin, lot.id, null);
+  await lots.closeBookingLot(admin, lot.id);
   const request = await svc.openSupplierRequest(admin, {
     itemId: item.id,
     alternativeIds: [],
@@ -276,7 +276,7 @@ describe("três respostas na tabela", () => {
       filter: { lotId: lot.id },
     });
     await setBookingItemsNcm(admin, [item.id], "7013.37.00");
-    await lots.closeBookingLot(admin, lot.id, null);
+    await lots.closeBookingLot(admin, lot.id);
     return svc.openSupplierRequest(admin, {
       itemId: item.id,
       alternativeIds: [],

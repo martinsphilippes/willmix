@@ -93,7 +93,7 @@ async function closedLot(rows: string[][], itemType: string) {
     (await itemsOf(lot.id)).map((i) => i.id),
     "7013.37.00",
   );
-  return svc.closeBookingLot(admin, lot.id, null);
+  return svc.closeBookingLot(admin, lot.id);
 }
 
 beforeAll(async () => {
@@ -301,19 +301,19 @@ describe("fábrica, fornecedor e fabricante", () => {
     const wrong = await svc.manufacturerMismatches(lot, items);
     // "Co., Ltd." é o mesmo fabricante; as outras duas divergem.
     expect(wrong.map((i) => i.factoryItemCode)).toEqual(["FB-3", "FB-4"]);
-    await expect(svc.closeBookingLot(admin, lot.id, null)).rejects.toThrow(
+    await expect(svc.closeBookingLot(admin, lot.id)).rejects.toThrow(
       "booking_manufacturer_mismatch",
     );
     // Uma sai do book; a outra é confirmada (a planilha estava errada).
     await svc.removeBookingItem(admin, lot.id, wrong[0].id);
     expect((await getStore().get("booking_lots", lot.id))?.itemCount).toBe(3);
-    await expect(svc.closeBookingLot(admin, lot.id, null)).rejects.toThrow(
+    await expect(svc.closeBookingLot(admin, lot.id)).rejects.toThrow(
       "booking_manufacturer_mismatch",
     );
     expect(await svc.confirmBookingManufacturer(admin, lot.id, null)).toBe(1);
     items = await itemsOf(lot.id);
     expect(await svc.manufacturerMismatches(lot, items)).toEqual([]);
-    const closed = await svc.closeBookingLot(admin, lot.id, null);
+    const closed = await svc.closeBookingLot(admin, lot.id);
     expect(closed.status).toBe("closed");
   });
 
@@ -401,6 +401,37 @@ describe("itens trabalhados", () => {
       true,
       false,
     ]);
+  });
+});
+
+describe("trava liberada sozinha", () => {
+  it("o book inteiro trabalhado libera a trava e volta à vista de todos", async () => {
+    const lot = await closedLot(
+      [row("WD-1", "Done tray"), row("WD-2", "Done spoon")],
+      "Trabalho completo",
+    );
+    const [a, b] = await itemsOf(lot.id);
+    await svc.lockBookingLot(ana, lot.id);
+    const open = (item: { id: string }) =>
+      requests.openSupplierRequest(admin, {
+        itemId: item.id,
+        alternativeIds: [],
+        quantity: 500,
+        needs: null,
+        searchQuery: null,
+      });
+    // Metade trabalhada: continua com a Ana.
+    await open(a);
+    expect((await svc.getBookingLot(admin, lot.id))?.held?.user?.id).toBe(
+      ana.id,
+    );
+    expect(await svc.getBookingLot(bia, lot.id)).toBeNull();
+    // Tudo trabalhado: a trava sai sozinha.
+    await open(b);
+    const done = (await svc.getBookingLot(bia, lot.id))!;
+    expect(done.held).toBeNull();
+    expect(done.lot.workDoneAt).toBeTruthy();
+    expect(await svc.myBookingLocks(ana)).toEqual([]);
   });
 });
 
@@ -542,12 +573,20 @@ describe("travar books", () => {
     }
     expect(await svc.canSuperviseBooks(ana)).toBe(false);
 
-    // Só quem travou (ou quem supervisiona) libera.
+    // Quem travou não libera (nem outra analista): só o gestor dela ou
+    // quem supervisiona os books (dono, 24/11/2026).
     const [anaLock] = await svc.myBookingLocks(ana);
-    await expect(svc.unlockBooking(bia, anaLock.lock.id)).rejects.toThrow(
-      "forbidden",
-    );
-    await svc.unlockBooking(ana, anaLock.lock.id);
+    expect(anaLock.canRelease).toBe(false);
+    for (const who of [ana, bia])
+      await expect(svc.unlockBooking(who, anaLock.lock.id)).rejects.toThrow(
+        "booking_lock_release_manager",
+      );
+    // A Bia vira gestora da Ana ("Responde a"): passa a liberar a trava dela.
+    await getStore().update("users", ana.id, { managerUserId: bia.id });
+    const forBia = (await svc.getBookingLot(director, glass.id))!.held!;
+    expect(forBia.canRelease).toBe(true);
+    await svc.unlockBooking(bia, anaLock.lock.id);
+    await getStore().update("users", ana.id, { managerUserId: null });
     const [biaLock] = await svc.myBookingLocks(bia);
     await svc.unlockBooking(director, biaLock.lock.id);
     expect(await seen(bia)).toEqual(

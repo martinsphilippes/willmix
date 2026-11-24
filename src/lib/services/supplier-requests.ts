@@ -50,7 +50,7 @@ import {
  * A Wellmix compara itens parecidos dos bookings fechados, escolhe um e abre
  * a solicitação ao fornecedor dele (os parecidos ficam como alternativas). O
  * fornecedor vê só as próprias solicitações, sem as alternativas nem a
- * análise do Superplan, e responde se faz o que a Wellmix precisa e em que
+ * previsão de preço, e responde se faz o que a Wellmix precisa e em que
  * condições. Nenhum produto, cliente ou estoque nasce aqui.
  */
 

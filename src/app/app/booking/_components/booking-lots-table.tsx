@@ -83,17 +83,14 @@ export function BookingLotsTable({
   rows,
   labels,
   showSignals = true,
-  supervisor = false,
 }: {
   rows: BookingLotRow[];
   labels: BookingLotsTableLabels;
   /**
-   * Sinais do Superplan: falso sem "Ver preço de compra" (dono, 15/11/2026;
+   * Sinais da previsão de preço: falso sem "Ver preço de compra" (dono, 15/11/2026;
    * docs/LINHA_DE_VISAO.md, seção 7).
    */
   showSignals?: boolean;
-  /** Supervisiona os books: libera a trava de qualquer pessoa. */
-  supervisor?: boolean;
 }) {
   const columns = showSignals
     ? COLUMNS
@@ -181,7 +178,7 @@ export function BookingLotsTable({
             {row.lockId ? (
               // A trava pelo tipo é liberada na faixa de cima (vale para
               // todos os books do tipo).
-              (row.lockMine || supervisor) && !row.lockByType ? (
+              row.lockCanRelease && !row.lockByType ? (
                 <form action={unlockBookingAction}>
                   <input type="hidden" name="lockId" value={row.lockId} />
                   <button

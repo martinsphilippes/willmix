@@ -33,6 +33,8 @@ export function BookingLocksBar({
     lotNumber: number | null;
     /** Há quanto tempo. */
     time: string;
+    /** Quem travou não libera; só se também supervisiona os books. */
+    canRelease: boolean;
   }>;
 }) {
   return (
@@ -82,12 +84,14 @@ export function BookingLocksBar({
                       : t("bookWork.bar.mineLot", { n: m.lotNumber ?? "—" })}
                     <span className="text-zinc-500"> · {m.time}</span>
                   </span>
-                  <form action={unlockBookingAction}>
-                    <input type="hidden" name="lockId" value={m.id} />
-                    <SubmitButton variant="secondary" data-booking-unlock>
-                      {t("bookWork.unlock")}
-                    </SubmitButton>
-                  </form>
+                  {m.canRelease ? (
+                    <form action={unlockBookingAction}>
+                      <input type="hidden" name="lockId" value={m.id} />
+                      <SubmitButton variant="secondary" data-booking-unlock>
+                        {t("bookWork.unlock")}
+                      </SubmitButton>
+                    </form>
+                  ) : null}
                 </li>
               ))}
             </ul>

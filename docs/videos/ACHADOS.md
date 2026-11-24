@@ -10,7 +10,7 @@ Conferência automática: dos 311 botões citados nos roteiros com `[BOTÃO]`, 3
 
 | # | O que foi visto | Onde |
 | - | --------------- | ---- |
-| 1 | **Criar o produto a partir do booking troca as medidas da peça pelas da caixa** e o CBM sai 0,0035 em vez de 0,069. O erro chega à ficha da cotação (CBM travado), ao pedido do cliente e ao Superplan (21.192 em vez de 11.820 peças por container). A origem provável é `sheetFromRequest`. | WBK-04, WSO-05 |
+| 1 | **Criar o produto a partir do booking troca as medidas da peça pelas da caixa** e o CBM sai 0,0035 em vez de 0,069. O erro chega à ficha da cotação (CBM travado), ao pedido do cliente e à conta de viabilidade da época (o Superplan, que saiu em 24/11/2026; hoje, à previsão de preço do Sankhya). A origem provável é `sheetFromRequest`. | WBK-04 |
 | 2 | **"Limpar dados de teste"** fica disponível a qualquer administrador **em produção** e apaga também a Auditoria das vendas. | WGE-11 |
 | 3 | O **operador vê FOB e valor de venda** no "Resumo do pedido", contra a regra de docs/ACCESS.md (financeiro só do administrador). | WGE-01 |
 | 4 | **Agência, despachante, comex, agente de carga, companhia marítima e transportador** veem a tabela "Documentos" do pedido com fotos, arte, faca, arquivos da gráfica e BL (ver o que cada papel deveria ver em docs/ACCESS.md). | AGE, DES, MAR, TRA |
@@ -28,7 +28,7 @@ Conferência automática: dos 311 botões citados nos roteiros com `[BOTÃO]`, 3
 | 16 | **"Liberação aduaneira"** pode ser confirmada antes dos outros itens da etapa. | DES-01 |
 | 17 | **Multas**: não há como voltar a "Em aberto"; o quadrado "Multa aberta" conta as Contestadas; mudar o status não avisa ninguém. | JUR-01, WGE-08 |
 | 18 | Os **totais do Financeiro** usam a moeda do primeiro pedido; a data "pago em" usa UTC e o vencimento usa Brasília; o Pix só tem o campo da chave. | WGE-03, WGE-04 |
-| 19 | O selo do **Superplan** sai "Abaixo da meta" (lucro 18,5 %) em todos os itens; docs/BOOKING.md prevê "No preço mínimo". A carga de demonstração vem com margem 0 %. | WBK-02, WSO-05 |
+| 19 | O selo do **Superplan** saía "Abaixo da meta" (lucro 18,5 %) em todos os itens. Resolvido em 24/11/2026: o Superplan saiu e o selo vem da previsão de preço do Sankhya, item a item. | WBK-02 |
 
 ## 2. Fluxo e avisos (prioridade média)
 
@@ -66,7 +66,6 @@ Conferência automática: dos 311 botões citados nos roteiros com `[BOTÃO]`, 3
 
 - `docs/CERTIFICATION.md` diz que a OCP registra laudo e registro (saíram da tela) e se contradiz sobre a OCP ver preço e cliente.
 - `docs/WORKFLOW.md` cita um checklist padrão de preparação antigo; o código traz só "Ficha de compra".
-- `docs/BOOKING.md` prevê o selo "No preço mínimo" para o Superplan dos itens do booking.
 - O documento do pedido diz "você assina" para a OCP, que não assina.
 
 ## 5. Ajustes já feitos no guia por causa dos redatores

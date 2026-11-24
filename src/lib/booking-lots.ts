@@ -521,7 +521,7 @@ export interface BookingLotRow {
   itemCount: number;
   /** Itens com algum campo obrigatório faltando. */
   pendingItems: number;
-  /** Sinais da análise do Superplan. */
+  /** Sinais da previsão de preço. */
   viable: number;
   below: number;
   loss: number;
@@ -540,6 +540,8 @@ export interface BookingLotRow {
   /** A trava: id, se é de quem vê, se é do tipo de item, há quanto tempo e o prazo. */
   lockId: string | null;
   lockMine: boolean;
+  /** Quem vê pode liberar (o gestor de quem travou ou quem supervisiona). */
+  lockCanRelease: boolean;
   lockByType: boolean;
   heldMinutes: number | null;
   heldText: string;

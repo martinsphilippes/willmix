@@ -64,7 +64,7 @@ describe("busca de produtos", () => {
     // Desativado: só no filtro do Marketing (todos).
     expect(await ids("all", "utl-001")).toContain("prod-velho");
     expect(await ids("active", "utl-001")).not.toContain("prod-velho");
-    // Em análise no Booking: fora do catálogo, dentro dos ativos (Superplan).
+    // Em análise no Booking: fora do catálogo, dentro dos ativos (Reposição).
     expect(await ids("catalog", "panela")).toEqual([]);
     expect(await ids("active", "panela")).toEqual([HIDDEN]);
   });
