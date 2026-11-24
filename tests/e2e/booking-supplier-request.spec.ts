@@ -619,8 +619,9 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   // amostra (antes aparecia "—"), com quem age e, no balão, o login dele
   // (só o administrador vê o login).
   await page.goto(requestUrl);
+  // A linha desta solicitação (no lote não há o realce da atual).
   const turnCell = page.locator(
-    '[data-supplier-table-row][data-current="1"] [data-supplier-table-turn]',
+    `[data-supplier-table-row="${requestUrl.split("/").pop()}"] [data-supplier-table-turn]`,
   );
   await expect(turnCell).toHaveAttribute(
     "data-supplier-table-turn",
