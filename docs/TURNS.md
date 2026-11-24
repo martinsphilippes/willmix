@@ -74,6 +74,16 @@ A vez é o papel do próximo item obrigatório do marco atual. Cada item é uma 
 - **Pedidos** (`/app/orders`): a coluna e o filtro **Com quem está** (`?w=`). No detalhe do pedido, o selo da vez no cabeçalho.
 - **Cotações de compra**: o selo da vez ao lado da situação.
 - **Solicitações ao fornecedor**: "Aguardando fornecedor" ou "Aguardando Wellmix", com a ação embaixo. Na coluna **Vez** da cotação (tabela dos produtos) e na lista de cotações, a regra é uma só (`supplierRequestTurn`, `src/lib/supplier-request-sampling.ts`; dono, 24/11/2026): na negociação, "Responder a solicitação" (fornecedor) ou "Decidir a resposta do fornecedor" (Wellmix); **aprovada, a amostragem**: "Carregar a amostragem" (fornecedor, pendente ou reprovada; nome do dono, 24/11/2026, antes "Enviar a amostragem") ou "Validar a amostragem" (Wellmix, enviada); com a amostra aprovada, "—". Antes, a aprovada com a amostra pendente aparecia com "—". Na tabela da cotação, para a Wellmix, embaixo vem **quem age** (a mesma peça "Quem pode agir" de Encomendas, `supplierRequestResponsibles`, `src/lib/services/supplier-request-turns.ts`): o nome e a empresa e, no balão, o login, só para o administrador; o fornecedor sem login ativo aparece em aviso, com o atalho para gerar o login. **Login de quem envia à vista** (dono, 24/11/2026: "tem escrito aguardando fornecedor, mas não tem o login de quem vai mandar"): na vez do fornecedor (responder ou carregar a amostragem), embaixo de quem age vem a linha "Login: …" com os logins ativos dele, sem abrir o balão, na tabela da cotação e também na **lista de cotações**, que passou a mostrar quem age (a mesma peça; cada linha com o tipo do seu fornecedor, Trading aparece como Trading). O login continua só para o administrador (`partnerLogins`, `src/lib/request-responsible.ts`; `ResponsibleLogins`, `src/components/request-responsible-tip.tsx`); na vez da Wellmix, a equipe fica no balão.
+- **A ação leva ao lugar de agir** (dono, 24/11/2026, com o print da cotação nº 59842):
+  - nos passos da solicitação ao fornecedor, o texto da ação é um link para onde ela se faz, o mesmo endereço da pendência (`supplierRequestStepHref`, `src/lib/supplier-request-sampling.ts`);
+  - "Responder a solicitação" e "Decidir a resposta do fornecedor" abrem a solicitação;
+  - "Carregar a amostragem" e "Validar a amostragem" abrem o produto no quadro da amostragem (`?view=item#amostragem`);
+  - vale em três lugares:
+    - na lista de cotações (`data-supplier-request-turn-action`), do produto com a vez;
+    - na coluna Vez da tabela dos produtos (`data-supplier-table-turn-action`);
+    - na Próxima ação de Encomendas (`data-request-next-link`), que leva à solicitação ao fornecedor com a vez (`NextStep.supplierRequestId`). Em Encomendas, só para quem abre a tela de Cotação.
+  - O fornecedor vê o link só quando a vez é dele.
+  - Na lista de cotações do fornecedor, a vez voltou a mostrar a parte ("Aguardando fornecedor"): desde 24/11/2026 aparecia a chave crua do texto.
 - **Pendências**: "Confirmar pedido" (cliente), "Login do cliente a definir" (administrador) e "Decidir a resposta do fornecedor" (Wellmix), além das que já existiam.
 - **Painel de SLA**: a venda aguardando o cliente com o prazo vencido aparece em "Parceiros atrasados". A decisão da Wellmix na negociação entra pelas Pendências da equipe, sem repetir a linha.
 

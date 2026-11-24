@@ -244,6 +244,16 @@ describe("escolha, aprovação e a solicitação ao fornecedor", () => {
     expect((await getStore().get("requests", demand.id))!.status).toBe(
       "SUPPLIER_SELECTED",
     );
+    // Encomendas (dono, 24/11/2026): o Próximo passo "Decidir a resposta do
+    // fornecedor" leva à solicitação ao fornecedor com a vez (o link).
+    const { requestStepsFor } = await import("@/lib/services/request-turns");
+    const selected = (await getStore().get("requests", demand.id))!;
+    const steps = await requestStepsFor(director, [selected], []);
+    expect(steps.get(demand.id)).toMatchObject({
+      key: "supplier_decide",
+      who: "wellmix",
+      supplierRequestId: sr.id,
+    });
   });
 
   it("um responde, outro não: só depois do prazo a escolha abre", async () => {
