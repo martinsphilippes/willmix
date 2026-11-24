@@ -10,7 +10,6 @@ export const pt = {
   "bookingForecast.profit": "Lucro {pct}%",
   "bookingForecast.target": "Meta {pct}%: {price}",
   "bookingForecast.none": "Sem previsão",
-  "bookingForecast.old": "Previsão antiga: refaça a previsão do book",
   "bookingForecast.at": "Previsão de preço do Sankhya em {date}",
   "bookingForecast.missing.ncm": "NCM",
   "bookingForecast.missing.price": "preço por peça",
@@ -21,8 +20,8 @@ export const pt = {
     "Sankhya não configurado: nenhum preço é previsto",
   "bookingForecast.missing.error": "o Sankhya não respondeu",
   "bookingForecast.lot.at": "Previsão pedida em {date}",
-  "bookingForecast.lot.redo": "Refazer a previsão",
-  "bookingForecast.lot.redoPending": "Pedindo a previsão…",
+  "bookingForecast.lot.auto":
+    "A previsão é do Sankhya, pedida ao fechar o book e ao trocar o NCM. O que ficar sem previsão o portal completa sozinho uma vez por dia.",
   "bookingForecast.negotiated": "Previsão de preço com as condições negociadas",
   "bookingForecast.negotiatedHint":
     "Refeita pela API de preço do Sankhya a cada abertura da tela, com o preço e a moeda combinados; nada é gravado.",
@@ -36,7 +35,6 @@ export const en: Record<keyof typeof pt, string> = {
   "bookingForecast.profit": "Profit {pct}%",
   "bookingForecast.target": "Target {pct}%: {price}",
   "bookingForecast.none": "No forecast",
-  "bookingForecast.old": "Old forecast: redo the book's forecast",
   "bookingForecast.at": "Sankhya price forecast on {date}",
   "bookingForecast.missing.ncm": "NCM",
   "bookingForecast.missing.price": "price per piece",
@@ -47,8 +45,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Sankhya not configured: no price is forecast",
   "bookingForecast.missing.error": "Sankhya did not answer",
   "bookingForecast.lot.at": "Forecast requested on {date}",
-  "bookingForecast.lot.redo": "Redo the forecast",
-  "bookingForecast.lot.redoPending": "Requesting the forecast…",
+  "bookingForecast.lot.auto":
+    "The forecast comes from Sankhya, requested when the book is closed and when the NCM changes. Whatever is left without a forecast the portal completes by itself once a day.",
   "bookingForecast.negotiated": "Price forecast with the negotiated conditions",
   "bookingForecast.negotiatedHint":
     "Redone through Sankhya's price API every time the screen opens, with the agreed price and currency; nothing is saved.",
@@ -62,7 +60,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "bookingForecast.profit": "利润 {pct}%",
   "bookingForecast.target": "目标 {pct}%：{price}",
   "bookingForecast.none": "无预测",
-  "bookingForecast.old": "旧预测：请重新进行该 Book 的预测",
   "bookingForecast.at": "Sankhya 价格预测，{date}",
   "bookingForecast.missing.ncm": "NCM",
   "bookingForecast.missing.price": "单件价格",
@@ -72,8 +69,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "bookingForecast.missing.manual": "未配置 Sankhya：不预测任何价格",
   "bookingForecast.missing.error": "Sankhya 未响应",
   "bookingForecast.lot.at": "预测请求于 {date}",
-  "bookingForecast.lot.redo": "重新预测",
-  "bookingForecast.lot.redoPending": "正在请求预测…",
+  "bookingForecast.lot.auto":
+    "预测来自 Sankhya，在关闭 Book 和修改 NCM 时请求。仍没有预测的条目，门户每天自动补全一次。",
   "bookingForecast.negotiated": "按谈判条件的价格预测",
   "bookingForecast.negotiatedHint":
     "每次打开页面都会按约定的价格和币种通过 Sankhya 价格 API 重新计算；不保存任何内容。",

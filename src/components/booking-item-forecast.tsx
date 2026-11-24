@@ -8,8 +8,8 @@ import { Badge, formatDate, formatMoney, type Tone } from "@/components/ui";
  * src/lib/booking-forecast.ts): o retrato que a API de preço do Sankhya
  * devolveu, sem refazer a conta. Mostra o sinal da meta, a venda prevista,
  * com frete, a meta e o que faltou. Só a Wellmix com "Ver preço de compra"
- * (quem chama confere). Retrato antigo (sem `source`, da conta do portal que
- * saiu) não é mostrado: pede para refazer a previsão.
+ * (quem chama confere). Sem o retrato da API, "Sem previsão" (o job diário
+ * completa os books fechados).
  */
 
 const SIGNAL_TONE: Record<string, Tone> = {
@@ -56,7 +56,7 @@ export function BookingItemForecast({
   if (!a)
     return (
       <span className="text-xs text-zinc-500" data-booking-item-analysis="none">
-        {analysis ? t("bookingForecast.old") : t("bookingForecast.none")}
+        {t("bookingForecast.none")}
       </span>
     );
   const missing = forecastMissingText(a, t);

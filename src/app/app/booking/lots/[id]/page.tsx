@@ -75,7 +75,6 @@ import {
   moveBookingLotAction,
   setBookingLotMetaAction,
   unlockBookingAction,
-  reanalyzeBookingLotAction,
   registerBookingLotSupplierAction,
   setBookingLotNoteAction,
 } from "../../../actions/booking-lots";
@@ -290,8 +289,6 @@ export default async function BookingLotPage({
       }),
     ]);
   if (one("closed")) notices.push(["success", t("bookingLots.detail.closed")]);
-  if (one("analyzed"))
-    notices.push(["success", t("bookingLots.detail.analyzed")]);
   if (one("moved")) notices.push(["success", t("bookingLots.detail.moved")]);
   if (one("saved")) notices.push(["success", t("bookingLots.detail.saved")]);
   if (one("locked")) notices.push(["success", t("bookWork.lock.done")]);
@@ -1267,19 +1264,11 @@ export default async function BookingLotPage({
                   })}
                 </p>
               ) : null}
-              <form
-                action={reanalyzeBookingLotAction}
-                className="space-y-2"
-                data-booking-lot-reforecast
-              >
-                <input type="hidden" name="lotId" value={lot.id} />
-                <SubmitButton
-                  variant="secondary"
-                  pendingText={t("bookingForecast.lot.redoPending")}
-                >
-                  {t("bookingForecast.lot.redo")}
-                </SubmitButton>
-              </form>
+              {/* Sem botão de refazer (dono, 24/11/2026): o job diário
+                  completa os itens que ficaram sem a previsão. */}
+              <p className="text-xs text-zinc-500" data-booking-lot-forecast-auto>
+                {t("bookingForecast.lot.auto")}
+              </p>
             </Card>
           ) : null}
 

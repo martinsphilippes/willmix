@@ -487,16 +487,16 @@ export type InspectionResult = (typeof INSPECTION_RESULTS)[number];
 
 /**
  * Origem de uma solicitação: manual (padrão), recompra, nova proposta,
- * produto ainda não catalogado. "superplan" fica só para as solicitações
- * antigas abertas pela tela de viabilidade, que saiu em 24/11/2026 (nenhuma
- * nasce mais assim; o valor continua para ler os dados gravados).
+ * produto ainda não catalogado, pedido de compra das solicitações ao
+ * fornecedor ou o carrinho da vitrine. A origem "superplan" saiu em
+ * 24/11/2026 com os dados antigos do Superplan (dono): nenhuma solicitação a
+ * usava.
  */
 export const REQUEST_ORIGINS = [
   "manual",
   "replenishment",
   "proposal",
   "sourcing_demand",
-  "superplan",
   /** Pedido de compra gerado das solicitações ao fornecedor aprovadas (docs/PURCHASE_ORDER.md). */
   "supplier_request",
   /** Encomenda pela vitrine: o item do carrinho que o estoque não atende (docs/PURCHASE_DEMAND.md). */
@@ -3349,7 +3349,8 @@ export interface BookingAnalysis {
     ncm: string | null;
     price: number | null;
     currency: string | null;
-    incoterm: string | null;
+    /** Só nos retratos de antes de 24/11/2026: o FOB/EXW não vai mais. */
+    incoterm?: string | null;
     pcsPerCarton: number | null;
     cbmPerCarton: number | null;
     quantity: number | null;

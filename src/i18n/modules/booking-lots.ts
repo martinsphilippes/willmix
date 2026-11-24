@@ -152,8 +152,6 @@ export const pt = {
     "Book carregado com {n} itens. Confira o fornecedor e a data, que vieram da planilha, e complete os itens.",
   "bookingLots.detail.closed":
     "Book fechado. A previsão de preço de cada item está sendo pedida ao Sankhya.",
-  "bookingLots.detail.analyzed":
-    "Previsão de preço pedida de novo.",
   "bookingLots.detail.moved": "Status alterado.",
   "bookingLots.detail.saved": "Observação salva.",
   "bookingLots.detail.supplierCreated":
@@ -449,8 +447,6 @@ export const en: typeof pt = {
     "Book uploaded with {n} items. Check the supplier and date taken from the spreadsheet and complete the items.",
   "bookingLots.detail.closed":
     "Book closed. Each item's price forecast is being requested from Sankhya.",
-  "bookingLots.detail.analyzed":
-    "Price forecast requested again.",
   "bookingLots.detail.moved": "Status changed.",
   "bookingLots.detail.saved": "Note saved.",
   "bookingLots.detail.supplierCreated":
@@ -738,8 +734,6 @@ export const zh: typeof pt = {
     "已上传 Book，共 {n} 个条目。请核对来自表格的供应商和日期，并补全条目。",
   "bookingLots.detail.closed":
     "Book 已关闭。正在向 Sankhya 请求每个条目的价格预测。",
-  "bookingLots.detail.analyzed":
-    "已重新请求价格预测。",
   "bookingLots.detail.moved": "状态已更改。",
   "bookingLots.detail.saved": "备注已保存。",
   "bookingLots.detail.supplierCreated": "供应商已登记并关联到此 Book。",
