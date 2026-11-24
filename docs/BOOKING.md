@@ -97,7 +97,8 @@ Pedido do dono, com o print da lista em que "Loja / Supplier" ("ASBA · NINGBO H
   - Planilha;
   - Responsável.
 - Sem quebra de linha também:
-  - "Com quem está": o nome e o "Travar para mim" ou "Liberar";
+  - Status: o selo numa linha ("Em andamento" quebrava em duas);
+  - "Com quem está": o nome e o "Travar para mim" ou "Liberar", lado a lado;
   - "Há quanto tempo": o tempo e a data e a hora do prazo na mesma linha;
   - Trabalhados: o percentual e o "x de y";
   - as datas.
