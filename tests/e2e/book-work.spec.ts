@@ -290,13 +290,17 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
   await expect(held.locator("[data-booking-lot-holder]")).toContainText(
     "Otávio",
   );
-  // Há quanto tempo e o prazo (a hora-limite; o selo vai no rótulo).
-  await expect(held).toContainText(/\d+ min/);
-  // No prazo: só a data e a hora do fim do prazo, pequenas e em verde, com
-  // o texto do prazo no balão (dono, 24/11/2026; antes o selo).
+  // O prazo explicado (dono, 24/11/2026): quanto falta e até quando, em
+  // verde; no balão, o prazo e há quanto tempo está com a pessoa.
   const sla = held.locator('[data-booking-sla="ok"]');
-  await expect(sla).toHaveText(/^\d{2}\/\d{2} \d{2}:\d{2}$/);
-  await expect(sla).toHaveAttribute("title", "No prazo (3 h)");
+  await expect(sla).toContainText(/Faltam (3 h 00|2 h 5\d) min/);
+  await expect(sla.locator("[data-booking-sla-at]")).toHaveText(
+    /^até \d{2}\/\d{2} \d{2}:\d{2}$/,
+  );
+  await expect(sla).toHaveAttribute(
+    "title",
+    /^No prazo \(3 h\) · Com Otávio.* há \d+ min\.$/,
+  );
   // E libera a trava de qualquer pessoa.
   await held.locator("[data-booking-unlock-row]").click();
   await page.waitForURL(/unlocked=1/);
@@ -305,4 +309,22 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
       .locator(`[data-booking-lot-row="${lotId}"]`)
       .locator('[data-booking-lot-holder="free"]'),
   ).toBeVisible();
+
+  // Recusados os dois que faltavam, o book inteiro fica trabalhado: na
+  // lista, "Feito agora" e a data e a hora.
+  await page.goto(lotPath);
+  for (const n of [0, 2]) await check(n).check();
+  await page.locator('[data-bulk-refuse="2"]').click();
+  await expect(page.locator("[data-booking-lot-worked]")).toHaveAttribute(
+    "data-booking-lot-worked",
+    "100",
+  );
+  await page.goto("/app/booking");
+  const done = page
+    .locator(`[data-booking-lot-row="${lotId}"]`)
+    .locator('[data-booking-sla="done"]');
+  await expect(done).toContainText(/Feito (agora|há \d+ min)/);
+  await expect(done.locator("[data-booking-sla-at]")).toHaveText(
+    /^em \d{2}\/\d{2} \d{2}:\d{2}$/,
+  );
 });

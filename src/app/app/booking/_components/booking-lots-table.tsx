@@ -1,13 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   searchBookingLots,
   sortBookingLots,
   type BookingLotRow,
   type BookingLotSortKey,
 } from "@/lib/booking-lots";
+import {
+  bookClock,
+  bookClockText,
+  durationText,
+  type BookClockLabels,
+  type BookClockStage,
+} from "@/lib/booking-locks";
 import {
   Badge,
   cx,
@@ -55,6 +62,32 @@ export interface BookingLotsTableLabels {
   byType: string;
   slaOk: string;
   slaLate: string;
+  /**
+   * O prazo explicado ("Faltam {t}", "até {d}"…), com os marcadores; e o
+   * balão: "Com {name} há {time}." e o do feito.
+   */
+  clock: BookClockLabels & { heldBy: string; doneHint: string };
+}
+
+/** Cor de cada situação do prazo: o ponto e o texto principal. */
+const CLOCK_TONE: Record<BookClockStage, { dot: string; text: string }> = {
+  ok: { dot: "bg-emerald-500", text: "text-emerald-700" },
+  soon: { dot: "bg-amber-500", text: "text-amber-700" },
+  late: { dot: "bg-red-500", text: "text-red-700" },
+  done: { dot: "", text: "text-zinc-600" },
+};
+
+/**
+ * A hora de agora, andando a cada 30 s. Começa na hora em que o servidor leu
+ * a lista: a primeira pintura sai igual no servidor e no navegador.
+ */
+function useNow(start: number, everyMs = 30_000): number {
+  const [now, setNow] = useState(start);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), everyMs);
+    return () => clearInterval(timer);
+  }, [everyMs]);
+  return now;
 }
 
 const STATUS_TONE: Record<BookingLotRow["status"], Tone> = {
@@ -92,9 +125,15 @@ export function BookingLotsTable({
   rows,
   labels,
   showSignals = true,
+  slaHours,
+  renderedAt,
 }: {
   rows: BookingLotRow[];
   labels: BookingLotsTableLabels;
+  /** Prazo do book travado (horas, Configurações). */
+  slaHours: number;
+  /** A hora em que o servidor leu a lista (ms): o relógio do prazo parte dela. */
+  renderedAt: number;
   /**
    * Sinais da previsão de preço: falso sem "Ver preço de compra" (dono, 15/11/2026;
    * docs/LINHA_DE_VISAO.md, seção 7).
@@ -104,6 +143,7 @@ export function BookingLotsTable({
   const columns = showSignals
     ? COLUMNS
     : COLUMNS.filter((c) => c.key !== "viable");
+  const now = useNow(renderedAt);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<{
     key: BookingLotSortKey;
@@ -239,29 +279,51 @@ export function BookingLotsTable({
             ) : null}
           </span>
         );
-      case "heldMinutes":
-        return row.lockId ? (
-          <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap">
-            <span>{row.heldText}</span>
-            {/* Só a data e a hora do fim do prazo, pequenas: verde no prazo,
-                vermelha atrasada (dono, 24/11/2026; antes o selo "No prazo
-                (3 h)", que quebrava em três linhas). O texto do prazo fica
-                no balão e para o leitor de tela. */}
+      case "heldMinutes": {
+        // O prazo explicado numa linha (dono, 24/11/2026): quanto falta e até
+        // quando, quanto está atrasado e desde quando venceu, ou há quanto
+        // tempo está feito e quando. No balão, o prazo e há quanto tempo está
+        // com a pessoa.
+        const clock = bookClock(
+          { since: row.heldSince, workDoneAt: row.workDoneAt },
+          slaHours,
+          now,
+        );
+        if (!clock) return muted;
+        const text = bookClockText(clock, labels.clock);
+        const tone = CLOCK_TONE[clock.stage];
+        const title =
+          clock.stage === "done"
+            ? labels.clock.doneHint
+            : `${clock.stage === "late" ? labels.slaLate : labels.slaOk} · ${labels.clock.heldBy
+                .replace("{name}", row.holder || "—")
+                .replace("{time}", durationText(clock.elapsed))}`;
+        return (
+          <span
+            className="inline-flex items-center gap-1.5 whitespace-nowrap"
+            title={title}
+            data-booking-sla={clock.stage}
+          >
+            {clock.stage === "done" ? (
+              <span aria-hidden className="text-[11px] text-emerald-600">
+                ✓
+              </span>
+            ) : (
+              <span
+                aria-hidden
+                className={cx("size-1.5 shrink-0 rounded-full", tone.dot)}
+              />
+            )}
+            <span className={cx("font-medium", tone.text)}>{text.main}</span>
             <span
-              className={cx(
-                "whitespace-nowrap text-[11px] leading-4 tabular-nums",
-                row.heldLate ? "text-red-700" : "text-emerald-700",
-              )}
-              title={row.heldLate ? labels.slaLate : labels.slaOk}
-              aria-label={`${row.heldLate ? labels.slaLate : labels.slaOk}: ${row.heldDueText}`}
-              data-booking-sla={row.heldLate ? "late" : "ok"}
+              className="text-[11px] tabular-nums text-zinc-500"
+              data-booking-sla-at
             >
-              {row.heldDueText}
+              {text.at}
             </span>
           </span>
-        ) : (
-          muted
         );
+      }
       case "pendingItems":
         return row.pendingItems ? (
           <Badge tone="warning">{row.pendingItems}</Badge>

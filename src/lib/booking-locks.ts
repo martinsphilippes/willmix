@@ -86,6 +86,23 @@ export function visibleLots<T extends LockedLot>(
 export const lockLate = (minutes: number, slaHours: number) =>
   minutes > slaHours * 60;
 
+/** "24/11 19:52" no horário de Brasília (a lista do Book é da equipe). */
+const BRASILIA = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "America/Sao_Paulo",
+  day: "2-digit",
+  month: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+function brasiliaText(ms: number): string {
+  const parts = BRASILIA.formatToParts(new Date(ms));
+  const part = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  return `${part("day")}/${part("month")} ${part("hour")}:${part("minute")}`;
+}
+
 /**
  * Até quando o book fica no prazo com a pessoa (dono, 24/11/2026: no lugar
  * do selo "No prazo (3 h)", só a data e a hora): "24/11 19:52", no horário
@@ -94,17 +111,107 @@ export const lockLate = (minutes: number, slaHours: number) =>
 export function lockDueText(sinceIso: string, slaHours: number): string {
   const ms = Date.parse(sinceIso);
   if (Number.isNaN(ms)) return "";
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "America/Sao_Paulo",
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(new Date(ms + slaHours * 3_600_000));
-  const part = (type: string) =>
-    parts.find((p) => p.type === type)?.value ?? "";
-  return `${part("day")}/${part("month")} ${part("hour")}:${part("minute")}`;
+  return brasiliaText(ms + slaHours * 3_600_000);
+}
+
+/*
+ * O prazo do book explicado (dono, 24/11/2026: "a data e a hora, mas também
+ * quanto tempo está atrasado, quanto tempo tem para fazer e, quando fizer,
+ * há quanto tempo já está feito"). Na lista do Book, numa linha:
+ * - no prazo: "Faltam 2 h 10 min · até 24/11 19:52" (verde; âmbar no último
+ *   quarto do prazo, para chamar a atenção antes de vencer);
+ * - atrasado: "Atrasado 1 h 05 min · venceu 24/11 19:52" (vermelho);
+ * - feito (todos os itens trabalhados): "Feito há 40 min · em 24/11 19:30".
+ */
+export type BookClockStage = "ok" | "soon" | "late" | "done";
+
+export interface BookClock {
+  stage: BookClockStage;
+  /** Minutos que faltam (no prazo), de atraso (atrasado) ou desde o feito. */
+  minutes: number;
+  /** Há quantos minutos está com a pessoa (no feito, desde o feito). */
+  elapsed: number;
+  /** O fim do prazo ou a hora do feito: "24/11 19:52", horário de Brasília. */
+  at: string;
+}
+
+const MINUTE = 60_000;
+
+/**
+ * A situação do prazo agora (`now` em milissegundos). O feito vale mais que a
+ * trava (com tudo trabalhado a trava sai sozinha). Nulo: nem trava nem feito.
+ */
+export function bookClock(
+  input: { since?: string | null; workDoneAt?: string | null },
+  slaHours: number,
+  now: number,
+): BookClock | null {
+  if (input.workDoneAt) {
+    const done = Date.parse(input.workDoneAt);
+    if (Number.isNaN(done)) return null;
+    const ago = Math.max(0, Math.floor((now - done) / MINUTE));
+    return {
+      stage: "done",
+      minutes: ago,
+      elapsed: ago,
+      at: brasiliaText(done),
+    };
+  }
+  if (!input.since) return null;
+  const start = Date.parse(input.since);
+  if (Number.isNaN(start)) return null;
+  const sla = Math.max(0, slaHours) * 3_600_000;
+  const due = start + sla;
+  const elapsed = Math.max(0, Math.floor((now - start) / MINUTE));
+  const at = brasiliaText(due);
+  if (now < due)
+    return {
+      stage: due - now <= sla / 4 ? "soon" : "ok",
+      // Arredonda para cima (faltam 30 s = 1 min) e nunca passa do prazo
+      // inteiro (relógio do aparelho um pouco atrasado).
+      minutes: Math.min(
+        Math.ceil((due - now) / MINUTE),
+        Math.ceil(sla / MINUTE),
+      ),
+      elapsed,
+      at,
+    };
+  return {
+    stage: "late",
+    minutes: Math.max(1, Math.floor((now - due) / MINUTE)),
+    elapsed,
+    at,
+  };
+}
+
+/** Os textos da situação, com {t} (o tempo) e {d} (a data e a hora). */
+export interface BookClockLabels {
+  /** "Faltam {t}", "Atrasado {t}", "Feito há {t}" e "Feito agora". */
+  left: string;
+  late: string;
+  done: string;
+  doneNow: string;
+  /** "até {d}", "venceu {d}" e "em {d}". */
+  until: string;
+  due: string;
+  doneAt: string;
+}
+
+/** O texto principal ("Faltam 2 h 10 min") e o da data ("até 24/11 19:52"). */
+export function bookClockText(
+  clock: BookClock,
+  labels: BookClockLabels,
+): { main: string; at: string } {
+  const [main, at] =
+    clock.stage === "done"
+      ? [clock.minutes < 1 ? labels.doneNow : labels.done, labels.doneAt]
+      : clock.stage === "late"
+        ? [labels.late, labels.due]
+        : [labels.left, labels.until];
+  return {
+    main: main.replaceAll("{t}", durationText(clock.minutes)),
+    at: at.replaceAll("{d}", clock.at),
+  };
 }
 
 /** "2 h 05 min", "45 min", "3 d 4 h". */

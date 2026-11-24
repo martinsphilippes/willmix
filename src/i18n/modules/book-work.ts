@@ -112,6 +112,17 @@ export const pt = {
   "bookWork.unlock.done": "Liberado.",
   "bookWork.sla.ok": "No prazo ({h} h)",
   "bookWork.sla.late": "Atrasado (prazo de {h} h)",
+  // O prazo explicado na lista do Book (dono, 24/11/2026): {t} = o tempo,
+  // {d} = a data e a hora (Brasília).
+  "bookWork.clock.left": "Faltam {t}",
+  "bookWork.clock.late": "Atrasado {t}",
+  "bookWork.clock.done": "Feito há {t}",
+  "bookWork.clock.doneNow": "Feito agora",
+  "bookWork.clock.until": "até {d}",
+  "bookWork.clock.due": "venceu {d}",
+  "bookWork.clock.doneAt": "em {d}",
+  "bookWork.clock.doneHint":
+    "Todos os itens do book trabalhados (a trava saiu sozinha).",
   "bookWork.bar.title": "Travar books",
   "bookWork.bar.body":
     "Trave um book (na linha dele, depois de fechado) ou todos os de um tipo de item. O que você trava some da lista dos outros analistas, e a sua lista mostra só o que está com você. Quem libera é o seu gestor; a trava sai sozinha quando todos os itens do book estiverem trabalhados. Prazo: {h} h por book.",
@@ -138,7 +149,7 @@ export const pt = {
   "bookingLots.col.sourceKind": "Loja / Supplier",
   "bookingLots.col.workedPct": "Trabalhados",
   "bookingLots.col.holder": "Com quem está",
-  "bookingLots.col.heldMinutes": "Há quanto tempo",
+  "bookingLots.col.heldMinutes": "Prazo",
   "action.booking.supervise": "Supervisionar os books",
   "action.desc.booking.supervise":
     "Vê todos os books, também os travados por um analista, com quem está cada um, há quanto tempo e o prazo; libera a trava de qualquer pessoa.",
@@ -252,6 +263,15 @@ export const en: typeof pt = {
   "bookWork.unlock.done": "Released.",
   "bookWork.sla.ok": "On time ({h} h)",
   "bookWork.sla.late": "Late ({h} h deadline)",
+  "bookWork.clock.left": "{t} left",
+  "bookWork.clock.late": "{t} late",
+  "bookWork.clock.done": "Done {t} ago",
+  "bookWork.clock.doneNow": "Done just now",
+  "bookWork.clock.until": "until {d}",
+  "bookWork.clock.due": "was due {d}",
+  "bookWork.clock.doneAt": "on {d}",
+  "bookWork.clock.doneHint":
+    "All the book's items worked (the lock came off by itself).",
   "bookWork.bar.title": "Lock books",
   "bookWork.bar.body":
     "Lock one book (on its row, once closed) or every book of an item type. What you lock leaves the other analysts' lists, and your list shows only what you hold. Your manager releases it; the lock comes off by itself when every item of the book has been worked. Deadline: {h} h per book.",
@@ -278,7 +298,7 @@ export const en: typeof pt = {
   "bookingLots.col.sourceKind": "Store / Supplier",
   "bookingLots.col.workedPct": "Worked",
   "bookingLots.col.holder": "Who has it",
-  "bookingLots.col.heldMinutes": "For how long",
+  "bookingLots.col.heldMinutes": "Deadline",
   "action.booking.supervise": "Supervise the books",
   "action.desc.booking.supervise":
     "Sees every book, including those locked by an analyst, who has each one, for how long and the deadline; releases anyone's lock.",
@@ -382,6 +402,14 @@ export const zh: typeof pt = {
   "bookWork.unlock.done": "已释放。",
   "bookWork.sla.ok": "按时（{h} 小时）",
   "bookWork.sla.late": "超时（期限 {h} 小时）",
+  "bookWork.clock.left": "剩余 {t}",
+  "bookWork.clock.late": "已超时 {t}",
+  "bookWork.clock.done": "{t}前完成",
+  "bookWork.clock.doneNow": "刚刚完成",
+  "bookWork.clock.until": "截止 {d}",
+  "bookWork.clock.due": "已于 {d} 到期",
+  "bookWork.clock.doneAt": "于 {d}",
+  "bookWork.clock.doneHint": "该 book 的所有条目均已处理（锁定已自动解除）。",
   "bookWork.bar.title": "锁定 Book",
   "bookWork.bar.body":
     "可锁定单个 Book（关闭后，在其所在行）或某一产品类型的全部 Book。您锁定的 Book 会从其他分析员的列表中消失，您的列表只显示由您处理的 Book。只有您的主管可以释放；所有产品处理完后锁定自动解除。期限：每个 Book {h} 小时。",
@@ -407,7 +435,7 @@ export const zh: typeof pt = {
   "bookingLots.col.sourceKind": "店铺 / 供应商",
   "bookingLots.col.workedPct": "已处理",
   "bookingLots.col.holder": "由谁处理",
-  "bookingLots.col.heldMinutes": "已处理多久",
+  "bookingLots.col.heldMinutes": "期限",
   "action.booking.supervise": "监管 Book",
   "action.desc.booking.supervise":
     "可查看所有 Book（包括被分析员锁定的）、各自由谁处理、已处理多久及期限；可释放任何人的锁定。",
