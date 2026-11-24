@@ -247,31 +247,36 @@ describe("fábrica, fornecedor e fabricante", () => {
     return r;
   };
 
-  it("o Fornecedor é escolhido no cadastro ou cadastrado pelo nome", async () => {
+  it("o Supplier digitado é o Fornecedor: do cadastro, ou cadastrado depois", async () => {
     const store = getStore();
-    const chosen = await svc.createBookingLotFromSheet(
+    // Já está no cadastro: o book nasce com ele como Fornecedor.
+    const known = await svc.createBookingLotFromSheet(
       admin,
       file([row("FN-1", "Cup")]),
-      { itemType: "Fornecedor", partnerId: supplierA.partyId },
+      { itemType: "Fornecedor", supplierName: "shenzhen supplier a" },
     );
-    expect(chosen.partnerId).toBe(supplierA.partyId);
+    expect(known.partnerId).toBe(supplierA.partyId);
+    // Não está: fica o nome, e a Wellmix cadastra depois na tela do book.
     const fresh = await svc.createBookingLotFromSheet(
       admin,
       file([row("FN-2", "Cup")]),
-      { itemType: "Fornecedor", newPartnerName: "Trading Nova Ltd." },
+      { itemType: "Fornecedor", supplierName: "HOME IN" },
     );
-    const party = await store.get("parties", fresh.partnerId!);
-    expect(party?.name).toBe("Trading Nova Ltd.");
-    expect(party?.type).toBe("supplier");
-    // O mesmo nome de novo não cadastra outro.
-    const again = await svc.createBookingLotFromSheet(
-      admin,
-      file([row("FN-3", "Cup")]),
-      { itemType: "Fornecedor", newPartnerName: "trading nova" },
+    expect(fresh.partnerId ?? null).toBeNull();
+    expect(fresh.supplierName).toBe("HOME IN");
+    const party = await svc.registerBookingLotPartner(admin, fresh.id);
+    expect(party.name).toBe("HOME IN");
+    expect(party.type).toBe("supplier");
+    expect((await store.get("booking_lots", fresh.id))?.partnerId).toBe(
+      party.id,
     );
-    expect(again.partnerId).toBe(fresh.partnerId);
-    // A Fábrica continua sendo a da planilha.
-    expect(fresh.supplierId).toBe(chosen.supplierId);
+    // O Supplier não é o Fabricante: a Fábrica continua sendo a da planilha,
+    // e nenhuma linha diverge por causa dele.
+    expect(fresh.supplierId).toBe(known.supplierId);
+    expect(await svc.lotManufacturer(fresh)).toBe("Shenzhen Supplier A");
+    expect(
+      await svc.manufacturerMismatches(fresh, await itemsOf(fresh.id)),
+    ).toEqual([]);
   });
 
   it("linha de outro fabricante trava o fechamento até remover ou confirmar", async () => {
@@ -324,7 +329,7 @@ describe("fábrica, fornecedor e fabricante", () => {
         mixedRow("PF-1", "Shenzhen Supplier A"),
         mixedRow("PF-2", "Fabrica Errada"),
       ]),
-      { itemType: "Fabricante", supplierName: "Shenzhen Supplier A" },
+      { itemType: "Fabricante" },
     );
     const detail = (await partner.getPartnerBookingLot(supplierA, lot.id))!;
     expect(detail.manufacturer).toBe("Shenzhen Supplier A");
@@ -401,6 +406,48 @@ describe("itens trabalhados", () => {
       true,
       false,
     ]);
+  });
+});
+
+describe("recusar itens na tela do book", () => {
+  it("só depois do rascunho; o recusado fica trabalhado e sai da seleção", async () => {
+    const draft = await svc.createBookingLotFromSheet(
+      admin,
+      file([row("RF-0", "Refuse draft")]),
+      { itemType: "Recusa" },
+    );
+    await expect(
+      svc.refuseBookingItems(
+        admin,
+        draft.id,
+        (await itemsOf(draft.id)).map((i) => i.id),
+      ),
+    ).rejects.toThrow("booking_refuse_draft");
+
+    const lot = await closedLot(
+      [row("RF-1", "Refuse tray"), row("RF-2", "Refuse spoon")],
+      "Recusa",
+    );
+    const [a, b] = await itemsOf(lot.id);
+    await svc.lockBookingLot(ana, lot.id);
+    expect(await svc.refuseBookingItems(ana, lot.id, [a.id])).toBe(1);
+    let items = await itemsOf(lot.id);
+    expect(items.map((i) => [!!i.refusedAt, !!i.workedAt])).toEqual([
+      [true, true],
+      [false, false],
+    ]);
+    // De novo não recusa outra vez; e o recusado some da Seleção de itens.
+    expect(await svc.refuseBookingItems(ana, lot.id, [a.id])).toBe(0);
+    expect(
+      (await requests.listSelectionItems(admin, "Refuse"))!.all.map(
+        (r) => r.item.factoryItemCode,
+      ),
+    ).not.toContain("RF-1");
+    // Recusado o último, o book inteiro está trabalhado: a trava sai sozinha.
+    await svc.refuseBookingItems(ana, lot.id, [b.id]);
+    items = await itemsOf(lot.id);
+    expect(items.every((i) => i.workedAt)).toBe(true);
+    expect(await svc.myBookingLocks(ana)).toEqual([]);
   });
 });
 

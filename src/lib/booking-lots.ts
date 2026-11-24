@@ -657,27 +657,25 @@ export function bookingRecipientId(
 
 /*
  * Dono, 24/11/2026 (docs/BOOKING.md, "Fábrica, Fornecedor e Fabricante"): o
- * que a planilha chama de supplier é a Fábrica do book. Quem importa digita
- * a Fábrica; a coluna Fabricante repete esse nome em todas as linhas e é
- * comparada com o que a planilha traz em cada uma. Um book tem itens de um
- * fabricante só.
+ * que a planilha chama de supplier é a Fábrica do book (a do cadastro, com o
+ * nº da loja; enquanto não há cadastro, a que a planilha traz). A coluna
+ * Fabricante repete esse nome em todas as linhas e é comparada com o que a
+ * planilha traz em cada uma. Um book tem itens de um fabricante só. O
+ * Supplier digitado na importação (`supplierName`) é o Fornecedor, o dono do
+ * book: não entra nesta conta (correção do dono, 24/11/2026).
  */
 
 /**
- * O Fabricante do book: a Fábrica digitada na importação; sem ela, a do
- * cadastro; sem as duas, o nome mais frequente da planilha.
+ * O Fabricante do book: a Fábrica do cadastro; sem ela, o nome mais
+ * frequente da planilha (a Fábrica ainda sem cadastro).
  */
 export function bookManufacturer(
-  lot: Pick<BookingLot, "supplierHint"> & { supplierName?: string | null },
+  lot: Pick<BookingLot, "supplierHint">,
   factoryName: string | null | undefined,
 ): string | null {
   const clean = (v: string | null | undefined) =>
     (v ?? "").replace(/\s+/g, " ").trim() || null;
-  return (
-    clean(lot.supplierName) ??
-    clean(factoryName) ??
-    clean(lot.supplierHint?.name)
-  );
+  return clean(factoryName) ?? clean(lot.supplierHint?.name);
 }
 
 type ManufacturerItem = {

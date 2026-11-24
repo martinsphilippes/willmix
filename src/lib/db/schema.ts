@@ -3575,6 +3575,12 @@ export interface BookingItem extends BaseRow {
   sheetSupplier?: string | null;
   manufacturerOkAt?: string | null;
   manufacturerOkByUserId?: string | null;
+  /**
+   * Item recusado pela Wellmix na tela do book (dono, 24/11/2026): não vai
+   * para a seleção e conta como trabalhado (`workedAt` junto).
+   */
+  refusedAt?: string | null;
+  refusedByUserId?: string | null;
 }
 
 /** Cópia do item do booking no momento da solicitação (o que o fornecedor vê). */
@@ -6825,6 +6831,8 @@ export const TABLES: Record<TableName, TableDef> = {
       sheetSupplier: str(160),
       manufacturerOkAt: datetime(),
       manufacturerOkByUserId: id(false),
+      refusedAt: datetime(),
+      refusedByUserId: id(false),
     },
     indexes: [
       { key: "by_lot", type: "key", columns: ["lotId"] },

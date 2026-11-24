@@ -30,7 +30,6 @@ import {
   bookingItemTypes,
   bookingPartnerOptions,
 } from "@/lib/services/booking-lots";
-import type { DictionaryKey as PartyKey } from "@/i18n/dictionaries";
 
 /**
  * Botão "Escolher arquivos" compacto, como no desenho: 32 px (40 px no
@@ -209,6 +208,7 @@ export default async function BookingImportPage({
                   t={t}
                   types={types}
                   layout="inline"
+                  suppliers={partners.map((p) => p.name)}
                   itemTypeHintId={ITEM_TYPE_HINT_ID}
                 />
                 <p
@@ -230,43 +230,6 @@ export default async function BookingImportPage({
                   {t("bookingLots.import.itemTypeHintCompact")}
                 </p>
               </div>
-            </div>
-            {/* Fornecedor (o Supplier, dono do book): escolhido no cadastro
-                ou, se ainda não existe, cadastrado pelo nome (dono,
-                24/11/2026). A Fábrica é a da planilha. */}
-            <div className="grid gap-3 sm:grid-cols-2" data-book-partner>
-              <Field
-                label={t("bookWork.partner")}
-                hint={t("bookWork.partnerHint")}
-              >
-                <Select
-                  name="partnerId"
-                  defaultValue=""
-                  className={BOOK_COMPACT_FIELD}
-                  data-book-partner-id
-                >
-                  <option value="">{t("bookWork.partner.none")}</option>
-                  {partners.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {[p.name, t(`party.${p.type}` as PartyKey), p.city]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field
-                label={t("bookWork.partner.new")}
-                hint={t("bookWork.partner.newHint")}
-              >
-                <Input
-                  name="newPartnerName"
-                  maxLength={160}
-                  autoComplete="off"
-                  className={BOOK_COMPACT_FIELD}
-                  data-book-partner-new
-                />
-              </Field>
             </div>
             <SubmitButton
               pendingText={t("bookingLots.import.submitting")}

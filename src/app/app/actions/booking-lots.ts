@@ -127,22 +127,10 @@ export async function importBookingAction(form: FormData) {
     if (!sources.length) throw new SheetImportError("file_required");
     const { createBookingLotFromSheet } =
       await import("@/lib/services/booking-lots");
-    // Fornecedor (o Supplier, dono do book): escolhido no cadastro ou, sem
-    // ele, um novo pelo nome (dono, 24/11/2026).
-    const partner = z
-      .object({
-        partnerId: ID.nullable(),
-        newPartnerName: z.string().trim().max(160).nullable(),
-      })
-      .parse({
-        partnerId: str(form, "partnerId") || null,
-        newPartnerName: str(form, "newPartnerName") || null,
-      });
     const lot = await createBookingLotFromSheet(user, sources, {
       defaultCurrency: parsed.currency,
       sheet: parsed.sheet,
       ...meta,
-      ...partner,
     });
     return withQuery(detail(lot.id), "created", "1");
   });
@@ -695,5 +683,33 @@ export async function removeBookingItemAction(form: FormData) {
       await removePartnerBookingItem(user, input.lotId, input.itemId);
     }
     return withQuery(back, "removed", "1");
+  });
+}
+
+/** Cadastra o Supplier digitado na importação e o põe como Fornecedor do book. */
+export async function registerBookingLotPartnerAction(form: FormData) {
+  const raw = str(form, "lotId");
+  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
+  await run(back, async () => {
+    const user = await screenUser();
+    const { registerBookingLotPartner } =
+      await import("@/lib/services/booking-lots");
+    await registerBookingLotPartner(user, ID.parse(raw));
+    return withQuery(back, "supplier", "created");
+  });
+}
+
+/** Recusa os itens marcados do book (não vão para a seleção; ficam trabalhados). */
+export async function refuseBookingItemsAction(
+  lotId: string,
+  itemIds: string[],
+): Promise<InlineResult> {
+  const id = ID.safeParse(lotId);
+  return inline(id.success ? id.data : null, async (user) => {
+    const input = z
+      .object({ lotId: ID, itemIds: z.array(ID).min(1).max(500) })
+      .parse({ lotId, itemIds });
+    const { refuseBookingItems } = await import("@/lib/services/booking-lots");
+    await refuseBookingItems(user, input.lotId, input.itemIds);
   });
 }

@@ -12230,6 +12230,21 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "refusedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "refusedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [

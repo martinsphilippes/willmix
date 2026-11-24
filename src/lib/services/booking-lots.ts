@@ -277,70 +277,73 @@ export async function createBookingLotFromSheet(
   options: {
     defaultCurrency?: SheetCurrency | null;
     sheet?: string | null;
-    /**
-     * Fornecedor (o Supplier, dono do book, para quem vão as solicitações):
-     * um parceiro do cadastro ou, sem ele, o nome de um novo, que é
-     * cadastrado (dono, 24/11/2026). O book que o parceiro lança já nasce
-     * com a empresa dele.
-     */
-    partnerId?: string | null;
-    newPartnerName?: string | null;
   } & BookingLotMeta = {},
 ): Promise<BookingLot> {
   assertBooking(user);
-  const { newPartnerName: _new, ...rest } = options;
-  void _new;
+  // O Supplier digitado (o Fornecedor, dono do book): se já está no
+  // cadastro, o book nasce com ele; se não, fica o nome para cadastrar
+  // depois, na tela do book (correção do dono, 24/11/2026).
+  const partnerId = await partnerByName(options.supplierName);
   return createLotFromSheet(user, source, {
-    ...rest,
-    partnerId: await importPartnerId(user, options),
+    ...options,
+    ...(partnerId ? { partnerId } : {}),
   });
 }
 
-/**
- * O Fornecedor escolhido na importação: o parceiro do cadastro (ativo e de
- * um tipo que responde por book) ou o novo, cadastrado pelo nome (se já
- * houver um ativo com o mesmo nome, vale esse). Nenhum: nulo (vale a
- * Fábrica do book, como antes).
- */
-async function importPartnerId(
-  user: User,
-  options: { partnerId?: string | null; newPartnerName?: string | null },
+/** O parceiro ativo (de um tipo que responde por book) com este nome. */
+async function partnerByName(
+  name: string | null | undefined,
 ): Promise<string | null> {
-  const store = getStore();
-  if (options.partnerId) {
-    const party = await store.get("parties", options.partnerId);
-    if (!party || !party.active || !isBookingPartner(party))
-      throw new BookingLotError("booking_partner_invalid");
-    return party.id;
-  }
-  const name = clip(options.newPartnerName, 160);
-  if (!name) return null;
   const key = supplierKey(name);
-  const known = (
-    await store.list("parties", {
+  if (!key) return null;
+  const found = (
+    await getStore().list("parties", {
       filter: { type: [...BOOKING_PARTNER_TYPES] as never, active: true },
     })
-  ).find((p) => key && supplierKey(p.name) === key);
-  if (known) return known.id;
-  const party = await store.create("parties", {
-    ...PARTY_EXTRA_DEFAULTS,
-    type: "supplier",
-    name,
-    country: "China",
-    email: null,
-    phone: null,
-    taxId: null,
-    notes: "Cadastrado na importação de um book.",
-    active: true,
-  });
-  await audit(
-    user,
-    "party.create",
-    "party",
-    party.id,
-    `${party.name} (fornecedor de um book importado)`,
-  );
-  return party.id;
+  ).find((p) => supplierKey(p.name) === key);
+  return found?.id ?? null;
+}
+
+/**
+ * Cadastra o Supplier digitado na importação (Fornecedor, sem login) e o põe
+ * como Fornecedor do book. Já existe um ativo com o mesmo nome: vale esse.
+ */
+export async function registerBookingLotPartner(
+  user: User,
+  lotId: string,
+): Promise<Party> {
+  assertBooking(user);
+  const lot = await wellmixLot(lotId);
+  if (!lot) throw new BookingLotError("not_found");
+  if (lot.status === "cancelled")
+    throw new BookingLotError("booking_lot_locked");
+  const name = clip(lot.supplierName, 160);
+  if (!name) throw new BookingLotError("supplier_name_required");
+  const store = getStore();
+  const known = await partnerByName(name);
+  const party = known
+    ? ((await store.get("parties", known)) as Party)
+    : await store.create("parties", {
+        ...PARTY_EXTRA_DEFAULTS,
+        type: "supplier",
+        name,
+        country: "China",
+        email: null,
+        phone: null,
+        taxId: null,
+        notes: `Cadastrado pelo book nº ${lot.number} (Supplier).`,
+        active: true,
+      });
+  if (!known)
+    await audit(
+      user,
+      "party.create",
+      "party",
+      party.id,
+      `${party.name} (Supplier do book nº ${lot.number})`,
+    );
+  await setBookingLotPartner(user, lot.id, party.id);
+  return party;
 }
 
 /**
@@ -1280,9 +1283,12 @@ export async function setBookingLotMeta(
       ...(terms ?? {}),
     }),
   );
-  // Outra Fábrica digitada: o que foi confirmado valia para a anterior.
-  if ((lot.supplierName ?? null) !== supplierName)
-    await clearManufacturerOk(lot.id);
+  // Supplier digitado que já está no cadastro: vira o Fornecedor do book
+  // (se ele ainda não tem um).
+  if (!lot.partnerId && supplierName) {
+    const known = await partnerByName(supplierName);
+    if (known) await store.update("booking_lots", lot.id, { partnerId: known });
+  }
   if (terms?.incoterm) {
     const items = await store.list("booking_items", {
       filter: { lotId: lot.id },
@@ -1528,12 +1534,11 @@ export async function myBookingLocks(user: User): Promise<
 /* Fabricante: a Fábrica do book × a planilha (dono, 24/11/2026)             */
 /* ------------------------------------------------------------------------ */
 
-/** O Fabricante do book (a Fábrica digitada; sem ela, a do cadastro ou a da planilha). */
+/** O Fabricante do book (a Fábrica do cadastro; sem ela, a da planilha). */
 export async function lotManufacturer(lot: BookingLot): Promise<string | null> {
-  const factory =
-    !lot.supplierName?.trim() && lot.supplierId
-      ? await getStore().get("parties", lot.supplierId)
-      : null;
+  const factory = lot.supplierId
+    ? await getStore().get("parties", lot.supplierId)
+    : null;
   return bookManufacturer(lot, factory?.name ?? null);
 }
 
@@ -1652,4 +1657,54 @@ export async function bookingPartnerOptions(): Promise<
     type: p.type,
     city: p.city ?? null,
   }));
+}
+
+/* ------------------------------------------------------------------------ */
+/* Recusar itens na tela do book (dono, 24/11/2026)                          */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Recusa os itens marcados de um book que já saiu do rascunho: eles não vão
+ * para a seleção e ficam trabalhados (o que conta para o percentual do book
+ * e para a trava sair sozinha). Item já trabalhado (escolhido, alternativa
+ * ou já recusado) fica como está. Devolve quantos foram recusados.
+ */
+export async function refuseBookingItems(
+  user: User,
+  lotId: string,
+  itemIds: readonly string[],
+): Promise<number> {
+  assertBooking(user);
+  const lot = await wellmixLot(lotId);
+  if (!lot) throw new BookingLotError("not_found");
+  // No rascunho o book ainda não é trabalhado (nem seleção, nem recusa).
+  if (!bookingLotLockable(lot.status))
+    throw new BookingLotError("booking_refuse_draft");
+  const store = getStore();
+  const ids = [...new Set(itemIds)];
+  const items = ids.length
+    ? (
+        await withSchema(() =>
+          store.list("booking_items", { filter: { id: ids } }),
+        )
+      ).filter((i) => i.lotId === lot.id && !i.workedAt)
+    : [];
+  if (!items.length) return 0;
+  const at = new Date().toISOString();
+  for (const item of items)
+    await store.update("booking_items", item.id, {
+      refusedAt: at,
+      refusedByUserId: user.id,
+    });
+  await markItemsWorked(user, items);
+  await audit(
+    user,
+    "booking_item.refuse",
+    "booking_lot",
+    lot.id,
+    `Book nº ${lot.number}: ${items.length} item(ns) recusado(s): ${items
+      .map((i) => i.factoryItemCode ?? i.description ?? i.id)
+      .join(", ")}`,
+  );
+  return items.length;
 }
