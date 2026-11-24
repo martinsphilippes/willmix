@@ -164,9 +164,14 @@ describe("tela Booking do Trading", () => {
         "fileName",
         "id",
         "itemCount",
+        // Loja/Fábrica, Tipo de item e o quanto a Wellmix já trabalhou
+        // (dono, 23/11/2026): só a contagem, sem a análise.
+        "itemType",
         "number",
         "origin",
+        "sourceKind",
         "status",
+        "worked",
       ].sort(),
     );
     expect(

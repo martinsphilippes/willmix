@@ -17,6 +17,10 @@ import {
   type Tone,
 } from "@/components/ui";
 import { TableTools } from "@/components/table-tools";
+import {
+  lockBookingLotAction,
+  unlockBookingAction,
+} from "../../actions/booking-lots";
 
 /*
  * Tabela dos bookings já carregados: a busca filtra por qualquer campo
@@ -35,6 +39,13 @@ export interface BookingLotsTableLabels {
   signalsNone: string;
   signal: { viable: string; below: string; loss: string; missing: string };
   cols: Record<BookingLotSortKey, string>;
+  /** Travar, liberar, "Livre", "pelo tipo" e os selos do prazo. */
+  lock: string;
+  unlock: string;
+  free: string;
+  byType: string;
+  slaOk: string;
+  slaLate: string;
 }
 
 const STATUS_TONE: Record<BookingLotRow["status"], Tone> = {
@@ -50,11 +61,18 @@ const STATUS_TONE: Record<BookingLotRow["status"], Tone> = {
 const COLUMNS: Array<{ key: BookingLotSortKey; numeric?: boolean }> = [
   { key: "number", numeric: true },
   { key: "status" },
+  // Com quem está e há quanto tempo, logo depois do status (à vista sem
+  // rolar a tabela para o lado).
+  { key: "holder" },
+  { key: "heldMinutes", numeric: true },
   { key: "origin" },
   { key: "supplier" },
+  { key: "sourceKind" },
+  { key: "itemType" },
   { key: "date" },
   { key: "fileName" },
   { key: "itemCount", numeric: true },
+  { key: "workedPct", numeric: true },
   { key: "pendingItems", numeric: true },
   { key: "viable" },
   { key: "owner" },
@@ -65,6 +83,7 @@ export function BookingLotsTable({
   rows,
   labels,
   showSignals = true,
+  supervisor = false,
 }: {
   rows: BookingLotRow[];
   labels: BookingLotsTableLabels;
@@ -73,6 +92,8 @@ export function BookingLotsTable({
    * docs/LINHA_DE_VISAO.md, seção 7).
    */
   showSignals?: boolean;
+  /** Supervisiona os books: libera a trava de qualquer pessoa. */
+  supervisor?: boolean;
 }) {
   const columns = showSignals
     ? COLUMNS
@@ -124,6 +145,78 @@ export function BookingLotsTable({
           <span className="block max-w-48 truncate" title={row.fileName}>
             {row.fileName}
           </span>
+        );
+      case "workedPct":
+        // Itens trabalhados na Seleção de itens: percentual e "3 de 10".
+        return (
+          <span
+            className="inline-flex flex-col items-end"
+            data-booking-lot-worked={row.workedPct}
+          >
+            <span className="font-semibold">{row.workedPct}%</span>
+            <span className="text-[11px] text-zinc-500">{row.workedText}</span>
+          </span>
+        );
+      case "holder":
+        // Com quem está: livre (com "Travar") ou a pessoa (com "Liberar"
+        // para ela mesma e para quem supervisiona).
+        return (
+          <span
+            className="flex flex-col items-start gap-1"
+            data-booking-lot-holder={row.lockId ?? "free"}
+          >
+            {row.lockId ? (
+              <span>
+                {row.holder}
+                {row.lockByType ? (
+                  <span className="text-[11px] text-zinc-500">
+                    {" "}
+                    ({labels.byType})
+                  </span>
+                ) : null}
+              </span>
+            ) : (
+              <span className="text-zinc-500">{labels.free}</span>
+            )}
+            {row.lockId ? (
+              // A trava pelo tipo é liberada na faixa de cima (vale para
+              // todos os books do tipo).
+              (row.lockMine || supervisor) && !row.lockByType ? (
+                <form action={unlockBookingAction}>
+                  <input type="hidden" name="lockId" value={row.lockId} />
+                  <button
+                    type="submit"
+                    className={cx(linkClass, "text-xs")}
+                    data-booking-unlock-row
+                  >
+                    {labels.unlock}
+                  </button>
+                </form>
+              ) : null
+            ) : row.status !== "cancelled" ? (
+              <form action={lockBookingLotAction}>
+                <input type="hidden" name="lotId" value={row.id} />
+                <button
+                  type="submit"
+                  className={cx(linkClass, "text-xs")}
+                  data-booking-lock-row
+                >
+                  {labels.lock}
+                </button>
+              </form>
+            ) : null}
+          </span>
+        );
+      case "heldMinutes":
+        return row.lockId ? (
+          <span className="inline-flex flex-col items-end gap-0.5">
+            <span>{row.heldText}</span>
+            <Badge tone={row.heldLate ? "danger" : "success"}>
+              {row.heldLate ? labels.slaLate : labels.slaOk}
+            </Badge>
+          </span>
+        ) : (
+          muted
         );
       case "pendingItems":
         return row.pendingItems ? (
@@ -183,7 +276,7 @@ export function BookingLotsTable({
       </div>
       {shown.length ? (
         <TableTools
-          tableClassName="min-w-[56rem]"
+          tableClassName="min-w-[76rem]"
           sortable={false}
           searchable={false}
         >

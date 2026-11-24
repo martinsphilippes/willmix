@@ -47,6 +47,7 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
       "purchaseStrategy.approve",
       "purchaseQuote.choose",
       "purchaseQuote.approve",
+      "booking.supervise",
     ],
   },
   {

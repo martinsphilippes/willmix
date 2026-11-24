@@ -77,7 +77,16 @@ export type PartnerBookingLot = Pick<
   | "fileName"
   | "itemCount"
   | "createdAt"
->;
+> & {
+  /** Loja/Fábrica e Tipo de item informados na importação (dono, 23/11/2026). */
+  sourceKind: BookingLot["sourceKind"];
+  itemType: string | null;
+  /**
+   * Itens trabalhados pela Wellmix na Seleção de itens (dono, 23/11/2026):
+   * quantos e o percentual. Só nas leituras que carregam os itens.
+   */
+  worked?: { worked: number; total: number; pct: number };
+};
 
 const lotView = (lot: BookingLot): PartnerBookingLot => ({
   id: lot.id,
@@ -88,6 +97,8 @@ const lotView = (lot: BookingLot): PartnerBookingLot => ({
   fileName: lot.fileName,
   itemCount: lot.itemCount,
   createdAt: lot.createdAt,
+  sourceKind: lot.sourceKind ?? null,
+  itemType: lot.itemType ?? null,
 });
 
 /**
@@ -115,6 +126,8 @@ export type PartnerBookingItem = Pick<
    * mililitros do book (dono, 16/11/2026).
    */
   capacityMlShown?: number | null;
+  /** Trabalhado pela Wellmix na Seleção de itens (só o fato, sem a análise). */
+  worked?: boolean;
 };
 
 const itemView = (i: BookingItem): PartnerBookingItem => {
@@ -156,6 +169,38 @@ export async function listPartnerBookingLots(
     lots.filter((lot) => isOwnLot(lot, partyId)).map((lot) => [lot.id, lot]),
   );
   const preparing = (lot: BookingLot) => bookingLotPreparing(lot.status);
+  // Percentual trabalhado de cada book (só a coluna da marca é lida).
+  const share = new Map<string, { worked: number; total: number }>();
+  if (own.size) {
+    const { listColumns } = await import("@/lib/db/lookup");
+    try {
+      const marks = await listColumns(
+        store,
+        "booking_items",
+        ["lotId", "workedAt"],
+        { filter: { lotId: [...own.keys()] } },
+      );
+      for (const m of marks) {
+        const s = share.get(m.lotId) ?? { worked: 0, total: 0 };
+        s.total++;
+        if (m.workedAt) s.worked++;
+        share.set(m.lotId, s);
+      }
+    } catch (error) {
+      const { isSchemaMissing } = await import("@/lib/db/errors");
+      if (!isSchemaMissing(error)) throw error;
+    }
+  }
+  const withShare = (lot: BookingLot): PartnerBookingLot => {
+    const s = share.get(lot.id) ?? { worked: 0, total: 0 };
+    return {
+      ...lotView(lot),
+      worked: {
+        ...s,
+        pct: s.total ? Math.round((s.worked / s.total) * 100) : 0,
+      },
+    };
+  };
   return [...own.values()]
     .sort((a, b) =>
       preparing(a) !== preparing(b)
@@ -164,7 +209,7 @@ export async function listPartnerBookingLots(
           ? b.createdAt.localeCompare(a.createdAt)
           : b.number - a.number,
     )
-    .map(lotView);
+    .map(withShare);
 }
 
 /**
@@ -249,12 +294,14 @@ export async function getPartnerBookingLot(
     const ml = i.productId ? registryMl.get(i.productId) : null;
     return typeof ml === "number" && ml > 0 ? ml : null;
   };
+  const { workedShare } = await import("@/lib/booking-locks");
   return {
-    lot: lotView(lot),
+    lot: { ...lotView(lot), worked: workedShare(items) },
     items: items
       .sort((a, b) => a.position - b.position)
       .map((i) => ({
         ...itemView(i),
+        worked: !!i.workedAt,
         // O parceiro vê as fotos dos itens dos books dele (dono, 16/11/2026).
         photoDocumentId: i.photoDocumentId ?? null,
         cardDocumentId: i.cardDocumentId ?? null,
@@ -309,8 +356,15 @@ async function bookingTeamIds(): Promise<string[]> {
 export async function launchPartnerBooking(
   user: User,
   // Só arquivo: enviado no formulário ou já subido direto ao armazenamento.
-  source: Extract<SheetSource, File | { fileKey: string }>,
-  options: { defaultCurrency?: SheetCurrency | null } = {},
+  // Uma planilha ou várias (o book é a soma delas; dono, 23/11/2026).
+  source:
+    | Extract<SheetSource, File | { fileKey: string }>
+    | Array<Extract<SheetSource, File | { fileKey: string }>>,
+  options: {
+    defaultCurrency?: SheetCurrency | null;
+    sourceKind?: BookingLot["sourceKind"];
+    itemType?: string | null;
+  } = {},
 ): Promise<PartnerBookingLot> {
   assertPartnerBooking(user);
   const party = await launcherParty(user);
@@ -325,6 +379,8 @@ export async function launchPartnerBooking(
   const { createLotFromSheet } = await import("./booking-lots");
   const lot = await createLotFromSheet(user, source, {
     defaultCurrency: options.defaultCurrency ?? null,
+    sourceKind: options.sourceKind ?? null,
+    itemType: options.itemType ?? null,
     partnerId: party.id,
     ownerUserId: null,
     preparing: true,

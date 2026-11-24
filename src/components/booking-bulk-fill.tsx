@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useTransition,
+  type KeyboardEvent,
   type ReactNode,
 } from "react";
 import { bulkValueValid, type BookingItemField } from "@/lib/booking-lots";
@@ -21,8 +22,11 @@ import { cx, inputDenseClass } from "@/components/ui";
  * Preenchimento em massa dos itens do Book (dono, 16/11/2026): uma caixa em
  * cada linha (e a do cabeçalho, que marca ou desmarca todas), um campo vazio
  * acima de cada coluna editável e "Carregar", que grava de uma vez os
- * valores digitados nas linhas marcadas. Campo vazio deixa a coluna como
- * está; as linhas desmarcadas não mudam. A gravação é a da célula (as
+ * valores digitados nas linhas marcadas. Sem nenhuma linha marcada, o valor
+ * vai para todas as linhas à vista (dono, 23/11/2026: a linha de cima serve
+ * para preencher todas). Campo vazio deixa a coluna como está; com linhas
+ * marcadas, as desmarcadas não mudam. Enter no campo de cima também carrega.
+ * Seta para baixo e para cima levam o foco à célula de baixo e de cima. A gravação é a da célula (as
  * mesmas regras no servidor). Os campos ficam no cabeçalho congelado da
  * tabela (TableTools com stickyHead): dá para marcar linhas lá embaixo e
  * carregar sem voltar ao topo.
@@ -44,6 +48,13 @@ export interface BulkFillLabels {
   loading: string;
   /** "Marcados: {n}". */
   selected: string;
+  /** Sem linha marcada: o valor vai para todas. */
+  allRows: string;
+  /** "Selecionar os marcados" (leva à Seleção de itens) e o aviso sem marcados. */
+  toSelection?: string;
+  toSelectionNone?: string;
+  /** "Até {n} itens por vez." */
+  toSelectionMax?: string;
   /** Por que "Carregar" está desligado. */
   disabled: string;
   invalid: string;
@@ -245,8 +256,11 @@ export function BookingBulkProvider({
     ready,
     pending,
     load: () => {
-      if (!ready || !marked.size || pending) return;
-      send([...marked], Object.fromEntries(filled));
+      if (!ready || pending) return;
+      // Nenhuma marcada: todas as linhas que a busca deixa à vista.
+      const ids = marked.size ? [...marked] : shownIds();
+      if (!ids.length) return;
+      send(ids, Object.fromEntries(filled));
     },
     status,
     retry: () => {
@@ -259,10 +273,97 @@ export function BookingBulkProvider({
 
   return (
     <Ctx.Provider value={ctx}>
-      <div ref={scope} data-bulk-scope={lotId}>
+      <div ref={scope} data-bulk-scope={lotId} onKeyDown={arrowKeys}>
         {children}
       </div>
     </Ctx.Provider>
+  );
+}
+
+/**
+ * Seta para baixo ou para cima num campo da tabela: o foco vai para o campo
+ * da mesma coluna na linha de baixo ou de cima (dono, 23/11/2026), como numa
+ * planilha. Da linha de preenchimento em massa, para baixo cai na primeira
+ * linha. Sair do campo grava o que foi digitado, como sempre. Listas
+ * (FOB/EXW, moeda) e a busca com opções ficam com as setas delas.
+ */
+function arrowKeys(event: KeyboardEvent<HTMLDivElement>) {
+  if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+  const from = event.target;
+  if (
+    !(from instanceof HTMLInputElement) ||
+    from.type === "checkbox" ||
+    from.getAttribute("role") === "combobox"
+  )
+    return;
+  const cell = from.closest("td,th");
+  const row = cell?.closest("tr");
+  if (!(cell instanceof HTMLTableCellElement) || !row) return;
+  const down = event.key === "ArrowDown";
+  const field = (r: Element | null | undefined) =>
+    r?.children[cell.cellIndex]?.querySelector<HTMLElement>(
+      "input:not([type=checkbox]):not([type=hidden]):not([disabled]), select:not([disabled])",
+    ) ?? null;
+  const shown = (r: Element) =>
+    r instanceof HTMLElement && r.offsetParent !== null;
+  let target: HTMLElement | null = null;
+  if (row.hasAttribute("data-bulk-fill-row")) {
+    // Do cabeçalho congelado para a primeira linha à vista da tabela.
+    if (!down) return;
+    const rows = event.currentTarget.querySelectorAll("tr[data-bulk-row]");
+    target = field(Array.from(rows).find(shown));
+  } else {
+    let next = down ? row.nextElementSibling : row.previousElementSibling;
+    while (next && !shown(next))
+      next = down ? next.nextElementSibling : next.previousElementSibling;
+    target = field(next);
+    // Da primeira linha para cima: o campo de preenchimento da coluna.
+    if (!next && !down)
+      target = field(
+        event.currentTarget.querySelector("tr[data-bulk-fill-row]"),
+      );
+  }
+  if (!target) return;
+  event.preventDefault();
+  target.focus();
+  if (target instanceof HTMLInputElement) target.select();
+}
+
+/**
+ * "Selecionar os marcados": leva os itens marcados do book direto para a
+ * Seleção de itens, como um grupo para comparar (um item só também vale).
+ * Dono, 23/11/2026; só na tela da Wellmix.
+ */
+export function BulkSelectionLink({ max }: { max: number }) {
+  const { selected, labels } = useBulk();
+  const ids = [...selected];
+  const over = ids.length > max;
+  const off = !ids.length || over;
+  const title = !ids.length
+    ? labels.toSelectionNone
+    : over
+      ? (labels.toSelectionMax ?? "").replace("{n}", String(max))
+      : undefined;
+  const className =
+    "inline-flex min-h-9 items-center justify-center rounded-md px-3 text-sm font-semibold shadow-sm transition";
+  return off ? (
+    <span
+      title={title}
+      aria-disabled
+      className={cx(className, "cursor-not-allowed bg-zinc-200 text-zinc-600")}
+      data-bulk-to-selection="off"
+    >
+      {labels.toSelection} ({ids.length})
+    </span>
+  ) : (
+    <a
+      href={`/app/booking/selection?tab=selection&ids=${ids.join(",")}`}
+      className={cx(className, "bg-brand-700 text-white hover:bg-brand-800")}
+      data-bulk-to-selection={ids.length}
+    >
+      {labels.toSelection} ({ids.length})
+    </a>
   );
 }
 
@@ -321,7 +422,7 @@ export function BulkFieldInput({
   /** Lista (incoterm, moeda): as opções das linhas. */
   options?: readonly string[];
 }) {
-  const { values, setValue, labels, pending } = useBulk();
+  const { values, setValue, labels, pending, load } = useBulk();
   const value = values[field] ?? "";
   const bad = value.trim() !== "" && !bulkValueValid(field, value);
   const name = fill(labels.field, { field: label });
@@ -365,6 +466,12 @@ export function BulkFieldInput({
           inputMode={kind === "number" ? "decimal" : undefined}
           autoComplete="off"
           onChange={(e) => setValue(field, e.target.value)}
+          onKeyDown={(e) => {
+            // Enter carrega (nas marcadas ou, sem marcadas, em todas).
+            if (e.key !== "Enter") return;
+            e.preventDefault();
+            load();
+          }}
         />
       )}
       {bad ? (
@@ -382,7 +489,8 @@ export function BulkFieldInput({
 /** "Carregar": grava os valores nas linhas marcadas; diz quantas estão marcadas. */
 export function BulkLoadButton() {
   const { ready, selected, pending, load, labels } = useBulk();
-  const enabled = ready && selected.size > 0 && !pending;
+  // Sem linha marcada, o valor vai para todas (dono, 23/11/2026).
+  const enabled = ready && !pending;
   return (
     <span className="flex flex-col items-start gap-0.5">
       <button
@@ -400,7 +508,9 @@ export function BulkLoadButton() {
         className="text-[11px] font-normal normal-case tracking-normal text-zinc-500 tabular-nums"
         data-bulk-selected={selected.size}
       >
-        {fill(labels.selected, { n: selected.size })}
+        {selected.size
+          ? fill(labels.selected, { n: selected.size })
+          : labels.allRows}
       </span>
     </span>
   );

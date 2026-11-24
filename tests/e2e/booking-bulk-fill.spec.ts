@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { PASSWORD, login } from "./helpers";
+import { PASSWORD, fillBookMeta, login } from "./helpers";
 import { PNG_1X1, xlsxBytes } from "../unit/xlsx-fixture";
 
 /*
@@ -102,6 +102,7 @@ async function importBooking(page: Page) {
   await page
     .locator("[data-booking-import-form] input[type=file]")
     .setInputFiles(sheet());
+  await fillBookMeta(page);
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   await expect(page.locator("tr[data-booking-item]")).toHaveCount(ROWS);
@@ -280,7 +281,7 @@ test("Book: cabeçalho congelado e Carregar nas linhas 2, 5 e 8 (desktop)", asyn
       }),
     )
     .toBeLessThan(1);
-  for (const field of ["currency", "moq", "material", "productName"])
+  for (const field of ["currency", "moq", "material", "colorAssortment"])
     expect(await offsetOf(page, field)).toBeLessThan(1.5);
   // A primeira coluna e a das fotos ficam presas à esquerda (o título da
   // foto sobre a foto de cada linha), mesmo com a tabela rolada.
@@ -453,6 +454,7 @@ test("Meus books (Trading): cabeçalho congelado e Carregar no book que ela lan�
   await page
     .locator("[data-partner-booking-launch-form] input[type=file]")
     .setInputFiles(sheet({ photo: true }));
+  await fillBookMeta(page);
   await page.locator("[data-partner-booking-launch-submit]").click();
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   const url = new URL(page.url()).pathname;
