@@ -409,6 +409,48 @@ describe("itens trabalhados", () => {
   });
 });
 
+describe("recusar itens na tela do book", () => {
+  it("só depois do rascunho; o recusado fica trabalhado e sai da seleção", async () => {
+    const draft = await svc.createBookingLotFromSheet(
+      admin,
+      file([row("RF-0", "Refuse draft")]),
+      { itemType: "Recusa" },
+    );
+    await expect(
+      svc.refuseBookingItems(
+        admin,
+        draft.id,
+        (await itemsOf(draft.id)).map((i) => i.id),
+      ),
+    ).rejects.toThrow("booking_refuse_draft");
+
+    const lot = await closedLot(
+      [row("RF-1", "Refuse tray"), row("RF-2", "Refuse spoon")],
+      "Recusa",
+    );
+    const [a, b] = await itemsOf(lot.id);
+    await svc.lockBookingLot(ana, lot.id);
+    expect(await svc.refuseBookingItems(ana, lot.id, [a.id])).toBe(1);
+    let items = await itemsOf(lot.id);
+    expect(items.map((i) => [!!i.refusedAt, !!i.workedAt])).toEqual([
+      [true, true],
+      [false, false],
+    ]);
+    // De novo não recusa outra vez; e o recusado some da Seleção de itens.
+    expect(await svc.refuseBookingItems(ana, lot.id, [a.id])).toBe(0);
+    expect(
+      (await requests.listSelectionItems(admin, "Refuse"))!.all.map(
+        (r) => r.item.factoryItemCode,
+      ),
+    ).not.toContain("RF-1");
+    // Recusado o último, o book inteiro está trabalhado: a trava sai sozinha.
+    await svc.refuseBookingItems(ana, lot.id, [b.id]);
+    items = await itemsOf(lot.id);
+    expect(items.every((i) => i.workedAt)).toBe(true);
+    expect(await svc.myBookingLocks(ana)).toEqual([]);
+  });
+});
+
 describe("trava liberada sozinha", () => {
   it("o book inteiro trabalhado libera a trava e volta à vista de todos", async () => {
     const lot = await closedLot(

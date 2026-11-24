@@ -228,22 +228,10 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
     3,
   );
 
-  // Marca dois itens e leva direto para a Seleção de itens.
-  await expect(page.locator('[data-bulk-to-selection="off"]')).toBeVisible();
-  for (const n of [0, 2])
-    await page
-      .locator("tr[data-booking-item]")
-      .nth(n)
-      .locator("[data-bulk-check]")
-      .check();
-  await page.locator('[data-bulk-to-selection="2"]').click();
-  await page.waitForURL(/\/app\/booking\/selection\?.*tab=selection/);
-  await expect(page.locator("main")).toContainText(`${TAG}-6`);
-  await expect(page.locator("main")).toContainText(`${TAG}-8`);
-  await expect(page.locator("main")).not.toContainText(`${TAG}-7`);
-
-  // No rascunho o book ainda não trava (só depois de fechado).
-  await page.goto(lotPath);
+  // No rascunho o book ainda não é trabalhado: sem selecionar nem recusar
+  // itens, e sem travar (só depois de fechado).
+  await expect(page.locator("[data-booking-to-selection]")).toHaveCount(0);
+  await expect(page.locator("[data-bulk-refuse]")).toHaveCount(0);
   await expect(page.locator("[data-booking-lot-no-lock]")).toBeVisible();
   await expect(page.locator("[data-booking-lock]")).toHaveCount(0);
   const ncmInputs = page.locator("input[data-booking-item-ncm]");
@@ -256,6 +244,31 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
   }
   await page.click("[data-booking-lot-close-submit]");
   await page.waitForURL(/[?&]closed=1/);
+
+  // Fechado: marca dois itens e leva direto para a Seleção de itens.
+  const check = (n: number) =>
+    page.locator("tr[data-booking-item]").nth(n).locator("[data-bulk-check]");
+  await expect(page.locator('[data-bulk-to-selection="off"]')).toBeVisible();
+  for (const n of [0, 2]) await check(n).check();
+  await page.locator('[data-bulk-to-selection="2"]').click();
+  await page.waitForURL(/\/app\/booking\/selection\?.*tab=selection/);
+  await expect(page.locator("main")).toContainText(`${TAG}-6`);
+  await expect(page.locator("main")).toContainText(`${TAG}-8`);
+  await expect(page.locator("main")).not.toContainText(`${TAG}-7`);
+
+  // Recusar o item do meio: fica marcado como recusado e conta como
+  // trabalhado (1 de 3).
+  await page.goto(lotPath);
+  await check(1).check();
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.locator('[data-bulk-refuse="1"]').click();
+  await expect(
+    page.locator('tr[data-booking-item-worked="refused"]'),
+  ).toHaveCount(1);
+  await expect(page.locator("[data-booking-lot-worked]")).toHaveAttribute(
+    "data-booking-lot-worked",
+    "33",
+  );
 
   // Fechado: o analista trava o book e só ele continua vendo.
   await login(page, "operador@wellmix.com");
