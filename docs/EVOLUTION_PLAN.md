@@ -1964,3 +1964,10 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   - texto longo numa linha com "ver mais" e "ver menos", pelo mesmo `ClampText` das outras tabelas finas, em Loja / Supplier, Fornecedor, Origem, Tipo de item, Planilha e Responsável;
   - "Com quem está", "Há quanto tempo", Trabalhados e as datas sem quebra de linha (docs/BOOKING.md, "Lista de Books: linha fina").
 - **Aditivo**: só a apresentação da tabela (`BookingLotsTable`); os dados, a busca, a ordem e as ações são os mesmos; sem mudança no banco.
+
+## Venda ao cliente: preços WD e Wellmix pela API, caixas, cubagem e containers (dono, 24/11/2026)
+
+- **Pedido do dono:** o preço do card "Venda ao cliente" vem da API de preço (cotação V2 do Sankhya), WD e Wellmix lado a lado, fixos; no card, caixas, cubagem e containers. Decisões: o nível do Wellmix é o do pedido (sem nível, o padrão do Sankhya), e a venda gravada é a do formato escolhido no seletor WD | Wellmix. Detalhes em docs/ORDER_SALE.md, "Preços pela API".
+- **Muda o que a tela mostra (pedido do dono):** com o Sankhya ligado, o preço não se digita mais e a moeda da venda é o Real. Sem o Sankhya, o card de sempre continua.
+- **Aditivo:** colunas opcionais `order_items.saleQuote` (a cotação do dia) e `orders.saleFormat` (o formato gravado); a rota `GET /api/orders/[id]/sale-prices`; a ação `recordOrderSaleFormatAction`. Nada é apagado: a venda digitada, a ação dela, os preços e os totais gravados continuam.
+- Testes: `tests/unit/order-sale-quote.test.ts` e o caminho principal do E2E.

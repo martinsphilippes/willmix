@@ -417,6 +417,18 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.goto(orderUrl);
   const saleCard = page.locator('[data-order-section="order-sale"]');
   await expect(saleCard.locator('[data-order-sale-form="edit"]')).toBeVisible();
+  // Caixas, cubagem e containers no topo do card (dono, 24/11/2026). Sem o
+  // Sankhya ligado (modo memória), o preço continua digitado.
+  const cargo = saleCard.locator("[data-sale-cargo]");
+  await expect(cargo.locator("[data-sale-cargo-boxes]")).toContainText(
+    "Caixas",
+  );
+  await expect(cargo.locator("[data-sale-cargo-cbm]")).toContainText(
+    "Cubagem",
+  );
+  await expect(cargo.locator("[data-sale-cargo-containers]")).toContainText(
+    "Containers",
+  );
   const saleInputs = saleCard.locator(
     "[data-order-sale-line] input[data-money]",
   );

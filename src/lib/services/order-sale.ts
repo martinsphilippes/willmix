@@ -3,6 +3,7 @@ import { getStore, type Order, type OrderItem, type User } from "@/lib/db";
 import { can } from "@/lib/auth/function-access";
 import { ForbiddenError } from "@/lib/auth/permissions";
 import type { Currency } from "@/lib/currencies";
+import type { SaleFormat } from "@/lib/order-terms";
 import { formatAmount } from "@/lib/workflow/money";
 import { audit } from "./audit";
 
@@ -133,7 +134,15 @@ export function nextOrderTotal(input: {
 export async function recordOrderSale(
   user: User,
   orderId: string,
-  input: { currency: Currency; prices: Record<string, number | null> },
+  input: {
+    currency: Currency;
+    prices: Record<string, number | null>;
+    /**
+     * Formato da venda pela cotação (WD ou Wellmix; docs/ORDER_SALE.md,
+     * "Preços pela API"); nulo = preço digitado; ausente = não muda.
+     */
+    saleFormat?: SaleFormat | null;
+  },
 ): Promise<{ total: number | null; complete: boolean; changed: boolean }> {
   if (!can(user, "sale.record")) throw new ForbiddenError("sale_forbidden");
   const store = getStore();
@@ -173,9 +182,14 @@ export async function recordOrderSale(
   const changedItems = next.filter(
     (item) => priceOf(item) !== priceOf(byId.get(item.id)!),
   );
+  const formatBefore = order.saleFormat ?? null;
+  const formatAfter =
+    input.saleFormat === undefined ? formatBefore : input.saleFormat;
+  const formatChanged = formatAfter !== formatBefore;
   const changed =
     changedItems.length > 0 ||
     currencyChanged ||
+    formatChanged ||
     total !== (order.sellPrice ?? null);
   const complete = itemsSale(next).complete;
   if (!changed) return { total, complete, changed: false };
@@ -187,14 +201,18 @@ export async function recordOrderSale(
   await store.update("orders", order.id, {
     sellPrice: total,
     sellCurrency: input.currency,
+    // Só quando muda: a venda digitada de sempre não escreve a coluna nova.
+    ...(formatChanged ? { saleFormat: formatAfter } : {}),
   });
   const snapshot = (
     list: Pick<OrderItem, "name" | "sellUnitPrice">[],
     currency: string | null,
     sellTotal: number | null,
+    format: SaleFormat | null,
   ) => ({
     currency,
     total: sellTotal,
+    format,
     prices: Object.fromEntries(list.map((i) => [i.name, priceOf(i)])),
   });
   await audit(
@@ -206,9 +224,14 @@ export async function recordOrderSale(
       total !== null
         ? formatAmount(total, input.currency, "pt-BR")
         : `${itemsSale(next).priced} de ${next.length} produtos com preço`
-    }`,
-    snapshot(items, order.sellCurrency ?? null, order.sellPrice ?? null),
-    snapshot(next, input.currency, total),
+    }${formatAfter ? ` (${formatAfter === "wd" ? "WD" : "Wellmix"})` : ""}`,
+    snapshot(
+      items,
+      order.sellCurrency ?? null,
+      order.sellPrice ?? null,
+      formatBefore,
+    ),
+    snapshot(next, input.currency, total, formatAfter),
   );
   return { total, complete, changed: true };
 }
