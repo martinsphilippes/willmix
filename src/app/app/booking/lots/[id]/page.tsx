@@ -1303,7 +1303,10 @@ export default async function BookingLotPage({
               ) : null}
               {/* Sem botão de refazer (dono, 24/11/2026): o job diário
                   completa os itens que ficaram sem a previsão. */}
-              <p className="text-xs text-zinc-500" data-booking-lot-forecast-auto>
+              <p
+                className="text-xs text-zinc-500"
+                data-booking-lot-forecast-auto
+              >
                 {t("bookingForecast.lot.auto")}
               </p>
             </Card>
