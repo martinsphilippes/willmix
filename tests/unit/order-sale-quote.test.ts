@@ -417,6 +417,32 @@ describe("gravar a venda pelo formato", () => {
     ).rejects.toThrow("sale_cancelled");
   });
 
+  it("nenhum produto com o preço do formato: não grava e a venda de antes fica", async () => {
+    const { order, itemId } = await newOrder();
+    await svc.recordOrderSaleByFormat(admin, order.id, "wd", {
+      adapter: fakeAdapter(),
+      now: DAY1,
+    });
+    const broken = fakeAdapter(() => ({
+      mode: "api",
+      kind: "error",
+      message: "HTTP 503",
+    }));
+    await expect(
+      svc.recordOrderSaleByFormat(admin, order.id, "wellmix", {
+        adapter: broken,
+        now: DAY2,
+      }),
+    ).rejects.toThrow("sale_no_prices");
+    expect((await getStore().get("order_items", itemId))!.sellUnitPrice).toBe(
+      9.9,
+    );
+    expect((await getStore().get("orders", order.id))!).toMatchObject({
+      sellPrice: 19800,
+      saleFormat: "wd",
+    });
+  });
+
   it("sem o Sankhya ligado na hora de gravar: avisa em vez de gravar", async () => {
     const { order } = await newOrder();
     const manual: Adapter = {

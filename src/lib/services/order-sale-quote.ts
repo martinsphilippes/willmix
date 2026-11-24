@@ -332,6 +332,9 @@ export async function recordOrderSaleByFormat(
     if (unit === null) missing++;
     prices[p.itemId] = unit;
   }
+  // Nenhum produto com o preço do formato (o Sankhya fora, por exemplo): não
+  // grava, para não apagar a venda que já estava gravada.
+  if (missing === items.length) throw new OrderSaleError("sale_no_prices");
   const result = await recordOrderSale(user, orderId, {
     currency: "BRL",
     prices,

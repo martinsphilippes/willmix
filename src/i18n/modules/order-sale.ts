@@ -62,6 +62,8 @@ export const pt = {
     "o Sankhya não respondeu; recarregue a página",
   "orders.error.sale_api_unavailable":
     "A cotação do Sankhya não está ligada agora. Recarregue a página para gravar a venda.",
+  "orders.error.sale_no_prices":
+    "Nenhum produto tem o preço desse formato na cotação do Sankhya agora. Nada foi gravado: a venda de antes continua.",
 } as const;
 
 export const en: Record<keyof typeof pt, string> = {
@@ -122,6 +124,8 @@ export const en: Record<keyof typeof pt, string> = {
   "orderSale.quote.reason.failed": "Sankhya did not respond; reload the page",
   "orders.error.sale_api_unavailable":
     "The Sankhya quote is not connected right now. Reload the page to record the sale.",
+  "orders.error.sale_no_prices":
+    "No product has a price for this format in the Sankhya quote right now. Nothing was saved: the previous sale stays.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -175,4 +179,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderSale.quote.reason.failed": "Sankhya 无响应，请刷新页面",
   "orders.error.sale_api_unavailable":
     "Sankhya 报价目前未连接。请刷新页面后再保存销售。",
+  "orders.error.sale_no_prices":
+    "目前 Sankhya 报价中没有任何产品有该模式的价格。未保存任何内容，之前的销售保持不变。",
 };

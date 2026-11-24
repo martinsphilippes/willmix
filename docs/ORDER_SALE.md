@@ -76,7 +76,7 @@ Decisões do dono (24/11/2026):
   - Produto sem preço: "—", com o motivo embaixo (a mensagem do Sankhya ou a situação da cotação, como FRETE_PENDENTE).
 - **Carregamento:** o pedido abre sem esperar o Sankhya. A tela busca os preços aos poucos, 3 produtos por vez (`GET /api/orders/<id>/sale-prices?items=`), e mostra quantos já chegaram.
 - **Cotação do dia:** fica no item (`order_items.saleQuote`). A próxima visita e a gravação usam a mesma, sem chamar o Sankhya de novo. Vale no dia (Brasília) e com as mesmas entradas: mudou a quantidade, o cliente, o nível ou o frete, cota de novo.
-- **Gravar:** só o formato vai da tela. O servidor usa a cotação do dia (ou cota o que falta) e grava `sellUnitPrice` em R$ (item em caixas: o preço da caixa), a moeda BRL, o total (a soma, como antes) e o formato em `orders.saleFormat`. Produto sem preço fica sem venda e o total, parcial (a regra de sempre). A auditoria leva o formato.
+- **Gravar:** só o formato vai da tela. O servidor usa a cotação do dia (ou cota o que falta) e grava `sellUnitPrice` em R$ (item em caixas: o preço da caixa), a moeda BRL, o total (a soma, como antes) e o formato em `orders.saleFormat`. Produto sem preço fica sem venda e o total, parcial (a regra de sempre). Se nenhum produto tem o preço do formato (o Sankhya fora, por exemplo), nada é gravado e a venda de antes continua. A auditoria leva o formato.
 - **Sem o Sankhya ligado** (desenvolvimento e testes): o card continua com o preço digitado e a moeda; a venda digitada grava o formato vazio.
 - **Caixas, cubagem e containers** (Wellmix):
   - no topo do card, os totais;
