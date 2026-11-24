@@ -28,7 +28,6 @@ import {
   type BookingLotSheetFile,
   type BookingLotStatus,
   type BookingLotSupplierHint,
-  type BookingSourceKind,
   type Party,
   type SheetCurrency,
   type User,
@@ -230,8 +229,9 @@ export const BOOKING_SHEETS_MAX = 10;
 
 /** O que quem importa informa junto com a planilha (dono, 23/11/2026). */
 export interface BookingLotMeta {
-  /** Loja ou Fábrica. */
-  sourceKind?: BookingSourceKind | null;
+  /** Nº da loja e nome do supplier (texto livre, só informativo). */
+  storeNumber?: string | null;
+  supplierName?: string | null;
   /** Tipo de item do book. */
   itemType?: string | null;
 }
@@ -361,7 +361,12 @@ export async function createLotFromSheet(
       createdByUserId: user.id,
       // Colunas opcionais: só vão quando há valor.
       ...(options.partnerId ? { partnerId: options.partnerId } : {}),
-      ...(options.sourceKind ? { sourceKind: options.sourceKind } : {}),
+      ...(clip(options.storeNumber, 60)
+        ? { storeNumber: clip(options.storeNumber, 60) }
+        : {}),
+      ...(clip(options.supplierName, 160)
+        ? { supplierName: clip(options.supplierName, 160) }
+        : {}),
       ...(itemType ? { itemType } : {}),
       ...(sheetFiles.length > 1 ? { sheetFiles } : {}),
     }),
@@ -1227,7 +1232,11 @@ export async function moveBookingLot(
 export async function setBookingLotMeta(
   user: User,
   lotId: string,
-  meta: { sourceKind: BookingSourceKind | null; itemType: string | null },
+  meta: {
+    storeNumber: string | null;
+    supplierName: string | null;
+    itemType: string | null;
+  },
 ): Promise<BookingLot> {
   assertBooking(user);
   const lot = await wellmixLot(lotId);
@@ -1235,9 +1244,12 @@ export async function setBookingLotMeta(
   if (lot.status === "cancelled")
     throw new BookingLotError("booking_lot_locked");
   const itemType = cleanItemType(meta.itemType);
+  const storeNumber = clip(meta.storeNumber, 60);
+  const supplierName = clip(meta.supplierName, 160);
   const updated = await withSchema(() =>
     getStore().update("booking_lots", lot.id, {
-      sourceKind: meta.sourceKind,
+      storeNumber,
+      supplierName,
       itemType,
     }),
   );
@@ -1246,9 +1258,13 @@ export async function setBookingLotMeta(
     "booking_lot.meta",
     "booking_lot",
     lot.id,
-    `Book nº ${lot.number}: ${meta.sourceKind ?? "-"}, tipo de item ${itemType ?? "-"}`,
-    { sourceKind: lot.sourceKind ?? null, itemType: lot.itemType ?? null },
-    { sourceKind: meta.sourceKind, itemType },
+    `Book nº ${lot.number}: loja ${storeNumber ?? "-"}, supplier ${supplierName ?? "-"}, tipo de item ${itemType ?? "-"}`,
+    {
+      storeNumber: lot.storeNumber ?? null,
+      supplierName: lot.supplierName ?? null,
+      itemType: lot.itemType ?? null,
+    },
+    { storeNumber, supplierName, itemType },
   );
   return updated;
 }

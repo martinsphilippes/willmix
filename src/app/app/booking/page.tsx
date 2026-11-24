@@ -80,9 +80,9 @@ export default async function BookingLotsPage({
   const rows: BookingLotRow[] = (entries ?? []).map((e) => {
     return {
       itemType: e.lot.itemType ?? "",
-      sourceKind: e.lot.sourceKind
-        ? t(`bookWork.sourceKind.${e.lot.sourceKind}` as DictionaryKey)
-        : "",
+      sourceKind: [e.lot.storeNumber, e.lot.supplierName]
+        .filter(Boolean)
+        .join(" · "),
       workedPct: e.worked.pct,
       workedText: t("bookWork.worked.count", {
         worked: e.worked.worked,

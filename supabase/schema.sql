@@ -1962,6 +1962,8 @@ alter table public."booking_lots" add column if not exists "ownerUserId" text;
 alter table public."booking_lots" add column if not exists "createdByUserId" text;
 alter table public."booking_lots" add column if not exists "partnerId" text;
 alter table public."booking_lots" add column if not exists "sourceKind" text;
+alter table public."booking_lots" add column if not exists "storeNumber" text;
+alter table public."booking_lots" add column if not exists "supplierName" text;
 alter table public."booking_lots" add column if not exists "itemType" text;
 alter table public."booking_lots" add column if not exists "sheetFiles" jsonb;
 create index if not exists "booking_lots_by_status" on public."booking_lots" ("status");

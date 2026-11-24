@@ -195,7 +195,16 @@ export async function listSelectionItems(
         [
           itemSearchText(r.item),
           searchWords(
-            [r.supplier?.name, r.lot.origin, `${r.lot.number}`]
+            // Nº da loja, nome do supplier e tipo de item digitados na
+            // importação do book também são buscados (dono, 24/11/2026).
+            [
+              r.supplier?.name,
+              r.lot.origin,
+              `${r.lot.number}`,
+              r.lot.storeNumber,
+              r.lot.supplierName,
+              r.lot.itemType,
+            ]
               .filter(Boolean)
               .join(" "),
           ).join(" "),

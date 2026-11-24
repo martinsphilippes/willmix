@@ -3406,8 +3406,19 @@ export interface BookingLot extends BaseRow {
    * antigos): vale o fornecedor do booking.
    */
   partnerId?: string | null;
-  /** Loja ou Fábrica, escolhido na importação (dono, 23/11/2026). Antigos: nulo. */
+  /**
+   * Primeira leitura do pedido (23/11/2026): escolha Loja ou Fábrica. O dono
+   * corrigiu em 24/11/2026: são dois campos abertos (`storeNumber` e
+   * `supplierName`). A coluna fica, sem uso (evolução aditiva).
+   */
   sourceKind?: BookingSourceKind | null;
+  /**
+   * Nº da loja e nome do supplier, digitados por quem importa (dono,
+   * 24/11/2026): só informativos, texto livre; a Seleção de itens busca por
+   * eles. Não mudam o fornecedor do book (`supplierId`).
+   */
+  storeNumber?: string | null;
+  supplierName?: string | null;
   /** Tipo de item do book, escolhido na importação (dono, 23/11/2026). Antigos: nulo. */
   itemType?: string | null;
   /**
@@ -6690,6 +6701,8 @@ export const TABLES: Record<TableName, TableDef> = {
       createdByUserId: id(),
       partnerId: id(false),
       sourceKind: enumOf(BOOKING_SOURCE_KINDS, false),
+      storeNumber: str(60),
+      supplierName: str(160),
       itemType: str(80),
       sheetFiles: json(),
     },

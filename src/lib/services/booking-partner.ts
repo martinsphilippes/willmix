@@ -79,7 +79,8 @@ export type PartnerBookingLot = Pick<
   | "createdAt"
 > & {
   /** Loja/Fábrica e Tipo de item informados na importação (dono, 23/11/2026). */
-  sourceKind: BookingLot["sourceKind"];
+  storeNumber: string | null;
+  supplierName: string | null;
   itemType: string | null;
   /**
    * Itens trabalhados pela Wellmix na Seleção de itens (dono, 23/11/2026):
@@ -97,7 +98,8 @@ const lotView = (lot: BookingLot): PartnerBookingLot => ({
   fileName: lot.fileName,
   itemCount: lot.itemCount,
   createdAt: lot.createdAt,
-  sourceKind: lot.sourceKind ?? null,
+  storeNumber: lot.storeNumber ?? null,
+  supplierName: lot.supplierName ?? null,
   itemType: lot.itemType ?? null,
 });
 
@@ -362,7 +364,8 @@ export async function launchPartnerBooking(
     | Array<Extract<SheetSource, File | { fileKey: string }>>,
   options: {
     defaultCurrency?: SheetCurrency | null;
-    sourceKind?: BookingLot["sourceKind"];
+    storeNumber?: string | null;
+    supplierName?: string | null;
     itemType?: string | null;
   } = {},
 ): Promise<PartnerBookingLot> {
@@ -379,7 +382,8 @@ export async function launchPartnerBooking(
   const { createLotFromSheet } = await import("./booking-lots");
   const lot = await createLotFromSheet(user, source, {
     defaultCurrency: options.defaultCurrency ?? null,
-    sourceKind: options.sourceKind ?? null,
+    storeNumber: options.storeNumber ?? null,
+    supplierName: options.supplierName ?? null,
     itemType: options.itemType ?? null,
     partnerId: party.id,
     ownerUserId: null,

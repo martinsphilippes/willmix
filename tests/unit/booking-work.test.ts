@@ -82,7 +82,8 @@ const itemsOf = async (lotId: string) =>
 /** Sobe e fecha um book (o NCM é obrigatório para fechar). */
 async function closedLot(rows: string[][], itemType: string) {
   const lot = await svc.createBookingLotFromSheet(admin, file(rows), {
-    sourceKind: "factory",
+    storeNumber: "A 100",
+    supplierName: "Fabrica Livre",
     itemType,
   });
   const { setBookingItemsNcm } = await import("@/lib/services/booking-ncm");
@@ -126,15 +127,22 @@ describe("importar o book", () => {
     const lot = await svc.createBookingLotFromSheet(
       admin,
       file([row("MT-1", "Glass cup")]),
-      { sourceKind: "store", itemType: "  Vidro   decorado " },
+      {
+        storeNumber: " A 154678 ",
+        supplierName: "Yiwu  Glass Shop",
+        itemType: "  Vidro   decorado ",
+      },
     );
-    expect(lot.sourceKind).toBe("store");
+    expect(lot.storeNumber).toBe("A 154678");
+    expect(lot.supplierName).toBe("Yiwu Glass Shop");
     expect(lot.itemType).toBe("Vidro decorado");
     const changed = await svc.setBookingLotMeta(admin, lot.id, {
-      sourceKind: "factory",
+      storeNumber: "B 22",
+      supplierName: null,
       itemType: "Plástico",
     });
-    expect(changed.sourceKind).toBe("factory");
+    expect(changed.storeNumber).toBe("B 22");
+    expect(changed.supplierName).toBeNull();
     expect(changed.itemType).toBe("Plástico");
     expect(await svc.bookingItemTypes()).toContain("Plástico");
   });
@@ -147,7 +155,7 @@ describe("importar o book", () => {
         file([row("AP-3", "Spoon one")], "dois.xlsx"),
         file([row("AP-4", "Bowl one"), row("AP-5", "Bowl two")], "tres.xlsx"),
       ],
-      { sourceKind: "factory", itemType: "Append" },
+      { itemType: "Append" },
     );
     expect(lot.itemCount).toBe(5);
     expect(lot.fileName).toBe("um.xlsx + dois.xlsx + tres.xlsx");
@@ -188,10 +196,11 @@ describe("importar o book", () => {
     const lot = await partner.launchPartnerBooking(
       supplierA,
       [file([row("PA-1", "Cup a")], "a.xlsx"), file([row("PA-2", "Cup b")])],
-      { sourceKind: "store", itemType: "Copos" },
+      { storeNumber: "C 9", supplierName: "Loja Nove", itemType: "Copos" },
     );
     expect(lot.itemCount).toBe(2);
-    expect(lot.sourceKind).toBe("store");
+    expect(lot.storeNumber).toBe("C 9");
+    expect(lot.supplierName).toBe("Loja Nove");
     expect(lot.itemType).toBe("Copos");
     await partner.discardPartnerBooking(supplierA, lot.id);
   });
@@ -337,6 +346,15 @@ describe("travar books", () => {
       expect.arrayContaining(["LK-2", "LK-3"]),
     );
     expect(await selection(bia)).not.toContain("LK-1");
+    // Nº da loja e nome do supplier digitados na importação são buscáveis.
+    const found = async (q: string) =>
+      (await requests.listSelectionItems(admin, q))!.all.map(
+        (r) => r.item.factoryItemCode,
+      );
+    expect(await found("Fabrica Livre")).toEqual(
+      expect.arrayContaining(["LK-1", "LK-2", "LK-3"]),
+    );
+    expect(await found("A 100 trava vidro")).toEqual(["LK-1"]);
 
     // A Bia trava o tipo (escrito de outro jeito): pega os dois de madeira.
     await svc.lockBookingType(bia, "Trava Madeira");

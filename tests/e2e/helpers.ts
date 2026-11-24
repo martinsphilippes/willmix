@@ -811,10 +811,11 @@ export async function fillQuoteSheet(form: Locator, productId: string) {
 }
 
 /**
- * Importar book: Loja/Fábrica e Tipo de item são obrigatórios (dono,
- * 23/11/2026; docs/BOOKING.md, "Loja/Fábrica e Tipo de item").
+ * Importar book: nº da loja e nome do supplier (abertos) e o Tipo de item,
+ * obrigatório (dono, 23 e 24/11/2026; docs/BOOKING.md, "Dinâmica dos books").
  */
 export async function fillBookMeta(page: Page, itemType = "Teste E2E") {
-  await page.locator("[data-book-source-kind]").selectOption("factory");
+  await page.locator("[data-book-store-number]").fill("A 154678");
+  await page.locator("[data-book-supplier-name]").fill("Supplier E2E");
   await page.locator("[data-book-item-type]").fill(itemType);
 }

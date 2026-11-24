@@ -169,8 +169,9 @@ describe("tela Booking do Trading", () => {
         "itemType",
         "number",
         "origin",
-        "sourceKind",
+        "storeNumber",
         "status",
+        "supplierName",
         "worked",
       ].sort(),
     );

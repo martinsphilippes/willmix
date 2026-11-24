@@ -11693,6 +11693,22 @@
           ]
         },
         {
+          "key": "storeNumber",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "supplierName",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
           "key": "itemType",
           "required": false,
           "array": false,
