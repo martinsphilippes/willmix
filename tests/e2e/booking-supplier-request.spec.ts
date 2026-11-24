@@ -646,11 +646,12 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   // "Em andamento", com a ação, até a amostra ser aprovada.
   const listRowSelector = `[data-supplier-request-row="${requestUrl.split("/").pop()}"]`;
   await page.goto("/app/supplier-requests");
+  // Pela marcação, sem o texto (o nome da ação pode mudar; PR #677).
   await expect(
     page.locator(
       `${listRowSelector} [data-supplier-request-turn="sampling_send"]`,
     ),
-  ).toContainText("Enviar a amostragem");
+  ).toBeVisible();
   await page.goto("/app/supplier-requests?tab=closed");
   await expect(page.locator(listRowSelector)).toHaveCount(0);
 
