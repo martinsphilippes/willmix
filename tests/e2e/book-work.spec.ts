@@ -264,6 +264,11 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
   );
   // Há quanto tempo e o prazo (a hora-limite; o selo vai no rótulo).
   await expect(held).toContainText(/\d+ min/);
+  // No prazo: só a data e a hora do fim do prazo, pequenas e em verde, com
+  // o texto do prazo no balão (dono, 24/11/2026; antes o selo).
+  const sla = held.locator('[data-booking-sla="ok"]');
+  await expect(sla).toHaveText(/^\d{2}\/\d{2} \d{2}:\d{2}$/);
+  await expect(sla).toHaveAttribute("title", "No prazo (3 h)");
   // E libera a trava de qualquer pessoa.
   await held.locator("[data-booking-unlock-row]").click();
   await page.waitForURL(/unlocked=1/);
