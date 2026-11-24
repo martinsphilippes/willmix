@@ -101,7 +101,7 @@ export const pt = {
   "bookWork.toSelection.max": "Até {n} itens por vez.",
   "bookWork.toSelection.hint":
     "Marque um ou vários itens: leve para a Seleção de itens ou recuse (o recusado conta como trabalhado).",
-  "bookWork.lock": "Travar para mim",
+  "bookWork.lock": "Travar",
   "bookWork.unlock": "Liberar",
   "bookWork.unlock.type": "Liberar os books deste tipo",
   "bookWork.lock.title": "Com quem está",
@@ -245,7 +245,7 @@ export const en: typeof pt = {
   "bookWork.toSelection.max": "Up to {n} items at a time.",
   "bookWork.toSelection.hint":
     "Tick one or several items: take them to Item selection or refuse them (a refused item counts as worked).",
-  "bookWork.lock": "Lock for me",
+  "bookWork.lock": "Lock",
   "bookWork.unlock": "Release",
   "bookWork.unlock.type": "Release the books of this type",
   "bookWork.lock.title": "Who has it",
@@ -380,7 +380,7 @@ export const zh: typeof pt = {
   "bookWork.toSelection.max": "每次最多 {n} 个产品。",
   "bookWork.toSelection.hint":
     "勾选一个或多个产品：带到选品页面，或拒绝（被拒绝的产品计为已处理）。",
-  "bookWork.lock": "锁定给我",
+  "bookWork.lock": "锁定",
   "bookWork.unlock": "释放",
   "bookWork.unlock.type": "释放该类型的 Book",
   "bookWork.lock.title": "由谁处理",
