@@ -361,7 +361,7 @@ export default async function BookingLotPage({
 
   // Preço e moeda do Book: só com "Ver preço de compra" (dono, 15/11/2026;
   // docs/LINHA_DE_VISAO.md); sem ela as colunas não vão à tela. A previsão de
-  // preço do Sankhya (sinal, venda prevista, lucro e "Refazer a previsão")
+  // preço do Sankhya (sinal, venda prevista, lucro e o cartão "Previsão de preço")
   // segue a mesma permissão: o custo sai do preço.
   const seesPrice = canSeePurchasePrice(user);
   const columns = seesPrice
