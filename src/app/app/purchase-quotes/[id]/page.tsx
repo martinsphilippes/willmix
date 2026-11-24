@@ -641,15 +641,19 @@ export default async function PurchaseQuotePage({
                   <Th>{itemHead("step")}</Th>
                   <Th>{itemHead("status")}</Th>
                   <Th>{itemHead("sla")}</Th>
+                  <Th>{itemHead("code")}</Th>
                   <Th>{itemHead("description")}</Th>
-                  <Th className="text-right">
-                    {t("quote.products.yourPrice")}
-                  </Th>
+                  <Th className="text-right">{itemHead("priceNoIpi")}</Th>
+                  <Th className="text-right">{itemHead("priceIpi")}</Th>
+                  <Th className="text-right">{itemHead("priceIpiFreight")}</Th>
                   <Th className="text-right">{itemHead("perBox")}</Th>
                   <Th className="text-right">{itemHead("perInner")}</Th>
                   <Th className="text-right">{itemHead("boxes")}</Th>
                   <Th className="text-right">{itemHead("pieces")}</Th>
                   <Th className="text-right">{itemHead("cbm")}</Th>
+                  <Th className="text-right">
+                    {t("quote.products.yourPrice")}
+                  </Th>
                   <Th>{t("quote.products.answer")}</Th>
                   <Th>
                     <span className="sr-only">{t("quote.products.open")}</span>
@@ -699,6 +703,9 @@ export default async function PurchaseQuotePage({
                         "—"
                       )}
                     </Td>
+                    <Td className="whitespace-nowrap font-mono text-xs text-zinc-700">
+                      {row.product?.sku ?? "—"}
+                    </Td>
                     <Td className="min-w-44 font-medium">
                       <TextLink
                         href={itemHref(row.item.productId)}
@@ -708,9 +715,11 @@ export default async function PurchaseQuotePage({
                         {row.name}
                       </TextLink>
                     </Td>
-                    <Td className="whitespace-nowrap text-right tabular-nums">
-                      {row.price ?? "—"}
-                    </Td>
+                    {/* Preços de venda (sem IPI, com IPI e com frete) são da
+                        Wellmix com o cliente dela: não saem para o fornecedor. */}
+                    <Td className="text-right">—</Td>
+                    <Td className="text-right">—</Td>
+                    <Td className="text-right">—</Td>
                     <Td className="text-right tabular-nums">{n(row.perBox)}</Td>
                     <Td className="text-right tabular-nums">{n(row.inner)}</Td>
                     <Td className="text-right tabular-nums">{n(row.boxes)}</Td>
@@ -718,6 +727,12 @@ export default async function PurchaseQuotePage({
                       {row.item.quantity.toLocaleString(t.intl)} {row.item.unit}
                     </Td>
                     <Td className="text-right tabular-nums">{n(row.cbm, 3)}</Td>
+                    <Td
+                      className="whitespace-nowrap text-right tabular-nums"
+                      data-quote-product-price
+                    >
+                      {row.price ?? "—"}
+                    </Td>
                     <Td
                       className="whitespace-nowrap"
                       data-quote-product-filled={row.filled ? "1" : "0"}

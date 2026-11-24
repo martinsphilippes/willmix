@@ -28,7 +28,9 @@ import {
   type CatalogAlert,
   type SheetTolerances,
   type SupplierSheetDraft,
+  boxesForSheet,
 } from "@/lib/supplier-sheet";
+import { isPieceUnit } from "@/lib/moq";
 import { matchMaterials } from "@/lib/materials";
 import { quoteInnerState } from "@/lib/quote-inner";
 import { audit } from "./audit";
@@ -984,4 +986,54 @@ export async function supplierSheetTaskDrafts(user: User) {
     link: `/app/supplier-sheets/${sheet.id}`,
     dueAt: null,
   }));
+}
+
+/**
+ * Total de m³ de cada cotação para o fornecedor (tabela padrão, dono,
+ * 24/11/2026; docs/ORDER_TABLES.md): pela caixa da ficha dele e, sem ficha,
+ * pela do cadastro. Só sai o total quando todo produto da cotação tem a
+ * conta; faltando um, nulo (a tela mostra "—").
+ */
+export async function supplierQuotesCbm(
+  supplierId: string,
+  quotes: ReadonlyArray<Pick<PurchaseQuote, "id" | "items">>,
+): Promise<Map<string, number | null>> {
+  const productIds = [
+    ...new Set(quotes.flatMap((q) => q.items.map((i) => i.productId))),
+  ];
+  const out = new Map<string, number | null>();
+  if (!productIds.length) return out;
+  const [pairs, products] = await Promise.all([
+    loadPairSheets(supplierId, productIds),
+    getStore()
+      .list("products", { filter: { id: productIds } })
+      .catch(() => [] as Product[]),
+  ]);
+  const productById = new Map(products.map((p) => [p.id, p]));
+  for (const quote of quotes) {
+    let total: number | null = 0;
+    for (const item of quote.items) {
+      const pair = pairs.get(item.productId);
+      const product = productById.get(item.productId);
+      const masterBoxQty =
+        pair?.data?.masterBoxQty ?? product?.masterBoxQty ?? null;
+      const cbm = pair?.data?.cbm ?? product?.cbm ?? null;
+      const rounds = isPieceUnit(item.unit)
+        ? item.schedule?.items?.length
+          ? item.schedule.items.map((i) => i.quantity)
+          : [item.quantity]
+        : [];
+      const box =
+        masterBoxQty && cbm
+          ? boxesForSheet(rounds, { masterBoxQty, cbm })
+          : null;
+      if (!box) {
+        total = null;
+        break;
+      }
+      total += box.cbm;
+    }
+    out.set(quote.id, total);
+  }
+  return out;
 }
