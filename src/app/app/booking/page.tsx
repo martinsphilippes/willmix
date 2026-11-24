@@ -15,12 +15,7 @@ import {
   listBookingLots,
   myBookingLocks,
 } from "@/lib/services/booking-lots";
-import {
-  durationText,
-  itemTypeKey,
-  lockDueText,
-  lockLate,
-} from "@/lib/booking-locks";
+import { durationText, itemTypeKey } from "@/lib/booking-locks";
 import { getSettings } from "@/lib/settings";
 import { dictionaries } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
@@ -67,6 +62,10 @@ export default async function BookingLotsPage({
     getSettings(),
   ]);
   const slaHours = settings.bookingLockSlaHours;
+  // A hora da leitura (uma por pedido da página): a primeira pintura do
+  // prazo ("Faltam…") sai igual no servidor e no navegador; depois o
+  // relógio anda na tela.
+  const renderedAt = new Date().getTime();
   const errorCode = typeof query.error === "string" ? query.error : "";
   const errorKey = [
     `bookWork.error.${errorCode}`,
@@ -101,8 +100,8 @@ export default async function BookingLotsPage({
       lockByType: e.held?.lock.scope === "type",
       heldMinutes: e.held ? e.held.minutes : null,
       heldText: e.held ? durationText(e.held.minutes) : "",
-      heldDueText: e.held ? lockDueText(e.held.since, slaHours) : "",
-      heldLate: e.held ? lockLate(e.held.minutes, slaHours) : false,
+      heldSince: e.held?.since ?? null,
+      workDoneAt: e.lot.workDoneAt ?? null,
       id: e.lot.id,
       number: e.lot.number,
       status: e.lot.status,
@@ -208,6 +207,8 @@ export default async function BookingLotsPage({
           <BookingLotsTable
             rows={rows}
             showSignals={seesPrice}
+            slaHours={slaHours}
+            renderedAt={renderedAt}
             labels={{
               lock: t("bookWork.lock"),
               unlock: t("bookWork.unlock"),
@@ -215,6 +216,18 @@ export default async function BookingLotsPage({
               byType: t("bookWork.lock.byTypeShort"),
               slaOk: t("bookWork.sla.ok", { h: slaHours }),
               slaLate: t("bookWork.sla.late", { h: slaHours }),
+              // Com os {marcadores}: a tela preenche com a hora de agora.
+              clock: {
+                left: t("bookWork.clock.left"),
+                late: t("bookWork.clock.late"),
+                done: t("bookWork.clock.done"),
+                doneNow: t("bookWork.clock.doneNow"),
+                until: t("bookWork.clock.until"),
+                due: t("bookWork.clock.due"),
+                doneAt: t("bookWork.clock.doneAt"),
+                heldBy: t("bookWork.lock.heldBy"),
+                doneHint: t("bookWork.clock.doneHint"),
+              },
               search: t("bookingLots.search"),
               searchPlaceholder: t("bookingLots.searchPlaceholder"),
               count: t("bookingLots.count"),
