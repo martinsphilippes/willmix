@@ -836,6 +836,20 @@ export function milestoneOfStoredItem(r: StoredItem): MilestoneKey | null {
   return step ? milestoneOfStep(step) : null;
 }
 
+/**
+ * O passo do marco no bloco dele (dono, 24/11/2026, depois do pedido
+ * #10000002): o item aberto num passo fora dos blocos do pedido (o cadastro
+ * do produto do Pedido novo, em Cadastros → Produtos) também põe o pedido
+ * neste passo, para ele não sumir do bloco do marco atual. Pedido novo →
+ * Pedido > Pedidos; nulo quando o marco não tem passo no próprio bloco (o
+ * Sinal, que fica no Financeiro).
+ */
+export function milestoneHomeStep(key: MilestoneKey): string | null {
+  const def = MILESTONES.find((d) => d.key === key);
+  if (!def) return null;
+  return def.steps.find((s) => s.split("/")[0] === def.block) ?? null;
+}
+
 /** Os dois itens do Financeiro que andam no fluxo (o sinal e a aprovação dele). */
 const FINANCE_FLOW_KEYS: ReadonlySet<string> = new Set([
   "down_payment",

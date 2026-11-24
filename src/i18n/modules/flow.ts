@@ -50,6 +50,7 @@ export const pt = {
   "flow.all.open": "Aberto neste passo",
   "flow.all.since": "No passo há",
   "flow.all.view": "Ver o pedido",
+  "flow.all.elsewhere": "{where}: {item}",
   "flow.all.search":
     "Buscar em todo o passo: nº do pedido, fornecedor, cliente ou produto",
   "flow.all.searchButton": "Buscar",
@@ -353,6 +354,7 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.all.open": "Open in this step",
   "flow.all.since": "In the step for",
   "flow.all.view": "View order",
+  "flow.all.elsewhere": "{where}: {item}",
   "flow.all.search":
     "Search the whole step: order no., supplier, customer or product",
   "flow.all.searchButton": "Search",
@@ -652,6 +654,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.all.open": "本环节未完成",
   "flow.all.since": "已在本环节",
   "flow.all.view": "查看订单",
+  "flow.all.elsewhere": "{where}：{item}",
   "flow.all.search": "在整个环节中搜索：订单号、供应商、客户或产品",
   "flow.all.searchButton": "搜索",
   "flow.all.clear": "清除",
