@@ -7,7 +7,7 @@
 export const pt = {
   "bookWork.meta.save": "Salvar",
   "bookWork.storeNumber": "Nº da loja",
-  "bookWork.supplierName": "Fábrica (fabricante)",
+  "bookWork.supplierName": "Supplier",
   "bookWork.incoterm": "FOB ou EXW",
   "bookWork.incotermHint":
     "Vale para todos os itens do book, seja qual for o que a planilha traz.",
@@ -21,9 +21,9 @@ export const pt = {
   "bookingLots.error.booking_incoterm_required": "Escolha FOB ou EXW.",
   "bookingLots.error.booking_exw_value_required":
     "Com EXW, informe o valor do EXW (acima de zero).",
-  "bookWork.storeNumberHint": "A loja da fábrica, como na planilha.",
+  "bookWork.storeNumberHint": "A loja da fábrica (a do supplier da planilha).",
   "bookWork.supplierNameHint":
-    "O fabricante dos itens (o supplier da planilha). Um book tem itens de uma fábrica só.",
+    "O fornecedor, dono do book: as solicitações dos itens vão para ele. Digite para buscar no cadastro; se não existir, fica o nome e você cadastra depois, na tela do book.",
   "bookWork.partner": "Fornecedor (Supplier)",
   "bookWork.partnerHint":
     "O dono do book: as solicitações dos itens vão para ele. Vazio: vale a fábrica.",
@@ -66,6 +66,9 @@ export const pt = {
     "Quem travou não libera: só o gestor. A trava sai sozinha quando todos os itens do book estiverem trabalhados.",
   "bookWork.error.booking_lock_release_manager":
     "Só o gestor de quem travou (ou quem supervisiona os books) libera a trava. Ela sai sozinha quando todos os itens estiverem trabalhados.",
+  "bookWork.supplierSearch": "Buscar ou digitar o nome",
+  "bookWork.supplier.pending": "Supplier sem cadastro: {name}",
+  "bookWork.supplier.register": "Cadastrar como fornecedor do book",
   "bookWork.itemType": "Tipo de item",
   "bookWork.itemTypeHint":
     "Ex.: vidro, plástico, utilidades. Use o mesmo nome dos outros books do mesmo tipo.",
@@ -137,7 +140,7 @@ export const pt = {
 export const en: typeof pt = {
   "bookWork.meta.save": "Save",
   "bookWork.storeNumber": "Store no.",
-  "bookWork.supplierName": "Factory (manufacturer)",
+  "bookWork.supplierName": "Supplier",
   "bookWork.incoterm": "FOB or EXW",
   "bookWork.incotermHint":
     "Applies to every item of the book, whatever the spreadsheet says.",
@@ -151,9 +154,10 @@ export const en: typeof pt = {
   "bookingLots.error.booking_incoterm_required": "Choose FOB or EXW.",
   "bookingLots.error.booking_exw_value_required":
     "With EXW, fill in the EXW value (above zero).",
-  "bookWork.storeNumberHint": "The factory's store, as in the spreadsheet.",
+  "bookWork.storeNumberHint":
+    "The factory's store (the spreadsheet's supplier).",
   "bookWork.supplierNameHint":
-    "The manufacturer of the items (the spreadsheet's supplier). A book has items from one factory only.",
+    "The supplier that owns the book: requests for its items go to them. Type to search the registry; if they are not there, the name is kept and you register them later, on the book page.",
   "bookWork.partner": "Supplier",
   "bookWork.partnerHint":
     "The owner of the book: requests for its items go to them. Empty: the factory.",
@@ -195,6 +199,9 @@ export const en: typeof pt = {
     "Whoever locked it cannot release it: only their manager. The lock comes off by itself when every item of the book has been worked.",
   "bookWork.error.booking_lock_release_manager":
     "Only the manager of whoever locked it (or whoever supervises the books) can release the lock. It comes off by itself when every item has been worked.",
+  "bookWork.supplierSearch": "Search or type the name",
+  "bookWork.supplier.pending": "Supplier not registered: {name}",
+  "bookWork.supplier.register": "Register as the book's supplier",
   "bookWork.itemType": "Item type",
   "bookWork.itemTypeHint":
     "E.g. glass, plastic, housewares. Use the same name as the other books of the same type.",
@@ -266,7 +273,7 @@ export const en: typeof pt = {
 export const zh: typeof pt = {
   "bookWork.meta.save": "保存",
   "bookWork.storeNumber": "店铺号",
-  "bookWork.supplierName": "工厂（生产厂家）",
+  "bookWork.supplierName": "Supplier（供应商）",
   "bookWork.incoterm": "FOB 或 EXW",
   "bookWork.incotermHint": "适用于 Book 的所有产品，无论表格中填写的是什么。",
   "bookWork.exwValue": "EXW 费用",
@@ -278,9 +285,9 @@ export const zh: typeof pt = {
   "bookingLots.error.booking_incoterm_required": "请选择 FOB 或 EXW。",
   "bookingLots.error.booking_exw_value_required":
     "选择 EXW 时，请填写 EXW 费用（大于零）。",
-  "bookWork.storeNumberHint": "工厂的店铺号，与表格一致。",
+  "bookWork.storeNumberHint": "工厂的店铺号（表格中 supplier 的店铺）。",
   "bookWork.supplierNameHint":
-    "产品的生产厂家（表格中的 supplier）。一个 Book 只能有一个工厂的产品。",
+    "Book 的所有者：产品的请求会发给他。输入即可在登记中搜索；如果不存在，名称会保留，稍后在 Book 页面登记。",
   "bookWork.partner": "供应商（Supplier）",
   "bookWork.partnerHint": "Book 的所有者：产品的请求会发给他。留空：发给工厂。",
   "bookWork.partner.none": "稍后选择（发给工厂）",
@@ -316,6 +323,9 @@ export const zh: typeof pt = {
     "锁定者本人不能释放，只有其主管可以。Book 的所有产品处理完后，锁定会自动解除。",
   "bookWork.error.booking_lock_release_manager":
     "只有锁定者的主管（或 Book 主管）可以释放锁定。所有产品处理完后，锁定会自动解除。",
+  "bookWork.supplierSearch": "搜索或输入名称",
+  "bookWork.supplier.pending": "Supplier 尚未登记：{name}",
+  "bookWork.supplier.register": "登记为该 Book 的供应商",
   "bookWork.itemType": "产品类型",
   "bookWork.itemTypeHint":
     "例如：玻璃、塑料、日用品。同类型的 Book 请使用相同的名称。",
