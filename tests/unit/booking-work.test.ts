@@ -147,6 +147,39 @@ describe("importar o book", () => {
     expect(await svc.bookingItemTypes()).toContain("Plástico");
   });
 
+  it("FOB ou EXW escolhido vale para todos os itens; EXW pede o valor", async () => {
+    // A planilha diz FOB; quem importa escolhe EXW.
+    const lot = await svc.createBookingLotFromSheet(
+      admin,
+      file([row("EX-1", "Exw one"), row("EX-2", "Exw two")]),
+      { itemType: "Exw", incoterm: "EXW", exwValue: 0.35 },
+    );
+    expect(lot.incoterm).toBe("EXW");
+    expect(lot.exwValue).toBe(0.35);
+    expect((await itemsOf(lot.id)).map((i) => i.incoterm)).toEqual([
+      "EXW",
+      "EXW",
+    ]);
+    await expect(
+      svc.createBookingLotFromSheet(admin, file([row("EX-3", "x")]), {
+        incoterm: "EXW",
+      }),
+    ).rejects.toThrow("booking_exw_value_required");
+    // No rascunho a Wellmix troca: volta para FOB e o valor do EXW sai.
+    const back = await svc.setBookingLotMeta(admin, lot.id, {
+      storeNumber: null,
+      supplierName: null,
+      itemType: "Exw",
+      incoterm: "FOB",
+    });
+    expect(back.incoterm).toBe("FOB");
+    expect(back.exwValue).toBeNull();
+    expect((await itemsOf(lot.id)).map((i) => i.incoterm)).toEqual([
+      "FOB",
+      "FOB",
+    ]);
+  });
+
   it("várias planilhas viram um book só, uma depois da outra", async () => {
     const lot = await svc.createBookingLotFromSheet(
       admin,

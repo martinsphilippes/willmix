@@ -11709,6 +11709,25 @@
           "size": 160
         },
         {
+          "key": "incoterm",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "FOB",
+            "EXW"
+          ]
+        },
+        {
+          "key": "exwValue",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
           "key": "itemType",
           "required": false,
           "array": false,

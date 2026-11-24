@@ -3419,6 +3419,14 @@ export interface BookingLot extends BaseRow {
    */
   storeNumber?: string | null;
   supplierName?: string | null;
+  /**
+   * FOB ou EXW escolhido na importação (dono, 24/11/2026): vale para todos
+   * os itens do book, seja qual for o que a planilha trazia. Com EXW, o
+   * valor do EXW digitado (`exwValue`), na moeda dos preços do book.
+   * Antigos: nulo.
+   */
+  incoterm?: SheetIncoterm | null;
+  exwValue?: number | null;
   /** Tipo de item do book, escolhido na importação (dono, 23/11/2026). Antigos: nulo. */
   itemType?: string | null;
   /**
@@ -6703,6 +6711,8 @@ export const TABLES: Record<TableName, TableDef> = {
       sourceKind: enumOf(BOOKING_SOURCE_KINDS, false),
       storeNumber: str(60),
       supplierName: str(160),
+      incoterm: enumOf(SHEET_INCOTERMS, false),
+      exwValue: float(),
       itemType: str(80),
       sheetFiles: json(),
     },
