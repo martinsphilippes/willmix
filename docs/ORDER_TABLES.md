@@ -92,3 +92,22 @@ O que o portal continua sem ter: uma data de negociação própria (uso a data e
 ## 4. Preço de compra nunca para o cliente (dono, 23/11/2026)
 
 O preço original, negociado com o fornecedor, **nunca** aparece para o cliente, em nenhuma tabela. Nas tabelas padrão, o preço de compra (Preço unitário e Total FOB na página do pedido) só sai por `canSeeOrderPurchasePrice` (a Wellmix com "Ver preço de compra", o fornecedor do pedido e o despachante do pedido); os três valores padrão são preços de venda Wellmix, e mesmo esses só com "Ver valores e margem". O teste `tests/unit/purchase-price-customer.test.ts` trava que o login de cliente fica de fora em qualquer combinação. Coluna nova com preço de compra: sempre atrás dessa mesma função, nunca atrás de "é Wellmix ou é dono do pedido".
+
+## 5. O fornecedor na tabela padrão (dono, 24/11/2026)
+
+O dono viu a lista de cotações do fornecedor (`/app/purchase-quotes`) com só oito colunas e pediu o padrão inteiro. Agora a lista dele tem as 18 colunas, na ordem padrão, e a tabela dos produtos da cotação tem as 15 da tabela de itens, com "Seu preço" e "Sua resposta" no fim.
+
+O que cada coluna mostra para ele:
+
+| Coluna | Para o fornecedor |
+| --- | --- |
+| Nº, Data negociação | O número da cotação e o dia do convite. |
+| Tipo de venda, Prazo, Forma de pagamento, Faturamento, VIP, Grupo econômico, Cliente nº | "—": são as condições da venda da Wellmix ao cliente dela, que não saem para quem é de fora. |
+| Cliente | "Wellmix" (quem compra dele). O cliente final nunca aparece. |
+| Status, Situação, Prazo resposta | De quem é a vez, o momento da resposta dele e o prazo do convite. |
+| Itens, Entregas | Produtos da cotação e programações. |
+| Total CBM | Pela caixa da ficha dele; sem ficha, pela do nosso cadastro. Só sai quando todo produto tem a conta (`supplierQuotesCbm`). |
+| Valor total | O total da resposta dele, na moeda dele. |
+| Fornecedor | A empresa dele. |
+
+Na tabela de itens: Código é o código Wellmix do produto; Valor s/ IPI, Valor com IPI e Valor IPI com frete ficam "—" (preços de venda da Wellmix); o preço dele segue na coluna "Seu preço".

@@ -27,7 +27,11 @@ import {
   rowClass,
 } from "@/components/ui";
 import { QuoteDeadline } from "./_time";
-import { orderHeadText } from "@/components/order-standard-cells";
+import {
+  OrderStandardHeads,
+  orderHeadText,
+} from "@/components/order-standard-cells";
+import { supplierQuotesCbm } from "@/lib/services/supplier-sheets";
 
 /*
  * Cotação de compra (mapa B13; dono, 15/11/2026; docs/PURCHASE_DEMAND.md).
@@ -49,6 +53,20 @@ export default async function PurchaseQuotesPage() {
 
   if (!isWellmix(user)) {
     const rows = await supplierInvitations(user, now);
+    const [cbm, supplierParty] = await Promise.all([
+      user.partyId
+        ? supplierQuotesCbm(
+            user.partyId,
+            rows.map((r) => r.quote),
+          ).catch(() => new Map<string, number | null>())
+        : Promise.resolve(new Map<string, number | null>()),
+      user.partyId
+        ? getStore()
+            .get("parties", user.partyId)
+            .catch(() => null)
+        : Promise.resolve(null),
+    ]);
+    const supplierName = supplierParty?.name ?? "—";
     return (
       <div data-quote-list="supplier">
         <PageHeader
@@ -59,22 +77,15 @@ export default async function PurchaseQuotesPage() {
         <Card>
           {rows.length ? (
             <Table>
-              {/* Tabela padrão de pedidos (dono, 23/11/2026;
-                  docs/ORDER_TABLES.md) para o fornecedor: as colunas dele, na
-                  ordem padrão. Cliente, condições de venda e valor de venda
-                  não saem para quem é de fora; o valor é o da resposta dele. */}
+              {/* Tabela padrão de pedidos para o fornecedor (dono, 24/11/2026;
+                  docs/ORDER_TABLES.md): todas as colunas, na ordem padrão.
+                  As condições de venda e o cliente final da Wellmix não saem
+                  para quem é de fora ("—"); para ele o cliente é a Wellmix,
+                  o m³ é pela caixa dele e o valor é o da resposta dele. */}
               <thead>
                 <tr data-order-table="supplier-quotes">
                   <Th>{orderHeadText(t, "number")}</Th>
-                  <Th>{orderHeadText(t, "negotiationDate")}</Th>
-                  <Th>{orderHeadText(t, "status")}</Th>
-                  <Th>{orderHeadText(t, "step")}</Th>
-                  <Th>{orderHeadText(t, "sla")}</Th>
-                  <Th className="text-right">{orderHeadText(t, "items")}</Th>
-                  <Th className="text-right">
-                    {orderHeadText(t, "deliveries")}
-                  </Th>
-                  <Th className="text-right">{orderHeadText(t, "value")}</Th>
+                  <OrderStandardHeads t={t} seeValue />
                   <Th>
                     <span className="sr-only">{t("tasks.open")}</span>
                   </Th>
@@ -106,9 +117,28 @@ export default async function PurchaseQuotesPage() {
                           #{quote.number}
                         </Link>
                       </Td>
-                      <Td className="whitespace-nowrap tabular-nums">
+                      <Td
+                        className="whitespace-nowrap tabular-nums"
+                        data-order-col="negotiationDate"
+                      >
                         {formatDate(response.invitedAt, t)}
                       </Td>
+                      {(
+                        [
+                          "saleType",
+                          "paymentTerm",
+                          "paymentMethod",
+                          "billing",
+                          "vip",
+                          "group",
+                          "customerCode",
+                        ] as const
+                      ).map((key) => (
+                        <Td key={key} data-order-col={key}>
+                          —
+                        </Td>
+                      ))}
+                      <Td data-order-col="customerName">Wellmix</Td>
                       {/* Status: de quem é a vez. */}
                       <Td className="whitespace-nowrap">
                         {state === "open" ? (
@@ -139,12 +169,23 @@ export default async function PurchaseQuotesPage() {
                         {productCount(quote)}
                       </Td>
                       <Td className="text-right tabular-nums">{rounds}</Td>
+                      <Td
+                        className="whitespace-nowrap text-right tabular-nums"
+                        data-order-col="cbm"
+                      >
+                        {typeof cbm.get(quote.id) === "number"
+                          ? cbm.get(quote.id)!.toLocaleString(t.intl, {
+                              maximumFractionDigits: 3,
+                            })
+                          : "—"}
+                      </Td>
                       <Td className="whitespace-nowrap text-right tabular-nums">
                         {response.status === "answered" &&
                         response.prices?.length
                           ? `${response.currency ?? ""} ${total.toLocaleString(t.intl, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim()
                           : "—"}
                       </Td>
+                      <Td data-order-col="supplier">{supplierName}</Td>
                       <Td>
                         <OpenLink
                           href={`/app/purchase-quotes/${quote.id}`}
