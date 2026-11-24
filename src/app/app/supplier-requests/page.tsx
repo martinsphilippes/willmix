@@ -68,6 +68,12 @@ import {
   sweepQuotes,
 } from "@/lib/services/purchase-quote";
 import { turnTone, turnWaitingKey } from "@/lib/turn";
+import { supplierRequestResponsibles } from "@/lib/services/supplier-request-turns";
+import { samplingSlaDays } from "@/lib/services/supplier-request-sampling";
+import {
+  ResponsibleLogins,
+  ResponsibleTip,
+} from "@/components/request-responsible-tip";
 import { QuoteDeadline } from "../purchase-quotes/_time";
 import { InvitesTable } from "./_components/invites-table";
 import { inviteLate, listInvitesFor } from "@/lib/services/booking-invites";
@@ -220,6 +226,20 @@ export default async function SupplierRequestsPage({
   const closedRequests = allRequests.filter((list) => requestClosed(list));
   const openRequests = allRequests.filter((list) => !requestClosed(list));
   const requests = closedTab ? closedRequests : openRequests;
+  // Vez (dono, 24/11/2026): quem age em cada linha, a mesma peça da tabela
+  // da cotação, e o login de quem envia à vista para o administrador. Só a
+  // Wellmix; cada fornecedor com o seu tipo (Trading aparece como Trading).
+  const supplierType = new Map(
+    rows.map((e) => [e.request.supplierId, e.supplier?.type ?? null]),
+  );
+  const responsible = wellmix
+    ? await supplierRequestResponsibles(user, requests.flat(), {
+        slaMinutes,
+        samplingDays: await samplingSlaDays(),
+        tradingOf: (id) => supplierType.get(id) === "trading",
+        translate: (key) => t(key as DictionaryKey),
+      })
+    : new Map<string, null>();
   /* Solicitações do cliente (dono, 23/11/2026; docs/SUPPLIER_REQUESTS.md):
      para o fornecedor, os convites de book entram na mesma tabela das
      solicitações. Em aberto ficam em "Em negociação"; o respondido e o
@@ -624,6 +644,10 @@ export default async function SupplierRequestsPage({
                   steps.find((s) => s?.party === "supplier") ??
                   steps.find((s) => s?.party === "wellmix") ??
                   null;
+                // Quem age: o do produto com a vez mostrada.
+                const who = turn
+                  ? (responsible.get(products[steps.indexOf(turn)].id) ?? null)
+                  : null;
                 const pieces = products.reduce((sum, p) => sum + p.quantity, 0);
                 const distinct = new Set(products.map((p) => p.bookingItemId))
                   .size;
@@ -765,6 +789,20 @@ export default async function SupplierRequestsPage({
                             <span className="mt-0.5 block text-xs text-zinc-600">
                               {t(`reqList.next.${turn.step}` as DictionaryKey)}
                             </span>
+                            {/* Quem age e, para o administrador, o login
+                                de quem envia (dono, 24/11/2026). */}
+                            {who ? (
+                              <ResponsibleTip
+                                r={who}
+                                t={t}
+                                className="mt-0.5 block max-w-48 whitespace-normal"
+                              />
+                            ) : null}
+                            <ResponsibleLogins
+                              r={who}
+                              t={t}
+                              className="max-w-48"
+                            />
                           </>
                         ) : (
                           "—"

@@ -642,6 +642,35 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     page.locator("[data-info-tip]").filter({ hasText: "supplier.a@china.com" }),
   ).toBeVisible();
   await page.keyboard.press("Escape");
+  // O login de quem envia a amostragem, à vista para o administrador (dono,
+  // 24/11/2026): na tabela da cotação e na lista de cotações (aba
+  // Encerradas: a solicitação está aprovada).
+  await expect(turnCell.locator("[data-responsible-logins]")).toContainText(
+    "supplier.a@china.com",
+  );
+  const listTurn = page.locator(
+    `[data-supplier-request-row="${requestUrl.split("/").pop()}"] [data-supplier-request-turn]`,
+  );
+  await page.goto("/app/supplier-requests?tab=closed");
+  await expect(listTurn).toHaveAttribute(
+    "data-supplier-request-turn",
+    "sampling_send",
+  );
+  await expect(listTurn).toContainText("Aguardando fornecedor");
+  await expect(listTurn).toContainText("Enviar a amostragem");
+  await expect(
+    listTurn.locator('[data-request-responsible="ok"]'),
+  ).toContainText("Fornecedor");
+  await expect(listTurn.locator("[data-responsible-logins]")).toContainText(
+    "supplier.a@china.com",
+  );
+  // Fora o administrador, quem age sem o login (privacidade).
+  await login(page, plannerEmail);
+  await page.goto("/app/supplier-requests?tab=closed");
+  await expect(
+    listTurn.locator('[data-request-responsible="ok"]'),
+  ).toBeVisible();
+  await expect(listTurn.locator("[data-responsible-logins]")).toHaveCount(0);
 
   // 4.1 Amostragem: o responsável sobe uma foto da amostra e envia.
   await login(page, "supplier.a@china.com");
