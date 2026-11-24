@@ -510,7 +510,7 @@ describe("de quem é a vez na cotação (dono, 24/11/2026)", () => {
       party: "supplier",
       step: "supplier_answer",
     });
-    expect(turn({ ...base, status: "rejected" })).toBeNull();
+    expect(turn({ ...base, status: "declined" })).toBeNull();
     expect(turn({ ...base, status: "cancelled" })).toBeNull();
   });
 
