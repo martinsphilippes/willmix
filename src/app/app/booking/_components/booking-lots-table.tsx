@@ -88,8 +88,8 @@ export function BookingLotsTable({
   rows: BookingLotRow[];
   labels: BookingLotsTableLabels;
   /**
-   * Sinais do Superplan: falso sem "Ver preço de compra" (dono, 15/11/2026;
-   * docs/LINHA_DE_VISAO.md, seção 7).
+   * Sinais do custo no Sankhya: falso sem "Ver preço de compra" (dono,
+   * 15/11/2026; docs/LINHA_DE_VISAO.md, seção 7).
    */
   showSignals?: boolean;
   /** Supervisiona os books: libera a trava de qualquer pessoa. */

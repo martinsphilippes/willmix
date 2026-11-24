@@ -143,7 +143,7 @@ describe("menu lateral", () => {
       ["/app/team", "nav.teamAccess"],
       ["/app/audit", "nav.audit"],
     ]);
-    // Superplan foi para Configurações (fora do menu lateral).
+    // A tela do Superplan saiu do portal (24/11/2026): nem no menu.
     expect(hrefsOf(ADMIN)).not.toContain("/app/superplan");
     const links = flattenNav(navFor(ADMIN));
     for (const href of ["/app/parties", "/app/suppliers"])

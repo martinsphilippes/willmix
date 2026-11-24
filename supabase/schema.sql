@@ -1955,6 +1955,7 @@ alter table public."booking_lots" add column if not exists "businessType" text;
 alter table public."booking_lots" add column if not exists "closedAt" timestamptz;
 alter table public."booking_lots" add column if not exists "closedByUserId" text;
 alter table public."booking_lots" add column if not exists "analyzedAt" timestamptz;
+alter table public."booking_lots" add column if not exists "sankhyaCostAt" timestamptz;
 alter table public."booking_lots" add column if not exists "statusChangedAt" timestamptz;
 alter table public."booking_lots" add column if not exists "statusChangedByUserId" text;
 alter table public."booking_lots" add column if not exists "note" text;
@@ -2029,6 +2030,7 @@ alter table public."booking_items" add column if not exists "photoDocumentId" te
 alter table public."booking_items" add column if not exists "cardDocumentId" text;
 alter table public."booking_items" add column if not exists "extras" jsonb;
 alter table public."booking_items" add column if not exists "analysis" jsonb;
+alter table public."booking_items" add column if not exists "sankhyaCost" jsonb;
 alter table public."booking_items" add column if not exists "productId" text;
 alter table public."booking_items" add column if not exists "updatedByUserId" text;
 alter table public."booking_items" add column if not exists "ncm" text;

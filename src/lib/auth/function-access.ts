@@ -301,7 +301,6 @@ export const LEGACY_SCREENS: readonly string[] = [
   "freight",
   "freightTariff",
   "containers",
-  "superplan",
   "parties",
   "products",
   "lines",

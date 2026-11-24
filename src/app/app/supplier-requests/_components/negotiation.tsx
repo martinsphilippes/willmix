@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import type { SupplierRequest } from "@/lib/db/schema";
 import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
-import type { SuperplanInput } from "@/lib/superplan";
 import { ProposalFields } from "./proposal-fields";
 import type { Translate } from "@/i18n";
 import { canPropose, pendingProposal } from "@/lib/supplier-requests";
@@ -68,7 +67,6 @@ export function NegotiationForms({
   request: r,
   wellmix,
   t,
-  simulation = null,
   showPrice = true,
   fromTo,
   errors,
@@ -77,8 +75,6 @@ export function NegotiationForms({
   request: SupplierRequest;
   wellmix: boolean;
   t: Translate;
-  /** Só a Wellmix: base do Superplan do item e o mínimo do booking. */
-  simulation?: { base: SuperplanInput; bookingMinimum: number | null } | null;
   /**
    * Preço na contraproposta: falso para a Wellmix sem "Ver preço de compra"
    * (ela propõe MOQ, prazo e FOB/EXW; dono, 15/11/2026).
@@ -149,10 +145,6 @@ export function NegotiationForms({
               }}
               currencies={SHEET_CURRENCIES}
               incoterms={SHEET_INCOTERMS}
-              base={showPrice ? (simulation?.base ?? null) : null}
-              bookingMinimum={
-                showPrice ? (simulation?.bookingMinimum ?? null) : null
-              }
               intl={t.intl}
               labels={{
                 price: t("negotiationScreen.f.price"),
@@ -160,20 +152,6 @@ export function NegotiationForms({
                 moq: t("negotiationScreen.f.moq"),
                 leadTime: t("negotiationScreen.f.leadTime"),
                 incoterm: t("negotiationScreen.f.incoterm"),
-                simTitle: t("supplierRequests.negotiation.sim.title"),
-                simCost: t("supplierRequests.negotiation.sim.cost"),
-                simMinimum: t("supplierRequests.negotiation.sim.minimum"),
-                simBooking: t("supplierRequests.negotiation.sim.booking"),
-                simTarget: t("supplierRequests.negotiation.sim.target"),
-                simTargetHint: t("supplierRequests.negotiation.sim.targetHint"),
-                simNeeded: t("supplierRequests.negotiation.sim.needed"),
-                simUse: t("supplierRequests.negotiation.sim.use"),
-                simUnreachable: t(
-                  "supplierRequests.negotiation.sim.unreachable",
-                ),
-                simCurrency: t("supplierRequests.negotiation.sim.currency"),
-                simMissing: t("supplierRequests.negotiation.sim.missing"),
-                simHint: t("supplierRequests.negotiation.sim.hint"),
               }}
             />
             <Field label={t("supplierRequests.negotiation.comment")}>

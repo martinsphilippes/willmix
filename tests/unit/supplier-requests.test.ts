@@ -1187,32 +1187,31 @@ describe("responsável pelo booking (para quem vão as solicitações)", () => {
   });
 });
 
-describe("Seleção de itens: o melhor caso pelo custo por peça", () => {
+describe("Seleção de itens: o melhor caso pelo custo por peça (Sankhya)", () => {
   type Item = Parameters<typeof lib.bestCostItem>[0][number];
-  const item = (
-    id: string,
-    costBrl: number | null,
-    minimumBrl: number | null,
-  ) =>
+  const item = (id: string, costBrl: number | null, legacy = false) =>
     ({
       id,
-      analysis:
-        costBrl === null && minimumBrl === null
+      // O retrato antigo do portal (em `analysis`) não conta.
+      analysis: legacy ? { costBrl: 1, minimumBrl: 2 } : null,
+      sankhyaCost:
+        costBrl === null
           ? null
-          : { costBrl, minimumBrl },
+          : { source: "sankhya", costBrl, missing: [], error: null },
     }) as unknown as Item;
 
-  it("destaca o menor custo, mesmo com mínimo maior (tipo de negócio diferente)", () => {
+  it("destaca o menor custo do Sankhya", () => {
     expect(
       lib.bestCostItem([
-        item("a", 10, 18),
-        item("b", 9, 20),
-        item("c", null, null),
+        item("a", 10),
+        item("b", 9),
+        item("c", null),
+        item("d", null, true),
       ]),
     ).toBe("b");
   });
 
-  it("sem custo calculado, nenhum destaque", () => {
-    expect(lib.bestCostItem([item("a", null, null)])).toBeNull();
+  it("sem custo do Sankhya, nenhum destaque", () => {
+    expect(lib.bestCostItem([item("a", null, true)])).toBeNull();
   });
 });

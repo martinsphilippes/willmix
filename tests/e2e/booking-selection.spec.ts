@@ -140,7 +140,14 @@ async function importAndClose(
   }
   await page.click("[data-booking-lot-close-submit]");
   await page.waitForURL(/[?&]closed=1/);
-  await expect(page.locator("[data-booking-item-analysis]")).toHaveCount(1);
+  // Custo no Sankhya (dono, 24/11/2026): sem o Sankhya nos testes, o item
+  // fica sem custo e o quadro diz que ele não está configurado (nada é
+  // estimado pelo portal).
+  await expect(page.locator('[data-booking-item-cost="none"]')).toHaveCount(1);
+  await expect(page.locator("[data-booking-lot-cost]")).toContainText(
+    /Sankhya/,
+  );
+  await expect(page.locator("[data-booking-lot-cost-submit]")).toHaveCount(0);
 }
 
 async function importDraft(page: Page, file: ReturnType<typeof sheet>) {
@@ -166,10 +173,10 @@ async function importDraft(page: Page, file: ReturnType<typeof sheet>) {
 }
 
 /**
- * Câmbio manual em Configurações. O custo por peça do Superplan (R$) precisa
- * de câmbio, e o do dia vem de sites públicos que nem todo ambiente de teste
+ * Câmbio manual em Configurações. O preço em US$ da Seleção precisa de
+ * câmbio, e o do dia vem de sites públicos que nem todo ambiente de teste
  * alcança (rede restrita). Com a cotação do dia ela continua valendo; sem
- * ela, vale este, e a conta sai do mesmo jeito.
+ * ela, vale este.
  */
 async function setManualFx(page: Page) {
   await page.goto("/app/settings");
@@ -222,12 +229,13 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
     "8",
     "20",
   ]);
-  // Os fechados mostram o custo por peça do Superplan (R$), com a explicação.
+  // Custo/peça do Sankhya, com a explicação: sem o Sankhya nos testes, os
+  // fechados ficam com "—" (nenhum custo inventado).
   await expect(page.locator("[data-selection-cost-hint]")).toBeVisible();
   for (const code of [`${TAG}-A`, `${TAG}-B`])
     await expect(
       rows.filter({ hasText: code }).locator("[data-selection-cost]"),
-    ).toContainText("R$");
+    ).toHaveText("—");
   // A aba Itens só agrupa: sem escolher nem abrir solicitação.
   await expect(page.locator("[data-selection-choose]")).toHaveCount(0);
   await expect(page.locator("[data-selection-submit]")).toHaveCount(0);

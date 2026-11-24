@@ -6,9 +6,12 @@ import {
 } from "./sankhya-client";
 
 /*
- * Previsão de preço ao cliente final (Nova solicitação, dono, 15/11/2026),
- * pela SuperPlan do Sankhya (anexo 2, "SuperPlan × Função", Amplio,
- * 14/11/2026):
+ * Previsão de preço ao cliente final (Nova solicitação, dono, 15/11/2026) e
+ * custo dos itens do book (dono, 24/11/2026), pelas funções do Sankhya. A
+ * conta é sempre do Sankhya: o portal não calcula custo nem preço. A ida é a
+ * cotação V2 (`FN_AD_ENC_COTACAO_V2_WELL`, desde 16/11/2026); a volta (preço
+ * máximo de compra) é a função inversa do Sankhya. As funções de antes, do
+ * anexo 2 ("SuperPlan × Função", Amplio, 14/11/2026):
  *
  * - Ida: `sankhya.FN_AD_SUPERPLAN_WELL(69 parâmetros)` → custo e venda por
  *   peça (VENDA_IPI = custo × MKP, PRECO_TABELA_COM_IPI, SUGESTAO_ATACADO,
@@ -302,13 +305,13 @@ export interface PriceForecastSale {
  * o padrão do Sankhya) e todas as colunas que ela devolveu, na ordem. Só
  * para quem vê valores e margem (tem custo).
  */
-export interface SuperplanAudit {
+export interface SankhyaAudit {
   fn: string;
   inputs: Array<[string, string | number]>;
   outputs: Array<[string, string | number | null]>;
 }
 
-type Audited = { audit?: SuperplanAudit };
+type Audited = { audit?: SankhyaAudit };
 
 export type PriceForecastAnswer =
   | ({ mode: "api"; kind: "forecast" } & PriceForecastSale & Audited)
@@ -470,7 +473,7 @@ export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
     q: PriceForecastQuery,
     extra: CotacaoV2Input,
   ): Promise<
-    | { row: SankhyaRow | undefined; audit: SuperplanAudit | undefined }
+    | { row: SankhyaRow | undefined; audit: SankhyaAudit | undefined }
     | "manual"
     | { error: string }
   > {
@@ -495,7 +498,7 @@ export class SankhyaPriceForecastAdapter implements PriceForecastAdapter {
       if (e instanceof SankhyaError && e.code === "sankhya_not_configured")
         return "manual";
       if (e instanceof Error && e.message === "invalid_input")
-        return { error: "entrada inválida para a SuperPlan" };
+        return { error: "entrada inválida para a função do Sankhya" };
       return {
         error: e instanceof SankhyaError ? e.detail || e.code : String(e),
       };
@@ -587,7 +590,7 @@ export function auditOf(
   fn: string,
   input: CotacaoV2Input,
   row: SankhyaRow | undefined,
-): SuperplanAudit {
+): SankhyaAudit {
   return {
     fn,
     inputs: COTACAO_V2_PARAMS.flatMap((k) => {

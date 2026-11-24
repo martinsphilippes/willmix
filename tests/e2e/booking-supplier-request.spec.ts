@@ -12,7 +12,7 @@ import {
 /*
  * Do booking ao produto (docs/BOOKING.md, seção 0, e docs/SUPPLIER_REQUESTS.md):
  * a Wellmix sobe as planilhas de dois fornecedores e fecha os bookings (o
- * Superplan analisa os itens); na Seleção de itens compara os parecidos e
+ * custo de cada item é pedido ao Sankhya); na Seleção de itens compara os parecidos e
  * abre a solicitação ao fornecedor do escolhido, com o outro de
  * alternativa; o fornecedor responde no portal sem ver a alternativa, o
  * outro fornecedor não abre a solicitação; a Wellmix devolve com
@@ -323,7 +323,7 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   // seção 7): um login de Cadastro com a tela de solicitações liberada à mão
   // (sem a permissão) abre a solicitação sem o preço do booking, da resposta
   // e das condições; a contraproposta dele tem MOQ, prazo e FOB/EXW, sem
-  // preço e sem o Superplan.
+  // preço e sem o custo do Sankhya.
   await login(page, "admin@wellmix.com");
   const plannerEmail = `cadastro.${TAG.toLowerCase()}@wellmix.com`;
   const plannerName = `Cadastro ${TAG}`;
@@ -361,19 +361,18 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(
     plannerPropose.locator("[data-negotiation-lead-time]"),
   ).toBeVisible();
-  await expect(page.locator("[data-proposal-sim]")).toHaveCount(0);
   await expect(page.locator("[data-supplier-request-chosen-cost]")).toHaveCount(
     0,
   );
-  // O Superplan segue "Ver preço de compra" (dono, 15/11/2026): na Seleção,
-  // sem o custo por peça e a coluna Superplan; no Book, sem a coluna da
-  // análise; na lista dos bookings, sem os sinais.
+  // O custo do Sankhya segue "Ver preço de compra" (dono, 15/11/2026): na
+  // Seleção, sem o custo por peça e a coluna do Sankhya; no Book, sem a
+  // coluna nem o quadro do custo; na lista dos bookings, sem os sinais.
   await page.goto(`/app/booking/selection?q=${encodeURIComponent(TAG)}`);
   await expect(page.locator("[data-selection-item]").first()).toBeVisible();
   await expect(page.locator("[data-selection-cost]")).toHaveCount(0);
   await expect(
     page.locator("table[data-selection-items] thead"),
-  ).not.toContainText("Superplan");
+  ).not.toContainText("Sankhya");
   await page.goto("/app/booking");
   await expect(page.locator("[data-booking-lot-row]").first()).toBeVisible();
   await expect(page.locator('[data-booking-lots-sort="viable"]')).toHaveCount(
@@ -384,7 +383,8 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     .first()
     .click();
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+/);
-  await expect(page.locator("[data-booking-item-analysis]")).toHaveCount(0);
+  await expect(page.locator("[data-booking-item-cost]")).toHaveCount(0);
+  await expect(page.locator("[data-booking-lot-cost]")).toHaveCount(0);
 
   // 3b. Negociação (docs/SUPPLIER_REQUESTS.md, "Negociação"): a Wellmix
   // devolve com contraproposta; até o fornecedor responder, não aprova.
@@ -451,16 +451,9 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(finalState).toHaveCSS("position", "static");
   await page.goto(itemUrl);
   const propose = page.locator("[data-negotiation-propose-form]");
-  // Os mesmos campos da resposta (com FOB/EXW) e a estimativa do Superplan:
-  // ao digitar o preço, custo e mínimo; pela inversa, o preço necessário.
-  await propose.locator("[data-negotiation-price]").fill("1,30");
-  await expect(propose.locator("[data-proposal-sim-cost]")).toBeVisible();
-  await propose.locator("[data-proposal-sim-target]").fill("500");
-  await expect(propose.locator("[data-proposal-sim-needed]")).toBeVisible();
-  await propose.locator("[data-proposal-sim-use]").click();
-  await expect(propose.locator("[data-negotiation-price]")).not.toHaveValue(
-    "1,30",
-  );
+  // Os mesmos campos da resposta (com FOB/EXW), sem a estimativa de custo
+  // que o portal fazia (o custo oficial é o do Sankhya; dono, 24/11/2026).
+  await expect(propose.locator("[data-proposal-sim]")).toHaveCount(0);
   await propose.locator("[data-negotiation-price]").fill("1,30");
   // O prazo combinado (35 dias) vai preencher o campo do prazo no pedido.
   await propose.locator("[data-negotiation-lead-time]").fill("35");
@@ -568,20 +561,19 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await page.click("[data-supplier-answer-submit]");
   await expect(answerNote).toHaveValue("Caixa confirmada.");
   await expect(sent).toHaveAttribute("data-sent-mark", "on");
-  // Ficha negociada: o preço combinado, com o do booking riscado ao lado;
-  // o Superplan refeito é só da Wellmix.
+  // Ficha negociada: o preço combinado, com o do booking riscado ao lado.
   await expect(page.locator('[data-negotiated-value="price"]')).toContainText(
     /1[.,]3\b/,
   );
   await expect(page.locator('[data-negotiated-before="price"]')).toContainText(
     /1[.,]25\b/,
   );
-  await expect(page.locator("[data-negotiated-superplan]")).toHaveCount(0);
 
-  // 4. A Wellmix aprova e cria o produto (fora da vitrine até liberar).
+  // 4. A Wellmix aprova e cria o produto (fora da vitrine até liberar). A
+  // conta do portal com o negociado saiu (24/11/2026): nem para a Wellmix.
   await login(page, "admin@wellmix.com");
   await page.goto(itemUrl);
-  await expect(page.locator("[data-negotiated-superplan]")).toBeVisible();
+  await expect(page.locator("[data-negotiated-superplan]")).toHaveCount(0);
   await expect(page.locator("[data-alternative-open]")).toHaveCount(1);
   // Nova referência: abre a solicitação para a alternativa (fornecedor B);
   // as duas ficam ligadas.

@@ -169,7 +169,7 @@ Regras do roteiro:
 | Numerário            | O valor em reais que a assessoria de comex pede para cobrir os custos do desembaraço; o financeiro da Wellmix valida e paga (docs/IMPORT_FLOW.md). |
 | NCM                  | Código fiscal do produto, usado nos impostos (II, IPI).                                                                              |
 | CODPROD              | O código do produto no Sankhya, o ERP da Wellmix.                                                                                    |
-| Superplan            | A análise de viabilidade de um produto (custo do container, preço mínimo e lucro). Só o administrador.                               |
+| Superplan            | Saiu do portal em 24/11/2026: o custo dos itens do Book é o da cotação do Sankhya (docs/BOOKING.md, "Custo no Sankhya").              |
 | Control Tower        | O painel de comando da Wellmix: o pedido de ponta a ponta, em quadrados por etapa.                                                    |
 | SLA                  | O prazo combinado para cada resposta ou etapa.                                                                                       |
 

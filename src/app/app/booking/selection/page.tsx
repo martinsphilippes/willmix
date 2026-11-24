@@ -80,10 +80,8 @@ import {
 } from "./_components/requested-groups";
 import { defaultPrompts, effectivePrompts } from "@/lib/ai-references";
 import { getMediaAdapter } from "@/lib/integrations/openai-media";
-import {
-  BookingItemSuperplan,
-  bookingItemCost,
-} from "@/components/booking-item-superplan";
+import { BookingItemCost } from "@/components/booking-item-cost";
+import { bookingCostValue } from "@/lib/booking-cost";
 
 /*
  * Seleção de itens (docs/SUPPLIER_REQUESTS.md): duas abas.
@@ -109,8 +107,8 @@ export default async function BookingSelectionPage({
   requireScreen(user, "booking");
   // Preço do Book: só com "Ver preço de compra" (dono, 15/11/2026;
   // docs/LINHA_DE_VISAO.md); sem ela, as colunas de preço não vão à tela.
-  // O Superplan (custo por peça, veredito, mínimo e o "melhor custo") segue
-  // a mesma permissão (dono, 15/11/2026): sai do preço.
+  // O custo do Sankhya (custo por peça, sinal, preço meta e o "melhor custo")
+  // segue a mesma permissão (dono, 15/11/2026): sai do preço.
   const seesPrice = canSeePurchasePrice(user);
   // Só a Wellmix: o login externo com a tela Booking vê só os bookings dele.
   if (!isWellmix(user)) redirect("/app/booking");
@@ -369,7 +367,7 @@ export default async function BookingSelectionPage({
               "capacity",
               "material",
               "sheetQty",
-              ...(seesPrice ? ["costPiece", "superplan"] : []),
+              ...(seesPrice ? ["costPiece", "sankhya"] : []),
               "situation",
             ].map((k) => (
               <th
@@ -384,8 +382,7 @@ export default async function BookingSelectionPage({
         </thead>
         <tbody>
           {list.map(({ item, lot, supplier, activeRequest }) => {
-            const a = item.analysis;
-            const cost = bookingItemCost(a);
+            const cost = bookingCostValue(item);
             const draft = lot.status === "draft";
             const busy = !!activeRequest || draft;
             const priceUsd = priceInUsd(item.price, item.currency, rmbPerUsd);
@@ -617,13 +614,7 @@ export default async function BookingSelectionPage({
                       )}
                     </td>
                     <td className={td}>
-                      {a ? (
-                        <BookingItemSuperplan analysis={a} t={t} />
-                      ) : (
-                        <span className="text-zinc-500">
-                          {t("booking.signal.none")}
-                        </span>
-                      )}
+                      <BookingItemCost item={item} t={t} />
                     </td>
                   </>
                 ) : null}

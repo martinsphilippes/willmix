@@ -4,7 +4,7 @@ import { xlsxBytes } from "../unit/xlsx-fixture";
 
 /*
  * Book: lista de pendências do fechamento (pedido do dono, 14/11/2026).
- * "Fechar e analisar" travado por campos obrigatórios vazios mostra os itens
+ * "Fechar o book" travado por campos obrigatórios vazios mostra os itens
  * incompletos (nome e código), cada um com os campos que faltam (os nomes da
  * tabela). Tocar num campo leva até ele: a linha aparece (mesmo na outra
  * página ou escondida pela busca), o campo recebe o foco e a célula fica

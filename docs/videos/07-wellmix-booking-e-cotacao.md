@@ -1,5 +1,7 @@
 # Séries WBK e WSO · Wellmix, do Booking à proposta
 
+> **Desatualizado em parte (24/11/2026):** a tela do Superplan e a análise do Superplan no Book saíram do portal; o custo dos itens do Book é o da cotação do Sankhya (docs/BOOKING.md, "Custo no Sankhya"). As cenas do Superplan deste roteiro não valem mais.
+
 Vídeos para quem trabalha dentro da Wellmix, do primeiro contato com a planilha do fornecedor até o pedido nascer. Dois papéis aparecem: o **operador** (`operador@wellmix.com`, funções **comprador** e **planner**) e o **administrador** (`admin@wellmix.com`). As duas séries seguem a mesma jarra, a **Jarra de vidro 1,5 L**, e acompanham a jornada na ordem:
 
 - **WBK, o produto antes da solicitação** (etapa 1 de 9, Produto e Booking): a planilha do fornecedor vira um booking, o booking é fechado e analisado pelo Superplan, a Wellmix compara itens parecidos e pergunta ao fornecedor se ele faz o item, decide a resposta, cria o produto, liga ao Sankhya e libera na vitrine.

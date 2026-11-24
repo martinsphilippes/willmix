@@ -74,7 +74,7 @@ export const pt = {
   "bookingLots.error.booking_launch_limit":
     "Sua empresa já lançou muitos books nas últimas 24 horas. Tente mais tarde ou fale com a Wellmix.",
   "bookingLots.subtitle":
-    "Planilhas de book dos fornecedores. Suba a planilha, confira fornecedor, data e itens e feche: o Superplan analisa todos os itens.",
+    "Planilhas de book dos fornecedores. Suba a planilha, confira fornecedor, data e itens e feche: o custo de cada item vem da cotação do Sankhya.",
   "bookingLots.import": "Importar book",
   "bookingLots.productsQueue": "Fila de produtos",
   "bookingLots.backToList": "Voltar aos books",
@@ -95,7 +95,7 @@ export const pt = {
   "bookingLots.col.fileName": "Planilha",
   "bookingLots.col.itemCount": "Itens",
   "bookingLots.col.pendingItems": "Incompletos",
-  "bookingLots.col.viable": "Superplan",
+  "bookingLots.col.viable": "Custo no Sankhya",
   "bookingLots.col.owner": "Responsável",
   "bookingLots.col.createdAt": "Carregado em",
   "bookingLots.status.preparing": "Em preenchimento (parceiro)",
@@ -104,7 +104,7 @@ export const pt = {
   "bookingLots.status.in_progress": "Em andamento",
   "bookingLots.status.done": "Concluído",
   "bookingLots.status.cancelled": "Cancelado",
-  "bookingLots.signals.none": "Sem análise",
+  "bookingLots.signals.none": "Sem custo do Sankhya",
   "bookingLots.supplierNone": "Sem fornecedor",
   "bookingLots.supplierSheet": "Da planilha: {name}",
 
@@ -135,8 +135,7 @@ export const pt = {
   "bookingLots.detail.created":
     "Book carregado com {n} itens. Confira o fornecedor e a data, que vieram da planilha, e complete os itens.",
   "bookingLots.detail.closed":
-    "Book fechado. O Superplan analisou todos os itens.",
-  "bookingLots.detail.analyzed": "Análise do Superplan refeita.",
+    "Book fechado. O custo de cada item foi pedido à cotação do Sankhya.",
   "bookingLots.detail.moved": "Status alterado.",
   "bookingLots.detail.saved": "Observação salva.",
   "bookingLots.detail.supplierCreated":
@@ -180,17 +179,12 @@ export const pt = {
   "bookingLots.pending.noItems": "itens",
   "bookingLots.detail.close.title": "Fechar o book",
   "bookingLots.detail.close.body":
-    "Ao fechar, o Superplan analisa todos os itens com os valores padrão (câmbio do dia, container e frete padrão) e o book deixa de ser editável.",
-  "bookingLots.detail.close.businessType": "Tipo de negócio do Superplan",
-  "bookingLots.detail.close.default": "{name} (padrão)",
-  "bookingLots.detail.close.submit": "Fechar e analisar",
-  "bookingLots.detail.close.pending": "Analisando…",
-  "bookingLots.detail.reanalyze": "Refazer a análise",
-  "bookingLots.detail.reanalyzePending": "Analisando…",
+    "Ao fechar, o book deixa de ser editável e o custo de cada item é pedido à cotação V2 do Sankhya, um item de cada vez, com os dados do próprio item.",
+  "bookingLots.detail.close.submit": "Fechar o book",
+  "bookingLots.detail.close.pending": "Fechando…",
   "bookingLots.detail.move": "Mudar status",
   "bookingLots.detail.moveTo": "Novo status",
   "bookingLots.detail.moveSubmit": "Mudar",
-  "bookingLots.detail.analysisAt": "Analisado em {date} · {type}",
   "bookingLots.detail.extra": "Outras colunas guardadas: {list}",
 
   "bookingLots.item.col.position": "#",
@@ -220,15 +214,11 @@ export const pt = {
   "bookingLots.item.col.departureIntervalDays": "Intervalo de saída (dias)",
   "bookingLots.item.col.purchaseQty": "Qtd de compra (pç)",
   "bookingLots.item.col.plannedQty": "Peças planejadas (TT PCS)",
-  "bookingLots.item.col.analysis": "Superplan",
   "bookingLots.item.col.check": "Conferência",
   "bookingLots.item.edit": "{field} do item {n}",
   "bookingLots.item.missing": "Falta: {list}",
   "bookingLots.item.complete": "Completo",
   "bookingLots.item.card": "Cartão",
-  "bookingLots.item.minimum": "Mínimo {price}",
-  "bookingLots.item.profit": "Lucro {pct}%",
-  "bookingLots.item.missingData": "Faltou: {list}",
 
   "bookingLots.partner.title": "Fornecedor",
   "bookingLots.partner.supplier": "A fábrica do book",
@@ -360,7 +350,7 @@ export const en: typeof pt = {
   "bookingLots.error.booking_launch_limit":
     "Your company has already submitted many books in the last 24 hours. Try again later or contact Wellmix.",
   "bookingLots.subtitle":
-    "Suppliers' book spreadsheets. Upload the spreadsheet, check supplier, date and items, then close: Superplan analyzes every item.",
+    "Suppliers' book spreadsheets. Upload the spreadsheet, check supplier, date and items, then close: each item's cost comes from the Sankhya quote.",
   "bookingLots.import": "Import book",
   "bookingLots.productsQueue": "Product queue",
   "bookingLots.backToList": "Back to books",
@@ -381,7 +371,7 @@ export const en: typeof pt = {
   "bookingLots.col.fileName": "Spreadsheet",
   "bookingLots.col.itemCount": "Items",
   "bookingLots.col.pendingItems": "Incomplete",
-  "bookingLots.col.viable": "Superplan",
+  "bookingLots.col.viable": "Sankhya cost",
   "bookingLots.col.owner": "Owner",
   "bookingLots.col.createdAt": "Uploaded on",
   "bookingLots.status.preparing": "Being filled in (partner)",
@@ -390,7 +380,7 @@ export const en: typeof pt = {
   "bookingLots.status.in_progress": "In progress",
   "bookingLots.status.done": "Done",
   "bookingLots.status.cancelled": "Cancelled",
-  "bookingLots.signals.none": "Not analyzed",
+  "bookingLots.signals.none": "No Sankhya cost",
   "bookingLots.supplierNone": "No supplier",
   "bookingLots.supplierSheet": "From the spreadsheet: {name}",
 
@@ -421,8 +411,8 @@ export const en: typeof pt = {
   "bookingLots.detail.headingFactoryNone": "Factory not informed",
   "bookingLots.detail.created":
     "Book uploaded with {n} items. Check the supplier and date taken from the spreadsheet and complete the items.",
-  "bookingLots.detail.closed": "Book closed. Superplan analyzed every item.",
-  "bookingLots.detail.analyzed": "Superplan analysis redone.",
+  "bookingLots.detail.closed":
+    "Book closed. Each item's cost was requested from the Sankhya quote.",
   "bookingLots.detail.moved": "Status changed.",
   "bookingLots.detail.saved": "Note saved.",
   "bookingLots.detail.supplierCreated":
@@ -466,17 +456,12 @@ export const en: typeof pt = {
   "bookingLots.pending.noItems": "items",
   "bookingLots.detail.close.title": "Close the book",
   "bookingLots.detail.close.body":
-    "On closing, Superplan analyzes every item with the default values (today's exchange rate, default container and freight) and the book can no longer be edited.",
-  "bookingLots.detail.close.businessType": "Superplan business type",
-  "bookingLots.detail.close.default": "{name} (default)",
-  "bookingLots.detail.close.submit": "Close and analyze",
-  "bookingLots.detail.close.pending": "Analyzing…",
-  "bookingLots.detail.reanalyze": "Redo the analysis",
-  "bookingLots.detail.reanalyzePending": "Analyzing…",
+    "On closing, the book can no longer be edited and each item's cost is requested from the Sankhya V2 quote, one item at a time, with the item's own data.",
+  "bookingLots.detail.close.submit": "Close the book",
+  "bookingLots.detail.close.pending": "Closing…",
   "bookingLots.detail.move": "Change status",
   "bookingLots.detail.moveTo": "New status",
   "bookingLots.detail.moveSubmit": "Change",
-  "bookingLots.detail.analysisAt": "Analyzed on {date} · {type}",
   "bookingLots.detail.extra": "Other columns kept: {list}",
 
   "bookingLots.item.col.position": "#",
@@ -506,15 +491,11 @@ export const en: typeof pt = {
   "bookingLots.item.col.departureIntervalDays": "Departure interval (days)",
   "bookingLots.item.col.purchaseQty": "Purchase qty (pcs)",
   "bookingLots.item.col.plannedQty": "Planned pieces (TT PCS)",
-  "bookingLots.item.col.analysis": "Superplan",
   "bookingLots.item.col.check": "Check",
   "bookingLots.item.edit": "{field} of item {n}",
   "bookingLots.item.missing": "Missing: {list}",
   "bookingLots.item.complete": "Complete",
   "bookingLots.item.card": "Card",
-  "bookingLots.item.minimum": "Minimum {price}",
-  "bookingLots.item.profit": "Profit {pct}%",
-  "bookingLots.item.missingData": "Missing: {list}",
 
   "bookingLots.partner.title": "Supplier",
   "bookingLots.partner.supplier": "The book factory",
@@ -641,7 +622,7 @@ export const zh: typeof pt = {
   "bookingLots.error.booking_launch_limit":
     "贵公司在过去 24 小时内提交的 Book 过多。请稍后再试或联系 Wellmix。",
   "bookingLots.subtitle":
-    "供应商的 Book 表格。上传表格，核对供应商、日期和条目，然后关闭：Superplan 会分析所有条目。",
+    "供应商的 Book 表格。上传表格，核对供应商、日期和条目，然后关闭：每个条目的成本来自 Sankhya 报价。",
   "bookingLots.import": "导入 Book",
   "bookingLots.productsQueue": "产品队列",
   "bookingLots.backToList": "返回 Book 列表",
@@ -661,7 +642,7 @@ export const zh: typeof pt = {
   "bookingLots.col.fileName": "表格",
   "bookingLots.col.itemCount": "条目",
   "bookingLots.col.pendingItems": "不完整",
-  "bookingLots.col.viable": "Superplan",
+  "bookingLots.col.viable": "Sankhya 成本",
   "bookingLots.col.owner": "负责人",
   "bookingLots.col.createdAt": "上传日期",
   "bookingLots.status.preparing": "填写中（合作方）",
@@ -670,7 +651,7 @@ export const zh: typeof pt = {
   "bookingLots.status.in_progress": "进行中",
   "bookingLots.status.done": "已完成",
   "bookingLots.status.cancelled": "已取消",
-  "bookingLots.signals.none": "未分析",
+  "bookingLots.signals.none": "没有 Sankhya 成本",
   "bookingLots.supplierNone": "无供应商",
   "bookingLots.supplierSheet": "表格中：{name}",
 
@@ -699,8 +680,8 @@ export const zh: typeof pt = {
   "bookingLots.detail.headingFactoryNone": "未填写工厂",
   "bookingLots.detail.created":
     "已上传 Book，共 {n} 个条目。请核对来自表格的供应商和日期，并补全条目。",
-  "bookingLots.detail.closed": "Book 已关闭。Superplan 已分析所有条目。",
-  "bookingLots.detail.analyzed": "已重新进行 Superplan 分析。",
+  "bookingLots.detail.closed":
+    "Book 已关闭。已向 Sankhya 报价请求每个条目的成本。",
   "bookingLots.detail.moved": "状态已更改。",
   "bookingLots.detail.saved": "备注已保存。",
   "bookingLots.detail.supplierCreated": "供应商已登记并关联到此 Book。",
@@ -743,17 +724,12 @@ export const zh: typeof pt = {
   "bookingLots.pending.noItems": "条目",
   "bookingLots.detail.close.title": "关闭 Book",
   "bookingLots.detail.close.body":
-    "关闭时，Superplan 用默认值（当日汇率、默认集装箱和运费）分析所有条目，Book 将不能再编辑。",
-  "bookingLots.detail.close.businessType": "Superplan 业务类型",
-  "bookingLots.detail.close.default": "{name}（默认）",
-  "bookingLots.detail.close.submit": "关闭并分析",
-  "bookingLots.detail.close.pending": "正在分析…",
-  "bookingLots.detail.reanalyze": "重新分析",
-  "bookingLots.detail.reanalyzePending": "正在分析…",
+    "关闭后 Book 将不能再编辑，并会用每个条目自己的数据，逐个向 Sankhya V2 报价请求成本。",
+  "bookingLots.detail.close.submit": "关闭 Book",
+  "bookingLots.detail.close.pending": "正在关闭…",
   "bookingLots.detail.move": "更改状态",
   "bookingLots.detail.moveTo": "新状态",
   "bookingLots.detail.moveSubmit": "更改",
-  "bookingLots.detail.analysisAt": "分析于 {date} · {type}",
   "bookingLots.detail.extra": "其他已保存的列：{list}",
 
   "bookingLots.item.col.position": "#",
@@ -783,15 +759,11 @@ export const zh: typeof pt = {
   "bookingLots.item.col.departureIntervalDays": "出货间隔（天）",
   "bookingLots.item.col.purchaseQty": "采购数量（件）",
   "bookingLots.item.col.plannedQty": "计划件数（TT PCS）",
-  "bookingLots.item.col.analysis": "Superplan",
   "bookingLots.item.col.check": "核对",
   "bookingLots.item.edit": "条目 {n} 的{field}",
   "bookingLots.item.missing": "缺少：{list}",
   "bookingLots.item.complete": "完整",
   "bookingLots.item.card": "名片",
-  "bookingLots.item.minimum": "最低 {price}",
-  "bookingLots.item.profit": "利润 {pct}%",
-  "bookingLots.item.missingData": "缺少：{list}",
 
   "bookingLots.partner.title": "供应商",
   "bookingLots.partner.supplier": "Book 的工厂",

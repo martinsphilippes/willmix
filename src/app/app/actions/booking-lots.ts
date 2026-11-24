@@ -21,9 +21,9 @@ import { errorCode, requireUser, run, str, withQuery } from "./helpers";
 
 /*
  * Booking por planilha (docs/BOOKING.md, "Booking por planilha"): subir a
- * planilha, ajustar fornecedor, data e itens no rascunho, fechar (com a
- * análise do Superplan em todos os itens) e mudar o status. Só a Wellmix com
- * a tela Booking (o serviço confere de novo).
+ * planilha, ajustar fornecedor, data e itens no rascunho, fechar (com o
+ * custo de cada item pedido à cotação V2 do Sankhya) e mudar o status. Só a
+ * Wellmix com a tela Booking (o serviço confere de novo).
  */
 
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
@@ -511,37 +511,32 @@ export async function registerBookingLotSupplierAction(form: FormData) {
   });
 }
 
-/** Fecha o booking: confere os campos e roda o Superplan em todos os itens. */
+/**
+ * Fecha o booking: confere os campos e pede o custo de cada item ao Sankhya
+ * (o book fecha mesmo sem resposta; o resto da conta segue depois).
+ */
 export async function closeBookingLotAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, "lotId");
   const back = ID.safeParse(raw).success ? detail(raw) : LIST;
   await run(back, async () => {
-    const input = z
-      .object({ lotId: ID, businessType: z.string().max(80).nullable() })
-      .parse({
-        lotId: raw,
-        businessType: str(form, "businessType") || null,
-      });
+    const lotId = ID.parse(raw);
     const { closeBookingLot } = await import("@/lib/services/booking-lots");
-    await closeBookingLot(user, input.lotId, input.businessType);
+    await closeBookingLot(user, lotId);
     return withQuery(back, "closed", "1");
   });
 }
 
-export async function reanalyzeBookingLotAction(form: FormData) {
+/** "Calcular no Sankhya": pede de novo o custo de todos os itens do book. */
+export async function calculateBookingLotCostsAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, "lotId");
   const back = ID.safeParse(raw).success ? detail(raw) : LIST;
   await run(back, async () => {
-    const input = z
-      .object({ lotId: ID, businessType: z.string().max(80).nullable() })
-      .parse({
-        lotId: raw,
-        businessType: str(form, "businessType") || null,
-      });
-    const { reanalyzeBookingLot } = await import("@/lib/services/booking-lots");
-    await reanalyzeBookingLot(user, input.lotId, input.businessType);
+    const lotId = ID.parse(raw);
+    const { calculateBookingLotCosts } =
+      await import("@/lib/services/booking-lots");
+    await calculateBookingLotCosts(user, lotId);
     return withQuery(back, "analyzed", "1");
   });
 }

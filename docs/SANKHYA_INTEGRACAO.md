@@ -89,7 +89,7 @@ Configurações → Sankhya → Carga do Sankhya → Carga completa. Cada carga 
 | Origem                                                       | Onde aparece                                                                        | Gatilho            |
 | ------------------------------------------------------------ | ----------------------------------------------------------------------------------- | ------------------ |
 | `VW_AD_PEDCLIENTE_ITEM_WELL`                                 | Histórico de compras do cliente na Nova solicitação, aba Análise                    | Ao abrir           |
-| `FN_AD_ENC_COTACAO_V2_WELL` e `FN_AD_SUPERPLAN_INVERSA_WELL` | Previsão de preço da Nova solicitação, gravada em `requests.priceForecast` no envio | Na tela e no envio |
+| `FN_AD_ENC_COTACAO_V2_WELL` e `FN_AD_SUPERPLAN_INVERSA_WELL` | Previsão de preço da Nova solicitação, gravada em `requests.priceForecast` no envio; desde 24/11/2026, a V2 também dá o custo de cada item do Book (`booking_items.sankhyaCost`, docs/BOOKING.md "Custo no Sankhya") | Na tela e no envio; no Book, ao fechar, no "Calcular no Sankhya" e ao trocar o NCM |
 | TGFPAR (`TRANSPORTADORA = 'S'`)                              | Lista de transportadoras, com cache de 30 min                                       | Ao abrir           |
 | Produto (`loadRecords`)                                      | Busca e conferência do CODPROD na solicitação ao fornecedor                         | Ao buscar          |
 | TGFTOP, TGFCAB (só a TOP)                                    | Conferência antes de incluir ou faturar uma nota                                    | Antes de escrever  |

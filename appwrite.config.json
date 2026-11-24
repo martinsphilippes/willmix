@@ -1330,7 +1330,6 @@
             "replenishment",
             "proposal",
             "sourcing_demand",
-            "superplan",
             "supplier_request",
             "cart"
           ]
@@ -11634,6 +11633,13 @@
           "type": "datetime"
         },
         {
+          "key": "sankhyaCostAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
           "key": "statusChangedAt",
           "required": false,
           "array": false,
@@ -12109,6 +12115,13 @@
         },
         {
           "key": "analysis",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "sankhyaCost",
           "required": false,
           "array": false,
           "default": null,

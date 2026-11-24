@@ -6,7 +6,6 @@ import {
 } from "@/lib/supplier-requests";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
-import { canOpen } from "@/lib/auth/screens";
 import {
   getSettings,
   DEFAULT_SETTINGS,
@@ -34,7 +33,6 @@ import {
   LinkButton,
   PageHeader,
   Select,
-  TextLink,
   Textarea,
 } from "@/components/ui";
 import { CurrencySelect } from "@/components/currency-select";
@@ -102,7 +100,6 @@ export default async function SettingsPage({
     aiCode,
     fiscal,
     fiscalSync,
-    reanalyzed,
     demo,
     demoFailed,
   } = await searchParams;
@@ -143,17 +140,6 @@ export default async function SettingsPage({
       : fiscalSync === "partial"
         ? t("fiscal.table.synced.partial")
         : null;
-  // "&reanalyzed=2-40": bookings com a análise refeita pela tabela nova.
-  const redoneMatch =
-    typeof reanalyzed === "string" ? /^(\d+)-(\d+)$/.exec(reanalyzed) : null;
-  const redoneNotice = redoneMatch
-    ? t("fiscal.table.reanalyzed", {
-        lots: redoneMatch[1],
-        items: redoneMatch[2],
-      })
-    : null;
-  const fiscalNotices =
-    [fiscalNotice, redoneNotice].filter(Boolean).join(" ") || null;
   const lines = lineRows.map((l) => ({ id: l.id, name: l.name }));
   const customers = customerRows.map((c) => ({ id: c.id, name: c.name }));
   const errorKey =
@@ -242,17 +228,6 @@ export default async function SettingsPage({
         actions={
           // Só admin chega aqui: apagar as vendas de teste e recomeçar.
           <>
-            {/* Superplan (viabilidade, B3): saiu do menu lateral (dono, 14/11/2026). */}
-            {canOpen(user, "superplan") ? (
-              <LinkButton
-                href="/app/superplan"
-                variant="secondary"
-                title={t("settings.superplan.body")}
-                data-settings-superplan
-              >
-                {t("settings.superplan.open")}
-              </LinkButton>
-            ) : null}
             {/* Formas de pagamento do cliente (docs/CUSTOMER_PAYMENT.md). */}
             {user.role === "admin" ? (
               <LinkButton
@@ -1061,12 +1036,6 @@ export default async function SettingsPage({
               {/* Tributos: PIS, COFINS, ICMS, seguro e links da tabela fiscal. */}
               <div id="tributos" className="scroll-mt-24 space-y-2">
                 <TaxRateFields t={t} s={s} />
-                {/* Tipos de negócio, despesas e impostos da venda: na tela do Superplan. */}
-                <p className="text-xs">
-                  <TextLink href="/app/superplan#parametros">
-                    {t("superplan.settingsLink")}
-                  </TextLink>
-                </p>
               </div>
             </div>
           </div>
@@ -1153,7 +1122,7 @@ export default async function SettingsPage({
       ) : null}
       {/* Tabela fiscal e teste da IA lado a lado. */}
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
-        <FiscalTableCard t={t} status={fiscalInfo} notice={fiscalNotices} />
+        <FiscalTableCard t={t} status={fiscalInfo} notice={fiscalNotice} />
 
         {/* Teste real da IA com a configuração salva (mostra provedor/modelo ou o motivo da falha). */}
         <Card title={t("operations.ai.test")}>

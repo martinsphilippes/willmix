@@ -5,6 +5,7 @@ import type {
   SupplierRequestItem,
   SupplierRequestStatus,
 } from "@/lib/db/schema";
+import { bookingCostValue } from "@/lib/booking-cost";
 
 /*
  * Seleção de itens e solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md):
@@ -110,16 +111,14 @@ export function priceInUsd(
 }
 
 /**
- * O id do item de menor custo por peça do Superplan entre os mostrados (o
- * "melhor caso"). Pelo custo, e não pelo preço mínimo: o mínimo é o custo
- * vezes o markup do tipo de negócio, e bookings fechados com tipos diferentes
- * não se comparam pelo mínimo.
+ * O id do item de menor custo por peça entre os mostrados (o "melhor caso"),
+ * pelo custo da cotação V2 do Sankhya (CUSTO_BASE_VENDA) gravado no item.
  */
 export function bestCostItem(items: BookingItem[]): string | null {
   let best: { id: string; cost: number } | null = null;
   for (const item of items) {
-    const cost = item.analysis?.costBrl;
-    if (typeof cost !== "number" || !Number.isFinite(cost)) continue;
+    const cost = bookingCostValue(item);
+    if (cost === null) continue;
     if (!best || cost < best.cost) best = { id: item.id, cost };
   }
   return best?.id ?? null;

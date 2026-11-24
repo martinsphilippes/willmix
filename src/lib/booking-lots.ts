@@ -521,7 +521,7 @@ export interface BookingLotRow {
   itemCount: number;
   /** Itens com algum campo obrigatório faltando. */
   pendingItems: number;
-  /** Sinais da análise do Superplan. */
+  /** Sinais do custo dos itens no Sankhya (cotação V2). */
   viable: number;
   below: number;
   loss: number;

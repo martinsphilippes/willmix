@@ -33,7 +33,13 @@ import { durationText, lockLate, workedShare } from "@/lib/booking-locks";
 import { GROUP_MAX } from "@/lib/booking-selection";
 import { getSettings } from "@/lib/settings";
 import { BookMetaFields } from "../../_components/book-meta-fields";
-import { superplanBusinessTypes } from "@/lib/services/superplan-analysis";
+import { BookingItemCost } from "@/components/booking-item-cost";
+import {
+  bookingCostCounts,
+  bookingCostPending,
+  bookingCostRunning,
+} from "@/lib/booking-cost";
+import { sankhyaConfig } from "@/lib/integrations/sankhya-client";
 import { getT } from "@/i18n/server";
 import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
@@ -50,7 +56,6 @@ import {
   Select,
   cx,
   formatDate,
-  formatMoney,
   linkClass,
   type Tone,
 } from "@/components/ui";
@@ -71,7 +76,7 @@ import {
   moveBookingLotAction,
   setBookingLotMetaAction,
   unlockBookingAction,
-  reanalyzeBookingLotAction,
+  calculateBookingLotCostsAction,
   registerBookingLotSupplierAction,
   setBookingLotNoteAction,
 } from "../../../actions/booking-lots";
@@ -109,9 +114,15 @@ import {
  * Detalhamento de um booking (docs/BOOKING.md, "Booking por planilha"):
  * dados do booking (status, origem, fornecedor, data), a sugestão de
  * cadastro do fornecedor da planilha, os itens com todos os campos
- * (editáveis no rascunho, cada um grava sozinho), o fechamento com a análise
- * do Superplan e o status.
+ * (editáveis no rascunho, cada um grava sozinho), o fechamento, o custo de
+ * cada item pela cotação V2 do Sankhya e o status.
  */
+
+/**
+ * Fechar o book e "Calcular no Sankhya" pedem o custo de cada item, um de cada
+ * vez; o que não volta na hora segue depois da resposta (até 4 minutos).
+ */
+export const maxDuration = 300;
 
 const STATUS_TONE: Record<BookingLotStatus, Tone> = {
   // Em preenchimento pelo parceiro: a Wellmix não lista (só por completude).
@@ -154,12 +165,6 @@ const COLUMNS: Array<{
   { field: "colorAssortment", kind: "text", width: "w-36" },
   { field: "powerDetail", kind: "text", width: "w-32" },
 ];
-
-const SIGNAL_TONE: Record<string, Tone> = {
-  viable: "success",
-  below: "warning",
-  loss: "danger",
-};
 
 export default async function BookingLotPage({
   params,
@@ -237,7 +242,12 @@ export default async function BookingLotPage({
     : new Map();
   const pending = bookingLotPending(lot, items);
   const ready = bookingLotReady(pending);
-  const businessTypes = await superplanBusinessTypes();
+  // Custo no Sankhya (dono, 24/11/2026): o pedido mais recente do book e se
+  // a conta ainda pode estar rodando (os itens sem retrato estão na fila).
+  const sankhyaOn = !!sankhyaConfig();
+  const costSince = lot.sankhyaCostAt ?? null;
+  const costRunning = sankhyaOn && bookingCostRunning(costSince);
+  const costCounts = bookingCostCounts(items, costSince);
   // Ligações de cada item (fase 4b): solicitações, produto e pedidos.
   const linkAccess = entityLinkAccess(user);
   const lotLinks = await linksForLot(lot.id);
@@ -287,8 +297,7 @@ export default async function BookingLotPage({
       }),
     ]);
   if (one("closed")) notices.push(["success", t("bookingLots.detail.closed")]);
-  if (one("analyzed"))
-    notices.push(["success", t("bookingLots.detail.analyzed")]);
+  if (one("analyzed")) notices.push(["success", t("bookingCost.done")]);
   if (one("moved")) notices.push(["success", t("bookingLots.detail.moved")]);
   if (one("saved")) notices.push(["success", t("bookingLots.detail.saved")]);
   if (one("locked")) notices.push(["success", t("bookWork.lock.done")]);
@@ -353,31 +362,10 @@ export default async function BookingLotPage({
       : null,
   ].filter(Boolean) as string[];
 
-  const businessTypeSelect = (current: string | null) => (
-    <Select
-      name="businessType"
-      defaultValue={current ?? ""}
-      data-booking-lot-business-type
-    >
-      <option value="">
-        {t("bookingLots.detail.close.default", {
-          name: businessTypes.defaultName,
-        })}
-      </option>
-      {businessTypes.names
-        .filter((n) => n !== businessTypes.defaultName)
-        .map((n) => (
-          <option key={n} value={n}>
-            {n}
-          </option>
-        ))}
-    </Select>
-  );
-
   // Preço e moeda do Book: só com "Ver preço de compra" (dono, 15/11/2026;
-  // docs/LINHA_DE_VISAO.md); sem ela as colunas não vão à tela. O Superplan
-  // (veredito, mínimo, lucro e a reanálise) segue a mesma permissão (dono,
-  // 15/11/2026): custo e mínimo saem do preço.
+  // docs/LINHA_DE_VISAO.md); sem ela as colunas não vão à tela. O custo do
+  // Sankhya (sinal, custo, preço meta, lucro e o "Calcular no Sankhya") segue
+  // a mesma permissão: sai do preço.
   const seesPrice = canSeePurchasePrice(user);
   const columns = seesPrice
     ? COLUMNS
@@ -449,50 +437,13 @@ export default async function BookingLotPage({
     );
   };
 
-  const analysisCell = (item: BookingItem): ReactNode => {
-    const a = item.analysis;
-    if (!a)
-      return <span className="text-zinc-500">{t("booking.signal.none")}</span>;
-    const missing = a.missing.length
-      ? a.missing
-          .map((m) => {
-            const key = `superplan.missing.${m}`;
-            return key in dictionaries.pt ? t(key as DictionaryKey) : m;
-          })
-          .join(", ")
-      : null;
-    return (
-      <span
-        className="flex flex-col items-start gap-0.5"
-        data-booking-item-analysis={a.verdict ?? "missing"}
-      >
-        <Badge tone={a.verdict ? SIGNAL_TONE[a.verdict] : "neutral"}>
-          {t(`booking.signal.${a.verdict ?? "missing"}` as DictionaryKey)}
-        </Badge>
-        {a.minimumBrl !== null ? (
-          <span className="text-xs text-zinc-600">
-            {t("bookingLots.item.minimum", {
-              price: formatMoney(a.minimumBrl, "BRL", t),
-            })}
-          </span>
-        ) : null}
-        {a.profitPct !== null ? (
-          <span className="text-xs text-zinc-600">
-            {t("bookingLots.item.profit", {
-              pct: a.profitPct.toLocaleString(intl, {
-                maximumFractionDigits: 1,
-              }),
-            })}
-          </span>
-        ) : null}
-        {missing ? (
-          <span className="max-w-40 text-xs whitespace-normal text-zinc-500">
-            {t("bookingLots.item.missingData", { list: missing })}
-          </span>
-        ) : null}
-      </span>
-    );
-  };
+  const analysisCell = (item: BookingItem): ReactNode => (
+    <BookingItemCost
+      item={item}
+      queued={costRunning && bookingCostPending(item, costSince)}
+      t={t}
+    />
+  );
 
   /* Itens: cabeçalho congelado (TableTools stickyHead) e, com algo para
      editar, o preenchimento em massa (dono, 16/11/2026): a caixa de cada
@@ -554,11 +505,8 @@ export default async function BookingLotPage({
               ) : null}
             </th>
           ))}
-          {(seesPrice ? ["check", "analysis"] : ["check"]).map((k) => (
-            <th key={k} className={th}>
-              {colLabel(k)}
-            </th>
-          ))}
+          <th className={th}>{colLabel("check")}</th>
+          {seesPrice ? <th className={th}>{t("bookingCost.col")}</th> : null}
           <th className={th}>{t("entityLinks.col")}</th>
         </tr>
         {bulkOn ? (
@@ -1257,9 +1205,6 @@ export default async function BookingLotPage({
                 data-booking-lot-close
               >
                 <input type="hidden" name="lotId" value={lot.id} />
-                <Field label={t("bookingLots.detail.close.businessType")}>
-                  {businessTypeSelect(lot.businessType)}
-                </Field>
                 <SubmitButton
                   pendingText={t("bookingLots.detail.close.pending")}
                   data-booking-lot-close-submit
@@ -1271,27 +1216,53 @@ export default async function BookingLotPage({
           ) : null}
 
           {seesPrice && lot.status !== "draft" && lot.status !== "cancelled" ? (
-            <Card title={t("bookingLots.item.col.analysis")} dense>
-              {lot.analyzedAt ? (
-                <p className="mb-2 text-sm text-zinc-600">
-                  {t("bookingLots.detail.analysisAt", {
-                    date: formatDate(lot.analyzedAt, t),
-                    type: lot.businessType ?? businessTypes.defaultName,
-                  })}
-                </p>
-              ) : null}
-              <form action={reanalyzeBookingLotAction} className="space-y-2">
-                <input type="hidden" name="lotId" value={lot.id} />
-                <Field label={t("bookingLots.detail.close.businessType")}>
-                  {businessTypeSelect(lot.businessType)}
-                </Field>
-                <SubmitButton
-                  variant="secondary"
-                  pendingText={t("bookingLots.detail.reanalyzePending")}
-                >
-                  {t("bookingLots.detail.reanalyze")}
-                </SubmitButton>
-              </form>
+            <Card title={t("bookingCost.card.title")} dense>
+              <div className="space-y-2 text-sm" data-booking-lot-cost="">
+                <p className="text-zinc-600">{t("bookingCost.card.body")}</p>
+                {!sankhyaOn ? (
+                  <Alert tone="warning">{t("bookingCost.card.off")}</Alert>
+                ) : (
+                  <>
+                    <p
+                      className="text-zinc-700"
+                      data-booking-lot-cost-counts={`${costCounts.costed}-${costCounts.pending}`}
+                    >
+                      {t("bookingCost.card.counts", {
+                        costed: costCounts.costed,
+                        missing: costCounts.missing,
+                        failed: costCounts.failed,
+                        pending: costCounts.pending,
+                      })}
+                    </p>
+                    {costSince ? (
+                      <p className="text-xs text-zinc-500">
+                        {t("bookingCost.card.at", {
+                          date: formatDate(costSince, t),
+                        })}
+                      </p>
+                    ) : null}
+                    {costCounts.pending ? (
+                      <Alert tone={costRunning ? "info" : "warning"}>
+                        {costRunning
+                          ? t("bookingCost.card.running")
+                          : t("bookingCost.card.stalled", {
+                              n: costCounts.pending,
+                            })}
+                      </Alert>
+                    ) : null}
+                    <form action={calculateBookingLotCostsAction}>
+                      <input type="hidden" name="lotId" value={lot.id} />
+                      <SubmitButton
+                        variant="secondary"
+                        pendingText={t("bookingCost.card.submitPending")}
+                        data-booking-lot-cost-submit=""
+                      >
+                        {t("bookingCost.card.submit")}
+                      </SubmitButton>
+                    </form>
+                  </>
+                )}
+              </div>
             </Card>
           ) : null}
 

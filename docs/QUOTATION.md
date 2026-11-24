@@ -99,11 +99,11 @@ Pedido do dono (22/11/2026): trocar o nome para Cotação não pode perder proce
 | Lista com as abas "Em negociação" e "Encerradas"                              | A mesma lista, com as abas "Em andamento" e "Encerradas" (e mais as cotações de compra e a aba dos convites). |
 | "Gerar pedido" e o quadro "Gerar pedido de compra" na aba Encerradas          | Igual, na aba Encerradas.                                                                                     |
 | Tabela dos produtos da solicitação (ações rápidas, SLA, amostragem por linha) | Igual (`/app/supplier-requests/[id]`).                                                                        |
-| Resumo do produto, condições negociadas e o Superplan refeito                 | Card "Produto da cotação".                                                                                    |
+| Resumo do produto e condições negociadas (a conta do Superplan saiu em 24/11) | Card "Produto da cotação".                                                                                    |
 | Ficha do produto                                                              | Card "Produto da cotação" (o link do Book só com book).                                                       |
 | Resposta do fornecedor (oferta de hoje)                                       | Linha dele no Quadro comparativo.                                                                             |
 | Rodadas anteriores (respostas e contrapropostas)                              | Ícone de propostas e contrapropostas da linha (modal) e o Histórico à direita.                                |
-| Devolver com contraproposta, com a estimativa do Superplan                    | Bloco à direita, agora também para vários fornecedores de uma vez.                                            |
+| Devolver com contraproposta (sem a estimativa do portal desde 24/11)          | Bloco à direita, agora também para vários fornecedores de uma vez.                                            |
 | Aviso de contraproposta esperando o fornecedor e a trava do "Aprovar"         | Selo "Contraproposta enviada" na linha; a trava do "Aprovar" continua na Decisão.                             |
 | Conversa com o fornecedor, com anexo (foto, PDF, Excel)                       | Ícone de conversa da linha (modal), com o mesmo anexo.                                                        |
 | Decisão da Wellmix (aprovar, recusar, cancelar, com a observação)             | Igual, abaixo do quadro.                                                                                      |
@@ -112,7 +112,7 @@ Pedido do dono (22/11/2026): trocar o nome para Cotação não pode perder proce
 | Amostragem (fotos e vídeos, validar)                                          | Igual depois da aprovação; desde 22/11/2026 também pode começar na cotação (docs/SUPPLIER_SAMPLING.md).       |
 | Produto (criar, associar, liberar na vitrine, código do Sankhya)              | Igual, no fim da tela.                                                                                        |
 | Aviso do pedido de compra (gerar ou abrir o pedido)                           | Igual.                                                                                                        |
-| Book, seleção e o Superplan do item escolhido                                 | Card Book, à direita (só quando há book).                                                                     |
+| Book, seleção e o custo do item escolhido no Sankhya                          | Card Book, à direita (só quando há book).                                                                     |
 | Histórico de interações                                                       | Igual, à direita.                                                                                             |
 | Linha do tempo entre os blocos (Cotação, Pedido, Produção, Entrega)           | Igual.                                                                                                        |
 | Aviso de fornecedor sem login e "gerar o login"                               | Igual.                                                                                                        |

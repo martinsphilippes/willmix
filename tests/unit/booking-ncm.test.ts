@@ -7,7 +7,8 @@ import { xlsxBytes } from "./xlsx-fixture";
  * com os produtos do cadastro (o mais provável ou a moda entre os
  * igualmente prováveis); sem correspondência, o despachante classifica os
  * parecidos de uma vez. Obrigatório para fechar; trocar depois de fechado
- * refaz a análise; o produto criado herda o NCM.
+ * pede de novo o custo ao Sankhya (sem o Sankhya, nada é calculado; o
+ * cálculo está em booking-cost.test.ts); o produto criado herda o NCM.
  */
 withTempStore();
 
@@ -210,16 +211,18 @@ describe("no booking", () => {
       });
     expect(await ncm.pendingNcmGroups(broker)).toEqual([]);
 
-    // Fecha; trocar o NCM depois refaz a análise do item; apagar não pode.
+    // Fecha; trocar o NCM depois vale (sem o Sankhya, nenhum custo é
+    // calculado nem inventado); apagar não pode.
     await lots.closeBookingLot(admin, lot.id, null);
-    const before = (await store.get("booking_items", bottle.id))!.analysis!;
-    expect(before.inputs?.ncmFound).toBeDefined();
-    await new Promise((r) => setTimeout(r, 5));
+    expect(
+      (await store.get("booking_items", bottle.id))!.sankhyaCost ?? null,
+    ).toBeNull();
     const res = await ncm.setBookingItemsNcm(admin, [bottle.id], "96170020");
-    expect(res.reanalyzed).toBe(1);
+    expect(res.reanalyzed).toBe(0);
     const after = (await store.get("booking_items", bottle.id))!;
     expect(after).toMatchObject({ ncm: "96170020", ncmSource: "manual" });
-    expect(after.analysis!.at > before.at).toBe(true);
+    expect(after.sankhyaCost ?? null).toBeNull();
+    expect(after.analysis ?? null).toBeNull();
     await expect(
       ncm.setBookingItemsNcm(admin, [bottle.id], ""),
     ).rejects.toThrow("booking_ncm_required");

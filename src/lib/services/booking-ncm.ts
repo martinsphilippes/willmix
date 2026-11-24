@@ -32,7 +32,8 @@ import { audit } from "./audit";
  *    preencher no próprio booking.
  *
  * O NCM é obrigatório para fechar o booking e continua editável depois de
- * fechado: ao mudar, a análise do Superplan do item é refeita.
+ * fechado: ao mudar, o custo do item é pedido de novo ao Sankhya
+ * (src/lib/services/booking-cost.ts).
  */
 
 export class BookingNcmError extends Error {}
@@ -208,7 +209,7 @@ export async function hasBroker(): Promise<boolean> {
 /**
  * NCM digitado pela Wellmix (no booking) ou pelo despachante (nos grupos).
  * Com a tabela fiscal carregada, o NCM tem de estar nela. Booking fechado ou
- * em andamento: a análise do Superplan dos itens é refeita. Vazio tira o
+ * em andamento: o custo dos itens é pedido de novo ao Sankhya. Vazio tira o
  * NCM (só a Wellmix, no rascunho).
  */
 export async function setBookingItemsNcm(
@@ -256,33 +257,21 @@ export async function setBookingItemsNcm(
       ncmByUserId: ncm ? user.id : null,
       updatedByUserId: user.id,
     });
-  // Fechado: refaz a análise dos itens com o NCM novo (II e IPI da tabela).
+  // Fechado: o custo no Sankhya depende do NCM; pede de novo o dos itens
+  // trocados (uns segundos na hora, o resto depois da resposta).
   let reanalyzed = 0;
   const closed = items.filter((i) => {
     const s = lotOf.get(i.lotId)?.status;
     return s === "closed" || s === "in_progress" || s === "done";
   });
   if (closed.length) {
-    const { analyzeBookingItems } = await import("./superplan-analysis");
-    const byLot = new Map<string, BookingItem[]>();
-    for (const i of closed) {
-      const list = byLot.get(i.lotId) ?? [];
-      list.push({ ...i, ncm });
-      byLot.set(i.lotId, list);
-    }
-    for (const [lotId, list] of byLot) {
-      const lot = lotOf.get(lotId) as BookingLot;
-      const snapshots = await analyzeBookingItems(list, {
-        businessType: lot.businessType,
-      });
-      for (const i of list) {
-        const snap = snapshots.get(i.id);
-        if (!snap) continue;
-        await store.update("booking_items", i.id, {
-          analysis: { ...snap, at: now, byUserId: user.id },
-        });
-        reanalyzed++;
-      }
+    const { requestLotCosts } = await import("./booking-cost");
+    const byLot = new Map<string, string[]>();
+    for (const i of closed)
+      byLot.set(i.lotId, [...(byLot.get(i.lotId) ?? []), i.id]);
+    for (const [lotId, only] of byLot) {
+      const run = await requestLotCosts(lotId, user.id, { only });
+      reanalyzed += run.done;
     }
   }
   await audit(

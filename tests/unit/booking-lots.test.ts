@@ -7,7 +7,8 @@ import { xlsxBytes } from "./xlsx-fixture";
  * de um fornecedor vira um booking em rascunho com os itens (nenhum produto
  * do cadastro); fornecedor, origem e data são estimados da planilha; colunas
  * sem campo próprio ficam guardadas no item; fechar exige os campos
- * obrigatórios e roda o Superplan em todos os itens.
+ * obrigatórios e pede o custo de cada item ao Sankhya (sem o Sankhya,
+ * nada é calculado; o cálculo está em booking-cost.test.ts).
  */
 withTempStore();
 
@@ -248,11 +249,12 @@ describe("booking por planilha", () => {
 
     const closed = await svc.closeBookingLot(admin, lot.id, null);
     expect(closed.status).toBe("closed");
-    expect(closed.analyzedAt).toBeTruthy();
+    // Sem o Sankhya configurado: fecha, e nenhum custo é inventado.
+    expect(closed.sankhyaCostAt ?? null).toBeNull();
     const items = await store.list("booking_items", {
       filter: { lotId: lot.id },
     });
-    expect(items.every((i) => i.analysis && i.analysis.at)).toBe(true);
+    expect(items.every((i) => !i.sankhyaCost && !i.analysis)).toBe(true);
     // Fechado não edita.
     await expect(
       svc.setBookingItemField(admin, jar.id, "heightCm", "22"),

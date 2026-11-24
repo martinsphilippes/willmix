@@ -64,5 +64,5 @@ O seletor **DEMO** do cabeçalho não é simulação: faz um **login de verdade*
   - Valores do pedido: custo (`fobTotal`) e venda (`sellPrice`), com moeda e câmbio; item com quantidade e preço unitário. A linha de produto está no pedido; por item, só pelo produto.
   - Eventos com data (`emitProcessEvent`): pedido criado, sinal confirmado, contrato assinado, início e fim de cada etapa, pedido encerrado, faturado e cancelado. A inspeção por item, o fechamento do recebimento e as confirmações de pagamento têm data, mas não disparam evento.
   - Pagamentos: recebimentos do cliente e pagamentos ao fornecedor, parciais, com confirmação; telas Financeiro e Contas a pagar. O Sankhya não devolve a baixa de forma contínua (liquidação seria registrada à mão).
-  - Não existe comissão, devolução por item nem nota de crédito. O Superplan tem percentuais de comissão só na simulação.
+  - Não existe comissão, devolução por item nem nota de crédito.
   - Decisões do dono antes de construir: sobre que base cada percentual incide (venda, custo, recebido, margem); quem são os primeiros beneficiários e em que evento a comissão nasce e é liberada; se a liquidação vai para Contas a pagar.

@@ -15,6 +15,7 @@ import type {
   SupplierRequest,
 } from "@/lib/db/schema";
 import { listByIds } from "@/lib/db/lookup";
+import { bookingCostOf } from "@/lib/booking-cost";
 import { canViewOrder, isWellmix } from "@/lib/auth/permissions";
 import {
   canSeeMoney,
@@ -70,8 +71,9 @@ import type { PackingBasis } from "@/lib/strategy-packing";
  *   cadastro, que é o da última compra, e as faixas de preço) e condições do
  *   fornecedor: Wellmix com "Ver preço de compra" ou "Ver valores e margem"
  *   (`canSeePurchasePrice`; dono, 15/11/2026, docs/LINHA_DE_VISAO.md).
- * - Análise do Superplan (custo nacionalizado, venda sugerida, margem): só
- *   Wellmix com "Ver valores e margem" (`canSeeMoney`).
+ * - Custo no Sankhya (custo por peça, venda pelo markup e lucro da cotação
+ *   V2, pedidos ao fechar o book): só Wellmix com "Ver valores e margem"
+ *   (`canSeeMoney`).
  * - Venda ao cliente e sinal: Wellmix com "Ver valores e margem"; o login do
  *   cliente vê a venda e o sinal das solicitações dele.
  * - O cliente vê só o que a própria solicitação gravou (o texto que ele já
@@ -86,7 +88,7 @@ export interface SheetAccess {
    * última compra), faixas de preço e condições do fornecedor.
    */
   purchase: boolean;
-  /** Análise do Superplan: custo nacionalizado, venda sugerida e margem. */
+  /** Custo no Sankhya: custo por peça, venda pelo markup e lucro. */
   cost: boolean;
   /** Venda ao cliente e sinal. */
   sale: boolean;
@@ -110,7 +112,7 @@ export type SourceKind =
   | "order"
   | "negotiation"
   | "book"
-  | "superplan"
+  | "sankhya"
   | "current"
   | "line"
   | "supplier"
@@ -303,12 +305,12 @@ function sourceOf(
           ? t("requestSheet.src.book", { n: inputs.bookLot.number })
           : t("requestSheet.src.bookPlain"),
       };
-    case "superplan":
+    case "sankhya":
       return {
         kind,
         label: inputs.bookLot
-          ? t("requestSheet.src.superplan", { n: inputs.bookLot.number })
-          : t("requestSheet.src.superplanPlain"),
+          ? t("requestSheet.src.sankhya", { n: inputs.bookLot.number })
+          : t("requestSheet.src.sankhyaPlain"),
       };
     default:
       return { kind, label: t(`requestSheet.src.${kind}` as DictionaryKey) };
@@ -1004,7 +1006,9 @@ export function buildSheetRow(
       fields: [moneyField("saleUnit", saleUnit, true), moneyField("saleTotal", saleTotal, false)],
     });
   if (access.purchase || access.cost) {
-    const analysis = access.cost ? (book?.analysis ?? null) : null;
+    // Custo do item do book na cotação V2 do Sankhya (o retrato antigo do
+    // portal não aparece).
+    const analysis = access.cost ? bookingCostOf(book) : null;
     const purchaseFields: SheetField[] = [
       moneyField("quote", quoted, true),
       field(
@@ -1055,12 +1059,12 @@ export function buildSheetRow(
         ? [
             moneyField(
               "landed",
-              pos(analysis.costBrl) ? { amount: analysis.costBrl, currency: "BRL", kind: "superplan" } : null,
+              pos(analysis.costBrl) ? { amount: analysis.costBrl, currency: "BRL", kind: "sankhya" } : null,
               true,
             ),
             moneyField(
               "suggested",
-              pos(analysis.salePriceBrl) ? { amount: analysis.salePriceBrl, currency: "BRL", kind: "superplan" } : null,
+              pos(analysis.salePriceBrl) ? { amount: analysis.salePriceBrl, currency: "BRL", kind: "sankhya" } : null,
               true,
             ),
             field(
@@ -1069,7 +1073,7 @@ export function buildSheetRow(
               analysis.profitPct !== null && Number.isFinite(analysis.profitPct)
                 ? `${analysis.profitPct.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%`
                 : null,
-              "superplan",
+              "sankhya",
             ),
           ]
         : []),

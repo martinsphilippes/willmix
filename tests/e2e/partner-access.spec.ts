@@ -377,7 +377,7 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
   await expect(items.locator("tr")).toHaveCount(1);
   await expect(items).toContainText(`${code}-A`);
   // Sem a análise da Wellmix e sem os campos de edição do booking.
-  await expect(page.locator("[data-booking-item-analysis]")).toHaveCount(0);
+  await expect(page.locator("[data-booking-item-cost]")).toHaveCount(0);
   await expect(page.locator("[data-booking-lot-partner]")).toHaveCount(0);
   await expect(page.locator("[data-booking-lot-close-submit]")).toHaveCount(0);
   // O booking de outra empresa não abre, nem pelo endereço.

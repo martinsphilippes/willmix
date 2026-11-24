@@ -49,8 +49,8 @@ import {
  * Seleção de itens e solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md).
  * A Wellmix compara itens parecidos dos bookings fechados, escolhe um e abre
  * a solicitação ao fornecedor dele (os parecidos ficam como alternativas). O
- * fornecedor vê só as próprias solicitações, sem as alternativas nem a
- * análise do Superplan, e responde se faz o que a Wellmix precisa e em que
+ * fornecedor vê só as próprias solicitações, sem as alternativas nem o
+ * custo do Sankhya, e responde se faz o que a Wellmix precisa e em que
  * condições. Nenhum produto, cliente ou estoque nasce aqui.
  */
 

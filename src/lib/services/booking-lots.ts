@@ -40,7 +40,10 @@ import {
   visibleLots,
   workedShare,
 } from "@/lib/booking-locks";
+import { bookingCostOf } from "@/lib/booking-cost";
+import type { PriceForecastAdapter } from "@/lib/integrations/price-forecast";
 import { audit } from "./audit";
+import type { BookingCostRun } from "./booking-cost";
 import {
   fileKeyTaken,
   registerUploadedDocument,
@@ -59,7 +62,8 @@ import type { SheetImage } from "./xlsx";
  * Booking por planilha (docs/BOOKING.md, "Booking por planilha"). O usuário
  * sobe a planilha de um fornecedor: nasce um booking em rascunho com os
  * itens (as linhas), o fornecedor e a data estimados da planilha. Ele ajusta
- * tudo e fecha; ao fechar, o Superplan analisa todos os itens. Nenhum
+ * tudo e fecha; ao fechar, o custo de cada item é pedido à cotação V2 do
+ * Sankhya (src/lib/services/booking-cost.ts). Nenhum
  * produto do cadastro nasce aqui: o item é ligado a um produto depois, na
  * seleção de itens.
  *
@@ -597,11 +601,12 @@ export async function listBookingLots(
   return lots.map((lot) => {
     const own = itemsOf.get(lot.id) ?? [];
     const pending = bookingLotPending(lot, own);
+    // Sinais pelo custo do Sankhya (o retrato antigo do portal não conta).
     const signals = { viable: 0, below: 0, loss: 0, missing: 0 };
     for (const item of own) {
-      const verdict = item.analysis?.verdict;
-      if (verdict) signals[verdict]++;
-      else if (item.analysis) signals.missing++;
+      const cost = bookingCostOf(item);
+      if (cost?.verdict) signals[cost.verdict]++;
+      else if (cost) signals.missing++;
     }
     return {
       lot,
@@ -1048,36 +1053,16 @@ export async function setBookingItemsFields(
 /* Fechar e status                                                           */
 /* ------------------------------------------------------------------------ */
 
-/** Roda o Superplan em todos os itens e grava o retrato em cada um. */
-async function analyzeLot(
-  user: User | null,
-  lot: BookingLot,
-  items: BookingItem[],
-  businessType: string | null,
-) {
-  const { analyzeBookingItems } = await import("./superplan-analysis");
-  const snapshots = await analyzeBookingItems(items, { businessType });
-  const at = new Date().toISOString();
-  const store = getStore();
-  for (const item of items) {
-    const snapshot = snapshots.get(item.id);
-    if (!snapshot) continue;
-    await store.update("booking_items", item.id, {
-      analysis: { ...snapshot, at, byUserId: user?.id ?? "system" },
-    });
-  }
-  return at;
-}
-
 /**
  * Fecha o booking: fornecedor, data e os campos obrigatórios de todos os
- * itens preenchidos; roda a análise do Superplan em todos os itens (com o
- * tipo de negócio escolhido, ou o padrão) e passa a Fechado.
+ * itens preenchidos; passa a Fechado e pede o custo de cada item à cotação
+ * V2 do Sankhya (uns segundos na hora, o resto depois da resposta;
+ * `requestLotCosts`). O book fecha mesmo sem o Sankhya.
  */
 export async function closeBookingLot(
   user: User,
   lotId: string,
-  businessType: string | null,
+  options: { adapter?: PriceForecastAdapter } | null = null,
 ): Promise<BookingLot> {
   assertBooking(user);
   const lot = await editableLot(lotId);
@@ -1098,14 +1083,11 @@ export async function closeBookingLot(
     if (pending.noItems) throw new BookingLotError("no_rows");
     throw new BookingLotError("booking_items_incomplete");
   }
-  const type = clip(businessType, 80);
-  const at = await analyzeLot(user, lot, items, type);
+  const at = new Date().toISOString();
   const updated = await store.update("booking_lots", lot.id, {
     status: "closed",
-    businessType: type,
     closedAt: at,
     closedByUserId: user.id,
-    analyzedAt: at,
     statusChangedAt: at,
     statusChangedByUserId: user.id,
     itemCount: items.length,
@@ -1115,109 +1097,40 @@ export async function closeBookingLot(
     "booking_lot.close",
     "booking_lot",
     lot.id,
-    `Book nº ${lot.number} fechado: ${items.length} itens analisados`,
+    `Book nº ${lot.number} fechado: ${items.length} itens`,
   );
+  const { requestLotCosts } = await import("./booking-cost");
+  await requestLotCosts(lot.id, user.id, { adapter: options?.adapter });
   return updated;
 }
 
-/** Refaz a análise do Superplan num booking já fechado (câmbio ou parâmetros mudaram). */
-export async function reanalyzeBookingLot(
+/**
+ * "Calcular no Sankhya" (book fechado, em andamento ou concluído): pede de
+ * novo o custo de todos os itens à cotação V2 do Sankhya.
+ */
+export async function calculateBookingLotCosts(
   user: User,
   lotId: string,
-  businessType: string | null,
-): Promise<void> {
+  options: { adapter?: PriceForecastAdapter } = {},
+): Promise<BookingCostRun> {
   assertBooking(user);
-  const store = getStore();
   const lot = await wellmixLot(lotId);
   if (!lot) throw new BookingLotError("not_found");
   if (lot.status === "draft" || lot.status === "cancelled")
     throw new BookingLotError("booking_lot_not_closed");
-  const items = await store.list("booking_items", {
-    filter: { lotId: lot.id },
+  const { requestLotCosts } = await import("./booking-cost");
+  const costs = await requestLotCosts(lot.id, user.id, {
+    adapter: options.adapter,
   });
-  const type = clip(businessType, 80) ?? lot.businessType;
-  const at = await analyzeLot(user, lot, items, type);
-  await store.update("booking_lots", lot.id, {
-    analyzedAt: at,
-    businessType: type,
-  });
-  await audit(
-    user,
-    "booking_lot.analyze",
-    "booking_lot",
-    lot.id,
-    `Book nº ${lot.number}: análise refeita`,
-  );
-}
-
-/** Status em que o booking tem análise do Superplan (fechado em diante). */
-const ANALYZED_LOT_STATUSES: BookingLotStatus[] = [
-  "closed",
-  "in_progress",
-  "done",
-];
-
-/**
- * A tabela fiscal (TEC ou TIPI) foi carregada: refaz sozinho a análise dos
- * bookings fechados, em andamento ou concluídos que têm algum item cujo II
- * ou IPI pelo NCM mudou (inclusive o que antes não estava na tabela). Os
- * outros ficam como estão: o robô roda sempre e não deve trocar câmbio e
- * parâmetros de análises que a tabela não mexeu. Cada booking refeito usa o
- * próprio tipo de negócio, como "Refazer a análise". `user` nulo = o robô.
- */
-export async function reanalyzeLotsForFiscalTable(
-  user: User | null,
-): Promise<{ lots: number; items: number }> {
-  const store = getStore();
-  const { lookupNcm } = await import("./fiscal");
-  const { ncmTaxPct } = await import("./superplan-analysis");
-  const lots = await store.list("booking_lots", {
-    filter: { status: ANALYZED_LOT_STATUSES },
-  });
-  const rates = new Map<string, ReturnType<typeof ncmTaxPct>>();
-  const taxOf = async (ncm: string) => {
-    let r = rates.get(ncm);
-    if (!r) rates.set(ncm, (r = ncmTaxPct(await lookupNcm(ncm))));
-    return r;
-  };
-  const pct = (n: number | null) => (n === null ? null : Number(n.toFixed(2)));
-  let done = 0;
-  let itemCount = 0;
-  for (const lot of lots) {
-    const items = await store.list("booking_items", {
-      filter: { lotId: lot.id },
-    });
-    let affected = false;
-    for (const item of items) {
-      const ncm = item.ncm?.trim();
-      const before = item.analysis?.inputs;
-      if (!ncm || !item.analysis) continue;
-      const now = await taxOf(ncm);
-      if (
-        !before ||
-        before.ncmFound !== now.ncmFound ||
-        (now.ncmFound &&
-          (pct(now.iiPct) !== before.iiPct ||
-            pct(now.ipiPct) !== before.ipiPct))
-      ) {
-        affected = true;
-        break;
-      }
-    }
-    if (!affected) continue;
-    const at = await analyzeLot(user, lot, items, lot.businessType);
-    await store.update("booking_lots", lot.id, { analyzedAt: at });
+  if (!costs.manual)
     await audit(
       user,
       "booking_lot.analyze",
       "booking_lot",
       lot.id,
-      `Book nº ${lot.number}: análise refeita (tabela fiscal atualizada)`,
+      `Book nº ${lot.number}: custo pedido ao Sankhya`,
     );
-    done++;
-    itemCount += items.length;
-  }
-  return { lots: done, items: itemCount };
+  return costs;
 }
 
 /** Muda o status à mão (fechar o rascunho é `closeBookingLot`). */

@@ -33,17 +33,9 @@ export const pt = {
   "supplierRequests.selection.schemaMissing":
     "As tabelas novas ainda não foram publicadas no banco (npm run appwrite:push).",
   "supplierRequests.selection.best": "Menor custo por peça",
-  "supplierRequests.selection.col.costPiece": "Custo/peça (Superplan)",
+  "supplierRequests.selection.col.costPiece": "Custo/peça (Sankhya)",
   "supplierRequests.selection.costHint":
-    "Custo/peça: quanto cada peça custa posta no depósito (compra, frete, impostos da importação e despesas, dividido pelas peças que cabem no container), calculado pelo Superplan ao fechar o book com o câmbio do dia, o container e o frete padrão. Mínimo = custo × markup do tipo de negócio; Meta = preço de venda que dá o lucro da meta. Compare com o preço que o cliente paga para decidir o escolhido e as alternativas. Passe o mouse no Superplan para ver data, tipo, container, frete e dólar usados.",
-  "supplierRequests.superplan.target": "Meta {pct}%: {price}",
-  "supplierRequests.superplan.targetNone": "Meta {pct}% inalcançável",
-  "supplierRequests.superplan.noNcm":
-    "Sem II/IPI (NCM fora da tabela fiscal): custo abaixo do real",
-  "supplierRequests.superplan.grossEstimated":
-    "Peso bruto estimado pelo líquido",
-  "supplierRequests.superplan.assumptions":
-    "Calculado em {date} · {type} · container {container} · frete {freight} · dólar {fx}",
+    "Custo/peça: o custo por peça da cotação V2 do Sankhya (CUSTO_BASE_VENDA), pedido ao fechar o book com os dados de cada item (NCM, pesos, caixa master, CBM, preço e moeda). Na coluna ao lado, o sinal do Sankhya (meta atingida, abaixo da meta ou prejuízo), o preço meta e o lucro. Compare com o preço que o cliente paga para decidir o escolhido e as alternativas. Passe o mouse para ver a data e os dados enviados.",
   "supplierRequests.detail.chosenCost": "Custo/peça {price}",
   "supplierRequests.selection.similar": "ver parecidos",
   "supplierRequests.selection.tab.items": "Itens",
@@ -113,7 +105,7 @@ export const pt = {
   "supplierRequests.selection.col.capacity": "Capacidade (ml ou tamanho)",
   "supplierRequests.selection.col.material": "Material / embalagem",
   "supplierRequests.selection.col.sheetQty": "Qtd da planilha",
-  "supplierRequests.selection.col.superplan": "Superplan",
+  "supplierRequests.selection.col.sankhya": "Cotação Sankhya",
   "supplierRequests.selection.col.situation": "Situação",
   "supplierRequests.selection.form.title": "Gravar a escolha do grupo",
   "supplierRequests.selection.form.body":
@@ -176,11 +168,6 @@ export const pt = {
   "supplierRequests.detail.negotiatedPrice": "Preço negociado",
   "supplierRequests.detail.negotiatedHint":
     "Valores renegociados com o responsável; o do book fica ao lado, riscado.",
-  "supplierRequests.detail.negotiatedSuperplan":
-    "Superplan com as condições negociadas",
-  "supplierRequests.detail.negotiatedSuperplanHint":
-    "Refeito agora com o preço negociado e o câmbio de hoje. Riscado: o custo do book. Compare com as alternativas abaixo.",
-  "supplierRequests.detail.alternativeCheaper": "mais barata que a negociada",
   "supplierRequests.detail.alternativeOpen": "Abrir solicitação para esta",
   "supplierRequests.detail.quantity": "Quantidade",
   "supplierRequests.detail.pieces": "{n} peças",
@@ -219,7 +206,7 @@ export const pt = {
   "supplierRequests.detail.alternativesNone": "Nenhuma alternativa guardada.",
   "supplierRequests.detail.alternativesHint":
     "Só a Wellmix vê: itens parecidos de outros books, para comparar ou abrir outra solicitação.",
-  "supplierRequests.detail.chosenSuperplan": "Superplan do item escolhido",
+  "supplierRequests.detail.chosenSankhya": "Custo no Sankhya do item escolhido",
 
   "supplierRequests.error.supplier_request_choose":
     "Marque o item escolhido antes de abrir a solicitação.",
@@ -514,17 +501,9 @@ export const en: typeof pt = {
   "supplierRequests.selection.schemaMissing":
     "The new tables are not published in the database yet (npm run appwrite:push).",
   "supplierRequests.selection.best": "Lowest cost per piece",
-  "supplierRequests.selection.col.costPiece": "Cost/piece (Superplan)",
+  "supplierRequests.selection.col.costPiece": "Cost/piece (Sankhya)",
   "supplierRequests.selection.costHint":
-    "Cost/piece: what each piece costs landed in the warehouse (purchase, freight, import taxes and expenses, divided by the pieces that fit in the container), calculated by Superplan when the book was closed with that day's exchange rate, the default container and the default freight. Minimum = cost × business type markup; Target = sale price that gives the target profit. Compare with what the customer pays to decide the chosen item and the alternatives. Hover over Superplan to see the date, type, container, freight and dollar used.",
-  "supplierRequests.superplan.target": "Target {pct}%: {price}",
-  "supplierRequests.superplan.targetNone": "Target {pct}% unreachable",
-  "supplierRequests.superplan.noNcm":
-    "No II/IPI (NCM not in the tax table): cost below the real one",
-  "supplierRequests.superplan.grossEstimated":
-    "Gross weight estimated from net",
-  "supplierRequests.superplan.assumptions":
-    "Calculated on {date} · {type} · container {container} · freight {freight} · dollar {fx}",
+    "Cost/piece: the cost per piece from the Sankhya V2 quote (CUSTO_BASE_VENDA), requested when the book was closed with each item's data (NCM, weights, master carton, CBM, price and currency). Next to it, the Sankhya signal (target reached, below target or loss), the target price and the profit. Compare with what the customer pays to decide the chosen item and the alternatives. Hover to see the date and the data sent.",
   "supplierRequests.detail.chosenCost": "Cost/piece {price}",
   "supplierRequests.selection.similar": "see similar",
   "supplierRequests.selection.tab.items": "Items",
@@ -591,7 +570,7 @@ export const en: typeof pt = {
   "supplierRequests.selection.col.capacity": "Capacity (ml or size)",
   "supplierRequests.selection.col.material": "Material / package",
   "supplierRequests.selection.col.sheetQty": "Spreadsheet qty",
-  "supplierRequests.selection.col.superplan": "Superplan",
+  "supplierRequests.selection.col.sankhya": "Sankhya quote",
   "supplierRequests.selection.col.situation": "Status",
   "supplierRequests.selection.form.title": "Save the group's choice",
   "supplierRequests.selection.form.body":
@@ -654,12 +633,6 @@ export const en: typeof pt = {
   "supplierRequests.detail.negotiatedPrice": "Negotiated price",
   "supplierRequests.detail.negotiatedHint":
     "Values renegotiated with the person in charge; the book value is beside it, struck through.",
-  "supplierRequests.detail.negotiatedSuperplan":
-    "Superplan with the negotiated conditions",
-  "supplierRequests.detail.negotiatedSuperplanHint":
-    "Recalculated now with the negotiated price and today's exchange rate. Struck through: the book cost. Compare with the alternatives below.",
-  "supplierRequests.detail.alternativeCheaper":
-    "cheaper than the negotiated one",
   "supplierRequests.detail.alternativeOpen": "Open a request for this one",
   "supplierRequests.detail.quantity": "Quantity",
   "supplierRequests.detail.pieces": "{n} pieces",
@@ -698,7 +671,7 @@ export const en: typeof pt = {
   "supplierRequests.detail.alternativesNone": "No alternatives kept.",
   "supplierRequests.detail.alternativesHint":
     "Wellmix only: similar items from other books, to compare or open another request.",
-  "supplierRequests.detail.chosenSuperplan": "Superplan of the chosen item",
+  "supplierRequests.detail.chosenSankhya": "Sankhya cost of the chosen item",
 
   "supplierRequests.error.supplier_request_choose":
     "Mark the chosen item before opening the request.",
@@ -987,16 +960,9 @@ export const zh: typeof pt = {
   "supplierRequests.selection.schemaMissing":
     "新数据表尚未发布到数据库（npm run appwrite:push）。",
   "supplierRequests.selection.best": "单件成本最低",
-  "supplierRequests.selection.col.costPiece": "单件成本 (Superplan)",
+  "supplierRequests.selection.col.costPiece": "单件成本 (Sankhya)",
   "supplierRequests.selection.costHint":
-    "单件成本：每件产品到仓的成本（采购、运费、进口税和费用，除以集装箱可装件数），由 Superplan 在关闭 Book 时按当日汇率、默认集装箱和默认运费计算。最低价 = 成本 × 业务类型加价倍数；目标 = 达到目标利润的售价。与客户支付的价格比较，以决定选中条目和备选。鼠标悬停在 Superplan 上可查看所用日期、类型、集装箱、运费和美元汇率。",
-  "supplierRequests.superplan.target": "目标 {pct}%：{price}",
-  "supplierRequests.superplan.targetNone": "目标 {pct}% 无法达到",
-  "supplierRequests.superplan.noNcm":
-    "无 II/IPI（NCM 不在税表中）：成本低于实际",
-  "supplierRequests.superplan.grossEstimated": "毛重按净重估算",
-  "supplierRequests.superplan.assumptions":
-    "计算于 {date} · {type} · 集装箱 {container} · 运费 {freight} · 美元 {fx}",
+    "单件成本：Sankhya V2 报价的每件成本（CUSTO_BASE_VENDA），在关闭 Book 时用每个条目的数据（NCM、重量、外箱、CBM、价格和币种）请求。旁边一列是 Sankhya 的信号（达到目标、低于目标或亏损）、目标价和利润。与客户支付的价格比较，决定选中的条目和备选。鼠标悬停可查看日期和发送的数据。",
   "supplierRequests.detail.chosenCost": "单件成本 {price}",
   "supplierRequests.selection.similar": "查看相似",
   "supplierRequests.selection.tab.items": "项目",
@@ -1061,7 +1027,7 @@ export const zh: typeof pt = {
   "supplierRequests.selection.col.capacity": "容量（ml 或尺寸）",
   "supplierRequests.selection.col.material": "材质 / 包装",
   "supplierRequests.selection.col.sheetQty": "表格数量",
-  "supplierRequests.selection.col.superplan": "Superplan",
+  "supplierRequests.selection.col.sankhya": "Sankhya 报价",
   "supplierRequests.selection.col.situation": "状态",
   "supplierRequests.selection.form.title": "保存本组的选择",
   "supplierRequests.selection.form.body":
@@ -1123,10 +1089,6 @@ export const zh: typeof pt = {
   "supplierRequests.detail.negotiatedPrice": "谈判价格",
   "supplierRequests.detail.negotiatedHint":
     "与负责人重新谈判后的数值；Book 的原值显示在旁边并划掉。",
-  "supplierRequests.detail.negotiatedSuperplan": "按谈判条件计算的 Superplan",
-  "supplierRequests.detail.negotiatedSuperplanHint":
-    "已按谈判价格和今日汇率重新计算。划掉的是 Book 的成本。请与下方备选比较。",
-  "supplierRequests.detail.alternativeCheaper": "比谈判价更便宜",
   "supplierRequests.detail.alternativeOpen": "为此项发起询单",
   "supplierRequests.detail.quantity": "数量",
   "supplierRequests.detail.pieces": "{n} 件",
@@ -1165,7 +1127,7 @@ export const zh: typeof pt = {
   "supplierRequests.detail.alternativesNone": "未保存备选条目。",
   "supplierRequests.detail.alternativesHint":
     "仅 Wellmix 可见：其他 Book 中的相似条目，用于比较或另行发起询单。",
-  "supplierRequests.detail.chosenSuperplan": "选中条目的 Superplan",
+  "supplierRequests.detail.chosenSankhya": "选中条目的 Sankhya 成本",
 
   "supplierRequests.error.supplier_request_choose":
     "发起询单前请勾选选中的条目。",

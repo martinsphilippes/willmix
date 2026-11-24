@@ -99,10 +99,10 @@ export async function saveFunction(fn: Locator): Promise<boolean> {
 }
 
 /**
- * Câmbio manual em Configurações (Wellmix). As contas do Superplan (custo por
- * peça, simulação da proposta) precisam de câmbio, e o do dia vem de sites
- * públicos que nem todo ambiente de teste alcança (rede restrita). Com a
- * cotação do dia ela continua valendo; sem ela, vale este.
+ * Câmbio manual em Configurações (Wellmix). A conversão ao trocar a moeda de
+ * um campo e o preço em US$ da Seleção precisam de câmbio, e o do dia vem de
+ * sites públicos que nem todo ambiente de teste alcança (rede restrita). Com
+ * a cotação do dia ela continua valendo; sem ela, vale este.
  */
 export async function setManualFx(page: Page) {
   await page.goto("/app/settings");

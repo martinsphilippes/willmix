@@ -1,5 +1,7 @@
 # Vídeos explicativos do Portal Wellmix
 
+> **Superplan fora do portal (24/11/2026):** a tela do Superplan e a análise do Superplan no Book saíram; o custo dos itens do Book passou a ser o da cotação do Sankhya (docs/BOOKING.md, "Custo no Sankhya"). Os episódios WBK-02 e WSO-05 e as cenas que mostram o Superplan estão desatualizados e precisam ser regravados.
+
 Roteiros completos, cena a cena, para produzir os vídeos que ensinam **cada papel** do portal: o que fazer, em que ordem e por quê, com a tela real, o texto na imagem e o mesmo conteúdo por escrito.
 
 - **Como produzir** (formato, elementos de tela, ambiente de gravação, lista de qualidade): [GUIA.md](GUIA.md).

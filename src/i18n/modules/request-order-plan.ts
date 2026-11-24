@@ -45,7 +45,7 @@ export const pt = {
   "priceForecast.noProduct":
     "Escolha um produto do catálogo para ver a previsão de preço.",
   "priceForecast.manual":
-    "Sankhya não configurado: a previsão de preço (SuperPlan) não está disponível. Nenhum preço é estimado.",
+    "Sankhya não configurado: a previsão de preço (cotação V2 do Sankhya) não está disponível. Nenhum preço é estimado.",
   "priceForecast.resultTarget":
     "Para vender a {target} por peça, o preço máximo de compra é",
   "priceForecast.targetField": "Preço de venda desejado (R$ por peça, com IPI)",
@@ -63,7 +63,7 @@ export const pt = {
   "priceForecast.auditTitle": "Memória de cálculo do Sankhya (auditoria)",
   "priceForecast.auditInputs": "Enviado à função {fn}",
   "priceForecast.auditDefaults":
-    "Os parâmetros que não aparecem foram como NULL (a cotação V2 resolve pelos cadastros do Sankhya); na volta (SuperPlan inversa), como DEFAULT.",
+    "Os parâmetros que não aparecem foram como NULL (a cotação V2 resolve pelos cadastros do Sankhya); na volta (a função inversa do Sankhya), como DEFAULT.",
   "priceForecast.auditOutputs": "Devolvido pela função (todas as colunas)",
   "sankhyaHistory.source": "Do Sankhya, consultado agora",
   "sankhyaHistory.empty": "Nenhum pedido deste cliente no Sankhya.",
@@ -135,7 +135,7 @@ export const en: Record<keyof typeof pt, string> = {
   "priceForecast.noProduct":
     "Choose a catalog product to see the price forecast.",
   "priceForecast.manual":
-    "Sankhya is not configured: the price forecast (SuperPlan) is unavailable. No price is estimated.",
+    "Sankhya is not configured: the price forecast (Sankhya V2 quote) is unavailable. No price is estimated.",
   "priceForecast.resultTarget":
     "To sell at {target} per piece, the maximum purchase price is",
   "priceForecast.targetField": "Desired sale price (R$ per piece, with IPI)",
@@ -153,7 +153,7 @@ export const en: Record<keyof typeof pt, string> = {
   "priceForecast.auditTitle": "Sankhya calculation details (audit)",
   "priceForecast.auditInputs": "Sent to function {fn}",
   "priceForecast.auditDefaults":
-    "Parameters not listed were sent as NULL (quote V2 resolves them from Sankhya's records); in the reverse calculation (inverse SuperPlan), as DEFAULT.",
+    "Parameters not listed were sent as NULL (quote V2 resolves them from Sankhya's records); in the reverse calculation (Sankhya's inverse function), as DEFAULT.",
   "priceForecast.auditOutputs": "Returned by the function (all columns)",
   "sankhyaHistory.source": "From Sankhya, queried now",
   "sankhyaHistory.empty": "No orders from this customer in Sankhya.",
@@ -218,7 +218,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "priceForecast.loading": "计算中…",
   "priceForecast.noProduct": "请选择目录中的产品以查看价格预测。",
   "priceForecast.manual":
-    "未配置 Sankhya：价格预测（SuperPlan）不可用。不估算任何价格。",
+    "未配置 Sankhya：价格预测（Sankhya V2 报价）不可用。不估算任何价格。",
   "priceForecast.hint":
     "来自 Sankhya 订货报价（V2），包含销售形式（VIP）、由谁联系承运商（路线）和默认送货运费：查看产品的预测价格，或输入期望售价以求出最高采购价。",
   "priceForecast.targetField": "期望售价（每件 R$，含 IPI）",
@@ -236,7 +236,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "priceForecast.auditTitle": "Sankhya 计算明细（审计）",
   "priceForecast.auditInputs": "发送给函数 {fn}",
   "priceForecast.auditDefaults":
-    "未列出的参数以 NULL 发送（报价 V2 根据 Sankhya 档案解析）；反向计算（SuperPlan 反算）以 DEFAULT 发送。",
+    "未列出的参数以 NULL 发送（报价 V2 根据 Sankhya 档案解析）；反向计算（Sankhya 反算函数）以 DEFAULT 发送。",
   "priceForecast.auditOutputs": "函数返回（全部字段）",
   "sankhyaHistory.source": "来自 Sankhya，实时查询",
   "sankhyaHistory.empty": "Sankhya 中没有该客户的订单。",

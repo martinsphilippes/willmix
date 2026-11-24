@@ -407,7 +407,7 @@ export type ProductSupplierSource = (typeof PRODUCT_SUPPLIER_SOURCES)[number];
 /**
  * Booking como planilha (docs/BOOKING.md, "Booking por planilha"): a lista de
  * itens que um fornecedor mandou, antes de existir produto. Rascunho
- * (editável) → Fechado (importação concluída, análise do Superplan feita) →
+ * (editável) → Fechado (importação concluída, custo pedido ao Sankhya) →
  * Em andamento (algum item já foi escolhido) → Concluído; e Cancelado.
  *
  * "preparing" (12/11/2026) vem antes do rascunho, só no booking que o
@@ -487,16 +487,16 @@ export type InspectionResult = (typeof INSPECTION_RESULTS)[number];
 
 /**
  * Origem de uma solicitação: manual (padrão), recompra, nova proposta,
- * produto ainda não catalogado ou aberta do Superplan (viabilidade feita: a
- * RFQ vai direto ao fornecedor ganho, que manda faca, MOQ, prazo e foto em
- * alta; docs/SUPERPLAN.md).
+ * produto ainda não catalogado, pedido de compra das solicitações ao
+ * fornecedor ou o carrinho da vitrine. A origem "superplan" (solicitação
+ * aberta da tela do Superplan) saiu com a tela em 24/11/2026; nenhuma
+ * solicitação em produção a usava.
  */
 export const REQUEST_ORIGINS = [
   "manual",
   "replenishment",
   "proposal",
   "sourcing_demand",
-  "superplan",
   /** Pedido de compra gerado das solicitações ao fornecedor aprovadas (docs/PURCHASE_ORDER.md). */
   "supplier_request",
   /** Encomenda pela vitrine: o item do carrinho que o estoque não atende (docs/PURCHASE_DEMAND.md). */
@@ -3311,45 +3311,55 @@ export type StockReservationStatus =
  * venda), cancelada ou vencer (`expiresAt` passado = vencida, sem gravar).
  */
 /**
- * Retrato da análise do Superplan guardado no item do booking: o que foi
- * analisado, com que pressupostos e o resultado. A lista mostra o retrato com
- * a data (não recalcula sozinha). `verdict` nulo = faltou dado (`missing`).
+ * Custo do item do booking pela cotação V2 do Sankhya
+ * (`FN_AD_ENC_COTACAO_V2_WELL`; dono, 24/11/2026: "a cotação do Sankhya é
+ * oficial"). Calculado ao fechar o book e pelo "Calcular no Sankhya", um item
+ * de cada vez, com os dados do próprio item (NCM, pesos, peças e CBM da caixa
+ * master, preço e moeda); a tela mostra o retrato com a data, sem recalcular
+ * sozinha. Valores em R$ por peça, como o Sankhya devolveu.
+ *
+ * Fica em `booking_items.sankhyaCost`. O retrato do cálculo que o portal
+ * fazia antes (até 24/11/2026) continua em `booking_items.analysis`, sem
+ * aparecer nem ser regravado (`bookingCostOf`, src/lib/booking-cost.ts).
  */
-export interface BookingAnalysis {
+export interface BookingCost {
+  source: "sankhya";
   at: string;
   byUserId: string;
-  /** Tipo de negócio do Superplan usado (markup, comissão, despesas e meta). */
-  businessType: string;
-  /** Preço de venda analisado (R$ por peça) e se era o preço mínimo. */
-  salePriceBrl: number | null;
-  usesMinimum: boolean;
+  /** STATUS_COTACAO: PRONTA, FRETE_PENDENTE ou PENDENTE. */
+  status: string | null;
+  /** CUSTO_BASE_VENDA: o custo por peça, o número para comparar. */
   costBrl: number | null;
-  minimumBrl: number | null;
-  profitPct: number | null;
-  targetPct: number;
-  verdict: "viable" | "below" | "loss" | null;
-  /** Preço para bater a meta; nulo quando impossível ou sem conta. */
+  /** VENDA_IPI: o preço de venda pelo markup do Sankhya. */
+  salePriceBrl: number | null;
+  /** PRECO_VENDA_META: o preço que dá a meta de lucro. */
   targetPriceBrl: number | null;
-  /** O que faltou para calcular (chaves do Superplan: price, fx, cbm…). */
+  /** LUCRO_LIQUIDO_PERC e META_LUCRO_PERC (%). */
+  profitPct: number | null;
+  goalPct: number | null;
+  /** META_ATINGIDA (S/N). */
+  goalReached: boolean | null;
+  /**
+   * Sinal pelo Sankhya: meta atingida = "viable"; lucro acima de zero sem a
+   * meta = "below"; lucro zero ou negativo = "loss"; sem conta = nulo.
+   */
+  verdict: "viable" | "below" | "loss" | null;
+  /**
+   * Dados do item que faltaram (ncm, price, currency, pcsPerCarton, cbm,
+   * netWeight, grossWeight): a conta nem foi ao Sankhya.
+   */
   missing: string[];
-  /** Pressupostos da conta, para conferência. */
-  inputs?: {
-    /** O que a conta usou do produto (para conferir com a linha). */
-    unitPrice?: number | null;
-    currency?: string | null;
-    pcsPerCarton?: number | null;
-    cbmPerCarton?: number | null;
-    officialRate: number | null;
-    futureRate: number | null;
-    rmbPerUsd: number | null;
-    iiPct: number;
-    ipiPct: number;
-    /** NCM achado na tabela fiscal (sem ele, II e IPI contam 0). */
-    ncmFound: boolean;
-    container: string | null;
-    freightUsd: number | null;
-    /** Peso bruto estimado pelo líquido (a ficha não trouxe o bruto). */
-    grossEstimated?: boolean;
+  /** Mensagem do Sankhya quando a cotação não respondeu (OK = N, erro). */
+  error: string | null;
+  /** O que foi enviado do item, para conferir com a linha. */
+  sent?: {
+    ncm: string | null;
+    price: number | null;
+    currency: string | null;
+    pcsPerCarton: number | null;
+    cbmPerCarton: number | null;
+    netWeightPcKg: number | null;
+    grossWeightPcKg: number | null;
   } | null;
 }
 
@@ -3389,11 +3399,21 @@ export interface BookingLot extends BaseRow {
   /** Cabeçalhos da planilha que não têm campo próprio (guardados nos itens). */
   extraHeaders: string[] | null;
   itemCount: number;
-  /** Tipo de negócio do Superplan escolhido ao fechar (vazio = o padrão). */
+  /**
+   * Legado (até 24/11/2026): o tipo de negócio do cálculo do portal, escolhido
+   * ao fechar. Não é mais gravado nem lido.
+   */
   businessType: string | null;
   closedAt: string | null;
   closedByUserId: string | null;
+  /** Legado (até 24/11/2026): quando o portal fez o cálculo dos itens. */
   analyzedAt: string | null;
+  /**
+   * Quando o custo dos itens foi pedido ao Sankhya pela última vez (ao fechar
+   * ou pelo "Calcular no Sankhya"): o item sem `sankhyaCost` desde então
+   * ainda está na fila. Antigos: nulo.
+   */
+  sankhyaCostAt?: string | null;
   statusChangedAt: string | null;
   statusChangedByUserId: string | null;
   note: string | null;
@@ -3510,8 +3530,13 @@ export interface BookingItem extends BaseRow {
   cardDocumentId: string | null;
   /** Colunas da planilha sem campo próprio: cabeçalho → valor. Não aparecem na tela. */
   extras: Record<string, string> | null;
-  /** Retrato da análise do Superplan (`BookingAnalysis`). */
-  analysis: BookingAnalysis | null;
+  /**
+   * Legado (até 24/11/2026): o retrato do cálculo que o portal fazia ao
+   * fechar o book. Fica no banco; não é lido nem gravado (nasce nulo).
+   */
+  analysis: Record<string, unknown> | null;
+  /** Custo pela cotação V2 do Sankhya (dono, 24/11/2026); nulo até calcular. */
+  sankhyaCost?: BookingCost | null;
   /** Produto do cadastro a que o item foi ligado (seleção de itens, depois). */
   productId: string | null;
   updatedByUserId: string | null;
@@ -6702,6 +6727,7 @@ export const TABLES: Record<TableName, TableDef> = {
       closedAt: datetime(),
       closedByUserId: id(false),
       analyzedAt: datetime(),
+      sankhyaCostAt: datetime(),
       statusChangedAt: datetime(),
       statusChangedByUserId: id(false),
       note: str(500),
@@ -6772,6 +6798,7 @@ export const TABLES: Record<TableName, TableDef> = {
       cardDocumentId: id(false),
       extras: json(),
       analysis: json(),
+      sankhyaCost: json(),
       productId: id(false),
       updatedByUserId: id(false),
       ncm: str(10),

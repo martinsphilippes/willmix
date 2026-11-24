@@ -12,7 +12,7 @@ import { hiddenBookingProductIds } from "./booking-visibility";
  * Busca de produtos para os campos de produto (auditoria de performance,
  * 14/11/2026): o cadastro tem ~17 mil produtos, e as telas que mostravam
  * todos numa lista de seleção (nova solicitação, novo kit, filtro do
- * Marketing, Superplan) saíam com 4–15 MB. O campo busca pelo nome ou pelo
+ * Marketing) saíam com 4–15 MB. O campo busca pelo nome ou pelo
  * código (SKU) a partir de 2 letras, em /api/products/search.
  */
 
@@ -22,7 +22,7 @@ export const PRODUCT_SEARCH_LIMIT = 20;
 /**
  * Que produtos cada campo oferece (o mesmo que a lista antiga mostrava):
  * - `all`: todos, ativos e desativados (filtro do Marketing);
- * - `active`: só os ativos (Superplan);
+ * - `active`: só os ativos (Reposição);
  * - `catalog`: os ativos menos os ainda em análise no Booking (nova
  *   solicitação e novo kit de marketing: o cliente ainda não os vê).
  */
@@ -67,7 +67,7 @@ export function canPickRequestProducts(
  * Quem pode buscar produtos em cada escopo: só quem abre uma tela que já
  * mostrava aquela lista inteira.
  * - `all`: filtro do Marketing (Wellmix);
- * - `active`: Superplan e Reposição;
+ * - `active`: Reposição (e quem abre Encomendas);
  * - `catalog`: nova solicitação (Wellmix e cliente) e novo kit (Wellmix).
  * O cliente só busca no catálogo (nunca vê desativados nem os do Booking).
  */
@@ -82,11 +82,11 @@ export function canSearchProducts(
       (isWellmix(user) && canOpen(user, "marketing"))
     );
   if (!isWellmix(user)) return false;
-  // Ativos: Superplan e a Reposição do Planner (quem abre as encomendas;
+  // Ativos: a Reposição do Planner (quem abre as encomendas;
   // docs/PURCHASE_DEMAND.md), que repõe produto ativo fora da vitrine também.
   return scope === "all"
     ? canOpen(user, "marketing")
-    : canOpen(user, "superplan") || canOpen(user, "requests");
+    : canOpen(user, "requests");
 }
 
 /**

@@ -494,19 +494,27 @@ describe("com negociação, Book, venda e condição do fornecedor", () => {
       lengthCm: 20,
       widthCm: 10,
       heightCm: 5,
+      // Retrato antigo do portal (até 24/11/2026): fica no banco e não aparece.
       analysis: {
         at: "2026-11-15T00:00:00.000Z",
+        costBrl: 0.5,
+        profitPct: 12,
+      },
+      // Custo pela cotação V2 do Sankhya (dono, 24/11/2026).
+      sankhyaCost: {
+        source: "sankhya",
+        at: "2026-11-24T00:00:00.000Z",
         byUserId: admin.id,
-        businessType: "importacao",
-        salePriceBrl: 1.2,
-        usesMinimum: false,
+        status: "PRONTA",
         costBrl: 0.62,
-        minimumBrl: null,
+        salePriceBrl: 1.2,
+        targetPriceBrl: 1.1,
         profitPct: 35.5,
-        targetPct: 30,
+        goalPct: 30,
+        goalReached: true,
         verdict: "viable",
-        targetPriceBrl: null,
         missing: [],
+        error: null,
       },
     } as never);
     const neg = await store.create("supplier_requests", {
@@ -564,8 +572,9 @@ describe("com negociação, Book, venda e condição do fornecedor", () => {
     expect(fieldOf(row, "values", "incoterm").value).toBe("FOB");
     expect(shown(fieldOf(row, "values", "margin"))).toEqual({
       value: "35,5%",
-      source: "Superplan (Book nº 77)",
+      source: "Cotação do Sankhya (Book nº 77)",
     });
+    expect(fieldOf(row, "values", "landed").value).toMatch(/0,62/);
     // Venda gravada na solicitação (total) e o unitário calculado.
     expect(shown(fieldOf(row, "values", "saleTotal")).source).toBe(
       "Solicitação",
