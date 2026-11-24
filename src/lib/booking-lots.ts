@@ -543,6 +543,8 @@ export interface BookingLotRow {
   lockByType: boolean;
   heldMinutes: number | null;
   heldText: string;
+  /** Até quando fica no prazo ("24/11 19:52"; vazio sem trava). */
+  heldDueText: string;
   heldLate: boolean;
 }
 

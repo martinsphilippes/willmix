@@ -162,9 +162,19 @@ export function bookingSheet(
   description: string,
   /** Cores do item (coluna COLOR ASSORTMENT), ex.: "BEGE / CARVALHO / MARROM". */
   colors?: string,
-  /** CBM da caixa master (padrão: 0,12). */
-  { cbm = "0.12" }: { cbm?: string } = {},
+  /**
+   * CBM da caixa master (padrão: 0,12); moeda da linha (padrão: USD; vazia,
+   * vale a Moeda padrão do formulário) e o título dessa coluna.
+   */
+  {
+    cbm = "0.12",
+    coin = "USD",
+    coinHeader = "CONI US $/RMB",
+  }: { cbm?: string; coin?: string; coinHeader?: string } = {},
 ) {
+  const header = BOOKING_HEADER.map((h) =>
+    h === "CONI US $/RMB" ? coinHeader : h,
+  );
   const row = [
     "2026.10.13",
     "Yiwu",
@@ -172,7 +182,7 @@ export function bookingSheet(
     code,
     description,
     "FOB",
-    "USD",
+    coin,
     "1.25",
     "48",
     "12",
@@ -198,10 +208,10 @@ export function bookingSheet(
           name: "BOOKING",
           cells: colors
             ? [
-                [...BOOKING_HEADER, "COLOR ASSORTMENT"],
+                [...header, "COLOR ASSORTMENT"],
                 [...row, colors],
               ]
-            : [BOOKING_HEADER, row],
+            : [header, row],
         },
       ]),
     ),

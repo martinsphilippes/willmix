@@ -211,9 +211,21 @@ export function BookingLotsTable({
         return row.lockId ? (
           <span className="inline-flex flex-col items-end gap-0.5">
             <span>{row.heldText}</span>
-            <Badge tone={row.heldLate ? "danger" : "success"}>
-              {row.heldLate ? labels.slaLate : labels.slaOk}
-            </Badge>
+            {/* Só a data e a hora do fim do prazo, pequenas: verde no prazo,
+                vermelha atrasada (dono, 24/11/2026; antes o selo "No prazo
+                (3 h)", que quebrava em três linhas). O texto do prazo fica
+                no balão e para o leitor de tela. */}
+            <span
+              className={cx(
+                "whitespace-nowrap text-[11px] leading-4 tabular-nums",
+                row.heldLate ? "text-red-700" : "text-emerald-700",
+              )}
+              title={row.heldLate ? labels.slaLate : labels.slaOk}
+              aria-label={`${row.heldLate ? labels.slaLate : labels.slaOk}: ${row.heldDueText}`}
+              data-booking-sla={row.heldLate ? "late" : "ok"}
+            >
+              {row.heldDueText}
+            </span>
           </span>
         ) : (
           muted

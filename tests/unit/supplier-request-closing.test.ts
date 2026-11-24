@@ -7,8 +7,9 @@ import type { SupplierRequest } from "@/lib/db/schema";
 
 /*
  * Abas da lista de solicitações ao fornecedor e "Gerar pedido" (dono,
- * 18/11/2026): encerrada quando todos os produtos foram decididos; vira
- * pedido só com todos os aprovados cadastrados e com a amostra aprovada.
+ * 18/11/2026): encerrada quando todos os produtos foram decididos e, desde
+ * 24/11/2026, com a amostra dos aprovados aprovada; vira pedido só com todos
+ * os aprovados cadastrados e com a amostra aprovada.
  */
 type Row = Parameters<typeof requestOrderState>[0][number];
 const AT = "2026-11-18T10:00:00.000Z";
@@ -35,16 +36,42 @@ describe("requestClosed", () => {
   it("só com todos os produtos decididos", () => {
     expect(requestClosed([])).toBe(false);
     expect(
-      requestClosed([{ status: "approved" }, { status: "answered" }]),
+      requestClosed([row({}), row({ status: "answered", sampling: null })]),
     ).toBe(false);
-    expect(requestClosed([{ status: "open" }])).toBe(false);
+    expect(requestClosed([row({ status: "open", sampling: null })])).toBe(
+      false,
+    );
     expect(
       requestClosed([
-        { status: "approved" },
-        { status: "declined" },
-        { status: "cancelled" },
+        row({}),
+        row({ status: "declined", sampling: null }),
+        row({ status: "cancelled", sampling: null }),
       ]),
     ).toBe(true);
+  });
+
+  it("aprovada com a amostra pendente continua em andamento (dono, 24/11/2026)", () => {
+    expect(requestClosed([row({ sampling: sample("pending") })])).toBe(false);
+    expect(requestClosed([row({ sampling: sample("submitted") })])).toBe(false);
+    expect(requestClosed([row({ sampling: sample("rejected") })])).toBe(false);
+    // Aprovada antes da etapa existir (sem amostragem gravada): pendente.
+    expect(requestClosed([row({ sampling: null })])).toBe(false);
+    // Dispensada (o conhecido do produto) ou já num pedido: encerrada.
+    const skipped = {
+      ...sample("approved")!,
+      skipped: true,
+    } as SupplierRequest["sampling"];
+    expect(requestClosed([row({ sampling: skipped })])).toBe(true);
+    expect(
+      requestClosed([row({ sampling: sample("pending"), orderId: "o1" })]),
+    ).toBe(true);
+    // Um produto com a amostra pendente segura a solicitação inteira.
+    expect(
+      requestClosed([
+        row({ id: "a" }),
+        row({ id: "b", sampling: sample("pending") }),
+      ]),
+    ).toBe(false);
   });
 });
 

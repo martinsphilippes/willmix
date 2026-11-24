@@ -748,7 +748,7 @@ export function SupplierRequestTable({
                       )
                     : "—"}
                   {/* A ação, com as mesmas palavras de Encomendas e das
-                      Pendências ("Enviar a amostragem"). */}
+                      Pendências ("Carregar a amostragem"). */}
                   {turn ? (
                     <span
                       className="mt-0.5 block max-w-40 font-medium text-zinc-800"
