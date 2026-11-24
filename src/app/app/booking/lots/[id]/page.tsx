@@ -24,7 +24,15 @@ import {
   type BookingItem,
   type BookingLotStatus,
 } from "@/lib/db/schema";
-import { getBookingLot } from "@/lib/services/booking-lots";
+import {
+  bookingItemTypes,
+  canSuperviseBooks,
+  getBookingLot,
+} from "@/lib/services/booking-lots";
+import { durationText, lockLate, workedShare } from "@/lib/booking-locks";
+import { GROUP_MAX } from "@/lib/booking-selection";
+import { getSettings } from "@/lib/settings";
+import { BookMetaFields } from "../../_components/book-meta-fields";
 import { superplanBusinessTypes } from "@/lib/services/superplan-analysis";
 import { getT } from "@/i18n/server";
 import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
@@ -59,7 +67,10 @@ import {
 } from "@/components/booking-lot-fields";
 import {
   closeBookingLotAction,
+  lockBookingLotAction,
   moveBookingLotAction,
+  setBookingLotMetaAction,
+  unlockBookingAction,
   reanalyzeBookingLotAction,
   registerBookingLotSupplierAction,
   setBookingLotNoteAction,
@@ -79,6 +90,7 @@ import {
   BulkLoadButton,
   BulkRowCheck,
   BulkSelectAll,
+  BulkSelectionLink,
   BulkStatus,
 } from "@/components/booking-bulk-fill";
 import {
@@ -111,13 +123,17 @@ const STATUS_TONE: Record<BookingLotStatus, Tone> = {
   cancelled: "neutral",
 };
 
-/** Colunas dos itens, na ordem da planilha do booking. */
+/**
+ * Colunas dos itens, na ordem da planilha do booking. Sem o Nome, o Nº do
+ * item, a programação de compra, o intervalo de saída, a quantidade de
+ * compra e o TT PCS, que saíram da importação (dono, 23 e 24/11/2026); o que
+ * a planilha trouxer continua gravado.
+ */
 const COLUMNS: Array<{
   field: BookingItemField;
   kind: "text" | "number" | "incoterm" | "currency";
   width: string;
 }> = [
-  { field: "itemNumber", kind: "text", width: "w-16" },
   { field: "factoryItemCode", kind: "text", width: "w-28" },
   { field: "description", kind: "text", width: "w-48" },
   { field: "incoterm", kind: "incoterm", width: "w-20" },
@@ -135,13 +151,8 @@ const COLUMNS: Array<{
   { field: "packageType", kind: "text", width: "w-32" },
   { field: "material", kind: "text", width: "w-32" },
   { field: "moq", kind: "number", width: "w-20" },
-  { field: "productName", kind: "text", width: "w-40" },
   { field: "colorAssortment", kind: "text", width: "w-36" },
   { field: "powerDetail", kind: "text", width: "w-32" },
-  { field: "purchaseSchedule", kind: "text", width: "w-32" },
-  { field: "departureIntervalDays", kind: "text", width: "w-24" },
-  { field: "purchaseQty", kind: "number", width: "w-24" },
-  { field: "plannedQty", kind: "number", width: "w-24" },
 ];
 
 const SIGNAL_TONE: Record<string, Tone> = {
@@ -189,7 +200,19 @@ export default async function BookingLotPage({
   if (detail === "schema")
     return <Alert tone="warning">{t("bookingLots.schemaMissing")}</Alert>;
   if (!detail) notFound();
-  const { lot, items, supplier, suppliers, owner, partner, partners } = detail;
+  const { lot, items, supplier, suppliers, owner, partner, partners, held } =
+    detail;
+  // Itens trabalhados na Seleção de itens e com quem está o book (dono,
+  // 23/11/2026; docs/BOOKING.md, "Itens trabalhados" e "Travar books").
+  const worked = workedShare(items);
+  const [itemTypes, supervisor, settings] = await Promise.all([
+    bookingItemTypes(),
+    canSuperviseBooks(user),
+    getSettings(),
+  ]);
+  const heldLate = held
+    ? lockLate(held.minutes, settings.bookingLockSlaHours)
+    : false;
   // Fornecedor sem login: a solicitação aberta a partir deste booking fica parada.
   const noLogin =
     supplier && (await partiesWithoutLogin([supplier.id])).has(supplier.id)
@@ -240,6 +263,7 @@ export default async function BookingLotPage({
   const errorCode = one("error");
   const errorKey = [
     `bookingLots.error.${errorCode}`,
+    `bookWork.error.${errorCode}`,
     `sheetImport.error.${errorCode}`,
     `common.${errorCode}`,
   ].find((k) => k in dictionaries.pt) as DictionaryKey | undefined;
@@ -267,6 +291,8 @@ export default async function BookingLotPage({
     notices.push(["success", t("bookingLots.detail.analyzed")]);
   if (one("moved")) notices.push(["success", t("bookingLots.detail.moved")]);
   if (one("saved")) notices.push(["success", t("bookingLots.detail.saved")]);
+  if (one("locked")) notices.push(["success", t("bookWork.lock.done")]);
+  if (one("unlocked")) notices.push(["success", t("bookWork.unlock.done")]);
   if (one("supplier") === "created")
     notices.push(["success", t("bookingLots.detail.supplierCreated")]);
 
@@ -491,6 +517,7 @@ export default async function BookingLotPage({
       <colgroup>
         <col style={{ width: `${FIRST_COL_REM}rem` }} />
         <col style={{ width: "6.5rem" }} />
+        <col style={{ width: "8rem" }} />
         <col style={{ width: "11.5rem" }} />
         {columns.map((c) => (
           <col key={c.field} style={{ width: `${colRem(c.width)}rem` }} />
@@ -514,6 +541,7 @@ export default async function BookingLotPage({
           <th className={cx(th, STICKY_PHOTO, "bg-zinc-50")}>
             {colLabel("photo")}
           </th>
+          <th className={th}>{t("bookWork.col.worked")}</th>
           <th className={th}>
             {t("bookingNcm.col")}
             <span className="text-brand-700"> *</span>
@@ -539,6 +567,7 @@ export default async function BookingLotPage({
               <BulkLoadButton />
             </th>
             <th className={cx(bulkTh, STICKY_PHOTO, "bg-white")} />
+            <th className={bulkTh} />
             <th className={bulkTh}>
               {ncmEditable ? (
                 <BulkFieldInput
@@ -581,18 +610,28 @@ export default async function BookingLotPage({
       <tbody>
         {items.map((item) => {
           const missing = missingItemFields(item);
+          // Linha do item trabalhado: fundo verde claro (também nas colunas
+          // presas), para ver de longe o que já passou pela Seleção.
+          const done = !!item.workedAt;
+          const stuckBg = done
+            ? "bg-emerald-50"
+            : "bg-white group-hover:bg-[color-mix(in_oklab,var(--color-brand-50)_40%,white)]";
           return (
             <tr
               key={item.id}
-              className="group transition hover:bg-brand-50/40"
+              className={cx(
+                "group transition",
+                done ? "bg-emerald-50" : "hover:bg-brand-50/40",
+              )}
               data-booking-item={item.id}
+              data-booking-item-worked={done ? "yes" : "no"}
               data-bulk-row={bulkOn ? item.id : undefined}
             >
               <td
                 className={cx(
                   "border-b border-zinc-100 px-2 py-2 align-top text-xs text-zinc-500",
                   STICKY_FIRST_PLAIN,
-                  "bg-white group-hover:bg-[color-mix(in_oklab,var(--color-brand-50)_40%,white)]",
+                  stuckBg,
                 )}
               >
                 <label className="flex cursor-pointer items-start gap-2">
@@ -616,7 +655,7 @@ export default async function BookingLotPage({
                 className={cx(
                   "border-b border-zinc-100 px-2 py-2 align-top",
                   STICKY_PHOTO,
-                  "bg-white group-hover:bg-[color-mix(in_oklab,var(--color-brand-50)_40%,white)]",
+                  stuckBg,
                 )}
                 data-booking-item-photo=""
               >
@@ -646,6 +685,16 @@ export default async function BookingLotPage({
                     ))}
                   {!item.photoDocumentId && !item.cardDocumentId ? muted : null}
                 </span>
+              </td>
+              <td className="border-b border-zinc-100 px-2 py-2 align-top text-xs">
+                <Badge tone={done ? "success" : "neutral"}>
+                  {t(done ? "bookWork.worked.yes" : "bookWork.worked.no")}
+                </Badge>
+                {item.workedAt ? (
+                  <span className="mt-0.5 block text-zinc-500">
+                    {formatDate(item.workedAt, t)}
+                  </span>
+                ) : null}
               </td>
               <td
                 className="border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800"
@@ -959,7 +1008,31 @@ export default async function BookingLotPage({
               ],
               [
                 t("bookingLots.detail.file"),
-                lot.fileDocumentId ? (
+                lot.sheetFiles?.length ? (
+                  <span
+                    key="fs"
+                    className="flex flex-col gap-0.5"
+                    data-booking-lot-sheets={lot.sheetFiles.length}
+                  >
+                    {lot.sheetFiles.map((f, i) => (
+                      <span key={`${i}:${f.name}`}>
+                        {f.documentId ? (
+                          <a
+                            href={`/api/files/${f.documentId}`}
+                            className={linkClass}
+                          >
+                            {f.name}
+                          </a>
+                        ) : (
+                          f.name
+                        )}{" "}
+                        <span className="text-xs text-zinc-500">
+                          {t("bookWork.sheetItems", { n: f.items })}
+                        </span>
+                      </span>
+                    ))}
+                  </span>
+                ) : lot.fileDocumentId ? (
                   <a
                     key="f"
                     href={`/api/files/${lot.fileDocumentId}`}
@@ -973,9 +1046,53 @@ export default async function BookingLotPage({
               ],
               [t("bookingLots.detail.owner"), owner?.name ?? "—"],
               [t("bookingLots.detail.items"), String(items.length)],
+              [
+                t("bookWork.worked.title"),
+                <span key="w" data-booking-lot-worked={worked.pct}>
+                  {t("bookWork.worked.share", {
+                    worked: worked.worked,
+                    total: worked.total,
+                    pct: worked.pct,
+                  })}
+                </span>,
+              ],
               [t("bookingLots.col.createdAt"), formatDate(lot.createdAt, t)],
             ]}
           />
+          {/* Loja/Fábrica e Tipo de item: vêm da importação; a Wellmix
+              ajusta (e completa nos books antigos). */}
+          {lot.status !== "cancelled" ? (
+            <form
+              action={setBookingLotMetaAction}
+              className="mt-4 flex flex-wrap items-end gap-2"
+              data-booking-lot-meta
+            >
+              <input type="hidden" name="lotId" value={lot.id} />
+              <div className="min-w-60 flex-1">
+                <BookMetaFields
+                  t={t}
+                  types={itemTypes}
+                  sourceKind={lot.sourceKind ?? null}
+                  itemType={lot.itemType ?? null}
+                  required={false}
+                />
+              </div>
+              <SubmitButton variant="secondary">
+                {t("bookWork.meta.save")}
+              </SubmitButton>
+            </form>
+          ) : (
+            <p className="mt-4 text-sm text-zinc-600">
+              {[
+                lot.sourceKind
+                  ? t(`bookWork.sourceKind.${lot.sourceKind}` as DictionaryKey)
+                  : null,
+                lot.itemType,
+              ]
+                .filter(Boolean)
+                .join(" · ") || "—"}
+            </p>
+          )}
           <form
             action={setBookingLotNoteAction}
             className="mt-4 flex flex-wrap items-end gap-2"
@@ -997,6 +1114,60 @@ export default async function BookingLotPage({
         </Card>
 
         <div className="space-y-4">
+          {/* Com quem está o book (trava): o analista pega para si e libera;
+              quem supervisiona vê há quanto tempo e libera de qualquer um. */}
+          <Card title={t("bookWork.lock.title")} dense>
+            {held ? (
+              <div className="space-y-2" data-booking-lot-held={held.lock.id}>
+                <p className="text-sm text-zinc-700">
+                  {t("bookWork.lock.heldBy", {
+                    name: held.user?.name ?? "—",
+                    time: durationText(held.minutes),
+                  })}{" "}
+                  <Badge tone={heldLate ? "danger" : "success"}>
+                    {t(heldLate ? "bookWork.sla.late" : "bookWork.sla.ok", {
+                      h: settings.bookingLockSlaHours,
+                    })}
+                  </Badge>
+                </p>
+                {held.lock.scope === "type" ? (
+                  <p className="text-xs text-zinc-500">
+                    {t("bookWork.lock.byType", {
+                      type: held.lock.itemType ?? "",
+                    })}
+                  </p>
+                ) : null}
+                {held.lock.userId === user.id || supervisor ? (
+                  <form action={unlockBookingAction}>
+                    <input type="hidden" name="lockId" value={held.lock.id} />
+                    <input type="hidden" name="from" value={lot.id} />
+                    <SubmitButton variant="secondary" data-booking-unlock>
+                      {t(
+                        held.lock.scope === "type"
+                          ? "bookWork.unlock.type"
+                          : "bookWork.unlock",
+                      )}
+                    </SubmitButton>
+                  </form>
+                ) : null}
+              </div>
+            ) : (
+              <form
+                action={lockBookingLotAction}
+                className="space-y-2"
+                data-booking-lot-free
+              >
+                <p className="text-sm text-zinc-600">
+                  {t("bookWork.lock.body", { h: settings.bookingLockSlaHours })}
+                </p>
+                <input type="hidden" name="lotId" value={lot.id} />
+                <input type="hidden" name="from" value={lot.id} />
+                <SubmitButton variant="secondary" data-booking-lock>
+                  {t("bookWork.lock")}
+                </SubmitButton>
+              </form>
+            )}
+          </Card>
           {editable && !lot.supplierId && hint?.name ? (
             <Card title={t("bookingLots.detail.suggest.title")} dense>
               <p className="mb-2 text-sm text-zinc-600">
@@ -1143,7 +1314,12 @@ export default async function BookingLotPage({
       </div>
 
       <section className="mt-4">
-        <Card title={t("bookingLots.detail.itemsTitle", { n: items.length })}>
+        <Card
+          title={`${t("bookingLots.detail.itemsTitle", { n: items.length })} · ${t(
+            "bookWork.worked.share",
+            { worked: worked.worked, total: worked.total, pct: worked.pct },
+          )}`}
+        >
           <p className="mb-2 text-xs text-zinc-500">
             {editable
               ? t("bookingLots.detail.itemsHint")
@@ -1173,6 +1349,17 @@ export default async function BookingLotPage({
                 }}
                 labels={bulkFillLabels(t)}
               >
+                {/* Seleção direto do book (dono, 23/11/2026): os itens
+                    marcados vão para a Seleção de itens como um grupo. */}
+                <div
+                  className="mb-2 flex flex-wrap items-center gap-2"
+                  data-booking-to-selection
+                >
+                  <BulkSelectionLink max={GROUP_MAX} />
+                  <span className="text-xs text-zinc-500">
+                    {t("bookWork.toSelection.hint")}
+                  </span>
+                </div>
                 {itemsTable}
               </BookingBulkProvider>
             ) : (

@@ -267,15 +267,15 @@ export const pt = {
   // Preenchimento em massa (dono, 16/11/2026): as caixas das linhas, os
   // campos acima das colunas e o "Carregar".
   "bookingLots.bulk.hint":
-    "Para várias linhas de uma vez: marque as linhas, preencha o campo acima da coluna e aperte Carregar.",
+    "Para várias linhas de uma vez: preencha o campo acima da coluna e aperte Carregar (ou Enter). Sem nenhuma linha marcada, o valor vai para todas; com linhas marcadas, só para elas. Seta para baixo e para cima mudam de linha.",
   "bookingLots.bulk.selectAll": "Marcar ou desmarcar todas as linhas",
   "bookingLots.bulk.selectRow": "Marcar a linha {n}",
-  "bookingLots.bulk.field": "{field} para as linhas marcadas",
+  "bookingLots.bulk.field": "{field} para várias linhas",
   "bookingLots.bulk.load": "Carregar",
   "bookingLots.bulk.loading": "Gravando…",
   "bookingLots.bulk.selected": "Marcadas: {n}",
   "bookingLots.bulk.disabled":
-    "Marque pelo menos uma linha e preencha um campo acima das colunas com um valor válido.",
+    "Preencha um campo acima das colunas com um valor válido.",
   "bookingLots.bulk.invalid": "Valor inválido",
   "bookingLots.bulk.updated": "Itens atualizados: {n}.",
   "bookingLots.bulk.failed": "Não foram salvos: {list}.",
@@ -551,15 +551,15 @@ export const en: typeof pt = {
   "bookingLots.error.schema_outdated":
     "The book tables are not published in the database yet (npm run appwrite:push).",
   "bookingLots.bulk.hint":
-    "For several rows at once: tick the rows, fill in the field above the column and press Load.",
+    "For several rows at once: fill in the field above the column and press Load (or Enter). With no row ticked the value goes to every row; with ticked rows, only to them. Arrow down and up move between rows.",
   "bookingLots.bulk.selectAll": "Tick or untick all rows",
   "bookingLots.bulk.selectRow": "Tick row {n}",
-  "bookingLots.bulk.field": "{field} for the ticked rows",
+  "bookingLots.bulk.field": "{field} for several rows",
   "bookingLots.bulk.load": "Load",
   "bookingLots.bulk.loading": "Saving…",
   "bookingLots.bulk.selected": "Ticked: {n}",
   "bookingLots.bulk.disabled":
-    "Tick at least one row and fill in a field above the columns with a valid value.",
+    "Fill in a field above the columns with a valid value.",
   "bookingLots.bulk.invalid": "Invalid value",
   "bookingLots.bulk.updated": "Items updated: {n}.",
   "bookingLots.bulk.failed": "Not saved: {list}.",
@@ -825,14 +825,14 @@ export const zh: typeof pt = {
   "bookingLots.error.schema_outdated":
     "Book 数据表尚未发布到数据库（npm run appwrite:push）。",
   "bookingLots.bulk.hint":
-    "一次填写多行：勾选各行，在列上方的字段中填写，然后点击“载入”。",
+    "一次填写多行：在列上方的字段中填写，然后点击“载入”（或按回车）。未勾选任何行时，数值填入所有行；勾选了行时，只填入勾选的行。上下方向键可切换行。",
   "bookingLots.bulk.selectAll": "勾选或取消全部行",
   "bookingLots.bulk.selectRow": "勾选第 {n} 行",
-  "bookingLots.bulk.field": "勾选行的{field}",
+  "bookingLots.bulk.field": "多行的{field}",
   "bookingLots.bulk.load": "载入",
   "bookingLots.bulk.loading": "正在保存…",
   "bookingLots.bulk.selected": "已勾选：{n}",
-  "bookingLots.bulk.disabled": "请至少勾选一行，并在列上方的字段中填写有效值。",
+  "bookingLots.bulk.disabled": "请在列上方的字段中填写有效值。",
   "bookingLots.bulk.invalid": "数值无效",
   "bookingLots.bulk.updated": "已更新条目：{n}。",
   "bookingLots.bulk.failed": "未保存：{list}。",

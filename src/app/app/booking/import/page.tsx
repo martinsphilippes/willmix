@@ -19,6 +19,8 @@ import { SubmitButton } from "@/components/submit-button";
 import { SheetFileInput } from "@/components/sheet-file-input";
 import { importBookingAction } from "../../actions/booking-lots";
 import { PartnerBookingLaunch } from "../_components/partner-booking";
+import { BookMetaFields } from "../_components/book-meta-fields";
+import { bookingItemTypes } from "@/lib/services/booking-lots";
 
 /*
  * Importar booking (docs/BOOKING.md, "Booking por planilha"): a planilha de
@@ -46,6 +48,7 @@ export default async function BookingImportPage({
     (k) => k in dictionaries.pt,
   ) as DictionaryKey | undefined;
   const errorText = !code ? null : known ? t(known) : fallbackError(t, code);
+  const types = await bookingItemTypes();
 
   return (
     <>
@@ -73,7 +76,7 @@ export default async function BookingImportPage({
           >
             <Field
               label={t("bookingLots.import.file")}
-              hint={t("bookingLots.import.fileHint")}
+              hint={`${t("bookingLots.import.fileHint")} ${t("bookWork.import.multiHint")}`}
             >
               <SheetFileInput
                 label={t("bookingLots.import.file")}
@@ -81,6 +84,8 @@ export default async function BookingImportPage({
                 failedLabel={t("sheetImport.uploadFailed")}
                 chosenLabel={t("sheetImport.uploaded")}
                 required={false}
+                multiple
+                countLabel={t("bookWork.import.files")}
               />
             </Field>
             <Field label={t("sheetImport.url")} hint={t("sheetImport.urlHint")}>
@@ -104,6 +109,7 @@ export default async function BookingImportPage({
                 ))}
               </Select>
             </Field>
+            <BookMetaFields t={t} types={types} />
             <SubmitButton
               pendingText={t("bookingLots.import.submitting")}
               data-booking-import-submit

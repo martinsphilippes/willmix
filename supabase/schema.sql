@@ -1961,10 +1961,30 @@ alter table public."booking_lots" add column if not exists "note" text;
 alter table public."booking_lots" add column if not exists "ownerUserId" text;
 alter table public."booking_lots" add column if not exists "createdByUserId" text;
 alter table public."booking_lots" add column if not exists "partnerId" text;
+alter table public."booking_lots" add column if not exists "sourceKind" text;
+alter table public."booking_lots" add column if not exists "itemType" text;
+alter table public."booking_lots" add column if not exists "sheetFiles" jsonb;
 create index if not exists "booking_lots_by_status" on public."booking_lots" ("status");
 create index if not exists "booking_lots_by_supplier" on public."booking_lots" ("supplierId");
 create index if not exists "booking_lots_created" on public."booking_lots" ("createdAt");
 create index if not exists "booking_lots_created_id" on public."booking_lots" ("createdAt", "id");
+
+create table if not exists public."booking_locks" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."booking_locks" enable row level security;
+alter table public."booking_locks" add column if not exists "scope" text;
+alter table public."booking_locks" add column if not exists "lotId" text;
+alter table public."booking_locks" add column if not exists "typeKey" text;
+alter table public."booking_locks" add column if not exists "itemType" text;
+alter table public."booking_locks" add column if not exists "userId" text;
+alter table public."booking_locks" add column if not exists "lockedAt" timestamptz;
+create index if not exists "booking_locks_by_user" on public."booking_locks" ("userId");
+create index if not exists "booking_locks_by_lot" on public."booking_locks" ("lotId");
+create index if not exists "booking_locks_created" on public."booking_locks" ("createdAt");
+create index if not exists "booking_locks_created_id" on public."booking_locks" ("createdAt", "id");
 
 create table if not exists public."booking_items" (
   "id" text primary key,
@@ -2014,6 +2034,8 @@ alter table public."booking_items" add column if not exists "ncmScore" double pr
 alter table public."booking_items" add column if not exists "ncmRequestedAt" timestamptz;
 alter table public."booking_items" add column if not exists "ncmAt" timestamptz;
 alter table public."booking_items" add column if not exists "ncmByUserId" text;
+alter table public."booking_items" add column if not exists "workedAt" timestamptz;
+alter table public."booking_items" add column if not exists "workedByUserId" text;
 create index if not exists "booking_items_by_lot" on public."booking_items" ("lotId");
 create index if not exists "booking_items_by_product" on public."booking_items" ("productId");
 create index if not exists "booking_items_created" on public."booking_items" ("createdAt");

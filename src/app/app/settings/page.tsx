@@ -576,6 +576,21 @@ export default async function SettingsPage({
                     />
                   </Field>
                   <Field
+                    label={t("bookWork.settings.sla")}
+                    hint={t("bookWork.settings.slaHint")}
+                  >
+                    <Input
+                      name="bookingLockSlaHours"
+                      type="number"
+                      min={0.25}
+                      max={240}
+                      step="0.25"
+                      required
+                      defaultValue={s.bookingLockSlaHours}
+                      data-setting-booking-lock-sla
+                    />
+                  </Field>
+                  <Field
                     label={t("sampling.settings.sla")}
                     hint={t("sampling.settings.slaHint")}
                   >

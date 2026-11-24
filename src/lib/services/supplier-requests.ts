@@ -140,9 +140,14 @@ export async function listSelectionItems(
     lots = await store.list("booking_lots", {
       filter: { status: [...SELECTION_STATUSES] },
     });
+    // Books travados por outro analista ficam fora da lista (dono,
+    // 23/11/2026; docs/BOOKING.md, "Travar books"); o grupo aberto pelos ids
+    // (uma escolha já gravada, por exemplo) não muda.
+    const { lotsVisibleTo } = await import("./booking-lots");
+    const open = options.ids ? lots : await lotsVisibleTo(user, lots);
     const shown = options.ids
       ? lots
-      : lots.filter((l) => lotMatchesFilters(l, filters));
+      : open.filter((l) => lotMatchesFilters(l, filters));
     items = options.ids
       ? options.ids.length
         ? await store.list("booking_items", { filter: { id: options.ids } })
@@ -356,6 +361,9 @@ export async function openSupplierRequest(
     decisionNote: null,
     createdByUserId: user.id,
   });
+  // O item e as alternativas ficam marcados no book como trabalhados.
+  const { markItemsWorked } = await import("./booking-lots");
+  await markItemsWorked(user, [item, ...alternatives]);
   if (lot.status === "closed")
     await store.update("booking_lots", lot.id, {
       status: "in_progress",

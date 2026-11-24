@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { login } from "./helpers";
+import { fillBookMeta, login } from "./helpers";
 import { xlsxBytes } from "../unit/xlsx-fixture";
 
 /*
@@ -123,6 +123,7 @@ test("Book: a lista de pendências do fechamento leva a cada campo e se atualiza
   await page
     .locator("[data-booking-import-form] input[type=file]")
     .setInputFiles(sheet());
+  await fillBookMeta(page);
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   await expect(page.locator("tr[data-booking-item]")).toHaveCount(ROWS);

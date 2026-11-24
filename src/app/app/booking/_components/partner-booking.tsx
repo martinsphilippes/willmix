@@ -68,6 +68,7 @@ import {
   launchBookingAction,
   sendPartnerBookingAction,
 } from "../../actions/booking-lots";
+import { BookMetaFields } from "./book-meta-fields";
 
 /*
  * Tela Booking para o login externo (Trading, Factory, Supplier, GP; dono,
@@ -111,12 +112,13 @@ const lotTitle = (
 const PHOTO_COL_REM = 6.5;
 
 /**
- * Colunas do booking em preenchimento: todos os campos da planilha, um por
- * coluna, com os que identificam o item na frente.
+ * Colunas do booking em preenchimento: os campos da planilha, um por coluna,
+ * com os que identificam o item na frente. Sem o Nome, o Nº do item, a
+ * programação de compra, o intervalo de saída, a quantidade de compra e o TT
+ * PCS: saíram da importação (dono, 23 e 24/11/2026). O que a planilha
+ * trouxer nesses campos continua gravado.
  */
 const EDIT_COLUMNS: Array<{ field: BookingItemField; width: string }> = [
-  { field: "productName", width: "w-44" },
-  { field: "itemNumber", width: "w-16" },
   { field: "factoryItemCode", width: "w-28" },
   { field: "description", width: "w-52" },
   { field: "incoterm", width: "w-20" },
@@ -136,10 +138,6 @@ const EDIT_COLUMNS: Array<{ field: BookingItemField; width: string }> = [
   { field: "packageType", width: "w-32" },
   { field: "colorAssortment", width: "w-36" },
   { field: "powerDetail", width: "w-32" },
-  { field: "purchaseSchedule", width: "w-32" },
-  { field: "departureIntervalDays", width: "w-24" },
-  { field: "purchaseQty", width: "w-24" },
-  { field: "plannedQty", width: "w-24" },
 ];
 
 /**
@@ -259,7 +257,9 @@ export async function PartnerBookingList({
                 <Th>{t("bookingLots.col.status")}</Th>
                 <Th>{t("bookingLots.col.date")}</Th>
                 <Th>{t("bookingLots.col.fileName")}</Th>
+                <Th>{t("bookWork.itemType")}</Th>
                 <Th className="text-right">{t("bookingLots.col.itemCount")}</Th>
+                <Th className="text-right">{t("bookWork.col.workedPct")}</Th>
                 <Th>{t("bookingLots.col.createdAt")}</Th>
               </tr>
             </thead>
@@ -288,8 +288,40 @@ export async function PartnerBookingList({
                     {lot.bookingDate ? formatDate(lot.bookingDate, t) : "—"}
                   </Td>
                   <Td className="min-w-48">{lot.fileName}</Td>
+                  <Td>
+                    {[
+                      lot.sourceKind
+                        ? t(
+                            `bookWork.sourceKind.${lot.sourceKind}` as DictionaryKey,
+                          )
+                        : null,
+                      lot.itemType,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "—"}
+                  </Td>
                   <Td className="text-right tabular-nums">
                     {num(t, lot.itemCount)}
+                  </Td>
+                  {/* Quanto do book a Wellmix já trabalhou na Seleção de
+                      itens (dono, 23/11/2026); antes de enviar, "—". */}
+                  <Td
+                    className="text-right tabular-nums"
+                    data-partner-booking-worked={lot.worked?.pct ?? 0}
+                  >
+                    {bookingLotPreparing(lot.status) || !lot.worked ? (
+                      "—"
+                    ) : (
+                      <span className="inline-flex flex-col items-end">
+                        <span className="font-semibold">{lot.worked.pct}%</span>
+                        <span className="text-[11px] text-zinc-500">
+                          {t("bookWork.worked.count", {
+                            worked: lot.worked.worked,
+                            total: lot.worked.total,
+                          })}
+                        </span>
+                      </span>
+                    )}
                   </Td>
                   <Td className="whitespace-nowrap tabular-nums">
                     {formatDate(lot.createdAt, t)}
@@ -327,6 +359,14 @@ export async function PartnerBookingLaunch({
   error: string;
 }) {
   if (!(await canLaunchBooking(user))) return null;
+  // Sugestões do tipo de item: só os dos books da empresa dele.
+  const types = [
+    ...new Set(
+      ((await listPartnerBookingLots(user)) ?? [])
+        .map((lot) => lot.itemType)
+        .filter((v): v is string => !!v),
+    ),
+  ].sort((a, b) => a.localeCompare(b));
   const known = [
     `bookingLots.error.${error}`,
     `sheetImport.error.${error}`,
@@ -358,13 +398,15 @@ export async function PartnerBookingLaunch({
           >
             <Field
               label={t("bookingLots.import.file")}
-              hint={t("bookingLots.import.fileHint")}
+              hint={`${t("bookingLots.import.fileHint")} ${t("bookWork.import.multiHint")}`}
             >
               <SheetFileInput
                 label={t("bookingLots.import.file")}
                 uploadingLabel={t("sheetImport.uploading")}
                 failedLabel={t("sheetImport.uploadFailed")}
                 chosenLabel={t("sheetImport.uploaded")}
+                multiple
+                countLabel={t("bookWork.import.files")}
               />
             </Field>
             <Field
@@ -379,6 +421,7 @@ export async function PartnerBookingLaunch({
                 ))}
               </Select>
             </Field>
+            <BookMetaFields t={t} types={types} />
             <SubmitButton
               pendingText={t("bookingLots.import.submitting")}
               data-partner-booking-launch-submit
@@ -486,7 +529,7 @@ export async function PartnerBookingLotView({
       {preparing ? (
         <PreparingItems t={t} lot={lot} items={items} created={created} />
       ) : (
-        <SentItems t={t} items={items} />
+        <SentItems t={t} items={items} worked={lot.worked} />
       )}
     </>
   );
@@ -824,9 +867,12 @@ interface SentColumn {
 function SentItems({
   t,
   items,
+  worked,
 }: {
   t: Translate;
   items: PartnerBookingItem[];
+  /** Itens trabalhados pela Wellmix na Seleção de itens. */
+  worked?: PartnerBookingLot["worked"];
 }) {
   const label = (k: string) =>
     t(`bookingLots.partner.col.${k}` as DictionaryKey);
@@ -853,6 +899,18 @@ function SentItems({
       align: "left",
       frozen: true,
       value: photos,
+    },
+    // Trabalhado pela Wellmix na Seleção de itens (dono, 23/11/2026).
+    {
+      key: "worked",
+      label: t("bookWork.col.worked"),
+      width: 8,
+      align: "left",
+      value: (i) => (
+        <Badge tone={i.worked ? "success" : "neutral"}>
+          {t(i.worked ? "bookWork.worked.yes" : "bookWork.worked.no")}
+        </Badge>
+      ),
     },
     {
       key: "name",
@@ -1063,9 +1121,18 @@ function SentItems({
   const headClass =
     "border-b border-zinc-200 bg-zinc-50 px-2.5 py-2 align-bottom text-[11px] font-semibold uppercase leading-tight tracking-wide break-words text-zinc-500";
   const cellClass =
-    "border-b border-zinc-100 bg-white px-2.5 py-2 align-top text-[13px] text-zinc-800 break-words";
+    "border-b border-zinc-100 px-2.5 py-2 align-top text-[13px] text-zinc-800 break-words";
   return (
-    <Card title={t("bookingLots.partner.items", { n: String(items.length) })}>
+    <Card
+      title={
+        worked
+          ? `${t("bookingLots.partner.items", { n: String(items.length) })} · ${t(
+              "bookWork.worked.share",
+              worked,
+            )}`
+          : t("bookingLots.partner.items", { n: String(items.length) })
+      }
+    >
       {items.length ? (
         /* Tabela padrão (busca, ordem pelo título e páginas) com o cabeçalho
            congelado logo abaixo da barra vermelha e a rolagem para o lado
@@ -1101,12 +1168,18 @@ function SentItems({
           </thead>
           <tbody data-partner-booking-items>
             {items.map((item, rowIndex) => (
-              <tr key={item.id} data-partner-booking-row={item.id}>
+              <tr
+                key={item.id}
+                data-partner-booking-row={item.id}
+                data-partner-booking-row-worked={item.worked ? "yes" : "no"}
+              >
                 {columns.map((c, index) => (
                   <td
                     key={c.key}
                     className={cx(
                       cellClass,
+                      // Linha do item trabalhado: fundo verde claro.
+                      item.worked ? "bg-emerald-50" : "bg-white",
                       alignClass[c.align],
                       divider(index),
                       frozenClass(c.key),

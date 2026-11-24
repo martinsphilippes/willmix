@@ -179,6 +179,7 @@ import * as requestScreens from "./request-screens";
 import * as deliverySchedule from "./delivery-schedule";
 import * as economicGroups from "./economic-groups";
 import * as training from "./training";
+import * as bookWork from "./book-work";
 import * as externalTeam from "./external-team";
 import * as accessState from "./access-state";
 import * as internalTeam from "./internal-team";
@@ -361,6 +362,7 @@ export const modulesPt = {
   ...deliverySchedule.pt,
   ...economicGroups.pt,
   ...training.pt,
+  ...bookWork.pt,
   ...externalTeam.pt,
   ...accessState.pt,
   ...internalTeam.pt,
@@ -548,6 +550,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...deliverySchedule.en,
   ...economicGroups.en,
   ...training.en,
+  ...bookWork.en,
   ...externalTeam.en,
   ...accessState.en,
   ...internalTeam.en,
@@ -735,6 +738,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...deliverySchedule.zh,
   ...economicGroups.zh,
   ...training.zh,
+  ...bookWork.zh,
   ...externalTeam.zh,
   ...accessState.zh,
   ...internalTeam.zh,

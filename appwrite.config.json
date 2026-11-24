@@ -11679,6 +11679,33 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "sourceKind",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "store",
+            "factory"
+          ]
+        },
+        {
+          "key": "itemType",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "sheetFiles",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -11697,6 +11724,89 @@
           "type": "key",
           "columns": [
             "supplierId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "booking_locks",
+      "databaseId": "willmix",
+      "name": "Travas de book (quem está com cada um)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "scope",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "lot",
+            "type"
+          ]
+        },
+        {
+          "key": "lotId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "typeKey",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "itemType",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "userId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "lockedAt",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_user",
+          "type": "key",
+          "columns": [
+            "userId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_lot",
+          "type": "key",
+          "columns": [
+            "lotId"
           ],
           "orders": [
             "ASC"
@@ -12036,6 +12146,21 @@
         },
         {
           "key": "ncmByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "workedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "workedByUserId",
           "required": false,
           "array": false,
           "default": null,
