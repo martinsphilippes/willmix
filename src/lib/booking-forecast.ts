@@ -10,8 +10,8 @@ import type {
  * encomenda e de reposição (cotação V2 do Sankhya,
  * src/lib/integrations/price-forecast.ts), no lugar da conta antiga do
  * portal. Vai a ficha do item como a planilha trouxe (NCM, pesos, peças por
- * caixa, CBM, preço, moeda, Incoterm e a quantidade) e nunca o CODPROD: o
- * Sankhya calcula pelo NCM. O retrato fica no item (`booking_items.analysis`)
+ * caixa, CBM, preço, moeda e a quantidade) e nunca o CODPROD: o Sankhya
+ * calcula pelo NCM. O FOB/EXW e o valor do EXW não vão (dono, 24/11/2026). O retrato fica no item (`booking_items.analysis`)
  * e só a Wellmix o vê. Regra pura: sem banco nem Intl.
  */
 
@@ -30,7 +30,6 @@ export function bookingItemForecastQuery(
     | "cbmPerCarton"
     | "price"
     | "currency"
-    | "incoterm"
     | "purchaseQty"
     | "plannedQty"
   >,
@@ -38,8 +37,6 @@ export function bookingItemForecastQuery(
     /** Preço e moeda negociados no lugar dos da planilha. */
     price?: number | null;
     currency?: string | null;
-    /** Incoterm do book quando o item não tem o dele. */
-    incoterm?: string | null;
     /** Data de referência (AAAAMMDD). */
     dataRef?: string | null;
   } = {},
@@ -62,9 +59,27 @@ export function bookingItemForecastQuery(
       options.currency !== undefined && options.currency !== null
         ? options.currency
         : item.currency,
-    incoterm: item.incoterm ?? options.incoterm ?? null,
     dataRef: options.dataRef ?? null,
   };
+}
+
+/**
+ * Item que ainda precisa da previsão do Sankhya (job diário, dono,
+ * 24/11/2026): sem retrato da API (nunca previsto), ou com o retrato de
+ * quando o Sankhya não estava disponível ("manual") ou não respondeu
+ * ("error"). Falta de dado na ficha não conta (o item só vai de novo quando a
+ * ficha muda, como o NCM). Com `since`, o retrato feito desde então já conta
+ * como feito (uma tentativa por rodada).
+ */
+export function bookingForecastPending(
+  analysis: BookingAnalysis | null | undefined,
+  since: string | null = null,
+): boolean {
+  if (!analysis || analysis.source !== "price_forecast") return true;
+  if (since && analysis.at >= since) return false;
+  return (
+    analysis.missing.includes("manual") || analysis.missing.includes("error")
+  );
 }
 
 /** O que faltou na ficha do item para a previsão (antes de chamar o Sankhya). */
@@ -110,7 +125,6 @@ export function forecastAnalysis(
       ncm: q.ncm ?? null,
       price: positive(q.price),
       currency: q.currency ?? null,
-      incoterm: q.incoterm ?? null,
       pcsPerCarton: positive(q.masterBoxQty),
       cbmPerCarton: positive(q.cbmPerCarton),
       quantity: positive(q.quantity),

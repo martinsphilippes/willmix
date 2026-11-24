@@ -271,9 +271,8 @@ export async function setBookingItemsNcm(
       list.push({ ...i, ncm });
       byLot.set(i.lotId, list);
     }
-    for (const [lotId, list] of byLot) {
-      const lot = lotOf.get(lotId) as BookingLot;
-      await scheduleBookingForecasts(lot, list, user.id);
+    for (const list of byLot.values()) {
+      await scheduleBookingForecasts(list, user.id);
       reanalyzed += list.length;
     }
   }

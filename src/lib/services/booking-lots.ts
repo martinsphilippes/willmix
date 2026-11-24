@@ -1158,7 +1158,7 @@ async function analyzeLot(
 ) {
   const { scheduleBookingForecasts } = await import("./booking-price-forecast");
   const at = new Date().toISOString();
-  await scheduleBookingForecasts(lot, items, user?.id ?? "system");
+  await scheduleBookingForecasts(items, user?.id ?? "system");
   return at;
 }
 
@@ -1213,31 +1213,6 @@ export async function closeBookingLot(
     `Book nº ${lot.number} fechado: previsão de preço de ${items.length} itens`,
   );
   return updated;
-}
-
-/** Refaz a previsão de preço num booking já fechado (câmbio ou ficha mudaram). */
-export async function reanalyzeBookingLot(
-  user: User,
-  lotId: string,
-): Promise<void> {
-  assertBooking(user);
-  const store = getStore();
-  const lot = await wellmixLot(lotId);
-  if (!lot) throw new BookingLotError("not_found");
-  if (lot.status === "draft" || lot.status === "cancelled")
-    throw new BookingLotError("booking_lot_not_closed");
-  const items = await store.list("booking_items", {
-    filter: { lotId: lot.id },
-  });
-  const at = await analyzeLot(user, lot, items);
-  await store.update("booking_lots", lot.id, { analyzedAt: at });
-  await audit(
-    user,
-    "booking_lot.analyze",
-    "booking_lot",
-    lot.id,
-    `Book nº ${lot.number}: previsão de preço refeita`,
-  );
 }
 
 /** Muda o status à mão (fechar o rascunho é `closeBookingLot`). */

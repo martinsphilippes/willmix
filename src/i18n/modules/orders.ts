@@ -155,8 +155,6 @@ export const pt = {
   "orders.origin.proposal": "Nova proposta",
   "orders.origin.sourcing_demand": "Sourcing sob demanda",
   "orders.origin.sourceOrder": "Pedido de origem",
-  // Solicitações antigas abertas pela viabilidade (a tela saiu em 24/11/2026).
-  "orders.origin.superplan": "Viabilidade (antiga)",
 
   /* Pós-venda no pedido */
   "orders.afterSales.title": "Pós-venda",
@@ -427,7 +425,6 @@ export const en: Record<keyof typeof pt, string> = {
   "orders.origin.proposal": "New proposal",
   "orders.origin.sourcing_demand": "Sourcing on demand",
   "orders.origin.sourceOrder": "Source order",
-  "orders.origin.superplan": "Feasibility (old)",
 
   "orders.afterSales.title": "After-sales",
   "orders.afterSales.hint":
@@ -690,7 +687,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "orders.origin.proposal": "新报价",
   "orders.origin.sourcing_demand": "按需寻源",
   "orders.origin.sourceOrder": "来源订单",
-  "orders.origin.superplan": "可行性（旧）",
 
   "orders.afterSales.title": "售后",
   "orders.afterSales.hint":

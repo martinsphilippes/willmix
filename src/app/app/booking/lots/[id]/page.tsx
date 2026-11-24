@@ -76,7 +76,6 @@ import {
   registerBookingLotPartnerAction,
   setBookingLotMetaAction,
   unlockBookingAction,
-  reanalyzeBookingLotAction,
   registerBookingLotSupplierAction,
   setBookingLotNoteAction,
 } from "../../../actions/booking-lots";
@@ -292,8 +291,6 @@ export default async function BookingLotPage({
       }),
     ]);
   if (one("closed")) notices.push(["success", t("bookingLots.detail.closed")]);
-  if (one("analyzed"))
-    notices.push(["success", t("bookingLots.detail.analyzed")]);
   if (one("moved")) notices.push(["success", t("bookingLots.detail.moved")]);
   if (one("saved")) notices.push(["success", t("bookingLots.detail.saved")]);
   if (one("locked")) notices.push(["success", t("bookWork.lock.done")]);
@@ -364,7 +361,7 @@ export default async function BookingLotPage({
 
   // Preço e moeda do Book: só com "Ver preço de compra" (dono, 15/11/2026;
   // docs/LINHA_DE_VISAO.md); sem ela as colunas não vão à tela. A previsão de
-  // preço do Sankhya (sinal, venda prevista, lucro e "Refazer a previsão")
+  // preço do Sankhya (sinal, venda prevista, lucro e o cartão "Previsão de preço")
   // segue a mesma permissão: o custo sai do preço.
   const seesPrice = canSeePurchasePrice(user);
   const columns = seesPrice
@@ -1304,19 +1301,14 @@ export default async function BookingLotPage({
                   })}
                 </p>
               ) : null}
-              <form
-                action={reanalyzeBookingLotAction}
-                className="space-y-2"
-                data-booking-lot-reforecast
+              {/* Sem botão de refazer (dono, 24/11/2026): o job diário
+                  completa os itens que ficaram sem a previsão. */}
+              <p
+                className="text-xs text-zinc-500"
+                data-booking-lot-forecast-auto
               >
-                <input type="hidden" name="lotId" value={lot.id} />
-                <SubmitButton
-                  variant="secondary"
-                  pendingText={t("bookingForecast.lot.redoPending")}
-                >
-                  {t("bookingForecast.lot.redo")}
-                </SubmitButton>
-              </form>
+                {t("bookingForecast.lot.auto")}
+              </p>
             </Card>
           ) : null}
 

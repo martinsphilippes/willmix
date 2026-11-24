@@ -524,18 +524,6 @@ export async function closeBookingLotAction(form: FormData) {
   });
 }
 
-export async function reanalyzeBookingLotAction(form: FormData) {
-  const user = await requireUser();
-  const raw = str(form, "lotId");
-  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
-  await run(back, async () => {
-    const input = z.object({ lotId: ID }).parse({ lotId: raw });
-    const { reanalyzeBookingLot } = await import("@/lib/services/booking-lots");
-    await reanalyzeBookingLot(user, input.lotId);
-    return withQuery(back, "analyzed", "1");
-  });
-}
-
 export async function moveBookingLotAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, "lotId");

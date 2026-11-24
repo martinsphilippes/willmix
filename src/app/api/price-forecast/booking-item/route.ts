@@ -52,11 +52,9 @@ export async function GET(request: Request) {
   const store = getStore();
   const item = await store.get("booking_items", itemId);
   if (!item) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  const lot = await store.get("booking_lots", item.lotId);
   const q = bookingItemForecastQuery(item, {
     price: price ?? item.price,
     currency: currency ?? item.currency,
-    incoterm: lot?.incoterm ?? null,
     dataRef: (brazilDay(new Date()) ?? "").replace(/-/g, "") || null,
   });
   const missing = bookingForecastMissing(q);

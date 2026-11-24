@@ -246,8 +246,6 @@ export interface PriceForecastQuery {
   cbmPerCarton?: number | null;
   price?: number | null;
   currency?: string | null;
-  /** Incoterm da compra (FOB ou EXW; itens do book). */
-  incoterm?: string | null;
   /**
    * Condições comerciais da cotação V2 (dono, 16/11/2026): VIP do nível do
    * formato Wellmix, rota da entrega (quem chama o transportador), frete de
@@ -380,9 +378,6 @@ export function productInput(
   const price: PriceInput = {
     PRECO_ORIGEM: positive(q.price),
     MOEDA_ORIGEM: originCurrency(q.currency),
-    ...(q.incoterm && /^[A-Z]{3}$/.test(q.incoterm)
-      ? { INCOTERM: q.incoterm }
-      : {}),
   };
   if (code)
     return {

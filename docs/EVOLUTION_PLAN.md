@@ -1944,5 +1944,14 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Book**: ao fechar o book, no "Refazer a previsão" e quando o NCM de um item muda, cada item vai à API com a própria ficha e o NCM (nunca o CODPROD). O resultado fica em `booking_items.analysis` com `source: "price_forecast"` (`src/lib/booking-forecast.ts`, `src/lib/services/booking-price-forecast.ts`), só para a Wellmix com "Ver preço de compra". Os retratos antigos, sem `source`, não aparecem mais (a tela pede para refazer a previsão).
 - **Negociação**: a estimativa da contraproposta chama `/api/price-forecast/booking-item` (ida: custo e venda prevista; volta: preço máximo de compra para um preço de venda desejado).
 - **Sem o Sankhya configurado**: nada é previsto (modo manual).
-- **Fica**: o valor `superplan` de `requests.origin`, só para ler as solicitações antigas ("Viabilidade (antiga)").
+- **Fica**: o valor `superplan` de `requests.origin`, só para ler as solicitações antigas ("Viabilidade (antiga)"). (Saiu no mesmo dia, abaixo: não havia nenhuma.)
 - Detalhes em docs/BOOKING.md, "Previsão de preço do item".
+
+## Previsão do Sankhya: sem o FOB/EXW, sem o botão de refazer e sem os dados antigos do Superplan (dono, 24/11/2026)
+
+- **Respostas do dono** (24/11/2026), às perguntas depois do Superplan sair: "1 - não vai para o Sankhya" (o FOB/EXW e o valor do EXW); "2 - mantém do jeito que está" (a previsão na negociação); "3 - apaga os dados antigos do Superplan, o que precisamos vem do Sankhya"; "4 - não precisa ter esse botão de calcular no Sankhya, só trazer em todos esses já fechados o cálculo do Sankhya".
+- **FOB/EXW**: deixou de ir na consulta ao Sankhya (`INCOTERM`), no book, na ficha negociada e na contraproposta (`bookingItemForecastQuery`, `productInput`).
+- **Sem botão**: o "Refazer a previsão" do book saiu (ação e serviço). No lugar, o job diário `/api/jobs/booking-forecasts` (cron às 23:17 UTC) pede a previsão dos itens dos books fechados que ainda não a têm, ou que ficaram sem ela porque o Sankhya não estava disponível ou não respondeu; a primeira rodada pôs a previsão do Sankhya no book que já estava fechado. A previsão também passou a gravar item por item (o que volta fica gravado mesmo se a função parar no meio).
+- **Removido (pedido do dono)**: em produção, os 20 retratos antigos da conta do portal em `booking_items.analysis`, a data deles em `booking_lots.analyzedAt` e a chave `superplan` da tabela `settings`; no código, a origem `superplan` de `requests.origin` (nenhuma solicitação a usava) e o texto "Previsão antiga".
+- **Não mudou**: a previsão na negociação (só sem o FOB/EXW), a previsão ao fechar o book e ao trocar o NCM, as permissões.
+- Testes: `tests/unit/booking-forecast.test.ts` e `tests/unit/booking-forecast-job.test.ts` (novo).
