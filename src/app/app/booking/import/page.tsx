@@ -116,42 +116,6 @@ export default async function BookingImportPage({
             className="space-y-3.5 break-words [&_[data-field-label]]:text-[13px]"
             data-booking-import-form
           >
-            <Field
-              label={t("bookingLots.import.file")}
-              hint={
-                <span className="text-zinc-600">
-                  {t("bookingLots.import.fileHintCompact")}
-                </span>
-              }
-            >
-              <SheetFileInput
-                label={t("bookingLots.import.file")}
-                uploadingLabel={t("sheetImport.uploading")}
-                failedLabel={t("sheetImport.uploadFailed")}
-                chosenLabel={t("sheetImport.uploaded")}
-                required={false}
-                multiple
-                countLabel={t("bookWork.import.files")}
-                className={COMPACT_FILE}
-              />
-            </Field>
-            <Field
-              label={t("bookingLots.import.urlLabelCompact")}
-              hint={
-                <span className="text-zinc-600">
-                  {t("bookingLots.import.urlHintCompact")}
-                </span>
-              }
-            >
-              <Input
-                name="sheetUrl"
-                type="url"
-                inputMode="url"
-                placeholder={t("sheetImport.urlPlaceholder")}
-                maxLength={600}
-                className={BOOK_COMPACT_FIELD}
-              />
-            </Field>
             {/* FOB ou EXW (#674, obrigatório na importação) numa linha
                 própria, acima da linha do desenho: o seletor estreito e,
                 com EXW, o valor ao lado; as dicas abaixo. */}
@@ -231,6 +195,46 @@ export default async function BookingImportPage({
                 </p>
               </div>
             </div>
+            {/* Arquivo e link do Google Sheets embaixo das condições
+                (dono, 24/11/2026): primeiro FOB/EXW, moeda, loja,
+                supplier e tipo; por último a planilha, logo acima do
+                "Importar book". */}
+            <Field
+              label={t("bookingLots.import.file")}
+              hint={
+                <span className="text-zinc-600">
+                  {t("bookingLots.import.fileHintCompact")}
+                </span>
+              }
+            >
+              <SheetFileInput
+                label={t("bookingLots.import.file")}
+                uploadingLabel={t("sheetImport.uploading")}
+                failedLabel={t("sheetImport.uploadFailed")}
+                chosenLabel={t("sheetImport.uploaded")}
+                required={false}
+                multiple
+                countLabel={t("bookWork.import.files")}
+                className={COMPACT_FILE}
+              />
+            </Field>
+            <Field
+              label={t("bookingLots.import.urlLabelCompact")}
+              hint={
+                <span className="text-zinc-600">
+                  {t("bookingLots.import.urlHintCompact")}
+                </span>
+              }
+            >
+              <Input
+                name="sheetUrl"
+                type="url"
+                inputMode="url"
+                placeholder={t("sheetImport.urlPlaceholder")}
+                maxLength={600}
+                className={BOOK_COMPACT_FIELD}
+              />
+            </Field>
             <SubmitButton
               pendingText={t("bookingLots.import.submitting")}
               className="h-9 rounded-[10px] px-4 pointer-coarse:h-10"
