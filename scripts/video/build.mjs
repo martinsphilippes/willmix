@@ -195,7 +195,9 @@ function writeSrt(lang, subs) {
 
 /* Todo texto de tela, para o palco carregar as fontes antes do 1º quadro. */
 const glyphs = [
-  ...new Set(JSON.stringify(def.scenes.map((s) => s.props))),
+  ...new Set(
+    JSON.stringify([def.scenes.map((s) => [s.props, s.chapter]), def.ui]),
+  ),
 ].join("");
 
 for (const lang of LANGS) {

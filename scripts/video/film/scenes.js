@@ -12,7 +12,7 @@ const when = (s, o, fallback = 0.8) =>
 
 function browser(ctx, shot, style = "", extra = "") {
   return `<div class="browser" style="${style}">
-    <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}Portal Wellmix</span></div>
+    <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}${ctx.esc(ctx.ui.portal)}</span></div>
     <div class="view"><img src="${ctx.shot(shot)}" alt="" />${extra}</div>
   </div>`;
 }
@@ -25,7 +25,7 @@ function mobileDesk(s, ctx, d) {
   const t = when(s, d);
   const frame = `--ox:${d.ox ?? "50%"};--oy:${d.oy ?? "20%"};--z0:${d.zoom0 ?? 1};--z1:${d.zoom ?? 1.08};--kd:${s.dur}s`;
   return `<div class="shot tilt" style="${at(0.45)};--float:${s.dur}s"><div class="browser" style="--w:${d.w ?? 760}px">
-      <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}Portal Wellmix</span></div>
+      <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}${ctx.esc(ctx.ui.portal)}</span></div>
       <div class="view"><img src="${ctx.shot(d.before ?? d.shot)}" alt="" style="${frame}" />
         ${d.before ? `<div class="layer a a-fade" style="${at(t, 0.5)}"><img src="${ctx.shot(d.shot)}" alt="" style="${frame}" /></div>` : ""}</div></div>
     ${d.label ? `<div class="pill a a-pop" style="${at(1.1, 0.6)}">${ctx.icon(d.icon ?? "eye")}${ctx.esc(d.label)}</div>` : ""}</div>`;
@@ -372,7 +372,7 @@ export const SCENES = {
         ) => `<div class="leaf l${i}"><div class="a a-up" style="${at(0.5 + [0.15, 0, 0.3][i], 1.1)}">
           <div class="lang">${ctx.icon("languages")}${name}</div>
           <div class="browser" style="--oy:14%;--z1:1.06;--kd:${s.dur}s">
-            <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}Portal Wellmix</span></div>
+            <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}${ctx.esc(p.names?.[l] ?? ctx.ui.portal)}</span></div>
             <div class="view"><img src="shots/${p.dirs?.[l] ?? l}/${p.shot}.png" alt="" /></div>
           </div></div></div>`,
       ).join("")}</div>`;
@@ -421,7 +421,7 @@ export const SCENES = {
           .join("")}</div>
       </div>
       <div class="shot tilt" style="${at(0.15)};--float:${s.dur}s"><div class="browser" style="--w:1090px">
-        <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}Portal Wellmix</span></div>
+        <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}${ctx.esc(ctx.ui.portal)}</span></div>
         <div class="view">${imgs}</div></div></div>`;
   },
 

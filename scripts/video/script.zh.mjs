@@ -61,7 +61,7 @@ const END = {
   post: 0.55,
   props: {
     lines: ["一个门户。", "所有伙伴。", "每个环节。"],
-    tagline: "进口管理 · 从订单到交付",
+    tagline: "从下单到交付的进口管理",
   },
 };
 
@@ -77,6 +77,7 @@ export const VIDEOS_ZH = {
     shots: "cn",
     speak,
     ui: {
+      portal: "Wellmix 门户",
       brazil: "巴西",
       sees: "可见",
       neverSees: "永不可见",
@@ -105,7 +106,7 @@ export const VIDEOS_ZH = {
           {
             zh: "把一件产品从海外工厂送到巴西客户手中，是一场漫长的接力赛。",
           },
-          { zh: "供应商、代理机构、认证机构、海运、海关、运输公司。" },
+          { zh: "供应商、设计公司、认证机构、海运、海关、承运商。" },
         ],
       },
       {
@@ -202,7 +203,7 @@ export const VIDEOS_ZH = {
         props: {
           role: "客户",
           icon: "store",
-          title: "不打一个电话，订单进度一目了然",
+          title: "不打一个电话，\n订单进度一目了然",
           shot: "customer",
           oy: "18%",
           bullets: [
@@ -224,20 +225,20 @@ export const VIDEOS_ZH = {
         props: {
           role: "供应商",
           icon: "factory",
-          title: "一份待办清单，中文或英文",
+          title: "一份待办清单，\n中文或英文",
           shot: "supplier",
           oy: "16%",
           bullets: [
             { t: "回复<b>价格、起订量和交期</b>", c: 1 },
             { t: "<b>样品照片和视频</b>、生产日期、验货", c: 2 },
-            { t: "每笔订单的<b>付款预估</b>", c: 3 },
+            { t: "每笔订单的<b>付款预计</b>", c: 3 },
           ],
         },
         say: [
           { zh: "供应商只需要一份待办清单，中文或英文都可以。" },
           { zh: "回复询单，填写价格、起订量和交期。" },
           { zh: "上传样品的照片和视频、生产日期和验货资料。" },
-          { zh: "还能查看每笔订单的付款预估。" },
+          { zh: "还能查看每笔订单的付款预计。" },
         ],
       },
       {
@@ -246,7 +247,7 @@ export const VIDEOS_ZH = {
         props: {
           role: "设计公司",
           icon: "pen-tool",
-          title: "需求、文件和反馈，都在一个工作台",
+          title: "需求、文件和反馈，\n都在一个工作台",
           shot: "agency",
           oy: "30%",
           bullets: [
@@ -263,8 +264,8 @@ export const VIDEOS_ZH = {
           {
             zh: "设计公司在自己的工作台上，收到工厂提供的刀模图和产品照片。",
           },
-          { zh: "上传设计稿，并收到注明原因的反馈。" },
-          { zh: "最后交付带认证标志的终稿。" },
+          { zh: "上传设计稿，收到的反馈会说明原因。" },
+          { zh: "最后交付带有认证标志的终稿。" },
           {
             // Não há chat direto entre agência e fornecedor: cada empresa
             // conversa com a Wellmix; o que passa de um para o outro são as
@@ -346,18 +347,18 @@ export const VIDEOS_ZH = {
         props: {
           role: "营销代理 · 原产地",
           icon: "camera",
-          title: "货物出运前的实拍照片",
+          title: "货物出运前的实物照片",
           shot: "marketing",
           oy: "40%",
           bullets: [
             { t: "确认<b>样品已送达</b>", c: 0, d: 1.2 },
-            { t: "上传每个产品的<b>实拍照片和视频</b>", c: 1 },
+            { t: "上传每个产品的<b>实物照片和视频</b>", c: 1 },
             { t: "<b>归还样品</b>，随订单一起出运", c: 1, d: 2.6 },
           ],
         },
         say: [
           { zh: "在原产地，营销代理确认样品已经送达。" },
-          { zh: "上传每个产品的实拍照片和视频，然后归还样品。" },
+          { zh: "上传每个产品的实物照片和视频，然后归还样品。" },
         ],
       },
       {
@@ -475,7 +476,7 @@ export const VIDEOS_ZH = {
             {
               icon: "palette",
               name: "设计师",
-              text: "设计稿和实拍照片的审批",
+              text: "设计稿和实物照片的审批",
               c: 4,
               d: 1.6,
             },
@@ -595,7 +596,7 @@ export const VIDEOS_ZH = {
           { zh: "所有沟通都在门户内进行。" },
           { zh: "零散的邮件往来，到此为止。" },
           { zh: "每家公司与 Wellmix 只有一个对话，按订单和产品归类。" },
-          { zh: "照片、视频和文件，都放在各自对应的主题下。" },
+          { zh: "照片、视频和文件，都放在各自对应的话题下。" },
           { zh: "不遗漏，不混乱。" },
         ],
       },
@@ -606,7 +607,7 @@ export const VIDEOS_ZH = {
         post: 0.75,
         props: {
           kicker: "待办与通知",
-          title: "人人都清楚*有什么待办*",
+          title: "人人都清楚\n*有什么待办*",
           shots: [
             { shot: "broker", ox: "55%", oy: "18%", zoom: 1.12, c: 0 },
             {
@@ -618,10 +619,10 @@ export const VIDEOS_ZH = {
             },
           ],
           chips: [
-            { icon: "bell", label: "通知铃", c: 0, d: 0.6 },
+            { icon: "bell", label: "通知铃铛", c: 0, d: 0.6 },
             {
               icon: "inbox",
-              label: "我的待办 · 等你处理的事",
+              label: "我的待办 · 等您处理的事",
               c: 0,
               d: 2.2,
             },
@@ -633,7 +634,7 @@ export const VIDEOS_ZH = {
           ],
         },
         say: [
-          { zh: "通知铃和待办清单，让每个人都清楚有哪些事在等自己处理。" },
+          { zh: "通知铃铛和待办清单，让每个人都清楚有哪些事在等自己处理。" },
           { zh: "Wellmix 也能看到该由谁来回复。" },
         ],
       },
@@ -646,6 +647,12 @@ export const VIDEOS_ZH = {
           title: "Português. English. *中文。*",
           shot: "supplier",
           dirs: { pt: "cn-pt", en: "cn-en", zh: "cn-zh" },
+          // Nome do portal na barra de cada janela, no idioma dela (app.name).
+          names: {
+            pt: "Portal Wellmix",
+            en: "Wellmix Portal",
+            zh: "Wellmix 门户",
+          },
         },
         say: [{ zh: "门户支持葡萄牙语、英语和中文。" }],
       },
@@ -666,7 +673,7 @@ export const VIDEOS_ZH = {
             {
               role: "供应商",
               icon: "factory",
-              sees: ["自己的询单和订单", "付款预估"],
+              sees: ["自己的询单和订单", "付款预计"],
               hidden: ["对客户的销售价", "利润"],
               c: 1,
               d: 0.5,
@@ -715,7 +722,7 @@ export const VIDEOS_ZH = {
         say: [
           { zh: "每个环节的质量都有记录可查。" },
           { zh: "验货有照片、重量和视频。" },
-          { zh: "装柜有照片、铅封和集装箱号。" },
+          { zh: "装柜有照片、铅封和柜号。" },
           { zh: "装箱单、发票和提单，逐行核对。" },
         ],
       },
@@ -725,7 +732,7 @@ export const VIDEOS_ZH = {
         post: 0.45,
         props: {
           kicker: "管理视角",
-          title: "整个流程，*按阶段呈现*",
+          title: "整个流程，\n*按阶段呈现*",
           shots: [
             { shot: "tower", ox: "62%", oy: "34%", zoom: 1.12, c: 0 },
             { shot: "sla", ox: "55%", oy: "24%", zoom: 1.1, c: 1 },
@@ -735,7 +742,7 @@ export const VIDEOS_ZH = {
             { icon: "layout-dashboard", label: "控制塔", c: 0, d: 0.8 },
             {
               icon: "gauge",
-              label: "SLA 面板 · 逾期、今日到期、负责人",
+              label: "SLA 面板 · 逾期、今天到期、负责人",
               c: 1,
             },
             { icon: "history", label: "看板和审计记录", c: 2 },
@@ -763,7 +770,7 @@ export const VIDEOS_ZH = {
           },
         },
         say: [
-          { zh: "它适配任何屏幕，还能像应用一样安装到手机上。" },
+          { zh: "门户适配任何屏幕，还能像应用一样安装到手机上。" },
           { zh: "而且专为配合 Wellmix 的 ERP 系统而设计。" },
         ],
       },

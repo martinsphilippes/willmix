@@ -45,6 +45,8 @@ function hanWords(line) {
 }
 /** Textos fixos das cenas (rótulos que não vêm do roteiro): o roteiro pode trocá-los (`ui`). */
 const UI = {
+  // Nome do portal na barra da janela do navegador.
+  portal: "Portal Wellmix",
   brazil: "Brazil",
   sees: "Sees",
   neverSees: "Never sees",
