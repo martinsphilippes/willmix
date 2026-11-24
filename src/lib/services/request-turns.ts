@@ -154,9 +154,15 @@ export async function requestTurnContext(
     const q = d.choice === "last_supplier" ? null : quoteOf(d.id);
     const mine = q ? responses.filter((r) => r.quoteId === q.id) : [];
     const out: PurchaseProgress = {
-      decision: { status: d.status, choice: d.choice, orderId: d.orderId },
+      decision: {
+        id: d.id,
+        status: d.status,
+        choice: d.choice,
+        orderId: d.orderId,
+      },
       quote: q
         ? {
+            id: q.id,
             status: q.status,
             phase: quoteEmpty(mine, now)
               ? "empty"

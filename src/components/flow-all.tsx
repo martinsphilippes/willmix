@@ -4,7 +4,7 @@ import { getStore } from "@/lib/db";
 import type { FlowEntity } from "@/lib/services/flow";
 import { orderInStepHref, stepId, type FlowStep } from "@/lib/flow";
 import { elsewhereOf, openSummary } from "@/lib/flow-open-summary";
-import { Badge, Empty, Table, Td, TextLink, Th, rowClass } from "./ui";
+import { Empty, Table, Td, TextLink, Th, rowClass } from "./ui";
 import { loadOrderCells } from "@/lib/services/order-cells";
 import {
   OrderStandardHeads,
@@ -14,6 +14,7 @@ import {
 } from "./order-standard-cells";
 import { partyOfRole, turnTone, turnWaitingKey } from "@/lib/turn";
 import { ClampText } from "./clamp-text";
+import { StatusLink } from "./status-link";
 
 /*
  * Aba "Todos no passo" (dono, 14/11/2026; docs/FLOW_MENU.md): todos os
@@ -167,9 +168,10 @@ export async function FlowAll({
                   {/* Status: de quem é a vez no que está aberto no passo. */}
                   <Td className="whitespace-nowrap">
                     {turn ? (
-                      <Badge tone={turnTone(turn)}>
+                      // O status leva ao lugar de agir (dono, 24/11/2026).
+                      <StatusLink tone={turnTone(turn)} href={viewHref}>
                         {t(turnWaitingKey(turn))}
-                      </Badge>
+                      </StatusLink>
                     ) : (
                       "—"
                     )}

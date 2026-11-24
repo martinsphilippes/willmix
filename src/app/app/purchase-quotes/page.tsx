@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { StatusLink } from "@/components/status-link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -304,17 +305,20 @@ export default async function PurchaseQuotesPage() {
                             state === "open" ? "supplier" : "wellmix"
                           }
                         >
-                          <Badge
+                          {/* O status leva ao quadro da cotação (dono,
+                              24/11/2026), o mesmo lugar da pendência. */}
+                          <StatusLink
                             tone={turnTone(
                               state === "open" ? "supplier" : "wellmix",
                             )}
+                            href={`/app/purchase-quotes/${encodeURIComponent(q.id)}`}
                           >
                             {t(
                               turnWaitingKey(
                                 state === "open" ? "supplier" : "wellmix",
                               ),
                             )}
-                          </Badge>
+                          </StatusLink>
                         </span>
                       ) : null}
                     </Td>
