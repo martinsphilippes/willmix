@@ -10,7 +10,10 @@
  * - `say[i].zh` é o texto falado. `speak()` troca o que a voz deve ler de outro
  *   jeito; `say[i].say` escreve a fala inteira para a voz, quando um caso pede.
  * - A narração evita caracteres de duas leituras em posição arriscada para a
- *   voz sintética (应付/应收: "付给供应商的货款" e "向客户收取的货款").
+ *   voz sintética, porque ninguém no caminho ouve mandarim e a transcrição não
+ *   mostra a leitura: 应付/应收 viram "付给供应商的货款" e "向客户收取的货款";
+ *   报关行 (háng) vira "报关公司" na fala e 逐行 vira "逐项". Os nomes do portal
+ *   continuam escritos na tela (o papel 报关行, 应付账款).
  * - `props` é o que a cena desenha. Nos textos da tela, *assim* sai em
  *   vermelho; sem espaços entre palavras, o palco separa as palavras do chinês
  *   sozinho (film.js, Intl.Segmenter).
@@ -335,7 +338,7 @@ export const VIDEOS_ZH = {
         },
         say: [
           { zh: "在工厂车间，用手机就能完成验货。" },
-          { zh: "供应商每拍一张照片，门户都会即时保存。" },
+          { zh: "供应商每拍一张照片，门户就会即时保存。" },
           { zh: "然后输入实测重量，点击提交。" },
           { zh: "另一边，Wellmix 在订单里就能看到每一项。" },
         ],
@@ -416,7 +419,7 @@ export const VIDEOS_ZH = {
           noteC: 1,
         },
         say: [
-          { zh: "在巴西，外贸代理和报关行负责许可证、单据和清关。" },
+          { zh: "在巴西，外贸代理和报关公司负责许可证、单据和清关。" },
           { zh: "每一步都显示由谁执行、由谁审核。" },
         ],
       },
@@ -548,7 +551,7 @@ export const VIDEOS_ZH = {
           { zh: "质检在到货时核对每个集装箱：铅封、照片和清点。" },
           { zh: "销售登记报价，创建销售订单，并安排送货。" },
           { zh: "总监审批采购策略，并签署合同。" },
-          { zh: "管理员则负责权限、期限和系统设置。" },
+          { zh: "管理员负责权限、期限和系统设置。" },
         ],
       },
       {
@@ -716,14 +719,14 @@ export const VIDEOS_ZH = {
           chips: [
             { icon: "video", label: "验货 · 照片、重量、视频", c: 1 },
             { icon: "container", label: "装柜 · 照片、铅封、柜号", c: 2 },
-            { icon: "file-check", label: "单据 · 逐行核对", c: 3 },
+            { icon: "file-check", label: "单据 · 逐项核对", c: 3 },
           ],
         },
         say: [
           { zh: "每个环节的质量都有记录可查。" },
           { zh: "验货有照片、重量和视频。" },
           { zh: "装柜有照片、铅封和柜号。" },
-          { zh: "装箱单、发票和提单，逐行核对。" },
+          { zh: "装箱单、发票和提单，逐项核对。" },
         ],
       },
       {

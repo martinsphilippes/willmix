@@ -8,6 +8,9 @@ O vídeo em mandarim está pronto, **menos a voz**: roteiro em chinês simplific
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `parte-1.txt`, `parte-2.txt`, `parte-3.txt` | O texto em chinês para colar no ElevenLabs, uma parte de cada vez                                                      |
 | `roteiro-falas.csv`                         | As 72 falas numeradas (abre no Excel ou no Google Planilhas): parte, cena, texto em chinês e a mesma fala em português |
+| `para-quem-vai-ouvir.md`                    | Um recado pronto, em chinês, para encaminhar a alguém que fale mandarim e possa ouvir o resultado                      |
+
+O texto todo tem 72 falas e cerca de 1.600 caracteres (608, 517 e 446 nas três partes).
 
 ## Passo a passo no ElevenLabs
 
@@ -29,7 +32,7 @@ O vídeo em mandarim está pronto, **menos a voz**: roteiro em chinês simplific
 
 - Transcrição automática em chinês de cada fala, comparada com o roteiro caractere a caractere (se uma fala sair diferente do texto, eu aviso qual é e você gera só ela de novo).
 - Velocidade de cada fala, cortes medidos no som e volume das três partes.
-- **O que eu não consigo conferir:** se a voz soa natural para um chinês (sotaque, entonação). Vale pedir a alguém que fale mandarim (um contato da fábrica ou da trading) para ouvir 30 segundos antes de publicar.
+- **O que eu não consigo conferir:** se a voz soa natural para um chinês (sotaque, entonação) e a leitura dos caracteres que têm duas pronúncias: a transcrição escreve o mesmo caractere nos dois casos. O roteiro já evita os casos de maior risco, mas vale pedir a alguém que fale mandarim (um contato da fábrica ou da trading) para ouvir antes de publicar; o recado para essa pessoa está pronto em `para-quem-vai-ouvir.md`.
 
 ## O que acontece depois
 
