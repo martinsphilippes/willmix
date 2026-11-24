@@ -68,7 +68,7 @@ A coluna **Arquivo** é o prefixo do arquivo da série (tabela acima). As duraç
 | 06 | OCP-01 | Receber o pedido de certificação e a ficha | 3:45 |
 | 06 | OCP-02 | Enviar o selo e o memorial e acompanhar a validação | 3:14 |
 | 07 | WBK-01 | Importar um booking (planilha do fornecedor) | 3:30 |
-| 07 | WBK-02 | Fechar o booking e ler a análise do Superplan | 4:30 |
+| 07 | WBK-02 | Fechar o booking e ler a previsão de preço | 4:30 |
 | 07 | WBK-03 | Seleção de itens e solicitação ao fornecedor | 5:00 |
 | 07 | WBK-04 | Decidir a resposta do fornecedor e criar o produto | 5:00 |
 | 07 | WBK-05 | Ligar ao Sankhya e liberar na vitrine | 3:30 |
@@ -76,7 +76,6 @@ A coluna **Arquivo** é o prefixo do arquivo da série (tabela acima). As duraç
 | 07 | WSO-02 | Comparar a cotação e fechar o preço ao cliente | 5:00 |
 | 07 | WSO-03 | Proposta, sinal e nascimento do pedido | 4:30 |
 | 07 | WSO-04 | RFQ em espera: o interruptor | 3:30 |
-| 07 | WSO-05 | Superplan: a viabilidade do produto | 5:00 |
 | 08 | WPE-01 | Conferir o pedido e o Sankhya | 3:45 |
 | 08 | WPE-02 | Preparação: a ficha de compra e a validação | 3:45 |
 | 08 | WPE-03 | Arte e embalagem vistas pela Wellmix | 5:45 |
@@ -106,7 +105,7 @@ A coluna **Arquivo** é o prefixo do arquivo da série (tabela acima). As duraç
 | 10 | WGE-10 | Equipe e divisões: funções e telas por login | 5:00 |
 | 10 | WGE-11 | Auditoria e dados de demonstração | 3:30 |
 
-74 episódios, cerca de 5 h 10 min de vídeo no total.
+73 episódios, cerca de 5 h 05 min de vídeo no total. (O WSO-05, da tela Superplan, saiu em 24/11/2026 junto com a tela; os preços vêm da API de preço do Sankhya.)
 
 ## A Jornada da Jarra (ordem de gravação)
 
@@ -115,7 +114,7 @@ Todos os vídeos acompanham **o mesmo produto**, a Jarra de vidro 1,5 L (UTL-001
 | Ordem | Etapa da jornada          | Episódio(s)                   | Quem grava (conta)                         | O que deixa pronto para o próximo                                             |
 | ----- | ------------------------- | ----------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
 | 0     | Cenário                   | (preparar fotos e parâmetros, guia 7.5) | admin                            | Vitrine com preço e foto; planilha de booking com a jarra                     |
-| 1     | 1 · Produto e Booking     | WBK-01, WBK-02                | operador (comprador)                       | Booking fechado, com a análise do Superplan                                   |
+| 1     | 1 · Produto e Booking     | WBK-01, WBK-02                | operador (comprador)                       | Booking fechado, com a previsão de preço do Sankhya                           |
 | 2     | 1 · Produto e Booking     | WBK-03                        | operador (comprador)                       | Solicitação ao fornecedor aberta para a jarra                                  |
 | 3     | 1 · Produto e Booking     | FOR-01, FOR-02                | fornecedor A (zh) e fornecedor B (en)      | Resposta "faz", com preço, mínimo e prazo                                      |
 | 4     | 1 · Produto e Booking     | WBK-04, WBK-05                | operador (comprador)                       | Produto criado, ligado ao CODPROD e liberado na vitrine                        |
@@ -134,7 +133,7 @@ Todos os vídeos acompanham **o mesmo produto**, a Jarra de vidro 1,5 L (UTL-001
 | 17    | 9 · Entrega e pós-venda   | CLI-04, CLI-05, CLI-06, WPE-06| cliente, operador                          | Recebimento confirmado; pós-venda aberto                                       |
 | 18    | Fora do fluxo             | FOR-10, WGE-03, WGE-04        | fornecedor, admin                          | Pagamento ao fornecedor registrado                                             |
 | 19    | Sempre                    | WGE-01, WGE-02                | admin, operador                            | A Control Tower com a jarra em cada quadrado                                   |
-| 20    | Avulsos                   | GER-00, GER-02, JUR-01, OCP-01, OCP-02, WLO-03, WLO-04, WCA-*, WGE-05 a WGE-11, CLI-07, WPE-07, WSO-04, WSO-05 | conforme a série | Não dependem da ordem; use qualquer ponto de salvamento |
+| 20    | Avulsos                   | GER-00, GER-02, JUR-01, OCP-01, OCP-02, WLO-03, WLO-04, WCA-*, WGE-05 a WGE-11, CLI-07, WPE-07, WSO-04 | conforme a série | Não dependem da ordem; use qualquer ponto de salvamento |
 
 O **GER-00** (A Jornada completa) é gravado **por último**: usa as imagens dos outros episódios.
 
@@ -171,7 +170,7 @@ Sugestão para começar a ver resultado cedo e ir pelas pessoas que mais precisa
 2. **Wellmix comercial**: WBK-01 a WBK-05, WSO-01 a WSO-03, WCA-01 a WCA-03.
 3. **Pedido e preparação**: WPE-01 a WPE-04, FOR-04 a FOR-07, AGE-01 a AGE-05, CLI-04.
 4. **Mar, desembaraço e entrega**: WPE-05 a WPE-07, MAR-01 e MAR-02, DES-01 e DES-02, COM-01, LOG-01, TRA-01 e TRA-02, FOR-08 e FOR-09, CLI-05 e CLI-06, OCP-01 e OCP-02.
-5. **Gestão e administração**: WGE-01 a WGE-11, WLO-01 a WLO-04, WCA-04 a WCA-06, WSO-04 e WSO-05, FOR-10, JUR-01, CLI-07.
+5. **Gestão e administração**: WGE-01 a WGE-11, WLO-01 a WLO-04, WCA-04 a WCA-06, WSO-04, FOR-10, JUR-01, CLI-07.
 
 Grave o piloto inteiro antes de seguir: ele fixa o visual, o ritmo e a voz, e os demais copiam.
 

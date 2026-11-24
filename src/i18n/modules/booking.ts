@@ -1,6 +1,6 @@
 /**
  * Dicionário do módulo "booking" (docs/BOOKING.md, "Booking por planilha"):
- * o menu e o sinal da análise do Superplan nos itens. Mesmas chaves em pt, en
+ * o menu e o sinal da previsão de preço nos itens. Mesmas chaves em pt, en
  * e zh.
  */
 export const pt = {

@@ -107,7 +107,7 @@ async function approvedRequest() {
     items.map((i) => i.id),
     "7013.37.00",
   );
-  await lots.closeBookingLot(admin, lot.id, null);
+  await lots.closeBookingLot(admin, lot.id);
   const request = await svc.openSupplierRequest(admin, {
     itemId: items[0].id,
     alternativeIds: [],

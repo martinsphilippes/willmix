@@ -19,7 +19,7 @@ Pedido do dono (14/11/2026): o menu lateral segue os blocos do mapa do processo 
 
 Fixos embaixo: Configurações, **Equipe Acessos e Parceiros** e Auditoria. Parceiros saiu de Cadastros (dono, 15/11/2026) e virou uma seção de Equipe Acessos e Parceiros; veja "Equipe Acessos e Parceiros" abaixo.
 
-Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeçalho, com o contador de não lidas. O Superplan saiu de Painéis e virou atalho em Configurações. Nenhuma tela ou rota foi removida.
+Mensagens e Notificações saíram do menu de todos os papéis; ficam no cabeçalho, com o contador de não lidas. O Superplan saiu de Painéis e virou atalho em Configurações; em 24/11/2026 a tela saiu de vez (decisão do dono), e os preços vêm da API de preço do Sankhya (docs/BOOKING.md, "Previsão de preço do item"). Fora ela, nenhuma tela ou rota foi removida.
 
 ## Equipe Acessos e Parceiros
 

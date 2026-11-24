@@ -95,7 +95,7 @@ Tabelas próprias que já ordenam e filtram (Pedidos, Bookings) ganharam só a p
   - **Painéis** (sem contador): Painel do dono, Painéis por área, Painel de SLA.
   - **Cadastros**: Clientes, Produtos, Linhas (Parceiros virou uma seção de Equipe Acessos e Parceiros e Clientes ganhou a página própria em 15/11/2026; docs/FLOW_MENU.md).
 
-  O Superplan saiu do menu: atalho em Configurações.
+  O Superplan saiu do menu (atalho em Configurações) e, em 24/11/2026, do portal: os preços vêm da API de preço do Sankhya (docs/BOOKING.md, "Previsão de preço do item").
 
   Fixos embaixo (`navFooterFor`): Configurações, Equipe Acessos e Parceiros (Equipe e Parceiros numa área só) e Auditoria; por último, o cartão da conta (trocar senha, Sair). O grupo da tela atual abre sozinho; os outros abrem e fecham com um clique. O botão « recolhe a barra para só os ícones: fica numa área própria no alto da barra, logo abaixo do cabeçalho, no centro com a barra recolhida e à direita com ela aberta, com 44 px de toque e o rótulo "Recolher menu"/"Expandir menu" conforme o estado. A barra é fixa (`position: fixed`) abaixo do cabeçalho, com o espaço dela reservado na linha, então não sobe no fim da página (dono, 14/11/2026: no iPad, a margem da barrinha de início empurrava a barra "sticky" e o botão ficava embaixo do cabeçalho). As duas escolhas ficam no `localStorage` (`wm-nav-collapsed`, `wm-nav-open`), sem efeito se o armazenamento faltar. Grupo com uma tela só vira link direto; grupo vazio some. Fornecedor: grupo **Meus bookings** (Booking, Convites, Solicitações ao fornecedor, Pedidos, Conta corrente, Multas). Demais parceiros: grupo **Pedidos** com a tela do papel.
 

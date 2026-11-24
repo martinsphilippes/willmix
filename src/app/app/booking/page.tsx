@@ -78,7 +78,7 @@ export default async function BookingLotsPage({
     : errorKey
       ? t(errorKey)
       : fallbackError(t, errorCode);
-  // Sinais do Superplan: só com "Ver preço de compra" (dono, 15/11/2026);
+  // Sinais da previsão de preço: só com "Ver preço de compra" (dono, 15/11/2026);
   // sem ela as contagens nem vão ao navegador.
   const seesPrice = canSeePurchasePrice(user);
   const statusLabel = (s: string) =>

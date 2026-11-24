@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import type { SupplierRequest } from "@/lib/db/schema";
 import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
-import type { SuperplanInput } from "@/lib/superplan";
 import { ProposalFields } from "./proposal-fields";
 import type { Translate } from "@/i18n";
 import { canPropose, pendingProposal } from "@/lib/supplier-requests";
@@ -77,8 +76,8 @@ export function NegotiationForms({
   request: SupplierRequest;
   wellmix: boolean;
   t: Translate;
-  /** Só a Wellmix: base do Superplan do item e o mínimo do booking. */
-  simulation?: { base: SuperplanInput; bookingMinimum: number | null } | null;
+  /** Só a Wellmix: o item do book para a previsão de preço e a venda prevista no book. */
+  simulation?: { itemId: string; bookingMinimum: number | null } | null;
   /**
    * Preço na contraproposta: falso para a Wellmix sem "Ver preço de compra"
    * (ela propõe MOQ, prazo e FOB/EXW; dono, 15/11/2026).
@@ -149,7 +148,7 @@ export function NegotiationForms({
               }}
               currencies={SHEET_CURRENCIES}
               incoterms={SHEET_INCOTERMS}
-              base={showPrice ? (simulation?.base ?? null) : null}
+              itemId={showPrice ? (simulation?.itemId ?? null) : null}
               bookingMinimum={
                 showPrice ? (simulation?.bookingMinimum ?? null) : null
               }
@@ -174,6 +173,8 @@ export function NegotiationForms({
                 simCurrency: t("supplierRequests.negotiation.sim.currency"),
                 simMissing: t("supplierRequests.negotiation.sim.missing"),
                 simHint: t("supplierRequests.negotiation.sim.hint"),
+                simLoading: t("supplierRequests.negotiation.sim.loading"),
+                simManual: t("supplierRequests.negotiation.sim.manual"),
               }}
             />
             <Field label={t("supplierRequests.negotiation.comment")}>

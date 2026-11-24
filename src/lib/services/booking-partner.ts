@@ -44,7 +44,7 @@ import type { SheetSource } from "./product-sheet-import";
  * preço dela não aparece para a fábrica citada na planilha.
  *
  * Fica de fora, de propósito: bookings de outras empresas, a análise da
- * Wellmix (Superplan, viabilidade, margem), o NCM, o produto do cadastro, as
+ * Wellmix (previsão de preço, margem), o NCM, o produto do cadastro, as
  * colunas extras da planilha e as notas internas. Depois de enviado, o
  * booking é conferido, ajustado, fechado ou cancelado pela Wellmix: as
  * rotinas dela (src/lib/services/booking-lots.ts) continuam só da Wellmix.

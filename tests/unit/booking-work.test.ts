@@ -93,7 +93,7 @@ async function closedLot(rows: string[][], itemType: string) {
     (await itemsOf(lot.id)).map((i) => i.id),
     "7013.37.00",
   );
-  return svc.closeBookingLot(admin, lot.id, null);
+  return svc.closeBookingLot(admin, lot.id);
 }
 
 beforeAll(async () => {
@@ -301,19 +301,19 @@ describe("fábrica, fornecedor e fabricante", () => {
     const wrong = await svc.manufacturerMismatches(lot, items);
     // "Co., Ltd." é o mesmo fabricante; as outras duas divergem.
     expect(wrong.map((i) => i.factoryItemCode)).toEqual(["FB-3", "FB-4"]);
-    await expect(svc.closeBookingLot(admin, lot.id, null)).rejects.toThrow(
+    await expect(svc.closeBookingLot(admin, lot.id)).rejects.toThrow(
       "booking_manufacturer_mismatch",
     );
     // Uma sai do book; a outra é confirmada (a planilha estava errada).
     await svc.removeBookingItem(admin, lot.id, wrong[0].id);
     expect((await getStore().get("booking_lots", lot.id))?.itemCount).toBe(3);
-    await expect(svc.closeBookingLot(admin, lot.id, null)).rejects.toThrow(
+    await expect(svc.closeBookingLot(admin, lot.id)).rejects.toThrow(
       "booking_manufacturer_mismatch",
     );
     expect(await svc.confirmBookingManufacturer(admin, lot.id, null)).toBe(1);
     items = await itemsOf(lot.id);
     expect(await svc.manufacturerMismatches(lot, items)).toEqual([]);
-    const closed = await svc.closeBookingLot(admin, lot.id, null);
+    const closed = await svc.closeBookingLot(admin, lot.id);
     expect(closed.status).toBe("closed");
   });
 

@@ -159,6 +159,7 @@ Regras do roteiro:
 | Pendência            | O que está esperando por você agora. Aparece em Pendências com o botão para abrir.                                                   |
 | Booking              | **A lista de produtos de uma planilha do fornecedor**, na Wellmix, antes de existir solicitação. Não confundir com a reserva no navio: nos vídeos de embarque diga sempre "reserva no navio". |
 | Seleção de itens     | Tela da Wellmix que compara itens parecidos de vários bookings e abre a solicitação ao fornecedor do melhor.                         |
+| Previsão de preço    | O preço que a API de preço do Sankhya prevê para um item do booking (custo, venda prevista e lucro). Só a Wellmix com "Ver preço de compra". |
 | Ficha de compra      | A ficha técnica que o fornecedor preenche (preço, caixa, pesos, medidas, programação e fotos).                                        |
 | Die cut (faca)       | O molde da caixa. Só o fornecedor escolhido o envia, depois da cotação.                                                              |
 | Briefing de embalagem| O pedido de arte e faca à agência (ou ao marketing da Wellmix), aberto junto com a cotação.                                          |
@@ -169,7 +170,6 @@ Regras do roteiro:
 | Numerário            | O valor em reais que a assessoria de comex pede para cobrir os custos do desembaraço; o financeiro da Wellmix valida e paga (docs/IMPORT_FLOW.md). |
 | NCM                  | Código fiscal do produto, usado nos impostos (II, IPI).                                                                              |
 | CODPROD              | O código do produto no Sankhya, o ERP da Wellmix.                                                                                    |
-| Superplan            | A análise de viabilidade de um produto (custo do container, preço mínimo e lucro). Só o administrador.                               |
 | Control Tower        | O painel de comando da Wellmix: o pedido de ponta a ponta, em quadrados por etapa.                                                    |
 | SLA                  | O prazo combinado para cada resposta ou etapa.                                                                                       |
 

@@ -201,8 +201,8 @@ export async function masterSheetInput(
 
 /**
  * O que se compra, lido de um jeito só. O Booking mostra estes números na
- * linha e o Superplan faz a conta com eles: os dois leem daqui, para a linha
- * nunca mostrar um preço e a análise usar outro.
+ * linha e as outras telas leem daqui, para a linha nunca mostrar um preço e
+ * outra tela usar outro.
  *
  * - Preço e moeda andam juntos, da MESMA fonte: os do cadastro do produto;
  *   cadastro sem preço, os da ficha mestre. O cadastro vem primeiro porque é
@@ -239,7 +239,7 @@ export function productPurchaseView(
   const sheetPrice = pos(sheet?.price);
   const price = columnPrice ?? sheetPrice;
   // A moeda acompanha a fonte do preço. Sem preço em nenhuma das duas, vale
-  // a do cadastro (é a que a tela do Superplan sempre trouxe marcada).
+  // a do cadastro.
   const fromSheet = columnPrice === null && sheetPrice !== null;
   const currency = fromSheet
     ? (written(sheet?.currency) ?? written(product.currency))

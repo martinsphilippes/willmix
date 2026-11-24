@@ -121,7 +121,7 @@ async function approvedProducts(
     items.map((i) => i.id),
     "7013.37.00",
   );
-  await lots.closeBookingLot(admin, lot.id, null);
+  await lots.closeBookingLot(admin, lot.id);
   const lineId = lineIdOf ?? (await store.list("product_lines"))[0].id;
   const out = [];
   for (const [i, item] of items.entries()) {

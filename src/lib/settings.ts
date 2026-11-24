@@ -1,7 +1,5 @@
 import "server-only";
 
-import { DEFAULT_SUPERPLAN, type SuperplanParams } from "@/lib/superplan";
-
 import { getStore } from "@/lib/db";
 import {
   MILESTONE_KEYS,
@@ -317,13 +315,6 @@ export const DEFAULT_SETTINGS = {
   fiscalLastError: null as string | null,
   /** Importadora dona da plataforma (preparação multi-importador; um só valor hoje). */
   importerName: "Wellmix",
-  /* ---- Superplan (docs/SUPERPLAN.md) ---- */
-  /**
-   * Tipos de negócio, despesas padrão por container, fretes, câmbio e impostos
-   * da venda do Superplan. Gravado pela tela do Superplan (só admin); lido
-   * sempre com superplanParams(), que completa o que faltar.
-   */
-  superplan: DEFAULT_SUPERPLAN as SuperplanParams,
 };
 
 /**

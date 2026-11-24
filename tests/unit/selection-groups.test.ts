@@ -86,7 +86,7 @@ async function closedLot(supplierName: string, rows: string[][]) {
     items.map((i) => i.id),
     "7013.37.00",
   );
-  return lots.closeBookingLot(admin, lot.id, null);
+  return lots.closeBookingLot(admin, lot.id);
 }
 
 beforeAll(async () => {

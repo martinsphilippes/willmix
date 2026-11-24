@@ -70,7 +70,7 @@ import type { PackingBasis } from "@/lib/strategy-packing";
  *   cadastro, que é o da última compra, e as faixas de preço) e condições do
  *   fornecedor: Wellmix com "Ver preço de compra" ou "Ver valores e margem"
  *   (`canSeePurchasePrice`; dono, 15/11/2026, docs/LINHA_DE_VISAO.md).
- * - Análise do Superplan (custo nacionalizado, venda sugerida, margem): só
+ * - Previsão de preço do Sankhya (custo, venda prevista, margem): só
  *   Wellmix com "Ver valores e margem" (`canSeeMoney`).
  * - Venda ao cliente e sinal: Wellmix com "Ver valores e margem"; o login do
  *   cliente vê a venda e o sinal das solicitações dele.
@@ -86,7 +86,7 @@ export interface SheetAccess {
    * última compra), faixas de preço e condições do fornecedor.
    */
   purchase: boolean;
-  /** Análise do Superplan: custo nacionalizado, venda sugerida e margem. */
+  /** Previsão de preço do Sankhya: custo, venda prevista e margem. */
   cost: boolean;
   /** Venda ao cliente e sinal. */
   sale: boolean;
@@ -110,7 +110,7 @@ export type SourceKind =
   | "order"
   | "negotiation"
   | "book"
-  | "superplan"
+  | "forecast"
   | "current"
   | "line"
   | "supplier"
@@ -303,12 +303,12 @@ function sourceOf(
           ? t("requestSheet.src.book", { n: inputs.bookLot.number })
           : t("requestSheet.src.bookPlain"),
       };
-    case "superplan":
+    case "forecast":
       return {
         kind,
         label: inputs.bookLot
-          ? t("requestSheet.src.superplan", { n: inputs.bookLot.number })
-          : t("requestSheet.src.superplanPlain"),
+          ? t("requestSheet.src.forecast", { n: inputs.bookLot.number })
+          : t("requestSheet.src.forecastPlain"),
       };
     default:
       return { kind, label: t(`requestSheet.src.${kind}` as DictionaryKey) };
@@ -1004,7 +1004,10 @@ export function buildSheetRow(
       fields: [moneyField("saleUnit", saleUnit, true), moneyField("saleTotal", saleTotal, false)],
     });
   if (access.purchase || access.cost) {
-    const analysis = access.cost ? (book?.analysis ?? null) : null;
+    const analysis =
+      access.cost && book?.analysis?.source === "price_forecast"
+        ? book.analysis
+        : null;
     const purchaseFields: SheetField[] = [
       moneyField("quote", quoted, true),
       field(
@@ -1055,12 +1058,12 @@ export function buildSheetRow(
         ? [
             moneyField(
               "landed",
-              pos(analysis.costBrl) ? { amount: analysis.costBrl, currency: "BRL", kind: "superplan" } : null,
+              pos(analysis.costBrl) ? { amount: analysis.costBrl, currency: "BRL", kind: "forecast" } : null,
               true,
             ),
             moneyField(
               "suggested",
-              pos(analysis.salePriceBrl) ? { amount: analysis.salePriceBrl, currency: "BRL", kind: "superplan" } : null,
+              pos(analysis.salePriceBrl) ? { amount: analysis.salePriceBrl, currency: "BRL", kind: "forecast" } : null,
               true,
             ),
             field(
@@ -1069,7 +1072,7 @@ export function buildSheetRow(
               analysis.profitPct !== null && Number.isFinite(analysis.profitPct)
                 ? `${analysis.profitPct.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%`
                 : null,
-              "superplan",
+              "forecast",
             ),
           ]
         : []),
