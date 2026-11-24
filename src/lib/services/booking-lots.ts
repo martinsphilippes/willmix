@@ -1158,7 +1158,7 @@ async function analyzeLot(
 ) {
   const { scheduleBookingForecasts } = await import("./booking-price-forecast");
   const at = new Date().toISOString();
-  await scheduleBookingForecasts(lot, items, user?.id ?? "system");
+  await scheduleBookingForecasts(items, user?.id ?? "system");
   return at;
 }
 
@@ -1213,31 +1213,6 @@ export async function closeBookingLot(
     `Book nº ${lot.number} fechado: previsão de preço de ${items.length} itens`,
   );
   return updated;
-}
-
-/** Refaz a previsão de preço num booking já fechado (câmbio ou ficha mudaram). */
-export async function reanalyzeBookingLot(
-  user: User,
-  lotId: string,
-): Promise<void> {
-  assertBooking(user);
-  const store = getStore();
-  const lot = await wellmixLot(lotId);
-  if (!lot) throw new BookingLotError("not_found");
-  if (lot.status === "draft" || lot.status === "cancelled")
-    throw new BookingLotError("booking_lot_not_closed");
-  const items = await store.list("booking_items", {
-    filter: { lotId: lot.id },
-  });
-  const at = await analyzeLot(user, lot, items);
-  await store.update("booking_lots", lot.id, { analyzedAt: at });
-  await audit(
-    user,
-    "booking_lot.analyze",
-    "booking_lot",
-    lot.id,
-    `Book nº ${lot.number}: previsão de preço refeita`,
-  );
 }
 
 /** Muda o status à mão (fechar o rascunho é `closeBookingLot`). */
@@ -1682,4 +1657,54 @@ export async function bookingPartnerOptions(): Promise<
     type: p.type,
     city: p.city ?? null,
   }));
+}
+
+/* ------------------------------------------------------------------------ */
+/* Recusar itens na tela do book (dono, 24/11/2026)                          */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Recusa os itens marcados de um book que já saiu do rascunho: eles não vão
+ * para a seleção e ficam trabalhados (o que conta para o percentual do book
+ * e para a trava sair sozinha). Item já trabalhado (escolhido, alternativa
+ * ou já recusado) fica como está. Devolve quantos foram recusados.
+ */
+export async function refuseBookingItems(
+  user: User,
+  lotId: string,
+  itemIds: readonly string[],
+): Promise<number> {
+  assertBooking(user);
+  const lot = await wellmixLot(lotId);
+  if (!lot) throw new BookingLotError("not_found");
+  // No rascunho o book ainda não é trabalhado (nem seleção, nem recusa).
+  if (!bookingLotLockable(lot.status))
+    throw new BookingLotError("booking_refuse_draft");
+  const store = getStore();
+  const ids = [...new Set(itemIds)];
+  const items = ids.length
+    ? (
+        await withSchema(() =>
+          store.list("booking_items", { filter: { id: ids } }),
+        )
+      ).filter((i) => i.lotId === lot.id && !i.workedAt)
+    : [];
+  if (!items.length) return 0;
+  const at = new Date().toISOString();
+  for (const item of items)
+    await store.update("booking_items", item.id, {
+      refusedAt: at,
+      refusedByUserId: user.id,
+    });
+  await markItemsWorked(user, items);
+  await audit(
+    user,
+    "booking_item.refuse",
+    "booking_lot",
+    lot.id,
+    `Book nº ${lot.number}: ${items.length} item(ns) recusado(s): ${items
+      .map((i) => i.factoryItemCode ?? i.description ?? i.id)
+      .join(", ")}`,
+  );
+  return items.length;
 }

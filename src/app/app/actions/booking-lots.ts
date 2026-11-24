@@ -524,18 +524,6 @@ export async function closeBookingLotAction(form: FormData) {
   });
 }
 
-export async function reanalyzeBookingLotAction(form: FormData) {
-  const user = await requireUser();
-  const raw = str(form, "lotId");
-  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
-  await run(back, async () => {
-    const input = z.object({ lotId: ID }).parse({ lotId: raw });
-    const { reanalyzeBookingLot } = await import("@/lib/services/booking-lots");
-    await reanalyzeBookingLot(user, input.lotId);
-    return withQuery(back, "analyzed", "1");
-  });
-}
-
 export async function moveBookingLotAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, "lotId");
@@ -708,5 +696,20 @@ export async function registerBookingLotPartnerAction(form: FormData) {
       await import("@/lib/services/booking-lots");
     await registerBookingLotPartner(user, ID.parse(raw));
     return withQuery(back, "supplier", "created");
+  });
+}
+
+/** Recusa os itens marcados do book (não vão para a seleção; ficam trabalhados). */
+export async function refuseBookingItemsAction(
+  lotId: string,
+  itemIds: string[],
+): Promise<InlineResult> {
+  const id = ID.safeParse(lotId);
+  return inline(id.success ? id.data : null, async (user) => {
+    const input = z
+      .object({ lotId: ID, itemIds: z.array(ID).min(1).max(500) })
+      .parse({ lotId, itemIds });
+    const { refuseBookingItems } = await import("@/lib/services/booking-lots");
+    await refuseBookingItems(user, input.lotId, input.itemIds);
   });
 }

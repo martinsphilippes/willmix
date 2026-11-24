@@ -76,7 +76,6 @@ import {
   registerBookingLotPartnerAction,
   setBookingLotMetaAction,
   unlockBookingAction,
-  reanalyzeBookingLotAction,
   registerBookingLotSupplierAction,
   setBookingLotNoteAction,
 } from "../../../actions/booking-lots";
@@ -94,6 +93,7 @@ import {
   BulkFieldInput,
   BulkLoadButton,
   BulkRowCheck,
+  BulkRefuseButton,
   BulkSelectAll,
   BulkSelectionLink,
   BulkStatus,
@@ -291,8 +291,6 @@ export default async function BookingLotPage({
       }),
     ]);
   if (one("closed")) notices.push(["success", t("bookingLots.detail.closed")]);
-  if (one("analyzed"))
-    notices.push(["success", t("bookingLots.detail.analyzed")]);
   if (one("moved")) notices.push(["success", t("bookingLots.detail.moved")]);
   if (one("saved")) notices.push(["success", t("bookingLots.detail.saved")]);
   if (one("locked")) notices.push(["success", t("bookWork.lock.done")]);
@@ -363,7 +361,7 @@ export default async function BookingLotPage({
 
   // Preço e moeda do Book: só com "Ver preço de compra" (dono, 15/11/2026;
   // docs/LINHA_DE_VISAO.md); sem ela as colunas não vão à tela. A previsão de
-  // preço do Sankhya (sinal, venda prevista, lucro e "Refazer a previsão")
+  // preço do Sankhya (sinal, venda prevista, lucro e o cartão "Previsão de preço")
   // segue a mesma permissão: o custo sai do preço.
   const seesPrice = canSeePurchasePrice(user);
   const columns = seesPrice
@@ -573,7 +571,9 @@ export default async function BookingLotPage({
                 done ? "bg-emerald-50" : "hover:bg-brand-50/40",
               )}
               data-booking-item={item.id}
-              data-booking-item-worked={done ? "yes" : "no"}
+              data-booking-item-worked={
+                item.refusedAt ? "refused" : done ? "yes" : "no"
+              }
               data-bulk-row={bulkOn ? item.id : undefined}
             >
               <td
@@ -636,8 +636,18 @@ export default async function BookingLotPage({
                 </span>
               </td>
               <td className="border-b border-zinc-100 px-2 py-2 align-top text-xs">
-                <Badge tone={done ? "success" : "neutral"}>
-                  {t(done ? "bookWork.worked.yes" : "bookWork.worked.no")}
+                <Badge
+                  tone={
+                    item.refusedAt ? "danger" : done ? "success" : "neutral"
+                  }
+                >
+                  {t(
+                    item.refusedAt
+                      ? "bookWork.worked.refused"
+                      : done
+                        ? "bookWork.worked.yes"
+                        : "bookWork.worked.no",
+                  )}
                 </Badge>
                 {item.workedAt ? (
                   <span className="mt-0.5 block text-zinc-500">
@@ -1291,19 +1301,14 @@ export default async function BookingLotPage({
                   })}
                 </p>
               ) : null}
-              <form
-                action={reanalyzeBookingLotAction}
-                className="space-y-2"
-                data-booking-lot-reforecast
+              {/* Sem botão de refazer (dono, 24/11/2026): o job diário
+                  completa os itens que ficaram sem a previsão. */}
+              <p
+                className="text-xs text-zinc-500"
+                data-booking-lot-forecast-auto
               >
-                <input type="hidden" name="lotId" value={lot.id} />
-                <SubmitButton
-                  variant="secondary"
-                  pendingText={t("bookingForecast.lot.redoPending")}
-                >
-                  {t("bookingForecast.lot.redo")}
-                </SubmitButton>
-              </form>
+                {t("bookingForecast.lot.auto")}
+              </p>
             </Card>
           ) : null}
 
@@ -1375,16 +1380,22 @@ export default async function BookingLotPage({
                 labels={bulkFillLabels(t)}
               >
                 {/* Seleção direto do book (dono, 23/11/2026): os itens
-                    marcados vão para a Seleção de itens como um grupo. */}
-                <div
-                  className="mb-2 flex flex-wrap items-center gap-2"
-                  data-booking-to-selection
-                >
-                  <BulkSelectionLink max={GROUP_MAX} />
-                  <span className="text-xs text-zinc-500">
-                    {t("bookWork.toSelection.hint")}
-                  </span>
-                </div>
+                    marcados vão para a Seleção de itens como um grupo, ou
+                    são recusados (ficam trabalhados; 24/11/2026). Só com o
+                    book fora do rascunho: antes disso ele ainda não é
+                    trabalhado. */}
+                {bookingLotLockable(lot.status) ? (
+                  <div
+                    className="mb-2 flex flex-wrap items-center gap-2"
+                    data-booking-to-selection
+                  >
+                    <BulkSelectionLink max={GROUP_MAX} />
+                    <BulkRefuseButton />
+                    <span className="text-xs text-zinc-500">
+                      {t("bookWork.toSelection.hint")}
+                    </span>
+                  </div>
+                ) : null}
                 {itemsTable}
               </BookingBulkProvider>
             ) : (

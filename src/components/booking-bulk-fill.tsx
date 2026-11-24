@@ -14,6 +14,7 @@ import { bulkValueValid, type BookingItemField } from "@/lib/booking-lots";
 import {
   bulkSetBookingItemsAction,
   bulkSetPartnerBookingItemsAction,
+  refuseBookingItemsAction,
   type BulkFillResult,
 } from "@/app/app/actions/booking-lots";
 import { cx, inputDenseClass } from "@/components/ui";
@@ -55,6 +56,10 @@ export interface BulkFillLabels {
   toSelectionNone?: string;
   /** "Até {n} itens por vez." */
   toSelectionMax?: string;
+  /** "Recusar os marcados", a pergunta ("Recusar {n} item(ns)?") e os avisos. */
+  refuse?: string;
+  refuseAsk?: string;
+  refusing?: string;
   /** Por que "Carregar" está desligado. */
   disabled: string;
   invalid: string;
@@ -88,6 +93,7 @@ type Status =
     };
 
 interface BulkContext {
+  lotId: string;
   labels: BulkFillLabels;
   selected: ReadonlySet<string>;
   toggle: (id: string, on: boolean) => void;
@@ -237,6 +243,7 @@ export function BookingBulkProvider({
   };
 
   const ctx: BulkContext = {
+    lotId,
     labels,
     selected: marked,
     toggle: (id, on) =>
@@ -571,5 +578,55 @@ export function BulkStatus() {
         ×
       </button>
     </div>
+  );
+}
+
+/**
+ * "Recusar os marcados" (dono, 24/11/2026): os itens marcados não vão para a
+ * seleção e ficam trabalhados. Pergunta antes; o erro aparece ao lado. Só na
+ * tela da Wellmix, com o book já fora do rascunho.
+ */
+export function BulkRefuseButton() {
+  const { lotId, selected, labels, toggle } = useBulk();
+  const [busy, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const ids = [...selected];
+  const off = !ids.length || busy;
+  return (
+    <span className="inline-flex items-center gap-2">
+      <button
+        type="button"
+        disabled={off}
+        title={ids.length ? undefined : labels.toSelectionNone}
+        onClick={() => {
+          const ask = (labels.refuseAsk ?? "").replace(
+            "{n}",
+            String(ids.length),
+          );
+          if (ask && !window.confirm(ask)) return;
+          setError(null);
+          start(async () => {
+            try {
+              const result = await refuseBookingItemsAction(lotId, ids);
+              if (!result.ok) return setError(result.message);
+              // Recusados: saem da marcação.
+              for (const id of ids) toggle(id, false);
+            } catch {
+              setError(labels.offline);
+            }
+          });
+        }}
+        className="inline-flex min-h-9 items-center justify-center rounded-md border border-red-300 bg-white px-3 text-sm font-semibold text-red-800 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-500"
+        aria-busy={busy}
+        data-bulk-refuse={ids.length}
+      >
+        {busy ? labels.refusing : labels.refuse} ({ids.length})
+      </button>
+      {error ? (
+        <span className="text-xs text-red-700" role="alert">
+          {error}
+        </span>
+      ) : null}
+    </span>
   );
 }

@@ -69,6 +69,13 @@ export const pt = {
   "bookWork.supplierSearch": "Buscar ou digitar o nome",
   "bookWork.supplier.pending": "Supplier sem cadastro: {name}",
   "bookWork.supplier.register": "Cadastrar como fornecedor do book",
+  "bookWork.refuse": "Recusar os marcados",
+  "bookWork.refuse.ask":
+    "Recusar {n} item(ns)? Eles não vão para a seleção e ficam como trabalhados.",
+  "bookWork.refuse.pending": "Recusando…",
+  "bookWork.worked.refused": "Recusado",
+  "bookWork.error.booking_refuse_draft":
+    "Só dá para selecionar ou recusar itens depois que o book deixa de ser rascunho.",
   "bookWork.itemType": "Tipo de item",
   "bookWork.itemTypeHint":
     "Ex.: vidro, plástico, utilidades. Use o mesmo nome dos outros books do mesmo tipo.",
@@ -88,7 +95,7 @@ export const pt = {
   "bookWork.toSelection.none": "Marque um ou mais itens na tabela.",
   "bookWork.toSelection.max": "Até {n} itens por vez.",
   "bookWork.toSelection.hint":
-    "Marque um ou vários itens e leve direto para a Seleção de itens.",
+    "Marque um ou vários itens: leve para a Seleção de itens ou recuse (o recusado conta como trabalhado).",
   "bookWork.lock": "Travar para mim",
   "bookWork.unlock": "Liberar",
   "bookWork.unlock.type": "Liberar os books deste tipo",
@@ -202,6 +209,13 @@ export const en: typeof pt = {
   "bookWork.supplierSearch": "Search or type the name",
   "bookWork.supplier.pending": "Supplier not registered: {name}",
   "bookWork.supplier.register": "Register as the book's supplier",
+  "bookWork.refuse": "Refuse the ticked items",
+  "bookWork.refuse.ask":
+    "Refuse {n} item(s)? They will not go to the selection and will count as worked.",
+  "bookWork.refuse.pending": "Refusing…",
+  "bookWork.worked.refused": "Refused",
+  "bookWork.error.booking_refuse_draft":
+    "Items can only be selected or refused after the book is no longer a draft.",
   "bookWork.itemType": "Item type",
   "bookWork.itemTypeHint":
     "E.g. glass, plastic, housewares. Use the same name as the other books of the same type.",
@@ -221,7 +235,7 @@ export const en: typeof pt = {
   "bookWork.toSelection.none": "Tick one or more items in the table.",
   "bookWork.toSelection.max": "Up to {n} items at a time.",
   "bookWork.toSelection.hint":
-    "Tick one or several items and take them straight to Item selection.",
+    "Tick one or several items: take them to Item selection or refuse them (a refused item counts as worked).",
   "bookWork.lock": "Lock for me",
   "bookWork.unlock": "Release",
   "bookWork.unlock.type": "Release the books of this type",
@@ -326,6 +340,12 @@ export const zh: typeof pt = {
   "bookWork.supplierSearch": "搜索或输入名称",
   "bookWork.supplier.pending": "Supplier 尚未登记：{name}",
   "bookWork.supplier.register": "登记为该 Book 的供应商",
+  "bookWork.refuse": "拒绝勾选的产品",
+  "bookWork.refuse.ask": "拒绝 {n} 个产品吗？它们不会进入选品，并计为已处理。",
+  "bookWork.refuse.pending": "正在拒绝…",
+  "bookWork.worked.refused": "已拒绝",
+  "bookWork.error.booking_refuse_draft":
+    "Book 不再是草稿后才能选择或拒绝产品。",
   "bookWork.itemType": "产品类型",
   "bookWork.itemTypeHint":
     "例如：玻璃、塑料、日用品。同类型的 Book 请使用相同的名称。",
@@ -344,7 +364,8 @@ export const zh: typeof pt = {
   "bookWork.toSelection": "选择勾选的产品",
   "bookWork.toSelection.none": "请在表格中勾选一个或多个产品。",
   "bookWork.toSelection.max": "每次最多 {n} 个产品。",
-  "bookWork.toSelection.hint": "勾选一个或多个产品，直接带到选品页面。",
+  "bookWork.toSelection.hint":
+    "勾选一个或多个产品：带到选品页面，或拒绝（被拒绝的产品计为已处理）。",
   "bookWork.lock": "锁定给我",
   "bookWork.unlock": "释放",
   "bookWork.unlock.type": "释放该类型的 Book",

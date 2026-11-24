@@ -814,6 +814,35 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(milestones).toContainText("MOQ confirmado (peças)");
   await expect(milestones).toContainText("Certificado (Inmetro)");
   const prep = page.locator('[data-stage-tasks="PREPARATION"]');
+  // Pedido novo com o que falta no Cadastro (dono, 24/11/2026, opção 1): o
+  // pedido aparece em Pedido > Pedidos, "Todos no passo", com o item de
+  // Cadastros → Produtos, e o "Ver" abre o pedido.
+  const orderId = orderUrl.split("/").pop()!;
+  const orderNumber = (await page.locator("h1").first().textContent())?.match(
+    /#(\d+)/,
+  )?.[1];
+  await page.goto(`/app/flow/order/orders?tab=all&q=%23${orderNumber}`);
+  const stepRow = page.locator(`[data-flow-all-order="${orderId}"]`);
+  await expect(stepRow.locator("[data-flow-all-elsewhere]")).toContainText(
+    "Cadastros → Produtos",
+  );
+  await expect(stepRow.locator("[data-flow-all-view]")).toHaveAttribute(
+    "href",
+    `/app/orders/${orderId}`,
+  );
+  // Linha fina (dono, 24/11/2026): o aberto numa linha só, sem o nome do
+  // produto; o "ver mais" mostra o produto e o "ver menos" recolhe.
+  const openCell = stepRow.locator("[data-flow-all-open]");
+  await expect(openCell.locator('[data-clamp-lines="1"]')).toBeVisible();
+  const rowBox = await stepRow.boundingBox();
+  expect(rowBox?.height ?? 999).toBeLessThan(72);
+  await expect(openCell.locator("[data-clamp-detail]")).toBeHidden();
+  await openCell.locator("[data-clamp-toggle]").click();
+  await expect(openCell.locator("[data-clamp-detail]")).toContainText(
+    `Copo de vidro ${TAG}`,
+  );
+  await openCell.locator("[data-clamp-toggle]").click();
+  await expect(openCell.locator("[data-clamp-detail]")).toBeHidden();
 
   // 7. Visão do fornecedor (dono, 13/11/2026): na Preparação, só a faca, a
   // foto em alta e o prazo de cada produto, com a ajuda falando delas; o

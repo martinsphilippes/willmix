@@ -462,15 +462,12 @@ export default async function SupplierRequestPage({
   const deal = r.supplierCanDo === "yes" ? agreedConditions(r) : null;
   const negotiated =
     wellmix && seesPrice && deal && chosen
-      ? await forecastNegotiatedItem(
-          chosen,
-          deal,
-          user.id,
-          lot?.incoterm ?? null,
-        ).catch((error: unknown) => {
-          console.error("forecastNegotiatedItem", error);
-          return null;
-        })
+      ? await forecastNegotiatedItem(chosen, deal, user.id).catch(
+          (error: unknown) => {
+            console.error("forecastNegotiatedItem", error);
+            return null;
+          },
+        )
       : null;
   /** Valor negociado, com o do booking riscado ao lado quando mudou. */
   const changed = (now: string, before: string, key: string) =>
