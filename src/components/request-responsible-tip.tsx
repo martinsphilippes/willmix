@@ -1,5 +1,6 @@
 import type { Translate } from "@/i18n";
 import {
+  partnerLogins,
   responsibleLine,
   type Person,
   type Responsible,
@@ -298,6 +299,36 @@ export function ResponsibleTip({
     >
       <ResponsibleDetail r={r} t={t} />
     </InfoTip>
+  );
+}
+
+/**
+ * O login de quem vai agir, à vista (dono, 24/11/2026; docs/TURNS.md): na
+ * vez do fornecedor (responder, enviar a amostragem), a linha "Login: …"
+ * embaixo de quem age, na tabela da cotação e na lista de cotações, sem
+ * precisar abrir o balão. Só para quem vê o login (o administrador).
+ */
+export function ResponsibleLogins({
+  r,
+  t,
+  className,
+}: {
+  r: Responsible | null | undefined;
+  t: Translate;
+  className?: string;
+}) {
+  const logins = partnerLogins(r);
+  if (!logins.length) return null;
+  return (
+    <span
+      className={cx(
+        "mt-0.5 block whitespace-normal break-words text-[11px] text-zinc-600",
+        className,
+      )}
+      data-responsible-logins=""
+    >
+      {t("reqList.resp.logins", { list: logins.join(", ") })}
+    </span>
   );
 }
 

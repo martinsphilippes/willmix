@@ -83,17 +83,14 @@ export function BookingLotsTable({
   rows,
   labels,
   showSignals = true,
-  supervisor = false,
 }: {
   rows: BookingLotRow[];
   labels: BookingLotsTableLabels;
   /**
-   * Sinais do Superplan: falso sem "Ver preço de compra" (dono, 15/11/2026;
+   * Sinais da previsão de preço: falso sem "Ver preço de compra" (dono, 15/11/2026;
    * docs/LINHA_DE_VISAO.md, seção 7).
    */
   showSignals?: boolean;
-  /** Supervisiona os books: libera a trava de qualquer pessoa. */
-  supervisor?: boolean;
 }) {
   const columns = showSignals
     ? COLUMNS
@@ -181,7 +178,7 @@ export function BookingLotsTable({
             {row.lockId ? (
               // A trava pelo tipo é liberada na faixa de cima (vale para
               // todos os books do tipo).
-              (row.lockMine || supervisor) && !row.lockByType ? (
+              row.lockCanRelease && !row.lockByType ? (
                 <form action={unlockBookingAction}>
                   <input type="hidden" name="lockId" value={row.lockId} />
                   <button
@@ -193,7 +190,8 @@ export function BookingLotsTable({
                   </button>
                 </form>
               ) : null
-            ) : row.status !== "cancelled" ? (
+            ) : // Só depois do rascunho (dono, 24/11/2026).
+            ["closed", "in_progress", "done"].includes(row.status) ? (
               <form action={lockBookingLotAction}>
                 <input type="hidden" name="lotId" value={row.id} />
                 <button
@@ -211,9 +209,21 @@ export function BookingLotsTable({
         return row.lockId ? (
           <span className="inline-flex flex-col items-end gap-0.5">
             <span>{row.heldText}</span>
-            <Badge tone={row.heldLate ? "danger" : "success"}>
-              {row.heldLate ? labels.slaLate : labels.slaOk}
-            </Badge>
+            {/* Só a data e a hora do fim do prazo, pequenas: verde no prazo,
+                vermelha atrasada (dono, 24/11/2026; antes o selo "No prazo
+                (3 h)", que quebrava em três linhas). O texto do prazo fica
+                no balão e para o leitor de tela. */}
+            <span
+              className={cx(
+                "whitespace-nowrap text-[11px] leading-4 tabular-nums",
+                row.heldLate ? "text-red-700" : "text-emerald-700",
+              )}
+              title={row.heldLate ? labels.slaLate : labels.slaOk}
+              aria-label={`${row.heldLate ? labels.slaLate : labels.slaOk}: ${row.heldDueText}`}
+              data-booking-sla={row.heldLate ? "late" : "ok"}
+            >
+              {row.heldDueText}
+            </span>
           </span>
         ) : (
           muted

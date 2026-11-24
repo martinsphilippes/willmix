@@ -544,7 +544,9 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 
 ## Superplan: viabilidade do produto e preço de venda
 
-- **Pedido do dono**: uma tela Superplan em Pedidos, no lugar da planilha SuperPlan, para avaliar se um produto é viável e por quanto a Wellmix deve vender. Especificação completa em `docs/SUPERPLAN.md`.
+> Histórico. A tela Superplan saiu em 24/11/2026 (decisão do dono; ver "Superplan removido: preços pela API de preço do Sankhya" no fim deste arquivo).
+
+- **Pedido do dono**: uma tela Superplan em Pedidos, no lugar da planilha SuperPlan, para avaliar se um produto é viável e por quanto a Wellmix deve vender. (A especificação saiu junto com a tela; hoje, docs/BOOKING.md, "Previsão de preço do item".)
 - **Tela** `/app/superplan` (só o administrador; `superplan` em `ADMIN_ONLY`): escolher um produto do cadastro preenche preço, caixa, peso, volume (ou medidas da caixa) e II/IPI pelo NCM; câmbio do dia, container, despesas padrão e tipo de negócio vêm do sistema. A conta é refeita a cada tecla (`computeSuperplan`, `src/lib/superplan.ts`) e mostra: caixas e peças por container, custo do container item a item, custo por peça, preço mínimo (custo × markup), preços de tabela, atacado, loja e WD, impostos e lucro da venda, e o sinal verde/amarelo/vermelho com o preço e o markup para bater a meta ("Testar esse preço"). "Como o Superplan calcula" explica cada passo na própria tela.
 - **Correções em relação à planilha** (decisão do dono): impostos da importação sobre o valor real da compra e da venda sobre o preço cheio; AFRMM, THC, taxa do CE e frete rodoviário uma vez só; só caixas inteiras; o tipo de negócio preenche markup, comissão, despesas e meta; os impostos pagos na importação viram crédito na venda. No exemplo da planilha, o custo por peça vai de R$ 26,16 para R$ 30,67, e o tipo UD-China-Mercado (markup 1,8) dá 16% de lucro contra a meta de 22% (precisa de markup 2,05).
 - **Parâmetros** (embaixo da tela, só o administrador grava; `saveSuperplanParamsAction`): os 30 tipos de negócio da planilha, despesas padrão por container (THC e CE marcados "no valor aduaneiro"), frete e frete rodoviário padrão, dólar futuro (oficial + R$ 0,25), câmbio do frete (+3,02%), AFRMM (8% + R$ 700), fatores de preço e impostos da venda (ICMS efetivo 1,5%, PIS 1,65%, COFINS 7,6%, IR 2,6%, CSLL 1,08%, para acertar com o contador). Linha sem nome sai; linha vazia do fim cria uma nova; valor inválido não grava nada e aponta o campo; antes e depois na auditoria (`settings.superplan`). Configurações → Tributos ganhou o link para eles.
@@ -552,7 +554,9 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 
 ## Superplan: faca, MOQ, prazo e foto em alta logo depois da viabilidade
 
-- **Pedido do dono**: a faca (die-cut) vem logo depois da análise de viabilidade no Superplan. Do próprio Superplan abre-se a faca para o fornecedor e, no mesmo ato, a RFQ com o fornecedor ganho, a partir da simulação. O fornecedor envia faca, MOQ, prazo e foto em alta; a proposta espera os quatro. Fluxo novo, ao lado da solicitação comum, que não muda. Especificação em `docs/SUPERPLAN.md`, seção 11.
+> Histórico. A tela Superplan saiu em 24/11/2026 (decisão do dono; ver "Superplan removido: preços pela API de preço do Sankhya" no fim deste arquivo).
+
+- **Pedido do dono**: a faca (die-cut) vem logo depois da análise de viabilidade no Superplan. Do próprio Superplan abre-se a faca para o fornecedor e, no mesmo ato, a RFQ com o fornecedor ganho, a partir da simulação. O fornecedor envia faca, MOQ, prazo e foto em alta; a proposta espera os quatro. Fluxo novo, ao lado da solicitação comum, que não muda. (A especificação saiu junto com a tela.)
 - **Superplan**: cartão "Viável? Abrir faca e RFQ com o fornecedor" (só o administrador, com produto do cadastro): fornecedor ganho (os do produto primeiro), cliente ou compra para estoque e quantidade (padrão: as peças do container). Com prejuízo ou conta incompleta, não abre. O servidor refaz a conta com os parâmetros do sistema (`openSuperplanRfq`, `src/lib/services/superplan-rfq.ts`).
 - **Cotação**: cartão "Superplan: faca, MOQ, prazo e foto em alta" (`#superplan`) para o fornecedor ganho e a Wellmix. MOQ e prazo vêm sugeridos (cadastro e últimas cotações) e só contam depois de confirmados; faca vai para o briefing da embalagem (versões, aviso à agência) e a foto em alta para as fotos da cotação (`hd`). Com os quatro, a cotação fica respondida e a Wellmix é avisada (alerta se MOQ ou prazo mudaram).
 - **Bloqueio**: `selectQuote` e `submitForApproval` recusam (`superplan_items_missing`) enquanto faltar algum item. Etapas da solicitação: a faca vem logo depois da "Solicitação nova".
@@ -648,10 +652,10 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 ## Booking: os produtos antes da solicitação
 
 - **Pedido do dono**: uma tela Booking, alimentada pela ficha técnica importada, em que cada linha da ficha é um produto (não uma variação), com filtro em qualquer coluna; é o que acontece antes da solicitação. Especificação completa em `docs/BOOKING.md`.
-- **Tela** `/app/booking` (Pedidos → Booking; Wellmix com as funções comprador, gerente de produto, planner, cadastro e diretorias) e `/app/booking/[id]`: uma linha por produto com tudo o que veio da planilha, cartões das etapas (Novo, Em análise, Aprovado, Oferecido, Reservado, Virou solicitação, Descartado), filtro e ordenação em toda coluna (o filtro mora no endereço), 100 por página, e a barra de ações para as linhas marcadas (cliente e quantidades, mover, responsável, analisar no Superplan, gerar solicitação).
+- **Tela** `/app/booking` (Pedidos → Booking; Wellmix com as funções comprador, gerente de produto, planner, cadastro e diretorias) e `/app/booking/[id]`: uma linha por produto com tudo o que veio da planilha, cartões das etapas (Novo, Em análise, Aprovado, Oferecido, Reservado, Virou solicitação, Descartado), filtro e ordenação em toda coluna (o filtro mora no endereço), 100 por página, e a barra de ações para as linhas marcadas (cliente e quantidades, mover, responsável, analisar no Superplan, gerar solicitação; este Booking saiu em 11/11/2026 e o Superplan em 24/11/2026).
 - **Importação**: a ficha técnica ganhou a opção "Mandar para o Booking (um produto por linha)", que passa a ser a primeira e a marcada para quem abre o Booking; as outras duas continuam. Linhas com o mesmo código e só a cor diferente são um produto. O resultado de uma importação antiga ganhou "Mandar para o Booking" (relê o arquivo guardado; o produto com variações fica como está).
 - **Vitrine**: produto que a planilha criou fica fora de tudo o que o cliente vê (vitrine, página do produto, carrinho, nova solicitação, busca por foto, fotos e documentos, kit novo) até ser aprovado no Booking. Produto que já existia entra como Aprovado (continua na vitrine). Só acrescenta restrição; produto sem linha no Booking segue igual.
-- **Superplan**: ganhou o peso líquido ao lado do bruto, o peso bruto estimado (líquido + folga da embalagem, parâmetro novo, 8%) quando a ficha não traz o bruto, a Média do despachante como informação (não entra em conta nenhuma) e "Gravar no Booking". A mesma função monta a simulação na tela e na análise de várias linhas.
+- **Superplan** (saiu em 24/11/2026): ganhou o peso líquido ao lado do bruto, o peso bruto estimado (líquido + folga da embalagem, parâmetro novo, 8%) quando a ficha não traz o bruto, a Média do despachante como informação (não entra em conta nenhuma) e "Gravar no Booking". A mesma função monta a simulação na tela e na análise de várias linhas.
 - **Banco**: tabela nova `bookings` (aditiva). Nenhuma coluna nova nas tabelas que já existiam; nenhuma tela, rota, campo ou dado saiu.
 - **Removido (decisão do dono, 11/11/2026, exceção autorizada à evolução aditiva)**: o Booking antigo inteiro saiu (telas `/app/booking/products` e `/app/booking/[id]`, "Mandar para o Booking" na importação, "Gravar no Booking" no Superplan, bloco do Booking na Control Tower, preço desejado e fotos do Booking na cotação, tabela `bookings` no esquema). Vale o Booking por planilha (docs/BOOKING.md, docs/SUPPLIER_REQUESTS.md).
 
@@ -856,7 +860,7 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 
 ## Barra da Wellmix fixa no alto em todas as telas
 
-- **Pedido do dono** (11/11/2026): o cabeçalho do portal (marca, idioma, conta e menu) fica fixo no alto e não some ao rolar (`sticky top-0` em `src/app/app/layout.tsx`). A altura dele fica na variável `--wm-header` (`globals.css`: uma faixa no celular, duas a partir do tablet), usada para os saltos de seção caírem abaixo dele (`scroll-padding-top`) e para os painéis laterais que acompanham a rolagem (Control Tower, Superplan, vitrine e carrinho) ficarem abaixo dele. Na impressão o cabeçalho volta a ser comum.
+- **Pedido do dono** (11/11/2026): o cabeçalho do portal (marca, idioma, conta e menu) fica fixo no alto e não some ao rolar (`sticky top-0` em `src/app/app/layout.tsx`). A altura dele fica na variável `--wm-header` (`globals.css`: uma faixa no celular, duas a partir do tablet), usada para os saltos de seção caírem abaixo dele (`scroll-padding-top`) e para os painéis laterais que acompanham a rolagem (Control Tower, vitrine e carrinho; e o Superplan, até sair em 24/11/2026) ficarem abaixo dele. Na impressão o cabeçalho volta a ser comum.
 
 ## Outros parceiros: Trading, Factory, Supplier e GP, tipos criados no painel e Gestão de telas
 
@@ -1303,15 +1307,15 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   | Mensagens                       | 8,6 MB  | 0,77 s | todas as empresas e logins sem empresa      |
   | Containers                      | 6,7 MB  | 0,51 s | clientes                                    |
   | Marketing (filtro)              | 5,3 MB  | 0,49 s | produtos                                    |
-  | Superplan                       | 4,1 MB  | 0,30 s | produtos                                    |
+  | Superplan (saiu em 24/11/2026)  | 4,1 MB  | 0,30 s | produtos                                    |
   | Produtos (filtro de fornecedor) | 2,0 MB  | 0,36 s | fornecedores                                |
 
 - **O que mudou.** Os seletores viraram campos com busca (a partir de 2 letras, até 20 resultados), com o mesmo `name` de antes num campo escondido: formulários, filtros pelo endereço e Server Actions não mudam.
   - Componente único `SearchPicker` (`src/components/search-picker.tsx`); o `PartyPicker` passa a usá-lo, com o mesmo comportamento.
-  - Produto: `ProductPicker` e a rota `/api/products/search` (nome ou código; o código igual ao digitado vem primeiro). Cada campo oferece o mesmo que a lista antiga: todos os produtos no filtro do Marketing, os ativos no Superplan, os ativos fora do Booking na nova solicitação e no novo kit. Cada escopo só para quem abre a tela que o usa; o cliente só busca no catálogo, e só com "Cliente pode criar solicitação" ligado (`src/lib/services/product-search.ts`).
+  - Produto: `ProductPicker` e a rota `/api/products/search` (nome ou código; o código igual ao digitado vem primeiro). Cada campo oferece o mesmo que a lista antiga: todos os produtos no filtro do Marketing, os ativos no Superplan (tela que saiu em 24/11/2026), os ativos fora do Booking na nova solicitação e no novo kit. Cada escopo só para quem abre a tela que o usa; o cliente só busca no catálogo, e só com "Cliente pode criar solicitação" ligado (`src/lib/services/product-search.ts`).
   - Nova solicitação: a ficha do produto escolhido (nome, descrição, especificação, fotos, estoque, mínimo e variações) vem de `/api/products/fill`, com as mesmas regras de antes (`src/lib/services/request-product-fill.ts`); a do produto que já chega escolhido (vitrine, busca por foto, programação de compra) vem pronta. Enquanto a ficha chega, a linha mostra "Carregando a ficha do produto…"; se não chegar, o campo volta vazio com o aviso. O cliente da Wellmix é escolhido por busca, e "Compra para estoque (sem cliente)" virou uma caixa ao lado (mesmo valor no campo `customerId`). O solicitante continua uma lista (são poucos logins de cliente), montada sem ler os 26 mil clientes.
   - Mensagens: o destinatário da conversa nova é buscado em `/api/messages/targets` (as mesmas empresas e logins da lista antiga, com o tipo ao lado do nome; valor `party:<id>` ou `user:<id>`).
-  - Containers e novo kit: cliente por busca; a empresa interna "Estoque Wellmix" continua escolhível, como na lista antiga (`includeStock`). Marketing: produto do filtro por busca e nomes dos produtos só dos kits mostrados. Superplan: escolher na busca carrega a conta, como antes. Produtos: fornecedor do filtro por busca; a lista lê só id e nome dos fornecedores.
+  - Containers e novo kit: cliente por busca; a empresa interna "Estoque Wellmix" continua escolhível, como na lista antiga (`includeStock`). Marketing: produto do filtro por busca e nomes dos produtos só dos kits mostrados. Superplan: escolher na busca carregava a conta (a tela saiu em 24/11/2026). Produtos: fornecedor do filtro por busca; a lista lê só id e nome dos fornecedores.
   - Fotos do catálogo de poucos produtos (o escolhido, uma página da vitrine) são lidas só desses produtos, e não a tabela inteira de fotos (mesmo resultado).
 - **Depois** (mesmo servidor e base; mediana de 3 leituras):
 
@@ -1322,13 +1326,13 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
   | Mensagens             | 69 KB  | 0,08 s |
   | Containers            | 80 KB  | 0,10 s |
   | Marketing             | 94 KB  | 0,12 s |
-  | Superplan             | 474 KB | 0,12 s |
+  | Superplan (saiu)      | 474 KB | 0,12 s |
   | Produtos              | 529 KB | 0,28 s |
 
   As buscas: 30–70 ms locais; no banco de produção (só leitura), 24–52 ms por consulta de produto e até 102 ms de empresa, sem índice novo.
 
 - **Não mudou:** o que é gravado, as ações, as permissões das telas, as regras do catálogo (Booking, desativados) e do estoque (o cliente vê só "em estoque"). Quem é de fora com a tela Containers (Gestão de telas) busca só clientes, o que a lista da tela mostrava.
-- Testes: `tests/unit/search-pickers.test.ts` (escopos, quem busca, código exato primeiro, ficha, destinatário), `tests/unit/search-routes.test.ts` (quem cada rota atende) e `tests/e2e/search-pickers.spec.ts` (novo kit, nova solicitação com estoque e ficha, Superplan, filtro de fornecedor, Containers e Mensagens); o caminho principal escolhe o produto da nova solicitação pela busca.
+- Testes: `tests/unit/search-pickers.test.ts` (escopos, quem busca, código exato primeiro, ficha, destinatário), `tests/unit/search-routes.test.ts` (quem cada rota atende) e `tests/e2e/search-pickers.spec.ts` (novo kit, nova solicitação com estoque e ficha, Superplan (cena que saiu com a tela em 24/11/2026), filtro de fornecedor, Containers e Mensagens); o caminho principal escolhe o produto da nova solicitação pela busca.
 
 ## Seleção de itens: abas "Blocos Sugeridos" e "Com Solicitação Aberta"
 
@@ -1543,7 +1547,7 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **De onde vem o bruto**: a mesma fonte do líquido em cada tela.
   - **Seleção de itens**: G.W./PC do item do Book.
   - **Nova solicitação**: a variação, senão o cadastro do produto (`grossWeightKg`), senão a ficha mestre (`grossWeightPcKg`).
-  - **Sem estimativa**: a estimativa do bruto pelo líquido (`estimatedGrossKg`, só no Superplan) não entra aqui.
+  - **Sem estimativa**: a estimativa do bruto pelo líquido (`estimatedGrossKg`, só no Superplan, que saiu em 24/11/2026) não entra aqui.
 - **Mudou na faixa**: a faixa não rola mais para o lado. Grupos e campos quebram a linha quando não cabem, e o líquido e o bruto quebram juntos.
   - Isso troca a opção A, decidida pelo dono em 15/11/2026, pela B, que ele pediu agora.
   - A sombra da rolagem saiu de `src/app/globals.css`.
@@ -1921,6 +1925,27 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Aditivo**: um campo novo na lista (`ListedDraft.canContinue`) e dois textos (o aviso no formulário e o aviso nos detalhes, reescrito). Nada é apagado: nenhuma tela, rota, campo ou dado muda. Sem mudança no banco.
 - **Não mudou**: quem não é administrador continua só com os seus rascunhos; a Reposição continua só de quem salvou.
 - Testes: `tests/unit/request-screens.test.ts`, `tests/unit/request-draft-details.test.ts` e `tests/e2e/request-draft-details.spec.ts`.
+
+## A ação da vez leva ao lugar de agir: amostragem e negociação (dono, 24/11/2026)
+
+- **Pedido do dono** (24/11/2026, print da cotação nº 59842): em "Validar a amostragem" tinha que ser possível clicar e ir ao lugar certo para validar a amostragem.
+- **Como ficou**: nos passos da solicitação ao fornecedor, o texto da ação é um link para o mesmo lugar da pendência (`supplierRequestStepHref`):
+  - responder ou decidir abrem a solicitação;
+  - enviar ou validar a amostragem abrem o produto no quadro da amostragem.
+- **Onde**: na lista de cotações (Wellmix; o fornecedor, quando a vez é dele), na coluna Vez da tabela dos produtos e na Próxima ação de Encomendas (com `NextStep.supplierRequestId`; só para quem abre a Cotação). Detalhes em docs/TURNS.md, seção 3.
+- **Correção**: na lista de cotações do fornecedor, a vez mostrava a chave crua do texto ("…turn.[object Object]") desde o PR #675; voltou a mostrar a parte.
+- **Aditivo**: campos opcionais `NextStep.supplierRequestId` e `PurchaseProgress.supplierRequests[].id`; nenhuma tela, rota, campo ou dado muda; sem mudança no banco.
+- Testes: `tests/unit/supplier-request-sampling.test.ts` (o link igual ao da pendência), `tests/unit/turns.test.ts` (o passo com a solicitação certa), `tests/unit/purchase-quote.test.ts` (Encomendas com a solicitação da vencedora) e `tests/e2e/booking-supplier-request.spec.ts` (a Wellmix clica em "Validar a amostragem" e cai no quadro da amostragem).
+
+## Superplan removido: preços pela API de preço do Sankhya (dono, 24/11/2026)
+
+- **Pedido do dono** (24/11/2026): tirar o Superplan inteiro e usar em todo lugar a API de preço do Sankhya que a Nova solicitação já usa (cotação V2 `FN_AD_ENC_COTACAO_V2_WELL` e a inversa para o preço máximo de compra; `src/lib/integrations/price-forecast.ts`).
+- **Removido (exceção autorizada à evolução aditiva)**: a tela `/app/superplan` (calculadora e parâmetros), o "Abrir o Superplan" em Configurações, a tela `superplan` no controle de acesso, a conta do portal (`src/lib/superplan*.ts`, `superplan-analysis.ts`) e a reanálise dos books pela tabela fiscal.
+- **Book**: ao fechar o book, no "Refazer a previsão" e quando o NCM de um item muda, cada item vai à API com a própria ficha e o NCM (nunca o CODPROD). O resultado fica em `booking_items.analysis` com `source: "price_forecast"` (`src/lib/booking-forecast.ts`, `src/lib/services/booking-price-forecast.ts`), só para a Wellmix com "Ver preço de compra". Os retratos antigos, sem `source`, não aparecem mais (a tela pede para refazer a previsão).
+- **Negociação**: a estimativa da contraproposta chama `/api/price-forecast/booking-item` (ida: custo e venda prevista; volta: preço máximo de compra para um preço de venda desejado).
+- **Sem o Sankhya configurado**: nada é previsto (modo manual).
+- **Fica**: o valor `superplan` de `requests.origin`, só para ler as solicitações antigas ("Viabilidade (antiga)").
+- Detalhes em docs/BOOKING.md, "Previsão de preço do item".
 
 ## Venda ao cliente: preços WD e Wellmix pela API, caixas, cubagem e containers (dono, 24/11/2026)
 

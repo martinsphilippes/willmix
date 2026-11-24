@@ -204,6 +204,48 @@ describe("encomenda: a ação e quem está com a vez", () => {
     });
   });
 
+  it("o passo leva à solicitação ao fornecedor com a vez (dono, 24/11/2026)", () => {
+    const approved = { status: "approved" as const, phase: "choose" as const };
+    const at = (list: PurchaseProgress["supplierRequests"]) =>
+      step({ status: "SUPPLIER_SELECTED", purchase: quote(approved, list) });
+    // Duas solicitações: a que tem a vez é a do link (não a primeira).
+    expect(
+      at([
+        { id: "sr-a", status: "approved", negotiation: null, sampling: null },
+        {
+          id: "sr-b",
+          status: "approved",
+          negotiation: null,
+          sampling: "wellmix",
+        },
+      ]),
+    ).toEqual({
+      key: "sampling_validate",
+      who: "wellmix",
+      supplierRequestId: "sr-b",
+    });
+    expect(
+      at([
+        {
+          id: "sr-c",
+          status: "answered",
+          negotiation: "wellmix",
+          sampling: null,
+        },
+      ]),
+    ).toEqual({
+      key: "supplier_decide",
+      who: "wellmix",
+      supplierRequestId: "sr-c",
+    });
+    // O pedido de compra não é de uma solicitação só: sem o link.
+    expect(
+      at([
+        { id: "sr-d", status: "approved", negotiation: null, sampling: null },
+      ]),
+    ).toEqual({ key: "purchase_order", who: "wellmix" });
+  });
+
   it("todo próximo passo tem texto nos três idiomas", () => {
     const keys = [
       "new",

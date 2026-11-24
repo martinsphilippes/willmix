@@ -521,7 +521,7 @@ export interface BookingLotRow {
   itemCount: number;
   /** Itens com algum campo obrigatório faltando. */
   pendingItems: number;
-  /** Sinais da análise do Superplan. */
+  /** Sinais da previsão de preço. */
   viable: number;
   below: number;
   loss: number;
@@ -540,9 +540,13 @@ export interface BookingLotRow {
   /** A trava: id, se é de quem vê, se é do tipo de item, há quanto tempo e o prazo. */
   lockId: string | null;
   lockMine: boolean;
+  /** Quem vê pode liberar (o gestor de quem travou ou quem supervisiona). */
+  lockCanRelease: boolean;
   lockByType: boolean;
   heldMinutes: number | null;
   heldText: string;
+  /** Até quando fica no prazo ("24/11 19:52"; vazio sem trava). */
+  heldDueText: string;
   heldLate: boolean;
 }
 
@@ -646,3 +650,69 @@ export function bookingRecipientId(
 ): string | null {
   return lot.partnerId ?? lot.supplierId ?? null;
 }
+
+/* ------------------------------------------------------------------------ */
+/* Fabricante: a Fábrica do book × a planilha, linha a linha                 */
+/* ------------------------------------------------------------------------ */
+
+/*
+ * Dono, 24/11/2026 (docs/BOOKING.md, "Fábrica, Fornecedor e Fabricante"): o
+ * que a planilha chama de supplier é a Fábrica do book (a do cadastro, com o
+ * nº da loja; enquanto não há cadastro, a que a planilha traz). A coluna
+ * Fabricante repete esse nome em todas as linhas e é comparada com o que a
+ * planilha traz em cada uma. Um book tem itens de um fabricante só. O
+ * Supplier digitado na importação (`supplierName`) é o Fornecedor, o dono do
+ * book: não entra nesta conta (correção do dono, 24/11/2026).
+ */
+
+/**
+ * O Fabricante do book: a Fábrica do cadastro; sem ela, o nome mais
+ * frequente da planilha (a Fábrica ainda sem cadastro).
+ */
+export function bookManufacturer(
+  lot: Pick<BookingLot, "supplierHint">,
+  factoryName: string | null | undefined,
+): string | null {
+  const clean = (v: string | null | undefined) =>
+    (v ?? "").replace(/\s+/g, " ").trim() || null;
+  return clean(factoryName) ?? clean(lot.supplierHint?.name);
+}
+
+type ManufacturerItem = {
+  sheetSupplier?: string | null;
+  manufacturerOkAt?: string | null;
+};
+
+/**
+ * A linha diverge: a planilha traz outro fabricante e ninguém confirmou que
+ * ela estava errada. Sem fabricante na linha (ou no book), não há o que
+ * comparar. Nomes iguais sem pontuação nem "Co., Ltd." contam como o mesmo.
+ */
+export function manufacturerMismatch(
+  item: ManufacturerItem,
+  manufacturer: string | null,
+): boolean {
+  if (item.manufacturerOkAt) return false;
+  const sheet = supplierKey(item.sheetSupplier);
+  const book = supplierKey(manufacturer);
+  return !!sheet && !!book && sheet !== book;
+}
+
+/** Nº da loja digitado × o da planilha: diferentes (os dois preenchidos)? */
+export function storeNumberMismatch(
+  typed: string | null | undefined,
+  sheet: string | null | undefined,
+): boolean {
+  const a = storeKey(typed);
+  const b = storeKey(sheet);
+  return !!a && !!b && a !== b;
+}
+
+/** Situações em que o book pode ser travado: depois do rascunho, em trabalho. */
+export const LOCKABLE_LOT_STATUSES: readonly BookingLotStatus[] = [
+  "closed",
+  "in_progress",
+  "done",
+];
+export const bookingLotLockable = (status: BookingLotStatus) =>
+  LOCKABLE_LOT_STATUSES.includes(status);

@@ -408,7 +408,7 @@ export type ProductSupplierSource = (typeof PRODUCT_SUPPLIER_SOURCES)[number];
 /**
  * Booking como planilha (docs/BOOKING.md, "Booking por planilha"): a lista de
  * itens que um fornecedor mandou, antes de existir produto. Rascunho
- * (editável) → Fechado (importação concluída, análise do Superplan feita) →
+ * (editável) → Fechado (importação concluída, previsão de preço feita) →
  * Em andamento (algum item já foi escolhido) → Concluído; e Cancelado.
  *
  * "preparing" (12/11/2026) vem antes do rascunho, só no booking que o
@@ -488,9 +488,9 @@ export type InspectionResult = (typeof INSPECTION_RESULTS)[number];
 
 /**
  * Origem de uma solicitação: manual (padrão), recompra, nova proposta,
- * produto ainda não catalogado ou aberta do Superplan (viabilidade feita: a
- * RFQ vai direto ao fornecedor ganho, que manda faca, MOQ, prazo e foto em
- * alta; docs/SUPERPLAN.md).
+ * produto ainda não catalogado. "superplan" fica só para as solicitações
+ * antigas abertas pela tela de viabilidade, que saiu em 24/11/2026 (nenhuma
+ * nasce mais assim; o valor continua para ler os dados gravados).
  */
 export const REQUEST_ORIGINS = [
   "manual",
@@ -3324,14 +3324,18 @@ export type StockReservationStatus =
  * venda), cancelada ou vencer (`expiresAt` passado = vencida, sem gravar).
  */
 /**
- * Retrato da análise do Superplan guardado no item do booking: o que foi
- * analisado, com que pressupostos e o resultado. A lista mostra o retrato com
- * a data (não recalcula sozinha). `verdict` nulo = faltou dado (`missing`).
+ * Retrato da previsão de preço guardado no item do book: o que foi enviado e
+ * o resultado. A lista mostra o retrato com a data (não recalcula sozinha).
+ * `verdict` nulo = faltou dado (`missing`). Desde 24/11/2026 vem da API de
+ * preço do Sankhya (`source: "price_forecast"`, src/lib/booking-forecast.ts);
+ * os retratos antigos (sem `source`) eram da conta do portal, que saiu.
  */
 export interface BookingAnalysis {
   at: string;
   byUserId: string;
-  /** Tipo de negócio do Superplan usado (markup, comissão, despesas e meta). */
+  /** "price_forecast" = API de preço do Sankhya; vazio = retrato antigo. */
+  source?: "price_forecast";
+  /** Retratos antigos: tipo de negócio usado; vazio na previsão do Sankhya. */
   businessType: string;
   /** Preço de venda analisado (R$ por peça) e se era o preço mínimo. */
   salePriceBrl: number | null;
@@ -3343,8 +3347,26 @@ export interface BookingAnalysis {
   verdict: "viable" | "below" | "loss" | null;
   /** Preço para bater a meta; nulo quando impossível ou sem conta. */
   targetPriceBrl: number | null;
-  /** O que faltou para calcular (chaves do Superplan: price, fx, cbm…). */
+  /**
+   * O que faltou para calcular (ncm, price, currency, carton, cbm; "manual" =
+   * Sankhya não configurado; "error" = o Sankhya recusou, com `message`).
+   */
   missing: string[];
+  message?: string | null;
+  /** Preço com frete (Wellmix e WD) e a situação que o Sankhya devolveu. */
+  withFreightBrl?: number | null;
+  wdWithFreightBrl?: number | null;
+  status?: string | null;
+  /** O que foi enviado à API de preço (a ficha do item). */
+  sent?: {
+    ncm: string | null;
+    price: number | null;
+    currency: string | null;
+    incoterm: string | null;
+    pcsPerCarton: number | null;
+    cbmPerCarton: number | null;
+    quantity: number | null;
+  } | null;
   /** Pressupostos da conta, para conferência. */
   inputs?: {
     /** O que a conta usou do produto (para conferir com a linha). */
@@ -3402,7 +3424,7 @@ export interface BookingLot extends BaseRow {
   /** Cabeçalhos da planilha que não têm campo próprio (guardados nos itens). */
   extraHeaders: string[] | null;
   itemCount: number;
-  /** Tipo de negócio do Superplan escolhido ao fechar (vazio = o padrão). */
+  /** Retratos antigos: tipo de negócio escolhido ao fechar (não é mais usado). */
   businessType: string | null;
   closedAt: string | null;
   closedByUserId: string | null;
@@ -3440,6 +3462,12 @@ export interface BookingLot extends BaseRow {
    */
   incoterm?: SheetIncoterm | null;
   exwValue?: number | null;
+  /**
+   * Quando todos os itens do book ficaram trabalhados na Seleção de itens
+   * (dono, 24/11/2026): a trava se libera sozinha e o book volta a ficar à
+   * vista de todos. Nulo: ainda há item a trabalhar.
+   */
+  workDoneAt?: string | null;
   /** Tipo de item do book, escolhido na importação (dono, 23/11/2026). Antigos: nulo. */
   itemType?: string | null;
   /**
@@ -3523,7 +3551,7 @@ export interface BookingItem extends BaseRow {
   cardDocumentId: string | null;
   /** Colunas da planilha sem campo próprio: cabeçalho → valor. Não aparecem na tela. */
   extras: Record<string, string> | null;
-  /** Retrato da análise do Superplan (`BookingAnalysis`). */
+  /** Retrato da previsão de preço (`BookingAnalysis`). */
   analysis: BookingAnalysis | null;
   /** Produto do cadastro a que o item foi ligado (seleção de itens, depois). */
   productId: string | null;
@@ -3550,6 +3578,15 @@ export interface BookingItem extends BaseRow {
    */
   workedAt?: string | null;
   workedByUserId?: string | null;
+  /**
+   * Fabricante como a planilha escreveu nesta linha (coluna SUPPLIER NAME;
+   * dono, 24/11/2026). Comparado com a Fábrica do book: diferente, o book
+   * não é enviado nem fechado até a linha ser removida ou alguém confirmar
+   * que a planilha estava errada (`manufacturerOkAt`). Antigos: nulo.
+   */
+  sheetSupplier?: string | null;
+  manufacturerOkAt?: string | null;
+  manufacturerOkByUserId?: string | null;
 }
 
 /** Cópia do item do booking no momento da solicitação (o que o fornecedor vê). */
@@ -6728,6 +6765,7 @@ export const TABLES: Record<TableName, TableDef> = {
       supplierName: str(160),
       incoterm: enumOf(SHEET_INCOTERMS, false),
       exwValue: float(),
+      workDoneAt: datetime(),
       itemType: str(80),
       sheetFiles: json(),
     },
@@ -6798,6 +6836,9 @@ export const TABLES: Record<TableName, TableDef> = {
       ncmByUserId: id(false),
       workedAt: datetime(),
       workedByUserId: id(false),
+      sheetSupplier: str(160),
+      manufacturerOkAt: datetime(),
+      manufacturerOkByUserId: id(false),
     },
     indexes: [
       { key: "by_lot", type: "key", columns: ["lotId"] },

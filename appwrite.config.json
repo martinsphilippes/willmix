@@ -11743,6 +11743,13 @@
           "type": "double"
         },
         {
+          "key": "workDoneAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
           "key": "itemType",
           "required": false,
           "array": false,
@@ -12211,6 +12218,29 @@
         },
         {
           "key": "workedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "sheetSupplier",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "manufacturerOkAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "manufacturerOkByUserId",
           "required": false,
           "array": false,
           "default": null,

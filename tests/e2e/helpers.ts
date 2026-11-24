@@ -99,8 +99,8 @@ export async function saveFunction(fn: Locator): Promise<boolean> {
 }
 
 /**
- * Câmbio manual em Configurações (Wellmix). As contas do Superplan (custo por
- * peça, simulação da proposta) precisam de câmbio, e o do dia vem de sites
+ * Câmbio manual em Configurações (Wellmix). As conversões de moeda das
+ * telas precisam de câmbio, e o do dia vem de sites
  * públicos que nem todo ambiente de teste alcança (rede restrita). Com a
  * cotação do dia ela continua valendo; sem ela, vale este.
  */
@@ -828,6 +828,7 @@ export async function fillBookMeta(page: Page, itemType = "Teste E2E") {
   // FOB ou EXW (dono, 24/11/2026): FOB, como as planilhas dos testes.
   await page.locator("[data-book-incoterm]").selectOption("FOB");
   await page.locator("[data-book-store-number]").fill("A 154678");
-  await page.locator("[data-book-supplier-name]").fill("Supplier E2E");
+  // A Fábrica fica em branco: vale a da planilha (digitada diferente, as
+  // linhas divergem e o book não fecha; coberto em book-work.spec.ts).
   await page.locator("[data-book-item-type]").fill(itemType);
 }

@@ -177,6 +177,34 @@ export function samplingTurn(
 export type SupplierRequestStep =
   "supplier_answer" | "supplier_decide" | "sampling_send" | "sampling_validate";
 
+const SUPPLIER_REQUEST_STEPS: readonly string[] = [
+  "supplier_answer",
+  "supplier_decide",
+  "sampling_send",
+  "sampling_validate",
+];
+
+/** A chave do Próximo passo é um passo da solicitação ao fornecedor? */
+export const isSupplierRequestStep = (
+  key: string,
+): key is SupplierRequestStep => SUPPLIER_REQUEST_STEPS.includes(key);
+
+/**
+ * Onde se faz o passo (dono, 24/11/2026): a ação da vez ("Validar a
+ * amostragem") é um link para o lugar de agir, o mesmo das Pendências.
+ * Responder ou decidir: a solicitação; enviar ou validar a amostragem: o
+ * produto, no quadro da amostragem (`#amostragem`).
+ */
+export function supplierRequestStepHref(
+  id: string,
+  step: SupplierRequestStep,
+): string {
+  const base = `/app/supplier-requests/${encodeURIComponent(id)}`;
+  return step === "sampling_send" || step === "sampling_validate"
+    ? `${base}?view=item#amostragem`
+    : base;
+}
+
 /**
  * De quem é a vez na solicitação ao fornecedor e qual é a ação (dono,
  * 24/11/2026; docs/TURNS.md): na negociação, responder (fornecedor) ou

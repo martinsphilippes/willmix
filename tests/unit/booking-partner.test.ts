@@ -504,9 +504,9 @@ describe("lançar booking pelo parceiro", () => {
     await expect(
       internal.moveBookingLot(admin, launched.id, "cancelled"),
     ).rejects.toThrow("not_found");
-    await expect(
-      internal.closeBookingLot(admin, launched.id, null),
-    ).rejects.toThrow("not_found");
+    await expect(internal.closeBookingLot(admin, launched.id)).rejects.toThrow(
+      "not_found",
+    );
     await expect(
       ncm.setBookingItemsNcm(admin, [detail.items[0].id], "7013.37.00"),
     ).rejects.toThrow("booking_lot_locked");

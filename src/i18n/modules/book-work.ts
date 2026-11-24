@@ -7,7 +7,7 @@
 export const pt = {
   "bookWork.meta.save": "Salvar",
   "bookWork.storeNumber": "Nº da loja",
-  "bookWork.supplierName": "Nome do supplier",
+  "bookWork.supplierName": "Supplier",
   "bookWork.incoterm": "FOB ou EXW",
   "bookWork.incotermHint":
     "Vale para todos os itens do book, seja qual for o que a planilha traz.",
@@ -21,6 +21,54 @@ export const pt = {
   "bookingLots.error.booking_incoterm_required": "Escolha FOB ou EXW.",
   "bookingLots.error.booking_exw_value_required":
     "Com EXW, informe o valor do EXW (acima de zero).",
+  "bookWork.storeNumberHint": "A loja da fábrica (a do supplier da planilha).",
+  "bookWork.supplierNameHint":
+    "O fornecedor, dono do book: as solicitações dos itens vão para ele. Digite para buscar no cadastro; se não existir, fica o nome e você cadastra depois, na tela do book.",
+  "bookWork.partner": "Fornecedor (Supplier)",
+  "bookWork.partnerHint":
+    "O dono do book: as solicitações dos itens vão para ele. Vazio: vale a fábrica.",
+  "bookWork.partner.none": "Escolher depois (vale a fábrica)",
+  "bookWork.partner.new": "Ou cadastrar um fornecedor novo",
+  "bookWork.partner.newHint":
+    "Só se ele ainda não está na lista: digite o nome e ele é cadastrado (sem login).",
+  "bookWork.manufacturer": "Fabricante",
+  "bookWork.manufacturer.sheet": "Planilha: {name}",
+  "bookWork.manufacturer.confirm": "A tela está certa",
+  "bookWork.manufacturer.confirmAsk":
+    'A planilha diz "{sheet}" nesta linha. Confirma que a planilha estava errada e o fabricante é "{name}"?',
+  "bookWork.manufacturer.remove": "Remover a linha",
+  "bookWork.manufacturer.removeAsk":
+    "Remover este item do book? Ele é de outro fabricante e não volta.",
+  "bookWork.manufacturer.alert":
+    "{n} linha(s) trazem outro fabricante na planilha (o deste book é {name}). Um book tem itens de um fabricante só: remova essas linhas ou confirme que a planilha estava errada. Enquanto isso o book não pode ser enviado nem fechado.",
+  "bookWork.manufacturer.confirmAll":
+    "A planilha estava errada: confirmar todas",
+  "bookWork.manufacturer.confirmAllAsk":
+    'Confirma que a planilha estava errada nas {n} linha(s) e que o fabricante de todas é "{name}"?',
+  "bookWork.manufacturer.confirmed": "Fabricante confirmado.",
+  "bookWork.manufacturer.removed": "Item removido do book.",
+  "bookWork.store.mismatch":
+    "O nº da loja digitado ({typed}) é diferente do que a planilha traz ({sheet}). Confira qual está certo.",
+  "bookWork.lock.afterDraft":
+    "O book só pode ser travado depois de fechado, quando começa a seleção dos itens.",
+  "bookWork.error.booking_lock_draft":
+    "O book só pode ser travado depois de fechado (deixou de ser rascunho).",
+  "bookWork.error.booking_manufacturer_mismatch":
+    "Há linhas com outro fabricante na planilha. Remova essas linhas ou confirme que a planilha estava errada.",
+  "bookingLots.error.booking_manufacturer_mismatch":
+    "Há linhas com outro fabricante na planilha. Remova essas linhas ou confirme que a planilha estava errada.",
+  "bookWork.error.booking_item_in_use":
+    "Este item já foi trabalhado na seleção e não pode ser removido.",
+  "bookingLots.error.booking_item_in_use":
+    "Este item já foi trabalhado na seleção e não pode ser removido.",
+  "bookWork.template": "Baixar o modelo de book",
+  "bookWork.unlock.rule":
+    "Quem travou não libera: só o gestor. A trava sai sozinha quando todos os itens do book estiverem trabalhados.",
+  "bookWork.error.booking_lock_release_manager":
+    "Só o gestor de quem travou (ou quem supervisiona os books) libera a trava. Ela sai sozinha quando todos os itens estiverem trabalhados.",
+  "bookWork.supplierSearch": "Buscar ou digitar o nome",
+  "bookWork.supplier.pending": "Supplier sem cadastro: {name}",
+  "bookWork.supplier.register": "Cadastrar como fornecedor do book",
   "bookWork.itemType": "Tipo de item",
   "bookWork.itemTypeHint":
     "Ex.: vidro, plástico, utilidades. Use o mesmo nome dos outros books do mesmo tipo.",
@@ -47,7 +95,7 @@ export const pt = {
   "bookWork.lock.title": "Com quem está",
   "bookWork.lock.free": "Livre",
   "bookWork.lock.body":
-    "Trave o book para trabalhar nele: os outros analistas deixam de vê-lo e a sua lista passa a mostrar só o que está com você. Prazo: {h} h por book.",
+    "Trave o book para trabalhar nele: os outros analistas deixam de vê-lo e a sua lista passa a mostrar só o que está com você. Quem libera é o seu gestor; a trava sai sozinha quando todos os itens estiverem trabalhados. Prazo: {h} h por book.",
   "bookWork.lock.heldBy": "Com {name} há {time}.",
   "bookWork.lock.byType": "Travado pelo tipo de item: {type}.",
   "bookWork.lock.byTypeShort": "pelo tipo",
@@ -59,7 +107,7 @@ export const pt = {
   "bookWork.sla.late": "Atrasado (prazo de {h} h)",
   "bookWork.bar.title": "Travar books",
   "bookWork.bar.body":
-    "Trave um book (na linha dele) ou todos os de um tipo de item. O que você trava some da lista dos outros analistas, e a sua lista mostra só o que está com você. Prazo: {h} h por book.",
+    "Trave um book (na linha dele, depois de fechado) ou todos os de um tipo de item. O que você trava some da lista dos outros analistas, e a sua lista mostra só o que está com você. Quem libera é o seu gestor; a trava sai sozinha quando todos os itens do book estiverem trabalhados. Prazo: {h} h por book.",
   "bookWork.bar.supervisor":
     "Você vê todos os books, com quem está cada um e há quanto tempo. Prazo: {h} h por book. Pode liberar a trava de qualquer pessoa.",
   "bookWork.bar.mineLot": "Book nº {n}",
@@ -92,7 +140,7 @@ export const pt = {
 export const en: typeof pt = {
   "bookWork.meta.save": "Save",
   "bookWork.storeNumber": "Store no.",
-  "bookWork.supplierName": "Supplier name",
+  "bookWork.supplierName": "Supplier",
   "bookWork.incoterm": "FOB or EXW",
   "bookWork.incotermHint":
     "Applies to every item of the book, whatever the spreadsheet says.",
@@ -106,6 +154,54 @@ export const en: typeof pt = {
   "bookingLots.error.booking_incoterm_required": "Choose FOB or EXW.",
   "bookingLots.error.booking_exw_value_required":
     "With EXW, fill in the EXW value (above zero).",
+  "bookWork.storeNumberHint":
+    "The factory's store (the spreadsheet's supplier).",
+  "bookWork.supplierNameHint":
+    "The supplier that owns the book: requests for its items go to them. Type to search the registry; if they are not there, the name is kept and you register them later, on the book page.",
+  "bookWork.partner": "Supplier",
+  "bookWork.partnerHint":
+    "The owner of the book: requests for its items go to them. Empty: the factory.",
+  "bookWork.partner.none": "Choose later (the factory)",
+  "bookWork.partner.new": "Or register a new supplier",
+  "bookWork.partner.newHint":
+    "Only if they are not in the list yet: type the name and they are registered (no login).",
+  "bookWork.manufacturer": "Manufacturer",
+  "bookWork.manufacturer.sheet": "Spreadsheet: {name}",
+  "bookWork.manufacturer.confirm": "The screen is right",
+  "bookWork.manufacturer.confirmAsk":
+    'The spreadsheet says "{sheet}" on this row. Confirm the spreadsheet was wrong and the manufacturer is "{name}"?',
+  "bookWork.manufacturer.remove": "Remove the row",
+  "bookWork.manufacturer.removeAsk":
+    "Remove this item from the book? It is from another manufacturer and will not come back.",
+  "bookWork.manufacturer.alert":
+    "{n} row(s) have another manufacturer in the spreadsheet (this book's is {name}). A book has items from one manufacturer only: remove those rows or confirm the spreadsheet was wrong. Until then the book cannot be sent or closed.",
+  "bookWork.manufacturer.confirmAll": "The spreadsheet was wrong: confirm all",
+  "bookWork.manufacturer.confirmAllAsk":
+    'Confirm the spreadsheet was wrong on the {n} row(s) and the manufacturer of all of them is "{name}"?',
+  "bookWork.manufacturer.confirmed": "Manufacturer confirmed.",
+  "bookWork.manufacturer.removed": "Item removed from the book.",
+  "bookWork.store.mismatch":
+    "The store no. typed ({typed}) differs from the one in the spreadsheet ({sheet}). Check which is right.",
+  "bookWork.lock.afterDraft":
+    "The book can only be locked after it is closed, when item selection starts.",
+  "bookWork.error.booking_lock_draft":
+    "The book can only be locked after it is closed (no longer a draft).",
+  "bookWork.error.booking_manufacturer_mismatch":
+    "Some rows have another manufacturer in the spreadsheet. Remove them or confirm the spreadsheet was wrong.",
+  "bookingLots.error.booking_manufacturer_mismatch":
+    "Some rows have another manufacturer in the spreadsheet. Remove them or confirm the spreadsheet was wrong.",
+  "bookWork.error.booking_item_in_use":
+    "This item has already been worked in the selection and cannot be removed.",
+  "bookingLots.error.booking_item_in_use":
+    "This item has already been worked in the selection and cannot be removed.",
+  "bookWork.template": "Download the book template",
+  "bookWork.unlock.rule":
+    "Whoever locked it cannot release it: only their manager. The lock comes off by itself when every item of the book has been worked.",
+  "bookWork.error.booking_lock_release_manager":
+    "Only the manager of whoever locked it (or whoever supervises the books) can release the lock. It comes off by itself when every item has been worked.",
+  "bookWork.supplierSearch": "Search or type the name",
+  "bookWork.supplier.pending": "Supplier not registered: {name}",
+  "bookWork.supplier.register": "Register as the book's supplier",
   "bookWork.itemType": "Item type",
   "bookWork.itemTypeHint":
     "E.g. glass, plastic, housewares. Use the same name as the other books of the same type.",
@@ -132,7 +228,7 @@ export const en: typeof pt = {
   "bookWork.lock.title": "Who has it",
   "bookWork.lock.free": "Free",
   "bookWork.lock.body":
-    "Lock the book to work on it: other analysts stop seeing it and your list shows only what you hold. Deadline: {h} h per book.",
+    "Lock the book to work on it: other analysts stop seeing it and your list shows only what you hold. Your manager releases it; the lock comes off by itself when every item has been worked. Deadline: {h} h per book.",
   "bookWork.lock.heldBy": "With {name} for {time}.",
   "bookWork.lock.byType": "Locked by item type: {type}.",
   "bookWork.lock.byTypeShort": "by type",
@@ -144,7 +240,7 @@ export const en: typeof pt = {
   "bookWork.sla.late": "Late ({h} h deadline)",
   "bookWork.bar.title": "Lock books",
   "bookWork.bar.body":
-    "Lock one book (on its row) or every book of an item type. What you lock leaves the other analysts' lists, and your list shows only what you hold. Deadline: {h} h per book.",
+    "Lock one book (on its row, once closed) or every book of an item type. What you lock leaves the other analysts' lists, and your list shows only what you hold. Your manager releases it; the lock comes off by itself when every item of the book has been worked. Deadline: {h} h per book.",
   "bookWork.bar.supervisor":
     "You see every book, who has each one and for how long. Deadline: {h} h per book. You can release anyone's lock.",
   "bookWork.bar.mineLot": "Book no. {n}",
@@ -177,7 +273,7 @@ export const en: typeof pt = {
 export const zh: typeof pt = {
   "bookWork.meta.save": "保存",
   "bookWork.storeNumber": "店铺号",
-  "bookWork.supplierName": "供应商名称",
+  "bookWork.supplierName": "Supplier（供应商）",
   "bookWork.incoterm": "FOB 或 EXW",
   "bookWork.incotermHint": "适用于 Book 的所有产品，无论表格中填写的是什么。",
   "bookWork.exwValue": "EXW 费用",
@@ -189,6 +285,47 @@ export const zh: typeof pt = {
   "bookingLots.error.booking_incoterm_required": "请选择 FOB 或 EXW。",
   "bookingLots.error.booking_exw_value_required":
     "选择 EXW 时，请填写 EXW 费用（大于零）。",
+  "bookWork.storeNumberHint": "工厂的店铺号（表格中 supplier 的店铺）。",
+  "bookWork.supplierNameHint":
+    "Book 的所有者：产品的请求会发给他。输入即可在登记中搜索；如果不存在，名称会保留，稍后在 Book 页面登记。",
+  "bookWork.partner": "供应商（Supplier）",
+  "bookWork.partnerHint": "Book 的所有者：产品的请求会发给他。留空：发给工厂。",
+  "bookWork.partner.none": "稍后选择（发给工厂）",
+  "bookWork.partner.new": "或登记新的供应商",
+  "bookWork.partner.newHint": "仅当列表中没有时：输入名称即可登记（无登录）。",
+  "bookWork.manufacturer": "生产厂家",
+  "bookWork.manufacturer.sheet": "表格：{name}",
+  "bookWork.manufacturer.confirm": "页面正确",
+  "bookWork.manufacturer.confirmAsk":
+    "表格在此行写的是“{sheet}”。确认表格有误，生产厂家是“{name}”吗？",
+  "bookWork.manufacturer.remove": "删除此行",
+  "bookWork.manufacturer.removeAsk":
+    "从 Book 中删除此产品吗？它属于其他厂家，删除后无法恢复。",
+  "bookWork.manufacturer.alert":
+    "有 {n} 行在表格中写的是其他厂家（本 Book 的厂家是 {name}）。一个 Book 只能有一个厂家的产品：请删除这些行，或确认表格有误。在此之前 Book 无法提交或关闭。",
+  "bookWork.manufacturer.confirmAll": "表格有误：全部确认",
+  "bookWork.manufacturer.confirmAllAsk":
+    "确认这 {n} 行的表格有误，且生产厂家均为“{name}”吗？",
+  "bookWork.manufacturer.confirmed": "生产厂家已确认。",
+  "bookWork.manufacturer.removed": "产品已从 Book 中删除。",
+  "bookWork.store.mismatch":
+    "填写的店铺号（{typed}）与表格中的（{sheet}）不一致。请核对哪个正确。",
+  "bookWork.lock.afterDraft": "Book 关闭后才能锁定，此时才开始选品。",
+  "bookWork.error.booking_lock_draft": "Book 关闭后（不再是草稿）才能锁定。",
+  "bookWork.error.booking_manufacturer_mismatch":
+    "有些行在表格中写的是其他厂家。请删除这些行，或确认表格有误。",
+  "bookingLots.error.booking_manufacturer_mismatch":
+    "有些行在表格中写的是其他厂家。请删除这些行，或确认表格有误。",
+  "bookWork.error.booking_item_in_use": "该产品已在选品中处理，无法删除。",
+  "bookingLots.error.booking_item_in_use": "该产品已在选品中处理，无法删除。",
+  "bookWork.template": "下载 Book 模板",
+  "bookWork.unlock.rule":
+    "锁定者本人不能释放，只有其主管可以。Book 的所有产品处理完后，锁定会自动解除。",
+  "bookWork.error.booking_lock_release_manager":
+    "只有锁定者的主管（或 Book 主管）可以释放锁定。所有产品处理完后，锁定会自动解除。",
+  "bookWork.supplierSearch": "搜索或输入名称",
+  "bookWork.supplier.pending": "Supplier 尚未登记：{name}",
+  "bookWork.supplier.register": "登记为该 Book 的供应商",
   "bookWork.itemType": "产品类型",
   "bookWork.itemTypeHint":
     "例如：玻璃、塑料、日用品。同类型的 Book 请使用相同的名称。",
@@ -214,7 +351,7 @@ export const zh: typeof pt = {
   "bookWork.lock.title": "由谁处理",
   "bookWork.lock.free": "空闲",
   "bookWork.lock.body":
-    "锁定 Book 后再处理：其他分析员将看不到它，您的列表只显示由您处理的 Book。期限：每个 Book {h} 小时。",
+    "锁定 Book 后再处理：其他分析员将看不到它，您的列表只显示由您处理的 Book。只有您的主管可以释放；所有产品处理完后锁定自动解除。期限：每个 Book {h} 小时。",
   "bookWork.lock.heldBy": "由 {name} 处理，已 {time}。",
   "bookWork.lock.byType": "按产品类型锁定：{type}。",
   "bookWork.lock.byTypeShort": "按类型",
@@ -226,7 +363,7 @@ export const zh: typeof pt = {
   "bookWork.sla.late": "超时（期限 {h} 小时）",
   "bookWork.bar.title": "锁定 Book",
   "bookWork.bar.body":
-    "可锁定单个 Book（在其所在行）或某一产品类型的全部 Book。您锁定的 Book 会从其他分析员的列表中消失，您的列表只显示由您处理的 Book。期限：每个 Book {h} 小时。",
+    "可锁定单个 Book（关闭后，在其所在行）或某一产品类型的全部 Book。您锁定的 Book 会从其他分析员的列表中消失，您的列表只显示由您处理的 Book。只有您的主管可以释放；所有产品处理完后锁定自动解除。期限：每个 Book {h} 小时。",
   "bookWork.bar.supervisor":
     "您可以看到所有 Book、各自由谁处理以及已处理多久。期限：每个 Book {h} 小时。您可以释放任何人的锁定。",
   "bookWork.bar.mineLot": "Book 编号 {n}",

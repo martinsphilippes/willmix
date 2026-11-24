@@ -11,6 +11,9 @@ import {
   bookingLotPending,
   bookingLotReady,
   bookingRecipientId,
+  bookManufacturer,
+  bookingLotLockable,
+  manufacturerMismatch,
   canMoveBookingLot,
   isBookingPartner,
   matchSheetSupplier,
@@ -59,7 +62,7 @@ import type { SheetImage } from "./xlsx";
  * Booking por planilha (docs/BOOKING.md, "Booking por planilha"). O usuário
  * sobe a planilha de um fornecedor: nasce um booking em rascunho com os
  * itens (as linhas), o fornecedor e a data estimados da planilha. Ele ajusta
- * tudo e fecha; ao fechar, o Superplan analisa todos os itens. Nenhum
+ * tudo e fecha; ao fechar, a API de preço do Sankhya prevê todos os itens. Nenhum
  * produto do cadastro nasce aqui: o item é ligado a um produto depois, na
  * seleção de itens.
  *
@@ -156,6 +159,9 @@ export function itemFromGroup(
     purchaseQty: group.purchaseQty ?? null,
     plannedQty: group.plannedQty,
     sizeText: clip(group.sizeText, 60),
+    // Fabricante como a planilha escreveu nesta linha (comparado com a
+    // Fábrica do book).
+    sheetSupplier: asText(r.supplierName, 160),
     extras:
       group.extras && Object.keys(group.extras).length ? group.extras : null,
   };
@@ -246,7 +252,7 @@ export const BOOKING_SHEETS_MAX = 10;
 
 /** O que quem importa informa junto com a planilha (dono, 23/11/2026). */
 export interface BookingLotMeta {
-  /** Nº da loja e nome do supplier (texto livre, só informativo). */
+  /** Nº da loja e nome da Fábrica (o supplier da planilha), texto livre. */
   storeNumber?: string | null;
   supplierName?: string | null;
   /**
@@ -274,7 +280,70 @@ export async function createBookingLotFromSheet(
   } & BookingLotMeta = {},
 ): Promise<BookingLot> {
   assertBooking(user);
-  return createLotFromSheet(user, source, options);
+  // O Supplier digitado (o Fornecedor, dono do book): se já está no
+  // cadastro, o book nasce com ele; se não, fica o nome para cadastrar
+  // depois, na tela do book (correção do dono, 24/11/2026).
+  const partnerId = await partnerByName(options.supplierName);
+  return createLotFromSheet(user, source, {
+    ...options,
+    ...(partnerId ? { partnerId } : {}),
+  });
+}
+
+/** O parceiro ativo (de um tipo que responde por book) com este nome. */
+async function partnerByName(
+  name: string | null | undefined,
+): Promise<string | null> {
+  const key = supplierKey(name);
+  if (!key) return null;
+  const found = (
+    await getStore().list("parties", {
+      filter: { type: [...BOOKING_PARTNER_TYPES] as never, active: true },
+    })
+  ).find((p) => supplierKey(p.name) === key);
+  return found?.id ?? null;
+}
+
+/**
+ * Cadastra o Supplier digitado na importação (Fornecedor, sem login) e o põe
+ * como Fornecedor do book. Já existe um ativo com o mesmo nome: vale esse.
+ */
+export async function registerBookingLotPartner(
+  user: User,
+  lotId: string,
+): Promise<Party> {
+  assertBooking(user);
+  const lot = await wellmixLot(lotId);
+  if (!lot) throw new BookingLotError("not_found");
+  if (lot.status === "cancelled")
+    throw new BookingLotError("booking_lot_locked");
+  const name = clip(lot.supplierName, 160);
+  if (!name) throw new BookingLotError("supplier_name_required");
+  const store = getStore();
+  const known = await partnerByName(name);
+  const party = known
+    ? ((await store.get("parties", known)) as Party)
+    : await store.create("parties", {
+        ...PARTY_EXTRA_DEFAULTS,
+        type: "supplier",
+        name,
+        country: "China",
+        email: null,
+        phone: null,
+        taxId: null,
+        notes: `Cadastrado pelo book nº ${lot.number} (Supplier).`,
+        active: true,
+      });
+  if (!known)
+    await audit(
+      user,
+      "party.create",
+      "party",
+      party.id,
+      `${party.name} (Supplier do book nº ${lot.number})`,
+    );
+  await setBookingLotPartner(user, lot.id, party.id);
+  return party;
 }
 
 /**
@@ -513,6 +582,25 @@ export interface BookingLotHold {
   since: string;
   /** Há quantos minutos (na hora da leitura). */
   minutes: number;
+  /** Quem vê pode liberar: o gestor de quem travou ou quem supervisiona. */
+  canRelease: boolean;
+}
+
+/**
+ * Quem vê libera a trava? Nunca quem travou: só o gestor dele (cadeia do
+ * "Responde a") ou quem supervisiona os books (dono, 24/11/2026).
+ */
+async function releaserOf(user: User, users: readonly User[]) {
+  const supervisor = await canSuperviseBooks(user);
+  const { managerChain } = await import("@/lib/team-hierarchy");
+  const { canReleaseLock } = await import("@/lib/booking-locks");
+  return (lockUserId: string) =>
+    canReleaseLock(
+      lockUserId,
+      user.id,
+      supervisor,
+      supervisor ? [] : managerChain(lockUserId, users).chain.map((n) => n.id),
+    );
 }
 
 const minutesSince = (since: string) =>
@@ -588,6 +676,7 @@ export async function listBookingLots(
   ]);
   const partyOf = new Map(parties.map((p) => [p.id, p]));
   const userOf = new Map(users.map((u) => [u.id, u]));
+  const canRelease = await releaserOf(user, users);
   const itemsOf = new Map<string, BookingItem[]>();
   for (const item of items) {
     const list = itemsOf.get(item.lotId) ?? [];
@@ -599,9 +688,11 @@ export async function listBookingLots(
     const pending = bookingLotPending(lot, own);
     const signals = { viable: 0, below: 0, loss: 0, missing: 0 };
     for (const item of own) {
-      const verdict = item.analysis?.verdict;
-      if (verdict) signals[verdict]++;
-      else if (item.analysis) signals.missing++;
+      // Só a previsão de preço do Sankhya (os retratos antigos ficam de fora).
+      const a =
+        item.analysis?.source === "price_forecast" ? item.analysis : null;
+      if (a?.verdict) signals[a.verdict]++;
+      else if (a) signals.missing++;
     }
     return {
       lot,
@@ -610,7 +701,7 @@ export async function listBookingLots(
       pendingItems: pending.items.size,
       signals,
       worked: workedShare(own),
-      held: holdOf(lot, locks, userOf),
+      held: holdOf(lot, locks, userOf, canRelease),
     };
   });
 }
@@ -619,6 +710,7 @@ function holdOf(
   lot: BookingLot,
   locks: BookingLock[],
   userOf: Map<string, User>,
+  canRelease: (lockUserId: string) => boolean,
 ): BookingLotHold | null {
   const lock = lockOfLot(lot, locks);
   if (!lock) return null;
@@ -628,6 +720,7 @@ function holdOf(
     user: userOf.get(lock.userId) ?? null,
     since,
     minutes: minutesSince(since),
+    canRelease: canRelease(lock.userId),
   };
 }
 
@@ -702,6 +795,9 @@ export async function getBookingLot(
           user: await store.get("users", held.userId),
           since: lockedSince(lot, held),
           minutes: minutesSince(lockedSince(lot, held)),
+          canRelease: (await releaserOf(user, await store.list("users")))(
+            held.userId,
+          ),
         }
       : null,
   };
@@ -739,6 +835,8 @@ export async function setBookingLotSupplier(
     supplierId,
     origin,
   });
+  // Outra Fábrica: o que foi confirmado valia para a anterior.
+  if (supplierId !== lot.supplierId) await clearManufacturerOk(lot.id);
   await audit(
     user,
     "booking_lot.supplier",
@@ -1048,36 +1146,30 @@ export async function setBookingItemsFields(
 /* Fechar e status                                                           */
 /* ------------------------------------------------------------------------ */
 
-/** Roda o Superplan em todos os itens e grava o retrato em cada um. */
+/**
+ * Previsão de preço de todos os itens pela API de preço do Sankhya (dono,
+ * 24/11/2026; src/lib/services/booking-price-forecast.ts): agendada para
+ * depois da resposta, item a item. Devolve a hora do pedido.
+ */
 async function analyzeLot(
   user: User | null,
   lot: BookingLot,
   items: BookingItem[],
-  businessType: string | null,
 ) {
-  const { analyzeBookingItems } = await import("./superplan-analysis");
-  const snapshots = await analyzeBookingItems(items, { businessType });
+  const { scheduleBookingForecasts } = await import("./booking-price-forecast");
   const at = new Date().toISOString();
-  const store = getStore();
-  for (const item of items) {
-    const snapshot = snapshots.get(item.id);
-    if (!snapshot) continue;
-    await store.update("booking_items", item.id, {
-      analysis: { ...snapshot, at, byUserId: user?.id ?? "system" },
-    });
-  }
+  await scheduleBookingForecasts(lot, items, user?.id ?? "system");
   return at;
 }
 
 /**
  * Fecha o booking: fornecedor, data e os campos obrigatórios de todos os
- * itens preenchidos; roda a análise do Superplan em todos os itens (com o
- * tipo de negócio escolhido, ou o padrão) e passa a Fechado.
+ * itens preenchidos; pede a previsão de preço de todos os itens e passa a
+ * Fechado.
  */
 export async function closeBookingLot(
   user: User,
   lotId: string,
-  businessType: string | null,
 ): Promise<BookingLot> {
   assertBooking(user);
   const lot = await editableLot(lotId);
@@ -1091,6 +1183,10 @@ export async function closeBookingLot(
   const items = await store.list("booking_items", {
     filter: { lotId: lot.id },
   });
+  // Itens de outro fabricante: remover a linha ou confirmar que a planilha
+  // estava errada (dono, 24/11/2026).
+  if ((await manufacturerMismatches(lot, items)).length)
+    throw new BookingLotError("booking_manufacturer_mismatch");
   const pending = bookingLotPending(lot, items);
   if (!bookingLotReady(pending)) {
     if (pending.supplier) throw new BookingLotError("supplier_required");
@@ -1098,11 +1194,9 @@ export async function closeBookingLot(
     if (pending.noItems) throw new BookingLotError("no_rows");
     throw new BookingLotError("booking_items_incomplete");
   }
-  const type = clip(businessType, 80);
-  const at = await analyzeLot(user, lot, items, type);
+  const at = new Date().toISOString();
   const updated = await store.update("booking_lots", lot.id, {
     status: "closed",
-    businessType: type,
     closedAt: at,
     closedByUserId: user.id,
     analyzedAt: at,
@@ -1110,21 +1204,21 @@ export async function closeBookingLot(
     statusChangedByUserId: user.id,
     itemCount: items.length,
   });
+  await analyzeLot(user, updated, items);
   await audit(
     user,
     "booking_lot.close",
     "booking_lot",
     lot.id,
-    `Book nº ${lot.number} fechado: ${items.length} itens analisados`,
+    `Book nº ${lot.number} fechado: previsão de preço de ${items.length} itens`,
   );
   return updated;
 }
 
-/** Refaz a análise do Superplan num booking já fechado (câmbio ou parâmetros mudaram). */
+/** Refaz a previsão de preço num booking já fechado (câmbio ou ficha mudaram). */
 export async function reanalyzeBookingLot(
   user: User,
   lotId: string,
-  businessType: string | null,
 ): Promise<void> {
   assertBooking(user);
   const store = getStore();
@@ -1135,89 +1229,15 @@ export async function reanalyzeBookingLot(
   const items = await store.list("booking_items", {
     filter: { lotId: lot.id },
   });
-  const type = clip(businessType, 80) ?? lot.businessType;
-  const at = await analyzeLot(user, lot, items, type);
-  await store.update("booking_lots", lot.id, {
-    analyzedAt: at,
-    businessType: type,
-  });
+  const at = await analyzeLot(user, lot, items);
+  await store.update("booking_lots", lot.id, { analyzedAt: at });
   await audit(
     user,
     "booking_lot.analyze",
     "booking_lot",
     lot.id,
-    `Book nº ${lot.number}: análise refeita`,
+    `Book nº ${lot.number}: previsão de preço refeita`,
   );
-}
-
-/** Status em que o booking tem análise do Superplan (fechado em diante). */
-const ANALYZED_LOT_STATUSES: BookingLotStatus[] = [
-  "closed",
-  "in_progress",
-  "done",
-];
-
-/**
- * A tabela fiscal (TEC ou TIPI) foi carregada: refaz sozinho a análise dos
- * bookings fechados, em andamento ou concluídos que têm algum item cujo II
- * ou IPI pelo NCM mudou (inclusive o que antes não estava na tabela). Os
- * outros ficam como estão: o robô roda sempre e não deve trocar câmbio e
- * parâmetros de análises que a tabela não mexeu. Cada booking refeito usa o
- * próprio tipo de negócio, como "Refazer a análise". `user` nulo = o robô.
- */
-export async function reanalyzeLotsForFiscalTable(
-  user: User | null,
-): Promise<{ lots: number; items: number }> {
-  const store = getStore();
-  const { lookupNcm } = await import("./fiscal");
-  const { ncmTaxPct } = await import("./superplan-analysis");
-  const lots = await store.list("booking_lots", {
-    filter: { status: ANALYZED_LOT_STATUSES },
-  });
-  const rates = new Map<string, ReturnType<typeof ncmTaxPct>>();
-  const taxOf = async (ncm: string) => {
-    let r = rates.get(ncm);
-    if (!r) rates.set(ncm, (r = ncmTaxPct(await lookupNcm(ncm))));
-    return r;
-  };
-  const pct = (n: number | null) => (n === null ? null : Number(n.toFixed(2)));
-  let done = 0;
-  let itemCount = 0;
-  for (const lot of lots) {
-    const items = await store.list("booking_items", {
-      filter: { lotId: lot.id },
-    });
-    let affected = false;
-    for (const item of items) {
-      const ncm = item.ncm?.trim();
-      const before = item.analysis?.inputs;
-      if (!ncm || !item.analysis) continue;
-      const now = await taxOf(ncm);
-      if (
-        !before ||
-        before.ncmFound !== now.ncmFound ||
-        (now.ncmFound &&
-          (pct(now.iiPct) !== before.iiPct ||
-            pct(now.ipiPct) !== before.ipiPct))
-      ) {
-        affected = true;
-        break;
-      }
-    }
-    if (!affected) continue;
-    const at = await analyzeLot(user, lot, items, lot.businessType);
-    await store.update("booking_lots", lot.id, { analyzedAt: at });
-    await audit(
-      user,
-      "booking_lot.analyze",
-      "booking_lot",
-      lot.id,
-      `Book nº ${lot.number}: análise refeita (tabela fiscal atualizada)`,
-    );
-    done++;
-    itemCount += items.length;
-  }
-  return { lots: done, items: itemCount };
 }
 
 /** Muda o status à mão (fechar o rascunho é `closeBookingLot`). */
@@ -1288,6 +1308,12 @@ export async function setBookingLotMeta(
       ...(terms ?? {}),
     }),
   );
+  // Supplier digitado que já está no cadastro: vira o Fornecedor do book
+  // (se ele ainda não tem um).
+  if (!lot.partnerId && supplierName) {
+    const known = await partnerByName(supplierName);
+    if (known) await store.update("booking_lots", lot.id, { partnerId: known });
+  }
   if (terms?.incoterm) {
     const items = await store.list("booking_items", {
       filter: { lotId: lot.id },
@@ -1348,7 +1374,7 @@ export async function bookingItemTypes(): Promise<string[]> {
  */
 export async function markItemsWorked(
   user: User,
-  items: ReadonlyArray<Pick<BookingItem, "id" | "workedAt">>,
+  items: ReadonlyArray<Pick<BookingItem, "id" | "workedAt" | "lotId">>,
 ): Promise<void> {
   const store = getStore();
   const at = new Date().toISOString();
@@ -1359,10 +1385,38 @@ export async function markItemsWorked(
           workedAt: at,
           workedByUserId: user.id,
         });
+    // Book inteiro trabalhado: a trava se libera sozinha (dono, 24/11/2026).
+    for (const lotId of new Set(items.map((i) => i.lotId)))
+      await releaseWhenWorkDone(lotId, at);
   } catch (error) {
     const { isSchemaMissing } = await import("@/lib/db/errors");
     if (!isSchemaMissing(error)) throw error;
   }
+}
+
+/**
+ * Todos os itens do book trabalhados: marca o trabalho como completo
+ * (`workDoneAt`), o que tira a trava do book (a dele é apagada; a do tipo de
+ * item deixa de valer para ele) e o devolve à vista de todos.
+ */
+async function releaseWhenWorkDone(lotId: string, at: string) {
+  const store = getStore();
+  const lot = await store.get("booking_lots", lotId);
+  if (!lot || lot.workDoneAt) return;
+  const items = await store.list("booking_items", { filter: { lotId } });
+  if (!items.length || items.some((i) => !i.workedAt)) return;
+  await store.update("booking_lots", lot.id, { workDoneAt: at });
+  const own = (await listBookingLocks()).filter(
+    (l) => l.scope === "lot" && l.lotId === lot.id,
+  );
+  for (const lock of own) await store.remove("booking_locks", lock.id);
+  await audit(
+    null,
+    "booking_lock.work_done",
+    "booking_lot",
+    lot.id,
+    `Book nº ${lot.number}: todos os ${items.length} itens trabalhados; trava liberada`,
+  );
 }
 
 /* ------------------------------------------------------------------------ */
@@ -1380,6 +1434,10 @@ export async function lockBookingLot(
   assertBooking(user);
   const lot = await wellmixLot(lotId);
   if (!lot) throw new BookingLotError("not_found");
+  // Só depois do rascunho: o book fechado é que começa a ser trabalhado na
+  // seleção dos itens (dono, 24/11/2026).
+  if (!bookingLotLockable(lot.status))
+    throw new BookingLotError("booking_lock_draft");
   const store = getStore();
   const locks = await withSchema(() => store.list("booking_locks"));
   const held = lockOfLot(lot, locks);
@@ -1443,14 +1501,19 @@ export async function lockBookingType(
   return lock;
 }
 
-/** Libera a trava: quem travou ou quem supervisiona os books. */
+/**
+ * Libera a trava: o gestor de quem travou ou quem supervisiona os books
+ * (nunca quem travou; dono, 24/11/2026). Sozinha, ela se libera quando o
+ * book inteiro fica trabalhado (`releaseWhenWorkDone`).
+ */
 export async function unlockBooking(user: User, lockId: string): Promise<void> {
   assertBooking(user);
   const store = getStore();
   const lock = await withSchema(() => store.get("booking_locks", lockId));
   if (!lock) return;
-  if (lock.userId !== user.id && !(await canSuperviseBooks(user)))
-    throw new BookingLotError("forbidden");
+  // Nunca quem travou: só o gestor dele ou quem supervisiona os books.
+  if (!(await releaserOf(user, await store.list("users")))(lock.userId))
+    throw new BookingLotError("booking_lock_release_manager");
   await store.remove("booking_locks", lock.id);
   const { durationText } = await import("@/lib/booking-locks");
   const held = durationText(minutesSince(lock.lockedAt));
@@ -1466,14 +1529,19 @@ export async function unlockBooking(user: User, lockId: string): Promise<void> {
 }
 
 /** As travas de um login, com quantos books cada uma segura agora. */
-export async function myBookingLocks(
-  user: User,
-): Promise<
-  Array<{ lock: BookingLock; lotNumber: number | null; minutes: number }>
+export async function myBookingLocks(user: User): Promise<
+  Array<{
+    lock: BookingLock;
+    lotNumber: number | null;
+    minutes: number;
+    canRelease: boolean;
+  }>
 > {
   const locks = (await listBookingLocks()).filter((l) => l.userId === user.id);
   if (!locks.length) return [];
   const store = getStore();
+  // As dele mesmo: só libera se também supervisiona os books.
+  const canRelease = await canSuperviseBooks(user);
   const out = [];
   for (const lock of locks) {
     const lot = lock.lotId ? await store.get("booking_lots", lock.lotId) : null;
@@ -1481,7 +1549,137 @@ export async function myBookingLocks(
       lock,
       lotNumber: lot?.number ?? null,
       minutes: minutesSince(lock.lockedAt),
+      canRelease,
     });
   }
   return out;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Fabricante: a Fábrica do book × a planilha (dono, 24/11/2026)             */
+/* ------------------------------------------------------------------------ */
+
+/** O Fabricante do book (a Fábrica do cadastro; sem ela, a da planilha). */
+export async function lotManufacturer(lot: BookingLot): Promise<string | null> {
+  const factory = lot.supplierId
+    ? await getStore().get("parties", lot.supplierId)
+    : null;
+  return bookManufacturer(lot, factory?.name ?? null);
+}
+
+/** Os itens cuja linha da planilha traz outro fabricante, ainda sem confirmação. */
+export async function manufacturerMismatches(
+  lot: BookingLot,
+  items: BookingItem[],
+): Promise<BookingItem[]> {
+  const name = await lotManufacturer(lot);
+  return items.filter((i) => manufacturerMismatch(i, name));
+}
+
+async function clearManufacturerOk(lotId: string) {
+  const store = getStore();
+  const items = await store.list("booking_items", { filter: { lotId } });
+  for (const item of items)
+    if (item.manufacturerOkAt)
+      await store.update("booking_items", item.id, {
+        manufacturerOkAt: null,
+        manufacturerOkByUserId: null,
+      });
+}
+
+/**
+ * "A planilha estava errada": confirma que vale o Fabricante da tela nas
+ * linhas divergentes (uma, ou todas as do book com `itemId` nulo). Quem
+ * chama conferiu o login e se o book aceita edição.
+ */
+export async function confirmManufacturerItems(
+  user: User,
+  lot: BookingLot,
+  itemId: string | null,
+): Promise<number> {
+  const store = getStore();
+  const items = await store.list("booking_items", {
+    filter: { lotId: lot.id },
+  });
+  const wrong = (await manufacturerMismatches(lot, items)).filter(
+    (i) => !itemId || i.id === itemId,
+  );
+  const at = new Date().toISOString();
+  for (const item of wrong)
+    await store.update("booking_items", item.id, {
+      manufacturerOkAt: at,
+      manufacturerOkByUserId: user.id,
+    });
+  if (wrong.length)
+    await audit(
+      user,
+      "booking_item.manufacturer_ok",
+      "booking_lot",
+      lot.id,
+      `Fabricante confirmado pela tela em ${wrong.length} item(ns): a planilha trazia ${[...new Set(wrong.map((i) => i.sheetSupplier))].join(", ")}`,
+    );
+  return wrong.length;
+}
+
+/**
+ * Remove um item do book (a linha de outro fabricante, por exemplo). Quem
+ * chama conferiu o login e se o book aceita edição. Um item já trabalhado
+ * ou ligado a um produto não sai.
+ */
+export async function removeLotItem(
+  user: User,
+  lot: BookingLot,
+  itemId: string,
+): Promise<void> {
+  const store = getStore();
+  const item = await store.get("booking_items", itemId);
+  if (!item || item.lotId !== lot.id) throw new BookingLotError("not_found");
+  if (item.workedAt || item.productId)
+    throw new BookingLotError("booking_item_in_use");
+  await store.remove("booking_items", item.id);
+  const left = await store.list("booking_items", { filter: { lotId: lot.id } });
+  await store.update("booking_lots", lot.id, { itemCount: left.length });
+  await audit(
+    user,
+    "booking_item.remove",
+    "booking_lot",
+    lot.id,
+    `Item removido do book: ${item.factoryItemCode ?? item.description ?? item.id} (linha ${item.position + 1}${item.sheetSupplier ? `, fabricante da planilha ${item.sheetSupplier}` : ""})`,
+  );
+}
+
+/** Wellmix, no rascunho: confirma o Fabricante da tela (um item ou todos). */
+export async function confirmBookingManufacturer(
+  user: User,
+  lotId: string,
+  itemId: string | null,
+): Promise<number> {
+  assertBooking(user);
+  return confirmManufacturerItems(user, await editableLot(lotId), itemId);
+}
+
+/** Wellmix, no rascunho: remove um item do book. */
+export async function removeBookingItem(
+  user: User,
+  lotId: string,
+  itemId: string,
+): Promise<void> {
+  assertBooking(user);
+  await removeLotItem(user, await editableLot(lotId), itemId);
+}
+
+/** Quem pode ser o Fornecedor de um book: os parceiros ativos, por nome. */
+export async function bookingPartnerOptions(): Promise<
+  Array<Pick<Party, "id" | "name" | "type" | "city">>
+> {
+  const rows = await getStore().list("parties", {
+    filter: { type: [...BOOKING_PARTNER_TYPES] as never, active: true },
+    orderBy: "name",
+  });
+  return rows.map((p) => ({
+    id: p.id,
+    name: p.name,
+    type: p.type,
+    city: p.city ?? null,
+  }));
 }

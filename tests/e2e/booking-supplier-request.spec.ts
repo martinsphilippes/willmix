@@ -12,7 +12,7 @@ import {
 /*
  * Do booking ao produto (docs/BOOKING.md, seção 0, e docs/SUPPLIER_REQUESTS.md):
  * a Wellmix sobe as planilhas de dois fornecedores e fecha os bookings (o
- * Superplan analisa os itens); na Seleção de itens compara os parecidos e
+ * a previsão de preço do Sankhya é pedida para os itens); na Seleção de itens compara os parecidos e
  * abre a solicitação ao fornecedor do escolhido, com o outro de
  * alternativa; o fornecedor responde no portal sem ver a alternativa, o
  * outro fornecedor não abre a solicitação; a Wellmix devolve com
@@ -365,8 +365,8 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-request-chosen-cost]")).toHaveCount(
     0,
   );
-  // O Superplan segue "Ver preço de compra" (dono, 15/11/2026): na Seleção,
-  // sem o custo por peça e a coluna Superplan; no Book, sem a coluna da
+  // A previsão de preço segue "Ver preço de compra" (dono, 15/11/2026): na
+  // Seleção, sem o custo por peça e a coluna da previsão; no Book, sem a coluna da
   // análise; na lista dos bookings, sem os sinais.
   await page.goto(`/app/booking/selection?q=${encodeURIComponent(TAG)}`);
   await expect(page.locator("[data-selection-item]").first()).toBeVisible();
@@ -451,17 +451,14 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(finalState).toHaveCSS("position", "static");
   await page.goto(itemUrl);
   const propose = page.locator("[data-negotiation-propose-form]");
-  // Os mesmos campos da resposta (com FOB/EXW) e a estimativa do Superplan:
-  // ao digitar o preço, custo e mínimo; pela inversa, o preço necessário.
+  // Os mesmos campos da resposta (com FOB/EXW) e a previsão de preço do
+  // Sankhya (a mesma API da Nova solicitação). Sem o Sankhya configurado
+  // nos testes, a tela diz que nada é previsto (nunca um preço inventado).
   await propose.locator("[data-negotiation-price]").fill("1,30");
-  await expect(propose.locator("[data-proposal-sim-cost]")).toBeVisible();
-  await propose.locator("[data-proposal-sim-target]").fill("500");
-  await expect(propose.locator("[data-proposal-sim-needed]")).toBeVisible();
-  await propose.locator("[data-proposal-sim-use]").click();
-  await expect(propose.locator("[data-negotiation-price]")).not.toHaveValue(
-    "1,30",
-  );
-  await propose.locator("[data-negotiation-price]").fill("1,30");
+  await expect(propose.locator("[data-proposal-sim]")).toBeVisible();
+  await expect(
+    propose.locator("[data-proposal-sim-manual], [data-proposal-sim-result]"),
+  ).toBeVisible();
   // O prazo combinado (35 dias) vai preencher o campo do prazo no pedido.
   await propose.locator("[data-negotiation-lead-time]").fill("35");
   await propose.locator("[data-negotiation-incoterm]").selectOption("FOB");
@@ -569,19 +566,19 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(answerNote).toHaveValue("Caixa confirmada.");
   await expect(sent).toHaveAttribute("data-sent-mark", "on");
   // Ficha negociada: o preço combinado, com o do booking riscado ao lado;
-  // o Superplan refeito é só da Wellmix.
+  // a previsão de preço refeita é só da Wellmix.
   await expect(page.locator('[data-negotiated-value="price"]')).toContainText(
     /1[.,]3\b/,
   );
   await expect(page.locator('[data-negotiated-before="price"]')).toContainText(
     /1[.,]25\b/,
   );
-  await expect(page.locator("[data-negotiated-superplan]")).toHaveCount(0);
+  await expect(page.locator("[data-negotiated-forecast]")).toHaveCount(0);
 
   // 4. A Wellmix aprova e cria o produto (fora da vitrine até liberar).
   await login(page, "admin@wellmix.com");
   await page.goto(itemUrl);
-  await expect(page.locator("[data-negotiated-superplan]")).toBeVisible();
+  await expect(page.locator("[data-negotiated-forecast]")).toBeVisible();
   await expect(page.locator("[data-alternative-open]")).toHaveCount(1);
   // Nova referência: abre a solicitação para a alternativa (fornecedor B);
   // as duas ficam ligadas.
@@ -642,18 +639,39 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     page.locator("[data-info-tip]").filter({ hasText: "supplier.a@china.com" }),
   ).toBeVisible();
   await page.keyboard.press("Escape");
+  // O login de quem carrega a amostragem, à vista para o administrador
+  // (dono, 24/11/2026): na tabela da cotação e na lista de cotações.
+  await expect(turnCell.locator("[data-responsible-logins]")).toContainText(
+    "supplier.a@china.com",
+  );
   // Aba (dono, 24/11/2026): aprovada com a amostra pendente continua em
   // "Em andamento", com a ação, até a amostra ser aprovada.
   const listRowSelector = `[data-supplier-request-row="${requestUrl.split("/").pop()}"]`;
+  const listTurn = page.locator(
+    `${listRowSelector} [data-supplier-request-turn]`,
+  );
   await page.goto("/app/supplier-requests");
   // Pela marcação, sem o texto (o nome da ação pode mudar; PR #677).
+  await expect(listTurn).toHaveAttribute(
+    "data-supplier-request-turn",
+    "sampling_send",
+  );
+  // Quem age e o login de quem carrega, à vista (só o administrador).
   await expect(
-    page.locator(
-      `${listRowSelector} [data-supplier-request-turn="sampling_send"]`,
-    ),
-  ).toBeVisible();
+    listTurn.locator('[data-request-responsible="ok"]'),
+  ).toContainText("Fornecedor");
+  await expect(listTurn.locator("[data-responsible-logins]")).toContainText(
+    "supplier.a@china.com",
+  );
   await page.goto("/app/supplier-requests?tab=closed");
   await expect(page.locator(listRowSelector)).toHaveCount(0);
+  // Fora o administrador, quem age sem o login (privacidade).
+  await login(page, plannerEmail);
+  await page.goto("/app/supplier-requests");
+  await expect(
+    listTurn.locator('[data-request-responsible="ok"]'),
+  ).toBeVisible();
+  await expect(listTurn.locator("[data-responsible-logins]")).toHaveCount(0);
 
   // 4.1 Amostragem: o responsável sobe uma foto da amostra e envia.
   await login(page, "supplier.a@china.com");
@@ -671,12 +689,32 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
 
   // 4.2 A Wellmix valida a amostra. Enviada, a vez é dela.
   await login(page, "admin@wellmix.com");
+  // Na lista de Cotação, "Validar a amostragem" é o link para o quadro da
+  // amostragem do produto (dono, 24/11/2026), o mesmo da pendência.
+  // A aprovada esperando a amostra fica em "Em andamento" (PR #680) ou, antes
+  // dele, em Encerradas: a linha numa das duas abas.
+  const listRow = page.locator(
+    `[data-supplier-request-row="${requestUrl.split("/").pop()}"]`,
+  );
+  await page.goto("/app/supplier-requests");
+  if (!(await listRow.count()))
+    await page.goto("/app/supplier-requests?tab=closed");
+  const listAction = listRow.locator(
+    '[data-supplier-request-turn-action="sampling_validate"]',
+  );
+  await expect(listAction).toHaveText("Validar a amostragem");
+  await expect(listAction).toHaveAttribute(
+    "href",
+    /\/app\/supplier-requests\/[^/?]+\?view=item#amostragem$/,
+  );
   await page.goto(requestUrl);
   await expect(turnCell).toHaveAttribute("data-supplier-table-turn", "wellmix");
-  await expect(
-    turnCell.locator("[data-supplier-table-turn-action]"),
-  ).toHaveText("Validar a amostragem");
-  await page.goto(itemUrl);
+  const validateLink = turnCell.locator("[data-supplier-table-turn-action]");
+  await expect(validateLink).toHaveText("Validar a amostragem");
+  // Clicar leva ao lugar de agir: o quadro da amostragem, com a validação.
+  await validateLink.click();
+  await page.waitForURL(/\?view=item#amostragem$/);
+  await expect(page.locator("#amostragem")).toBeVisible();
   await expect(page.locator("[data-sampling-file]")).toHaveCount(1);
   await page.click("[data-sampling-review=approve]");
   await page.waitForURL(/[?&]sampling=approved/);

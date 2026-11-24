@@ -110,15 +110,15 @@ export function priceInUsd(
 }
 
 /**
- * O id do item de menor custo por peça do Superplan entre os mostrados (o
- * "melhor caso"). Pelo custo, e não pelo preço mínimo: o mínimo é o custo
- * vezes o markup do tipo de negócio, e bookings fechados com tipos diferentes
- * não se comparam pelo mínimo.
+ * O id do item de menor custo por peça da previsão de preço do Sankhya entre
+ * os mostrados (o "melhor caso"). Retratos antigos (da conta do portal que
+ * saiu, sem `source`) ficam de fora.
  */
 export function bestCostItem(items: BookingItem[]): string | null {
   let best: { id: string; cost: number } | null = null;
   for (const item of items) {
-    const cost = item.analysis?.costBrl;
+    const cost =
+      item.analysis?.source === "price_forecast" ? item.analysis.costBrl : null;
     if (typeof cost !== "number" || !Number.isFinite(cost)) continue;
     if (!best || cost < best.cost) best = { id: item.id, cost };
   }

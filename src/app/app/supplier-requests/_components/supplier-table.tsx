@@ -30,6 +30,7 @@ import {
   Textarea,
   Th,
   cx,
+  linkClass,
   rowClass,
   type Tone,
 } from "@/components/ui";
@@ -47,10 +48,14 @@ import {
   SAMPLING_SLA_DAYS,
   samplingLate,
   samplingOf,
+  supplierRequestStepHref,
   supplierRequestTurn,
 } from "@/lib/supplier-request-sampling";
 import type { Responsible } from "@/lib/request-responsible";
-import { ResponsibleTip } from "@/components/request-responsible-tip";
+import {
+  ResponsibleLogins,
+  ResponsibleTip,
+} from "@/components/request-responsible-tip";
 import Link from "next/link";
 import { roundsDates } from "@/components/purchase-rounds";
 import { dateTime } from "./negotiation";
@@ -748,14 +753,17 @@ export function SupplierRequestTable({
                       )
                     : "—"}
                   {/* A ação, com as mesmas palavras de Encomendas e das
-                      Pendências ("Carregar a amostragem"). */}
+                      Pendências ("Carregar a amostragem"), é o link para o
+                      lugar de agir, o mesmo da pendência (dono,
+                      24/11/2026). */}
                   {turn ? (
-                    <span
-                      className="mt-0.5 block max-w-40 font-medium text-zinc-800"
+                    <Link
+                      href={supplierRequestStepHref(r.id, turn.step)}
+                      className={cx(linkClass, "mt-0.5 block max-w-40")}
                       data-supplier-table-turn-action
                     >
                       {t(`reqList.next.${turn.step}` as DictionaryKey)}
-                    </span>
+                    </Link>
                   ) : null}
                   {/* Quem age: o nome e, no balão, o login (administrador). */}
                   {turn && who ? (
@@ -764,6 +772,11 @@ export function SupplierRequestTable({
                       t={t}
                       className="mt-0.5 block max-w-40"
                     />
+                  ) : null}
+                  {/* O login de quem envia, à vista (administrador; dono,
+                      24/11/2026). */}
+                  {turn ? (
+                    <ResponsibleLogins r={who} t={t} className="max-w-40" />
                   ) : null}
                   {pending ? (
                     <span
