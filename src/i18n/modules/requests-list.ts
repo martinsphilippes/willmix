@@ -68,6 +68,7 @@ export const pt = {
   "reqList.resp.admins": "Administradores também podem agir: {list}",
   "reqList.resp.due": "prazo {date}",
   "reqList.resp.noLogin": "sem login",
+  "reqList.resp.logins": "Login: {list}",
   "reqList.resp.missing.function":
     "Ninguém da equipe tem a função desta etapa. Pendência de cadastro: dar a função a alguém em Equipe → Funções e acessos. Até lá, os administradores podem agir.",
   "reqList.resp.missing.login":
@@ -245,6 +246,7 @@ export const en: Record<keyof typeof pt, string> = {
   "reqList.resp.admins": "Administrators can also act: {list}",
   "reqList.resp.due": "due {date}",
   "reqList.resp.noLogin": "no login",
+  "reqList.resp.logins": "Login: {list}",
   "reqList.resp.missing.function":
     "No one on the team has this step's function. Setup pending: give the function to someone in Team → Functions and access. Until then, administrators can act.",
   "reqList.resp.missing.login":
@@ -414,6 +416,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqList.resp.admins": "管理员也可处理：{list}",
   "reqList.resp.due": "期限 {date}",
   "reqList.resp.noLogin": "无登录",
+  "reqList.resp.logins": "登录：{list}",
   "reqList.resp.missing.function":
     "团队中没有人拥有此步骤的职能。待完成设置：在 团队 → 职能和权限 中分配职能。在此之前，管理员可以处理。",
   "reqList.resp.missing.login":

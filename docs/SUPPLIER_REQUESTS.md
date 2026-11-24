@@ -223,6 +223,7 @@ A mesma tela (`?view=item`), com as mesmas regras, permissões, cálculos, anexo
 
 ## Lista de solicitações
 
+- **Vez** (dono, 24/11/2026; docs/TURNS.md): "Aguardando fornecedor" ou "Aguardando Wellmix", a ação embaixo ("Carregar a amostragem", "Responder a solicitação"…), quem age (a peça "Quem pode agir" da tabela da cotação) e, na vez do fornecedor, o **login de quem envia** à vista ("Login: …"), só para o administrador.
 - Datas com hora (aberta em, finalizada em).
 - **Finalizada em**: data e hora da decisão da Wellmix e o selo **Dentro do SLA** ou **Em atraso** (decisão depois de abertura + SLA; `finishedLate`).
 - **Produtos distintos**: no topo, quantas solicitações e quantos itens diferentes; em cada linha, quantos produtos distintos tem a tabela daquela solicitação (mesmo fornecedor e booking; `distinctProductsByGroup`).

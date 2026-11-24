@@ -642,18 +642,39 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     page.locator("[data-info-tip]").filter({ hasText: "supplier.a@china.com" }),
   ).toBeVisible();
   await page.keyboard.press("Escape");
+  // O login de quem carrega a amostragem, à vista para o administrador
+  // (dono, 24/11/2026): na tabela da cotação e na lista de cotações.
+  await expect(turnCell.locator("[data-responsible-logins]")).toContainText(
+    "supplier.a@china.com",
+  );
   // Aba (dono, 24/11/2026): aprovada com a amostra pendente continua em
   // "Em andamento", com a ação, até a amostra ser aprovada.
   const listRowSelector = `[data-supplier-request-row="${requestUrl.split("/").pop()}"]`;
+  const listTurn = page.locator(
+    `${listRowSelector} [data-supplier-request-turn]`,
+  );
   await page.goto("/app/supplier-requests");
   // Pela marcação, sem o texto (o nome da ação pode mudar; PR #677).
+  await expect(listTurn).toHaveAttribute(
+    "data-supplier-request-turn",
+    "sampling_send",
+  );
+  // Quem age e o login de quem carrega, à vista (só o administrador).
   await expect(
-    page.locator(
-      `${listRowSelector} [data-supplier-request-turn="sampling_send"]`,
-    ),
-  ).toBeVisible();
+    listTurn.locator('[data-request-responsible="ok"]'),
+  ).toContainText("Fornecedor");
+  await expect(listTurn.locator("[data-responsible-logins]")).toContainText(
+    "supplier.a@china.com",
+  );
   await page.goto("/app/supplier-requests?tab=closed");
   await expect(page.locator(listRowSelector)).toHaveCount(0);
+  // Fora o administrador, quem age sem o login (privacidade).
+  await login(page, plannerEmail);
+  await page.goto("/app/supplier-requests");
+  await expect(
+    listTurn.locator('[data-request-responsible="ok"]'),
+  ).toBeVisible();
+  await expect(listTurn.locator("[data-responsible-logins]")).toHaveCount(0);
 
   // 4.1 Amostragem: o responsável sobe uma foto da amostra e envia.
   await login(page, "supplier.a@china.com");
