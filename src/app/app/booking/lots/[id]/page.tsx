@@ -10,6 +10,10 @@ import { requireScreen } from "@/lib/auth/guard";
 import {
   bookingCapacityShown,
   bookingLotEditable,
+  bookingLotLockable,
+  bookManufacturer,
+  manufacturerMismatch,
+  storeNumberMismatch,
   bookingLotMoves,
   bookingLotPending,
   bookingLotReady,
@@ -33,6 +37,11 @@ import { durationText, lockLate, workedShare } from "@/lib/booking-locks";
 import { GROUP_MAX } from "@/lib/booking-selection";
 import { getSettings } from "@/lib/settings";
 import { BookMetaFields } from "../../_components/book-meta-fields";
+import {
+  ManufacturerAlert,
+  ManufacturerCell,
+  StoreNumberAlert,
+} from "../../_components/manufacturer";
 import { superplanBusinessTypes } from "@/lib/services/superplan-analysis";
 import { getT } from "@/i18n/server";
 import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
@@ -205,6 +214,10 @@ export default async function BookingLotPage({
   // Itens trabalhados na Seleção de itens e com quem está o book (dono,
   // 23/11/2026; docs/BOOKING.md, "Itens trabalhados" e "Travar books").
   const worked = workedShare(items);
+  // Fabricante: a Fábrica do book × o que a planilha traz em cada linha
+  // (dono, 24/11/2026). Diferente, o book não fecha.
+  const manufacturer = bookManufacturer(lot, supplier?.name ?? null);
+  const mixed = items.filter((i) => manufacturerMismatch(i, manufacturer));
   const [itemTypes, supervisor, settings] = await Promise.all([
     bookingItemTypes(),
     canSuperviseBooks(user),
@@ -293,6 +306,10 @@ export default async function BookingLotPage({
   if (one("saved")) notices.push(["success", t("bookingLots.detail.saved")]);
   if (one("locked")) notices.push(["success", t("bookWork.lock.done")]);
   if (one("unlocked")) notices.push(["success", t("bookWork.unlock.done")]);
+  if (one("manufacturer"))
+    notices.push(["success", t("bookWork.manufacturer.confirmed")]);
+  if (one("removed"))
+    notices.push(["success", t("bookWork.manufacturer.removed")]);
   if (one("supplier") === "created")
     notices.push(["success", t("bookingLots.detail.supplierCreated")]);
 
@@ -518,6 +535,7 @@ export default async function BookingLotPage({
         <col style={{ width: `${FIRST_COL_REM}rem` }} />
         <col style={{ width: "6.5rem" }} />
         <col style={{ width: "8rem" }} />
+        <col style={{ width: "13rem" }} />
         <col style={{ width: "11.5rem" }} />
         {columns.map((c) => (
           <col key={c.field} style={{ width: `${colRem(c.width)}rem` }} />
@@ -542,6 +560,7 @@ export default async function BookingLotPage({
             {colLabel("photo")}
           </th>
           <th className={th}>{t("bookWork.col.worked")}</th>
+          <th className={th}>{t("bookWork.manufacturer")}</th>
           <th className={th}>
             {t("bookingNcm.col")}
             <span className="text-brand-700"> *</span>
@@ -567,6 +586,7 @@ export default async function BookingLotPage({
               <BulkLoadButton />
             </th>
             <th className={cx(bulkTh, STICKY_PHOTO, "bg-white")} />
+            <th className={bulkTh} />
             <th className={bulkTh} />
             <th className={bulkTh}>
               {ncmEditable ? (
@@ -695,6 +715,22 @@ export default async function BookingLotPage({
                     {formatDate(item.workedAt, t)}
                   </span>
                 ) : null}
+              </td>
+              <td
+                className={cx(
+                  "border-b border-zinc-100 px-2 py-2 align-top",
+                  manufacturerMismatch(item, manufacturer) && "bg-red-50",
+                )}
+              >
+                <ManufacturerCell
+                  t={t}
+                  lotId={lot.id}
+                  itemId={item.id}
+                  manufacturer={manufacturer}
+                  sheetSupplier={item.sheetSupplier ?? null}
+                  mismatch={manufacturerMismatch(item, manufacturer)}
+                  canEdit={editable}
+                />
               </td>
               <td
                 className="border-b border-zinc-100 px-2 py-2 align-top text-[13px] text-zinc-800"
@@ -916,6 +952,22 @@ export default async function BookingLotPage({
         ) : null}
       </div>
 
+      <StoreNumberAlert
+        t={t}
+        typed={lot.storeNumber ?? null}
+        sheet={
+          storeNumberMismatch(lot.storeNumber, hint?.store)
+            ? (hint?.store ?? null)
+            : null
+        }
+      />
+      <ManufacturerAlert
+        t={t}
+        lotId={lot.id}
+        count={mixed.length}
+        manufacturer={manufacturer}
+        canEdit={editable}
+      />
       <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
         <Card title={t("bookingLots.detail.header")} className="lg:col-span-2">
           <DescriptionList
@@ -1164,7 +1216,7 @@ export default async function BookingLotPage({
                   </form>
                 ) : null}
               </div>
-            ) : (
+            ) : bookingLotLockable(lot.status) ? (
               <form
                 action={lockBookingLotAction}
                 className="space-y-2"
@@ -1179,6 +1231,11 @@ export default async function BookingLotPage({
                   {t("bookWork.lock")}
                 </SubmitButton>
               </form>
+            ) : (
+              // Rascunho (ou cancelado): ainda não é trabalhado na seleção.
+              <p className="text-sm text-zinc-600" data-booking-lot-no-lock>
+                {t("bookWork.lock.afterDraft")}
+              </p>
             )}
           </Card>
           {editable && !lot.supplierId && hint?.name ? (

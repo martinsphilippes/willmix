@@ -1,4 +1,5 @@
 import type { BookingLock, BookingLot } from "@/lib/db/schema";
+import { bookingLotLockable } from "@/lib/booking-lots";
 
 /*
  * Travar books (dono, 23/11/2026; docs/BOOKING.md, "Travar books"): regras
@@ -27,6 +28,8 @@ export function cleanItemType(raw: string | null | undefined): string | null {
 
 type LockedLot = Pick<BookingLot, "id" | "createdAt"> & {
   itemType?: string | null;
+  /** Com a situação, só o book que já saiu do rascunho tem trava. */
+  status?: BookingLot["status"];
 };
 type Lock = Pick<
   BookingLock,
@@ -38,6 +41,9 @@ export function lockOfLot<L extends Lock>(
   lot: LockedLot,
   locks: readonly L[],
 ): L | null {
+  // Só depois do rascunho (dono, 24/11/2026): o book em rascunho ainda não
+  // está sendo trabalhado na seleção, e todos continuam vendo.
+  if (lot.status && !bookingLotLockable(lot.status)) return null;
   const own = locks.find((l) => l.scope === "lot" && l.lotId === lot.id);
   if (own) return own;
   const key = itemTypeKey(lot.itemType);

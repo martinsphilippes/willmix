@@ -3537,6 +3537,15 @@ export interface BookingItem extends BaseRow {
    */
   workedAt?: string | null;
   workedByUserId?: string | null;
+  /**
+   * Fabricante como a planilha escreveu nesta linha (coluna SUPPLIER NAME;
+   * dono, 24/11/2026). Comparado com a Fábrica do book: diferente, o book
+   * não é enviado nem fechado até a linha ser removida ou alguém confirmar
+   * que a planilha estava errada (`manufacturerOkAt`). Antigos: nulo.
+   */
+  sheetSupplier?: string | null;
+  manufacturerOkAt?: string | null;
+  manufacturerOkByUserId?: string | null;
 }
 
 /** Cópia do item do booking no momento da solicitação (o que o fornecedor vê). */
@@ -6783,6 +6792,9 @@ export const TABLES: Record<TableName, TableDef> = {
       ncmByUserId: id(false),
       workedAt: datetime(),
       workedByUserId: id(false),
+      sheetSupplier: str(160),
+      manufacturerOkAt: datetime(),
+      manufacturerOkByUserId: id(false),
     },
     indexes: [
       { key: "by_lot", type: "key", columns: ["lotId"] },

@@ -193,7 +193,8 @@ export function BookingLotsTable({
                   </button>
                 </form>
               ) : null
-            ) : row.status !== "cancelled" ? (
+            ) : // Só depois do rascunho (dono, 24/11/2026).
+            ["closed", "in_progress", "done"].includes(row.status) ? (
               <form action={lockBookingLotAction}>
                 <input type="hidden" name="lotId" value={row.id} />
                 <button

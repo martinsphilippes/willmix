@@ -127,10 +127,22 @@ export async function importBookingAction(form: FormData) {
     if (!sources.length) throw new SheetImportError("file_required");
     const { createBookingLotFromSheet } =
       await import("@/lib/services/booking-lots");
+    // Fornecedor (o Supplier, dono do book): escolhido no cadastro ou, sem
+    // ele, um novo pelo nome (dono, 24/11/2026).
+    const partner = z
+      .object({
+        partnerId: ID.nullable(),
+        newPartnerName: z.string().trim().max(160).nullable(),
+      })
+      .parse({
+        partnerId: str(form, "partnerId") || null,
+        newPartnerName: str(form, "newPartnerName") || null,
+      });
     const lot = await createBookingLotFromSheet(user, sources, {
       defaultCurrency: parsed.currency,
       sheet: parsed.sheet,
       ...meta,
+      ...partner,
     });
     return withQuery(detail(lot.id), "created", "1");
   });
@@ -652,5 +664,58 @@ export async function unlockBookingAction(form: FormData) {
     await unlockBooking(user, lockId);
     revalidatePath(LIST);
     return withQuery(back, "unlocked", "1");
+  });
+}
+
+/* ------------------------------------------------------------------------ */
+/* Fabricante: remover a linha ou confirmar a tela (dono, 24/11/2026)        */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * "A planilha estava errada": vale o Fabricante da tela nas linhas
+ * divergentes (uma, com `itemId`, ou todas). Wellmix no rascunho; o parceiro
+ * no book que ainda preenche.
+ */
+export async function confirmBookingManufacturerAction(form: FormData) {
+  const raw = str(form, "lotId");
+  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
+  await run(back, async () => {
+    const user = await requireUser();
+    assertScreen(user, "booking");
+    const input = z
+      .object({ lotId: ID, itemId: ID.nullable() })
+      .parse({ lotId: raw, itemId: str(form, "itemId") || null });
+    if (isWellmix(user)) {
+      const { confirmBookingManufacturer } =
+        await import("@/lib/services/booking-lots");
+      await confirmBookingManufacturer(user, input.lotId, input.itemId);
+    } else {
+      const { confirmPartnerManufacturer } =
+        await import("@/lib/services/booking-partner");
+      await confirmPartnerManufacturer(user, input.lotId, input.itemId);
+    }
+    return withQuery(back, "manufacturer", "ok");
+  });
+}
+
+/** Remove um item do book (a linha de outro fabricante). */
+export async function removeBookingItemAction(form: FormData) {
+  const raw = str(form, "lotId");
+  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
+  await run(back, async () => {
+    const user = await requireUser();
+    assertScreen(user, "booking");
+    const input = z
+      .object({ lotId: ID, itemId: ID })
+      .parse({ lotId: raw, itemId: str(form, "itemId") });
+    if (isWellmix(user)) {
+      const { removeBookingItem } = await import("@/lib/services/booking-lots");
+      await removeBookingItem(user, input.lotId, input.itemId);
+    } else {
+      const { removePartnerBookingItem } =
+        await import("@/lib/services/booking-partner");
+      await removePartnerBookingItem(user, input.lotId, input.itemId);
+    }
+    return withQuery(back, "removed", "1");
   });
 }
