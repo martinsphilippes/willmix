@@ -1099,8 +1099,18 @@ export async function closeBookingLot(
     lot.id,
     `Book nº ${lot.number} fechado: ${items.length} itens`,
   );
-  const { requestLotCosts } = await import("./booking-cost");
-  await requestLotCosts(lot.id, user.id, { adapter: options?.adapter });
+  // O book já está fechado: uma falha ao pedir o custo não desfaz o
+  // fechamento (o quadro do book mostra os itens na fila e o botão).
+  try {
+    const { requestLotCosts } = await import("./booking-cost");
+    await requestLotCosts(lot.id, user.id, { adapter: options?.adapter });
+  } catch (error) {
+    console.error(
+      "[booking-cost] book fechado, custo não pedido",
+      lot.id,
+      error instanceof Error ? error.message : String(error),
+    );
+  }
   return updated;
 }
 

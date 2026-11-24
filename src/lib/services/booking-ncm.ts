@@ -270,8 +270,17 @@ export async function setBookingItemsNcm(
     for (const i of closed)
       byLot.set(i.lotId, [...(byLot.get(i.lotId) ?? []), i.id]);
     for (const [lotId, only] of byLot) {
-      const run = await requestLotCosts(lotId, user.id, { only });
-      reanalyzed += run.done;
+      // O NCM já foi gravado: uma falha aqui não desfaz a troca.
+      try {
+        const run = await requestLotCosts(lotId, user.id, { only });
+        reanalyzed += run.done;
+      } catch (error) {
+        console.error(
+          "[booking-cost] NCM trocado, custo não pedido",
+          lotId,
+          error instanceof Error ? error.message : String(error),
+        );
+      }
     }
   }
   await audit(
