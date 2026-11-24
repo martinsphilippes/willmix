@@ -659,12 +659,32 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
 
   // 4.2 A Wellmix valida a amostra. Enviada, a vez é dela.
   await login(page, "admin@wellmix.com");
+  // Na lista de Cotação, "Validar a amostragem" é o link para o quadro da
+  // amostragem do produto (dono, 24/11/2026), o mesmo da pendência.
+  // A aprovada esperando a amostra fica em "Em andamento" (PR #680) ou, antes
+  // dele, em Encerradas: a linha numa das duas abas.
+  const listRow = page.locator(
+    `[data-supplier-request-row="${requestUrl.split("/").pop()}"]`,
+  );
+  await page.goto("/app/supplier-requests");
+  if (!(await listRow.count()))
+    await page.goto("/app/supplier-requests?tab=closed");
+  const listAction = listRow.locator(
+    '[data-supplier-request-turn-action="sampling_validate"]',
+  );
+  await expect(listAction).toHaveText("Validar a amostragem");
+  await expect(listAction).toHaveAttribute(
+    "href",
+    /\/app\/supplier-requests\/[^/?]+\?view=item#amostragem$/,
+  );
   await page.goto(requestUrl);
   await expect(turnCell).toHaveAttribute("data-supplier-table-turn", "wellmix");
-  await expect(
-    turnCell.locator("[data-supplier-table-turn-action]"),
-  ).toHaveText("Validar a amostragem");
-  await page.goto(itemUrl);
+  const validateLink = turnCell.locator("[data-supplier-table-turn-action]");
+  await expect(validateLink).toHaveText("Validar a amostragem");
+  // Clicar leva ao lugar de agir: o quadro da amostragem, com a validação.
+  await validateLink.click();
+  await page.waitForURL(/\?view=item#amostragem$/);
+  await expect(page.locator("#amostragem")).toBeVisible();
   await expect(page.locator("[data-sampling-file]")).toHaveCount(1);
   await page.click("[data-sampling-review=approve]");
   await page.waitForURL(/[?&]sampling=approved/);
