@@ -248,7 +248,7 @@ Pedido do dono: "o vídeo completo com as telas e o áudio em português do Bras
 - **Corte das falas pelo som:** o tempo das palavras do Whisper só diz onde procurar. O corte entre duas falas vai para o meio do silêncio medido no áudio (quadros de 10 ms abaixo de −60 dBFS), e as pontas de cada fala saem pelo som: entram as consoantes fracas do começo (o "f" de "Fornecedores", o estalo do "c" de "Consulta") e as sílabas finais quase sem voz ("embarque", "contrato"); a respiração separada da fala fica de fora. A primeira versão cortava pelo tempo das palavras e perdeu "Entrega" (o Whisper ouviu "Pega" e marcou a palavra seguinte), o "F" de "Fornecedores" e o "C" de "Consulta"; a transcrição fala por fala não acusou (o Whisper completa a palavra pelo contexto). Quem achou foi a conferência independente, comparando com o áudio original. Agora o importador avisa quando sobra som de fala fora de todas as falas, e `--cache` guarda a transcrição para refazer o corte sem transcrever de novo.
 - **Vozes locais testadas antes (não usadas):** Kokoro `pf_dora`, Chatterbox (ajuste pt-BR), Supertonic e Qwen3-TTS (`tts/tts_pt.py`). A Qwen3-TTS clonada foi a melhor nas medidas de naturalidade, mas **o dono ouviu sotaque de Portugal**; uma medida de sotaque feita depois (fonemas ouvidos comparados à pronúncia esperada no Brasil e em Portugal) confirmou: só 2 de 14 frases soavam brasileiras. O dono preferiu trazer a voz do ElevenLabs. Lição: medir o sotaque antes de mostrar uma voz.
 - **Música e tempos:** `tts/track.py` agora escolhe, entre combinações de até quatro voltas que recomeçam em início de bloco, a que põe o acorde final na marca; o resto se acerta com as folgas do vídeo (`post: 0.595`) e da cena final (`pre: 0.2`, `post: 0.55`). Na versão final, o acorde cai 0,01 s antes da marca. Como a marca demora mais a aparecer do que na versão em inglês, a música precisa começar antes: a introdução calma ganha dois compassos (repete a frase dos compassos 1 e 2), na mesma grade. A primeira tentativa punha compassos do começo na frente e recomeçava a faixa do zero, o que deixou 70 ms de silêncio e uma queda de 10 dB no meio da vinheta (achado da conferência).
-- **Conferência independente (16/11/2026):** quatro inspetores (telas, cenas de risco, áudio e quadro a quadro) e um revisor cético para cada achado. Na primeira versão enviada confirmaram nove defeitos de montagem, todos corrigidos: rótulos "Agência de arte" e "Fornecedor" sobrepostos no mapa (o rótulo agora aceita `pos`), título de comex em duas linhas desalinhando as janelas (virou "Licenças, numerário e DI/DUIMP"), selo "O que a Wellmix vê" sobre a barra da janela, selo de carregamento fora da margem ("nº do container"), os três cortes de fala, o silêncio na música da vinheta e a linha vermelha da jornada piscando ao nascer (crescia por `transform` a partir de zero; agora cresce pela largura). Ficou um ponto que é do áudio do dono (seção 5, ponto 13). Lição: texto em português é mais longo que o inglês para o qual o desenho foi feito; conferir quadro a quadro toda cena com texto novo.
+- **Conferência independente (16/11/2026):** quatro inspetores (telas, cenas de risco, áudio e quadro a quadro) e um revisor cético para cada achado. Na primeira versão enviada confirmaram nove defeitos de montagem, todos corrigidos: rótulos "Agência de arte" e "Fornecedor" sobrepostos no mapa (o rótulo agora aceita `pos`), título de comex em duas linhas desalinhando as janelas (virou "Licenças, numerário e DI/DUIMP"), selo "O que a Wellmix vê" sobre a barra da janela, selo de carregamento fora da margem ("nº do container"), os três cortes de fala, o silêncio na música da vinheta e a linha vermelha da jornada piscando ao nascer (crescia por `transform` a partir de zero; agora cresce pela largura). Ficou um ponto que é do áudio do dono (seção 6, ponto 13). Lição: texto em português é mais longo que o inglês para o qual o desenho foi feito; conferir quadro a quadro toda cena com texto novo.
 
 Para refazer (de `scripts/video`; portais em modo demonstração como na seção 3):
 
@@ -277,7 +277,45 @@ node render.mjs full_br pt && node mix.mjs full_br pt --audio
 
 O `import_voice.py` precisa do `faster-whisper` (modelo "medium", baixado do Hugging Face na primeira vez). Mudou o texto de uma fala? Rode `narration-export.mjs`, gere de novo só aquela fala no ElevenLabs (com a mesma voz) e use `--fix <id>=<arquivo>`.
 
-## 5. Pontos para o dono decidir ou conferir
+## 5. Versão em mandarim (24/11/2026)
+
+Pedido do dono: "esse vídeo em mandarim, tanto as telas quanto a voz". É o mesmo vídeo completo da seção 4 (as 23 cenas, na mesma ordem, sem legenda), com:
+
+- **Roteiro:** `scripts/video/script.zh.mjs` (`VIDEOS_ZH.full_zh`), em chinês simplificado e mandarim padrão. Os termos são os que o próprio portal mostra em chinês (`src/i18n`: 待办, 验货, 装柜, 提单, 报关行, 控制塔, 实物照片...), para a voz e os textos da cena dizerem o que a tela mostra. Revisado por cinco lentes independentes (mandarim falado natural; termos iguais aos do portal; fidelidade ao roteiro em português; riscos de leitura pela voz e de entendimento só pelo ouvido, já que não há legenda; textos da tela), com um segundo revisor para cada proposta.
+- **Palco:** chinês não separa as palavras com espaço. `film.js` separa cada linha de título com o `Intl.Segmenter` do navegador (as palavras continuam subindo uma a uma), a pontuação fica com a palavra anterior e as quebras de linha dos títulos são escritas no roteiro (`\n`), porque a quebra automática corta a frase em lugar ruim. `fonts.css` traz a Noto Sans SC nos pesos dos títulos (400 a 800).
+- **Telas:** o portal em chinês com a base de demonstração em chinês (`data-zh.mjs`: produtos, fábricas, tradings e as pessoas do lado da China; empresas e pessoas do Brasil ficam como estão, são nomes próprios), a conversa do chat em chinês (`seed-chat.mjs` com `LANGUAGE=zh`) e a inspeção pelo celular em chinês (`inspection/flow.mjs` com `LANGUAGE=zh`), em `film/shots/cn`. `shots.mjs --latin` lista, por captura, o que a tela ainda mostra em letras latinas (foi assim que os nomes de arquivo "foto.png" e o prefixo "attachment:" da auditoria apareceram).
+- **Datas da base:** as bases de demonstração são de 15/11/2026. Dias depois, todos os prazos apareceriam vencidos; `data-shift.mjs` soma os mesmos dias a toda data gravada, e o portal mostra hoje o que mostrava no dia das telas originais.
+- **Mesma versão do portal:** as telas vêm da compilação de 16/11/2026 (a das versões em inglês e em português), para os três vídeos mostrarem o mesmo portal.
+- **Voz:** pelo mesmo caminho da versão em português: pacote `narracao-zh/` (LEIA-ME em português, três partes em chinês para colar e a tabela das 72 falas com a fala em português ao lado), voz gerada pelo dono no ElevenLabs e importada por `tts/import_voice.py`. Em mandarim o importador conta um caractere por palavra, casa caracteres de mesma pronúncia (o Whisper troca homófonos; `pypinyin`) e passa o tradicional para simplificado (`zhconv`).
+- **Abertura:** a vinheta é a peça do dono, com os nomes dos países desenhados em português; fica como está.
+
+Para refazer (de `scripts/video`):
+
+```bash
+# Telas em chinês (base .data-video-zh, porta 3204)
+node data-zh.mjs && node data-shift.mjs .data-video-zh    # .data-video → .data-video-zh, datas em hoje
+(cd ../.. && DATA_MODE=memory DATA_DIR=.data-video-zh npx next start -p 3204 &)
+PORTAL=http://localhost:3204 LANGUAGE=zh node seed-chat.mjs   # conversa (uns 5 min)
+# pare o portal (os dois processos: "next start" e "next-server"), traduza o que a conversa gravou e suba de novo
+node data-zh.mjs .data-video-zh .data-video-zh
+export PORTAL=http://localhost:3204 DATA_DIR=$PWD/../../.data-video-zh
+node shots.mjs zh customer,supplier,agency,ocp,marketing,forwarder,line,comex,broker,carrier,m-carrier,m-tower,m-supplier,order-inspection,order-container,shipping-docs,tower,sla,audit,messages,m-messages,messages-control --out cn --latin
+for l in pt en zh; do node shots.mjs $l supplier --out cn-$l; done   # cena dos três idiomas
+unset PORTAL DATA_DIR
+# Inspeção pelo celular (base .data-video-insp-zh, porta 3300)
+node data-zh.mjs .data-video-insp-before .data-video-insp-zh && node data-shift.mjs .data-video-insp-zh
+LANGUAGE=zh node inspection/flow.mjs --only phone
+
+# Narração: pacote para o ElevenLabs e, com os áudios de volta, o corte
+node build.mjs full_zh --tts && node narration-export.mjs full_zh   # docs/videos/institucional/narracao-zh
+python tts/import_voice.py out/full_zh.tts.json --manifest out/full_zh.voice-parts.json --audio <pasta com os áudios> --cache out/full_zh.whisper.json
+
+# Linha do tempo, trilha, imagem e fechamento
+node build.mjs full_zh && python tts/audio.py voice out/full_zh.audio.json && python tts/track.py out/full_zh.audio.json
+node render.mjs full_zh zh && node mix.mjs full_zh zh --audio
+```
+
+## 6. Pontos para o dono decidir ou conferir
 
 1. **Áudio.** Quem montou não ouve áudio: a narração foi conferida por transcrição automática (todas as falas batem com o roteiro) e os volumes por medição (−16 LUFS, música cerca de 12 dB abaixo da fala). O dono assistiu à primeira versão em 15/11/2026 e aprovou; pediu só tirar a China do exemplo.
 2. **Voz.** É sintética (boa qualidade, sem custo). Para trocar por locutor, basta gravar as falas de `script.mjs` com os mesmos nomes de arquivo; o resto se ajusta.
