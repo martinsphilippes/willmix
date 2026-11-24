@@ -428,6 +428,7 @@ describe("regras puras", () => {
         holder: "",
         lockId: null,
         lockMine: false,
+        lockCanRelease: false,
         lockByType: false,
         heldMinutes: null,
         heldText: "",

@@ -11728,6 +11728,13 @@
           "type": "double"
         },
         {
+          "key": "workDoneAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
           "key": "itemType",
           "required": false,
           "array": false,

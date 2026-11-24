@@ -540,6 +540,8 @@ export interface BookingLotRow {
   /** A trava: id, se é de quem vê, se é do tipo de item, há quanto tempo e o prazo. */
   lockId: string | null;
   lockMine: boolean;
+  /** Quem vê pode liberar (o gestor de quem travou ou quem supervisiona). */
+  lockCanRelease: boolean;
   lockByType: boolean;
   heldMinutes: number | null;
   heldText: string;

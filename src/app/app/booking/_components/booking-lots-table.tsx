@@ -83,7 +83,6 @@ export function BookingLotsTable({
   rows,
   labels,
   showSignals = true,
-  supervisor = false,
 }: {
   rows: BookingLotRow[];
   labels: BookingLotsTableLabels;
@@ -92,8 +91,6 @@ export function BookingLotsTable({
    * docs/LINHA_DE_VISAO.md, seção 7).
    */
   showSignals?: boolean;
-  /** Supervisiona os books: libera a trava de qualquer pessoa. */
-  supervisor?: boolean;
 }) {
   const columns = showSignals
     ? COLUMNS
@@ -181,7 +178,7 @@ export function BookingLotsTable({
             {row.lockId ? (
               // A trava pelo tipo é liberada na faixa de cima (vale para
               // todos os books do tipo).
-              (row.lockMine || supervisor) && !row.lockByType ? (
+              row.lockCanRelease && !row.lockByType ? (
                 <form action={unlockBookingAction}>
                   <input type="hidden" name="lockId" value={row.lockId} />
                   <button

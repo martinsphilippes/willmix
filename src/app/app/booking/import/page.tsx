@@ -79,9 +79,20 @@ export default async function BookingImportPage({
         title={t("bookingLots.import.title")}
         subtitle={t("bookingLots.import.subtitle")}
         actions={
-          <LinkButton href="/app/booking">
-            {t("bookingLots.backToList")}
-          </LinkButton>
+          // Modelo da planilha de book, ao lado do voltar (dono, 24/11/2026).
+          <>
+            <LinkButton
+              href="/modelos/modelo-book-wellmix-2026.xls"
+              download="Modelo_Book_Wellmix_2026.xls"
+              prefetch={false}
+              data-book-template
+            >
+              {t("bookWork.template")}
+            </LinkButton>
+            <LinkButton href="/app/booking">
+              {t("bookingLots.backToList")}
+            </LinkButton>
+          </>
         }
       />
       {errorText ? (
