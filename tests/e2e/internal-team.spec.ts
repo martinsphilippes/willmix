@@ -244,7 +244,12 @@ test("Equipe Interna: endereços antigos com # e o painel da pessoa pelo endere�
     .first()
     .getAttribute("data-team-member"))!;
 
-  // #u-<id> (a linha da pessoa) abre o painel dela.
+  // #u-<id> (a linha da pessoa) abre o painel dela. O endereço antigo chega
+  // como página nova (favorito, e-mail), e é assim que o teste abre: trocar
+  // só o "#" na página que ainda hidrata perde o "#", porque o Next regrava o
+  // endereço lido no início da hidratação (era a falha intermitente com a
+  // máquina lenta; a troca do "#" com a página pronta é o #distribute abaixo).
+  await page.goto("about:blank");
   await page.goto(`/app/team#u-${id}`);
   await page.waitForURL(new RegExp(`panel=person&id=${id}`));
   const drawer = page.locator(`[data-team-drawer-panel="${id}"]`);
