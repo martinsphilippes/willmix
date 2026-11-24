@@ -435,7 +435,7 @@ export async function PartnerBookingLaunch({
                 ))}
               </Select>
             </Field>
-            <BookMetaFields t={t} types={types} />
+            <BookMetaFields t={t} types={types} withSupplier={false} />
             <SubmitButton
               pendingText={t("bookingLots.import.submitting")}
               data-partner-booking-launch-submit

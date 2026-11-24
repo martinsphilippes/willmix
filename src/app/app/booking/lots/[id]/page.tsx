@@ -73,6 +73,7 @@ import {
   closeBookingLotAction,
   lockBookingLotAction,
   moveBookingLotAction,
+  registerBookingLotPartnerAction,
   setBookingLotMetaAction,
   unlockBookingAction,
   reanalyzeBookingLotAction,
@@ -787,9 +788,9 @@ export default async function BookingLotPage({
               {statusLabel(lot.status)}
             </Badge>
             <span>
-              {partner
+              {partner || lot.supplierName
                 ? t("bookingLots.detail.headingSupplier", {
-                    name: partner.name,
+                    name: partner?.name ?? lot.supplierName ?? "",
                   })
                 : t("bookingLots.detail.headingSupplierNone")}
             </span>
@@ -920,6 +921,27 @@ export default async function BookingLotPage({
                   <span className="text-xs text-zinc-500">
                     {t("bookingLots.partner.hint")}
                   </span>
+                  {/* Supplier digitado na importação e ainda sem cadastro:
+                      cadastrar aqui o põe como Fornecedor do book. */}
+                  {!lot.partnerId &&
+                  lot.supplierName &&
+                  lot.status !== "cancelled" ? (
+                    <form
+                      action={registerBookingLotPartnerAction}
+                      className="flex flex-wrap items-center gap-2 text-sm"
+                      data-booking-lot-supplier-pending
+                    >
+                      <input type="hidden" name="lotId" value={lot.id} />
+                      <span className="text-amber-800">
+                        {t("bookWork.supplier.pending", {
+                          name: lot.supplierName,
+                        })}
+                      </span>
+                      <SubmitButton variant="secondary">
+                        {t("bookWork.supplier.register")}
+                      </SubmitButton>
+                    </form>
+                  ) : null}
                 </span>,
               ],
               [
@@ -1066,6 +1088,7 @@ export default async function BookingLotPage({
                 <BookMetaFields
                   t={t}
                   types={itemTypes}
+                  suppliers={partners.map((p) => p.name)}
                   storeNumber={lot.storeNumber ?? null}
                   supplierName={lot.supplierName ?? null}
                   incoterm={lot.incoterm ?? null}
@@ -1195,7 +1218,8 @@ export default async function BookingLotPage({
                   <Field label={t("bookingLots.detail.suggest.store")}>
                     <Input
                       name="storeNumber"
-                      defaultValue={hint.store ?? ""}
+                      // O nº da loja digitado na importação é o da Fábrica.
+                      defaultValue={lot.storeNumber ?? hint.store ?? ""}
                       maxLength={60}
                     />
                   </Field>

@@ -247,31 +247,36 @@ describe("fábrica, fornecedor e fabricante", () => {
     return r;
   };
 
-  it("o Fornecedor é escolhido no cadastro ou cadastrado pelo nome", async () => {
+  it("o Supplier digitado é o Fornecedor: do cadastro, ou cadastrado depois", async () => {
     const store = getStore();
-    const chosen = await svc.createBookingLotFromSheet(
+    // Já está no cadastro: o book nasce com ele como Fornecedor.
+    const known = await svc.createBookingLotFromSheet(
       admin,
       file([row("FN-1", "Cup")]),
-      { itemType: "Fornecedor", partnerId: supplierA.partyId },
+      { itemType: "Fornecedor", supplierName: "shenzhen supplier a" },
     );
-    expect(chosen.partnerId).toBe(supplierA.partyId);
+    expect(known.partnerId).toBe(supplierA.partyId);
+    // Não está: fica o nome, e a Wellmix cadastra depois na tela do book.
     const fresh = await svc.createBookingLotFromSheet(
       admin,
       file([row("FN-2", "Cup")]),
-      { itemType: "Fornecedor", newPartnerName: "Trading Nova Ltd." },
+      { itemType: "Fornecedor", supplierName: "HOME IN" },
     );
-    const party = await store.get("parties", fresh.partnerId!);
-    expect(party?.name).toBe("Trading Nova Ltd.");
-    expect(party?.type).toBe("supplier");
-    // O mesmo nome de novo não cadastra outro.
-    const again = await svc.createBookingLotFromSheet(
-      admin,
-      file([row("FN-3", "Cup")]),
-      { itemType: "Fornecedor", newPartnerName: "trading nova" },
+    expect(fresh.partnerId ?? null).toBeNull();
+    expect(fresh.supplierName).toBe("HOME IN");
+    const party = await svc.registerBookingLotPartner(admin, fresh.id);
+    expect(party.name).toBe("HOME IN");
+    expect(party.type).toBe("supplier");
+    expect((await store.get("booking_lots", fresh.id))?.partnerId).toBe(
+      party.id,
     );
-    expect(again.partnerId).toBe(fresh.partnerId);
-    // A Fábrica continua sendo a da planilha.
-    expect(fresh.supplierId).toBe(chosen.supplierId);
+    // O Supplier não é o Fabricante: a Fábrica continua sendo a da planilha,
+    // e nenhuma linha diverge por causa dele.
+    expect(fresh.supplierId).toBe(known.supplierId);
+    expect(await svc.lotManufacturer(fresh)).toBe("Shenzhen Supplier A");
+    expect(
+      await svc.manufacturerMismatches(fresh, await itemsOf(fresh.id)),
+    ).toEqual([]);
   });
 
   it("linha de outro fabricante trava o fechamento até remover ou confirmar", async () => {
@@ -324,7 +329,7 @@ describe("fábrica, fornecedor e fabricante", () => {
         mixedRow("PF-1", "Shenzhen Supplier A"),
         mixedRow("PF-2", "Fabrica Errada"),
       ]),
-      { itemType: "Fabricante", supplierName: "Shenzhen Supplier A" },
+      { itemType: "Fabricante" },
     );
     const detail = (await partner.getPartnerBookingLot(supplierA, lot.id))!;
     expect(detail.manufacturer).toBe("Shenzhen Supplier A");
