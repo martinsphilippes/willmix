@@ -112,6 +112,7 @@ import { QuotationQuotePage } from "../_components/quote-pages";
 import { SamplingCard } from "../_components/sampling";
 import { ItemImagesCard } from "../_components/item-images";
 import { samplingSlaDays } from "@/lib/services/supplier-request-sampling";
+import { supplierRequestResponsibles } from "@/lib/services/supplier-request-turns";
 import { samplingApproved, samplingFor } from "@/lib/supplier-request-sampling";
 import {
   entityLinkAccess,
@@ -290,13 +291,22 @@ export default async function SupplierRequestPage({
     <EntityTimelineCard timeline={await requestTimeline(r)} t={t} />
   ) : null;
   if (!itemView) {
-    const [rows, slaMinutes] = await Promise.all([
+    const [rows, slaMinutes, samplingDays] = await Promise.all([
       supplierRequestGroup(user, r),
       supplierRequestSlaMinutes(),
+      samplingSlaDays(),
     ]);
-    const [legacy, bookSpecs] = await Promise.all([
+    // Vez (dono, 24/11/2026): quem age em cada produto, com o login para o
+    // administrador, a mesma peça de Encomendas (só a Wellmix).
+    const [legacy, bookSpecs, responsible] = await Promise.all([
       legacyAnswers(rows),
       requestBookSpecs(user, rows),
+      supplierRequestResponsibles(user, rows, {
+        slaMinutes,
+        samplingDays,
+        trading: supplier?.type === "trading",
+        translate: (key) => t(key as DictionaryKey),
+      }),
     ]);
     return (
       <>
@@ -331,11 +341,12 @@ export default async function SupplierRequestPage({
             rows={rows}
             currentId={r.id}
             slaMinutes={slaMinutes}
-            samplingSlaDays={await samplingSlaDays()}
+            samplingSlaDays={samplingDays}
             wellmix={wellmix}
             legacy={legacy}
             bookSpecs={bookSpecs}
             showPrice={seesPrice}
+            responsible={responsible}
             t={t}
           />
         </div>

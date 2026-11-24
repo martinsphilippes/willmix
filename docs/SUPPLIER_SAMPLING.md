@@ -23,11 +23,13 @@ Só o responsável envia (a Wellmix, mesmo admin, não envia por ele: `sampling_
 ## Onde aparece
 
 - **Tela do produto** (`/app/supplier-requests/[id]?view=item`): cartão **Amostragem** no topo (situação, rodada, fotos e vídeos, envio e validação). O bloco "Histórico da amostragem" saiu do cartão em 13/11/2026 (pedido do dono: repetia o painel "Histórico de interações", que continua com os envios, as validações e os comentários; `sampling.history` segue gravado).
-- **Tabela da solicitação**: na coluna Situação, o selo "Amostragem: …" com link para o cartão.
+- **Tabela da solicitação**: na coluna Situação, o selo "Amostragem: …" com link para o cartão. Na coluna **Vez** (dono, 24/11/2026; docs/TURNS.md), a aprovada com a amostra pendente ou reprovada mostra "Aguardando fornecedor · Carregar a amostragem" (nome do dono, 24/11/2026; antes "Enviar a amostragem") e, para a Wellmix, quem age (o nome; o login no balão, só para o administrador); a enviada, "Aguardando Wellmix · Validar a amostragem"; a amostra aprovada, "—". Antes, a aprovada aparecia com "—" mesmo com a amostra pendente. A lista de cotações usa a mesma regra.
 - **Linha do tempo**: envio, aprovação e reprovação da amostra.
-- **Pendências**: do fornecedor, na nova etapa **"Enviar a amostragem"** (`supplier.sampling`, depois de "Responder a solicitação"), enquanto pendente ou reprovada; da Wellmix com a ação, **"Validar amostragem"** (`sampling_validate`) enquanto enviada.
+- **Pendências**: do fornecedor, na nova etapa **"Carregar a amostragem"** (antes "Enviar a amostragem"; dono, 24/11/2026) (`supplier.sampling`, depois de "Responder a solicitação"), enquanto pendente ou reprovada; da Wellmix com a ação, **"Validar amostragem"** (`sampling_validate`) enquanto enviada.
 
 Situações: `pending` (esperando a amostra) → `submitted` (esperando a validação) → `approved` ou `rejected` (volta a esperar a amostra, rodada + 1).
+
+**Aba da lista de cotações** (dono, 24/11/2026): a solicitação aprovada com a amostra ainda não aprovada (pendente, enviada ou reprovada) fica em **Em andamento**, não em Encerradas, até a amostra ser aprovada; a dispensada conta como aprovada, e a que já está num pedido de compra, como encerrada (`requestClosed`, `src/lib/supplier-request-closing.ts`).
 
 ## Banco
 

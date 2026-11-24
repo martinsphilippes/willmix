@@ -14,11 +14,8 @@ import {
   slaOf,
   supplierRequestSlaMinutes,
 } from "@/lib/services/supplier-request-negotiation";
-import {
-  finishedLate,
-  groupRequests,
-  negotiationTurn,
-} from "@/lib/supplier-requests";
+import { finishedLate, groupRequests } from "@/lib/supplier-requests";
+import { supplierRequestTurn } from "@/lib/supplier-request-sampling";
 import { dictionaries } from "@/i18n/dictionaries";
 import { SUPPLIER_REQUEST_STATUSES } from "@/lib/db/schema";
 import { fallbackError } from "@/i18n/error-text";
@@ -620,12 +617,13 @@ export default async function SupplierRequestsPage({
                 const slas = products.map((p) => slaOf(p, slaMinutes, now));
                 const sla =
                   slas.find((x) => x?.late) ?? slas.find((x) => x) ?? null;
-                const turns = products.map((p) => negotiationTurn(p));
-                const turn = turns.includes("supplier")
-                  ? "supplier"
-                  : turns.includes("wellmix")
-                    ? "wellmix"
-                    : null;
+                // Vez (dono, 24/11/2026): a negociação e, aprovada, a
+                // amostragem (enviar ou validar); o fornecedor primeiro.
+                const steps = products.map((p) => supplierRequestTurn(p));
+                const turn =
+                  steps.find((s) => s?.party === "supplier") ??
+                  steps.find((s) => s?.party === "wellmix") ??
+                  null;
                 const pieces = products.reduce((sum, p) => sum + p.quantity, 0);
                 const distinct = new Set(products.map((p) => p.bookingItemId))
                   .size;
@@ -754,12 +752,20 @@ export default async function SupplierRequestsPage({
                         </Link>
                       </Td>
                       {termsCells(`r:${r.id}`, r.createdAt)}
-                      {/* Status: de quem é a vez. */}
-                      <Td className="whitespace-nowrap">
+                      {/* Status: de quem é a vez e a ação. */}
+                      <Td
+                        className="whitespace-nowrap"
+                        data-supplier-request-turn={turn?.step ?? "none"}
+                      >
                         {turn ? (
-                          <Badge tone={turnTone(turn)}>
-                            {t(turnWaitingKey(turn))}
-                          </Badge>
+                          <>
+                            <Badge tone={turnTone(turn.party)}>
+                              {t(turnWaitingKey(turn.party))}
+                            </Badge>
+                            <span className="mt-0.5 block text-xs text-zinc-600">
+                              {t(`reqList.next.${turn.step}` as DictionaryKey)}
+                            </span>
+                          </>
                         ) : (
                           "—"
                         )}

@@ -7,6 +7,7 @@ import {
   SERVER_MAX_BYTES,
   uploadDirect,
 } from "./direct-upload";
+import { cx } from "./ui";
 
 const SHEET_ACCEPT =
   ".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel";
@@ -41,12 +42,18 @@ interface DirectFileInputProps {
  * leva só o id (`uploadedFileId`); menor, segue no próprio formulário. Em
  * desenvolvimento (modo memória) vai sempre pelo formulário.
  */
-export function SheetFileInput(props: DirectFileInputProps) {
+export function SheetFileInput({
+  className,
+  ...props
+}: DirectFileInputProps & {
+  /** Classes a mais no campo (ex.: o card compacto do book); sem elas, o de sempre. */
+  className?: string;
+}) {
   return (
     <DirectFileInput
       {...props}
       accept={SHEET_ACCEPT}
-      className={SHEET_CLASS}
+      className={className ? cx(SHEET_CLASS, className) : SHEET_CLASS}
       marker="sheet-import"
     />
   );

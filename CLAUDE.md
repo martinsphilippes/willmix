@@ -41,22 +41,31 @@ Portal Operacional de Importações. Next.js 16 na Vercel; Supabase em produçã
 - `docs/INTEGRATIONS.md`: adaptadores mock/manual e dependências externas pendentes; `docs/SANKHYA.md` para o ERP (seção "Views do Sankhya", 20/11/2026: fornecedores, produtos, produto × fornecedor com os portos em `product_suppliers.sankhyaPorts` e vendedores/RCAs pelas views `VW_AD_*_WELL`, com nomes da tabela preservados em `sankhyaRefs` e a volta para a tabela se a view falhar). `docs/SANKHYA_PEDIDOS.md`: pedidos do Sankhya, o que a Wellmix informou (TOPs de importação na ordem do fluxo, cada etapa um documento novo, a etapa atual com `PEDIDO_PENDENTE = 'S'`), a cópia bruta das views de pedido para análise (`sankhya_stage_rows`, `src/lib/integrations/sankhya-stage.ts`) e as perguntas da análise antes de refazer a carga dos pedidos. `docs/SANKHYA_INTEGRACAO.md` (21/11/2026): mapa completo da integração (entradas e no que viram, consultas na hora, escritas e proteções, sincronismo), o modelo novo dos pedidos de compra (cadeia 1100 → 1104 = um pedido, embarque 35 = container muitos para muitos, de-para view → campos, pedido de reposição sem solicitação de cliente e embarque parcial, decisões D1 a D6 do dono), o de-para TOP/status → marco e o plano de execução antes de apagar os 16.268 pedidos antigos. Seção 9.5 (23/11/2026, respostas do técnico): etapa = último documento confirmado (`STATUS_NOTA = L`), sem pendência e sem documento seguinte = cancelado e fora do portal (1100 a 1104), 1104 com TOP 32 no track = encerrado por entrada direta, e a tabela do `STATUS_SHIPPING` (marcado à mão, não acompanha o pedido; só 8, 10 e 11 mexem no marco). `docs/SANKHYA_TRACK_ID.md` (técnico do Sankhya, 21/11/2026): o `TRACK_ID` (`AD_TRACKID`) é o código do pedido de importação; seção 9.1 do SANKHYA_INTEGRACAO com o plano de refazer o ensaio e a carga por track.
 - Skills `.claude/skills/appwrite-cli` e `.claude/skills/appwrite-typescript` antes de rodar o CLI ou escrever código com o SDK.
 
-Regras fixas: o preço de compra (o original, negociado com o fornecedor) NUNCA aparece para o cliente (dono, 23/11/2026; sempre por `canSeeOrderPurchasePrice`/`canSeePurchasePrice`, docs/ORDER_TABLES.md seção 4); toda escrita passa por Server Action em `src/app/app/actions.ts` ou `src/app/app/actions/*.ts` (helpers em `actions/helpers.ts`) com zod e checagem de papel; textos novos em `src/i18n/modules/*.ts` (pt/en/zh, mesmas chaves); evolução aditiva conforme `docs/EVOLUTION_PLAN.md` (não remover telas, rotas, campos ou dados); leitura só no servidor; esquema em `src/lib/db/schema.ts` e `appwrite.config.json` gerado por `npm run appwrite:config`; use `TablesDB` (não `Databases`) e parâmetros por objeto no SDK. Antes de commitar: `npm run lint && npm run typecheck && npm test`. O E2E (`npm run test:e2e`) é o teste do caminho principal; mantenha-o passando.
+Regras fixas: o preço de compra (o original, negociado com o fornecedor) NUNCA aparece para o cliente (dono, 23/11/2026; sempre por `canSeeOrderPurchasePrice`/`canSeePurchasePrice`, docs/ORDER_TABLES.md seção 4); toda escrita passa por Server Action em `src/app/app/actions.ts` ou `src/app/app/actions/*.ts` (helpers em `actions/helpers.ts`) com zod e checagem de papel; textos novos em `src/i18n/modules/*.ts` (pt/en/zh, mesmas chaves); evolução aditiva conforme `docs/EVOLUTION_PLAN.md` (não remover telas, rotas, campos ou dados); leitura só no servidor; esquema em `src/lib/db/schema.ts` e `appwrite.config.json` gerado por `npm run appwrite:config`; use `TablesDB` (não `Databases`) e parâmetros por objeto no SDK. Verificação: `npm run lint && npm run typecheck && npm test` e o E2E (`npm run test:e2e`). O E2E é o teste do caminho principal; mantenha-os passando. Desde 24/11/2026 rodam depois da publicação, como diz a seção "Entrega sem perguntar".
 
 Velocidade: prefira a solução simples que funciona hoje; integrações sem credencial ganham modo manual/mock, nunca dados falsos apresentados como reais.
 
 ## Entrega sem perguntar (autorização do dono)
 
-Ao terminar uma tarefa, sem pedir confirmação:
+Ao terminar uma tarefa, sem pedir confirmação. Desde 24/11/2026 o dono quer **primeiro a publicação, depois a verificação**, para a postagem sair mais rápido:
 
-1. Rodar `npm run lint && npm run typecheck && npm test` e o E2E (`npm run test:e2e`).
-2. Abrir o PR para `wellmix`.
-3. Esperar o CI (`verify`) ficar verde e mesclar o PR.
-4. Se o PR mexeu em `src/lib/db/schema.ts`, publicar o esquema no **Supabase** (banco de produção desde 11/11/2026, projeto `rokbtrvkzllowyqzcauq`) logo depois do merge: migração só aditiva com o que falta do `supabase/schema.sql` (`scripts/supabase-missing.ts`, docs/SUPABASE.md "Publicar o esquema"), aplicada pela ferramenta do Supabase, e conferir as colunas por tabela. Se falhar, avisar o dono com o erro. O Appwrite não recebe mais o esquema.
+1. Abrir o PR para `wellmix` e mesclar logo, sem esperar o CI nem o E2E.
+2. Se o PR mexeu em `src/lib/db/schema.ts`, publicar o esquema no **Supabase** junto com a mescla, para o código novo não ir ao ar sem as colunas.
+   - O Supabase é o banco de produção desde 11/11/2026, projeto `rokbtrvkzllowyqzcauq`.
+   - A migração é só aditiva, com o que falta do `supabase/schema.sql` (`scripts/supabase-missing.ts`, docs/SUPABASE.md "Publicar o esquema"), aplicada pela ferramenta do Supabase.
+   - Depois, conferir as colunas por tabela. Se falhar, avisar o dono com o erro.
+   - O Appwrite não recebe mais o esquema.
+3. A Vercel publica sozinha depois da mescla. Não esperar nem confirmar a publicação com o dono (pedido dele, 24/11/2026): seguir direto para a verificação.
+4. A verificação, logo depois da mescla:
+   - se a publicação na Vercel ficou pronta;
+   - `npm run lint && npm run typecheck && npm test`;
+   - o E2E (`npm run test:e2e`);
+   - o CI (`verify`) do PR;
+   - os erros em produção (Vercel).
+5. O que falhar na verificação se corrige em seguida, num PR novo, pelo mesmo caminho. Se o problema for grave em produção, voltar a publicação anterior pela Vercel e avisar o dono.
 
 Exceções (parar e avisar o dono em vez de mesclar):
 
-- CI ou E2E falhando.
 - Conflito com a base ou outro PR aberto mexendo na mesma tela ou regra.
 - Decisão de negócio tomada sem confirmação do dono.
 - Mudança que apaga ou altera dados, telas, rotas ou campos existentes.

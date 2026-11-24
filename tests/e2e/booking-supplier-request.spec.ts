@@ -615,6 +615,45 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   ).toBeVisible();
   await expect(page.locator("[data-request-product-create]")).toHaveCount(0);
   await expect(page.locator("[data-sampling-due=ok]")).toBeVisible();
+  // Vez (dono, 24/11/2026): aprovada, a vez é do fornecedor enviar a
+  // amostra (antes aparecia "—"), com quem age e, no balão, o login dele
+  // (só o administrador vê o login).
+  await page.goto(requestUrl);
+  // A linha desta solicitação (no lote não há o realce da atual).
+  const turnCell = page.locator(
+    `[data-supplier-table-row="${requestUrl.split("/").pop()}"] [data-supplier-table-turn]`,
+  );
+  await expect(turnCell).toHaveAttribute(
+    "data-supplier-table-turn",
+    "supplier",
+  );
+  await expect(turnCell).toHaveAttribute(
+    "data-supplier-table-turn-step",
+    "sampling_send",
+  );
+  await expect(turnCell).toContainText("Aguardando fornecedor");
+  await expect(
+    turnCell.locator("[data-supplier-table-turn-action]"),
+  ).toHaveText("Carregar a amostragem");
+  const turnWho = turnCell.locator('[data-request-responsible="ok"]');
+  await expect(turnWho).toContainText("Fornecedor");
+  await turnWho.click();
+  await expect(
+    page.locator("[data-info-tip]").filter({ hasText: "supplier.a@china.com" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  // Aba (dono, 24/11/2026): aprovada com a amostra pendente continua em
+  // "Em andamento", com a ação, até a amostra ser aprovada.
+  const listRowSelector = `[data-supplier-request-row="${requestUrl.split("/").pop()}"]`;
+  await page.goto("/app/supplier-requests");
+  // Pela marcação, sem o texto (o nome da ação pode mudar; PR #677).
+  await expect(
+    page.locator(
+      `${listRowSelector} [data-supplier-request-turn="sampling_send"]`,
+    ),
+  ).toBeVisible();
+  await page.goto("/app/supplier-requests?tab=closed");
+  await expect(page.locator(listRowSelector)).toHaveCount(0);
 
   // 4.1 Amostragem: o responsável sobe uma foto da amostra e envia.
   await login(page, "supplier.a@china.com");
@@ -630,8 +669,13 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await page.waitForURL(/[?&]sampling=submitted/);
   await expect(page.locator("[data-sampling=submitted]")).toBeVisible();
 
-  // 4.2 A Wellmix valida a amostra.
+  // 4.2 A Wellmix valida a amostra. Enviada, a vez é dela.
   await login(page, "admin@wellmix.com");
+  await page.goto(requestUrl);
+  await expect(turnCell).toHaveAttribute("data-supplier-table-turn", "wellmix");
+  await expect(
+    turnCell.locator("[data-supplier-table-turn-action]"),
+  ).toHaveText("Validar a amostragem");
   await page.goto(itemUrl);
   await expect(page.locator("[data-sampling-file]")).toHaveCount(1);
   await page.click("[data-sampling-review=approve]");
@@ -651,6 +695,8 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(samplingLink).toContainText("Amostra aprovada");
   await expect(samplingLink).toHaveAttribute("href", /view=item#amostragem$/);
   await expect(page.locator("[data-supplier-request-sla]")).toHaveCount(0);
+  // Amostra aprovada: nada mais a fazer nesta tabela.
+  await expect(turnCell).toHaveAttribute("data-supplier-table-turn", "none");
   await page.goto(itemUrl);
   await page.fill("[data-request-product-name]", `Copo de vidro ${TAG}`);
   await page.selectOption("[data-request-product-line]", { index: 1 });

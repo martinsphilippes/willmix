@@ -14,7 +14,6 @@ import {
   initialConditions,
   type ConditionsState,
   type RequestConditions,
-  negotiationTurn,
   pendingProposal,
   supplierCanAnswer,
 } from "@/lib/supplier-requests";
@@ -48,7 +47,10 @@ import {
   SAMPLING_SLA_DAYS,
   samplingLate,
   samplingOf,
+  supplierRequestTurn,
 } from "@/lib/supplier-request-sampling";
+import type { Responsible } from "@/lib/request-responsible";
+import { ResponsibleTip } from "@/components/request-responsible-tip";
 import Link from "next/link";
 import { roundsDates } from "@/components/purchase-rounds";
 import { dateTime } from "./negotiation";
@@ -150,6 +152,7 @@ export function SupplierRequestTable({
   legacy,
   bookSpecs,
   showPrice = true,
+  responsible,
   t,
 }: {
   rows: SupplierRequest[];
@@ -158,6 +161,11 @@ export function SupplierRequestTable({
   /** SLA da amostragem (dias). */
   samplingSlaDays?: number;
   wellmix: boolean;
+  /**
+   * Quem age na Vez de cada produto (só a Wellmix; o login só para o
+   * administrador): `supplierRequestResponsibles`.
+   */
+  responsible?: Map<string, Responsible | null>;
   /** Respostas antigas (auditoria), para a 1ª e a última resposta. */
   legacy: Map<string, Array<{ at: string }>>;
   /** Ficha do item exato do Book (por solicitação): completa a cópia gravada. */
@@ -481,7 +489,9 @@ export function SupplierRequestTable({
             // Aprovada: a amostragem (fotos e vídeos da amostra).
             const sampling = samplingOf(r);
             const pinBg = cx(PIN_BG, current && PIN_BG_CURRENT);
-            const turn = negotiationTurn(r);
+            // Vez: a negociação e, aprovada, a amostragem (dono, 24/11/2026).
+            const turn = supplierRequestTurn(r);
+            const who = responsible?.get(r.id) ?? null;
             const sla = slaOf(r, slaMinutes);
             const times = answerTimes(
               r,
@@ -727,12 +737,34 @@ export function SupplierRequestTable({
                 </Td>
                 {conditionCells(initialConditions(r), "initial", r.id)}
                 {conditionCells(finalConditions(r), "final", r.id)}
-                <Td className="text-xs">
+                <Td
+                  className="text-xs"
+                  data-supplier-table-turn={turn?.party ?? "none"}
+                  data-supplier-table-turn-step={turn?.step}
+                >
                   {turn
                     ? t(
-                        `supplierRequests.negotiation.turn.${turn}` as DictionaryKey,
+                        `supplierRequests.negotiation.turn.${turn.party}` as DictionaryKey,
                       )
                     : "—"}
+                  {/* A ação, com as mesmas palavras de Encomendas e das
+                      Pendências ("Carregar a amostragem"). */}
+                  {turn ? (
+                    <span
+                      className="mt-0.5 block max-w-40 font-medium text-zinc-800"
+                      data-supplier-table-turn-action
+                    >
+                      {t(`reqList.next.${turn.step}` as DictionaryKey)}
+                    </span>
+                  ) : null}
+                  {/* Quem age: o nome e, no balão, o login (administrador). */}
+                  {turn && who ? (
+                    <ResponsibleTip
+                      r={who}
+                      t={t}
+                      className="mt-0.5 block max-w-40"
+                    />
+                  ) : null}
                   {pending ? (
                     <span
                       className="mt-0.5 block max-w-40 text-amber-800"
