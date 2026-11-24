@@ -818,6 +818,7 @@ export async function fillBookMeta(page: Page, itemType = "Teste E2E") {
   // FOB ou EXW (dono, 24/11/2026): FOB, como as planilhas dos testes.
   await page.locator("[data-book-incoterm]").selectOption("FOB");
   await page.locator("[data-book-store-number]").fill("A 154678");
-  await page.locator("[data-book-supplier-name]").fill("Supplier E2E");
+  // A Fábrica fica em branco: vale a da planilha (digitada diferente, as
+  // linhas divergem e o book não fecha; coberto em book-work.spec.ts).
   await page.locator("[data-book-item-type]").fill(itemType);
 }

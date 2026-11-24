@@ -11,6 +11,9 @@ import {
   bookingLotPending,
   bookingLotReady,
   bookingRecipientId,
+  bookManufacturer,
+  bookingLotLockable,
+  manufacturerMismatch,
   canMoveBookingLot,
   isBookingPartner,
   matchSheetSupplier,
@@ -156,6 +159,9 @@ export function itemFromGroup(
     purchaseQty: group.purchaseQty ?? null,
     plannedQty: group.plannedQty,
     sizeText: clip(group.sizeText, 60),
+    // Fabricante como a planilha escreveu nesta linha (comparado com a
+    // Fábrica do book).
+    sheetSupplier: asText(r.supplierName, 160),
     extras:
       group.extras && Object.keys(group.extras).length ? group.extras : null,
   };
@@ -246,7 +252,7 @@ export const BOOKING_SHEETS_MAX = 10;
 
 /** O que quem importa informa junto com a planilha (dono, 23/11/2026). */
 export interface BookingLotMeta {
-  /** Nº da loja e nome do supplier (texto livre, só informativo). */
+  /** Nº da loja e nome da Fábrica (o supplier da planilha), texto livre. */
   storeNumber?: string | null;
   supplierName?: string | null;
   /**
@@ -271,10 +277,70 @@ export async function createBookingLotFromSheet(
   options: {
     defaultCurrency?: SheetCurrency | null;
     sheet?: string | null;
+    /**
+     * Fornecedor (o Supplier, dono do book, para quem vão as solicitações):
+     * um parceiro do cadastro ou, sem ele, o nome de um novo, que é
+     * cadastrado (dono, 24/11/2026). O book que o parceiro lança já nasce
+     * com a empresa dele.
+     */
+    partnerId?: string | null;
+    newPartnerName?: string | null;
   } & BookingLotMeta = {},
 ): Promise<BookingLot> {
   assertBooking(user);
-  return createLotFromSheet(user, source, options);
+  const { newPartnerName: _new, ...rest } = options;
+  void _new;
+  return createLotFromSheet(user, source, {
+    ...rest,
+    partnerId: await importPartnerId(user, options),
+  });
+}
+
+/**
+ * O Fornecedor escolhido na importação: o parceiro do cadastro (ativo e de
+ * um tipo que responde por book) ou o novo, cadastrado pelo nome (se já
+ * houver um ativo com o mesmo nome, vale esse). Nenhum: nulo (vale a
+ * Fábrica do book, como antes).
+ */
+async function importPartnerId(
+  user: User,
+  options: { partnerId?: string | null; newPartnerName?: string | null },
+): Promise<string | null> {
+  const store = getStore();
+  if (options.partnerId) {
+    const party = await store.get("parties", options.partnerId);
+    if (!party || !party.active || !isBookingPartner(party))
+      throw new BookingLotError("booking_partner_invalid");
+    return party.id;
+  }
+  const name = clip(options.newPartnerName, 160);
+  if (!name) return null;
+  const key = supplierKey(name);
+  const known = (
+    await store.list("parties", {
+      filter: { type: [...BOOKING_PARTNER_TYPES] as never, active: true },
+    })
+  ).find((p) => key && supplierKey(p.name) === key);
+  if (known) return known.id;
+  const party = await store.create("parties", {
+    ...PARTY_EXTRA_DEFAULTS,
+    type: "supplier",
+    name,
+    country: "China",
+    email: null,
+    phone: null,
+    taxId: null,
+    notes: "Cadastrado na importação de um book.",
+    active: true,
+  });
+  await audit(
+    user,
+    "party.create",
+    "party",
+    party.id,
+    `${party.name} (fornecedor de um book importado)`,
+  );
+  return party.id;
 }
 
 /**
@@ -739,6 +805,8 @@ export async function setBookingLotSupplier(
     supplierId,
     origin,
   });
+  // Outra Fábrica: o que foi confirmado valia para a anterior.
+  if (supplierId !== lot.supplierId) await clearManufacturerOk(lot.id);
   await audit(
     user,
     "booking_lot.supplier",
@@ -1091,6 +1159,10 @@ export async function closeBookingLot(
   const items = await store.list("booking_items", {
     filter: { lotId: lot.id },
   });
+  // Itens de outro fabricante: remover a linha ou confirmar que a planilha
+  // estava errada (dono, 24/11/2026).
+  if ((await manufacturerMismatches(lot, items)).length)
+    throw new BookingLotError("booking_manufacturer_mismatch");
   const pending = bookingLotPending(lot, items);
   if (!bookingLotReady(pending)) {
     if (pending.supplier) throw new BookingLotError("supplier_required");
@@ -1288,6 +1360,9 @@ export async function setBookingLotMeta(
       ...(terms ?? {}),
     }),
   );
+  // Outra Fábrica digitada: o que foi confirmado valia para a anterior.
+  if ((lot.supplierName ?? null) !== supplierName)
+    await clearManufacturerOk(lot.id);
   if (terms?.incoterm) {
     const items = await store.list("booking_items", {
       filter: { lotId: lot.id },
@@ -1380,6 +1455,10 @@ export async function lockBookingLot(
   assertBooking(user);
   const lot = await wellmixLot(lotId);
   if (!lot) throw new BookingLotError("not_found");
+  // Só depois do rascunho: o book fechado é que começa a ser trabalhado na
+  // seleção dos itens (dono, 24/11/2026).
+  if (!bookingLotLockable(lot.status))
+    throw new BookingLotError("booking_lock_draft");
   const store = getStore();
   const locks = await withSchema(() => store.list("booking_locks"));
   const held = lockOfLot(lot, locks);
@@ -1484,4 +1563,134 @@ export async function myBookingLocks(
     });
   }
   return out;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Fabricante: a Fábrica do book × a planilha (dono, 24/11/2026)             */
+/* ------------------------------------------------------------------------ */
+
+/** O Fabricante do book (a Fábrica digitada; sem ela, a do cadastro ou a da planilha). */
+export async function lotManufacturer(lot: BookingLot): Promise<string | null> {
+  const factory =
+    !lot.supplierName?.trim() && lot.supplierId
+      ? await getStore().get("parties", lot.supplierId)
+      : null;
+  return bookManufacturer(lot, factory?.name ?? null);
+}
+
+/** Os itens cuja linha da planilha traz outro fabricante, ainda sem confirmação. */
+export async function manufacturerMismatches(
+  lot: BookingLot,
+  items: BookingItem[],
+): Promise<BookingItem[]> {
+  const name = await lotManufacturer(lot);
+  return items.filter((i) => manufacturerMismatch(i, name));
+}
+
+async function clearManufacturerOk(lotId: string) {
+  const store = getStore();
+  const items = await store.list("booking_items", { filter: { lotId } });
+  for (const item of items)
+    if (item.manufacturerOkAt)
+      await store.update("booking_items", item.id, {
+        manufacturerOkAt: null,
+        manufacturerOkByUserId: null,
+      });
+}
+
+/**
+ * "A planilha estava errada": confirma que vale o Fabricante da tela nas
+ * linhas divergentes (uma, ou todas as do book com `itemId` nulo). Quem
+ * chama conferiu o login e se o book aceita edição.
+ */
+export async function confirmManufacturerItems(
+  user: User,
+  lot: BookingLot,
+  itemId: string | null,
+): Promise<number> {
+  const store = getStore();
+  const items = await store.list("booking_items", {
+    filter: { lotId: lot.id },
+  });
+  const wrong = (await manufacturerMismatches(lot, items)).filter(
+    (i) => !itemId || i.id === itemId,
+  );
+  const at = new Date().toISOString();
+  for (const item of wrong)
+    await store.update("booking_items", item.id, {
+      manufacturerOkAt: at,
+      manufacturerOkByUserId: user.id,
+    });
+  if (wrong.length)
+    await audit(
+      user,
+      "booking_item.manufacturer_ok",
+      "booking_lot",
+      lot.id,
+      `Fabricante confirmado pela tela em ${wrong.length} item(ns): a planilha trazia ${[...new Set(wrong.map((i) => i.sheetSupplier))].join(", ")}`,
+    );
+  return wrong.length;
+}
+
+/**
+ * Remove um item do book (a linha de outro fabricante, por exemplo). Quem
+ * chama conferiu o login e se o book aceita edição. Um item já trabalhado
+ * ou ligado a um produto não sai.
+ */
+export async function removeLotItem(
+  user: User,
+  lot: BookingLot,
+  itemId: string,
+): Promise<void> {
+  const store = getStore();
+  const item = await store.get("booking_items", itemId);
+  if (!item || item.lotId !== lot.id) throw new BookingLotError("not_found");
+  if (item.workedAt || item.productId)
+    throw new BookingLotError("booking_item_in_use");
+  await store.remove("booking_items", item.id);
+  const left = await store.list("booking_items", { filter: { lotId: lot.id } });
+  await store.update("booking_lots", lot.id, { itemCount: left.length });
+  await audit(
+    user,
+    "booking_item.remove",
+    "booking_lot",
+    lot.id,
+    `Item removido do book: ${item.factoryItemCode ?? item.description ?? item.id} (linha ${item.position + 1}${item.sheetSupplier ? `, fabricante da planilha ${item.sheetSupplier}` : ""})`,
+  );
+}
+
+/** Wellmix, no rascunho: confirma o Fabricante da tela (um item ou todos). */
+export async function confirmBookingManufacturer(
+  user: User,
+  lotId: string,
+  itemId: string | null,
+): Promise<number> {
+  assertBooking(user);
+  return confirmManufacturerItems(user, await editableLot(lotId), itemId);
+}
+
+/** Wellmix, no rascunho: remove um item do book. */
+export async function removeBookingItem(
+  user: User,
+  lotId: string,
+  itemId: string,
+): Promise<void> {
+  assertBooking(user);
+  await removeLotItem(user, await editableLot(lotId), itemId);
+}
+
+/** Quem pode ser o Fornecedor de um book: os parceiros ativos, por nome. */
+export async function bookingPartnerOptions(): Promise<
+  Array<Pick<Party, "id" | "name" | "type" | "city">>
+> {
+  const rows = await getStore().list("parties", {
+    filter: { type: [...BOOKING_PARTNER_TYPES] as never, active: true },
+    orderBy: "name",
+  });
+  return rows.map((p) => ({
+    id: p.id,
+    name: p.name,
+    type: p.type,
+    city: p.city ?? null,
+  }));
 }

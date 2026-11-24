@@ -35,10 +35,10 @@ const HEADER = [
   "MOQ",
   "PURCHASE QTY IN PCS",
 ];
-const row = (n: number) => [
+const row = (n: number, supplier = "Shenzhen Supplier A") => [
   "2026.10.13",
   "Yiwu",
-  "Shenzhen Supplier A",
+  supplier,
   `${TAG}-${n}`,
   `Zqw widget ${TAG} ${n}`,
   "FOB",
@@ -58,11 +58,16 @@ const row = (n: number) => [
   "1000",
   "3000",
 ];
-const sheet = (name: string, rows: number[]) => ({
+const sheet = (name: string, rows: number[], supplier?: string) => ({
   name,
   mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   buffer: Buffer.from(
-    xlsxBytes([{ name: "BOOKING", cells: [HEADER, ...rows.map(row)] }]),
+    xlsxBytes([
+      {
+        name: "BOOKING",
+        cells: [HEADER, ...rows.map((n) => row(n, supplier))],
+      },
+    ]),
   ),
 });
 
@@ -76,16 +81,41 @@ test("Book do fornecedor: várias planilhas, preencher todas as linhas e seta pa
   await page.goto("/app/booking/import");
   await page
     .locator("[data-partner-booking-launch-form] input[type=file]")
-    .setInputFiles([sheet("um.xlsx", [1, 2, 3]), sheet("dois.xlsx", [4, 5])]);
+    .setInputFiles([
+      sheet("um.xlsx", [1, 2, 3]),
+      sheet("dois.xlsx", [4, 5]),
+      // Uma linha de outro fabricante (a Fábrica do book é a Supplier A).
+      sheet("tres.xlsx", [9], "Outra Fabrica Ltd"),
+    ]);
   await expect(page.locator("[data-sheet-import-files]")).toHaveAttribute(
     "data-sheet-import-files",
-    "2",
+    "3",
   );
   await fillBookMeta(page, TYPE);
+  await page.locator("[data-book-supplier-name]").fill("Shenzhen Supplier A");
   await page.locator("[data-partner-booking-launch-submit]").click();
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   const lines = page.locator("tr[data-partner-booking-item]");
-  // O book é a soma das duas planilhas, na ordem.
+  // O book é a soma das planilhas, na ordem.
+  await expect(lines).toHaveCount(6);
+  // Fabricante: a Fábrica digitada repetida em todas as linhas; a linha de
+  // outro fabricante fica marcada e o book não é enviado com ela.
+  await expect(page.locator("[data-book-manufacturer-alert]")).toHaveAttribute(
+    "data-book-manufacturer-alert",
+    "1",
+  );
+  await expect(page.locator('[data-book-manufacturer="mismatch"]')).toHaveCount(
+    1,
+  );
+  await expect(page.locator('[data-book-manufacturer="ok"]')).toHaveCount(5);
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.locator('[data-partner-booking-send="top"]').click();
+  await page.waitForURL(/error=booking_manufacturer_mismatch/);
+  await expect(lines).toHaveCount(6);
+  // Remove a linha do outro fabricante: sobram as cinco.
+  await page.locator("[data-book-manufacturer-remove]").click();
+  await page.waitForURL(/removed=1/);
+  await expect(page.locator("[data-book-manufacturer-alert]")).toHaveCount(0);
   await expect(lines).toHaveCount(5);
   const field = (n: number, name: string) =>
     lines.nth(n - 1).locator(`input[data-partner-item-field$=":${name}"]`);
@@ -191,7 +221,22 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
   await expect(page.locator("main")).toContainText(`${TAG}-8`);
   await expect(page.locator("main")).not.toContainText(`${TAG}-7`);
 
-  // O analista trava o book: só ele continua vendo.
+  // No rascunho o book ainda não trava (só depois de fechado).
+  await page.goto(lotPath);
+  await expect(page.locator("[data-booking-lot-no-lock]")).toBeVisible();
+  await expect(page.locator("[data-booking-lock]")).toHaveCount(0);
+  const ncmInputs = page.locator("input[data-booking-item-ncm]");
+  for (let i = 0; i < (await ncmInputs.count()); i++) {
+    await ncmInputs.nth(i).fill("7013.37.00");
+    await ncmInputs.nth(i).press("Enter");
+    await expect(
+      page.locator('[data-booking-row-note="saved"]').nth(i),
+    ).toBeVisible();
+  }
+  await page.click("[data-booking-lot-close-submit]");
+  await page.waitForURL(/[?&]closed=1/);
+
+  // Fechado: o analista trava o book e só ele continua vendo.
   await login(page, "operador@wellmix.com");
   await page.goto(lotPath);
   await page.locator("[data-booking-lock]").click();

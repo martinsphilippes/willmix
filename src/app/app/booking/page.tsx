@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import {
+  bookingLotLockable,
   BOOKING_LOT_SORT_KEYS,
   type BookingLotRow,
   type BookingLotSortKey,
@@ -120,6 +121,8 @@ export default async function BookingLotsPage({
   for (const e of entries ?? [])
     if (
       !e.held &&
+      // Só os books que já saíram do rascunho entram na trava.
+      bookingLotLockable(e.lot.status) &&
       e.lot.itemType &&
       !freeTypes.has(itemTypeKey(e.lot.itemType))
     )

@@ -60,7 +60,10 @@ export function BookMetaFields({
         />
       ) : null}
       <div className="grid gap-3 sm:grid-cols-3">
-        <Field label={t("bookWork.storeNumber")}>
+        <Field
+          label={t("bookWork.storeNumber")}
+          hint={t("bookWork.storeNumberHint")}
+        >
           <Input
             name="storeNumber"
             maxLength={60}
@@ -69,7 +72,10 @@ export function BookMetaFields({
             data-book-store-number
           />
         </Field>
-        <Field label={t("bookWork.supplierName")}>
+        <Field
+          label={t("bookWork.supplierName")}
+          hint={t("bookWork.supplierNameHint")}
+        >
           <Input
             name="supplierName"
             maxLength={160}

@@ -646,3 +646,71 @@ export function bookingRecipientId(
 ): string | null {
   return lot.partnerId ?? lot.supplierId ?? null;
 }
+
+/* ------------------------------------------------------------------------ */
+/* Fabricante: a Fábrica do book × a planilha, linha a linha                 */
+/* ------------------------------------------------------------------------ */
+
+/*
+ * Dono, 24/11/2026 (docs/BOOKING.md, "Fábrica, Fornecedor e Fabricante"): o
+ * que a planilha chama de supplier é a Fábrica do book. Quem importa digita
+ * a Fábrica; a coluna Fabricante repete esse nome em todas as linhas e é
+ * comparada com o que a planilha traz em cada uma. Um book tem itens de um
+ * fabricante só.
+ */
+
+/**
+ * O Fabricante do book: a Fábrica digitada na importação; sem ela, a do
+ * cadastro; sem as duas, o nome mais frequente da planilha.
+ */
+export function bookManufacturer(
+  lot: Pick<BookingLot, "supplierHint"> & { supplierName?: string | null },
+  factoryName: string | null | undefined,
+): string | null {
+  const clean = (v: string | null | undefined) =>
+    (v ?? "").replace(/\s+/g, " ").trim() || null;
+  return (
+    clean(lot.supplierName) ??
+    clean(factoryName) ??
+    clean(lot.supplierHint?.name)
+  );
+}
+
+type ManufacturerItem = {
+  sheetSupplier?: string | null;
+  manufacturerOkAt?: string | null;
+};
+
+/**
+ * A linha diverge: a planilha traz outro fabricante e ninguém confirmou que
+ * ela estava errada. Sem fabricante na linha (ou no book), não há o que
+ * comparar. Nomes iguais sem pontuação nem "Co., Ltd." contam como o mesmo.
+ */
+export function manufacturerMismatch(
+  item: ManufacturerItem,
+  manufacturer: string | null,
+): boolean {
+  if (item.manufacturerOkAt) return false;
+  const sheet = supplierKey(item.sheetSupplier);
+  const book = supplierKey(manufacturer);
+  return !!sheet && !!book && sheet !== book;
+}
+
+/** Nº da loja digitado × o da planilha: diferentes (os dois preenchidos)? */
+export function storeNumberMismatch(
+  typed: string | null | undefined,
+  sheet: string | null | undefined,
+): boolean {
+  const a = storeKey(typed);
+  const b = storeKey(sheet);
+  return !!a && !!b && a !== b;
+}
+
+/** Situações em que o book pode ser travado: depois do rascunho, em trabalho. */
+export const LOCKABLE_LOT_STATUSES: readonly BookingLotStatus[] = [
+  "closed",
+  "in_progress",
+  "done",
+];
+export const bookingLotLockable = (status: BookingLotStatus) =>
+  LOCKABLE_LOT_STATUSES.includes(status);

@@ -20,7 +20,11 @@ import { SheetFileInput } from "@/components/sheet-file-input";
 import { importBookingAction } from "../../actions/booking-lots";
 import { PartnerBookingLaunch } from "../_components/partner-booking";
 import { BookMetaFields } from "../_components/book-meta-fields";
-import { bookingItemTypes } from "@/lib/services/booking-lots";
+import {
+  bookingItemTypes,
+  bookingPartnerOptions,
+} from "@/lib/services/booking-lots";
+import type { DictionaryKey as PartyKey } from "@/i18n/dictionaries";
 
 /*
  * Importar booking (docs/BOOKING.md, "Booking por planilha"): a planilha de
@@ -48,7 +52,10 @@ export default async function BookingImportPage({
     (k) => k in dictionaries.pt,
   ) as DictionaryKey | undefined;
   const errorText = !code ? null : known ? t(known) : fallbackError(t, code);
-  const types = await bookingItemTypes();
+  const [types, partners] = await Promise.all([
+    bookingItemTypes(),
+    bookingPartnerOptions(),
+  ]);
 
   return (
     <>
@@ -110,6 +117,37 @@ export default async function BookingImportPage({
               </Select>
             </Field>
             <BookMetaFields t={t} types={types} />
+            {/* Fornecedor (o Supplier, dono do book): escolhido no cadastro
+                ou, se ainda não existe, cadastrado pelo nome (dono,
+                24/11/2026). A Fábrica é a da planilha. */}
+            <div className="grid gap-3 sm:grid-cols-2" data-book-partner>
+              <Field
+                label={t("bookWork.partner")}
+                hint={t("bookWork.partnerHint")}
+              >
+                <Select name="partnerId" defaultValue="" data-book-partner-id>
+                  <option value="">{t("bookWork.partner.none")}</option>
+                  {partners.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {[p.name, t(`party.${p.type}` as PartyKey), p.city]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field
+                label={t("bookWork.partner.new")}
+                hint={t("bookWork.partner.newHint")}
+              >
+                <Input
+                  name="newPartnerName"
+                  maxLength={160}
+                  autoComplete="off"
+                  data-book-partner-new
+                />
+              </Field>
+            </div>
             <SubmitButton
               pendingText={t("bookingLots.import.submitting")}
               data-booking-import-submit
