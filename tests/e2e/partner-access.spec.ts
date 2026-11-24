@@ -515,10 +515,12 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
       await heads.evaluateAll((els) =>
         els.map((e) => e.getAttribute("data-book-head")),
       )
-    ).slice(0, 20),
+    ).slice(0, 21),
   ).toEqual([
     "line",
     "photo",
+    // Trabalhado pela Wellmix na Seleção de itens (dono, 23/11/2026).
+    "worked",
     "name",
     "sku",
     "itemNumber",

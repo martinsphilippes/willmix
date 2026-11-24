@@ -100,8 +100,9 @@ test("Book do fornecedor: várias planilhas, preencher todas as linhas e seta pa
   const bulk = head(page).locator('[data-bulk-field="material"]');
   await bulk.fill("steel");
   await bulk.press("Enter");
+  // (o login do fornecedor de demonstração abre em chinês: só o número)
   await expect(head(page).locator('[data-bulk-status="ok"]')).toContainText(
-    "Itens atualizados: 5.",
+    "5",
   );
   for (let n = 1; n <= 5; n++)
     await expect(field(n, "material")).toHaveValue("steel");
@@ -126,7 +127,7 @@ test("Book do fornecedor: várias planilhas, preencher todas as linhas e seta pa
   ).toHaveCount(5);
   await page.goto("/app/booking");
   const mine = page.locator("tr[data-partner-booking]", { hasText: TYPE });
-  await expect(mine).toContainText("Fábrica");
+  await expect(mine).toContainText(/Fábrica|Factory|工厂/);
   await expect(mine.locator("[data-partner-booking-worked]")).toContainText(
     "0%",
   );
