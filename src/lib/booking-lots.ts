@@ -521,7 +521,7 @@ export interface BookingLotRow {
   itemCount: number;
   /** Itens com algum campo obrigatório faltando. */
   pendingItems: number;
-  /** Sinais da análise do Superplan. */
+  /** Sinais da previsão de preço. */
   viable: number;
   below: number;
   loss: number;

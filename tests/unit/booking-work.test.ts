@@ -92,7 +92,7 @@ async function closedLot(rows: string[][], itemType: string) {
     (await itemsOf(lot.id)).map((i) => i.id),
     "7013.37.00",
   );
-  return svc.closeBookingLot(admin, lot.id, null);
+  return svc.closeBookingLot(admin, lot.id);
 }
 
 beforeAll(async () => {

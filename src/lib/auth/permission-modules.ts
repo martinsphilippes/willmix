@@ -111,11 +111,10 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
     actions: ["supplierSheet.review", "materials.manage"],
   },
   {
-    // Fixos embaixo do menu (Configurações, com o Superplan; Equipe e
-    // acessos; Auditoria).
+    // Fixos embaixo do menu (Configurações; Equipe e acessos; Auditoria).
     key: "management",
     label: "nav.group.management",
-    screens: ["settings", "superplan", "team", "audit"],
+    screens: ["settings", "team", "audit"],
     actions: [],
   },
 ];

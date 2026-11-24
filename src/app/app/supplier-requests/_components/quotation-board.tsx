@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import type { Translate } from "@/i18n";
 import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
-import type { SuperplanInput } from "@/lib/superplan";
 import type { QuoteHistoryEntry } from "@/lib/quote-negotiation";
 import {
   Badge,
@@ -319,7 +318,7 @@ export function BoardCounterForm({
     leadTimeDays: number | null;
     incoterm: string;
   };
-  simulation?: { base: SuperplanInput; bookingMinimum: number | null } | null;
+  simulation?: { itemId: string; bookingMinimum: number | null } | null;
   showPrice: boolean;
   errors: Record<string, string>;
   fallbackError: string;
@@ -363,7 +362,7 @@ export function BoardCounterForm({
             }}
             currencies={SHEET_CURRENCIES}
             incoterms={SHEET_INCOTERMS}
-            base={showPrice ? (simulation?.base ?? null) : null}
+            itemId={showPrice ? (simulation?.itemId ?? null) : null}
             bookingMinimum={
               showPrice ? (simulation?.bookingMinimum ?? null) : null
             }
@@ -386,6 +385,8 @@ export function BoardCounterForm({
               simCurrency: t("supplierRequests.negotiation.sim.currency"),
               simMissing: t("supplierRequests.negotiation.sim.missing"),
               simHint: t("supplierRequests.negotiation.sim.hint"),
+              simLoading: t("supplierRequests.negotiation.sim.loading"),
+              simManual: t("supplierRequests.negotiation.sim.manual"),
             }}
           />
           <Field label={t("supplierRequests.negotiation.comment")}>

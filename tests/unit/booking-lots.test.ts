@@ -197,7 +197,7 @@ describe("booking por planilha", () => {
         line("2", "GL-02", "Glass jar", { height: "" }),
       ]),
     );
-    await expect(svc.closeBookingLot(admin, lot.id, null)).rejects.toThrow(
+    await expect(svc.closeBookingLot(admin, lot.id)).rejects.toThrow(
       "supplier_required",
     );
     const party = await svc.registerBookingLotSupplier(admin, lot.id, {
@@ -217,7 +217,7 @@ describe("booking por planilha", () => {
     expect((await store.get("booking_lots", lot.id))!.supplierId).toBe(
       party.id,
     );
-    await expect(svc.closeBookingLot(admin, lot.id, null)).rejects.toThrow(
+    await expect(svc.closeBookingLot(admin, lot.id)).rejects.toThrow(
       "booking_items_incomplete",
     );
     const jar = (
@@ -234,7 +234,7 @@ describe("booking por planilha", () => {
     );
     expect(saved.heightCm).toBe(21.5);
     // Sem NCM, ainda não fecha; com o NCM (Wellmix), fecha.
-    await expect(svc.closeBookingLot(admin, lot.id, null)).rejects.toThrow(
+    await expect(svc.closeBookingLot(admin, lot.id)).rejects.toThrow(
       "booking_items_incomplete",
     );
     const { setBookingItemsNcm } = await import("@/lib/services/booking-ncm");
@@ -246,7 +246,7 @@ describe("booking por planilha", () => {
       "7013.37.00",
     );
 
-    const closed = await svc.closeBookingLot(admin, lot.id, null);
+    const closed = await svc.closeBookingLot(admin, lot.id);
     expect(closed.status).toBe("closed");
     expect(closed.analyzedAt).toBeTruthy();
     const items = await store.list("booking_items", {
@@ -332,7 +332,7 @@ describe("booking por planilha", () => {
       await store.list("booking_items", { filter: { lotId: lot.id } }),
     );
     expect(lib.bookingLotReady(pending)).toBe(true);
-    const closed = await svc.closeBookingLot(admin, lot.id, null);
+    const closed = await svc.closeBookingLot(admin, lot.id);
     expect(closed.status).toBe("closed");
     expect((await store.get("booking_items", blank.id))!.innerQty).toBeNull();
     expect((await store.get("booking_items", filled.id))!.innerQty).toBe(24);

@@ -112,7 +112,7 @@ async function purchaseOrder(sku: string): Promise<Order> {
     items.map((i) => i.id),
     "7013.37.00",
   );
-  await lots.closeBookingLot(admin, lot.id, null);
+  await lots.closeBookingLot(admin, lot.id);
   const line = (await store.list("product_lines")).find(
     (l) => l.requiredCertifications?.length,
   )!;

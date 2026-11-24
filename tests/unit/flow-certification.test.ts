@@ -109,7 +109,7 @@ async function certifiedOrder(codes: [string, string]): Promise<Order> {
     items.map((i) => i.id),
     "7013.37.00",
   );
-  await lots.closeBookingLot(admin, lot.id, null);
+  await lots.closeBookingLot(admin, lot.id);
   const requests = [];
   for (const [i, item] of items.entries()) {
     const request = await svc.openSupplierRequest(admin, {

@@ -145,7 +145,7 @@ async function approvedWith(
     items.map((i) => i.id),
     "7013.37.00",
   );
-  await lots.closeBookingLot(admin, lot.id, null);
+  await lots.closeBookingLot(admin, lot.id);
   const lineId = (await store.list("product_lines"))[0].id;
   const out = [];
   for (const [i, item] of items.entries()) {
@@ -343,7 +343,7 @@ describe("programação de compra de ponta a ponta", () => {
       ),
       "7013.37.00",
     );
-    await lots.closeBookingLot(admin, lot.id, null);
+    await lots.closeBookingLot(admin, lot.id);
     const items = await store.list("booking_items", {
       filter: { lotId: lot.id },
     });

@@ -10,8 +10,8 @@ import { accessOf, type ResolvedAccess } from "./access-cache";
  * (assertScreen) leem daqui. Admin abre tudo; operador da Wellmix abre o
  * básico mais a união das telas das suas funções (Gestão → Equipe e
  * divisões); cliente, fornecedor e parceiros têm a lista fixa do papel.
- * Financeiro (Financeiro, Contas a pagar, conta corrente do fornecedor) e o
- * Superplan são só do administrador: nenhuma função os libera. O administrador pode, porém,
+ * Financeiro (Financeiro, Contas a pagar, conta corrente do fornecedor) é
+ * só do administrador: nenhuma função o libera. O administrador pode, porém,
  * marcar as telas de um login uma a uma (users.screens), inclusive essas.
  */
 
@@ -38,7 +38,6 @@ export const SCREENS = [
   "freight",
   "freightTariff",
   "containers",
-  "superplan",
   "parties",
   "products",
   "lines",
@@ -126,7 +125,6 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/sourcing", "sourcing"],
   ["/app/reviews", "reviews"],
   ["/app/containers", "containers"],
-  ["/app/superplan", "superplan"],
   ["/app/parties", "parties"],
   ["/app/customers", "parties"],
   ["/app/suppliers", "parties"],
@@ -190,7 +188,6 @@ export const SCREEN_LABEL: Record<Screen, DictionaryKey> = {
   freight: "nav.freight",
   freightTariff: "nav.freightTariff",
   containers: "nav.containers",
-  superplan: "nav.superplan",
   parties: "nav.parties",
   products: "nav.products",
   lines: "nav.lines",
@@ -227,7 +224,7 @@ export const WELLMIX_BASE: readonly Screen[] = [
 
 /**
  * Só o administrador, seja qual for a função: financeiro, configurações,
- * equipe e o Superplan (custo, preço mínimo e margem de cada produto).
+ * e equipe.
  */
 export const ADMIN_ONLY: readonly Screen[] = [
   "finance",
@@ -235,7 +232,6 @@ export const ADMIN_ONLY: readonly Screen[] = [
   "account",
   "settings",
   "team",
-  "superplan",
 ];
 
 const PARTNER_BASE: readonly Screen[] = [
@@ -393,7 +389,6 @@ export const SCREEN_GROUPS: ReadonlyArray<{
       "freight",
       "freightTariff",
       "containers",
-      "superplan",
     ],
   },
   {

@@ -342,7 +342,7 @@ describe("programação do pedido (as datas são do pedido)", () => {
   });
 });
 
-describe("previsão de preço ao cliente final (SuperPlan, anexo 2)", () => {
+describe("previsão de preço ao cliente final (funções de preço do Sankhya, anexo 2)", () => {
   const pf = () => import("@/lib/integrations/price-forecast");
   const query = {
     productId: "prod-boneca",
@@ -362,9 +362,9 @@ describe("previsão de preço ao cliente final (SuperPlan, anexo 2)", () => {
   const args = (sql: string) => /\((.*)\)$/.exec(sql)![1].split(", ");
 
   it("69 parâmetros na ordem do anexo; DEFAULT no que não vai; alvo no 48º", async () => {
-    const { superplanSql, SUPERPLAN_PARAMS } = await pf();
-    expect(SUPERPLAN_PARAMS).toHaveLength(69);
-    const ida = superplanSql("FN_AD_SUPERPLAN_WELL", {
+    const { priceSql, PRICE_PARAMS } = await pf();
+    expect(PRICE_PARAMS).toHaveLength(69);
+    const ida = priceSql("FN_AD_SUPERPLAN_WELL", {
       CODPROD: 21952,
       QTD_PECAS: 6192,
     });
@@ -374,16 +374,16 @@ describe("previsão de preço ao cliente final (SuperPlan, anexo 2)", () => {
     expect(a[41]).toBe("21952"); // 42 CODPROD
     expect(a[6]).toBe("6192"); // 7 QTD_PECAS
     expect(a.filter((x) => x === "DEFAULT")).toHaveLength(67);
-    const volta = superplanSql("FN_AD_SUPERPLAN_INVERSA_WELL", {
+    const volta = priceSql("FN_AD_SUPERPLAN_INVERSA_WELL", {
       CODPROD: 21952,
       PRECO_VENDA_ALVO: 9.2615,
     });
     expect(args(volta)[47]).toBe("9.2615");
     expect(() =>
-      superplanSql("FN_AD_SUPERPLAN_WELL", { NCM: "7323'; DROP" }),
+      priceSql("FN_AD_SUPERPLAN_WELL", { NCM: "7323'; DROP" }),
     ).toThrow("invalid_input");
     expect(() =>
-      superplanSql("FN_AD_SUPERPLAN_WELL", { PRECO_ORIGEM: "abc" }),
+      priceSql("FN_AD_SUPERPLAN_WELL", { PRECO_ORIGEM: "abc" }),
     ).toThrow("invalid_input");
   });
 

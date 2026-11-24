@@ -14,7 +14,7 @@ export const FIELD = "min-h-9";
 /**
  * Preço/peça | Moeda | Mínimo (peças) | Produção (dias) | Incoterm numa linha
  * só quando cabe (resposta do fornecedor e resposta à contraproposta; a da
- * Wellmix usa `ProposalFields`, com a mesma grade e o Superplan). Os nomes
+ * Wellmix usa `ProposalFields`, com a mesma grade e a previsão de preço). Os nomes
  * dos campos são os de sempre: a Server Action não muda.
  */
 export function OfferRowFields({

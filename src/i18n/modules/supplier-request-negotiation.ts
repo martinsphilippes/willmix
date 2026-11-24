@@ -60,23 +60,27 @@ export const pt = {
   "settings.error.supplier_request_sla_invalid":
     "Informe o SLA da negociação em minutos (de 1 a 86400).",
 
-  "supplierRequests.negotiation.sim.title": "Estimativa do Superplan",
+  "supplierRequests.negotiation.sim.title": "Previsão de preço (Sankhya)",
   "supplierRequests.negotiation.sim.cost": "Custo por peça",
-  "supplierRequests.negotiation.sim.minimum": "Preço mínimo",
+  "supplierRequests.negotiation.sim.minimum": "Venda prevista",
   "supplierRequests.negotiation.sim.booking": "no book:",
-  "supplierRequests.negotiation.sim.target": "Preço mínimo desejado (R$)",
+  "supplierRequests.negotiation.sim.target":
+    "Preço de venda desejado (R$ por peça)",
   "supplierRequests.negotiation.sim.targetHint":
-    "Conta inversa: o sistema mostra o preço por peça necessário para chegar a esse mínimo.",
-  "supplierRequests.negotiation.sim.needed": "Preço por peça necessário",
+    "Conta inversa do Sankhya: o preço máximo de compra que leva a esse preço de venda.",
+  "supplierRequests.negotiation.sim.needed": "Preço máximo de compra",
   "supplierRequests.negotiation.sim.use": "Usar este preço",
   "supplierRequests.negotiation.sim.unreachable":
-    "Esse mínimo não é alcançável só com o preço (fica abaixo do custo sem a mercadoria).",
+    "O Sankhya não achou um preço de compra para esse preço de venda.",
   "supplierRequests.negotiation.sim.currency":
-    "A estimativa só funciona com preço em USD ou RMB.",
+    "A previsão só funciona com preço em RMB, USD ou euro.",
   "supplierRequests.negotiation.sim.missing":
-    "Faltam dados do item para a estimativa (caixa, volume, frete ou câmbio).",
+    "Sem previsão: faltam dados do item (NCM, caixa ou CBM) ou o Sankhya não respondeu.",
   "supplierRequests.negotiation.sim.hint":
-    "Só estimativa, refeita a cada tecla com o câmbio de hoje e os padrões do Superplan; o que vale é a resposta do fornecedor.",
+    "Só estimativa, da API de preço do Sankhya (refeita quando você para de digitar); o que vale é a resposta do fornecedor.",
+  "supplierRequests.negotiation.sim.loading": "Consultando o Sankhya…",
+  "supplierRequests.negotiation.sim.manual":
+    "Sankhya não configurado: nenhum preço é previsto.",
   "supplierRequests.error.supplier_request_supplier_only":
     "A resposta é do fornecedor, pelo portal: a Wellmix não responde por ele.",
   "supplierRequests.error.supplier_request_proposal_pending":
@@ -175,23 +179,27 @@ export const en: Record<keyof typeof pt, string> = {
   "settings.error.supplier_request_sla_invalid":
     "Enter the negotiation SLA in minutes (1 to 86400).",
 
-  "supplierRequests.negotiation.sim.title": "Superplan estimate",
+  "supplierRequests.negotiation.sim.title": "Price forecast (Sankhya)",
   "supplierRequests.negotiation.sim.cost": "Cost per piece",
-  "supplierRequests.negotiation.sim.minimum": "Minimum price",
+  "supplierRequests.negotiation.sim.minimum": "Forecast sale",
   "supplierRequests.negotiation.sim.booking": "in the book:",
-  "supplierRequests.negotiation.sim.target": "Desired minimum price (R$)",
+  "supplierRequests.negotiation.sim.target":
+    "Desired sale price (R$ per piece)",
   "supplierRequests.negotiation.sim.targetHint":
-    "Reverse calculation: the system shows the price per piece needed to reach that minimum.",
-  "supplierRequests.negotiation.sim.needed": "Price per piece needed",
+    "Sankhya's reverse calculation: the maximum purchase price that leads to this sale price.",
+  "supplierRequests.negotiation.sim.needed": "Maximum purchase price",
   "supplierRequests.negotiation.sim.use": "Use this price",
   "supplierRequests.negotiation.sim.unreachable":
-    "This minimum can't be reached by the price alone (it is below the cost without the goods).",
+    "Sankhya found no purchase price for this sale price.",
   "supplierRequests.negotiation.sim.currency":
-    "The estimate only works with a price in USD or RMB.",
+    "The forecast only works with prices in RMB, USD or euro.",
   "supplierRequests.negotiation.sim.missing":
-    "The item is missing data for the estimate (carton, volume, freight or exchange rate).",
+    "No forecast: the item is missing data (NCM, carton or CBM) or Sankhya did not answer.",
   "supplierRequests.negotiation.sim.hint":
-    "Estimate only, recalculated on every keystroke with today's exchange rate and the Superplan defaults; the supplier's answer is what counts.",
+    "Estimate only, from Sankhya's price API (redone when you stop typing); the supplier's answer is what counts.",
+  "supplierRequests.negotiation.sim.loading": "Asking Sankhya…",
+  "supplierRequests.negotiation.sim.manual":
+    "Sankhya not configured: no price is forecast.",
   "supplierRequests.error.supplier_request_supplier_only":
     "The answer comes from the supplier, through the portal: Wellmix does not answer for them.",
   "supplierRequests.error.supplier_request_proposal_pending":
@@ -285,22 +293,25 @@ export const zh: Record<keyof typeof pt, string> = {
   "settings.error.supplier_request_sla_invalid":
     "请填写议价 SLA 分钟数（1 至 86400）。",
 
-  "supplierRequests.negotiation.sim.title": "Superplan 估算",
+  "supplierRequests.negotiation.sim.title": "价格预测（Sankhya）",
   "supplierRequests.negotiation.sim.cost": "每件成本",
-  "supplierRequests.negotiation.sim.minimum": "最低价",
+  "supplierRequests.negotiation.sim.minimum": "预测售价",
   "supplierRequests.negotiation.sim.booking": "Book 中：",
-  "supplierRequests.negotiation.sim.target": "期望最低价（R$）",
+  "supplierRequests.negotiation.sim.target": "期望售价（每件，雷亚尔）",
   "supplierRequests.negotiation.sim.targetHint":
-    "反向计算：系统显示达到该最低价所需的每件价格。",
-  "supplierRequests.negotiation.sim.needed": "所需每件价格",
+    "Sankhya 反向计算：达到该售价的最高采购价。",
+  "supplierRequests.negotiation.sim.needed": "最高采购价",
   "supplierRequests.negotiation.sim.use": "使用此价格",
   "supplierRequests.negotiation.sim.unreachable":
-    "仅靠价格无法达到该最低价（低于不含货物的成本）。",
-  "supplierRequests.negotiation.sim.currency": "估算仅适用于 USD 或 RMB 价格。",
+    "Sankhya 未找到达到该售价的采购价。",
+  "supplierRequests.negotiation.sim.currency":
+    "预测仅适用于人民币、美元或欧元价格。",
   "supplierRequests.negotiation.sim.missing":
-    "该商品缺少估算所需数据（箱规、体积、运费或汇率）。",
+    "无预测：条目缺少数据（NCM、箱子或 CBM）或 Sankhya 未响应。",
   "supplierRequests.negotiation.sim.hint":
-    "仅为估算，每次输入都会按今日汇率和 Superplan 默认值重新计算；以供应商的答复为准。",
+    "仅为估算，来自 Sankhya 价格 API（停止输入后重新计算）；以供应商的答复为准。",
+  "supplierRequests.negotiation.sim.loading": "正在查询 Sankhya…",
+  "supplierRequests.negotiation.sim.manual": "未配置 Sankhya：不预测任何价格。",
   "supplierRequests.error.supplier_request_supplier_only":
     "答复由供应商通过门户提交：Wellmix 不能代为答复。",
   "supplierRequests.error.supplier_request_proposal_pending":

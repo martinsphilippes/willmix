@@ -121,23 +121,6 @@ test("nova solicitação (Wellmix): compra para estoque, cliente e produto com a
   );
 });
 
-test("Superplan: o produto escolhido na busca carrega a conta", async ({
-  page,
-}) => {
-  await login(page, "admin@wellmix.com");
-  await page.goto("/app/superplan");
-  await choose(
-    page.locator('[data-product-picker="active"]'),
-    "product-picker",
-    "boneca",
-    "prod-boneca",
-  );
-  await page.waitForURL(/\/app\/superplan\?product=prod-boneca/);
-  await expect(
-    page.locator('[data-product-picker="active"] [data-product-picker-input]'),
-  ).toHaveValue("Boneca articulada 30 cm (BRQ-001)");
-});
-
 test("Produtos: filtro de fornecedor pela busca", async ({ page }) => {
   await login(page, "admin@wellmix.com");
   await page.goto("/app/products");
