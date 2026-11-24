@@ -631,7 +631,7 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(turnCell).toContainText("Aguardando fornecedor");
   await expect(
     turnCell.locator("[data-supplier-table-turn-action]"),
-  ).toHaveText("Enviar a amostragem");
+  ).toHaveText("Carregar a amostragem");
   const turnWho = turnCell.locator('[data-request-responsible="ok"]');
   await expect(turnWho).toContainText("Fornecedor");
   await turnWho.click();
@@ -639,6 +639,39 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     page.locator("[data-info-tip]").filter({ hasText: "supplier.a@china.com" }),
   ).toBeVisible();
   await page.keyboard.press("Escape");
+  // O login de quem carrega a amostragem, à vista para o administrador
+  // (dono, 24/11/2026): na tabela da cotação e na lista de cotações.
+  await expect(turnCell.locator("[data-responsible-logins]")).toContainText(
+    "supplier.a@china.com",
+  );
+  // Aba (dono, 24/11/2026): aprovada com a amostra pendente continua em
+  // "Em andamento", com a ação, até a amostra ser aprovada.
+  const listRowSelector = `[data-supplier-request-row="${requestUrl.split("/").pop()}"]`;
+  const listTurn = page.locator(
+    `${listRowSelector} [data-supplier-request-turn]`,
+  );
+  await page.goto("/app/supplier-requests");
+  // Pela marcação, sem o texto (o nome da ação pode mudar; PR #677).
+  await expect(listTurn).toHaveAttribute(
+    "data-supplier-request-turn",
+    "sampling_send",
+  );
+  // Quem age e o login de quem carrega, à vista (só o administrador).
+  await expect(
+    listTurn.locator('[data-request-responsible="ok"]'),
+  ).toContainText("Fornecedor");
+  await expect(listTurn.locator("[data-responsible-logins]")).toContainText(
+    "supplier.a@china.com",
+  );
+  await page.goto("/app/supplier-requests?tab=closed");
+  await expect(page.locator(listRowSelector)).toHaveCount(0);
+  // Fora o administrador, quem age sem o login (privacidade).
+  await login(page, plannerEmail);
+  await page.goto("/app/supplier-requests");
+  await expect(
+    listTurn.locator('[data-request-responsible="ok"]'),
+  ).toBeVisible();
+  await expect(listTurn.locator("[data-responsible-logins]")).toHaveCount(0);
 
   // 4.1 Amostragem: o responsável sobe uma foto da amostra e envia.
   await login(page, "supplier.a@china.com");
@@ -656,12 +689,32 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
 
   // 4.2 A Wellmix valida a amostra. Enviada, a vez é dela.
   await login(page, "admin@wellmix.com");
+  // Na lista de Cotação, "Validar a amostragem" é o link para o quadro da
+  // amostragem do produto (dono, 24/11/2026), o mesmo da pendência.
+  // A aprovada esperando a amostra fica em "Em andamento" (PR #680) ou, antes
+  // dele, em Encerradas: a linha numa das duas abas.
+  const listRow = page.locator(
+    `[data-supplier-request-row="${requestUrl.split("/").pop()}"]`,
+  );
+  await page.goto("/app/supplier-requests");
+  if (!(await listRow.count()))
+    await page.goto("/app/supplier-requests?tab=closed");
+  const listAction = listRow.locator(
+    '[data-supplier-request-turn-action="sampling_validate"]',
+  );
+  await expect(listAction).toHaveText("Validar a amostragem");
+  await expect(listAction).toHaveAttribute(
+    "href",
+    /\/app\/supplier-requests\/[^/?]+\?view=item#amostragem$/,
+  );
   await page.goto(requestUrl);
   await expect(turnCell).toHaveAttribute("data-supplier-table-turn", "wellmix");
-  await expect(
-    turnCell.locator("[data-supplier-table-turn-action]"),
-  ).toHaveText("Validar a amostragem");
-  await page.goto(itemUrl);
+  const validateLink = turnCell.locator("[data-supplier-table-turn-action]");
+  await expect(validateLink).toHaveText("Validar a amostragem");
+  // Clicar leva ao lugar de agir: o quadro da amostragem, com a validação.
+  await validateLink.click();
+  await page.waitForURL(/\?view=item#amostragem$/);
+  await expect(page.locator("#amostragem")).toBeVisible();
   await expect(page.locator("[data-sampling-file]")).toHaveCount(1);
   await page.click("[data-sampling-review=approve]");
   await page.waitForURL(/[?&]sampling=approved/);

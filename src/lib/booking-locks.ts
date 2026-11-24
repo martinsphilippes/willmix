@@ -1,4 +1,5 @@
 import type { BookingLock, BookingLot } from "@/lib/db/schema";
+import { bookingLotLockable } from "@/lib/booking-lots";
 
 /*
  * Travar books (dono, 23/11/2026; docs/BOOKING.md, "Travar books"): regras
@@ -27,6 +28,8 @@ export function cleanItemType(raw: string | null | undefined): string | null {
 
 type LockedLot = Pick<BookingLot, "id" | "createdAt"> & {
   itemType?: string | null;
+  /** Com a situação, só o book que já saiu do rascunho tem trava. */
+  status?: BookingLot["status"];
 };
 type Lock = Pick<
   BookingLock,
@@ -38,6 +41,9 @@ export function lockOfLot<L extends Lock>(
   lot: LockedLot,
   locks: readonly L[],
 ): L | null {
+  // Só depois do rascunho (dono, 24/11/2026): o book em rascunho ainda não
+  // está sendo trabalhado na seleção, e todos continuam vendo.
+  if (lot.status && !bookingLotLockable(lot.status)) return null;
   const own = locks.find((l) => l.scope === "lot" && l.lotId === lot.id);
   if (own) return own;
   const key = itemTypeKey(lot.itemType);
@@ -75,6 +81,27 @@ export function visibleLots<T extends LockedLot>(
 /** O book passou do prazo com a pessoa? (minutos com ela × prazo em horas) */
 export const lockLate = (minutes: number, slaHours: number) =>
   minutes > slaHours * 60;
+
+/**
+ * Até quando o book fica no prazo com a pessoa (dono, 24/11/2026: no lugar
+ * do selo "No prazo (3 h)", só a data e a hora): "24/11 19:52", no horário
+ * de Brasília (a lista do Book é da equipe). Vazio se a data é inválida.
+ */
+export function lockDueText(sinceIso: string, slaHours: number): string {
+  const ms = Date.parse(sinceIso);
+  if (Number.isNaN(ms)) return "";
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(ms + slaHours * 3_600_000));
+  const part = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  return `${part("day")}/${part("month")} ${part("hour")}:${part("minute")}`;
+}
 
 /** "2 h 05 min", "45 min", "3 d 4 h". */
 export function durationText(minutes: number): string {

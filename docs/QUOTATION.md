@@ -30,7 +30,7 @@ Para a Wellmix, o título é **Cotação** e a tabela mostra todas as cotações
 
 A coluna **Origem** diz de onde a cotação veio. São três origens, e todas passam pela Estratégia de compra e pela Cotação: **Book**, **Encomenda** ou **Reposição** (dono, 22/11/2026). Sem book, vale a demanda de onde a cotação nasceu (`requests.origin`: `replenishment` é Reposição; as outras, Encomenda); cotação que junta as duas mostra as duas.
 
-Abas: **Em andamento**, **Encerradas** e **Convites de book** (a mesma tabela de `/app/supplier-requests/invites`, em `_components/invites-table.tsx`).
+Abas: **Em andamento**, **Encerradas** e **Convites de book** (a mesma tabela de `/app/supplier-requests/invites`, em `_components/invites-table.tsx`). A solicitação aprovada com a amostra ainda não aprovada fica em **Em andamento** até a amostra ser aprovada (dono, 24/11/2026; docs/SUPPLIER_REQUESTS.md, "Abas").
 
 Para o fornecedor, a lista é a de sempre (só as solicitações dele, com os textos de antes).
 

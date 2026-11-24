@@ -431,6 +431,7 @@ describe("regras puras", () => {
         lockByType: false,
         heldMinutes: null,
         heldText: "",
+        heldDueText: "",
         heldLate: false,
       }) satisfies import("@/lib/booking-lots").BookingLotRow;
     const rows = [
@@ -449,5 +450,16 @@ describe("regras puras", () => {
     expect(
       lib.sortBookingLots(rows, "itemCount", "asc").map((r) => r.number),
     ).toEqual([1, 2]);
+  });
+});
+
+describe("prazo da trava do book (dono, 24/11/2026)", () => {
+  it("mostra só a data e a hora do fim do prazo, no horário de Brasília", async () => {
+    const { lockDueText } = await import("@/lib/booking-locks");
+    // 24/11 16:52 em Brasília (19:52 UTC) + 3 h = 24/11 19:52 em Brasília.
+    expect(lockDueText("2026-11-24T19:52:00Z", 3)).toBe("24/11 19:52");
+    // Virada do dia: 23:30 + 3 h = 02:30 do dia seguinte.
+    expect(lockDueText("2026-11-25T02:30:00Z", 3)).toBe("25/11 02:30");
+    expect(lockDueText("data ruim", 3)).toBe("");
   });
 });

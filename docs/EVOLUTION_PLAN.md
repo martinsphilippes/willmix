@@ -1926,6 +1926,17 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Não mudou**: quem não é administrador continua só com os seus rascunhos; a Reposição continua só de quem salvou.
 - Testes: `tests/unit/request-screens.test.ts`, `tests/unit/request-draft-details.test.ts` e `tests/e2e/request-draft-details.spec.ts`.
 
+## A ação da vez leva ao lugar de agir: amostragem e negociação (dono, 24/11/2026)
+
+- **Pedido do dono** (24/11/2026, print da cotação nº 59842): em "Validar a amostragem" tinha que ser possível clicar e ir ao lugar certo para validar a amostragem.
+- **Como ficou**: nos passos da solicitação ao fornecedor, o texto da ação é um link para o mesmo lugar da pendência (`supplierRequestStepHref`):
+  - responder ou decidir abrem a solicitação;
+  - enviar ou validar a amostragem abrem o produto no quadro da amostragem.
+- **Onde**: na lista de cotações (Wellmix; o fornecedor, quando a vez é dele), na coluna Vez da tabela dos produtos e na Próxima ação de Encomendas (com `NextStep.supplierRequestId`; só para quem abre a Cotação). Detalhes em docs/TURNS.md, seção 3.
+- **Correção**: na lista de cotações do fornecedor, a vez mostrava a chave crua do texto ("…turn.[object Object]") desde o PR #675; voltou a mostrar a parte.
+- **Aditivo**: campos opcionais `NextStep.supplierRequestId` e `PurchaseProgress.supplierRequests[].id`; nenhuma tela, rota, campo ou dado muda; sem mudança no banco.
+- Testes: `tests/unit/supplier-request-sampling.test.ts` (o link igual ao da pendência), `tests/unit/turns.test.ts` (o passo com a solicitação certa), `tests/unit/purchase-quote.test.ts` (Encomendas com a solicitação da vencedora) e `tests/e2e/booking-supplier-request.spec.ts` (a Wellmix clica em "Validar a amostragem" e cai no quadro da amostragem).
+
 ## Superplan removido: preços pela API de preço do Sankhya (dono, 24/11/2026)
 
 - **Pedido do dono** (24/11/2026): tirar o Superplan inteiro e usar em todo lugar a API de preço do Sankhya que a Nova solicitação já usa (cotação V2 `FN_AD_ENC_COTACAO_V2_WELL` e a inversa para o preço máximo de compra; `src/lib/integrations/price-forecast.ts`).

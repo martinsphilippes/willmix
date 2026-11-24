@@ -246,11 +246,15 @@ describe("amostragem da solicitação ao fornecedor", () => {
         uploadedFileId: null,
       }),
     ).rejects.toThrow("sampling_closed");
-    expect(
-      (await pendingTasksFor(admin)).some(
-        (t) => t.kind === "sampling_validate" && t.link.includes(request.id),
-      ),
-    ).toBe(true);
+    const validate = (await pendingTasksFor(admin)).find(
+      (t) => t.kind === "sampling_validate" && t.link.includes(request.id),
+    );
+    expect(validate).toBeTruthy();
+    // A ação "Validar a amostragem" das listas leva ao mesmo lugar da
+    // pendência: o quadro da amostragem do produto (dono, 24/11/2026).
+    expect(validate!.link).toBe(
+      lib.supplierRequestStepHref(request.id, "sampling_validate"),
+    );
     // O fornecedor não valida; reprovar pede o motivo.
     await expect(
       sampling.reviewSampling(supplierA, request.id, "approve", null),
@@ -512,6 +516,30 @@ describe("de quem é a vez na cotação (dono, 24/11/2026)", () => {
     });
     expect(turn({ ...base, status: "declined" })).toBeNull();
     expect(turn({ ...base, status: "cancelled" })).toBeNull();
+  });
+
+  it("a ação da vez leva ao lugar de agir, o mesmo das Pendências (dono, 24/11/2026)", () => {
+    const href = lib.supplierRequestStepHref;
+    // Responder ou decidir: a solicitação (o quadro da cotação).
+    expect(href("sr-1", "supplier_answer")).toBe("/app/supplier-requests/sr-1");
+    expect(href("sr-1", "supplier_decide")).toBe("/app/supplier-requests/sr-1");
+    // Enviar ou validar a amostragem: o produto, no quadro da amostragem.
+    expect(href("sr-1", "sampling_send")).toBe(
+      "/app/supplier-requests/sr-1?view=item#amostragem",
+    );
+    expect(href("sr-1", "sampling_validate")).toBe(
+      "/app/supplier-requests/sr-1?view=item#amostragem",
+    );
+    // Só os quatro passos da solicitação ao fornecedor.
+    for (const key of [
+      "supplier_answer",
+      "supplier_decide",
+      "sampling_send",
+      "sampling_validate",
+    ])
+      expect(lib.isSupplierRequestStep(key)).toBe(true);
+    for (const key of ["send", "confirm", "purchase_order", "order", "none"])
+      expect(lib.isSupplierRequestStep(key)).toBe(false);
   });
 
   it("quem age: o fornecedor com os logins (o e-mail só para o administrador)", async () => {

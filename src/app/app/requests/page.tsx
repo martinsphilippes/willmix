@@ -21,6 +21,10 @@ import {
 import { canViewRequest, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { canSeeMoney } from "@/lib/auth/function-access";
 import { REQUEST_SCREEN } from "@/lib/request-screens";
+import {
+  isSupplierRequestStep,
+  supplierRequestStepHref,
+} from "@/lib/supplier-request-sampling";
 import { canDeleteRequest } from "@/lib/services/requests";
 import {
   activeRequests,
@@ -836,18 +840,41 @@ export default async function RequestsPage({
     }
     return [...groups.values()].sort((a, b) => dueTime(a.due) - dueTime(b.due));
   };
-  const actionLine = (g: ActionGroup, main: boolean) => (
-    <span
-      className="block"
-      data-request-next={main ? g.step.key : undefined}
-      data-request-action={main ? undefined : g.step.key}
-    >
-      <span className="block font-medium leading-snug text-zinc-900">
-        {nextText(g.step)}
+  /*
+   * A ação leva ao lugar de agir (dono, 24/11/2026): responder, decidir,
+   * enviar ou validar a amostragem abrem a solicitação ao fornecedor com a
+   * vez, no mesmo endereço da pendência, para quem abre a Cotação.
+   */
+  const seesQuotes = canOpen(user, "quotes");
+  const actionHref = (step: NextStep) =>
+    seesQuotes && step.supplierRequestId && isSupplierRequestStep(step.key)
+      ? supplierRequestStepHref(step.supplierRequestId, step.key)
+      : null;
+  const actionLine = (g: ActionGroup, main: boolean) => {
+    const href = actionHref(g.step);
+    return (
+      <span
+        className="block"
+        data-request-next={main ? g.step.key : undefined}
+        data-request-action={main ? undefined : g.step.key}
+      >
+        {href ? (
+          <TextLink
+            href={href}
+            className="block leading-snug"
+            data-request-next-link=""
+          >
+            {nextText(g.step)}
+          </TextLink>
+        ) : (
+          <span className="block font-medium leading-snug text-zinc-900">
+            {nextText(g.step)}
+          </span>
+        )}
+        {respCell(g.resp)}
       </span>
-      {respCell(g.resp)}
-    </span>
-  );
+    );
+  };
   /** Próxima ação: a ação e quem age; ações paralelas, a lista aberta à parte. */
   const nextCell = (e: Entry) => {
     const groups = actionsOf(e);

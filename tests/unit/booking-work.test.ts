@@ -83,7 +83,8 @@ const itemsOf = async (lotId: string) =>
 async function closedLot(rows: string[][], itemType: string) {
   const lot = await svc.createBookingLotFromSheet(admin, file(rows), {
     storeNumber: "A 100",
-    supplierName: "Fabrica Livre",
+    // A Fábrica digitada é a da planilha (outra, as linhas divergiriam).
+    supplierName: "Shenzhen Supplier A",
     itemType,
   });
   const { setBookingItemsNcm } = await import("@/lib/services/booking-ncm");
@@ -129,12 +130,12 @@ describe("importar o book", () => {
       file([row("MT-1", "Glass cup")]),
       {
         storeNumber: " A 154678 ",
-        supplierName: "Yiwu  Glass Shop",
+        supplierName: "Shenzhen  Supplier A",
         itemType: "  Vidro   decorado ",
       },
     );
     expect(lot.storeNumber).toBe("A 154678");
-    expect(lot.supplierName).toBe("Yiwu Glass Shop");
+    expect(lot.supplierName).toBe("Shenzhen Supplier A");
     expect(lot.itemType).toBe("Vidro decorado");
     const changed = await svc.setBookingLotMeta(admin, lot.id, {
       storeNumber: "B 22",
@@ -236,6 +237,119 @@ describe("importar o book", () => {
     expect(lot.supplierName).toBe("Loja Nove");
     expect(lot.itemType).toBe("Copos");
     await partner.discardPartnerBooking(supplierA, lot.id);
+  });
+});
+
+describe("fábrica, fornecedor e fabricante", () => {
+  const mixedRow = (sku: string, supplier: string) => {
+    const r = row(sku, `Item ${sku}`);
+    r[0] = supplier;
+    return r;
+  };
+
+  it("o Fornecedor é escolhido no cadastro ou cadastrado pelo nome", async () => {
+    const store = getStore();
+    const chosen = await svc.createBookingLotFromSheet(
+      admin,
+      file([row("FN-1", "Cup")]),
+      { itemType: "Fornecedor", partnerId: supplierA.partyId },
+    );
+    expect(chosen.partnerId).toBe(supplierA.partyId);
+    const fresh = await svc.createBookingLotFromSheet(
+      admin,
+      file([row("FN-2", "Cup")]),
+      { itemType: "Fornecedor", newPartnerName: "Trading Nova Ltd." },
+    );
+    const party = await store.get("parties", fresh.partnerId!);
+    expect(party?.name).toBe("Trading Nova Ltd.");
+    expect(party?.type).toBe("supplier");
+    // O mesmo nome de novo não cadastra outro.
+    const again = await svc.createBookingLotFromSheet(
+      admin,
+      file([row("FN-3", "Cup")]),
+      { itemType: "Fornecedor", newPartnerName: "trading nova" },
+    );
+    expect(again.partnerId).toBe(fresh.partnerId);
+    // A Fábrica continua sendo a da planilha.
+    expect(fresh.supplierId).toBe(chosen.supplierId);
+  });
+
+  it("linha de outro fabricante trava o fechamento até remover ou confirmar", async () => {
+    const lot = await svc.createBookingLotFromSheet(
+      admin,
+      file([
+        mixedRow("FB-1", "Shenzhen Supplier A"),
+        mixedRow("FB-2", "Shenzhen Supplier A Co., Ltd."),
+        mixedRow("FB-3", "Outra Fabrica"),
+        mixedRow("FB-4", "Terceira Fabrica"),
+      ]),
+      { itemType: "Fabricante", storeNumber: "Z 9" },
+    );
+    const { setBookingItemsNcm } = await import("@/lib/services/booking-ncm");
+    let items = await itemsOf(lot.id);
+    await setBookingItemsNcm(
+      admin,
+      items.map((i) => i.id),
+      "7013.37.00",
+    );
+    expect(items.map((i) => i.sheetSupplier)).toEqual([
+      "Shenzhen Supplier A",
+      "Shenzhen Supplier A Co., Ltd.",
+      "Outra Fabrica",
+      "Terceira Fabrica",
+    ]);
+    const wrong = await svc.manufacturerMismatches(lot, items);
+    // "Co., Ltd." é o mesmo fabricante; as outras duas divergem.
+    expect(wrong.map((i) => i.factoryItemCode)).toEqual(["FB-3", "FB-4"]);
+    await expect(svc.closeBookingLot(admin, lot.id)).rejects.toThrow(
+      "booking_manufacturer_mismatch",
+    );
+    // Uma sai do book; a outra é confirmada (a planilha estava errada).
+    await svc.removeBookingItem(admin, lot.id, wrong[0].id);
+    expect((await getStore().get("booking_lots", lot.id))?.itemCount).toBe(3);
+    await expect(svc.closeBookingLot(admin, lot.id)).rejects.toThrow(
+      "booking_manufacturer_mismatch",
+    );
+    expect(await svc.confirmBookingManufacturer(admin, lot.id, null)).toBe(1);
+    items = await itemsOf(lot.id);
+    expect(await svc.manufacturerMismatches(lot, items)).toEqual([]);
+    const closed = await svc.closeBookingLot(admin, lot.id);
+    expect(closed.status).toBe("closed");
+  });
+
+  it("o parceiro não envia o book com outro fabricante", async () => {
+    const lot = await partner.launchPartnerBooking(
+      supplierA,
+      file([
+        mixedRow("PF-1", "Shenzhen Supplier A"),
+        mixedRow("PF-2", "Fabrica Errada"),
+      ]),
+      { itemType: "Fabricante", supplierName: "Shenzhen Supplier A" },
+    );
+    const detail = (await partner.getPartnerBookingLot(supplierA, lot.id))!;
+    expect(detail.manufacturer).toBe("Shenzhen Supplier A");
+    expect(detail.items.map((i) => i.manufacturerMismatch)).toEqual([
+      false,
+      true,
+    ]);
+    await expect(partner.sendPartnerBooking(supplierA, lot.id)).rejects.toThrow(
+      "booking_manufacturer_mismatch",
+    );
+    await partner.removePartnerBookingItem(
+      supplierA,
+      lot.id,
+      detail.items[1].id,
+    );
+    const sent = await partner.sendPartnerBooking(supplierA, lot.id);
+    expect(sent.status).toBe("draft");
+    expect(sent.itemCount).toBe(1);
+  });
+
+  it("nº da loja digitado diferente do da planilha só avisa", async () => {
+    const lib = await import("@/lib/booking-lots");
+    expect(lib.storeNumberMismatch("A 154678", "a-154678")).toBe(false);
+    expect(lib.storeNumberMismatch("A 154678", "B 22")).toBe(true);
+    expect(lib.storeNumberMismatch("A 154678", null)).toBe(false);
   });
 });
 
@@ -355,6 +469,17 @@ describe("travar books", () => {
       expect.arrayContaining([glass.id, wood.id]),
     );
 
+    // Só depois do rascunho: o book ainda em rascunho não trava, e a trava
+    // do tipo não o esconde de ninguém.
+    const draft = await svc.createBookingLotFromSheet(
+      admin,
+      file([row("LK-9", "Lock draft")]),
+      { itemType: "Trava madeira" },
+    );
+    await expect(svc.lockBookingLot(ana, draft.id)).rejects.toThrow(
+      "booking_lock_draft",
+    );
+
     await svc.lockBookingLot(ana, glass.id);
     expect(await seen(ana)).toEqual([glass.id]);
     expect(await seen(bia)).not.toContain(glass.id);
@@ -384,7 +509,7 @@ describe("travar books", () => {
       (await requests.listSelectionItems(admin, q))!.all.map(
         (r) => r.item.factoryItemCode,
       );
-    expect(await found("Fabrica Livre")).toEqual(
+    expect(await found("A 100 Lock")).toEqual(
       expect.arrayContaining(["LK-1", "LK-2", "LK-3"]),
     );
     expect(await found("A 100 trava vidro")).toEqual(["LK-1"]);
@@ -392,6 +517,12 @@ describe("travar books", () => {
     // A Bia trava o tipo (escrito de outro jeito): pega os dois de madeira.
     await svc.lockBookingType(bia, "Trava Madeira");
     expect((await seen(bia)).sort()).toEqual([wood.id, wood2.id].sort());
+    // O rascunho do mesmo tipo continua livre, à vista de quem supervisiona
+    // e de quem não travou nada.
+    expect(
+      (await svc.listBookingLots(admin))!.find((e) => e.lot.id === draft.id)!
+        .held,
+    ).toBeNull();
     await expect(svc.lockBookingType(ana, "trava madeira")).rejects.toThrow(
       "booking_lock_taken",
     );
