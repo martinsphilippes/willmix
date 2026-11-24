@@ -469,3 +469,105 @@ describe("amostragem desde o começo da cotação do item (dono, 22/11/2026)", (
     ).rejects.toThrow("sampling_not_open");
   });
 });
+
+describe("de quem é a vez na cotação (dono, 24/11/2026)", () => {
+  it("negociação primeiro; aprovada, a amostragem; nada depois da amostra aprovada", () => {
+    const base = {
+      status: "open" as const,
+      negotiation: null,
+      decidedAt: null,
+      updatedAt: "2026-11-24T10:00:00.000Z",
+      sampling: null,
+    };
+    const turn = lib.supplierRequestTurn;
+    expect(turn(base)).toEqual({ party: "supplier", step: "supplier_answer" });
+    expect(turn({ ...base, status: "answered" })).toEqual({
+      party: "wellmix",
+      step: "supplier_decide",
+    });
+    // Aprovada sem a amostragem gravada (antes da etapa): pendente com ele.
+    const approved = {
+      ...base,
+      status: "approved" as const,
+      decidedAt: "2026-11-24T18:03:56.889Z",
+    };
+    expect(turn(approved)).toEqual({
+      party: "supplier",
+      step: "sampling_send",
+    });
+    const s = lib.openSampling(approved.decidedAt, "w1");
+    expect(
+      turn({ ...approved, sampling: { ...s, status: "rejected" } }),
+    ).toEqual({ party: "supplier", step: "sampling_send" });
+    expect(
+      turn({ ...approved, sampling: { ...s, status: "submitted" } }),
+    ).toEqual({ party: "wellmix", step: "sampling_validate" });
+    expect(turn({ ...approved, sampling: { ...s, status: "approved" } })).toBe(
+      null,
+    );
+    // Em andamento, a negociação manda, mesmo com a amostra adiantada.
+    expect(turn({ ...base, sampling: { ...s, status: "submitted" } })).toEqual({
+      party: "supplier",
+      step: "supplier_answer",
+    });
+    expect(turn({ ...base, status: "rejected" })).toBeNull();
+    expect(turn({ ...base, status: "cancelled" })).toBeNull();
+  });
+
+  it("quem age: o fornecedor com os logins (o e-mail só para o administrador)", async () => {
+    const { supplierRequestResponsibles } =
+      await import("@/lib/services/supplier-request-turns");
+    const users = await getStore().list("users");
+    const operator = users.find((u) => u.email === "operador@wellmix.com")!;
+    const request = await approvedRequest();
+    await svc.answerSupplierRequest(supplierA, request.id, {
+      canDo: "yes",
+      price: 1.1,
+      currency: "USD",
+      moq: 1000,
+      leadTimeDays: 30,
+      note: null,
+    });
+    const approved = await svc.decideSupplierRequest(
+      admin,
+      request.id,
+      "approved",
+      null,
+    );
+    const options = {
+      slaMinutes: 30,
+      samplingDays: 1,
+      translate: (key: string) => key,
+    };
+    const asAdmin = (
+      await supplierRequestResponsibles(admin, [approved], options)
+    ).get(approved.id)!;
+    expect(asAdmin.party).toBe("supplier");
+    expect(asAdmin.missing).toBeNull();
+    expect(asAdmin.people.map((p) => p.login)).toContain(supplierA.email);
+    // O operador vê o nome, sem o login; o fornecedor não recebe nada.
+    const asOperator = (
+      await supplierRequestResponsibles(operator, [approved], options)
+    ).get(approved.id)!;
+    expect(asOperator.people.length).toBeGreaterThan(0);
+    expect(asOperator.people.every((p) => p.login === null)).toBe(true);
+    expect(
+      (await supplierRequestResponsibles(supplierA, [approved], options)).size,
+    ).toBe(0);
+    // Enviada a amostra, a vez é da Wellmix (quem valida).
+    await sampling.addSamplingFile(supplierA, approved.id, {
+      file: photo(),
+      uploadedFileId: null,
+    });
+    const submitted = await sampling.submitSampling(
+      supplierA,
+      approved.id,
+      null,
+    );
+    const validate = (
+      await supplierRequestResponsibles(admin, [submitted], options)
+    ).get(approved.id)!;
+    expect(validate.party).toBe("wellmix");
+    expect(lib.supplierRequestTurn(submitted)?.step).toBe("sampling_validate");
+  });
+});
