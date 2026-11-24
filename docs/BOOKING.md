@@ -123,10 +123,11 @@ O layout segue o desenho do dono.
   - Tem um ⓘ ao lado (`InfoTip`, fora do `<label>` para o toque não abrir o seletor) que mostra "Aplicada apenas aos preços sem moeda na coluna ou no cabeçalho.".
   - Abaixo da linha vem "Moeda padrão: aplicada apenas aos preços sem moeda na coluna ou no cabeçalho.".
   - As opções, o USD já marcado e a regra continuam iguais: a moeda vale só para o preço sem moeda na linha nem no cabeçalho, sem conversão.
-- **FOB ou EXW numa linha própria.** O campo obrigatório do #674, que entrou depois do desenho, fica entre o link do Google Sheets e a linha do desenho.
+- **Ordem do card (dono, 24/11/2026, pelo print do iPad).** Primeiro as condições: FOB ou EXW (com a dica), a linha Moeda padrão | Nº da loja | Supplier | Tipo de item e as dicas da moeda e do tipo. Depois a planilha: Arquivo e o link do Google Sheets, cada um com a sua dica, logo acima do "Importar book". Antes, o Arquivo e o link vinham primeiro.
+- **FOB ou EXW numa linha própria.** O campo obrigatório do #674, que entrou depois do desenho, abre o card, acima da linha do desenho (até 24/11/2026 ficava entre o link do Google Sheets e essa linha).
   - O seletor tem 120 px e, com EXW, o "Valor do EXW" (130 px) aparece ao lado. As duas dicas ficam abaixo.
   - É o `BookIncotermFields` com `compact`. O lançamento do parceiro e a tela do book seguem com o formato de sempre.
-  - A posição aguarda a confirmação do dono.
+  - A posição foi confirmada pelo dono em 24/11/2026, com a planilha embaixo.
 - **Uma linha.** Moeda padrão | Nº da loja | Nome do supplier | Tipo de item ficam numa linha. Moeda e loja são estreitas (112 e 124 px; 110 e 110 px em card mais estreito), e supplier e tipo dividem o resto até a borda.
   - A troca de layout segue a largura do card (`@container`), não a da tela.
   - A partir de 470 px de card, a linha é única. Ela cabe no computador e no iPad deitado, inclusive no iPad de 1080 px.
