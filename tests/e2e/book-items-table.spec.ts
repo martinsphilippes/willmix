@@ -5,7 +5,7 @@ import {
   type Locator,
   type Page,
 } from "@playwright/test";
-import { login } from "./helpers";
+import { fillBookMeta, login } from "./helpers";
 import { PNG_1X1, xlsxBytes } from "../unit/xlsx-fixture";
 
 /*
@@ -101,6 +101,7 @@ async function importBook(page: Page, tag: string) {
   await page
     .locator("[data-booking-import-form] input[type=file]")
     .setInputFiles(sheet(tag));
+  await fillBookMeta(page);
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   await expect(page.locator("[data-booking-item]")).toHaveCount(ITEMS);

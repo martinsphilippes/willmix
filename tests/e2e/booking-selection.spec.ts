@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { xlsxBytes } from "../unit/xlsx-fixture";
-import { chooseItem } from "./helpers";
+import { chooseItem, fillBookMeta } from "./helpers";
 
 /*
  * Seleção de itens, abas Itens e Seleção (docs/SUPPLIER_REQUESTS.md): o
@@ -89,6 +89,7 @@ async function importAndClose(
   await page
     .locator("[data-booking-import-form] input[type=file]")
     .setInputFiles(file);
+  await fillBookMeta(page);
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   // Fornecedor do cadastro (tem login): nenhum aviso de "sem acesso".
@@ -147,6 +148,7 @@ async function importDraft(page: Page, file: ReturnType<typeof sheet>) {
   await page
     .locator("[data-booking-import-form] input[type=file]")
     .setInputFiles(file);
+  await fillBookMeta(page);
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   // Sem NCM: "Estimar o NCM de novo" refaz a aproximação e avisa o resultado.

@@ -186,6 +186,10 @@ export async function saveSelectionGroup(
       status: "replaced",
       updatedByUserId: user.id,
     });
+  // Os itens do grupo comparado ficam marcados no book de origem como
+  // trabalhados (dono, 23/11/2026; docs/BOOKING.md, "Itens trabalhados").
+  const { markItemsWorked } = await import("./booking-lots");
+  await markItemsWorked(user, items);
   await audit(
     user,
     "selection_group.save",

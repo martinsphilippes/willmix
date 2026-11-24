@@ -9,7 +9,11 @@ import {
 } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
 import { isBookingItemField, type BookingItemField } from "@/lib/booking-lots";
-import { BOOKING_LOT_STATUSES, SHEET_CURRENCIES } from "@/lib/db/schema";
+import {
+  BOOKING_LOT_STATUSES,
+  BOOKING_SOURCE_KINDS,
+  SHEET_CURRENCIES,
+} from "@/lib/db/schema";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
 import { errorCode, requireUser, run, str, withQuery } from "./helpers";
@@ -35,7 +39,48 @@ async function screenUser() {
   return user;
 }
 
-/** Sobe a planilha e abre o booking criado (rascunho). */
+const FILE_KEY = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/);
+
+/**
+ * Loja/Fábrica e Tipo de item: quem importa informa os dois (dono,
+ * 23/11/2026; docs/BOOKING.md, "Loja/Fábrica e Tipo de item").
+ */
+function bookMeta(form: FormData) {
+  const parsed = z
+    .object({
+      sourceKind: z.enum(BOOKING_SOURCE_KINDS),
+      itemType: z.string().trim().min(1).max(80),
+    })
+    .safeParse({
+      sourceKind: str(form, "sourceKind"),
+      itemType: str(form, "itemType"),
+    });
+  if (!parsed.success) throw new Error("booking_meta_required");
+  return parsed.data;
+}
+
+/**
+ * As planilhas do formulário, na ordem: as que subiram direto ao
+ * armazenamento (`uploadedFileId`, uma por arquivo) e as que vieram no
+ * próprio formulário. Várias formam um book só (dono, 23/11/2026).
+ */
+function sheetSources(form: FormData) {
+  const keys = z
+    .array(FILE_KEY)
+    .max(20)
+    .parse(form.getAll("uploadedFileId").map(String).filter(Boolean));
+  const names = form.getAll("uploadedFileName").map(String);
+  const uploaded = keys.map((fileKey, i) => ({
+    fileKey,
+    fileName: (names[i] ?? "").slice(0, 255) || null,
+  }));
+  const files = form
+    .getAll("file")
+    .filter((f): f is File => f instanceof File && f.size > 0);
+  return [...uploaded, ...files];
+}
+
+/** Sobe a planilha (ou várias) e abre o booking criado (rascunho). */
 export async function importBookingAction(form: FormData) {
   const user = await requireUser();
   await run(IMPORT, async () => {
@@ -45,36 +90,27 @@ export async function importBookingAction(form: FormData) {
       .object({
         currency: z.enum(SHEET_CURRENCIES).nullable(),
         sheet: z.string().max(100).nullable(),
-        uploadedFileId: z
-          .string()
-          .regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/)
-          .nullable(),
-        uploadedFileName: z.string().max(255).nullable(),
         sheetUrl: z.string().max(600).nullable(),
       })
       .parse({
         currency: str(form, "currency") || null,
         sheet: str(form, "sheet") || null,
-        uploadedFileId: str(form, "uploadedFileId") || null,
-        uploadedFileName: str(form, "uploadedFileName") || null,
         sheetUrl: str(form, "sheetUrl") || null,
       });
-    const file = form.get("file");
+    const meta = bookMeta(form);
     const { SheetImportError } =
       await import("@/lib/services/product-sheet-import");
-    const source = parsed.uploadedFileId
-      ? { fileKey: parsed.uploadedFileId, fileName: parsed.uploadedFileName }
-      : file instanceof File && file.size > 0
-        ? file
-        : parsed.sheetUrl
-          ? { url: parsed.sheetUrl }
-          : null;
-    if (!source) throw new SheetImportError("file_required");
+    const sources = [
+      ...sheetSources(form),
+      ...(parsed.sheetUrl ? [{ url: parsed.sheetUrl }] : []),
+    ];
+    if (!sources.length) throw new SheetImportError("file_required");
     const { createBookingLotFromSheet } =
       await import("@/lib/services/booking-lots");
-    const lot = await createBookingLotFromSheet(user, source, {
+    const lot = await createBookingLotFromSheet(user, sources, {
       defaultCurrency: parsed.currency,
       sheet: parsed.sheet,
+      ...meta,
     });
     return withQuery(detail(lot.id), "created", "1");
   });
@@ -82,8 +118,8 @@ export async function importBookingAction(form: FormData) {
 
 /**
  * O parceiro com a tela Booking (Trading…) lança o booking dele: a planilha
- * vira um booking em rascunho em nome da empresa dele, e a Wellmix é avisada.
- * Só arquivo (sem link) e só login externo; o serviço confere a empresa (ativa
+ * (ou várias) vira um booking em preenchimento em nome da empresa dele. Só
+ * arquivo (sem link) e só login externo; o serviço confere a empresa (ativa
  * e de um tipo que responde por booking).
  */
 export async function launchBookingAction(form: FormData) {
@@ -92,32 +128,18 @@ export async function launchBookingAction(form: FormData) {
     if (isWellmix(user)) throw new ForbiddenError();
     assertScreen(user, "booking");
     const parsed = z
-      .object({
-        currency: z.enum(SHEET_CURRENCIES).nullable(),
-        uploadedFileId: z
-          .string()
-          .regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/)
-          .nullable(),
-        uploadedFileName: z.string().max(255).nullable(),
-      })
-      .parse({
-        currency: str(form, "currency") || null,
-        uploadedFileId: str(form, "uploadedFileId") || null,
-        uploadedFileName: str(form, "uploadedFileName") || null,
-      });
-    const file = form.get("file");
+      .object({ currency: z.enum(SHEET_CURRENCIES).nullable() })
+      .parse({ currency: str(form, "currency") || null });
+    const meta = bookMeta(form);
     const { SheetImportError } =
       await import("@/lib/services/product-sheet-import");
-    const source = parsed.uploadedFileId
-      ? { fileKey: parsed.uploadedFileId, fileName: parsed.uploadedFileName }
-      : file instanceof File && file.size > 0
-        ? file
-        : null;
-    if (!source) throw new SheetImportError("file_required");
+    const sources = sheetSources(form);
+    if (!sources.length) throw new SheetImportError("file_required");
     const { launchPartnerBooking } =
       await import("@/lib/services/booking-partner");
-    const lot = await launchPartnerBooking(user, source, {
+    const lot = await launchPartnerBooking(user, sources, {
       defaultCurrency: parsed.currency,
+      ...meta,
     });
     return withQuery(detail(lot.id), "created", "1");
   });
@@ -529,5 +551,81 @@ export async function setBookingLotNoteAction(form: FormData) {
     const { setBookingLotNote } = await import("@/lib/services/booking-lots");
     await setBookingLotNote(user, input.lotId, input.note || null);
     return withQuery(back, "saved", "1");
+  });
+}
+
+/* ------------------------------------------------------------------------ */
+/* Loja/Fábrica, Tipo de item e travas (dono, 23/11/2026)                    */
+/* ------------------------------------------------------------------------ */
+
+/** Loja/Fábrica e Tipo de item do book, na tela da Wellmix. */
+export async function setBookingLotMetaAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "lotId");
+  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
+  await run(back, async () => {
+    const input = z
+      .object({
+        lotId: ID,
+        sourceKind: z.enum(BOOKING_SOURCE_KINDS).nullable(),
+        itemType: z.string().max(80).nullable(),
+      })
+      .parse({
+        lotId: raw,
+        sourceKind: str(form, "sourceKind") || null,
+        itemType: str(form, "itemType") || null,
+      });
+    const { setBookingLotMeta } = await import("@/lib/services/booking-lots");
+    await setBookingLotMeta(user, input.lotId, input);
+    return withQuery(back, "saved", "1");
+  });
+}
+
+/** Volta para a lista ou para o book, conforme de onde veio o botão. */
+const lockBack = (form: FormData) => {
+  const from = str(form, "from");
+  return ID.safeParse(from).success ? detail(from) : LIST;
+};
+
+/** O analista pega o book para si. */
+export async function lockBookingLotAction(form: FormData) {
+  const back = lockBack(form);
+  await run(back, async () => {
+    const user = await screenUser();
+    const lotId = ID.parse(str(form, "lotId"));
+    const { lockBookingLot } = await import("@/lib/services/booking-lots");
+    await lockBookingLot(user, lotId);
+    revalidatePath(LIST);
+    return withQuery(back, "locked", "1");
+  });
+}
+
+/** O analista pega para si todos os books de um tipo de item. */
+export async function lockBookingTypeAction(form: FormData) {
+  await run(LIST, async () => {
+    const user = await screenUser();
+    const itemType = z
+      .string()
+      .trim()
+      .min(1)
+      .max(80)
+      .parse(str(form, "itemType"));
+    const { lockBookingType } = await import("@/lib/services/booking-lots");
+    await lockBookingType(user, itemType);
+    revalidatePath(LIST);
+    return withQuery(LIST, "locked", "1");
+  });
+}
+
+/** Libera a trava (quem travou ou quem supervisiona os books). */
+export async function unlockBookingAction(form: FormData) {
+  const back = lockBack(form);
+  await run(back, async () => {
+    const user = await screenUser();
+    const lockId = ID.parse(str(form, "lockId"));
+    const { unlockBooking } = await import("@/lib/services/booking-lots");
+    await unlockBooking(user, lockId);
+    revalidatePath(LIST);
+    return withQuery(back, "unlocked", "1");
   });
 }

@@ -426,6 +426,18 @@ export const BOOKING_LOT_STATUSES = [
 ] as const;
 export type BookingLotStatus = (typeof BOOKING_LOT_STATUSES)[number];
 
+/**
+ * De onde vem o book (dono, 23/11/2026; docs/BOOKING.md, "Loja/Fábrica e
+ * Tipo de item"): a planilha de uma loja (mercado, intermediário) ou de uma
+ * fábrica. Quem importa escolhe.
+ */
+export const BOOKING_SOURCE_KINDS = ["store", "factory"] as const;
+export type BookingSourceKind = (typeof BOOKING_SOURCE_KINDS)[number];
+
+/** Trava de book: um book ou todos os de um tipo de item (docs/BOOKING.md, "Travar books"). */
+export const BOOKING_LOCK_SCOPES = ["lot", "type"] as const;
+export type BookingLockScope = (typeof BOOKING_LOCK_SCOPES)[number];
+
 /** De onde veio o NCM do item do booking: aproximação, despachante ou a Wellmix. */
 export const BOOKING_ITEM_NCM_SOURCES = ["match", "broker", "manual"] as const;
 export type BookingItemNcmSource = (typeof BOOKING_ITEM_NCM_SOURCES)[number];
@@ -3394,6 +3406,41 @@ export interface BookingLot extends BaseRow {
    * antigos): vale o fornecedor do booking.
    */
   partnerId?: string | null;
+  /** Loja ou Fábrica, escolhido na importação (dono, 23/11/2026). Antigos: nulo. */
+  sourceKind?: BookingSourceKind | null;
+  /** Tipo de item do book, escolhido na importação (dono, 23/11/2026). Antigos: nulo. */
+  itemType?: string | null;
+  /**
+   * As planilhas que formam o book, na ordem em que os itens entraram (dono,
+   * 23/11/2026: várias planilhas num book só). Nulo: uma só, a de `fileName`
+   * e `fileDocumentId`.
+   */
+  sheetFiles?: BookingLotSheetFile[] | null;
+}
+
+/** Uma das planilhas de um book feito de várias. */
+export interface BookingLotSheetFile {
+  name: string;
+  documentId: string | null;
+  /** Quantos itens vieram desta planilha. */
+  items: number;
+}
+
+/**
+ * Trava de book (dono, 23/11/2026; docs/BOOKING.md, "Travar books"): o
+ * analista pega para si um book (`scope: "lot"`) ou todos os de um tipo de
+ * item (`scope: "type"`, também os que chegarem depois). Liberar apaga a
+ * linha; o histórico fica na auditoria.
+ */
+export interface BookingLock extends BaseRow {
+  scope: BookingLockScope;
+  lotId: string | null;
+  /** Tipo de item sem acento nem maiúsculas (`itemTypeKey`), para casar. */
+  typeKey: string | null;
+  /** O tipo como foi escrito, para mostrar. */
+  itemType: string | null;
+  userId: string;
+  lockedAt: string;
 }
 
 /**
@@ -3464,6 +3511,13 @@ export interface BookingItem extends BaseRow {
   ncmRequestedAt?: string | null;
   ncmAt?: string | null;
   ncmByUserId?: string | null;
+  /**
+   * Item trabalhado na Seleção de itens (dono, 23/11/2026): entrou numa
+   * escolha de grupo gravada ou numa solicitação ao fornecedor (como
+   * escolhido ou alternativa). A marca não sai.
+   */
+  workedAt?: string | null;
+  workedByUserId?: string | null;
 }
 
 /** Cópia do item do booking no momento da solicitação (o que o fornecedor vê). */
@@ -4675,6 +4729,7 @@ export interface Tables {
   stock_reservations: StockReservation;
   booking_lots: BookingLot;
   booking_items: BookingItem;
+  booking_locks: BookingLock;
   supplier_requests: SupplierRequest;
   booking_invites: BookingInvite;
   purchase_decisions: PurchaseDecision;
@@ -6634,10 +6689,28 @@ export const TABLES: Record<TableName, TableDef> = {
       ownerUserId: id(false),
       createdByUserId: id(),
       partnerId: id(false),
+      sourceKind: enumOf(BOOKING_SOURCE_KINDS, false),
+      itemType: str(80),
+      sheetFiles: json(),
     },
     indexes: [
       { key: "by_status", type: "key", columns: ["status"] },
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
+    ],
+  },
+  booking_locks: {
+    label: "Travas de book (quem está com cada um)",
+    columns: {
+      scope: enumOf(BOOKING_LOCK_SCOPES),
+      lotId: id(false),
+      typeKey: str(80),
+      itemType: str(80),
+      userId: id(),
+      lockedAt: datetime(true),
+    },
+    indexes: [
+      { key: "by_user", type: "key", columns: ["userId"] },
+      { key: "by_lot", type: "key", columns: ["lotId"] },
     ],
   },
   booking_items: {
@@ -6685,6 +6758,8 @@ export const TABLES: Record<TableName, TableDef> = {
       ncmRequestedAt: datetime(),
       ncmAt: datetime(),
       ncmByUserId: id(false),
+      workedAt: datetime(),
+      workedByUserId: id(false),
     },
     indexes: [
       { key: "by_lot", type: "key", columns: ["lotId"] },

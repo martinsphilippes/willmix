@@ -1538,6 +1538,12 @@ export async function saveSettingsAction(form: FormData) {
         if (!Number.isInteger(n) || n < 1 || n > 30)
           throw new Error("booking_invite_sla_invalid");
         value = n;
+      } else if (key === "bookingLockSlaHours") {
+        // Prazo do analista com um book travado (docs/BOOKING.md).
+        const n = Number(String(raw).replace(",", "."));
+        if (!Number.isFinite(n) || n < 0.25 || n > 240)
+          throw new Error("booking_lock_sla_invalid");
+        value = n;
       } else if (key === "samplingSlaDays") {
         const n = Number(raw);
         if (!Number.isInteger(n) || n < 1 || n > 30)

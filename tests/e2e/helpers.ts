@@ -223,6 +223,7 @@ export async function importAndClose(
   await page
     .locator("[data-booking-import-form] input[type=file]")
     .setInputFiles(file);
+  await fillBookMeta(page);
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   // A etapa chama-se Book (dono, 13/11/2026; antes "Booking"): o título, a
@@ -807,4 +808,13 @@ export async function fillQuoteSheet(form: Locator, productId: string) {
   await expect(chip).toBeVisible();
   const confirm = form.locator(`[data-sheet-confirm="${productId}"]`);
   if (await confirm.count()) await confirm.check();
+}
+
+/**
+ * Importar book: Loja/Fábrica e Tipo de item são obrigatórios (dono,
+ * 23/11/2026; docs/BOOKING.md, "Loja/Fábrica e Tipo de item").
+ */
+export async function fillBookMeta(page: Page, itemType = "Teste E2E") {
+  await page.locator("[data-book-source-kind]").selectOption("factory");
+  await page.locator("[data-book-item-type]").fill(itemType);
 }

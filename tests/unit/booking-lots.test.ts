@@ -421,6 +421,17 @@ describe("regras puras", () => {
         owner: "",
         createdAt: "",
         createdText: "",
+        itemType: "",
+        sourceKind: "",
+        workedPct: 0,
+        workedText: "",
+        holder: "",
+        lockId: null,
+        lockMine: false,
+        lockByType: false,
+        heldMinutes: null,
+        heldText: "",
+        heldLate: false,
       }) satisfies import("@/lib/booking-lots").BookingLotRow;
     const rows = [
       row(1, "Ningbo Glass", "Yiwu"),

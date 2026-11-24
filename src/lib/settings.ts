@@ -54,6 +54,11 @@ export const DEFAULT_SETTINGS = {
    */
   bookingInviteSlaDays: 1,
   /**
+   * Prazo do analista com um book travado, em horas, contado de quando ele
+   * travou (dono, 23/11/2026; docs/BOOKING.md, "Travar books"): 3 h por book.
+   */
+  bookingLockSlaHours: 3,
+  /**
    * Cotação de compra (mapa B13; dono, 15/11/2026): horas corridas que cada
    * fornecedor tem para responder (padrão 24).
    */

@@ -58,6 +58,9 @@ export const ACTION_GROUPS = [
       // Catálogo de materiais (dono, 21/11/2026): o Cadastro mantém a lista
       // que o fornecedor escolhe na ficha técnica da cotação.
       "materials.manage",
+      // Books (dono, 23/11/2026; docs/BOOKING.md, "Travar books"): ver todos
+      // os books, com quem está cada um, e liberar a trava de qualquer pessoa.
+      "booking.supervise",
     ],
   },
   {
@@ -177,6 +180,11 @@ function defaultHolders(action: ActionKey): readonly WellmixFunction[] {
     // Catálogo de materiais (dono, 21/11/2026): também o Cadastro.
     case "materials.manage":
       return ["catalog"];
+    // Supervisionar os books (dono, 23/11/2026): "o administrador ou gerente
+    // de compras". De fábrica, a Diretoria de compras; o administrador
+    // libera para o cargo de gerente em Funções e acessos.
+    case "booking.supervise":
+      return ["purchasing_director"];
     // Assinar o contrato pela Wellmix: só as diretorias (decisão do dono,
     // 13/11/2026; mapa do processo, P11: a Diretoria de compras aprova). O
     // administrador muda em Equipe → Funções e acessos.

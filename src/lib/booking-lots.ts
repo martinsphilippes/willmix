@@ -529,6 +529,21 @@ export interface BookingLotRow {
   owner: string;
   createdAt: string;
   createdText: string;
+  /** Tipo de item e Loja/Fábrica (já no idioma da tela). */
+  itemType: string;
+  sourceKind: string;
+  /** Itens trabalhados na Seleção de itens: percentual e "3 de 10". */
+  workedPct: number;
+  workedText: string;
+  /** Com quem está o book (trava); vazio = livre. */
+  holder: string;
+  /** A trava: id, se é de quem vê, se é do tipo de item, há quanto tempo e o prazo. */
+  lockId: string | null;
+  lockMine: boolean;
+  lockByType: boolean;
+  heldMinutes: number | null;
+  heldText: string;
+  heldLate: boolean;
 }
 
 export const BOOKING_LOT_SORT_KEYS = [
@@ -543,6 +558,11 @@ export const BOOKING_LOT_SORT_KEYS = [
   "viable",
   "owner",
   "createdAt",
+  "itemType",
+  "sourceKind",
+  "workedPct",
+  "holder",
+  "heldMinutes",
 ] as const satisfies readonly (keyof BookingLotRow)[];
 export type BookingLotSortKey = (typeof BOOKING_LOT_SORT_KEYS)[number];
 
@@ -569,6 +589,9 @@ export function searchBookingLots(
         row.itemCount,
         row.owner,
         row.createdText,
+        row.itemType,
+        row.sourceKind,
+        row.holder,
       ].join(" "),
     );
     return words.every((w) => hay.includes(w));

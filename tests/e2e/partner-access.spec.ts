@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { bookingSheet, importAndClose } from "./helpers";
+import { bookingSheet, fillBookMeta, importAndClose } from "./helpers";
 
 /*
  * Tipos em destaque e Acessos externos, a antiga Gestão de telas
@@ -403,6 +403,7 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
         `Glass jar ${code} trade`,
       ),
     );
+  await fillBookMeta(page);
   await page.locator("[data-partner-booking-launch-submit]").click();
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   const launchedUrl = new URL(page.url()).pathname;

@@ -24,12 +24,22 @@ import {
   PARTY_EXTRA_DEFAULTS,
   type BookingItem,
   type BookingLot,
+  type BookingLock,
+  type BookingLotSheetFile,
   type BookingLotStatus,
   type BookingLotSupplierHint,
+  type BookingSourceKind,
   type Party,
   type SheetCurrency,
   type User,
 } from "@/lib/db";
+import {
+  cleanItemType,
+  lockOfLot,
+  lockedSince,
+  visibleLots,
+  workedShare,
+} from "@/lib/booking-locks";
 import { audit } from "./audit";
 import {
   fileKeyTaken,
@@ -215,18 +225,30 @@ async function keepSheetFile(
   }
 }
 
+/** Até quantas planilhas formam um book (dono, 23/11/2026). */
+export const BOOKING_SHEETS_MAX = 10;
+
+/** O que quem importa informa junto com a planilha (dono, 23/11/2026). */
+export interface BookingLotMeta {
+  /** Loja ou Fábrica. */
+  sourceKind?: BookingSourceKind | null;
+  /** Tipo de item do book. */
+  itemType?: string | null;
+}
+
 /**
- * Sobe a planilha: lê as colunas conhecidas (as outras ficam guardadas como
- * informação nos itens), estima fornecedor, origem e data e cria o booking em
- * rascunho com os itens e as fotos. Devolve o booking.
+ * Sobe a planilha (ou várias: o book é a soma delas, na ordem): lê as
+ * colunas conhecidas (as outras ficam guardadas como informação nos itens),
+ * estima fornecedor, origem e data e cria o booking em rascunho com os itens
+ * e as fotos. Devolve o booking.
  */
 export async function createBookingLotFromSheet(
   user: User,
-  source: SheetSource,
+  source: SheetSource | SheetSource[],
   options: {
     defaultCurrency?: SheetCurrency | null;
     sheet?: string | null;
-  } = {},
+  } & BookingLotMeta = {},
 ): Promise<BookingLot> {
   assertBooking(user);
   return createLotFromSheet(user, source, options);
@@ -243,7 +265,7 @@ export async function createBookingLotFromSheet(
  */
 export async function createLotFromSheet(
   user: User,
-  source: SheetSource,
+  source: SheetSource | SheetSource[],
   options: {
     defaultCurrency?: SheetCurrency | null;
     sheet?: string | null;
@@ -251,39 +273,65 @@ export async function createLotFromSheet(
     ownerUserId?: string | null;
     /** Lançado pelo parceiro: fica em preenchimento até ele enviar. */
     preparing?: boolean;
-  } = {},
+  } & BookingLotMeta = {},
 ): Promise<BookingLot> {
+  const sources = Array.isArray(source) ? source : [source];
+  if (!sources.length) throw new SheetImportError("file_required");
+  if (sources.length > BOOKING_SHEETS_MAX)
+    throw new BookingLotError("booking_sheets_too_many");
   // Login externo (convidado ou parceiro que lança): a chave tem de ser de um
   // arquivo recém-subido, nunca a de um documento já registrado (a planilha
   // guardada de outro booking, por exemplo, não é lida para dentro do dele).
-  if (
-    !isWellmix(user) &&
-    !(source instanceof File) &&
-    "fileKey" in source &&
-    (await fileKeyTaken(source.fileKey))
-  )
-    throw new SheetImportError("file_required");
-  const file = await sheetBytes(source);
-  const parsed = parseProductSheet(file.bytes, {
-    sheet: options.sheet ?? null,
-    defaultCurrency: options.defaultCurrency ?? null,
-  });
-  if (!parsed.groups.length) throw new SheetImportError("no_rows");
+  if (!isWellmix(user))
+    for (const one of sources)
+      if (
+        !(one instanceof File) &&
+        "fileKey" in one &&
+        (await fileKeyTaken(one.fileKey))
+      )
+        throw new SheetImportError("file_required");
+  // Todas as planilhas são lidas antes de gravar: uma que não abre não deixa
+  // um book pela metade.
+  const sheets: Array<{
+    source: SheetSource;
+    file: Awaited<ReturnType<typeof sheetBytes>>;
+    parsed: ReturnType<typeof parseProductSheet>;
+  }> = [];
+  for (const one of sources) {
+    const file = await sheetBytes(one);
+    const parsed = parseProductSheet(file.bytes, {
+      sheet: options.sheet ?? null,
+      defaultCurrency: options.defaultCurrency ?? null,
+    });
+    sheets.push({ source: one, file, parsed });
+  }
+  const groups = sheets.flatMap((sh) => sh.parsed.groups);
+  if (!groups.length) throw new SheetImportError("no_rows");
   const store = getStore();
-  const hint = supplierHintOf(parsed.groups);
+  const hint = supplierHintOf(groups);
   const suppliers = await store.list("parties", {
     filter: { type: "supplier", active: true },
   });
   const supplier = matchSheetSupplier(suppliers, hint);
   const sheetDate = mostCommon(
-    parsed.groups.map((g) => asText(g.reading.sheetDate, 40)),
+    groups.map((g) => asText(g.reading.sheetDate, 40)),
   );
   // Em preenchimento não gasta número: ele vem no envio, para a sequência
   // que a Wellmix vê não ter buracos.
   const number = options.preparing
     ? 0
     : await withSchema(() => store.nextNumber(LOT_COUNTER));
-  const fileDocumentId = await keepSheetFile(user, source, file);
+  const sheetFiles: BookingLotSheetFile[] = [];
+  for (const sh of sheets)
+    sheetFiles.push({
+      name: sh.file.name.slice(0, 255),
+      documentId: await keepSheetFile(user, sh.source, sh.file),
+      items: sh.parsed.groups.length,
+    });
+  const extraHeaders = [
+    ...new Set(sheets.flatMap((sh) => sh.parsed.extraHeaders ?? [])),
+  ];
+  const itemType = cleanItemType(options.itemType);
   const lot = await withSchema(() =>
     store.create("booking_lots", {
       number,
@@ -293,11 +341,14 @@ export async function createLotFromSheet(
       origin: clip(supplier?.city, 80) ?? hint.city,
       bookingDate: bookingDateOf(sheetDate),
       sheetDate: clip(sheetDate, 40),
-      fileName: file.name.slice(0, 255),
-      fileDocumentId,
-      sheetName: clip(parsed.sheetName, 120),
-      extraHeaders: parsed.extraHeaders?.length ? parsed.extraHeaders : null,
-      itemCount: parsed.groups.length,
+      fileName: sheetFiles
+        .map((f) => f.name)
+        .join(" + ")
+        .slice(0, 255),
+      fileDocumentId: sheetFiles[0].documentId,
+      sheetName: clip(sheets[0].parsed.sheetName, 120),
+      extraHeaders: extraHeaders.length ? extraHeaders : null,
+      itemCount: groups.length,
       businessType: null,
       closedAt: null,
       closedByUserId: null,
@@ -308,17 +359,23 @@ export async function createLotFromSheet(
       ownerUserId:
         options.ownerUserId === undefined ? user.id : options.ownerUserId,
       createdByUserId: user.id,
-      // Coluna opcional: só vai quando há responsável.
+      // Colunas opcionais: só vão quando há valor.
       ...(options.partnerId ? { partnerId: options.partnerId } : {}),
+      ...(options.sourceKind ? { sourceKind: options.sourceKind } : {}),
+      ...(itemType ? { itemType } : {}),
+      ...(sheetFiles.length > 1 ? { sheetFiles } : {}),
     }),
   );
-  for (const group of parsed.groups) {
+  // Os itens de cada planilha entram depois dos da anterior.
+  let position = 0;
+  for (const group of groups) {
     const [photoDocumentId, cardDocumentId] = [
       await storeImage(user, group.photo),
       await storeImage(user, group.card),
     ];
     await store.create("booking_items", {
       ...itemFromGroup(group),
+      position: position++,
       lotId: lot.id,
       photoDocumentId,
       cardDocumentId,
@@ -327,13 +384,14 @@ export async function createLotFromSheet(
       updatedByUserId: null,
     });
   }
+  const many = sheetFiles.length > 1 ? `, ${sheetFiles.length} planilhas` : "";
   if (options.preparing) {
     await audit(
       user,
       "booking_lot.create",
       "booking_lot",
       lot.id,
-      `Book em preenchimento pelo parceiro: ${parsed.groups.length} itens (${lot.fileName})`,
+      `Book em preenchimento pelo parceiro: ${groups.length} itens${many} (${lot.fileName})`,
     );
     return lot;
   }
@@ -347,7 +405,7 @@ export async function createLotFromSheet(
     "booking_lot.create",
     "booking_lot",
     lot.id,
-    `Book nº ${lot.number}: ${parsed.groups.length} itens (${lot.fileName})`,
+    `Book nº ${lot.number}: ${groups.length} itens${many} (${lot.fileName})`,
   );
   return lot;
 }
@@ -409,6 +467,62 @@ export interface BookingLotListEntry {
   owner: User | null;
   pendingItems: number;
   signals: { viable: number; below: number; loss: number; missing: number };
+  /** Itens trabalhados na Seleção de itens (dono, 23/11/2026). */
+  worked: { worked: number; total: number; pct: number };
+  /** Quem está com o book (trava), desde quando, e a trava. Nulo: livre. */
+  held: BookingLotHold | null;
+}
+
+/** Com quem está o book (docs/BOOKING.md, "Travar books"). */
+export interface BookingLotHold {
+  lock: BookingLock;
+  user: User | null;
+  /** Desde quando está com a pessoa (ISO). */
+  since: string;
+  /** Há quantos minutos (na hora da leitura). */
+  minutes: number;
+}
+
+const minutesSince = (since: string) =>
+  Math.max(0, Math.floor((Date.now() - Date.parse(since)) / 60_000)) || 0;
+
+/**
+ * Supervisiona os books: vê todos, com quem está cada um e libera a trava de
+ * qualquer pessoa. O administrador e quem tem a ação "Supervisionar os
+ * books" (de fábrica, a Diretoria de compras).
+ */
+export async function canSuperviseBooks(user: User): Promise<boolean> {
+  if (!isWellmix(user)) return false;
+  const { isAdmin } = await import("@/lib/auth/permissions");
+  if (isAdmin(user)) return true;
+  const { can } = await import("@/lib/auth/function-access");
+  return can(user, "booking.supervise");
+}
+
+/** As travas em vigor. Tabela ainda sem publicar: nenhuma. */
+export async function listBookingLocks(): Promise<BookingLock[]> {
+  try {
+    return await getStore().list("booking_locks");
+  } catch (error) {
+    const { isSchemaMissing } = await import("@/lib/db/errors");
+    if (isSchemaMissing(error)) return [];
+    throw error;
+  }
+}
+
+/**
+ * Os books que o login vê pela regra das travas (`visibleLots`): o
+ * supervisor todos; o analista com book travado só os dele; os outros, os
+ * que ninguém travou.
+ */
+export async function lotsVisibleTo<T extends BookingLot>(
+  user: User,
+  lots: T[],
+  locks?: BookingLock[],
+): Promise<T[]> {
+  const all = locks ?? (await listBookingLocks());
+  if (!all.length) return lots;
+  return visibleLots(lots, all, user.id, await canSuperviseBooks(user));
 }
 
 /**
@@ -434,6 +548,8 @@ export async function listBookingLots(
   }
   // Fora os que o parceiro ainda preenche (não foram enviados à Wellmix).
   lots = lots.filter((lot) => !bookingLotPreparing(lot.status));
+  const locks = await listBookingLocks();
+  lots = await lotsVisibleTo(user, lots, locks);
   const [parties, users] = await Promise.all([
     store.list("parties", { filter: { type: "supplier" } }),
     store.list("users"),
@@ -461,8 +577,26 @@ export async function listBookingLots(
       owner: lot.ownerUserId ? (userOf.get(lot.ownerUserId) ?? null) : null,
       pendingItems: pending.items.size,
       signals,
+      worked: workedShare(own),
+      held: holdOf(lot, locks, userOf),
     };
   });
+}
+
+function holdOf(
+  lot: BookingLot,
+  locks: BookingLock[],
+  userOf: Map<string, User>,
+): BookingLotHold | null {
+  const lock = lockOfLot(lot, locks);
+  if (!lock) return null;
+  const since = lockedSince(lot, lock);
+  return {
+    lock,
+    user: userOf.get(lock.userId) ?? null,
+    since,
+    minutes: minutesSince(since),
+  };
 }
 
 export interface BookingLotDetail {
@@ -475,6 +609,8 @@ export interface BookingLotDetail {
   partner: Party | null;
   /** Quem pode ser o responsável: fornecedores e parceiros com login de fornecedor. */
   partners: Party[];
+  /** Com quem está o book (trava). Nulo: livre. */
+  held: BookingLotHold | null;
 }
 
 // Quem pode responder por um booking e para quem vão as solicitações dele:
@@ -490,6 +626,15 @@ export async function getBookingLot(
   const store = getStore();
   const lot = await wellmixLot(id);
   if (!lot) return null;
+  // Travado por outro analista: para quem não supervisiona, não existe.
+  const locks = await listBookingLocks();
+  const held = lockOfLot(lot, locks);
+  if (
+    held &&
+    held.userId !== user.id &&
+    !(await lotsVisibleTo(user, [lot], locks)).length
+  )
+    return null;
   const [items, suppliers, owner, partnerRows] = await Promise.all([
     store.list("booking_items", { filter: { lotId: lot.id } }),
     store.list("parties", { filter: { type: "supplier" }, orderBy: "name" }),
@@ -519,6 +664,14 @@ export async function getBookingLot(
         (await store.get("parties", partnerId)))
       : null,
     partners,
+    held: held
+      ? {
+          lock: held,
+          user: await store.get("users", held.userId),
+          since: lockedSince(lot, held),
+          minutes: minutesSince(lockedSince(lot, held)),
+        }
+      : null,
   };
 }
 
@@ -1061,4 +1214,212 @@ export async function moveBookingLot(
     { status: lot.status },
     { status },
   );
+}
+
+/* ------------------------------------------------------------------------ */
+/* Loja/Fábrica e Tipo de item (dono, 23/11/2026)                            */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Loja/Fábrica e Tipo de item do book: vêm da importação e a Wellmix ajusta
+ * (ou completa nos books antigos) em qualquer situação menos Cancelado.
+ */
+export async function setBookingLotMeta(
+  user: User,
+  lotId: string,
+  meta: { sourceKind: BookingSourceKind | null; itemType: string | null },
+): Promise<BookingLot> {
+  assertBooking(user);
+  const lot = await wellmixLot(lotId);
+  if (!lot) throw new BookingLotError("not_found");
+  if (lot.status === "cancelled")
+    throw new BookingLotError("booking_lot_locked");
+  const itemType = cleanItemType(meta.itemType);
+  const updated = await withSchema(() =>
+    getStore().update("booking_lots", lot.id, {
+      sourceKind: meta.sourceKind,
+      itemType,
+    }),
+  );
+  await audit(
+    user,
+    "booking_lot.meta",
+    "booking_lot",
+    lot.id,
+    `Book nº ${lot.number}: ${meta.sourceKind ?? "-"}, tipo de item ${itemType ?? "-"}`,
+    { sourceKind: lot.sourceKind ?? null, itemType: lot.itemType ?? null },
+    { sourceKind: meta.sourceKind, itemType },
+  );
+  return updated;
+}
+
+/** Tipos de item já usados nos books (sugestões do campo), em ordem alfabética. */
+export async function bookingItemTypes(): Promise<string[]> {
+  const { listColumns } = await import("@/lib/db/lookup");
+  let rows: Array<{ itemType?: string | null }>;
+  try {
+    rows = await listColumns(getStore(), "booking_lots", ["itemType"]);
+  } catch (error) {
+    const { isSchemaMissing } = await import("@/lib/db/errors");
+    if (isSchemaMissing(error)) return [];
+    throw error;
+  }
+  const { itemTypeKey } = await import("@/lib/booking-locks");
+  const byKey = new Map<string, string>();
+  for (const row of rows) {
+    const type = cleanItemType(row.itemType);
+    if (type && !byKey.has(itemTypeKey(type)))
+      byKey.set(itemTypeKey(type), type);
+  }
+  return [...byKey.values()].sort((a, b) => a.localeCompare(b, "pt"));
+}
+
+/* ------------------------------------------------------------------------ */
+/* Itens trabalhados (dono, 23/11/2026)                                      */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Marca os itens como trabalhados na Seleção de itens: entraram numa escolha
+ * de grupo gravada ou numa solicitação ao fornecedor. Quem chama já conferiu
+ * o login. A marca não sai; o que já estava marcado fica como está. Coluna
+ * ainda sem publicar: nada é marcado (a escolha não falha por isso).
+ */
+export async function markItemsWorked(
+  user: User,
+  items: ReadonlyArray<Pick<BookingItem, "id" | "workedAt">>,
+): Promise<void> {
+  const store = getStore();
+  const at = new Date().toISOString();
+  try {
+    for (const item of items)
+      if (!item.workedAt)
+        await store.update("booking_items", item.id, {
+          workedAt: at,
+          workedByUserId: user.id,
+        });
+  } catch (error) {
+    const { isSchemaMissing } = await import("@/lib/db/errors");
+    if (!isSchemaMissing(error)) throw error;
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Travar books (dono, 23/11/2026)                                           */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * O analista pega o book para si. Só o book que ele vê e que está livre
+ * (ninguém o travou, nem pelo tipo de item).
+ */
+export async function lockBookingLot(
+  user: User,
+  lotId: string,
+): Promise<BookingLock> {
+  assertBooking(user);
+  const lot = await wellmixLot(lotId);
+  if (!lot) throw new BookingLotError("not_found");
+  const store = getStore();
+  const locks = await withSchema(() => store.list("booking_locks"));
+  const held = lockOfLot(lot, locks);
+  if (held)
+    throw new BookingLotError(
+      held.userId === user.id ? "booking_lock_mine" : "booking_lock_taken",
+    );
+  const lock = await store.create("booking_locks", {
+    scope: "lot",
+    lotId: lot.id,
+    typeKey: null,
+    itemType: null,
+    userId: user.id,
+    lockedAt: new Date().toISOString(),
+  });
+  await audit(
+    user,
+    "booking_lock.lock",
+    "booking_lot",
+    lot.id,
+    `Book nº ${lot.number} travado por ${user.name}`,
+  );
+  return lock;
+}
+
+/**
+ * O analista pega para si todos os books de um tipo de item (os de agora e
+ * os que chegarem). Os que outra pessoa travou um a um continuam com ela.
+ */
+export async function lockBookingType(
+  user: User,
+  rawType: string,
+): Promise<BookingLock> {
+  assertBooking(user);
+  const itemType = cleanItemType(rawType);
+  const { itemTypeKey } = await import("@/lib/booking-locks");
+  const typeKey = itemTypeKey(itemType);
+  if (!itemType || !typeKey) throw new BookingLotError("booking_type_required");
+  const store = getStore();
+  const locks = await withSchema(() => store.list("booking_locks"));
+  const held = locks.find((l) => l.scope === "type" && l.typeKey === typeKey);
+  if (held)
+    throw new BookingLotError(
+      held.userId === user.id ? "booking_lock_mine" : "booking_lock_taken",
+    );
+  const lock = await store.create("booking_locks", {
+    scope: "type",
+    lotId: null,
+    typeKey,
+    itemType,
+    userId: user.id,
+    lockedAt: new Date().toISOString(),
+  });
+  await audit(
+    user,
+    "booking_lock.lock",
+    "booking_lock",
+    lock.id,
+    `Books do tipo "${itemType}" travados por ${user.name}`,
+  );
+  return lock;
+}
+
+/** Libera a trava: quem travou ou quem supervisiona os books. */
+export async function unlockBooking(user: User, lockId: string): Promise<void> {
+  assertBooking(user);
+  const store = getStore();
+  const lock = await withSchema(() => store.get("booking_locks", lockId));
+  if (!lock) return;
+  if (lock.userId !== user.id && !(await canSuperviseBooks(user)))
+    throw new BookingLotError("forbidden");
+  await store.remove("booking_locks", lock.id);
+  const { durationText } = await import("@/lib/booking-locks");
+  const held = durationText(minutesSince(lock.lockedAt));
+  await audit(
+    user,
+    "booking_lock.unlock",
+    lock.scope === "lot" ? "booking_lot" : "booking_lock",
+    lock.lotId ?? lock.id,
+    lock.scope === "lot"
+      ? `Book liberado (estava com ${lock.userId} havia ${held})`
+      : `Books do tipo "${lock.itemType}" liberados (estavam com ${lock.userId} havia ${held})`,
+  );
+}
+
+/** As travas de um login, com quantos books cada uma segura agora. */
+export async function myBookingLocks(
+  user: User,
+): Promise<
+  Array<{ lock: BookingLock; lotNumber: number | null; minutes: number }>
+> {
+  const locks = (await listBookingLocks()).filter((l) => l.userId === user.id);
+  if (!locks.length) return [];
+  const store = getStore();
+  const out = [];
+  for (const lock of locks) {
+    const lot = lock.lotId ? await store.get("booking_lots", lock.lotId) : null;
+    out.push({
+      lock,
+      lotNumber: lot?.number ?? null,
+      minutes: minutesSince(lock.lockedAt),
+    });
+  }
+  return out;
 }
