@@ -40,7 +40,7 @@ A lista só mostra negociações (cotações e books), nunca pedidos:
 
 #### Previsão de preço na seleção (24/11/2026; antes "Superplan na seleção")
 
-Os números vêm do retrato gravado em `booking_items.analysis` pela **previsão de preço do Sankhya** (docs/BOOKING.md, "Previsão de preço do item"), pedida ao **fechar o booking** (ou "Refazer a previsão"); não são refeitos ao abrir a tela. Quem vê: quem tem "Ver preço de compra" (dono, 15/11/2026; docs/LINHA_DE_VISAO.md, seção 7); sem ela, a Seleção fica sem o custo por peça, a coluna da previsão e o destaque do melhor custo.
+Os números vêm do retrato gravado em `booking_items.analysis` pela **previsão de preço do Sankhya** (docs/BOOKING.md, "Previsão de preço do item"), pedida ao **fechar o booking** (o que faltar, o job diário completa; sem botão de refazer desde 24/11/2026); não são refeitos ao abrir a tela. O FOB/EXW não vai para o Sankhya. Quem vê: quem tem "Ver preço de compra" (dono, 15/11/2026; docs/LINHA_DE_VISAO.md, seção 7); sem ela, a Seleção fica sem o custo por peça, a coluna da previsão e o destaque do melhor custo.
 
 - **Custo/peça (previsão)**: o custo por peça que o Sankhya devolveu (`CUSTO_BASE_VENDA`). É o número para comparar com o preço que o cliente paga e decidir o escolhido e as alternativas. A coluna ordena pelo valor; o menor ganha "Menor custo por peça".
 - **Previsão de preço**: o sinal (viável, abaixo da meta, prejuízo), a venda prevista, com frete, o lucro e a meta, ou o que faltou ("Sankhya não configurado", a mensagem do Sankhya, NCM, preço, caixa ou CBM). Passar o mouse mostra a data (`BookingItemForecast`, `src/components/booking-item-forecast.tsx`). Retrato antigo, da conta do portal que saiu: "Previsão antiga: refaça a previsão do book".

@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   bookingForecastMissing,
+  bookingForecastPending,
   bookingItemForecastQuery,
   forecastAnalysis,
 } from "@/lib/booking-forecast";
 import { cotacaoV2Sql, productInput } from "@/lib/integrations/price-forecast";
-import type { BookingItem } from "@/lib/db/schema";
+import type { BookingAnalysis, BookingItem } from "@/lib/db/schema";
 
 /*
  * Previsão de preço dos itens do Book pela API de preço do Sankhya (dono,
@@ -32,9 +33,9 @@ const item = (over: Partial<BookingItem> = {}) =>
 const meta = { at: "2026-11-24T12:00:00.000Z", byUserId: "u-1" };
 
 describe("consulta do item do book", () => {
-  it("vai a ficha do item com o NCM, sem CODPROD, com o Incoterm do book", () => {
-    const q = bookingItemForecastQuery(item(), {
-      incoterm: "EXW",
+  it("vai a ficha do item com o NCM, sem CODPROD e sem o FOB/EXW", () => {
+    // O FOB/EXW e o valor do EXW não vão para o Sankhya (dono, 24/11/2026).
+    const q = bookingItemForecastQuery(item({ incoterm: "EXW" }), {
       dataRef: "20261124",
     });
     expect(q).toMatchObject({
@@ -44,8 +45,8 @@ describe("consulta do item do book", () => {
       masterBoxQty: 24,
       price: 12.5,
       currency: "RMB",
-      incoterm: "EXW",
     });
+    expect(q).not.toHaveProperty("incoterm");
     const input = productInput(q);
     expect(input).toMatchObject({
       NCM: "96170020",
@@ -53,10 +54,11 @@ describe("consulta do item do book", () => {
       CBM_CAIXA: 0.05,
       PRECO_ORIGEM: 12.5,
       MOEDA_ORIGEM: "RMB",
-      INCOTERM: "EXW",
       QTD_PECAS: 1200,
     });
     expect(input.CODPROD).toBeUndefined();
+    expect(input.INCOTERM).toBeUndefined();
+    expect(cotacaoV2Sql(input)).toContain("CAST(NULL AS VARCHAR(5))");
     expect(cotacaoV2Sql(input)).toContain("CAST('96170020' AS VARCHAR(10))");
   });
 
@@ -144,5 +146,42 @@ describe("retrato da previsão", () => {
     expect(
       forecastAnalysis({ ...answer, profitPercent: -3 }, q, meta).verdict,
     ).toBe("loss");
+  });
+});
+
+describe("o que o job diário ainda pede ao Sankhya", () => {
+  const snap = (over: Partial<BookingAnalysis> = {}): BookingAnalysis => ({
+    ...forecastAnalysis(
+      { mode: "manual" },
+      bookingItemForecastQuery(item()),
+      meta,
+    ),
+    missing: [],
+    ...over,
+  });
+
+  it("sem retrato, retrato antigo, Sankhya fora ou sem resposta: pede", () => {
+    expect(bookingForecastPending(null)).toBe(true);
+    // O retrato antigo do portal (sem `source`).
+    expect(bookingForecastPending({ at: meta.at, missing: [] } as never)).toBe(
+      true,
+    );
+    expect(bookingForecastPending(snap({ missing: ["manual"] }))).toBe(true);
+    expect(bookingForecastPending(snap({ missing: ["error"] }))).toBe(true);
+  });
+
+  it("com a previsão ou com falta de dado na ficha: não pede", () => {
+    expect(bookingForecastPending(snap())).toBe(false);
+    expect(bookingForecastPending(snap({ missing: ["ncm"] }))).toBe(false);
+  });
+
+  it("o que já foi tentado nesta rodada não vai de novo", () => {
+    const failed = snap({ missing: ["error"] });
+    expect(bookingForecastPending(failed, "2026-11-24T11:00:00.000Z")).toBe(
+      false,
+    );
+    expect(bookingForecastPending(failed, "2026-11-24T13:00:00.000Z")).toBe(
+      true,
+    );
   });
 });
