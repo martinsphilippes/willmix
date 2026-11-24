@@ -69,6 +69,11 @@ import {
   sendPartnerBookingAction,
 } from "../../actions/booking-lots";
 import { BookMetaFields } from "./book-meta-fields";
+import {
+  ManufacturerAlert,
+  ManufacturerCell,
+  StoreNumberAlert,
+} from "./manufacturer";
 
 /*
  * Tela Booking para o login externo (Trading, Factory, Supplier, GP; dono,
@@ -465,7 +470,8 @@ export async function PartnerBookingLotView({
   const detail = await getPartnerBookingLot(user, lotId);
   // Booking de outra empresa (ou que não existe): não se diz qual dos dois.
   if (!detail) notFound();
-  const { lot, items, partnerName, factoryName } = detail;
+  const { lot, items, partnerName, factoryName, manufacturer, sheetStore } =
+    detail;
   const preparing = bookingLotPreparing(lot.status);
   const known = [`bookingLots.error.${error}`, `common.${error}`].find(
     (k) => k in dictionaries.pt,
@@ -525,7 +531,14 @@ export async function PartnerBookingLotView({
         </div>
       ) : null}
       {preparing ? (
-        <PreparingItems t={t} lot={lot} items={items} created={created} />
+        <PreparingItems
+          t={t}
+          lot={lot}
+          items={items}
+          created={created}
+          manufacturer={manufacturer}
+          sheetStore={sheetStore}
+        />
       ) : (
         <SentItems t={t} items={items} worked={lot.worked} />
       )}
@@ -587,12 +600,20 @@ function PreparingItems({
   lot,
   items,
   created,
+  manufacturer,
+  sheetStore,
 }: {
   t: Translate;
   lot: PartnerBookingLot;
   items: PartnerBookingItem[];
   created: boolean;
+  /** A Fábrica do book (o Fabricante de todas as linhas). */
+  manufacturer: string | null;
+  /** Nº da loja da planilha, quando diferente do digitado. */
+  sheetStore: string | null;
 }) {
+  // Linhas com outro fabricante na planilha: o book não é enviado.
+  const mixed = items.filter((i) => i.manufacturerMismatch).length;
   const decimal = t.intl.startsWith("pt") ? "," : ".";
   const colLabel = (f: string) =>
     t(`bookingLots.item.col.${f}` as DictionaryKey);
@@ -685,6 +706,18 @@ function PreparingItems({
           )}
         </Alert>
       </div>
+      <StoreNumberAlert
+        t={t}
+        typed={lot.storeNumber ?? null}
+        sheet={sheetStore}
+      />
+      <ManufacturerAlert
+        t={t}
+        lotId={lot.id}
+        count={mixed}
+        manufacturer={manufacturer}
+        canEdit
+      />
       <Card
         title={t("bookingLots.partner.items", { n: String(items.length) })}
         actions={
@@ -731,6 +764,7 @@ function PreparingItems({
               <colgroup>
                 <col style={{ width: `${FIRST_COL_REM}rem` }} />
                 <col style={{ width: `${PHOTO_COL_REM}rem` }} />
+                <col style={{ width: "13rem" }} />
                 {EDIT_COLUMNS.map(({ field, width }) => (
                   <col key={field} style={{ width: `${colRem(width)}rem` }} />
                 ))}
@@ -745,6 +779,7 @@ function PreparingItems({
                   <th className={cx(th, STICKY_PHOTO, "bg-zinc-50")}>
                     {t("bookingLots.item.col.photo")}
                   </th>
+                  <th className={th}>{t("bookWork.manufacturer")}</th>
                   {EDIT_COLUMNS.map(({ field }) => (
                     <th key={field} className={th}>
                       {colLabel(field)}
@@ -759,6 +794,7 @@ function PreparingItems({
                     <BulkLoadButton />
                   </th>
                   <th className={cx(bulkTh, STICKY_PHOTO, "bg-white")} />
+                  <th className={bulkTh} />
                   {EDIT_COLUMNS.map(({ field }) => (
                     <th key={field} className={bulkTh}>
                       <BulkFieldInput
@@ -805,6 +841,22 @@ function PreparingItems({
                       {itemPhotos(t, item) ?? (
                         <span className="text-zinc-400">—</span>
                       )}
+                    </td>
+                    <td
+                      className={cx(
+                        td,
+                        item.manufacturerMismatch && "bg-red-50",
+                      )}
+                    >
+                      <ManufacturerCell
+                        t={t}
+                        lotId={lot.id}
+                        itemId={item.id}
+                        manufacturer={manufacturer}
+                        sheetSupplier={item.sheetSupplier ?? null}
+                        mismatch={!!item.manufacturerMismatch}
+                        canEdit
+                      />
                     </td>
                     {EDIT_COLUMNS.map(({ field, width }) => (
                       <td key={field} className={td}>

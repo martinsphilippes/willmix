@@ -52,7 +52,10 @@ import {
   supplierRequestTurn,
 } from "@/lib/supplier-request-sampling";
 import type { Responsible } from "@/lib/request-responsible";
-import { ResponsibleTip } from "@/components/request-responsible-tip";
+import {
+  ResponsibleLogins,
+  ResponsibleTip,
+} from "@/components/request-responsible-tip";
 import Link from "next/link";
 import { roundsDates } from "@/components/purchase-rounds";
 import { dateTime } from "./negotiation";
@@ -750,7 +753,7 @@ export function SupplierRequestTable({
                       )
                     : "—"}
                   {/* A ação, com as mesmas palavras de Encomendas e das
-                      Pendências ("Enviar a amostragem"), é o link para o
+                      Pendências ("Carregar a amostragem"), é o link para o
                       lugar de agir, o mesmo da pendência (dono,
                       24/11/2026). */}
                   {turn ? (
@@ -769,6 +772,11 @@ export function SupplierRequestTable({
                       t={t}
                       className="mt-0.5 block max-w-40"
                     />
+                  ) : null}
+                  {/* O login de quem envia, à vista (administrador; dono,
+                      24/11/2026). */}
+                  {turn ? (
+                    <ResponsibleLogins r={who} t={t} className="max-w-40" />
                   ) : null}
                   {pending ? (
                     <span

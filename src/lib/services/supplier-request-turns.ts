@@ -38,6 +38,11 @@ export async function supplierRequestResponsibles(
     samplingDays: number;
     /** O fornecedor é do tipo Trading (a vez aparece como Trading). */
     trading?: boolean;
+    /**
+     * Na lista de cotações, cada linha tem o seu fornecedor: se ele é do
+     * tipo Trading, pelo id. Vale no lugar de `trading`.
+     */
+    tradingOf?: (supplierId: string) => boolean;
     translate: (key: string) => string;
   },
 ): Promise<Map<string, Responsible | null>> {
@@ -84,7 +89,7 @@ export async function supplierRequestResponsibles(
       who:
         turn.party === "wellmix"
           ? "wellmix"
-          : options.trading
+          : (options.tradingOf?.(r.supplierId) ?? options.trading)
             ? "trading"
             : "supplier",
     };
