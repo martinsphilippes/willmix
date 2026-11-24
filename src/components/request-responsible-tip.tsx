@@ -322,7 +322,7 @@ export function ResponsibleLogins({
   return (
     <span
       className={cx(
-        "mt-0.5 block whitespace-normal break-all text-[11px] text-zinc-600",
+        "mt-0.5 block whitespace-normal break-words text-[11px] text-zinc-600",
         className,
       )}
       data-responsible-logins=""
