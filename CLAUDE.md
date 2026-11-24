@@ -55,8 +55,13 @@ Ao terminar uma tarefa, sem pedir confirmação. Desde 24/11/2026 o dono quer **
    - A migração é só aditiva, com o que falta do `supabase/schema.sql` (`scripts/supabase-missing.ts`, docs/SUPABASE.md "Publicar o esquema"), aplicada pela ferramenta do Supabase.
    - Depois, conferir as colunas por tabela. Se falhar, avisar o dono com o erro.
    - O Appwrite não recebe mais o esquema.
-3. Acompanhar a publicação na Vercel até ficar pronta.
-4. Depois de no ar, a verificação: `npm run lint && npm run typecheck && npm test`, o E2E (`npm run test:e2e`), o CI (`verify`) do PR e os erros em produção (Vercel).
+3. A Vercel publica sozinha depois da mescla. Não esperar nem confirmar a publicação com o dono (pedido dele, 24/11/2026): seguir direto para a verificação.
+4. A verificação, logo depois da mescla:
+   - se a publicação na Vercel ficou pronta;
+   - `npm run lint && npm run typecheck && npm test`;
+   - o E2E (`npm run test:e2e`);
+   - o CI (`verify`) do PR;
+   - os erros em produção (Vercel).
 5. O que falhar na verificação se corrige em seguida, num PR novo, pelo mesmo caminho. Se o problema for grave em produção, voltar a publicação anterior pela Vercel e avisar o dono.
 
 Exceções (parar e avisar o dono em vez de mesclar):
