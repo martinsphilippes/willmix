@@ -84,6 +84,11 @@ test("venda aguardando o cliente: Em aberto e com o cliente; ele confirma pelas 
   await expect(row.locator('[data-request-turn="customer"]')).toContainText(
     "Aguardando cliente",
   );
+  // O status leva ao lugar de agir (dono, 24/11/2026): a confirmação do
+  // cliente, o mesmo link da pendência "Confirmar pedido".
+  await expect(
+    row.locator('[data-request-turn="customer"] [data-status-link]'),
+  ).toHaveAttribute("href", `/app/requests/${requestId}`);
   await expect(row.locator('[data-request-next="confirm"]')).toContainText(
     "Confirmar pedido",
   );

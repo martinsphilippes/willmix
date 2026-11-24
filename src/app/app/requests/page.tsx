@@ -21,10 +21,8 @@ import {
 import { canViewRequest, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { canSeeMoney } from "@/lib/auth/function-access";
 import { REQUEST_SCREEN } from "@/lib/request-screens";
-import {
-  isSupplierRequestStep,
-  supplierRequestStepHref,
-} from "@/lib/supplier-request-sampling";
+import { requestStepHref, type StepAccess } from "@/lib/request-step-href";
+import { StatusLink } from "@/components/status-link";
 import { canDeleteRequest } from "@/lib/services/requests";
 import {
   activeRequests,
@@ -339,6 +337,13 @@ export default async function RequestsPage({
   const dueOf = (r: Request) =>
     stepDue(nextOf(r), r, turnCtx?.purchaseOf(r) ?? null);
   const nextText = (n: NextStep) => nextStepText(t, n);
+  /** As telas de cada lugar de agir (o status e a ação levam lá). */
+  const stepAccess: StepAccess = {
+    requests: canOpen(user, "requests"),
+    strategy: canOpen(user, "purchaseStrategy"),
+    quotes: canOpen(user, "quotes"),
+    orders: canOpen(user, "orders"),
+  };
   /**
    * Situação (dono, 18/11/2026; docs/TURNS.md): quem está com a vez
    * ("Aguardando cliente"; para o próprio cliente, "Aguardando você"), com a
@@ -352,6 +357,8 @@ export default async function RequestsPage({
         party: TurnParty | null;
         status: ReturnType<typeof requestDisplayStatus>;
         count: number;
+        /** A primeira encomenda dessa parte: o lugar de agir do status. */
+        first: Request;
       }
     >();
     for (const r of list) {
@@ -363,13 +370,14 @@ export default async function RequestsPage({
         party,
         status: cur?.status ?? status,
         count: (cur?.count ?? 0) + 1,
+        first: cur?.first ?? r,
       });
     }
     // Ação rápida (dono, 20/11/2026; docs/ORDER_LEVEL_LISTS.md, seção 11):
     // "Aguardando Wellmix" com a encomenda esperando o "Enviar para cotação",
     // para quem pode enviar, abre o envio ali mesmo.
     const toSend = list.filter((r) => canSend(r)).map((r) => r.id);
-    return [...parts.values()].map(({ party, status, count: n }) =>
+    return [...parts.values()].map(({ party, status, count: n, first }) =>
       party ? (
         <span
           key={party}
@@ -381,12 +389,20 @@ export default async function RequestsPage({
           data-request-turn={party}
         >
           <SituationQuickSend ids={party === "wellmix" ? toSend : []} t={t}>
-            <Badge tone={turnTone(party)}>
+            {/* O status leva ao lugar de agir (dono, 24/11/2026). */}
+            <StatusLink
+              tone={turnTone(party)}
+              href={
+                party === "wellmix" && toSend.length
+                  ? null
+                  : requestStepHref(nextOf(first), first, stepAccess)
+              }
+            >
               {customer && party === "customer"
                 ? t("turn.waiting.you")
                 : t(turnWaitingKey(party))}
               {n > 1 ? ` ×${n}` : ""}
-            </Badge>
+            </StatusLink>
           </SituationQuickSend>
         </span>
       ) : (
@@ -817,6 +833,8 @@ export default async function RequestsPage({
     resp: Responsible | null;
     due: StepDue | null;
     count: number;
+    /** A primeira encomenda do grupo: o lugar de agir da ação. */
+    first: Request;
   };
   const dueTime = (d: StepDue | null) =>
     !d
@@ -836,22 +854,19 @@ export default async function RequestsPage({
       if (cur) {
         cur.count += 1;
         if (dueTime(due) < dueTime(cur.due)) cur.due = due;
-      } else groups.set(key, { step, resp, due, count: 1 });
+      } else groups.set(key, { step, resp, due, count: 1, first: r });
     }
     return [...groups.values()].sort((a, b) => dueTime(a.due) - dueTime(b.due));
   };
   /*
-   * A ação leva ao lugar de agir (dono, 24/11/2026): responder, decidir,
-   * enviar ou validar a amostragem abrem a solicitação ao fornecedor com a
-   * vez, no mesmo endereço da pendência, para quem abre a Cotação.
+   * A ação leva ao lugar de agir (dono, 24/11/2026): o mesmo lugar da
+   * pendência de cada passo (`requestStepHref`), também no status. Antes,
+   * só os passos da solicitação ao fornecedor tinham o link.
    */
-  const seesQuotes = canOpen(user, "quotes");
-  const actionHref = (step: NextStep) =>
-    seesQuotes && step.supplierRequestId && isSupplierRequestStep(step.key)
-      ? supplierRequestStepHref(step.supplierRequestId, step.key)
-      : null;
+  const actionHref = (g: ActionGroup) =>
+    requestStepHref(g.step, g.first, stepAccess);
   const actionLine = (g: ActionGroup, main: boolean) => {
-    const href = actionHref(g.step);
+    const href = actionHref(g);
     return (
       <span
         className="block"
