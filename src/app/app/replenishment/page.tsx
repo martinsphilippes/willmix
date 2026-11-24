@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { canOpen } from "@/lib/auth/screens";
+import { StatusLink } from "@/components/status-link";
 import { can, canSeeMoney } from "@/lib/auth/function-access";
 import { loadOrderCells } from "@/lib/services/order-cells";
 import {
@@ -55,6 +56,7 @@ export default async function ReplenishmentPage({
   if (!isWellmix(user)) redirect("/app/requests");
   const { error, opened } = await searchParams;
   const t = await getT();
+  const seesStrategy = canOpen(user, "purchaseStrategy");
   // Rascunhos da entrada da Reposição de quem está vendo (dono, 17/11/2026):
   // no alto da fila, com a situação "Rascunho".
   const [rows, settings, drafts] = await Promise.all([
@@ -177,6 +179,17 @@ export default async function ReplenishmentPage({
                 const href = `/app/requests/batch/${encodeURIComponent(
                   entry.kind === "batch" ? entry.groupId : (r.groupId ?? r.id),
                 )}`;
+                // O status leva ao lugar de agir (dono, 24/11/2026): a
+                // reposição aberta espera a estratégia de compra (a decisão
+                // em andamento, quando já tem); sem a tela, a reposição.
+                const open = members.find(isOpenDemand);
+                const statusHref = !open
+                  ? null
+                  : !seesStrategy
+                    ? href
+                    : open.purchaseDecisionId
+                      ? `/app/purchase-strategy?tab=open#decision-${encodeURIComponent(open.purchaseDecisionId)}`
+                      : "/app/purchase-strategy";
                 return (
                   <tr
                     key={entry.kind === "batch" ? entry.groupId : r.id}
@@ -194,9 +207,12 @@ export default async function ReplenishmentPage({
                     {/* Status: de quem é a vez. */}
                     <Td className="whitespace-nowrap">
                       {anyOpen ? (
-                        <Badge tone={turnTone("wellmix")}>
+                        <StatusLink
+                          tone={turnTone("wellmix")}
+                          href={statusHref}
+                        >
                           {t(turnWaitingKey("wellmix"))}
-                        </Badge>
+                        </StatusLink>
                       ) : (
                         "—"
                       )}

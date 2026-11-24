@@ -186,7 +186,12 @@ export function BookingLotsTable({
           </Link>
         );
       case "status":
-        return <Badge tone={STATUS_TONE[row.status]}>{row.statusLabel}</Badge>;
+        // Numa linha só ("Em andamento" quebrava em duas).
+        return (
+          <Badge tone={STATUS_TONE[row.status]} className="whitespace-nowrap">
+            {row.statusLabel}
+          </Badge>
+        );
       case "supplier":
         return row.supplier ? (
           clamp(row.supplier, "max-w-[11rem]")
@@ -230,10 +235,11 @@ export function BookingLotsTable({
         );
       case "holder":
         // Com quem está: livre (com "Travar") ou a pessoa (com "Liberar"
-        // para ela mesma e para quem supervisiona).
+        // para ela mesma e para quem supervisiona), lado a lado, para a
+        // linha ficar fina (dono, 24/11/2026).
         return (
           <span
-            className="flex flex-col items-start gap-0.5 whitespace-nowrap"
+            className="flex items-baseline gap-2 whitespace-nowrap"
             data-booking-lot-holder={row.lockId ?? "free"}
           >
             {row.lockId ? (
@@ -340,12 +346,18 @@ export function BookingLotsTable({
           ] as const
         ).filter(([k]) => row[k] > 0);
         if (!parts.length)
-          return <span className="text-zinc-500">{labels.signalsNone}</span>;
+          return (
+            <span className="whitespace-nowrap text-zinc-500">
+              {labels.signalsNone}
+            </span>
+          );
+        // Os selos lado a lado, cada um numa linha ("1 Falta dado" quebrava
+        // em duas e esticava a linha; dono, 24/11/2026).
         return (
-          <span className="flex flex-wrap gap-1">
+          <span className="flex gap-1 whitespace-nowrap">
             {parts.map(([k, tone]) => (
               <span key={k} title={labels.signal[k]}>
-                <Badge tone={tone}>
+                <Badge tone={tone} className="whitespace-nowrap">
                   {row[k]} {labels.signal[k]}
                 </Badge>
               </span>

@@ -137,7 +137,11 @@ export type PartnerBookingItem = Pick<
   worked?: boolean;
   /** Fabricante como a planilha escreveu nesta linha e se diverge do book. */
   sheetSupplier?: string | null;
+  /** Nº da loja desta linha na planilha. */
+  sheetStore?: string | null;
   manufacturerMismatch?: boolean;
+  /** Recusado pela Wellmix (o trabalhado que não é recusado foi selecionado). */
+  refused?: boolean;
 };
 
 const itemView = (i: BookingItem): PartnerBookingItem => {
@@ -311,7 +315,31 @@ export async function getPartnerBookingLot(
   const { workedShare } = await import("@/lib/booking-locks");
   const { bookManufacturer, manufacturerMismatch, storeNumberMismatch } =
     await import("@/lib/booking-lots");
-  const manufacturer = bookManufacturer(lot, nameOf(lot.supplierId));
+  const manufacturer = bookManufacturer(lot);
+  // Selecionado, para o fornecedor, é só o item escolhido na seleção para
+  // virar produto (o ganhador de uma escolha gravada ou o item de uma
+  // solicitação); os outros que passaram pela seleção foram recusados
+  // (dono, 24/11/2026).
+  const workedIds = items.filter((i) => i.workedAt).map((i) => i.id);
+  const chosen = new Set<string>();
+  if (workedIds.length) {
+    const { listColumns } = await import("@/lib/db/lookup");
+    try {
+      const [groups, requests] = await Promise.all([
+        listColumns(store, "selection_groups", ["chosenItemId"], {
+          filter: { status: ["saved", "requested"], chosenItemId: workedIds },
+        }),
+        listColumns(store, "supplier_requests", ["bookingItemId"], {
+          filter: { bookingItemId: workedIds },
+        }),
+      ]);
+      for (const g of groups) chosen.add(g.chosenItemId);
+      for (const r of requests) chosen.add(r.bookingItemId);
+    } catch (error) {
+      const { isSchemaMissing } = await import("@/lib/db/errors");
+      if (!isSchemaMissing(error)) throw error;
+    }
+  }
   return {
     lot: { ...lotView(lot), worked: workedShare(items) },
     items: items
@@ -320,6 +348,11 @@ export async function getPartnerBookingLot(
         ...itemView(i),
         worked: !!i.workedAt,
         sheetSupplier: i.sheetSupplier ?? null,
+        sheetStore: i.sheetStore ?? null,
+        // O fornecedor vê o que foi selecionado e o que foi recusado (dono,
+        // 24/11/2026), sem a análise: recusado na tela do book, ou
+        // trabalhado sem ter sido o escolhido.
+        refused: !!i.refusedAt || (!!i.workedAt && !chosen.has(i.id)),
         manufacturerMismatch: manufacturerMismatch(i, manufacturer),
         // O parceiro vê as fotos dos itens dos books dele (dono, 16/11/2026).
         photoDocumentId: i.photoDocumentId ?? null,

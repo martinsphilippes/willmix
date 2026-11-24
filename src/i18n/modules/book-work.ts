@@ -21,7 +21,8 @@ export const pt = {
   "bookingLots.error.booking_incoterm_required": "Escolha FOB ou EXW.",
   "bookingLots.error.booking_exw_value_required":
     "Com EXW, informe o valor do EXW (acima de zero).",
-  "bookWork.storeNumberHint": "A loja da fábrica (a do supplier da planilha).",
+  "bookWork.storeNumberHint":
+    "A loja do fabricante. Vai para a coluna Fabricante de todas as linhas e é comparada com a planilha.",
   "bookWork.supplierNameHint":
     "O fornecedor, dono do book: as solicitações dos itens vão para ele. Digite para buscar no cadastro; se não existir, fica o nome e você cadastra depois, na tela do book.",
   "bookWork.partner": "Fornecedor (Supplier)",
@@ -38,9 +39,9 @@ export const pt = {
     'A planilha diz "{sheet}" nesta linha. Confirma que a planilha estava errada e o fabricante é "{name}"?',
   "bookWork.manufacturer.remove": "Remover a linha",
   "bookWork.manufacturer.removeAsk":
-    "Remover este item do book? Ele é de outro fabricante e não volta.",
+    "Remover este item do book? Ele é de outra loja e não volta.",
   "bookWork.manufacturer.alert":
-    "{n} linha(s) trazem outro fabricante na planilha (o deste book é {name}). Um book tem itens de um fabricante só: remova essas linhas ou confirme que a planilha estava errada. Enquanto isso o book não pode ser enviado nem fechado.",
+    "{n} linha(s) trazem outro nº de loja na planilha (o deste book é {name}). Um book tem itens de um fabricante só: remova essas linhas, ou cancele esta importação e refaça.",
   "bookWork.manufacturer.confirmAll":
     "A planilha estava errada: confirmar todas",
   "bookWork.manufacturer.confirmAllAsk":
@@ -76,6 +77,10 @@ export const pt = {
   "bookWork.worked.refused": "Recusado",
   "bookWork.error.booking_refuse_draft":
     "Só dá para selecionar ou recusar itens depois que o book deixa de ser rascunho.",
+  "bookWork.manufacturer.cancel": "Cancelar a importação para refazer",
+  "bookWork.manufacturer.cancelAsk":
+    "Cancelar esta importação do book? Depois é só importar a planilha de novo, com o nº da loja certo.",
+  "bookWork.worked.selected": "Selecionado",
   "bookWork.itemType": "Tipo de item",
   "bookWork.itemTypeHint":
     "Ex.: vidro, plástico, utilidades. Use o mesmo nome dos outros books do mesmo tipo.",
@@ -96,7 +101,7 @@ export const pt = {
   "bookWork.toSelection.max": "Até {n} itens por vez.",
   "bookWork.toSelection.hint":
     "Marque um ou vários itens: leve para a Seleção de itens ou recuse (o recusado conta como trabalhado).",
-  "bookWork.lock": "Travar para mim",
+  "bookWork.lock": "Travar",
   "bookWork.unlock": "Liberar",
   "bookWork.unlock.type": "Liberar os books deste tipo",
   "bookWork.lock.title": "Com quem está",
@@ -173,7 +178,7 @@ export const en: typeof pt = {
   "bookingLots.error.booking_exw_value_required":
     "With EXW, fill in the EXW value (above zero).",
   "bookWork.storeNumberHint":
-    "The factory's store (the spreadsheet's supplier).",
+    "The manufacturer's store. It goes to the Manufacturer column of every row and is compared with the spreadsheet.",
   "bookWork.supplierNameHint":
     "The supplier that owns the book: requests for its items go to them. Type to search the registry; if they are not there, the name is kept and you register them later, on the book page.",
   "bookWork.partner": "Supplier",
@@ -190,9 +195,9 @@ export const en: typeof pt = {
     'The spreadsheet says "{sheet}" on this row. Confirm the spreadsheet was wrong and the manufacturer is "{name}"?',
   "bookWork.manufacturer.remove": "Remove the row",
   "bookWork.manufacturer.removeAsk":
-    "Remove this item from the book? It is from another manufacturer and will not come back.",
+    "Remove this item from the book? It is from another store and will not come back.",
   "bookWork.manufacturer.alert":
-    "{n} row(s) have another manufacturer in the spreadsheet (this book's is {name}). A book has items from one manufacturer only: remove those rows or confirm the spreadsheet was wrong. Until then the book cannot be sent or closed.",
+    "{n} row(s) have another store no. in the spreadsheet (this book's is {name}). A book has items from one manufacturer only: remove those rows, or cancel this import and do it again.",
   "bookWork.manufacturer.confirmAll": "The spreadsheet was wrong: confirm all",
   "bookWork.manufacturer.confirmAllAsk":
     'Confirm the spreadsheet was wrong on the {n} row(s) and the manufacturer of all of them is "{name}"?',
@@ -227,6 +232,10 @@ export const en: typeof pt = {
   "bookWork.worked.refused": "Refused",
   "bookWork.error.booking_refuse_draft":
     "Items can only be selected or refused after the book is no longer a draft.",
+  "bookWork.manufacturer.cancel": "Cancel the import and do it again",
+  "bookWork.manufacturer.cancelAsk":
+    "Cancel this book import? Then just import the spreadsheet again, with the right store no.",
+  "bookWork.worked.selected": "Selected",
   "bookWork.itemType": "Item type",
   "bookWork.itemTypeHint":
     "E.g. glass, plastic, housewares. Use the same name as the other books of the same type.",
@@ -247,7 +256,7 @@ export const en: typeof pt = {
   "bookWork.toSelection.max": "Up to {n} items at a time.",
   "bookWork.toSelection.hint":
     "Tick one or several items: take them to Item selection or refuse them (a refused item counts as worked).",
-  "bookWork.lock": "Lock for me",
+  "bookWork.lock": "Lock",
   "bookWork.unlock": "Release",
   "bookWork.unlock.type": "Release the books of this type",
   "bookWork.lock.title": "Who has it",
@@ -319,7 +328,8 @@ export const zh: typeof pt = {
   "bookingLots.error.booking_incoterm_required": "请选择 FOB 或 EXW。",
   "bookingLots.error.booking_exw_value_required":
     "选择 EXW 时，请填写 EXW 费用（大于零）。",
-  "bookWork.storeNumberHint": "工厂的店铺号（表格中 supplier 的店铺）。",
+  "bookWork.storeNumberHint":
+    "生产厂家的店铺号。会填入所有行的“生产厂家”列，并与表格比对。",
   "bookWork.supplierNameHint":
     "Book 的所有者：产品的请求会发给他。输入即可在登记中搜索；如果不存在，名称会保留，稍后在 Book 页面登记。",
   "bookWork.partner": "供应商（Supplier）",
@@ -334,9 +344,9 @@ export const zh: typeof pt = {
     "表格在此行写的是“{sheet}”。确认表格有误，生产厂家是“{name}”吗？",
   "bookWork.manufacturer.remove": "删除此行",
   "bookWork.manufacturer.removeAsk":
-    "从 Book 中删除此产品吗？它属于其他厂家，删除后无法恢复。",
+    "从 Book 中删除此产品吗？它属于其他店铺，删除后无法恢复。",
   "bookWork.manufacturer.alert":
-    "有 {n} 行在表格中写的是其他厂家（本 Book 的厂家是 {name}）。一个 Book 只能有一个厂家的产品：请删除这些行，或确认表格有误。在此之前 Book 无法提交或关闭。",
+    "有 {n} 行在表格中写的是其他店铺号（本 Book 的是 {name}）。一个 Book 只能有一个厂家的产品：请删除这些行，或取消本次导入后重新导入。",
   "bookWork.manufacturer.confirmAll": "表格有误：全部确认",
   "bookWork.manufacturer.confirmAllAsk":
     "确认这 {n} 行的表格有误，且生产厂家均为“{name}”吗？",
@@ -366,6 +376,10 @@ export const zh: typeof pt = {
   "bookWork.worked.refused": "已拒绝",
   "bookWork.error.booking_refuse_draft":
     "Book 不再是草稿后才能选择或拒绝产品。",
+  "bookWork.manufacturer.cancel": "取消导入并重新导入",
+  "bookWork.manufacturer.cancelAsk":
+    "取消本次 Book 导入吗？之后用正确的店铺号重新导入表格即可。",
+  "bookWork.worked.selected": "已选中",
   "bookWork.itemType": "产品类型",
   "bookWork.itemTypeHint":
     "例如：玻璃、塑料、日用品。同类型的 Book 请使用相同的名称。",
@@ -386,7 +400,7 @@ export const zh: typeof pt = {
   "bookWork.toSelection.max": "每次最多 {n} 个产品。",
   "bookWork.toSelection.hint":
     "勾选一个或多个产品：带到选品页面，或拒绝（被拒绝的产品计为已处理）。",
-  "bookWork.lock": "锁定给我",
+  "bookWork.lock": "锁定",
   "bookWork.unlock": "释放",
   "bookWork.unlock.type": "释放该类型的 Book",
   "bookWork.lock.title": "由谁处理",

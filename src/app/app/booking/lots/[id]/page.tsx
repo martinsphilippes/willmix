@@ -13,7 +13,6 @@ import {
   bookingLotLockable,
   bookManufacturer,
   manufacturerMismatch,
-  storeNumberMismatch,
   bookingLotMoves,
   bookingLotPending,
   bookingLotReady,
@@ -32,13 +31,13 @@ import { bookingItemTypes, getBookingLot } from "@/lib/services/booking-lots";
 import { durationText, lockLate, workedShare } from "@/lib/booking-locks";
 import { GROUP_MAX } from "@/lib/booking-selection";
 import { getSettings } from "@/lib/settings";
-import { BookMetaFields } from "../../_components/book-meta-fields";
+import { bookIncotermLabels } from "../../_components/book-meta-fields";
 import { BookingItemForecast } from "@/components/booking-item-forecast";
 import {
   ManufacturerAlert,
   ManufacturerCell,
-  StoreNumberAlert,
 } from "../../_components/manufacturer";
+import { BookIncotermFields } from "@/components/book-incoterm-fields";
 import { getT } from "@/i18n/server";
 import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
@@ -209,7 +208,7 @@ export default async function BookingLotPage({
   const worked = workedShare(items);
   // Fabricante: a Fábrica do book × o que a planilha traz em cada linha
   // (dono, 24/11/2026). Diferente, o book não fecha.
-  const manufacturer = bookManufacturer(lot, supplier?.name ?? null);
+  const manufacturer = bookManufacturer(lot);
   const mixed = items.filter((i) => manufacturerMismatch(i, manufacturer));
   const [itemTypes, settings] = await Promise.all([
     bookingItemTypes(),
@@ -666,7 +665,7 @@ export default async function BookingLotPage({
                   lotId={lot.id}
                   itemId={item.id}
                   manufacturer={manufacturer}
-                  sheetSupplier={item.sheetSupplier ?? null}
+                  sheetStore={item.sheetStore ?? null}
                   mismatch={manufacturerMismatch(item, manufacturer)}
                   canEdit={editable}
                 />
@@ -891,21 +890,26 @@ export default async function BookingLotPage({
         ) : null}
       </div>
 
-      <StoreNumberAlert
-        t={t}
-        typed={lot.storeNumber ?? null}
-        sheet={
-          storeNumberMismatch(lot.storeNumber, hint?.store)
-            ? (hint?.store ?? null)
-            : null
-        }
-      />
       <ManufacturerAlert
         t={t}
-        lotId={lot.id}
         count={mixed.length}
         manufacturer={manufacturer}
-        canEdit={editable}
+        cancel={
+          // A outra saída: cancelar esta importação e refazer.
+          editable ? (
+            <form action={moveBookingLotAction}>
+              <input type="hidden" name="lotId" value={lot.id} />
+              <input type="hidden" name="status" value="cancelled" />
+              <SubmitButton
+                variant="secondary"
+                confirmText={t("bookWork.manufacturer.cancelAsk")}
+                data-book-manufacturer-cancel
+              >
+                {t("bookWork.manufacturer.cancel")}
+              </SubmitButton>
+            </form>
+          ) : null
+        }
       />
       <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
         <Card title={t("bookingLots.detail.header")} className="lg:col-span-2">
@@ -1095,18 +1099,42 @@ export default async function BookingLotPage({
             >
               <input type="hidden" name="lotId" value={lot.id} />
               <div className="min-w-60 flex-1">
-                <BookMetaFields
-                  t={t}
-                  types={itemTypes}
-                  suppliers={partners.map((p) => p.name)}
-                  storeNumber={lot.storeNumber ?? null}
-                  supplierName={lot.supplierName ?? null}
-                  incoterm={lot.incoterm ?? null}
-                  exwValue={lot.exwValue ?? null}
-                  withIncoterm={editable}
-                  itemType={lot.itemType ?? null}
-                  required={false}
-                />
+                {/* FOB ou EXW e, ao lado, o Tipo de item (dono, 24/11/2026:
+                    sem a linha do nº da loja e do Supplier, que são os da
+                    importação). */}
+                <div className="flex flex-wrap items-start gap-3">
+                  {editable ? (
+                    <div className="min-w-60 flex-[2]">
+                      <BookIncotermFields
+                        incoterm={lot.incoterm ?? ""}
+                        exwValue={
+                          typeof lot.exwValue === "number"
+                            ? String(lot.exwValue).replace(".", decimal)
+                            : ""
+                        }
+                        required={false}
+                        labels={bookIncotermLabels(t)}
+                      />
+                    </div>
+                  ) : null}
+                  <div className="min-w-48 flex-1">
+                    <Field label={t("bookWork.itemType")}>
+                      <Input
+                        name="itemType"
+                        maxLength={80}
+                        defaultValue={lot.itemType ?? ""}
+                        list="book-item-types"
+                        autoComplete="off"
+                        data-book-item-type
+                      />
+                      <datalist id="book-item-types">
+                        {itemTypes.map((type) => (
+                          <option key={type} value={type} />
+                        ))}
+                      </datalist>
+                    </Field>
+                  </div>
+                </div>
               </div>
               <SubmitButton variant="secondary">
                 {t("bookWork.meta.save")}

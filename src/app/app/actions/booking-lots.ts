@@ -565,14 +565,10 @@ export async function setBookingLotMetaAction(form: FormData) {
     const input = z
       .object({
         lotId: ID,
-        storeNumber: z.string().max(60).nullable(),
-        supplierName: z.string().max(160).nullable(),
         itemType: z.string().max(80).nullable(),
       })
       .parse({
         lotId: raw,
-        storeNumber: str(form, "storeNumber") || null,
-        supplierName: str(form, "supplierName") || null,
         itemType: str(form, "itemType") || null,
       });
     const { setBookingLotMeta } = await import("@/lib/services/booking-lots");

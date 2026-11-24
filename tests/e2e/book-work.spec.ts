@@ -34,11 +34,13 @@ const HEADER = [
   "MATERIAL",
   "MOQ",
   "PURCHASE QTY IN PCS",
+  "SUPPLIER STORE NO",
 ];
-const row = (n: number, supplier = "Shenzhen Supplier A") => [
+// O nº da loja da linha: o mesmo que fillBookMeta digita na importação.
+const row = (n: number, store = "A 154678") => [
   "2026.10.13",
   "Yiwu",
-  supplier,
+  "Shenzhen Supplier A",
   `${TAG}-${n}`,
   `Zqw widget ${TAG} ${n}`,
   "FOB",
@@ -57,15 +59,16 @@ const row = (n: number, supplier = "Shenzhen Supplier A") => [
   "glass",
   "1000",
   "3000",
+  store,
 ];
-const sheet = (name: string, rows: number[], supplier?: string) => ({
+const sheet = (name: string, rows: number[], store?: string) => ({
   name,
   mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   buffer: Buffer.from(
     xlsxBytes([
       {
         name: "BOOKING",
-        cells: [HEADER, ...rows.map((n) => row(n, supplier))],
+        cells: [HEADER, ...rows.map((n) => row(n, store))],
       },
     ]),
   ),
@@ -84,8 +87,8 @@ test("Book do fornecedor: várias planilhas, preencher todas as linhas e seta pa
     .setInputFiles([
       sheet("um.xlsx", [1, 2, 3]),
       sheet("dois.xlsx", [4, 5]),
-      // Uma linha de outro fabricante (a Fábrica do book é a Supplier A).
-      sheet("tres.xlsx", [9], "Outra Fabrica Ltd"),
+      // Uma linha com outro nº de loja (o do book é o digitado: A 154678).
+      sheet("tres.xlsx", [9], "B 999"),
     ]);
   await expect(page.locator("[data-sheet-import-files]")).toHaveAttribute(
     "data-sheet-import-files",
@@ -99,8 +102,8 @@ test("Book do fornecedor: várias planilhas, preencher todas as linhas e seta pa
   const lines = page.locator("tr[data-partner-booking-item]");
   // O book é a soma das planilhas, na ordem.
   await expect(lines).toHaveCount(6);
-  // Fabricante: a Fábrica digitada repetida em todas as linhas; a linha de
-  // outro fabricante fica marcada e o book não é enviado com ela.
+  // Fabricante: o nº da loja digitado repetido em todas as linhas; a linha
+  // com outro nº de loja fica marcada e o book não é enviado com ela.
   await expect(page.locator("[data-book-manufacturer-alert]")).toHaveAttribute(
     "data-book-manufacturer-alert",
     "1",
@@ -109,6 +112,12 @@ test("Book do fornecedor: várias planilhas, preencher todas as linhas e seta pa
     1,
   );
   await expect(page.locator('[data-book-manufacturer="ok"]')).toHaveCount(5);
+  // A célula mostra o nº da loja digitado e, em vermelho, o da planilha; a
+  // outra saída é cancelar a importação para refazer.
+  const wrongCell = page.locator('[data-book-manufacturer="mismatch"]');
+  await expect(wrongCell).toContainText("A 154678");
+  await expect(wrongCell).toContainText("B 999");
+  await expect(page.locator("[data-book-manufacturer-cancel]")).toBeVisible();
   page.on("dialog", (dialog) => dialog.accept());
   await page.locator('[data-partner-booking-send="top"]').click();
   await page.waitForURL(/error=booking_manufacturer_mismatch/);

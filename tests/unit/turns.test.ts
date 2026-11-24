@@ -238,12 +238,18 @@ describe("encomenda: a ação e quem está com a vez", () => {
       who: "wellmix",
       supplierRequestId: "sr-c",
     });
-    // O pedido de compra não é de uma solicitação só: sem o link.
+    // Gerar o pedido de compra (dono, 24/11/2026: o status leva ao lugar de
+    // agir): o quadro "Gerar pedido de compra" com a solicitação aprovada
+    // marcada; lá dá para marcar outras do mesmo fornecedor.
     expect(
       at([
         { id: "sr-d", status: "approved", negotiation: null, sampling: null },
       ]),
-    ).toEqual({ key: "purchase_order", who: "wellmix" });
+    ).toEqual({
+      key: "purchase_order",
+      who: "wellmix",
+      supplierRequestId: "sr-d",
+    });
   });
 
   it("todo próximo passo tem texto nos três idiomas", () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { StatusLink } from "./status-link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
@@ -762,7 +763,11 @@ export function OrdersTable({
                       encerrado ou cancelado, isso mesmo. */}
                   <td className={td} data-orders-turn={r.turn || undefined}>
                     {r.turn ? (
-                      <Badge tone={r.turnTone}>{r.turnLabel}</Badge>
+                      // O status leva ao lugar de agir (dono, 24/11/2026):
+                      // o pedido, com a etapa atual e os itens dela.
+                      <StatusLink tone={r.turnTone} href={r.href}>
+                        {r.turnLabel}
+                      </StatusLink>
                     ) : r.state === "done" || r.state === "cancelled" ? (
                       <Badge tone={STATE_TONE[r.state]}>
                         {labels.states[r.state]}
@@ -1016,9 +1021,12 @@ function ItemsPanel({
                     {/* Status: o que ele espera (de quem é a vez). */}
                     <td className={cell}>
                       {item.turn ? (
-                        <Badge tone={item.turnTone ?? "neutral"}>
+                        <StatusLink
+                          tone={item.turnTone ?? "neutral"}
+                          href={item.href}
+                        >
                           {item.turnLabel}
-                        </Badge>
+                        </StatusLink>
                       ) : item.state === "done" ||
                         item.state === "cancelled" ? (
                         <Badge tone={STATE_TONE[item.state]}>
