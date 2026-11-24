@@ -106,10 +106,20 @@ async function answer(
 ) {
   await login(page, email);
   await page.goto("/app/purchase-quotes");
+  // Tabela padrão (dono, 24/11/2026): as 18 colunas e a de abrir.
+  await expect(
+    page.locator('[data-order-table="supplier-quotes"] th'),
+  ).toHaveCount(19);
+  await expect(
+    page.locator(
+      `[data-quote-invite="${quoteId}"] [data-order-col="customerName"]`,
+    ),
+  ).toHaveText("Wellmix");
   await page.locator(`[data-quote-invite="${quoteId}"] a`).first().click();
   await page.waitForURL(new RegExp(`/app/purchase-quotes/${quoteId}`));
   // Um produto por tela (dono, 23/11/2026): a cotação abre na lista dos
   // produtos (tabela padrão de itens); o produto abre a tela só dele.
+  await expect(page.locator("[data-order-items-standard] th")).toHaveCount(18);
   const productRow = page.locator('[data-quote-product-row="prod-jarra"]');
   await expect(productRow).toBeVisible();
   await expect(page.locator('[data-quote-item="prod-jarra"]')).toBeHidden();
