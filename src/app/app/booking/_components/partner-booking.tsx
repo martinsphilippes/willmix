@@ -113,9 +113,10 @@ const PHOTO_COL_REM = 6.5;
 
 /**
  * Colunas do booking em preenchimento: os campos da planilha, um por coluna,
- * com os que identificam o item na frente. Sem o Nome, o Nº do item e as duas
- * últimas (quantidade de compra e TT PCS): saíram da importação (dono,
- * 23/11/2026). O que a planilha trouxer nesses campos continua gravado.
+ * com os que identificam o item na frente. Sem o Nome, o Nº do item, a
+ * programação de compra, o intervalo de saída, a quantidade de compra e o TT
+ * PCS: saíram da importação (dono, 23 e 24/11/2026). O que a planilha
+ * trouxer nesses campos continua gravado.
  */
 const EDIT_COLUMNS: Array<{ field: BookingItemField; width: string }> = [
   { field: "factoryItemCode", width: "w-28" },
@@ -137,8 +138,6 @@ const EDIT_COLUMNS: Array<{ field: BookingItemField; width: string }> = [
   { field: "packageType", width: "w-32" },
   { field: "colorAssortment", width: "w-36" },
   { field: "powerDetail", width: "w-32" },
-  { field: "purchaseSchedule", width: "w-32" },
-  { field: "departureIntervalDays", width: "w-24" },
 ];
 
 /**

@@ -90,8 +90,15 @@ test("Book do fornecedor: várias planilhas, preencher todas as linhas e seta pa
   const field = (n: number, name: string) =>
     lines.nth(n - 1).locator(`input[data-partner-item-field$=":${name}"]`);
   await expect(field(4, "factoryItemCode")).toHaveValue(`${TAG}-4`);
-  // Sem o Nome, o Nº do item e as duas últimas colunas.
-  for (const gone of ["productName", "itemNumber", "purchaseQty", "plannedQty"])
+  // Sem o Nome, o Nº do item, a programação, o intervalo e as duas últimas.
+  for (const gone of [
+    "productName",
+    "itemNumber",
+    "purchaseSchedule",
+    "departureIntervalDays",
+    "purchaseQty",
+    "plannedQty",
+  ])
     await expect(
       page.locator(`[data-partner-item-field$=":${gone}"]`),
     ).toHaveCount(0);

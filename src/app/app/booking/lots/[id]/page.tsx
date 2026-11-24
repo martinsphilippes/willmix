@@ -125,8 +125,9 @@ const STATUS_TONE: Record<BookingLotStatus, Tone> = {
 
 /**
  * Colunas dos itens, na ordem da planilha do booking. Sem o Nome, o Nº do
- * item e as duas últimas (quantidade de compra e TT PCS), que saíram da
- * importação (dono, 23/11/2026); o que a planilha trouxer continua gravado.
+ * item, a programação de compra, o intervalo de saída, a quantidade de
+ * compra e o TT PCS, que saíram da importação (dono, 23 e 24/11/2026); o que
+ * a planilha trouxer continua gravado.
  */
 const COLUMNS: Array<{
   field: BookingItemField;
@@ -152,8 +153,6 @@ const COLUMNS: Array<{
   { field: "moq", kind: "number", width: "w-20" },
   { field: "colorAssortment", kind: "text", width: "w-36" },
   { field: "powerDetail", kind: "text", width: "w-32" },
-  { field: "purchaseSchedule", kind: "text", width: "w-32" },
-  { field: "departureIntervalDays", kind: "text", width: "w-24" },
 ];
 
 const SIGNAL_TONE: Record<string, Tone> = {
