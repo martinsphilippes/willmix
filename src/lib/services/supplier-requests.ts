@@ -188,6 +188,9 @@ export async function listSelectionItems(
     };
   };
   const matched = items
+    // Recusado na tela do book: não vai para a seleção (o grupo aberto
+    // pelos ids, de uma escolha já gravada, não muda).
+    .filter((i) => options.ids || !i.refusedAt)
     .map(rowOf)
     .filter((r): r is SelectionRow => !!r)
     .filter((r) =>

@@ -710,3 +710,18 @@ export async function registerBookingLotPartnerAction(form: FormData) {
     return withQuery(back, "supplier", "created");
   });
 }
+
+/** Recusa os itens marcados do book (não vão para a seleção; ficam trabalhados). */
+export async function refuseBookingItemsAction(
+  lotId: string,
+  itemIds: string[],
+): Promise<InlineResult> {
+  const id = ID.safeParse(lotId);
+  return inline(id.success ? id.data : null, async (user) => {
+    const input = z
+      .object({ lotId: ID, itemIds: z.array(ID).min(1).max(500) })
+      .parse({ lotId, itemIds });
+    const { refuseBookingItems } = await import("@/lib/services/booking-lots");
+    await refuseBookingItems(user, input.lotId, input.itemIds);
+  });
+}
