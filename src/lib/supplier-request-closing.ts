@@ -21,9 +21,25 @@ type Row = Pick<
 
 const FINAL = new Set(["approved", "declined", "cancelled"]);
 
-/** Encerrada: todos os produtos decididos (aprovado, recusado ou cancelado). */
-export const requestClosed = (products: Pick<Row, "status">[]) =>
-  products.length > 0 && products.every((p) => FINAL.has(p.status));
+/**
+ * Encerrada: todos os produtos decididos (aprovado, recusado ou cancelado)
+ * e, nos aprovados, a amostra aprovada (dono, 24/11/2026): a aprovada com a
+ * amostra pendente, enviada ou reprovada continua em "Em andamento", para a
+ * amostra não sair de vista. A dispensada conta como aprovada; a aprovada que
+ * já está num pedido de compra conta como encerrada.
+ */
+export const requestClosed = (
+  products: Pick<
+    Row,
+    "status" | "orderId" | "decidedAt" | "updatedAt" | "sampling"
+  >[],
+) =>
+  products.length > 0 &&
+  products.every(
+    (p) =>
+      FINAL.has(p.status) &&
+      (p.status !== "approved" || !!p.orderId || samplingApproved(p)),
+  );
 
 export type RequestOrderState =
   /** Nenhum produto aprovado: não vira pedido. */
