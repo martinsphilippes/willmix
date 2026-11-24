@@ -1,10 +1,17 @@
 import type { Translate } from "@/i18n";
-import { orderMilestoneText } from "@/lib/milestones";
+import { orderMilestoneText, stepOfItem } from "@/lib/milestones";
 import { requirementLabel } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getStore } from "@/lib/db";
 import type { FlowEntity, FlowEntityItem } from "@/lib/services/flow";
-import { orderInStepHref, type FlowStep } from "@/lib/flow";
+import {
+  blockLabelKey,
+  orderInStepHref,
+  stepId,
+  stepLabelKey,
+  type FlowBlock,
+  type FlowStep,
+} from "@/lib/flow";
 import { Badge, Empty, Table, Td, TextLink, Th, rowClass } from "./ui";
 import { loadOrderCells } from "@/lib/services/order-cells";
 import {
@@ -24,8 +31,28 @@ import { partyOfRole, turnTone, turnWaitingKey } from "@/lib/turn";
 
 const DAY = 86_400_000;
 
-function itemLabel(item: FlowEntityItem, t: Translate): string {
-  if (item.kind === "requirement") return requirementLabel(t, item.requirement);
+/**
+ * Passo do item quando ele é de outro passo (dono, 24/11/2026, opção 1): o
+ * cadastro do produto do Pedido novo (Cadastros → Produtos) aparece também
+ * em Pedido > Pedidos; nulo quando o item é do passo da lista.
+ */
+function elsewhereOf(item: FlowEntityItem, here: string): string | null {
+  if (item.kind !== "requirement") return null;
+  const at = stepOfItem(item.requirement);
+  return at && at !== here ? at : null;
+}
+
+function itemLabel(item: FlowEntityItem, t: Translate, here: string): string {
+  if (item.kind === "requirement") {
+    const label = requirementLabel(t, item.requirement);
+    const at = elsewhereOf(item, here);
+    if (!at) return label;
+    const [block, key] = at.split("/");
+    return t("flow.all.elsewhere", {
+      where: `${t(blockLabelKey(block as FlowBlock))} → ${t(stepLabelKey({ block: block as FlowBlock, key }))}`,
+      item: label,
+    });
+  }
   if (item.kind === "import")
     return t(`importFlow.step.${item.key}` as DictionaryKey);
   return item.title ? t(item.title.detail, item.title.values) : "—";
@@ -58,6 +85,7 @@ export async function FlowAll({
   t: Translate;
   now?: Date;
 }) {
+  const here = stepId(step);
   if (!entities.length)
     return <Empty>{emptyText ?? t("flow.all.empty")}</Empty>;
   const supplierIds = [
@@ -117,7 +145,18 @@ export async function FlowAll({
             const days = Number.isFinite(since)
               ? Math.max(0, Math.floor((now.getTime() - since) / DAY))
               : null;
-            const labels = [...new Set(e.items.map((i) => itemLabel(i, t)))];
+            const labels = [
+              ...new Set(e.items.map((i) => itemLabel(i, t, here))),
+            ];
+            // Tudo o que falta é de outro passo (o cadastro do Pedido novo):
+            // "Ver" abre o pedido, onde a pendência dele aponta; a tela do
+            // passo só mostraria os itens deste passo.
+            const elsewhere =
+              e.items.length > 0 &&
+              e.items.every((i) => elsewhereOf(i, here) !== null);
+            const viewHref = elsewhere
+              ? `/app/orders/${encodeURIComponent(e.order.id)}`
+              : orderInStepHref(step, e.order.id);
             if (!partner) {
               const cell = cells?.byKey.get(e.order.id);
               const requirements = e.items.flatMap((i) =>
@@ -162,15 +201,17 @@ export async function FlowAll({
                   <Td className={num}>{cell?.deliveries ?? "—"}</Td>
                   <OrderTotalsTds t={t} cells={cell} seeValue={seeValue} />
                   <Td>{nameOf(e.order.supplierId)}</Td>
-                  <Td className="text-xs text-zinc-600">{labels.join(", ")}</Td>
+                  <Td
+                    className="text-xs text-zinc-600"
+                    data-flow-all-elsewhere={elsewhere ? "" : undefined}
+                  >
+                    {labels.join(", ")}
+                  </Td>
                   <Td className="whitespace-nowrap">
                     {days === null ? "—" : t("flow.cases.days", { n: days })}
                   </Td>
                   <Td className="whitespace-nowrap text-right">
-                    <TextLink
-                      href={orderInStepHref(step, e.order.id)}
-                      data-flow-all-view
-                    >
+                    <TextLink href={viewHref} data-flow-all-view>
                       {t("flow.all.view")}
                     </TextLink>
                   </Td>
@@ -190,15 +231,17 @@ export async function FlowAll({
                 <Td className="whitespace-nowrap">
                   {orderMilestoneText(t, e.order.status)}
                 </Td>
-                <Td className="text-xs text-zinc-600">{labels.join(", ")}</Td>
+                <Td
+                  className="text-xs text-zinc-600"
+                  data-flow-all-elsewhere={elsewhere ? "" : undefined}
+                >
+                  {labels.join(", ")}
+                </Td>
                 <Td className="whitespace-nowrap">
                   {days === null ? "—" : t("flow.cases.days", { n: days })}
                 </Td>
                 <Td className="whitespace-nowrap text-right">
-                  <TextLink
-                    href={orderInStepHref(step, e.order.id)}
-                    data-flow-all-view
-                  >
+                  <TextLink href={viewHref} data-flow-all-view>
                     {t("flow.all.view")}
                   </TextLink>
                 </Td>
