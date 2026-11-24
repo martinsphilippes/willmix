@@ -117,6 +117,14 @@ export const pt = {
   "bookingLots.import.currency": "Moeda quando a planilha não diz",
   "bookingLots.import.currencyHint":
     "Vale para os preços sem moeda na coluna nem no cabeçalho.",
+  // Card "Planilha do book" da Wellmix, versão compacta (dono, 24/11/2026).
+  "bookingLots.import.currencyDefault": "Moeda padrão",
+  "bookingLots.import.currencyDefaultHint":
+    "Aplicada apenas aos preços sem moeda na coluna ou no cabeçalho.",
+  "bookingLots.import.fileHintCompact":
+    "Excel (.xlsx ou .xls), até 80 itens. Até 10 planilhas de uma vez formam um book só, na ordem escolhida.",
+  "bookingLots.import.urlHintCompact":
+    'Compartilhe como "Qualquer pessoa com o link" (Leitor) e cole aqui; sem isso, o Google não entrega a planilha. Fotos podem não vir. Com arquivo e link, vale o arquivo.',
   "bookingLots.import.submit": "Importar book",
   "bookingLots.import.submitting": "Lendo a planilha…",
   "bookingLots.import.columns.title": "Colunas lidas",
@@ -403,6 +411,13 @@ export const en: typeof pt = {
   "bookingLots.import.currency": "Currency when the spreadsheet does not say",
   "bookingLots.import.currencyHint":
     "Applies to prices with no currency in the column or header.",
+  "bookingLots.import.currencyDefault": "Default currency",
+  "bookingLots.import.currencyDefaultHint":
+    "Applied only to prices with no currency in the column or header.",
+  "bookingLots.import.fileHintCompact":
+    "Excel (.xlsx or .xls), up to 80 items. Up to 10 spreadsheets at once make a single book, in the order chosen.",
+  "bookingLots.import.urlHintCompact":
+    'Share it as "Anyone with the link" (Viewer) and paste it here; otherwise Google will not deliver the sheet. Photos may not come through. With both a file and a link, the file is used.',
   "bookingLots.import.submit": "Import book",
   "bookingLots.import.submitting": "Reading the spreadsheet…",
   "bookingLots.import.columns.title": "Columns read",
@@ -682,6 +697,13 @@ export const zh: typeof pt = {
   "bookingLots.import.fileHint": "Excel（.xlsx 或 .xls），最多 80 个条目。",
   "bookingLots.import.currency": "表格未注明时的币种",
   "bookingLots.import.currencyHint": "用于列和表头都没有币种的价格。",
+  "bookingLots.import.currencyDefault": "默认币种",
+  "bookingLots.import.currencyDefaultHint":
+    "仅用于列和表头都没有币种的价格。",
+  "bookingLots.import.fileHintCompact":
+    "Excel（.xlsx 或 .xls），最多 80 个条目。一次最多 10 个表格，按选择顺序合并为一个 Book。",
+  "bookingLots.import.urlHintCompact":
+    "请共享为“知道链接的任何人”（查看者）并粘贴到这里；否则 Google 不会提供表格。照片可能无法导入。同时提供文件和链接时，以文件为准。",
   "bookingLots.import.submit": "导入 Book",
   "bookingLots.import.submitting": "正在读取表格…",
   "bookingLots.import.columns.title": "读取的列",
