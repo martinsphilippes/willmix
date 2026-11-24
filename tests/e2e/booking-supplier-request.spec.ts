@@ -634,7 +634,7 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(turnCell).toContainText("Aguardando fornecedor");
   await expect(
     turnCell.locator("[data-supplier-table-turn-action]"),
-  ).toHaveText("Enviar a amostragem");
+  ).toHaveText("Carregar a amostragem");
   const turnWho = turnCell.locator('[data-request-responsible="ok"]');
   await expect(turnWho).toContainText("Fornecedor");
   await turnWho.click();
