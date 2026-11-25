@@ -128,8 +128,7 @@ begin
   return new;
 end;
 $$;
-drop trigger if exists booking_items_weight_guard on public."booking_items";
-create trigger booking_items_weight_guard
+create or replace trigger booking_items_weight_guard
   before insert or update on public."booking_items"
   for each row execute function public.booking_items_weight_guard();`;
 
