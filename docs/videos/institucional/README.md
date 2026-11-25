@@ -1,15 +1,16 @@
 # Vídeos institucionais do Portal Wellmix
 
-Vídeos para o dono compartilhar o portal com clientes, fornecedores e parceiros, pedidos em 15/11/2026 (a versão em português do Brasil, em 16/11/2026):
+Vídeos para o dono compartilhar o portal com clientes, fornecedores e parceiros, pedidos em 15/11/2026 (a versão em português do Brasil, em 16/11/2026; a em mandarim, em 24 e 25/11/2026):
 
 | Vídeo                               | Para quê                                                                            | Duração | Arquivos                                       |
 | ----------------------------------- | ----------------------------------------------------------------------------------- | ------- | ---------------------------------------------- |
 | **Curto**                           | Os benefícios do portal, para mandar por mensagem ou rede social                    | 0:59    | `wellmix-short-pt.mp4`, `wellmix-short-zh.mp4` |
 | **Completo**                        | O que cada papel faz, a comunicação centralizada e os atributos do portal           | 5:15    | `wellmix-full-pt.mp4`, `wellmix-full-zh.mp4`   |
 | **Completo em português do Brasil** | O mesmo vídeo completo, com telas, textos e narração em português e **sem legenda** | 5:55    | `wellmix-full_br-pt.mp4`                       |
+| **Completo em mandarim**            | O mesmo vídeo completo, com telas, textos e narração em mandarim e **sem legenda**  | 5:23    | `wellmix-full_zh-zh.mp4`                       |
 
 - **Formato:** 1920 × 1080 (Full HD), 60 quadros por segundo, H.264 + AAC, pronto para YouTube, LinkedIn e WhatsApp.
-- **Áudio:** narração em **inglês**, igual nas quatro versões em inglês. A versão em português do Brasil tem narração em português, com voz feminina gerada pelo dono no ElevenLabs (seção 4).
+- **Áudio:** narração em **inglês**, igual nas quatro versões em inglês. A versão em português do Brasil tem narração em português, com voz feminina gerada pelo dono no ElevenLabs (seção 4); a versão em mandarim, voz feminina em mandarim gerada aqui com um modelo aberto (seção 5).
 - **Legenda:** queimada na imagem, em **português** (`-pt`) ou **mandarim** (`-zh`).
 - **Idioma das telas do portal:** no vídeo **curto**, o da legenda (pt ou zh). No **completo**, **inglês** nas duas versões (pedido do dono em 15/11/2026): o portal de verdade com o idioma em EN e a base de demonstração também em inglês (`scripts/video/data-en.mjs`). A cena dos três idiomas continua mostrando pt, en e zh.
 - **Abertura:** a vinheta do portal (`public/intro/wellmix-intro.mp4`), sem alteração; o vídeo continua do último quadro dela.
@@ -336,3 +337,5 @@ node render.mjs full_zh zh && node mix.mjs full_zh zh --audio
 11. **Licença da voz.** A narração em português foi gerada na conta do dono no ElevenLabs; para uso comercial (vídeo da empresa), o plano precisa incluir licença comercial.
 12. **Legenda opcional da versão em português.** O vídeo sai sem legenda, como pedido. Se quiser publicar com legenda opcional (YouTube), dá para gerar o `.srt` da narração em português a partir da linha do tempo.
 13. **"Toca em enviar" na inspeção (versão em português, perto de 2:45).** O roteiro diz "Depois digita o peso medido e toca em enviar". Na narração do ElevenLabs, a transcrição automática ouve "toque em enviar": o "a" de "toca" se junta ao "em", como na fala corrida. É do áudio do dono, não do corte. Se incomodar ao ouvir, gere de novo só essa frase no ElevenLabs, com a mesma voz e o texto "Depois digita o peso medido e toca no botão Enviar.", e troque com `--fix inspect.2=<arquivo>`.
+14. **Ouvir a versão em mandarim.** A voz foi conferida por medição (transcrição de cada fala, velocidade, nota de naturalidade e mesma voz do começo ao fim), mas ninguém aqui ouve mandarim. Antes de publicar, vale um falante de mandarim ouvir o vídeo: o recado pronto, em chinês, está em `narracao-zh/para-quem-vai-ouvir.md`. Se ele apontar uma frase, ela é gerada de novo só ela (`tts/tts_zh.py --only <id> --force --best --takes 6`) e o vídeo é remontado.
+15. **Licença da voz em mandarim.** Qwen3-TTS é Apache-2.0 (uso comercial livre) e a voz "Serena" é uma das vozes prontas do próprio modelo; não há conta nem plano a pagar.
