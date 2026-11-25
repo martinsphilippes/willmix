@@ -331,6 +331,13 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     "catalog",
   ]);
   await grantTeamScreen(page, plannerId, plannerName, "quotes");
+  // Um book fechado ainda por trabalhar, para ele travar e ver na Seleção.
+  const codeC = `${TAG}-C`;
+  await importAndClose(
+    page,
+    bookingSheet("Shenzhen Supplier A", codeC, `Glass cup ${TAG} small`),
+    "Shenzhen Supplier A",
+  );
   await login(page, plannerEmail);
   await page.goto(requestUrl);
   await expect(page.locator("[data-supplier-table-row]")).toHaveCount(1);
@@ -368,6 +375,18 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   // A previsão de preço segue "Ver preço de compra" (dono, 15/11/2026): na
   // Seleção, sem o custo por peça e a coluna da previsão; no Book, sem a coluna da
   // análise; na lista dos bookings, sem os sinais.
+  // Na Seleção o analista só trabalha books travados para ele (dono,
+  // 25/11/2026): sem trava, a lista vem vazia; trava um book fechado e os
+  // itens dele aparecem.
+  await page.goto(`/app/booking/selection?q=${encodeURIComponent(TAG)}`);
+  await expect(page.locator("[data-selection-no-lock]")).toBeVisible();
+  await expect(page.locator("[data-selection-item]")).toHaveCount(0);
+  await page.goto("/app/booking");
+  await page
+    .locator("[data-booking-lot-row]", { hasText: `booking-${codeC}` })
+    .locator("[data-booking-lock-row]")
+    .click();
+  await page.waitForURL(/locked=1/);
   await page.goto(`/app/booking/selection?q=${encodeURIComponent(TAG)}`);
   await expect(page.locator("[data-selection-item]").first()).toBeVisible();
   await expect(page.locator("[data-selection-cost]")).toHaveCount(0);
