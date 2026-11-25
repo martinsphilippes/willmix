@@ -7606,6 +7606,63 @@
       ]
     },
     {
+      "$id": "project_docs",
+      "databaseId": "willmix",
+      "name": "Gestão do projeto (quadro da Plataforma Wellmix)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "collection",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "docId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "data",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "longtext"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_doc",
+          "type": "unique",
+          "columns": [
+            "collection",
+            "docId"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_collection",
+          "type": "key",
+          "columns": [
+            "collection"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
       "$id": "customer_groups",
       "databaseId": "willmix",
       "name": "Grupos econômicos (carteira)",
