@@ -206,8 +206,10 @@ const tr = (s) => {
 // Só valores (as chaves do JSON são nomes de campo e ficam como estão).
 const walk = (v, key = "") => {
   if (typeof v === "string") {
-    if (key === "unit" && v === "pcs") {
-      count.set("unit pcs", (count.get("unit pcs") ?? 0) + 1);
+    // Unidade de quantidade gravada em inglês ou português ("pcs", "un"):
+    // em chinês, 件 (como o portal mostra na lista do fornecedor).
+    if (key === "unit" && (v === "pcs" || v === "un")) {
+      count.set(`unit ${v}`, (count.get(`unit ${v}`) ?? 0) + 1);
       return "件";
     }
     return tr(v);
