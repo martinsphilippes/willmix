@@ -320,26 +320,10 @@ export async function getPartnerBookingLot(
   // virar produto (o ganhador de uma escolha gravada ou o item de uma
   // solicitação); os outros que passaram pela seleção foram recusados
   // (dono, 24/11/2026).
-  const workedIds = items.filter((i) => i.workedAt).map((i) => i.id);
-  const chosen = new Set<string>();
-  if (workedIds.length) {
-    const { listColumns } = await import("@/lib/db/lookup");
-    try {
-      const [groups, requests] = await Promise.all([
-        listColumns(store, "selection_groups", ["chosenItemId"], {
-          filter: { status: ["saved", "requested"], chosenItemId: workedIds },
-        }),
-        listColumns(store, "supplier_requests", ["bookingItemId"], {
-          filter: { bookingItemId: workedIds },
-        }),
-      ]);
-      for (const g of groups) chosen.add(g.chosenItemId);
-      for (const r of requests) chosen.add(r.bookingItemId);
-    } catch (error) {
-      const { isSchemaMissing } = await import("@/lib/db/errors");
-      if (!isSchemaMissing(error)) throw error;
-    }
-  }
+  const { chosenBookingItemIds } = await import("./booking-lots");
+  const chosen = await chosenBookingItemIds(
+    items.filter((i) => i.workedAt).map((i) => i.id),
+  );
   return {
     lot: { ...lotView(lot), worked: workedShare(items) },
     items: items

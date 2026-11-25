@@ -27,7 +27,11 @@ import {
   type BookingItem,
   type BookingLotStatus,
 } from "@/lib/db/schema";
-import { bookingItemTypes, getBookingLot } from "@/lib/services/booking-lots";
+import {
+  bookingItemTypes,
+  chosenBookingItemIds,
+  getBookingLot,
+} from "@/lib/services/booking-lots";
 import { durationText, lockLate, workedShare } from "@/lib/booking-locks";
 import { GROUP_MAX } from "@/lib/booking-selection";
 import { getSettings } from "@/lib/settings";
@@ -206,6 +210,13 @@ export default async function BookingLotPage({
   // Itens trabalhados na Seleção de itens e com quem está o book (dono,
   // 23/11/2026; docs/BOOKING.md, "Itens trabalhados" e "Travar books").
   const worked = workedShare(items);
+  // Selecionado × recusado (dono, 24/11/2026): selecionado é só o escolhido
+  // para virar produto; o resto que passou pela seleção foi recusado.
+  const chosen = await chosenBookingItemIds(
+    items.filter((i) => i.workedAt).map((i) => i.id),
+  );
+  const refusedOf = (i: (typeof items)[number]) =>
+    !!i.refusedAt || (!!i.workedAt && !chosen.has(i.id));
   // Fabricante: a Fábrica do book × o que a planilha traz em cada linha
   // (dono, 24/11/2026). Diferente, o book não fecha.
   const manufacturer = bookManufacturer(lot);
@@ -559,6 +570,7 @@ export default async function BookingLotPage({
           // Linha do item trabalhado: fundo verde claro (também nas colunas
           // presas), para ver de longe o que já passou pela Seleção.
           const done = !!item.workedAt;
+          const refused = refusedOf(item);
           const stuckBg = done
             ? "bg-emerald-50"
             : "bg-white group-hover:bg-[color-mix(in_oklab,var(--color-brand-50)_40%,white)]";
@@ -571,7 +583,7 @@ export default async function BookingLotPage({
               )}
               data-booking-item={item.id}
               data-booking-item-worked={
-                item.refusedAt ? "refused" : done ? "yes" : "no"
+                refused ? "refused" : done ? "yes" : "no"
               }
               data-bulk-row={bulkOn ? item.id : undefined}
             >
@@ -635,16 +647,12 @@ export default async function BookingLotPage({
                 </span>
               </td>
               <td className="border-b border-zinc-100 px-2 py-2 align-top text-xs">
-                <Badge
-                  tone={
-                    item.refusedAt ? "danger" : done ? "success" : "neutral"
-                  }
-                >
+                <Badge tone={refused ? "danger" : done ? "success" : "neutral"}>
                   {t(
-                    item.refusedAt
+                    refused
                       ? "bookWork.worked.refused"
                       : done
-                        ? "bookWork.worked.yes"
+                        ? "bookWork.worked.selected"
                         : "bookWork.worked.no",
                   )}
                 </Badge>
@@ -1412,7 +1420,7 @@ export default async function BookingLotPage({
                     são recusados (ficam trabalhados; 24/11/2026). Só com o
                     book fora do rascunho: antes disso ele ainda não é
                     trabalhado. */}
-                {bookingLotLockable(lot.status) ? (
+                {bookingLotLockable(lot.status) && settings.bookingWorkOnLot ? (
                   <div
                     className="mb-2 flex flex-wrap items-center gap-2"
                     data-booking-to-selection

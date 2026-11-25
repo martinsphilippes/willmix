@@ -552,6 +552,19 @@ export default async function SettingsPage({
                     />
                   </Field>
                   <Field
+                    label={t("bookWork.settings.workOnLot")}
+                    hint={t("bookWork.settings.workOnLotHint")}
+                  >
+                    <Select
+                      name="bookingWorkOnLot"
+                      defaultValue={String(s.bookingWorkOnLot)}
+                      data-setting-booking-work-on-lot
+                    >
+                      <option value="true">{t("common.yes")}</option>
+                      <option value="false">{t("common.no")}</option>
+                    </Select>
+                  </Field>
+                  <Field
                     label={t("bookWork.settings.sla")}
                     hint={t("bookWork.settings.slaHint")}
                   >
