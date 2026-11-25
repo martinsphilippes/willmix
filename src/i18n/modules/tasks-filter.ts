@@ -99,7 +99,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "tasks.filter.overdue": "已逾期",
   "tasks.filter.today": "今天到期",
   "tasks.filter.week": "7 天内",
-  "tasks.filter.later": "更晚",
+  "tasks.filter.later": "7 天以后",
   "tasks.filter.none": "无期限",
   "tasks.filter.clear": "清除筛选",
   "tasks.filter.empty": "没有符合该筛选的待办。",

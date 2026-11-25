@@ -15,6 +15,7 @@ import { join } from "node:path";
 import { ROOT } from "./lib.mjs";
 import { VIDEOS } from "./script.mjs";
 import { VIDEOS_BR } from "./script.br.mjs";
+import { VIDEOS_ZH } from "./script.zh.mjs";
 
 export const FPS = 60;
 /** Vinheta de abertura do portal: 410 quadros a 60 fps. */
@@ -24,13 +25,24 @@ const PRE = 0.6;
 const GAP = 0.3;
 const POST = 0.75;
 const LIMIT = { pt: 42, zh: 16, en: 42 };
-const ALL = { ...VIDEOS, ...VIDEOS_BR };
+const ALL = { ...VIDEOS, ...VIDEOS_BR, ...VIDEOS_ZH };
 const SPEED = { pt: 17, zh: 9 };
+/** Sem áudio ainda: duração estimada da fala. Em chinês não há espaços entre
+ *  as palavras; conta-se por caractere (narração em torno de 4,3 por segundo,
+ *  com uma pausa curta a cada pontuação). */
+const HAN = /[㐀-鿿]/g;
+function estimate(text) {
+  const han = (text.match(HAN) ?? []).length;
+  if (han < 2) return text.split(/\s+/).length / 2.7 + 0.25;
+  const latin = (text.replace(HAN, " ").match(/[A-Za-z0-9]+/g) ?? []).length;
+  const pauses = (text.match(/[，、。：；？！]/g) ?? []).length;
+  return han / 4.3 + latin * 0.45 + pauses * 0.12 + 0.2;
+}
 
 const [video = "short"] = process.argv.slice(2);
 const def = ALL[video];
 if (!def) throw new Error(`vídeo desconhecido: ${video}`);
-/** Idioma da narração (en no roteiro original; pt em script.br.mjs) e das legendas. */
+/** Idioma da narração (en no roteiro original; pt em script.br.mjs; zh em script.zh.mjs) e das legendas. */
 const VOICE = def.voice ?? "en";
 const LANGS = def.noSubs ? [def.lang ?? VOICE] : ["pt", "zh"];
 /** Texto que a voz lê: o `say` da fala ou o texto do idioma, com as leituras de siglas e nomes. */
@@ -82,7 +94,7 @@ for (const s of def.scenes) {
     let d;
     if (existsSync(clip(s, i))) d = wavSeconds(clip(s, i));
     else {
-      d = c[VOICE].split(/\s+/).length / 2.7 + 0.25;
+      d = estimate(c[VOICE]);
       estimated++;
     }
     cue.push(local);
@@ -183,7 +195,9 @@ function writeSrt(lang, subs) {
 
 /* Todo texto de tela, para o palco carregar as fontes antes do 1º quadro. */
 const glyphs = [
-  ...new Set(JSON.stringify(def.scenes.map((s) => s.props))),
+  ...new Set(
+    JSON.stringify([def.scenes.map((s) => [s.props, s.chapter]), def.ui]),
+  ),
 ].join("");
 
 for (const lang of LANGS) {

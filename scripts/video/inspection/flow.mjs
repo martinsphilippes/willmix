@@ -20,12 +20,18 @@
  * ficam na chave "br" do mesmo state.json (o inglês, em "taps", não muda).
  * Sem a variável (ou LANGUAGE=en) tudo continua como antes.
  *
+ * LANGUAGE=zh faz as mesmas capturas com o portal em chinês (cookie
+ * wm_locale=zh, navegador zh-CN, fotos com nome de foto de celular) e grava em
+ * film/shots/cn; os pontos de toque ficam na chave "cn". A base é a cópia em
+ * chinês de .data-video-insp-before (data-zh.mjs e data-shift.mjs).
+ *
  *   python3 inspection/photos.py                       (as três fotos, uma vez)
  *   DATA_MODE=memory DATA_DIR=.data-video-insp npx next start -p 3300
  *   node inspection/flow.mjs                           (tudo, base nova)
  *   node inspection/flow.mjs --from <etapa>            (continua; estado em out/insp/state.json)
  *   node inspection/flow.mjs --only phone              (só as capturas)
  *   LANGUAGE=pt node inspection/flow.mjs --only phone  (as capturas em português)
+ *   LANGUAGE=zh node inspection/flow.mjs --only phone  (as capturas em chinês)
  *
  * Etapas: books, request, product, order, registry, lanes, contract, payment,
  * snapshot, phone. "snapshot" copia a base para .data-video-insp-before: para
@@ -53,12 +59,19 @@ const HERE = join(ROOT, "out/insp");
  * valor, ou nenhum, é o inglês de sempre.
  */
 const PT = /^pt/i.test(process.env.LANGUAGE ?? "");
+/** LANGUAGE=zh (ou zh-CN): as capturas em chinês, para o vídeo em mandarim. */
+const ZH = /^zh/i.test(process.env.LANGUAGE ?? "");
 /** Idioma do portal (cookie wm_locale), do navegador e pasta das capturas. */
 const LOCALE = PT
   ? { cookie: "pt", browser: "pt-BR" }
-  : { cookie: "en", browser: "en-US" };
+  : ZH
+    ? { cookie: "zh", browser: "zh-CN" }
+    : { cookie: "en", browser: "en-US" };
 /** Onde as capturas do vídeo ficam. */
-const SHOTS = join(ROOT, PT ? "film/shots/br" : "film/shots/intl");
+const SHOTS = join(
+  ROOT,
+  PT ? "film/shots/br" : ZH ? "film/shots/cn" : "film/shots/intl",
+);
 mkdirSync(HERE, { recursive: true });
 mkdirSync(SHOTS, { recursive: true });
 const BASE = process.env.PORTAL ?? "http://localhost:3300";
@@ -81,7 +94,15 @@ const WEIGHT = PT ? "0,30" : "0.30";
 /** Texts the script matches on the screen, per language (data-attributes first). */
 const TEXT = PT
   ? { card: /em Inspeção$/, saved: "Salvo." }
-  : { card: /in Inspection$/, saved: "Saved." };
+  : ZH
+    ? { card: /· 验货$/, saved: "已保存。" }
+    : { card: /in Inspection$/, saved: "Saved." };
+/** File names the portal shows for the three photos (zh: phone-camera names). */
+const NAMES = PT
+  ? ["copo-sem-embalagem.jpg", "copo-embalado.jpg", "copo-na-balanca.jpg"]
+  : ZH
+    ? ["IMG_2041.jpg", "IMG_2042.jpg", "IMG_2043.jpg"]
+    : [];
 
 /** `as`: the file name the portal shows (the bytes come from `name`). */
 const photo = (name, as = name) => ({
@@ -90,15 +111,9 @@ const photo = (name, as = name) => ({
   buffer: readFileSync(join(HERE, "photos", name)),
 });
 const PHOTO = {
-  unpacked: photo(
-    "glass-cup-unpacked.jpg",
-    PT ? "copo-sem-embalagem.jpg" : undefined,
-  ),
-  packed: photo("glass-cup-packed.jpg", PT ? "copo-embalado.jpg" : undefined),
-  scale: photo(
-    "glass-cup-on-scale.jpg",
-    PT ? "copo-na-balanca.jpg" : undefined,
-  ),
+  unpacked: photo("glass-cup-unpacked.jpg", NAMES[0]),
+  packed: photo("glass-cup-packed.jpg", NAMES[1]),
+  scale: photo("glass-cup-on-scale.jpg", NAMES[2]),
 };
 const pdf = (name) => ({
   name,
@@ -943,9 +958,10 @@ async function phone(browser) {
   await frame(page, saved, TOP);
   await shot(page, "m-insp-4.png");
 
-  // The English taps stay in "taps"; the Portuguese ones go to "br".
-  remember(PT ? { br: taps } : { taps });
-  log("taps", PT ? "br" : "en", JSON.stringify(taps));
+  // The English taps stay in "taps"; the Portuguese ones go to "br" and the
+  // Chinese ones to "cn".
+  remember(PT ? { br: taps } : ZH ? { cn: taps } : { taps });
+  log("taps", PT ? "br" : ZH ? "cn" : "en", JSON.stringify(taps));
   await ctx.close();
 
   // 5. The same step as Wellmix sees it (computer), now with what was sent.
@@ -989,7 +1005,11 @@ const todo = only
 // with "pt" the number field takes the decimal comma (--lang alone does not).
 const browser = await chromium.launch({
   args: [`--lang=${LOCALE.browser}`, "--force-color-profile=srgb"],
-  env: PT ? { ...process.env, LANGUAGE: "pt" } : process.env,
+  env: PT
+    ? { ...process.env, LANGUAGE: "pt" }
+    : ZH
+      ? { ...process.env, LANGUAGE: "zh_CN" }
+      : process.env,
 });
 try {
   const ctx = await browser.newContext({

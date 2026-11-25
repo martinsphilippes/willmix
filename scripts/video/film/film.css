@@ -801,6 +801,13 @@ html[data-lang="zh"] #sub-box {
 .pin.br b {
   top: 44px;
 }
+/* Rótulo em chinês: o espaçamento largo das maiúsculas latinas separa os
+   caracteres ("巴 西"); fica o dos outros rótulos do mapa, com sombra para ler
+   sobre o verde. */
+.pin b.han {
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+}
 .handoff {
   position: absolute;
   left: 0;

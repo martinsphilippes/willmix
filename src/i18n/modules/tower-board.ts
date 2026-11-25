@@ -308,7 +308,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "board.card.ordContractSupplier": "待供应商签署",
   "board.card.ordContractDownPayment": "向供应商支付定金（放行生产）",
   "board.card.ordContractSankhya": "来自 Sankhya（仅供查看）",
-  "board.card.lnSupplier": "供应商：刀模、照片、MOQ 与交期",
+  "board.card.lnSupplier": "供应商：刀模、照片、起订量与交期",
   "board.card.lnArt": "代理：设计与终稿",
   "board.card.lnArtReview": "Wellmix：审核设计",
   "board.card.lnCert": "认证机构：证书",

@@ -12,7 +12,7 @@ const when = (s, o, fallback = 0.8) =>
 
 function browser(ctx, shot, style = "", extra = "") {
   return `<div class="browser" style="${style}">
-    <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}Portal Wellmix</span></div>
+    <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}${ctx.esc(ctx.ui.portal)}</span></div>
     <div class="view"><img src="${ctx.shot(shot)}" alt="" />${extra}</div>
   </div>`;
 }
@@ -25,7 +25,7 @@ function mobileDesk(s, ctx, d) {
   const t = when(s, d);
   const frame = `--ox:${d.ox ?? "50%"};--oy:${d.oy ?? "20%"};--z0:${d.zoom0 ?? 1};--z1:${d.zoom ?? 1.08};--kd:${s.dur}s`;
   return `<div class="shot tilt" style="${at(0.45)};--float:${s.dur}s"><div class="browser" style="--w:${d.w ?? 760}px">
-      <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}Portal Wellmix</span></div>
+      <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}${ctx.esc(ctx.ui.portal)}</span></div>
       <div class="view"><img src="${ctx.shot(d.before ?? d.shot)}" alt="" style="${frame}" />
         ${d.before ? `<div class="layer a a-fade" style="${at(t, 0.5)}"><img src="${ctx.shot(d.shot)}" alt="" style="${frame}" /></div>` : ""}</div></div>
     ${d.label ? `<div class="pill a a-pop" style="${at(1.1, 0.6)}">${ctx.icon(d.icon ?? "eye")}${ctx.esc(d.label)}</div>` : ""}</div>`;
@@ -105,7 +105,7 @@ export const SCENES = {
             `<div class="origin" style="left:${o[0]}px;top:${o[1]}px"><i class="a a-pop" style="${at(0.65 + i * 0.09, 0.55)}"></i></div>`,
         )
         .join("")}
-      <div class="pin br a a-pop" style="left:${P.santos[0]}px;top:${P.santos[1]}px;${at(t0 + 2.3, 0.6)}"><i></i><b>${ctx.esc(ctx.ui.brazil)}</b></div>
+      <div class="pin br a a-pop" style="left:${P.santos[0]}px;top:${P.santos[1]}px;${at(t0 + 2.3, 0.6)}"><i></i><b class="${/[\u3400-\u9fff]/.test(ctx.ui.brazil) ? "han" : ""}">${ctx.esc(ctx.ui.brazil)}</b></div>
       ${p.handoffs
         .map((h, i) => {
           const f = [14, 30, 46, 62, 78, 91][i];
@@ -135,7 +135,7 @@ export const SCENES = {
       ["paperclip", U.attach, 1740, 560, 5, "21"],
       ["phone", U.phone, 960, 650, -6, "3"],
       ["mail", U.mail, 1210, 640, 4, "52"],
-      ["file-spreadsheet", U.sheet, 1460, 680, -3, "final"],
+      ["file-spreadsheet", U.sheet, 1460, 680, -3, U.final],
     ];
     const c = (i) => [T[i][2] + 60, T[i][3] + 60];
     const links = [
@@ -372,7 +372,7 @@ export const SCENES = {
         ) => `<div class="leaf l${i}"><div class="a a-up" style="${at(0.5 + [0.15, 0, 0.3][i], 1.1)}">
           <div class="lang">${ctx.icon("languages")}${name}</div>
           <div class="browser" style="--oy:14%;--z1:1.06;--kd:${s.dur}s">
-            <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}Portal Wellmix</span></div>
+            <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}${ctx.esc(p.names?.[l] ?? ctx.ui.portal)}</span></div>
             <div class="view"><img src="shots/${p.dirs?.[l] ?? l}/${p.shot}.png" alt="" /></div>
           </div></div></div>`,
       ).join("")}</div>`;
@@ -421,7 +421,7 @@ export const SCENES = {
           .join("")}</div>
       </div>
       <div class="shot tilt" style="${at(0.15)};--float:${s.dur}s"><div class="browser" style="--w:1090px">
-        <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}Portal Wellmix</span></div>
+        <div class="bar"><i></i><i></i><i></i><span class="url">${ctx.icon("lock")}${ctx.esc(ctx.ui.portal)}</span></div>
         <div class="view">${imgs}</div></div></div>`;
   },
 

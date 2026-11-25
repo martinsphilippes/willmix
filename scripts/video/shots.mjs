@@ -1,7 +1,7 @@
 /*
  * Captura as telas reais do portal usadas nos vídeos, no idioma pedido, com o
  * portal em modo demonstração (base do E2E limpa por scrub.mjs):
- *   node shots.mjs <idioma> [nome1,nome2…] [--out pasta] [--review pasta]
+ *   node shots.mjs <idioma> [nome1,nome2…] [--out pasta] [--review pasta] [--latin]
  * Grava film/shots/<idioma ou pasta>/<nome>.png (2560 × 1600: janela de
  * 1280 × 800 em dobro, para os zooms continuarem nítidos). Com --review grava
  * miniaturas. PORTAL e DATA_DIR escolhem o servidor e a base (padrão: porta
@@ -13,6 +13,12 @@
  * (PW_CHROMIUM = Chromium completo: o campo de data nativo sai "dd/mm/aaaa";
  * o Chromium "headless shell" escreve "dd/mm/yyyy".) Cada captura avisa
  * ("ATENÇÃO") se o texto visível tem cara de sobra de teste ou chave crua.
+ * Em chinês, com a base de data-zh.mjs (datas levadas para hoje por
+ * data-shift.mjs) e o chat de seed-chat.mjs (LANGUAGE=zh):
+ *   PORTAL=http://localhost:3204 DATA_DIR=<repo>/.data-video-zh \
+ *   node shots.mjs zh <nomes> --out cn --latin
+ * --latin lista, por captura, o que a tela ainda mostra em letras latinas
+ * (texto gravado na base em português ou inglês, rótulo sem tradução).
  */
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -271,10 +277,34 @@ for (const name of names) {
         ].slice(0, 8),
       SUSPECT.source,
     );
+    // --latin: palavras em letras latinas no que a captura mostra (só a parte
+    // visível da janela). Com a tela em chinês, é o que sobrou em português ou
+    // inglês: texto gravado na base ou rótulo sem tradução.
+    const latin = args.includes("--latin")
+      ? await page.evaluate(() => {
+          const seen = new Map();
+          const walk = document.createTreeWalker(
+            document.body,
+            NodeFilter.SHOW_TEXT,
+          );
+          for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+            const el = n.parentElement;
+            if (!el || !/[A-Za-zÀ-ÿ]{3}/.test(n.nodeValue)) continue;
+            const r = el.getBoundingClientRect();
+            if (r.bottom < 0 || r.top > innerHeight || !r.width || !r.height)
+              continue;
+            if (getComputedStyle(el).visibility === "hidden") continue;
+            const text = n.nodeValue.trim().replace(/\s+/g, " ");
+            if (text) seen.set(text.slice(0, 70), (seen.get(text) ?? 0) + 1);
+          }
+          return [...seen.keys()];
+        })
+      : [];
     await page.screenshot({
       path: join(outDir, `${name}.${review ? "jpg" : "png"}`),
       ...(review ? { type: "jpeg", quality: 72 } : {}),
     });
+    if (latin.length) console.log(`  LATIM ${name}: ${latin.join(" | ")}`);
     console.log(
       lang,
       name,
