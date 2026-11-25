@@ -99,8 +99,8 @@ Pedido do dono, com o print da lista em que "Loja / Supplier" ("ASBA · NINGBO H
 
 - Letra de 12 px (antes 13) e espaçamento menor nas células e no cabeçalho (`BookingLotsTable`, `src/app/app/booking/_components/booking-lots-table.tsx`).
 - Texto longo numa linha só, cortado com "…" e com **"ver mais"** ao lado, que abre o texto inteiro ("ver menos" fecha). O texto inteiro também fica na dica do mouse. É o mesmo `ClampText` das outras tabelas finas, e vale para:
-  - Loja / Supplier;
-  - Fornecedor;
+  - Loja / Supplier (desde 25/11/2026: Supplier);
+  - Fornecedor (desde 25/11/2026: Fábrica);
   - Origem;
   - Tipo de item;
   - Planilha;
@@ -108,11 +108,20 @@ Pedido do dono, com o print da lista em que "Loja / Supplier" ("ASBA · NINGBO H
 - Sem quebra de linha também:
   - Status: o selo numa linha ("Em andamento" quebrava em duas);
   - "Com quem está": o nome e o "Travar para mim" ou "Liberar", lado a lado;
-  - "Prazo" (antes "Há quanto tempo"): a situação e a data e a hora na mesma linha;
+  - "Prazo" (antes "Há quanto tempo"): a situação e a data e a hora na mesma linha (trocado em 25/11/2026: duas linhas, ver a seção abaixo);
   - Trabalhados: o percentual e o "x de y";
   - Previsão: os selos lado a lado, cada um numa linha ("1 Falta dado" quebrava em duas);
   - as datas.
 - A busca e a ordem da tabela continuam lendo o texto inteiro.
+
+
+### Lista de Books: Supplier, Fábrica, Prazo em duas linhas e colunas fixas (dono, 25/11/2026)
+
+- **Supplier na 2ª coluna** (chave `supplier`): o "Supplier" digitado na importação (`booking_lots.supplierName`) ou, sem ele (book lançado pelo parceiro, books antigos), o parceiro responsável (`partnerId`). Antes a coluna "Fornecedor" mostrava o cadastro da fábrica e "Loja / Supplier" juntava o nº da loja e o Supplier ("ASBA · NINGBO HOME-IN…").
+- **Fábrica na 7ª coluna** (chave `factory`): o cadastro estimado pela planilha (`supplierId`, o que a coluna "Fornecedor" mostrava); sem cadastro, o nº da loja (o código da fábrica, `storeNumber`); sem os dois, "Sem fábrica". A busca procura pelo nº da loja também. A coluna "Loja / Supplier" saiu.
+- **Prazo em duas linhas**: "Atrasado 17 h 21 min" em cima e "venceu 24/11 21:37" embaixo (o mesmo para "Faltam… · até…" e "Feito há… · em…"). Toda linha da tabela tem a altura das duas linhas (`h-11`), com ou sem prazo.
+- **As três primeiras colunas fixas** (Nº, Supplier, Status) ao rolar a tabela para o lado, com largura fixa e uma sombra depois do Status (`FROZEN` em `booking-lots-table.tsx`).
+- Ordem: Nº, Supplier, Status, Com quem está, Prazo, Origem, Fábrica, Tipo de item, Data, Planilha, Itens, Trabalhados, Pendentes, Sinais, Responsável e Criado em.
 
 ### Card "Planilha do book" (dono, 24/11/2026)
 

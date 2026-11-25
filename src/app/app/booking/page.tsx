@@ -85,9 +85,8 @@ export default async function BookingLotsPage({
   const rows: BookingLotRow[] = (entries ?? []).map((e) => {
     return {
       itemType: e.lot.itemType ?? "",
-      sourceKind: [e.lot.storeNumber, e.lot.supplierName]
-        .filter(Boolean)
-        .join(" · "),
+      factory: e.supplier?.name ?? "",
+      factoryStore: e.lot.storeNumber ?? "",
       workedPct: e.worked.pct,
       workedText: t("bookWork.worked.count", {
         worked: e.worked.worked,
@@ -107,7 +106,7 @@ export default async function BookingLotsPage({
       status: e.lot.status,
       statusLabel: statusLabel(e.lot.status),
       origin: e.lot.origin ?? "",
-      supplier: e.supplier?.name ?? "",
+      supplier: e.lot.supplierName || e.partner?.name || "",
       date: e.lot.bookingDate,
       dateText: e.lot.bookingDate ? formatDate(e.lot.bookingDate, t) : "",
       fileName: e.lot.fileName,
@@ -233,7 +232,7 @@ export default async function BookingLotsPage({
               count: t("bookingLots.count"),
               noMatch: t("bookingLots.noMatch"),
               sortBy: t("bookingLots.sortBy"),
-              supplierNone: t("bookingLots.supplierNone"),
+              factoryNone: t("bookingLots.factoryNone"),
               signalsNone: t("bookingLots.signals.none"),
               more: t("requestSheet.more"),
               less: t("requestSheet.less"),

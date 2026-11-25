@@ -90,7 +90,7 @@ export const pt = {
   "bookingLots.col.number": "Nº",
   "bookingLots.col.status": "Status",
   "bookingLots.col.origin": "Origem",
-  "bookingLots.col.supplier": "Fornecedor",
+  "bookingLots.col.supplier": "Supplier",
   "bookingLots.col.date": "Data",
   "bookingLots.col.fileName": "Planilha",
   "bookingLots.col.itemCount": "Itens",
