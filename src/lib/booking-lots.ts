@@ -103,7 +103,11 @@ export const BOOKING_ITEM_FIELDS = [
   "purchaseQty",
   "plannedQty",
 ] as const satisfies readonly (
-  TextField | IntField | DecimalField | "incoterm" | "currency"
+  | TextField
+  | IntField
+  | DecimalField
+  | "incoterm"
+  | "currency"
 )[];
 export type BookingItemField = (typeof BOOKING_ITEM_FIELDS)[number];
 
@@ -513,7 +517,16 @@ export interface BookingLotRow {
   /** Texto do status no idioma da tela (a busca procura por ele também). */
   statusLabel: string;
   origin: string;
+  /**
+   * Supplier (o Fornecedor, dono do book; dono, 25/11/2026): o "Supplier"
+   * digitado na importação (`supplierName`) ou, sem ele, o parceiro
+   * responsável. Fábrica: o cadastro estimado pela planilha (`supplierId`),
+   * com o nº da loja (o código da fábrica) para a busca e quando falta o
+   * cadastro. Antes iam misturados em "Loja / Supplier".
+   */
   supplier: string;
+  factory: string;
+  factoryStore: string;
   /** Data do booking (ISO) e como a tela mostra. */
   date: string | null;
   dateText: string;
@@ -529,9 +542,8 @@ export interface BookingLotRow {
   owner: string;
   createdAt: string;
   createdText: string;
-  /** Tipo de item e Loja/Fábrica (já no idioma da tela). */
+  /** Tipo de item (já no idioma da tela). */
   itemType: string;
-  sourceKind: string;
   /** Itens trabalhados na Seleção de itens: percentual e "3 de 10". */
   workedPct: number;
   workedText: string;
@@ -568,7 +580,7 @@ export const BOOKING_LOT_SORT_KEYS = [
   "owner",
   "createdAt",
   "itemType",
-  "sourceKind",
+  "factory",
   "workedPct",
   "holder",
   "heldMinutes",
@@ -599,7 +611,8 @@ export function searchBookingLots(
         row.owner,
         row.createdText,
         row.itemType,
-        row.sourceKind,
+        row.factory,
+        row.factoryStore,
         row.holder,
       ].join(" "),
     );

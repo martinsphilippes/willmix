@@ -163,7 +163,8 @@ export const pt = {
   "settings.error.booking_lock_sla_invalid":
     "Prazo do book travado: de 0,25 a 240 horas.",
   "bookingLots.col.itemType": "Tipo de item",
-  "bookingLots.col.sourceKind": "Loja / Supplier",
+  "bookingLots.col.factory": "Fábrica",
+  "bookingLots.factoryNone": "Sem fábrica",
   "bookingLots.col.workedPct": "Trabalhados",
   "bookingLots.col.holder": "Com quem está",
   "bookingLots.col.heldMinutes": "Prazo",
@@ -328,7 +329,8 @@ export const en: typeof pt = {
   "settings.error.booking_lock_sla_invalid":
     "Locked book deadline: from 0.25 to 240 hours.",
   "bookingLots.col.itemType": "Item type",
-  "bookingLots.col.sourceKind": "Store / Supplier",
+  "bookingLots.col.factory": "Factory",
+  "bookingLots.factoryNone": "No factory",
   "bookingLots.col.workedPct": "Worked",
   "bookingLots.col.holder": "Who has it",
   "bookingLots.col.heldMinutes": "Deadline",
@@ -482,7 +484,8 @@ export const zh: typeof pt = {
   "settings.error.booking_lock_sla_invalid":
     "锁定 Book 的期限：0.25 至 240 小时。",
   "bookingLots.col.itemType": "产品类型",
-  "bookingLots.col.sourceKind": "店铺 / 供应商",
+  "bookingLots.col.factory": "工厂",
+  "bookingLots.factoryNone": "无工厂",
   "bookingLots.col.workedPct": "已处理",
   "bookingLots.col.holder": "由谁处理",
   "bookingLots.col.heldMinutes": "期限",

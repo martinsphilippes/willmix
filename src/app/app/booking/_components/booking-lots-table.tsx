@@ -36,8 +36,8 @@ import {
  * no navegador: a lista inteira vem do servidor.
  *
  * Linha fina (dono, 24/11/2026, com o print do Supplier em sete linhas): letra
- * menor e cada célula numa linha só; o texto longo (Loja / Supplier,
- * Fornecedor, Origem, Planilha, Responsável) corta com "…" e o "ver mais" ao
+ * menor e cada célula numa linha só; o texto longo (Supplier, Fábrica,
+ * Origem, Planilha, Responsável) corta com "…" e o "ver mais" ao
  * lado abre o texto inteiro ("ver menos" fecha), com o texto também na dica.
  */
 
@@ -48,7 +48,7 @@ export interface BookingLotsTableLabels {
   count: string;
   noMatch: string;
   sortBy: string;
-  supplierNone: string;
+  factoryNone: string;
   signalsNone: string;
   /** "ver mais" e "ver menos" do texto longo numa linha. */
   more: string;
@@ -90,6 +90,17 @@ function useNow(start: number, everyMs = 30_000): number {
   return now;
 }
 
+/**
+ * As três primeiras colunas fixas (Nº, Supplier, Status): largura fixa e o
+ * deslocamento à esquerda de cada uma, somando as anteriores.
+ */
+const FROZEN: Partial<Record<BookingLotSortKey, string>> = {
+  number: "sticky left-0 z-10 w-14 min-w-14 max-w-14",
+  supplier: "sticky left-14 z-10 w-44 min-w-44 max-w-44",
+  status:
+    "sticky left-58 z-10 w-32 min-w-32 max-w-32 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.18)]",
+};
+
 const STATUS_TONE: Record<BookingLotRow["status"], Tone> = {
   // Em preenchimento pelo parceiro: a Wellmix não lista (só por completude).
   preparing: "neutral",
@@ -100,16 +111,22 @@ const STATUS_TONE: Record<BookingLotRow["status"], Tone> = {
   cancelled: "neutral",
 };
 
+/*
+ * Dono, 25/11/2026: Supplier na 2ª coluna e Fábrica na 7ª (antes "Fornecedor"
+ * trazia a fábrica e "Loja / Supplier" misturava o código da fábrica com o
+ * Supplier); as três primeiras ficam fixas ao rolar para o lado, e o Prazo
+ * em duas linhas, com todas as linhas na altura das duas.
+ */
 const COLUMNS: Array<{ key: BookingLotSortKey; numeric?: boolean }> = [
   { key: "number", numeric: true },
+  { key: "supplier" },
   { key: "status" },
   // Com quem está e há quanto tempo, logo depois do status (à vista sem
   // rolar a tabela para o lado).
   { key: "holder" },
   { key: "heldMinutes", numeric: true },
   { key: "origin" },
-  { key: "supplier" },
-  { key: "sourceKind" },
+  { key: "factory" },
   { key: "itemType" },
   { key: "date" },
   { key: "fileName" },
@@ -193,15 +210,16 @@ export function BookingLotsTable({
           </Badge>
         );
       case "supplier":
-        return row.supplier ? (
-          clamp(row.supplier, "max-w-[11rem]")
+        return clamp(row.supplier, "max-w-[10rem]");
+      case "factory":
+        // O cadastro da fábrica; sem ele, o nº da loja (o código da fábrica).
+        return row.factory || row.factoryStore ? (
+          clamp(row.factory || row.factoryStore, "max-w-[11rem]")
         ) : (
           <span className="whitespace-nowrap text-zinc-500">
-            {labels.supplierNone}
+            {labels.factoryNone}
           </span>
         );
-      case "sourceKind":
-        return clamp(row.sourceKind, "max-w-[11rem]");
       case "origin":
         return clamp(row.origin, "max-w-[8rem]");
       case "itemType":
@@ -305,22 +323,26 @@ export function BookingLotsTable({
                 .replace("{name}", row.holder || "—")
                 .replace("{time}", durationText(clock.elapsed))}`;
         return (
+          // Duas linhas (dono, 25/11/2026): "Atrasado 17 h 21 min" em cima e
+          // "venceu 24/11 21:37" embaixo.
           <span
-            className="inline-flex items-center gap-1.5 whitespace-nowrap"
+            className="inline-flex flex-col items-end whitespace-nowrap"
             title={title}
             data-booking-sla={clock.stage}
           >
-            {clock.stage === "done" ? (
-              <span aria-hidden className="text-[11px] text-emerald-600">
-                ✓
-              </span>
-            ) : (
-              <span
-                aria-hidden
-                className={cx("size-1.5 shrink-0 rounded-full", tone.dot)}
-              />
-            )}
-            <span className={cx("font-medium", tone.text)}>{text.main}</span>
+            <span className="inline-flex items-center gap-1.5">
+              {clock.stage === "done" ? (
+                <span aria-hidden className="text-[11px] text-emerald-600">
+                  ✓
+                </span>
+              ) : (
+                <span
+                  aria-hidden
+                  className={cx("size-1.5 shrink-0 rounded-full", tone.dot)}
+                />
+              )}
+              <span className={cx("font-medium", tone.text)}>{text.main}</span>
+            </span>
             <span
               className="text-[11px] tabular-nums text-zinc-500"
               data-booking-sla-at
@@ -414,8 +436,9 @@ export function BookingLotsTable({
                         : "none"
                     }
                     className={cx(
-                      "border-b border-zinc-200 bg-zinc-50/80 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500",
+                      "border-b border-zinc-200 bg-zinc-50 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500",
                       numeric && "text-right",
+                      FROZEN[key],
                     )}
                   >
                     <button
@@ -442,16 +465,20 @@ export function BookingLotsTable({
             {shown.map((row) => (
               <tr
                 key={row.id}
-                className="transition hover:bg-brand-50/40"
+                className="group transition hover:bg-brand-50/40"
                 data-booking-lot-row={row.id}
               >
                 {columns.map(({ key, numeric }) => (
                   <td
                     key={key}
                     className={cx(
-                      "border-b border-zinc-100 px-2 py-1.5 align-top text-xs leading-snug text-zinc-800",
+                      // h-11: toda linha na altura das duas linhas do Prazo.
+                      "h-11 border-b border-zinc-100 px-2 py-1.5 align-top text-xs leading-snug text-zinc-800",
                       numeric && "text-right tabular-nums",
+                      FROZEN[key] &&
+                        cx(FROZEN[key], "bg-white group-hover:bg-brand-50"),
                     )}
+                    data-booking-frozen={FROZEN[key] ? key : undefined}
                   >
                     {cell(row, key)}
                   </td>
