@@ -104,6 +104,12 @@ export async function saveSelectionGroup(
   const lot = await store.get("booking_lots", chosen.lotId);
   if (!lot || !CHOOSABLE_LOTS.includes(lot.status))
     throw new SupplierRequestError("supplier_request_lot_not_closed");
+  // Só itens de books travados para quem grava (dono, 25/11/2026).
+  const { assertLotsWorkable } = await import("./booking-lots");
+  await assertLotsWorkable(
+    user,
+    items.map((i) => i.lotId),
+  );
   const schedule = input.schedule?.items.length ? input.schedule : null;
   const quantity = schedule
     ? scheduleTotal(schedule)

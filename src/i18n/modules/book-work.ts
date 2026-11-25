@@ -86,6 +86,13 @@ export const pt = {
     'Sim: a tabela de itens de um book fechado tem "Selecionar os marcados" e "Recusar os marcados". Não: a seleção é só pela tela Seleção de itens. Travar e liberar books continuam funcionando.',
   "bookWork.error.booking_work_off":
     "Selecionar e recusar itens na tela do book está desligado nas Configurações.",
+  "bookWork.selection.noLock":
+    "Você não tem nenhum book travado. Aqui só aparecem os itens dos books travados para você: trave um book (ou um tipo de item) na lista de Books.",
+  "bookWork.selection.goBooks": "Ir para os Books",
+  "bookWork.error.booking_not_locked_to_you":
+    "Este item é de um book que não está travado para você. Trave o book na lista de Books para trabalhar nele.",
+  "supplierRequests.error.booking_not_locked_to_you":
+    "Este item é de um book que não está travado para você. Trave o book na lista de Books para trabalhar nele.",
   "bookWork.itemType": "Tipo de item",
   "bookWork.itemTypeHint":
     "Ex.: vidro, plástico, utilidades. Use o mesmo nome dos outros books do mesmo tipo.",
@@ -246,6 +253,13 @@ export const en: typeof pt = {
     'Yes: the item table of a closed book has "Select the ticked items" and "Refuse the ticked items". No: selection happens only on the Item selection page. Locking and releasing books keep working.',
   "bookWork.error.booking_work_off":
     "Selecting and refusing items on the book page is turned off in Settings.",
+  "bookWork.selection.noLock":
+    "You have no locked book. Only items of books locked for you show here: lock a book (or an item type) on the Books list.",
+  "bookWork.selection.goBooks": "Go to Books",
+  "bookWork.error.booking_not_locked_to_you":
+    "This item belongs to a book that is not locked for you. Lock the book on the Books list to work on it.",
+  "supplierRequests.error.booking_not_locked_to_you":
+    "This item belongs to a book that is not locked for you. Lock the book on the Books list to work on it.",
   "bookWork.itemType": "Item type",
   "bookWork.itemTypeHint":
     "E.g. glass, plastic, housewares. Use the same name as the other books of the same type.",
@@ -395,6 +409,13 @@ export const zh: typeof pt = {
     "是：已关闭 Book 的产品表格中有“选择勾选的产品”和“拒绝勾选的产品”。否：只能在选品页面选择。锁定和释放 Book 照常可用。",
   "bookWork.error.booking_work_off":
     "在 Book 页面选择和拒绝产品已在设置中关闭。",
+  "bookWork.selection.noLock":
+    "您没有锁定任何 Book。这里只显示锁定给您的 Book 中的产品：请在 Book 列表中锁定一个 Book（或一个产品类型）。",
+  "bookWork.selection.goBooks": "前往 Book 列表",
+  "bookWork.error.booking_not_locked_to_you":
+    "该产品所属的 Book 未锁定给您。请在 Book 列表中锁定该 Book 后再处理。",
+  "supplierRequests.error.booking_not_locked_to_you":
+    "该产品所属的 Book 未锁定给您。请在 Book 列表中锁定该 Book 后再处理。",
   "bookWork.itemType": "产品类型",
   "bookWork.itemTypeHint":
     "例如：玻璃、塑料、日用品。同类型的 Book 请使用相同的名称。",

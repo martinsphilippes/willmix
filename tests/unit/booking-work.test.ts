@@ -609,11 +609,20 @@ describe("travar books", () => {
       (await requests.listSelectionItems(user, "Lock"))!.all.map(
         (r) => r.item.factoryItemCode,
       );
+    // Na Seleção, cada analista só trabalha os books travados para ele
+    // (dono, 25/11/2026): a Ana, o dela; a Bia, sem trava, nenhum.
     expect(await selection(ana)).toEqual(["LK-1"]);
-    expect(await selection(bia)).toEqual(
-      expect.arrayContaining(["LK-2", "LK-3"]),
-    );
-    expect(await selection(bia)).not.toContain("LK-1");
+    expect(await selection(bia)).toEqual([]);
+    // Gravar a escolha com item de book que não é dela é recusado.
+    const [lk1] = await itemsOf(glass.id);
+    await expect(
+      groups.saveSelectionGroup(bia, {
+        itemIds: [lk1.id],
+        chosenItemId: lk1.id,
+        quantity: 100,
+        needs: null,
+      }),
+    ).rejects.toThrow("booking_not_locked_to_you");
     // Nº da loja e nome do supplier digitados na importação são buscáveis.
     const found = async (q: string) =>
       (await requests.listSelectionItems(admin, q))!.all.map(
@@ -627,6 +636,8 @@ describe("travar books", () => {
     // A Bia trava o tipo (escrito de outro jeito): pega os dois de madeira.
     await svc.lockBookingType(bia, "Trava Madeira");
     expect((await seen(bia)).sort()).toEqual([wood.id, wood2.id].sort());
+    // Travado o tipo, a Bia passa a trabalhar os dois na Seleção.
+    expect((await selection(bia)).sort()).toEqual(["LK-2", "LK-3"]);
     // O rascunho do mesmo tipo continua livre, à vista de quem supervisiona
     // e de quem não travou nada.
     expect(
