@@ -14,7 +14,20 @@ import { PM_SHIM, withPortalBridge } from "@/lib/project-management/shim";
  * Plataforma Wellmix v2 no portal, só para o login do dono da Wellmix.
  */
 describe("Gestão do projeto", () => {
-  it("só o login da lista vê (sem diferenciar maiúsculas)", () => {
+  it("todo administrador vê; os outros papéis não", () => {
+    expect(
+      canSeeProjectManagement({ email: "ana@wellmix.com", role: "admin" }),
+    ).toBe(true);
+    for (const role of ["operator", "customer", "supplier"] as const)
+      expect(canSeeProjectManagement({ email: "x@wellmix.com", role })).toBe(
+        false,
+      );
+    expect(
+      projectManagementNav({ email: "ana@wellmix.com", role: "admin" }),
+    ).toHaveLength(1);
+  });
+
+  it("e o login da lista, mesmo sem ser admin (sem diferenciar maiúsculas)", () => {
     expect(canSeeProjectManagement({ email: "well@wellmix.com.br" })).toBe(
       true,
     );
