@@ -60,7 +60,7 @@ const END = {
   noBrand: true,
   // Folgas da cena final: a marca entra junto com o acorde final da música
   // (tts/track.py mostra a diferença).
-  pre: 0.2,
+  pre: 1.44,
   post: 0.55,
   props: {
     lines: ["一个门户。", "所有伙伴。", "每个环节。"],
@@ -255,7 +255,7 @@ export const VIDEOS_ZH = {
           shot: "agency",
           oy: "30%",
           bullets: [
-            { t: "收到<b>刀模图和产品照片</b>", c: 0, d: 1.6 },
+            { t: "收到<b>刀模图和产品照片</b>", c: 0, d: 2.6 },
             { t: "上传设计稿，收到<b>注明原因的反馈</b>", c: 1 },
             { t: "交付<b>带认证标志的终稿</b>", c: 2 },
             {
@@ -355,7 +355,7 @@ export const VIDEOS_ZH = {
           shot: "marketing",
           oy: "40%",
           bullets: [
-            { t: "确认<b>样品已送达</b>", c: 0, d: 1.2 },
+            { t: "确认<b>样品已送达</b>", c: 0, d: 1.8 },
             { t: "上传每个产品的<b>实物照片和视频</b>", c: 1 },
             { t: "<b>归还样品</b>，随订单一起出运", c: 1, d: 2.6 },
           ],
@@ -701,7 +701,7 @@ export const VIDEOS_ZH = {
       {
         id: "evidence",
         type: "focus",
-        post: 0.4,
+        post: 0.7,
         cls: "flip",
         props: {
           kicker: "质量",
@@ -733,7 +733,7 @@ export const VIDEOS_ZH = {
       {
         id: "control",
         type: "focus",
-        post: 0.45,
+        post: 0.85,
         props: {
           kicker: "管理视角",
           title: "整个流程，\n*按阶段呈现*",
@@ -761,7 +761,7 @@ export const VIDEOS_ZH = {
       {
         id: "devices",
         type: "devices",
-        post: 0.55,
+        post: 1.1,
         props: {
           kicker: "随时随地",
           title: "任何屏幕。\n*像应用一样安装。*",
