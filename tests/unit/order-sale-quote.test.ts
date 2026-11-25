@@ -217,6 +217,8 @@ describe("preços pela cotação V2", () => {
     ]);
     expect(adapter.calls.map((c) => c.vip).sort()).toEqual([5, null].sort());
     expect(adapter.calls.every((c) => c.quantity === 2000)).toBe(true);
+    // Sem a escolha de quem chama o transportador: o padrão VIA_DEPOSITO.
+    expect(adapter.calls.every((c) => c.route === "VIA_DEPOSITO")).toBe(true);
     expect(adapter.calls.every((c) => c.dataRef === "20261124")).toBe(true);
   });
 
@@ -331,6 +333,107 @@ describe("preços pela cotação V2", () => {
         adapter: fakeAdapter(),
       }),
     ).rejects.toThrow("sale_unknown_item");
+  });
+});
+
+describe("condições da solicitação do cliente (pedido de compra)", () => {
+  /**
+   * Pedido de compra que veio da cotação (correção de 25/11/2026): o
+   * `requestId` é a solicitação técnica do fornecedor, sem condições, e o
+   * cliente do pedido é o importador; as condições escolhidas na Nova
+   * solicitação estão na encomenda do cliente (`demandIds`).
+   */
+  async function purchaseOrderWithDemands(
+    demands: Array<{ caller: "customer" | "wellmix"; productId: string }>,
+  ) {
+    const store = getStore();
+    const { PARTY_EXTRA_DEFAULTS } = await import("@/lib/db/schema");
+    const importer = await store.create("parties", {
+      ...PARTY_EXTRA_DEFAULTS,
+      type: "customer",
+      name: "Importadora do pedido",
+      country: "BR",
+      email: null,
+      phone: null,
+      taxId: null,
+      notes: null,
+      active: true,
+      city: null,
+      contactName: null,
+      wechat: null,
+      operationMode: null,
+      radar: null,
+    });
+    const { order, itemId } = await newOrder();
+    const demandIds: string[] = [];
+    for (const d of demands) {
+      const demand = await r.createRequest(joao, {
+        customerId: CUSTOMER,
+        productId: d.productId,
+        productName: "Encomenda do cliente",
+        description: "Encomenda",
+        quantity: 2000,
+        unit: "un",
+      });
+      await store.update("requests", demand.id, {
+        orderTerms: {
+          saleFormat: "wd",
+          carrierCaller: d.caller,
+          deliveryFreightBrl: 8000,
+        } as never,
+      });
+      demandIds.push(demand.id);
+    }
+    await store.update("orders", order.id, {
+      customerId: importer.id,
+      demandIds,
+    });
+    return { order: (await store.get("orders", order.id))!, itemId };
+  }
+
+  it("a rota (quem chama o transportador), o frete, o formato e o cliente vêm da encomenda do cliente", async () => {
+    const { order, itemId } = await purchaseOrderWithDemands([
+      { caller: "customer", productId: PRODUCT },
+    ]);
+    const adapter = fakeAdapter();
+    const result = await svc.orderItemSalePrices(admin, order.id, [itemId], {
+      adapter,
+      now: DAY1,
+    });
+    expect(result.prices[0]).toMatchObject({ wd: 9.9, wellmix: 7.5 });
+    expect(adapter.calls).toHaveLength(2);
+    for (const call of adapter.calls)
+      expect(call).toMatchObject({
+        route: "PORTO_CLIENTE",
+        deliveryFreightBrl: 8000,
+        customerId: CUSTOMER,
+      });
+    expect(adapter.calls.map((c) => c.vip).sort()).toEqual([5, null].sort());
+    // O card já vem com o formato da encomenda (WD) marcado.
+    const items = await getStore().list("order_items", {
+      filter: { orderId: order.id },
+    });
+    const ctx = await svc.saleQuoteContext(order, items, DAY1);
+    expect(ctx.terms?.saleFormat).toBe("wd");
+    expect(ctx.customer?.id).toBe(CUSTOMER);
+  });
+
+  it("com encomendas de produtos diferentes no mesmo pedido, cada produto usa a rota da dele", async () => {
+    // A 1ª encomenda (outro produto) é via depósito; a do produto do item,
+    // o cliente chama o transportador: vale a do produto.
+    const { order, itemId } = await purchaseOrderWithDemands([
+      { caller: "wellmix", productId: "prod-jarra" },
+      { caller: "customer", productId: PRODUCT },
+    ]);
+    const adapter = fakeAdapter();
+    await svc.orderItemSalePrices(admin, order.id, [itemId], {
+      adapter,
+      now: DAY1,
+    });
+    expect(adapter.calls.map((c) => c.route)).toEqual([
+      "PORTO_CLIENTE",
+      "PORTO_CLIENTE",
+    ]);
   });
 });
 

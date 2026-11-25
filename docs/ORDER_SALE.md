@@ -72,6 +72,7 @@ Decisões do dono (24/11/2026):
   - WD: VIP 5, `PRECO_WD_COM_FRETE_REFERENCIA` (o mesmo da Nova solicitação no formato WD).
   - Wellmix: `PRECO_COM_FRETE_REFERENCIA`, com o VIP do nível.
   - Entradas: o produto (CODPROD ou a ficha do portal), as peças do item (item em caixas: × a caixa master), o cliente e o RCA dele, quem chama o transportador, o frete do pedido (ou o padrão das Configurações) e a data de hoje.
+  - De onde vêm as condições (correção de 25/11/2026): da solicitação do cliente que virou o pedido de compra (`orders.demandIds`; a do mesmo produto, senão a primeira com condições), com o cliente dela e o RCA. A solicitação do próprio pedido (`orders.requestId`) só vale sem nenhuma do cliente: no pedido de compra ela é a técnica do fornecedor, sem condições, e a rota escolhida não ia. Sem condições (pedidos do Sankhya), a rota vai VIA_DEPOSITO (#706).
   - Só leitura: dois campos pequenos lado a lado; o do formato escolhido fica destacado.
   - Produto sem preço: "—", com o motivo embaixo (a mensagem do Sankhya ou a situação da cotação, como FRETE_PENDENTE).
 - **Carregamento:** o pedido abre sem esperar o Sankhya. A tela busca os preços aos poucos, 3 produtos por vez (`GET /api/orders/<id>/sale-prices?items=`), e mostra quantos já chegaram.

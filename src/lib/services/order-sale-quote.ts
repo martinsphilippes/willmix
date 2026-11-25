@@ -5,6 +5,7 @@ import {
   type OrderItem,
   type Party,
   type Product,
+  type Request,
   type User,
 } from "@/lib/db";
 import { listByIds } from "@/lib/db/lookup";
@@ -65,26 +66,53 @@ export function canSeeSaleQuotes(user: User): boolean {
   return isWellmix(user) && (canSeeMoney(user) || can(user, "sale.record"));
 }
 
+/**
+ * De onde vêm as condições da cotação de um produto: a solicitação do
+ * cliente com as condições escolhidas na Nova solicitação (formato, nível,
+ * quem chama o transportador e o frete) e o cliente dela (o RCA vai como
+ * vendedor).
+ */
+export interface SaleQuoteSource {
+  terms: OrderTerms | null;
+  customer: Party | null;
+  requestId: string | null;
+}
+
 /** O que as cotações dos itens de um pedido têm em comum. */
 export interface SaleQuoteContext {
   order: Order;
+  /** As condições do pedido (a 1ª solicitação do cliente com condições). */
   terms: OrderTerms | null;
   customer: Party | null;
+  /** A fonte de cada produto: a solicitação do cliente daquele produto. */
+  sourceFor: (item: Pick<OrderItem, "productId">) => SaleQuoteSource;
   products: Map<string, Product>;
   defaultFreight: number | null;
   day: string;
   now: Date;
 }
 
+const unique = (ids: ReadonlyArray<string | null | undefined>) => [
+  ...new Set(ids.filter((v): v is string => !!v)),
+];
+
+/**
+ * As solicitações do pedido, na ordem: as do cliente que viraram o pedido
+ * de compra (`orders.demandIds`: a encomenda ou a reposição, com as
+ * condições da Nova solicitação) e, por último, a do próprio pedido
+ * (`orders.requestId`; no pedido de compra é a solicitação técnica do
+ * fornecedor, sem condições). Correção de 25/11/2026: antes só a do pedido
+ * era lida, e a rota (quem chama o transportador) não ia para a cotação.
+ */
 export async function saleQuoteContext(
   order: Order,
   items: readonly Pick<OrderItem, "productId">[],
   now = new Date(),
 ): Promise<SaleQuoteContext> {
   const store = getStore();
-  const [request, customer, products, settings] = await Promise.all([
-    order.requestId ? store.get("requests", order.requestId) : null,
-    store.get("parties", order.customerId),
+  const requestIds = unique([...(order.demandIds ?? []), order.requestId]);
+  const [requests, products, settings] = await Promise.all([
+    listByIds(store, "requests", requestIds),
     listByIds(
       store,
       "products",
@@ -92,12 +120,39 @@ export async function saleQuoteContext(
     ),
     getSettings(),
   ]);
+  const byId = new Map(requests.map((r) => [r.id, r]));
+  const withTerms = requestIds
+    .map((id) => byId.get(id))
+    .filter((r): r is Request => !!r?.orderTerms);
+  const customers = await listByIds(
+    store,
+    "parties",
+    unique([order.customerId, ...withTerms.map((r) => r.customerId)]),
+  );
+  const customerById = new Map(customers.map((c) => [c.id, c]));
+  const sourceOf = (request: Request | null): SaleQuoteSource => ({
+    terms: request?.orderTerms ?? null,
+    // O cliente da solicitação (quem compra); sem ela, o do pedido.
+    customer:
+      (request ? customerById.get(request.customerId) : undefined) ??
+      customerById.get(order.customerId) ??
+      null,
+    requestId: request?.id ?? null,
+  });
+  const main = sourceOf(withTerms[0] ?? null);
+  // Com várias solicitações do cliente no mesmo pedido de compra, cada
+  // produto usa a do produto dele (a primeira, na ordem do pedido).
+  const byProduct = new Map<string, SaleQuoteSource>();
+  for (const r of withTerms)
+    if (r.productId && !byProduct.has(r.productId))
+      byProduct.set(r.productId, sourceOf(r));
   return {
     order,
-    // As condições da Nova solicitação (as mesmas em todo o lote); os
-    // pedidos que vieram do Sankhya não têm.
-    terms: request?.orderTerms ?? null,
-    customer: customer ?? null,
+    // Os pedidos que vieram do Sankhya não têm condições.
+    terms: main.terms,
+    customer: main.customer,
+    sourceFor: (item) =>
+      (item.productId ? byProduct.get(item.productId) : undefined) ?? main,
     products: new Map(products.map((p) => [p.id, p])),
     defaultFreight: settings.deliveryFreightDefaultBrl ?? null,
     day: brazilDay(now) ?? now.toISOString().slice(0, 10),
@@ -111,17 +166,19 @@ function itemQueries(ctx: SaleQuoteContext, item: OrderItem) {
   if (!product) return null;
   const perBox = item.variant?.masterBoxQty ?? product.masterBoxQty ?? null;
   const qty = piecesOf(item, perBox);
+  // As condições da solicitação do cliente deste produto.
+  const source = ctx.sourceFor(item);
   // Nível do Wellmix: o da Nova solicitação; sem ele, o padrão do Sankhya.
-  const tier: WellmixTier | null = ctx.terms?.wellmixTier ?? null;
+  const tier: WellmixTier | null = source.terms?.wellmixTier ?? null;
   const query = (format: SaleFormat, t: WellmixTier | null) =>
     forecastQuery({
       product,
-      customer: ctx.customer,
+      customer: source.customer,
       quantity: qty?.pieces ?? null,
       saleFormat: format,
       tier: t,
-      caller: ctx.terms?.carrierCaller ?? null,
-      freight: ctx.terms?.deliveryFreightBrl ?? null,
+      caller: source.terms?.carrierCaller ?? null,
+      freight: source.terms?.deliveryFreightBrl ?? null,
       defaultFreight: ctx.defaultFreight,
       now: ctx.now,
     });
