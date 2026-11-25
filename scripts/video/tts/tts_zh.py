@@ -248,6 +248,11 @@ def main():
     ap.add_argument("--threads", type=int, default=int(os.environ.get("TTS_ZH_THREADS", "4")))
     ap.add_argument("--force", action="store_true", help="refaz mesmo com o .key em dia")
     ap.add_argument(
+        "--best",
+        action="store_true",
+        help="gera todas as --takes versões e fica com a melhor (padrão: a primeira que passa)",
+    )
+    ap.add_argument(
         "--check",
         action="store_true",
         help="não gera: confere as falas já gravadas (transcrição, velocidade e nota) e refaz o relatório",
@@ -296,9 +301,11 @@ def main():
             mos = judge.score(x, voice.sr)
             ok = bool(score >= 0.92 and CPS[0] <= cps <= CPS[1] and (mos is None or mos >= MOS_MIN))
             takes.append(dict(seed=seed, x=x, dur=round(d, 2), cps=round(cps, 2), match=round(score, 3), mos=mos, heard=heard, ok=ok))
-            if ok:
+            if ok and not args.best:
                 break
-        best = max(takes, key=lambda t: (t["ok"], round(t["match"], 2), t["mos"] or 0))
+        # A melhor: passou; casou mais com o roteiro; velocidade mais perto do ritmo das
+        # outras falas (4,4 caracteres por segundo, a mediana); maior nota.
+        best = max(takes, key=lambda t: (t["ok"], round(t["match"], 2), -round(abs(t["cps"] - 4.4), 1), t["mos"] or 0))
         y = resample_poly(best["x"].astype(np.float64), OUT_SR // 8000, voice.sr // 8000)
         y = (y / max(1.0, np.abs(y).max() / 0.97)).astype(np.float32)
         sf.write(out, y, OUT_SR, subtype="PCM_16")
