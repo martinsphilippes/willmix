@@ -21,7 +21,7 @@ export const pt = {
   "bookingForecast.missing.error": "o Sankhya não respondeu",
   "bookingForecast.lot.at": "Previsão pedida em {date}",
   "bookingForecast.lot.auto":
-    "A previsão é do Sankhya, pedida ao fechar o book e ao trocar o NCM. O que ficar sem previsão o portal completa sozinho uma vez por dia.",
+    "A previsão é do Sankhya, pedida ao fechar o book e ao trocar o NCM. O que ficar sem previsão o portal completa sozinho, de hora em hora; o que der erro no Sankhya é pedido de novo uma vez por dia.",
   "bookingForecast.negotiated": "Previsão de preço com as condições negociadas",
   "bookingForecast.negotiatedHint":
     "Refeita pela API de preço do Sankhya a cada abertura da tela, com o preço e a moeda combinados; nada é gravado.",
@@ -46,7 +46,7 @@ export const en: Record<keyof typeof pt, string> = {
   "bookingForecast.missing.error": "Sankhya did not answer",
   "bookingForecast.lot.at": "Forecast requested on {date}",
   "bookingForecast.lot.auto":
-    "The forecast comes from Sankhya, requested when the book is closed and when the NCM changes. Whatever is left without a forecast the portal completes by itself once a day.",
+    "The forecast comes from Sankhya, requested when the book is closed and when the NCM changes. Whatever is left without a forecast the portal completes by itself every hour; what fails in Sankhya is requested again once a day.",
   "bookingForecast.negotiated": "Price forecast with the negotiated conditions",
   "bookingForecast.negotiatedHint":
     "Redone through Sankhya's price API every time the screen opens, with the agreed price and currency; nothing is saved.",
@@ -70,7 +70,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "bookingForecast.missing.error": "Sankhya 未响应",
   "bookingForecast.lot.at": "预测请求于 {date}",
   "bookingForecast.lot.auto":
-    "预测来自 Sankhya，在关闭 Book 和修改 NCM 时请求。仍没有预测的条目，门户每天自动补全一次。",
+    "预测来自 Sankhya，在关闭 Book 和修改 NCM 时请求。仍没有预测的条目，门户每小时自动补全；在 Sankhya 出错的条目每天重新请求一次。",
   "bookingForecast.negotiated": "按谈判条件的价格预测",
   "bookingForecast.negotiatedHint":
     "每次打开页面都会按约定的价格和币种通过 Sankhya 价格 API 重新计算；不保存任何内容。",
