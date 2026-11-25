@@ -1,5 +1,7 @@
 # Narração do vídeo completo em mandarim para o ElevenLabs
 
+> **Não usado na versão atual.** Em 25/11/2026 o dono preferiu que a voz em mandarim fosse gerada aqui mesmo (`scripts/video/tts/tts_zh.py`, voz Serena do Qwen3-TTS; veja o README da pasta de cima, seção 5). Este pacote fica guardado para o caso de querer trocar a voz por uma do ElevenLabs no futuro: o passo a passo abaixo continua valendo.
+
 O vídeo em mandarim está pronto, **menos a voz**: roteiro em chinês simplificado, telas do portal em chinês e a mesma montagem da versão em português. Este pacote tem o texto da narração para você gerar a voz no ElevenLabs e me trazer o áudio; eu corto, monto, renderizo e entrego o vídeo. Você não precisa entender o chinês: é copiar e colar o texto inteiro.
 
 ## Arquivos
