@@ -27,6 +27,7 @@ O texto todo tem 72 falas e cerca de 1.600 caracteres (608, 517 e 446 nas três 
 - **Um parágrafo é uma fala do vídeo.** Não junte nem separe parágrafos, não apague as linhas em branco e não acrescente nada. É por esses parágrafos que o áudio volta a ser cortado.
 - As palavras em letras latinas (**Wellmix**, **Book**, **ERP**, **SLA**) ficam como estão: em mandarim a voz lê o nome em inglês e as siglas letra por letra.
 - Pausas e velocidade: não precisa cuidar. O vídeo é montado em cima da sua narração: cada fala é cortada, e o tempo de cada cena se ajusta à duração dela.
+- Se um dia for gerar de novo uma fala só (porque alguém apontou um erro), gere junto a fala de antes ou a de depois, no mesmo texto: uma frase curta sozinha que começa com palavra em inglês (Wellmix, Book, SLA) pode sair com sotaque de inglês.
 
 ## Como eu confiro o áudio
 

@@ -13,7 +13,8 @@ A pasta <audio> pode ter:
   - um arquivo por fala, com o nome do id ("route.0.mp3", "hub.2.wav"...): é só
     converter e aparar; ou
   - um arquivo por PARTE do roteiro (parte-1, parte-2, parte-3, em mp3, wav, m4a,
-    flac...; o nome do arquivo não importa): o áudio é transcrito (Whisper local,
+    flac...; o nome do arquivo não importa) ou um arquivo só com o roteiro inteiro:
+    o áudio é transcrito (Whisper local,
     no idioma da narração), as palavras são alinhadas às do roteiro e o áudio é
     cortado no meio do silêncio entre uma fala e a seguinte, medido no próprio som
     (o tempo das palavras do Whisper só diz onde procurar).
@@ -523,8 +524,11 @@ def main():
             for f in os.listdir(args.audio)
             if f.lower().endswith(AUDIO_EXT) and os.path.splitext(f)[0] not in by_id
         )
+        if len(paths) == 1 and len(parts) > 1:
+            # o roteiro inteiro gerado de uma vez: uma parte só, com todas as falas
+            parts = [{"part": 1, "file": "roteiro inteiro", "ids": [i for p in parts for i in p["ids"]]}]
         if len(paths) != len(parts):
-            sys.exit(f"esperava {len(parts)} áudios (um por parte) em {args.audio}; achei {len(paths)}")
+            sys.exit(f"esperava {len(parts)} áudios (um por parte) ou um só com tudo em {args.audio}; achei {len(paths)}")
         # Cada arquivo é transcrito uma vez; a parte dele é a que tem mais palavras em comum
         # com o que foi ouvido (o nome que o ElevenLabs dá ao arquivo não serve de guia).
         heard_of = {}
