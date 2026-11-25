@@ -92,7 +92,7 @@ export const SHOTS = {
   "order-progress": ["admin", O2, { sel: "#order-progress" }],
   "order-payment": ["admin", O2, { sel: "#customer-payment" }],
   "order-inspection": ["admin", O2, { sel: '[id^="production-inspection"]' }],
-  "order-container": ["admin", O2, { sel: "#container-origin" }],
+  "order-container": ["admin", O2, { sel: "#container-origin", pad: 48 }],
   "shipping-docs": ["admin", () => `${O2()}/shipping-docs`],
   sla: ["admin", "/app/sla"],
   // A coluna "Ação" da auditoria mostra o código técnico (team.member.delete...):
@@ -118,7 +118,7 @@ export const SHOTS = {
   marketing: ["marketing", O2, { sel: "#samples-flow, #samples" }],
   forwarder: ["forwarder", O2, { sel: "#import-flow" }],
   line: ["line", O2],
-  comex: ["comex", O2, { sel: "#import-flow" }],
+  comex: ["comex", O2, { sel: "#import-flow", pad: 48 }],
   broker: ["broker", "/app"],
   carrier: ["carrier", O2],
   login: [null, "/login?intro=off"],
@@ -209,14 +209,19 @@ for (const name of names) {
         }
       }, o.hideCol);
     if (o.sel)
-      await page.evaluate((sel) => {
-        const el = document.querySelector(sel);
-        if (!el) throw new Error(`bloco não encontrado: ${sel}`);
-        window.scrollTo(
-          0,
-          el.getBoundingClientRect().top + window.scrollY - 84,
-        );
-      }, o.sel);
+      await page.evaluate(
+        ([sel, pad]) => {
+          const el = document.querySelector(sel);
+          if (!el) throw new Error(`bloco não encontrado: ${sel}`);
+          window.scrollTo(
+            0,
+            el.getBoundingClientRect().top + window.scrollY - 84 - pad,
+          );
+        },
+        // pad: folga a mais quando o título da seção fica acima do bloco
+        // marcado (sem ela, a barra fixa do portal cortava o título ao meio).
+        [o.sel, o.pad ?? 0],
+      );
     if (o.chat != null) {
       // Conversa: espera as fotos, põe o cartão logo abaixo do cabeçalho e a
       // lista de mensagens no fim (as mais novas).
