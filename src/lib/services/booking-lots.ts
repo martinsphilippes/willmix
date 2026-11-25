@@ -567,6 +567,8 @@ async function wellmixLot(id: string): Promise<BookingLot | null> {
 export interface BookingLotListEntry {
   lot: BookingLot;
   supplier: Party | null;
+  /** O parceiro responsável (Supplier do book quando não foi digitado). */
+  partner: Party | null;
   owner: User | null;
   pendingItems: number;
   signals: { viable: number; below: number; loss: number; missing: number };
@@ -707,6 +709,18 @@ export async function listBookingLots(
     store.list("users"),
   ]);
   const partyOf = new Map(parties.map((p) => [p.id, p]));
+  // Responsáveis de outros tipos (Trading, Factory…): um a um, são poucos.
+  const otherPartners = [
+    ...new Set(
+      lots
+        .map((l) => l.partnerId)
+        .filter((id): id is string => !!id && !partyOf.has(id)),
+    ),
+  ];
+  for (const p of await Promise.all(
+    otherPartners.map((id) => store.get("parties", id)),
+  ))
+    if (p) partyOf.set(p.id, p);
   const userOf = new Map(users.map((u) => [u.id, u]));
   const canRelease = await releaserOf(user, users);
   const itemsOf = new Map<string, BookingItem[]>();
@@ -729,6 +743,7 @@ export async function listBookingLots(
     return {
       lot,
       supplier: lot.supplierId ? (partyOf.get(lot.supplierId) ?? null) : null,
+      partner: lot.partnerId ? (partyOf.get(lot.partnerId) ?? null) : null,
       owner: lot.ownerUserId ? (userOf.get(lot.ownerUserId) ?? null) : null,
       pendingItems: pending.items.size,
       signals,
