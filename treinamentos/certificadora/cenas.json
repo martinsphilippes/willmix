@@ -1,0 +1,1618 @@
+{
+ "papel": "certificadora",
+ "conta": {
+  "email": "ocp@certifica.com",
+  "idioma": "pt"
+ },
+ "titulo": "Treinamento da Certificadora",
+ "nome": "Certificadora",
+ "modulos": [
+  {
+   "id": 1,
+   "titulo": "Entrar, ler o pedido e enviar o certificado"
+  },
+  {
+   "id": 2,
+   "titulo": "Selo, memorial e os outros caminhos"
+  }
+ ],
+ "cenas": [
+  {
+   "id": "m1-a0-abertura",
+   "tipo": "cartao",
+   "capitulo": "Boas-vindas",
+   "cartao": {
+    "tipo": "abertura",
+    "sobretitulo": "Treinamento do Portal Wellmix · Certificadora",
+    "titulo": "Entrar, ler o pedido e enviar o certificado",
+    "subtitulo": "Módulo 1"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Olá! Você é da certificadora que cuida dos produtos da Wellmix. É pelo portal que você recebe cada pedido, lê os dados do produto e envia o certificado, o memorial e o selo."
+    },
+    {
+     "id": "f2",
+     "fala": "Aqui no primeiro módulo, você aprende a entrar, a ler o pedido e a enviar o certificado de um produto."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-t0-cartao",
+   "tipo": "cartao",
+   "capitulo": "1 · Entrar e se localizar",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 1 de 4",
+    "titulo": "Entrar e se localizar",
+    "subtitulo": "O login e o menu da certificadora"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Para começar: a entrada e o menu."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-t1-entrar",
+   "tipo": "tela",
+   "capitulo": "1 · Entrar e se localizar",
+   "estado": "cert-base",
+   "inicio": {
+    "url": "/login?intro=off"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Esta é a entrada do portal. O idioma se escolhe aqui no alto: português, inglês ou chinês.",
+     "alvo": {
+      "papel": "button",
+      "nome": "Português",
+      "acima": 1
+     },
+     "acao": "mostrar",
+     "rotulo": "Idioma",
+     "rotulo_lado": "esquerda",
+     "destaque_em": {
+      "em": "idioma"
+     }
+    },
+    {
+     "id": "p2",
+     "fala": "Em \"Login ou e-mail\", digite o seu login.",
+     "alvo": {
+      "rotulo": "Login ou e-mail"
+     },
+     "acao": "digitar",
+     "valor": "ocp@certifica.com",
+     "rotulo": "Login ou e-mail",
+     "rotulo_lado": "esquerda",
+     "resumo": "Digite o seu login",
+     "acao_em": {
+      "apos": "digite"
+     },
+     "pausa": 0.6
+    },
+    {
+     "id": "p3",
+     "fala": "Logo abaixo, a sua senha.",
+     "alvo": {
+      "rotulo": "Senha"
+     },
+     "acao": "digitar",
+     "valor": "wellmix123",
+     "rotulo": "Senha",
+     "rotulo_lado": "esquerda",
+     "resumo": "Digite a sua senha",
+     "acao_em": 1.0
+    },
+    {
+     "id": "p4",
+     "fala": "Depois, clique em \"Entrar\", o botão vermelho.",
+     "alvo": {
+      "papel": "button",
+      "nome": "Entrar"
+     },
+     "acao": "clicar",
+     "rotulo": "Entrar",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Entrar\"",
+     "espera": {
+      "url": "/app",
+      "rede": true
+     }
+    },
+    {
+     "id": "p5",
+     "fala": "Você cai direto em \"Minhas pendências\": tudo o que depende da certificadora.",
+     "alvo": {
+      "papel": "heading",
+      "nome": "Minhas pendências"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p6",
+     "fala": "No menu da esquerda, \"Pendências\" mostra quantas coisas esperam por você.",
+     "alvo": {
+      "seletor": "aside a[href='/app']"
+     },
+     "acao": "mostrar",
+     "rotulo": "Pendências",
+     "destaque_em": {
+      "em": "Pendências"
+     }
+    },
+    {
+     "id": "p7",
+     "fala": "Logo abaixo, \"Certificação\" reúne o passo da certificação de todos os seus pedidos.",
+     "alvo": {
+      "seletor": "aside a[href='/app/flow/order/certification']"
+     },
+     "acao": "mostrar",
+     "rotulo": "Certificação"
+    },
+    {
+     "id": "p8",
+     "fala": "E \"Pedidos\" mostra os pedidos em que a sua certificadora foi designada.",
+     "alvo": {
+      "seletor": "aside a[href='/app/orders']"
+     },
+     "acao": "mostrar",
+     "rotulo": "Pedidos"
+    },
+    {
+     "id": "p9",
+     "fala": "No alto, à direita, o balão abre as mensagens, e o sino mostra os avisos.",
+     "alvo": {
+      "seletor": "header a[href='/app/messages']"
+     },
+     "acao": "mostrar",
+     "rotulo": "Mensagens",
+     "rotulo_lado": "esquerda",
+     "destaque_em": {
+      "em": "balão"
+     },
+     "destaques": [
+      {
+       "alvo": {
+        "seletor": "header a[href='/app/notifications']"
+       },
+       "rotulo": "Avisos",
+       "rotulo_lado": "esquerda",
+       "em": {
+        "em": "sino"
+       }
+      }
+     ]
+    },
+    {
+     "id": "p10",
+     "fala": "E aqui embaixo, o seu nome e o seu papel no portal: certificação.",
+     "alvo": {
+      "seletor": "[data-user-role]",
+      "acima": 1
+     },
+     "acao": "mostrar",
+     "pausa": 0.6,
+     "cursor": false
+    }
+   ],
+   "tarefa": "Entrar no portal",
+   "sim": false,
+   "login": false,
+   "modulo": 1
+  },
+  {
+   "id": "m1-c1-cartao",
+   "tipo": "cartao",
+   "capitulo": "2 · Suas pendências",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 2 de 4",
+    "titulo": "Suas pendências",
+    "subtitulo": "O ponto de partida de todo dia"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora: a tela das pendências."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-c1-pendencias",
+   "tipo": "tela",
+   "capitulo": "2 · Suas pendências",
+   "estado": "cert-base",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Todo dia, comece por aqui. Esta tela mostra tudo o que depende da certificadora. O mais urgente vem primeiro."
+    },
+    {
+     "id": "p2",
+     "fala": "Cada pedido de produto com certificação traz três tarefas. A primeira é o certificado do produto, uma linha para cada produto do pedido.",
+     "alvo": {
+      "seletor": "main table tbody tr",
+      "contem": "Certificado (Inmetro)"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p3",
+     "fala": "As outras duas valem para o pedido inteiro: esta, enviar o memorial descritivo, e a de baixo, gerar o selo de certificação.",
+     "alvo": {
+      "seletor": "main table tbody tr",
+      "contem": "Enviar o memorial descritivo"
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "destaques": [
+      {
+       "alvo": {
+        "seletor": "main table tbody tr",
+        "contem": "Gerar o selo de certificação"
+       },
+       "em": {
+        "em": "selo"
+       },
+       "foco": false
+      }
+     ]
+    },
+    {
+     "id": "p4",
+     "fala": "A coluna \"Prazo\" mostra a data e em quantos dias vence. O certificado tem prazo. O memorial e o selo aparecem sem data.",
+     "alvo": {
+      "seletor": "main table tbody tr td:has(span:has-text(\"vence em\"))"
+     },
+     "acao": "mostrar",
+     "cursor": false
+    },
+    {
+     "id": "p5",
+     "fala": "Acima da lista, os filtros de prazo e de tipo mostram só uma parte das pendências.",
+     "alvo": {
+      "seletor": "main a[data-task-filter='due:all']",
+      "acima": 2
+     },
+     "acao": "mostrar",
+     "rotulo": "Filtros",
+     "rotulo_lado": "acima",
+     "foco": false,
+     "cursor": false
+    },
+    {
+     "id": "p6",
+     "fala": "E o ícone de abrir, no fim de cada linha, leva você ao pedido daquela tarefa.",
+     "alvo": {
+      "seletor": "a[data-open-link]",
+      "dentro": {
+       "seletor": "main table tbody tr",
+       "contem": "Certificado (Inmetro)"
+      }
+     },
+     "acao": "mostrar",
+     "rotulo": "Abrir",
+     "rotulo_lado": "esquerda",
+     "destaque_em": {
+      "em": "botão"
+     },
+     "pausa": 0.6
+    }
+   ],
+   "tarefa": "Achar as suas pendências",
+   "modulo": 1
+  },
+  {
+   "id": "m1-c1-suavez",
+   "tipo": "cartao",
+   "capitulo": "2 · Suas pendências",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Suas pendências",
+    "itens": [
+     "Entre no portal e veja \"Minhas pendências\"",
+     "Ache a linha do certificado de um produto e o prazo dela",
+     "Ache as linhas do memorial descritivo e do selo",
+     "Ache o ícone de abrir de cada linha"
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora é com você: pause o vídeo e ache as suas pendências."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-c2-cartao",
+   "tipo": "cartao",
+   "capitulo": "3 · Ler o pedido",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 3 de 4",
+    "titulo": "Ler o pedido",
+    "subtitulo": "O que a certificadora vê para certificar"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora: como ler o pedido antes de certificar."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-c2-pedido",
+   "tipo": "tela",
+   "capitulo": "3 · Ler o pedido",
+   "estado": "cert-base",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Antes de certificar, você precisa conhecer o produto. Na linha do certificado, clique no ícone de abrir, à direita.",
+     "alvo": {
+      "seletor": "a[data-open-link]",
+      "dentro": {
+       "seletor": "main table tbody tr",
+       "contem": "Certificado (Inmetro)"
+      }
+     },
+     "acao": "clicar",
+     "alvo_visual": {
+      "seletor": "main table tbody tr",
+      "contem": "Certificado (Inmetro)"
+     },
+     "resumo": "Em Pendências, clique no ícone de abrir na linha do certificado",
+     "espera": {
+      "url": "/app/orders/[^/?#]+$",
+      "rede": true
+     }
+    },
+    {
+     "id": "p2",
+     "fala": "Você abre o pedido número 1. O resumo traz o cliente, o fornecedor e a data.",
+     "alvo": {
+      "papel": "heading",
+      "nome": "Resumo do pedido",
+      "acima": 2
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p3",
+     "fala": "O quadro \"Itens do pedido\" traz os produtos, com a foto, o código, as peças por caixa, a quantidade e as caixas. Aqui, um pote de vidro: duas mil e quatrocentas peças, em duzentas caixas.",
+     "alvo": {
+      "papel": "heading",
+      "nome": "Itens do pedido",
+      "acima": 2
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p4",
+     "fala": "A miniatura mostra a foto do produto, e o número sobre ela diz quantas fotos há. Um clique abre todas.",
+     "alvo": {
+      "seletor": "[data-gallery-open]"
+     },
+     "acao": "mostrar",
+     "rotulo": "Fotos do produto",
+     "rotulo_lado": "direita",
+     "zoom": 1.3
+    },
+    {
+     "id": "p5",
+     "fala": "Para os dados técnicos, clique em \"Ver ficha de compra\", no resumo.",
+     "alvo": {
+      "seletor": "main a",
+      "contem": "Ver ficha de compra",
+      "n": 0
+     },
+     "acao": "clicar",
+     "rotulo": "Ver ficha de compra",
+     "rotulo_lado": "esquerda",
+     "resumo": "No resumo, clique em \"Ver ficha de compra\"",
+     "espera": {
+      "url": "/purchase-sheet",
+      "rede": true
+     }
+    },
+    {
+     "id": "p6",
+     "fala": "A ficha de compra abre só para leitura. Ela traz os dados do fornecedor, do produto e da caixa.",
+     "alvo": {
+      "texto": "Ficha de compra do pedido, para a certificação",
+      "exato": false
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p7",
+     "fala": "No bloco \"Produto\" estão o peso por peça, a capacidade, o material e a cor.",
+     "alvo": {
+      "papel": "heading",
+      "nome": "Produto",
+      "acima": 2
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "cursor": false
+    },
+    {
+     "id": "p7b",
+     "fala": "Mais abaixo, o bloco \"Caixa e embalagem\" traz as peças por caixa e o tipo de embalagem.",
+     "alvo": {
+      "papel": "heading",
+      "nome": "Caixa e embalagem",
+      "acima": 2
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "cursor": false
+    },
+    {
+     "id": "p8",
+     "fala": "Para voltar, use \"Voltar ao pedido\".",
+     "alvo": {
+      "seletor": "main a",
+      "contem": "Voltar ao pedido"
+     },
+     "acao": "clicar",
+     "rotulo": "Voltar ao pedido",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Voltar ao pedido\"",
+     "espera": {
+      "url": "/app/orders/[^/?#]+$",
+      "rede": true
+     }
+    }
+   ],
+   "tarefa": "Ler o pedido antes de certificar",
+   "modulo": 1
+  },
+  {
+   "id": "m1-c2-suavez",
+   "tipo": "cartao",
+   "capitulo": "3 · Ler o pedido",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Ler o pedido",
+    "itens": [
+     "Em Pendências, clique no ícone de abrir na linha do certificado",
+     "Leia o resumo e os itens do pedido, com as fotos",
+     "Clique em \"Ver ficha de compra\" e leia os dados do produto",
+     "Volte com \"Voltar ao pedido\""
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Sua vez. Pause o vídeo e leia um pedido, com a ficha de compra."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-c3-cartao",
+   "tipo": "cartao",
+   "capitulo": "4 · Enviar o certificado",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 4 de 4",
+    "titulo": "Enviar o certificado",
+    "subtitulo": "O certificado de cada produto do pedido"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Por fim: enviar o certificado do produto."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-c3-certificado",
+   "tipo": "tela",
+   "capitulo": "4 · Enviar o certificado",
+   "estado": "cert-base",
+   "inicio": {
+    "url": "/app",
+    "antes": [
+     {
+      "acao": "clicar",
+      "alvo": {
+       "seletor": "a[data-open-link]",
+       "dentro": {
+        "seletor": "main table tbody tr",
+        "contem": "Certificado (Inmetro)"
+       }
+      },
+      "espera": {
+       "url": "/app/orders/[^/?#]+$",
+       "rede": true
+      }
+     }
+    ]
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "No pedido, mais abaixo, ficam os marcos: as etapas em que a certificadora atua ou que ela acompanha. O marco \"Certificação\" vem marcado com \"Sua tarefa\".",
+     "alvo": {
+      "seletor": "main details:has(> summary:has-text(\"Sua tarefa\"))"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p2",
+     "fala": "A linha do certificado traz o nome do produto. Ela está pendente, e está com a sua certificadora.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Certificado (Inmetro) · Glass jar 1.5L with lid\"))"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p3",
+     "fala": "Com o certificado emitido, use o botão \"Escolher arquivo\" e selecione o PDF.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Certificado (Inmetro) · Glass jar 1.5L with lid\")) input[aria-label=\"Escolher arquivo\"]"
+     },
+     "acao": "anexar",
+     "valor": "{DEMO}/arquivos/certificado-de-conformidade-pote-1500ml.pdf",
+     "alvo_visual": "main li:has(span.font-medium:text-is(\"Certificado (Inmetro) · Glass jar 1.5L with lid\")) [data-file-button]",
+     "rotulo": "Escolher arquivo",
+     "rotulo_lado": "esquerda",
+     "resumo": "Na linha do certificado, clique em \"Escolher arquivo\" e selecione o PDF",
+     "acao_em": "fim",
+     "espera": {
+      "some": "main li:has(span.font-medium:text-is(\"Certificado (Inmetro) · Glass jar 1.5L with lid\")) form:has(input[name=requirementId]):not([data-requirement-clear])",
+      "rede": true
+     }
+    },
+    {
+     "id": "p4",
+     "fala": "O envio acontece na hora, sem outro botão. A linha passa para \"Concluído\", com o nome do arquivo.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Certificado (Inmetro) · Glass jar 1.5L with lid\"))"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p5",
+     "fala": "A linha de baixo não é sua: quem aprova a certificação é a Wellmix. Ela continua pendente, agora com a equipe dela.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Certificação aprovada pelo GP\"))"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p6",
+     "fala": "Se o pedido tiver mais de um produto, cada um tem a sua linha, e você repete o envio em cada uma."
+    }
+   ],
+   "salvar": "cert-s1",
+   "tarefa": "Enviar o certificado de um produto",
+   "cuidados": [
+    {
+     "erro": "\"Formato não aceito: envie foto (JPG, PNG, WEBP, HEIC) ou PDF.\"",
+     "solucao": "Arquivo do Word não entra, e nada foi enviado. Salve o certificado em PDF e envie de novo."
+    },
+    {
+     "erro": "\"Esta tarefa é de outro responsável do pedido: só quem a recebe (ou o administrador) pode enviar, trocar o arquivo ou validar.\"",
+     "solucao": "O certificado só pode ser enviado pela certificadora designada no pedido. Fale com a Wellmix pelas mensagens."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-c3-cuidado",
+   "tipo": "tela",
+   "capitulo": "4 · Enviar o certificado",
+   "estado": "cert-base",
+   "inicio": {
+    "url": "/app",
+    "antes": [
+     {
+      "acao": "clicar",
+      "alvo": {
+       "seletor": "a[data-open-link]",
+       "dentro": {
+        "seletor": "main table tbody tr",
+        "contem": "Certificado (Inmetro)"
+       }
+      },
+      "espera": {
+       "url": "/app/orders/[^/?#]+$",
+       "rede": true
+      }
+     }
+    ]
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Agora, um ponto de atenção. Voltamos ao momento antes do envio, com a linha do certificado ainda pendente. Ela aceita PDF ou imagem. Arquivo do Word não entra.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Certificado (Inmetro) · Glass jar 1.5L with lid\"))"
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "conta_passo": false,
+     "sim": false
+    },
+    {
+     "id": "p2",
+     "fala": "Veja o que acontece quando o arquivo escolhido é um documento do Word.",
+     "alvo": {
+      "seletor": "main li:has(span.font-medium:text-is(\"Certificado (Inmetro) · Glass jar 1.5L with lid\")) input[aria-label=\"Escolher arquivo\"]"
+     },
+     "acao": "anexar",
+     "valor": "{DEMO}/arquivos/certificado-de-conformidade.docx",
+     "alvo_visual": "main li:has(span.font-medium:text-is(\"Certificado (Inmetro) · Glass jar 1.5L with lid\")) [data-file-button]",
+     "acao_em": "fim",
+     "espera": {
+      "url": "error=",
+      "rede": true
+     },
+     "conta_passo": false,
+     "sim": false
+    },
+    {
+     "id": "p3",
+     "fala": "O portal avisa, no alto do pedido, que o formato não é aceito, e nada é enviado. Salve o certificado em PDF e mande outra vez.",
+     "alvo": {
+      "texto": "Formato não aceito",
+      "exato": false
+     },
+     "acao": "mostrar",
+     "pausa": 0.6,
+     "conta_passo": false,
+     "sim": false
+    }
+   ],
+   "sim": false,
+   "modulo": 1
+  },
+  {
+   "id": "m1-c3-suavez",
+   "tipo": "cartao",
+   "capitulo": "4 · Enviar o certificado",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Enviar o certificado",
+    "itens": [
+     "Abra o pedido pela linha do certificado, em Pendências",
+     "No marco \"Certificação\", ache a linha do certificado do produto",
+     "Clique em \"Escolher arquivo\" e selecione o PDF do certificado",
+     "Veja a linha passar para \"Concluído\""
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora é com você: pause o vídeo e envie o certificado de um produto."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m1-z9-resumo",
+   "tipo": "cartao",
+   "capitulo": "Resumo",
+   "cartao": {
+    "tipo": "encerramento",
+    "titulo": "Certificado enviado",
+    "subtitulo": "Entrar, achar as pendências, ler o pedido e enviar o certificado de cada produto."
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Resumindo: você entra com o seu login, começa pelas pendências, lê o pedido e a ficha de compra, e envia o certificado na linha de cada produto."
+    },
+    {
+     "id": "f2",
+     "fala": "Agora responda ao quiz deste módulo. No próximo, você envia o selo e o memorial descritivo."
+    }
+   ],
+   "modulo": 1
+  },
+  {
+   "id": "m2-a0-abertura",
+   "tipo": "cartao",
+   "capitulo": "Boas-vindas",
+   "cartao": {
+    "tipo": "abertura",
+    "sobretitulo": "Treinamento do Portal Wellmix · Certificadora",
+    "titulo": "Selo, memorial e os outros caminhos",
+    "subtitulo": "Módulo 2"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Neste módulo você envia os dois documentos do pedido: o selo de certificação e o memorial descritivo. E aprende a trocar um arquivo enviado."
+    },
+    {
+     "id": "f2",
+     "fala": "No fim, conhece a tela \"Certificação\", a mesa de trabalho, os avisos e as mensagens."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c1-cartao",
+   "tipo": "cartao",
+   "capitulo": "1 · Enviar o selo",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 1 de 5",
+    "titulo": "Enviar o selo",
+    "subtitulo": "O selo de certificação do pedido"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Para começar: o selo."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c1-selo",
+   "tipo": "tela",
+   "capitulo": "1 · Enviar o selo",
+   "estado": "cert-s1",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Com o certificado do produto enviado, ficam as duas tarefas do pedido: o selo e o memorial descritivo.",
+     "alvo": {
+      "seletor": "main table tbody tr",
+      "contem": "Gerar o selo de certificação"
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "destaques": [
+      {
+       "alvo": {
+        "seletor": "main table tbody tr",
+        "contem": "Enviar o memorial descritivo"
+       },
+       "em": {
+        "em": "memorial"
+       },
+       "foco": false
+      }
+     ]
+    },
+    {
+     "id": "p2",
+     "fala": "Na linha \"Gerar o selo de certificação\", clique no ícone de abrir, à direita.",
+     "alvo": {
+      "seletor": "a[data-open-link]",
+      "dentro": {
+       "seletor": "main table tbody tr",
+       "contem": "Gerar o selo de certificação"
+      }
+     },
+     "acao": "clicar",
+     "alvo_visual": {
+      "seletor": "main table tbody tr",
+      "contem": "Gerar o selo de certificação"
+     },
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Gerar o selo de certificação\"",
+     "espera": {
+      "url": "/app/orders/[^/?#]+",
+      "rede": true
+     }
+    },
+    {
+     "id": "p3",
+     "fala": "Você cai no cartão \"Certificação\" do pedido. O primeiro quadro é o seu. É ali que você envia o selo e o memorial.",
+     "alvo": {
+      "seletor": "#certification-featured"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p4",
+     "fala": "No quadro \"Selo\", digite o número do selo ou do registro, se houver. Este campo é opcional.",
+     "alvo": {
+      "seletor": "[data-import-featured=\"cert_seal\"] input[name=value]"
+     },
+     "acao": "digitar",
+     "valor": "SELO-2026-0115",
+     "rotulo": "Nº do selo ou do registro",
+     "rotulo_lado": "abaixo",
+     "resumo": "Digite o número do selo ou do registro (opcional)",
+     "acao_em": {
+      "apos": "digite"
+     },
+     "pausa": 0.4
+    },
+    {
+     "id": "p5",
+     "fala": "Depois, use \"Escolher arquivo\" e selecione o arquivo do selo.",
+     "alvo": {
+      "seletor": "[data-import-featured=\"cert_seal\"] input[type=file]"
+     },
+     "acao": "anexar",
+     "valor": "{DEMO}/arquivos/selo-de-certificacao-pote-1500ml.png",
+     "rotulo": "Escolher arquivo",
+     "rotulo_lado": "abaixo",
+     "resumo": "Clique em \"Escolher arquivo\" e selecione o selo",
+     "acao_em": "fim",
+     "espera": {
+      "ms": 600
+     }
+    },
+    {
+     "id": "p6",
+     "fala": "Aqui o envio não é automático. Clique em \"Enviar\".",
+     "alvo": {
+      "seletor": "[data-import-submit=\"cert_seal\"]"
+     },
+     "acao": "clicar",
+     "rotulo": "Enviar",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Enviar\"",
+     "espera": {
+      "url": "certStep=submitted",
+      "rede": true
+     }
+    },
+    {
+     "id": "p7",
+     "fala": "O quadro do selo passa para \"Concluído\", com o link do arquivo e o número que você digitou.",
+     "alvo": {
+      "seletor": "[data-import-featured=\"cert_seal\"]"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p8",
+     "fala": "Com o selo enviado, quem faz a arte da embalagem recebe um aviso: baixa o selo, aplica na arte e envia a arte com o selo. A Wellmix valida. Essa linha você só acompanha.",
+     "alvo": {
+      "seletor": "#certification-step-cert_seal_art"
+     },
+     "acao": "mostrar",
+     "pausa": 0.6
+    }
+   ],
+   "salvar": "cert-s2",
+   "tarefa": "Enviar o selo de certificação",
+   "modulo": 2
+  },
+  {
+   "id": "m2-c1-suavez",
+   "tipo": "cartao",
+   "capitulo": "1 · Enviar o selo",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Enviar o selo",
+    "itens": [
+     "Em Pendências, clique no ícone de abrir na linha \"Gerar o selo de certificação\"",
+     "No quadro \"Selo\", digite o número do selo, se houver",
+     "Clique em \"Escolher arquivo\" e selecione o selo",
+     "Clique em \"Enviar\""
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora é com você: pause o vídeo e envie o selo de um pedido."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c2-cartao",
+   "tipo": "cartao",
+   "capitulo": "2 · Enviar o memorial descritivo",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 2 de 5",
+    "titulo": "Enviar o memorial descritivo",
+    "subtitulo": "O documento que descreve o produto certificado"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora: o memorial descritivo."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c2-memorial",
+   "tipo": "tela",
+   "capitulo": "2 · Enviar o memorial descritivo",
+   "estado": "cert-s2",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Agora só falta o memorial descritivo. O portal pede esse arquivo em PDF.",
+     "alvo": {
+      "seletor": "main table tbody tr",
+      "contem": "Enviar o memorial descritivo"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p2",
+     "fala": "Na linha do memorial, clique no ícone de abrir, à direita.",
+     "alvo": {
+      "seletor": "a[data-open-link]",
+      "dentro": {
+       "seletor": "main table tbody tr",
+       "contem": "Enviar o memorial descritivo"
+      }
+     },
+     "acao": "clicar",
+     "alvo_visual": {
+      "seletor": "main table tbody tr",
+      "contem": "Enviar o memorial descritivo"
+     },
+     "resumo": "Em Pendências, clique no ícone de abrir na linha \"Enviar o memorial descritivo\"",
+     "espera": {
+      "url": "/app/orders/[^/?#]+",
+      "rede": true
+     }
+    },
+    {
+     "id": "p3",
+     "fala": "É o mesmo quadro do alto. O selo já está concluído. Ao lado dele, o memorial descritivo, ainda pendente.",
+     "alvo": {
+      "seletor": "[data-import-featured=\"cert_memorial\"]"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p4",
+     "fala": "Use \"Escolher arquivo\" e selecione o PDF do memorial.",
+     "alvo": {
+      "seletor": "[data-import-featured=\"cert_memorial\"] input[type=file]"
+     },
+     "acao": "anexar",
+     "valor": "{DEMO}/arquivos/memorial-descritivo-pote-1500ml.pdf",
+     "rotulo": "Escolher arquivo",
+     "rotulo_lado": "abaixo",
+     "resumo": "Clique em \"Escolher arquivo\" e selecione o PDF do memorial",
+     "acao_em": "fim",
+     "espera": {
+      "ms": 600
+     }
+    },
+    {
+     "id": "p5",
+     "fala": "E clique em \"Enviar\".",
+     "alvo": {
+      "seletor": "[data-import-submit=\"cert_memorial\"]"
+     },
+     "acao": "clicar",
+     "rotulo": "Enviar",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Enviar\"",
+     "espera": {
+      "url": "certStep=submitted",
+      "rede": true
+     }
+    },
+    {
+     "id": "p6",
+     "fala": "Pronto: selo e memorial concluídos. Da parte da certificadora, o pedido está completo.",
+     "alvo": {
+      "seletor": "#certification-featured"
+     },
+     "acao": "mostrar",
+     "foco": false,
+     "pausa": 0.6
+    }
+   ],
+   "salvar": "cert-s3",
+   "tarefa": "Enviar o memorial descritivo",
+   "modulo": 2
+  },
+  {
+   "id": "m2-c2-suavez",
+   "tipo": "cartao",
+   "capitulo": "2 · Enviar o memorial descritivo",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Enviar o memorial descritivo",
+    "itens": [
+     "Em Pendências, clique no ícone de abrir na linha \"Enviar o memorial descritivo\"",
+     "No quadro \"Memorial descritivo\", clique em \"Escolher arquivo\" e selecione o PDF",
+     "Clique em \"Enviar\""
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Sua vez. Pause o vídeo e envie o memorial descritivo de um pedido."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c3-cartao",
+   "tipo": "cartao",
+   "capitulo": "3 · Substituir um arquivo",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 3 de 5",
+    "titulo": "Substituir um arquivo",
+    "subtitulo": "Trocar o selo ou o memorial já enviado"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora: como trocar um arquivo já enviado."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c3-substituir",
+   "tipo": "tela",
+   "capitulo": "3 · Substituir um arquivo",
+   "estado": "cert-s3",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "Depois de enviar tudo, a lista de pendências fica vazia. Para trocar um arquivo, abra \"Pedidos\", no menu.",
+     "alvo": {
+      "seletor": "aside a[href='/app/orders']"
+     },
+     "acao": "clicar",
+     "rotulo": "Pedidos",
+     "resumo": "No menu, clique em \"Pedidos\"",
+     "acao_em": "fim",
+     "espera": {
+      "url": "/app/orders$",
+      "rede": true
+     }
+    },
+    {
+     "id": "p1b",
+     "fala": "E clique no número do pedido.",
+     "alvo": {
+      "seletor": "main a[href^=\"/app/orders/\"]",
+      "contem": "#1",
+      "n": 0
+     },
+     "acao": "clicar",
+     "rotulo": "Pedido #1",
+     "rotulo_lado": "direita",
+     "resumo": "Clique no número do pedido",
+     "espera": {
+      "url": "/app/orders/[^/?#]+",
+      "rede": true
+     }
+    },
+    {
+     "id": "p2",
+     "fala": "No cartão \"Certificação\", o quadro do selo, já concluído, traz o botão \"Substituir arquivo\".",
+     "alvo": {
+      "seletor": "[data-import-featured=\"cert_seal\"]"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p3",
+     "fala": "Clique em \"Substituir arquivo\" e selecione o arquivo novo.",
+     "alvo": {
+      "seletor": "input[data-replace-file=\"cert_seal\"]"
+     },
+     "acao": "anexar",
+     "valor": "{DEMO}/arquivos/selo-de-certificacao-pote-1500ml-v2.png",
+     "alvo_visual": "[data-replace-start=\"cert_seal\"]",
+     "rotulo": "Substituir arquivo",
+     "rotulo_lado": "abaixo",
+     "resumo": "No quadro do selo, clique em \"Substituir arquivo\" e selecione o arquivo novo",
+     "acao_em": "fim",
+     "espera": {
+      "seletor": "[data-replace-chosen]",
+      "ms": 300
+     }
+    },
+    {
+     "id": "p4",
+     "fala": "O portal mostra o nome do arquivo novo e espera a sua confirmação. Até lá, nada mudou: dá para cancelar.",
+     "alvo": {
+      "seletor": "[data-replace-chosen]"
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p5",
+     "fala": "Clique em \"Confirmar substituição\".",
+     "alvo": {
+      "seletor": "[data-replace-confirm]"
+     },
+     "acao": "clicar",
+     "rotulo": "Confirmar substituição",
+     "rotulo_lado": "acima",
+     "resumo": "Clique em \"Confirmar substituição\"",
+     "espera": {
+      "texto": "Arquivo substituído",
+      "rede": true
+     }
+    },
+    {
+     "id": "p6",
+     "fala": "O aviso confirma: arquivo substituído. O número do selo continua o mesmo.",
+     "alvo": {
+      "texto": "Arquivo substituído",
+      "exato": false
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p7",
+     "fala": "Se a arte com o selo já tinha sido enviada, o passo dela volta para quem faz a arte, que aplica o selo novo e envia outra vez. O memorial se troca do mesmo jeito."
+    }
+   ],
+   "tarefa": "Substituir o arquivo do selo",
+   "modulo": 2
+  },
+  {
+   "id": "m2-c3-suavez",
+   "tipo": "cartao",
+   "capitulo": "3 · Substituir um arquivo",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Substituir um arquivo",
+    "itens": [
+     "Em \"Pedidos\", abra o pedido",
+     "No quadro do selo, clique em \"Substituir arquivo\" e selecione o arquivo novo",
+     "Veja o nome do arquivo novo",
+     "Clique em \"Confirmar substituição\""
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora é com você: pause o vídeo e substitua o arquivo de um selo."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c4-cartao",
+   "tipo": "cartao",
+   "capitulo": "4 · A tela Certificação e a mesa de trabalho",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 4 de 5",
+    "titulo": "A tela Certificação e a mesa de trabalho",
+    "subtitulo": "Outros dois caminhos para o mesmo trabalho"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora: a tela Certificação e a mesa de trabalho."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c4-mesa",
+   "tipo": "tela",
+   "capitulo": "4 · A tela Certificação e a mesa de trabalho",
+   "estado": "cert-base",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "As pendências não são o único caminho. Para este exemplo, o pedido aparece em um momento anterior, sem nada enviado ainda. No menu, abra \"Certificação\".",
+     "alvo": {
+      "seletor": "aside a[href='/app/flow/order/certification']"
+     },
+     "acao": "clicar",
+     "rotulo": "Certificação",
+     "resumo": "No menu, clique em \"Certificação\"",
+     "espera": {
+      "url": "/app/flow/order/certification",
+      "rede": true
+     }
+    },
+    {
+     "id": "p2",
+     "fala": "Esta tela junta só o passo da certificação. A aba \"Pendências\" lista o que espera por você, com o prazo e há quantos dias está aberto.",
+     "alvo": {
+      "seletor": "[data-flow-tab=pending]"
+     },
+     "acao": "mostrar",
+     "rotulo": "Pendências",
+     "rotulo_lado": "abaixo"
+    },
+    {
+     "id": "p3",
+     "fala": "A aba \"Todos no passo\" mostra todos os seus pedidos que estão na certificação, mesmo sem nada pendente. Abra essa aba.",
+     "alvo": {
+      "seletor": "[data-flow-tab=all]"
+     },
+     "acao": "clicar",
+     "rotulo": "Todos no passo",
+     "rotulo_lado": "abaixo",
+     "resumo": "Clique na aba \"Todos no passo\"",
+     "acao_em": "fim",
+     "espera": {
+      "url": "tab=all",
+      "rede": true
+     }
+    },
+    {
+     "id": "p3b",
+     "fala": "Cada linha é um pedido, com a etapa em que ele está e o que continua aberto neste passo.",
+     "alvo": {
+      "seletor": "main table tbody tr"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p3c",
+     "fala": "Volte para a aba \"Pendências\".",
+     "alvo": {
+      "seletor": "[data-flow-tab=pending]"
+     },
+     "acao": "clicar",
+     "rotulo": "Pendências",
+     "rotulo_lado": "abaixo",
+     "resumo": "Volte para a aba \"Pendências\"",
+     "espera": {
+      "seletor": "[data-flow-case-open]",
+      "rede": true
+     }
+    },
+    {
+     "id": "p4",
+     "fala": "Na linha do certificado, clique em \"Resolver\".",
+     "alvo": {
+      "seletor": "[data-flow-case-open]",
+      "n": 0
+     },
+     "acao": "clicar",
+     "rotulo": "Resolver",
+     "rotulo_lado": "esquerda",
+     "resumo": "Na linha do certificado, clique em \"Resolver\"",
+     "espera": {
+      "url": "/app/flow/order/certification/",
+      "rede": true
+     }
+    },
+    {
+     "id": "p5",
+     "fala": "Abre só o produto daquela linha. Dá para enviar o certificado daqui mesmo, sem abrir o pedido inteiro.",
+     "alvo": {
+      "papel": "heading",
+      "nome": "Este produto no passo",
+      "acima": 2
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p6",
+     "fala": "Agora, a mesa de trabalho. Volte às pendências, pelo menu.",
+     "alvo": {
+      "seletor": "aside a[href='/app']"
+     },
+     "acao": "clicar",
+     "rotulo": "Pendências",
+     "resumo": "No menu, clique em \"Pendências\"",
+     "acao_em": {
+      "apos": "Volte"
+     },
+     "espera": {
+      "url": "/app$",
+      "rede": true
+     }
+    },
+    {
+     "id": "p7",
+     "fala": "Use um filtro de prazo, como \"Todas\", mesmo que já apareça marcado.",
+     "alvo": {
+      "seletor": "main a[data-task-filter='due:all']",
+      "n": 0
+     },
+     "acao": "clicar",
+     "rotulo": "Prazo: Todas",
+     "rotulo_lado": "acima",
+     "resumo": "Clique num filtro de prazo, como \"Todas\"",
+     "espera": {
+      "url": "/app/tasks",
+      "rede": true
+     }
+    },
+    {
+     "id": "p8",
+     "fala": "Com isso aparece o botão \"Mesa de trabalho\". Clique nele.",
+     "alvo": {
+      "seletor": "[data-desk-link]"
+     },
+     "acao": "clicar",
+     "rotulo": "Mesa de trabalho",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Mesa de trabalho\"",
+     "espera": {
+      "url": "/app/tasks/desk",
+      "rede": true
+     }
+    },
+    {
+     "id": "p9",
+     "fala": "A mesa mostra a fila \"Certificados a emitir\": um produto por linha, com o pedido e o prazo.",
+     "alvo": {
+      "papel": "heading",
+      "nome": "Certificados a emitir",
+      "acima": 2
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p10",
+     "fala": "Em cada linha, o ícone de abrir leva ao pedido.",
+     "alvo": {
+      "seletor": "main a[data-open-link]"
+     },
+     "acao": "mostrar",
+     "rotulo": "Abrir",
+     "rotulo_lado": "esquerda",
+     "pausa": 0.6
+    }
+   ],
+   "tarefa": "Achar os certificados pela tela Certificação e pela mesa de trabalho",
+   "modulo": 2
+  },
+  {
+   "id": "m2-c4-suavez",
+   "tipo": "cartao",
+   "capitulo": "4 · A tela Certificação e a mesa de trabalho",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "A tela Certificação e a mesa de trabalho",
+    "itens": [
+     "No menu, clique em \"Certificação\"",
+     "Veja as abas \"Pendências\" e \"Todos no passo\"",
+     "Clique em \"Resolver\" numa linha",
+     "Em Pendências, clique num filtro de prazo e depois em \"Mesa de trabalho\""
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Sua vez. Pause o vídeo e ache os seus certificados pela tela Certificação e pela mesa de trabalho."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c5-cartao",
+   "tipo": "cartao",
+   "capitulo": "5 · Avisos e mensagens",
+   "cartao": {
+    "tipo": "capitulo",
+    "sobretitulo": "Parte 5 de 5",
+    "titulo": "Avisos e mensagens",
+    "subtitulo": "O sino e a conversa com a Wellmix"
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Por fim: os avisos e as mensagens."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-c5-avisos",
+   "tipo": "tela",
+   "capitulo": "5 · Avisos e mensagens",
+   "estado": "cert-base",
+   "inicio": {
+    "url": "/app"
+   },
+   "passos": [
+    {
+     "id": "p1",
+     "fala": "O sino, no alto, mostra os avisos. O número é quantos você ainda não leu. Abra o sino.",
+     "alvo": {
+      "seletor": "header a[href='/app/notifications']"
+     },
+     "acao": "clicar",
+     "rotulo": "Notificações",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique no sino",
+     "espera": {
+      "url": "/app/notifications",
+      "rede": true
+     },
+     "zoom": 1.3
+    },
+    {
+     "id": "p2",
+     "fala": "Quando um pedido com certificação nasce, o aviso chega aqui. \"Sua vez\" quer dizer que depende da certificadora.",
+     "alvo": {
+      "seletor": "main table tbody tr"
+     },
+     "acao": "mostrar",
+     "foco": false
+    },
+    {
+     "id": "p3",
+     "fala": "O botão \"Resolver\" leva você para a tela certa, e o aviso sai da lista.",
+     "alvo": {
+      "seletor": "main table tbody tr button",
+      "contem": "Resolver"
+     },
+     "acao": "mostrar",
+     "rotulo": "Resolver",
+     "rotulo_lado": "esquerda"
+    },
+    {
+     "id": "p4",
+     "fala": "Para falar com a Wellmix, clique no balão de mensagens, ao lado do sino.",
+     "alvo": {
+      "seletor": "header a[href='/app/messages']"
+     },
+     "acao": "clicar",
+     "rotulo": "Mensagens",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique no balão de mensagens",
+     "destaque_em": {
+      "em": "balão"
+     },
+     "espera": {
+      "url": "/app/messages",
+      "rede": true
+     }
+    },
+    {
+     "id": "p5",
+     "fala": "Esta conversa é da sua empresa com a equipe da Wellmix. Todos os logins da certificadora veem as mesmas mensagens.",
+     "alvo": {
+      "texto": "Todos os logins da sua empresa veem esta conversa",
+      "exato": false
+     },
+     "acao": "mostrar"
+    },
+    {
+     "id": "p6",
+     "fala": "Escreva a mensagem no campo de baixo. Pode ser uma dúvida sobre o produto, um prazo ou um documento que falta.",
+     "alvo": {
+      "seletor": "main textarea[name=body]"
+     },
+     "acao": "digitar",
+     "valor": "Olá! Para emitir o certificado do pote, preciso da ficha técnica da tampa.",
+     "rotulo": "Mensagem",
+     "rotulo_lado": "acima",
+     "resumo": "Escreva a mensagem",
+     "acao_em": {
+      "apos": "baixo"
+     },
+     "pausa": 0.5
+    },
+    {
+     "id": "p7",
+     "fala": "E clique em \"Enviar\".",
+     "alvo": {
+      "seletor": "main form button[type=submit]",
+      "contem": "Enviar"
+     },
+     "acao": "clicar",
+     "rotulo": "Enviar",
+     "rotulo_lado": "esquerda",
+     "resumo": "Clique em \"Enviar\"",
+     "espera": {
+      "texto": "Olá! Para emitir o certificado do pote, preciso da ficha técnica da tampa.",
+      "ms": 400
+     },
+     "pausa": 0.6
+    },
+    {
+     "id": "p8",
+     "fala": "A mensagem fica na conversa, para a equipe da Wellmix responder.",
+     "alvo": {
+      "texto": "Olá! Para emitir o certificado do pote, preciso da ficha técnica da tampa.",
+      "exato": false
+     },
+     "acao": "mostrar",
+     "pausa": 0.6
+    }
+   ],
+   "tarefa": "Ler os avisos e falar com a Wellmix",
+   "modulo": 2
+  },
+  {
+   "id": "m2-c5-suavez",
+   "tipo": "cartao",
+   "capitulo": "5 · Avisos e mensagens",
+   "sua_vez": true,
+   "duracao_min": 4.5,
+   "cartao": {
+    "tipo": "suavez",
+    "titulo": "Avisos e mensagens",
+    "itens": [
+     "Clique no sino e leia os avisos",
+     "Veja de quem é a vez em cada aviso",
+     "Abra as mensagens e escreva para a Wellmix"
+    ]
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Agora é com você: pause o vídeo, leia os avisos e mande uma mensagem."
+    }
+   ],
+   "modulo": 2
+  },
+  {
+   "id": "m2-z9-resumo",
+   "tipo": "cartao",
+   "capitulo": "Resumo",
+   "cartao": {
+    "tipo": "encerramento",
+    "titulo": "Você domina o portal da certificadora",
+    "subtitulo": "Certificado, selo, memorial, troca de arquivo, a tela Certificação, a mesa de trabalho e as mensagens."
+   },
+   "passos": [
+    {
+     "id": "f1",
+     "fala": "Resumindo: no quadro do alto do cartão \"Certificação\", você envia o selo e o memorial, e troca um arquivo quando precisar. Para achar o seu trabalho, use as pendências, a tela \"Certificação\" ou a mesa de trabalho."
+    },
+    {
+     "id": "f2",
+     "fala": "Agora responda ao quiz deste módulo e, depois, ao quiz final do treinamento."
+    }
+   ],
+   "modulo": 2
+  }
+ ]
+}

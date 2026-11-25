@@ -1,0 +1,187 @@
+<title>Vozes do treinamento</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap">
+<style>
+  /* Layout: uma coluna de leitura; cada voz é uma faixa com letra, tocador e ficha curta. */
+  :root {
+    --bg: #f6f4f4; --surface: #ffffff; --fg: #1b1a1c; --muted: #625d60; --line: #e4dfe0;
+    --accent: #bf2026; --accent-fg: #ffffff; --ok: #1f7a45; --warn: #a2530a; --chip: #2a282b;
+    --display: "Space Grotesk", "Inter", system-ui, sans-serif;
+    --body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151314; --surface: #1f1c1e; --fg: #f3f0f1; --muted: #b1aaad; --line: #332e31;
+      --accent: #e0494e; --accent-fg: #ffffff; --ok: #5cc98a; --warn: #f0a64a; --chip: #3a3538;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151314; --surface: #1f1c1e; --fg: #f3f0f1; --muted: #b1aaad; --line: #332e31;
+    --accent: #e0494e; --accent-fg: #ffffff; --ok: #5cc98a; --warn: #f0a64a; --chip: #3a3538;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font: 16px/1.55 var(--body);
+    padding-block: 28px 56px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  main { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+  h1 { font: 700 30px/1.15 var(--display); margin: 0; text-wrap: balance; }
+  h2 { font: 600 20px/1.2 var(--display); margin: 10px 0 0; }
+  p { margin: 0; }
+  .sub { color: var(--muted); max-width: 62ch; }
+  .texto { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 8px; }
+  .lista { display: flex; flex-direction: column; gap: 14px; }
+  .voz { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px; }
+  .cab { display: flex; gap: 14px; align-items: flex-start; }
+  .cab > div { min-width: 0; }
+  .letra { flex: none; min-width: 46px; height: 46px; padding: 0 10px; border-radius: 999px; background: var(--accent);
+    color: var(--accent-fg); font: 700 20px/1 var(--display); display: flex; align-items: center; justify-content: center; }
+  .extra .letra { background: var(--chip); }
+  .nome { font: 600 17px/1.3 var(--body); }
+  .nota { color: var(--muted); font-size: 14.5px; }
+  audio, video { width: 100%; display: block; border-radius: 8px; }
+  video { background: #000; aspect-ratio: 16 / 9; }
+  .tocar { display: none; align-items: center; gap: 12px; }
+  .tocar button { font: 600 15px var(--body); padding: 10px 18px; border-radius: 999px; border: 0;
+    background: var(--accent); color: var(--accent-fg); cursor: pointer; }
+  .tocar button:focus-visible, audio:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+  .tocar span { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+  dl { display: grid; grid-template-columns: minmax(110px, 150px) 1fr; gap: 5px 14px; margin: 0; font-size: 14.5px; }
+  dt { color: var(--muted); } dd { margin: 0; min-width: 0; }
+  .ok { color: var(--ok); font-weight: 500; } .fora { color: var(--warn); font-weight: 600; }
+  @media (max-width: 520px) { dl { grid-template-columns: 1fr; } dt { margin-top: 6px; } h1 { font-size: 25px; } }
+</style>
+
+<main>
+  <header style="display:flex;flex-direction:column;gap:8px">
+    <h1>Vozes do treinamento</h1>
+    <p class="sub">O mesmo texto em cada voz, sintetizado na máquina da sessão, sem serviço externo. Aperte o play de cada uma. A escolha vale para todos os papéis.</p>
+  </header>
+
+  <section class="texto" aria-label="Texto de teste">
+    <p>Olá! Bem-vindo ao treinamento da Wellmix. Pronto para começar?</p>
+    <p>Hoje vamos conferir um pedido de R$ 12.480,50, com entrega prevista para 23/11/2026.</p>
+    <p>Olha aqui no canto direito: é o botão "Novo pedido". Clica nele. Antes de salvar, confira o CNPJ do fornecedor e o número da NF-e.</p>
+  </section>
+
+  <h2>Todas em sequência</h2>
+  <p class="sub">Um vídeo de 3 minutos com as sete vozes, uma depois da outra. A letra de cada uma aparece na tela.</p>
+  <video id="todas" controls preload="metadata" src="video/amostras.mp4"></video>
+
+  <h2>As três para ouvir primeiro</h2>
+  <div class="lista">
+    <article class="voz">
+      <div class="cab"><span class="letra">A</span><div><p class="nome">Kokoro · Dora (feminina)</p><p class="nota">Passa nos três critérios: soa natural, licença comercial, rápida.</p></div></div>
+      <audio id="voz-a" controls preload="metadata" src="audio/a.mp3"></audio>
+      <div class="tocar"><button type="button" id="tocar-a">Tocar</button><span></span></div>
+      <dl><dt>Licença</dt><dd>Apache-2.0, código e pesos</dd>
+        <dt>Velocidade</dt><dd class="ok">0,31× o tempo do áudio</dd>
+        <dt>Ritmo</dt><dd>156 palavras por minuto</dd>
+        <dt>Conferência</dt><dd>"nele" ouvido como "neles"</dd></dl>
+    </article>
+    <article class="voz">
+      <div class="cab"><span class="letra">B</span><div><p class="nome">Kokoro · Alex (masculina)</p><p class="nota">Passa nos três critérios.</p></div></div>
+      <audio id="voz-b" controls preload="metadata" src="audio/b.mp3"></audio>
+      <div class="tocar"><button type="button" id="tocar-b">Tocar</button><span></span></div>
+      <dl><dt>Licença</dt><dd>Apache-2.0, código e pesos</dd>
+        <dt>Velocidade</dt><dd class="ok">0,28× o tempo do áudio</dd>
+        <dt>Ritmo</dt><dd>154 palavras por minuto</dd>
+        <dt>Conferência</dt><dd>"nele" ouvido como "neles"</dd></dl>
+    </article>
+    <article class="voz">
+      <div class="cab"><span class="letra">C</span><div><p class="nome">Chatterbox pt-BR · timbre sintético feminino</p><p class="nota">Modelo mais expressivo, mas lento sem placa de vídeo.</p></div></div>
+      <audio id="voz-c" controls preload="metadata" src="audio/c.mp3"></audio>
+      <div class="tocar"><button type="button" id="tocar-c">Tocar</button><span></span></div>
+      <dl><dt>Licença</dt><dd>MIT, código e pesos</dd>
+        <dt>Velocidade</dt><dd class="fora">5,4× o tempo do áudio (limite: 2×)</dd>
+        <dt>Ritmo</dt><dd>135 palavras por minuto</dd>
+        <dt>Conferência</dt><dd>uma palavra "a" a mais</dd></dl>
+    </article>
+  </div>
+
+  <h2>Alternativas</h2>
+  <div class="lista">
+    <article class="voz extra">
+      <div class="cab"><span class="letra">C2</span><div><p class="nome">Chatterbox pt-BR · voz que vem com o modelo</p><p class="nota">Mesma ressalva de velocidade da C.</p></div></div>
+      <audio id="voz-c2" controls preload="metadata" src="audio/c2.mp3"></audio>
+      <div class="tocar"><button type="button" id="tocar-c2">Tocar</button><span></span></div>
+      <dl><dt>Licença</dt><dd>MIT, código e pesos</dd>
+        <dt>Velocidade</dt><dd class="fora">4,7× o tempo do áudio (limite: 2×)</dd>
+        <dt>Ritmo</dt><dd>154 palavras por minuto</dd>
+        <dt>Conferência</dt><dd>uma palavra "a" a mais</dd></dl>
+    </article>
+    <article class="voz extra">
+      <div class="cab"><span class="letra">D</span><div><p class="nome">Supertonic 3 · F1 (feminina)</p><p class="nota">Rápida. A licença exige avisar que a voz é sintética.</p></div></div>
+      <audio id="voz-d" controls preload="metadata" src="audio/d.mp3"></audio>
+      <div class="tocar"><button type="button" id="tocar-d">Tocar</button><span></span></div>
+      <dl><dt>Licença</dt><dd>OpenRAIL-M nos pesos, com restrições de uso</dd>
+        <dt>Velocidade</dt><dd class="ok">0,36× o tempo do áudio</dd>
+        <dt>Ritmo</dt><dd>138 palavras por minuto</dd>
+        <dt>Conferência</dt><dd>igual ao roteiro</dd></dl>
+    </article>
+    <article class="voz extra">
+      <div class="cab"><span class="letra">E</span><div><p class="nome">Supertonic 3 · M1 (masculina)</p><p class="nota">Rápida. Mesma ressalva de licença da D.</p></div></div>
+      <audio id="voz-e" controls preload="metadata" src="audio/e.mp3"></audio>
+      <div class="tocar"><button type="button" id="tocar-e">Tocar</button><span></span></div>
+      <dl><dt>Licença</dt><dd>OpenRAIL-M nos pesos, com restrições de uso</dd>
+        <dt>Velocidade</dt><dd class="ok">0,39× o tempo do áudio</dd>
+        <dt>Ritmo</dt><dd>138 palavras por minuto</dd>
+        <dt>Conferência</dt><dd>igual ao roteiro</dd></dl>
+    </article>
+    <article class="voz extra">
+      <div class="cab"><span class="letra">F</span><div><p class="nome">Kokoro · Santa (masculina)</p><p class="nota">Alternativa à B.</p></div></div>
+      <audio id="voz-f" controls preload="metadata" src="audio/f.mp3"></audio>
+      <div class="tocar"><button type="button" id="tocar-f">Tocar</button><span></span></div>
+      <dl><dt>Licença</dt><dd>Apache-2.0, código e pesos</dd>
+        <dt>Velocidade</dt><dd class="ok">0,30× o tempo do áudio</dd>
+        <dt>Ritmo</dt><dd>151 palavras por minuto</dd>
+        <dt>Conferência</dt><dd>"nele" ouvido como "neles"</dd></dl>
+    </article>
+  </div>
+
+  <h2>Prova da gravação</h2>
+  <p class="sub">Teste do pipeline na tela de entrada do portal, em modo demonstração. Não é conteúdo de treinamento. A voz é a A.</p>
+  <video id="prova" controls preload="metadata" src="video/prova.mp4"></video>
+</main>
+
+<script>
+  // Se o tocador nativo for bloqueado, toca pelo Web Audio a partir do mesmo arquivo.
+  (function () {
+    var ctx = null, atual = null;
+    function parar() {
+      if (!atual) return;
+      try { atual.fonte.stop(); } catch (e) {}
+      atual.botao.textContent = "Tocar"; atual.info.textContent = ""; atual = null;
+    }
+    document.querySelectorAll("audio").forEach(function (a) {
+      var caixa = a.nextElementSibling, botao = caixa.querySelector("button"), info = caixa.querySelector("span");
+      a.addEventListener("play", function () {
+        document.querySelectorAll("audio").forEach(function (o) { if (o !== a) o.pause(); });
+      });
+      a.addEventListener("error", function () { a.hidden = true; caixa.style.display = "flex"; });
+      botao.addEventListener("click", function () {
+        if (atual && atual.botao === botao) { parar(); return; }
+        parar();
+        ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+        ctx.resume();
+        info.textContent = "carregando…";
+        fetch(a.getAttribute("src")).then(function (r) {
+          if (!r.ok) throw new Error("arquivo indisponível");
+          return r.arrayBuffer();
+        }).then(function (b) { return ctx.decodeAudioData(b); }).then(function (buf) {
+          var fonte = ctx.createBufferSource();
+          fonte.buffer = buf; fonte.connect(ctx.destination); fonte.start();
+          atual = { fonte: fonte, botao: botao, info: info };
+          botao.textContent = "Parar"; info.textContent = Math.round(buf.duration) + " s";
+          fonte.onended = function () { if (atual && atual.fonte === fonte) parar(); };
+        }).catch(function () {
+          info.textContent = "Não tocou aqui. Use o vídeo enviado na conversa.";
+        });
+      });
+    });
+  })();
+</script>

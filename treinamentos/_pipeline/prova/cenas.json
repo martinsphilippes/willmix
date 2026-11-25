@@ -1,0 +1,86 @@
+{
+  "papel": "prova-tecnica",
+  "titulo": "Prova técnica do pipeline (não é conteúdo de treinamento)",
+  "conta": {
+    "email": "operador@wellmix.com",
+    "idioma": "pt"
+  },
+  "cenas": [
+    {
+      "id": "prova-login",
+      "tipo": "tela",
+      "estado": "vazio",
+      "login": false,
+      "inicio": {
+        "url": "/login?intro=off"
+      },
+      "passos": [
+        {
+          "id": "p1",
+          "fala": "Esta é a tela de entrada do portal da Wellmix. No campo Login ou e-mail, digite o seu e-mail de acesso.",
+          "alvo": {
+            "rotulo": "Login ou e-mail"
+          },
+          "rotulo": "Login ou e-mail",
+          "rotulo_lado": "esquerda",
+          "acao": "digitar",
+          "valor": "operador@wellmix.com",
+          "destaque_em": {
+            "em": "campo"
+          },
+          "acao_em": {
+            "apos": "digite"
+          },
+          "zoom": 1.3,
+          "resumo": "Digite o seu login ou e-mail"
+        },
+        {
+          "id": "p2",
+          "fala": "Logo abaixo, no campo Senha, digite a sua senha.",
+          "alvo": {
+            "rotulo": "Senha"
+          },
+          "rotulo": "Senha",
+          "rotulo_lado": "esquerda",
+          "acao": "digitar",
+          "valor": "wellmix123",
+          "destaque_em": {
+            "em": "campo"
+          },
+          "acao_em": {
+            "apos": "Senha"
+          },
+          "resumo": "Digite a senha"
+        },
+        {
+          "id": "p3",
+          "fala": "Agora clica no botão vermelho \"Entrar\".",
+          "alvo": {
+            "papel": "button",
+            "nome": "Entrar"
+          },
+          "rotulo": "Entrar",
+          "acao": "clicar",
+          "espera": {
+            "url": "/app",
+            "rede": true
+          },
+          "resumo": "Clique em \"Entrar\""
+        },
+        {
+          "id": "p4",
+          "fala": "Pronto! Você está na Control Tower, a primeira tela da equipe. Do lado esquerdo fica o menu.",
+          "alvo": {
+            "papel": "link",
+            "nome": "Control Tower"
+          },
+          "rotulo": "Control Tower",
+          "acao": "mostrar",
+          "destaque_em": {
+            "em": "Control"
+          }
+        }
+      ]
+    }
+  ]
+}
