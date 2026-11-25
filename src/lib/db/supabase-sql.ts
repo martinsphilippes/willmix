@@ -102,6 +102,37 @@ $$;
 revoke all on function public.next_number(text) from public, anon, authenticated;
 grant execute on function public.next_number(text) to service_role;`;
 
+/**
+ * Peso bruto maior que o líquido no item do book (dono, 25/11/2026), também
+ * no banco: gatilho que recusa a linha nova ou a troca de um dos pesos com
+ * bruto ≤ líquido. Só confere quando um dos pesos muda: linhas antigas fora
+ * da regra continuam aceitando as outras gravações (previsão, NCM) até a
+ * correção do peso. A mesma regra do app: bookingWeightsOk
+ * (src/lib/booking-lots.ts).
+ */
+export const BOOKING_WEIGHT_GUARD_SQL = `create or replace function public.booking_items_weight_guard()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if tg_op = 'UPDATE'
+     and new."netWeightPcKg" is not distinct from old."netWeightPcKg"
+     and new."grossWeightPcKg" is not distinct from old."grossWeightPcKg" then
+    return new;
+  end if;
+  if new."grossWeightPcKg" is not null and new."netWeightPcKg" is not null
+     and new."grossWeightPcKg" <= new."netWeightPcKg" then
+    raise exception 'booking_gross_not_above_net' using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists booking_items_weight_guard on public."booking_items";
+create trigger booking_items_weight_guard
+  before insert or update on public."booking_items"
+  for each row execute function public.booking_items_weight_guard();`;
+
 /** Bucket privado dos arquivos (só quando o schema storage existe: Supabase). */
 export const BUCKET_SQL = `do $$
 begin
@@ -120,6 +151,8 @@ export function schemaSql(): string {
     "",
     ...tables.map((t) => tableSql(t) + "\n"),
     NEXT_NUMBER_SQL,
+    "",
+    BOOKING_WEIGHT_GUARD_SQL,
     "",
     BUCKET_SQL,
     "",

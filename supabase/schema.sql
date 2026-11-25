@@ -2661,6 +2661,29 @@ $$;
 revoke all on function public.next_number(text) from public, anon, authenticated;
 grant execute on function public.next_number(text) to service_role;
 
+create or replace function public.booking_items_weight_guard()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if tg_op = 'UPDATE'
+     and new."netWeightPcKg" is not distinct from old."netWeightPcKg"
+     and new."grossWeightPcKg" is not distinct from old."grossWeightPcKg" then
+    return new;
+  end if;
+  if new."grossWeightPcKg" is not null and new."netWeightPcKg" is not null
+     and new."grossWeightPcKg" <= new."netWeightPcKg" then
+    raise exception 'booking_gross_not_above_net' using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists booking_items_weight_guard on public."booking_items";
+create trigger booking_items_weight_guard
+  before insert or update on public."booking_items"
+  for each row execute function public.booking_items_weight_guard();
+
 do $$
 begin
   if exists (select 1 from information_schema.schemata where schema_name = 'storage') then

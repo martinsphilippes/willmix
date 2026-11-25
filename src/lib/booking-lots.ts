@@ -103,11 +103,7 @@ export const BOOKING_ITEM_FIELDS = [
   "purchaseQty",
   "plannedQty",
 ] as const satisfies readonly (
-  | TextField
-  | IntField
-  | DecimalField
-  | "incoterm"
-  | "currency"
+  TextField | IntField | DecimalField | "incoterm" | "currency"
 )[];
 export type BookingItemField = (typeof BOOKING_ITEM_FIELDS)[number];
 
@@ -250,6 +246,91 @@ export function bookingItemPatch(
   field: BookingItemField,
   raw: string,
 ): Partial<BookingItem> | null {
+  const patch = bookingItemFieldPatch(item, field, raw);
+  if (patch) assertBookingWeights({ ...item, ...patch });
+  return patch;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Peso bruto: maior que o líquido e a fórmula "=*1,07" (dono, 25/11/2026)    */
+/* ------------------------------------------------------------------------ */
+
+/** Peso bruto menor ou igual ao líquido do mesmo item: recusado. */
+export class BookingWeightError extends Error {
+  constructor(code: "booking_gross_not_above_net" | "booking_gross_formula") {
+    super(code);
+  }
+}
+
+/**
+ * Fórmula do peso bruto: um múltiplo do peso líquido, digitado como
+ * "=*1,07" (também "=*1.07", "= * 1,07" e "=x1,07"). Devolve o fator ou
+ * null quando o texto não começa com "=" (é um número comum).
+ * Fórmula que não dá para ler: BookingWeightError("booking_gross_formula").
+ */
+export function grossWeightFactor(raw: string): number | null {
+  const value = raw.replace(/\s+/g, "").trim();
+  if (!value.startsWith("=")) return null;
+  const m = /^=[*xX×]([\d.,]+)$/.exec(value);
+  const n = m ? parseNumberInput(m[1]) : null;
+  if (n === null || !Number.isFinite(n) || n <= 0 || n > 1000)
+    throw new BookingWeightError("booking_gross_formula");
+  return n;
+}
+
+/** Peso líquido × fator, com 4 casas (sem lixo de ponto flutuante). */
+export const grossFromNet = (net: number, factor: number) =>
+  Math.round(net * factor * 10000) / 10000;
+
+/**
+ * Regra do item (e do gatilho do banco, booking_items_weight_guard): com os
+ * dois pesos preenchidos, o bruto é maior que o líquido.
+ */
+export function bookingWeightsOk(
+  item: Partial<Pick<BookingItem, "netWeightPcKg" | "grossWeightPcKg">>,
+): boolean {
+  const net = item.netWeightPcKg;
+  const gross = item.grossWeightPcKg;
+  return typeof net !== "number" || typeof gross !== "number" || gross > net;
+}
+
+export function assertBookingWeights(
+  item: Partial<Pick<BookingItem, "netWeightPcKg" | "grossWeightPcKg">>,
+): void {
+  if (!bookingWeightsOk(item))
+    throw new BookingWeightError("booking_gross_not_above_net");
+}
+
+/**
+ * Pesos lidos da planilha: bruto menor ou igual ao líquido não entra (fica
+ * em branco e o item mostra o campo a preencher), porque o banco recusa.
+ */
+export function importedWeights<
+  T extends Pick<BookingItem, "netWeightPcKg" | "grossWeightPcKg">,
+>(item: T): T {
+  return bookingWeightsOk(item) ? item : { ...item, grossWeightPcKg: null };
+}
+
+/**
+ * O campo sozinho, sem a regra dos pesos: quem chama confere no fim
+ * (bookingItemPatch e bookingItemPatches).
+ */
+export function bookingItemFieldPatch(
+  item: PatchableItem,
+  field: BookingItemField,
+  raw: string,
+): Partial<BookingItem> | null {
+  // Peso bruto pela fórmula: o líquido do item × o fator.
+  if (field === "grossWeightPcKg") {
+    const factor = grossWeightFactor(raw);
+    if (factor !== null) {
+      const net = item.netWeightPcKg;
+      if (typeof net !== "number")
+        throw new BookingWeightError("booking_gross_formula");
+      const gross = grossFromNet(net, factor);
+      return item.grossWeightPcKg === gross ? null : { grossWeightPcKg: gross };
+    }
+  }
   // Capacidade: mililitros ou o tamanho em texto (os dois campos juntos).
   if (field === "capacityMl") {
     const next = readBookingCapacity(raw, item);
@@ -274,13 +355,28 @@ export function bookingItemPatches(
 ): Partial<BookingItem> | null {
   let current = item;
   let patch: Partial<BookingItem> | null = null;
-  for (const [field, raw] of values) {
-    const next = bookingItemPatch(current, field, raw);
+  for (const [field, raw] of bulkOrder(values)) {
+    const next = bookingItemFieldPatch(current, field, raw);
     if (!next) continue;
     patch = { ...(patch ?? {}), ...next };
     current = { ...current, ...next } as PatchableItem;
   }
+  // Os pesos conferidos no fim: líquido e bruto podem mudar juntos.
+  if (patch) assertBookingWeights(current);
   return patch;
+}
+
+/**
+ * Ordem dos campos no preenchimento em massa: o peso bruto por último, para a
+ * fórmula usar o líquido que entra junto.
+ */
+export function bulkOrder<T extends readonly [BookingItemField, string]>(
+  values: ReadonlyArray<T>,
+): T[] {
+  return [...values].sort(
+    (a, b) =>
+      Number(a[0] === "grossWeightPcKg") - Number(b[0] === "grossWeightPcKg"),
+  );
 }
 
 /**
@@ -298,6 +394,9 @@ export function bulkValueValid(
   if (field === "ncm") return value.replace(/\D/g, "").length === 8;
   try {
     if (field === "capacityMl") readBookingCapacity(value, {});
+    // Peso bruto: um número ou a fórmula "=*1,07" (o líquido de cada item).
+    else if (field === "grossWeightPcKg" && grossWeightFactor(value) !== null)
+      return true;
     else readBookingItemValue(field, value);
     return true;
   } catch {

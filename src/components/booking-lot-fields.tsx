@@ -135,6 +135,8 @@ export function BookingItemInput({
         send={(value) => setBookingItemFieldAction(lotId, itemId, field, value)}
         saved={saved}
         numeric={numeric}
+        // Peso bruto: aceita a fórmula "=*1,07" (o líquido × o número).
+        formula={field === "grossWeightPcKg"}
         labels={labels}
         width={width}
         data-booking-item-field={`${itemId}:${field}`}

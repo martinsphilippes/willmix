@@ -470,7 +470,12 @@ export function BulkFieldInput({
           {...common}
           type="text"
           value={value}
-          inputMode={kind === "number" ? "decimal" : undefined}
+          // Peso bruto: aceita a fórmula "=*1,07" (teclado comum no celular).
+          inputMode={
+            kind === "number" && field !== "grossWeightPcKg"
+              ? "decimal"
+              : undefined
+          }
           autoComplete="off"
           onChange={(e) => setValue(field, e.target.value)}
           onKeyDown={(e) => {
