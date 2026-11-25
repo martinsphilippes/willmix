@@ -13,7 +13,8 @@ comenta e anexa) com o login dele.
   Personas, O que já foi feito, Telas e integrações, Roadmap, Custos e A
   validar). Endereço `/app/project-management/<aba>`.
 - Acesso: todo login de administrador (dono, 25/11/2026, no mesmo dia) e os
-  e-mails de `PROJECT_MANAGEMENT_EMAILS` (`src/lib/project-management/index.ts`),
+  e-mails de `PROJECT_MANAGEMENT_EMAILS` (`src/lib/project-management/index.ts`:
+  well@wellmix.com.br e well_wellmix@wellmix.com, o "Master Wellmix"),
   em `canSeeProjectManagement`. Fica fora do controle de telas (nenhuma
   função ou cargo abre); para os outros logins o menu não muda e os
   endereços respondem "não encontrado". Para liberar alguém que não é
