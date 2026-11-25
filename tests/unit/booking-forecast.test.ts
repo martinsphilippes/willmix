@@ -45,6 +45,8 @@ describe("consulta do item do book", () => {
       masterBoxQty: 24,
       price: 12.5,
       currency: "RMB",
+      // O book não tem pedido: a rota padrão (dono, 25/11/2026).
+      route: "VIA_DEPOSITO",
     });
     expect(q).not.toHaveProperty("incoterm");
     const input = productInput(q);
@@ -160,28 +162,81 @@ describe("o que o job diário ainda pede ao Sankhya", () => {
     ...over,
   });
 
+  // O retrato de `meta` é de 24/11 12:00 UTC.
+  const later = (hours: number) => Date.parse(meta.at) + hours * 3_600_000;
+
   it("sem retrato, retrato antigo, Sankhya fora ou sem resposta: pede", () => {
     expect(bookingForecastPending(null)).toBe(true);
     // O retrato antigo do portal (sem `source`).
     expect(bookingForecastPending({ at: meta.at, missing: [] } as never)).toBe(
       true,
     );
-    expect(bookingForecastPending(snap({ missing: ["manual"] }))).toBe(true);
-    expect(bookingForecastPending(snap({ missing: ["error"] }))).toBe(true);
+    expect(
+      bookingForecastPending(snap({ missing: ["manual"] }), null, later(21)),
+    ).toBe(true);
+    expect(
+      bookingForecastPending(snap({ missing: ["error"] }), null, later(21)),
+    ).toBe(true);
+  });
+
+  it("o erro do Sankhya vai de novo só uma vez por dia", () => {
+    const failed = snap({ missing: ["error"] });
+    expect(bookingForecastPending(failed, null, later(1))).toBe(false);
+    expect(bookingForecastPending(failed, null, later(19))).toBe(false);
+    expect(bookingForecastPending(failed, null, later(20))).toBe(true);
   });
 
   it("com a previsão ou com falta de dado na ficha: não pede", () => {
-    expect(bookingForecastPending(snap())).toBe(false);
-    expect(bookingForecastPending(snap({ missing: ["ncm"] }))).toBe(false);
+    expect(bookingForecastPending(snap(), null, later(48))).toBe(false);
+    expect(
+      bookingForecastPending(snap({ missing: ["ncm"] }), null, later(48)),
+    ).toBe(false);
   });
 
   it("o que já foi tentado nesta rodada não vai de novo", () => {
     const failed = snap({ missing: ["error"] });
-    expect(bookingForecastPending(failed, "2026-11-24T11:00:00.000Z")).toBe(
-      false,
+    expect(
+      bookingForecastPending(failed, "2026-11-24T11:00:00.000Z", later(21)),
+    ).toBe(false);
+    expect(
+      bookingForecastPending(failed, "2026-11-25T09:00:00.000Z", later(21)),
+    ).toBe(true);
+  });
+});
+
+describe("rota da entrega na cotação V2 (dono, 25/11/2026)", () => {
+  it("o pedido usa a escolha de quem chama; sem ela, VIA_DEPOSITO", async () => {
+    const { forecastQuery } =
+      await import("@/lib/services/request-price-forecast");
+    const product = {
+      id: "p-1",
+      sankhyaCode: "123",
+      sku: null,
+      ncm: null,
+      netWeightKg: null,
+      grossWeightKg: null,
+      masterBoxQty: null,
+      cbm: null,
+      boxLengthCm: null,
+      boxWidthCm: null,
+      boxHeightCm: null,
+      price: null,
+      currency: null,
+    } as never;
+    const base = {
+      product,
+      customer: null,
+      quantity: 10,
+      defaultFreight: null,
+    };
+    // Compra para estoque (ninguém chama o transportador): VIA_DEPOSITO.
+    expect(forecastQuery(base).route).toBe("VIA_DEPOSITO");
+    // Escolha preenchida no pedido: ela vale.
+    expect(forecastQuery({ ...base, caller: "customer" }).route).toBe(
+      "PORTO_CLIENTE",
     );
-    expect(bookingForecastPending(failed, "2026-11-24T13:00:00.000Z")).toBe(
-      true,
+    expect(forecastQuery({ ...base, caller: "wellmix" }).route).toBe(
+      "VIA_DEPOSITO",
     );
   });
 });

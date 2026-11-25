@@ -11,6 +11,7 @@ import {
 import { cbmFromDimensions } from "@/lib/logistics/cbm";
 import { isPieceUnit } from "@/lib/moq";
 import {
+  DEFAULT_DELIVERY_ROUTE,
   DELIVERY_ROUTE,
   saleVip,
   type CarrierCaller,
@@ -84,7 +85,8 @@ export function forecastQuery(input: {
     // o transportador; frete de entrega digitado ou o das Configurações; o
     // RCA do cliente como vendedor; a data de hoje (Brasília).
     vip: saleVip(input.saleFormat ?? undefined, input.tier ?? undefined),
-    route: input.caller ? DELIVERY_ROUTE[input.caller] : null,
+    // Sem a escolha (compra para estoque, pedido sem quem chama): VIA_DEPOSITO.
+    route: input.caller ? DELIVERY_ROUTE[input.caller] : DEFAULT_DELIVERY_ROUTE,
     deliveryFreightBrl: input.freight ?? input.defaultFreight ?? null,
     sellerCode:
       rca && rca !== NO_RCA && /^\d{1,9}$/.test(rca) ? Number(rca) : null,

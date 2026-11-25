@@ -21,7 +21,7 @@
     },
     {
       "path": "/api/jobs/booking-forecasts",
-      "schedule": "17 23 * * *"
+      "schedule": "17 * * * *"
     }
   ]
 }

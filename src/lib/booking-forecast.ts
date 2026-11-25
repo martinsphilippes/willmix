@@ -3,6 +3,7 @@ import type {
   PriceForecastAnswer,
   PriceForecastQuery,
 } from "@/lib/integrations/price-forecast";
+import { DEFAULT_DELIVERY_ROUTE } from "@/lib/order-terms";
 
 /*
  * Previsão de preço dos itens do Book (dono, 24/11/2026; docs/BOOKING.md,
@@ -11,7 +12,9 @@ import type {
  * src/lib/integrations/price-forecast.ts), no lugar da conta antiga do
  * portal. Vai a ficha do item como a planilha trouxe (NCM, pesos, peças por
  * caixa, CBM, preço, moeda e a quantidade) e nunca o CODPROD: o Sankhya
- * calcula pelo NCM. O FOB/EXW e o valor do EXW não vão (dono, 24/11/2026). O retrato fica no item (`booking_items.analysis`)
+ * calcula pelo NCM. O FOB/EXW e o valor do EXW não vão (dono, 24/11/2026).
+ * A rota vai como VIA_DEPOSITO (dono, 25/11/2026: o book não tem pedido, vale
+ * o padrão; a cotação V2 exige a rota). O retrato fica no item (`booking_items.analysis`)
  * e só a Wellmix o vê. Regra pura: sem banco nem Intl.
  */
 
@@ -59,27 +62,35 @@ export function bookingItemForecastQuery(
       options.currency !== undefined && options.currency !== null
         ? options.currency
         : item.currency,
+    route: DEFAULT_DELIVERY_ROUTE,
     dataRef: options.dataRef ?? null,
   };
 }
 
+/** De quanto em quanto tempo o job tenta de novo o item que deu erro. */
+export const FORECAST_RETRY_MS = 20 * 60 * 60 * 1000;
+
 /**
- * Item que ainda precisa da previsão do Sankhya (job diário, dono,
- * 24/11/2026): sem retrato da API (nunca previsto), ou com o retrato de
- * quando o Sankhya não estava disponível ("manual") ou não respondeu
- * ("error"). Falta de dado na ficha não conta (o item só vai de novo quando a
- * ficha muda, como o NCM). Com `since`, o retrato feito desde então já conta
- * como feito (uma tentativa por rodada).
+ * Item que ainda precisa da previsão do Sankhya (job de hora em hora, dono,
+ * 24/11/2026): sem retrato da API (nunca previsto) vai na próxima rodada; com
+ * o retrato de quando o Sankhya não estava disponível ("manual") ou não
+ * respondeu ("error"), vai de novo só depois de `FORECAST_RETRY_MS` (uma vez
+ * por dia, para não insistir a cada hora). Falta de dado na ficha não conta
+ * (o item só vai de novo quando a ficha muda, como o NCM). Com `since`, o
+ * retrato feito desde então já conta como feito (uma tentativa por rodada).
  */
 export function bookingForecastPending(
   analysis: BookingAnalysis | null | undefined,
   since: string | null = null,
+  now: number = Date.now(),
 ): boolean {
   if (!analysis || analysis.source !== "price_forecast") return true;
   if (since && analysis.at >= since) return false;
-  return (
-    analysis.missing.includes("manual") || analysis.missing.includes("error")
-  );
+  const failed =
+    analysis.missing.includes("manual") || analysis.missing.includes("error");
+  if (!failed) return false;
+  const at = Date.parse(analysis.at);
+  return !Number.isFinite(at) || now - at >= FORECAST_RETRY_MS;
 }
 
 /** O que faltou na ficha do item para a previsão (antes de chamar o Sankhya). */

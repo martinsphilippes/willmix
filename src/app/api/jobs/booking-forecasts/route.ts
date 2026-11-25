@@ -14,11 +14,12 @@ const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
 /**
  * Previsão de preço do Sankhya nos books fechados (dono, 24/11/2026: sem
  * botão, "trazer em todos esses já fechados o cálculo do Sankhya"; docs/
- * BOOKING.md, "Previsão de preço do item"). Cron diário da Vercel
+ * BOOKING.md, "Previsão de preço do item"). Cron da Vercel de hora em hora
  * (vercel.json) ou manual; protegido por CRON_SECRET quando definido.
  *
  * Pede a previsão dos itens que ainda não têm a do Sankhya (ou que ficaram
- * sem ela porque o Sankhya não estava disponível), um de cada vez, até ~4
+ * sem ela porque o Sankhya não estava disponível ou deu erro, uma vez por
+ * dia), um de cada vez, até ~4
  * minutos. Se sobrar, chama a si mesma (`?hop=n&since=…`) depois da resposta
  * para a próxima rodada; `since` evita pedir de novo, no mesmo dia, o item que
  * já voltou nesta rodada.

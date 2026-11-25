@@ -1951,7 +1951,7 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 
 - **Respostas do dono** (24/11/2026), às perguntas depois do Superplan sair: "1 - não vai para o Sankhya" (o FOB/EXW e o valor do EXW); "2 - mantém do jeito que está" (a previsão na negociação); "3 - apaga os dados antigos do Superplan, o que precisamos vem do Sankhya"; "4 - não precisa ter esse botão de calcular no Sankhya, só trazer em todos esses já fechados o cálculo do Sankhya".
 - **FOB/EXW**: deixou de ir na consulta ao Sankhya (`INCOTERM`), no book, na ficha negociada e na contraproposta (`bookingItemForecastQuery`, `productInput`).
-- **Sem botão**: o "Refazer a previsão" do book saiu (ação e serviço). No lugar, o job diário `/api/jobs/booking-forecasts` (cron às 23:17 UTC) pede a previsão dos itens dos books fechados que ainda não a têm, ou que ficaram sem ela porque o Sankhya não estava disponível ou não respondeu; a primeira rodada pôs a previsão do Sankhya no book que já estava fechado. A previsão também passou a gravar item por item (o que volta fica gravado mesmo se a função parar no meio).
+- **Sem botão**: o "Refazer a previsão" do book saiu (ação e serviço). No lugar, o job `/api/jobs/booking-forecasts` (diário às 23:17 UTC; de hora em hora desde 25/11/2026, abaixo) pede a previsão dos itens dos books fechados que ainda não a têm, ou que ficaram sem ela porque o Sankhya não estava disponível ou não respondeu; a primeira rodada pôs a previsão do Sankhya no book que já estava fechado. A previsão também passou a gravar item por item (o que volta fica gravado mesmo se a função parar no meio).
 - **Removido (pedido do dono)**: em produção, os 20 retratos antigos da conta do portal em `booking_items.analysis`, a data deles em `booking_lots.analyzedAt` e a chave `superplan` da tabela `settings`; no código, a origem `superplan` de `requests.origin` (nenhuma solicitação a usava) e o texto "Previsão antiga".
 - **Não mudou**: a previsão na negociação (só sem o FOB/EXW), a previsão ao fechar o book e ao trocar o NCM, as permissões.
 - Testes: `tests/unit/booking-forecast.test.ts` e `tests/unit/booking-forecast-job.test.ts` (novo).
@@ -1971,3 +1971,12 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Muda o que a tela mostra (pedido do dono):** com o Sankhya ligado, o preço não se digita mais e a moeda da venda é o Real. Sem o Sankhya, o card de sempre continua.
 - **Aditivo:** colunas opcionais `order_items.saleQuote` (a cotação do dia) e `orders.saleFormat` (o formato gravado); a rota `GET /api/orders/[id]/sale-prices`; a ação `recordOrderSaleFormatAction`. Nada é apagado: a venda digitada, a ação dela, os preços e os totais gravados continuam.
 - Testes: `tests/unit/order-sale-quote.test.ts` e o caminho principal do E2E.
+
+## Rota da entrega na cotação V2: a escolha do pedido, senão VIA_DEPOSITO (dono, 25/11/2026)
+
+- **Achado**: a primeira rodada do job da previsão do Book (24/11/2026, 23:17 UTC) mandou os 20 itens do book nº 1 ao Sankhya, e todos voltaram com "informe rota PORTO_CLIENTE ou VIA_DEPOSITO": a cotação V2 passou a exigir a rota, e o Book (e a compra para estoque) iam sem ela.
+- **Pedido do dono**: "na hora que foi criado o pedido tem que puxar a escolha do que foi preenchido, porém o default vem como VIA_DEPOSITO, e a compra para estoque também".
+- **Como ficou**: a rota segue a escolha de quem chama o transportador; sem a escolha (compra para estoque, pedido sem quem chama, item do Book e negociação), `VIA_DEPOSITO` (`DEFAULT_DELIVERY_ROUTE`, `src/lib/order-terms.ts`; `forecastQuery` e `bookingItemForecastQuery`).
+- **Job de hora em hora** (antes, uma vez por dia): o item sem a previsão vai na rodada seguinte; o que deu erro no Sankhya, de novo só uma vez por dia (`FORECAST_RETRY_MS`). Os 20 retratos com o erro da rota foram limpos no banco para irem na primeira rodada depois da publicação.
+- **Não mudou**: a escolha de quem chama na Nova solicitação, o FOB/EXW fora do Sankhya, as permissões.
+- Testes: `tests/unit/booking-forecast.test.ts` (rota do pedido e padrão, erro uma vez por dia) e `tests/unit/booking-forecast-job.test.ts`.
