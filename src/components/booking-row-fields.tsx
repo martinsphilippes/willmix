@@ -156,6 +156,7 @@ export function SaveInput({
   labels,
   width,
   numeric,
+  formula,
   type,
   placeholder,
   form,
@@ -169,6 +170,11 @@ export function SaveInput({
   labels: BookingRowFieldLabels;
   width: string;
   numeric?: boolean;
+  /**
+   * Número que também aceita fórmula ("=*1,07" no peso bruto): teclado
+   * comum no celular, para ter o "=" e o "*".
+   */
+  formula?: boolean;
   type?: string;
   placeholder?: string;
   /** Quando o campo também vai no envio de um formulário da tela. */
@@ -208,7 +214,7 @@ export function SaveInput({
         name={name}
         defaultValue={saved}
         type={type ?? "text"}
-        inputMode={numeric ? "decimal" : undefined}
+        inputMode={numeric && !formula ? "decimal" : undefined}
         autoComplete="off"
         placeholder={placeholder}
         aria-label={labels.field}

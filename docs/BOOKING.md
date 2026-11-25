@@ -221,6 +221,13 @@ Vale para todo login que abre o Book: a tela da Wellmix (`/app/booking/lots/[id]
 
 - **INNER (qty/inner, peças por caixa inner)**: saiu de `BOOKING_ITEM_REQUIRED`. Sem asterisco e sem o destaque amarelo, na tela da Wellmix e na do parceiro; em branco não trava gravar o item, enviar o Book para a Wellmix conferir nem fechar, e não aparece em "Falta para fechar" nem na Conferência do item. Em branco fica sem valor (nulo, nunca zero), da planilha e da tela; preenchido, segue as regras de número (inteiro positivo). Na consulta, INNER sem valor aparece "—".
 
+### Peso bruto: maior que o líquido e a fórmula "=*1,07" (dono, 25/11/2026)
+
+- **Regra:** com os dois pesos preenchidos, o peso bruto por peça é maior que o peso líquido do mesmo item. Bruto menor ou igual é recusado na célula, no preenchimento em massa (o item fica na lista dos que não gravaram, com o motivo) e ao trocar o líquido para um valor maior ou igual ao bruto gravado. Vale nas telas da Wellmix e do parceiro (a regra é a da célula, `bookingItemPatch` em `src/lib/booking-lots.ts`).
+- **Banco:** o gatilho `booking_items_weight_guard` (Supabase, `BOOKING_WEIGHT_GUARD_SQL` em `src/lib/db/supabase-sql.ts`, publicado em 25/11/2026) recusa a linha nova ou a troca de um dos pesos com bruto ≤ líquido (erro `booking_gross_not_above_net`, código 23514). Gatilho e não CHECK: só confere quando um dos pesos muda, porque 12 dos 206 itens em produção já estavam fora da regra (25/11/2026) e não foram alterados; eles seguem aceitando as outras gravações (previsão de preço, NCM, trabalhado) até alguém corrigir o peso.
+- **Planilha:** linha com bruto ≤ líquido entra com o bruto em branco (`importedWeights`); o item mostra o campo a preencher.
+- **Fórmula:** na coluna Peso bruto (cada célula ou o campo do preenchimento em massa) aceita `=*1,07` (também `=*1.07`, `=x1,07`): grava o peso líquido do item vezes o número, com 4 casas. No preenchimento em massa, cada linha usa o líquido dela (e o líquido que entra junto, quando as duas colunas são carregadas de uma vez: o bruto é calculado por último). Sem o líquido no item, a fórmula é recusada (`booking_gross_formula`). Fórmula que dá bruto ≤ líquido (ex.: `=*1`) cai na regra acima. O título da coluna mostra `=*1,07` com a explicação; no celular o campo abre o teclado comum (para ter o "=" e o "*").
+
 ### Capacidade: mililitros ou tamanho (dono, 12/11/2026)
 
 Achado do dono: a planilha de porta-retratos trazia a coluna de capacidade preenchida e a tela mostrava o campo vazio.

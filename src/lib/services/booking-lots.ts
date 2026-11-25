@@ -18,7 +18,11 @@ import {
   isBookingPartner,
   matchSheetSupplier,
   mostCommon,
+  assertBookingWeights,
+  bookingItemFieldPatch,
   bookingItemPatch,
+  bulkOrder,
+  importedWeights,
   supplierKey,
   type BookingItemField,
 } from "@/lib/booking-lots";
@@ -475,7 +479,8 @@ export async function createLotFromSheet(
       await storeImage(user, group.card),
     ];
     await store.create("booking_items", {
-      ...itemFromGroup(group),
+      // Bruto ≤ líquido na planilha: o bruto fica em branco (o banco recusa).
+      ...importedWeights(itemFromGroup(group)),
       // FOB/EXW escolhido na importação: troca o da planilha em todos.
       ...(bookTerms.incoterm ? { incoterm: bookTerms.incoterm } : {}),
       position: position++,
@@ -1110,12 +1115,18 @@ export async function applyBookingItemsBulk(
     try {
       let current = item;
       let patch: Partial<BookingItem> | null = null;
-      for (const [f, raw] of values) {
+      // Peso bruto por último (a fórmula usa o líquido que entra junto).
+      for (const [f, raw] of bulkOrder(values)) {
         field = f;
-        const next = bookingItemPatch(current, f, raw);
+        const next = bookingItemFieldPatch(current, f, raw);
         if (!next) continue;
         patch = { ...(patch ?? {}), ...next };
         current = { ...current, ...next };
+      }
+      // Bruto maior que o líquido, conferido com os dois já trocados.
+      if (patch) {
+        field = "grossWeightPcKg";
+        assertBookingWeights(current);
       }
       if (patch)
         await store.update("booking_items", item.id, {

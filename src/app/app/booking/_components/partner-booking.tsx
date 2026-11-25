@@ -794,6 +794,15 @@ function PreparingItems({
                       {isRequiredItemField(field) ? (
                         <span className="text-brand-700"> *</span>
                       ) : null}
+                      {field === "grossWeightPcKg" ? (
+                        <span
+                          className="block font-normal normal-case tracking-normal text-zinc-400"
+                          title={t("bookingLots.item.grossFormulaHint")}
+                          data-gross-formula-hint=""
+                        >
+                          =*1,07
+                        </span>
+                      ) : null}
                     </th>
                   ))}
                 </tr>

@@ -508,6 +508,16 @@ export default async function BookingLotPage({
               {isRequiredItemField(c.field) ? (
                 <span className="text-brand-700"> *</span>
               ) : null}
+              {c.field === "grossWeightPcKg" && bulkOn ? (
+                // Fórmula do peso bruto (dono, 25/11/2026): "=*1,07".
+                <span
+                  className="block font-normal normal-case tracking-normal text-zinc-400"
+                  title={t("bookingLots.item.grossFormulaHint")}
+                  data-gross-formula-hint=""
+                >
+                  =*1,07
+                </span>
+              ) : null}
             </th>
           ))}
           {(seesPrice ? ["check", "analysis"] : ["check"]).map((k) => (

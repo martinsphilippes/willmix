@@ -263,6 +263,12 @@ export const pt = {
     "Este book não está mais em rascunho: os dados não mudam.",
   "bookingLots.error.booking_item_invalid":
     "Valor que não dá para ler. Use número maior que zero, FOB ou EXW, e USD, RMB, BRL ou EUR.",
+  "bookingLots.error.booking_gross_not_above_net":
+    "O peso bruto tem que ser maior que o peso líquido do item.",
+  "bookingLots.error.booking_gross_formula":
+    "Fórmula do peso bruto: use =*1,07 (o peso líquido vezes o número), com o peso líquido do item preenchido.",
+  "bookingLots.item.grossFormulaHint":
+    "Aceita a fórmula =*1,07: o peso líquido do item vezes o número.",
   "bookingLots.error.supplier_invalid":
     "Fornecedor inexistente ou inativo. Escolha outro da lista.",
   "bookingLots.error.supplier_name_required": "Informe o nome do fornecedor.",
@@ -558,6 +564,12 @@ export const en: typeof pt = {
     "This book is no longer a draft: its data no longer changes.",
   "bookingLots.error.booking_item_invalid":
     "Unreadable value. Use a number above zero, FOB or EXW, and USD, RMB, BRL or EUR.",
+  "bookingLots.error.booking_gross_not_above_net":
+    "The gross weight must be greater than the item's net weight.",
+  "bookingLots.error.booking_gross_formula":
+    "Gross weight formula: use =*1.07 (the net weight times the number), with the item's net weight filled in.",
+  "bookingLots.item.grossFormulaHint":
+    "Accepts the formula =*1.07: the item's net weight times the number.",
   "bookingLots.error.supplier_invalid":
     "Supplier not found or inactive. Choose another one from the list.",
   "bookingLots.error.supplier_name_required": "Enter the supplier's name.",
@@ -842,6 +854,12 @@ export const zh: typeof pt = {
   "bookingLots.error.booking_lot_locked": "此 Book 已不是草稿：数据不再更改。",
   "bookingLots.error.booking_item_invalid":
     "无法读取的值。请使用大于零的数字、FOB 或 EXW，以及 USD、RMB、BRL 或 EUR。",
+  "bookingLots.error.booking_gross_not_above_net":
+    "毛重必须大于该商品的净重。",
+  "bookingLots.error.booking_gross_formula":
+    "毛重公式：请使用 =*1.07（净重乘以该数字），并先填写该商品的净重。",
+  "bookingLots.item.grossFormulaHint":
+    "可使用公式 =*1.07：该商品的净重乘以该数字。",
   "bookingLots.error.supplier_invalid":
     "供应商不存在或已停用。请从列表中另选。",
   "bookingLots.error.supplier_name_required": "请填写供应商名称。",
