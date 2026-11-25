@@ -22,7 +22,7 @@ import { brazilDay } from "@/lib/supplier-terms";
  * volta. Quem chama confere a permissão; o retrato só aparece para a Wellmix.
  *
  * Sem botão de refazer (dono, 24/11/2026): a previsão é pedida ao fechar o
- * book e ao trocar o NCM, e o job diário (`fillBookingForecasts`,
+ * book e ao trocar o NCM, e o job de hora em hora (`fillBookingForecasts`,
  * /api/jobs/booking-forecasts) completa o que faltar nos books fechados.
  */
 
@@ -101,7 +101,7 @@ export async function recordBookingForecasts(
 /**
  * Agenda a previsão dos itens para depois da resposta (fechar não espera o
  * Sankhya, item a item). Fora de uma requisição (testes, scripts), roda na
- * hora. O que não couber no tempo da função o job diário completa.
+ * hora. O que não couber no tempo da função o job completa.
  */
 export async function scheduleBookingForecasts(
   items: readonly BookingItem[],
@@ -137,11 +137,11 @@ export interface BookingForecastFill {
 }
 
 /**
- * Job diário (dono, 24/11/2026: "trazer em todos esses já fechados o cálculo
- * do Sankhya", sem botão): pede a previsão dos itens dos books fechados, em
- * andamento ou concluídos que ainda não têm a do Sankhya, ou que ficaram sem
- * ela porque o Sankhya não estava disponível ou não respondeu
- * (`bookingForecastPending`). `since` = começo da rodada: o item já previsto
+ * Job de hora em hora (dono, 24/11/2026: "trazer em todos esses já fechados o
+ * cálculo do Sankhya", sem botão): pede a previsão dos itens dos books
+ * fechados, em andamento ou concluídos que ainda não têm a do Sankhya, ou que
+ * ficaram sem ela porque o Sankhya não estava disponível ou não respondeu (de
+ * novo só uma vez por dia; `bookingForecastPending`). `since` = começo da rodada: o item já previsto
  * desde então não vai de novo nas rodadas seguintes do mesmo dia. Um item de
  * cada vez, até o tempo da rodada; grava a hora no book (`analyzedAt`).
  */

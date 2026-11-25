@@ -136,6 +136,10 @@ describe("job diário da previsão nos books fechados", () => {
     await lots.closeBookingLot(admin, closed.id);
     const [first, second] = await itemsOf(closed.id);
     expect(first.analysis?.missing).toEqual(["manual"]);
+    // Tentado há mais de um dia: o Sankhya fora não insiste a cada hora.
+    await store.update("booking_items", first.id, {
+      analysis: { ...first.analysis!, at: "2026-11-20T00:00:00.000Z" },
+    });
     // O outro item com o retrato antigo do portal (antes de 24/11/2026).
     await store.update("booking_items", second.id, {
       analysis: { at: "2026-11-20T20:46:49.452Z", missing: [] } as never,
@@ -153,6 +157,8 @@ describe("job diário da previsão nos books fechados", () => {
     for (const q of calls) {
       expect(q).not.toHaveProperty("incoterm");
       expect(productInput(q).INCOTERM).toBeUndefined();
+      // A rota padrão (dono, 25/11/2026): o book não tem pedido.
+      expect(q.route).toBe("VIA_DEPOSITO");
     }
     for (const item of await itemsOf(closed.id))
       expect(item.analysis).toMatchObject({
@@ -177,9 +183,19 @@ describe("job diário da previsão nos books fechados", () => {
     expect(again.calls).toHaveLength(0);
   });
 
-  it("sem tempo na rodada, os itens ficam para a próxima", async () => {
+  it("o erro recente não vai de novo na hora; sem tempo, fica na fila", async () => {
+    const store = getStore();
     const lot = await bookWithNcm([row("FT-1", "Glass bowl small")]);
     await lots.closeBookingLot(admin, lot.id);
+    // Acabou de falhar (Sankhya fora): a rodada seguinte não insiste.
+    const quiet = fakeSankhya();
+    expect(
+      await job.fillBookingForecasts({ adapter: quiet.adapter }),
+    ).toMatchObject({ done: 0 });
+    expect(quiet.calls).toHaveLength(0);
+    // Nunca previsto: vai, mas sem tempo na rodada fica para a próxima.
+    const [item] = await itemsOf(lot.id);
+    await store.update("booking_items", item.id, { analysis: null });
     const { adapter, calls } = fakeSankhya();
     const run = await job.fillBookingForecasts({ adapter, budgetMs: 0 });
     expect(run.done).toBe(0);

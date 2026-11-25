@@ -83,6 +83,15 @@ export const DELIVERY_ROUTE: Record<CarrierCaller, string> = {
   wellmix: "VIA_DEPOSITO",
 };
 
+/**
+ * Rota quando ninguém escolheu quem chama o transportador (dono, 25/11/2026:
+ * "na hora que foi criado o pedido tem que puxar a escolha do que foi
+ * preenchido, porém o default vem como VIA_DEPOSITO, e a compra para estoque
+ * também"): o Book, a negociação, a compra para estoque e o pedido sem a
+ * escolha. A cotação V2 do Sankhya exige a rota.
+ */
+export const DEFAULT_DELIVERY_ROUTE = DELIVERY_ROUTE.wellmix;
+
 /** Transportadora escolhida: do cadastro do portal ou do Sankhya (TGFPAR). */
 export interface CarrierChoice {
   source: "portal" | "sankhya";

@@ -8,8 +8,8 @@ import { Badge, formatDate, formatMoney, type Tone } from "@/components/ui";
  * src/lib/booking-forecast.ts): o retrato que a API de preço do Sankhya
  * devolveu, sem refazer a conta. Mostra o sinal da meta, a venda prevista,
  * com frete, a meta e o que faltou. Só a Wellmix com "Ver preço de compra"
- * (quem chama confere). Sem o retrato da API, "Sem previsão" (o job diário
- * completa os books fechados).
+ * (quem chama confere). Sem o retrato da API, "Sem previsão" (o job de hora
+ * em hora completa os books fechados).
  */
 
 const SIGNAL_TONE: Record<string, Tone> = {
