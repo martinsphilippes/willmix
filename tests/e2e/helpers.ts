@@ -227,13 +227,17 @@ export async function importAndClose(
   page: Page,
   file: ReturnType<typeof bookingSheet>,
   supplierName: string,
-  { checkSupplierPicker = false } = {},
+  { checkSupplierPicker = false, typeSupplier = false } = {},
 ) {
   await page.goto("/app/booking/import");
   await page
     .locator("[data-booking-import-form] input[type=file]")
     .setInputFiles(file);
   await fillBookMeta(page);
+  // O Supplier do book digitado (o "Fornecedor" da Seleção de itens; dono,
+  // 25/11/2026).
+  if (typeSupplier)
+    await page.locator("[data-book-supplier-name]").fill(supplierName);
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   // A etapa chama-se Book (dono, 13/11/2026; antes "Booking"): o título, a
