@@ -184,7 +184,7 @@ export default async function BookingSelectionPage({
       ? suggestBlocks(
           result.all.map((r) => ({
             item: r.item,
-            supplierId: r.lot.supplierId,
+            supplierId: r.supplierLabel || null,
           })),
         )
       : [];
@@ -320,7 +320,7 @@ export default async function BookingSelectionPage({
           r.item.factoryItemCode,
           r.item.material,
           r.item.packageType,
-          r.supplier?.name,
+          r.supplierLabel,
           r.lot.origin,
         ]),
       )
@@ -389,7 +389,7 @@ export default async function BookingSelectionPage({
           </tr>
         </thead>
         <tbody>
-          {list.map(({ item, lot, supplier, activeRequest }) => {
+          {list.map(({ item, lot, supplier, supplierLabel, activeRequest }) => {
             const a = item.analysis;
             const cost = bookingItemCost(a);
             const draft = lot.status === "draft";
@@ -509,7 +509,7 @@ export default async function BookingSelectionPage({
                 </td>
                 <td className={td}>
                   <span className="block max-w-40 min-w-28 whitespace-normal">
-                    {supplier?.name ?? "—"}
+                    {supplierLabel || "—"}
                   </span>
                   {supplier && noLoginIds.has(supplier.id) ? (
                     <span data-selection-no-login={supplier.id}>
@@ -1083,7 +1083,7 @@ export default async function BookingSelectionPage({
                 title={t("supplierRequests.selection.group.title", {
                   n: groupRows.length,
                   suppliers: new Set(
-                    groupRows.map((r) => r.lot.supplierId ?? r.item.id),
+                    groupRows.map((r) => r.supplierLabel || r.item.id),
                   ).size,
                 })}
               >
@@ -1293,8 +1293,8 @@ export default async function BookingSelectionPage({
                                                     : "text-zinc-500",
                                                 )}
                                               >
-                                                {rowById.get(id)?.supplier
-                                                  ?.name ?? "—"}
+                                                {rowById.get(id)
+                                                  ?.supplierLabel || "—"}
                                               </span>
                                               <span className="min-w-20 shrink-0 text-right whitespace-nowrap tabular-nums">
                                                 {usdPrice === null || !seesPrice
