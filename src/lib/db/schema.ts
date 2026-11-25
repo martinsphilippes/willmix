@@ -2319,6 +2319,18 @@ export interface FormDraft extends BaseRow {
 }
 
 /**
+ * Gestão do projeto (dono, 25/11/2026; docs/PROJECT_MANAGEMENT.md): os
+ * documentos do quadro da Plataforma Wellmix v2 (atividades, pessoas e
+ * registros), um por linha, no mesmo formato do banco do artifact de onde
+ * vieram. O id da linha é `<coleção>.<docId>`.
+ */
+export interface ProjectDoc extends BaseRow {
+  collection: string;
+  docId: string;
+  data: Record<string, unknown>;
+}
+
+/**
  * Grupo econômico da carteira (docs/TRADE_COMERCIAL.md): lista montada à mão
  * pelo administrador ou por quem tem "Gerir carteira e trade" (dono,
  * 18/11/2026). O cliente entra pelo `parties.customerGroupId`.
@@ -4778,6 +4790,7 @@ export interface Tables {
   cart_items: CartItem;
   request_drafts: RequestDraft;
   form_drafts: FormDraft;
+  project_docs: ProjectDoc;
   customer_groups: CustomerGroup;
   economic_group_shares: EconomicGroupShare;
   delivery_round_shares: DeliveryRoundShare;
@@ -6079,6 +6092,18 @@ export const TABLES: Record<TableName, TableDef> = {
     },
     indexes: [
       { key: "by_user_form", type: "unique", columns: ["userId", "form"] },
+    ],
+  },
+  project_docs: {
+    label: "Gestão do projeto (quadro da Plataforma Wellmix)",
+    columns: {
+      collection: str(40, true),
+      docId: str(80, true),
+      data: jsonLarge(),
+    },
+    indexes: [
+      { key: "by_doc", type: "unique", columns: ["collection", "docId"] },
+      { key: "by_collection", type: "key", columns: ["collection"] },
     ],
   },
   customer_groups: {
