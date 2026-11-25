@@ -12,11 +12,12 @@ comenta e anexa) com o login dele.
   por aba da plataforma (Visão, Projeto (Kanban), Mapa, Processo, RACI,
   Personas, O que já foi feito, Telas e integrações, Roadmap, Custos e A
   validar). Endereço `/app/project-management/<aba>`.
-- Acesso: só os e-mails de `PROJECT_MANAGEMENT_EMAILS`
-  (`src/lib/project-management/index.ts`). Fica fora do controle de telas
-  (nenhuma função, cargo ou papel abre, nem o administrador); para os outros
-  logins o menu não muda e os endereços respondem "não encontrado". Para
-  liberar outra pessoa, acrescentar o e-mail na lista.
+- Acesso: todo login de administrador (dono, 25/11/2026, no mesmo dia) e os
+  e-mails de `PROJECT_MANAGEMENT_EMAILS` (`src/lib/project-management/index.ts`),
+  em `canSeeProjectManagement`. Fica fora do controle de telas (nenhuma
+  função ou cargo abre); para os outros logins o menu não muda e os
+  endereços respondem "não encontrado". Para liberar alguém que não é
+  administrador, acrescentar o e-mail na lista.
 - A plataforma roda num iframe (`/app/project-management/frame`, o HTML de
   `src/lib/project-management/plataforma-html.ts`), no layout da seção: trocar
   de aba pelo menu não recarrega a plataforma, e trocar de aba dentro dela

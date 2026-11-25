@@ -5,8 +5,8 @@ import type { NavEntry } from "@/lib/nav";
 /*
  * Gestão do projeto (dono, 25/11/2026; docs/PROJECT_MANAGEMENT.md): a
  * Plataforma Wellmix v2 (visão, quadro Kanban, mapa, roadmap…) dentro do
- * portal, só para os logins desta lista. Fora do controle de telas: nenhuma
- * função, cargo ou papel abre; nada mais do portal muda.
+ * portal, só para os administradores e os logins desta lista. Fora do
+ * controle de telas: nenhuma função ou cargo abre; nada mais do portal muda.
  */
 export const PROJECT_MANAGEMENT_EMAILS: readonly string[] = [
   "well@wellmix.com.br",
@@ -37,10 +37,16 @@ export const isPmTab = (value: unknown): value is PmTab =>
 export const PM_COLLECTIONS = ["atividades", "pessoas", "registros"] as const;
 export type PmCollection = (typeof PM_COLLECTIONS)[number];
 
+/**
+ * Quem abre: todo administrador (dono, 25/11/2026: "conceda acesso a todos
+ * os usuários que sejam admin") e os e-mails da lista.
+ */
 export function canSeeProjectManagement(
-  user: Pick<User, "email"> | null | undefined,
+  user: Partial<Pick<User, "email" | "role">> | null | undefined,
 ): boolean {
-  const email = (user?.email ?? "").trim().toLowerCase();
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  const email = (user.email ?? "").trim().toLowerCase();
   return !!email && PROJECT_MANAGEMENT_EMAILS.includes(email);
 }
 
@@ -50,7 +56,7 @@ export const projectDocRowId = (collection: PmCollection, docId: string) =>
 
 /** O grupo do menu (vazio para quem não está na lista). */
 export function projectManagementNav(
-  user: Pick<User, "email"> | null | undefined,
+  user: Partial<Pick<User, "email" | "role">> | null | undefined,
 ): NavEntry[] {
   if (!canSeeProjectManagement(user)) return [];
   return [
