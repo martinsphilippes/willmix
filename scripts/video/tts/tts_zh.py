@@ -111,7 +111,7 @@ def match(script, heard):
         for j in range(1, m + 1):
             S[i, j] = max(S[i - 1, j], S[i, j - 1], S[i - 1, j - 1] + sim(script[i - 1], heard[j - 1]))
     extra = max(0, m - n)  # palavras ouvidas a mais (repetição, sílaba inventada) pesam
-    return max(0.0, (S[n, m] - 0.5 * extra) / n)
+    return float(max(0.0, (S[n, m] - 0.5 * extra) / n))
 
 
 # ---- áudio --------------------------------------------------------------------
@@ -247,7 +247,14 @@ def main():
     ap.add_argument("--out-dir", help="pasta de saída (padrão: a do arquivo de cada fala)")
     ap.add_argument("--threads", type=int, default=int(os.environ.get("TTS_ZH_THREADS", "4")))
     ap.add_argument("--force", action="store_true", help="refaz mesmo com o .key em dia")
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="não gera: confere as falas já gravadas (transcrição, velocidade e nota) e refaz o relatório",
+    )
     args = ap.parse_args()
+    if args.check:
+        return check(args)
 
     items = json.load(open(args.list, encoding="utf-8"))
     only = set(args.only.split(",")) if args.only else None
@@ -267,7 +274,10 @@ def main():
         return
     os.makedirs(os.path.dirname(todo[0][2]), exist_ok=True)
     rep_path = os.path.join(os.path.dirname(todo[0][2]), "tts_zh.report.json")
-    report = json.load(open(rep_path, encoding="utf-8")) if os.path.exists(rep_path) else {}
+    try:
+        report = json.load(open(rep_path, encoding="utf-8")) if os.path.exists(rep_path) else {}
+    except ValueError:  # relatório de uma execução interrompida no meio da gravação
+        report = {}
 
     voice, ear, judge = Voice(args.speaker, args.instruct, args.threads), Ear(), Judge()
     t0 = time.time()
@@ -284,7 +294,7 @@ def main():
             heard = ear.hear(x, voice.sr)
             score = match(want, tokens(heard))
             mos = judge.score(x, voice.sr)
-            ok = score >= 0.92 and CPS[0] <= cps <= CPS[1] and (mos is None or mos >= MOS_MIN)
+            ok = bool(score >= 0.92 and CPS[0] <= cps <= CPS[1] and (mos is None or mos >= MOS_MIN))
             takes.append(dict(seed=seed, x=x, dur=round(d, 2), cps=round(cps, 2), match=round(score, 3), mos=mos, heard=heard, ok=ok))
             if ok:
                 break
@@ -305,7 +315,9 @@ def main():
             "ok": best["ok"],
             "takes": [{k: v for k, v in t.items() if k != "x"} for t in takes],
         }
-        json.dump(report, open(rep_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        tmp = rep_path + ".tmp"  # grava inteiro e troca: interrupção não corrompe o relatório
+        json.dump(report, open(tmp, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        os.replace(tmp, rep_path)
         flag = "" if best["ok"] else "  ← rever"
         el = time.time() - t0
         print(
@@ -315,6 +327,34 @@ def main():
         )
     bad = [i for i, r in report.items() if not r["ok"]]
     print(f"\n{len(report)} falas no relatório; a rever: {', '.join(bad) if bad else 'nenhuma'}")
+
+
+def check(args):
+    """Confere as falas já gravadas, sem gerar nada; grava <pasta>/tts_zh.check.json."""
+    items = json.load(open(args.list, encoding="utf-8"))
+    only = set(args.only.split(",")) if args.only else None
+    ear, judge = Ear(), Judge()
+    out, bad = {}, []
+    for it in items:
+        i = os.path.basename(it["file"])[: -len(".wav")]
+        if only and i not in only:
+            continue
+        path = os.path.join(args.out_dir, i + ".wav") if args.out_dir else it["file"]
+        x, sr = sf.read(path, dtype="float32")
+        x24 = resample_poly(x.astype(np.float64), 1, sr // 24000).astype(np.float32) if sr != 24000 else x
+        d = len(x) / sr
+        heard = ear.hear(x24, 24000)
+        score = match(tokens(it["text"]), tokens(heard))
+        cps = len(HAN.findall(it["text"])) / d if d else 0
+        mos = judge.score(x24, 24000)
+        ok = bool(score >= 0.92 and CPS[0] <= cps <= CPS[1] and (mos is None or mos >= MOS_MIN))
+        out[i] = dict(text=it["text"], dur=round(d, 2), cps=round(cps, 2), match=round(score, 3), mos=mos, heard=heard, ok=ok)
+        if not ok:
+            bad.append(i)
+        print(f"{i:12s} {d:5.2f} s {cps:4.1f} c/s casou {score:.0%} nota {mos}{'' if ok else '  ← rever'}\n      ouvido: {heard}", flush=True)
+    dst = os.path.join(os.path.dirname(path), "tts_zh.check.json")
+    json.dump(out, open(dst, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    print(f"\n{len(out)} falas conferidas; a rever: {', '.join(bad) if bad else 'nenhuma'} ({dst})")
 
 
 if __name__ == "__main__":
