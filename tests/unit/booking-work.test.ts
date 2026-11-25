@@ -465,6 +465,24 @@ describe("recusar itens na tela do book", () => {
   });
 });
 
+describe("trabalhar o book na tela do book (Configurações)", () => {
+  it("desligado, recusar é recusado; a trava continua", async () => {
+    const lot = await closedLot([row("OFF-1", "Off tray")], "Desligado");
+    const { setSetting } = await import("@/lib/settings");
+    await setSetting("bookingWorkOnLot", false);
+    const [item] = await itemsOf(lot.id);
+    await expect(
+      svc.refuseBookingItems(admin, lot.id, [item.id]),
+    ).rejects.toThrow("booking_work_off");
+    // Travar e liberar não dependem da chave.
+    await svc.lockBookingLot(ana, lot.id);
+    const [lock] = await svc.myBookingLocks(ana);
+    await svc.unlockBooking(director, lock.lock.id);
+    await setSetting("bookingWorkOnLot", true);
+    expect(await svc.refuseBookingItems(admin, lot.id, [item.id])).toBe(1);
+  });
+});
+
 describe("trava liberada sozinha", () => {
   it("o book inteiro trabalhado libera a trava e volta à vista de todos", async () => {
     const lot = await closedLot(

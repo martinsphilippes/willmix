@@ -57,6 +57,12 @@ export const DEFAULT_SETTINGS = {
    */
   bookingLockSlaHours: 3,
   /**
+   * Trabalhar o book na tela do book (dono, 24/11/2026): "Selecionar os
+   * marcados" e "Recusar os marcados" na tabela dos itens. Desligada, a
+   * seleção é só pela tela Seleção de itens; travar e liberar continuam.
+   */
+  bookingWorkOnLot: true,
+  /**
    * Cotação de compra (mapa B13; dono, 15/11/2026): horas corridas que cada
    * fornecedor tem para responder (padrão 24).
    */

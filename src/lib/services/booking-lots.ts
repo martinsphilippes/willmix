@@ -1687,6 +1687,10 @@ export async function refuseBookingItems(
   // No rascunho o book ainda não é trabalhado (nem seleção, nem recusa).
   if (!bookingLotLockable(lot.status))
     throw new BookingLotError("booking_refuse_draft");
+  // Trabalhar o book na tela dele desligado nas Configurações.
+  const { getSettings } = await import("@/lib/settings");
+  if (!(await getSettings()).bookingWorkOnLot)
+    throw new BookingLotError("booking_work_off");
   const store = getStore();
   const ids = [...new Set(itemIds)];
   const items = ids.length
@@ -1714,4 +1718,35 @@ export async function refuseBookingItems(
       .join(", ")}`,
   );
   return items.length;
+}
+
+/**
+ * Os itens escolhidos na seleção para virar produto (dono, 24/11/2026): o
+ * ganhador de uma escolha gravada ou o item de uma solicitação ao
+ * fornecedor. O item trabalhado que não está aqui foi recusado (na tela do
+ * book ou por não ter sido o escolhido na comparação).
+ */
+export async function chosenBookingItemIds(
+  itemIds: readonly string[],
+): Promise<Set<string>> {
+  const chosen = new Set<string>();
+  if (!itemIds.length) return chosen;
+  const store = getStore();
+  const { listColumns } = await import("@/lib/db/lookup");
+  try {
+    const [groups, requests] = await Promise.all([
+      listColumns(store, "selection_groups", ["chosenItemId"], {
+        filter: { status: ["saved", "requested"], chosenItemId: [...itemIds] },
+      }),
+      listColumns(store, "supplier_requests", ["bookingItemId"], {
+        filter: { bookingItemId: [...itemIds] },
+      }),
+    ]);
+    for (const g of groups) chosen.add(g.chosenItemId);
+    for (const r of requests) chosen.add(r.bookingItemId);
+  } catch (error) {
+    const { isSchemaMissing } = await import("@/lib/db/errors");
+    if (!isSchemaMissing(error)) throw error;
+  }
+  return chosen;
 }

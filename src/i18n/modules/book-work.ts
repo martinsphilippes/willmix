@@ -81,6 +81,11 @@ export const pt = {
   "bookWork.manufacturer.cancelAsk":
     "Cancelar esta importação do book? Depois é só importar a planilha de novo, com o nº da loja certo.",
   "bookWork.worked.selected": "Selecionado",
+  "bookWork.settings.workOnLot": "Selecionar e recusar itens na tela do book",
+  "bookWork.settings.workOnLotHint":
+    'Sim: a tabela de itens de um book fechado tem "Selecionar os marcados" e "Recusar os marcados". Não: a seleção é só pela tela Seleção de itens. Travar e liberar books continuam funcionando.',
+  "bookWork.error.booking_work_off":
+    "Selecionar e recusar itens na tela do book está desligado nas Configurações.",
   "bookWork.itemType": "Tipo de item",
   "bookWork.itemTypeHint":
     "Ex.: vidro, plástico, utilidades. Use o mesmo nome dos outros books do mesmo tipo.",
@@ -236,6 +241,11 @@ export const en: typeof pt = {
   "bookWork.manufacturer.cancelAsk":
     "Cancel this book import? Then just import the spreadsheet again, with the right store no.",
   "bookWork.worked.selected": "Selected",
+  "bookWork.settings.workOnLot": "Select and refuse items on the book page",
+  "bookWork.settings.workOnLotHint":
+    'Yes: the item table of a closed book has "Select the ticked items" and "Refuse the ticked items". No: selection happens only on the Item selection page. Locking and releasing books keep working.',
+  "bookWork.error.booking_work_off":
+    "Selecting and refusing items on the book page is turned off in Settings.",
   "bookWork.itemType": "Item type",
   "bookWork.itemTypeHint":
     "E.g. glass, plastic, housewares. Use the same name as the other books of the same type.",
@@ -380,6 +390,11 @@ export const zh: typeof pt = {
   "bookWork.manufacturer.cancelAsk":
     "取消本次 Book 导入吗？之后用正确的店铺号重新导入表格即可。",
   "bookWork.worked.selected": "已选中",
+  "bookWork.settings.workOnLot": "在 Book 页面选择和拒绝产品",
+  "bookWork.settings.workOnLotHint":
+    "是：已关闭 Book 的产品表格中有“选择勾选的产品”和“拒绝勾选的产品”。否：只能在选品页面选择。锁定和释放 Book 照常可用。",
+  "bookWork.error.booking_work_off":
+    "在 Book 页面选择和拒绝产品已在设置中关闭。",
   "bookWork.itemType": "产品类型",
   "bookWork.itemTypeHint":
     "例如：玻璃、塑料、日用品。同类型的 Book 请使用相同的名称。",
