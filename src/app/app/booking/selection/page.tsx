@@ -122,6 +122,12 @@ export default async function BookingSelectionPage({
   const filters = parseSelectionFilters(query);
   const groupIds = parseGroupIds(query.ids);
   const t = await getT();
+  const { canSuperviseBooks, myBookingLocks } =
+    await import("@/lib/services/booking-lots");
+  const [booksSupervisor, myLocks] = await Promise.all([
+    canSuperviseBooks(user),
+    myBookingLocks(user),
+  ]);
   // Referências por IA (painel ao lado de "Gravar a escolha do grupo").
   const aiGenerated =
     typeof query.ai === "string" && /^\d{1,2}$/.test(query.ai)
@@ -134,7 +140,7 @@ export default async function BookingSelectionPage({
   const [result, group, fx, savedGroups, settings] = await Promise.all([
     listSelectionItems(user, q, { filters }),
     groupIds.length
-      ? listSelectionItems(user, "", { ids: groupIds })
+      ? listSelectionItems(user, "", { ids: groupIds, workable: true })
       : Promise.resolve(null),
     getFxRates(),
     tab !== "items" ? listSelectionGroups(user) : Promise.resolve([]),
@@ -827,6 +833,18 @@ export default async function BookingSelectionPage({
       {errorText ? (
         <div className="mb-3">
           <Alert tone="danger">{errorText}</Alert>
+        </div>
+      ) : null}
+      {/* O analista só trabalha itens dos books travados para ele (dono,
+          25/11/2026): sem nenhum, a lista vem vazia e o aviso leva aos Books. */}
+      {!booksSupervisor && !myLocks.length ? (
+        <div className="mb-3" data-selection-no-lock>
+          <Alert tone="warning">
+            {t("bookWork.selection.noLock")}{" "}
+            <Link href="/app/booking" className={linkClass}>
+              {t("bookWork.selection.goBooks")}
+            </Link>
+          </Alert>
         </div>
       ) : null}
       {savedNotice ? (

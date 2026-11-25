@@ -648,6 +648,36 @@ export async function lotsVisibleTo<T extends BookingLot>(
 }
 
 /**
+ * Os books em que o login trabalha os itens na Seleção de itens (dono,
+ * 25/11/2026): o analista só nos books travados para ele (o book dele ou
+ * do tipo de item que ele travou); quem supervisiona os books, em todos.
+ * Livre ou travado por outro: fica de fora.
+ */
+export async function lotsWorkableBy<T extends BookingLot>(
+  user: User,
+  lots: T[],
+  locks?: BookingLock[],
+): Promise<T[]> {
+  if (await canSuperviseBooks(user)) return lots;
+  const all = locks ?? (await listBookingLocks());
+  return lots.filter((lot) => lockOfLot(lot, all)?.userId === user.id);
+}
+
+/** Recusa se algum destes books não está travado para quem age. */
+export async function assertLotsWorkable(
+  user: User,
+  lotIds: readonly string[],
+): Promise<void> {
+  const ids = [...new Set(lotIds)];
+  if (!ids.length || (await canSuperviseBooks(user))) return;
+  const { listByIds } = await import("@/lib/db/lookup");
+  const lots = await listByIds(getStore(), "booking_lots", ids);
+  const ok = await lotsWorkableBy(user, lots);
+  if (ok.length < ids.length)
+    throw new BookingLotError("booking_not_locked_to_you");
+}
+
+/**
  * Todos os bookings com fornecedor, responsável, itens incompletos e os
  * sinais da análise. `null`: a tabela ainda não foi publicada.
  */
@@ -1687,6 +1717,8 @@ export async function refuseBookingItems(
   // No rascunho o book ainda não é trabalhado (nem seleção, nem recusa).
   if (!bookingLotLockable(lot.status))
     throw new BookingLotError("booking_refuse_draft");
+  // Só no book travado para quem recusa (ou quem supervisiona).
+  await assertLotsWorkable(user, [lot.id]);
   // Trabalhar o book na tela dele desligado nas Configurações.
   const { getSettings } = await import("@/lib/settings");
   if (!(await getSettings()).bookingWorkOnLot)

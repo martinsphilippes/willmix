@@ -109,6 +109,11 @@ export interface SelectionOptions {
   filters?: SelectionFilters;
   /** Grupo para comparar: só estes itens (os filtros não valem). */
   ids?: string[];
+  /**
+   * Só os itens dos books travados para quem vê (padrão, sem `ids`; com
+   * `ids`, só quando pedido). Falso: as escolhas já gravadas, para consulta.
+   */
+  workable?: boolean;
 }
 
 /**
@@ -133,6 +138,8 @@ export async function listSelectionItems(
     supplierId: null,
     origin: null,
   };
+  const workable = options.workable ?? !options.ids;
+  let openIds = new Set<string>();
   let lots: BookingLot[];
   let items: BookingItem[];
   let requests: SupplierRequest[];
@@ -140,11 +147,13 @@ export async function listSelectionItems(
     lots = await store.list("booking_lots", {
       filter: { status: [...SELECTION_STATUSES] },
     });
-    // Books travados por outro analista ficam fora da lista (dono,
-    // 23/11/2026; docs/BOOKING.md, "Travar books"); o grupo aberto pelos ids
-    // (uma escolha já gravada, por exemplo) não muda.
-    const { lotsVisibleTo } = await import("./booking-lots");
-    const open = options.ids ? lots : await lotsVisibleTo(user, lots);
+    // O analista só trabalha itens dos books travados para ele (dono,
+    // 25/11/2026; docs/BOOKING.md, "Travar books"); quem supervisiona, todos.
+    // O grupo aberto pelos ids só é filtrado quando pedido (a consulta das
+    // escolhas já gravadas mostra o grupo inteiro).
+    const { lotsWorkableBy } = await import("./booking-lots");
+    const open = workable ? await lotsWorkableBy(user, lots) : lots;
+    openIds = new Set(open.map((l) => l.id));
     const shown = options.ids
       ? lots
       : open.filter((l) => lotMatchesFilters(l, filters));
@@ -188,6 +197,7 @@ export async function listSelectionItems(
     };
   };
   const matched = items
+    .filter((i) => !workable || openIds.has(i.lotId))
     // Recusado na tela do book: não vai para a seleção (o grupo aberto
     // pelos ids, de uma escolha já gravada, não muda).
     .filter((i) => options.ids || !i.refusedAt)
@@ -306,6 +316,12 @@ export async function openSupplierRequest(
     !(BOOKING_PARTNER_TYPES as readonly string[]).includes(supplier.type)
   )
     throw new SupplierRequestError("supplier_invalid");
+  // Aberta direto da Seleção (sem lote de solicitações): só no book
+  // travado para quem abre (dono, 25/11/2026).
+  if (!batches) {
+    const { assertLotsWorkable } = await import("./booking-lots");
+    await assertLotsWorkable(user, [lot.id]);
+  }
   const existing = await withSchema(() =>
     store.list("supplier_requests", { filter: { bookingItemId: item.id } }),
   );
