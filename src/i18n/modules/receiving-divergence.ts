@@ -77,7 +77,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "importFlow.actor.buyer": "采购员",
   "importFlow.actor.planner": "计划员",
   "importFlow.actor.purchasing_director": "采购总监",
-  "importFlow.actor.comex_internal": "内部外贸",
+  "importFlow.actor.comex_internal": "进出口（内部）",
   "importFlow.choiceLabel": "选项",
   "importFlow.choice.accepts": "接受",
   "importFlow.choice.contests": "异议",

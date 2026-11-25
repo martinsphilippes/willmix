@@ -70,12 +70,18 @@ export function CargoCard({ t, cargo }: { t: Translate; cargo: CargoView }) {
                 {cargo.eta ? day(cargo.eta) : pending}
                 {cargo.vessel ? (
                   <span className="block text-xs text-zinc-600">
-                    {t("orders.cargo.vessel")}: {cargo.vessel}
+                    {t("orders.cargo.line", {
+                      label: t("orders.cargo.vessel"),
+                      value: cargo.vessel,
+                    })}
                   </span>
                 ) : null}
                 {cargo.shipDate ? (
                   <span className="block text-xs text-zinc-600">
-                    {t("orders.cargo.shipped")}: {day(cargo.shipDate)}
+                    {t("orders.cargo.line", {
+                      label: t("orders.cargo.shipped"),
+                      value: day(cargo.shipDate) ?? "",
+                    })}
                   </span>
                 ) : null}
               </span>,

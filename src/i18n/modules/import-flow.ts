@@ -278,7 +278,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "importFlow.step.container_at_port": "已封柜到港（日期）",
   "importFlow.step.container_tracking": "集装箱跟踪（当日状态）",
   "importFlow.actor.logistics": "货代",
-  "importFlow.actor.comex": "Comex",
+  "importFlow.actor.comex": "外贸代理",
   "importFlow.actor.supplier": "供应商",
   "importFlow.actor.finance": "财务",
   "importFlow.actor.wellmix": "Wellmix",

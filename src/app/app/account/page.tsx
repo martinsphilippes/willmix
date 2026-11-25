@@ -598,10 +598,9 @@ function Trail({
           summary.viewedAt ? "text-zinc-700" : "text-zinc-400",
         )}
       >
-        {t("orders.ack.viewed")}:{" "}
         {summary.viewedAt
-          ? `${who(summary.viewedBy)}${formatDateTime(summary.viewedAt, t.intl)}`
-          : t("orders.ack.pending")}
+          ? `${t("orders.ack.viewed")}: ${who(summary.viewedBy)}${formatDateTime(summary.viewedAt, t.intl)}`
+          : t("orders.ack.notViewedField")}
       </span>
       <span
         className={cx(
@@ -609,10 +608,9 @@ function Trail({
           summary.confirmedAt ? "text-emerald-700" : "text-zinc-400",
         )}
       >
-        {t("orders.ack.confirmed")}:{" "}
         {summary.confirmedAt
-          ? `${who(summary.confirmedBy)}${formatDateTime(summary.confirmedAt, t.intl)}`
-          : t("orders.ack.pending")}
+          ? `${t("orders.ack.confirmed")}: ${who(summary.confirmedBy)}${formatDateTime(summary.confirmedAt, t.intl)}`
+          : t("orders.ack.notConfirmedField")}
       </span>
     </span>
   );
