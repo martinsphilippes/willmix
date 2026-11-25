@@ -90,6 +90,8 @@ async function importAndClose(
     .locator("[data-booking-import-form] input[type=file]")
     .setInputFiles(file);
   await fillBookMeta(page);
+  // O Supplier do book (o "Fornecedor" da Seleção de itens; dono, 25/11/2026).
+  await page.locator("[data-book-supplier-name]").fill(supplierName);
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   // Fornecedor do cadastro (tem login): nenhum aviso de "sem acesso".

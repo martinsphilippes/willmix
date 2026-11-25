@@ -42,7 +42,7 @@ describe("filtros da seleção", () => {
     const lot = {
       status: "draft" as const,
       bookingDate: "2026-10-13T00:00:00.000Z",
-      supplierId: "s1",
+      supplier: "Ningbo Home-In Import and Export Co., Ltd",
       origin: "São Paulo",
     };
     const none = parseSelectionFilters({});
@@ -64,6 +64,13 @@ describe("filtros da seleção", () => {
       ),
     ).toBe(false);
     expect(lotMatchesFilters(lot, { ...none, supplierId: "s2" })).toBe(false);
+    // O Supplier do book pelo nome, sem pontuação nem "Co., Ltd.".
+    expect(
+      lotMatchesFilters(lot, {
+        ...none,
+        supplierId: "NINGBO HOME-IN IMPORT AND EXPORT",
+      }),
+    ).toBe(true);
     expect(lotMatchesFilters(lot, { ...none, origin: "sao paulo" })).toBe(true);
     expect(lotMatchesFilters(lot, { ...none, origin: "Yiwu" })).toBe(false);
   });

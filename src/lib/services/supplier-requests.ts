@@ -37,6 +37,8 @@ import {
 import {
   SELECTION_STATUSES,
   lotMatchesFilters,
+  bookSupplierLabel,
+  supplierFilterKey,
   type SelectionFilters,
 } from "@/lib/booking-selection";
 import { audit } from "./audit";
@@ -86,7 +88,13 @@ async function withSchema<T>(fn: () => Promise<T>): Promise<T> {
 export interface SelectionRow {
   item: BookingItem;
   lot: BookingLot;
+  /**
+   * Quem recebe a solicitação (`bookingRecipientId`: o parceiro responsável
+   * ou, sem ele, a fábrica): o aviso de "sem login" olha para ele.
+   */
   supplier: Party | null;
+  /** O Supplier do book, o "Fornecedor" da tela (dono, 25/11/2026). */
+  supplierLabel: string;
   /** Solicitação em andamento (aberta ou respondida) deste item. */
   activeRequest: SupplierRequest | null;
 }
@@ -97,7 +105,7 @@ export interface SelectionResult {
   total: number;
   /** Os que combinam, até SELECTION_SCAN (para os blocos sugeridos). */
   all: SelectionRow[];
-  /** Opções dos filtros: fornecedores e origens dos bookings. */
+  /** Opções dos filtros: os Suppliers (id = o nome) e origens dos bookings. */
   suppliers: Array<{ id: string; name: string }>;
   origins: string[];
 }
@@ -140,6 +148,12 @@ export async function listSelectionItems(
   };
   const workable = options.workable ?? !options.ids;
   let openIds = new Set<string>();
+  let partyOf = new Map<string, Party>();
+  const labelOf = (lot: BookingLot) =>
+    bookSupplierLabel(
+      lot,
+      lot.partnerId ? partyOf.get(lot.partnerId)?.name : null,
+    );
   let lots: BookingLot[];
   let items: BookingItem[];
   let requests: SupplierRequest[];
@@ -154,9 +168,22 @@ export async function listSelectionItems(
     const { lotsWorkableBy } = await import("./booking-lots");
     const open = workable ? await lotsWorkableBy(user, lots) : lots;
     openIds = new Set(open.map((l) => l.id));
+    const supplierIds = [
+      ...new Set(
+        lots
+          .flatMap((l) => [l.supplierId, l.partnerId])
+          .filter((s): s is string => !!s),
+      ),
+    ];
+    const suppliers = supplierIds.length
+      ? await store.list("parties", { filter: { id: supplierIds } })
+      : [];
+    partyOf = new Map(suppliers.map((p) => [p.id, p]));
     const shown = options.ids
       ? lots
-      : open.filter((l) => lotMatchesFilters(l, filters));
+      : open.filter((l) =>
+          lotMatchesFilters({ ...l, supplier: labelOf(l) }, filters),
+        );
     items = options.ids
       ? options.ids.length
         ? await store.list("booking_items", { filter: { id: options.ids } })
@@ -177,13 +204,6 @@ export async function listSelectionItems(
     throw error;
   }
   const lotOf = new Map(lots.map((l) => [l.id, l]));
-  const supplierIds = [
-    ...new Set(lots.map((l) => l.supplierId).filter((s): s is string => !!s)),
-  ];
-  const suppliers = supplierIds.length
-    ? await store.list("parties", { filter: { id: supplierIds } })
-    : [];
-  const partyOf = new Map(suppliers.map((p) => [p.id, p]));
   const activeOf = new Map(requests.map((r) => [r.bookingItemId, r]));
   const words = searchWords(query);
   const rowOf = (item: BookingItem): SelectionRow | null => {
@@ -192,7 +212,11 @@ export async function listSelectionItems(
     return {
       item,
       lot,
-      supplier: lot.supplierId ? (partyOf.get(lot.supplierId) ?? null) : null,
+      supplier: (() => {
+        const id = lot.partnerId ?? lot.supplierId;
+        return id ? (partyOf.get(id) ?? null) : null;
+      })(),
+      supplierLabel: labelOf(lot),
       activeRequest: activeOf.get(item.id) ?? null,
     };
   };
@@ -211,7 +235,7 @@ export async function listSelectionItems(
             // Nº da loja, nome do supplier e tipo de item digitados na
             // importação do book também são buscados (dono, 24/11/2026).
             [
-              r.supplier?.name,
+              r.supplierLabel,
               r.lot.origin,
               `${r.lot.number}`,
               r.lot.storeNumber,
@@ -238,12 +262,16 @@ export async function listSelectionItems(
     total: matched.length,
     rows: matched.slice(0, SELECTION_MAX),
     all: matched.slice(0, SELECTION_SCAN),
+    // Os Suppliers dos books (não as fábricas), um por nome.
     suppliers: [
-      ...new Set(visibleLots.map((l) => l.supplierId).filter(Boolean)),
+      ...new Map(
+        visibleLots
+          .map(labelOf)
+          .filter(Boolean)
+          .map((name) => [supplierFilterKey(name), name] as const),
+      ).values(),
     ]
-      .map((id) => partyOf.get(id as string))
-      .filter((p): p is Party => !!p)
-      .map((p) => ({ id: p.id, name: p.name }))
+      .map((name) => ({ id: name, name }))
       .sort((a, b) => a.name.localeCompare(b.name, "pt")),
     origins: [
       ...new Set(

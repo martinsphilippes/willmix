@@ -4,6 +4,7 @@ import type {
   SelectionGroup,
 } from "@/lib/db/schema";
 import { itemKeywords, searchWords } from "@/lib/supplier-requests";
+import { supplierKey } from "@/lib/booking-lots";
 
 /*
  * Seleção de itens (docs/SUPPLIER_REQUESTS.md, "Abas Itens e Seleção"):
@@ -34,6 +35,10 @@ export interface SelectionFilters {
   /** AAAA-MM-DD, inclusive. */
   from: string | null;
   to: string | null;
+  /**
+   * Fornecedor = o Supplier do book (dono, 25/11/2026): o nome, comparado
+   * sem pontuação nem "Co., Ltd." (`supplierKey`). Não é a fábrica.
+   */
   supplierId: string | null;
   /** Cidade do fornecedor (origem do booking). */
   origin: string | null;
@@ -144,8 +149,29 @@ export function parseGroupIds(v: string | string[] | undefined): string[] {
 export interface LotForFilter {
   status: BookingLotStatus;
   bookingDate: string | null;
-  supplierId: string | null;
+  /** O Supplier do book (`bookSupplierLabel`). */
+  supplier: string | null;
   origin: string | null;
+}
+
+/**
+ * O Supplier do book (dono, 25/11/2026: na Seleção de itens o fornecedor é
+ * sempre ele): o "Supplier" digitado na importação (`supplierName`) ou, sem
+ * ele, o nome do parceiro responsável (`partnerId`). Vazio: sem Supplier.
+ */
+export function bookSupplierLabel(
+  lot: { supplierName?: string | null },
+  partnerName?: string | null,
+): string {
+  return (
+    (lot.supplierName ?? "").replace(/\s+/g, " ").trim() ||
+    (partnerName ?? "").trim()
+  );
+}
+
+/** Chave do Supplier para o filtro e a contagem (sem pontuação nem "Ltd."). */
+export function supplierFilterKey(name: string | null | undefined): string {
+  return supplierKey(name) || (name ?? "").trim().toLowerCase();
 }
 
 /** O booking passa nos filtros (status, intervalo de datas, fornecedor, origem)? */
@@ -158,7 +184,11 @@ export function lotMatchesFilters(
   const day = lot.bookingDate ? lot.bookingDate.slice(0, 10) : null;
   if (f.from && (!day || day < f.from)) return false;
   if (f.to && (!day || day > f.to)) return false;
-  if (f.supplierId && lot.supplierId !== f.supplierId) return false;
+  if (
+    f.supplierId &&
+    supplierFilterKey(lot.supplier) !== supplierFilterKey(f.supplierId)
+  )
+    return false;
   if (f.origin && fold(lot.origin ?? "") !== fold(f.origin)) return false;
   return true;
 }
@@ -180,6 +210,7 @@ export function filtersToParams(f: SelectionFilters, q = ""): URLSearchParams {
 
 export interface BlockInput {
   item: Pick<BookingItem, "id" | "description" | "productName">;
+  /** O Supplier do book (a contagem de fornecedores do bloco). */
   supplierId: string | null;
 }
 

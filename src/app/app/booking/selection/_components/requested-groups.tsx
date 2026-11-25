@@ -198,7 +198,7 @@ export function RequestedGroups({
                               {name}
                             </span>
                             <span className="min-w-0 truncate text-zinc-500 @3xl:col-start-3">
-                              {row.supplier?.name ?? "—"}
+                              {row.supplierLabel || "—"}
                             </span>
                             <span className="text-right whitespace-nowrap tabular-nums @3xl:col-start-4">
                               {usdOf(row.item)}
