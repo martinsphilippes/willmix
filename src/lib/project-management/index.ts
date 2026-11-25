@@ -10,6 +10,9 @@ import type { NavEntry } from "@/lib/nav";
  */
 export const PROJECT_MANAGEMENT_EMAILS: readonly string[] = [
   "well@wellmix.com.br",
+  // Login "Master Wellmix" (dono, 25/11/2026: "preciso garantir que esteja
+  // liberado"): vale mesmo se um dia deixar de ser administrador.
+  "well_wellmix@wellmix.com",
 ];
 
 export const PROJECT_MANAGEMENT_PATH = "/app/project-management";

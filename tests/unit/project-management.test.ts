@@ -28,6 +28,12 @@ describe("Gestão do projeto", () => {
   });
 
   it("e o login da lista, mesmo sem ser admin (sem diferenciar maiúsculas)", () => {
+    expect(
+      canSeeProjectManagement({
+        email: "well_wellmix@wellmix.com",
+        role: "operator",
+      }),
+    ).toBe(true);
     expect(canSeeProjectManagement({ email: "well@wellmix.com.br" })).toBe(
       true,
     );
