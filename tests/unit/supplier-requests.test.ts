@@ -1053,6 +1053,14 @@ describe("seleção: rascunhos, filtros e grupo", () => {
       file([row("Guangzhou Supplier B", "Z-2", "Zebra mug steel")]),
     );
     expect(draft.status).toBe("draft");
+    // O Fornecedor da Seleção é o Supplier do book (dono, 25/11/2026), não a
+    // fábrica: os dois books com o Supplier digitado na importação.
+    await getStore().update("booking_lots", closed.id, {
+      supplierName: "Home In Trading Co., Ltd.",
+    });
+    await getStore().update("booking_lots", draft.id, {
+      supplierName: "Ocean Supplier",
+    });
     const none = {
       statuses: [],
       from: null,
@@ -1069,8 +1077,16 @@ describe("seleção: rascunhos, filtros e grupo", () => {
       "Z-2",
     ]);
     expect(all!.suppliers.map((s) => s.id)).toEqual(
-      expect.arrayContaining([closed.supplierId, draft.supplierId]),
+      expect.arrayContaining(["Home In Trading Co., Ltd.", "Ocean Supplier"]),
     );
+    // A fábrica não entra nas opções.
+    expect(all!.suppliers.map((s) => s.name)).not.toContain(
+      "Guangzhou Supplier B",
+    );
+    expect(all!.rows.map((r) => r.supplierLabel).sort()).toEqual([
+      "Home In Trading Co., Ltd.",
+      "Ocean Supplier",
+    ]);
 
     const closedOnly = await svc.listSelectionItems(admin, "zebra", {
       filters: { ...none, statuses: ["closed"] },
@@ -1079,7 +1095,8 @@ describe("seleção: rascunhos, filtros e grupo", () => {
       "Z-1",
     ]);
     const bySupplier = await svc.listSelectionItems(admin, "zebra", {
-      filters: { ...none, supplierId: draft.supplierId },
+      // Pelo nome, sem pontuação nem "Co., Ltd.".
+      filters: { ...none, supplierId: "ocean supplier co ltd" },
     });
     expect(bySupplier!.rows.map((r) => r.item.factoryItemCode)).toEqual([
       "Z-2",
