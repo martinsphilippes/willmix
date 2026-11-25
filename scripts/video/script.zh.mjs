@@ -91,6 +91,7 @@ export const VIDEOS_ZH = {
         phone: "电话",
         pdf: "PDF",
         attach: "附件",
+        final: "终版",
       },
     },
     scenes: [
@@ -472,7 +473,7 @@ export const VIDEOS_ZH = {
             },
             {
               icon: "database",
-              name: "建档",
+              name: "建档专员",
               text: "审核税则归类和主档资料",
               c: 4,
             },
@@ -522,7 +523,7 @@ export const VIDEOS_ZH = {
             {
               icon: "tag",
               name: "销售",
-              text: "报价、销售订单和送货日期",
+              text: "报价、销售订单和送货日程",
               c: 2,
             },
             {
@@ -579,7 +580,7 @@ export const VIDEOS_ZH = {
           chips: [
             {
               icon: "messages-square",
-              label: "每家公司与 Wellmix 一个对话",
+              label: "每家公司与 Wellmix 只有一个对话",
               c: 2,
             },
             {
@@ -631,7 +632,7 @@ export const VIDEOS_ZH = {
             },
             {
               icon: "clock",
-              label: "Wellmix 看到该由谁回复 · 1 个工作日",
+              label: "Wellmix 看到该由谁回复 · 时限 1 个工作日",
               c: 1,
             },
           ],
@@ -768,7 +769,7 @@ export const VIDEOS_ZH = {
           phones: ["m-tower", "m-supplier"],
           chip: {
             icon: "link",
-            label: "专为 Wellmix 的 ERP 而设计",
+            label: "为配合 Wellmix 的 ERP 而设计",
             c: 1,
           },
         },

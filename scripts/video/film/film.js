@@ -57,6 +57,8 @@ const UI = {
     phone: "Phone call",
     pdf: "PDF",
     attach: "Attachment",
+    // Selo de um dos ícones de planilha ("versão final").
+    final: "final",
   },
   ...(tl.ui ?? {}),
 };
