@@ -337,6 +337,32 @@ export default async function SupplierRequestPage({
         />
         {timelineCard}
         {noticeBlock}
+        {/* Variação × embalagem de cada produto (dono, 26/11/2026): tudo o
+            que a Seleção pôs no SKU, já na abertura da cotação. */}
+        {rows.some((row) => row.variant) ? (
+          <div className="mb-4 space-y-3" data-supplier-table-variants>
+            {rows
+              .filter((row) => row.variant)
+              .map((row) => (
+                <div key={row.id} className="space-y-1">
+                  {rows.length > 1 ? (
+                    <p className="text-xs font-medium text-zinc-600">
+                      {row.item.description ??
+                        row.item.productName ??
+                        row.item.factoryItemCode ??
+                        "—"}
+                    </p>
+                  ) : null}
+                  <RequestVariant
+                    request={row}
+                    book={bookSpecs.get(row.id) ?? null}
+                    showPrice={seesPrice}
+                    t={t}
+                  />
+                </div>
+              ))}
+          </div>
+        ) : null}
         <div data-supplier-table>
           <SupplierRequestTable
             rows={rows}
@@ -559,6 +585,8 @@ export default async function SupplierRequestPage({
   let sectionNo = 0;
   const nextSection = () => ++sectionNo;
 
+  // Peças por embalagem da cotação de um SKU (1 = a unitária).
+  const packUnits = Math.max(1, r.variant?.units ?? 1);
   const summarySection = (
     <NegotiationSection
       n={nextSection()}
@@ -599,11 +627,17 @@ export default async function SupplierRequestPage({
             >
               <span className="flex flex-col">
                 <strong>
-                  {t("supplierRequests.detail.pieces", {
-                    n: r.quantity.toLocaleString(intl),
-                  })}
+                  {packUnits > 1
+                    ? `${t("supplierRequests.variant.packs", {
+                        n: r.quantity.toLocaleString(intl),
+                      })} ${t("supplierRequests.variant.piecesParen", {
+                        n: (r.quantity * packUnits).toLocaleString(intl),
+                      })}`
+                    : t("supplierRequests.detail.pieces", {
+                        n: r.quantity.toLocaleString(intl),
+                      })}
                 </strong>
-                {r.schedule?.items.length ? (
+                {r.schedule?.items.length && packUnits === 1 ? (
                   <span className="text-xs font-normal text-zinc-600">
                     {roundsLine(r.schedule, t)}
                   </span>
@@ -696,7 +730,11 @@ export default async function SupplierRequestPage({
         >
           {r.needs ?? t("supplierRequests.detail.needsNone")}
         </p>
-        <PurchaseScheduleTable schedule={r.schedule} t={t} />
+        {/* Com variação × embalagem, as entregas ficam no quadro da
+            variação, em embalagens, peças e caixas. */}
+        {r.variant ? null : (
+          <PurchaseScheduleTable schedule={r.schedule} t={t} />
+        )}
         {/* Variações de cor: cada cor na própria linha, por data. */}
         <RequestColorPlan
           plan={r.colorPlan}
@@ -1457,8 +1495,9 @@ export default async function SupplierRequestPage({
               <div className="space-y-3" data-negotiation-main>
                 {summarySection}
                 <RequestVariant
-                  variant={r.variant}
-                  cartonQty={it.masterCartonQty}
+                  request={r}
+                  book={book}
+                  showPrice={seesPrice}
                   t={t}
                 />
                 {sheetSection}
@@ -1486,7 +1525,11 @@ export default async function SupplierRequestPage({
             {/* Imagens sempre à vista enquanto se negocia: a referência da
                 Wellmix e a amostra de cada fornecedor (dono, 22/11/2026). */}
             <ItemImagesCard
-              reference={it.photoDocumentId ? [it.photoDocumentId] : []}
+              reference={[
+                it.photoDocumentId,
+                // A arte da variação × embalagem, ao lado da foto do Book.
+                r.variant?.artDocumentId,
+              ].filter((d): d is string => !!d)}
               referenceFrom={r.bookingLotId ? "book" : "product"}
               samples={[
                 { request: r, supplier },
@@ -1562,8 +1605,9 @@ export default async function SupplierRequestPage({
               <div className="space-y-3" data-negotiation-main>
                 {summarySection}
                 <RequestVariant
-                  variant={r.variant}
-                  cartonQty={it.masterCartonQty}
+                  request={r}
+                  book={book}
+                  showPrice={seesPrice}
                   t={t}
                 />
                 {sheetSection}
