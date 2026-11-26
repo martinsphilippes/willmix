@@ -12,6 +12,7 @@ import {
   matchesProduct,
   readProductFilter,
 } from "@/lib/services/product-list";
+import { SANKHYA_SUPPLIER_TYPES } from "@/lib/sankhya-supplier";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
   const [all, lines, suppliers] = await Promise.all([
     store.list("products", { orderBy: "name" }),
     store.list("product_lines", { orderBy: "name" }),
-    store.list("parties", { filter: { type: "supplier" } }),
+    store.list("parties", { filter: { type: [...SANKHYA_SUPPLIER_TYPES] } }),
   ]);
   const active = all.filter((p) => p.active);
   const links = await listLinksForProducts(active.map((p) => p.id));

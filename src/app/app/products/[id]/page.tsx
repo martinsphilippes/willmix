@@ -110,6 +110,7 @@ import { FoldMemory } from "@/components/fold-memory";
 import { missingFieldsView } from "@/components/missing-fields-view";
 import { productSuppliersView } from "@/lib/services/product-suppliers";
 import { unifiedProductNotes } from "@/lib/sheet-registration";
+import { SANKHYA_SUPPLIER_TYPES } from "@/lib/sankhya-supplier";
 
 const sourceTone = {
   manual: "neutral",
@@ -173,7 +174,12 @@ export default async function ProductSheetPage({
   const store = getStore();
   const [lines, suppliers, users] = await Promise.all([
     store.list("product_lines", { orderBy: "name" }),
-    store.list("parties", { filter: { type: "supplier" }, orderBy: "name" }),
+    // Trading, Supplier e Factory também: o fornecedor de um desses tipos não
+    // some do seletor (e não é apagado ao salvar; src/lib/sankhya-supplier.ts).
+    store.list("parties", {
+      filter: { type: [...SANKHYA_SUPPLIER_TYPES] },
+      orderBy: "name",
+    }),
     store.list("users"),
   ]);
   const userName = (uid: string | null) =>

@@ -255,6 +255,15 @@ Regras (`src/lib/integrations/sankhya-views.ts`; decisões do dono de 20/11/2026
 - **Vendedores.** A carga `sellers` (e o botão da lista de RCAs no cadastro do cliente) troca a cópia da lista (`settings.sankhyaSellers`), agora com tipo, tipo Wellmix, e-mail, telefone, gerente, equipe, região e estados. Ela também liga o vendedor ao login da equipe pelo e-mail: só o login da Wellmix sem código de vendedor, um único vendedor ativo com o mesmo e-mail e o código ainda sem dono. Nunca troca o que o administrador gravou, e cada ligação vai para a auditoria (`team.seller_code`). A lista continua servindo para escolher o RCA do cliente sem RCA (docs/CUSTOMER_RCA.md, seção 7).
 - A tela da carga mostra de onde cada carga leu ("Lido da view do portal" ou "A view falhou: lido da tabela") e as colunas do dicionário que a view não trouxe. Fotos (`TGFPRO.IMAGEM`), caixas (`TGFVOA`) e transportadoras (`TGFPAR`) continuam nas tabelas.
 
+### Fornecedor trocado de tipo no portal (26/11/2026)
+
+A carga procurava o fornecedor pelo código **e** pelo tipo "Fornecedor". O cadastro trocado no portal para Trading, Supplier ou Factory não era achado, e a carga criava outro Fornecedor com o mesmo código. Foi o que aconteceu com a NINGBO HOME-IN (62387): virou Trading em 17/11/2026, e a carga de 20/11/2026 criou um Fornecedor novo, que recebeu os pedidos, produtos, containers e o login. Os books e as solicitações ao fornecedor continuaram no Trading.
+
+- **Mescla (dono, 26/11/2026).** Ficou um cadastro só, com o tipo **Supplier** (`supplier_partner`). Foi mantido o de 20/11, que tinha 187 pedidos, 947 produtos, 833 vínculos produto × fornecedor, 76 containers e o login. Os 3 books e as 4 solicitações ao fornecedor do Trading passaram para ele, e os códigos do Sankhya (`sankhyaRefs`) dos dois foram somados. O cadastro do Trading foi apagado. Os dois cadastros como estavam ficaram na auditoria (`party.merge`). A YIWU SEAWAY (54134) tem o mesmo par Trading + Fornecedor e ficou como está, à espera do dono.
+- **Regra nova** (`src/lib/sankhya-supplier.ts`): o fornecedor do Sankhya é achado pelo código entre o Fornecedor, a Trading, o Supplier e a Factory (os tipos da cotação de compra). Com dois cadastros no mesmo código, vale o Fornecedor. A carga atualiza o cadastro achado sem mudar o tipo. Vale para a carga de fornecedores (view e TGFPAR), o fornecedor principal do produto, produto × fornecedor e a carga dos pedidos e containers (`sankhya-orders-load.ts`).
+- **Telas de produto** (lista, ficha e exportação): o fornecedor de um desses tipos aparece com o nome e fica no seletor. Antes, a ficha mostrava "Sem fornecedor", e salvar o produto apagava o fornecedor dele.
+- A escrita no Sankhya (`sankhya-sync.ts`) continua só para o Fornecedor e o cliente. O Supplier não é enviado.
+
 ## Pendências (decisões com a Wellmix)
 
 1. Nomes das colunas do Incoterm e da moeda de origem do fornecedor no TGFCAB (provavelmente campos AD_).
