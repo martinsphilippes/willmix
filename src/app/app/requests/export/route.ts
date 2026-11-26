@@ -7,7 +7,7 @@ import { getStore, type Request } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { requestDisplayStatus } from "@/lib/services/order-status";
-import { activeRequests } from "@/lib/services/request-list-data";
+import { listedRequests } from "@/lib/services/request-list-data";
 import { demandKind, type DemandKind } from "@/lib/purchase-demand";
 import {
   awaitingStrategySend,
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
   const store = getStore();
   // Só as da etapa, pelo banco (src/lib/services/request-list-data.ts).
   const [all, users] = await Promise.all([
-    activeRequests(),
+    listedRequests(),
     store.list("users"),
   ]);
   const visible = all.filter((r) => canViewRequest(user, r));

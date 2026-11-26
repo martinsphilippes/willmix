@@ -5,7 +5,8 @@ import { withTempStore } from "./setup";
  * Leitura da lista de Encomendas e da fila de Reposição (dono, 16/11/2026):
  * o banco devolve só o que ainda é encomenda; as encerradas (excluídas e com
  * pedido cancelado) só em "Ver canceladas e excluídas"; o que virou pedido
- * fica de fora das duas.
+ * fica de fora das duas. O Estoque Wellmix é todo reposição e sai de
+ * Encomendas (dono, 26/11/2026).
  */
 withTempStore();
 
@@ -51,6 +52,18 @@ beforeAll(async () => {
     origin: "replenishment",
     orderId: live.id,
   });
+  // Do Estoque Wellmix (dono, 26/11/2026): a Pre-order 1100 do Sankhya, a
+  // compra para estoque da Nova solicitação e uma excluída.
+  const stock = { customerId: "wellmix-estoque" };
+  await request("estoque-sankhya", "REQUESTED", {
+    ...stock,
+    origin: "replenishment",
+  });
+  await request("estoque-manual", "REQUESTED", stock);
+  await request("estoque-excluida", "CANCELLED", {
+    ...stock,
+    origin: "replenishment",
+  });
 });
 
 const names = (rows: { productName: string }[]) =>
@@ -61,6 +74,8 @@ describe("lista de Encomendas pelo banco", () => {
     expect(names(await data.activeRequests())).toEqual([
       "aberta",
       "aguardando",
+      "estoque-manual",
+      "estoque-sankhya",
       "outro-cliente",
       "reposicao-aberta",
     ]);
@@ -70,8 +85,21 @@ describe("lista de Encomendas pelo banco", () => {
     ]);
   });
 
+  it("a lista de Encomendas não mostra o Estoque Wellmix (é reposição)", async () => {
+    expect(names(await data.listedRequests())).toEqual([
+      "aberta",
+      "aguardando",
+      "outro-cliente",
+      "reposicao-aberta",
+    ]);
+    expect(names(await data.listedRequests({ customerId: "c2" }))).toEqual([
+      "outro-cliente",
+    ]);
+  });
+
   it("encerradas: excluídas e com pedido cancelado, com a contagem igual", async () => {
     const { rows, cancelled } = await data.closedRequests();
+    // A excluída do estoque também fica fora de Encomendas.
     expect(names(rows)).toEqual(["excluida", "pedido-cancelado"]);
     expect(cancelled.size).toBe(1);
     expect(await data.closedRequestCount()).toBe(2);
@@ -85,8 +113,10 @@ describe("lista de Encomendas pelo banco", () => {
 });
 
 describe("fila de Reposição", () => {
-  it("a reposição que virou pedido sai da fila", async () => {
+  it("a reposição que virou pedido sai da fila; o Estoque Wellmix entra todo", async () => {
     expect(names(await listDemands("replenishment"))).toEqual([
+      "estoque-manual",
+      "estoque-sankhya",
       "reposicao-aberta",
     ]);
   });

@@ -489,3 +489,14 @@ Decisão do dono: prazo de produção e pedido mínimo são **de cada produto** 
 4. **Peso bruto por peça** abaixo do peso bruto da caixa master (peso da caixa ÷ peças por caixa), calculado na hora.
 5. **Conversa do produto** numa coluna fixa à direita, já aberta e presa na rolagem (correção de 23/11/2026, no lugar do botão no alto): o formulário fica à esquerda e a conversa ocupa o espaço lateral; em tela estreita ela vai para baixo do formulário.
 6. **No cadastro da Wellmix** (coluna do produto): peças por caixa master, pesos, medidas da caixa, CBM e material do cadastro, para todo fornecedor convidado. Isto muda a regra de 20/11/2026 ("quem nunca vendeu não vê a nossa caixa"), a pedido do dono. O código na fábrica não aparece (é de outro fornecedor). A explicação do "Sem peso" virou dica do campo.
+
+## Estoque Wellmix só na Reposição (dono, 26/11/2026)
+
+Os pedidos do cliente "Estoque Wellmix" (`STOCK_PARTY_ID`, `wellmix-estoque`) apareciam em Encomendas e na Reposição. São todos reposição, então ficam **só na Reposição**.
+
+- **Encomendas** (`/app/requests`: lista, cards, CSV e "Ver canceladas e excluídas") não lista nenhuma solicitação do Estoque Wellmix (`listedInRequests` e `listedRequests`, `src/lib/services/request-list-data.ts`). Vale para as que já existem e para as próximas cargas da Pre-order 1100 do Sankhya, que gravam a reposição para o Estoque Wellmix (`loadReplenishment`, `src/lib/services/sankhya-orders-load.ts`); a carga não mudou.
+- **Reposição** (`/app/replenishment`, `listDemands`) mostra toda solicitação aberta do Estoque Wellmix, também a compra para estoque aberta pela Nova solicitação de Encomendas (origem `manual`), para nada sumir das duas telas.
+- A recompra do pós-venda de um cliente de verdade (origem `replenishment`, cliente dele) continua nas duas, como antes: o cliente vê as dele em Encomendas.
+- Sem mudança: o lote aberto pelo endereço (`?group=`), a página da solicitação (`/app/requests/batch/<id>`), o Pipeline, as Pendências e a Estratégia de compra.
+- Em 26/11/2026 eram 47 solicitações (687 produtos), todas da Pre-order 1100, abertas (`REQUESTED`).
+- Testes: `tests/unit/request-list-data.test.ts` e `tests/e2e/purchase-demand.spec.ts` (a reposição aberta pelo "+ Adicionar" não aparece em Encomendas).
