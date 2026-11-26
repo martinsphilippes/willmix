@@ -316,3 +316,17 @@ td[data-booking-field-target] {
   background-color: var(--color-brand-50);
   transition: background-color 0.3s ease;
 }
+
+/*
+ * Programação como sublinhas do produto na tabela da solicitação ao
+ * fornecedor (dono, 26/11/2026; docs/SUPPLIER_REQUESTS.md): cada produto e as
+ * suas programações ficam num <tbody> próprio, e as sublinhas só aparecem
+ * com os "Detalhes" do item abertos.
+ */
+tr[data-supplier-table-round] {
+  display: none;
+}
+tbody:has(details[data-supplier-table-details][open])
+  > tr[data-supplier-table-round] {
+  display: table-row;
+}

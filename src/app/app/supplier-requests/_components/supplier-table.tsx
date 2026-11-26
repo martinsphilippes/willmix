@@ -57,7 +57,7 @@ import {
   ResponsibleTip,
 } from "@/components/request-responsible-tip";
 import Link from "next/link";
-import { packLabels, variantText } from "@/components/request-variant";
+import { variantText } from "@/components/request-variant";
 import { StatusLink } from "@/components/status-link";
 import { turnTone } from "@/lib/turn";
 import { roundsDates } from "@/components/purchase-rounds";
@@ -196,6 +196,10 @@ export function SupplierRequestTable({
     n === null ? "" : String(n).replace(".", decimal);
   const k = (key: string) =>
     t(`supplierRequests.table.${key}` as DictionaryKey);
+  // Item com embalagem modificada (variação × embalagem com N ≥ 2): a
+  // tabela conta sets, não peças, e mostra as peças por set (dono,
+  // 26/11/2026).
+  const setMode = rows.some((r) => (r.variant?.units ?? 1) > 1);
   const before = [
     "photo",
     "number",
@@ -220,9 +224,23 @@ export function SupplierRequestTable({
     "bookingIncoterm",
     "needs",
     "canDo",
-  ].filter(
-    (c) => showPrice || (c !== "bookingPrice" && c !== "bookingCurrency"),
-  );
+  ]
+    .filter(
+      (c) => showPrice || (c !== "bookingPrice" && c !== "bookingCurrency"),
+    )
+    .flatMap((c) =>
+      setMode && c === "masterCartonQty" ? ["piecesPerSet", c] : [c],
+    );
+  /** Título da coluna: com sets, as que contavam peças contam sets. */
+  const SET_COLS = new Set([
+    "piecesPerSet",
+    "masterCartonQty",
+    "innerQty",
+    "perRound",
+    "quantity",
+  ]);
+  const colLabel = (c: string) =>
+    setMode && SET_COLS.has(c) ? k(`set.col.${c}`) : k(`col.${c}`);
   // Condições iniciais (primeira resposta) e finais (as que valem hoje).
   const conditionCols = [
     "price",
@@ -247,7 +265,8 @@ export function SupplierRequestTable({
   const conditionCells = (
     c: (RequestConditions & { state?: ConditionsState }) | null,
     group: "initial" | "final",
-    id: string,
+    /** Nulo na sublinha da programação: sem as marcas da linha do produto. */
+    id: string | null,
   ) => {
     const final = group === "final";
     // A primeira coluna do grupo leva a borda (sem o preço, é o MOQ).
@@ -258,8 +277,12 @@ export function SupplierRequestTable({
         <Td
           key={`${group}-price`}
           className={cx(nowrap, edge("price"), "tabular-nums")}
-          data-supplier-table-answer-price={final ? id : undefined}
-          data-supplier-table-initial-price={final ? undefined : id}
+          data-supplier-table-answer-price={
+            final ? (id ?? undefined) : undefined
+          }
+          data-supplier-table-initial-price={
+            final ? undefined : (id ?? undefined)
+          }
         >
           {c ? num(c.price) : "—"}
         </Td>
@@ -281,7 +304,7 @@ export function SupplierRequestTable({
         <Td
           key={`${group}-incoterm`}
           className={cx(nowrap, edge("incoterm"))}
-          data-supplier-table-incoterm={final ? id : undefined}
+          data-supplier-table-incoterm={final ? (id ?? undefined) : undefined}
         >
           {c?.incoterm ?? "—"}
         </Td>
@@ -301,7 +324,9 @@ export function SupplierRequestTable({
         <Td
           key="final-state"
           className={nowrap}
-          data-supplier-table-final-state={c?.state ? id : undefined}
+          data-supplier-table-final-state={
+            c?.state ? (id ?? undefined) : undefined
+          }
         >
           {c?.state ? (
             <Badge tone={STATE_TONE[c.state]}>{k(`state.${c.state}`)}</Badge>
@@ -312,6 +337,963 @@ export function SupplierRequestTable({
       );
     return cells;
   };
+
+  const bodies = rows.map((r, index) => {
+    const it = r.item;
+    const book = bookSpecs?.get(r.id) ?? null;
+    // Cópia da solicitação; o que ela não guarda, do item do Book.
+    const specs = requestItemSpecs(r, book);
+    const name = specs.description ?? specs.productName ?? "—";
+    const bookCol = (key: string) =>
+      t(`bookingLots.item.col.${key}` as DictionaryKey);
+    // Dados complementares: só os que existem aparecem.
+    const details = (
+      [
+        // A descrição já é o nome da linha; o nome só quando é outro.
+        [
+          "productName",
+          k("detail.productName"),
+          specs.productName !== name ? specs.productName : null,
+        ],
+        ["colors", bookCol("colorAssortment"), specs.colorAssortment],
+        ["power", bookCol("powerDetail"), specs.powerDetail],
+        [
+          "netWeight",
+          bookCol("netWeightPcKg"),
+          specs.netWeightPcKg === null ? null : num(specs.netWeightPcKg),
+        ],
+        [
+          "grossWeight",
+          bookCol("grossWeightPcKg"),
+          specs.grossWeightPcKg === null ? null : num(specs.grossWeightPcKg),
+        ],
+        ["ncm", k("detail.ncm"), wellmix ? (book?.ncm ?? null) : null],
+      ] as Array<[string, string, string | null]>
+    ).filter((d): d is [string, string, string] => !!d[2]);
+    // Na solicitação com vários produtos, cada linha é um produto dela
+    // (2.1, 2.2…): nenhuma é "esta solicitação".
+    const current = r.id === currentId && !r.batchId;
+    const pending = !!pendingProposal(r.negotiation);
+    // Só o fornecedor responde (a Wellmix não responde por ele).
+    // Três respostas por produto: aprovar a oferta vigente,
+    // renegociar (formulário já preenchido) ou recusar.
+    const offer = canAnswerRow(r) ? currentOffer(r) : null;
+    // Nome (com o preço) e explicação de aprovar: só na oferta que
+    // dá para aprovar direto (a regra é de `currentOffer`).
+    const approve = offer?.confirmable
+      ? {
+          name: t("supplierRequests.table.confirm", {
+            price: [num(offer.conditions.price), offer.conditions.currency]
+              .filter(Boolean)
+              .join(" "),
+          }),
+          hint: k(`confirmHint.${offer.source}`),
+        }
+      : null;
+    const refuseHint = offer ? k(`refuseHint.${offer.source}`) : "";
+    // Aprovar e recusar pedem confirmação (dono, 14/11/2026): a caixa
+    // mostra o produto e as condições da oferta que valem agora.
+    const offerSummary = offer ? (
+      <div className="space-y-2" data-supplier-table-offer-summary>
+        <p className="font-medium text-zinc-900">{name}</p>
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 rounded-md border border-zinc-200 bg-zinc-50/70 p-2 text-xs">
+          {(
+            [
+              [
+                "price",
+                offer.conditions.price === null
+                  ? "—"
+                  : [num(offer.conditions.price), offer.conditions.currency]
+                      .filter(Boolean)
+                      .join(" "),
+              ],
+              ["moq", num(offer.conditions.moq, 0)],
+              ["incoterm", offer.conditions.incoterm ?? "—"],
+              ["leadTime", num(offer.conditions.leadTimeDays, 0)],
+            ] as const
+          ).map(([key, value]) => (
+            <div key={key}>
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                {k(`col.cond.${key}`)}
+              </dt>
+              <dd
+                className="tabular-nums text-zinc-900"
+                data-supplier-table-offer-summary-value={key}
+              >
+                {value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    ) : null;
+    // Aprovada: a amostragem (fotos e vídeos da amostra).
+    const sampling = samplingOf(r);
+    const pinBg = cx(PIN_BG, current && PIN_BG_CURRENT);
+    // Vez: a negociação e, aprovada, a amostragem (dono, 24/11/2026).
+    const turn = supplierRequestTurn(r);
+    const who = responsible?.get(r.id) ?? null;
+    const sla = slaOf(r, slaMinutes);
+    const times = answerTimes(
+      r,
+      (legacy.get(r.id) ?? []).map((a) => a.at),
+    );
+    const yes = r.supplierCanDo === "yes";
+    const href = `/app/supplier-requests/${r.id}?view=item`;
+    const numberLabel =
+      r.batchId && rows.length > 1
+        ? `${r.number}.${index + 1}`
+        : String(r.number);
+    // Peças por set (1 sem embalagem modificada).
+    const units = Math.max(1, r.variant?.units ?? 1);
+    const rounds = r.schedule?.items ?? [];
+    const photo = (
+      <PhotoGallery
+        photos={[
+          ...(it.photoDocumentId
+            ? [{ id: it.photoDocumentId, label: null }]
+            : []),
+          // A arte da variação × embalagem (dono, 26/11/2026).
+          ...(r.variant?.artDocumentId
+            ? [
+                {
+                  id: r.variant.artDocumentId,
+                  label: t("supplierRequests.variant.art"),
+                },
+              ]
+            : []),
+        ]}
+        name={name}
+        className="h-12 w-12"
+        labels={{
+          title: k("photo"),
+          close: k("close"),
+          open: k("photoOpen"),
+          count: t("supplierRequests.detail.title", {
+            n: r.number,
+          }),
+          noPhoto: k("noPhoto"),
+        }}
+      />
+    );
+    const moqText =
+      it.moq === null
+        ? "—"
+        : `${num(it.moq, 0)} ${units > 1 ? k("set.unit") : r.unit}`;
+    const main = (
+      <tr
+        key={r.id}
+        className={cx(rowClass, "group/row", current && "bg-brand-50/60")}
+        data-supplier-table-row={r.id}
+        data-current={current ? "1" : undefined}
+      >
+        <Td>{photo}</Td>
+        <Td className={cx(nowrap, "tabular-nums font-medium")}>
+          {/* O número e o nome abrem o produto nesta solicitação,
+                      como o ícone de abrir (dono, 18/11/2026). */}
+          <Link
+            href={href}
+            className="text-brand-700 hover:underline"
+            data-supplier-table-number={r.id}
+          >
+            {numberLabel}
+          </Link>
+          {current ? (
+            <span className="mt-1 block">
+              <Badge tone="info">{k("current")}</Badge>
+            </span>
+          ) : null}
+        </Td>
+        <Td>
+          <Link
+            href={href}
+            className="block min-w-48 max-w-72 whitespace-normal font-medium text-zinc-900 hover:text-brand-700 hover:underline"
+          >
+            {name}
+          </Link>
+          {/* Cotação de um SKU da escolha (variação × embalagem):
+                      o mesmo produto em várias linhas, cada uma o seu. */}
+          {variantText(r.variant, t) ? (
+            <span
+              className="mt-0.5 block text-xs font-medium text-brand-800"
+              data-supplier-table-variant={r.variant!.key}
+            >
+              {variantText(r.variant, t)}
+            </span>
+          ) : null}
+          {details.length || wellmix || rounds.length ? (
+            <details
+              className="group/specs mt-1 min-w-48 max-w-72 text-xs"
+              data-supplier-table-details={r.id}
+            >
+              <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded font-medium text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-brand-600 [&::-webkit-details-marker]:hidden">
+                {k("details")}
+                <svg
+                  aria-hidden
+                  viewBox="0 0 20 20"
+                  className="h-3.5 w-3.5 transition-transform group-open/specs:rotate-180"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 8l5 5 5-5" />
+                </svg>
+              </summary>
+              <div className="mt-1 space-y-1 whitespace-normal rounded-md border border-zinc-200 bg-zinc-50/70 p-2">
+                {details.length ? (
+                  <dl className="space-y-1">
+                    {details.map(([key, label, value]) => (
+                      <div key={key} data-supplier-table-detail={key}>
+                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                          {label}
+                        </dt>
+                        <dd className="break-words text-zinc-800">{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : (
+                  <p className="text-zinc-500">{k("detailsNone")}</p>
+                )}
+                {wellmix ? (
+                  <Link
+                    href={`/app/booking/lots/${r.bookingLotId}`}
+                    className="inline-block font-medium text-brand-700 hover:underline"
+                    data-supplier-table-book={r.id}
+                  >
+                    {k("detail.book")}
+                  </Link>
+                ) : null}
+              </div>
+            </details>
+          ) : null}
+        </Td>
+        <Td className={nowrap}>{it.factoryItemCode ?? "—"}</Td>
+        <Td className={nowrap}>{it.itemNumber ?? "—"}</Td>
+        <Td className={nowrap}>{specs.material ?? "—"}</Td>
+        {/* Ficha técnica: a mesma que o Book mostra. */}
+        <Td data-supplier-table-package={r.id}>
+          <span className="block max-w-40 whitespace-normal">
+            {specs.packageType ?? "—"}
+          </span>
+        </Td>
+        <Td
+          className={cx(nowrap, "tabular-nums")}
+          data-supplier-table-measures={r.id}
+        >
+          {[specs.lengthCm, specs.widthCm, specs.heightCm].some(
+            (n) => n !== null,
+          )
+            ? [specs.lengthCm, specs.widthCm, specs.heightCm]
+                .map((n) => num(n, 2))
+                .join(" × ")
+            : "—"}
+        </Td>
+        <Td
+          className={cx(nowrap, "tabular-nums")}
+          data-supplier-table-capacity={r.id}
+        >
+          {typeof specs.capacity === "number"
+            ? `${num(specs.capacity, 0)} ml`
+            : (specs.capacity ?? "—")}
+        </Td>
+        {setMode ? (
+          <Td
+            className={cx(nowrap, "tabular-nums")}
+            data-supplier-table-pieces-per-set={r.id}
+          >
+            {units.toLocaleString(intl)}
+          </Td>
+        ) : null}
+        <Td
+          className={cx(nowrap, "tabular-nums")}
+          data-supplier-table-master={r.id}
+        >
+          {num(specs.masterCartonQty, 0)}
+        </Td>
+        <Td
+          className={cx(nowrap, "tabular-nums")}
+          data-supplier-table-inner={r.id}
+        >
+          {num(specs.innerQty, 0)}
+        </Td>
+        <Td
+          className={cx(nowrap, "tabular-nums")}
+          data-supplier-table-cbm={r.id}
+        >
+          {num(specs.cbmPerCarton)}
+        </Td>
+        {/* Programação de compra: rodadas, peças por rodada e o total. */}
+        <Td
+          className={cx(nowrap, "tabular-nums")}
+          data-supplier-table-rounds={r.id}
+        >
+          <span title={roundsDates(r.schedule, t) ?? undefined}>
+            {r.schedule?.items.length ?? 1}
+          </span>
+        </Td>
+        <Td
+          className={cx(nowrap, "tabular-nums")}
+          data-supplier-table-per-round={r.id}
+        >
+          <span title={roundsDates(r.schedule, t) ?? undefined}>
+            {r.schedule?.items.length
+              ? r.schedule.items
+                  .map((i) => i.quantity.toLocaleString(intl))
+                  .join(" / ")
+              : r.quantity.toLocaleString(intl)}
+          </span>
+        </Td>
+        <Td className={cx(nowrap, "tabular-nums")}>
+          {r.quantity.toLocaleString(intl)}
+          {/* Variações de cor: uma linha por cor, somando o total. */}
+          <ColorLines
+            colors={colorTotals(r.colorPlan)}
+            name={it.description ?? it.productName ?? ""}
+            intl={intl}
+          />
+        </Td>
+        <Td
+          className={cx(nowrap, "tabular-nums")}
+          data-supplier-table-total-cartons={r.id}
+        >
+          {num(specs.totalCartons, 0)}
+        </Td>
+        <Td
+          className={cx(nowrap, "tabular-nums")}
+          data-supplier-table-total-cbm={r.id}
+        >
+          <span
+            title={specs.cbmFromMeasures ? k("cbmFromMeasures") : undefined}
+          >
+            {specs.cbmFromMeasures ? "≈ " : ""}
+            {num(specs.totalCbm)}
+          </span>
+        </Td>
+        <Td className={cx(nowrap, "tabular-nums")}>{moqText}</Td>
+        {showPrice ? (
+          <>
+            <Td className={cx(nowrap, "tabular-nums")}>{num(it.price)}</Td>
+            <Td className={nowrap}>{it.currency ?? "—"}</Td>
+          </>
+        ) : null}
+        <Td className={nowrap}>{it.incoterm ?? "—"}</Td>
+        <Td>
+          <span
+            className="block max-w-56 truncate text-xs text-zinc-600"
+            title={r.needs ?? undefined}
+          >
+            {r.needs ?? "—"}
+          </span>
+        </Td>
+        <Td className={nowrap}>
+          <span
+            data-supplier-table-answer-text={r.id}
+            data-supplier-table-can-do={r.supplierCanDo ?? "waiting"}
+          >
+            {r.supplierCanDo ? (
+              <Badge tone={yes ? "success" : "danger"}>
+                {k(yes ? "canDoYes" : "canDoNo")}
+              </Badge>
+            ) : (
+              <span className="text-zinc-500">{k("canDoWaiting")}</span>
+            )}
+          </span>
+        </Td>
+        {conditionCells(initialConditions(r), "initial", r.id)}
+        {conditionCells(finalConditions(r), "final", r.id)}
+        <Td
+          className="text-xs"
+          data-supplier-table-turn={turn?.party ?? "none"}
+          data-supplier-table-turn-step={turn?.step}
+        >
+          {turn ? (
+            // O status leva ao lugar de agir (dono, 24/11/2026),
+            // o mesmo da ação embaixo.
+            <StatusLink
+              tone={turnTone(turn.party)}
+              href={supplierRequestStepHref(r.id, turn.step)}
+            >
+              {t(
+                `supplierRequests.negotiation.turn.${turn.party}` as DictionaryKey,
+              )}
+            </StatusLink>
+          ) : (
+            "—"
+          )}
+          {/* A ação, com as mesmas palavras de Encomendas e das
+                      Pendências ("Carregar a amostragem"), é o link para o
+                      lugar de agir, o mesmo da pendência (dono,
+                      24/11/2026). */}
+          {turn ? (
+            <Link
+              href={supplierRequestStepHref(r.id, turn.step)}
+              className={cx(linkClass, "mt-0.5 block max-w-40")}
+              data-supplier-table-turn-action
+            >
+              {t(`reqList.next.${turn.step}` as DictionaryKey)}
+            </Link>
+          ) : null}
+          {/* Quem age: o nome e, no balão, o login (administrador). */}
+          {turn && who ? (
+            <ResponsibleTip r={who} t={t} className="mt-0.5 block max-w-40" />
+          ) : null}
+          {/* O login de quem envia, à vista (administrador; dono,
+                      24/11/2026). */}
+          {turn ? (
+            <ResponsibleLogins r={who} t={t} className="max-w-40" />
+          ) : null}
+          {pending ? (
+            <span
+              className="mt-0.5 block max-w-40 text-amber-800"
+              data-supplier-table-pending
+            >
+              {k(wellmix ? "proposalPendingWellmix" : "proposalPending")}
+            </span>
+          ) : null}
+        </Td>
+        <Td className={cx(nowrap, "text-xs tabular-nums")}>
+          {dateTime(r.createdAt, t)}
+        </Td>
+        <Td className={cx(nowrap, "text-xs tabular-nums")}>
+          {dateTime(times.first, t)}
+        </Td>
+        <Td className={cx(nowrap, "text-xs tabular-nums")}>
+          {dateTime(times.last, t)}
+        </Td>
+        {/* Situação / SLA: a situação geral do produto (na aprovada,
+                    com a amostragem) e, embaixo, o SLA com o prazo recolhido. */}
+        <Td
+          className={cx(pinBg, PIN.status)}
+          data-supplier-table-pin="status"
+          data-supplier-table-status={r.status}
+        >
+          <div className="w-[var(--pin-status)]">
+            <span data-supplier-table-status-badge>
+              <Badge tone={STATUS_TONE[r.status]}>
+                {t(`supplierRequests.status.${r.status}` as DictionaryKey)}
+              </Badge>
+            </span>
+            {sampling ? (
+              <Link
+                href={`${href}#amostragem`}
+                className="mt-1 block rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                data-supplier-table-sampling={sampling.status}
+              >
+                <span className="block text-[10px] leading-tight font-semibold tracking-wide text-zinc-500 uppercase">
+                  {t("sampling.table.open")}
+                </span>
+                <Badge
+                  tone={SAMPLING_TONE[sampling.status]}
+                  className="mt-0.5 rounded-md px-1.5 text-[11px] leading-tight whitespace-normal"
+                >
+                  {t(`sampling.status.${sampling.status}` as DictionaryKey)}
+                  {samplingLate(sampling, samplingSlaDays)
+                    ? ` · ${t("sampling.late")}`
+                    : ""}
+                </Badge>
+              </Link>
+            ) : null}
+            {/* SLA (só enquanto a solicitação está ativa): o selo e o
+                        "+" na mesma linha; a data e a hora do prazo ficam
+                        recolhidas até o "+" (que vira "−"). */}
+            {sla ? (
+              <span
+                className="mt-1 block"
+                data-supplier-request-sla={sla.late ? "late" : "ok"}
+              >
+                <SlaDueToggle
+                  due={dateTime(sla.dueAt, t)}
+                  late={sla.late}
+                  labels={{ show: k("slaShow"), hide: k("slaHide") }}
+                >
+                  <span className="inline-flex" data-supplier-table-sla-badge>
+                    <Badge tone={sla.late ? "danger" : "neutral"}>
+                      {k(sla.late ? "late" : "onTime")}
+                    </Badge>
+                  </span>
+                </SlaDueToggle>
+              </span>
+            ) : null}
+          </div>
+        </Td>
+        <Td
+          className={cx(pinBg, PIN.actions)}
+          data-supplier-table-pin="actions"
+        >
+          {/* Duas linhas (dono, 14/11/2026), só ícones, à direita: em
+                      cima mensagem e abrir o produto; embaixo, enquanto o
+                      fornecedor responde, aprovar, renegociar e recusar.
+                      Sem resposta possível, não há a segunda linha. */}
+          <div
+            className="flex w-[var(--pin-actions)] flex-col items-end gap-2"
+            data-supplier-table-actions={r.id}
+          >
+            <div className="flex items-center justify-end gap-2">
+              {canPostMessage(r.status) ? (
+                <QuickDialog
+                  label={<ChatBubbleIcon />}
+                  hint={k("message")}
+                  title={t("supplierRequests.table.messageTitle", {
+                    n: r.number,
+                  })}
+                  closeLabel={k("close")}
+                  className={cx(ICON_BUTTON, ICON_TONE.neutral)}
+                  data-supplier-table-message={r.id}
+                >
+                  <form
+                    action={postSupplierRequestMessageAction}
+                    className="space-y-2"
+                    data-supplier-table-message-form
+                  >
+                    <input type="hidden" name="id" value={r.id} />
+                    <input type="hidden" name="view" value="table" />
+                    <Field label={k("messageText")}>
+                      <Textarea
+                        name="text"
+                        rows={3}
+                        maxLength={4000}
+                        required
+                        data-supplier-table-message-text
+                      />
+                    </Field>
+                    <SubmitButton
+                      pendingText={k("sending")}
+                      data-supplier-table-message-submit
+                    >
+                      {k("send")}
+                    </SubmitButton>
+                  </form>
+                </QuickDialog>
+              ) : null}
+              <LinkButton
+                href={href}
+                className={cx(ICON_BUTTON, ICON_TONE.neutral)}
+                title={k("open")}
+                aria-label={k("open")}
+                data-supplier-table-open={r.id}
+              >
+                <OpenIcon />
+              </LinkButton>
+            </div>
+            {offer ? (
+              <div
+                className="flex items-center justify-end gap-2"
+                data-supplier-table-offer={offer.source}
+              >
+                {approve ? (
+                  <QuickDialog
+                    label={<CheckIcon />}
+                    hint={tooltip(approve.name, approve.hint)}
+                    name={approve.name}
+                    description={approve.hint}
+                    title={t("supplierRequests.table.approveTitle", {
+                      n: r.number,
+                    })}
+                    closeLabel={k("close")}
+                    className={cx(ICON_BUTTON, ICON_TONE.approve)}
+                    data-supplier-table-confirm={r.id}
+                  >
+                    {/* Só "Aprovar oferta" envia; "Cancelar", o "×" e
+                                tocar fora fecham sem enviar nada. */}
+                    <form
+                      action={respondOfferAction}
+                      className="space-y-3 text-sm"
+                      data-supplier-table-confirm-form
+                    >
+                      <input type="hidden" name="id" value={r.id} />
+                      <input type="hidden" name="view" value="table" />
+                      <input type="hidden" name="action" value="confirm" />
+                      <input type="hidden" name="offer" value={offer.token} />
+                      {offerSummary}
+                      <p className="text-xs text-zinc-600">{approve.hint}</p>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <QuickDialogClose
+                          label={t("common.cancel")}
+                          data-supplier-table-confirm-cancel={r.id}
+                        />
+                        <SubmitButton
+                          className="bg-emerald-700 shadow-emerald-900/10 hover:bg-emerald-800 active:bg-emerald-900"
+                          pendingText={k("sending")}
+                          data-supplier-table-confirm-submit
+                        >
+                          <CheckIcon />
+                          {k("approve")}
+                        </SubmitButton>
+                      </div>
+                    </form>
+                  </QuickDialog>
+                ) : null}
+                <QuickDialog
+                  label={<SwapIcon />}
+                  hint={tooltip(k("renegotiate"), k("renegotiateHint"))}
+                  name={k("renegotiate")}
+                  description={k("renegotiateHint")}
+                  title={t("supplierRequests.table.renegotiateTitle", {
+                    n: r.number,
+                  })}
+                  closeLabel={k("close")}
+                  className={cx(ICON_BUTTON, ICON_TONE.renegotiate)}
+                  data-supplier-table-answer-open={r.id}
+                >
+                  {/* Com contraproposta esperando: nova proposta; sem,
+                              a resposta "faz" com as condições que ele editar. */}
+                  <form
+                    action={
+                      pending
+                        ? respondProposalAction
+                        : answerSupplierRequestAction
+                    }
+                    className="space-y-2"
+                    data-supplier-table-answer-form
+                  >
+                    <input type="hidden" name="id" value={r.id} />
+                    <input type="hidden" name="view" value="table" />
+                    {pending ? (
+                      <input type="hidden" name="action" value="counter" />
+                    ) : (
+                      <input type="hidden" name="canDo" value="yes" />
+                    )}
+                    {/* Mantém o prazo vigente (muda na tela do produto). */}
+                    <input
+                      type="hidden"
+                      name="leadTimeDays"
+                      value={raw(
+                        offer.conditions.leadTimeDays ?? r.supplierLeadTimeDays,
+                      )}
+                    />
+                    <p className="text-xs text-zinc-500">
+                      {k("renegotiateText")}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Field
+                        label={
+                          units > 1
+                            ? k("set.price")
+                            : t("supplierRequests.detail.answer.price")
+                        }
+                      >
+                        <Input
+                          name="price"
+                          inputMode="decimal"
+                          required
+                          defaultValue={raw(offer.conditions.price)}
+                          data-supplier-table-answer-price-input
+                        />
+                        {/* Trocar a moeda converte o preço (dono, 21/11/2026). */}
+                        <FxFieldWatch
+                          price="price"
+                          currency="currency"
+                          locale={t.intl}
+                        />
+                      </Field>
+                      <Field
+                        label={t("supplierRequests.detail.answer.currency")}
+                      >
+                        <Select
+                          name="currency"
+                          defaultValue={offer.conditions.currency ?? "USD"}
+                        >
+                          {SHEET_CURRENCIES.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                      <Field
+                        label={
+                          units > 1
+                            ? k("set.moq")
+                            : t("supplierRequests.detail.answer.moq")
+                        }
+                      >
+                        <Input
+                          name="moq"
+                          inputMode="numeric"
+                          defaultValue={raw(offer.conditions.moq)}
+                          data-supplier-table-answer-moq
+                        />
+                      </Field>
+                      <Field
+                        label={t("supplierRequests.detail.answer.incoterm")}
+                      >
+                        <Select
+                          name="incoterm"
+                          defaultValue={offer.conditions.incoterm ?? "FOB"}
+                          data-supplier-table-answer-incoterm
+                        >
+                          {SHEET_INCOTERMS.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                    </div>
+                    <Field label={t("supplierRequests.detail.answer.note")}>
+                      <Textarea
+                        name={pending ? "text" : "note"}
+                        rows={2}
+                        maxLength={4000}
+                        defaultValue={pending ? "" : (r.supplierNote ?? "")}
+                      />
+                    </Field>
+                    <SubmitButton
+                      pendingText={k("sending")}
+                      data-supplier-table-answer="yes"
+                    >
+                      {k("renegotiateSend")}
+                    </SubmitButton>
+                  </form>
+                </QuickDialog>
+                <QuickDialog
+                  label={<RefuseIcon />}
+                  hint={tooltip(k("refuse"), refuseHint)}
+                  name={k("refuse")}
+                  description={refuseHint}
+                  title={t("supplierRequests.table.refuseTitle", {
+                    n: r.number,
+                  })}
+                  closeLabel={k("close")}
+                  className={cx(ICON_BUTTON, ICON_TONE.refuse)}
+                  data-supplier-table-refuse={r.id}
+                >
+                  {/* Só "Recusar oferta" envia (contorno vermelho, a
+                              regra da marca para ação destrutiva). */}
+                  <form
+                    action={respondOfferAction}
+                    className="space-y-3 text-sm"
+                    data-supplier-table-refuse-form
+                  >
+                    <input type="hidden" name="id" value={r.id} />
+                    <input type="hidden" name="view" value="table" />
+                    <input type="hidden" name="action" value="refuse" />
+                    <input type="hidden" name="offer" value={offer.token} />
+                    {offerSummary}
+                    <p className="text-xs text-zinc-600">{refuseHint}</p>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <QuickDialogClose
+                        label={t("common.cancel")}
+                        data-supplier-table-refuse-cancel={r.id}
+                      />
+                      <SubmitButton
+                        variant="danger"
+                        pendingText={k("sending")}
+                        data-supplier-table-refuse-submit
+                      >
+                        <RefuseIcon />
+                        {k("refuse")}
+                      </SubmitButton>
+                    </div>
+                  </form>
+                </QuickDialog>
+              </div>
+            ) : null}
+          </div>
+        </Td>
+      </tr>
+    );
+    // Programação como sublinhas do produto (dono, 26/11/2026): a
+    // mesma informação do item, com a quantidade da programação;
+    // aparecem com os "Detalhes" do item abertos (globals.css).
+    const subs = rounds.map((round) => {
+      const roundSpecs = requestItemSpecs(
+        { item: r.item, quantity: round.quantity, schedule: null },
+        book,
+      );
+      const cells: Record<string, ReactNode> = {
+        photo: <Td key="photo">{photo}</Td>,
+        number: (
+          <Td
+            key="number"
+            className={cx(nowrap, "tabular-nums font-medium pl-4")}
+            data-supplier-table-round-number
+          >
+            {`${numberLabel}.${round.index}`}
+          </Td>
+        ),
+        item: (
+          <Td key="item">
+            <span className="block min-w-48 max-w-72 whitespace-normal text-zinc-900">
+              {name}
+            </span>
+            {variantText(r.variant, t) ? (
+              <span className="mt-0.5 block text-xs font-medium text-brand-800">
+                {variantText(r.variant, t)}
+              </span>
+            ) : null}
+          </Td>
+        ),
+        factoryCode: (
+          <Td key="factoryCode" className={nowrap}>
+            {it.factoryItemCode ?? "—"}
+          </Td>
+        ),
+        itemNumber: (
+          <Td key="itemNumber" className={nowrap}>
+            {it.itemNumber ?? "—"}
+          </Td>
+        ),
+        material: (
+          <Td key="material" className={nowrap}>
+            {specs.material ?? "—"}
+          </Td>
+        ),
+        packageType: (
+          <Td key="packageType">
+            <span className="block max-w-40 whitespace-normal">
+              {specs.packageType ?? "—"}
+            </span>
+          </Td>
+        ),
+        measures: (
+          <Td key="measures" className={cx(nowrap, "tabular-nums")}>
+            {[specs.lengthCm, specs.widthCm, specs.heightCm].some(
+              (n) => n !== null,
+            )
+              ? [specs.lengthCm, specs.widthCm, specs.heightCm]
+                  .map((n) => num(n, 2))
+                  .join(" × ")
+              : "—"}
+          </Td>
+        ),
+        capacity: (
+          <Td key="capacity" className={cx(nowrap, "tabular-nums")}>
+            {typeof specs.capacity === "number"
+              ? `${num(specs.capacity, 0)} ml`
+              : (specs.capacity ?? "—")}
+          </Td>
+        ),
+        piecesPerSet: (
+          <Td key="piecesPerSet" className={cx(nowrap, "tabular-nums")}>
+            {units.toLocaleString(intl)}
+          </Td>
+        ),
+        masterCartonQty: (
+          <Td key="masterCartonQty" className={cx(nowrap, "tabular-nums")}>
+            {num(specs.masterCartonQty, 0)}
+          </Td>
+        ),
+        innerQty: (
+          <Td key="innerQty" className={cx(nowrap, "tabular-nums")}>
+            {num(specs.innerQty, 0)}
+          </Td>
+        ),
+        cbmPerCarton: (
+          <Td key="cbmPerCarton" className={cx(nowrap, "tabular-nums")}>
+            {num(specs.cbmPerCarton)}
+          </Td>
+        ),
+        rounds: (
+          <Td
+            key="rounds"
+            className={cx(nowrap, "tabular-nums")}
+            data-supplier-table-round-date
+          >
+            {round.expectedAt
+              ? new Date(`${round.expectedAt}T12:00:00`).toLocaleDateString(
+                  intl,
+                )
+              : "—"}
+          </Td>
+        ),
+        perRound: (
+          <Td key="perRound" className={cx(nowrap, "tabular-nums")}>
+            {round.quantity.toLocaleString(intl)}
+          </Td>
+        ),
+        quantity: (
+          <Td
+            key="quantity"
+            className={cx(nowrap, "tabular-nums")}
+            data-supplier-table-round-quantity
+          >
+            {round.quantity.toLocaleString(intl)}
+          </Td>
+        ),
+        totalCartons: (
+          <Td key="totalCartons" className={cx(nowrap, "tabular-nums")}>
+            {num(roundSpecs.totalCartons, 0)}
+          </Td>
+        ),
+        totalCbm: (
+          <Td key="totalCbm" className={cx(nowrap, "tabular-nums")}>
+            {roundSpecs.cbmFromMeasures ? "≈ " : ""}
+            {num(roundSpecs.totalCbm)}
+          </Td>
+        ),
+        bookingMoq: (
+          <Td key="bookingMoq" className={cx(nowrap, "tabular-nums")}>
+            {moqText}
+          </Td>
+        ),
+        bookingPrice: (
+          <Td key="bookingPrice" className={cx(nowrap, "tabular-nums")}>
+            {num(it.price)}
+          </Td>
+        ),
+        bookingCurrency: (
+          <Td key="bookingCurrency" className={nowrap}>
+            {it.currency ?? "—"}
+          </Td>
+        ),
+        bookingIncoterm: (
+          <Td key="bookingIncoterm" className={nowrap}>
+            {it.incoterm ?? "—"}
+          </Td>
+        ),
+        needs: (
+          <Td key="needs">
+            <span
+              className="block max-w-56 truncate text-xs text-zinc-600"
+              title={r.needs ?? undefined}
+            >
+              {r.needs ?? "—"}
+            </span>
+          </Td>
+        ),
+        canDo: (
+          <Td key="canDo" className={nowrap}>
+            {r.supplierCanDo ? (
+              <Badge tone={yes ? "success" : "danger"}>
+                {k(yes ? "canDoYes" : "canDoNo")}
+              </Badge>
+            ) : (
+              <span className="text-zinc-500">{k("canDoWaiting")}</span>
+            )}
+          </Td>
+        ),
+      };
+      return (
+        <tr
+          key={`${r.id}-${round.index}`}
+          className="group/row bg-zinc-50/60 text-zinc-700"
+          data-supplier-table-round={`${r.id}:${round.index}`}
+        >
+          {before.map((c) => cells[c])}
+          {conditionCells(initialConditions(r), "initial", null)}
+          {conditionCells(finalConditions(r), "final", null)}
+          {after.map((c) => (
+            <Td key={c} />
+          ))}
+          <Td className={cx(pinBg, PIN.status)}>
+            <div className="w-[var(--pin-status)]">
+              <Badge tone={STATUS_TONE[r.status]}>
+                {t(`supplierRequests.status.${r.status}` as DictionaryKey)}
+              </Badge>
+            </div>
+          </Td>
+          <Td className={cx(pinBg, PIN.actions)}>
+            <div className="w-[var(--pin-actions)]" />
+          </Td>
+        </tr>
+      );
+    });
+    return { key: r.id, main, subs };
+  });
+  const grouped = bodies.some((b) => b.subs.length > 0);
 
   return (
     <Card title={k("title")}>
@@ -345,7 +1327,7 @@ export function SupplierRequestTable({
           <tr>
             {before.map((c) => (
               <Th key={c} className={nowrap} rowSpan={2}>
-                {k(`col.${c}`)}
+                {colLabel(c)}
               </Th>
             ))}
             <Th
@@ -394,827 +1376,19 @@ export function SupplierRequestTable({
             <Th className={nowrap}>{k("col.cond.state")}</Th>
           </tr>
         </thead>
-        <tbody>
-          {rows.map((r, index) => {
-            const it = r.item;
-            const book = bookSpecs?.get(r.id) ?? null;
-            // Cópia da solicitação; o que ela não guarda, do item do Book.
-            const specs = requestItemSpecs(r, book);
-            const name = specs.description ?? specs.productName ?? "—";
-            const bookCol = (key: string) =>
-              t(`bookingLots.item.col.${key}` as DictionaryKey);
-            // Dados complementares: só os que existem aparecem.
-            const details = (
-              [
-                // A descrição já é o nome da linha; o nome só quando é outro.
-                [
-                  "productName",
-                  k("detail.productName"),
-                  specs.productName !== name ? specs.productName : null,
-                ],
-                ["colors", bookCol("colorAssortment"), specs.colorAssortment],
-                ["power", bookCol("powerDetail"), specs.powerDetail],
-                [
-                  "netWeight",
-                  bookCol("netWeightPcKg"),
-                  specs.netWeightPcKg === null
-                    ? null
-                    : num(specs.netWeightPcKg),
-                ],
-                [
-                  "grossWeight",
-                  bookCol("grossWeightPcKg"),
-                  specs.grossWeightPcKg === null
-                    ? null
-                    : num(specs.grossWeightPcKg),
-                ],
-                ["ncm", k("detail.ncm"), wellmix ? (book?.ncm ?? null) : null],
-              ] as Array<[string, string, string | null]>
-            ).filter((d): d is [string, string, string] => !!d[2]);
-            // Na solicitação com vários produtos, cada linha é um produto dela
-            // (2.1, 2.2…): nenhuma é "esta solicitação".
-            const current = r.id === currentId && !r.batchId;
-            const pending = !!pendingProposal(r.negotiation);
-            // Só o fornecedor responde (a Wellmix não responde por ele).
-            // Três respostas por produto: aprovar a oferta vigente,
-            // renegociar (formulário já preenchido) ou recusar.
-            const offer = canAnswerRow(r) ? currentOffer(r) : null;
-            // Nome (com o preço) e explicação de aprovar: só na oferta que
-            // dá para aprovar direto (a regra é de `currentOffer`).
-            const approve = offer?.confirmable
-              ? {
-                  name: t("supplierRequests.table.confirm", {
-                    price: [
-                      num(offer.conditions.price),
-                      offer.conditions.currency,
-                    ]
-                      .filter(Boolean)
-                      .join(" "),
-                  }),
-                  hint: k(`confirmHint.${offer.source}`),
-                }
-              : null;
-            const refuseHint = offer ? k(`refuseHint.${offer.source}`) : "";
-            // Aprovar e recusar pedem confirmação (dono, 14/11/2026): a caixa
-            // mostra o produto e as condições da oferta que valem agora.
-            const offerSummary = offer ? (
-              <div className="space-y-2" data-supplier-table-offer-summary>
-                <p className="font-medium text-zinc-900">{name}</p>
-                <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 rounded-md border border-zinc-200 bg-zinc-50/70 p-2 text-xs">
-                  {(
-                    [
-                      [
-                        "price",
-                        offer.conditions.price === null
-                          ? "—"
-                          : [
-                              num(offer.conditions.price),
-                              offer.conditions.currency,
-                            ]
-                              .filter(Boolean)
-                              .join(" "),
-                      ],
-                      ["moq", num(offer.conditions.moq, 0)],
-                      ["incoterm", offer.conditions.incoterm ?? "—"],
-                      ["leadTime", num(offer.conditions.leadTimeDays, 0)],
-                    ] as const
-                  ).map(([key, value]) => (
-                    <div key={key}>
-                      <dt className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                        {k(`col.cond.${key}`)}
-                      </dt>
-                      <dd
-                        className="tabular-nums text-zinc-900"
-                        data-supplier-table-offer-summary-value={key}
-                      >
-                        {value}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-            ) : null;
-            // Aprovada: a amostragem (fotos e vídeos da amostra).
-            const sampling = samplingOf(r);
-            const pinBg = cx(PIN_BG, current && PIN_BG_CURRENT);
-            // Vez: a negociação e, aprovada, a amostragem (dono, 24/11/2026).
-            const turn = supplierRequestTurn(r);
-            const who = responsible?.get(r.id) ?? null;
-            const sla = slaOf(r, slaMinutes);
-            const times = answerTimes(
-              r,
-              (legacy.get(r.id) ?? []).map((a) => a.at),
-            );
-            const yes = r.supplierCanDo === "yes";
-            const href = `/app/supplier-requests/${r.id}?view=item`;
-            return (
-              <tr
-                key={r.id}
-                className={cx(
-                  rowClass,
-                  "group/row",
-                  current && "bg-brand-50/60",
-                )}
-                data-supplier-table-row={r.id}
-                data-current={current ? "1" : undefined}
-              >
-                <Td>
-                  <PhotoGallery
-                    photos={[
-                      ...(it.photoDocumentId
-                        ? [{ id: it.photoDocumentId, label: null }]
-                        : []),
-                      // A arte da variação × embalagem (dono, 26/11/2026).
-                      ...(r.variant?.artDocumentId
-                        ? [
-                            {
-                              id: r.variant.artDocumentId,
-                              label: t("supplierRequests.variant.art"),
-                            },
-                          ]
-                        : []),
-                    ]}
-                    name={name}
-                    className="h-12 w-12"
-                    labels={{
-                      title: k("photo"),
-                      close: k("close"),
-                      open: k("photoOpen"),
-                      count: t("supplierRequests.detail.title", {
-                        n: r.number,
-                      }),
-                      noPhoto: k("noPhoto"),
-                    }}
-                  />
-                </Td>
-                <Td className={cx(nowrap, "tabular-nums font-medium")}>
-                  {/* O número e o nome abrem o produto nesta solicitação,
-                      como o ícone de abrir (dono, 18/11/2026). */}
-                  <Link
-                    href={href}
-                    className="text-brand-700 hover:underline"
-                    data-supplier-table-number={r.id}
-                  >
-                    {r.batchId && rows.length > 1
-                      ? `${r.number}.${index + 1}`
-                      : r.number}
-                  </Link>
-                  {current ? (
-                    <span className="mt-1 block">
-                      <Badge tone="info">{k("current")}</Badge>
-                    </span>
-                  ) : null}
-                </Td>
-                <Td>
-                  <Link
-                    href={href}
-                    className="block min-w-48 max-w-72 whitespace-normal font-medium text-zinc-900 hover:text-brand-700 hover:underline"
-                  >
-                    {name}
-                  </Link>
-                  {/* Cotação de um SKU da escolha (variação × embalagem):
-                      o mesmo produto em várias linhas, cada uma o seu. */}
-                  {variantText(r.variant, t) ? (
-                    <span
-                      className="mt-0.5 block text-xs font-medium text-brand-800"
-                      data-supplier-table-variant={r.variant!.key}
-                    >
-                      {variantText(r.variant, t)}
-                    </span>
-                  ) : null}
-                  {details.length || wellmix ? (
-                    <details
-                      className="group/specs mt-1 min-w-48 max-w-72 text-xs"
-                      data-supplier-table-details={r.id}
-                    >
-                      <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded font-medium text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-brand-600 [&::-webkit-details-marker]:hidden">
-                        {k("details")}
-                        <svg
-                          aria-hidden
-                          viewBox="0 0 20 20"
-                          className="h-3.5 w-3.5 transition-transform group-open/specs:rotate-180"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M5 8l5 5 5-5" />
-                        </svg>
-                      </summary>
-                      <div className="mt-1 space-y-1 whitespace-normal rounded-md border border-zinc-200 bg-zinc-50/70 p-2">
-                        {details.length ? (
-                          <dl className="space-y-1">
-                            {details.map(([key, label, value]) => (
-                              <div key={key} data-supplier-table-detail={key}>
-                                <dt className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                                  {label}
-                                </dt>
-                                <dd className="break-words text-zinc-800">
-                                  {value}
-                                </dd>
-                              </div>
-                            ))}
-                          </dl>
-                        ) : (
-                          <p className="text-zinc-500">{k("detailsNone")}</p>
-                        )}
-                        {wellmix ? (
-                          <Link
-                            href={`/app/booking/lots/${r.bookingLotId}`}
-                            className="inline-block font-medium text-brand-700 hover:underline"
-                            data-supplier-table-book={r.id}
-                          >
-                            {k("detail.book")}
-                          </Link>
-                        ) : null}
-                      </div>
-                    </details>
-                  ) : null}
-                </Td>
-                <Td className={nowrap}>{it.factoryItemCode ?? "—"}</Td>
-                <Td className={nowrap}>{it.itemNumber ?? "—"}</Td>
-                <Td className={nowrap}>{specs.material ?? "—"}</Td>
-                {/* Ficha técnica: a mesma que o Book mostra. */}
-                <Td data-supplier-table-package={r.id}>
-                  <span className="block max-w-40 whitespace-normal">
-                    {specs.packageType ?? "—"}
-                  </span>
-                </Td>
-                <Td
-                  className={cx(nowrap, "tabular-nums")}
-                  data-supplier-table-measures={r.id}
-                >
-                  {[specs.lengthCm, specs.widthCm, specs.heightCm].some(
-                    (n) => n !== null,
-                  )
-                    ? [specs.lengthCm, specs.widthCm, specs.heightCm]
-                        .map((n) => num(n, 2))
-                        .join(" × ")
-                    : "—"}
-                </Td>
-                <Td
-                  className={cx(nowrap, "tabular-nums")}
-                  data-supplier-table-capacity={r.id}
-                >
-                  {typeof specs.capacity === "number"
-                    ? `${num(specs.capacity, 0)} ml`
-                    : (specs.capacity ?? "—")}
-                </Td>
-                <Td
-                  className={cx(nowrap, "tabular-nums")}
-                  data-supplier-table-master={r.id}
-                >
-                  {num(specs.masterCartonQty, 0)}
-                </Td>
-                <Td
-                  className={cx(nowrap, "tabular-nums")}
-                  data-supplier-table-inner={r.id}
-                >
-                  {num(specs.innerQty, 0)}
-                </Td>
-                <Td
-                  className={cx(nowrap, "tabular-nums")}
-                  data-supplier-table-cbm={r.id}
-                >
-                  {num(specs.cbmPerCarton)}
-                </Td>
-                {/* Programação de compra: rodadas, peças por rodada e o total. */}
-                <Td
-                  className={cx(nowrap, "tabular-nums")}
-                  data-supplier-table-rounds={r.id}
-                >
-                  <span title={roundsDates(r.schedule, t) ?? undefined}>
-                    {r.schedule?.items.length ?? 1}
-                  </span>
-                </Td>
-                <Td
-                  className={cx(nowrap, "tabular-nums")}
-                  data-supplier-table-per-round={r.id}
-                >
-                  <span title={roundsDates(r.schedule, t) ?? undefined}>
-                    {r.schedule?.items.length
-                      ? r.schedule.items
-                          .map((i) => i.quantity.toLocaleString(intl))
-                          .join(" / ")
-                      : r.quantity.toLocaleString(intl)}
-                  </span>
-                </Td>
-                <Td className={cx(nowrap, "tabular-nums")}>
-                  {r.quantity.toLocaleString(intl)}
-                  {/* SKU em embalagens: as peças embaixo. */}
-                  {r.variant && r.variant.units > 1 ? (
-                    <span
-                      className="block text-xs text-zinc-500"
-                      data-supplier-table-pieces={r.id}
-                    >
-                      {t("supplierRequests.variant.piecesParen", {
-                        n: (r.quantity * r.variant.units).toLocaleString(intl),
-                      })}
-                    </span>
-                  ) : null}
-                  {/* Variações de cor: uma linha por cor, somando o total. */}
-                  <ColorLines
-                    colors={colorTotals(r.colorPlan)}
-                    name={it.description ?? it.productName ?? ""}
-                    intl={intl}
-                  />
-                </Td>
-                <Td
-                  className={cx(nowrap, "tabular-nums")}
-                  data-supplier-table-total-cartons={r.id}
-                >
-                  {num(specs.totalCartons, 0)}
-                </Td>
-                <Td
-                  className={cx(nowrap, "tabular-nums")}
-                  data-supplier-table-total-cbm={r.id}
-                >
-                  <span
-                    title={
-                      specs.cbmFromMeasures ? k("cbmFromMeasures") : undefined
-                    }
-                  >
-                    {specs.cbmFromMeasures ? "≈ " : ""}
-                    {num(specs.totalCbm)}
-                  </span>
-                </Td>
-                <Td className={cx(nowrap, "tabular-nums")}>
-                  {it.moq === null ? "—" : `${num(it.moq, 0)} ${r.unit}`}
-                </Td>
-                {showPrice ? (
-                  <>
-                    <Td className={cx(nowrap, "tabular-nums")}>
-                      {num(it.price)}
-                    </Td>
-                    <Td className={nowrap}>{it.currency ?? "—"}</Td>
-                  </>
-                ) : null}
-                <Td className={nowrap}>{it.incoterm ?? "—"}</Td>
-                <Td>
-                  <span
-                    className="block max-w-56 truncate text-xs text-zinc-600"
-                    title={r.needs ?? undefined}
-                  >
-                    {r.needs ?? "—"}
-                  </span>
-                </Td>
-                <Td className={nowrap}>
-                  <span
-                    data-supplier-table-answer-text={r.id}
-                    data-supplier-table-can-do={r.supplierCanDo ?? "waiting"}
-                  >
-                    {r.supplierCanDo ? (
-                      <Badge tone={yes ? "success" : "danger"}>
-                        {k(yes ? "canDoYes" : "canDoNo")}
-                      </Badge>
-                    ) : (
-                      <span className="text-zinc-500">{k("canDoWaiting")}</span>
-                    )}
-                  </span>
-                </Td>
-                {conditionCells(initialConditions(r), "initial", r.id)}
-                {conditionCells(finalConditions(r), "final", r.id)}
-                <Td
-                  className="text-xs"
-                  data-supplier-table-turn={turn?.party ?? "none"}
-                  data-supplier-table-turn-step={turn?.step}
-                >
-                  {turn ? (
-                    // O status leva ao lugar de agir (dono, 24/11/2026),
-                    // o mesmo da ação embaixo.
-                    <StatusLink
-                      tone={turnTone(turn.party)}
-                      href={supplierRequestStepHref(r.id, turn.step)}
-                    >
-                      {t(
-                        `supplierRequests.negotiation.turn.${turn.party}` as DictionaryKey,
-                      )}
-                    </StatusLink>
-                  ) : (
-                    "—"
-                  )}
-                  {/* A ação, com as mesmas palavras de Encomendas e das
-                      Pendências ("Carregar a amostragem"), é o link para o
-                      lugar de agir, o mesmo da pendência (dono,
-                      24/11/2026). */}
-                  {turn ? (
-                    <Link
-                      href={supplierRequestStepHref(r.id, turn.step)}
-                      className={cx(linkClass, "mt-0.5 block max-w-40")}
-                      data-supplier-table-turn-action
-                    >
-                      {t(`reqList.next.${turn.step}` as DictionaryKey)}
-                    </Link>
-                  ) : null}
-                  {/* Quem age: o nome e, no balão, o login (administrador). */}
-                  {turn && who ? (
-                    <ResponsibleTip
-                      r={who}
-                      t={t}
-                      className="mt-0.5 block max-w-40"
-                    />
-                  ) : null}
-                  {/* O login de quem envia, à vista (administrador; dono,
-                      24/11/2026). */}
-                  {turn ? (
-                    <ResponsibleLogins r={who} t={t} className="max-w-40" />
-                  ) : null}
-                  {pending ? (
-                    <span
-                      className="mt-0.5 block max-w-40 text-amber-800"
-                      data-supplier-table-pending
-                    >
-                      {k(
-                        wellmix ? "proposalPendingWellmix" : "proposalPending",
-                      )}
-                    </span>
-                  ) : null}
-                </Td>
-                <Td className={cx(nowrap, "text-xs tabular-nums")}>
-                  {dateTime(r.createdAt, t)}
-                </Td>
-                <Td className={cx(nowrap, "text-xs tabular-nums")}>
-                  {dateTime(times.first, t)}
-                </Td>
-                <Td className={cx(nowrap, "text-xs tabular-nums")}>
-                  {dateTime(times.last, t)}
-                </Td>
-                {/* Situação / SLA: a situação geral do produto (na aprovada,
-                    com a amostragem) e, embaixo, o SLA com o prazo recolhido. */}
-                <Td
-                  className={cx(pinBg, PIN.status)}
-                  data-supplier-table-pin="status"
-                  data-supplier-table-status={r.status}
-                >
-                  <div className="w-[var(--pin-status)]">
-                    <span data-supplier-table-status-badge>
-                      <Badge tone={STATUS_TONE[r.status]}>
-                        {t(
-                          `supplierRequests.status.${r.status}` as DictionaryKey,
-                        )}
-                      </Badge>
-                    </span>
-                    {sampling ? (
-                      <Link
-                        href={`${href}#amostragem`}
-                        className="mt-1 block rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-                        data-supplier-table-sampling={sampling.status}
-                      >
-                        <span className="block text-[10px] leading-tight font-semibold tracking-wide text-zinc-500 uppercase">
-                          {t("sampling.table.open")}
-                        </span>
-                        <Badge
-                          tone={SAMPLING_TONE[sampling.status]}
-                          className="mt-0.5 rounded-md px-1.5 text-[11px] leading-tight whitespace-normal"
-                        >
-                          {t(
-                            `sampling.status.${sampling.status}` as DictionaryKey,
-                          )}
-                          {samplingLate(sampling, samplingSlaDays)
-                            ? ` · ${t("sampling.late")}`
-                            : ""}
-                        </Badge>
-                      </Link>
-                    ) : null}
-                    {/* SLA (só enquanto a solicitação está ativa): o selo e o
-                        "+" na mesma linha; a data e a hora do prazo ficam
-                        recolhidas até o "+" (que vira "−"). */}
-                    {sla ? (
-                      <span
-                        className="mt-1 block"
-                        data-supplier-request-sla={sla.late ? "late" : "ok"}
-                      >
-                        <SlaDueToggle
-                          due={dateTime(sla.dueAt, t)}
-                          late={sla.late}
-                          labels={{ show: k("slaShow"), hide: k("slaHide") }}
-                        >
-                          <span
-                            className="inline-flex"
-                            data-supplier-table-sla-badge
-                          >
-                            <Badge tone={sla.late ? "danger" : "neutral"}>
-                              {k(sla.late ? "late" : "onTime")}
-                            </Badge>
-                          </span>
-                        </SlaDueToggle>
-                      </span>
-                    ) : null}
-                  </div>
-                </Td>
-                <Td
-                  className={cx(pinBg, PIN.actions)}
-                  data-supplier-table-pin="actions"
-                >
-                  {/* Duas linhas (dono, 14/11/2026), só ícones, à direita: em
-                      cima mensagem e abrir o produto; embaixo, enquanto o
-                      fornecedor responde, aprovar, renegociar e recusar.
-                      Sem resposta possível, não há a segunda linha. */}
-                  <div
-                    className="flex w-[var(--pin-actions)] flex-col items-end gap-2"
-                    data-supplier-table-actions={r.id}
-                  >
-                    <div className="flex items-center justify-end gap-2">
-                      {canPostMessage(r.status) ? (
-                        <QuickDialog
-                          label={<ChatBubbleIcon />}
-                          hint={k("message")}
-                          title={t("supplierRequests.table.messageTitle", {
-                            n: r.number,
-                          })}
-                          closeLabel={k("close")}
-                          className={cx(ICON_BUTTON, ICON_TONE.neutral)}
-                          data-supplier-table-message={r.id}
-                        >
-                          <form
-                            action={postSupplierRequestMessageAction}
-                            className="space-y-2"
-                            data-supplier-table-message-form
-                          >
-                            <input type="hidden" name="id" value={r.id} />
-                            <input type="hidden" name="view" value="table" />
-                            <Field label={k("messageText")}>
-                              <Textarea
-                                name="text"
-                                rows={3}
-                                maxLength={4000}
-                                required
-                                data-supplier-table-message-text
-                              />
-                            </Field>
-                            <SubmitButton
-                              pendingText={k("sending")}
-                              data-supplier-table-message-submit
-                            >
-                              {k("send")}
-                            </SubmitButton>
-                          </form>
-                        </QuickDialog>
-                      ) : null}
-                      <LinkButton
-                        href={href}
-                        className={cx(ICON_BUTTON, ICON_TONE.neutral)}
-                        title={k("open")}
-                        aria-label={k("open")}
-                        data-supplier-table-open={r.id}
-                      >
-                        <OpenIcon />
-                      </LinkButton>
-                    </div>
-                    {offer ? (
-                      <div
-                        className="flex items-center justify-end gap-2"
-                        data-supplier-table-offer={offer.source}
-                      >
-                        {approve ? (
-                          <QuickDialog
-                            label={<CheckIcon />}
-                            hint={tooltip(approve.name, approve.hint)}
-                            name={approve.name}
-                            description={approve.hint}
-                            title={t("supplierRequests.table.approveTitle", {
-                              n: r.number,
-                            })}
-                            closeLabel={k("close")}
-                            className={cx(ICON_BUTTON, ICON_TONE.approve)}
-                            data-supplier-table-confirm={r.id}
-                          >
-                            {/* Só "Aprovar oferta" envia; "Cancelar", o "×" e
-                                tocar fora fecham sem enviar nada. */}
-                            <form
-                              action={respondOfferAction}
-                              className="space-y-3 text-sm"
-                              data-supplier-table-confirm-form
-                            >
-                              <input type="hidden" name="id" value={r.id} />
-                              <input type="hidden" name="view" value="table" />
-                              <input
-                                type="hidden"
-                                name="action"
-                                value="confirm"
-                              />
-                              <input
-                                type="hidden"
-                                name="offer"
-                                value={offer.token}
-                              />
-                              {offerSummary}
-                              <p className="text-xs text-zinc-600">
-                                {approve.hint}
-                              </p>
-                              <div className="flex flex-wrap justify-end gap-2">
-                                <QuickDialogClose
-                                  label={t("common.cancel")}
-                                  data-supplier-table-confirm-cancel={r.id}
-                                />
-                                <SubmitButton
-                                  className="bg-emerald-700 shadow-emerald-900/10 hover:bg-emerald-800 active:bg-emerald-900"
-                                  pendingText={k("sending")}
-                                  data-supplier-table-confirm-submit
-                                >
-                                  <CheckIcon />
-                                  {k("approve")}
-                                </SubmitButton>
-                              </div>
-                            </form>
-                          </QuickDialog>
-                        ) : null}
-                        <QuickDialog
-                          label={<SwapIcon />}
-                          hint={tooltip(k("renegotiate"), k("renegotiateHint"))}
-                          name={k("renegotiate")}
-                          description={k("renegotiateHint")}
-                          title={t("supplierRequests.table.renegotiateTitle", {
-                            n: r.number,
-                          })}
-                          closeLabel={k("close")}
-                          className={cx(ICON_BUTTON, ICON_TONE.renegotiate)}
-                          data-supplier-table-answer-open={r.id}
-                        >
-                          {/* Com contraproposta esperando: nova proposta; sem,
-                              a resposta "faz" com as condições que ele editar. */}
-                          <form
-                            action={
-                              pending
-                                ? respondProposalAction
-                                : answerSupplierRequestAction
-                            }
-                            className="space-y-2"
-                            data-supplier-table-answer-form
-                          >
-                            <input type="hidden" name="id" value={r.id} />
-                            <input type="hidden" name="view" value="table" />
-                            {pending ? (
-                              <input
-                                type="hidden"
-                                name="action"
-                                value="counter"
-                              />
-                            ) : (
-                              <input type="hidden" name="canDo" value="yes" />
-                            )}
-                            {/* Mantém o prazo vigente (muda na tela do produto). */}
-                            <input
-                              type="hidden"
-                              name="leadTimeDays"
-                              value={raw(
-                                offer.conditions.leadTimeDays ??
-                                  r.supplierLeadTimeDays,
-                              )}
-                            />
-                            <p className="text-xs text-zinc-500">
-                              {k("renegotiateText")}
-                            </p>
-                            <div className="grid grid-cols-2 gap-2">
-                              <Field
-                                label={
-                                  (r.variant?.units ?? 1) > 1
-                                    ? packLabels(r.variant?.units, t).price
-                                    : t("supplierRequests.detail.answer.price")
-                                }
-                              >
-                                <Input
-                                  name="price"
-                                  inputMode="decimal"
-                                  required
-                                  defaultValue={raw(offer.conditions.price)}
-                                  data-supplier-table-answer-price-input
-                                />
-                                {/* Trocar a moeda converte o preço (dono, 21/11/2026). */}
-                                <FxFieldWatch
-                                  price="price"
-                                  currency="currency"
-                                  locale={t.intl}
-                                />
-                              </Field>
-                              <Field
-                                label={t(
-                                  "supplierRequests.detail.answer.currency",
-                                )}
-                              >
-                                <Select
-                                  name="currency"
-                                  defaultValue={
-                                    offer.conditions.currency ?? "USD"
-                                  }
-                                >
-                                  {SHEET_CURRENCIES.map((c) => (
-                                    <option key={c} value={c}>
-                                      {c}
-                                    </option>
-                                  ))}
-                                </Select>
-                              </Field>
-                              <Field
-                                label={
-                                  (r.variant?.units ?? 1) > 1
-                                    ? packLabels(r.variant?.units, t).moq
-                                    : t("supplierRequests.detail.answer.moq")
-                                }
-                              >
-                                <Input
-                                  name="moq"
-                                  inputMode="numeric"
-                                  defaultValue={raw(offer.conditions.moq)}
-                                  data-supplier-table-answer-moq
-                                />
-                              </Field>
-                              <Field
-                                label={t(
-                                  "supplierRequests.detail.answer.incoterm",
-                                )}
-                              >
-                                <Select
-                                  name="incoterm"
-                                  defaultValue={
-                                    offer.conditions.incoterm ?? "FOB"
-                                  }
-                                  data-supplier-table-answer-incoterm
-                                >
-                                  {SHEET_INCOTERMS.map((c) => (
-                                    <option key={c} value={c}>
-                                      {c}
-                                    </option>
-                                  ))}
-                                </Select>
-                              </Field>
-                            </div>
-                            <Field
-                              label={t("supplierRequests.detail.answer.note")}
-                            >
-                              <Textarea
-                                name={pending ? "text" : "note"}
-                                rows={2}
-                                maxLength={4000}
-                                defaultValue={
-                                  pending ? "" : (r.supplierNote ?? "")
-                                }
-                              />
-                            </Field>
-                            <SubmitButton
-                              pendingText={k("sending")}
-                              data-supplier-table-answer="yes"
-                            >
-                              {k("renegotiateSend")}
-                            </SubmitButton>
-                          </form>
-                        </QuickDialog>
-                        <QuickDialog
-                          label={<RefuseIcon />}
-                          hint={tooltip(k("refuse"), refuseHint)}
-                          name={k("refuse")}
-                          description={refuseHint}
-                          title={t("supplierRequests.table.refuseTitle", {
-                            n: r.number,
-                          })}
-                          closeLabel={k("close")}
-                          className={cx(ICON_BUTTON, ICON_TONE.refuse)}
-                          data-supplier-table-refuse={r.id}
-                        >
-                          {/* Só "Recusar oferta" envia (contorno vermelho, a
-                              regra da marca para ação destrutiva). */}
-                          <form
-                            action={respondOfferAction}
-                            className="space-y-3 text-sm"
-                            data-supplier-table-refuse-form
-                          >
-                            <input type="hidden" name="id" value={r.id} />
-                            <input type="hidden" name="view" value="table" />
-                            <input type="hidden" name="action" value="refuse" />
-                            <input
-                              type="hidden"
-                              name="offer"
-                              value={offer.token}
-                            />
-                            {offerSummary}
-                            <p className="text-xs text-zinc-600">
-                              {refuseHint}
-                            </p>
-                            <div className="flex flex-wrap justify-end gap-2">
-                              <QuickDialogClose
-                                label={t("common.cancel")}
-                                data-supplier-table-refuse-cancel={r.id}
-                              />
-                              <SubmitButton
-                                variant="danger"
-                                pendingText={k("sending")}
-                                data-supplier-table-refuse-submit
-                              >
-                                <RefuseIcon />
-                                {k("refuse")}
-                              </SubmitButton>
-                            </div>
-                          </form>
-                        </QuickDialog>
-                      </div>
-                    ) : null}
-                  </div>
-                </Td>
-              </tr>
-            );
-          })}
-        </tbody>
+        {/* Com programação, cada produto e as suas programações num grupo
+            (tbody) próprio, para as sublinhas abrirem com os Detalhes do
+            item; sem programação, a tabela de sempre. */}
+        {grouped ? (
+          bodies.map((b) => (
+            <tbody key={b.key} data-supplier-table-group={b.key}>
+              {b.main}
+              {b.subs}
+            </tbody>
+          ))
+        ) : (
+          <tbody>{bodies.map((b) => b.main)}</tbody>
+        )}
       </Table>
     </Card>
   );

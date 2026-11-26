@@ -337,32 +337,6 @@ export default async function SupplierRequestPage({
         />
         {timelineCard}
         {noticeBlock}
-        {/* Variação × embalagem de cada produto (dono, 26/11/2026): tudo o
-            que a Seleção pôs no SKU, já na abertura da cotação. */}
-        {rows.some((row) => row.variant) ? (
-          <div className="mb-4 space-y-3" data-supplier-table-variants>
-            {rows
-              .filter((row) => row.variant)
-              .map((row) => (
-                <div key={row.id} className="space-y-1">
-                  {rows.length > 1 ? (
-                    <p className="text-xs font-medium text-zinc-600">
-                      {row.item.description ??
-                        row.item.productName ??
-                        row.item.factoryItemCode ??
-                        "—"}
-                    </p>
-                  ) : null}
-                  <RequestVariant
-                    request={row}
-                    book={bookSpecs.get(row.id) ?? null}
-                    showPrice={seesPrice}
-                    t={t}
-                  />
-                </div>
-              ))}
-          </div>
-        ) : null}
         <div data-supplier-table>
           <SupplierRequestTable
             rows={rows}

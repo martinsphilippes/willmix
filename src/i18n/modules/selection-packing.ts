@@ -109,6 +109,14 @@ export const pt = {
   "supplierRequests.variant.label.master": "Embalagens por caixa master",
   "supplierRequests.variant.label.net": "Peso líquido por embalagem (kg)",
   "supplierRequests.variant.label.gross": "Peso bruto por embalagem (kg)",
+  "supplierRequests.table.set.col.piecesPerSet": "Peças por set",
+  "supplierRequests.table.set.col.masterCartonQty": "Sets/caixa master",
+  "supplierRequests.table.set.col.innerQty": "Sets/caixa interna",
+  "supplierRequests.table.set.col.perRound": "Sets por programação",
+  "supplierRequests.table.set.col.quantity": "Total de sets",
+  "supplierRequests.table.set.unit": "sets",
+  "supplierRequests.table.set.price": "Preço por set",
+  "supplierRequests.table.set.moq": "Pedido mínimo (sets)",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -212,6 +220,14 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierRequests.variant.label.master": "Packages per master carton",
   "supplierRequests.variant.label.net": "Net weight per package (kg)",
   "supplierRequests.variant.label.gross": "Gross weight per package (kg)",
+  "supplierRequests.table.set.col.piecesPerSet": "Pieces per set",
+  "supplierRequests.table.set.col.masterCartonQty": "Sets/master carton",
+  "supplierRequests.table.set.col.innerQty": "Sets/inner box",
+  "supplierRequests.table.set.col.perRound": "Sets per round",
+  "supplierRequests.table.set.col.quantity": "Total sets",
+  "supplierRequests.table.set.unit": "sets",
+  "supplierRequests.table.set.price": "Price per set",
+  "supplierRequests.table.set.moq": "Minimum order (sets)",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -311,4 +327,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "supplierRequests.variant.label.master": "每外箱包数",
   "supplierRequests.variant.label.net": "每包净重（kg）",
   "supplierRequests.variant.label.gross": "每包毛重（kg）",
+  "supplierRequests.table.set.col.piecesPerSet": "每套件数",
+  "supplierRequests.table.set.col.masterCartonQty": "每外箱套数",
+  "supplierRequests.table.set.col.innerQty": "每内盒套数",
+  "supplierRequests.table.set.col.perRound": "每批套数",
+  "supplierRequests.table.set.col.quantity": "总套数",
+  "supplierRequests.table.set.unit": "套",
+  "supplierRequests.table.set.price": "每套价格",
+  "supplierRequests.table.set.moq": "最小起订量（套）",
 };
