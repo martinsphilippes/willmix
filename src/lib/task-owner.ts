@@ -115,6 +115,10 @@ export function kindGate(
     // de quem pediu (docs/NEW_PRODUCT.md); a aprovação é na tela Produtos.
     case "product_approve":
       return { screen: "products" };
+    // Produto da cotação a cadastrar (docs/PRODUCT_REGISTRATION.md): quem
+    // abre a tela Cadastrar produto.
+    case "product_registration":
+      return { screen: "productRegistration" };
     // Carteira e atendimento (docs/TRADE_COMERCIAL.md): o dono da pendência
     // é decidido em tasksForFunctions; aqui, só a tela.
     case "customer_attendance":

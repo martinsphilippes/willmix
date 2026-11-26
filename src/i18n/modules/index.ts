@@ -190,6 +190,7 @@ import * as portfolio from "./portfolio";
 import * as tradePlan from "./trade-plan";
 import * as salesPanel from "./sales-panel";
 import * as moneyFx from "./money-fx";
+import * as productRegistration from "./product-registration";
 
 export const modulesPt = {
   ...messages.pt,
@@ -379,6 +380,7 @@ export const modulesPt = {
   ...orderTable.pt,
   ...quoteInnerMaterials.pt,
   ...moneyFx.pt,
+  ...productRegistration.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...messages.en,
@@ -568,6 +570,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...orderTable.en,
   ...quoteInnerMaterials.en,
   ...moneyFx.en,
+  ...productRegistration.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...messages.zh,
@@ -757,4 +760,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...orderTable.zh,
   ...quoteInnerMaterials.zh,
   ...moneyFx.zh,
+  ...productRegistration.zh,
 };

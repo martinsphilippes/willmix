@@ -98,6 +98,8 @@ export type TaskKind =
   | "showroom_receive"
   /** Produto novo a aprovar ou recusar (docs/NEW_PRODUCT.md). */
   | "product_approve"
+  /** Produto da cotação aprovada a cadastrar (docs/PRODUCT_REGISTRATION.md). */
+  | "product_registration"
   /**
    * Carteira (docs/TRADE_COMERCIAL.md): cliente acompanhado passou do prazo
    * sem atendimento confirmado (responsável), e atendimento esperando a
@@ -373,6 +375,7 @@ const KIND_ORDER: string[] = [
   "customer_login",
   "booking_invite",
   "product_approve",
+  "product_registration",
   "customer_attendance",
   "attendance_confirm",
   "trade_activity",
@@ -1115,6 +1118,18 @@ export async function pendingTasksFor(
     tasks.push(
       ...(
         await (await import("./product-approval")).approvalTaskDrafts(user)
+      ).map((draft) => finish(draft, now)),
+    );
+  // Produto da cotação aprovada a cadastrar (dono, 26/11/2026;
+  // docs/PRODUCT_REGISTRATION.md): a tela Cadastrar produto, depois da Cotação.
+  if (wellmix)
+    tasks.push(
+      ...(
+        await (
+          await import("./product-registration")
+        )
+          .registrationTaskDrafts(user)
+          .catch(() => [])
       ).map((draft) => finish(draft, now)),
     );
   // Carteira e atendimento (docs/TRADE_COMERCIAL.md): atender o cliente

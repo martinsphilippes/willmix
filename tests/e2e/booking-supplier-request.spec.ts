@@ -759,7 +759,12 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(page.locator("[data-supplier-request-sla]")).toHaveCount(0);
   // Amostra aprovada: nada mais a fazer nesta tabela.
   await expect(turnCell).toHaveAttribute("data-supplier-table-turn", "none");
+  // Cadastrar produto (dono, 26/11/2026; docs/PRODUCT_REGISTRATION.md): o
+  // cadastro saiu da cotação; ela leva à tela nova pelo atalho.
   await page.goto(itemUrl);
+  await page.click("[data-request-product-registration]");
+  await page.waitForURL(/\/app\/product-registration\/[^/?#]+/);
+  const registrationUrl = new URL(page.url()).pathname;
   await page.fill("[data-request-product-name]", `Copo de vidro ${TAG}`);
   await page.selectOption("[data-request-product-line]", { index: 1 });
   await page.click("[data-request-product-create]");
@@ -775,7 +780,7 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
 
   // 5. Libera na vitrine e grava o CODPROD (sem Sankhya: "não conferido").
   await login(page, "admin@wellmix.com");
-  await page.goto(itemUrl);
+  await page.goto(registrationUrl);
   await page.click("[data-request-product-release]");
   await page.waitForURL(/[?&]product=released/);
   await page.fill("[data-request-product-erp-input]", "40123");

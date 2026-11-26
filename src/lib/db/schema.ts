@@ -4337,6 +4337,29 @@ export interface SupplierRequest extends BaseRow {
    * uma cotação. Nulo nas outras (o item como veio do Book).
    */
   variant?: SupplierRequestVariant | null;
+  /**
+   * Cadastrar produto (dono, 26/11/2026; docs/PRODUCT_REGISTRATION.md): o
+   * cadastro do Sankhya preenchido no portal (os campos da tela do Sankhya e
+   * da planilha de cadastro) e o último envio. Nulo antes do primeiro
+   * rascunho.
+   */
+  registration?: SupplierRequestRegistration | null;
+}
+
+/** O cadastro do produto da cotação aprovada (Cadastrar produto). */
+export interface SupplierRequestRegistration {
+  /** Valor de cada campo do cadastro (src/lib/product-registration.ts). */
+  values: Record<string, string>;
+  savedAt: string;
+  savedByUserId: string;
+  /** Último envio ao Sankhya: feito, com erro ou sem envio (execução desligada ou sem credencial). */
+  sendStatus?: "done" | "error" | "off" | null;
+  /** O que o Sankhya respondeu (ou por que não foi). */
+  sendDetail?: string | null;
+  sentAt?: string | null;
+  sentByUserId?: string | null;
+  /** Campos com valor que não foram ao Sankhya (sem coluna ou fora da lista). */
+  skipped?: string[] | null;
 }
 
 export const SAMPLING_STATUSES = [
@@ -7273,6 +7296,7 @@ export const TABLES: Record<TableName, TableDef> = {
       quoteResponseId: id(false),
       demandIds: json(),
       variant: json(),
+      registration: jsonLarge(),
     },
     indexes: [
       { key: "by_supplier", type: "key", columns: ["supplierId"] },

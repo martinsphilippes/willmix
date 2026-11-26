@@ -211,6 +211,9 @@ export const pt = {
   "flow.step.new-product.negotiations": "Cotação",
   "flow.help.new-product.negotiations":
     "Cotação com os fornecedores: convites, respostas, quadro comparativo, negociação e amostragem até o fornecedor do pedido.",
+  "flow.step.new-product.registration": "Cadastrar produto",
+  "flow.help.new-product.registration":
+    "O produto do book aprovado na cotação ganha o cadastro do Sankhya, já preenchido com o que o processo juntou, e vai ao Sankhya pela API.",
   "flow.step.order.orders": "Pedidos",
   "flow.help.order.orders":
     "Pedidos de compra: confirmação, programação de compra e ficha do pedido.",
@@ -511,6 +514,9 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.step.new-product.negotiations": "Quotation",
   "flow.help.new-product.negotiations":
     "Quotation with suppliers: invitations, answers, comparison board, negotiation and sampling up to the supplier of the order.",
+  "flow.step.new-product.registration": "Register product",
+  "flow.help.new-product.registration":
+    "The book product approved in the quotation gets its Sankhya registration, pre-filled with what the process gathered, and goes to Sankhya through the API.",
   "flow.step.order.orders": "Orders",
   "flow.help.order.orders":
     "Purchase orders: confirmation, purchase schedule and order sheet.",
@@ -802,6 +808,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.step.new-product.negotiations": "询价",
   "flow.help.new-product.negotiations":
     "与供应商询价：邀请、回复、比价表、谈判和打样，直到确定订单的供应商。",
+  "flow.step.new-product.registration": "登记产品",
+  "flow.help.new-product.registration":
+    "报价中批准的 Book 产品在此完成 Sankhya 登记（已预填流程中收集的信息），并通过 API 发送到 Sankhya。",
   "flow.step.order.orders": "订单",
   "flow.help.order.orders": "采购订单：确认、采购排期和订单表。",
   "flow.step.order.certification": "认证",

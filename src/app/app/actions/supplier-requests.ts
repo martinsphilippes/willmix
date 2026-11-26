@@ -551,6 +551,17 @@ export async function resolveLinkedRequestAction(form: FormData) {
 /* ---- Produto da solicitação aprovada (docs/SUPPLIER_REQUESTS.md, "Produto") ---- */
 
 /** Itens marcados no formulário (ids). */
+/**
+ * Para onde voltam as ações do produto: a tela Cadastrar produto
+ * (`home=registration`, docs/PRODUCT_REGISTRATION.md) ou o produto na cotação.
+ */
+function productHome(form: FormData, raw: string) {
+  if (!ID.safeParse(raw).success) return "/app/supplier-requests";
+  return str(form, "home") === "registration"
+    ? `/app/product-registration/${raw}`
+    : detail(raw);
+}
+
 function itemIds(form: FormData): string[] {
   return z
     .array(ID)
@@ -564,9 +575,7 @@ function itemIds(form: FormData): string[] {
 export async function requestProductAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, "id");
-  const back = ID.safeParse(raw).success
-    ? detail(raw)
-    : "/app/supplier-requests";
+  const back = productHome(form, raw);
   await run(back, async () => {
     const id = ID.parse(raw);
     const mode = z.enum(["create", "link"]).parse(str(form, "mode"));
@@ -594,9 +603,7 @@ export async function requestProductAction(form: FormData) {
 export async function linkMoreRequestItemsAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, "id");
-  const back = ID.safeParse(raw).success
-    ? detail(raw)
-    : "/app/supplier-requests";
+  const back = productHome(form, raw);
   await run(back, async () => {
     const svc = await import("@/lib/services/supplier-request-product");
     await svc.linkMoreItems(user, ID.parse(raw), itemIds(form));
@@ -607,9 +614,7 @@ export async function linkMoreRequestItemsAction(form: FormData) {
 export async function releaseRequestProductAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, "id");
-  const back = ID.safeParse(raw).success
-    ? detail(raw)
-    : "/app/supplier-requests";
+  const back = productHome(form, raw);
   await run(back, async () => {
     const svc = await import("@/lib/services/supplier-request-product");
     await svc.releaseRequestProduct(user, ID.parse(raw));
@@ -620,9 +625,7 @@ export async function releaseRequestProductAction(form: FormData) {
 export async function setRequestErpCodeAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, "id");
-  const back = ID.safeParse(raw).success
-    ? detail(raw)
-    : "/app/supplier-requests";
+  const back = productHome(form, raw);
   await run(back, async () => {
     const code = z.string().max(20).parse(str(form, "erpCode"));
     const svc = await import("@/lib/services/supplier-request-product");

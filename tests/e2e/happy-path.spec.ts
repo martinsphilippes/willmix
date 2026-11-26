@@ -311,11 +311,13 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.goto(itemUrl);
   await page.click("[data-sampling-review=approve]");
   await page.waitForURL(/[?&]sampling=approved/);
-  // A busca no catálogo fica na tela do produto (não volta à tabela).
+  // Cadastrar produto (dono, 26/11/2026; docs/PRODUCT_REGISTRATION.md): o
+  // cadastro fica na tela própria; a busca no catálogo fica nela.
+  await page.goto(`/app/product-registration/${requestId}`);
   await page.fill("[data-request-product-search=pq]", "garrafa");
   await page.press("[data-request-product-search=pq]", "Enter");
   await page.waitForURL(/[?&]pq=garrafa/);
-  expect(page.url()).toContain("view=item");
+  expect(page.url()).toContain(`/app/product-registration/${requestId}`);
   await page.fill("[data-request-product-name]", productName);
   // Brinquedos exige Inmetro (mapa do processo, P6): o pedido terá o
   // certificado e a arte final com o selo.
@@ -423,9 +425,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(cargo.locator("[data-sale-cargo-boxes]")).toContainText(
     "Caixas",
   );
-  await expect(cargo.locator("[data-sale-cargo-cbm]")).toContainText(
-    "Cubagem",
-  );
+  await expect(cargo.locator("[data-sale-cargo-cbm]")).toContainText("Cubagem");
   await expect(cargo.locator("[data-sale-cargo-containers]")).toContainText(
     "Containers",
   );

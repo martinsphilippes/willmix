@@ -54,6 +54,8 @@ const NEW_PRODUCT = [
   "/app/booking/selection",
   "/app/purchase-strategy",
   "/app/supplier-requests",
+  // Cadastrar produto (dono, 26/11/2026; docs/PRODUCT_REGISTRATION.md).
+  "/app/product-registration",
 ];
 const ORDER = [
   "/app/flow/order",

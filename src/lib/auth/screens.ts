@@ -31,6 +31,10 @@ export const SCREENS = [
   // Estratégia de Compra (dono, 18/11/2026; docs/PURCHASE_DEMAND.md): tela
   // própria; nasce aberta para quem abre a de cotações (SCREEN_PARENT).
   "purchaseStrategy",
+  // Cadastrar produto (dono, 26/11/2026; docs/PRODUCT_REGISTRATION.md): o
+  // produto do book aprovado na cotação, cadastrado para o Sankhya; nasce
+  // aberta para quem abre a de cotações (SCREEN_PARENT).
+  "productRegistration",
   "orders",
   "production",
   "sourcing",
@@ -68,6 +72,7 @@ export type Screen = (typeof SCREENS)[number];
  */
 export const SCREEN_PARENT: Partial<Record<Screen, Screen>> = {
   purchaseStrategy: "quotes",
+  productRegistration: "quotes",
 };
 
 /**
@@ -113,6 +118,8 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   // Estratégia de Compra (mapa B10?): tela própria desde 18/11/2026 (antes,
   // a de cotações; quem a abria continua abrindo, SCREEN_PARENT).
   ["/app/purchase-strategy", "purchaseStrategy"],
+  // Cadastrar produto (docs/PRODUCT_REGISTRATION.md): tela própria.
+  ["/app/product-registration", "productRegistration"],
   // Cotação de compra (mapa B13): a Wellmix e o fornecedor convidado.
   ["/app/purchase-quotes", "quotes"],
   // Solicitações ao fornecedor (docs/SUPPLIER_REQUESTS.md): quem abre Cotações.
@@ -181,6 +188,7 @@ export const SCREEN_LABEL: Record<Screen, DictionaryKey> = {
   requestSale: "nav.requestSale",
   quotes: "nav.quotes",
   purchaseStrategy: "nav.purchaseStrategy",
+  productRegistration: "nav.productRegistration",
   orders: "nav.orders",
   production: "nav.production",
   sourcing: "nav.sourcing",
@@ -292,6 +300,7 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
     "requestTs",
     "quotes",
     "purchaseStrategy",
+    "productRegistration",
     "orders",
     "production",
     "sourcing",
@@ -311,6 +320,7 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
     "requestSale",
     "quotes",
     "purchaseStrategy",
+    "productRegistration",
     "orders",
     "sourcing",
     "reviews",
@@ -336,6 +346,8 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   ],
   catalog: [
     "booking",
+    // O Cadastro cadastra o produto do book para o Sankhya.
+    "productRegistration",
     "orders",
     "sourcing",
     "reviews",
@@ -382,6 +394,7 @@ export const SCREEN_GROUPS: ReadonlyArray<{
       "requestSale",
       "quotes",
       "purchaseStrategy",
+      "productRegistration",
       "orders",
       "production",
       "sourcing",
