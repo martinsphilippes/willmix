@@ -1,9 +1,17 @@
-import type {
-  CellLimits,
-  CellSheet,
-  ImageLimits,
-  SheetImage,
-  Workbook,
+import {
+  cellsOfRect,
+  MAX_SHEET_COLS_INDEX,
+  MAX_SHEET_ROWS_INDEX,
+  pointOf,
+  SheetAxis,
+} from "./sheet-geometry";
+import {
+  imageInCols,
+  type CellLimits,
+  type CellSheet,
+  type ImageLimits,
+  type SheetImage,
+  type Workbook,
 } from "./xlsx";
 
 /**
@@ -267,6 +275,10 @@ const STRING = 0x0207;
 const BOOLERR = 0x0205;
 const BLANK = 0x0201;
 const MULBLANK = 0x00be;
+const ROW_RECORD = 0x0208;
+const DEFAULTROWHEIGHT = 0x0225;
+const COLINFO = 0x007d;
+const DEFCOLWIDTH = 0x0055;
 
 /**
  * Percorre os registros de um substream a partir do BOF em `start` até o
@@ -596,10 +608,25 @@ function blipStore(group: Uint8Array): Array<Blip | null> {
   return blips;
 }
 
+/**
+ * Âncora de uma forma (OfficeArtClientAnchorSheet): célula de começo e de
+ * fim, cada uma com o deslocamento dentro dela (1/1024 da largura da
+ * coluna e 1/256 da altura da linha).
+ */
+interface Anchor {
+  col: number;
+  dx: number;
+  row: number;
+  dy: number;
+  col2: number;
+  dx2: number;
+  row2: number;
+  dy2: number;
+}
+
 interface Shape {
   pib: number;
-  row: number;
-  col: number;
+  anchor: Anchor;
 }
 
 /**
@@ -614,7 +641,7 @@ function shapesOf(dg: Uint8Array): Shape[] {
     start: number,
     end: number,
     depth: number,
-    inherited: { row: number; col: number } | null,
+    inherited: Anchor | null,
   ) => {
     if (depth > 16) return;
     let groupAnchor = inherited;
@@ -625,7 +652,7 @@ function shapesOf(dg: Uint8Array): Shape[] {
       }
       if (rec.type !== 0xf004) continue;
       let pib = 0;
-      let anchor: { row: number; col: number } | null = null;
+      let anchor: Anchor | null = null;
       let group = false;
       let deleted = false;
       for (const child of escherRecords(dg, rec.start, rec.end)) {
@@ -641,19 +668,26 @@ function shapesOf(dg: Uint8Array): Shape[] {
             if ((view.getUint16(at, true) & 0x3fff) === 0x0104)
               pib = view.getUint32(at + 2, true);
           }
-        } else if (child.type === 0xf010 && child.end - child.start >= 18)
+        } else if (child.type === 0xf010 && child.end - child.start >= 18) {
+          const u = (k: number) => view.getUint16(child.start + k, true);
           anchor = {
-            col: view.getUint16(child.start + 2, true),
-            row: view.getUint16(child.start + 6, true),
+            col: u(2),
+            dx: u(4),
+            row: u(6),
+            dy: u(8),
+            col2: u(10),
+            dx2: u(12),
+            row2: u(14),
+            dy2: u(16),
           };
+        }
       }
       if (group) {
         groupAnchor = anchor ?? groupAnchor;
         continue;
       }
       const at = anchor ?? groupAnchor;
-      if (pib > 0 && at && !deleted)
-        out.push({ pib, row: at.row, col: at.col });
+      if (pib > 0 && at && !deleted) out.push({ pib, anchor: at });
     }
   };
   container(0, dg.length, 0, null);
@@ -706,6 +740,46 @@ function concat(parts: Uint8Array[]): Uint8Array {
     off += p.length;
   }
   return out;
+}
+
+/**
+ * Grade da aba: altura de cada linha (ROW, em twips; DEFAULTROWHEIGHT) e
+ * largura das colunas (COLINFO, em 1/256 de caractere; DEFCOLWIDTH), para
+ * saber em que célula fica o centro de cada imagem.
+ */
+function sheetAxes(
+  stream: Uint8Array,
+  offset: number,
+): { rows: SheetAxis; cols: SheetAxis } {
+  let defaultRow = 255;
+  let defaultCol = 8 * 256 + 182;
+  const rows: Array<[number, number]> = [];
+  const cols: Array<[number, number]> = [];
+  walk(stream, offset, Infinity, (id, data) => {
+    const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    if (id === DEFAULTROWHEIGHT && data.length >= 4) {
+      const h = dv.getUint16(2, true);
+      if (h > 0) defaultRow = h;
+    } else if (id === DEFCOLWIDTH && data.length >= 2) {
+      defaultCol = dv.getUint16(0, true) * 256 + 182;
+    } else if (id === ROW_RECORD && data.length >= 16) {
+      const rw = dv.getUint16(0, true);
+      const miy = dv.getUint16(6, true);
+      const hidden = (dv.getUint32(12, true) & 0x20) !== 0;
+      if (hidden) rows.push([rw, 0]);
+      else if (!(miy & 0x8000)) rows.push([rw, miy & 0x7fff]);
+    } else if (id === COLINFO && data.length >= 10) {
+      const first = dv.getUint16(0, true);
+      const last = Math.min(dv.getUint16(2, true), MAX_SHEET_COLS_INDEX - 1);
+      const hidden = (dv.getUint16(8, true) & 1) !== 0;
+      const width = hidden ? 0 : dv.getUint16(4, true);
+      for (let c = first; c <= last; c++) cols.push([c, width]);
+    }
+  });
+  return {
+    rows: new SheetAxis(defaultRow, rows, MAX_SHEET_ROWS_INDEX),
+    cols: new SheetAxis(defaultCol, cols, MAX_SHEET_COLS_INDEX),
+  };
 }
 
 /* ---- Planilha aberta: abas, células e imagens com a forma do leitor de XLSX ---- */
@@ -868,9 +942,41 @@ export function openXlsWorkbook(
       blips ??= blipStore(group);
       const out: SheetImage[] = [];
       const cache = new Map<number, Uint8Array>();
-      for (const shape of shapesOf(drawing)) {
+      const axes = sheetAxes(stream, target.offset);
+      const placed = shapesOf(drawing)
+        .map((shape) => {
+          const a = shape.anchor;
+          const x1 = pointOf(
+            axes.cols,
+            a.col,
+            (a.dx / 1024) * axes.cols.size(a.col),
+          );
+          const y1 = pointOf(
+            axes.rows,
+            a.row,
+            (a.dy / 256) * axes.rows.size(a.row),
+          );
+          const x2 = pointOf(
+            axes.cols,
+            a.col2,
+            (a.dx2 / 1024) * axes.cols.size(a.col2),
+          );
+          const y2 = pointOf(
+            axes.rows,
+            a.row2,
+            (a.dy2 / 256) * axes.rows.size(a.row2),
+          );
+          return {
+            pib: shape.pib,
+            x: x1,
+            y: y1,
+            ...cellsOfRect(axes.rows, axes.cols, { x1, y1, x2, y2 }),
+          };
+        })
+        .filter((p) => !cols || imageInCols(p, cols))
+        .sort((a, b) => a.y - b.y || a.x - b.x);
+      for (const shape of placed) {
         if (out.length >= maxImages) break;
-        if (cols && !cols.has(shape.col)) continue;
         const blip = blips[shape.pib];
         if (!blip) continue;
         let bytes = cache.get(shape.pib);
@@ -884,6 +990,10 @@ export function openXlsWorkbook(
         out.push({
           row: shape.row,
           col: shape.col,
+          toRow: shape.toRow,
+          toCol: shape.toCol,
+          centerRow: shape.centerRow,
+          centerCol: shape.centerCol,
           name: `image${shape.pib}.${blip.ext}`,
           mime: blip.mime,
           bytes,

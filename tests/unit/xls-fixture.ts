@@ -43,6 +43,12 @@ export interface XlsFixtureImage {
   kind: "png" | "jpeg" | "emf";
   /** Identificadores de 16 bytes antes dos dados (1 ou 2, conforme a instância do blip). */
   uids?: 1 | 2;
+  /** Deslocamento dentro da célula de começo (1/256 da altura da linha). */
+  dy?: number;
+  /** Célula de fim (padrão: a seguinte, sem deslocamento) e o deslocamento nela. */
+  row2?: number;
+  col2?: number;
+  dy2?: number;
 }
 
 export interface XlsFixtureOptions {
@@ -288,11 +294,11 @@ function sheetDrawing(
             image.col,
             0,
             image.row,
+            image.dy ?? 0,
+            image.col2 ?? image.col + 1,
             0,
-            image.col + 1,
-            0,
-            image.row + 1,
-            0,
+            image.row2 ?? image.row + 1,
+            image.dy2 ?? 0,
           ),
         ),
         escher(0, 0, 0xf011, new Uint8Array(0)),

@@ -95,8 +95,7 @@ export const pt = {
   "bookingLots.col.fileName": "Planilha",
   "bookingLots.col.itemCount": "Itens",
   "bookingLots.col.pendingItems": "Incompletos",
-  "bookingLots.col.viable":
-    "Previsão",
+  "bookingLots.col.viable": "Previsão",
   "bookingLots.col.owner": "Responsável",
   "bookingLots.col.createdAt": "Carregado em",
   "bookingLots.status.preparing": "Em preenchimento (parceiro)",
@@ -230,13 +229,44 @@ export const pt = {
   "bookingLots.item.col.departureIntervalDays": "Intervalo de saída (dias)",
   "bookingLots.item.col.purchaseQty": "Qtd de compra (pç)",
   "bookingLots.item.col.plannedQty": "Peças planejadas (TT PCS)",
-  "bookingLots.item.col.analysis":
-    "Previsão de preço",
+  "bookingLots.item.col.analysis": "Previsão de preço",
   "bookingLots.item.col.check": "Conferência",
   "bookingLots.item.edit": "{field} do item {n}",
   "bookingLots.item.missing": "Falta: {list}",
   "bookingLots.item.complete": "Completo",
   "bookingLots.item.card": "Cartão",
+  "bookingLots.photos.add": "Carregar fotos do item",
+  "bookingLots.photos.pending": "Enviando…",
+  "bookingLots.photos.uploading": "Enviando… {percent}%",
+  "bookingLots.photos.failed": "Falha no envio da foto",
+  "bookingLots.photos.manage":
+    "Fotos do item ({n}): abrir, trocar a principal ou tirar",
+  "bookingLots.photos.title": "Fotos do item {item}",
+  "bookingLots.photos.close": "Fechar",
+  "bookingLots.photos.open": "Abrir a foto",
+  "bookingLots.photos.main": "Principal",
+  "bookingLots.photos.makeMain": "Tornar principal",
+  "bookingLots.photos.remove": "Tirar do item",
+  "bookingLots.photos.removeHint":
+    "A foto sai do item; o arquivo continua guardado.",
+  "bookingLots.photos.limit":
+    "Até {max} fotos por item. A principal aparece na tabela e segue para a seleção.",
+  "bookingLots.photos.reload": "Buscar as fotos na planilha",
+  "bookingLots.photos.reloadPending": "Buscando as fotos…",
+  "bookingLots.photos.reloadHint":
+    "{n} item(ns) sem foto. Lê de novo a planilha guardada e põe as fotos que encontrar; nada mais muda.",
+  "bookingLots.photos.reloaded":
+    "Fotos buscadas na planilha: {filled} de {missing} item(ns) sem foto ganharam foto.",
+  "bookingLots.photos.reloadedNone":
+    "A planilha não tem foto legível para os {missing} item(ns) sem foto. Carregue pelo + na coluna Foto.",
+  "bookingLots.photos.reloadedAll": "Todos os itens já têm foto.",
+  "bookingLots.photos.reloadedFailed": "{n} planilha(s) não abriram.",
+  "bookingLots.error.booking_item_photos_max":
+    "O item já tem o máximo de fotos. Tire alguma antes de carregar mais.",
+  "bookingLots.error.photo_required": "Escolha ao menos uma foto.",
+  "bookingLots.error.mime":
+    "Formato não aceito: envie uma imagem (JPEG, PNG ou WebP).",
+  "bookingLots.error.too_large": "A foto passa do tamanho máximo (50 MB).",
   "bookingLots.item.missingData": "Faltou: {list}",
 
   "bookingLots.partner.title": "Fornecedor",
@@ -396,8 +426,7 @@ export const en: typeof pt = {
   "bookingLots.col.fileName": "Spreadsheet",
   "bookingLots.col.itemCount": "Items",
   "bookingLots.col.pendingItems": "Incomplete",
-  "bookingLots.col.viable":
-    "Forecast",
+  "bookingLots.col.viable": "Forecast",
   "bookingLots.col.owner": "Owner",
   "bookingLots.col.createdAt": "Uploaded on",
   "bookingLots.status.preparing": "Being filled in (partner)",
@@ -531,13 +560,44 @@ export const en: typeof pt = {
   "bookingLots.item.col.departureIntervalDays": "Departure interval (days)",
   "bookingLots.item.col.purchaseQty": "Purchase qty (pcs)",
   "bookingLots.item.col.plannedQty": "Planned pieces (TT PCS)",
-  "bookingLots.item.col.analysis":
-    "Price forecast",
+  "bookingLots.item.col.analysis": "Price forecast",
   "bookingLots.item.col.check": "Check",
   "bookingLots.item.edit": "{field} of item {n}",
   "bookingLots.item.missing": "Missing: {list}",
   "bookingLots.item.complete": "Complete",
   "bookingLots.item.card": "Card",
+  "bookingLots.photos.add": "Upload item photos",
+  "bookingLots.photos.pending": "Uploading…",
+  "bookingLots.photos.uploading": "Uploading… {percent}%",
+  "bookingLots.photos.failed": "Photo upload failed",
+  "bookingLots.photos.manage":
+    "Item photos ({n}): open, change the main one or remove",
+  "bookingLots.photos.title": "Photos of item {item}",
+  "bookingLots.photos.close": "Close",
+  "bookingLots.photos.open": "Open the photo",
+  "bookingLots.photos.main": "Main",
+  "bookingLots.photos.makeMain": "Make main",
+  "bookingLots.photos.remove": "Remove from item",
+  "bookingLots.photos.removeHint":
+    "The photo leaves the item; the file stays stored.",
+  "bookingLots.photos.limit":
+    "Up to {max} photos per item. The main one shows in the table and goes on to the selection.",
+  "bookingLots.photos.reload": "Fetch the photos from the sheet",
+  "bookingLots.photos.reloadPending": "Fetching the photos…",
+  "bookingLots.photos.reloadHint":
+    "{n} item(s) without a photo. Reads the stored sheet again and adds the photos it finds; nothing else changes.",
+  "bookingLots.photos.reloaded":
+    "Photos fetched from the sheet: {filled} of {missing} item(s) without a photo got one.",
+  "bookingLots.photos.reloadedNone":
+    "The sheet has no readable photo for the {missing} item(s) without one. Upload with the + in the Photo column.",
+  "bookingLots.photos.reloadedAll": "Every item already has a photo.",
+  "bookingLots.photos.reloadedFailed": "{n} sheet(s) could not be opened.",
+  "bookingLots.error.booking_item_photos_max":
+    "The item already has the maximum number of photos. Remove one before uploading more.",
+  "bookingLots.error.photo_required": "Choose at least one photo.",
+  "bookingLots.error.mime":
+    "Format not accepted: upload an image (JPEG, PNG or WebP).",
+  "bookingLots.error.too_large": "The photo is over the maximum size (50 MB).",
   "bookingLots.item.missingData": "Missing: {list}",
 
   "bookingLots.partner.title": "Supplier",
@@ -691,8 +751,7 @@ export const zh: typeof pt = {
   "bookingLots.col.fileName": "表格",
   "bookingLots.col.itemCount": "条目",
   "bookingLots.col.pendingItems": "不完整",
-  "bookingLots.col.viable":
-    "预测",
+  "bookingLots.col.viable": "预测",
   "bookingLots.col.owner": "负责人",
   "bookingLots.col.createdAt": "上传日期",
   "bookingLots.status.preparing": "填写中（合作方）",
@@ -714,8 +773,7 @@ export const zh: typeof pt = {
   "bookingLots.import.currency": "表格未注明时的币种",
   "bookingLots.import.currencyHint": "用于列和表头都没有币种的价格。",
   "bookingLots.import.currencyDefault": "默认币种",
-  "bookingLots.import.currencyDefaultHint":
-    "仅用于列和表头都没有币种的价格。",
+  "bookingLots.import.currencyDefaultHint": "仅用于列和表头都没有币种的价格。",
   "bookingLots.import.currencyDefaultNote":
     "默认币种：仅用于列和表头都没有币种的价格。",
   "bookingLots.import.currencyInfo": "关于默认币种",
@@ -823,13 +881,41 @@ export const zh: typeof pt = {
   "bookingLots.item.col.departureIntervalDays": "出货间隔（天）",
   "bookingLots.item.col.purchaseQty": "采购数量（件）",
   "bookingLots.item.col.plannedQty": "计划件数（TT PCS）",
-  "bookingLots.item.col.analysis":
-    "价格预测",
+  "bookingLots.item.col.analysis": "价格预测",
   "bookingLots.item.col.check": "核对",
   "bookingLots.item.edit": "条目 {n} 的{field}",
   "bookingLots.item.missing": "缺少：{list}",
   "bookingLots.item.complete": "完整",
   "bookingLots.item.card": "名片",
+  "bookingLots.photos.add": "上传商品照片",
+  "bookingLots.photos.pending": "上传中…",
+  "bookingLots.photos.uploading": "上传中… {percent}%",
+  "bookingLots.photos.failed": "照片上传失败",
+  "bookingLots.photos.manage": "商品照片（{n}）：打开、更换主图或移除",
+  "bookingLots.photos.title": "商品 {item} 的照片",
+  "bookingLots.photos.close": "关闭",
+  "bookingLots.photos.open": "打开照片",
+  "bookingLots.photos.main": "主图",
+  "bookingLots.photos.makeMain": "设为主图",
+  "bookingLots.photos.remove": "从商品移除",
+  "bookingLots.photos.removeHint": "照片从商品中移除，文件仍然保留。",
+  "bookingLots.photos.limit":
+    "每个商品最多 {max} 张照片。主图显示在表格中并进入选品。",
+  "bookingLots.photos.reload": "从表格重新读取照片",
+  "bookingLots.photos.reloadPending": "正在读取照片…",
+  "bookingLots.photos.reloadHint":
+    "{n} 个商品没有照片。重新读取已保存的表格并补上找到的照片，其他内容不变。",
+  "bookingLots.photos.reloaded":
+    "已从表格读取照片：{missing} 个无照片商品中有 {filled} 个补上了照片。",
+  "bookingLots.photos.reloadedNone":
+    "表格中没有这 {missing} 个商品可读取的照片。请用照片列的 + 上传。",
+  "bookingLots.photos.reloadedAll": "所有商品都已有照片。",
+  "bookingLots.photos.reloadedFailed": "{n} 个表格无法打开。",
+  "bookingLots.error.booking_item_photos_max":
+    "该商品照片已达上限。请先移除一张再上传。",
+  "bookingLots.error.photo_required": "请至少选择一张照片。",
+  "bookingLots.error.mime": "格式不支持：请上传图片（JPEG、PNG 或 WebP）。",
+  "bookingLots.error.too_large": "照片超过最大大小（50 MB）。",
   "bookingLots.item.missingData": "缺少：{list}",
 
   "bookingLots.partner.title": "供应商",
@@ -854,8 +940,7 @@ export const zh: typeof pt = {
   "bookingLots.error.booking_lot_locked": "此 Book 已不是草稿：数据不再更改。",
   "bookingLots.error.booking_item_invalid":
     "无法读取的值。请使用大于零的数字、FOB 或 EXW，以及 USD、RMB、BRL 或 EUR。",
-  "bookingLots.error.booking_gross_not_above_net":
-    "毛重必须大于该商品的净重。",
+  "bookingLots.error.booking_gross_not_above_net": "毛重必须大于该商品的净重。",
   "bookingLots.error.booking_gross_formula":
     "毛重公式：请使用 =*1.07（净重乘以该数字），并先填写该商品的净重。",
   "bookingLots.item.grossFormulaHint":

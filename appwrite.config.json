@@ -12325,6 +12325,13 @@
           "default": null,
           "type": "varchar",
           "size": 60
+        },
+        {
+          "key": "extraPhotoDocumentIds",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [

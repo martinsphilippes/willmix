@@ -28,6 +28,8 @@ import {
   type BookingLotStatus,
 } from "@/lib/db/schema";
 import {
+  BOOKING_ITEM_PHOTOS_MAX,
+  bookingItemPhotos,
   bookingItemTypes,
   chosenBookingItemIds,
   getBookingLot,
@@ -83,6 +85,8 @@ import {
   setBookingLotNoteAction,
 } from "../../../actions/booking-lots";
 import { reclassifyBookingNcmAction } from "../../../actions/booking-ncm";
+import { reloadBookingLotPhotosAction } from "../../../actions/booking-lots";
+import { BookingItemPhotosCell } from "../../_components/item-photos";
 import {
   entityLinkAccess,
   linksForLot,
@@ -236,6 +240,10 @@ export default async function BookingLotPage({
   const editable = bookingLotEditable(lot.status);
   // NCM: editável em qualquer situação menos Cancelado (docs/BOOKING.md, "NCM do item").
   const ncmEditable = lot.status !== "cancelled";
+  // Fotos do item: como o NCM, em qualquer situação menos Cancelado (a foto
+  // não entra na previsão de preço; dono, 26/11/2026).
+  const photosEditable = lot.status !== "cancelled";
+  const noPhoto = items.filter((i) => !i.photoDocumentId).length;
   const ncmWithBroker = items.filter(
     (i) => !i.ncm && !!i.ncmRequestedAt,
   ).length;
@@ -311,6 +319,22 @@ export default async function BookingLotPage({
     notices.push(["success", t("bookWork.manufacturer.removed")]);
   if (one("supplier") === "created")
     notices.push(["success", t("bookingLots.detail.supplierCreated")]);
+  if (one("photosMissing")) {
+    const filled = Number(one("photosFilled")) || 0;
+    const missing = Number(one("photosMissing")) || 0;
+    const failed = Number(one("photosFailed")) || 0;
+    notices.push([
+      filled ? "success" : "info",
+      (filled
+        ? t("bookingLots.photos.reloaded", { filled, missing })
+        : missing
+          ? t("bookingLots.photos.reloadedNone", { missing })
+          : t("bookingLots.photos.reloadedAll")) +
+        (failed
+          ? ` ${t("bookingLots.photos.reloadedFailed", { n: failed })}`
+          : ""),
+    ]);
+  }
 
   const hint = lot.supplierHint;
   const sheetSupplier = hint?.name ?? null;
@@ -629,32 +653,18 @@ export default async function BookingLotPage({
                 )}
                 data-booking-item-photo=""
               >
-                <span className="flex gap-1">
-                  {[item.photoDocumentId, item.cardDocumentId]
-                    .filter((d): d is string => !!d)
-                    .map((doc) => (
-                      <a
-                        key={doc}
-                        href={`/api/files/${doc}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        title={
-                          doc === item.cardDocumentId
-                            ? t("bookingLots.item.card")
-                            : t("bookingLots.item.col.photo")
-                        }
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
-                        <img
-                          src={`/api/files/${doc}`}
-                          alt=""
-                          className="h-10 w-10 rounded border border-zinc-200 object-cover"
-                          loading="lazy"
-                        />
-                      </a>
-                    ))}
-                  {!item.photoDocumentId && !item.cardDocumentId ? muted : null}
-                </span>
+                {/* Fotos do item (dono, 26/11/2026): a principal, o
+                    cartão, o "+" e a galeria com as adicionais. */}
+                <BookingItemPhotosCell
+                  t={t}
+                  lotId={lot.id}
+                  itemId={item.id}
+                  label={item.itemNumber ?? String(item.position + 1)}
+                  photos={bookingItemPhotos(item)}
+                  cardDocumentId={item.cardDocumentId}
+                  canEdit={photosEditable}
+                  max={BOOKING_ITEM_PHOTOS_MAX}
+                />
               </td>
               <td className="border-b border-zinc-100 px-2 py-2 align-top text-xs">
                 <Badge tone={refused ? "danger" : done ? "success" : "neutral"}>
@@ -875,6 +885,22 @@ export default async function BookingLotPage({
             {text}
           </Alert>
         ))}
+        {photosEditable && noPhoto ? (
+          <form
+            action={reloadBookingLotPhotosAction}
+            className="flex flex-wrap items-center gap-2 text-sm text-zinc-600"
+            data-booking-lot-photos-reload={noPhoto}
+          >
+            <input type="hidden" name="lotId" value={lot.id} />
+            <span>{t("bookingLots.photos.reloadHint", { n: noPhoto })}</span>
+            <SubmitButton
+              variant="secondary"
+              pendingText={t("bookingLots.photos.reloadPending")}
+            >
+              {t("bookingLots.photos.reload")}
+            </SubmitButton>
+          </form>
+        ) : null}
         {ncmEditable && ncmMissing ? (
           <form
             action={reclassifyBookingNcmAction}
