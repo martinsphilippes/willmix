@@ -135,9 +135,11 @@ test("Book: fotos da coluna PHOTOS, carregar, trocar a principal e tirar", async
     .locator(`[data-booking-item-photo-doc='${docs[1]}']`)
     .getByRole("button", { name: "Tornar principal" })
     .click();
+  // A miniatura da célula (a galeria fechada também tem o link) passa a
+  // ser a segunda foto.
   await expect(
-    first.locator(`[data-booking-item-photo] a[href='/api/files/${docs[1]}']`),
-  ).toBeVisible({ timeout: 20_000 });
+    first.getByRole("link", { name: "Foto", exact: true }).first(),
+  ).toHaveAttribute("href", `/api/files/${docs[1]}`, { timeout: 20_000 });
   await first.getByRole("button", { name: /Fotos do item \(2\)/ }).click();
   await page
     .locator("dialog[open]")
