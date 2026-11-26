@@ -7,7 +7,12 @@ import {
   type Party,
   type PartyType,
 } from "@/lib/db/schema";
-import { FEATURED_PARTY_TYPES, OTHER_PARTY_TYPES } from "@/lib/party-types";
+import {
+  canonicalPartyType,
+  FEATURED_PARTY_TYPES,
+  LEGACY_PARTY_TYPES,
+  OTHER_PARTY_TYPES,
+} from "@/lib/party-types";
 
 /*
  * Catálogo de tipos de parceiro (docs/PARTNER_TYPES.md): os oito de fábrica
@@ -101,11 +106,14 @@ export function partnerTypeName(entry: PartnerTypeEntry, locale: Locale) {
     : entry.key;
 }
 
-/** Valor do tipo de um cadastro (para o formulário e o filtro). */
+/**
+ * Valor do tipo de um cadastro (para o formulário e o filtro). A chave antiga
+ * vale como a de hoje (`supplier_partner` → `trading`, Supplier/Trading).
+ */
 export const partyTypeValue = (p: Pick<Party, "type" | "partnerTypeId">) =>
   p.type === "partner" && p.partnerTypeId
     ? customValue(p.partnerTypeId)
-    : p.type;
+    : canonicalPartyType(p.type);
 
 /** Nome do tipo de um cadastro; o tipo inativo ou apagado continua legível. */
 export function partyTypeLabel(
@@ -135,6 +143,11 @@ export function loginTypeLabel(
   return entry ? partnerTypeName(entry, locale) : null;
 }
 
+/** Nomes de antes da junção (planilhas antigas). "Trading" já é a chave. */
+const LEGACY_NAMES: Record<string, readonly string[]> = {
+  supplier_partner: ["Supplier"],
+};
+
 /** Sem acento nem caixa, com espaços simples: para comparar nomes. */
 export const foldTypeText = (text: string) =>
   text
@@ -159,6 +172,10 @@ function aliases(entry: PartnerTypeEntry): string[] {
   if (entry.builtin)
     for (const l of LOCALES)
       out.push(dictionaries[l][`party.${entry.builtin}`]);
+  // As chaves antigas que viraram este tipo ("supplier_partner" → Trading)
+  // e os nomes separados de antes ("Supplier", "Trading").
+  for (const [old, now] of Object.entries(LEGACY_PARTY_TYPES))
+    if (now === entry.builtin) out.push(old, ...(LEGACY_NAMES[old] ?? []));
   return [...new Set(out.map(foldTypeText).filter(Boolean))];
 }
 

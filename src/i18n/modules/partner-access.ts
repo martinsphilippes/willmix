@@ -114,7 +114,7 @@ export const pt = {
   "partnerAccess.kind.groups.type": "Tipos de parceiro",
   "partnerAccess.kind.groups.role": "Papéis de login",
   "partnerAccess.kindHint":
-    "Tipo de parceiro é a categoria do cadastro (Trading, Factory, Supplier, GP e os criados no painel). Papel de login é como a pessoa entra no portal (Fornecedor, Cliente, Agência…). “Supplier” é um tipo de parceiro; “Fornecedor” é um papel de login: cada um tem as suas telas.",
+    "Tipo de parceiro é a categoria do cadastro (Supplier/Trading, Factory, GP e os criados no painel). Papel de login é como a pessoa entra no portal (Fornecedor, Cliente, Agência…). “Supplier/Trading” é um tipo de parceiro; “Fornecedor” é um papel de login: cada um tem as suas telas.",
   "partnerAccess.state.hidden": "Liberada, fora do menu",
   "partnerAccess.filter.state.open": "Liberada (abre)",
   "partnerAccess.filter.state.hidden": "Fora do menu (abre pelo endereço)",
@@ -309,7 +309,7 @@ export const en: typeof pt = {
   "partnerAccess.kind.groups.type": "Partner types",
   "partnerAccess.kind.groups.role": "Login roles",
   "partnerAccess.kindHint":
-    "A partner type is the category of the record (Trading, Factory, Supplier, GP and the ones created in the panel). A login role is how the person signs in to the portal (Supplier role, Customer, Agency…). “Supplier” the partner type and “Fornecedor” the login role are different: each has its own screens.",
+    "A partner type is the category of the record (Supplier/Trading, Factory, GP and the ones created in the panel). A login role is how the person signs in to the portal (Supplier role, Customer, Agency…). “Supplier/Trading” the partner type and “Fornecedor” the login role are different: each has its own screens.",
   "partnerAccess.state.hidden": "Allowed, off the menu",
   "partnerAccess.filter.state.open": "Allowed (opens)",
   "partnerAccess.filter.state.hidden": "Off the menu (opens by address)",
@@ -495,7 +495,7 @@ export const zh: typeof pt = {
   "partnerAccess.kind.groups.type": "合作方类型",
   "partnerAccess.kind.groups.role": "登录角色",
   "partnerAccess.kindHint":
-    "合作方类型是档案的分类（Trading、Factory、Supplier、GP 以及在面板中创建的类型）。登录角色是此人登录门户的身份（供应商、客户、代理……）。“Supplier”是合作方类型，“供应商”是登录角色：各自有自己的页面。",
+    "合作方类型是档案的分类（Supplier/Trading、Factory、GP 以及在面板中创建的类型）。登录角色是此人登录门户的身份（供应商、客户、代理……）。“Supplier/Trading”是合作方类型，“供应商”是登录角色：各自有自己的页面。",
   "partnerAccess.state.hidden": "已开放，不在菜单中",
   "partnerAccess.filter.state.open": "已开放（可打开）",
   "partnerAccess.filter.state.hidden": "不在菜单中（可通过地址打开）",

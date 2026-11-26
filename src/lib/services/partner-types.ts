@@ -9,7 +9,7 @@ import {
   type User,
 } from "@/lib/db";
 import { PARTY_TYPES } from "@/lib/db/schema";
-import { OTHER_PARTY_TYPES } from "@/lib/party-types";
+import { canonicalPartyType, OTHER_PARTY_TYPES } from "@/lib/party-types";
 import { dictionaries } from "@/i18n/dictionaries";
 import {
   CUSTOM_PREFIX,
@@ -215,7 +215,9 @@ export async function resolvePartyType(
   if (value === "customer" || value === "supplier")
     return { type: value, partnerTypeId: null };
   const catalog = await getPartnerTypeCatalog();
-  const entry = catalog.find((e) => e.value === value);
+  // Chave antiga (formulário ou rascunho de antes): `supplier_partner` → `trading`.
+  const wanted = canonicalPartyType(value);
+  const entry = catalog.find((e) => e.value === wanted);
   if (!entry) throw new Error("partner_type_invalid");
   const same =
     current &&
@@ -230,7 +232,7 @@ export async function resolvePartyType(
 /** Valor do formulário é de um tipo de "Outros parceiros"? (para o filtro da lista) */
 export const isPartnerTypeValue = (value: string) =>
   value.startsWith(CUSTOM_PREFIX) ||
-  (OTHER_PARTY_TYPES as readonly string[]).includes(value);
+  (OTHER_PARTY_TYPES as readonly string[]).includes(canonicalPartyType(value));
 
 export type ImportedPartyType =
   | {

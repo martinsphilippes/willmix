@@ -4,6 +4,25 @@ Pedido do dono (11/11/2026): quatro tipos novos em Outros parceiros (**Trading, 
 
 **Desde 18/11/2026** (dono; docs/PARTNER_FAMILIES.md): Trading, Supplier e Factory **entram na cotação de compra** (B13) pelas famílias que atendem (seção "Grupo de produto (família)" no cadastro, a mesma do Fornecedor). Se um deles vence, vira o fornecedor da solicitação ao fornecedor e do pedido de compra. Booking como fornecedor e pedido fora da cotação seguem como antes.
 
+**Desde 26/11/2026** (dono): Supplier e Trading são **um tipo só, "Supplier/Trading"** ("são a mesma coisa na verdade"). Veja a seção "Supplier/Trading" abaixo. Onde este documento fala de Trading ou de Supplier, vale o Supplier/Trading.
+
+## Supplier/Trading (26/11/2026)
+
+Pedido do dono: juntar os tipos Trading e Supplier. O que havia para um passa a valer para o outro, sem diferença, com um nome só: **Supplier/Trading**.
+
+- **Chave que fica: `trading`.** O Supplier (`supplier_partner`) só aparecia junto com o Trading no código. O Trading tinha coisas a mais: a vez ("Aguardando Supplier/Trading", `src/lib/turn.ts`), o convite de book (`INVITE_PARTNER_TYPES`) e o perfil de telas `type:trading`. Com a chave `trading`, os antigos Supplier ganham essas coisas.
+- **Nome.** É "Supplier/Trading" em pt, en e zh, nos filtros, no formulário, no cadastro, embaixo do nome do login e na vez. Os textos que listavam "Trading, Factory, Supplier, GP" passam a dizer "Supplier/Trading, Factory, GP". Os textos de fluxo que falam da trading como papel no negócio (amostras, divergência, EXW) não mudaram.
+- **Catálogo.** Os tipos em destaque passam a ser Supplier/Trading, Factory e GP (`FEATURED_PARTY_TYPES`). O `supplier_partner` sai do catálogo e não é mais oferecido.
+- **Chave antiga.** `supplier_partner` continua na lista de tipos do esquema, porque a evolução é aditiva. Ela vale como `trading` (`canonicalPartyType` e `LEGACY_PARTY_TYPES` em `src/lib/party-types.ts`) em vários lugares:
+  - no valor do tipo de um cadastro (`partyTypeValue`), no rótulo e no filtro;
+  - no perfil de telas do login (`partyProfileKey`);
+  - na gravação do formulário (`resolvePartyType`);
+  - no link `/app/parties/new?type=supplier_partner`;
+  - na planilha, onde "supplier_partner", "Trading" e "Supplier/Trading" caem no tipo unificado. Na planilha, "supplier" continua sendo o Fornecedor.
+- **Telas.** O perfil `type:trading` já tinha as mesmas telas do padrão do Supplier: as do Fornecedor mais o Booking. Nenhum login ganhou nem perdeu tela.
+- **Dados (26/11/2026).** Os 3 cadastros Supplier passaram para `trading`: NINGBO HOME-IN, YIWU SEAWAY e Passinha, cada um com o seu login. A troca ficou na auditoria (`party.type_merge`, com os cadastros antes).
+- **Mescla dos duplicados (mesmo dia).** A NINGBO HOME-IN (62387) e a YIWU SEAWAY (54134) estavam duas vezes, como Trading e como Fornecedor. Viraram um cadastro só, mantido o que tinha os pedidos e o login (docs/SANKHYA.md, "Fornecedor trocado de tipo no portal").
+
 ## O que mudou
 
 | Onde                                     | O que                                                                                                                                                                                                                                                                                                                                                    |
