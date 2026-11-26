@@ -772,7 +772,7 @@ async function messageDo(user: User, form: FormData) {
       board ? withQuery(back, "chat", `request:${id}`) : back,
       "negotiation",
       "message",
-    ) + "#conversa"
+    ) + (board ? "#conversa" : "#chat")
   );
 }
 
