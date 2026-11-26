@@ -496,9 +496,14 @@ export default async function BookingSelectionPage({
                       {t("supplierRequests.selection.similar")}
                     </Link>
                   ) : null}
+                  {/* "Abrir cotação" = marcar só este item e "Agrupar para
+                      seleção" (dono, 26/11/2026): abre a aba Seleção com o
+                      item sozinho, para seguir com a solicitação ao
+                      fornecedor. Não leva mais ao convite de book
+                      concorrente (docs/BOOKING_INVITES.md). */}
                   {basket && lot.status !== "cancelled" ? (
                     <Link
-                      href={`/app/booking/invite/${item.id}`}
+                      href={groupHref([item.id])}
                       className={cx(linkClass, "ml-2 text-xs")}
                       title={t("bookingInvites.selection.inviteHint")}
                       data-selection-invite={item.id}

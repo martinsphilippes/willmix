@@ -7,7 +7,7 @@ export const pt = {
   "nav.bookingInvites": "Convites de book",
   "bookingInvites.selection.invite": "Abrir cotação",
   "bookingInvites.selection.inviteHint":
-    "Convidar fornecedores e tradings a subir um book concorrente deste item",
+    "Abre este item sozinho na aba Seleção, como marcar só ele e Agrupar para seleção, para seguir com a cotação",
   "bookingInvites.invite.title": "Cotação: book concorrente",
   "bookingInvites.invite.back": "Voltar à seleção",
   "bookingInvites.invite.item": "Item avaliado",
@@ -94,7 +94,7 @@ export const en: Record<keyof typeof pt, string> = {
   "nav.bookingInvites": "Book invitations",
   "bookingInvites.selection.invite": "Open quotation",
   "bookingInvites.selection.inviteHint":
-    "Invite suppliers and tradings to upload a competing book for this item",
+    "Opens this item alone in the Selection tab, like ticking only it and Group for selection, to go on with the quotation",
   "bookingInvites.invite.title": "Quotation: competing book",
   "bookingInvites.invite.back": "Back to selection",
   "bookingInvites.invite.item": "Item under review",
@@ -181,7 +181,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "nav.bookingInvites": "Book 邀请",
   "bookingInvites.selection.invite": "发起询价",
   "bookingInvites.selection.inviteHint":
-    "邀请供应商和贸易商为此商品提交竞争 Book",
+    "在“选择”标签中单独打开此商品，等同于只勾选它并点击“分组选择”，以继续询价",
   "bookingInvites.invite.title": "询价：竞争 Book",
   "bookingInvites.invite.back": "返回选品",
   "bookingInvites.invite.item": "评估中的商品",
