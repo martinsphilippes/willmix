@@ -220,7 +220,10 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
           pins: ["status", "actions"].map((name) =>
             span(row.querySelector(`td[data-supplier-table-pin=${name}]`)!),
           ),
-          first: span(row.cells[0]),
+          // Foto, nº e produto fixos à esquerda (dono, 26/11/2026); a
+          // quarta coluna é a primeira que anda.
+          first: [0, 1, 2].map((i) => span(row.cells[i])),
+          fourth: span(row.cells[3]),
         };
       }, end);
     const start = await read(false);
@@ -230,7 +233,8 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     // A tabela rola (o resto anda) e as duas ficam onde estavam, coladas
     // uma na outra e na borda direita.
     expect(end.scrolled).toBeGreaterThan(0);
-    expect(end.first[0]).toBeLessThan(start.first[0]);
+    expect(end.first).toEqual(start.first);
+    expect(end.fourth[0]).toBeLessThan(start.fourth[0]);
     expect(end.pins).toEqual(start.pins);
     const [status, actions] = start.pins;
     expect(Math.abs(actions[1] - start.width)).toBeLessThanOrEqual(1);
