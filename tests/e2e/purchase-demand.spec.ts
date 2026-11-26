@@ -184,9 +184,9 @@ test("reposição aberta pelo + Adicionar entra na fila", async ({ page }) => {
   await expect(openedRow.locator('[data-order-col="saleType"]')).toHaveText(
     "Wellmix STK",
   );
-  // Na lista geral, com a etiqueta de reposição.
-  await page.goto("/app/requests?kind=replenishment");
-  await expect(
-    page.locator('[data-demand-tags="replenishment"]').first(),
-  ).toBeVisible();
+  // Do Estoque Wellmix, é só da Reposição: não aparece em Encomendas (dono,
+  // 26/11/2026).
+  await page.goto("/app/requests");
+  await expect(page.locator("[data-request-cards]")).toBeVisible();
+  await expect(page.locator(`[data-request-row="${opened}"]`)).toHaveCount(0);
 });

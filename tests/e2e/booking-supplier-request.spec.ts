@@ -38,13 +38,13 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     page,
     bookingSheet("Shenzhen Supplier A", codeA, `Glass cup ${TAG} 350ml`),
     "Shenzhen Supplier A",
-    { checkSupplierPicker: true },
+    { checkSupplierPicker: true, typeSupplier: true },
   );
   await importAndClose(
     page,
     bookingSheet("Guangzhou Supplier B", codeB, `Glass cup ${TAG} with handle`),
     "Guangzhou Supplier B",
-    { checkSupplierPicker: true },
+    { checkSupplierPicker: true, typeSupplier: true },
   );
   await page.goto("/app/booking");
   await page.fill("[data-booking-lots-search]", codeA.slice(0, 6));

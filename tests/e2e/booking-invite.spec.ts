@@ -20,13 +20,24 @@ test("seleção → abrir cotação → convidado sobe o booking concorrente", a
     "Shenzhen Supplier A",
   );
 
-  // Seleção, aba Itens: "Abrir cotação" do item.
+  // Seleção, aba Itens: "Abrir cotação" do item abre a aba Seleção com o
+  // item sozinho, como marcar só ele e "Agrupar para seleção" (dono,
+  // 26/11/2026). O convite de book concorrente segue no endereço do item.
   await page.goto(`/app/booking/selection?q=${encodeURIComponent(TAG)}`);
-  await page
+  const open = page
     .locator("[data-selection-item]", { hasText: code })
-    .locator("[data-selection-invite]")
-    .click();
-  await page.waitForURL(/\/app\/booking\/invite\//);
+    .locator("[data-selection-invite]");
+  const itemId = await open.getAttribute("data-selection-invite");
+  await open.click();
+  await page.waitForURL(
+    (url) =>
+      url.searchParams.get("tab") === "selection" &&
+      url.searchParams.get("ids") === itemId,
+  );
+  await expect(page.locator(`[data-selection-choose="${itemId}"]`)).toHaveCount(
+    1,
+  );
+  await page.goto(`/app/booking/invite/${itemId}`);
   const form = page.locator("[data-booking-invite-form]");
   await form
     .locator('[data-booking-invite-partner="fornecedor-b"] input')

@@ -1225,6 +1225,20 @@ create unique index if not exists "form_drafts_by_user_form" on public."form_dra
 create index if not exists "form_drafts_created" on public."form_drafts" ("createdAt");
 create index if not exists "form_drafts_created_id" on public."form_drafts" ("createdAt", "id");
 
+create table if not exists public."project_docs" (
+  "id" text primary key,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+alter table public."project_docs" enable row level security;
+alter table public."project_docs" add column if not exists "collection" text;
+alter table public."project_docs" add column if not exists "docId" text;
+alter table public."project_docs" add column if not exists "data" jsonb;
+create unique index if not exists "project_docs_by_doc" on public."project_docs" ("collection", "docId");
+create index if not exists "project_docs_by_collection" on public."project_docs" ("collection");
+create index if not exists "project_docs_created" on public."project_docs" ("createdAt");
+create index if not exists "project_docs_created_id" on public."project_docs" ("createdAt", "id");
+
 create table if not exists public."customer_groups" (
   "id" text primary key,
   "createdAt" timestamptz not null default now(),

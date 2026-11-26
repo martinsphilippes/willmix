@@ -25,10 +25,10 @@ import { requestStepHref, type StepAccess } from "@/lib/request-step-href";
 import { StatusLink } from "@/components/status-link";
 import { canDeleteRequest } from "@/lib/services/requests";
 import {
-  activeRequests,
   closedRequestCount,
   closedRequests,
   groupRequests,
+  listedRequests as listedActiveRequests,
 } from "@/lib/services/request-list-data";
 import {
   cancelledOrderIds,
@@ -188,7 +188,8 @@ export default async function RequestsPage({
   // Tudo numa rodada só: lista, parceiros, pendências e pedidos em andamento.
   const wellmix = isWellmix(user);
   // Só o que ainda é encomenda (dono, 16/11/2026): o banco devolve as da
-  // etapa, não o histórico inteiro (src/lib/services/request-list-data.ts).
+  // etapa, não o histórico inteiro (src/lib/services/request-list-data.ts),
+  // e as do Estoque Wellmix ficam só na Reposição (dono, 26/11/2026).
   // As encerradas, só em "Ver canceladas e excluídas"; o lote (?group=), o
   // lote todo, menos as encerradas.
   const scope = { customerId: customer ? user.partyId! : null };
@@ -200,7 +201,7 @@ export default async function RequestsPage({
             rows,
             cancelled: await cancelledOrderIds(rows.map((r) => r.orderId)),
           }))
-        : activeRequests(scope).then((rows) => ({
+        : listedActiveRequests(scope).then((rows) => ({
             rows,
             cancelled: new Set<string>(),
           })),

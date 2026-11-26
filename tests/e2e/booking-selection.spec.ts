@@ -145,12 +145,17 @@ async function importAndClose(
   await expect(page.locator("[data-booking-item-analysis]")).toHaveCount(1);
 }
 
-async function importDraft(page: Page, file: ReturnType<typeof sheet>) {
+async function importDraft(
+  page: Page,
+  file: ReturnType<typeof sheet>,
+  supplierName: string,
+) {
   await page.goto("/app/booking/import");
   await page
     .locator("[data-booking-import-form] input[type=file]")
     .setInputFiles(file);
   await fillBookMeta(page);
+  await page.locator("[data-book-supplier-name]").fill(supplierName);
   await page.click("[data-booking-import-submit]");
   await page.waitForURL(/\/app\/booking\/lots\/[^/?]+\?created=1/);
   // Sem NCM: "Estimar o NCM de novo" refaz a aproximação e avisa o resultado.
@@ -201,6 +206,7 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await importDraft(
     page,
     sheet("Guangzhou Supplier B", `${TAG}-C`, `Glass cup ${TAG} draft`),
+    "Guangzhou Supplier B",
   );
 
   // 1. Itens: o rascunho entra, sem poder ser o escolhido.

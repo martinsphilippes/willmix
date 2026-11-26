@@ -4,7 +4,8 @@ Decisão do dono (11/11/2026). Na Seleção de itens, ao avaliar um item de book
 
 ## Fluxo
 
-1. **Abrir cotação:** na aba Itens da Seleção, cada item tem o link "Abrir cotação" (`/app/booking/invite/[itemId]`). Só a Wellmix com a tela Booking abre.
+1. **Abrir o convite:** a tela do item é `/app/booking/invite/[itemId]`. Só a Wellmix com a tela Booking abre.
+   - **Mudança do dono (26/11/2026):** o link "Abrir cotação" da aba Itens da Seleção não leva mais a esta tela. Ele abre a aba Seleção com o item sozinho (`?tab=selection&ids=<item>`), como marcar só ele e "Agrupar para seleção", para seguir com a solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md, "Abas Itens e Seleção"). A tela do convite segue no ar pelo endereço, sem link no portal; os convites já enviados continuam em "Convites de book".
 2. **Convidar:**
    - A Wellmix marca fornecedores e tradings ativos, até 30 por vez, e escreve o que precisa (o parceiro lê).
    - Cada parceiro recebe um convite próprio com o mesmo `groupId`, o aviso (sino, e-mail e WhatsApp em modo mock) e a pendência "Enviar booking concorrente".

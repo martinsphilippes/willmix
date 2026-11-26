@@ -1,0 +1,75 @@
+import type { DictionaryKey } from "@/i18n/dictionaries";
+import type { User } from "@/lib/db/schema";
+import type { NavEntry } from "@/lib/nav";
+
+/*
+ * Gestão do projeto (dono, 25/11/2026; docs/PROJECT_MANAGEMENT.md): a
+ * Plataforma Wellmix v2 (visão, quadro Kanban, mapa, roadmap…) dentro do
+ * portal, só para os administradores e os logins desta lista. Fora do
+ * controle de telas: nenhuma função ou cargo abre; nada mais do portal muda.
+ */
+export const PROJECT_MANAGEMENT_EMAILS: readonly string[] = [
+  "well@wellmix.com.br",
+  // Login "Master Wellmix" (dono, 25/11/2026: "preciso garantir que esteja
+  // liberado"): vale mesmo se um dia deixar de ser administrador.
+  "well_wellmix@wellmix.com",
+];
+
+export const PROJECT_MANAGEMENT_PATH = "/app/project-management";
+
+/** Abas da plataforma, na ordem do menu dela (o id é o "#" da aba). */
+export const PM_TABS = [
+  "visao",
+  "projeto",
+  "mapa",
+  "processo",
+  "raci",
+  "personas",
+  "entregue",
+  "telas",
+  "roadmap",
+  "custos",
+  "pendencias",
+] as const;
+export type PmTab = (typeof PM_TABS)[number];
+
+export const isPmTab = (value: unknown): value is PmTab =>
+  typeof value === "string" && (PM_TABS as readonly string[]).includes(value);
+
+/** Coleções do quadro (as mesmas do banco do artifact). */
+export const PM_COLLECTIONS = ["atividades", "pessoas", "registros"] as const;
+export type PmCollection = (typeof PM_COLLECTIONS)[number];
+
+/**
+ * Quem abre: todo administrador (dono, 25/11/2026: "conceda acesso a todos
+ * os usuários que sejam admin") e os e-mails da lista.
+ */
+export function canSeeProjectManagement(
+  user: Partial<Pick<User, "email" | "role">> | null | undefined,
+): boolean {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  const email = (user.email ?? "").trim().toLowerCase();
+  return !!email && PROJECT_MANAGEMENT_EMAILS.includes(email);
+}
+
+/** Id da linha em project_docs: `<coleção>.<docId>`. */
+export const projectDocRowId = (collection: PmCollection, docId: string) =>
+  `${collection}.${docId}`;
+
+/** O grupo do menu (vazio para quem não está na lista). */
+export function projectManagementNav(
+  user: Partial<Pick<User, "email" | "role">> | null | undefined,
+): NavEntry[] {
+  if (!canSeeProjectManagement(user)) return [];
+  return [
+    {
+      key: "nav.group.projectManagement",
+      icon: "chart",
+      items: PM_TABS.map((tab) => ({
+        href: `${PROJECT_MANAGEMENT_PATH}/${tab}`,
+        key: `pm.tab.${tab}` as DictionaryKey,
+      })),
+    },
+  ];
+}

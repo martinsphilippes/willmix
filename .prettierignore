@@ -7,3 +7,4 @@ package-lock.json
 .data*
 test-results
 playwright-report
+src/lib/project-management/plataforma-html.ts
