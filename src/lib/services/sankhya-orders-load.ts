@@ -35,6 +35,10 @@ import {
   type ProjectionShipment,
 } from "@/lib/integrations/sankhya-orders-plan";
 import { milestoneOfItem } from "@/lib/milestone-release";
+import {
+  SANKHYA_SUPPLIER_TYPES,
+  sankhyaSuppliersByCode,
+} from "@/lib/sankhya-supplier";
 
 /*
  * Carga real dos pedidos de compra do Sankhya (docs/SANKHYA_INTEGRACAO.md,
@@ -531,7 +535,7 @@ async function loadOrdersChunk(
     listByIds(store, "orders", keys.map(sankhyaOrderId)),
     store.list("parties", {
       filter: {
-        type: "supplier",
+        type: [...SANKHYA_SUPPLIER_TYPES],
         sankhyaCode: [
           ...new Set(rows.map((r) => r.supplierCode).filter(Boolean)),
         ],
@@ -550,7 +554,7 @@ async function loadOrdersChunk(
     }),
   ]);
   const existingById = new Map(existing.map((o) => [o.id, o]));
-  const supplierByCode = new Map(suppliers.map((p) => [p.sankhyaCode, p]));
+  const supplierByCode = sankhyaSuppliersByCode(suppliers);
   const productByCode = new Map(products.map((p) => [p.sankhyaCode, p]));
   const companies = new Map<string, Party>();
   const held = await holdState();
@@ -755,7 +759,7 @@ async function loadShipmentsChunk(
       : Promise.resolve([]),
     store.list("parties", {
       filter: {
-        type: "supplier",
+        type: [...SANKHYA_SUPPLIER_TYPES],
         sankhyaCode: [
           ...new Set(rows.map((r) => r.supplierCode).filter(Boolean)),
         ],
@@ -765,7 +769,7 @@ async function loadShipmentsChunk(
   const loaded = new Set(orders.map((o) => o.id));
   const mainOf = new Map(orders.map((o) => [o.id, o.sankhyaCode ?? ""]));
   const itemById = new Map(items.map((i) => [i.id, i]));
-  const supplierByCode = new Map(suppliers.map((p) => [p.sankhyaCode, p]));
+  const supplierByCode = sankhyaSuppliersByCode(suppliers);
   const containers = await listByIds(
     store,
     "containers",

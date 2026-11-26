@@ -46,6 +46,11 @@ import {
   DEFAULT_SANKHYA_ERP,
   type SankhyaErpSettings,
 } from "./sankhya-settings";
+import {
+  findSankhyaSupplier,
+  isSankhyaSupplierType,
+  sankhyaSuppliersByCode,
+} from "@/lib/sankhya-supplier";
 
 /*
  * Grava no portal o que veio do Sankhya (aba Carga do Sankhya; docs/SANKHYA.md):
@@ -313,10 +318,9 @@ function productExtraFields(
     principal && principal !== "0"
       ? String(Number(principal))
       : (extra?.supplierCode ?? null);
+  // Fornecedor, Trading, Supplier ou Factory do código (src/lib/sankhya-supplier.ts).
   const supplier = supplierCode
-    ? ctx.parties.find(
-        (p) => p.type === "supplier" && p.sankhyaCode === supplierCode,
-      )
+    ? findSankhyaSupplier(ctx.parties, supplierCode)
     : undefined;
   const fx = extra?.lastFx && extra.lastFx > 0 ? extra.lastFx : null;
   const price =
@@ -480,10 +484,14 @@ export async function upsertParty(
   data: PartyData,
 ) {
   const store = getStore();
-  // O mesmo CODPARC pode ser fornecedor e cliente: um cadastro por tipo.
-  let party = ctx.parties.find(
-    (p) => p.sankhyaCode === key && p.type === data.type,
-  );
+  // O mesmo CODPARC pode ser fornecedor e cliente: um cadastro por tipo. O
+  // fornecedor trocado no portal para Trading, Supplier ou Factory continua
+  // sendo o do código: é atualizado (sem mudar o tipo), não duplicado
+  // (src/lib/sankhya-supplier.ts).
+  let party =
+    data.type === "supplier"
+      ? findSankhyaSupplier(ctx.parties, key)
+      : ctx.parties.find((p) => p.sankhyaCode === key && p.type === data.type);
   let outcome: ImportOutcome = "existing";
   const fields = {
     name: data.name,
@@ -834,9 +842,7 @@ export async function upsertSuppliersFromView(
       continue;
     }
     const data = supplierViewData(row, contacts.get(key));
-    const before = ctx.parties.find(
-      (p) => p.sankhyaCode === key && p.type === "supplier",
-    );
+    const before = findSankhyaSupplier(ctx.parties, key);
     if (before?.sankhyaRefs)
       data.sankhyaRefs = { ...before.sankhyaRefs, ...data.sankhyaRefs };
     await upsertParty(ctx, "partners", key, data);
@@ -869,10 +875,8 @@ export async function upsertProductSuppliers(
       .filter((p) => p.sankhyaCode)
       .map((p) => [String(Number(p.sankhyaCode)), p]),
   );
-  const supplierByCode = new Map(
-    ctx.parties
-      .filter((p) => p.type === "supplier" && p.sankhyaCode)
-      .map((p) => [String(Number(p.sankhyaCode)), p]),
+  const supplierByCode = sankhyaSuppliersByCode(ctx.parties, (c) =>
+    String(Number(c)),
   );
   const productIds = [...byProduct.keys()]
     .map((c) => productByCode.get(c)?.id)
@@ -1095,7 +1099,10 @@ export async function importSankhyaSet(
   // estão no portal: nos que já estão, esta carga não atualiza nada (cada
   // consulta a mais ao Sankhya atrasava a nota).
   const knownParty = new Set(
-    ctx.parties.map((p) => `${p.type}:${p.sankhyaCode}`),
+    ctx.parties.map(
+      (p) =>
+        `${isSankhyaSupplierType(p.type) ? "supplier" : p.type}:${p.sankhyaCode}`,
+    ),
   );
   const extras = await partnerExtras([
     ...set.partners.filter(

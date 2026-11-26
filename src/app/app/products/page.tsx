@@ -54,6 +54,7 @@ import {
   sortProducts,
 } from "@/lib/services/product-list";
 import { awaitingApproval } from "@/lib/product-approval";
+import { SANKHYA_SUPPLIER_TYPES } from "@/lib/sankhya-supplier";
 
 const BULK_FORM = "products-bulk";
 
@@ -90,7 +91,10 @@ export default async function ProductsPage({
     store.list("product_lines", { orderBy: "name" }),
     // Fornecedores: só id e nome (nome na coluna e na busca); o filtro
     // escolhe por busca (~5,7 mil fornecedores não cabem numa lista).
-    listColumns(store, "parties", ["name"], { filter: { type: "supplier" } }),
+    // Trading, Supplier e Factory também (src/lib/sankhya-supplier.ts).
+    listColumns(store, "parties", ["name"], {
+      filter: { type: [...SANKHYA_SUPPLIER_TYPES] },
+    }),
   ]);
   // Excluídos (inativos) ficam fora da lista, em "Ver excluídos"; os novos
   // aguardando a aprovação, em "Aguardando aprovação".
