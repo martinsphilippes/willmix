@@ -5,7 +5,11 @@ import { assertCan } from "@/lib/auth/function-access";
 import { isWellmix } from "@/lib/auth/permissions";
 import { demandKind } from "@/lib/purchase-demand";
 import { createRequest, RequestError } from "./requests";
-import { ensureStockParty } from "./stock-party";
+import {
+  STOCK_PARTY_ID,
+  ensureStockParty,
+  isStockCustomer,
+} from "./stock-party";
 
 /*
  * Compra por demanda (mapa B10 e B14, dono 15/11/2026;
@@ -74,12 +78,26 @@ export async function openReplenishment(
  * Pedido em diante. O banco devolve só as abertas (índice `by_origin`).
  */
 export async function listDemands(kind: "replenishment"): Promise<Request[]> {
-  const rows = await getStore().list("requests", {
-    filter: { origin: "replenishment", status: [...OPEN_DEMAND_STATUSES] },
-    orderBy: "createdAt",
-    direction: "desc",
-  });
-  return rows.filter((r) => demandKind(r) === kind);
+  const store = getStore();
+  const status = [...OPEN_DEMAND_STATUSES];
+  // Tudo do Estoque Wellmix é reposição (dono, 26/11/2026): também a compra
+  // para estoque aberta pela Nova solicitação, que saiu de Encomendas.
+  const [byOrigin, stock] = await Promise.all([
+    store.list("requests", {
+      filter: { origin: "replenishment", status },
+      orderBy: "createdAt",
+      direction: "desc",
+    }),
+    store.list("requests", {
+      filter: { customerId: STOCK_PARTY_ID, status },
+      orderBy: "createdAt",
+      direction: "desc",
+    }),
+  ]);
+  const seen = new Set(byOrigin.map((r) => r.id));
+  return [...byOrigin, ...stock.filter((r) => !seen.has(r.id))]
+    .filter((r) => demandKind(r) === kind || isStockCustomer(r.customerId))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 /**
