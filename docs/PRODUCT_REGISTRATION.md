@@ -70,7 +70,8 @@ Nada é inventado: o que o processo não tem fica em branco. As fotos (a do item
 
 - Colunas padrão conhecidas: DESCRPROD, REFFORN, MARCA, AD_CODMARCAWELL, CODGRUPOPROD, CODPARCFORN, CODPAIS, AD_IDPORTO, CODVOL, CODVOLCOMPRA, AD_DESCONTINUADO, ALTURA, LARGURA, ESPESSURA, PESOLIQ, PESOBRUTO e NCM.
 - Os campos personalizados (AD_*) do Sankhya da Wellmix não estão no código: a coluna é achada no **dicionário do Sankhya** (TDDCAM da TGFPRO) pela descrição do campo, que é o nome na tela dele ("Gerente de Produto", "Factory Code", "Obrig. Certif. INMETRO"...) ou o cabeçalho da planilha. As opções das listas vêm do TDDOPC.
-- O dicionário é lido uma vez e guardado no portal (`settings`, chave `sankhya.productDictionary`); o administrador lê de novo pelo botão "Ler os campos do Sankhya" no quadro **Campos no Sankhya**, no fim da tela.
+- A credencial é a de Configurações → Integração Sankhya (ou as variáveis de ambiente), a mesma do resto da integração.
+- O dicionário é lido sozinho na primeira vez que a tela abre com a credencial e guardado no portal (`settings`, chave `sankhya.productDictionary`); o administrador lê de novo pelo botão "Ler os campos do Sankhya" no quadro **Campos no Sankhya**, no fim da tela.
 - No mesmo quadro, o administrador corrige a coluna de um campo ou digita "-" para não enviá-lo (`sankhya.productFieldMap`). Com o dicionário lido, coluna que não existe nele não vai (o Sankhya recusaria o cadastro inteiro). Duas vezes a mesma coluna: fica o primeiro campo.
 - Campo com valor e sem coluna fica só no portal, e a tela lista quais não foram.
 

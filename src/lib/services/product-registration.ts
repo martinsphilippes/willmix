@@ -407,6 +407,17 @@ export async function registrationContext(
       readProductDictionary(),
       readFieldOverrides(),
     ]);
+  // Dicionário ainda não lido: lê uma vez do Sankhya (com a credencial) e
+  // guarda; sem ele, só os campos padrão têm coluna.
+  let dict = dictionary;
+  if (!dict) {
+    const { getSankhyaConfigStatus } = await settings();
+    if ((await getSankhyaConfigStatus()).config)
+      dict = await loadProductDictionary(user).catch((error) => {
+        console.error("[product-registration] dicionário", error);
+        return null;
+      });
+  }
   const { samplingApproved } = await import("@/lib/supplier-request-sampling");
   const prefill = prefillValues(
     await prefillSource(request, item, lot, supplier, lines),
@@ -423,8 +434,8 @@ export async function registrationContext(
     product,
     lines,
     values: mergeValues(prefill, request.registration?.values),
-    columns: resolveColumns(dictionary, overrides),
-    dictionary,
+    columns: resolveColumns(dict, overrides),
+    dictionary: dict,
     overrides,
     state: registrationState({
       productId: request.productId ?? null,
@@ -626,18 +637,24 @@ async function sendNow(
   values: RegistrationValues,
 ): Promise<SendOutcome> {
   const store = getStore();
-  const { sankhyaConfig } = await import("@/lib/integrations/sankhya-client");
-  const { getSankhyaErpSettings, syncedStamp } = await Promise.all([
-    settings(),
-    import("@/lib/integrations/sankhya-sync"),
-  ]).then(([a, b]) => ({ ...a, syncedStamp: b.syncedStamp }));
-  const erp = await getSankhyaErpSettings();
-  // Sem credencial ou com a execução no Sankhya desligada (Configurações →
-  // Sankhya → Processos): o cadastro fica gravado no portal, sem envio.
-  if (!sankhyaConfig() || !erp.ordersEnabled) {
+  const { getSankhyaErpSettings, getSankhyaConfigStatus, syncedStamp } =
+    await Promise.all([
+      settings(),
+      import("@/lib/integrations/sankhya-sync"),
+    ]).then(([a, b]) => ({ ...a, syncedStamp: b.syncedStamp }));
+  const [erp, credentials] = await Promise.all([
+    getSankhyaErpSettings(),
+    getSankhyaConfigStatus(),
+  ]);
+  // Credencial: a gravada em Configurações → Integração Sankhya (ou as
+  // variáveis de ambiente), a mesma do cliente do Sankhya. Sem ela ou com a
+  // execução no Sankhya desligada (Configurações → Sankhya → Processos): o
+  // cadastro fica gravado no portal, sem envio.
+  const configured = !!credentials.config;
+  if (!configured || !erp.ordersEnabled) {
     await saveValues(user, request, values, {
       sendStatus: "off",
-      sendDetail: !sankhyaConfig() ? "not_configured" : "execution_off",
+      sendDetail: !configured ? "not_configured" : "execution_off",
       skipped: null,
     });
     return "off";
