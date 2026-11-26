@@ -117,6 +117,7 @@ export const pt = {
   "supplierRequests.table.set.unit": "sets",
   "supplierRequests.table.set.price": "Preço por set",
   "supplierRequests.table.set.moq": "Pedido mínimo (sets)",
+  "supplierRequests.table.col.photoMarketing": "Foto Marketing",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -228,6 +229,7 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierRequests.table.set.unit": "sets",
   "supplierRequests.table.set.price": "Price per set",
   "supplierRequests.table.set.moq": "Minimum order (sets)",
+  "supplierRequests.table.col.photoMarketing": "Marketing photo",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -335,4 +337,5 @@ export const zh: Record<keyof typeof pt, string> = {
   "supplierRequests.table.set.unit": "套",
   "supplierRequests.table.set.price": "每套价格",
   "supplierRequests.table.set.moq": "最小起订量（套）",
+  "supplierRequests.table.col.photoMarketing": "营销图片",
 };
