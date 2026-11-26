@@ -16,7 +16,10 @@ const tag = Date.now().toString(36);
 /** Cadastra um parceiro do tipo e devolve o endereço da ficha dele. */
 async function newPartner(page: Page, type: string, name: string) {
   await page.goto(`/app/parties/new?type=${type}`);
-  await expect(page.locator("[data-party-type]")).toHaveValue(type);
+  // O link antigo do Supplier abre no Supplier/Trading (um tipo só, 26/11/2026).
+  await expect(page.locator("[data-party-type]")).toHaveValue(
+    type === "supplier_partner" ? "trading" : type,
+  );
   await page.fill('input[name="name"]', name);
   await page.getByRole("button", { name: "Salvar" }).first().click();
   await page.waitForURL(/\/app\/parties\/[^/?]+$/);

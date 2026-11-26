@@ -3,13 +3,13 @@
  * docs/PARTNER_TYPES.md): mesmas chaves em pt, en e zh.
  */
 export const pt = {
-  "party.trading": "Trading",
+  "party.trading": "Supplier/Trading",
   "party.factory": "Factory",
-  "party.supplier_partner": "Supplier",
+  "party.supplier_partner": "Supplier/Trading",
   "party.gp": "GP",
-  "messages.type.trading": "Trading",
+  "messages.type.trading": "Supplier/Trading",
   "messages.type.factory": "Factory",
-  "messages.type.supplier_partner": "Supplier",
+  "messages.type.supplier_partner": "Supplier/Trading",
   "messages.type.gp": "GP",
   "party.partner": "Outro parceiro",
   "messages.type.partner": "Parceiro",
@@ -108,13 +108,13 @@ export const pt = {
 };
 
 export const en: typeof pt = {
-  "party.trading": "Trading",
+  "party.trading": "Supplier/Trading",
   "party.factory": "Factory",
-  "party.supplier_partner": "Supplier",
+  "party.supplier_partner": "Supplier/Trading",
   "party.gp": "GP",
-  "messages.type.trading": "Trading",
+  "messages.type.trading": "Supplier/Trading",
   "messages.type.factory": "Factory",
-  "messages.type.supplier_partner": "Supplier",
+  "messages.type.supplier_partner": "Supplier/Trading",
   "messages.type.gp": "GP",
   "party.partner": "Other partner",
   "messages.type.partner": "Partner",
@@ -212,13 +212,13 @@ export const en: typeof pt = {
 };
 
 export const zh: typeof pt = {
-  "party.trading": "Trading",
+  "party.trading": "Supplier/Trading",
   "party.factory": "Factory",
-  "party.supplier_partner": "Supplier",
+  "party.supplier_partner": "Supplier/Trading",
   "party.gp": "GP",
-  "messages.type.trading": "Trading",
+  "messages.type.trading": "Supplier/Trading",
   "messages.type.factory": "Factory",
-  "messages.type.supplier_partner": "Supplier",
+  "messages.type.supplier_partner": "Supplier/Trading",
   "messages.type.gp": "GP",
   "party.partner": "其他合作方",
   "messages.type.partner": "合作方",

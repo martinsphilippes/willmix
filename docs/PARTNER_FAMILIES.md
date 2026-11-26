@@ -1,5 +1,7 @@
 # Grupo de produto (família) no cadastro do parceiro
 
+Desde 26/11/2026, Trading e Supplier são um tipo só, **Supplier/Trading** (chave `trading`; docs/PARTNER_TYPES.md, seção "Supplier/Trading"). Onde este documento fala de Trading ou de Supplier, vale o Supplier/Trading.
+
 Pedido do dono (18/11/2026): em Equipe Acessos e Parceiros > Equipe Externa, ampliar o recurso "Linhas atendidas" e levá-lo ao cadastro dos parceiros **Fornecedor, Trading, Supplier e Factory**, com o título **Grupo de produto (família)**, e usar as famílias marcadas para decidir quem entra na cotação de compra.
 
 ## Decisões do dono (18/11/2026)

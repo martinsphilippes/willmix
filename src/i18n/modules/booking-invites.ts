@@ -16,10 +16,10 @@ export const pt = {
   "bookingInvites.invite.form": "Convidar parceiros",
   "bookingInvites.invite.hint":
     "Cada parceiro marcado recebe o aviso e a pendência para subir um book concorrente deste item em até {days} dia(s) (Configurações → SLA).",
-  "bookingInvites.invite.partners": "Fornecedores e tradings",
+  "bookingInvites.invite.partners": "Fornecedores e Supplier/Trading",
   "bookingInvites.invite.already": "convite em aberto",
   "bookingInvites.invite.noPartners":
-    "Nenhum fornecedor ou trading ativo cadastrado.",
+    "Nenhum fornecedor ou Supplier/Trading ativo cadastrado.",
   "bookingInvites.invite.message": "O que a Wellmix precisa (o parceiro lê)",
   "bookingInvites.invite.submit": "Convidar",
   "bookingInvites.invite.sending": "Convidando…",
@@ -44,7 +44,7 @@ export const pt = {
   "bookingInvites.list.subtitle":
     "A Wellmix convidou você a enviar um book concorrente destes itens. Abra o convite e suba a planilha.",
   "bookingInvites.list.subtitleWellmix":
-    "Convites para book concorrente enviados aos fornecedores e tradings.",
+    "Convites para book concorrente enviados aos fornecedores e Supplier/Trading.",
   "bookingInvites.list.empty": "Nenhum convite por enquanto.",
   "bookingInvites.detail.title": "Convite de book nº {n}",
   "bookingInvites.detail.back": "Ver todos os convites",
@@ -81,7 +81,7 @@ export const pt = {
   "bookingInvites.error.booking_invite_too_many":
     "Convide no máximo 30 parceiros de uma vez.",
   "bookingInvites.error.booking_invite_partner_invalid":
-    "Só fornecedores e tradings ativos podem ser convidados.",
+    "Só fornecedores e Supplier/Trading ativos podem ser convidados.",
   "bookingInvites.error.booking_invite_exists":
     "Os parceiros marcados já têm convite em aberto para este item.",
   "bookingInvites.error.booking_invite_closed":
@@ -103,10 +103,10 @@ export const en: Record<keyof typeof pt, string> = {
   "bookingInvites.invite.form": "Invite partners",
   "bookingInvites.invite.hint":
     "Each selected partner gets a notification and a task to upload a competing book for this item within {days} day(s) (Settings → SLA).",
-  "bookingInvites.invite.partners": "Suppliers and tradings",
+  "bookingInvites.invite.partners": "Suppliers and Supplier/Trading",
   "bookingInvites.invite.already": "open invitation",
   "bookingInvites.invite.noPartners":
-    "No active supplier or trading registered.",
+    "No active supplier or Supplier/Trading registered.",
   "bookingInvites.invite.message": "What Wellmix needs (the partner reads it)",
   "bookingInvites.invite.submit": "Invite",
   "bookingInvites.invite.sending": "Inviting…",
@@ -131,7 +131,7 @@ export const en: Record<keyof typeof pt, string> = {
   "bookingInvites.list.subtitle":
     "Wellmix invited you to send a competing book for these items. Open the invitation and upload the spreadsheet.",
   "bookingInvites.list.subtitleWellmix":
-    "Competing book invitations sent to suppliers and tradings.",
+    "Competing book invitations sent to suppliers and Supplier/Trading.",
   "bookingInvites.list.empty": "No invitations yet.",
   "bookingInvites.detail.title": "Book invitation no. {n}",
   "bookingInvites.detail.back": "See all invitations",
@@ -168,7 +168,7 @@ export const en: Record<keyof typeof pt, string> = {
   "bookingInvites.error.booking_invite_too_many":
     "Invite at most 30 partners at a time.",
   "bookingInvites.error.booking_invite_partner_invalid":
-    "Only active suppliers and tradings can be invited.",
+    "Only active suppliers and Supplier/Trading can be invited.",
   "bookingInvites.error.booking_invite_exists":
     "The selected partners already have an open invitation for this item.",
   "bookingInvites.error.booking_invite_closed":
@@ -190,9 +190,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "bookingInvites.invite.form": "邀请合作方",
   "bookingInvites.invite.hint":
     "每个选中的合作方都会收到通知和待办，需在 {days} 天内为此商品提交竞争 Book（设置 → SLA）。",
-  "bookingInvites.invite.partners": "供应商和贸易商",
+  "bookingInvites.invite.partners": "供应商和 Supplier/Trading",
   "bookingInvites.invite.already": "已有未结邀请",
-  "bookingInvites.invite.noPartners": "没有启用的供应商或贸易商。",
+  "bookingInvites.invite.noPartners": "没有启用的供应商或 Supplier/Trading。",
   "bookingInvites.invite.message": "Wellmix 的需求（合作方可见）",
   "bookingInvites.invite.submit": "邀请",
   "bookingInvites.invite.sending": "邀请中…",
@@ -216,7 +216,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "bookingInvites.list.title": "Book 邀请",
   "bookingInvites.list.subtitle":
     "Wellmix 邀请您为这些商品提交竞争 Book。打开邀请并上传表格。",
-  "bookingInvites.list.subtitleWellmix": "发给供应商和贸易商的竞争 Book 邀请。",
+  "bookingInvites.list.subtitleWellmix":
+    "发给供应商和 Supplier/Trading 的竞争 Book 邀请。",
   "bookingInvites.list.empty": "暂无邀请。",
   "bookingInvites.detail.title": "Book 邀请 {n}",
   "bookingInvites.detail.back": "查看全部邀请",
@@ -248,7 +249,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "bookingInvites.error.booking_invite_choose": "请至少选择一家合作方。",
   "bookingInvites.error.booking_invite_too_many": "一次最多邀请 30 家合作方。",
   "bookingInvites.error.booking_invite_partner_invalid":
-    "只能邀请启用的供应商和贸易商。",
+    "只能邀请启用的供应商和 Supplier/Trading。",
   "bookingInvites.error.booking_invite_exists":
     "所选合作方已有此商品的未结邀请。",
   "bookingInvites.error.booking_invite_closed": "此邀请已不再开放。",

@@ -3,7 +3,7 @@ import { listByIds } from "@/lib/db/lookup";
 import { cache } from "react";
 import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
 import { getStore, type Party, type User } from "@/lib/db";
-import { FEATURED_PARTY_TYPES } from "@/lib/party-types";
+import { canonicalPartyType, FEATURED_PARTY_TYPES } from "@/lib/party-types";
 import {
   EXTERNAL_ROLES,
   changesKey,
@@ -74,7 +74,9 @@ const loginTypeRows = cache(() => listPartnerTypeRows());
 /** Perfil de telas do parceiro: o do tipo (novos) ou nulo (vale o do papel). */
 async function partyProfileKey(party: Party | null): Promise<string | null> {
   if (!party) return null;
-  if (FEATURED_PARTY_TYPES.includes(party.type)) return `type:${party.type}`;
+  // Supplier antigo (`supplier_partner`) entra no perfil do Supplier/Trading.
+  const type = canonicalPartyType(party.type);
+  if (FEATURED_PARTY_TYPES.includes(type)) return `type:${type}`;
   if (party.type !== "partner" || !party.partnerTypeId) return null;
   const entry = partnerTypeCatalog(await loginTypeRows()).find(
     (e) => e.rowId === party.partnerTypeId,

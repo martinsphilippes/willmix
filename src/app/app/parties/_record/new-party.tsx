@@ -9,6 +9,7 @@ import { Alert, Card, PageHeader } from "@/components/ui";
 import { PartyForm } from "@/components/party-form";
 import { PARTY_DRAFT_COOKIE, parsePartyDraft } from "@/lib/party-draft";
 import { partnerTypeName } from "@/lib/partner-types";
+import { canonicalPartyType } from "@/lib/party-types";
 import { getPartnerTypeCatalog } from "@/lib/services/partner-types";
 import { loadFormDraft, partyDraftKey } from "@/lib/services/form-drafts";
 import { discardPartyDraftAction } from "@/app/app/actions/form-drafts";
@@ -31,7 +32,8 @@ export async function renderNewParty({
     typeof query[key] === "string" ? (query[key] as string) : "";
   const t = await getT();
   const catalog = await getPartnerTypeCatalog();
-  const wanted = one("type");
+  // Link antigo (?type=supplier_partner) abre no Supplier/Trading.
+  const wanted = canonicalPartyType(one("type"));
   const own = wanted === "customer" || wanted === "supplier" ? wanted : null;
   const types = own
     ? [{ value: own, label: t(`party.${own}`) }]

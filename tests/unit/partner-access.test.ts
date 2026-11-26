@@ -304,7 +304,6 @@ describe("serviço e sessão", () => {
       expect.arrayContaining([
         "type:trading",
         "type:factory",
-        "type:supplier_partner",
         "type:gp",
         "role:supplier",
         "role:customer",
@@ -454,8 +453,8 @@ describe("nome do papel embaixo do nome do login", () => {
     const typeLib = await import("@/lib/partner-types");
     const { createPortalLogin } = await import("@/lib/services/portal-access");
     // Trading (em destaque): o nome de fábrica, em qualquer idioma.
-    expect(await svc.partnerTypeLabelOf(trader, "pt")).toBe("Trading");
-    expect(await svc.partnerTypeLabelOf(trader, "zh")).toBe("Trading");
+    expect(await svc.partnerTypeLabelOf(trader, "pt")).toBe("Supplier/Trading");
+    expect(await svc.partnerTypeLabelOf(trader, "zh")).toBe("Supplier/Trading");
     // Fornecedor de verdade, cliente e a Wellmix: vale o nome do papel.
     expect(await svc.partnerTypeLabelOf(supplier, "pt")).toBeNull();
     expect(await svc.partnerTypeLabelOf(admin, "pt")).toBeNull();

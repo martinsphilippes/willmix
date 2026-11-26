@@ -37,13 +37,13 @@ const input = (name: string, value: string | null = null) => ({
 });
 
 describe("catálogo de tipos de parceiro", () => {
-  it("começa com os quatro em destaque e os oito de sempre, ativos, sem linha no banco", async () => {
+  it("começa com os três em destaque e os oito de sempre, ativos, sem linha no banco", async () => {
     const catalog = await svc.getPartnerTypeCatalog();
     expect(catalog.map((e) => e.value)).toEqual([
       // Em destaque (decisão do dono): entram como o Fornecedor entra.
+      // Supplier e Trading viraram um tipo só (Supplier/Trading, 26/11/2026).
       "trading",
       "factory",
-      "supplier_partner",
       "gp",
       "agency",
       "broker",
@@ -59,7 +59,15 @@ describe("catálogo de tipos de parceiro", () => {
     const agency = catalog.find((e) => e.value === "agency")!;
     expect(lib.partnerTypeName(agency, "pt")).toBe("Agência");
     expect(lib.partnerTypeName(agency, "en")).toBe("Agency");
-    expect(lib.partnerTypeName(catalog[2], "pt")).toBe("Supplier");
+    expect(lib.partnerTypeName(catalog[0], "pt")).toBe("Supplier/Trading");
+    expect(lib.partnerTypeName(catalog[0], "zh")).toBe("Supplier/Trading");
+    // Cadastro e planilha antigos: a chave e os nomes de antes caem nele.
+    expect(lib.partyTypeValue({ type: "supplier_partner" })).toBe("trading");
+    for (const text of ["supplier_partner", "Trading", "Supplier/Trading"])
+      expect(lib.matchPartnerType(text, catalog)).toMatchObject({
+        ok: true,
+        entry: { value: "trading" },
+      });
     // Login: os novos entram com o papel do Fornecedor e perfil próprio; os
     // de sempre, com o papel de sempre.
     expect(catalog[0]).toMatchObject({

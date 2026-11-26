@@ -278,7 +278,7 @@ export const pt = {
   "bookingLots.partner.search": "Digite para buscar o fornecedor",
   "bookingLots.partner.noMatch": "Nenhum fornecedor encontrado",
   "bookingLots.error.booking_partner_invalid":
-    "Escolha um parceiro ativo: fornecedor, Trading, Factory, Supplier, GP ou outro tipo com login.",
+    "Escolha um parceiro ativo: fornecedor, Supplier/Trading, Factory, GP ou outro tipo com login.",
   "bookingLots.error.supplier_required":
     "Escolha o fornecedor do book (ou cadastre o da planilha) antes de fechar.",
   "bookingLots.error.booking_date_required":
@@ -611,7 +611,7 @@ export const en: typeof pt = {
   "bookingLots.partner.search": "Type to search the supplier",
   "bookingLots.partner.noMatch": "No supplier found",
   "bookingLots.error.booking_partner_invalid":
-    "Choose an active partner: supplier, Trading, Factory, Supplier, GP or another type with login.",
+    "Choose an active partner: supplier, Supplier/Trading, Factory, GP or another type with login.",
   "bookingLots.error.supplier_required":
     "Choose the book's supplier (or register the one from the spreadsheet) before closing.",
   "bookingLots.error.booking_date_required":
@@ -931,7 +931,7 @@ export const zh: typeof pt = {
   "bookingLots.partner.search": "输入以搜索供应商",
   "bookingLots.partner.noMatch": "未找到供应商",
   "bookingLots.error.booking_partner_invalid":
-    "请选择启用的合作方：供应商、Trading、Factory、Supplier、GP 或其他可登录类型。",
+    "请选择启用的合作方：供应商、Supplier/Trading、Factory、GP 或其他可登录类型。",
   "bookingLots.error.supplier_required":
     "关闭前请选择 Book 的供应商（或登记表格中的供应商）。",
   "bookingLots.error.booking_date_required": "关闭前请填写 Book 日期。",

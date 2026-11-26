@@ -15,7 +15,7 @@ export const pt = {
   "partnerTypes.profile.none": "Sem login (o tipo não tem classe de login)",
   "externalTeam.nav": "Equipe Externa",
   "externalTeam.subtitle":
-    "Parceiros com acesso ao portal: fornecedores, Trading, Factory, GP, agências, despachantes e os demais tipos. Os clientes ficam em Cadastros → Clientes.",
+    "Parceiros com acesso ao portal: fornecedores, Supplier/Trading, Factory, GP, agências, despachantes e os demais tipos. Os clientes ficam em Cadastros → Clientes.",
   "externalTeam.col.name": "Nome",
   "externalTeam.col.type": "Tipo",
   "externalTeam.col.status": "Situação",
@@ -69,7 +69,7 @@ export const en: typeof pt = {
   "partnerTypes.profile.none": "No login (the type has no login class)",
   "externalTeam.nav": "External Team",
   "externalTeam.subtitle":
-    "Partners with portal access: suppliers, Trading, Factory, GP, agencies, customs brokers and the other types. Customers are in Registers → Customers.",
+    "Partners with portal access: suppliers, Supplier/Trading, Factory, GP, agencies, customs brokers and the other types. Customers are in Registers → Customers.",
   "externalTeam.col.name": "Name",
   "externalTeam.col.type": "Type",
   "externalTeam.col.status": "Status",
@@ -122,7 +122,7 @@ export const zh: typeof pt = {
   "partnerTypes.profile.none": "无账号（该类型没有账号类别）",
   "externalTeam.nav": "外部团队",
   "externalTeam.subtitle":
-    "可以使用门户的合作伙伴：供应商、贸易商、工厂、GP、代理、报关行及其他类型。客户在“登记 → 客户”中。",
+    "可以使用门户的合作伙伴：供应商、Supplier/Trading、工厂、GP、代理、报关行及其他类型。客户在“登记 → 客户”中。",
   "externalTeam.col.name": "名称",
   "externalTeam.col.type": "类型",
   "externalTeam.col.status": "状态",

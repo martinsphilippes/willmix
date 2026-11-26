@@ -67,6 +67,6 @@ describe("próximo passo da solicitação", () => {
       },
     });
     expect(n.who).toBe("trading");
-    expect(nextStepWho(t, n)).toBe("com a Trading");
+    expect(nextStepWho(t, n)).toBe("com o Supplier/Trading");
   });
 });
