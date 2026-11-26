@@ -133,18 +133,15 @@ test("Alterar, embalagens, variações e uma cotação por combinação", async 
   await expect(
     page.locator('[data-supplier-table-variant="Preto fosco|3"]'),
   ).toHaveText("Preto fosco · Emb. 3 pç");
-  // Já na abertura: a caixa alterada (Book 48 → 24), o CBM e a arte.
-  const opening = page.locator(
-    '[data-supplier-table-variants] [data-request-variant="Preto fosco|3"]',
+  // Na tabela dos produtos (dono, 26/11/2026): sem o quadro do produto em
+  // cima, o item com embalagem conta sets e mostra as peças por set.
+  await expect(page.locator("[data-request-variant]")).toHaveCount(0);
+  await expect(page.locator("[data-supplier-table]")).toContainText(
+    "Total de sets",
   );
-  await expect(opening).toBeVisible();
   await expect(
-    opening.locator('[data-request-variant-altered="48"]'),
-  ).toBeVisible();
-  await expect(opening.locator("[data-request-variant-cbm]")).toContainText(
-    "0,06",
-  );
-  await expect(opening.locator("[data-request-variant-art] img")).toBeVisible();
+    page.locator(`[data-supplier-table-pieces-per-set="${last}"]`),
+  ).toHaveText("3");
   await page.goto(`/app/supplier-requests/${last}?view=item`);
   const variant = page.locator('[data-request-variant="Preto fosco|3"]');
   await expect(variant).toBeVisible();
