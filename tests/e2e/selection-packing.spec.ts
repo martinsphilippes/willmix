@@ -117,22 +117,21 @@ test("Alterar, embalagens, variações e uma cotação por combinação", async 
       .locator("[data-selection-color-cartons]"),
   ).toHaveValue("2");
 
-  // 7. Gravar: book da Wellmix, uma cotação por combinação.
+  // 7. Gravar: book da Wellmix, uma solicitação só com um item por
+  // combinação (dono, 26/11/2026), que abre direto.
   await page.click("[data-selection-submit]");
-  await page.waitForURL(/[?&]opened=6/);
-  await expect(page.locator("[data-selection-opened]")).toBeVisible();
+  await page.waitForURL(/[?&]created=1/);
+  await expect(page.locator("[data-supplier-table-row]")).toHaveCount(6);
 
-  // 8. A última cotação aberta é a do Preto fosco em embalagem de 3: a
-  // variação, a embalagem (8 por caixa) e a arte do Mix.
-  await page.goto("/app/supplier-requests");
-  const last = await page
-    .locator("[data-supplier-request-row]")
-    .first()
-    .getAttribute("data-supplier-request-row");
-  await page.goto(`/app/supplier-requests/${last}`);
+  // 8. O item do Preto fosco em embalagem de 3: a variação, a embalagem (8
+  // por caixa) e a arte do Mix.
+  const preto = page.locator("[data-supplier-table-row]").filter({
+    has: page.locator('[data-supplier-table-variant="Preto fosco|3"]'),
+  });
   await expect(
-    page.locator('[data-supplier-table-variant="Preto fosco|3"]'),
+    preto.locator('[data-supplier-table-variant="Preto fosco|3"]'),
   ).toHaveText("Preto fosco · Emb. 3 pç");
+  const last = await preto.getAttribute("data-supplier-table-row");
   // Na tabela dos produtos (dono, 26/11/2026): sem o quadro do produto em
   // cima, o item com embalagem conta sets e mostra as peças por set.
   await expect(page.locator("[data-request-variant]")).toHaveCount(0);

@@ -6,7 +6,7 @@ import { xlsxBytes } from "./xlsx-fixture";
 /*
  * Embalagens e variações na gravação (dono, 26/11/2026;
  * docs/SUPPLIER_REQUESTS.md, "Embalagens e variações"): no book da Wellmix,
- * "Gravar escolha" abre uma cotação separada por variação × embalagem, com
+ * "Gravar escolha" abre uma solicitação só, com um item por variação × embalagem, com
  * a cópia do item em embalagens; no book do parceiro, só grava.
  */
 withTempStore();
@@ -106,7 +106,7 @@ const packing = {
 };
 
 describe("gravar escolha com embalagens e variações", () => {
-  it("book da Wellmix: uma cotação separada por combinação, em embalagens", async () => {
+  it("book da Wellmix: uma solicitação só, um item por combinação, em embalagens", async () => {
     const { item } = await closedItem("PK-1", "AZUL / ROSA");
     // 8 caixas de 24 = 192 peças: 2 caixas por combinação (4 combinações).
     const { group, opened } = await groups.saveAndOpenSelectionGroup(admin, {
@@ -119,8 +119,11 @@ describe("gravar escolha com embalagens e variações", () => {
     expect(opened?.failed).toEqual([]);
     const requests = opened!.opened;
     expect(requests).toHaveLength(4);
-    // Cada uma com o próprio número (cotação separada).
-    expect(new Set(requests.map((r) => r.number)).size).toBe(4);
+    // Uma solicitação só, com um item por combinação (dono, 26/11/2026):
+    // o mesmo número e o mesmo lote.
+    expect(new Set(requests.map((r) => r.number)).size).toBe(1);
+    expect(new Set(requests.map((r) => r.batchId)).size).toBe(1);
+    expect(requests[0].batchId).toBeTruthy();
     expect(requests.map((r) => r.variant?.key)).toEqual([
       "AZUL|1",
       "AZUL|3",
