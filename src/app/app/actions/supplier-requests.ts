@@ -290,8 +290,16 @@ export async function saveSelectionGroupAction(form: FormData) {
         (n, g) => n + g.demandIds.length,
         0,
       );
+      // Uma solicitação só: direto nela; com vários itens (uma combinação
+      // por item, dono, 26/11/2026), na tabela dos produtos dela.
       if (count === 1 && !strategy && !opened.failed.length)
-        return withQuery(detail(opened.opened[0].id), "created", "1");
+        return withQuery(
+          opened.opened.length > 1
+            ? `/app/supplier-requests/${opened.opened[0].id}`
+            : detail(opened.opened[0].id),
+          "created",
+          "1",
+        );
       // Book do parceiro: as demandas foram para a Estratégia de compra.
       let to = await selectionBack(
         form,
@@ -399,7 +407,13 @@ export async function openGroupRequestsAction(form: FormData) {
       !strategy &&
       !result.failed.length
     )
-      return withQuery(detail(result.opened[0].id), "created", "1");
+      return withQuery(
+        result.opened.length > 1
+          ? `/app/supplier-requests/${result.opened[0].id}`
+          : detail(result.opened[0].id),
+        "created",
+        "1",
+      );
     let to = withQuery(
       back,
       "opened",
@@ -772,7 +786,7 @@ async function messageDo(user: User, form: FormData) {
       board ? withQuery(back, "chat", `request:${id}`) : back,
       "negotiation",
       "message",
-    ) + "#conversa"
+    ) + (board ? "#conversa" : "#chat")
   );
 }
 

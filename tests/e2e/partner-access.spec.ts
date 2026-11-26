@@ -58,7 +58,7 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   const userLogin = `li-${tag}@factory.com`;
   await login(page, "admin@wellmix.com");
 
-  // Os quatro tipos novos vêm logo depois de Clientes e Fornecedores no
+  // Os três tipos novos (Supplier/Trading, Factory, GP) vêm logo depois de Fornecedores no
   // filtro com busca; a aba Acessos externos à vista.
   await page.goto("/app/parties");
   const input = page.locator("[data-party-type-filter-input]");
@@ -70,12 +70,11 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
       els.map((el) => el.getAttribute("data-party-type-filter-option")),
     );
   // Clientes saíram de Parceiros (Cadastros → Clientes, 15/11/2026).
-  expect(values.slice(0, 6)).toEqual([
+  expect(values.slice(0, 5)).toEqual([
     "",
     "supplier",
     "trading",
     "factory",
-    "supplier_partner",
     "gp",
   ]);
   expect(values).not.toContain("customer");
@@ -310,14 +309,9 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
   await access.locator("[data-party-access-create]").click();
   await page.waitForURL(/saved=user/);
 
-  // Gestão de telas: o Booking já vem aberto no Trading (e na Factory, no
-  // Supplier e no GP) e, desde 23/11/2026, também no Fornecedor ("Books").
-  for (const profile of [
-    "type:trading",
-    "type:gp",
-    "type:supplier_partner",
-    "role:supplier",
-  ]) {
+  // Gestão de telas: o Booking já vem aberto no Supplier/Trading (e na
+  // Factory e no GP) e, desde 23/11/2026, também no Fornecedor ("Books").
+  for (const profile of ["type:trading", "type:gp", "role:supplier"]) {
     await openAccess(page, `/app/parties/access?profile=${profile}`);
     await expect(
       page.locator('[data-access-screen="booking"]'),
@@ -362,8 +356,8 @@ test("Trading com login: lança o booking dele e vê só os bookings dele", asyn
   await login(page, userLogin);
   await page.goto("/app/booking");
   await expect(page).toHaveURL(/\/app\/booking$/);
-  // Embaixo do nome dele no menu: "Trading", não "Fornecedor".
-  await expect(page.locator("[data-user-role]")).toHaveText("Trading");
+  // Embaixo do nome dele no menu: "Supplier/Trading", não "Fornecedor".
+  await expect(page.locator("[data-user-role]")).toHaveText("Supplier/Trading");
   const rows = page.locator("[data-partner-booking]");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText(`booking-${code}-A.xlsx`);

@@ -502,9 +502,10 @@ async function groupSkus(
 
 /**
  * As cotações de um grupo gravado: a do ganhador (o fluxo de sempre) ou,
- * com embalagens e variações, uma por combinação variação × embalagem
- * (dono, 26/11/2026), cada uma com o próprio número, a cópia do item já em
- * embalagens e a imagem de exemplo. A combinação sem peças não abre.
+ * com embalagens e variações, um item por combinação variação × embalagem
+ * numa solicitação só do fornecedor (dono, 26/11/2026), cada um com a cópia
+ * do item já em embalagens e a imagem de exemplo. A combinação sem peças
+ * não abre.
  */
 async function openGroup(
   user: User,
@@ -538,8 +539,9 @@ async function openGroup(
   const opened: SupplierRequest[] = [];
   const linked = new Set<string>();
   for (const sku of skus) {
-    // Uma cotação separada por combinação (número próprio): um lote de
-    // solicitações novo para cada uma.
+    // Uma solicitação só para o fornecedor, com um item por combinação
+    // (dono, 26/11/2026; até então cada combinação ganhava número próprio):
+    // o mesmo lote dos outros produtos abertos juntos.
     const request = await openSupplierRequest(
       user,
       {
@@ -550,7 +552,7 @@ async function openGroup(
         snapshot: sku.snapshot,
         variant: sku.variant,
       },
-      new Map(),
+      batches,
     );
     // A arte passa a abrir para o fornecedor da cotação (com o Mix, a mesma
     // imagem serve às cotações da embalagem: fica ligada à primeira).

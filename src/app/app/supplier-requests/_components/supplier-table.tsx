@@ -97,6 +97,20 @@ import {
  * tela menor (iPad em pé, celular) só as ações ficam fixas, como antes.
  */
 const PIN_VARS = "[--pin-pad:1.25rem] [--pin-status:8.5rem]";
+/*
+ * As três primeiras colunas (foto, nº e produto) fixas à esquerda na rolagem
+ * horizontal (dono, 26/11/2026), a partir de 768px (no celular elas
+ * ocupariam a tela). A foto e o nº vão numa caixa de largura certa; o produto
+ * fecha o conjunto com o fio e a sombra.
+ */
+const LEFT_VARS = "[--pin-photo:3rem] [--pin-number:4.5rem]";
+const LEFT = {
+  photo: "md:sticky md:left-0 md:z-10",
+  number: "md:sticky md:z-10 md:left-[calc(var(--pin-photo)_+_var(--pin-pad))]",
+  item: "md:sticky md:z-10 md:left-[calc(var(--pin-photo)_+_var(--pin-number)_+_2*var(--pin-pad))] md:shadow-[inset_-1px_0_0_var(--color-zinc-200),6px_0_6px_-6px_rgba(0,0,0,0.15)]",
+} as const;
+const leftPin = (c: string) =>
+  c === "photo" || c === "number" || c === "item" ? LEFT[c] : null;
 /**
  * Caixa das ações (dono, 14/11/2026): só ícones, com 0,5rem entre eles. Dois
  * por linha (mensagem e abrir) ou, para o fornecedor que ainda responde,
@@ -344,32 +358,6 @@ export function SupplierRequestTable({
     // Cópia da solicitação; o que ela não guarda, do item do Book.
     const specs = requestItemSpecs(r, book);
     const name = specs.description ?? specs.productName ?? "—";
-    const bookCol = (key: string) =>
-      t(`bookingLots.item.col.${key}` as DictionaryKey);
-    // Dados complementares: só os que existem aparecem.
-    const details = (
-      [
-        // A descrição já é o nome da linha; o nome só quando é outro.
-        [
-          "productName",
-          k("detail.productName"),
-          specs.productName !== name ? specs.productName : null,
-        ],
-        ["colors", bookCol("colorAssortment"), specs.colorAssortment],
-        ["power", bookCol("powerDetail"), specs.powerDetail],
-        [
-          "netWeight",
-          bookCol("netWeightPcKg"),
-          specs.netWeightPcKg === null ? null : num(specs.netWeightPcKg),
-        ],
-        [
-          "grossWeight",
-          bookCol("grossWeightPcKg"),
-          specs.grossWeightPcKg === null ? null : num(specs.grossWeightPcKg),
-        ],
-        ["ncm", k("detail.ncm"), wellmix ? (book?.ncm ?? null) : null],
-      ] as Array<[string, string, string | null]>
-    ).filter((d): d is [string, string, string] => !!d[2]);
     // Na solicitação com vários produtos, cada linha é um produto dela
     // (2.1, 2.2…): nenhuma é "esta solicitação".
     const current = r.id === currentId && !r.batchId;
@@ -487,24 +475,30 @@ export function SupplierRequestTable({
         data-supplier-table-row={r.id}
         data-current={current ? "1" : undefined}
       >
-        <Td>{photo}</Td>
-        <Td className={cx(nowrap, "tabular-nums font-medium")}>
-          {/* O número e o nome abrem o produto nesta solicitação,
-                      como o ícone de abrir (dono, 18/11/2026). */}
-          <Link
-            href={href}
-            className="text-brand-700 hover:underline"
-            data-supplier-table-number={r.id}
-          >
-            {numberLabel}
-          </Link>
-          {current ? (
-            <span className="mt-1 block">
-              <Badge tone="info">{k("current")}</Badge>
-            </span>
-          ) : null}
+        <Td className={cx(pinBg, LEFT.photo)}>
+          <div className="w-[var(--pin-photo)]">{photo}</div>
         </Td>
-        <Td>
+        <Td
+          className={cx(nowrap, "tabular-nums font-medium", pinBg, LEFT.number)}
+        >
+          <div className="w-[var(--pin-number)] whitespace-normal">
+            {/* O número e o nome abrem o produto nesta solicitação,
+                      como o ícone de abrir (dono, 18/11/2026). */}
+            <Link
+              href={href}
+              className="text-brand-700 hover:underline"
+              data-supplier-table-number={r.id}
+            >
+              {numberLabel}
+            </Link>
+            {current ? (
+              <span className="mt-1 block">
+                <Badge tone="info">{k("current")}</Badge>
+              </span>
+            ) : null}
+          </div>
+        </Td>
+        <Td className={cx(pinBg, LEFT.item)}>
           <Link
             href={href}
             className="block min-w-48 max-w-72 whitespace-normal font-medium text-zinc-900 hover:text-brand-700 hover:underline"
@@ -521,9 +515,11 @@ export function SupplierRequestTable({
               {variantText(r.variant, t)}
             </span>
           ) : null}
-          {details.length || wellmix || rounds.length ? (
+          {/* Programação: os "Detalhes" abrem as sublinhas do produto
+              (dono, 26/11/2026; o quadro com cores, função e pesos saiu). */}
+          {rounds.length ? (
             <details
-              className="group/specs mt-1 min-w-48 max-w-72 text-xs"
+              className="group/specs mt-1 text-xs"
               data-supplier-table-details={r.id}
             >
               <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded font-medium text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-brand-600 [&::-webkit-details-marker]:hidden">
@@ -541,32 +537,16 @@ export function SupplierRequestTable({
                   <path d="M5 8l5 5 5-5" />
                 </svg>
               </summary>
-              <div className="mt-1 space-y-1 whitespace-normal rounded-md border border-zinc-200 bg-zinc-50/70 p-2">
-                {details.length ? (
-                  <dl className="space-y-1">
-                    {details.map(([key, label, value]) => (
-                      <div key={key} data-supplier-table-detail={key}>
-                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                          {label}
-                        </dt>
-                        <dd className="break-words text-zinc-800">{value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                ) : (
-                  <p className="text-zinc-500">{k("detailsNone")}</p>
-                )}
-                {wellmix ? (
-                  <Link
-                    href={`/app/booking/lots/${r.bookingLotId}`}
-                    className="inline-block font-medium text-brand-700 hover:underline"
-                    data-supplier-table-book={r.id}
-                  >
-                    {k("detail.book")}
-                  </Link>
-                ) : null}
-              </div>
             </details>
+          ) : null}
+          {wellmix ? (
+            <Link
+              href={`/app/booking/lots/${r.bookingLotId}`}
+              className="mt-0.5 inline-block text-xs font-medium text-brand-700 hover:underline"
+              data-supplier-table-book={r.id}
+            >
+              {k("detail.book")}
+            </Link>
           ) : null}
         </Td>
         <Td className={nowrap}>{it.factoryItemCode ?? "—"}</Td>
@@ -1104,18 +1084,28 @@ export function SupplierRequestTable({
         book,
       );
       const cells: Record<string, ReactNode> = {
-        photo: <Td key="photo">{photo}</Td>,
+        photo: (
+          <Td key="photo" className={cx("bg-zinc-50", LEFT.photo)}>
+            <div className="w-[var(--pin-photo)]">{photo}</div>
+          </Td>
+        ),
         number: (
           <Td
             key="number"
-            className={cx(nowrap, "tabular-nums font-medium pl-4")}
+            className={cx(
+              nowrap,
+              "tabular-nums font-medium bg-zinc-50",
+              LEFT.number,
+            )}
             data-supplier-table-round-number
           >
-            {`${numberLabel}.${round.index}`}
+            <div className="w-[var(--pin-number)] pl-2">
+              {`${numberLabel}.${round.index}`}
+            </div>
           </Td>
         ),
         item: (
-          <Td key="item">
+          <Td key="item" className={cx("bg-zinc-50", LEFT.item)}>
             <span className="block min-w-48 max-w-72 whitespace-normal text-zinc-900">
               {name}
             </span>
@@ -1269,7 +1259,7 @@ export function SupplierRequestTable({
       return (
         <tr
           key={`${r.id}-${round.index}`}
-          className="group/row bg-zinc-50/60 text-zinc-700"
+          className="group/row bg-zinc-50 text-zinc-700"
           data-supplier-table-round={`${r.id}:${round.index}`}
         >
           {before.map((c) => cells[c])}
@@ -1278,14 +1268,14 @@ export function SupplierRequestTable({
           {after.map((c) => (
             <Td key={c} />
           ))}
-          <Td className={cx(pinBg, PIN.status)}>
+          <Td className={cx("bg-zinc-50", PIN.status)}>
             <div className="w-[var(--pin-status)]">
               <Badge tone={STATUS_TONE[r.status]}>
                 {t(`supplierRequests.status.${r.status}` as DictionaryKey)}
               </Badge>
             </div>
           </Td>
-          <Td className={cx(pinBg, PIN.actions)}>
+          <Td className={cx("bg-zinc-50", PIN.actions)}>
             <div className="w-[var(--pin-actions)]" />
           </Td>
         </tr>
@@ -1322,11 +1312,18 @@ export function SupplierRequestTable({
           </p>
         ) : null}
       </div>
-      <Table className={cx(PIN_VARS, PIN_ACTIONS[actionSlots])}>
+      <Table className={cx(PIN_VARS, LEFT_VARS, PIN_ACTIONS[actionSlots])}>
         <thead>
           <tr>
             {before.map((c) => (
-              <Th key={c} className={nowrap} rowSpan={2}>
+              <Th
+                key={c}
+                className={cx(
+                  nowrap,
+                  leftPin(c) && cx("bg-zinc-50", leftPin(c)),
+                )}
+                rowSpan={2}
+              >
                 {colLabel(c)}
               </Th>
             ))}

@@ -940,6 +940,40 @@ export default async function SupplierRequestPage({
     </NegotiationSection>
   ) : null;
 
+  // Conversa da cotação fixa na coluna da direita, abaixo do histórico,
+  // sempre aberta (dono, 26/11/2026).
+  const chatBlock = (
+    <div id="chat" className="min-w-0 scroll-mt-20" data-negotiation-chat>
+      <NegotiationConversation
+        requestId={r.id}
+        messages={conversation}
+        canPost={canPostMessage(r.status)}
+        defaultOpen
+        sendingAs={loginOf(people.me)}
+        sendingTo={recipientText(people.me.side, people, supplierName, t)}
+        errors={errorTexts}
+        fallbackError={errorFallback}
+        labels={{
+          title: t("negotiationScreen.chat.title", {
+            n: conversation.length,
+          }),
+          who: t("negotiationScreen.chat.who"),
+          empty: t("supplierRequests.chat.empty"),
+          placeholder: t("supplierRequests.chat.placeholder"),
+          attach: t("negotiationScreen.chat.attach"),
+          send: t("negotiationScreen.chat.send"),
+          sending: t("supplierRequests.negotiation.sending"),
+          file: t("supplierRequests.negotiation.file"),
+          closed: t("supplierRequests.chat.closed"),
+          sendingAs: t("negotiationScreen.chat.sendingAs"),
+          sendingTo: t("negotiationScreen.chat.sendingTo"),
+          to: t("negotiationScreen.to"),
+          login: t("negotiationScreen.login"),
+        }}
+      />
+    </div>
+  );
+
   const negotiationSection = wellmix ? null : (
     <NegotiationSection
       n={nextSection()}
@@ -957,33 +991,6 @@ export default async function SupplierRequestPage({
           fromTo={fromTo}
           errors={errorTexts}
           fallbackError={errorFallback}
-        />
-        <NegotiationConversation
-          requestId={r.id}
-          messages={conversation}
-          canPost={canPostMessage(r.status)}
-          defaultOpen={negotiationNotice === "message"}
-          sendingAs={loginOf(people.me)}
-          sendingTo={recipientText(people.me.side, people, supplierName, t)}
-          errors={errorTexts}
-          fallbackError={errorFallback}
-          labels={{
-            title: t("negotiationScreen.chat.title", {
-              n: conversation.length,
-            }),
-            who: t("negotiationScreen.chat.who"),
-            empty: t("supplierRequests.chat.empty"),
-            placeholder: t("supplierRequests.chat.placeholder"),
-            attach: t("negotiationScreen.chat.attach"),
-            send: t("negotiationScreen.chat.send"),
-            sending: t("supplierRequests.negotiation.sending"),
-            file: t("supplierRequests.negotiation.file"),
-            closed: t("supplierRequests.chat.closed"),
-            sendingAs: t("negotiationScreen.chat.sendingAs"),
-            sendingTo: t("negotiationScreen.chat.sendingTo"),
-            to: t("negotiationScreen.to"),
-            login: t("negotiationScreen.login"),
-          }}
         />
       </div>
     </NegotiationSection>
@@ -1569,6 +1576,7 @@ export default async function SupplierRequestPage({
                 t={t}
               />
             </div>
+            {chatBlock}
           </aside>
         </div>
       ) : (
@@ -1595,7 +1603,10 @@ export default async function SupplierRequestPage({
             </Card>
             <RequestAiReferences assets={r.aiAssets} t={t} />
           </div>
-          <aside className="grid min-w-0 gap-4" data-negotiation-aside>
+          <aside
+            className="grid min-w-0 gap-4 xl:sticky xl:top-[calc(var(--wm-header)+1rem)] xl:max-h-[calc(100vh-var(--wm-header)-2rem)] xl:overflow-y-auto xl:px-1 xl:pb-1"
+            data-negotiation-aside
+          >
             <div id="historico" className="min-w-0 scroll-mt-20">
               <RequestTimeline
                 request={{
@@ -1610,6 +1621,7 @@ export default async function SupplierRequestPage({
                 t={t}
               />
             </div>
+            {chatBlock}
           </aside>
         </div>
       )}
