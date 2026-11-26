@@ -718,8 +718,11 @@ export default async function BookingSelectionPage({
                 schedule={current?.schedule ?? null}
                 chosenItemId={current?.chosenItemId ?? null}
                 containerTypes={containerTypes}
-                items={list.map(({ item }) => ({
+                items={list.map(({ item, lot, activeRequest }) => ({
                   id: item.id,
+                  // O "Escolher" fica desligado no book em rascunho e no item
+                  // já numa solicitação (o mesmo `busy` da tabela).
+                  choosable: !activeRequest && lot.status !== "draft",
                   masterCartonQty: item.masterCartonQty,
                   cbmPerCarton:
                     item.cbmPerCarton ??
@@ -1434,7 +1437,9 @@ export default async function BookingSelectionPage({
  */
 function savedCartonsOf(
   group:
-    { chosenItemId: string; colorPlan?: ColorPlan | null } | null | undefined,
+    | { chosenItemId: string; colorPlan?: ColorPlan | null }
+    | null
+    | undefined,
   list: SelectionRow[],
 ): Record<string, number> | null {
   const plan = group?.colorPlan;

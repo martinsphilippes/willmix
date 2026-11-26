@@ -50,6 +50,8 @@ export const pt = {
   "purchaseRounds.gen.calc": "Cálculo",
   "purchaseRounds.gen.item":
     "Item escolhido: {pcs} peças por caixa master · {cbm} m³ por caixa → {cartons} caixas ({pieces} peças) por {container}.",
+  "purchaseRounds.gen.selectItemLocked":
+    "Nenhum item deste grupo pode ser escolhido agora (book em rascunho ou item já em solicitação): feche o book para escolher o item e gerar a programação de compra",
   "purchaseRounds.gen.selectItem":
     "Selecione um item na tabela para gerar a programação de compra",
   "purchaseRounds.gen.noCarton":
@@ -221,6 +223,8 @@ export const en: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.calc": "Calculation",
   "purchaseRounds.gen.item":
     "Chosen item: {pcs} pieces per master carton · {cbm} m³ per carton → {cartons} cartons ({pieces} pieces) per {container}.",
+  "purchaseRounds.gen.selectItemLocked":
+    "No item in this group can be chosen right now (draft book or item already in a request): close the book to choose the item and generate the purchase schedule",
   "purchaseRounds.gen.selectItem":
     "Select an item in the table to generate the purchase schedule",
   "purchaseRounds.gen.noCarton":
@@ -385,6 +389,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseRounds.gen.calc": "计算",
   "purchaseRounds.gen.item":
     "所选产品：每外箱 {pcs} 件 · 每箱 {cbm} m³ → 每个 {container} {cartons} 箱（{pieces} 件）。",
+  "purchaseRounds.gen.selectItemLocked":
+    "此组中的商品目前都无法选择（Book 为草稿或商品已在请求中）：请关闭 Book 后选择商品并生成采购计划",
   "purchaseRounds.gen.selectItem": "请在表格中选择一个商品以生成采购计划",
   "purchaseRounds.gen.noCarton":
     "所选产品没有外箱体积（也没有尺寸）：无法计算集装箱。箱数平均分配到各批。",

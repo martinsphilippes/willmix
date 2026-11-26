@@ -122,6 +122,7 @@ export function generateLabels(
       container: "{container}",
     }),
     selectItem,
+    selectItemLocked: t("purchaseRounds.gen.selectItemLocked"),
     noCarton: t("purchaseRounds.gen.noCarton"),
     noPieces: t("purchaseRounds.gen.noPieces"),
     noData: t("purchaseRounds.gen.noData"),

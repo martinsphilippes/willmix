@@ -98,6 +98,11 @@ export interface SelectionCarton {
   sheetQty: number | null;
   /** Cores do item no Book (duas ou mais = variações). */
   colors?: string[];
+  /**
+   * Seleção de itens: o item pode ser marcado em "Escolher" (falso: book em
+   * rascunho ou item já numa solicitação). Sem ele, pode.
+   */
+  choosable?: boolean;
 }
 
 /** Textos da composição por cor (docs/PURCHASE_SCHEDULE.md, "Cores"). */
@@ -229,6 +234,11 @@ export interface GenerateLabels {
   item: string;
   /** Nenhum item marcado em "Escolher": nada é calculado nem gerado. */
   selectItem: string;
+  /**
+   * Nenhum item do grupo pode ser marcado em "Escolher" (book em rascunho ou
+   * já em solicitação): diz por quê, no lugar de `selectItem`.
+   */
+  selectItemLocked?: string;
   /**
    * O item (produto) mudou depois de gerar: a programação saiu e precisa ser
    * gerada de novo. Sem ele, nada é dito (Seleção de itens).
@@ -496,12 +506,23 @@ export function SelectionQuantity({
     itemId: string;
     cartons: Record<string, number>;
   } | null>(null);
+  // Item da conta para uma marca: o marcado ou, sem marca, o item único do
+  // grupo (Seleção de itens; na Nova solicitação o item é o produto do campo).
+  const lone = radioMode && items.length === 1 ? items[0] : null;
+  const calcItemOf = (id: string | null) =>
+    items.find((i) => i.id === id) ?? lone;
 
   // Marcou outro item (ou nenhum): o que vinha do anterior sai. O aviso e o
   // arredondamento anotados somem; a programação ainda não gravada sai da
   // tela ou, de volta ao item da escolha gravada, a gravada volta.
   const markItem = useEffectEvent((next: string | null) => {
     if (next === chosen) return;
+    // A caixa da conta não mudou (o item único do grupo, marcado agora ou
+    // desmarcado): só a marca muda, a programação e o digitado ficam.
+    if (lone && calcItemOf(next) === calcItemOf(chosen)) {
+      setChosen(next);
+      return;
+    }
     setChosen(next);
     setError(null);
     setShort(null);
@@ -608,9 +629,12 @@ export function SelectionQuantity({
   /** Ocupação: menos de 1% aparece como "<1". */
   const pctText = (pct: number) => (pct === 0 ? "<1" : String(pct));
 
-  // A caixa da conta: só a do item marcado em "Escolher" (sem item marcado,
-  // nenhuma: nada é calculado nem gerado).
-  const item = items.find((i) => i.id === chosen) ?? null;
+  // A caixa da conta: a do item marcado em "Escolher" (sem item marcado,
+  // nenhuma: nada é calculado nem gerado). Num grupo de um item só, a dele
+  // mesmo sem marcar, também no book em rascunho, como o produto único da
+  // Nova solicitação (dono, 26/11/2026): não há outra caixa possível.
+  const marked = items.find((i) => i.id === chosen) ?? null;
+  const item = marked ?? lone;
   const capacity =
     containerTypes.find((c) => c.code === container)?.capacityCbm ?? null;
   // "Total de caixas" e "Quantidade (peças)": o mesmo número em duas
@@ -857,6 +881,13 @@ export function SelectionQuantity({
         : "border-zinc-300 bg-white text-zinc-700 hover:bg-brand-50",
     );
 
+  // Nenhum item do grupo pode ser marcado: a mensagem diz por quê.
+  const allLocked =
+    radioMode &&
+    !!gen.selectItemLocked &&
+    items.length > 0 &&
+    items.every((i) => i.choosable === false);
+
   /** O cálculo escrito: a caixa, o container e o que as rodadas ocupam. */
   const calculation = (live: number[], roundsValue: string) => {
     if (!item)
@@ -865,9 +896,9 @@ export function SelectionQuantity({
           id={selectItemId}
           className="font-medium text-amber-800"
           data-generate-item="none"
-          data-generate-select-item
+          data-generate-select-item={allLocked ? "locked" : ""}
         >
-          {gen.selectItem}
+          {allLocked ? gen.selectItemLocked : gen.selectItem}
         </p>
       );
     if (!hasCarton || perContainer === null) {
@@ -1626,7 +1657,8 @@ export function SelectionQuantity({
    * mesma conta do servidor (`splitByColor`); sem fechar caixas, diz o ajuste.
    */
   const colorPreview = (live: number[], dates: string[]) => {
-    if (!item || !variants || !colorLabels) return null;
+    // Só do vencedor marcado: o card "Variações" é dele.
+    if (!item || item !== marked || !variants || !colorLabels) return null;
     const single = !live.length;
     const typedPieces = parseCount(pieces);
     const rounds = single
