@@ -145,8 +145,9 @@ test("Alterar, embalagens, variações e uma cotação por combinação", async 
   await expect(page.locator("[data-supplier-table]")).toContainText(
     "Foto Marketing",
   );
+  // A miniatura (a galeria também tem as imagens da ampliação).
   await expect(
-    page.locator(`[data-supplier-table-marketing="${last}"] img`),
+    page.locator(`[data-supplier-table-marketing="${last}"] img`).first(),
   ).toBeVisible();
   await page.goto(`/app/supplier-requests/${last}?view=item`);
   const variant = page.locator('[data-request-variant="Preto fosco|3"]');
