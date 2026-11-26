@@ -1,4 +1,12 @@
 import { inflateRawSync } from "node:zlib";
+import {
+  cellsOfRect,
+  MAX_SHEET_COLS_INDEX,
+  MAX_SHEET_ROWS_INDEX,
+  pointOf,
+  SheetAxis,
+  type ImageCells,
+} from "./sheet-geometry";
 
 /**
  * Leitor mínimo de XLSX sem dependências: abre o ZIP, lê a planilha escolhida
@@ -395,13 +403,42 @@ export interface CellLimits {
   maxXmlBytes?: number;
 }
 
-/** Imagem ancorada numa aba: posição da âncora (linha e coluna, do zero) e os bytes. */
+/**
+ * Imagem ancorada numa aba: a célula onde começa (linha e coluna, do zero) e
+ * os bytes. `toRow`/`toCol` são a última célula que ela cobre e
+ * `centerRow`/`centerCol` a do centro: é a linha (e a coluna) a que a foto
+ * pertence (docs/BOOKING.md, "Fotos da planilha"). Sem elas, a de começo.
+ */
 export interface SheetImage {
   row: number;
   col: number;
+  toRow?: number;
+  toCol?: number;
+  centerRow?: number;
+  centerCol?: number;
+  /** Foto dentro da célula ("Colocar na célula" do Excel ou DISPIMG do WPS). */
+  inCell?: boolean;
   name: string;
   mime: string;
   bytes: Uint8Array;
+}
+
+/** Linha a que a imagem pertence (a do centro; antigas: a do começo). */
+export const imageRow = (img: Pick<SheetImage, "row" | "centerRow">) =>
+  img.centerRow ?? img.row;
+/** Coluna a que a imagem pertence (a do centro; antigas: a do começo). */
+export const imageCol = (img: Pick<SheetImage, "col" | "centerCol">) =>
+  img.centerCol ?? img.col;
+
+/** A imagem cobre alguma destas colunas (do começo ao fim dela)? */
+export function imageInCols(
+  img: Pick<SheetImage, "col" | "toCol" | "centerCol">,
+  cols: ReadonlySet<number>,
+) {
+  const last = Math.max(img.col, img.toCol ?? img.col);
+  if (last - img.col > 64) return cols.has(imageCol(img));
+  for (let c = img.col; c <= last; c++) if (cols.has(c)) return true;
+  return false;
 }
 
 export interface ImageLimits {
@@ -411,7 +448,10 @@ export interface ImageLimits {
   maxImageBytes?: number;
   /** Soma dos bytes das imagens devolvidas (depois disso, as demais ficam de fora). */
   maxTotalBytes?: number;
-  /** Só as imagens ancoradas nestas colunas (do zero); as outras nem são lidas. */
+  /**
+   * Só as imagens que cobrem estas colunas (do zero; da coluna em que
+   * começam à em que terminam); as outras nem são lidas.
+   */
   cols?: readonly number[];
 }
 
@@ -420,8 +460,10 @@ export interface Workbook {
   sheetNames(): string[];
   readCells(sheet: string, limits?: CellLimits): CellSheet;
   /**
-   * Imagens flutuantes da aba (fotos coladas nas células): a âncora diz em
-   * que célula começam. Só PNG, JPEG e WebP; o resto (EMF, GIF…) fica de fora.
+   * Imagens da aba: as flutuantes (fotos coladas sobre as células: a âncora
+   * diz onde começam e terminam) e as de dentro da célula ("Colocar na
+   * célula" do Excel e DISPIMG do WPS). Só PNG, JPEG e WebP; o resto (EMF,
+   * GIF…) fica de fora. Na ordem da aba: de cima para baixo.
    */
   readImages(sheet: string, limits?: ImageLimits): SheetImage[];
 }
@@ -475,45 +517,414 @@ export function openWorkbook(
       let total = 0;
       const target = sheets.find((s) => s.name === sheet);
       if (!target) throw new Error("xlsx_sheet_missing");
-      const drawingPath = partsOfType(zip, target.path, "/drawing")[0];
-      const drawing = drawingPath ? zip.get(drawingPath) : null;
-      if (!drawingPath || !drawing) return [];
-      const media = relationships(zip, drawingPath);
+      const placed = placedImages(zip, target.path)
+        .filter((p) => !cols || imageInCols(p, cols))
+        .sort((a, b) => a.y - b.y || a.x - b.x);
       const out: SheetImage[] = [];
       const cache = new Map<string, Uint8Array | null>();
-      const xml = decode(drawing);
-      for (const [, inner] of anchorsOf(xml)) {
+      for (const p of placed) {
         if (out.length >= maxImages) break;
-        const from = firstTag(inner, ["xdr:from", "from"])?.[1];
-        if (from === undefined) continue;
-        const col = Number(firstTag(from, ["xdr:col", "col"])?.[1]);
-        const row = Number(firstTag(from, ["xdr:row", "row"])?.[1]);
-        const blip = firstTag(inner, ["a:blip", "blip"])?.[0] ?? "";
-        const embed = /\br:embed="([^"]+)"/.exec(blip)?.[1];
-        const path = embed ? media.get(embed)?.path : undefined;
-        if (!path || !Number.isInteger(col) || !Number.isInteger(row)) continue;
-        if (col < 0 || row < 0) continue;
-        if (cols && !cols.has(col)) continue;
-        const mime = imageMime(path);
+        const mime = imageMime(p.path);
         if (!mime) continue;
-        let bytes = cache.get(path);
+        let bytes = cache.get(p.path);
         if (bytes === undefined) {
-          bytes = zip.get(path);
-          cache.set(path, bytes);
+          bytes = zip.get(p.path);
+          cache.set(p.path, bytes);
         }
         if (!bytes || bytes.length === 0 || bytes.length > maxBytes) continue;
         if (total + bytes.length > maxTotal) break;
         total += bytes.length;
         out.push({
-          row,
-          col,
-          name: path.slice(path.lastIndexOf("/") + 1),
+          row: p.row,
+          col: p.col,
+          toRow: p.toRow,
+          toCol: p.toCol,
+          centerRow: p.centerRow,
+          centerCol: p.centerCol,
+          ...(p.inCell ? { inCell: true } : {}),
+          name: p.path.slice(p.path.lastIndexOf("/") + 1),
           mime,
           bytes,
         });
       }
       return out;
     },
+  };
+}
+
+/**
+ * As imagens da aba no lugar (flutuantes e de dentro da célula), antes de
+ * ler os bytes. A grade (alturas e larguras) só é lida quando há imagem.
+ */
+function placedImages(zip: Zip, sheetPath: string): PlacedImage[] {
+  const drawingPath = partsOfType(zip, sheetPath, "/drawing")[0];
+  const drawing = drawingPath ? zip.get(drawingPath) : null;
+  const wps = wpsCellImages(zip);
+  const rich = richValueImages(zip);
+  if (!drawing && !wps.size && !rich) return [];
+  const entry = zip.get(sheetPath);
+  const xml = entry ? decode(entry) : "";
+  const axes = sheetAxes(xml);
+  return [
+    ...(drawingPath && drawing
+      ? floatingImages(zip, drawingPath, decode(drawing), axes)
+      : []),
+    ...(wps.size || rich ? cellImages(xml, axes, wps, rich) : []),
+  ];
+}
+
+type Axes = { rows: SheetAxis; cols: SheetAxis };
+
+/** Imagem localizada na aba, antes de ler os bytes. */
+interface PlacedImage extends ImageCells {
+  path: string;
+  inCell?: boolean;
+  /** Ponto de começo (para a ordem: de cima para baixo, da esquerda para a direita). */
+  x: number;
+  y: number;
+}
+
+/* ---- Grade da aba: altura das linhas e largura das colunas (EMU) ---- */
+
+/** 1 ponto = 12 700 EMU; 1 pixel = 9 525 EMU. */
+const EMU_PER_POINT = 12_700;
+const EMU_PER_PIXEL = 9_525;
+
+/** Largura de coluna em caracteres → EMU (fonte padrão do Excel, dígito de 7 px). */
+function columnEmu(chars: number) {
+  const px = Math.trunc(((256 * chars + Math.trunc(128 / 7)) / 256) * 7);
+  return Math.max(0, px) * EMU_PER_PIXEL;
+}
+
+/** Atributos de cada `<nome ...>` (sem ler o conteúdo), em tempo linear. */
+function* openTags(xml: string, name: string): Generator<string> {
+  const open = `<${name}`;
+  let i = 0;
+  while (i < xml.length) {
+    const start = xml.indexOf(open, i);
+    if (start < 0) return;
+    const next = xml.charCodeAt(start + open.length);
+    if (
+      next !== 32 &&
+      next !== 9 &&
+      next !== 10 &&
+      next !== 13 &&
+      next !== 62 &&
+      next !== 47
+    ) {
+      i = start + open.length;
+      continue;
+    }
+    const gt = xml.indexOf(">", start);
+    if (gt < 0) return;
+    yield xml.slice(start + open.length, gt);
+    i = gt + 1;
+  }
+}
+
+const attrNumber = (attrs: string, name: string): number | null => {
+  const m = new RegExp(`\\b${name}="([^"]*)"`).exec(attrs);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n : null;
+};
+
+/** Eixos da aba: alturas das linhas (`<row ht>`) e larguras das colunas (`<col width>`), em EMU. */
+function sheetAxes(xml: string): Axes {
+  let defaultRow = 15;
+  let defaultCol: number | null = null;
+  let baseCol = 8;
+  for (const attrs of openTags(xml, "sheetFormatPr")) {
+    defaultRow = attrNumber(attrs, "defaultRowHeight") ?? defaultRow;
+    defaultCol = attrNumber(attrs, "defaultColWidth");
+    baseCol = attrNumber(attrs, "baseColWidth") ?? baseCol;
+    break;
+  }
+  const rowSizes: Array<[number, number]> = [];
+  // Só o começo do XML até as células acabarem: as linhas vêm em <sheetData>.
+  for (const attrs of openTags(xml, "row")) {
+    const r = attrNumber(attrs, "r");
+    if (r === null) continue;
+    const hidden = /\bhidden="(1|true)"/.test(attrs);
+    const ht = attrNumber(attrs, "ht");
+    if (hidden) rowSizes.push([r - 1, 0]);
+    else if (ht !== null) rowSizes.push([r - 1, ht * EMU_PER_POINT]);
+  }
+  const colSizes: Array<[number, number]> = [];
+  for (const attrs of openTags(xml, "col")) {
+    const min = attrNumber(attrs, "min");
+    const max = attrNumber(attrs, "max");
+    const width = attrNumber(attrs, "width");
+    if (min === null || max === null || min < 1) continue;
+    const hidden = /\bhidden="(1|true)"/.test(attrs);
+    const size = hidden ? 0 : width !== null ? columnEmu(width) : null;
+    if (size === null) continue;
+    const last = Math.min(max, MAX_SHEET_COLS_INDEX);
+    for (let c = min; c <= last; c++) colSizes.push([c - 1, size]);
+  }
+  return {
+    rows: new SheetAxis(
+      defaultRow * EMU_PER_POINT,
+      rowSizes,
+      MAX_SHEET_ROWS_INDEX,
+    ),
+    cols: new SheetAxis(
+      columnEmu(defaultCol ?? baseCol + 5 / 7),
+      colSizes,
+      MAX_SHEET_COLS_INDEX,
+    ),
+  };
+}
+
+/** Número de uma tag (`<xdr:col>3</xdr:col>`); ausente ou inválido: nulo. */
+function tagNumber(xml: string, names: string[]): number | null {
+  const v = firstTag(xml, names)?.[1];
+  if (v === undefined) return null;
+  const n = Number(v.trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Ponto de uma âncora `<xdr:from>`/`<xdr:to>`: célula + deslocamento (EMU). */
+function anchorPoint(
+  xml: string | undefined,
+  axes: Axes,
+): { x: number; y: number; row: number; col: number } | null {
+  if (xml === undefined) return null;
+  const col = tagNumber(xml, ["xdr:col", "col"]);
+  const row = tagNumber(xml, ["xdr:row", "row"]);
+  if (col === null || row === null) return null;
+  if (!Number.isInteger(col) || !Number.isInteger(row) || col < 0 || row < 0)
+    return null;
+  if (col >= MAX_SHEET_COLS_INDEX || row >= MAX_SHEET_ROWS_INDEX) return null;
+  return {
+    row,
+    col,
+    x: pointOf(axes.cols, col, tagNumber(xml, ["xdr:colOff", "colOff"]) ?? 0),
+    y: pointOf(axes.rows, row, tagNumber(xml, ["xdr:rowOff", "rowOff"]) ?? 0),
+  };
+}
+
+/** Tamanho de `<xdr:ext cx cy>` (âncora de uma célula ou absoluta). */
+function extOf(inner: string): { cx: number; cy: number } | null {
+  const attrs = firstTag(inner, ["xdr:ext", "ext"])?.[0];
+  if (attrs === undefined) return null;
+  const cx = attrNumber(attrs, "cx");
+  const cy = attrNumber(attrs, "cy");
+  return cx !== null && cy !== null && cx >= 0 && cy >= 0 ? { cx, cy } : null;
+}
+
+/**
+ * Imagens flutuantes (desenho da aba): cada âncora com as imagens dela (um
+ * grupo de imagens tem várias, todas no retângulo do grupo). A mesma imagem
+ * no mesmo lugar duas vezes (Choice e Fallback do mc:AlternateContent) vale
+ * uma.
+ */
+function floatingImages(
+  zip: Zip,
+  drawingPath: string,
+  xml: string,
+  axes: Axes,
+): PlacedImage[] {
+  const media = relationships(zip, drawingPath);
+  const out: PlacedImage[] = [];
+  const seen = new Set<string>();
+  for (const [kind, inner] of anchorsOf(xml)) {
+    let rect: { x1: number; y1: number; x2: number; y2: number } | null = null;
+    if (kind === "two") {
+      const from = anchorPoint(
+        firstTag(inner, ["xdr:from", "from"])?.[1],
+        axes,
+      );
+      const to = anchorPoint(firstTag(inner, ["xdr:to", "to"])?.[1], axes);
+      if (!from) continue;
+      rect = {
+        x1: from.x,
+        y1: from.y,
+        x2: to?.x ?? from.x,
+        y2: to?.y ?? from.y,
+      };
+    } else if (kind === "one") {
+      const from = anchorPoint(
+        firstTag(inner, ["xdr:from", "from"])?.[1],
+        axes,
+      );
+      if (!from) continue;
+      const ext = extOf(inner);
+      rect = {
+        x1: from.x,
+        y1: from.y,
+        x2: from.x + (ext?.cx ?? 0),
+        y2: from.y + (ext?.cy ?? 0),
+      };
+    } else {
+      const pos = firstTag(inner, ["xdr:pos", "pos"])?.[0];
+      const x = pos === undefined ? null : attrNumber(pos, "x");
+      const y = pos === undefined ? null : attrNumber(pos, "y");
+      if (x === null || y === null || x < 0 || y < 0) continue;
+      const ext = extOf(inner);
+      rect = { x1: x, y1: y, x2: x + (ext?.cx ?? 0), y2: y + (ext?.cy ?? 0) };
+    }
+    const cells = cellsOfRect(axes.rows, axes.cols, rect);
+    for (const name of ["a:blip", "blip"]) {
+      for (const [attrs] of tags(inner, name)) {
+        const embed = /\br:embed="([^"]+)"/.exec(attrs)?.[1];
+        const path = embed ? media.get(embed)?.path : undefined;
+        if (!path) continue;
+        const key = `${path}@${Math.round(rect.x1)},${Math.round(rect.y1)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ ...cells, path, x: rect.x1, y: rect.y1 });
+      }
+    }
+  }
+  return out;
+}
+
+/** Referência "B12" → linha e coluna do zero. */
+function cellRef(attrs: string): { row: number; col: number } | null {
+  const ref = /\br="([A-Z]{1,3})(\d{1,7})"/.exec(attrs);
+  if (!ref) return null;
+  const row = Number(ref[2]) - 1;
+  const col = columnIndex(ref[1]);
+  if (row < 0 || col < 0 || col >= MAX_SHEET_COLS_INDEX) return null;
+  return { row, col };
+}
+
+/**
+ * Fotos dentro da célula: o DISPIMG do WPS (`xl/cellimages.xml`, a célula
+ * com `=DISPIMG("ID_…",1)`) e o "Colocar na célula" do Excel (a célula com
+ * `vm="n"`, ligada à imagem pelos metadados e pelo richData). A imagem
+ * ocupa a própria célula.
+ */
+function cellImages(
+  xml: string,
+  axes: Axes,
+  wps: Map<string, string>,
+  rich: ((vm: number) => string | undefined) | null,
+): PlacedImage[] {
+  const out: PlacedImage[] = [];
+  for (const [attrs, inner] of tags(xml, "c")) {
+    let path: string | undefined;
+    if (rich) {
+      const vm = attrNumber(attrs, "vm");
+      if (vm !== null) path = rich(vm);
+    }
+    if (!path && wps.size && inner.includes("DISPIMG")) {
+      const id = /DISPIMG\(\s*(?:&quot;|")([^"&]+)(?:&quot;|")/.exec(
+        inner,
+      )?.[1];
+      if (id) path = wps.get(id);
+    }
+    if (!path) continue;
+    const at = cellRef(attrs);
+    if (!at) continue;
+    out.push({
+      row: at.row,
+      col: at.col,
+      toRow: at.row,
+      toCol: at.col,
+      centerRow: at.row,
+      centerCol: at.col,
+      inCell: true,
+      path,
+      x: axes.cols.start(at.col),
+      y: axes.rows.start(at.row),
+    });
+  }
+  return out;
+}
+
+/** WPS: nome da imagem (ID_…) → caminho da mídia, de `xl/cellimages.xml`. */
+function wpsCellImages(zip: Zip): Map<string, string> {
+  const out = new Map<string, string>();
+  const part = "xl/cellimages.xml";
+  const entry = zip.get(part);
+  if (!entry) return out;
+  const media = relationships(zip, part);
+  for (const name of ["xdr:pic", "pic"]) {
+    for (const [, inner] of tags(decode(entry), name)) {
+      const cNvPr = firstTag(inner, ["xdr:cNvPr", "cNvPr"])?.[0] ?? "";
+      const id = /\bname="([^"]+)"/.exec(cNvPr)?.[1];
+      const blip = firstTag(inner, ["a:blip", "blip"])?.[0] ?? "";
+      const embed = /\br:embed="([^"]+)"/.exec(blip)?.[1];
+      const path = embed ? media.get(embed)?.path : undefined;
+      if (id && path && !out.has(id)) out.set(id, path);
+    }
+    if (out.size) break;
+  }
+  return out;
+}
+
+/**
+ * Excel "Colocar na célula": vm (1 em diante) → metadados do valor → valor
+ * rico → identificador da imagem local → relacionamento → mídia. Sem
+ * richData: nulo.
+ */
+function richValueImages(
+  zip: Zip,
+): ((vm: number) => string | undefined) | null {
+  const relPart = "xl/richData/richValueRel.xml";
+  const relXml = zip.get(relPart);
+  const valuesXml = zip.get("xl/richData/rdrichvalue.xml");
+  const metaXml = zip.get("xl/metadata.xml");
+  if (!relXml || !valuesXml || !metaXml) return null;
+  const relMap = relationships(zip, relPart);
+  const relPaths: Array<string | undefined> = [];
+  for (const [attrs] of tags(decode(relXml), "rel")) {
+    const rid = /\br:id="([^"]+)"/.exec(attrs)?.[1];
+    relPaths.push(rid ? relMap.get(rid)?.path : undefined);
+  }
+  // Estruturas: em que posição do valor está o identificador da imagem.
+  const structures: number[] = [];
+  const structXml = zip.get("xl/richData/rdrichvaluestructure.xml");
+  if (structXml)
+    for (const [, inner] of tags(decode(structXml), "s")) {
+      let k = 0;
+      let at = 0;
+      for (const [attrs] of tags(inner, "k")) {
+        if (/\bn="_rvRel:LocalImageIdentifier"/.test(attrs)) at = k;
+        k++;
+      }
+      structures.push(at);
+    }
+  const values: Array<string | undefined> = [];
+  for (const [attrs, inner] of tags(decode(valuesXml), "rv")) {
+    const s = attrNumber(attrs, "s") ?? 0;
+    const vs = [...tags(inner, "v")].map(([, v]) => v.trim());
+    const idx = Number(vs[structures[s] ?? 0]);
+    values.push(Number.isInteger(idx) ? relPaths[idx] : undefined);
+  }
+  const meta = decode(metaXml);
+  // Tipo XLRICHVALUE (1 em diante) e os blocos do futureMetadata dele.
+  let richType = 0;
+  let n = 0;
+  for (const attrs of openTags(meta, "metadataType")) {
+    n++;
+    if (/\bname="XLRICHVALUE"/.test(attrs)) richType = n;
+  }
+  const future: Array<number | undefined> = [];
+  for (const [attrs, inner] of tags(meta, "futureMetadata")) {
+    if (!/\bname="XLRICHVALUE"/.test(attrs)) continue;
+    for (const [, bk] of tags(inner, "bk")) {
+      const rvb = firstTag(bk, ["xlrd:rvb", "rvb"])?.[0];
+      const i = rvb === undefined ? null : attrNumber(rvb, "i");
+      future.push(i ?? undefined);
+    }
+  }
+  const valueMeta: Array<{ t: number; v: number } | undefined> = [];
+  for (const [, inner] of tags(meta, "valueMetadata")) {
+    for (const [, bk] of tags(inner, "bk")) {
+      const rc = firstTag(bk, ["rc"])?.[0];
+      const t = rc === undefined ? null : attrNumber(rc, "t");
+      const v = rc === undefined ? null : attrNumber(rc, "v");
+      valueMeta.push(t !== null && v !== null ? { t, v } : undefined);
+    }
+  }
+  return (vm) => {
+    const rc = valueMeta[vm - 1];
+    if (!rc || (richType && rc.t !== richType)) return undefined;
+    const value = future[rc.v];
+    return value === undefined ? undefined : values[value];
   };
 }
 
@@ -559,15 +970,22 @@ function partsOfType(zip: Zip, partPath: string, suffix: string) {
     .map((r) => r.path);
 }
 
-/** Âncoras do desenho com célula de origem (com ou sem o prefixo xdr). */
-function* anchorsOf(xml: string): Generator<[string, string]> {
-  for (const name of [
-    "xdr:twoCellAnchor",
-    "xdr:oneCellAnchor",
-    "twoCellAnchor",
-    "oneCellAnchor",
-  ])
-    yield* tags(xml, name);
+/**
+ * Âncoras do desenho (com ou sem o prefixo xdr): de duas células, de uma
+ * célula com o tamanho e absolutas (posição e tamanho). Devolve o tipo e o
+ * conteúdo.
+ */
+function* anchorsOf(xml: string): Generator<["two" | "one" | "abs", string]> {
+  const kinds: Array<[string, "two" | "one" | "abs"]> = [
+    ["xdr:twoCellAnchor", "two"],
+    ["xdr:oneCellAnchor", "one"],
+    ["xdr:absoluteAnchor", "abs"],
+    ["twoCellAnchor", "two"],
+    ["oneCellAnchor", "one"],
+    ["absoluteAnchor", "abs"],
+  ];
+  for (const [name, kind] of kinds)
+    for (const [, inner] of tags(xml, name)) yield [kind, inner];
 }
 
 /** Primeira ocorrência de uma das tags (nomes alternativos com e sem prefixo). */

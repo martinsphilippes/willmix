@@ -3549,6 +3549,12 @@ export interface BookingItem extends BaseRow {
   plannedQty: number | null;
   sizeText: string | null;
   photoDocumentId: string | null;
+  /**
+   * Fotos adicionais do item (docs/BOOKING.md, "Fotos do item"; dono,
+   * 26/11/2026): as outras imagens da linha na planilha e as carregadas na
+   * tela do book. A principal continua em `photoDocumentId`. Antigos: nulo.
+   */
+  extraPhotoDocumentIds?: string[] | null;
   cardDocumentId: string | null;
   /** Colunas da planilha sem campo próprio: cabeçalho → valor. Não aparecem na tela. */
   extras: Record<string, string> | null;
@@ -6855,6 +6861,7 @@ export const TABLES: Record<TableName, TableDef> = {
       refusedAt: datetime(),
       refusedByUserId: id(false),
       sheetStore: str(60),
+      extraPhotoDocumentIds: json(),
     },
     indexes: [
       { key: "by_lot", type: "key", columns: ["lotId"] },

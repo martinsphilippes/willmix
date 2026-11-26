@@ -187,6 +187,44 @@ export function supplierHintOf(groups: ProductGroup[]): BookingLotSupplierHint {
   };
 }
 
+/** Fotos de um item do book, a principal e as adicionais (dono, 26/11/2026). */
+export const BOOKING_ITEM_PHOTOS_MAX = 12;
+
+/** As fotos do item na ordem: a principal primeiro. */
+export function bookingItemPhotos(
+  item: Pick<BookingItem, "photoDocumentId" | "extraPhotoDocumentIds">,
+): string[] {
+  const all = [item.photoDocumentId, ...(item.extraPhotoDocumentIds ?? [])];
+  return [...new Set(all.filter((d): d is string => !!d))];
+}
+
+/** A lista de fotos → os dois campos do item (a primeira é a principal). */
+function photoFields(ids: string[]) {
+  const [main = null, ...extra] = [...new Set(ids)].slice(
+    0,
+    BOOKING_ITEM_PHOTOS_MAX,
+  );
+  return { photoDocumentId: main, extraPhotoDocumentIds: extra };
+}
+
+/** As fotos do grupo da planilha (todas as da linha; antigas: só a principal). */
+function groupPhotos(group: ProductGroup): SheetImage[] {
+  return (group.photos ?? (group.photo ? [group.photo] : [])).slice(
+    0,
+    BOOKING_ITEM_PHOTOS_MAX,
+  );
+}
+
+/** Guarda as fotos do grupo (a que não sobe fica de fora). */
+async function storeImages(user: User, images: SheetImage[]) {
+  const ids: string[] = [];
+  for (const image of images) {
+    const id = await storeImage(user, image);
+    if (id) ids.push(id);
+  }
+  return ids;
+}
+
 async function storeImage(user: User, image: SheetImage | null) {
   if (!image) return null;
   try {
@@ -474,10 +512,12 @@ export async function createLotFromSheet(
   // Os itens de cada planilha entram depois dos da anterior.
   let position = 0;
   for (const group of groups) {
-    const [photoDocumentId, cardDocumentId] = [
-      await storeImage(user, group.photo),
-      await storeImage(user, group.card),
-    ];
+    // Todas as fotos da linha (dono, 26/11/2026): a de cima é a principal,
+    // as outras ficam como fotos adicionais do item.
+    const { photoDocumentId, extraPhotoDocumentIds } = photoFields(
+      await storeImages(user, groupPhotos(group)),
+    );
+    const cardDocumentId = await storeImage(user, group.card);
     await store.create("booking_items", {
       // Bruto ≤ líquido na planilha: o bruto fica em branco (o banco recusa).
       ...importedWeights(itemFromGroup(group)),
@@ -487,6 +527,8 @@ export async function createLotFromSheet(
       lotId: lot.id,
       photoDocumentId,
       cardDocumentId,
+      // Coluna nova: só vai quando há foto adicional.
+      ...(extraPhotoDocumentIds.length ? { extraPhotoDocumentIds } : {}),
       analysis: null,
       productId: null,
       updatedByUserId: null,
@@ -1807,4 +1849,232 @@ export async function chosenBookingItemIds(
     if (!isSchemaMissing(error)) throw error;
   }
   return chosen;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Fotos do item (dono, 26/11/2026; docs/BOOKING.md, "Fotos do item")       */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * O book em que as fotos dos itens mudam: o da Wellmix em qualquer situação
+ * menos Cancelado (como o NCM). A foto não entra na previsão de preço, então
+ * o book fechado também aceita.
+ */
+async function photoLot(lotId: string): Promise<BookingLot> {
+  const lot = await wellmixLot(lotId);
+  if (!lot) throw new BookingLotError("not_found");
+  if (lot.status === "cancelled")
+    throw new BookingLotError("booking_lot_locked");
+  return lot;
+}
+
+async function photoItem(lotId: string, itemId: string) {
+  const lot = await photoLot(lotId);
+  const item = await withSchema(() => getStore().get("booking_items", itemId));
+  if (!item || item.lotId !== lot.id) throw new BookingLotError("not_found");
+  return { lot, item };
+}
+
+const itemLabel = (item: BookingItem) =>
+  item.itemNumber ?? item.factoryItemCode ?? String(item.position + 1);
+
+/**
+ * Acrescenta fotos ao item: as enviadas no formulário e as que o navegador
+ * já subiu direto ao armazenamento. Sem foto principal, a primeira vira a
+ * principal; as outras ficam como adicionais. Até BOOKING_ITEM_PHOTOS_MAX.
+ */
+export async function addBookingItemPhotos(
+  user: User,
+  lotId: string,
+  itemId: string,
+  input: { files: File[]; uploadedIds: string[] },
+): Promise<BookingItem> {
+  assertBooking(user);
+  const { lot, item } = await photoItem(lotId, itemId);
+  const count = input.files.length + input.uploadedIds.length;
+  if (!count) throw new BookingLotError("photo_required");
+  if (input.files.some((f) => !(f.type ?? "").startsWith("image/")))
+    throw new BookingLotError("mime");
+  const current = bookingItemPhotos(item);
+  if (current.length + count > BOOKING_ITEM_PHOTOS_MAX)
+    throw new BookingLotError("booking_item_photos_max");
+  const { registerUploadedPhoto } = await import("./documents");
+  const target = { type: "photo" as const, visibility: "internal" as const };
+  const added: string[] = [];
+  for (const file of input.files)
+    added.push((await uploadDocument(user, file, target)).id);
+  for (const key of input.uploadedIds)
+    added.push((await registerUploadedPhoto(user, key, target)).id);
+  const store = getStore();
+  // Lido de novo: outra pessoa pode ter mexido nas fotos enquanto subia.
+  const fresh = (await store.get("booking_items", item.id)) ?? item;
+  const saved = await store.update("booking_items", item.id, {
+    ...photoFields([...bookingItemPhotos(fresh), ...added]),
+    updatedByUserId: user.id,
+  });
+  await audit(
+    user,
+    "booking_item.photos",
+    "booking_lot",
+    lot.id,
+    `Book nº ${lot.number}: ${added.length} foto(s) no item ${itemLabel(item)}`,
+    { photos: bookingItemPhotos(fresh).length },
+    { photos: bookingItemPhotos(saved).length, added },
+  );
+  return saved;
+}
+
+/**
+ * Tira uma foto do item (a principal ou uma adicional). Sendo a principal,
+ * a próxima vira a principal. O arquivo continua guardado (só sai do item).
+ */
+export async function removeBookingItemPhoto(
+  user: User,
+  lotId: string,
+  itemId: string,
+  documentId: string,
+): Promise<BookingItem> {
+  assertBooking(user);
+  const { lot, item } = await photoItem(lotId, itemId);
+  const photos = bookingItemPhotos(item);
+  if (!photos.includes(documentId)) throw new BookingLotError("not_found");
+  const saved = await getStore().update("booking_items", item.id, {
+    ...photoFields(photos.filter((d) => d !== documentId)),
+    updatedByUserId: user.id,
+  });
+  await audit(
+    user,
+    "booking_item.photo_remove",
+    "booking_lot",
+    lot.id,
+    `Book nº ${lot.number}: foto tirada do item ${itemLabel(item)}`,
+    { photos },
+    { photos: bookingItemPhotos(saved) },
+  );
+  return saved;
+}
+
+/** Torna uma das fotos do item a principal (a que aparece na tabela e segue para a seleção). */
+export async function setBookingItemMainPhoto(
+  user: User,
+  lotId: string,
+  itemId: string,
+  documentId: string,
+): Promise<BookingItem> {
+  assertBooking(user);
+  const { lot, item } = await photoItem(lotId, itemId);
+  const photos = bookingItemPhotos(item);
+  if (!photos.includes(documentId)) throw new BookingLotError("not_found");
+  if (photos[0] === documentId) return item;
+  const saved = await getStore().update("booking_items", item.id, {
+    ...photoFields([documentId, ...photos.filter((d) => d !== documentId)]),
+    updatedByUserId: user.id,
+  });
+  await audit(
+    user,
+    "booking_item.photo_main",
+    "booking_lot",
+    lot.id,
+    `Book nº ${lot.number}: nova foto principal no item ${itemLabel(item)}`,
+    { photoDocumentId: item.photoDocumentId },
+    { photoDocumentId: documentId },
+  );
+  return saved;
+}
+
+/** Resultado de "Buscar as fotos na planilha". */
+export interface BookingPhotoReload {
+  /** Itens sem foto antes de buscar. */
+  missing: number;
+  /** Itens que ganharam foto. */
+  filled: number;
+  /** Fotos guardadas (principais e adicionais). */
+  photos: number;
+  /** Planilhas que não abriram (arquivo apagado ou ilegível). */
+  failedSheets: number;
+}
+
+/**
+ * Busca de novo as fotos na planilha guardada do book, só para os itens sem
+ * foto (dono, 26/11/2026): a importação antiga não lia a coluna "PHOTOS" nem
+ * a foto que começava na linha de cima. Lê cada planilha com a leitura de
+ * hoje e acha o item pela posição e pelas linhas da planilha (as duas têm
+ * de bater). Nada além das fotos muda; o item com foto fica como está.
+ */
+export async function reloadBookingLotPhotos(
+  user: User,
+  lotId: string,
+): Promise<BookingPhotoReload> {
+  assertBooking(user);
+  const lot = await photoLot(lotId);
+  const store = getStore();
+  const items = await store.list("booking_items", {
+    filter: { lotId: lot.id },
+  });
+  const missing = items.filter((i) => !i.photoDocumentId);
+  const result: BookingPhotoReload = {
+    missing: missing.length,
+    filled: 0,
+    photos: 0,
+    failedSheets: 0,
+  };
+  if (!missing.length) return result;
+  // As planilhas na ordem da importação: os itens de cada uma vêm depois
+  // dos da anterior (posição contínua).
+  const files: Array<{ documentId: string | null; items: number }> = lot
+    .sheetFiles?.length
+    ? lot.sheetFiles
+    : [{ documentId: lot.fileDocumentId, items: lot.itemCount }];
+  let offset = 0;
+  for (const [k, file] of files.entries()) {
+    const from = offset;
+    offset += file.items;
+    const mine = missing.filter(
+      (i) => i.position >= from && i.position < from + file.items,
+    );
+    if (!mine.length) continue;
+    let groups: ProductGroup[];
+    try {
+      if (!file.documentId) throw new SheetImportError("file_gone");
+      const { bytes } = await sheetBytes({ documentId: file.documentId });
+      groups = parseProductSheet(bytes, {
+        sheet: k === 0 ? lot.sheetName : null,
+      }).groups;
+    } catch (error) {
+      console.error("[booking-photos] planilha", lot.id, k, error);
+      result.failedSheets++;
+      continue;
+    }
+    const rowsOf = (g: ProductGroup) => itemFromGroup(g).sourceRows;
+    for (const item of mine) {
+      const at = groups[item.position - from];
+      const group =
+        at && rowsOf(at) === item.sourceRows
+          ? at
+          : groups.find((g) => rowsOf(g) === item.sourceRows);
+      if (!group) continue;
+      const ids = await storeImages(user, groupPhotos(group));
+      if (!ids.length) continue;
+      // Lido de novo: alguém pode ter carregado uma foto enquanto buscava.
+      const fresh = (await store.get("booking_items", item.id)) ?? item;
+      await store.update("booking_items", item.id, {
+        ...photoFields(
+          fresh.photoDocumentId
+            ? [...bookingItemPhotos(fresh), ...ids]
+            : [...ids, ...bookingItemPhotos(fresh)],
+        ),
+        updatedByUserId: user.id,
+      });
+      result.filled++;
+      result.photos += ids.length;
+    }
+  }
+  await audit(
+    user,
+    "booking_lot.photos_reload",
+    "booking_lot",
+    lot.id,
+    `Book nº ${lot.number}: fotos buscadas na planilha, ${result.filled} de ${result.missing} item(ns) sem foto ganharam foto (${result.photos} foto(s))`,
+  );
+  return result;
 }

@@ -8,6 +8,8 @@ export interface FixtureSheet {
   name: string;
   /** cells[linha][coluna], do zero (A1 = [0][0]); "" é célula vazia. */
   cells: string[][];
+  /** Altura própria de linhas (do zero → pontos), como `<row ht>`. */
+  rowHeights?: Record<number, number>;
 }
 
 export interface FixtureImage {
@@ -17,6 +19,11 @@ export interface FixtureImage {
   row: number;
   bytes: Uint8Array;
   ext: "png" | "jpeg" | "gif";
+  /** Deslocamento (EMU) dentro da célula de começo. */
+  rowOff?: number;
+  colOff?: number;
+  /** Célula de fim (padrão: a seguinte, sem deslocamento). */
+  to?: { row: number; col: number; rowOff?: number; colOff?: number };
 }
 
 const esc = (s: string) =>
@@ -33,7 +40,11 @@ export function colName(i: number) {
   return s;
 }
 
-function sheetXml(cells: string[][], withDrawing: boolean) {
+function sheetXml(
+  cells: string[][],
+  withDrawing: boolean,
+  heights: Record<number, number> = {},
+) {
   const rows = cells
     .map((row, ri) => {
       const cs = row
@@ -45,7 +56,11 @@ function sheetXml(cells: string[][], withDrawing: boolean) {
             : `<c r="${ref}" t="inlineStr"><is><t>${esc(v)}</t></is></c>`;
         })
         .join("");
-      return cs ? `<row r="${ri + 1}">${cs}</row>` : "";
+      const ht =
+        heights[ri] !== undefined
+          ? ` ht="${heights[ri]}" customHeight="1"`
+          : "";
+      return cs ? `<row r="${ri + 1}"${ht}>${cs}</row>` : "";
     })
     .join("");
   return `<?xml version="1.0"?><worksheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetData>${rows}</sheetData>${
@@ -94,7 +109,7 @@ export function xlsxBytes(
     const mine = images.filter((img) => img.sheet === i);
     files.push([
       `xl/worksheets/sheet${i + 1}.xml`,
-      sheetXml(s.cells, mine.length > 0),
+      sheetXml(s.cells, mine.length > 0, s.rowHeights),
     ]);
     if (!mine.length) return;
     files.push([
@@ -108,7 +123,7 @@ export function xlsxBytes(
       const rid = `rIdImg${k + 1}`;
       const media = `image${mediaCount}.${img.ext}`;
       anchors.push(
-        `<xdr:twoCellAnchor editAs="oneCell"><xdr:from><xdr:col>${img.col}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${img.row}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>${img.col + 1}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${img.row + 1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${k + 2}" name="Picture ${k + 1}"/><xdr:cNvPicPr/></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr/></xdr:pic><xdr:clientData/></xdr:twoCellAnchor>`,
+        `<xdr:twoCellAnchor editAs="oneCell"><xdr:from><xdr:col>${img.col}</xdr:col><xdr:colOff>${img.colOff ?? 0}</xdr:colOff><xdr:row>${img.row}</xdr:row><xdr:rowOff>${img.rowOff ?? 0}</xdr:rowOff></xdr:from><xdr:to><xdr:col>${img.to?.col ?? img.col + 1}</xdr:col><xdr:colOff>${img.to?.colOff ?? 0}</xdr:colOff><xdr:row>${img.to?.row ?? img.row + 1}</xdr:row><xdr:rowOff>${img.to?.rowOff ?? 0}</xdr:rowOff></xdr:to><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${k + 2}" name="Picture ${k + 1}"/><xdr:cNvPicPr/></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr/></xdr:pic><xdr:clientData/></xdr:twoCellAnchor>`,
       );
       rels.push(
         `<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${media}"/>`,

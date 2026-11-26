@@ -38,7 +38,13 @@ import {
   type ReadingValues,
 } from "./sheet-reading-calc";
 import { addPhotos } from "./sourcing";
-import { openWorkbook, type SheetImage, type Workbook } from "./xlsx";
+import {
+  imageCol,
+  imageRow,
+  openWorkbook,
+  type SheetImage,
+  type Workbook,
+} from "./xlsx";
 import { openXlsWorkbook } from "./xls";
 
 /*
@@ -75,7 +81,9 @@ export const MAX_SHEET_PRODUCTS = 80;
 const MAX_SHEETS = 12;
 /** Fotos lidas: só as colunas de foto e cartão; o Excel grava várias âncoras por célula. */
 const MAX_IMAGES = 5000;
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+// Foto de celular de hoje passa de 8 MB (dono, 26/11/2026: fotos que não
+// entravam); o arquivo do portal aceita até 50 MB.
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 const MAX_IMAGES_TOTAL_BYTES = 120 * 1024 * 1024;
 /** Tetos do que se descompacta do arquivo (proteção contra "zip bomb"). */
 const WORKBOOK_MAX_BYTES = 192 * 1024 * 1024;
@@ -103,7 +111,24 @@ export type SheetColumn =
  * especiais (preço, pesos da caixa) e o cabeçalho que começa com o sinônimo.
  */
 const HEADERS: ReadonlyArray<[SheetColumn, string[]]> = [
-  ["photo", ["PHOTO", "FOTO", "PICTURE", "IMAGE", "图片"]],
+  [
+    "photo",
+    [
+      "PHOTO",
+      "PHOTOS",
+      "FOTO",
+      "FOTOS",
+      "PICTURE",
+      "PICTURES",
+      "IMAGE",
+      "IMAGES",
+      "IMAGEM",
+      "IMAGENS",
+      "图片",
+      "照片",
+      "产品图片",
+    ],
+  ],
   [
     "businessCard",
     [
@@ -293,6 +318,11 @@ const CURRENCY_ONLY_HEADER =
   /^(RMB|CNY|USD|US|BRL|R|EUR)( (OR|OU|E|AND))?( (RMB|CNY|USD|US|BRL|R|EUR))+$/;
 /** Cabeçalhos que abrem um grupo de subcolunas (SIZE → LENGTH, WIDTH, HEIGHT). */
 const GROUP_HEADER = /\b(SIZE|TAMANHO|MEDIDAS?|DIMENSIONS?|DIMENSOES)\b|尺寸/;
+/** Cabeçalho que fala de foto do item (singular, plural, pt, en e zh). */
+const PHOTO_WORD =
+  /\b(PHOTOS?|FOTOS?|PICTURES?|IMAGES?|IMAGEM|IMAGENS)\b|图片|照片/;
+/** Cabeçalho do cartão do fornecedor (não é a foto do item). */
+const CARD_WORD = /\b(CARD|CARTAO)\b|名片/;
 /** Peso da caixa (não é por peça): fica de fora. */
 const CARTON_WORD = /\b(CTN|CARTON|BOX|CX|CAIXA|MASTER)\b/;
 
@@ -316,6 +346,10 @@ function matchColumn(header: string): SheetColumn | null {
   // "FOB PRICE", "PRICE USD", "UNIT PRICE RMB": é o preço (o incoterm vem junto).
   if (/\b(PRICE|PRECO)\b|单价|价格/.test(h) && !/\bTOTAL\b/.test(h))
     return "price";
+  // "PRODUCT PHOTO", "ITEM PICTURE", "PHOTO OF SAMPLE": a foto do item
+  // (dono, 26/11/2026: "PHOTOS" no plural deixava a aba sem nenhuma foto).
+  // O cartão do fornecedor ("BUSINESS CARD PHOTO") ficou acima, exato.
+  if (PHOTO_WORD.test(h) && !CARD_WORD.test(h)) return "photo";
   // "N.W/CTN", "G.W BOX": peso da caixa, não da peça: ignorado.
   if (
     /\b(N ?W|G ?W|NET WEIGHT|GROSS WEIGHT|PESO)\b/.test(h) &&
@@ -350,7 +384,12 @@ function incotermInHeader(header: string): SheetIncoterm | null {
 
 const num = (raw: string | undefined): number | null => {
   if (!raw) return null;
-  let s = raw.trim().replace(/[^\d.,-]/g, "");
+  // NFKC: dígitos e pontuação de largura total ("１７．８", comum nas
+  // planilhas chinesas) viram os comuns antes de ler.
+  let s = raw
+    .normalize("NFKC")
+    .trim()
+    .replace(/[^\d.,-]/g, "");
   if (!s) return null;
   if (s.includes(",") && !s.includes(".")) s = s.replace(",", ".");
   else if (s.includes(",") && s.includes("."))
@@ -413,7 +452,13 @@ export interface ProductGroup {
    * linhas do grupo (cada cor tem a sua). Nulo: a planilha não traz.
    */
   plannedQty: number | null;
+  /** A foto principal: a primeira de `photos`. */
   photo: SheetImage | null;
+  /**
+   * Todas as fotos do item na coluna da foto (de cima para baixo; a
+   * primeira é a principal). Grupos antigos: só `photo`.
+   */
+  photos?: SheetImage[];
   card: SheetImage | null;
   /** PRODUCT NUMBER LIST da primeira linha do grupo. */
   itemNumber?: string | null;
@@ -646,17 +691,31 @@ export function parseProductSheet(
   if (!rows.length) throw new SheetImportError("no_rows");
   if (truncated) warnings.push(`rows_truncated:${MAX_SHEET_ROWS}`);
 
-  const imageCols = [columns.photo, columns.businessCard].filter(
+  // Fotos (docs/BOOKING.md, "Fotos da planilha"): as imagens que cobrem a
+  // coluna da foto e a do cartão. Sem coluna de foto reconhecida no
+  // cabeçalho, todas as imagens da aba: a coluna da foto é a que tem mais
+  // imagens (fora a do cartão).
+  const imageLimits = {
+    maxImages: MAX_IMAGES,
+    maxImageBytes: MAX_IMAGE_BYTES,
+    maxTotalBytes: MAX_IMAGES_TOTAL_BYTES,
+  };
+  const knownImageCols = [columns.photo, columns.businessCard].filter(
     (c): c is number => c !== undefined,
   );
-  const images = imageCols.length
-    ? workbook.readImages(sheetName, {
-        maxImages: MAX_IMAGES,
-        maxImageBytes: MAX_IMAGE_BYTES,
-        maxTotalBytes: MAX_IMAGES_TOTAL_BYTES,
-        cols: imageCols,
-      })
-    : [];
+  const images =
+    columns.photo === undefined
+      ? workbook.readImages(sheetName, imageLimits)
+      : workbook.readImages(sheetName, {
+          ...imageLimits,
+          cols: knownImageCols,
+        });
+  let photoColumn = columns.photo;
+  if (photoColumn === undefined) {
+    photoColumn = busiestImageColumn(images, columns.businessCard);
+    if (photoColumn !== undefined)
+      warnings.push(`photo_column_guessed:${photoColumn + 1}`);
+  }
   const groups = groupRows(
     rows,
     columns,
@@ -664,6 +723,7 @@ export function parseProductSheet(
     currency ?? options.defaultCurrency ?? null,
     incoterm,
     warnings,
+    photoColumn,
   );
   if (groups.length > MAX_SHEET_PRODUCTS)
     throw new SheetImportError("too_many");
@@ -681,8 +741,9 @@ export function parseProductSheet(
 }
 
 /** "33.5x24.8x1.5", "33,5 X 24,8 X 1,5 cm" → medidas; o resto é texto. */
-function parseSize(raw: string | undefined) {
-  if (!raw) return null;
+function parseSize(input: string | undefined) {
+  if (!input) return null;
+  const raw = input.normalize("NFKC");
   const m =
     /(\d+(?:[.,]\d+)?)\s*[x×X*]\s*(\d+(?:[.,]\d+)?)\s*[x×X*]\s*(\d+(?:[.,]\d+)?)/.exec(
       raw,
@@ -699,6 +760,7 @@ function groupRows(
   currency: SheetCurrency | null,
   incoterm: SheetIncoterm | null,
   warnings: string[],
+  photoColumn: number | undefined = columns.photo,
 ): ProductGroup[] {
   const groups: ProductGroup[] = [];
   let lastKey: string | null = null;
@@ -726,9 +788,38 @@ function groupRows(
     if (values.price && reading.price === undefined && !raw.currency)
       warnings.push(`row_${row}:price_without_currency`);
     const dims = parseSize(values.sizeText);
-    const lengthCm = num(values.lengthCm) ?? dims?.lengthCm ?? null;
-    const widthCm = num(values.widthCm) ?? dims?.widthCm ?? null;
-    const heightCm = num(values.heightCm) ?? dims?.heightCm ?? null;
+    // A medida inteira ("17.8x13.8x17.8") escrita na coluna do comprimento
+    // (ou da largura, ou da altura): cada eixo sai dela.
+    const cellDims =
+      parseSize(values.lengthCm) ??
+      parseSize(values.widthCm) ??
+      parseSize(values.heightCm);
+    const axis = (
+      raw: string | undefined,
+      key: "lengthCm" | "widthCm" | "heightCm",
+    ) => {
+      const whole = parseSize(raw);
+      if (whole) return whole[key];
+      // Dois números soltos ("60x40", "17.8-18"): não é uma medida só (antes
+      // viravam um número colado, 6040).
+      const numbers = (raw ?? "").normalize("NFKC").match(/\d+(?:[.,]\d+)?/g);
+      return numbers && numbers.length > 1 ? null : num(raw);
+    };
+    const lengthCm =
+      axis(values.lengthCm, "lengthCm") ??
+      cellDims?.lengthCm ??
+      dims?.lengthCm ??
+      null;
+    const widthCm =
+      axis(values.widthCm, "widthCm") ??
+      cellDims?.widthCm ??
+      dims?.widthCm ??
+      null;
+    const heightCm =
+      axis(values.heightCm, "heightCm") ??
+      cellDims?.heightCm ??
+      dims?.heightCm ??
+      null;
     const sizeText =
       (capacity && ml === null ? text(capacity, 60) : null) ??
       (values.sizeText && !dims ? text(values.sizeText, 60) : null);
@@ -822,24 +913,153 @@ function groupRows(
       ...(extras ? { extras: { ...extras } } : {}),
     });
   }
-  // Fotos: a imagem ancorada na coluna PHOTO dentro das linhas do grupo.
-  const pick = (g: ProductGroup, col: number | undefined) =>
-    col === undefined
-      ? null
-      : (images.find(
-          (img) =>
-            img.col === col &&
-            img.row + 1 >= g.firstRow &&
-            img.row + 1 <= g.lastRow,
-        ) ?? null);
+  // Fotos: as imagens da coluna da foto cujo centro cai nas linhas do
+  // grupo (a principal é a de cima); o cartão, a primeira da coluna dele.
+  const photos = assignImages(
+    groups,
+    images,
+    photoColumn,
+    columns.businessCard,
+  );
+  const cards = assignImages(groups, images, columns.businessCard, photoColumn);
   for (const g of groups) {
-    g.photo = pick(g, columns.photo);
-    g.card = pick(g, columns.businessCard);
+    const mine = photos.get(g.index) ?? [];
+    g.photos = mine;
+    g.photo = mine[0] ?? null;
+    g.card = cards.get(g.index)?.[0] ?? null;
     g.reading.colorAssortment = g.colors.length
       ? g.colors.join(" / ").slice(0, 200)
       : g.reading.colorAssortment;
   }
   return groups;
+}
+
+/**
+ * A coluna com mais imagens (pelo centro de cada uma), fora a do cartão:
+ * a coluna da foto quando o cabeçalho não diz qual é.
+ */
+function busiestImageColumn(
+  images: SheetImage[],
+  cardColumn: number | undefined,
+): number | undefined {
+  const counts = new Map<number, number>();
+  for (const img of images) {
+    const c = imageCol(img);
+    if (c === cardColumn) continue;
+    counts.set(c, (counts.get(c) ?? 0) + 1);
+  }
+  let best: number | undefined;
+  let most = 0;
+  for (const [c, n] of counts)
+    if (n > most || (n === most && best !== undefined && c < best)) {
+      best = c;
+      most = n;
+    }
+  return best;
+}
+
+/** Linhas do grupo na aba, do zero (a 1ª linha do Excel é a 0). */
+const groupSpan = (g: Pick<ProductGroup, "firstRow" | "lastRow">) =>
+  [g.firstRow - 1, g.lastRow - 1] as const;
+
+/**
+ * Imagens de uma coluna → grupos (docs/BOOKING.md, "Fotos da planilha").
+ * Vale a célula do centro da imagem: a foto que começa um pouco acima da
+ * linha (o canto na linha de cima) é da linha em que está quase toda. Na
+ * coluna: a do centro, ou qualquer uma que a imagem cubra quando o centro
+ * não cai na outra coluna de imagem (a foto larga demais que invade a
+ * vizinha). Depois, o grupo que ficou sem foto pega a imagem que encosta
+ * nas linhas dele: a que nenhum grupo pegou ou a segunda de um grupo
+ * vizinho. Cada imagem vai para um grupo só; as de cada grupo ficam de
+ * cima para baixo.
+ */
+export function assignImages(
+  groups: ReadonlyArray<Pick<ProductGroup, "index" | "firstRow" | "lastRow">>,
+  images: SheetImage[],
+  column: number | undefined,
+  otherColumn: number | undefined,
+): Map<number, SheetImage[]> {
+  const out = new Map<number, SheetImage[]>();
+  if (column === undefined || !groups.length) return out;
+  const candidates = images.filter((img) => {
+    const center = imageCol(img);
+    if (center === column) return true;
+    if (center === otherColumn) return false;
+    const last = Math.max(img.col, img.toCol ?? img.col);
+    return img.col <= column && column <= last;
+  });
+  const byRow = [...groups].sort((a, b) => a.firstRow - b.firstRow);
+  const groupAt = (row: number) => {
+    let lo = 0;
+    let hi = byRow.length - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const [first, last] = groupSpan(byRow[mid]);
+      if (row < first) hi = mid - 1;
+      else if (row > last) lo = mid + 1;
+      else return byRow[mid];
+    }
+    return null;
+  };
+  const add = (index: number, img: SheetImage) => {
+    const list = out.get(index) ?? [];
+    list.push(img);
+    out.set(index, list);
+  };
+  const loose: SheetImage[] = [];
+  for (const img of candidates) {
+    const g = groupAt(imageRow(img));
+    if (g) add(g.index, img);
+    else loose.push(img);
+  }
+  const touches = (
+    img: SheetImage,
+    g: Pick<ProductGroup, "firstRow" | "lastRow">,
+  ) => {
+    const [first, last] = groupSpan(g);
+    return img.row <= last && Math.max(img.row, img.toRow ?? img.row) >= first;
+  };
+  const distance = (
+    img: SheetImage,
+    g: Pick<ProductGroup, "firstRow" | "lastRow">,
+  ) => {
+    const [first, last] = groupSpan(g);
+    const row = imageRow(img);
+    return row < first ? first - row : row > last ? row - last : 0;
+  };
+  for (const g of byRow) {
+    if (out.get(g.index)?.length) continue;
+    // A imagem solta (centro fora de qualquer grupo) que encosta no grupo.
+    let best: { img: SheetImage; from: number | null } | null = null;
+    let bestDistance = Infinity;
+    for (const img of loose)
+      if (touches(img, g) && distance(img, g) < bestDistance) {
+        best = { img, from: null };
+        bestDistance = distance(img, g);
+      }
+    // Ou a segunda de um grupo vizinho que encosta neste.
+    if (!best)
+      for (const [index, list] of out) {
+        if (list.length < 2) continue;
+        for (const img of list.slice(1))
+          if (touches(img, g) && distance(img, g) < bestDistance) {
+            best = { img, from: index };
+            bestDistance = distance(img, g);
+          }
+      }
+    if (!best) continue;
+    if (best.from === null) loose.splice(loose.indexOf(best.img), 1);
+    else {
+      const list = out.get(best.from) ?? [];
+      list.splice(list.indexOf(best.img), 1);
+    }
+    add(g.index, best.img);
+  }
+  for (const list of out.values())
+    list.sort(
+      (a, b) => a.row - b.row || imageRow(a) - imageRow(b) || a.col - b.col,
+    );
+  return out;
 }
 
 /* ------------------------------------------------------------------------ */

@@ -17,7 +17,16 @@ import {
 import { parseNumberInput } from "@/lib/number-input";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
-import { errorCode, requireUser, run, str, withQuery } from "./helpers";
+import {
+  errorCode,
+  files,
+  requireUser,
+  run,
+  runInPlace,
+  str,
+  uploadedPhotoKeys,
+  withQuery,
+} from "./helpers";
 
 /*
  * Booking por planilha (docs/BOOKING.md, "Booking por planilha"): subir a
@@ -707,5 +716,85 @@ export async function refuseBookingItemsAction(
       .parse({ lotId, itemIds });
     const { refuseBookingItems } = await import("@/lib/services/booking-lots");
     await refuseBookingItems(user, input.lotId, input.itemIds);
+  });
+}
+
+/* ------------------------------------------------------------------------ */
+/* Fotos do item (dono, 26/11/2026; docs/BOOKING.md, "Fotos do item")       */
+/* ------------------------------------------------------------------------ */
+
+/** Lote e item do formulário (ids no formato do portal). */
+function photoTarget(form: FormData) {
+  return z
+    .object({ lotId: ID, itemId: ID })
+    .parse({ lotId: str(form, "lotId"), itemId: str(form, "itemId") });
+}
+
+/** Acrescenta fotos ao item (o "+" da célula Foto; fica na mesma tela). */
+export async function addBookingItemPhotosAction(form: FormData) {
+  const raw = str(form, "lotId");
+  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
+  await runInPlace(back, async () => {
+    const user = await screenUser();
+    const input = photoTarget(form);
+    const { addBookingItemPhotos } =
+      await import("@/lib/services/booking-lots");
+    await addBookingItemPhotos(user, input.lotId, input.itemId, {
+      files: files(form, "photo").slice(0, 12),
+      uploadedIds: uploadedPhotoKeys(form),
+    });
+    revalidatePath(back);
+  });
+}
+
+/** Tira uma foto do item (o arquivo continua guardado). */
+export async function removeBookingItemPhotoAction(form: FormData) {
+  const raw = str(form, "lotId");
+  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
+  await runInPlace(back, async () => {
+    const user = await screenUser();
+    const input = photoTarget(form);
+    const documentId = ID.parse(str(form, "documentId"));
+    const { removeBookingItemPhoto } =
+      await import("@/lib/services/booking-lots");
+    await removeBookingItemPhoto(user, input.lotId, input.itemId, documentId);
+    revalidatePath(back);
+  });
+}
+
+/** Torna uma das fotos do item a principal. */
+export async function setBookingItemMainPhotoAction(form: FormData) {
+  const raw = str(form, "lotId");
+  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
+  await runInPlace(back, async () => {
+    const user = await screenUser();
+    const input = photoTarget(form);
+    const documentId = ID.parse(str(form, "documentId"));
+    const { setBookingItemMainPhoto } =
+      await import("@/lib/services/booking-lots");
+    await setBookingItemMainPhoto(user, input.lotId, input.itemId, documentId);
+    revalidatePath(back);
+  });
+}
+
+/** Busca de novo, na planilha guardada, as fotos dos itens sem foto. */
+export async function reloadBookingLotPhotosAction(form: FormData) {
+  const raw = str(form, "lotId");
+  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
+  await run(back, async () => {
+    const user = await screenUser();
+    const lotId = ID.parse(raw);
+    const { reloadBookingLotPhotos } =
+      await import("@/lib/services/booking-lots");
+    const result = await reloadBookingLotPhotos(user, lotId);
+    return withQuery(
+      withQuery(
+        withQuery(back, "photosFilled", String(result.filled)),
+        "photosMissing",
+        String(result.missing),
+      ),
+      "photosFailed",
+      String(result.failedSheets),
+    );
   });
 }
