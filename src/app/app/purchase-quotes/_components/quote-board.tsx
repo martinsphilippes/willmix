@@ -54,6 +54,7 @@ import { PhotoGallery } from "@/components/photo-gallery";
 import { galleryProps } from "@/components/photo-gallery-props";
 import { ChatOpenButton } from "@/components/chat-open-button";
 import { productPhotoList } from "@/lib/services/product-list";
+import { bookPhotoList } from "@/lib/purchase-demand";
 import { itemLogistics } from "@/lib/services/item-logistics";
 import { canOpen } from "@/lib/auth/screens";
 import type {
@@ -359,7 +360,9 @@ export async function QuoteBoard({
                       name={name}
                       {...galleryProps(
                         t,
-                        product ? productPhotoList(product, photos) : [],
+                        product
+                          ? productPhotoList(product, photos)
+                          : bookPhotoList(item.book),
                       )}
                     />
                   </Td>

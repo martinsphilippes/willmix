@@ -430,6 +430,12 @@ export async function canAccessDocument(
         if (await supplierQuotesProduct(user.partyId, doc.productId))
           return true;
       }
+      // Item de book na cotação de compra (dono, 26/11/2026): a foto do
+      // item e a arte de exemplo do SKU que ele cota.
+      {
+        const { supplierQuotesBookFile } = await import("./quote-sampling");
+        if (await supplierQuotesBookFile(user.partyId, doc.id)) return true;
+      }
       // Convite para booking concorrente: o convidado vê a foto do item.
       const { partnerSeesInvitePhoto } = await import("./booking-invites");
       if (await partnerSeesInvitePhoto(user, doc.id)) return true;

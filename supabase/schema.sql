@@ -222,6 +222,7 @@ alter table public."requests" add column if not exists "priceForecast" jsonb;
 alter table public."requests" add column if not exists "companyAllocations" jsonb;
 alter table public."requests" add column if not exists "sentForm" jsonb;
 alter table public."requests" add column if not exists "innerRequirement" jsonb;
+alter table public."requests" add column if not exists "bookingSource" jsonb;
 create index if not exists "requests_by_customer" on public."requests" ("customerId");
 create index if not exists "requests_by_status" on public."requests" ("status");
 create index if not exists "requests_by_origin" on public."requests" ("origin");
@@ -2369,6 +2370,7 @@ alter table public."selection_groups" add column if not exists "aiPrompts" jsonb
 alter table public."selection_groups" add column if not exists "aiAssets" jsonb;
 alter table public."selection_groups" add column if not exists "packing" jsonb;
 alter table public."selection_groups" add column if not exists "supplierRequestIds" jsonb;
+alter table public."selection_groups" add column if not exists "demandIds" jsonb;
 create index if not exists "selection_groups_by_status" on public."selection_groups" ("status");
 create index if not exists "selection_groups_by_chosen" on public."selection_groups" ("chosenItemId");
 create index if not exists "selection_groups_created" on public."selection_groups" ("createdAt");

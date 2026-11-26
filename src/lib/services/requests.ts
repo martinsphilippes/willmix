@@ -15,6 +15,7 @@ import {
   type RequestCompanyAllocation,
   type RequestInnerRequirement,
   type RequestSchedule,
+  type BookingDemandSource,
 } from "@/lib/db";
 import { variantSnapshot } from "@/lib/variants";
 import type { OrderTerms } from "@/lib/order-terms";
@@ -75,6 +76,8 @@ export interface CreateRequestInput {
   companyAllocations?: RequestCompanyAllocation[] | null;
   /** Caixa inner exigida pelo cliente (dono, 21/11/2026). */
   innerRequirement?: RequestInnerRequirement | null;
+  /** Item de book enviado pelo parceiro (só o servidor; dono, 26/11/2026). */
+  bookingSource?: BookingDemandSource | null;
 }
 
 /** Um produto do lote: vira uma solicitação própria. */
@@ -94,6 +97,8 @@ export interface RequestBatchItem {
   companyAllocations?: RequestCompanyAllocation[] | null;
   /** Caixa inner exigida pelo cliente (dono, 21/11/2026). */
   innerRequirement?: RequestInnerRequirement | null;
+  /** Item de book enviado pelo parceiro (só o servidor; dono, 26/11/2026). */
+  bookingSource?: BookingDemandSource | null;
 }
 
 /**
@@ -167,6 +172,7 @@ export async function createRequestBatch(
           schedule: item.schedule ?? null,
           companyAllocations: item.companyAllocations ?? null,
           innerRequirement: item.innerRequirement ?? null,
+          bookingSource: item.bookingSource ?? null,
           number,
         },
         {
@@ -560,6 +566,8 @@ export async function createRequest(
     ...(input.innerRequirement
       ? { innerRequirement: input.innerRequirement }
       : {}),
+    // Item de book enviado pelo parceiro (coluna opcional; dono, 26/11/2026).
+    ...(input.bookingSource ? { bookingSource: input.bookingSource } : {}),
   } as const;
   let request: Request;
   try {

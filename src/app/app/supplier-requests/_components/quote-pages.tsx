@@ -19,6 +19,7 @@ import {
 import { quoteInnerState } from "@/lib/quote-inner";
 import { itemLogistics } from "@/lib/services/item-logistics";
 import { productPhotoList } from "@/lib/services/product-list";
+import { bookPhotoList } from "@/lib/purchase-demand";
 import {
   Alert,
   Badge,
@@ -145,7 +146,9 @@ export async function QuotationQuotePage({
 
   // Referência da Wellmix: as fotos do cadastro do produto (as mesmas que o
   // fornecedor vê na cotação dele).
-  const referencePhotos = (product ? productPhotoList(product, photos) : [])
+  const referencePhotos = (
+    product ? productPhotoList(product, photos) : bookPhotoList(item.book)
+  )
     .slice(0, 6)
     .map((x) => x.documentId);
   const rows: BoardRow[] = responses.map((r) => {

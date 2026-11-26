@@ -11,6 +11,8 @@ import {
   type SelectionGroup,
   type SelectionPacking,
   type SupplierRequest,
+  type SupplierRequestItem,
+  type SupplierRequestVariant,
   type User,
 } from "@/lib/db";
 import type { PackingInput } from "@/lib/selection-packing";
@@ -409,6 +411,80 @@ export interface OpenGroupRequestsResult {
   opened: SupplierRequest[];
   /** Grupos que não abriram, com o motivo (o código do erro). */
   failed: Array<{ groupId: string; error: string }>;
+  /**
+   * Book enviado pelo parceiro (dono, 26/11/2026): as escolhas que foram
+   * para a Estratégia de compra, com as demandas de cada uma.
+   */
+  strategy: Array<{ groupId: string; demandIds: string[] }>;
+}
+
+/** Um SKU da escolha: a quantidade, a programação e a cópia do item. */
+interface GroupSku {
+  /** Em embalagens (peças ÷ N). */
+  quantity: number;
+  schedule: RequestSchedule | null;
+  /** Nulo: o item como veio do Book (o fluxo de sempre). */
+  snapshot: SupplierRequestItem | null;
+  variant: SupplierRequestVariant | null;
+  colorPlan: SelectionGroup["colorPlan"];
+}
+
+/**
+ * Os SKUs da escolha: com embalagens e variações, um por combinação com
+ * peças (dono, 26/11/2026); sem elas, ou na combinação trivial, o item como
+ * veio do Book, com a quantidade, a programação e as cores gravadas.
+ */
+async function groupSkus(
+  group: SelectionGroup,
+  chosen: BookingItem,
+): Promise<GroupSku[]> {
+  const packing = group.packing ?? null;
+  const { colorsOf } = await import("@/lib/color-split");
+  const rules = await import("@/lib/selection-packing");
+  if (
+    !packing ||
+    rules.trivialPacking(packing, colorsOf(chosen.colorAssortment).length)
+  )
+    return [
+      {
+        quantity: group.quantity,
+        schedule: group.schedule ?? null,
+        snapshot: null,
+        variant: null,
+        colorPlan: group.colorPlan ?? null,
+      },
+    ];
+  const { supplierRequestItemOf } = await import("@/lib/supplier-requests");
+  const item = supplierRequestItemOf(chosen);
+  return packing.lines
+    .filter((line) => line.quantity > 0)
+    .map((line) => {
+      const items = group.schedule
+        ? group.schedule.items
+            .map((it, i) => ({
+              ...it,
+              quantity: rules.piecesToPacks(line.rounds[i] ?? 0, line.units),
+            }))
+            .filter((it) => it.quantity > 0)
+            .map((it, i) => ({ ...it, index: i + 1 }))
+        : [];
+      return {
+        quantity: rules.piecesToPacks(line.quantity, line.units),
+        schedule:
+          group.schedule && items.length ? { ...group.schedule, items } : null,
+        snapshot: rules.skuItemOf(item, packing, line),
+        variant: {
+          key: line.key,
+          variation: line.variation,
+          units: line.units,
+          pieceCarton: packing.carton ?? chosen.masterCartonQty,
+          mix: packing.mix,
+          artDocumentId: line.artDocumentId,
+          selectionGroupId: group.id,
+        },
+        colorPlan: null,
+      };
+    });
 }
 
 /**
@@ -428,78 +504,48 @@ async function openGroup(
     needs: group.needs,
     searchQuery: null,
   };
-  const packing = group.packing ?? null;
   const store = getStore();
-  const chosen = packing
-    ? await store.get("booking_items", group.chosenItemId)
-    : null;
-  const { colorsOf } = await import("@/lib/color-split");
-  const rules = await import("@/lib/selection-packing");
-  if (
-    !packing ||
-    !chosen ||
-    rules.trivialPacking(packing, colorsOf(chosen.colorAssortment).length)
-  )
+  const chosen = await store.get("booking_items", group.chosenItemId);
+  if (!chosen) throw new SupplierRequestError("not_found");
+  const skus = await groupSkus(group, chosen);
+  // O item como veio do Book: o fluxo de sempre (no lote do fornecedor).
+  if (skus.length === 1 && !skus[0].variant)
     return [
       await openSupplierRequest(
         user,
         {
           ...base,
-          quantity: group.quantity,
-          schedule: group.schedule ?? null,
-          colorPlan: group.colorPlan ?? null,
+          quantity: skus[0].quantity,
+          schedule: skus[0].schedule,
+          colorPlan: skus[0].colorPlan,
         },
         batches,
       ),
     ];
-  const { supplierRequestItemOf } = await import("@/lib/supplier-requests");
-  const item = supplierRequestItemOf(chosen);
   const opened: SupplierRequest[] = [];
   const linked = new Set<string>();
-  for (const line of packing.lines) {
-    if (!(line.quantity > 0)) continue;
-    const schedule = group.schedule
-      ? (() => {
-          const items = group
-            .schedule!.items.map((it, i) => ({
-              ...it,
-              quantity: rules.piecesToPacks(line.rounds[i] ?? 0, line.units),
-            }))
-            .filter((it) => it.quantity > 0)
-            .map((it, i) => ({ ...it, index: i + 1 }));
-          return items.length ? { ...group.schedule!, items } : null;
-        })()
-      : null;
+  for (const sku of skus) {
     // Uma cotação separada por combinação (número próprio): um lote de
     // solicitações novo para cada uma.
     const request = await openSupplierRequest(
       user,
       {
         ...base,
-        quantity: rules.piecesToPacks(line.quantity, line.units),
-        schedule,
+        quantity: sku.quantity,
+        schedule: sku.schedule,
         colorPlan: null,
-        snapshot: rules.skuItemOf(item, packing, line),
-        variant: {
-          key: line.key,
-          variation: line.variation,
-          units: line.units,
-          pieceCarton: packing.carton ?? chosen.masterCartonQty,
-          mix: packing.mix,
-          artDocumentId: line.artDocumentId,
-          selectionGroupId: group.id,
-        },
+        snapshot: sku.snapshot,
+        variant: sku.variant,
       },
       new Map(),
     );
     // A arte passa a abrir para o fornecedor da cotação (com o Mix, a mesma
     // imagem serve às cotações da embalagem: fica ligada à primeira).
-    if (line.artDocumentId && !linked.has(line.artDocumentId)) {
-      linked.add(line.artDocumentId);
+    const art = sku.variant?.artDocumentId;
+    if (art && !linked.has(art)) {
+      linked.add(art);
       await store
-        .update("documents", line.artDocumentId, {
-          supplierRequestId: request.id,
-        })
+        .update("documents", art, { supplierRequestId: request.id })
         .catch((error: unknown) =>
           console.error("openGroup: arte da combinação", error),
         );
@@ -512,10 +558,76 @@ async function openGroup(
 }
 
 /**
+ * Book enviado pelo parceiro (dono, 26/11/2026; docs/SUPPLIER_REQUESTS.md,
+ * "Book enviado pelo parceiro"): a escolha vira demanda de compra para
+ * estoque ("Estoque Wellmix"), uma por variação × embalagem, sem produto do
+ * cadastro e num lote só (uma solicitação na Estratégia), com a ligação ao
+ * item do book. A Estratégia de compra decide a quem cotar (o parceiro que
+ * mandou o book já vem marcado).
+ */
+async function groupToStrategy(
+  user: User,
+  group: SelectionGroup,
+): Promise<string[]> {
+  const store = getStore();
+  const chosen = await store.get("booking_items", group.chosenItemId);
+  if (!chosen) throw new SupplierRequestError("not_found");
+  const lot = await store.get("booking_lots", chosen.lotId);
+  if (!lot) throw new SupplierRequestError("not_found");
+  const skus = await groupSkus(group, chosen);
+  if (!skus.length)
+    throw new SupplierRequestError("supplier_request_qty_required");
+  const { supplierRequestItemOf } = await import("@/lib/supplier-requests");
+  const { bookingRecipientId } = await import("./booking-lots");
+  const { ensureStockParty } = await import("./stock-party");
+  const { createRequestBatch } = await import("./requests");
+  const { variantLabel } = await import("@/lib/selection-packing");
+  const stock = await ensureStockParty(user);
+  const name =
+    chosen.description ??
+    chosen.productName ??
+    chosen.factoryItemCode ??
+    chosen.id;
+  const created = await createRequestBatch(
+    user,
+    {
+      customerId: stock.id,
+      deadline: null,
+      notes: `Book nº ${lot.number}, item ${chosen.factoryItemCode ?? chosen.itemNumber ?? name} (Seleção de itens).`,
+      desiredAt: null,
+    },
+    skus.map((sku) => {
+      const label = variantLabel(sku.variant);
+      return {
+        productId: null,
+        productName: label ? `${name} · ${label}` : name,
+        description: name,
+        specification:
+          [label, group.needs].filter(Boolean).join(" · ").slice(0, 2000) ||
+          null,
+        quantity: sku.quantity,
+        unit: "pcs",
+        sourcingDemand: false,
+        schedule: sku.schedule,
+        bookingSource: {
+          bookingItemId: chosen.id,
+          bookingLotId: lot.id,
+          partnerId: bookingRecipientId(lot),
+          snapshot: sku.snapshot ?? supplierRequestItemOf(chosen),
+          variant: sku.variant,
+          selectionGroupId: group.id,
+        },
+      };
+    }),
+    { origin: "replenishment" },
+  );
+  return created.map((r) => r.id);
+}
+
+/**
  * O book foi subido pela Wellmix? Então a escolha vira cotação na hora,
  * direto com o Supplier do book (dono, 26/11/2026). O book que o parceiro
- * subiu pelo portal vai para a Estratégia de compra (entrega seguinte); até
- * lá, a cotação abre pelos Blocos Sugeridos, como antes.
+ * subiu pelo portal vai para a Estratégia de compra (`groupToStrategy`).
  */
 export async function lotUploadedByWellmix(
   lot: Pick<BookingLot, "createdByUserId">,
@@ -528,20 +640,16 @@ export async function lotUploadedByWellmix(
 }
 
 /**
- * Grava a escolha e, no book subido pela Wellmix, abre as cotações na hora
- * ("Gravar escolha", dono, 26/11/2026). Devolve a escolha e o que abriu
- * (nulo: ficou gravada, esperando a abertura pelos Blocos Sugeridos).
+ * "Gravar escolha" (dono, 26/11/2026): grava e, na hora, no book subido
+ * pela Wellmix abre as cotações (uma por combinação, direto com o Supplier
+ * do book) e no book enviado pelo parceiro manda as demandas para a
+ * Estratégia de compra. Devolve a escolha e o resultado.
  */
 export async function saveAndOpenSelectionGroup(
   user: User,
   input: SaveSelectionGroupInput,
-): Promise<{ group: SelectionGroup; opened: OpenGroupRequestsResult | null }> {
+): Promise<{ group: SelectionGroup; opened: OpenGroupRequestsResult }> {
   const group = await saveSelectionGroup(user, input);
-  const store = getStore();
-  const chosen = await store.get("booking_items", group.chosenItemId);
-  const lot = chosen ? await store.get("booking_lots", chosen.lotId) : null;
-  if (!lot || !(await lotUploadedByWellmix(lot)))
-    return { group, opened: null };
   return { group, opened: await openGroupRequests(user, [group.id]) };
 }
 
@@ -564,13 +672,33 @@ export async function openGroupRequests(
   const wanted =
     groupIds === "all" ? saved : saved.filter((g) => groupIds.includes(g.id));
   if (!wanted.length) throw new SupplierRequestError("selection_group_none");
-  const result: OpenGroupRequestsResult = { opened: [], failed: [] };
+  const result: OpenGroupRequestsResult = {
+    opened: [],
+    failed: [],
+    strategy: [],
+  };
   // Uma solicitação por fornecedor: os produtos abertos juntos entram nela.
   const batches = new Map<string, SupplierRequestBatch>();
   for (const group of wanted.sort((a, b) =>
     a.createdAt.localeCompare(b.createdAt),
   )) {
     try {
+      // Book enviado pelo parceiro: vai para a Estratégia de compra (dono,
+      // 26/11/2026), também quando aberto pelos Blocos Sugeridos.
+      const chosen = await store.get("booking_items", group.chosenItemId);
+      const lot = chosen ? await store.get("booking_lots", chosen.lotId) : null;
+      if (lot && !(await lotUploadedByWellmix(lot))) {
+        const demandIds = await groupToStrategy(user, group);
+        await store.update("selection_groups", group.id, {
+          status: "requested",
+          supplierRequestId: null,
+          demandIds,
+          requestedAt: new Date().toISOString(),
+          updatedByUserId: user.id,
+        });
+        result.strategy.push({ groupId: group.id, demandIds });
+        continue;
+      }
       const opened = await openGroup(user, group, batches);
       // Imagens e ficha geradas por IA: vão para a solicitação (o fornecedor vê).
       const { attachReferencesToRequest } = await import("./ai-references");
@@ -587,7 +715,12 @@ export async function openGroupRequests(
       });
       result.opened.push(...opened);
     } catch (error) {
-      if (!(error instanceof SupplierRequestError)) throw error;
+      const { RequestError } = await import("./requests");
+      if (
+        !(error instanceof SupplierRequestError) &&
+        !(error instanceof RequestError)
+      )
+        throw error;
       result.failed.push({ groupId: group.id, error: error.message });
     }
   }

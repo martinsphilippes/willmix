@@ -1525,6 +1525,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "bookingSource",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -14091,6 +14098,13 @@
         },
         {
           "key": "supplierRequestIds",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "demandIds",
           "required": false,
           "array": false,
           "default": null,

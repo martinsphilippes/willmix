@@ -490,6 +490,10 @@ Decisão do dono: prazo de produção e pedido mínimo são **de cada produto** 
 5. **Conversa do produto** numa coluna fixa à direita, já aberta e presa na rolagem (correção de 23/11/2026, no lugar do botão no alto): o formulário fica à esquerda e a conversa ocupa o espaço lateral; em tela estreita ela vai para baixo do formulário.
 6. **No cadastro da Wellmix** (coluna do produto): peças por caixa master, pesos, medidas da caixa, CBM e material do cadastro, para todo fornecedor convidado. Isto muda a regra de 20/11/2026 ("quem nunca vendeu não vê a nossa caixa"), a pedido do dono. O código na fábrica não aparece (é de outro fornecedor). A explicação do "Sem peso" virou dica do campo.
 
+## Item de book do parceiro na Estratégia (dono, 26/11/2026)
+
+O item de book que o parceiro subiu pelo portal chega à Estratégia como compra para estoque ("Estoque Wellmix"), sem produto do cadastro, uma demanda por variação × embalagem, com o parceiro já marcado; só "Cotar com outros fornecedores" vale, e a cotação de compra aceita o item pela chave da demanda. Detalhes em docs/SUPPLIER_REQUESTS.md, "Book enviado pelo parceiro".
+
 ## Estoque Wellmix só na Reposição (dono, 26/11/2026)
 
 Os pedidos do cliente "Estoque Wellmix" (`STOCK_PARTY_ID`, `wellmix-estoque`) apareciam em Encomendas e na Reposição. São todos reposição, então ficam **só na Reposição**.

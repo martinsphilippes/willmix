@@ -337,6 +337,36 @@ async function notifyTo(
  * (e não recusou): ele abre as fotos do cadastro do produto, que servem de
  * referência para a amostra.
  */
+/**
+ * Item de book na cotação de compra (dono, 26/11/2026): o convidado vê a
+ * foto do item e a arte de exemplo do SKU que cota.
+ */
+export async function supplierQuotesBookFile(
+  supplierId: string,
+  documentId: string,
+): Promise<boolean> {
+  const store = getStore();
+  const responses = (
+    await store
+      .list("purchase_quote_responses", { filter: { supplierId } })
+      .catch(() => [] as PurchaseQuoteResponse[])
+  ).filter((r) => r.status !== "declined");
+  if (!responses.length) return false;
+  const quotes = await store.list("purchase_quotes", {
+    filter: { id: [...new Set(responses.map((r) => r.quoteId))] },
+  });
+  return quotes.some(
+    (q) =>
+      q.status !== "cancelled" &&
+      q.items.some(
+        (i) =>
+          !!i.book &&
+          (i.book.snapshot.photoDocumentId === documentId ||
+            i.book.variant?.artDocumentId === documentId),
+      ),
+  );
+}
+
 export async function supplierQuotesProduct(
   supplierId: string,
   productId: string,

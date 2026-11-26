@@ -10,6 +10,7 @@ import {
   type PackingTotals,
 } from "@/lib/strategy-packing";
 import { scheduleTotal } from "@/lib/workflow/request-schedule";
+import { quoteItemKey } from "@/lib/purchase-demand";
 import { isBoxUnit } from "./purchase-history";
 import {
   loadSheetInputs,
@@ -68,6 +69,31 @@ function piecesOf(
   return { pieces, parcels: packingParcels(pieces, planned), warnings };
 }
 
+/**
+ * Item de book enviado pelo parceiro (dono, 26/11/2026): sem produto, a
+ * embalagem é a da cópia do item (já em embalagens do SKU).
+ */
+function bookFacts(
+  source: NonNullable<Request["bookingSource"]>,
+): PackingFacts {
+  const it = source.snapshot;
+  const has = (n: number | null | undefined): n is number =>
+    typeof n === "number" && Number.isFinite(n) && n > 0;
+  return {
+    basis: {
+      perMaster: has(it.masterCartonQty) ? it.masterCartonQty : null,
+      perInner: has(it.innerQty) ? it.innerQty : null,
+      cbmPerMaster: has(it.cbmPerCarton) ? it.cbmPerCarton : null,
+      cbmOtherBox: null,
+    },
+    from: {
+      perMaster: has(it.masterCartonQty) ? "book" : null,
+      perInner: has(it.innerQty) ? "book" : null,
+      cbm: has(it.cbmPerCarton) ? "book" : null,
+    },
+  };
+}
+
 /** A embalagem de cada encomenda (pelo id), com as fontes da ficha completa. */
 export async function demandPackings(
   user: User,
@@ -78,7 +104,9 @@ export async function demandPackings(
   const inputs = await loadSheetInputs(user, demands);
   for (const input of inputs) {
     const demand = input.request;
-    const facts = packingFactsOf(input);
+    const facts = demand.bookingSource
+      ? bookFacts(demand.bookingSource)
+      : packingFactsOf(input);
     const { pieces, parcels, warnings } = piecesOf(demand, facts.basis);
     out.set(demand.id, {
       demandId: demand.id,
@@ -119,11 +147,12 @@ export function linePackings(
   demands: readonly Request[],
   packings: ReadonlyMap<string, DemandPacking>,
 ): LinePacking[] {
+  // O item de book entra pela chave da demanda (`quoteItemKey`).
   const productIds = [
-    ...new Set(demands.map((d) => d.productId).filter(Boolean)),
+    ...new Set(demands.map((d) => quoteItemKey(d)).filter(Boolean)),
   ] as string[];
   return productIds.map((productId) => {
-    const mine = demands.filter((d) => d.productId === productId);
+    const mine = demands.filter((d) => quoteItemKey(d) === productId);
     const packs = mine
       .map((d) => packings.get(d.id))
       .filter((p): p is DemandPacking => !!p);
