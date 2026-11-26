@@ -34,6 +34,53 @@ export type DemandKind = "order" | "replenishment";
  */
 export const AUTO_ACTOR_ID = "system";
 
+/**
+ * Item de book na cotação de compra (dono, 26/11/2026): sem produto do
+ * cadastro, a chave do item é a da demanda, com este prefixo.
+ */
+export const BOOK_KEY_PREFIX = "bk-";
+
+/** A chave da cotação: o produto ou, no item de book, a da demanda. */
+export function quoteItemKey(
+  demand: Pick<Request, "id" | "productId"> & {
+    bookingSource?: Request["bookingSource"];
+  },
+): string | null {
+  if (demand.productId) return demand.productId;
+  return demand.bookingSource ? `${BOOK_KEY_PREFIX}${demand.id}` : null;
+}
+
+/** A chave é de um item de book (não há produto para procurar)? */
+export const isBookKey = (key: string | null | undefined) =>
+  !!key && key.startsWith(BOOK_KEY_PREFIX);
+
+/** Demanda de um item de book (sem produto, vinda da Seleção de itens). */
+export const isBookDemand = (
+  demand: Pick<Request, "productId"> & {
+    bookingSource?: Request["bookingSource"];
+  },
+) => !demand.productId && !!demand.bookingSource;
+
+/**
+ * Fotos do item de book na cotação de compra (sem produto do cadastro): a
+ * foto do item no book e a arte de exemplo do SKU, no formato da galeria.
+ */
+export function bookPhotoList(
+  book:
+    | {
+        snapshot: { photoDocumentId: string | null };
+        variant: { artDocumentId: string | null } | null;
+      }
+    | null
+    | undefined,
+): { documentId: string; kind: null }[] {
+  if (!book) return [];
+  return [book.snapshot.photoDocumentId, book.variant?.artDocumentId ?? null]
+    .filter((id): id is string => !!id)
+    .filter((id, i, all) => all.indexOf(id) === i)
+    .map((documentId) => ({ documentId, kind: null }));
+}
+
 /** Reposição (B10) ou encomenda (B14)? Nulo: não é demanda de compra. */
 export function demandKind(
   request: Pick<Request, "origin">,

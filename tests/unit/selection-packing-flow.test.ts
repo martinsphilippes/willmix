@@ -187,24 +187,152 @@ describe("gravar escolha com embalagens e variações", () => {
     ).rejects.toThrow("selection_colors_cartons");
   });
 
-  it("book enviado pelo parceiro: só grava (a cotação abre pelos Blocos)", async () => {
+  it("book enviado pelo parceiro: demandas de estoque, Estratégia com o parceiro marcado, cotação de compra e a vencedora ligada ao item", async () => {
+    const store = getStore();
     const { lot, item } = await closedItem("PK-3", "AZUL / ROSA");
-    await getStore().update("booking_lots", lot.id, {
+    // Quem subiu o book foi o parceiro (o login do fornecedor A).
+    await store.update("booking_lots", lot.id, {
       createdByUserId: supplierA.id,
     });
     const { group, opened } = await groups.saveAndOpenSelectionGroup(admin, {
       itemIds: [item.id],
       chosenItemId: item.id,
       quantity: 192,
-      needs: null,
+      needs: "Caixa com a marca",
       packing,
     });
-    expect(opened).toBeNull();
-    expect(group.status).toBe("saved");
+    // Nenhuma cotação direta: as 4 combinações viram demandas de estoque.
+    expect(opened.opened).toEqual([]);
+    expect(opened.failed).toEqual([]);
+    expect(opened.strategy).toHaveLength(1);
+    const demandIds = opened.strategy[0].demandIds;
+    expect(demandIds).toHaveLength(4);
+    const demands = await store.list("requests", { filter: { id: demandIds } });
+    const { STOCK_PARTY_ID } = await import("@/lib/services/stock-party");
+    for (const d of demands) {
+      expect(d).toMatchObject({
+        customerId: STOCK_PARTY_ID,
+        origin: "replenishment",
+        productId: null,
+        status: "REQUESTED",
+      });
+      expect(d.bookingSource).toMatchObject({
+        bookingItemId: item.id,
+        bookingLotId: lot.id,
+        partnerId: supplierA.partyId,
+        selectionGroupId: group.id,
+      });
+    }
+    // Um lote só (uma solicitação na Estratégia).
+    expect(new Set(demands.map((d) => d.groupId)).size).toBe(1);
+    const pack = demands.find(
+      (d) => d.bookingSource?.variant?.key === "AZUL|3",
+    )!;
+    expect(pack.quantity).toBe(16);
+    expect(pack.bookingSource!.snapshot).toMatchObject({
+      price: 3.75,
+      masterCartonQty: 8,
+    });
+    const saved = (await store.get("selection_groups", group.id))!;
+    expect(saved).toMatchObject({ status: "requested", demandIds });
     expect(
-      await getStore().list("supplier_requests", {
+      await store.list("supplier_requests", {
         filter: { bookingItemId: item.id },
       }),
     ).toHaveLength(0);
+
+    // Estratégia: o parceiro que mandou o book já vem marcado.
+    const { translator } = await import("@/i18n");
+    const t = translator("pt");
+    const strategy = await import("@/lib/services/purchase-strategy");
+    const board = await strategy.strategyBoard(t);
+    const card = board.groups.find((g) => g.demandIds.includes(demandIds[0]))!;
+    expect(card.demandIds.sort()).toEqual([...demandIds].sort());
+    expect(card.linkedIds).toContain(supplierA.partyId);
+    // Sem última compra nem pedido direto: só cotar.
+    await expect(
+      strategy.sendStrategy(
+        admin,
+        {
+          lines: [{ demandIds, choice: "last_supplier", recipientIds: [] }],
+          note: null,
+        },
+        t,
+      ),
+    ).rejects.toThrow("strategy_book_quote_only");
+    const send = await strategy.sendStrategy(
+      admin,
+      {
+        lines: [
+          { demandIds, choice: "quote", recipientIds: [supplierA.partyId!] },
+        ],
+        note: null,
+      },
+      t,
+    );
+    expect(send.lines[0].recipients[0]).toMatchObject({
+      partyId: supplierA.partyId,
+      status: "sent",
+    });
+    const quote = (await store.get("purchase_quotes", send.lines[0].quoteId!))!;
+    expect(quote.items).toHaveLength(4);
+    for (const i of quote.items) {
+      expect(i.productId.startsWith("bk-")).toBe(true);
+      expect(i.book?.bookingItemId).toBe(item.id);
+    }
+
+    // O parceiro responde (preço e ficha de cada SKU) e vence.
+    const quotes = await import("@/lib/services/purchase-quote");
+    const { sheetFor } = await import("./quote-sheet-fixture");
+    await quotes.answerQuote(supplierA, quote.id, {
+      decline: false,
+      prices: quote.items.map((i) => ({
+        productId: i.productId,
+        unitPrice: 2,
+      })),
+      currency: "USD",
+      incoterm: "FOB",
+      leadTimeDays: 30,
+      port: "Ningbo",
+      moq: 100,
+      note: null,
+      sheets: quote.items.map((i) => sheetFor(i.productId)),
+    });
+    // A ficha do SKU fica na resposta: nada vai para a revisão do Cadastro.
+    expect(
+      (await store.list("supplier_product_sheets")).filter((x) =>
+        x.productId.startsWith("bk-"),
+      ),
+    ).toHaveLength(0);
+    const [response] = await store.list("purchase_quote_responses", {
+      filter: { quoteId: quote.id },
+    });
+    const { approveQuoteSample } = await import("./helpers/sampling");
+    await approveQuoteSample(quote.id, response.id);
+    const users = await store.list("users");
+    const director = users.find((u) => u.email === "diretoria@wellmix.com")!;
+    await quotes.chooseWinner(admin, quote.id, response.id, null);
+    const approved = await quotes.decideWinner(director, quote.id, {
+      approve: true,
+      note: null,
+    });
+    const created = await store.list("supplier_requests", {
+      filter: { id: approved.supplierRequestIds! },
+    });
+    expect(created).toHaveLength(4);
+    for (const r of created) {
+      expect(r).toMatchObject({
+        status: "answered",
+        supplierId: supplierA.partyId,
+        bookingItemId: item.id,
+        bookingLotId: lot.id,
+        supplierPrice: 2,
+      });
+      expect(r.productId ?? null).toBeNull();
+      expect(r.variant?.selectionGroupId).toBe(group.id);
+    }
+    const sku = created.find((r) => r.variant?.key === "AZUL|3")!;
+    expect(sku.quantity).toBe(16);
+    expect(sku.item).toMatchObject({ masterCartonQty: 8, price: 2 });
   });
 });

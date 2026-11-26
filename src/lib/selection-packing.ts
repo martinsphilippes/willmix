@@ -1,4 +1,8 @@
-import type { SelectionPacking, SupplierRequestItem } from "@/lib/db/schema";
+import type {
+  SelectionPacking,
+  SupplierRequestItem,
+  SupplierRequestVariant,
+} from "@/lib/db/schema";
 import { splitByColor, type ColorSplitResult } from "@/lib/color-split";
 
 /*
@@ -293,4 +297,17 @@ export function trivialPacking(
     p.variations.length <= 1 &&
     (p.variations.length === 0 || bookColors <= 1)
   );
+}
+
+/**
+ * A variação e a embalagem num texto curto, sem tradução (nome da demanda
+ * na Estratégia e no Book): "AZUL · embalagem de 3 peças"; nulo sem variação.
+ */
+export function variantLabel(
+  variant: Pick<SupplierRequestVariant, "variation" | "units"> | null,
+): string | null {
+  if (!variant) return null;
+  const pack =
+    variant.units > 1 ? `embalagem de ${variant.units} peças` : "unitária";
+  return variant.variation ? `${variant.variation} · ${pack}` : pack;
 }

@@ -26,6 +26,8 @@ import {
   AUTO_ACTOR_ID,
   closedDemands,
   demandKind,
+  isBookDemand,
+  quoteItemKey,
 } from "@/lib/purchase-demand";
 import {
   choiceQuotes,
@@ -1261,7 +1263,15 @@ export async function strategyBoard(t: Translate): Promise<{
       const origin = demands.every((d) => d.productId)
         ? await strategySuppliers(demands).catch(() => null)
         : null;
-      const linkedIds = origin?.supplierIds ?? [];
+      // Item de book enviado pelo parceiro (dono, 26/11/2026): quem mandou
+      // o book já vem marcado (a busca acrescenta outros).
+      const bookPartners = unique(
+        demands.map((d) => d.bookingSource?.partnerId ?? null),
+      );
+      const linkedIds = unique([
+        ...bookPartners,
+        ...(origin?.supplierIds ?? []),
+      ]);
       const same = sameLastSupplier(productIdsHere, references);
       return {
         key,
@@ -1272,7 +1282,10 @@ export async function strategyBoard(t: Translate): Promise<{
           members.find((m) => m.family)?.family?.name ??
           null,
         last: same ? (references.get(productIdsHere[0]) ?? null) : null,
-        missingLast: productIdsHere.some((id) => !references.get(id)),
+        // Item de book (sem produto): não há compra anterior.
+        missingLast:
+          demands.some((d) => !d.productId) ||
+          productIdsHere.some((id) => !references.get(id)),
         linkedIds,
         suggestedIds: unique(
           members.flatMap((m) => [...m.linkedIds, ...m.suggestedIds]),
@@ -1541,7 +1554,9 @@ export async function sendStrategy(
       throw new PurchaseStrategyError("strategy_demand_not_sent");
     if (!inStrategyQueue(d))
       throw new PurchaseStrategyError("strategy_demand_taken");
-    if (!d.productId)
+    // Sem produto, só o item de book enviado pelo parceiro (dono,
+    // 26/11/2026): a cotação de compra o aceita pela chave da demanda.
+    if (!d.productId && !isBookDemand(d))
       throw new PurchaseStrategyError("strategy_product_missing");
   }
   const references = await lastPurchases(
@@ -1555,6 +1570,9 @@ export async function sendStrategy(
     // A solicitação vai inteira, numa escolha só (dono, 18/11/2026).
     await assertWholeRequest(mine);
     const productIds = unique(mine.map((d) => d.productId));
+    // Item de book: não há última compra nem pedido direto; só cotar.
+    if (mine.some(isBookDemand) && l.choice !== "quote")
+      throw new PurchaseStrategyError("strategy_book_quote_only");
     if (l.choice === "quote_last" || l.choice === "last_supplier") {
       if (productIds.some((id) => !references.get(id)))
         throw new PurchaseStrategyError("strategy_no_last_purchase");
@@ -1573,7 +1591,7 @@ export async function sendStrategy(
     lines.push({
       demandId: mine[0].id,
       demandIds: mine.map((d) => d.id),
-      productId: productIds[0],
+      productId: productIds[0] ?? quoteItemKey(mine[0]) ?? "",
       choice: l.choice,
       recipientIds,
       decisionId: null,

@@ -137,6 +137,8 @@ export const pt = {
     "Alguma demanda já está em outra estratégia ou já virou pedido.",
   "strategy.error.strategy_product_missing":
     "Demanda sem produto do catálogo: cadastre o produto antes.",
+  "strategy.error.strategy_book_quote_only":
+    "Item de book sem produto do cadastro: só dá para cotar com fornecedores (sem última compra nem pedido direto).",
   "strategy.error.strategy_same_line":
     "Junte só demandas do mesmo produto ou da mesma linha.",
   "strategy.error.strategy_last_one_product":
@@ -460,6 +462,8 @@ export const en: Record<keyof typeof pt, string> = {
     "A demand is already in another strategy or became an order.",
   "strategy.error.strategy_product_missing":
     "Demand without a catalog product: register the product first.",
+  "strategy.error.strategy_book_quote_only":
+    "Book item without a catalog product: it can only be quoted with suppliers (no last purchase or direct order).",
   "strategy.error.strategy_same_line":
     "Group only demands of the same product or the same line.",
   "strategy.error.strategy_last_one_product":
@@ -768,6 +772,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.error.strategy_demand_taken":
     "某个需求已在其他策略中或已生成订单。",
   "strategy.error.strategy_product_missing": "需求没有目录产品：请先登记产品。",
+  "strategy.error.strategy_book_quote_only":
+    "没有目录产品的 Book 产品：只能向供应商询价（没有上次采购，也不能直接下单）。",
   "strategy.error.strategy_same_line": "只能合并同一产品或同一产品线的需求。",
   "strategy.error.strategy_last_one_product":
     "“上次采购的供应商”只适用于单个产品。",

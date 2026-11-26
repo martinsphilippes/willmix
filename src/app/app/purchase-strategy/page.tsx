@@ -69,7 +69,11 @@ import {
 } from "./_components/strategy-view";
 import { STRATEGY_VIEW_COOKIE, type StrategyView } from "@/lib/strategy-view";
 import { sumPackingTotals } from "@/lib/strategy-packing";
-import { closedDemands, type ClosedDemandReason } from "@/lib/purchase-demand";
+import {
+  closedDemands,
+  isBookDemand,
+  type ClosedDemandReason,
+} from "@/lib/purchase-demand";
 import {
   demandPackings,
   lineTotals,
@@ -265,7 +269,13 @@ export default async function PurchaseStrategyPage({
             }
           : null,
       productName: productNameText(t, d.productName),
-      productHref: d.productId ? `/app/products/${d.productId}` : null,
+      // Item de book enviado pelo parceiro (dono, 26/11/2026): sem produto,
+      // o link leva ao book de origem.
+      productHref: d.productId
+        ? `/app/products/${d.productId}`
+        : d.bookingSource
+          ? `/app/booking/lots/${d.bookingSource.bookingLotId}`
+          : null,
       quantity: `${d.quantity.toLocaleString(t.intl)} ${d.unit}`,
       customerName: l.kind === "replenishment" ? null : l.customerName,
       specification: d.specification?.trim() || null,
@@ -305,9 +315,10 @@ export default async function PurchaseStrategyPage({
         : null,
       linkedIds: l.linkedIds,
       suggestedIds: l.suggestedIds,
-      blocked: d.productId
-        ? null
-        : `${t("strategy.noProduct")}: ${t("strategy.noProductHint")}`,
+      blocked:
+        d.productId || isBookDemand(d)
+          ? null
+          : `${t("strategy.noProduct")}: ${t("strategy.noProductHint")}`,
       packing: (() => {
         const p = packings.get(d.id);
         return p

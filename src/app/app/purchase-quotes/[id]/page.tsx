@@ -75,6 +75,7 @@ import {
 import { PhotoGallery } from "@/components/photo-gallery";
 import { galleryProps } from "@/components/photo-gallery-props";
 import { productPhotoList } from "@/lib/services/product-list";
+import { bookPhotoList } from "@/lib/purchase-demand";
 
 /*
  * Uma cotação de compra (mapa B13; docs/PURCHASE_DEMAND.md).
@@ -166,6 +167,33 @@ export default async function PurchaseQuotePage({
       value.toLocaleString(t.intl, { maximumFractionDigits: digits });
     const catalogOf = (productId: string): Array<[string, string]> => {
       const product = sampleProducts.find((p) => p.id === productId);
+      // Item de book sem produto (dono, 26/11/2026): o que o book traz do
+      // SKU (a caixa, o inner, o CBM, os pesos por embalagem e o material).
+      const book = quote.items.find((i) => i.productId === productId)?.book;
+      if (!product && book) {
+        const it = book.snapshot;
+        const labels = answerLabels(t).f;
+        const rows: Array<[string, string | null]> = [
+          [
+            labels.master,
+            it.masterCartonQty !== null ? num(it.masterCartonQty, 0) : null,
+          ],
+          [
+            labels.net,
+            it.netWeightPcKg !== null ? num(it.netWeightPcKg) : null,
+          ],
+          [
+            t("quote.catalog.grossPerPiece"),
+            it.grossWeightPcKg !== null ? num(it.grossWeightPcKg) : null,
+          ],
+          [
+            labels.cbm,
+            it.cbmPerCarton !== null ? num(it.cbmPerCarton, 4) : null,
+          ],
+          [labels.material, it.material?.trim() || null],
+        ];
+        return rows.filter((r): r is [string, string] => !!r[1]);
+      }
       if (!product) return [];
       const b = baselineFromProduct(product);
       const labels = answerLabels(t).f;
@@ -381,7 +409,9 @@ export default async function PurchaseQuotePage({
                 name={name}
                 {...galleryProps(
                   t,
-                  product ? productPhotoList(product, samplePhotos) : [],
+                  product
+                    ? productPhotoList(product, samplePhotos)
+                    : bookPhotoList(item.book),
                 )}
               />
             </span>
@@ -682,7 +712,7 @@ export default async function PurchaseQuotePage({
                           t,
                           row.product
                             ? productPhotoList(row.product, samplePhotos)
-                            : [],
+                            : bookPhotoList(row.item.book),
                         )}
                       />
                     </Td>

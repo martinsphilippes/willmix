@@ -243,6 +243,16 @@ export function RequestedGroups({
                       n: request.number,
                     })}
                   </Link>
+                ) : g.demandIds?.length ? (
+                  // Book do parceiro (dono, 26/11/2026): as demandas estão
+                  // na Estratégia de compra.
+                  <Link
+                    href="/app/purchase-strategy"
+                    className={cx(linkClass, "whitespace-nowrap")}
+                    data-selection-strategy-link
+                  >
+                    {t("supplierRequests.selection.inStrategy")}
+                  </Link>
                 ) : (
                   <Badge tone="success">
                     {t("supplierRequests.selection.requestedNoLink")}

@@ -24,7 +24,7 @@ import { clearQuoteDraft } from "./quote-draft";
 import type { SupplierStep } from "@/lib/supplier-steps";
 import type { TaskText } from "@/lib/task-text";
 import { innerFromDemands, quoteInnerState } from "@/lib/quote-inner";
-import { AUTO_ACTOR_ID } from "@/lib/purchase-demand";
+import { AUTO_ACTOR_ID, isBookKey, quoteItemKey } from "@/lib/purchase-demand";
 import {
   appendQuoteEvent,
   pendingQuoteProposals,
@@ -283,11 +283,13 @@ export function quoteItemsFor(
   demands: readonly Request[],
   products: readonly Pick<Product, "id" | "name">[],
 ): PurchaseQuoteItem[] {
+  // O item de book enviado pelo parceiro (dono, 26/11/2026) entra pela
+  // chave da demanda (`quoteItemKey`), com a cópia do item do book.
   const productIds = [
-    ...new Set(demands.map((d) => d.productId).filter(Boolean)),
+    ...new Set(demands.map((d) => quoteItemKey(d)).filter(Boolean)),
   ] as string[];
   return productIds.map((id) => {
-    const mine = demands.filter((d) => d.productId === id);
+    const mine = demands.filter((d) => quoteItemKey(d) === id);
     const specs = [
       ...new Set(
         mine
@@ -308,6 +310,9 @@ export function quoteItemsFor(
       schedule: mine.length === 1 ? (mine[0].schedule ?? null) : null,
       desiredAt: desired ?? null,
       inner: innerFromDemands(mine),
+      ...(isBookKey(id) && mine[0].bookingSource
+        ? { book: mine[0].bookingSource }
+        : {}),
     };
   });
 }
@@ -968,6 +973,59 @@ async function supplierRequestsFromWinner(
     const sheet =
       winner.items?.find((i) => i.productId === item.productId)?.sheet ?? null;
     const inner = quoteInnerState(item.inner);
+    // Item de book sem produto (dono, 26/11/2026): a solicitação nasce
+    // ligada ao item do book, com a cópia dele e as condições da vencedora;
+    // o produto nasce depois da aprovação, como na solicitação do book.
+    if (item.book) {
+      const book = item.book;
+      const terms = quoteProductTerms(winner, item.productId);
+      const request = await store.create("supplier_requests", {
+        number,
+        batchId,
+        status: "answered",
+        supplierId: winner.supplierId,
+        bookingItemId: book.bookingItemId,
+        bookingLotId: book.bookingLotId,
+        alternativeItemIds: null,
+        item: {
+          ...book.snapshot,
+          incoterm: incoterm ?? book.snapshot.incoterm,
+          currency: currency ?? book.snapshot.currency,
+          price: price ?? book.snapshot.price,
+          moq: terms.moq ?? book.snapshot.moq,
+        },
+        ...(book.variant ? { variant: book.variant } : {}),
+        ...(item.schedule ? { schedule: item.schedule } : {}),
+        quantity: Math.round(item.quantity),
+        unit: "pcs",
+        needs: [
+          `Cotação de compra nº ${quote.number}${winner.port ? ` · porto ${winner.port}` : ""}`,
+          item.specification,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+          .slice(0, 4000),
+        searchQuery: null,
+        supplierCanDo: "yes",
+        supplierPrice: price,
+        supplierCurrency: currency,
+        supplierMoq: terms.moq,
+        supplierLeadTimeDays: terms.leadTimeDays,
+        supplierIncoterm: incoterm,
+        supplierNote: winner.note,
+        respondedAt: winner.answeredAt ?? now.toISOString(),
+        respondedByUserId: winner.answeredByUserId,
+        decidedAt: null,
+        decidedByUserId: null,
+        decisionNote: null,
+        createdByUserId: user.id,
+        quoteResponseId: winner.id,
+        demandIds: quote.demandIds,
+        ...(sampling ? { sampling } : {}),
+      });
+      out.push(request);
+      continue;
+    }
     const request = await store.create("supplier_requests", {
       number,
       batchId,

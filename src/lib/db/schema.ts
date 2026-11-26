@@ -1243,6 +1243,28 @@ export interface Request extends BaseRow {
    * = o cliente não pediu inner (o padrão, e as solicitações antigas).
    */
   innerRequirement?: RequestInnerRequirement | null;
+  /**
+   * Item de book enviado pelo parceiro (dono, 26/11/2026;
+   * docs/SUPPLIER_REQUESTS.md, "Book enviado pelo parceiro"): a demanda de
+   * compra para estoque nasce da escolha na Seleção de itens, uma por
+   * variação × embalagem, sem produto do cadastro, e segue para a Estratégia
+   * de compra. Nulo nas outras.
+   */
+  bookingSource?: BookingDemandSource | null;
+}
+
+/**
+ * De onde veio a demanda de um item de book: o item, o book, o parceiro que
+ * o mandou, a cópia do item (já em embalagens) e a combinação.
+ */
+export interface BookingDemandSource {
+  bookingItemId: string;
+  bookingLotId: string;
+  /** Quem mandou o book (vem marcado na Estratégia). */
+  partnerId: string | null;
+  snapshot: SupplierRequestItem;
+  variant: SupplierRequestVariant | null;
+  selectionGroupId: string | null;
 }
 
 /** Parte de uma empresa do grupo econômico num produto do pedido. */
@@ -3823,6 +3845,12 @@ export interface PurchaseQuoteItem {
    * inner). Nas cotações antigas não existe.
    */
   inner?: QuoteItemInner | null;
+  /**
+   * Item de book sem produto do cadastro (dono, 26/11/2026): `productId` é
+   * a chave da demanda (`bk-<demanda>`, `quoteItemKey`) e aqui fica o item
+   * do book; a vencedora vira a solicitação ligada a ele.
+   */
+  book?: BookingDemandSource | null;
 }
 
 /** Por que a Wellmix precisa definir o inner do item da cotação. */
@@ -4401,6 +4429,11 @@ export interface SelectionGroup extends BaseRow {
   packing?: SelectionPacking | null;
   /** As cotações abertas desta escolha (uma por combinação). */
   supplierRequestIds?: string[] | null;
+  /**
+   * Book enviado pelo parceiro: as demandas de compra para estoque que a
+   * escolha mandou para a Estratégia de compra (uma por combinação).
+   */
+  demandIds?: string[] | null;
 }
 
 /** Embalagens e variações gravadas na escolha do grupo. */
@@ -5221,6 +5254,7 @@ export const TABLES: Record<TableName, TableDef> = {
       sentForm: json(),
       // Caixa inner exigida pelo cliente (21/11/2026).
       innerRequirement: json(),
+      bookingSource: json(),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
@@ -7243,6 +7277,7 @@ export const TABLES: Record<TableName, TableDef> = {
       aiAssets: json(),
       packing: json(),
       supplierRequestIds: json(),
+      demandIds: json(),
     },
     indexes: [
       { key: "by_status", type: "key", columns: ["status"] },

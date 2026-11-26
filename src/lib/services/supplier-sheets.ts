@@ -1,4 +1,5 @@
 import "server-only";
+import { isBookKey } from "@/lib/purchase-demand";
 
 import {
   getStore,
@@ -451,6 +452,9 @@ export async function saveQuoteSheets(
   const corrected: Array<{ productId: string; fields: SupplierSheetField[] }> =
     [];
   for (const p of prepared) {
+    // Item de book sem produto (dono, 26/11/2026): a ficha fica só na
+    // resposta (não há produto para o Cadastro revisar).
+    if (isBookKey(p.line.productId)) continue;
     const photo = p.item.scalePhotoDocumentId;
     if (!p.write) {
       // A ficha já valia: só a foto nova (se veio) passa para a ficha do par.

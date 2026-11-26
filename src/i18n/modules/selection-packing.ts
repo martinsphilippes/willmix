@@ -64,8 +64,10 @@ export const pt = {
     "Embalagens ou variações demais: até 10 embalagens, 30 variações e 60 combinações por escolha.",
   "supplierRequests.error.selection_variation_repeat":
     "Há duas variações com o mesmo nome. Tire uma e grave de novo.",
-  "supplierRequests.selection.partnerBook":
-    "Item de book enviado pelo parceiro: a escolha ficou gravada e a cotação abre em Blocos Sugeridos.",
+  "supplierRequests.selection.toStrategy":
+    "Book enviado pelo parceiro: {n} combinação(ões) foram para a Estratégia de compra como compra para estoque (Estoque Wellmix), com o parceiro já marcado.",
+  "supplierRequests.selection.toStrategyLink": "Abrir a Estratégia de compra",
+  "supplierRequests.selection.inStrategy": "Na Estratégia de compra",
   "supplierRequests.variant.title": "Variação e embalagem",
   "supplierRequests.variant.variation": "Variação: {v}",
   "supplierRequests.variant.unit": "Unitária ({m} peças por caixa)",
@@ -137,8 +139,10 @@ export const en: Record<keyof typeof pt, string> = {
     "Too many packages or variations: up to 10 packages, 30 variations and 60 combinations per choice.",
   "supplierRequests.error.selection_variation_repeat":
     "Two variations have the same name. Remove one and save again.",
-  "supplierRequests.selection.partnerBook":
-    "Item from a book sent by the partner: the choice was saved and the quotation opens in Suggested Blocks.",
+  "supplierRequests.selection.toStrategy":
+    "Book sent by the partner: {n} combination(s) went to the Purchase strategy as a stock purchase (Estoque Wellmix), with the partner already marked.",
+  "supplierRequests.selection.toStrategyLink": "Open the Purchase strategy",
+  "supplierRequests.selection.inStrategy": "In the Purchase strategy",
   "supplierRequests.variant.title": "Variation and package",
   "supplierRequests.variant.variation": "Variation: {v}",
   "supplierRequests.variant.unit": "Single ({m} pieces per carton)",
@@ -208,8 +212,10 @@ export const zh: Record<keyof typeof pt, string> = {
     "包装或变体过多：每次选择最多 10 个包装、30 个变体和 60 个组合。",
   "supplierRequests.error.selection_variation_repeat":
     "有两个变体名称相同。删除一个后重新保存。",
-  "supplierRequests.selection.partnerBook":
-    "合作伙伴发送的 Book 中的产品：选择已保存，报价在“推荐分组”中打开。",
+  "supplierRequests.selection.toStrategy":
+    "合作伙伴发送的 Book：{n} 个组合已作为库存采购（Estoque Wellmix）进入采购策略，合作伙伴已默认选中。",
+  "supplierRequests.selection.toStrategyLink": "打开采购策略",
+  "supplierRequests.selection.inStrategy": "在采购策略中",
   "supplierRequests.variant.title": "变体和包装",
   "supplierRequests.variant.variation": "变体：{v}",
   "supplierRequests.variant.unit": "单件（每箱 {m} 件）",

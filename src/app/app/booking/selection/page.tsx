@@ -267,6 +267,9 @@ export default async function BookingSelectionPage({
   const savedNotice = query.saved === "1";
   const openedCount =
     typeof query.opened === "string" ? Number(query.opened) || 0 : null;
+  // Book do parceiro (dono, 26/11/2026): demandas mandadas à Estratégia.
+  const strategyCount =
+    typeof query.strategy === "string" ? Number(query.strategy) || 0 : 0;
   const failedCount =
     typeof query.failed === "string" ? Number(query.failed) || 0 : 0;
   const why = typeof query.why === "string" ? query.why : "";
@@ -891,10 +894,15 @@ export default async function BookingSelectionPage({
           <Alert tone="success">{t("supplierRequests.selection.saved")}</Alert>
         </div>
       ) : null}
-      {query.partnerBook === "1" ? (
-        <div className="mb-3" data-selection-partner-book>
-          <Alert tone="info">
-            {t("supplierRequests.selection.partnerBook")}
+      {strategyCount ? (
+        <div className="mb-3" data-selection-strategy={strategyCount}>
+          <Alert tone="success">
+            {t("supplierRequests.selection.toStrategy", { n: strategyCount })}{" "}
+            {canOpen(user, "purchaseStrategy") ? (
+              <Link href="/app/purchase-strategy" className={linkClass}>
+                {t("supplierRequests.selection.toStrategyLink")}
+              </Link>
+            ) : null}
           </Alert>
         </div>
       ) : null}

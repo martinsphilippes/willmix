@@ -189,26 +189,28 @@ export async function saveSelectionGroupAction(form: FormData) {
       const { saveAndOpenSelectionGroup } =
         await import("@/lib/services/selection-groups");
       const { group, opened } = await saveAndOpenSelectionGroup(user, input2);
-      if (opened) {
-        const { groupRequests } = await import("@/lib/supplier-requests");
-        const count = groupRequests(opened.opened).length;
-        if (count === 1 && !opened.failed.length)
-          return withQuery(detail(opened.opened[0].id), "created", "1");
-        let to = withQuery(
-          await selectionBack(form, count ? "requested" : "selection"),
-          "opened",
-          String(count),
-        );
-        if (!count) to = withQuery(to, "ids", group.itemIds.join(","));
-        if (opened.failed.length) {
-          to = withQuery(to, "failed", String(opened.failed.length));
-          to = withQuery(to, "why", opened.failed[0].error);
-        }
-        return to;
+      const { groupRequests } = await import("@/lib/supplier-requests");
+      const count = groupRequests(opened.opened).length;
+      const strategy = opened.strategy.reduce(
+        (n, g) => n + g.demandIds.length,
+        0,
+      );
+      if (count === 1 && !strategy && !opened.failed.length)
+        return withQuery(detail(opened.opened[0].id), "created", "1");
+      // Book do parceiro: as demandas foram para a Estratégia de compra.
+      let to = await selectionBack(
+        form,
+        count || strategy ? "requested" : "selection",
+      );
+      if (count || !strategy) to = withQuery(to, "opened", String(count));
+      if (strategy) to = withQuery(to, "strategy", String(strategy));
+      if (!count && !strategy)
+        to = withQuery(to, "ids", group.itemIds.join(","));
+      if (opened.failed.length) {
+        to = withQuery(to, "failed", String(opened.failed.length));
+        to = withQuery(to, "why", opened.failed[0].error);
       }
-      // Book do parceiro: fica gravada, e a cotação abre pelos Blocos.
-      const blocks = await selectionBack(form, "blocks");
-      return `${withQuery(withQuery(blocks, "saved", "1"), "partnerBook", "1")}#blocks`;
+      return to;
     }
     const saved = await saveSelectionGroup(user, input2);
     // "Gravar e gerar com IA": grava e gera as imagens e a ficha. A escolha
@@ -290,15 +292,25 @@ export async function openGroupRequestsAction(form: FormData) {
     const { openGroupRequests } =
       await import("@/lib/services/selection-groups");
     const result = await openGroupRequests(user, all ? "all" : ids);
+    const strategy = result.strategy.reduce(
+      (n, g) => n + g.demandIds.length,
+      0,
+    );
     // Uma solicitação só (um fornecedor), sem falha: direto nela.
     const { groupRequests } = await import("@/lib/supplier-requests");
-    if (groupRequests(result.opened).length === 1 && !result.failed.length)
+    if (
+      groupRequests(result.opened).length === 1 &&
+      !strategy &&
+      !result.failed.length
+    )
       return withQuery(detail(result.opened[0].id), "created", "1");
     let to = withQuery(
       back,
       "opened",
       String(groupRequests(result.opened).length),
     );
+    // Book do parceiro: as demandas que foram para a Estratégia de compra.
+    if (strategy) to = withQuery(to, "strategy", String(strategy));
     if (result.failed.length) {
       to = withQuery(to, "failed", String(result.failed.length));
       to = withQuery(to, "why", result.failed[0].error);
