@@ -307,7 +307,12 @@ export function RequestVariant({
                       {num(r.quantity, 0)}
                     </td>
                   ) : null}
-                  <td className="py-1 pr-3 text-right">{num(r.pieces, 0)}</td>
+                  <td
+                    className="py-1 pr-3 text-right"
+                    data-request-variant-round-pieces
+                  >
+                    {num(r.pieces, 0)}
+                  </td>
                   <td className="py-1 text-right">{num(r.cartons, 0)}</td>
                 </tr>
               ))}

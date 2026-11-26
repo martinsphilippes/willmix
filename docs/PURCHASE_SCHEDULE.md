@@ -92,7 +92,7 @@ Onde está: regras em `src/lib/color-split.ts`; card e barra em `src/components/
 A solicitação aberta do grupo leva a programação (`supplier_requests.schedule`). O responsável pelo booking passa a ver **rodadas, peças por rodada e total**, em vez de só a quantidade:
 
 - **Tabela da solicitação**: colunas "Programações" e "Peças por programação" (em português; até 13/11/2026 chamavam-se "Rodadas" e "Peças por rodada", troca pedida pelo dono) antes da quantidade (total). Pedido único: 1 rodada com a quantidade toda. Passar o mouse mostra o intervalo e as datas.
-- **Tela do produto**: "3 rodadas de 1.000 peças · total 3.000 peças" sob a quantidade e o quadro **Programação de compra** com a data e as peças de cada rodada.
+- **Tela do produto**: "3 rodadas de 1.000 peças · total 3.000 peças" sob a quantidade e o quadro **Programação de compra** com a data e as peças de cada rodada. Na cotação de uma variação × embalagem (26/11/2026, docs/SUPPLIER_REQUESTS.md, "Embalagens e variações"), as datas ficam no quadro "Variação e embalagem", com as embalagens, as peças e as caixas de cada uma, no lugar desse quadro.
 - **Lista de solicitações**: a mesma linha de resumo sob as peças.
 
 ## 3. Pedido de compra: o pai

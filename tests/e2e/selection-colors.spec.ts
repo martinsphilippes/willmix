@@ -230,25 +230,42 @@ test("vencedor, variações de cor e composição por data até a solicitação"
   await expect(page).toHaveURL(/[?&]tab=requested/);
   await expect(page.locator("[data-selection-opened]")).toBeVisible();
 
-  // 10. Cada cotação é de uma cor, com as peças dela em cada data.
+  // 10. Cada cotação é de uma cor, com as peças dela em cada data. Com
+  // variação, as entregas ficam no quadro "Variação e embalagem" (data,
+  // peças e caixas), no lugar do quadro "Programação de compra" (dono,
+  // 26/11/2026; docs/SUPPLIER_REQUESTS.md, "Embalagens e variações").
   await page.goto("/app/supplier-requests");
   const rows = page.locator("[data-supplier-request-row]");
   const ids = await rows.evaluateAll((els) =>
     els.slice(0, 2).map((el) => el.getAttribute("data-supplier-request-row")),
   );
-  const seen: Record<string, string> = {};
+  const seen: Record<string, { pieces: string[]; total: string }> = {};
   for (const id of ids) {
     await page.goto(`/app/supplier-requests/${id}?view=item`);
     const variant = page.locator("[data-request-variant]");
     await expect(variant).toBeVisible();
     const key = (await variant.getAttribute("data-request-variant"))!;
-    const schedule = page.locator("[data-purchase-schedule]");
-    await expect(schedule.locator("tbody tr")).toHaveCount(3);
-    seen[key] = await schedule.innerText();
+    await expect(page.locator("[data-purchase-schedule]")).toHaveCount(0);
+    await expect(variant.locator("[data-request-variant-round]")).toHaveCount(
+      2,
+    );
+    seen[key] = {
+      pieces: await variant
+        .locator("[data-request-variant-round-pieces]")
+        .allInnerTexts(),
+      total: (
+        await variant.locator("[data-request-variant-quantity]").innerText()
+      ).trim(),
+    };
   }
   expect(Object.keys(seen).sort()).toEqual(["BEGE|1", "MARROM|1"]);
   // BEGE: 768 + 720 = 1.488; MARROM: 720 + 720 = 1.440.
-  expect(seen["BEGE|1"]).toContain("768");
-  expect(seen["BEGE|1"]).toContain("1.488");
-  expect(seen["MARROM|1"]).toContain("1.440");
+  expect(seen["BEGE|1"]).toEqual({
+    pieces: ["768", "720"],
+    total: "1.488 peças",
+  });
+  expect(seen["MARROM|1"]).toEqual({
+    pieces: ["720", "720"],
+    total: "1.440 peças",
+  });
 });
