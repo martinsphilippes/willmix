@@ -4297,6 +4297,11 @@ export interface SupplierRequest extends BaseRow {
    */
   quoteResponseId?: string | null;
   demandIds?: string[] | null;
+  /**
+   * Variação × embalagem da escolha (dono, 26/11/2026): cada combinação é
+   * uma cotação. Nulo nas outras (o item como veio do Book).
+   */
+  variant?: SupplierRequestVariant | null;
 }
 
 export const SAMPLING_STATUSES = [
@@ -4386,6 +4391,66 @@ export interface SelectionGroup extends BaseRow {
   aiPrompts?: AiReferencePrompts | null;
   /** Arquivos gerados pela IA com os prompts; vão para a solicitação ao abrir. */
   aiAssets?: AiReferenceAsset[] | null;
+  /**
+   * Embalagens e variações do vencedor (dono, 26/11/2026;
+   * docs/SUPPLIER_REQUESTS.md, "Embalagens e variações"): a caixa alterada,
+   * as embalagens novas, as variações e as peças de cada combinação
+   * (variação × embalagem), que viram uma cotação cada. Nulo nas antigas
+   * (valem `colorPlan` e uma cotação só).
+   */
+  packing?: SelectionPacking | null;
+  /** As cotações abertas desta escolha (uma por combinação). */
+  supplierRequestIds?: string[] | null;
+}
+
+/** Embalagens e variações gravadas na escolha do grupo. */
+export interface SelectionPacking {
+  /** Qtd/caixa alterada ("Alterar", x1); nula = a do item. */
+  carton: number | null;
+  /** CBM da caixa alterada (CBM × x1 ÷ x0); nulo sem alteração. */
+  cbm: number | null;
+  /** Peças de cada embalagem nova (Qtd/Embalagem). */
+  packs: number[];
+  /** A tabela pai conta como uma opção de embalagem. */
+  parentOption: boolean;
+  /** Mix de cores: uma imagem por embalagem. */
+  mix: boolean;
+  /** Variações incluídas: cores do Book e as digitadas. */
+  variations: Array<{ label: string; custom: boolean }>;
+  /** Cada combinação (SKU): as peças no total e por data e a imagem. */
+  lines: SelectionPackingLine[];
+  /** As caixas de cada combinação foram digitadas (não é a divisão igual). */
+  custom?: boolean;
+}
+
+export interface SelectionPackingLine {
+  /** "variação|N" (`comboKey`). */
+  key: string;
+  variation: string | null;
+  /** Peças por embalagem (1 = unitária). */
+  units: number;
+  /** Peças (não embalagens) no total e em cada data. */
+  quantity: number;
+  rounds: number[];
+  /** Arte de exemplo do SKU (documento interno até abrir a cotação). */
+  artDocumentId: string | null;
+}
+
+/**
+ * O SKU de uma cotação nascida das embalagens e variações da escolha: a
+ * cópia do item (`item`) já vem em embalagens; aqui fica de onde veio.
+ */
+export interface SupplierRequestVariant {
+  key: string;
+  variation: string | null;
+  /** Peças por embalagem (1 = unitária). */
+  units: number;
+  /** Peças por caixa master (a do item ou a alterada). */
+  pieceCarton: number | null;
+  mix: boolean;
+  /** Arte de exemplo do SKU; o fornecedor vê. */
+  artDocumentId: string | null;
+  selectionGroupId: string | null;
 }
 
 /** Os três prompts das referências por IA (duas imagens e uma ficha). */
@@ -7150,6 +7215,7 @@ export const TABLES: Record<TableName, TableDef> = {
       sampling: jsonLarge(),
       quoteResponseId: id(false),
       demandIds: json(),
+      variant: json(),
     },
     indexes: [
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
@@ -7175,6 +7241,8 @@ export const TABLES: Record<TableName, TableDef> = {
       colorPlan: json(),
       aiPrompts: json(),
       aiAssets: json(),
+      packing: json(),
+      supplierRequestIds: json(),
     },
     indexes: [
       { key: "by_status", type: "key", columns: ["status"] },

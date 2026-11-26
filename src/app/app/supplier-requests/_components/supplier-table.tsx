@@ -57,6 +57,7 @@ import {
   ResponsibleTip,
 } from "@/components/request-responsible-tip";
 import Link from "next/link";
+import { variantText } from "@/components/request-variant";
 import { StatusLink } from "@/components/status-link";
 import { turnTone } from "@/lib/turn";
 import { roundsDates } from "@/components/purchase-rounds";
@@ -562,6 +563,16 @@ export function SupplierRequestTable({
                   >
                     {name}
                   </Link>
+                  {/* Cotação de um SKU da escolha (variação × embalagem):
+                      o mesmo produto em várias linhas, cada uma o seu. */}
+                  {variantText(r.variant, t) ? (
+                    <span
+                      className="mt-0.5 block text-xs font-medium text-brand-800"
+                      data-supplier-table-variant={r.variant!.key}
+                    >
+                      {variantText(r.variant, t)}
+                    </span>
+                  ) : null}
                   {details.length || wellmix ? (
                     <details
                       className="group/specs mt-1 min-w-48 max-w-72 text-xs"

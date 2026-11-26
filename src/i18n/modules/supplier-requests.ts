@@ -109,7 +109,7 @@ export const pt = {
   "supplierRequests.selection.col.situation": "Situação",
   "supplierRequests.selection.form.title": "Gravar a escolha do grupo",
   "supplierRequests.selection.form.body":
-    "Marque o item que ganhou (um só) e informe a quantidade de peças. O botão só grava a escolha: nada vai ao fornecedor agora. A solicitação é aberta depois, nos blocos, só do item que ganhou de cada grupo.",
+    'Marque o item que ganhou (um só) e informe a quantidade de peças. No book subido pela Wellmix, "Gravar escolha" abre na hora uma cotação com o Supplier do book para cada combinação variação × embalagem. No book enviado pelo parceiro, só grava: a cotação abre depois, em Blocos Sugeridos.',
   "supplierRequests.selection.form.quantity": "Quantidade (peças)",
   "supplierRequests.selection.form.quantityHint":
     "Em branco: a quantidade da planilha do item escolhido.",
@@ -574,7 +574,7 @@ export const en: typeof pt = {
   "supplierRequests.selection.col.situation": "Status",
   "supplierRequests.selection.form.title": "Save the group's choice",
   "supplierRequests.selection.form.body":
-    "Mark the winning item (only one) and enter the quantity in pieces. The button only saves the choice: nothing goes to the supplier now. The request is opened later, in the blocks, only for the winning item of each group.",
+    'Mark the winning item (only one) and enter the quantity in pieces. In a book uploaded by Wellmix, "Save choice" opens right away one quotation with the book\'s Supplier for each variation × package combination. In a book sent by the partner, it only saves: the quotation opens later, in Suggested Blocks.',
   "supplierRequests.selection.form.quantity": "Quantity (pieces)",
   "supplierRequests.selection.form.quantityHint":
     "Blank: the chosen item's spreadsheet quantity.",
@@ -1032,7 +1032,7 @@ export const zh: typeof pt = {
   "supplierRequests.selection.col.situation": "状态",
   "supplierRequests.selection.form.title": "保存本组的选择",
   "supplierRequests.selection.form.body":
-    "勾选胜出的产品（仅一个）并填写数量（件）。此按钮只保存选择：现在不会发给供应商。询问稍后在分组中打开，只发送每组胜出的产品。",
+    "勾选胜出的产品（仅一个）并填写数量（件）。在 Wellmix 上传的 Book 中，“保存选择”会立即为每个变体 × 包装组合向 Book 的供应商打开一个报价。在合作伙伴发送的 Book 中只保存：报价稍后在“推荐分组”中打开。",
   "supplierRequests.selection.form.quantity": "数量（件）",
   "supplierRequests.selection.form.quantityHint":
     "留空：使用选中条目的表格数量。",

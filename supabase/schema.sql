@@ -2339,6 +2339,7 @@ alter table public."supplier_requests" add column if not exists "aiAssets" jsonb
 alter table public."supplier_requests" add column if not exists "sampling" jsonb;
 alter table public."supplier_requests" add column if not exists "quoteResponseId" text;
 alter table public."supplier_requests" add column if not exists "demandIds" jsonb;
+alter table public."supplier_requests" add column if not exists "variant" jsonb;
 create index if not exists "supplier_requests_by_supplier" on public."supplier_requests" ("supplierId");
 create index if not exists "supplier_requests_by_item" on public."supplier_requests" ("bookingItemId");
 create index if not exists "supplier_requests_by_status" on public."supplier_requests" ("status");
@@ -2366,6 +2367,8 @@ alter table public."selection_groups" add column if not exists "schedule" jsonb;
 alter table public."selection_groups" add column if not exists "colorPlan" jsonb;
 alter table public."selection_groups" add column if not exists "aiPrompts" jsonb;
 alter table public."selection_groups" add column if not exists "aiAssets" jsonb;
+alter table public."selection_groups" add column if not exists "packing" jsonb;
+alter table public."selection_groups" add column if not exists "supplierRequestIds" jsonb;
 create index if not exists "selection_groups_by_status" on public."selection_groups" ("status");
 create index if not exists "selection_groups_by_chosen" on public."selection_groups" ("chosenItemId");
 create index if not exists "selection_groups_created" on public."selection_groups" ("createdAt");

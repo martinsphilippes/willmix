@@ -1,16 +1,19 @@
 import "server-only";
 
-import { assertWellmix } from "@/lib/auth/permissions";
+import { assertWellmix, isWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
 import { GROUP_MAX } from "@/lib/booking-selection";
 import {
   getStore,
   type AiReferencePrompts,
   type BookingItem,
+  type BookingLot,
   type SelectionGroup,
+  type SelectionPacking,
   type SupplierRequest,
   type User,
 } from "@/lib/db";
+import type { PackingInput } from "@/lib/selection-packing";
 import { listColumns } from "@/lib/db/lookup";
 import { groupRequests, sheetQuantity } from "@/lib/supplier-requests";
 import {
@@ -72,6 +75,121 @@ export interface SaveSelectionGroupInput {
    * estava; null = os padrão das Configurações).
    */
   aiPrompts?: AiReferencePrompts | null;
+  /**
+   * Embalagens e variações do vencedor (dono, 26/11/2026): a caixa
+   * alterada, as embalagens novas, as variações e o Mix de cores. Com elas,
+   * as cores (`colors`, `colorCartons`) não valem: as caixas são de cada
+   * combinação (`packCartons`).
+   */
+  packing?: PackingInput | null;
+  /** Caixas digitadas por combinação (`comboKey`); nulo = divisão igual. */
+  packCartons?: Record<string, number> | null;
+  /** Artes de exemplo por chave (`artKey`): arquivo novo, já subido ou mantido. */
+  arts?: PackingArts | null;
+}
+
+/** As imagens das combinações que vieram no formulário. */
+export interface PackingArts {
+  files: Record<string, File>;
+  /** Já subidas direto ao armazenamento (a chave do arquivo). */
+  uploaded: Record<string, string>;
+  /** A gravada antes (documento), quando não veio outra. */
+  keep: Record<string, string>;
+}
+
+/**
+ * O plano das embalagens e variações: confere (caixa, embalagens,
+ * variações), divide as peças de cada data entre as combinações e guarda as
+ * imagens de exemplo (documentos internos até a cotação abrir).
+ */
+async function packingPlan(
+  user: User,
+  chosen: BookingItem,
+  input: PackingInput,
+  rounds: number[],
+  extra: {
+    cartons: Record<string, number> | null;
+    arts: PackingArts | null;
+    splitError: (error: string) => Error;
+  },
+): Promise<SelectionPacking> {
+  const rules = await import("@/lib/selection-packing");
+  const { colorsOf } = await import("@/lib/color-split");
+  const book = new Map(
+    colorsOf(chosen.colorAssortment).map(
+      (c) => [c.toLocaleLowerCase("pt-BR"), c] as const,
+    ),
+  );
+  // Cor do Book pelo nome dela no Book; o que não é do Book é texto livre.
+  const variations = input.variations
+    .map((v) => {
+      const label = rules.cleanVariation(v.label);
+      const fromBook = book.get(label.toLocaleLowerCase("pt-BR"));
+      return !v.custom && fromBook
+        ? { label: fromBook, custom: false }
+        : { label, custom: true };
+    })
+    .filter((v) => v.label);
+  const clean = { ...input, variations };
+  const check = rules.checkPacking(clean, chosen.masterCartonQty);
+  if (!check.ok) throw new SupplierRequestError(check.error);
+  const combos = rules.packCombos(variations, rules.packOptions(clean));
+  if (!combos.length) throw new SupplierRequestError("selection_colors_none");
+  const split = rules.splitPacking({
+    rounds,
+    combos,
+    carton: check.carton,
+    cartons: extra.cartons,
+  });
+  if (!split.ok) throw extra.splitError(split.error);
+  const { cbmFromDimensions } = await import("@/lib/logistics/cbm");
+  const baseCbm =
+    chosen.cbmPerCarton ??
+    cbmFromDimensions(chosen.lengthCm, chosen.widthCm, chosen.heightCm);
+  // As imagens: uma por combinação ou, com o Mix de cores, uma por embalagem.
+  const arts = new Map<string, string>();
+  const wanted = [
+    ...new Set(
+      combos.map((c) => rules.artKey(input.mix, c.variation, c.units)),
+    ),
+  ];
+  if (extra.arts) {
+    const { registerUploadedPhoto, uploadDocument } =
+      await import("./documents");
+    const target = { type: "photo" as const, visibility: "internal" as const };
+    for (const key of wanted) {
+      const file = extra.arts.files[key];
+      const uploaded = extra.arts.uploaded[key];
+      const kept = extra.arts.keep[key];
+      if (file) {
+        if (!(file.type ?? "").startsWith("image/"))
+          throw new SupplierRequestError("mime");
+        arts.set(key, (await uploadDocument(user, file, target)).id);
+      } else if (uploaded)
+        arts.set(key, (await registerUploadedPhoto(user, uploaded, target)).id);
+      else if (kept) arts.set(key, kept);
+    }
+  }
+  return {
+    carton: input.carton,
+    cbm: input.carton
+      ? rules.alteredCbm(baseCbm, chosen.masterCartonQty, input.carton)
+      : null,
+    packs: clean.packs,
+    parentOption: clean.parentOption,
+    mix: input.mix,
+    variations,
+    lines: combos.map((c, i) => ({
+      key: c.key,
+      variation: c.variation,
+      units: c.units,
+      quantity: split.rows[i].quantity,
+      rounds: split.rows[i].rounds,
+      artDocumentId:
+        arts.get(rules.artKey(input.mix, c.variation, c.units)) ?? null,
+    })),
+    ...(extra.cartons ? { custom: true } : {}),
+  };
 }
 
 /**
@@ -123,27 +241,41 @@ export async function saveSelectionGroup(
     throw new SupplierRequestError("supplier_request_qty_required");
   const itemIds = items.map((i) => i.id);
   const needs = (input.needs ?? "").trim().slice(0, 4000) || null;
-  // Variações de cor do vencedor (docs/PURCHASE_SCHEDULE.md, "Cores"): as
-  // peças de cada data divididas entre as cores incluídas, em caixas master
-  // inteiras. Não fecha: recusa (a tela mostra o ajuste antes de gravar).
-  const { buildColorPlan } = await import("@/lib/color-split");
-  const colored = buildColorPlan({
-    assortment: chosen.colorAssortment,
-    included: input.colors ?? null,
-    rounds: schedule
-      ? schedule.items.map((i) => i.quantity)
-      : [Math.round(quantity)],
-    carton: chosen.masterCartonQty,
-    cartons: input.colorCartons ?? null,
-  });
-  if ("error" in colored)
-    throw new SupplierRequestError(
-      colored.error.error === "colors_none"
+  const rounds = schedule
+    ? schedule.items.map((i) => i.quantity)
+    : [Math.round(quantity)];
+  const splitError = (error: string) =>
+    new SupplierRequestError(
+      error === "colors_none"
         ? "selection_colors_none"
-        : colored.error.error === "colors_total"
+        : error === "colors_total"
           ? "selection_colors_total"
           : "selection_colors_cartons",
     );
+  // Embalagens e variações (dono, 26/11/2026): cada combinação variação ×
+  // embalagem fica com as suas caixas master inteiras da caixa final.
+  const packing = input.packing
+    ? await packingPlan(user, chosen, input.packing, rounds, {
+        cartons: input.packCartons ?? null,
+        arts: input.arts ?? null,
+        splitError,
+      })
+    : null;
+  // Variações de cor do vencedor (docs/PURCHASE_SCHEDULE.md, "Cores"): as
+  // peças de cada data divididas entre as cores incluídas, em caixas master
+  // inteiras. Não fecha: recusa (a tela mostra o ajuste antes de gravar).
+  // Com as embalagens, as cores são variações delas (sem plano de cores).
+  const { buildColorPlan } = await import("@/lib/color-split");
+  const colored = packing
+    ? { plan: null }
+    : buildColorPlan({
+        assortment: chosen.colorAssortment,
+        included: input.colors ?? null,
+        rounds,
+        carton: chosen.masterCartonQty,
+        cartons: input.colorCartons ?? null,
+      });
+  if ("error" in colored) throw splitError(colored.error.error);
   const colorPlan = colored.plan;
 
   const waiting = await schemaSafe(
@@ -168,6 +300,8 @@ export async function saveSelectionGroup(
     ...(colorPlan ? { colorPlan } : {}),
     // Prompts de IA: o mesmo cuidado (só grava quando há prompt próprio).
     ...(input.aiPrompts ? { aiPrompts: input.aiPrompts } : {}),
+    // Embalagens e variações: o mesmo cuidado.
+    ...(packing ? { packing } : {}),
   };
   const [reuse, ...rest] = overlapping;
   const group = reuse
@@ -175,6 +309,10 @@ export async function saveSelectionGroup(
         ...values,
         ...(!schedule && reuse.schedule ? { schedule: null } : {}),
         ...(!colorPlan && reuse.colorPlan ? { colorPlan: null } : {}),
+        ...(!packing && reuse.packing ? { packing: null } : {}),
+        ...(reuse.supplierRequestIds?.length
+          ? { supplierRequestIds: null }
+          : {}),
         ...(input.aiPrompts === null && reuse.aiPrompts
           ? { aiPrompts: null }
           : {}),
@@ -201,7 +339,7 @@ export async function saveSelectionGroup(
     "selection_group.save",
     "selection_group",
     group.id,
-    `Escolha do grupo: ${chosen.description ?? chosen.productName ?? chosen.factoryItemCode ?? chosen.id}, ${group.quantity} pcs${schedule ? ` em ${schedule.items.length} programações (${schedule.items.map((i) => i.quantity).join(" + ")}), a cada ${schedule.intervalDays} dias desde ${schedule.firstDate}` : ""}${colorPlan ? `; cores: ${colorPlan.rows.map((r) => `${r.color} ${r.quantity}`).join(", ")}${colorPlan.included.length < colorPlan.colors.length ? ` (fora: ${colorPlan.colors.filter((c) => !colorPlan.included.includes(c)).join(", ")})` : ""}` : ""} (${itemIds.length} itens comparados)`,
+    `Escolha do grupo: ${chosen.description ?? chosen.productName ?? chosen.factoryItemCode ?? chosen.id}, ${group.quantity} pcs${schedule ? ` em ${schedule.items.length} programações (${schedule.items.map((i) => i.quantity).join(" + ")}), a cada ${schedule.intervalDays} dias desde ${schedule.firstDate}` : ""}${colorPlan ? `; cores: ${colorPlan.rows.map((r) => `${r.color} ${r.quantity}`).join(", ")}${colorPlan.included.length < colorPlan.colors.length ? ` (fora: ${colorPlan.colors.filter((c) => !colorPlan.included.includes(c)).join(", ")})` : ""}` : ""}${packing ? `; ${packing.lines.length} combinação(ões) variação × embalagem: ${packing.lines.map((l) => `${l.variation ?? "—"} × ${l.units === 1 ? "unitária" : `${l.units} pç`} ${l.quantity}`).join(", ")}${packing.carton ? `; caixa alterada para ${packing.carton} pç` : ""}${packing.mix ? "; mix de cores" : ""}` : ""} (${itemIds.length} itens comparados)`,
   );
   return group;
 }
@@ -274,6 +412,140 @@ export interface OpenGroupRequestsResult {
 }
 
 /**
+ * As cotações de um grupo gravado: a do ganhador (o fluxo de sempre) ou,
+ * com embalagens e variações, uma por combinação variação × embalagem
+ * (dono, 26/11/2026), cada uma com o próprio número, a cópia do item já em
+ * embalagens e a imagem de exemplo. A combinação sem peças não abre.
+ */
+async function openGroup(
+  user: User,
+  group: SelectionGroup,
+  batches: Map<string, SupplierRequestBatch>,
+): Promise<SupplierRequest[]> {
+  const base = {
+    itemId: group.chosenItemId,
+    alternativeIds: group.itemIds.filter((i) => i !== group.chosenItemId),
+    needs: group.needs,
+    searchQuery: null,
+  };
+  const packing = group.packing ?? null;
+  const store = getStore();
+  const chosen = packing
+    ? await store.get("booking_items", group.chosenItemId)
+    : null;
+  const { colorsOf } = await import("@/lib/color-split");
+  const rules = await import("@/lib/selection-packing");
+  if (
+    !packing ||
+    !chosen ||
+    rules.trivialPacking(packing, colorsOf(chosen.colorAssortment).length)
+  )
+    return [
+      await openSupplierRequest(
+        user,
+        {
+          ...base,
+          quantity: group.quantity,
+          schedule: group.schedule ?? null,
+          colorPlan: group.colorPlan ?? null,
+        },
+        batches,
+      ),
+    ];
+  const { supplierRequestItemOf } = await import("@/lib/supplier-requests");
+  const item = supplierRequestItemOf(chosen);
+  const opened: SupplierRequest[] = [];
+  const linked = new Set<string>();
+  for (const line of packing.lines) {
+    if (!(line.quantity > 0)) continue;
+    const schedule = group.schedule
+      ? (() => {
+          const items = group
+            .schedule!.items.map((it, i) => ({
+              ...it,
+              quantity: rules.piecesToPacks(line.rounds[i] ?? 0, line.units),
+            }))
+            .filter((it) => it.quantity > 0)
+            .map((it, i) => ({ ...it, index: i + 1 }));
+          return items.length ? { ...group.schedule!, items } : null;
+        })()
+      : null;
+    // Uma cotação separada por combinação (número próprio): um lote de
+    // solicitações novo para cada uma.
+    const request = await openSupplierRequest(
+      user,
+      {
+        ...base,
+        quantity: rules.piecesToPacks(line.quantity, line.units),
+        schedule,
+        colorPlan: null,
+        snapshot: rules.skuItemOf(item, packing, line),
+        variant: {
+          key: line.key,
+          variation: line.variation,
+          units: line.units,
+          pieceCarton: packing.carton ?? chosen.masterCartonQty,
+          mix: packing.mix,
+          artDocumentId: line.artDocumentId,
+          selectionGroupId: group.id,
+        },
+      },
+      new Map(),
+    );
+    // A arte passa a abrir para o fornecedor da cotação (com o Mix, a mesma
+    // imagem serve às cotações da embalagem: fica ligada à primeira).
+    if (line.artDocumentId && !linked.has(line.artDocumentId)) {
+      linked.add(line.artDocumentId);
+      await store
+        .update("documents", line.artDocumentId, {
+          supplierRequestId: request.id,
+        })
+        .catch((error: unknown) =>
+          console.error("openGroup: arte da combinação", error),
+        );
+    }
+    opened.push(request);
+  }
+  if (!opened.length)
+    throw new SupplierRequestError("supplier_request_qty_required");
+  return opened;
+}
+
+/**
+ * O book foi subido pela Wellmix? Então a escolha vira cotação na hora,
+ * direto com o Supplier do book (dono, 26/11/2026). O book que o parceiro
+ * subiu pelo portal vai para a Estratégia de compra (entrega seguinte); até
+ * lá, a cotação abre pelos Blocos Sugeridos, como antes.
+ */
+export async function lotUploadedByWellmix(
+  lot: Pick<BookingLot, "createdByUserId">,
+): Promise<boolean> {
+  const creator = lot.createdByUserId
+    ? await getStore().get("users", lot.createdByUserId)
+    : null;
+  // Sem o login de quem subiu (apagado), vale o book da Wellmix.
+  return !creator || isWellmix(creator);
+}
+
+/**
+ * Grava a escolha e, no book subido pela Wellmix, abre as cotações na hora
+ * ("Gravar escolha", dono, 26/11/2026). Devolve a escolha e o que abriu
+ * (nulo: ficou gravada, esperando a abertura pelos Blocos Sugeridos).
+ */
+export async function saveAndOpenSelectionGroup(
+  user: User,
+  input: SaveSelectionGroupInput,
+): Promise<{ group: SelectionGroup; opened: OpenGroupRequestsResult | null }> {
+  const group = await saveSelectionGroup(user, input);
+  const store = getStore();
+  const chosen = await store.get("booking_items", group.chosenItemId);
+  const lot = chosen ? await store.get("booking_lots", chosen.lotId) : null;
+  if (!lot || !(await lotUploadedByWellmix(lot)))
+    return { group, opened: null };
+  return { group, opened: await openGroupRequests(user, [group.id]) };
+}
+
+/**
  * Abre a solicitação ao fornecedor do ganhador de cada grupo gravado (os
  * marcados, ou todos). Os outros itens do grupo vão como alternativas (só a
  * Wellmix vê). Um grupo que não abre não segura os demais.
@@ -299,29 +571,21 @@ export async function openGroupRequests(
     a.createdAt.localeCompare(b.createdAt),
   )) {
     try {
-      const request = await openSupplierRequest(
-        user,
-        {
-          itemId: group.chosenItemId,
-          alternativeIds: group.itemIds.filter((i) => i !== group.chosenItemId),
-          quantity: group.quantity,
-          needs: group.needs,
-          searchQuery: null,
-          schedule: group.schedule ?? null,
-          colorPlan: group.colorPlan ?? null,
-        },
-        batches,
-      );
+      const opened = await openGroup(user, group, batches);
       // Imagens e ficha geradas por IA: vão para a solicitação (o fornecedor vê).
       const { attachReferencesToRequest } = await import("./ai-references");
-      await attachReferencesToRequest(group, request.id);
+      for (const request of opened)
+        await attachReferencesToRequest(group, request.id);
       await store.update("selection_groups", group.id, {
         status: "requested",
-        supplierRequestId: request.id,
+        supplierRequestId: opened[0].id,
+        ...(opened.length > 1
+          ? { supplierRequestIds: opened.map((r) => r.id) }
+          : {}),
         requestedAt: new Date().toISOString(),
         updatedByUserId: user.id,
       });
-      result.opened.push(request);
+      result.opened.push(...opened);
     } catch (error) {
       if (!(error instanceof SupplierRequestError)) throw error;
       result.failed.push({ groupId: group.id, error: error.message });

@@ -19,6 +19,8 @@ import {
   type SheetIncoterm,
   type SupplierRequestEvent,
   type SupplierRequest,
+  type SupplierRequestItem,
+  type SupplierRequestVariant,
   type User,
   type YesNo,
 } from "@/lib/db";
@@ -298,6 +300,13 @@ export interface OpenSupplierRequestInput {
   schedule?: RequestSchedule | null;
   /** Variações de cor da escolha (peças por cor e por data). */
   colorPlan?: ColorPlan | null;
+  /**
+   * Variação × embalagem da escolha (dono, 26/11/2026): a cotação é deste
+   * SKU (`snapshot`, a cópia do item já em embalagens) e o item pode ter
+   * outras cotações abertas, uma por combinação.
+   */
+  variant?: SupplierRequestVariant | null;
+  snapshot?: SupplierRequestItem | null;
 }
 
 /**
@@ -353,7 +362,16 @@ export async function openSupplierRequest(
   const existing = await withSchema(() =>
     store.list("supplier_requests", { filter: { bookingItemId: item.id } }),
   );
-  if (existing.some((r) => supplierRequestActive(r.status)))
+  // Uma em andamento por item; com variação × embalagem, uma por combinação
+  // (a antiga, sem combinação, continua ocupando o item inteiro).
+  const key = input.variant?.key ?? null;
+  if (
+    existing.some(
+      (r) =>
+        supplierRequestActive(r.status) &&
+        (key === null || !r.variant || r.variant.key === key),
+    )
+  )
     throw new SupplierRequestError("supplier_request_exists");
 
   const schedule = input.schedule?.items.length ? input.schedule : null;
@@ -399,7 +417,8 @@ export async function openSupplierRequest(
     alternativeItemIds: alternatives.length
       ? alternatives.map((a) => a.id)
       : null,
-    item: supplierRequestItemOf(item),
+    item: input.snapshot ?? supplierRequestItemOf(item),
+    ...(input.variant ? { variant: input.variant } : {}),
     quantity: Math.round(quantity),
     unit: "pcs",
     needs: clip(input.needs, 4000),
@@ -431,7 +450,7 @@ export async function openSupplierRequest(
     "supplier_request.open",
     "supplier_request",
     request.id,
-    `Solicitação ao fornecedor nº ${number}: ${supplier.name}, ${request.quantity} pcs${schedule ? ` em ${schedule.items.length} programações a cada ${schedule.intervalDays} dias` : ""} (book nº ${lot.number})`,
+    `Solicitação ao fornecedor nº ${number}: ${supplier.name}, ${request.quantity} pcs${input.variant ? ` (${[input.variant.variation, input.variant.units > 1 ? `embalagem de ${input.variant.units} peças` : "unitária"].filter(Boolean).join(", ")})` : ""}${schedule ? ` em ${schedule.items.length} programações a cada ${schedule.intervalDays} dias` : ""} (book nº ${lot.number})`,
   );
   if (batches) return request;
   const { notify } = await import("./notifications");

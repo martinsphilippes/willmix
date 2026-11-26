@@ -95,6 +95,7 @@ import { RequestTimeline } from "../_components/timeline";
 import { dateTime } from "../_components/negotiation";
 import { canPostMessage, canPropose } from "@/lib/supplier-requests";
 import { RequestAiReferences } from "@/components/selection-ai-prompts";
+import { RequestVariant } from "@/components/request-variant";
 import {
   BoardCounterForm,
   QuotationBoard,
@@ -1455,6 +1456,11 @@ export default async function SupplierRequestPage({
             <Card title={t("quotation.item.product")} dense>
               <div className="space-y-3" data-negotiation-main>
                 {summarySection}
+                <RequestVariant
+                  variant={r.variant}
+                  cartonQty={it.masterCartonQty}
+                  t={t}
+                />
                 {sheetSection}
               </div>
             </Card>
@@ -1555,6 +1561,11 @@ export default async function SupplierRequestPage({
             <Card title={t("supplierRequests.detail.request")} dense>
               <div className="space-y-3" data-negotiation-main>
                 {summarySection}
+                <RequestVariant
+                  variant={r.variant}
+                  cartonQty={it.masterCartonQty}
+                  t={t}
+                />
                 {sheetSection}
                 {answerSection}
                 {negotiationSection}

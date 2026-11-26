@@ -348,13 +348,12 @@ export async function chooseItem(page: Page, hasText: string) {
 /**
  * Seleção de itens (docs/SUPPLIER_REQUESTS.md): a busca pela marca traz os
  * dois itens; agrupa, escolhe `chosen` (código) com `alternative` de
- * alternativa, grava e abre a solicitação ao fornecedor do escolhido.
- * Devolve o endereço da solicitação (sem a busca).
+ * alternativa e grava: no book da Wellmix, a cotação ao fornecedor do
+ * escolhido abre na hora. Devolve o endereço da solicitação (sem a busca).
  *
  * Com `cartons` (caixas master de 48 peças, a da planilha de teste), a
  * quantidade é digitada em "Total de caixas": confere que "Quantidade
- * (peças)" acompanha, que é ela que a escolha grava e que os dois campos
- * voltam com o mesmo número ao rever a escolha.
+ * (peças)" acompanha (é ela que a escolha grava).
  */
 export async function selectAndOpenSupplierRequest(
   page: Page,
@@ -403,34 +402,11 @@ export async function selectAndOpenSupplierRequest(
       pieces!,
     );
   }
-  // Gravar só guarda a escolha (nada vai ao fornecedor); a tela vai para a
-  // aba Blocos Sugeridos, onde o grupo aparece resolvido, com o ganhador em
-  // verde, e a solicitação abre dali.
+  // "Gravar escolha" no book subido pela Wellmix abre a cotação na hora
+  // (dono, 26/11/2026; docs/SUPPLIER_REQUESTS.md, "Embalagens e
+  // variações"): item sem variação e sem embalagem nova é uma combinação só,
+  // uma cotação, direto com o Supplier do book (sem os Blocos Sugeridos).
   await page.click("[data-selection-submit]");
-  await page.waitForURL(/[?&]saved=1/);
-  await expect(page).toHaveURL(/[?&]tab=blocks/);
-  await expect(page.locator("[data-selection-saved]")).toBeVisible();
-  const resolved = page.locator("[data-selection-resolved=saved]");
-  await expect(resolved).toHaveCount(1);
-  await expect(resolved.locator("[data-selection-winner]")).toContainText(tag);
-  if (cartons !== null) {
-    // A escolha gravou as peças das caixas digitadas; ao rever, os dois
-    // campos voltam com o mesmo número.
-    await expect(resolved.locator("[data-selection-winner]")).toContainText(
-      `${(cartons * 48).toLocaleString("pt-BR")} peças`,
-    );
-    await resolved.locator("[data-selection-block-open]").click();
-    await page.waitForURL(/ids=/);
-    await expect(page.locator("[data-selection-quantity]")).toHaveValue(
-      pieces!,
-    );
-    await expect(page.locator("[data-generate-total]")).toHaveValue(
-      String(cartons),
-    );
-    await page.goBack();
-    await expect(resolved).toHaveCount(1);
-  }
-  await page.click("[data-selection-open-all]");
   // Recém-aberta, a solicitação abre na tela do produto (view=item).
   await page.waitForURL(/\/app\/supplier-requests\/[^/?]+\?.*created=1/);
   return page.url().split("?")[0];

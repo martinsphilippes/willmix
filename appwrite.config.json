@@ -13911,6 +13911,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "variant",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -14070,6 +14077,20 @@
         },
         {
           "key": "aiAssets",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "packing",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "supplierRequestIds",
           "required": false,
           "array": false,
           "default": null,

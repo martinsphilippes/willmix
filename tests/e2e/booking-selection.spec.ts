@@ -300,21 +300,10 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   ).toBeDisabled();
   await expect(page.locator("[data-selection-submit]")).toBeVisible();
   await expect(page.locator("[data-selection-item]")).toHaveCount(3);
-  // Abaixo do bloco, os três prompts de IA com os padrões das Configurações.
-  await expect(page.locator("[data-ai-prompt]")).toHaveCount(3);
-  await expect(page.locator('[data-ai-prompt="product"]')).not.toHaveValue("");
-  // Desenho (pedido do dono, 13/11/2026): "Gravar a escolha do grupo" em cima
-  // e "Prompts de IA" logo abaixo, os dois na largura toda; com essa largura,
-  // os três prompts ficam lado a lado e os campos do gerador numa linha só.
-  const choiceCard = (await page
-    .locator("[data-selection-choice-cards] > section")
-    .first()
-    .boundingBox())!;
-  const promptsCard = (await page.locator("[data-ai-prompts]").boundingBox())!;
-  expect(promptsCard.y).toBeGreaterThanOrEqual(
-    choiceCard.y + choiceCard.height,
-  );
-  expect(Math.abs(promptsCard.width - choiceCard.width)).toBeLessThan(2);
+  // "Prompts de IA para o fornecedor" fora da tela por ora (dono,
+  // 26/11/2026): abaixo de "Gravar a escolha do grupo", nada de prompts.
+  await expect(page.locator("[data-ai-prompt]")).toHaveCount(0);
+  await expect(page.locator("[data-ai-prompts]")).toHaveCount(0);
   const tops = (selector: string, edge: "top" | "bottom") =>
     page
       .locator(selector)
@@ -323,7 +312,6 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
           els.map((el) => Math.round(el.getBoundingClientRect()[e as "top"])),
         edge,
       );
-  expect(new Set(await tops("[data-ai-prompt]", "top")).size).toBe(1);
   // Os seis campos do gerador numa linha só. "Quantidade (peças)" fica logo
   // à direita de "Total de caixas", com a mesma largura e altura e os
   // rótulos alinhados (dono, 13/11/2026; antes ficava no alto do cartão).
