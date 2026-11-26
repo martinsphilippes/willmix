@@ -128,6 +128,39 @@ export async function saveSelectionDraftAction(input: {
 }
 
 /**
+ * Arte de uma combinação na aba Seleção: vira documento na hora, para ficar no
+ * rascunho (dono, 26/11/2026). Volta o id do documento.
+ */
+export async function uploadSelectionArtAction(
+  form: FormData,
+): Promise<{ ok: boolean; id: string | null; error: string | null }> {
+  const user = await requireUser();
+  try {
+    const uploaded = str(form, "uploaded") || null;
+    if (uploaded && !ID.safeParse(uploaded).success)
+      throw new Error("invalid_input");
+    const raw = form.get("file");
+    const file = raw instanceof File && raw.size > 0 ? raw : null;
+    const { registerSelectionArt } =
+      await import("@/lib/services/selection-draft");
+    return {
+      ok: true,
+      id: await registerSelectionArt(user, { file, uploaded }),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      id: null,
+      error:
+        error instanceof Error && /^[a-z_]{1,60}$/.test(error.message)
+          ? error.message
+          : "unexpected",
+    };
+  }
+}
+
+/**
  * Cancela a seleção em andamento: o rascunho some e a tela vai para onde
  * pediu (`next`: a seleção que se queria abrir) ou para a aba Itens.
  */

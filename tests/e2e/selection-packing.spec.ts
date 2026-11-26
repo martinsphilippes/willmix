@@ -97,6 +97,26 @@ test("Alterar, embalagens, variações e uma cotação por combinação", async 
     "16 emb.",
   );
 
+  // 6b. Rascunho (dono, 26/11/2026): recarregar a seleção traz tudo de volta,
+  // também a arte do Mix.
+  await expect(page.locator("[data-selection-draft-saved]")).toBeVisible();
+  await page.waitForTimeout(3500);
+  await page.reload();
+  await expect(page.locator("[data-selection-draft-restored]")).toBeVisible();
+  await expect(card.locator('[data-packing-switch="mix"]')).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await expect(
+    card.locator('[data-packing-art-row] [data-packing-art="|3"] img'),
+  ).toBeVisible();
+  await expect(page.locator("[data-selection-quantity]")).toHaveValue("288");
+  await expect(
+    card
+      .locator('[data-packing-cell="Preto fosco|3"]')
+      .locator("[data-selection-color-cartons]"),
+  ).toHaveValue("2");
+
   // 7. Gravar: book da Wellmix, uma cotação por combinação.
   await page.click("[data-selection-submit]");
   await page.waitForURL(/[?&]opened=6/);
