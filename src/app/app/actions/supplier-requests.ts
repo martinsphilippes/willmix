@@ -89,12 +89,72 @@ async function selectionBack(
   return `${SELECTION}?${p.toString()}`;
 }
 
+/**
+ * Rascunho da seleção em andamento (dono, 26/11/2026): a aba Seleção manda
+ * o que está no formulário a cada mudança, sem recarregar a página.
+ */
+export async function saveSelectionDraftAction(input: {
+  ids: string[];
+  values: Record<string, string[]>;
+}): Promise<{ ok: boolean; savedAt: string | null; error: string | null }> {
+  const user = await requireUser();
+  try {
+    const parsed = z
+      .object({
+        ids: z.array(ID).min(1).max(60),
+        values: z.record(
+          z.string().max(120),
+          z.array(z.string().max(20000)).max(50),
+        ),
+      })
+      .parse(input);
+    const { saveSelectionDraft } =
+      await import("@/lib/services/selection-draft");
+    return {
+      ok: true,
+      savedAt: await saveSelectionDraft(user, parsed),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      savedAt: null,
+      error:
+        error instanceof Error && /^[a-z_]{1,60}$/.test(error.message)
+          ? error.message
+          : "unexpected",
+    };
+  }
+}
+
+/**
+ * Cancela a seleção em andamento: o rascunho some e a tela vai para onde
+ * pediu (`next`: a seleção que se queria abrir) ou para a aba Itens.
+ */
+export async function cancelSelectionDraftAction(form: FormData) {
+  const user = await requireUser();
+  const next = str(form, "next");
+  const back = /^\/app\/booking\/selection(\?[^#\s]*)?$/.test(next)
+    ? next
+    : withQuery(SELECTION, "cancelled", "1");
+  await run(back, async () => {
+    const { clearSelectionDraft } =
+      await import("@/lib/services/selection-draft");
+    await clearSelectionDraft(user);
+    return back;
+  });
+}
+
 /** Grava a escolha do grupo comparado (o ganhador e a quantidade); nada vai ao fornecedor. */
 export async function saveSelectionGroupAction(form: FormData) {
   const user = await requireUser();
   const back = await selectionBack(form);
   const group = str(form, "group");
   await run(group ? withQuery(back, "ids", group) : back, async () => {
+    // Outra seleção em andamento: conclui ou cancela aquela antes.
+    const { assertSelectionFree, clearSelectionDraft } =
+      await import("@/lib/services/selection-draft");
+    await assertSelectionFree(user, group.split(",").filter(Boolean));
     const chosen = str(form, "chosen");
     if (!chosen) throw new Error("supplier_request_choose");
     const input = z
@@ -189,6 +249,8 @@ export async function saveSelectionGroupAction(form: FormData) {
       const { saveAndOpenSelectionGroup } =
         await import("@/lib/services/selection-groups");
       const { group, opened } = await saveAndOpenSelectionGroup(user, input2);
+      // Concluída: o rascunho da seleção em andamento some.
+      await clearSelectionDraft(user);
       const { groupRequests } = await import("@/lib/supplier-requests");
       const count = groupRequests(opened.opened).length;
       const strategy = opened.strategy.reduce(
@@ -213,6 +275,7 @@ export async function saveSelectionGroupAction(form: FormData) {
       return to;
     }
     const saved = await saveSelectionGroup(user, input2);
+    await clearSelectionDraft(user);
     // "Gravar e gerar com IA": grava e gera as imagens e a ficha. A escolha
     // fica gravada mesmo se a IA falhar; a tela diz o motivo.
     if (str(form, "generate") === "1") {

@@ -712,6 +712,46 @@ export async function lotsWorkableBy<T extends BookingLot>(
   return lots.filter((lot) => lockOfLot(lot, all)?.userId === user.id);
 }
 
+/**
+ * Contador da Seleção de itens no menu (dono, 26/11/2026): os itens ainda
+ * não trabalhados (nem recusados) dos books travados para o login, fechados
+ * e prontos para a seleção; `overdue`, os dos books cuja trava passou do
+ * prazo (`bookingLockSlaHours`).
+ */
+export async function lockedPendingItems(
+  user: User,
+  now = new Date(),
+): Promise<{ count: number; overdue: number }> {
+  if (!isWellmix(user)) return { count: 0, overdue: 0 };
+  const locks = (await listBookingLocks()).filter((l) => l.userId === user.id);
+  if (!locks.length) return { count: 0, overdue: 0 };
+  const store = getStore();
+  const lots = (
+    await store.list("booking_lots", {
+      filter: { status: ["closed", "in_progress", "done"] },
+    })
+  ).filter((lot) => lockOfLot(lot, locks)?.userId === user.id);
+  if (!lots.length) return { count: 0, overdue: 0 };
+  const { getSettings } = await import("@/lib/settings");
+  const sla = (await getSettings()).bookingLockSlaHours;
+  const items = await store.list("booking_items", {
+    filter: { lotId: lots.map((l) => l.id) },
+  });
+  let count = 0;
+  let overdue = 0;
+  for (const lot of lots) {
+    const n = items.filter(
+      (i) => i.lotId === lot.id && !i.workedAt && !i.refusedAt,
+    ).length;
+    if (!n) continue;
+    count += n;
+    const lock = lockOfLot(lot, locks)!;
+    const since = Date.parse(lockedSince(lot, lock));
+    if (sla > 0 && now.getTime() - since > sla * 3_600_000) overdue += n;
+  }
+  return { count, overdue };
+}
+
 /** Recusa se algum destes books não está travado para quem age. */
 export async function assertLotsWorkable(
   user: User,
@@ -1294,6 +1334,9 @@ export async function closeBookingLot(
     if (pending.noItems) throw new BookingLotError("no_rows");
     throw new BookingLotError("booking_items_incomplete");
   }
+  // Família do produto na capa do book (dono, 26/11/2026): a Wellmix só
+  // fecha com ela (na cotação, sugere os fornecedores da família).
+  if (!lot.familyCode) throw new BookingLotError("booking_family_required");
   const at = new Date().toISOString();
   const updated = await store.update("booking_lots", lot.id, {
     status: "closed",
@@ -1311,6 +1354,44 @@ export async function closeBookingLot(
     "booking_lot",
     lot.id,
     `Book nº ${lot.number} fechado: previsão de preço de ${items.length} itens`,
+  );
+  return updated;
+}
+
+/**
+ * Família do produto dos itens do book (dono, 26/11/2026), escolhida na
+ * capa: o código do cadastro de famílias ativo; vazio apaga. Só a Wellmix,
+ * em qualquer status menos o cancelado.
+ */
+export async function setBookingLotFamily(
+  user: User,
+  lotId: string,
+  familyCode: string | null,
+): Promise<BookingLot> {
+  assertBooking(user);
+  const lot = await wellmixLot(lotId);
+  if (!lot) throw new BookingLotError("not_found");
+  if (lot.status === "cancelled")
+    throw new BookingLotError("booking_lot_locked");
+  const code = familyCode?.trim() || null;
+  let name: string | null = null;
+  if (code) {
+    const { listProductFamilies } = await import("./product-families");
+    const family = (await listProductFamilies()).find((f) => f.code === code);
+    if (!family) throw new BookingLotError("family_unknown");
+    name = family.name;
+  }
+  const updated = await withSchema(() =>
+    getStore().update("booking_lots", lot.id, { familyCode: code }),
+  );
+  await audit(
+    user,
+    "booking_lot.family",
+    "booking_lot",
+    lot.id,
+    `Book nº ${lot.number}: família do produto ${code ? `${name} (${code})` : "apagada"}`,
+    { familyCode: lot.familyCode ?? null },
+    { familyCode: code },
   );
   return updated;
 }

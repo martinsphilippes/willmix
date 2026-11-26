@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { chooseItem, fillBookMeta, login } from "./helpers";
+import { chooseItem, fillBookMeta, login, setBookFamily } from "./helpers";
 import { xlsxBytes } from "../unit/xlsx-fixture";
 
 /*
@@ -103,6 +103,7 @@ test("book do parceiro: Estratégia com o parceiro marcado e a cotação do item
   await expect(
     page.locator('[data-booking-row-note="saved"]').first(),
   ).toBeVisible();
+  await setBookFamily(page);
   await page.click("[data-booking-lot-close-submit]");
   await page.waitForURL(/[?&]closed=1/);
 

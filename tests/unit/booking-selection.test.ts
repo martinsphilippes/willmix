@@ -154,14 +154,15 @@ describe("itens não escolhidos do grupo", () => {
   });
 });
 
-/* Abas da tela (dono, 14/11/2026): Itens → Seleção → Blocos Sugeridos → Com
-   Solicitação Aberta; o endereço escolhe a aba e, sem ela, fica Itens. */
+/* Abas da tela (dono, 14/11/2026; ordem nova de 26/11/2026): Itens → Blocos
+   Sugeridos → Seleção → Com Solicitação Aberta; o endereço escolhe a aba e,
+   sem ela, fica Itens. */
 describe("abas da Seleção de itens", () => {
   it("quatro abas, nesta ordem", () => {
     expect(SELECTION_TABS).toEqual([
       "items",
-      "selection",
       "blocks",
+      "selection",
       "requested",
     ]);
   });

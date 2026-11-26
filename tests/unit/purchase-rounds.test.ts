@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { setTestFamily } from "./helpers/book-family";
 import { withTempStore } from "./setup";
 import { approveMilestones } from "./helpers/approvals";
 import { completeCertification } from "./helpers/certification";
@@ -145,6 +146,7 @@ async function approvedWith(
     items.map((i) => i.id),
     "7013.37.00",
   );
+  await setTestFamily(lot.id);
   await lots.closeBookingLot(admin, lot.id);
   const lineId = (await store.list("product_lines"))[0].id;
   const out = [];
@@ -343,6 +345,7 @@ describe("programação de compra de ponta a ponta", () => {
       ),
       "7013.37.00",
     );
+    await setTestFamily(lot.id);
     await lots.closeBookingLot(admin, lot.id);
     const items = await store.list("booking_items", {
       filter: { lotId: lot.id },

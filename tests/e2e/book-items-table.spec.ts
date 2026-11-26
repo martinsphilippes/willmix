@@ -5,7 +5,7 @@ import {
   type Locator,
   type Page,
 } from "@playwright/test";
-import { fillBookMeta, login } from "./helpers";
+import { fillBookMeta, login, setBookFamily } from "./helpers";
 import { PNG_1X1, xlsxBytes } from "../unit/xlsx-fixture";
 
 /*
@@ -277,6 +277,7 @@ test("Book: INNER opcional e fotos presas na rolagem (desktop)", async ({
     await input.press("Enter");
     await expect(note(input, "saved")).toBeVisible();
   }
+  await setBookFamily(page);
   await page.click("[data-booking-lot-close-submit]");
   await page.waitForURL(/[?&]closed=1/);
 

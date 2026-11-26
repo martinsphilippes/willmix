@@ -1,4 +1,8 @@
-import type { ColorPlan, SelectionPacking } from "@/lib/db/schema";
+import type {
+  ColorPlan,
+  RequestSchedule,
+  SelectionPacking,
+} from "@/lib/db/schema";
 import type { Translate } from "@/i18n";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { LiveSearch } from "@/components/live-search";
@@ -18,9 +22,7 @@ import {
   type SelectionRow,
 } from "@/lib/services/supplier-requests";
 import {
-  DEFAULT_SELECTION_STATUSES,
   SELECTION_DIMENSIONS,
-  SELECTION_STATUSES,
   SELECTION_TABS,
   filtersToParams,
   formatMeasure,
@@ -66,9 +68,13 @@ import {
 import { SelectionVariations } from "@/components/selection-variations";
 import { colorsOf } from "@/lib/color-split";
 import {
+  cancelSelectionDraftAction,
   openGroupRequestsAction,
   saveSelectionGroupAction,
 } from "../../actions/supplier-requests";
+import { SelectionDraftAutosave } from "@/components/selection-draft-autosave";
+import { parseRequestSchedule } from "@/lib/workflow/request-schedule";
+import { MAX_PURCHASE_ROUNDS } from "@/lib/purchase-rounds";
 import { listSelectionGroups } from "@/lib/services/selection-groups";
 import { SupplierNoLoginAlert } from "@/components/supplier-no-login";
 import { canOpen } from "@/lib/auth/screens";
@@ -122,9 +128,28 @@ export default async function BookingSelectionPage({
   const error = typeof query.error === "string" ? query.error : "";
   // Itens → Seleção → Blocos Sugeridos → Com Solicitação Aberta.
   const tab = parseSelectionTab(query.tab);
-  const filters = parseSelectionFilters(query);
+  // Sem o filtro de status (dono, 26/11/2026): o `status` de links antigos
+  // não vale mais.
+  const filters = { ...parseSelectionFilters(query), statuses: [] };
   const groupIds = parseGroupIds(query.ids);
   const t = await getT();
+  // Seleção em andamento (dono, 26/11/2026): o rascunho do login. Com ele,
+  // a aba Seleção abre nele; outra seleção espera ele ser concluído ou
+  // cancelado.
+  const { loadSelectionDraft } = await import("@/lib/services/selection-draft");
+  const draft = await loadSelectionDraft(user).catch(() => null);
+  const draftHref = draft
+    ? `/app/booking/selection?tab=selection&ids=${draft.ids.join(",")}`
+    : null;
+  if (tab === "selection" && draft && !groupIds.length) redirect(draftHref!);
+  const draftOpen =
+    !!draft &&
+    tab === "selection" &&
+    draft.ids.length === groupIds.length &&
+    draft.ids.every((id) => groupIds.includes(id));
+  const blockedByDraft =
+    !!draft && tab === "selection" && groupIds.length > 0 && !draftOpen;
+  const restore = draftOpen ? restoreFromDraft(draft!.values) : null;
   const { canSuperviseBooks, myBookingLocks } =
     await import("@/lib/services/booking-lots");
   const [booksSupervisor, myLocks] = await Promise.all([
@@ -141,7 +166,9 @@ export default async function BookingSelectionPage({
       ? query.aiError
       : null;
   const [result, group, fx, savedGroups, settings] = await Promise.all([
-    listSelectionItems(user, q, { filters }),
+    // Itens e Blocos Sugeridos: só os itens não trabalhados dos books
+    // fechados, sem o filtro de status (dono, 26/11/2026).
+    listSelectionItems(user, q, { filters, pendingOnly: true }),
     groupIds.length
       ? listSelectionItems(user, "", { ids: groupIds, workable: true })
       : Promise.resolve(null),
@@ -200,6 +227,8 @@ export default async function BookingSelectionPage({
           savedGroups.map((e) => e.group).filter((g) => g.status === "saved"),
         )
       : null;
+  // O escolhido na tela: o do rascunho ou o da escolha gravada.
+  const chosenNow = restore?.chosen ?? current?.chosenItemId ?? null;
   // Blocos sugeridos com a escolha de cada um; depois, as escolhas de grupos
   // montados à mão (que não batem com nenhum bloco).
   const blockCards = blocks.map((b) => ({
@@ -315,9 +344,6 @@ export default async function BookingSelectionPage({
     p.set("ids", ids.join(","));
     return `/app/booking/selection?${p.toString()}`;
   };
-  const statuses = filters.statuses.length
-    ? filters.statuses
-    : DEFAULT_SELECTION_STATUSES;
   const suggestions = result
     ? searchSuggestions(
         result.all.flatMap((r) => [
@@ -333,11 +359,11 @@ export default async function BookingSelectionPage({
     : [];
   const filtered =
     !!q ||
-    filters.statuses.length > 0 ||
     !!filters.from ||
     !!filters.to ||
     !!filters.supplierId ||
-    !!filters.origin;
+    !!filters.origin ||
+    !!filters.lotNumber;
 
   /**
    * Tabela dos itens. Na aba Itens (`basket`) ela só agrupa: sem "Escolher",
@@ -448,9 +474,7 @@ export default async function BookingSelectionPage({
                           name="chosen"
                           value={item.id}
                           disabled={busy}
-                          defaultChecked={
-                            !busy && current?.chosenItemId === item.id
-                          }
+                          defaultChecked={!busy && chosenNow === item.id}
                           className="peer sr-only"
                           aria-label={`${col("choose")} ${item.description ?? item.factoryItemCode ?? ""}`}
                           data-selection-choose={item.id}
@@ -715,9 +739,9 @@ export default async function BookingSelectionPage({
                 : num(item.capacityMl, 0),
             material: item.material,
           }))}
-          chosenItemId={current?.chosenItemId ?? null}
-          savedColors={current?.colorPlan?.included ?? null}
-          savedPacking={current?.packing ?? null}
+          chosenItemId={chosenNow}
+          savedColors={restore ? null : (current?.colorPlan?.included ?? null)}
+          savedPacking={restore?.packing ?? current?.packing ?? null}
           seesPrice={seesPrice}
           packLabels={packingLabels(t)}
           labels={{
@@ -751,9 +775,13 @@ export default async function BookingSelectionPage({
                 label={t("supplierRequests.selection.form.quantity")}
                 hint={t("supplierRequests.selection.form.quantityHint")}
                 scheduledHint={t("purchaseRounds.form.quantityOff")}
-                defaultQuantity={current?.quantity ?? null}
-                schedule={current?.schedule ?? null}
-                chosenItemId={current?.chosenItemId ?? null}
+                defaultQuantity={
+                  restore ? restore.quantity : (current?.quantity ?? null)
+                }
+                schedule={
+                  restore ? restore.schedule : (current?.schedule ?? null)
+                }
+                chosenItemId={chosenNow}
                 containerTypes={containerTypes}
                 items={list.map(({ item }) => ({
                   id: item.id,
@@ -782,7 +810,9 @@ export default async function BookingSelectionPage({
                     basis: "piece" as const,
                   },
                 }))}
-                savedColors={current?.colorPlan?.included ?? null}
+                savedColors={
+                  restore ? null : (current?.colorPlan?.included ?? null)
+                }
                 colorLabels={{
                   title: t("colors.preview.title"),
                   hint: t("colors.preview.hint"),
@@ -808,7 +838,9 @@ export default async function BookingSelectionPage({
                   custom: t("colors.card.custom"),
                   reset: t("colors.card.reset"),
                 }}
-                savedCartons={savedCartonsOf(current, list)}
+                savedCartons={
+                  restore ? restore.cartons : savedCartonsOf(current, list)
+                }
                 gen={generateLabels(t)}
                 labels={purchaseScheduleLabels(t, intl)}
               />
@@ -821,19 +853,25 @@ export default async function BookingSelectionPage({
                     name="needs"
                     rows={3}
                     maxLength={4000}
-                    defaultValue={current?.needs ?? undefined}
+                    defaultValue={restore?.needs ?? current?.needs ?? undefined}
                     data-selection-needs
                   />
                 </Field>
               </div>
             </div>
-            <div className="mt-3">
+            <div className="mt-3 flex flex-wrap items-center gap-3">
               <SubmitButton
                 pendingText={t("supplierRequests.selection.form.pending")}
                 data-selection-submit
               >
                 {t("supplierRequests.selection.form.submit")}
               </SubmitButton>
+              {/* Rascunho automático da seleção em andamento. */}
+              <SelectionDraftAutosave
+                ids={groupIds.length ? groupIds : list.map((r) => r.item.id)}
+                restored={draftOpen}
+                savedText={t("selectionDraft.saved", { time: "{time}" })}
+              />
             </div>
           </Card>
           {/* "Prompts de IA para o fornecedor" fora da tela por ora (dono,
@@ -892,6 +930,39 @@ export default async function BookingSelectionPage({
       {savedNotice ? (
         <div className="mb-3" data-selection-saved>
           <Alert tone="success">{t("supplierRequests.selection.saved")}</Alert>
+        </div>
+      ) : null}
+      {draft && tab !== "selection" ? (
+        <div
+          className="mb-3 flex flex-wrap items-center gap-2"
+          data-selection-draft-banner={draft.ids.length}
+        >
+          <Alert tone="info">
+            {t("selectionDraft.banner", { n: draft.ids.length })}{" "}
+            <Link href={draftHref!} className={linkClass}>
+              {t("selectionDraft.continue")}
+            </Link>
+          </Alert>
+          <form action={cancelSelectionDraftAction}>
+            <input type="hidden" name="next" value={tabHref(tab)} />
+            <SubmitButton
+              variant="ghost"
+              title={t("selectionDraft.cancelHint")}
+              data-selection-draft-cancel
+            >
+              {t("selectionDraft.cancel")}
+            </SubmitButton>
+          </form>
+        </div>
+      ) : null}
+      {draftOpen && query.saved !== "1" ? (
+        <div className="mb-3" data-selection-draft-restored>
+          <Alert tone="info">{t("selectionDraft.restored")}</Alert>
+        </div>
+      ) : null}
+      {query.cancelled === "1" ? (
+        <div className="mb-3" data-selection-draft-cancelled>
+          <Alert tone="success">{t("selectionDraft.cancelled")}</Alert>
         </div>
       ) : null}
       {strategyCount ? (
@@ -957,16 +1028,14 @@ export default async function BookingSelectionPage({
             </nav>
           </div>
 
-          {/* Os filtros valem para Itens, Seleção e Blocos Sugeridos; a lista
-              Com Solicitação Aberta não depende deles. */}
-          {tab === "requested" ? null : (
+          {/* Os filtros valem para Itens e Blocos Sugeridos. A Seleção é a aba
+              de trabalho de uma seleção já definida (dono, 26/11/2026) e a
+              lista Com Solicitação Aberta não depende deles. */}
+          {tab === "requested" || tab === "selection" ? null : (
             <Card>
               <form method="get" className="space-y-3" data-selection-search>
                 {tab !== "items" ? (
                   <input type="hidden" name="tab" value={tab} />
-                ) : null}
-                {tab === "selection" && groupIds.length ? (
-                  <input type="hidden" name="ids" value={groupIds.join(",")} />
                 ) : null}
                 <div className="flex flex-wrap items-end gap-2">
                   <div className="min-w-64 flex-1">
@@ -1054,28 +1123,35 @@ export default async function BookingSelectionPage({
                       ))}
                     </Select>
                   </Field>
+                  {/* Nº do book (dono, 26/11/2026): trabalhar um book inteiro. */}
+                  <Field label={t("supplierRequests.selection.filter.book")}>
+                    <Select
+                      name="book"
+                      defaultValue={
+                        filters.lotNumber ? String(filters.lotNumber) : ""
+                      }
+                      data-auto-submit
+                      data-selection-filter-book
+                    >
+                      <option value="">
+                        {t("supplierRequests.selection.filter.all")}
+                      </option>
+                      {result.books.map((b) => (
+                        <option key={b.number} value={b.number}>
+                          {t("supplierRequests.selection.filter.bookOption", {
+                            n: b.number,
+                            supplier: b.supplier || "—",
+                            pending: b.pending,
+                          })}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    {t("supplierRequests.selection.filter.status")}
+                  <span className="text-xs text-zinc-500">
+                    {t("supplierRequests.selection.filter.pendingOnly")}
                   </span>
-                  {SELECTION_STATUSES.map((st) => (
-                    <label
-                      key={st}
-                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-700 has-[:checked]:border-brand-300 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-800"
-                    >
-                      <input
-                        type="checkbox"
-                        name="status"
-                        value={st}
-                        defaultChecked={statuses.includes(st)}
-                        className="h-3.5 w-3.5"
-                        data-auto-submit
-                        data-selection-filter-status={st}
-                      />
-                      {t(`bookingLots.status.${st}` as DictionaryKey)}
-                    </label>
-                  ))}
                   <span className="ml-auto flex gap-2">
                     <SubmitButton variant="secondary">
                       {t("supplierRequests.selection.filter")}
@@ -1132,7 +1208,33 @@ export default async function BookingSelectionPage({
               </Empty>
             )
           ) : tab === "selection" ? (
-            groupIds.length ? (
+            blockedByDraft ? (
+              // Outra seleção em andamento: conclui ou cancela antes.
+              <div className="space-y-3" data-selection-draft-blocked>
+                <Alert tone="warning">
+                  {t("selectionDraft.blocked", { n: draft!.ids.length })}
+                </Alert>
+                <div className="flex flex-wrap gap-2">
+                  <LinkButton href={draftHref!} data-selection-draft-continue>
+                    {t("selectionDraft.continue")}
+                  </LinkButton>
+                  <form action={cancelSelectionDraftAction}>
+                    <input
+                      type="hidden"
+                      name="next"
+                      value={groupHref(groupIds)}
+                    />
+                    <SubmitButton
+                      variant="secondary"
+                      title={t("selectionDraft.cancelHint")}
+                      data-selection-draft-cancel
+                    >
+                      {t("selectionDraft.cancel")}
+                    </SubmitButton>
+                  </form>
+                </div>
+              </div>
+            ) : groupIds.length ? (
               <Card
                 title={t("supplierRequests.selection.group.title", {
                   n: groupRows.length,
@@ -1148,11 +1250,21 @@ export default async function BookingSelectionPage({
                     <Empty>{t("supplierRequests.selection.group.empty")}</Empty>
                   )}
                 </div>
-                <p className="mt-3">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                   <Link href={tabHref("items")} className={linkClass}>
                     {t("supplierRequests.selection.group.back")}
                   </Link>
-                </p>
+                  {/* Cancelar: o rascunho some e a seleção fica livre. */}
+                  <form action={cancelSelectionDraftAction}>
+                    <SubmitButton
+                      variant="ghost"
+                      title={t("selectionDraft.cancelHint")}
+                      data-selection-draft-cancel-this
+                    >
+                      {t("selectionDraft.cancelThis")}
+                    </SubmitButton>
+                  </form>
+                </div>
               </Card>
             ) : (
               // Sem grupo aberto: os caminhos para abrir um.
@@ -1578,5 +1690,51 @@ function packingLabels(t: Translate) {
       capacity: col("capacity"),
       material: col("material"),
     },
+  };
+}
+
+/**
+ * A seleção em andamento como estava (rascunho; dono, 26/11/2026): o
+ * escolhido, a quantidade, a programação, o que a Wellmix precisa, as
+ * embalagens e variações e as caixas digitadas por combinação.
+ */
+function restoreFromDraft(values: Record<string, string[]>) {
+  const one = (key: string) => values[key]?.[0] ?? null;
+  const chosen = one("chosen");
+  const form = new FormData();
+  for (const [key, list] of Object.entries(values))
+    for (const v of list) form.append(key, v);
+  let schedule: RequestSchedule | null = null;
+  try {
+    schedule = parseRequestSchedule(form, "", MAX_PURCHASE_ROUNDS);
+  } catch {
+    schedule = null;
+  }
+  const json = <T,>(key: string): T | null => {
+    const raw = one(key);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return null;
+    }
+  };
+  const input = chosen
+    ? json<Omit<SelectionPacking, "cbm" | "lines">>(`packing.${chosen}`)
+    : null;
+  const packing: SelectionPacking | null = input
+    ? { ...input, cbm: null, lines: [] }
+    : null;
+  const cartons = chosen
+    ? json<Record<string, number>>(`colorCartons.${chosen}`)
+    : null;
+  const quantity = Number(one("quantity") ?? "");
+  return {
+    chosen,
+    quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : null,
+    schedule,
+    needs: one("needs"),
+    packing,
+    cartons,
   };
 }

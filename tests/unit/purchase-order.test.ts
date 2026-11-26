@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { setTestFamily } from "./helpers/book-family";
 import { groupOf } from "./helpers/groups";
 import { itemGroupKey } from "@/lib/order-groups";
 import { withTempStore } from "./setup";
@@ -121,6 +122,7 @@ async function approvedProducts(
     items.map((i) => i.id),
     "7013.37.00",
   );
+  await setTestFamily(lot.id);
   await lots.closeBookingLot(admin, lot.id);
   const lineId = lineIdOf ?? (await store.list("product_lines"))[0].id;
   const out = [];

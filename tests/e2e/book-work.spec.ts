@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { fillBookMeta, login } from "./helpers";
+import { fillBookMeta, login, setBookFamily } from "./helpers";
 import { xlsxBytes } from "../unit/xlsx-fixture";
 
 /*
@@ -251,6 +251,7 @@ test("Book da Wellmix: seleção direto do book e trava", async ({ page }) => {
       page.locator('[data-booking-row-note="saved"]').nth(i),
     ).toBeVisible();
   }
+  await setBookFamily(page);
   await page.click("[data-booking-lot-close-submit]");
   await page.waitForURL(/[?&]closed=1/);
 

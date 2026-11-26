@@ -26,6 +26,17 @@ export const DEFAULT_SELECTION_STATUSES: BookingLotStatus[] = [
   "done",
 ];
 
+/**
+ * Books fechados (dono, 26/11/2026): as abas Itens e Blocos Sugeridos
+ * mostram só os itens ainda não trabalhados dos books fechados (fechado, em
+ * andamento ou concluído), sem o filtro de status.
+ */
+export const CLOSED_SELECTION_STATUSES: BookingLotStatus[] = [
+  "closed",
+  "in_progress",
+  "done",
+];
+
 /** Itens num grupo para comparar (o endereço leva os ids). */
 export const GROUP_MAX = 60;
 
@@ -42,6 +53,11 @@ export interface SelectionFilters {
   supplierId: string | null;
   /** Cidade do fornecedor (origem do booking). */
   origin: string | null;
+  /**
+   * Nº do book (dono, 26/11/2026): para trabalhar um book inteiro. Nulo:
+   * todos. Ausente nos filtros de antes.
+   */
+  lotNumber?: number | null;
 }
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -64,24 +80,27 @@ export function parseSelectionFilters(
   let from = day(query.from);
   let to = day(query.to);
   if (from && to && from > to) [from, to] = [to, from];
+  const book = one(query.book);
+  const lotNumber = book && /^\d{1,9}$/.test(book) ? Number(book) : null;
   return {
     statuses: [...new Set(statuses)],
     from,
     to,
     supplierId: one(query.supplier),
     origin: one(query.origin),
+    lotNumber,
   };
 }
 
 /**
- * Abas da Seleção de itens (dono, 14/11/2026), nesta ordem: Itens → Seleção
- * → Blocos Sugeridos → Com Solicitação Aberta. Cada aba mostra só o
- * conteúdo dela.
+ * Abas da Seleção de itens, nesta ordem (dono, 26/11/2026; antes, 14/11/2026,
+ * a Seleção vinha em segundo): Itens → Blocos Sugeridos → Seleção → Com
+ * Solicitação Aberta. Cada aba mostra só o conteúdo dela.
  */
 export const SELECTION_TABS = [
   "items",
-  "selection",
   "blocks",
+  "selection",
   "requested",
 ] as const;
 export type SelectionTab = (typeof SELECTION_TABS)[number];
@@ -148,6 +167,8 @@ export function parseGroupIds(v: string | string[] | undefined): string[] {
 
 export interface LotForFilter {
   status: BookingLotStatus;
+  /** Nº do book (o filtro do book; ausente: não filtra por ele). */
+  number?: number;
   bookingDate: string | null;
   /** O Supplier do book (`bookSupplierLabel`). */
   supplier: string | null;
@@ -190,6 +211,8 @@ export function lotMatchesFilters(
   )
     return false;
   if (f.origin && fold(lot.origin ?? "") !== fold(f.origin)) return false;
+  if (f.lotNumber && lot.number !== undefined && lot.number !== f.lotNumber)
+    return false;
   return true;
 }
 
@@ -205,6 +228,7 @@ export function filtersToParams(f: SelectionFilters, q = ""): URLSearchParams {
   if (f.to) p.set("to", f.to);
   if (f.supplierId) p.set("supplier", f.supplierId);
   if (f.origin) p.set("origin", f.origin);
+  if (f.lotNumber) p.set("book", String(f.lotNumber));
   return p;
 }
 

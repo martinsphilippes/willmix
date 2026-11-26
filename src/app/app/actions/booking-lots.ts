@@ -533,6 +533,27 @@ export async function closeBookingLotAction(form: FormData) {
   });
 }
 
+/** Família do produto na capa do book (dono, 26/11/2026). */
+export async function setBookingLotFamilyAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "lotId");
+  const back = ID.safeParse(raw).success ? detail(raw) : LIST;
+  await run(back, async () => {
+    const input = z
+      .object({
+        lotId: ID,
+        familyCode: z
+          .string()
+          .regex(/^[A-Za-z0-9_.-]{1,40}$/)
+          .nullable(),
+      })
+      .parse({ lotId: raw, familyCode: str(form, "familyCode") || null });
+    const { setBookingLotFamily } = await import("@/lib/services/booking-lots");
+    await setBookingLotFamily(user, input.lotId, input.familyCode);
+    return withQuery(back, "family", "1");
+  });
+}
+
 export async function moveBookingLotAction(form: FormData) {
   const user = await requireUser();
   const raw = str(form, "lotId");

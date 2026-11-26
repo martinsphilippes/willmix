@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { setTestFamily } from "./helpers/book-family";
 import { withTempStore } from "./setup";
 import { xlsxBytes } from "./xlsx-fixture";
 
@@ -246,6 +247,7 @@ describe("booking por planilha", () => {
       "7013.37.00",
     );
 
+    await setTestFamily(lot.id);
     const closed = await svc.closeBookingLot(admin, lot.id);
     expect(closed.status).toBe("closed");
     expect(closed.analyzedAt).toBeTruthy();
@@ -332,6 +334,7 @@ describe("booking por planilha", () => {
       await store.list("booking_items", { filter: { lotId: lot.id } }),
     );
     expect(lib.bookingLotReady(pending)).toBe(true);
+    await setTestFamily(lot.id);
     const closed = await svc.closeBookingLot(admin, lot.id);
     expect(closed.status).toBe("closed");
     expect((await store.get("booking_items", blank.id))!.innerQty).toBeNull();

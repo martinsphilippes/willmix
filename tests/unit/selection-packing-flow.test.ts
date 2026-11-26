@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { setTestFamily } from "./helpers/book-family";
 import { withTempStore } from "./setup";
 import { xlsxBytes } from "./xlsx-fixture";
 
@@ -81,6 +82,7 @@ async function closedItem(sku: string, colors: string) {
   });
   const { setBookingItemsNcm } = await import("@/lib/services/booking-ncm");
   await setBookingItemsNcm(admin, [item.id], "7013.37.00");
+  await setTestFamily(lot.id);
   await lots.closeBookingLot(admin, lot.id);
   return { lot, item };
 }
@@ -249,6 +251,9 @@ describe("gravar escolha com embalagens e variações", () => {
     const card = board.groups.find((g) => g.demandIds.includes(demandIds[0]))!;
     expect(card.demandIds.sort()).toEqual([...demandIds].sort());
     expect(card.linkedIds).toContain(supplierA.partyId);
+    // A Família do produto da capa do book dá o nome no cartão (dono,
+    // 26/11/2026).
+    expect(card.familyName).toContain("UTILIDADES DOMESTICAS");
     // Sem última compra nem pedido direto: só cotar.
     await expect(
       strategy.sendStrategy(

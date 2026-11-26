@@ -75,7 +75,7 @@ Sete pedidos do dono, dos dois lados (fornecedor e Wellmix). Regras puras em `sr
 4. **Seta para baixo e para cima.** Num campo da tabela de itens, a seta leva o foco ao campo da mesma coluna na linha de baixo ou de cima (o que foi digitado grava ao sair, como sempre). Da linha de preenchimento em massa, para baixo cai na primeira linha. As listas (FOB/EXW, moeda) ficam com as setas delas. Vale nas duas telas (`arrowKeys`, `src/components/booking-bulk-fill.tsx`).
 5. **Itens trabalhados.** O item fica marcado no book de origem (`booking_items.workedAt`, `workedByUserId`) quando entra numa escolha de grupo gravada na Seleção de itens (todos os itens do grupo comparado) ou numa solicitação ao fornecedor (o escolhido e as alternativas); `markItemsWorked`. A marca não sai. A lista de Books mostra o percentual e "x de y" em cada book, na Wellmix e para o fornecedor que publicou; dentro do book, a coluna "Seleção" ("Trabalhado" ou "A trabalhar") e a linha do item trabalhado em verde claro. O fornecedor vê só o fato, sem a análise.
 6. **Seleção direto do book.** Na tela do book da Wellmix, "Selecionar os marcados" leva os itens marcados (um ou vários, até 60) para a Seleção de itens como um grupo para comparar (`/app/booking/selection?tab=selection&ids=…`). **Só com o book fora do rascunho** (fechado, em andamento ou concluído; dono, 24/11/2026): no rascunho não há selecionar nem recusar. Ao lado, **"Recusar os marcados"**: os itens marcados não vão para a seleção e ficam trabalhados (`booking_items.refusedAt` + `workedAt`; `refuseBookingItems`, auditoria `booking_item.refuse`); a coluna "Seleção" mostra "Recusado" e o item sai da lista da Seleção de itens. Item já trabalhado não é recusado de novo. **Chave nas Configurações** (dono, 24/11/2026): "Selecionar e recusar itens na tela do book" (`bookingWorkOnLot`, padrão Sim). Desligada, a tabela de itens não mostra os dois botões e o servidor recusa a recusa (`booking_work_off`); a seleção fica só pela tela Seleção de itens. Travar e liberar books não dependem dela. **Selecionado × Recusado** também na tela da Wellmix (dono, 24/11/2026): a coluna "Seleção" mostra "Selecionado" só para o item escolhido para virar produto (`chosenBookingItemIds`) e "Recusado" para o recusado na tela e para o que passou pela seleção sem ser o escolhido, como para o fornecedor.
-**Modelo de book** (dono, 24/11/2026): na tela "Importar book" da Wellmix e na do parceiro, o botão "Baixar o modelo de book", ao lado do voltar, baixa a planilha modelo (`public/modelos/modelo-book-wellmix-2026.xls`, a que o dono enviou). O leitor da importação lê o modelo; o cabeçalho "DESCRITION" dele passou a valer como descrição.
+   **Modelo de book** (dono, 24/11/2026): na tela "Importar book" da Wellmix e na do parceiro, o botão "Baixar o modelo de book", ao lado do voltar, baixa a planilha modelo (`public/modelos/modelo-book-wellmix-2026.xls`, a que o dono enviou). O leitor da importação lê o modelo; o cabeçalho "DESCRITION" dele passou a valer como descrição.
 
 7. **Travar books.** Tabela `booking_locks`. **Só o book que já saiu do rascunho** (fechado, em andamento ou concluído; dono, 24/11/2026: é quando começa a seleção dos itens; `bookingLotLockable`): no rascunho não há "Travar", e a trava pelo tipo não esconde o rascunho de ninguém. O analista trava um book (na linha dele ou na caixa "Com quem está" do book) ou todos os de um tipo de item (faixa "Travar books" acima da lista; vale também para os books do tipo que chegarem depois; o tipo é comparado sem acento nem maiúsculas). A trava do book vale mais que a do tipo.
    - **Quem trabalha os itens** (dono, 25/11/2026): na Seleção de itens o analista só vê e trabalha itens dos books **travados para ele** (o book ou o tipo de item que ele travou; `lotsWorkableBy`). Sem nenhum book travado, a lista vem vazia, com o aviso que leva aos Books. Gravar a escolha do grupo, abrir a solicitação direto da Seleção e recusar na tela do book recusam item de book que não está travado para quem age (`assertLotsWorkable`, erro `booking_not_locked_to_you`). Quem supervisiona os books (administrador e "Supervisionar os books") trabalha em todos. As escolhas já gravadas continuam à vista para consulta e o envio delas ("Abrir solicitações") não depende da trava (ela sai sozinha quando o book fica todo trabalhado).
@@ -113,7 +113,6 @@ Pedido do dono, com o print da lista em que "Loja / Supplier" ("ASBA · NINGBO H
   - Previsão: os selos lado a lado, cada um numa linha ("1 Falta dado" quebrava em duas);
   - as datas.
 - A busca e a ordem da tabela continuam lendo o texto inteiro.
-
 
 ### Lista de Books: Supplier, Fábrica, Prazo em duas linhas e colunas fixas (dono, 25/11/2026)
 
@@ -155,6 +154,7 @@ O layout segue o desenho do dono.
 - **Só este formulário.** As peças compartilhadas ganharam opções que só este card usa: `BookMetaFields` com `layout="inline"` e `SheetFileInput` com `className`. O lançamento do parceiro, a tela do book e o convite de book continuam como estavam, sem estilo global novo.
 
 Teste: `tests/e2e/book-import-card.spec.ts` confere:
+
 - os rótulos, a dica e o ⓘ;
 - a linha única a 1440 px, com supplier e tipo iguais até a borda e a dica do tipo sob o campo;
 - a linha única a 1080 px;
@@ -273,6 +273,16 @@ A conta própria do portal (o antigo Superplan: tela, parâmetros, tipos de neg�
 7. Mesma previsão na **negociação** (docs/SUPPLIER_REQUESTS.md, "Contraproposta com a previsão de preço"): a ficha negociada refaz a previsão com o preço e a moeda combinados, e a contraproposta pergunta pela rota `/api/price-forecast/booking-item` (venda prevista e custo; pela inversa, o preço máximo de compra).
 
 Dados: nenhuma coluna nova (o retrato é o JSON de `booking_items.analysis`, que ganhou campos opcionais). `booking_lots.businessType` continua no esquema, vazio. Testes em `tests/unit/booking-forecast.test.ts` e `tests/unit/booking-forecast-job.test.ts`.
+
+### Família do produto na capa do book (dono, 26/11/2026)
+
+"Para a Wellmix fechar um book, deve, na capa do book, adicionar a informação da Família do produto que os itens do book se encaixam, justamente para na hora da cotação ser direcionado para os fornecedores corretos."
+
+1. **Na capa do book** da Wellmix (`/app/booking/lots/<id>`), o campo **Família do produto** com as famílias do cadastro (`product_families`, o 1º nível da árvore de grupos do Sankhya, a mesma família da Nova solicitação e do cadastro do parceiro; docs/PARTNER_FAMILIES.md) e "Gravar família" (`setBookingLotFamily`, ação `setBookingLotFamilyAction`; família fora do cadastro é recusada, `family_unknown`). Grava em `booking_lots.familyCode` (o código) e fica na auditoria (`booking_lot.family`). Pode ser trocada depois de fechado (menos no Cancelado, onde só aparece).
+2. **Obrigatória para fechar**: sem a família, o book não fecha (`booking_family_required`) e a lista do que falta para fechar mostra "a Família do produto (na capa do book)". Vale para o book da Wellmix e para o do parceiro (quem fecha é a Wellmix). O parceiro não informa a família.
+3. **Na cotação**: na Estratégia de compra, a demanda que veio do book mostra a família e os parceiros com essa família no cadastro (`party_families`) entram como sugestão de destinatários (não marcados; o parceiro que mandou o book continua marcado). No book da Wellmix, a cotação continua direto com o Supplier do book (docs/SUPPLIER_REQUESTS.md, "Embalagens e variações").
+
+Books já fechados antes de 26/11/2026 ficam sem família (nada foi preenchido sozinho); a família pode ser gravada na capa a qualquer momento. Esquema (aditivo): `booking_lots.familyCode`. Testes: `tests/unit/selection-work.test.ts`.
 
 ### NCM do item (decisão do dono, 11/11/2026)
 

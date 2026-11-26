@@ -37,6 +37,7 @@ import {
   supplierRequestItemOf,
 } from "@/lib/supplier-requests";
 import {
+  CLOSED_SELECTION_STATUSES,
   SELECTION_STATUSES,
   lotMatchesFilters,
   bookSupplierLabel,
@@ -110,6 +111,11 @@ export interface SelectionResult {
   /** Opções dos filtros: os Suppliers (id = o nome) e origens dos bookings. */
   suppliers: Array<{ id: string; name: string }>;
   origins: string[];
+  /**
+   * Books com item a trabalhar (o filtro do nº do book; dono, 26/11/2026):
+   * o número, o Supplier e quantos itens faltam.
+   */
+  books: Array<{ number: number; supplier: string; pending: number }>;
 }
 
 /** Itens olhados para os blocos sugeridos. */
@@ -124,6 +130,11 @@ export interface SelectionOptions {
    * `ids`, só quando pedido). Falso: as escolhas já gravadas, para consulta.
    */
   workable?: boolean;
+  /**
+   * Abas Itens e Blocos Sugeridos (dono, 26/11/2026): só os itens ainda não
+   * trabalhados dos books fechados, sem o filtro de status.
+   */
+  pendingOnly?: boolean;
 }
 
 /**
@@ -181,10 +192,18 @@ export async function listSelectionItems(
       ? await store.list("parties", { filter: { id: supplierIds } })
       : [];
     partyOf = new Map(suppliers.map((p) => [p.id, p]));
+    // O nº do book filtra as linhas depois: a lista de books do filtro
+    // continua com todos os books que os outros filtros deixam.
+    const effective = {
+      ...(options.pendingOnly
+        ? { ...filters, statuses: [...CLOSED_SELECTION_STATUSES] }
+        : filters),
+      lotNumber: null,
+    };
     const shown = options.ids
       ? lots
       : open.filter((l) =>
-          lotMatchesFilters({ ...l, supplier: labelOf(l) }, filters),
+          lotMatchesFilters({ ...l, supplier: labelOf(l) }, effective),
         );
     items = options.ids
       ? options.ids.length
@@ -227,6 +246,15 @@ export async function listSelectionItems(
     // Recusado na tela do book: não vai para a seleção (o grupo aberto
     // pelos ids, de uma escolha já gravada, não muda).
     .filter((i) => options.ids || !i.refusedAt)
+    // Já trabalhado (escolha gravada ou cotação aberta): sai de Itens e dos
+    // Blocos Sugeridos (dono, 26/11/2026).
+    .filter((i) => !options.pendingOnly || !i.workedAt)
+    .filter(
+      (i) =>
+        options.ids ||
+        !filters.lotNumber ||
+        lotOf.get(i.lotId)?.number === filters.lotNumber,
+    )
     .map(rowOf)
     .filter((r): r is SelectionRow => !!r)
     .filter((r) =>
@@ -260,7 +288,27 @@ export async function listSelectionItems(
         ) || a.item.position - b.item.position,
     );
   const visibleLots = lots.filter((l) => l.status !== "cancelled");
+  // Books com item a trabalhar, para o filtro do nº do book (os que o login
+  // trabalha, fechados, com item não trabalhado nem recusado).
+  const pendingByLot = new Map<string, number>();
+  if (options.pendingOnly)
+    for (const i of items)
+      if (!i.workedAt && !i.refusedAt && openIds.has(i.lotId))
+        pendingByLot.set(i.lotId, (pendingByLot.get(i.lotId) ?? 0) + 1);
+  const books = lots
+    .filter(
+      (l) =>
+        pendingByLot.has(l.id) &&
+        (CLOSED_SELECTION_STATUSES as string[]).includes(l.status),
+    )
+    .map((l) => ({
+      number: l.number,
+      supplier: labelOf(l),
+      pending: pendingByLot.get(l.id) ?? 0,
+    }))
+    .sort((a, b) => b.number - a.number);
   return {
+    books,
     total: matched.length,
     rows: matched.slice(0, SELECTION_MAX),
     all: matched.slice(0, SELECTION_SCAN),

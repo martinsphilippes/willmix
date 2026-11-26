@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { setTestFamily } from "./helpers/book-family";
 import { withTempStore } from "./setup";
 import { xlsxBytes } from "./xlsx-fixture";
 
@@ -133,6 +134,7 @@ describe("job diário da previsão nos books fechados", () => {
     ]);
     // Fechar sem o Sankhya configurado (nos testes): a previsão fica
     // "Sankhya não configurado", e o job pede de novo.
+    await setTestFamily(closed.id);
     await lots.closeBookingLot(admin, closed.id);
     const [first, second] = await itemsOf(closed.id);
     expect(first.analysis?.missing).toEqual(["manual"]);
@@ -186,6 +188,7 @@ describe("job diário da previsão nos books fechados", () => {
   it("o erro recente não vai de novo na hora; sem tempo, fica na fila", async () => {
     const store = getStore();
     const lot = await bookWithNcm([row("FT-1", "Glass bowl small")]);
+    await setTestFamily(lot.id);
     await lots.closeBookingLot(admin, lot.id);
     // Acabou de falhar (Sankhya fora): a rodada seguinte não insiste.
     const quiet = fakeSankhya();
