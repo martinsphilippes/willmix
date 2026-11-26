@@ -520,11 +520,20 @@ export function SupplierRequestTable({
               >
                 <Td>
                   <PhotoGallery
-                    photos={
-                      it.photoDocumentId
+                    photos={[
+                      ...(it.photoDocumentId
                         ? [{ id: it.photoDocumentId, label: null }]
-                        : []
-                    }
+                        : []),
+                      // A arte da variação × embalagem (dono, 26/11/2026).
+                      ...(r.variant?.artDocumentId
+                        ? [
+                            {
+                              id: r.variant.artDocumentId,
+                              label: t("supplierRequests.variant.art"),
+                            },
+                          ]
+                        : []),
+                    ]}
                     name={name}
                     className="h-12 w-12"
                     labels={{
@@ -693,6 +702,17 @@ export function SupplierRequestTable({
                 </Td>
                 <Td className={cx(nowrap, "tabular-nums")}>
                   {r.quantity.toLocaleString(intl)}
+                  {/* SKU em embalagens: as peças embaixo. */}
+                  {r.variant && r.variant.units > 1 ? (
+                    <span
+                      className="block text-xs text-zinc-500"
+                      data-supplier-table-pieces={r.id}
+                    >
+                      {t("supplierRequests.variant.piecesParen", {
+                        n: (r.quantity * r.variant.units).toLocaleString(intl),
+                      })}
+                    </span>
+                  ) : null}
                   {/* Variações de cor: uma linha por cor, somando o total. */}
                   <ColorLines
                     colors={colorTotals(r.colorPlan)}

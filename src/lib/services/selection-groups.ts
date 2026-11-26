@@ -485,6 +485,15 @@ async function groupSkus(
           mix: packing.mix,
           artDocumentId: line.artDocumentId,
           selectionGroupId: group.id,
+          // De onde partiu no Book: a tela da cotação mostra a alteração da
+          // caixa, o preço e o mínimo por peça (dono, 26/11/2026).
+          bookCarton: chosen.masterCartonQty ?? null,
+          bookCbm: item.cbmPerCarton ?? null,
+          bookPrice: item.price ?? null,
+          bookMoq: item.moq ?? null,
+          custom: packing.variations.some(
+            (v) => v.custom && v.label === line.variation,
+          ),
         },
         colorPlan: null,
       };

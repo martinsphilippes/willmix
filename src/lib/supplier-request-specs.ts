@@ -42,6 +42,8 @@ export type RequestSpecField = (typeof REQUEST_SPEC_FIELDS)[number];
 /** O que a tabela lê do item do Book: só a ficha técnica (e o NCM, da Wellmix). */
 export type RequestBookSpecs = Pick<BookingItem, RequestSpecField> & {
   ncm?: string | null;
+  /** Pedido mínimo do Book, em peças (o quadro da variação × embalagem). */
+  moq?: number | null;
 };
 
 export const requestBookSpecsOf = (item: BookingItem): RequestBookSpecs => ({
@@ -49,6 +51,7 @@ export const requestBookSpecsOf = (item: BookingItem): RequestBookSpecs => ({
     REQUEST_SPEC_FIELDS.map((f) => [f, item[f] ?? null]),
   ) as Pick<BookingItem, RequestSpecField>),
   ncm: item.ncm ?? null,
+  moq: item.moq ?? null,
 });
 
 export interface RequestItemSpecs extends Pick<

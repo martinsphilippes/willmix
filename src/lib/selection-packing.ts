@@ -311,3 +311,129 @@ export function variantLabel(
     variant.units > 1 ? `embalagem de ${variant.units} peças` : "unitária";
   return variant.variation ? `${variant.variation} · ${pack}` : pack;
 }
+
+/** Uma entrega da cotação de um SKU: embalagens, peças e caixas master. */
+export interface VariantRound {
+  index: number;
+  expectedAt: string | null;
+  /** Na unidade da cotação (embalagens; peças na unitária). */
+  quantity: number;
+  pieces: number;
+  cartons: number | null;
+}
+
+/** Tudo o que a Seleção pôs no SKU, para a tela da cotação. */
+export interface VariantFacts {
+  key: string;
+  variation: string | null;
+  custom: boolean;
+  units: number;
+  mix: boolean;
+  /** Embalagens (peças, na unitária) por caixa master. */
+  perCarton: number | null;
+  /** Peças por caixa master (a final, alterada ou não). */
+  pieceCarton: number | null;
+  /** Peças por caixa no Book (x0); nulo quando não se sabe. */
+  bookCarton: number | null;
+  /** A caixa foi alterada na Seleção (x1 ≠ x0). */
+  altered: boolean;
+  cbm: number | null;
+  bookCbm: number | null;
+  /** Preço da embalagem (da peça, na unitária) e o da peça. */
+  price: number | null;
+  piecePrice: number | null;
+  currency: string | null;
+  /** Mínimo em embalagens e em peças. */
+  moq: number | null;
+  moqPieces: number | null;
+  /** Total na unidade da cotação, em peças e em caixas master. */
+  quantity: number;
+  pieces: number;
+  cartons: number | null;
+  rounds: VariantRound[];
+  artDocumentId: string | null;
+}
+
+/**
+ * Os números do SKU da cotação (dono, 26/11/2026; docs/SUPPLIER_REQUESTS.md,
+ * "Embalagens e variações"): a cópia do item já está em embalagens; o que a
+ * cotação não guardou do Book (abertas antes) vem do item do Book.
+ */
+export function variantFacts(
+  request: {
+    variant?: SupplierRequestVariant | null;
+    item: Pick<
+      SupplierRequestItem,
+      "masterCartonQty" | "cbmPerCarton" | "price" | "moq" | "currency"
+    >;
+    quantity: number;
+    schedule?: {
+      items: Array<{
+        index: number;
+        quantity: number;
+        expectedAt?: string | null;
+      }>;
+    } | null;
+  },
+  book?: {
+    masterCartonQty?: number | null;
+    cbmPerCarton?: number | null;
+    moq?: number | null;
+  } | null,
+): VariantFacts | null {
+  const v = request.variant;
+  if (!v) return null;
+  const n = Math.max(1, Math.round(v.units || 1));
+  const it = request.item;
+  const perCarton = it.masterCartonQty ?? null;
+  const pieceCarton = v.pieceCarton ?? (perCarton ? perCarton * n : null);
+  const bookCarton = v.bookCarton ?? book?.masterCartonQty ?? null;
+  const altered = !!bookCarton && !!pieceCarton && bookCarton !== pieceCarton;
+  const round6 = (x: number) => Math.round(x * 1e6) / 1e6;
+  const cartonsOf = (q: number) =>
+    perCarton && perCarton > 0 ? Math.ceil(q / perCarton) : null;
+  const rounds: VariantRound[] = (request.schedule?.items ?? []).map((r) => ({
+    index: r.index,
+    expectedAt: r.expectedAt ?? null,
+    quantity: r.quantity,
+    pieces: r.quantity * n,
+    cartons: cartonsOf(r.quantity),
+  }));
+  const cartons = rounds.length
+    ? rounds.every((r) => r.cartons !== null)
+      ? rounds.reduce((s, r) => s + (r.cartons ?? 0), 0)
+      : null
+    : cartonsOf(request.quantity);
+  return {
+    key: v.key,
+    variation: v.variation,
+    custom: !!v.custom,
+    units: n,
+    mix: v.mix,
+    perCarton,
+    pieceCarton,
+    bookCarton,
+    altered,
+    cbm: it.cbmPerCarton ?? null,
+    bookCbm: altered
+      ? (v.bookCbm ?? book?.cbmPerCarton ?? null)
+      : (it.cbmPerCarton ?? null),
+    price: it.price ?? null,
+    piecePrice:
+      v.bookPrice ??
+      (it.price === null || it.price === undefined
+        ? null
+        : round6(it.price / n)),
+    currency: it.currency ?? null,
+    moq: it.moq ?? null,
+    moqPieces:
+      v.bookMoq ??
+      book?.moq ??
+      (it.moq === null || it.moq === undefined ? null : it.moq * n),
+    quantity: request.quantity,
+    pieces: request.quantity * n,
+    cartons,
+    rounds,
+    artDocumentId: v.artDocumentId,
+  };
+}

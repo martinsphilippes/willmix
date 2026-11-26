@@ -79,6 +79,31 @@ export const pt = {
   "supplierRequests.variant.art": "Arte de exemplo do SKU",
   "supplierRequests.variant.artHint":
     "Imagem de exemplo enviada pela Wellmix: mostra o SKU que está sendo considerado, não é foto de amostra.",
+  "supplierRequests.variant.artMix":
+    "Arte de exemplo da embalagem (Mix de cores)",
+  "supplierRequests.variant.noArt": "Sem arte de exemplo nesta combinação",
+  "supplierRequests.variant.custom": "Variação digitada na Seleção",
+  "supplierRequests.variant.f.variation": "Variação",
+  "supplierRequests.variant.f.pack": "Embalagem",
+  "supplierRequests.variant.f.carton": "Caixa master",
+  "supplierRequests.variant.f.cbm": "CBM da caixa",
+  "supplierRequests.variant.f.price": "Preço",
+  "supplierRequests.variant.f.moq": "Pedido mínimo",
+  "supplierRequests.variant.f.quantity": "Quantidade",
+  "supplierRequests.variant.cartonPieces": "{n} peças por caixa",
+  "supplierRequests.variant.altered":
+    "Caixa alterada na Seleção (no Book: {n} peças por caixa)",
+  "supplierRequests.variant.cbmValue": "{v} m³",
+  "supplierRequests.variant.cbmAltered":
+    "No Book: {v} m³ (CBM × {to} ÷ {from})",
+  "supplierRequests.variant.pricePack": "{p} por embalagem",
+  "supplierRequests.variant.pricePiece": "{p} por peça",
+  "supplierRequests.variant.priceFrom": "{p} por peça × {n} peças",
+  "supplierRequests.variant.packs": "{n} embalagens",
+  "supplierRequests.variant.piecesParen": "({n} peças)",
+  "supplierRequests.variant.cartons": "{n} caixas master",
+  "supplierRequests.variant.col.packs": "Embalagens",
+  "supplierRequests.variant.col.cartons": "Caixas master",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -154,6 +179,29 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierRequests.variant.art": "SKU sample artwork",
   "supplierRequests.variant.artHint":
     "Sample image sent by Wellmix: it shows the SKU being considered, it is not a sample photo.",
+  "supplierRequests.variant.artMix": "Package sample artwork (color mix)",
+  "supplierRequests.variant.noArt": "No sample artwork for this combination",
+  "supplierRequests.variant.custom": "Variation typed in the Selection",
+  "supplierRequests.variant.f.variation": "Variation",
+  "supplierRequests.variant.f.pack": "Package",
+  "supplierRequests.variant.f.carton": "Master carton",
+  "supplierRequests.variant.f.cbm": "Carton CBM",
+  "supplierRequests.variant.f.price": "Price",
+  "supplierRequests.variant.f.moq": "Minimum order",
+  "supplierRequests.variant.f.quantity": "Quantity",
+  "supplierRequests.variant.cartonPieces": "{n} pieces per carton",
+  "supplierRequests.variant.altered":
+    "Carton changed in the Selection (Book: {n} pieces per carton)",
+  "supplierRequests.variant.cbmValue": "{v} m³",
+  "supplierRequests.variant.cbmAltered": "Book: {v} m³ (CBM × {to} ÷ {from})",
+  "supplierRequests.variant.pricePack": "{p} per package",
+  "supplierRequests.variant.pricePiece": "{p} per piece",
+  "supplierRequests.variant.priceFrom": "{p} per piece × {n} pieces",
+  "supplierRequests.variant.packs": "{n} packages",
+  "supplierRequests.variant.piecesParen": "({n} pieces)",
+  "supplierRequests.variant.cartons": "{n} master cartons",
+  "supplierRequests.variant.col.packs": "Packages",
+  "supplierRequests.variant.col.cartons": "Master cartons",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -226,4 +274,26 @@ export const zh: Record<keyof typeof pt, string> = {
   "supplierRequests.variant.art": "SKU 示例图稿",
   "supplierRequests.variant.artHint":
     "Wellmix 发送的示例图片：显示正在考虑的 SKU，不是样品照片。",
+  "supplierRequests.variant.artMix": "包装示例图稿（混色）",
+  "supplierRequests.variant.noArt": "此组合没有示例图稿",
+  "supplierRequests.variant.custom": "在选品中输入的变体",
+  "supplierRequests.variant.f.variation": "变体",
+  "supplierRequests.variant.f.pack": "包装",
+  "supplierRequests.variant.f.carton": "外箱",
+  "supplierRequests.variant.f.cbm": "外箱 CBM",
+  "supplierRequests.variant.f.price": "价格",
+  "supplierRequests.variant.f.moq": "最小起订量",
+  "supplierRequests.variant.f.quantity": "数量",
+  "supplierRequests.variant.cartonPieces": "每箱 {n} 件",
+  "supplierRequests.variant.altered": "外箱已在选品中修改（Book：每箱 {n} 件）",
+  "supplierRequests.variant.cbmValue": "{v} m³",
+  "supplierRequests.variant.cbmAltered": "Book：{v} m³（CBM × {to} ÷ {from}）",
+  "supplierRequests.variant.pricePack": "每包 {p}",
+  "supplierRequests.variant.pricePiece": "每件 {p}",
+  "supplierRequests.variant.priceFrom": "每件 {p} × {n} 件",
+  "supplierRequests.variant.packs": "{n} 包",
+  "supplierRequests.variant.piecesParen": "（{n} 件）",
+  "supplierRequests.variant.cartons": "{n} 个外箱",
+  "supplierRequests.variant.col.packs": "包数",
+  "supplierRequests.variant.col.cartons": "外箱数",
 };
