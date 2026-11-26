@@ -54,6 +54,8 @@ O mecanismo é o mesmo da solicitação do cliente (`RequestScheduleFields` e `p
 
 ## Cores: vencedor e variações (dono, 14/11/2026)
 
+> **26/11/2026 (docs/SUPPLIER_REQUESTS.md, "Embalagens e variações"):** o card Variações virou a matriz variação × embalagem. Cada cor (e cada variação digitada) de cada embalagem é um SKU e, ao gravar no book da Wellmix, uma **cotação separada**; a escolha nova grava `selection_groups.packing` (sem `colorPlan`) e a cotação de cada SKU não leva plano de cores. A composição por data e as caixas digitadas por cor (abaixo) continuam iguais, agora por combinação. As escolhas e cotações gravadas antes ficam como estão.
+
 ### Escolha do vencedor
 
 - A coluna "Escolher" da tabela do grupo virou um **botão pequeno "Escolher"** em cada linha (o rádio `chosen` continua no formulário, escondido dentro do botão). O clique marca aquele item exato do Book como vencedor: a linha fica em destaque (fundo e faixa da marca, botão "✓ Escolhido") e as outras se recolhem (CSS, `globals.css`).

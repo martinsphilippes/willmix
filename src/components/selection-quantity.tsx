@@ -131,6 +131,23 @@ export const SPLIT_EVENT = "selection:split";
 export interface ColorsEventDetail {
   itemId: string;
   colors: string[];
+  /**
+   * Embalagens e variações (dono, 26/11/2026): as combinações variação ×
+   * embalagem fazem o papel das cores (`all`, as chaves `variação|N`) e
+   * `names` dá o nome de cada uma na composição. Sem eles, as cores do Book.
+   */
+  all?: string[];
+  names?: Record<string, string>;
+}
+/**
+ * Evento do card de embalagens: a Qtd/caixa alterada ("Alterar") e o CBM
+ * que acompanha; nulos = os do item.
+ */
+export const PACKING_EVENT = "selection:packing";
+export interface PackingEventDetail {
+  itemId: string;
+  carton: number | null;
+  cbm: number | null;
 }
 /**
  * Evento do card "Variações": caixas digitadas para uma cor (dono,
@@ -477,6 +494,11 @@ export function SelectionQuantity({
   const [colorsPicked, setColorsPicked] = useState<ColorsEventDetail | null>(
     null,
   );
+  // Caixa alterada do vencedor ("Alterar", card de embalagens): a conta usa
+  // a Qtd/caixa e o CBM dela.
+  const [packOverride, setPackOverride] = useState<PackingEventDetail | null>(
+    null,
+  );
   // Caixas digitadas por cor (o total do pedido passa a ser a soma). Valem
   // enquanto somam as peças da tela; mexer no total ou nas datas depois
   // volta à divisão igual.
@@ -581,8 +603,11 @@ export function SelectionQuantity({
       typeCartons((e as CustomEvent<CartonsEventDetail>).detail);
     const onRounds = (e: Event) =>
       setRounds((e as CustomEvent<RoundsEventDetail>).detail);
+    const onPacking = (e: Event) =>
+      setPackOverride((e as CustomEvent<PackingEventDetail>).detail);
     const frame = requestAnimationFrame(sync);
     form.addEventListener("change", onChange);
+    form.addEventListener(PACKING_EVENT, onPacking);
     form.addEventListener(COLORS_EVENT, onColors);
     form.addEventListener(CARTONS_EVENT, onCartons);
     form.addEventListener(ROUNDS_EVENT, onRounds);
@@ -591,6 +616,7 @@ export function SelectionQuantity({
     return () => {
       cancelAnimationFrame(frame);
       form.removeEventListener("change", onChange);
+      form.removeEventListener(PACKING_EVENT, onPacking);
       form.removeEventListener(COLORS_EVENT, onColors);
       form.removeEventListener(CARTONS_EVENT, onCartons);
       form.removeEventListener(ROUNDS_EVENT, onRounds);
@@ -610,7 +636,15 @@ export function SelectionQuantity({
 
   // A caixa da conta: só a do item marcado em "Escolher" (sem item marcado,
   // nenhuma: nada é calculado nem gerado).
-  const item = items.find((i) => i.id === chosen) ?? null;
+  const baseItem = items.find((i) => i.id === chosen) ?? null;
+  const item =
+    baseItem && packOverride?.itemId === baseItem.id && packOverride.carton
+      ? {
+          ...baseItem,
+          masterCartonQty: packOverride.carton,
+          cbmPerCarton: packOverride.cbm ?? baseItem.cbmPerCarton,
+        }
+      : baseItem;
   const capacity =
     containerTypes.find((c) => c.code === container)?.capacityCbm ?? null;
   // "Total de caixas" e "Quantidade (peças)": o mesmo número em duas
@@ -1610,8 +1644,14 @@ export function SelectionQuantity({
 
   // Variações de cor do vencedor: as incluídas no card (padrão: todas; na
   // escolha gravada, as gravadas).
-  const itemColors = item?.colors ?? [];
+  const itemColors =
+    (colorsPicked?.itemId === item?.id ? colorsPicked?.all : undefined) ??
+    item?.colors ??
+    [];
   const variants = itemColors.length > 1;
+  const nameOf = (key: string) =>
+    (colorsPicked?.itemId === item?.id ? colorsPicked?.names?.[key] : null) ??
+    key;
   const included = !variants
     ? []
     : colorsPicked?.itemId === item!.id
@@ -1780,8 +1820,10 @@ export function SelectionQuantity({
                   </th>
                 </tr>
                 {out.rows.map((r) => (
-                  <tr key={r.color} data-color-line={r.color}>
-                    <td className="px-2 py-1 text-zinc-700">{r.color}</td>
+                  <tr key={r.color} data-color-line={nameOf(r.color)}>
+                    <td className="px-2 py-1 text-zinc-700">
+                      {nameOf(r.color)}
+                    </td>
                     <td className={cellClass} data-color-pieces>
                       {fmt(r.rounds[i])}
                     </td>
@@ -1803,8 +1845,10 @@ export function SelectionQuantity({
               {single
                 ? null
                 : out.rows.map((r) => (
-                    <tr key={r.color} data-color-total={r.color}>
-                      <td className="px-2 py-1 text-zinc-700">{r.color}</td>
+                    <tr key={r.color} data-color-total={nameOf(r.color)}>
+                      <td className="px-2 py-1 text-zinc-700">
+                        {nameOf(r.color)}
+                      </td>
                       <td className={cellClass}>{fmt(r.quantity)}</td>
                       <td className={cx(cellClass, "text-zinc-500")}>
                         {boxes(r.quantity)}

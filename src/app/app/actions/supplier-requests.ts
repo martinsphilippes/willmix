@@ -74,7 +74,7 @@ export async function openSupplierRequestAction(form: FormData) {
  */
 async function selectionBack(
   form: FormData,
-  tab: "selection" | "blocks" = "selection",
+  tab: "selection" | "blocks" | "requested" = "selection",
 ) {
   const { filtersToParams, parseSelectionFilters } =
     await import("@/lib/booking-selection");
@@ -161,17 +161,56 @@ export async function saveSelectionGroupAction(form: FormData) {
     const typedCartons = str(form, `colorCartons.${chosen}`);
     const colorCartons = typedCartons
       ? z
-          .record(z.string().min(1).max(60), z.number().int().min(0).max(1e7))
+          .record(z.string().min(1).max(80), z.number().int().min(0).max(1e7))
           .parse(JSON.parse(typedCartons))
       : null;
-    const saved = await saveSelectionGroup(user, {
+    // Embalagens e variações do vencedor (dono, 26/11/2026): JSON
+    // `packing.<item>`; com ele, as caixas digitadas são de cada combinação
+    // (o mesmo campo `colorCartons.<item>`, com as chaves `variação|N`).
+    const packing = packingOf(form, chosen);
+    const input2 = {
       ...input,
       quantity: schedule ? null : number(form, "quantity", true),
       schedule,
-      colors,
-      colorCartons,
+      colors: packing ? undefined : colors,
+      colorCartons: packing ? null : colorCartons,
       aiPrompts,
-    });
+      ...(packing
+        ? {
+            packing,
+            packCartons: colorCartons,
+            arts: packingArts(form),
+          }
+        : {}),
+    };
+    // "Gravar escolha" no book da Wellmix abre as cotações na hora, uma por
+    // variação × embalagem, direto com o Supplier do book.
+    if (str(form, "generate") !== "1") {
+      const { saveAndOpenSelectionGroup } =
+        await import("@/lib/services/selection-groups");
+      const { group, opened } = await saveAndOpenSelectionGroup(user, input2);
+      if (opened) {
+        const { groupRequests } = await import("@/lib/supplier-requests");
+        const count = groupRequests(opened.opened).length;
+        if (count === 1 && !opened.failed.length)
+          return withQuery(detail(opened.opened[0].id), "created", "1");
+        let to = withQuery(
+          await selectionBack(form, count ? "requested" : "selection"),
+          "opened",
+          String(count),
+        );
+        if (!count) to = withQuery(to, "ids", group.itemIds.join(","));
+        if (opened.failed.length) {
+          to = withQuery(to, "failed", String(opened.failed.length));
+          to = withQuery(to, "why", opened.failed[0].error);
+        }
+        return to;
+      }
+      // Book do parceiro: fica gravada, e a cotação abre pelos Blocos.
+      const blocks = await selectionBack(form, "blocks");
+      return `${withQuery(withQuery(blocks, "saved", "1"), "partnerBook", "1")}#blocks`;
+    }
+    const saved = await saveSelectionGroup(user, input2);
     // "Gravar e gerar com IA": grava e gera as imagens e a ficha. A escolha
     // fica gravada mesmo se a IA falhar; a tela diz o motivo.
     if (str(form, "generate") === "1") {
@@ -187,11 +226,52 @@ export async function saveSelectionGroupAction(form: FormData) {
       if (ai.error) to = withQuery(to, "aiError", ai.error);
       return `${to}#ai-references`;
     }
-    // Gravada, a escolha aparece em Blocos Sugeridos como resolvida, pronta
-    // para abrir a solicitação.
     const blocks = await selectionBack(form, "blocks");
     return `${withQuery(blocks, "saved", "1")}#blocks`;
   });
+}
+
+/** Embalagens e variações da tela (JSON `packing.<item>`); sem ele, nulo. */
+function packingOf(form: FormData, chosen: string) {
+  const raw = str(form, `packing.${chosen}`);
+  if (!raw) return null;
+  return z
+    .object({
+      carton: z.number().int().min(1).max(1e6).nullable(),
+      packs: z.array(z.number().int().min(1).max(1e6)).max(20),
+      parentOption: z.boolean(),
+      mix: z.boolean(),
+      variations: z
+        .array(
+          z.object({
+            label: z.string().trim().min(1).max(60),
+            custom: z.boolean(),
+          }),
+        )
+        .max(40),
+    })
+    .parse(JSON.parse(raw.slice(0, 20000)));
+}
+
+/**
+ * Imagens de exemplo das combinações: o arquivo novo (`art.<chave>`), o que
+ * já subiu direto ao armazenamento (`artUploaded.<chave>`) e a gravada antes
+ * (`artKeep.<chave>`). A chave é `variação|N` (ou `|N` com o Mix de cores).
+ */
+function packingArts(form: FormData) {
+  const files: Record<string, File> = {};
+  const uploaded: Record<string, string> = {};
+  const keep: Record<string, string> = {};
+  const KEY = /^[^\n]{0,61}\|\d{1,7}$/;
+  for (const [name, value] of form.entries()) {
+    const m = /^(art|artUploaded|artKeep)\.(.+)$/.exec(name);
+    if (!m || !KEY.test(m[2])) continue;
+    if (m[1] === "art") {
+      if (value instanceof File && value.size > 0) files[m[2]] = value;
+    } else if (typeof value === "string" && ID.safeParse(value).success)
+      (m[1] === "artUploaded" ? uploaded : keep)[m[2]] = value;
+  }
+  return { files, uploaded, keep };
 }
 
 /** Abre a solicitação ao fornecedor dos grupos resolvidos (os marcados ou todos). */

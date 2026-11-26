@@ -1,4 +1,5 @@
-import type { ColorPlan } from "@/lib/db/schema";
+import type { ColorPlan, SelectionPacking } from "@/lib/db/schema";
+import type { Translate } from "@/i18n";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { LiveSearch } from "@/components/live-search";
 import Link from "next/link";
@@ -98,6 +99,8 @@ import {
  */
 
 const FORM = "selection-form";
+/** Painel "Prompts de IA para o fornecedor" (omitido por ora; dono, 26/11/2026). */
+const SHOW_AI_PROMPTS = false;
 /** "Gravar e gerar com IA" espera a OpenAI (duas imagens e a ficha). */
 export const maxDuration = 300;
 
@@ -677,7 +680,7 @@ export default async function BookingSelectionPage({
         {/* Vencedor marcado: a barra com "Rever opções" e o card "Variações"
             (cores do Book do item) logo abaixo dele (dono, 14/11/2026). */}
         <SelectionVariations
-          items={list.map(({ item }) => ({
+          items={list.map(({ item, supplierLabel }) => ({
             id: item.id,
             name:
               item.description ??
@@ -686,9 +689,34 @@ export default async function BookingSelectionPage({
               item.id,
             colors: colorsOf(item.colorAssortment),
             carton: item.masterCartonQty,
+            // Embalagens e variações (dono, 26/11/2026): a tabela de uma
+            // linha igual ao vencedor (preço só com "Ver preço de compra").
+            photo: item.photoDocumentId,
+            supplier: supplierLabel,
+            price: seesPrice ? item.price : null,
+            currency: item.currency,
+            incoterm: item.incoterm,
+            priceUsd: seesPrice
+              ? priceInUsd(item.price, item.currency, rmbPerUsd)
+              : null,
+            moq: item.moq,
+            cbm:
+              item.cbmPerCarton ??
+              cbmFromDimensions(item.lengthCm, item.widthCm, item.heightCm),
+            dims: SELECTION_DIMENSIONS.map((d) =>
+              formatMeasure(item[d.field], intl),
+            ) as [string, string, string],
+            capacity:
+              item.capacityMl === null && item.sizeText
+                ? item.sizeText
+                : num(item.capacityMl, 0),
+            material: item.material,
           }))}
           chosenItemId={current?.chosenItemId ?? null}
           savedColors={current?.colorPlan?.included ?? null}
+          savedPacking={current?.packing ?? null}
+          seesPrice={seesPrice}
+          packLabels={packingLabels(t)}
           labels={{
             intl,
             chosen: t("colors.chosen"),
@@ -704,6 +732,7 @@ export default async function BookingSelectionPage({
             line: t("colors.line", { product: "{product}", color: "{color}" }),
             cartons: t("colors.card.cartons"),
             cartonsOf: t("colors.card.cartonsOf", { color: "{color}" }),
+            none: t("colors.none"),
           }}
         />
 
@@ -804,15 +833,20 @@ export default async function BookingSelectionPage({
               </SubmitButton>
             </div>
           </Card>
-          <SelectionAiPrompts
-            prompts={effectivePrompts(current?.aiPrompts, aiDefaults)}
-            assets={current?.aiAssets}
-            mode={aiMedia.mode}
-            models={{ image: aiMedia.imageModel, text: aiMedia.textModel }}
-            generated={aiGenerated}
-            error={aiError}
-            t={t}
-          />
+          {/* "Prompts de IA para o fornecedor" fora da tela por ora (dono,
+              26/11/2026): o painel e a geração continuam no código e voltam
+              com `SHOW_AI_PROMPTS`. */}
+          {SHOW_AI_PROMPTS ? (
+            <SelectionAiPrompts
+              prompts={effectivePrompts(current?.aiPrompts, aiDefaults)}
+              assets={current?.aiAssets}
+              mode={aiMedia.mode}
+              models={{ image: aiMedia.imageModel, text: aiMedia.textModel }}
+              generated={aiGenerated}
+              error={aiError}
+              t={t}
+            />
+          ) : null}
         </div>
       </form>
     );
@@ -855,6 +889,13 @@ export default async function BookingSelectionPage({
       {savedNotice ? (
         <div className="mb-3" data-selection-saved>
           <Alert tone="success">{t("supplierRequests.selection.saved")}</Alert>
+        </div>
+      ) : null}
+      {query.partnerBook === "1" ? (
+        <div className="mb-3" data-selection-partner-book>
+          <Alert tone="info">
+            {t("supplierRequests.selection.partnerBook")}
+          </Alert>
         </div>
       ) : null}
       {openedCount !== null ? (
@@ -1439,9 +1480,27 @@ export default async function BookingSelectionPage({
  */
 function savedCartonsOf(
   group:
-    { chosenItemId: string; colorPlan?: ColorPlan | null } | null | undefined,
+    | {
+        chosenItemId: string;
+        colorPlan?: ColorPlan | null;
+        packing?: SelectionPacking | null;
+      }
+    | null
+    | undefined,
   list: SelectionRow[],
 ): Record<string, number> | null {
+  // Embalagens e variações: as caixas de cada combinação, da caixa final.
+  const packing = group?.packing;
+  if (packing) {
+    if (!packing.custom) return null;
+    const per =
+      packing.carton ??
+      list.find((r) => r.item.id === group!.chosenItemId)?.item.masterCartonQty;
+    if (!per || per < 1) return null;
+    return Object.fromEntries(
+      packing.lines.map((l) => [l.key, Math.round(l.quantity / per)]),
+    );
+  }
   const plan = group?.colorPlan;
   if (!plan?.custom) return null;
   const per = list.find((r) => r.item.id === group!.chosenItemId)?.item
@@ -1450,4 +1509,66 @@ function savedCartonsOf(
   return Object.fromEntries(
     plan.rows.map((r) => [r.color, Math.round(r.quantity / per)]),
   );
+}
+
+/** Textos do card de embalagens e variações (chaves `packing.*`). */
+function packingLabels(t: Translate) {
+  const col = (k: string) =>
+    t(`supplierRequests.selection.col.${k}` as DictionaryKey);
+  return {
+    alter: t("packing.alter"),
+    alterHint: t("packing.alterHint"),
+    alteredTitle: t("packing.altered.title"),
+    undo: t("packing.undo"),
+    add: t("packing.add"),
+    addHint: t("packing.addHint"),
+    packsTitle: t("packing.packs.title"),
+    colUnits: t("packing.col.units"),
+    remove: t("packing.remove"),
+    packName: t("packing.packName", { n: "{n}" }),
+    parentAltered: t("packing.parent.altered", { n: "{n}" }),
+    parentItem: t("packing.parent.item"),
+    errorUnits: t("packing.error.units"),
+    errorDivide: t("packing.error.divide", { n: "{n}", carton: "{carton}" }),
+    errorRepeat: t("packing.error.repeat"),
+    errorCarton: t("packing.error.carton"),
+    optionUnit: t("packing.option.unit"),
+    optionPack: t("packing.option.pack", { n: "{n}" }),
+    perCarton: t("packing.option.perCarton", { n: "{n}" }),
+    mix: t("packing.mix"),
+    mixHint: t("packing.mixHint"),
+    variationAdd: t("packing.variation.add"),
+    variationPlaceholder: t("packing.variation.placeholder"),
+    variationRemove: t("packing.variation.remove"),
+    variationCustom: t("packing.variation.custom"),
+    variationRepeat: t("packing.variation.repeat"),
+    variationsHint: t("packing.variations.hint"),
+    count: t("packing.count", { n: "{n}" }),
+    cellCartonsOf: t("packing.cell.cartonsOf", { combo: "{combo}" }),
+    cellUnits: t("packing.cell.units", { n: "{n}" }),
+    art: t("packing.art"),
+    artAdd: t("packing.art.add", { combo: "{combo}" }),
+    artRemove: t("packing.art.remove"),
+    artRow: t("packing.art.row"),
+    artUploading: t("packing.art.uploading"),
+    artFailed: t("packing.art.failed"),
+    combo: t("packing.combo", { variation: "{variation}", pack: "{pack}" }),
+    unitOnly: t("packing.unitOnly"),
+    bookCarton: t("packing.bookCarton", { n: "{n}" }),
+    col: {
+      photo: col("photo"),
+      item: col("item"),
+      supplier: col("supplier"),
+      price: col("price"),
+      priceUsd: col("priceUsd"),
+      moq: col("moq"),
+      box: col("box"),
+      cbm: col("cbm"),
+      length: col("length"),
+      width: col("width"),
+      height: col("height"),
+      capacity: col("capacity"),
+      material: col("material"),
+    },
+  };
 }

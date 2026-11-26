@@ -14,8 +14,8 @@ import {
  * do Book, todas incluídas; a composição por cor divide o total entre as
  * cores e as datas em caixas master inteiras (48 peças na planilha de teste),
  * diz o ajuste quando não fecha e não deixa gravar; o item sem variações
- * segue com uma linha. Gravada, a escolha volta com as cores e a solicitação
- * ao fornecedor mostra cada cor na própria linha, por data.
+ * segue com uma linha. Gravada no book da Wellmix, cada cor vira uma
+ * cotação, com as peças dela em cada data (dono, 26/11/2026).
  */
 
 const TAG = `COR${Date.now().toString(36).toUpperCase()}`;
@@ -194,22 +194,26 @@ test("vencedor, variações de cor e composição por data até a solicitação"
   ).toHaveValue("20");
   await expect(
     preview.locator('[data-color-custom] input[name^="colorCartons."]'),
-  ).toHaveValue('{"BEGE":30,"CARVALHO":20,"MARROM":20}');
+  ).toHaveValue('{"BEGE|1":30,"CARVALHO|1":20,"MARROM|1":20}');
   // "Dividir igualmente" volta à divisão igual, com o mesmo total.
   await preview.locator("[data-color-reset]").click();
   await expect(preview.locator("[data-color-custom]")).toHaveCount(0);
   await expect(bege).toHaveValue("24");
   await expect(preview.locator("[data-color-grand]")).toHaveText("3.360");
 
-  // 8. Produto sem variações: sem o card, uma linha só (fluxo de sempre).
+  // 8. Produto sem variações: o card fica (dá para digitar uma variação),
+  // com uma linha só, o item como está, e sem a composição por cor.
   await chooseItem(page, plain);
   await expect(rowA).toBeHidden();
-  await expect(page.locator("[data-selection-variations]")).toHaveCount(0);
+  await expect(page.locator("[data-selection-variations]")).toHaveCount(1);
+  await expect(lines).toHaveCount(1);
   await expect(page.locator("[data-color-preview]")).toHaveCount(0);
   await chooseItem(page, colored);
   await expect(lines).toHaveCount(3);
 
-  // 9. Grava com CARVALHO fora e duas datas.
+  // 9. Grava com CARVALHO fora e duas datas: no book da Wellmix, uma
+  // cotação por variação (dono, 26/11/2026), BEGE e MARROM, direto com o
+  // Supplier do book.
   await page.locator("[data-generate-total]").fill("61");
   await gen.locator("[data-generate-submit]").click();
   await card
@@ -218,66 +222,33 @@ test("vencedor, variações de cor e composição por data até a solicitação"
   await expect(
     round(1).locator('[data-color-line="BEGE"] [data-color-pieces]'),
   ).toHaveText("768");
+  await expect(card.locator("[data-selection-variations-count]")).toHaveText(
+    "2 de 3 cores na compra",
+  );
   await page.click("[data-selection-submit]");
-  await page.waitForURL(/[?&]saved=1/);
-  const resolved = page.locator("[data-selection-resolved=saved]");
-  await expect(resolved).toHaveCount(1);
-  await expect(resolved.locator("[data-selection-winner]")).toContainText(
-    "Por cor: BEGE 1.488, MARROM 1.440",
+  await page.waitForURL(/[?&]opened=2/);
+  await expect(page).toHaveURL(/[?&]tab=requested/);
+  await expect(page.locator("[data-selection-opened]")).toBeVisible();
+
+  // 10. Cada cotação é de uma cor, com as peças dela em cada data.
+  await page.goto("/app/supplier-requests");
+  const rows = page.locator("[data-supplier-request-row]");
+  const ids = await rows.evaluateAll((els) =>
+    els.slice(0, 2).map((el) => el.getAttribute("data-supplier-request-row")),
   );
-  // Nada da linha do escolhido passa da borda do card (dono, 15/11/2026: o
-  // preço vazava), no computador, no iPad e no celular.
-  for (const width of [1280, 820, 390]) {
-    await page.setViewportSize({ width, height: 900 });
-    const box = (await resolved.boundingBox())!;
-    const parts = await resolved
-      .locator("[data-selection-winner], [data-selection-winner] *")
-      .evaluateAll((els) =>
-        els.map((el) => {
-          const r = el.getBoundingClientRect();
-          return { left: r.left, right: r.right };
-        }),
-      );
-    expect(parts.length).toBeGreaterThan(1);
-    for (const part of parts) {
-      expect(part.left).toBeGreaterThanOrEqual(box.x - 0.5);
-      expect(part.right).toBeLessThanOrEqual(box.x + box.width + 0.5);
-    }
+  const seen: Record<string, string> = {};
+  for (const id of ids) {
+    await page.goto(`/app/supplier-requests/${id}?view=item`);
+    const variant = page.locator("[data-request-variant]");
+    await expect(variant).toBeVisible();
+    const key = (await variant.getAttribute("data-request-variant"))!;
+    const schedule = page.locator("[data-purchase-schedule]");
+    await expect(schedule.locator("tbody tr")).toHaveCount(3);
+    seen[key] = await schedule.innerText();
   }
-  await page.setViewportSize({ width: 1280, height: 720 });
-
-  // 10. Rever a escolha: volta com as cores e a composição gravadas.
-  await resolved.locator("[data-selection-block-open]").click();
-  // Depois de gravar, o endereço já tem `ids=`: espera a página de rever
-  // (sem o `saved=1`).
-  await page.waitForURL(
-    (u) => u.searchParams.has("ids") && !u.searchParams.has("saved"),
-  );
-  await expect(rowB).toBeHidden();
-  await expect(
-    card.locator('[data-selection-color="CARVALHO"] input[type=checkbox]'),
-  ).not.toBeChecked();
-  await expect(
-    card.locator('[data-selection-color="BEGE"] input[type=checkbox]'),
-  ).toBeChecked();
-  await expect(preview.locator("[data-color-grand]")).toHaveText("2.928");
-  // "Rever opções" mostra a comparação de novo.
-  await bar.locator("label:has(input[data-selection-review])").click();
-  await expect(rowB).toBeVisible();
-  await page.goBack();
-
-  // 11. Solicitação ao fornecedor: cada cor na própria linha, por data.
-  await page.click("[data-selection-open-all]");
-  await page.waitForURL(/\/app\/supplier-requests\/[^/?]+\?.*created=1/);
-  const plan = page.locator("[data-request-color-plan]");
-  await expect(plan).toBeVisible();
-  await expect(plan.locator("[data-color-round]")).toHaveCount(2);
-  await expect(
-    plan.locator('[data-color-round="1"] [data-color-line="BEGE"]'),
-  ).toContainText("768 pcs");
-  await expect(
-    plan.locator('[data-color-round="1"] [data-color-subtotal]'),
-  ).toContainText("1.488");
-  await expect(plan.locator("[data-color-grand]")).toContainText("2.928");
-  await expect(plan.locator("[data-color-excluded]")).toContainText("CARVALHO");
+  expect(Object.keys(seen).sort()).toEqual(["BEGE|1", "MARROM|1"]);
+  // BEGE: 768 + 720 = 1.488; MARROM: 720 + 720 = 1.440.
+  expect(seen["BEGE|1"]).toContain("768");
+  expect(seen["BEGE|1"]).toContain("1.488");
+  expect(seen["MARROM|1"]).toContain("1.440");
 });

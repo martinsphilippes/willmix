@@ -1,0 +1,223 @@
+/**
+ * Dicionário do módulo "selection-packing": embalagens e variações do item
+ * escolhido na Seleção de itens (dono, 26/11/2026; docs/SUPPLIER_REQUESTS.md,
+ * "Embalagens e variações"): "Alterar" a Qtd/caixa, novas embalagens, a
+ * tabela pai como opção, a matriz variação × embalagem, o Mix de cores, a
+ * arte de exemplo e a cotação de cada combinação. Mesmas chaves em pt, en e zh.
+ */
+export const pt = {
+  "packing.alter": "Alterar",
+  "packing.alterHint":
+    "A mesma caixa master com outra quantidade de peças: o CBM acompanha na proporção (CBM × nova Qtd/caixa ÷ Qtd/caixa do Book).",
+  "packing.altered.title": "Caixa alterada",
+  "packing.undo": "Desfazer a alteração",
+  "packing.add": "Embalagem",
+  "packing.addHint":
+    "Nova embalagem com várias peças: o preço multiplica pela Qtd/Embalagem e a Qtd/caixa e o MOQ dividem por ela (MOQ para cima).",
+  "packing.packs.title": "Novas embalagens",
+  "packing.col.units": "Qtd/Embalagem",
+  "packing.remove": "Tirar esta embalagem",
+  "packing.packName": "Embalagem com {n} peças",
+  "packing.parent.altered":
+    "A caixa alterada ({n} peças por caixa) também é uma opção de embalagem",
+  "packing.parent.item":
+    "O item escolhido (unitário) também é uma opção de embalagem",
+  "packing.error.units": "Use 2 peças ou mais por embalagem.",
+  "packing.error.divide": "{n} não divide a Qtd/caixa ({carton}).",
+  "packing.error.repeat": "Esta embalagem já está na lista.",
+  "packing.error.carton": "Digite a Qtd/caixa em peças (número inteiro).",
+  "packing.option.unit": "Unitária",
+  "packing.option.pack": "Emb. {n} pç",
+  "packing.option.perCarton": "{n} por caixa",
+  "packing.mix": "Mix de cores",
+  "packing.mixHint":
+    "Cores sortidas na mesma embalagem: uma imagem por embalagem. Cada variação continua sendo uma cotação.",
+  "packing.variation.add": "Variação",
+  "packing.variation.placeholder": "Nome da variação (ex.: Preto fosco)",
+  "packing.variation.remove": "Tirar esta variação",
+  "packing.variation.custom": "digitada",
+  "packing.variation.repeat": "Variação repetida.",
+  "packing.variations.hint":
+    "Uma linha por variação (as cores do Book e as digitadas) e uma coluna por embalagem. Cada combinação vira uma cotação separada. As caixas saem da divisão igual; digite as de uma combinação para mudar só ela.",
+  "packing.count": "{n} combinação(ões): {n} cotação(ões) ao gravar",
+  "packing.cell.cartonsOf": "Caixas de {combo}",
+  "packing.cell.units": "{n} emb.",
+  "packing.cell.pieces": "{n} pç",
+  "packing.art": "Arte",
+  "packing.art.add": "Carregar a arte de exemplo de {combo}",
+  "packing.art.remove": "Tirar a arte",
+  "packing.art.row": "Arte de cada embalagem",
+  "packing.art.uploading": "Enviando…",
+  "packing.art.failed": "A imagem não foi enviada",
+  "packing.combo": "{variation} · {pack}",
+  "packing.unitOnly": "Item como está no Book",
+  "packing.bookCarton": "Book: {n}",
+  "supplierRequests.error.selection_pack_carton":
+    "A Qtd/caixa alterada tem de ser um número inteiro de peças.",
+  "supplierRequests.error.selection_pack_units":
+    "Cada nova embalagem precisa de 2 peças ou mais.",
+  "supplierRequests.error.selection_pack_divide":
+    "A Qtd/Embalagem precisa dividir a Qtd/caixa final. Confira as novas embalagens e grave de novo.",
+  "supplierRequests.error.selection_pack_repeat":
+    "Há duas embalagens com a mesma Qtd/Embalagem. Tire uma e grave de novo.",
+  "supplierRequests.error.selection_pack_many":
+    "Embalagens ou variações demais: até 10 embalagens, 30 variações e 60 combinações por escolha.",
+  "supplierRequests.error.selection_variation_repeat":
+    "Há duas variações com o mesmo nome. Tire uma e grave de novo.",
+  "supplierRequests.selection.partnerBook":
+    "Item de book enviado pelo parceiro: a escolha ficou gravada e a cotação abre em Blocos Sugeridos.",
+  "supplierRequests.variant.title": "Variação e embalagem",
+  "supplierRequests.variant.variation": "Variação: {v}",
+  "supplierRequests.variant.unit": "Unitária ({m} peças por caixa)",
+  "supplierRequests.variant.pack":
+    "Embalagem com {n} peças ({m} embalagens por caixa)",
+  "supplierRequests.variant.mix": "Mix de cores",
+  "supplierRequests.variant.unitsNote":
+    "Nesta cotação, a quantidade, o mínimo, o preço e a caixa contam embalagens: 1 embalagem = {n} peças.",
+  "supplierRequests.variant.art": "Arte de exemplo do SKU",
+  "supplierRequests.variant.artHint":
+    "Imagem de exemplo enviada pela Wellmix: mostra o SKU que está sendo considerado, não é foto de amostra.",
+};
+
+export const en: Record<keyof typeof pt, string> = {
+  "packing.alter": "Change",
+  "packing.alterHint":
+    "The same master carton with another quantity of pieces: the CBM follows proportionally (CBM × new Qty/carton ÷ Book Qty/carton).",
+  "packing.altered.title": "Changed carton",
+  "packing.undo": "Undo the change",
+  "packing.add": "Package",
+  "packing.addHint":
+    "New package with several pieces: the price is multiplied by the Qty/Package and the Qty/carton and MOQ are divided by it (MOQ rounded up).",
+  "packing.packs.title": "New packages",
+  "packing.col.units": "Qty/Package",
+  "packing.remove": "Remove this package",
+  "packing.packName": "Package of {n} pieces",
+  "packing.parent.altered":
+    "The changed carton ({n} pieces per carton) is also a package option",
+  "packing.parent.item": "The chosen item (single) is also a package option",
+  "packing.error.units": "Use 2 or more pieces per package.",
+  "packing.error.divide": "{n} does not divide the Qty/carton ({carton}).",
+  "packing.error.repeat": "This package is already on the list.",
+  "packing.error.carton": "Enter the Qty/carton in pieces (whole number).",
+  "packing.option.unit": "Single",
+  "packing.option.pack": "Pack of {n}",
+  "packing.option.perCarton": "{n} per carton",
+  "packing.mix": "Color mix",
+  "packing.mixHint":
+    "Assorted colors in the same package: one image per package. Each variation is still a quotation.",
+  "packing.variation.add": "Variation",
+  "packing.variation.placeholder": "Variation name (e.g. Matte black)",
+  "packing.variation.remove": "Remove this variation",
+  "packing.variation.custom": "typed",
+  "packing.variation.repeat": "Repeated variation.",
+  "packing.variations.hint":
+    "One row per variation (the Book colors and the typed ones) and one column per package. Each combination becomes a separate quotation. Cartons come from the even split; type those of a combination to change only it.",
+  "packing.count": "{n} combination(s): {n} quotation(s) on save",
+  "packing.cell.cartonsOf": "Cartons of {combo}",
+  "packing.cell.units": "{n} pkg",
+  "packing.cell.pieces": "{n} pcs",
+  "packing.art": "Artwork",
+  "packing.art.add": "Upload the sample artwork of {combo}",
+  "packing.art.remove": "Remove the artwork",
+  "packing.art.row": "Artwork of each package",
+  "packing.art.uploading": "Uploading…",
+  "packing.art.failed": "The image was not uploaded",
+  "packing.combo": "{variation} · {pack}",
+  "packing.unitOnly": "Item as in the Book",
+  "packing.bookCarton": "Book: {n}",
+  "supplierRequests.error.selection_pack_carton":
+    "The changed Qty/carton must be a whole number of pieces.",
+  "supplierRequests.error.selection_pack_units":
+    "Each new package needs 2 or more pieces.",
+  "supplierRequests.error.selection_pack_divide":
+    "The Qty/Package must divide the final Qty/carton. Check the new packages and save again.",
+  "supplierRequests.error.selection_pack_repeat":
+    "Two packages have the same Qty/Package. Remove one and save again.",
+  "supplierRequests.error.selection_pack_many":
+    "Too many packages or variations: up to 10 packages, 30 variations and 60 combinations per choice.",
+  "supplierRequests.error.selection_variation_repeat":
+    "Two variations have the same name. Remove one and save again.",
+  "supplierRequests.selection.partnerBook":
+    "Item from a book sent by the partner: the choice was saved and the quotation opens in Suggested Blocks.",
+  "supplierRequests.variant.title": "Variation and package",
+  "supplierRequests.variant.variation": "Variation: {v}",
+  "supplierRequests.variant.unit": "Single ({m} pieces per carton)",
+  "supplierRequests.variant.pack":
+    "Package of {n} pieces ({m} packages per carton)",
+  "supplierRequests.variant.mix": "Color mix",
+  "supplierRequests.variant.unitsNote":
+    "In this quotation, quantity, minimum, price and carton count packages: 1 package = {n} pieces.",
+  "supplierRequests.variant.art": "SKU sample artwork",
+  "supplierRequests.variant.artHint":
+    "Sample image sent by Wellmix: it shows the SKU being considered, it is not a sample photo.",
+};
+
+export const zh: Record<keyof typeof pt, string> = {
+  "packing.alter": "修改",
+  "packing.alterHint":
+    "同一外箱装不同件数：CBM 按比例变化（CBM × 新每箱数量 ÷ Book 每箱数量）。",
+  "packing.altered.title": "修改后的外箱",
+  "packing.undo": "撤销修改",
+  "packing.add": "包装",
+  "packing.addHint":
+    "多件一包的新包装：价格乘以每包数量，每箱数量和 MOQ 除以它（MOQ 向上取整）。",
+  "packing.packs.title": "新包装",
+  "packing.col.units": "每包数量",
+  "packing.remove": "删除此包装",
+  "packing.packName": "{n} 件装",
+  "packing.parent.altered": "修改后的外箱（每箱 {n} 件）也是一个包装选项",
+  "packing.parent.item": "选中的产品（单件）也是一个包装选项",
+  "packing.error.units": "每包至少 2 件。",
+  "packing.error.divide": "{n} 不能整除每箱数量（{carton}）。",
+  "packing.error.repeat": "此包装已在列表中。",
+  "packing.error.carton": "请输入每箱件数（整数）。",
+  "packing.option.unit": "单件",
+  "packing.option.pack": "{n} 件装",
+  "packing.option.perCarton": "每箱 {n}",
+  "packing.mix": "混色",
+  "packing.mixHint":
+    "同一包装内混合颜色：每个包装一张图片。每个变体仍是一个报价。",
+  "packing.variation.add": "变体",
+  "packing.variation.placeholder": "变体名称（例如：哑光黑）",
+  "packing.variation.remove": "删除此变体",
+  "packing.variation.custom": "手动输入",
+  "packing.variation.repeat": "变体重复。",
+  "packing.variations.hint":
+    "每个变体一行（Book 的颜色和手动输入的），每个包装一列。每个组合成为一个单独的报价。箱数按平均分配；输入某个组合的箱数只改变该组合。",
+  "packing.count": "{n} 个组合：保存时生成 {n} 个报价",
+  "packing.cell.cartonsOf": "{combo} 的箱数",
+  "packing.cell.units": "{n} 包",
+  "packing.cell.pieces": "{n} 件",
+  "packing.art": "图稿",
+  "packing.art.add": "上传 {combo} 的示例图稿",
+  "packing.art.remove": "删除图稿",
+  "packing.art.row": "每个包装的图稿",
+  "packing.art.uploading": "上传中…",
+  "packing.art.failed": "图片未上传",
+  "packing.combo": "{variation} · {pack}",
+  "packing.unitOnly": "Book 中的原样产品",
+  "packing.bookCarton": "Book：{n}",
+  "supplierRequests.error.selection_pack_carton":
+    "修改后的每箱数量必须是整数件。",
+  "supplierRequests.error.selection_pack_units": "每个新包装至少需要 2 件。",
+  "supplierRequests.error.selection_pack_divide":
+    "每包数量必须能整除最终的每箱数量。请检查新包装后重新保存。",
+  "supplierRequests.error.selection_pack_repeat":
+    "有两个包装的每包数量相同。删除一个后重新保存。",
+  "supplierRequests.error.selection_pack_many":
+    "包装或变体过多：每次选择最多 10 个包装、30 个变体和 60 个组合。",
+  "supplierRequests.error.selection_variation_repeat":
+    "有两个变体名称相同。删除一个后重新保存。",
+  "supplierRequests.selection.partnerBook":
+    "合作伙伴发送的 Book 中的产品：选择已保存，报价在“推荐分组”中打开。",
+  "supplierRequests.variant.title": "变体和包装",
+  "supplierRequests.variant.variation": "变体：{v}",
+  "supplierRequests.variant.unit": "单件（每箱 {m} 件）",
+  "supplierRequests.variant.pack": "{n} 件装（每箱 {m} 包）",
+  "supplierRequests.variant.mix": "混色",
+  "supplierRequests.variant.unitsNote":
+    "本报价中的数量、最小起订量、价格和外箱均按包计：1 包 = {n} 件。",
+  "supplierRequests.variant.art": "SKU 示例图稿",
+  "supplierRequests.variant.artHint":
+    "Wellmix 发送的示例图片：显示正在考虑的 SKU，不是样品照片。",
+};

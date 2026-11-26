@@ -130,25 +130,9 @@ test("Programação de compra: a mesma entrada nas duas telas e 13 datas gravada
   expect(before.pieces).toEqual(["1152", ...Array(12).fill("1104")]);
   const dates = await choice.locator("[data-schedule-date]").allInnerTexts();
   expect(dates).toHaveLength(13);
+  // 4. Gravar no book da Wellmix abre a cotação na hora (dono, 26/11/2026),
+  // com as 13 programações.
   await page.click("[data-selection-submit]");
-  await page.waitForURL(/[?&]saved=1/);
-  const resolved = page.locator("[data-selection-resolved=saved]");
-  await expect(resolved).toHaveCount(1);
-
-  // 4. Rever a escolha: as 13 programações voltam com as peças e as datas.
-  await resolved.locator("[data-selection-block-open]").click();
-  await page.waitForURL(
-    (u) => u.searchParams.has("ids") && !u.searchParams.has("saved"),
-  );
-  await expect(choice.locator("[data-schedule-item]")).toHaveCount(13);
-  expect((await snapshot(choice)).pieces).toEqual(before.pieces);
-  expect(await choice.locator("[data-schedule-date]").allInnerTexts()).toEqual(
-    dates,
-  );
-  await page.goBack();
-
-  // 5. A solicitação ao fornecedor leva as 13 programações.
-  await page.click("[data-selection-open-all]");
   await page.waitForURL(/\/app\/supplier-requests\/[^/?]+\?.*created=1/);
   const schedule = page.locator("[data-purchase-schedule]");
   await expect(schedule).toBeVisible();
