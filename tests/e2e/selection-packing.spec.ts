@@ -141,6 +141,13 @@ test("Alterar, embalagens, variações e uma cotação por combinação", async 
   await expect(
     page.locator(`[data-supplier-table-pieces-per-set="${last}"]`),
   ).toHaveText("3");
+  // A arte da Wellmix na coluna "Foto Marketing" (dono, 26/11/2026).
+  await expect(page.locator("[data-supplier-table]")).toContainText(
+    "Foto Marketing",
+  );
+  await expect(
+    page.locator(`[data-supplier-table-marketing="${last}"] img`),
+  ).toBeVisible();
   await page.goto(`/app/supplier-requests/${last}?view=item`);
   const variant = page.locator('[data-request-variant="Preto fosco|3"]');
   await expect(variant).toBeVisible();
