@@ -185,6 +185,7 @@ Na tabela dos produtos da solicitação (Wellmix e fornecedor), o nível é o do
    Os textos ficam em `src/i18n/modules/selection-packing.ts` (`supplierRequests.table.set.*`). Teste: `tests/unit/supplier-table-rounds.test.ts`.
 5. **Sem o quadro dos Detalhes** (dono, 26/11/2026, segunda rodada): cores, função, pesos e NCM saíram do "Detalhes" do item. Os "Detalhes" só aparecem quando há programação e só abrem as sublinhas. O link do Book (só da Wellmix) fica abaixo do nome.
 6. **Foto, nº e produto fixos** à esquerda na rolagem horizontal, a partir de 768px (`LEFT` em `supplier-table.tsx`; a foto e o nº em caixas de largura certa, `--pin-photo` e `--pin-number`). No celular, as três ocupariam a tela.
+8. **"Foto Marketing"** (dono, 26/11/2026): a arte que a Wellmix pôs na variação × embalagem é a segunda coluna, logo depois da Foto, fixa junto com ela, o nº e o produto, e aparece também nas sublinhas (`data-supplier-table-marketing`; a Foto mostra só a foto do Book). A coluna só existe quando a tabela tem itens de variação × embalagem; sem ela, `--pin-mkt` é zero e as colunas fixas ficam como antes.
 7. **Conversa no detalhe do item** (`?view=item`): fica na coluna da direita, abaixo do histórico, sempre aberta, para a Wellmix e para o fornecedor (`chatBlock`, `data-negotiation-chat`). A coluna do fornecedor também fica fixa na rolagem. A mensagem enviada volta para `#chat`; no quadro comparativo, o modal da conversa continua como era.
 
 ### Três respostas na tabela (pedido do dono, 13/11/2026)
