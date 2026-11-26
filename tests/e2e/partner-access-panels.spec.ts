@@ -123,7 +123,7 @@ test("Trading e Factory: gravar, recarregar, ocultar × bloquear, revogar com a 
   expect(confirmText).toContain("Trading");
   // Sucesso depois da gravação no servidor, com o perfil.
   await expect(page.locator("[data-access-saved]")).toContainText(
-    "Acessos de Trading salvos no servidor: 2",
+    "Acessos de Supplier/Trading salvos no servidor: 2",
   );
 
   // Recarregar: o servidor devolve o que foi gravado.
@@ -231,7 +231,7 @@ test("Trading e Factory: gravar, recarregar, ocultar × bloquear, revogar com a 
   await page.locator("[data-access-copy-apply]").click();
   await page.waitForURL(/copied=type%3Atrading/);
   await expect(page.locator("[data-access-saved]")).toContainText(
-    "Cópia aplicada em Trading",
+    "Cópia aplicada em Supplier/Trading",
   );
   // A página voltou como estava (filtro "fora do menu" ainda aplicado).
   expect(page.url()).toContain("state=hidden");
