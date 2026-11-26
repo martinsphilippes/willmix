@@ -4491,6 +4491,21 @@ export interface SupplierRequestVariant {
   /** Arte de exemplo do SKU; o fornecedor vê. */
   artDocumentId: string | null;
   selectionGroupId: string | null;
+  /*
+   * De onde o SKU partiu no Book (dono, 26/11/2026: o fornecedor continua de
+   * onde o trabalho parou). Ausentes nas cotações abertas antes: a tela lê o
+   * item do Book (`bookingItemId`).
+   */
+  /** Peças por caixa no Book (x0), antes de "Alterar". */
+  bookCarton?: number | null;
+  /** CBM da caixa no Book, antes de "Alterar". */
+  bookCbm?: number | null;
+  /** Preço por peça no Book (na moeda da cópia do item). */
+  bookPrice?: number | null;
+  /** Pedido mínimo do Book, em peças. */
+  bookMoq?: number | null;
+  /** Variação digitada na Seleção (não é uma cor do Book). */
+  custom?: boolean;
 }
 
 /** Os três prompts das referências por IA (duas imagens e uma ficha). */
