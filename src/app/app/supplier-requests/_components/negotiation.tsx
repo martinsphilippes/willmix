@@ -1,3 +1,4 @@
+import { packLabels } from "@/components/request-variant";
 import type { ReactNode } from "react";
 import type { SupplierRequest } from "@/lib/db/schema";
 import { SHEET_CURRENCIES, SHEET_INCOTERMS } from "@/lib/db/schema";
@@ -154,9 +155,9 @@ export function NegotiationForms({
               }
               intl={t.intl}
               labels={{
-                price: t("negotiationScreen.f.price"),
+                price: packLabels(r.variant?.units, t).price,
                 currency: t("negotiationScreen.f.currency"),
-                moq: t("negotiationScreen.f.moq"),
+                moq: packLabels(r.variant?.units, t).moq,
                 leadTime: t("negotiationScreen.f.leadTime"),
                 incoterm: t("negotiationScreen.f.incoterm"),
                 simTitle: t("supplierRequests.negotiation.sim.title"),
@@ -232,6 +233,7 @@ export function NegotiationForms({
                 leadTime: "data-negotiation-lead-time",
                 incoterm: "data-negotiation-incoterm",
               }}
+              labels={packLabels(r.variant?.units, t)}
             />
             <Field label={t("supplierRequests.negotiation.commentOptional")}>
               <Textarea

@@ -153,6 +153,13 @@ test("Alterar, embalagens, variações e uma cotação por combinação", async 
   await expect(
     variant.locator('[data-request-variant-altered="48"]'),
   ).toBeVisible();
+  // A caixa e o preço contam embalagens: os rótulos dizem isso.
+  await expect(page.locator("[data-negotiation-sheet]")).toContainText(
+    "Embalagens por caixa master",
+  );
+  await expect(
+    page.locator('[data-negotiation-main] [data-sheet-field="price"]'),
+  ).toContainText("Preço/embalagem (3 pç)");
   await expect(variant.locator("[data-request-variant-art] img")).toBeVisible();
   const url = page.url().split("?")[0];
   await page.screenshot({

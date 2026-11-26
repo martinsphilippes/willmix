@@ -95,7 +95,7 @@ import { RequestTimeline } from "../_components/timeline";
 import { dateTime } from "../_components/negotiation";
 import { canPostMessage, canPropose } from "@/lib/supplier-requests";
 import { RequestAiReferences } from "@/components/selection-ai-prompts";
-import { RequestVariant } from "@/components/request-variant";
+import { packLabels, RequestVariant } from "@/components/request-variant";
 import {
   BoardCounterForm,
   QuotationBoard,
@@ -646,7 +646,7 @@ export default async function SupplierRequestPage({
             </InfoCell>
             {seesPrice ? (
               <>
-                <InfoCell label={t("negotiationScreen.f.price")} mark="price">
+                <InfoCell label={packLabels(packUnits, t).price} mark="price">
                   {deal
                     ? changed(num(deal.price), num(it.price), "price")
                     : num(it.price)}
@@ -670,7 +670,7 @@ export default async function SupplierRequestPage({
                 ? changed(deal.incoterm ?? "—", it.incoterm ?? "—", "incoterm")
                 : (it.incoterm ?? "—")}
             </InfoCell>
-            <InfoCell label={t("negotiationScreen.f.moq")} mark="moq">
+            <InfoCell label={packLabels(packUnits, t).moq} mark="moq">
               {deal
                 ? changed(num(deal.moq, 0), num(it.moq, 0), "moq")
                 : num(it.moq, 0)}
@@ -761,6 +761,7 @@ export default async function SupplierRequestPage({
         specs={specs}
         item={it}
         ncm={wellmix ? (book?.ncm ?? null) : null}
+        units={packUnits}
         // Só quando a cotação veio de um book (dono, 22/11/2026).
         bookHref={
           wellmix && r.bookingLotId
@@ -841,6 +842,7 @@ export default async function SupplierRequestPage({
                 price: "data-supplier-answer-price",
                 incoterm: "data-supplier-answer-incoterm",
               }}
+              labels={packLabels(packUnits, t)}
             />
             <Field label={t("supplierRequests.detail.answer.note")}>
               <Textarea
@@ -1507,6 +1509,7 @@ export default async function SupplierRequestPage({
               rows={boardRows}
               reference={boardReference}
               showPrice={seesPrice}
+              units={packUnits}
               t={t}
             />
             <Card dense>
@@ -1565,6 +1568,7 @@ export default async function SupplierRequestPage({
               <BoardCounterForm
                 kind="request"
                 boardId={r.id}
+                units={packUnits}
                 targets={counterTargets}
                 values={{
                   price: r.supplierPrice,
