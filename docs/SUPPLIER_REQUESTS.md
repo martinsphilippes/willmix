@@ -90,7 +90,7 @@ Pedido do dono na aba Seleção (`/app/booking/selection?tab=selection&ids=…`)
 
 Esquema (aditivo): `selection_groups.packing` e `supplierRequestIds` (as cotações da escolha), `supplier_requests.variant`. Textos em `src/i18n/modules/selection-packing.ts`.
 
-**Tudo o que a Seleção pôs no item, na cotação** (dono, 26/11/2026: o supplier continua de onde o trabalho parou; antes só apareciam a variação, a embalagem e a arte, e a arte só no detalhe do item). O quadro "Variação e embalagem" (`RequestVariant`, números por `variantFacts` em `src/lib/selection-packing.ts`) mostra a variação (com "Variação digitada na Seleção" quando não é cor do Book), a embalagem, a **caixa master** com a alteração ("Caixa alterada na Seleção (no Book: 60 peças por caixa)"), o **CBM** com a conta (CBM × x1 ÷ x0), o **preço** por embalagem e por peça (só com "Ver preço de compra"), o **mínimo** em embalagens e peças, a **quantidade** em embalagens, peças e caixas master, as **entregas** (data, embalagens, peças e caixas), o Mix e a **arte** (ou "Sem arte de exemplo nesta combinação"). Fica na abertura da cotação (acima da tabela dos produtos, com a arte também na galeria da foto e as peças embaixo da quantidade) e no detalhe do item (`?view=item`), onde a quantidade do resumo vem em embalagens e peças e a arte entra no card Imagens da Wellmix. A cotação nova grava de onde o SKU partiu no Book (`variant.bookCarton`, `bookCbm`, `bookPrice`, `bookMoq` e `custom`); as abertas antes leem o item do Book (`bookingItemId`).
+**Tudo o que a Seleção pôs no item, na cotação** (dono, 26/11/2026: o supplier continua de onde o trabalho parou; antes só apareciam a variação, a embalagem e a arte, e a arte só no detalhe do item). O quadro "Variação e embalagem" (`RequestVariant`, números por `variantFacts` em `src/lib/selection-packing.ts`) mostra a variação (com "Variação digitada na Seleção" quando não é cor do Book), a embalagem, a **caixa master** com a alteração ("Caixa alterada na Seleção (no Book: 60 peças por caixa)"), o **CBM** com a conta (CBM × x1 ÷ x0), o **preço** por embalagem e por peça (só com "Ver preço de compra"), o **mínimo** em embalagens e peças, a **quantidade** em embalagens, peças e caixas master, as **entregas** (data, embalagens, peças e caixas), o Mix e a **arte** (ou "Sem arte de exemplo nesta combinação"). Fica no detalhe do item (`?view=item`), onde a quantidade do resumo vem em embalagens e peças e a arte entra no card Imagens da Wellmix. Na abertura da cotação (a tabela dos produtos), o quadro esteve acima da tabela só no mesmo dia; depois o dono pediu só a tabela, com a arte na galeria da foto (ver "Programação em sublinhas e itens em sets"). A cotação nova grava de onde o SKU partiu no Book (`variant.bookCarton`, `bookCbm`, `bookPrice`, `bookMoq` e `custom`); as abertas antes leem o item do Book (`bookingItemId`).
 
 ### Book enviado pelo parceiro (dono, 26/11/2026)
 
@@ -163,6 +163,26 @@ Quem abre `/app/supplier-requests/[id]` (o fornecedor e, desde a segunda rodada,
   - **Aprovar, Renegociar e Recusar** (desde 13/11/2026, no lugar do "Sim / Não"; só ícones desde 14/11/2026; ver "Três respostas na tabela" e "Ações só com ícones"). O formulário de Renegociar tem preço e moeda, **MOQ** e **modalidade de entrega (FOB/EXW)**; o prazo vigente fica como está. Só o fornecedor responde (desde 12/11/2026 a Wellmix, mesmo admin, não registra a resposta por ele: `supplier_request_supplier_only`). Só enquanto ele pode responder (Aberta ou Respondida; com contraproposta esperando, a oferta é ela).
   - **Abrir produto**: a tela completa, no mesmo link com `?view=item`. "Ver todos os produtos" volta à tabela.
 - As ações da tabela voltam para a tabela (`view=table`); as da tela do produto voltam para o produto.
+
+### Programação em sublinhas e itens em sets (dono, 26/11/2026)
+
+Na tabela dos produtos da solicitação (Wellmix e fornecedor), o nível é o dos produtos, não o de um produto:
+
+1. **Sem o quadro "Variação e embalagem"** em cima da tabela. Ele é de um produto e fica no detalhe do item (`?view=item`). Na tabela, a variação fica abaixo do nome e a arte entra na galeria da foto.
+2. **Programação como sublinhas** de cada produto, abertas pelos **"Detalhes"** do item. Cada sublinha tem:
+   - o número `<nº da solicitação>.<nº da programação>` (6.1, 6.2…; na solicitação com vários produtos, `<nº do produto>.<programação>`, como 2.1.1);
+   - a mesma informação do item, com a quantidade da programação e as caixas master e o CBM dessa quantidade (`requestItemSpecs` da programação);
+   - a data da programação na coluna Programações;
+   - nenhuma ação, porque a resposta é por produto.
+
+   Com programação, cada produto e as suas sublinhas ficam num `tbody` próprio (`data-supplier-table-group`). As sublinhas (`data-supplier-table-round`) só aparecem com o `<details>` do item aberto, pela regra CSS com `:has()` em `src/app/globals.css`. Sem programação, a tabela fica num `tbody` só, como antes, com a ordenação pelos títulos; com os grupos, a tabela não se ordena pelos títulos, para a sublinha não se separar do produto.
+3. **Total de peças** sem a linha cinza que somava as unidades.
+4. **Item com embalagem modificada vira Set** (`variant.units` ≥ 2):
+   - a tabela conta sets: "Total de sets", "Sets por programação", "Sets/caixa master", "Sets/caixa interna" e o MOQ "em sets";
+   - a resposta do fornecedor na tabela pede "Preço por set" e "Pedido mínimo (sets)";
+   - entra a coluna **"Peças por set"** (`data-supplier-table-pieces-per-set`).
+
+   Os textos ficam em `src/i18n/modules/selection-packing.ts` (`supplierRequests.table.set.*`). Teste: `tests/unit/supplier-table-rounds.test.ts`.
 
 ### Três respostas na tabela (pedido do dono, 13/11/2026)
 
