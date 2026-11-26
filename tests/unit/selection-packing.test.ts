@@ -12,6 +12,7 @@ import {
   skuItemOf,
   splitPacking,
   trivialPacking,
+  variantFacts,
 } from "@/lib/selection-packing";
 import type { SupplierRequestItem } from "@/lib/db/schema";
 
@@ -255,5 +256,116 @@ describe("variação × embalagem", () => {
     const one = { ...base, variations: [{ label: "AZUL", custom: false }] };
     expect(trivialPacking(one, 1)).toBe(true);
     expect(trivialPacking(one, 2)).toBe(false);
+  });
+});
+
+/*
+ * Cotação do SKU (dono, 26/11/2026): tudo o que a Seleção pôs no item, para
+ * o fornecedor continuar de onde o trabalho parou.
+ */
+describe("variantFacts", () => {
+  const copy = {
+    masterCartonQty: 24,
+    cbmPerCarton: 0.08,
+    price: 7.2,
+    moq: 500,
+    currency: "RMB" as const,
+  };
+  const schedule = {
+    items: [
+      { index: 1, quantity: 600, expectedAt: "2027-01-10" },
+      { index: 2, quantity: 600, expectedAt: "2027-02-09" },
+      { index: 3, quantity: 600, expectedAt: "2027-03-11" },
+    ],
+  };
+  const base = {
+    key: "ESPELHO VERMELHO|2",
+    variation: "ESPELHO VERMELHO",
+    units: 2,
+    pieceCarton: 48,
+    mix: false,
+    artDocumentId: "art-1",
+    selectionGroupId: "g1",
+  };
+
+  it("cotação aberta antes: a caixa e o CBM do Book vêm do item do Book", () => {
+    const f = variantFacts(
+      { variant: base, item: copy, quantity: 1800, schedule },
+      { masterCartonQty: 60, cbmPerCarton: 0.1, moq: 1000 },
+    )!;
+    expect(f.altered).toBe(true);
+    expect(f.bookCarton).toBe(60);
+    expect(f.pieceCarton).toBe(48);
+    expect(f.perCarton).toBe(24);
+    expect(f.cbm).toBe(0.08);
+    expect(f.bookCbm).toBe(0.1);
+    expect(f.price).toBe(7.2);
+    expect(f.piecePrice).toBe(3.6);
+    expect(f.moq).toBe(500);
+    expect(f.moqPieces).toBe(1000);
+    expect(f.pieces).toBe(3600);
+    expect(f.cartons).toBe(75);
+    expect(f.rounds.map((r) => [r.quantity, r.pieces, r.cartons])).toEqual([
+      [600, 1200, 25],
+      [600, 1200, 25],
+      [600, 1200, 25],
+    ]);
+    expect(f.artDocumentId).toBe("art-1");
+  });
+
+  it("cotação nova: vale o que ela gravou do Book, não o Book de hoje", () => {
+    const f = variantFacts(
+      {
+        variant: {
+          ...base,
+          bookCarton: 60,
+          bookCbm: 0.1,
+          bookPrice: 3.6,
+          bookMoq: 1000,
+          custom: true,
+        },
+        item: copy,
+        quantity: 1800,
+      },
+      { masterCartonQty: 30, cbmPerCarton: 0.2, moq: 9 },
+    )!;
+    expect(f.bookCarton).toBe(60);
+    expect(f.bookCbm).toBe(0.1);
+    expect(f.piecePrice).toBe(3.6);
+    expect(f.moqPieces).toBe(1000);
+    expect(f.custom).toBe(true);
+    expect(f.rounds).toEqual([]);
+    expect(f.cartons).toBe(75);
+  });
+
+  it("unitária sem alteração e sem variação", () => {
+    const f = variantFacts(
+      {
+        variant: {
+          ...base,
+          key: "|1",
+          variation: null,
+          units: 1,
+          pieceCarton: 60,
+        },
+        item: {
+          ...copy,
+          masterCartonQty: 60,
+          cbmPerCarton: 0.1,
+          price: 3.6,
+          moq: 1000,
+        },
+        quantity: 100,
+      },
+      { masterCartonQty: 60, cbmPerCarton: 0.1 },
+    )!;
+    expect(f.altered).toBe(false);
+    expect(f.piecePrice).toBe(3.6);
+    expect(f.pieces).toBe(100);
+    expect(f.cartons).toBe(2);
+  });
+
+  it("sem variação na cotação: nada", () => {
+    expect(variantFacts({ variant: null, item: copy, quantity: 1 })).toBeNull();
   });
 });
