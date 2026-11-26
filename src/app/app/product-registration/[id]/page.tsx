@@ -192,11 +192,6 @@ export default async function ProductRegistrationDetailPage({
 
   return (
     <div data-product-registration={r.id}>
-      <p className="mb-2 text-sm">
-        <Link href="/app/product-registration" className={linkClass}>
-          ← {t("productRegistration.back")}
-        </Link>
-      </p>
       <h1 className="mb-1 text-xl font-semibold tracking-tight text-zinc-900">
         {t("productRegistration.detail.title", { n: r.number })}
       </h1>
