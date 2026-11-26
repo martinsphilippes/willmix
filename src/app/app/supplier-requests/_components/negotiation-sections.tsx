@@ -1,3 +1,4 @@
+import { packLabels } from "@/components/request-variant";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import type { SupplierRequest, SupplierRequestEvent } from "@/lib/db/schema";
@@ -140,9 +141,12 @@ export function ItemSheetGrid({
   item,
   ncm,
   bookHref,
+  units = 1,
   t,
 }: {
   specs: RequestItemSpecs;
+  /** Peças por embalagem da cotação de um SKU: a caixa e os pesos contam embalagens. */
+  units?: number;
   item: SupplierRequest["item"];
   /** NCM do item do Book (só a Wellmix). */
   ncm: string | null;
@@ -150,7 +154,9 @@ export function ItemSheetGrid({
   bookHref: string | null;
   t: Translate;
 }) {
+  const pack = packLabels(units, t);
   const k = (key: string) =>
+    (key === "master" || key === "net" || key === "gross" ? pack[key] : null) ??
     t(`negotiationScreen.sheet.${key}` as DictionaryKey);
   const n = (v: number | null | undefined, digits = 4) =>
     numberText(t, v, digits);

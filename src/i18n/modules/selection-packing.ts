@@ -104,6 +104,11 @@ export const pt = {
   "supplierRequests.variant.cartons": "{n} caixas master",
   "supplierRequests.variant.col.packs": "Embalagens",
   "supplierRequests.variant.col.cartons": "Caixas master",
+  "supplierRequests.variant.label.price": "Preço/embalagem ({n} pç)",
+  "supplierRequests.variant.label.moq": "Mínimo (embalagens)",
+  "supplierRequests.variant.label.master": "Embalagens por caixa master",
+  "supplierRequests.variant.label.net": "Peso líquido por embalagem (kg)",
+  "supplierRequests.variant.label.gross": "Peso bruto por embalagem (kg)",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -202,6 +207,11 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierRequests.variant.cartons": "{n} master cartons",
   "supplierRequests.variant.col.packs": "Packages",
   "supplierRequests.variant.col.cartons": "Master cartons",
+  "supplierRequests.variant.label.price": "Price/package ({n} pcs)",
+  "supplierRequests.variant.label.moq": "Minimum (packages)",
+  "supplierRequests.variant.label.master": "Packages per master carton",
+  "supplierRequests.variant.label.net": "Net weight per package (kg)",
+  "supplierRequests.variant.label.gross": "Gross weight per package (kg)",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -296,4 +306,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "supplierRequests.variant.cartons": "{n} 个外箱",
   "supplierRequests.variant.col.packs": "包数",
   "supplierRequests.variant.col.cartons": "外箱数",
+  "supplierRequests.variant.label.price": "每包价格（{n} 件）",
+  "supplierRequests.variant.label.moq": "最低起订量（包）",
+  "supplierRequests.variant.label.master": "每外箱包数",
+  "supplierRequests.variant.label.net": "每包净重（kg）",
+  "supplierRequests.variant.label.gross": "每包毛重（kg）",
 };

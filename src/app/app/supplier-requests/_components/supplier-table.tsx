@@ -57,7 +57,7 @@ import {
   ResponsibleTip,
 } from "@/components/request-responsible-tip";
 import Link from "next/link";
-import { variantText } from "@/components/request-variant";
+import { packLabels, variantText } from "@/components/request-variant";
 import { StatusLink } from "@/components/status-link";
 import { turnTone } from "@/lib/turn";
 import { roundsDates } from "@/components/purchase-rounds";
@@ -1068,9 +1068,11 @@ export function SupplierRequestTable({
                             </p>
                             <div className="grid grid-cols-2 gap-2">
                               <Field
-                                label={t(
-                                  "supplierRequests.detail.answer.price",
-                                )}
+                                label={
+                                  (r.variant?.units ?? 1) > 1
+                                    ? packLabels(r.variant?.units, t).price
+                                    : t("supplierRequests.detail.answer.price")
+                                }
                               >
                                 <Input
                                   name="price"
@@ -1105,7 +1107,11 @@ export function SupplierRequestTable({
                                 </Select>
                               </Field>
                               <Field
-                                label={t("supplierRequests.detail.answer.moq")}
+                                label={
+                                  (r.variant?.units ?? 1) > 1
+                                    ? packLabels(r.variant?.units, t).moq
+                                    : t("supplierRequests.detail.answer.moq")
+                                }
                               >
                                 <Input
                                   name="moq"

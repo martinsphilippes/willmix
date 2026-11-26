@@ -1,3 +1,4 @@
+import { packLabels } from "@/components/request-variant";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import type { Translate } from "@/i18n";
@@ -84,9 +85,12 @@ export function QuotationBoard({
   rows,
   reference,
   showPrice,
+  units = 1,
   t,
 }: {
   rows: BoardRow[];
+  /** Peças por embalagem da cotação de um SKU (o preço e o mínimo contam embalagens). */
+  units?: number;
   /** Última compra do produto, como referência (só com o preço à vista). */
   reference?: BoardReference | null;
   showPrice: boolean;
@@ -117,9 +121,9 @@ export function QuotationBoard({
               ) : null}
               <Th>{t("quote.supplier")}</Th>
               <Th>{t("quote.state")}</Th>
-              {showPrice ? <Th>{t("negotiationScreen.f.price")}</Th> : null}
+              {showPrice ? <Th>{packLabels(units, t).price}</Th> : null}
               <Th>{t("negotiationScreen.f.incoterm")}</Th>
-              <Th>{t("negotiationScreen.f.moq")}</Th>
+              <Th>{packLabels(units, t).moq}</Th>
               <Th>{t("negotiationScreen.f.leadTime")}</Th>
               <Th>{t("quote.conditions")}</Th>
               <Th>
@@ -303,8 +307,11 @@ export function BoardCounterForm({
   errors,
   fallbackError,
   formKey,
+  units = 1,
   t,
 }: {
+  /** Peças por embalagem da cotação de um SKU (o preço e o mínimo contam embalagens). */
+  units?: number;
   /** A tela: uma solicitação ao fornecedor ou uma cotação de compra. */
   kind: "request" | "quote";
   boardId: string;
@@ -368,9 +375,9 @@ export function BoardCounterForm({
             }
             intl={t.intl}
             labels={{
-              price: t("negotiationScreen.f.price"),
+              price: packLabels(units, t).price,
               currency: t("negotiationScreen.f.currency"),
-              moq: t("negotiationScreen.f.moq"),
+              moq: packLabels(units, t).moq,
               leadTime: t("negotiationScreen.f.leadTime"),
               incoterm: t("negotiationScreen.f.incoterm"),
               simTitle: t("supplierRequests.negotiation.sim.title"),

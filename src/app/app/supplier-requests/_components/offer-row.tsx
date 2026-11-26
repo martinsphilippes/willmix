@@ -22,6 +22,7 @@ export function OfferRowFields({
   values,
   showPrice = true,
   marks = {},
+  labels = {},
 }: {
   t: Translate;
   values: {
@@ -36,6 +37,8 @@ export function OfferRowFields({
   marks?: Partial<
     Record<"price" | "moq" | "leadTime" | "incoterm", `data-${string}`>
   >;
+  /** Preço e mínimo por embalagem na cotação de um SKU (`packLabels`). */
+  labels?: { price?: string; moq?: string };
 }) {
   const decimal = t.intl.startsWith("pt") ? "," : ".";
   const raw = (n: number | null | undefined) =>
@@ -54,7 +57,7 @@ export function OfferRowFields({
       >
         {showPrice ? (
           <>
-            <Field label={t("negotiationScreen.f.price")}>
+            <Field label={labels.price ?? t("negotiationScreen.f.price")}>
               <Input
                 name="price"
                 inputMode="decimal"
@@ -80,7 +83,7 @@ export function OfferRowFields({
             </Field>
           </>
         ) : null}
-        <Field label={t("negotiationScreen.f.moq")}>
+        <Field label={labels.moq ?? t("negotiationScreen.f.moq")}>
           <Input
             name="moq"
             inputMode="numeric"

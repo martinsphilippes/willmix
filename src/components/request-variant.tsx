@@ -18,6 +18,39 @@ export function variantText(
   return variant.variation ? `${variant.variation} · ${pack}` : pack;
 }
 
+/**
+ * Rótulos do preço, do mínimo, da caixa e dos pesos quando a cotação conta
+ * embalagens (variação × embalagem com N ≥ 2): o fornecedor responde por
+ * embalagem, não por peça (dono, 26/11/2026).
+ */
+export function packLabels(
+  units: number | null | undefined,
+  t: Translate,
+): {
+  price: string;
+  moq: string;
+  master: string | null;
+  net: string | null;
+  gross: string | null;
+} {
+  const n = Math.max(1, units ?? 1);
+  return n > 1
+    ? {
+        price: t("supplierRequests.variant.label.price", { n }),
+        moq: t("supplierRequests.variant.label.moq"),
+        master: t("supplierRequests.variant.label.master"),
+        net: t("supplierRequests.variant.label.net"),
+        gross: t("supplierRequests.variant.label.gross"),
+      }
+    : {
+        price: t("negotiationScreen.f.price"),
+        moq: t("negotiationScreen.f.moq"),
+        master: null,
+        net: null,
+        gross: null,
+      };
+}
+
 function Fact({
   label,
   mark,
