@@ -225,16 +225,16 @@ test("vencedor, variações de cor e composição por data até a solicitação"
   await expect(card.locator("[data-selection-variations-count]")).toHaveText(
     "2 de 3 cores na compra",
   );
+  // Uma solicitação só, com um item por cor (dono, 26/11/2026): leva
+  // direto a ela.
   await page.click("[data-selection-submit]");
-  await page.waitForURL(/[?&]opened=2/);
-  await expect(page).toHaveURL(/[?&]tab=requested/);
-  await expect(page.locator("[data-selection-opened]")).toBeVisible();
+  await page.waitForURL(/[?&]created=1/);
 
-  // 10. Cada cotação é de uma cor, com as peças dela em cada data.
-  await page.goto("/app/supplier-requests");
-  const rows = page.locator("[data-supplier-request-row]");
+  // 10. Cada item é de uma cor, com as peças dela em cada data.
+  const rows = page.locator("[data-supplier-table-row]");
+  await expect(rows).toHaveCount(2);
   const ids = await rows.evaluateAll((els) =>
-    els.slice(0, 2).map((el) => el.getAttribute("data-supplier-request-row")),
+    els.map((el) => el.getAttribute("data-supplier-table-row")),
   );
   const seen: Record<string, string> = {};
   for (const id of ids) {
@@ -242,9 +242,11 @@ test("vencedor, variações de cor e composição por data até a solicitação"
     const variant = page.locator("[data-request-variant]");
     await expect(variant).toBeVisible();
     const key = (await variant.getAttribute("data-request-variant"))!;
-    const schedule = page.locator("[data-purchase-schedule]");
-    await expect(schedule.locator("tbody tr")).toHaveCount(3);
-    seen[key] = await schedule.innerText();
+    // As entregas ficam no quadro da variação (peças e caixas por data).
+    await expect(
+      variant.locator("[data-request-variant-round]").first(),
+    ).toBeVisible();
+    seen[key] = await variant.innerText();
   }
   expect(Object.keys(seen).sort()).toEqual(["BEGE|1", "MARROM|1"]);
   // BEGE: 768 + 720 = 1.488; MARROM: 720 + 720 = 1.440.

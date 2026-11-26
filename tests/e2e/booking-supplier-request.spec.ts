@@ -177,11 +177,9 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(specs.locator("[data-supplier-table-total-cbm]")).toHaveText(
     /\d/,
   );
-  // Dados complementares na própria linha; o link do Book é só da Wellmix.
-  await specs.locator("[data-supplier-table-details] summary").click();
-  await expect(
-    specs.locator("[data-supplier-table-detail=grossWeight]"),
-  ).toContainText(/0[.,]35/);
+  // Sem o quadro dos dados complementares (dono, 26/11/2026): sem
+  // programação, nem os "Detalhes"; o link do Book é só da Wellmix.
+  await expect(specs.locator("[data-supplier-table-details]")).toHaveCount(0);
   await expect(specs.locator("[data-supplier-table-book]")).toBeVisible();
 
   // 3. O fornecedor A vê primeiro a tabela dos produtos da solicitação e
@@ -516,12 +514,11 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     "Fechamos a 1,30?",
   );
   await expect(page.locator("[data-timeline-entry]")).toHaveCount(4);
-  // Conversa embutida na seção "Negociação e conversa" (no lugar do chat
-  // flutuante, dono, 21/11/2026): a mensagem da tabela está lá, com quem
-  // mandou e para quem foi; "Enviando para" é o responsável (quem abriu a
-  // solicitação). Duplo clique manda uma mensagem só.
-  await page.click("[data-request-chat-toggle]");
-  const chat = page.locator("[data-request-chat]");
+  // Conversa na coluna da direita, abaixo do histórico, já aberta (dono,
+  // 26/11/2026): a mensagem da tabela está lá, com quem mandou e para quem
+  // foi; "Enviando para" é o responsável (quem abriu a solicitação). Duplo
+  // clique manda uma mensagem só.
+  const chat = page.locator("[data-negotiation-aside] [data-request-chat]");
   await expect(chat.locator("[data-request-chat-message]")).toHaveCount(1);
   await expect(chat.locator("[data-request-chat-to]")).toContainText(
     "admin@wellmix.com",
