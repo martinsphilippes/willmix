@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { setTestFamily } from "./helpers/book-family";
 import { withTempStore } from "./setup";
 import { xlsxBytes } from "./xlsx-fixture";
 
@@ -94,6 +95,7 @@ async function answeredRequest(sku: string) {
     filter: { lotId: lot.id },
   });
   await setBookingItemsNcm(admin, [item.id], "7013.37.00");
+  await setTestFamily(lot.id);
   await lots.closeBookingLot(admin, lot.id);
   const request = await svc.openSupplierRequest(admin, {
     itemId: item.id,
@@ -276,6 +278,7 @@ describe("três respostas na tabela", () => {
       filter: { lotId: lot.id },
     });
     await setBookingItemsNcm(admin, [item.id], "7013.37.00");
+    await setTestFamily(lot.id);
     await lots.closeBookingLot(admin, lot.id);
     return svc.openSupplierRequest(admin, {
       itemId: item.id,

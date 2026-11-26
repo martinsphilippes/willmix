@@ -11826,6 +11826,14 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "familyCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
         }
       ],
       "indexes": [

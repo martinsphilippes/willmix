@@ -1251,6 +1251,39 @@ export async function strategyBoard(t: Translate): Promise<{
       suggestedIds,
     };
   });
+  // Item de book (dono, 26/11/2026): a Família do produto da capa do book
+  // dá o nome no cartão e sugere os parceiros da família (sem marcar).
+  const bookLotIds = unique(
+    waiting.map((d) => d.bookingSource?.bookingLotId ?? null),
+  );
+  const bookLots = bookLotIds.length
+    ? await listByIds(store, "booking_lots", bookLotIds)
+    : [];
+  const bookFamilyCodes = unique(bookLots.map((l) => l.familyCode ?? null));
+  const [bookFamilies, bookFamilyLinks] = bookFamilyCodes.length
+    ? await Promise.all([
+        store
+          .list("product_families", { filter: { code: bookFamilyCodes } })
+          .catch(() => []),
+        store
+          .list("party_families", { filter: { familyCode: bookFamilyCodes } })
+          .catch(() => []),
+      ])
+    : [[], []];
+  const bookFamilyOf = (d: Request) => {
+    const code =
+      bookLots.find((l) => l.id === d.bookingSource?.bookingLotId)
+        ?.familyCode ?? null;
+    return code
+      ? {
+          code,
+          name: bookFamilies.find((f) => f.code === code)?.name ?? code,
+          partyIds: bookFamilyLinks
+            .filter((l) => l.familyCode === code)
+            .map((l) => l.partyId),
+        }
+      : null;
+  };
   // Por solicitação (dono, 18/11/2026): os produtos juntos, a última compra
   // comum e os parceiros do País × Família.
   const byKey = new Map<string, StrategyLine[]>();
@@ -1272,6 +1305,9 @@ export async function strategyBoard(t: Translate): Promise<{
         ...bookPartners,
         ...(origin?.supplierIds ?? []),
       ]);
+      const bookFamily = demands
+        .map(bookFamilyOf)
+        .find((f): f is NonNullable<ReturnType<typeof bookFamilyOf>> => !!f);
       const same = sameLastSupplier(productIdsHere, references);
       return {
         key,
@@ -1280,16 +1316,19 @@ export async function strategyBoard(t: Translate): Promise<{
         familyName:
           origin?.familyName ??
           members.find((m) => m.family)?.family?.name ??
-          null,
+          (bookFamily
+            ? `${bookFamily.name} · ${t("partyFamilies.code", { code: bookFamily.code })}`
+            : null),
         last: same ? (references.get(productIdsHere[0]) ?? null) : null,
         // Item de book (sem produto): não há compra anterior.
         missingLast:
           demands.some((d) => !d.productId) ||
           productIdsHere.some((id) => !references.get(id)),
         linkedIds,
-        suggestedIds: unique(
-          members.flatMap((m) => [...m.linkedIds, ...m.suggestedIds]),
-        ).filter((id) => !linkedIds.includes(id)),
+        suggestedIds: unique([
+          ...members.flatMap((m) => [...m.linkedIds, ...m.suggestedIds]),
+          ...(bookFamily?.partyIds ?? []),
+        ]).filter((id) => !linkedIds.includes(id)),
       };
     }),
   );

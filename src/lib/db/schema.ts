@@ -3506,6 +3506,13 @@ export interface BookingLot extends BaseRow {
   /** Tipo de item do book, escolhido na importação (dono, 23/11/2026). Antigos: nulo. */
   itemType?: string | null;
   /**
+   * Família do produto dos itens do book (dono, 26/11/2026): o código do
+   * cadastro de famílias (`product_families`, o 1º nível da árvore de grupos
+   * do Sankhya). A Wellmix escolhe na capa do book e só fecha com ela; na
+   * cotação do item de book, sugere os parceiros da família. Antigos: nulo.
+   */
+  familyCode?: string | null;
+  /**
    * As planilhas que formam o book, na ordem em que os itens entraram (dono,
    * 23/11/2026: várias planilhas num book só). Nulo: uma só, a de `fileName`
    * e `fileDocumentId`.
@@ -6911,6 +6918,7 @@ export const TABLES: Record<TableName, TableDef> = {
       workDoneAt: datetime(),
       itemType: str(80),
       sheetFiles: json(),
+      familyCode: str(40),
     },
     indexes: [
       { key: "by_status", type: "key", columns: ["status"] },

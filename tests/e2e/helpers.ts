@@ -324,9 +324,21 @@ export async function importAndClose(
       page.locator('[data-booking-row-note="saved"]').nth(i),
     ).toBeVisible();
   }
+  await setBookFamily(page);
   await page.click("[data-booking-lot-close-submit]");
   await page.waitForURL(/[?&]closed=1/);
   await expect(page.locator("[data-booking-item-analysis]")).toHaveCount(1);
+}
+
+/**
+ * Família do produto na capa do book (dono, 26/11/2026): o book só fecha
+ * com ela. Escolhe a de utilidades da demonstração e grava.
+ */
+export async function setBookFamily(page: Page, code = "20000000") {
+  await page.locator("select[data-book-family]").selectOption(code);
+  await page.locator("[data-book-family-save]").click();
+  await page.waitForURL(/[?&]family=1/);
+  await expect(page.locator("select[data-book-family]")).toHaveValue(code);
 }
 
 /**

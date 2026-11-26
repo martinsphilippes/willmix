@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { setTestFamily } from "./helpers/book-family";
 import { withTempStore } from "./setup";
 import { xlsxBytes } from "./xlsx-fixture";
 
@@ -126,6 +127,7 @@ async function approvedWith(
     items.map((i) => i.id),
     "7013.37.00",
   );
+  await setTestFamily(lot.id);
   await lots.closeBookingLot(admin, lot.id);
   const lineId = (await store.list("product_lines"))[0].id;
   const out = [];

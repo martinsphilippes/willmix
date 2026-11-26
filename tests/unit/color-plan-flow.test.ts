@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { setTestFamily } from "./helpers/book-family";
 import { withTempStore } from "./setup";
 import { approveMilestones } from "./helpers/approvals";
 import { xlsxBytes } from "./xlsx-fixture";
@@ -184,6 +185,7 @@ async function closedLot(rows: string[][]) {
     items.map((i) => i.id),
     "7013.37.00",
   );
+  await setTestFamily(lot.id);
   await lots.closeBookingLot(admin, lot.id);
   return store.list("booking_items", { filter: { lotId: lot.id } });
 }

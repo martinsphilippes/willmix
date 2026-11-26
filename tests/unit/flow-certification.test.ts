@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { setTestFamily } from "./helpers/book-family";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { withTempStore } from "./setup";
@@ -109,6 +110,7 @@ async function certifiedOrder(codes: [string, string]): Promise<Order> {
     items.map((i) => i.id),
     "7013.37.00",
   );
+  await setTestFamily(lot.id);
   await lots.closeBookingLot(admin, lot.id);
   const requests = [];
   for (const [i, item] of items.entries()) {

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { fillBookMeta, login } from "./helpers";
+import { fillBookMeta, login, setBookFamily } from "./helpers";
 import { xlsxBytes } from "../unit/xlsx-fixture";
 
 /*
@@ -134,6 +134,7 @@ test("Book: a lista de pendências do fechamento leva a cada campo e se atualiza
 
   // Fechar trava: a lista mostra os itens incompletos, com a mesma contagem
   // do "Falta para fechar" (todos sem NCM; o 2 e o 16 com mais campos).
+  await setBookFamily(page);
   await page.click("[data-booking-lot-close-submit]");
   await page.waitForURL(/error=booking_items_incomplete/);
   const list = page.locator("[data-booking-pending-list]");
@@ -214,6 +215,7 @@ test("Book: a lista de pendências do fechamento leva a cada campo e se atualiza
   await expect(
     page.locator("[data-booking-lot-incomplete-done]"),
   ).toBeVisible();
+  await setBookFamily(page);
   await page.click("[data-booking-lot-close-submit]");
   await page.waitForURL(/[?&]closed=1/);
 });

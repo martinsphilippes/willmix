@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { setTestFamily } from "./helpers/book-family";
 import { withTempStore } from "./setup";
 import { xlsxBytes } from "./xlsx-fixture";
 
@@ -86,6 +87,7 @@ async function closedLot(supplierName: string, rows: string[][]) {
     items.map((i) => i.id),
     "7013.37.00",
   );
+  await setTestFamily(lot.id);
   return lots.closeBookingLot(admin, lot.id);
 }
 

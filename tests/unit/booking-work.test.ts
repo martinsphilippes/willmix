@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { setTestFamily } from "./helpers/book-family";
 import { withTempStore } from "./setup";
 import { xlsxBytes } from "./xlsx-fixture";
 
@@ -95,6 +96,7 @@ async function closedLot(rows: string[][], itemType: string) {
     (await itemsOf(lot.id)).map((i) => i.id),
     "7013.37.00",
   );
+  await setTestFamily(lot.id);
   return svc.closeBookingLot(admin, lot.id);
 }
 
@@ -312,6 +314,7 @@ describe("fábrica, fornecedor e fabricante", () => {
     );
     await svc.removeBookingItem(admin, lot.id, wrong[0].id);
     expect((await getStore().get("booking_lots", lot.id))?.itemCount).toBe(3);
+    await setTestFamily(lot.id);
     const closed = await svc.closeBookingLot(admin, lot.id);
     expect(closed.status).toBe("closed");
     // A tela do book não edita mais a loja nem o Supplier: ficam como estão.

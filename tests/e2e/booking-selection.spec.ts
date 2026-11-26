@@ -1,13 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
 import { xlsxBytes } from "../unit/xlsx-fixture";
-import { chooseItem, fillBookMeta } from "./helpers";
+import { chooseItem, fillBookMeta, setBookFamily } from "./helpers";
 
 /*
- * Seleção de itens, abas Itens e Seleção (docs/SUPPLIER_REQUESTS.md): o
- * rascunho aparece (sem poder abrir a solicitação), os filtros de status,
- * fornecedor e período (calendário de intervalo) mudam a lista, a cesta
- * marca todos os da tela e "Agrupar" leva para a comparação; a aba Seleção
- * sugere o bloco dos itens parecidos de vários fornecedores.
+ * Seleção de itens, abas Itens e Seleção (docs/SUPPLIER_REQUESTS.md): só os
+ * itens não trabalhados dos books fechados (o rascunho fica de fora, sem o
+ * filtro de status; dono, 26/11/2026), os filtros do nº do book, do
+ * fornecedor e do período (calendário de intervalo) mudam a lista, a cesta
+ * marca todos os da tela e "Agrupar" leva para a comparação; a seleção em
+ * andamento é guardada sozinha e trava outra até concluir ou cancelar; a
+ * aba Blocos Sugeridos sugere o bloco dos itens parecidos de vários
+ * fornecedores.
  */
 
 const PASSWORD = "wellmix123";
@@ -140,6 +143,7 @@ async function importAndClose(
       page.locator('[data-booking-row-note="saved"]').nth(i),
     ).toBeVisible();
   }
+  await setBookFamily(page);
   await page.click("[data-booking-lot-close-submit]");
   await page.waitForURL(/[?&]closed=1/);
   await expect(page.locator("[data-booking-item-analysis]")).toHaveCount(1);
@@ -209,15 +213,15 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
     "Guangzhou Supplier B",
   );
 
-  // 1. Itens: o rascunho entra, sem poder ser o escolhido.
+  // 1. Itens: só os itens não trabalhados dos books fechados; o rascunho
+  // fica de fora e não há mais o filtro de status (dono, 26/11/2026).
   const base = `/app/booking/selection?q=${TAG}`;
   await page.goto(base);
   const rows = page.locator("[data-selection-item]");
-  await expect(rows).toHaveCount(3);
-  const draftRow = rows.filter({ hasText: `${TAG}-C` });
-  await expect(
-    draftRow.locator('[data-selection-lot-status="draft"]'),
-  ).toBeVisible();
+  await expect(rows).toHaveCount(2);
+  await expect(rows.filter({ hasText: `${TAG}-C` })).toHaveCount(0);
+  await expect(page.locator("[data-selection-filter-status]")).toHaveCount(0);
+  const rowA = rows.filter({ hasText: `${TAG}-A` });
   // Medidas em três colunas (dono, 18/11/2026), cada uma do seu campo da
   // planilha: SIZE(CM) LENGTH 10, WIDTH 8 e HEIGHT 20.
   await expect(page.locator("thead th[data-selection-dim]")).toHaveText([
@@ -225,7 +229,7 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
     "Largura (cm)",
     "Altura (cm)",
   ]);
-  await expect(draftRow.locator("td[data-selection-dim]")).toHaveText([
+  await expect(rowA.locator("td[data-selection-dim]")).toHaveText([
     "10",
     "8",
     "20",
@@ -246,12 +250,21 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(page.locator("[data-selection-choose]")).toHaveCount(0);
   await expect(page.locator("[data-selection-submit]")).toHaveCount(0);
 
-  // 2. Filtro de status: sem o rascunho, sobram os dois fechados.
-  await page.locator('[data-selection-filter-status="draft"]').uncheck();
-  await expect(rows).toHaveCount(2);
+  // 2. Nº do book (dono, 26/11/2026): só os itens daquele book.
+  await page.locator("[data-auto-submit-ready]").waitFor({ state: "attached" });
+  const bookSelect = page.locator("[data-selection-filter-book]");
+  await expect(bookSelect.locator("option")).not.toHaveCount(1);
+  const lotNumberA = (await rowA
+    .locator('a[href^="/app/booking/lots/"]')
+    .first()
+    .innerText())!.replace(/\D/g, "");
+  await bookSelect.selectOption(lotNumberA);
+  await page.waitForURL(new RegExp(`[?&]book=${lotNumberA}`));
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText(`${TAG}-A`);
   await page.goto(base);
 
-  // 3. Fornecedor: só os do B (o fechado e o rascunho). O envio automático
+  // 3. Fornecedor: só o do B (o rascunho fica de fora). O envio automático
   // dos filtros só liga com a página pronta: mexer antes não filtrava (era a
   // causa de este passo falhar de vez em quando).
   await page.locator("[data-auto-submit-ready]").waitFor({ state: "attached" });
@@ -262,12 +275,12 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await supplierSelect.selectOption(
     (await optionB.first().getAttribute("value"))!,
   );
-  await expect(rows).toHaveCount(2);
+  await expect(rows).toHaveCount(1);
   await expect(rows.filter({ hasText: `${TAG}-A` })).toHaveCount(0);
 
   // 4. Período: a data das planilhas é 13/10/2026.
   await page.goto(`${base}&from=2026-10-01&to=2026-10-31`);
-  await expect(rows).toHaveCount(3);
+  await expect(rows).toHaveCount(2);
   await page.goto(`${base}&from=2026-11-01&to=2026-11-30`);
   await expect(rows).toHaveCount(0);
   // Calendário: dois cliques marcam o intervalo e "Aplicar" filtra.
@@ -277,29 +290,27 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await page.click('[data-range-day="2026-10-20"]');
   await page.click("[data-date-range-apply]");
   await page.waitForURL(/from=2026-10-10&to=2026-10-20/);
-  await expect(rows).toHaveCount(3);
+  await expect(rows).toHaveCount(2);
 
   // 5. Cesta: todos os da tela, agrupar e comparar.
   await page.goto(base);
   await page.locator("input[data-basket-all]").check();
   await expect(page.locator("[data-selection-basket]")).toHaveAttribute(
     "data-selection-basket",
-    "3",
+    "2",
   );
   await page.click("[data-selection-group]");
   await page.waitForURL(/tab=selection&ids=/);
+  const groupUrl = page.url();
   await expect(page.locator("[data-selection-group-view]")).toHaveAttribute(
     "data-selection-group-view",
-    "3",
+    "2",
   );
-  // No grupo (aba Seleção) é que se escolhe; o item de rascunho não pode.
-  await expect(
-    page
-      .locator("[data-selection-item]", { hasText: `${TAG}-C` })
-      .locator("[data-selection-choose]"),
-  ).toBeDisabled();
+  // A aba Seleção é a do trabalho da seleção: sem o quadro dos filtros
+  // (dono, 26/11/2026).
+  await expect(page.locator("[data-selection-search]")).toHaveCount(0);
   await expect(page.locator("[data-selection-submit]")).toBeVisible();
-  await expect(page.locator("[data-selection-item]")).toHaveCount(3);
+  await expect(page.locator("[data-selection-item]")).toHaveCount(2);
   // "Prompts de IA para o fornecedor" fora da tela por ora (dono,
   // 26/11/2026): abaixo de "Gravar a escolha do grupo", nada de prompts.
   await expect(page.locator("[data-ai-prompt]")).toHaveCount(0);
@@ -543,13 +554,42 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(qty(4)).toHaveValue("20064");
   await expect(gen.locator("[data-generate-rounds]")).toHaveValue("4");
 
-  // 6. Abas da tela, nesta ordem: Itens → Seleção → Blocos Sugeridos → Com
-  // Solicitação Aberta (dono, 14/11/2026); cada uma mostra só o que é dela.
+  // 5b. Seleção em andamento (dono, 26/11/2026): o que se mexeu ficou
+  // guardado sozinho. De volta aos Itens, o aviso; outra seleção espera esta
+  // ser concluída ou cancelada; a aba Seleção volta nela, como estava.
+  await expect(page.locator("[data-selection-draft-saved]")).toBeVisible();
+  // O rascunho vai a cada instante (1,5 s): espera a última mudança ir.
+  await page.waitForTimeout(3000);
+  await page.goto(base);
+  await expect(page.locator("[data-selection-draft-banner]")).toBeVisible();
+  const idA = (await rowA.getAttribute("data-selection-item"))!;
+  await page.goto(`/app/booking/selection?tab=selection&ids=${idA}`);
+  await expect(page.locator("[data-selection-draft-blocked]")).toBeVisible();
+  await expect(page.locator("[data-selection-item]")).toHaveCount(0);
+  await page.locator("[data-selection-draft-continue]").click();
+  await page.waitForURL(/tab=selection&ids=/);
+  await expect(page.locator("[data-selection-draft-restored]")).toBeVisible();
+  // Volta como estava: o A escolhido e as 4 programações.
+  await expect(
+    rows
+      .filter({ hasText: `${TAG}-A` })
+      .locator("input[data-selection-choose]"),
+  ).toBeChecked();
+  await expect(page.locator("[data-schedule-item]")).toHaveCount(4);
+  // Cancelar: o rascunho some e a seleção fica livre.
+  await page.locator("[data-selection-draft-cancel-this]").click();
+  await page.waitForURL(/[?&]cancelled=1/);
+  await expect(page.locator("[data-selection-draft-banner]")).toHaveCount(0);
+  void groupUrl;
+
+  // 6. Abas da tela, nesta ordem (dono, 26/11/2026): Itens → Blocos
+  // Sugeridos → Seleção → Com Solicitação Aberta; cada uma mostra só o que
+  // é dela.
   await page.goto(`${base}&tab=selection`);
   await expect(page.locator("[data-selection-tab]")).toHaveText([
     "Itens",
-    "Seleção",
     "Blocos Sugeridos",
+    "Seleção",
     "Com Solicitação Aberta",
   ]);
   // Seleção sem grupo aberto: o caminho para os blocos, sem os blocos aqui.
@@ -567,13 +607,14 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   await expect(
     page.locator('[data-selection-tab="blocks"][aria-current="page"]'),
   ).toHaveCount(1);
-  // Blocos Sugeridos: o bloco junta os três copos de dois fornecedores.
+  // Blocos Sugeridos: o bloco junta os dois copos de dois fornecedores (o
+  // do book em rascunho fica de fora).
   const block = page.locator("[data-selection-block]").first();
-  await expect(block).toHaveAttribute("data-selection-block", "3");
+  await expect(block).toHaveAttribute("data-selection-block", "2");
   await expect(block).toContainText("2");
   await block.locator("[data-selection-block-open]").click();
   await page.waitForURL(/ids=/);
-  await expect(page.locator("[data-selection-item]")).toHaveCount(3);
+  await expect(page.locator("[data-selection-item]")).toHaveCount(2);
 
   // 7. "Quantidade (peças)" nos dois modos, com o mesmo valor e travada (só
   // as caixas se digitam, dono, 14/11/2026). Com a programação aberta, Enter
@@ -632,4 +673,8 @@ test("seleção: rascunho, filtros, período, cesta, agrupar e blocos", async ({
   // Em branco, o formulário manda a quantidade vazia: vale a da planilha.
   await savedBoxes.fill("");
   expect(await formQuantity()).toBe("");
+  // Nada gravado aqui: cancela a seleção em andamento (não fica rascunho).
+  await expect(page.locator("[data-selection-draft-saved]")).toBeVisible();
+  await page.locator("[data-selection-draft-cancel-this]").click();
+  await page.waitForURL(/[?&]cancelled=1/);
 });

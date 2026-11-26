@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { setTestFamily } from "./helpers/book-family";
 import { withTempStore } from "./setup";
 import { xlsxBytes } from "./xlsx-fixture";
 
@@ -212,6 +213,7 @@ describe("no booking", () => {
 
     // Fecha; trocar o NCM depois refaz a previsão de preço do item (sem o
     // Sankhya nos testes: "manual", nada previsto); apagar não pode.
+    await setTestFamily(lot.id);
     await lots.closeBookingLot(admin, lot.id);
     const before = (await store.get("booking_items", bottle.id))!.analysis!;
     expect(before).toMatchObject({ source: "price_forecast" });

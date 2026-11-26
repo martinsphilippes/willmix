@@ -158,6 +158,7 @@ import * as divergenceLots from "./divergence-lots";
 import * as purchaseRounds from "./purchase-rounds";
 import * as colorVariants from "./color-variants";
 import * as selectionPacking from "./selection-packing";
+import * as selectionWork from "./selection-work";
 import * as aiReferences from "./ai-references";
 import * as sampling from "./sampling";
 import * as notifications from "./notifications";
@@ -344,6 +345,7 @@ export const modulesPt = {
   ...purchaseRounds.pt,
   ...colorVariants.pt,
   ...selectionPacking.pt,
+  ...selectionWork.pt,
   ...aiReferences.pt,
   ...sampling.pt,
   ...intro.pt,
@@ -532,6 +534,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...purchaseRounds.en,
   ...colorVariants.en,
   ...selectionPacking.en,
+  ...selectionWork.en,
   ...aiReferences.en,
   ...sampling.en,
   ...intro.en,
@@ -720,6 +723,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...purchaseRounds.zh,
   ...colorVariants.zh,
   ...selectionPacking.zh,
+  ...selectionWork.zh,
   ...aiReferences.zh,
   ...sampling.zh,
   ...intro.zh,

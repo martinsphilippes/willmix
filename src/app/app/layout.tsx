@@ -302,6 +302,17 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
       ? await flowCasesFor(user).catch(() => flowTasks)
       : flowTasks,
   );
+  // Seleção de itens (dono, 26/11/2026): os itens não trabalhados dos books
+  // travados para o login (vermelho quando a trava passou do prazo).
+  if (canOpen(user, "booking")) {
+    const { lockedPendingItems } = await import("@/lib/services/booking-lots");
+    const locked = await lockedPendingItems(user).catch(() => null);
+    if (locked?.count)
+      flowCounts.set("new-product/selection", {
+        count: locked.count,
+        overdue: locked.overdue,
+      });
+  }
   const tasksOverdue = flowTasks.filter((x) => x.overdue).length;
   const badgeOf = (l: NavLink) => {
     const c =

@@ -102,21 +102,17 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
     return { row, toggle, others };
   };
   // A lista fica só na aba Com Solicitação Aberta (dono, 14/11/2026): nem os
-  // blocos nem os filtros (que não valem para ela) aparecem ali, e a aba
-  // Blocos Sugeridos não repete a lista.
+  // blocos nem os filtros (que não valem para ela) aparecem ali. Os itens com
+  // a cotação aberta já foram trabalhados e saem dos Blocos Sugeridos (dono,
+  // 26/11/2026): a aba fica sem o bloco.
   await page.goto(
     `/app/booking/selection?q=${encodeURIComponent(TAG)}&tab=blocks`,
   );
-  // O único bloco desta busca já tem solicitação: a aba diz isso e leva à
-  // lista, sem repeti-la.
-  const allRequested = page.locator("[data-selection-blocks-requested]");
-  await expect(allRequested).toBeVisible();
+  await expect(page.locator("[data-selection-block]")).toHaveCount(0);
   await expect(
     page.locator('[data-selection-section="requested"]'),
   ).toHaveCount(0);
-  await allRequested
-    .getByRole("link", { name: "Com Solicitação Aberta" })
-    .click();
+  await page.locator('[data-selection-tab="requested"]').click();
   await page.waitForURL(/tab=requested/);
   await expect(page.locator("[data-selection-blocks]")).toHaveCount(0);
   await expect(page.locator("[data-selection-search]")).toHaveCount(0);
@@ -136,8 +132,10 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   // Com a busca tirando a alternativa da tela (só o escolhido combina), a
   // linha aberta ainda mostra o grupo inteiro: a lista não depende do filtro.
   const onlyChosen = encodeURIComponent(`${TAG} 350ml`);
+  // Em Itens, o escolhido já foi trabalhado e sai da lista (dono,
+  // 26/11/2026).
   await page.goto(`/app/booking/selection?q=${onlyChosen}`);
-  await expect(page.locator("[data-selection-item]")).toHaveCount(1);
+  await expect(page.locator("[data-selection-item]")).toHaveCount(0);
   await page.goto(`/app/booking/selection?q=${onlyChosen}&tab=requested`);
   const filtered = await checkRequestedRow();
   // "Rever a escolha" continua abrindo o grupo para comparar.

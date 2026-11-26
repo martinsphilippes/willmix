@@ -76,6 +76,7 @@ import {
 } from "@/components/booking-lot-fields";
 import {
   closeBookingLotAction,
+  setBookingLotFamilyAction,
   lockBookingLotAction,
   moveBookingLotAction,
   registerBookingLotPartnerAction,
@@ -225,10 +226,17 @@ export default async function BookingLotPage({
   // (dono, 24/11/2026). Diferente, o book não fecha.
   const manufacturer = bookManufacturer(lot);
   const mixed = items.filter((i) => manufacturerMismatch(i, manufacturer));
-  const [itemTypes, settings] = await Promise.all([
+  const [itemTypes, settings, families] = await Promise.all([
     bookingItemTypes(),
     getSettings(),
+    // Família do produto na capa do book (dono, 26/11/2026).
+    import("@/lib/services/product-families")
+      .then((m) => m.listProductFamilies())
+      .catch(() => []),
   ]);
+  const family = lot.familyCode
+    ? (families.find((f) => f.code === lot.familyCode) ?? null)
+    : null;
   const heldLate = held
     ? lockLate(held.minutes, settings.bookingLockSlaHours)
     : false;
@@ -259,7 +267,8 @@ export default async function BookingLotPage({
       })
     : new Map();
   const pending = bookingLotPending(lot, items);
-  const ready = bookingLotReady(pending);
+  // Sem a Família do produto o book não fecha (dono, 26/11/2026).
+  const ready = bookingLotReady(pending) && !!lot.familyCode;
   // Ligações de cada item (fase 4b): solicitações, produto e pedidos.
   const linkAccess = entityLinkAccess(user);
   const lotLinks = await linksForLot(lot.id);
@@ -311,6 +320,7 @@ export default async function BookingLotPage({
   if (one("closed")) notices.push(["success", t("bookingLots.detail.closed")]);
   if (one("moved")) notices.push(["success", t("bookingLots.detail.moved")]);
   if (one("saved")) notices.push(["success", t("bookingLots.detail.saved")]);
+  if (one("family")) notices.push(["success", t("bookFamily.saved")]);
   if (one("locked")) notices.push(["success", t("bookWork.lock.done")]);
   if (one("unlocked")) notices.push(["success", t("bookWork.unlock.done")]);
   if (one("manufacturer"))
@@ -391,6 +401,7 @@ export default async function BookingLotPage({
     pending.items.size
       ? t("bookingLots.pending.items", { n: pending.items.size })
       : null,
+    lot.familyCode ? null : t("bookFamily.pending"),
   ].filter(Boolean) as string[];
 
   // Preço e moeda do Book: só com "Ver preço de compra" (dono, 15/11/2026;
@@ -1133,6 +1144,45 @@ export default async function BookingLotPage({
               [t("bookingLots.col.createdAt"), formatDate(lot.createdAt, t)],
             ]}
           />
+          {/* Família do produto (dono, 26/11/2026): a Wellmix escolhe na capa
+              do book; sem ela o book não fecha. Na cotação, sugere os
+              fornecedores da família. */}
+          {lot.status !== "cancelled" ? (
+            <form
+              action={setBookingLotFamilyAction}
+              className="mt-4 flex flex-wrap items-end gap-2"
+              data-book-family-form
+            >
+              <input type="hidden" name="lotId" value={lot.id} />
+              <div className="min-w-60 flex-1">
+                <Field
+                  label={t("bookFamily.label")}
+                  hint={t("bookFamily.hint")}
+                >
+                  <Select
+                    name="familyCode"
+                    defaultValue={lot.familyCode ?? ""}
+                    data-book-family={lot.familyCode ?? ""}
+                  >
+                    <option value="">{t("bookFamily.choose")}</option>
+                    {families.map((f) => (
+                      <option key={f.code} value={f.code}>
+                        {t("bookFamily.option", { name: f.name, code: f.code })}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <SubmitButton variant="secondary" data-book-family-save>
+                {t("bookFamily.save")}
+              </SubmitButton>
+            </form>
+          ) : family ? (
+            <p className="mt-4 text-sm text-zinc-600" data-book-family-shown>
+              {t("bookFamily.label")}:{" "}
+              {t("bookFamily.option", { name: family.name, code: family.code })}
+            </p>
+          ) : null}
           {/* Loja/Fábrica e Tipo de item: vêm da importação; a Wellmix
               ajusta (e completa nos books antigos). */}
           {lot.status !== "cancelled" ? (
