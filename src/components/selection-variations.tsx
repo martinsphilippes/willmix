@@ -14,6 +14,7 @@ import {
 } from "@/components/selection-quantity";
 import { shrink } from "@/components/photo-input";
 import { uploadDirect } from "@/components/direct-upload";
+import { uploadSelectionArtAction } from "@/app/app/actions/supplier-requests";
 import type { SelectionPacking } from "@/lib/db/schema";
 import {
   MAX_PACKS,
@@ -242,6 +243,7 @@ export function SelectionVariations({
   chosenItemId,
   savedColors,
   savedPacking = null,
+  draftArts = null,
   seesPrice = false,
   labels,
   packLabels,
@@ -253,6 +255,8 @@ export function SelectionVariations({
   savedColors: string[] | null;
   /** Embalagens e variações gravadas (do `chosenItemId`). */
   savedPacking?: SelectionPacking | null;
+  /** Artes do rascunho da seleção (combinação → documento), do `chosenItemId`. */
+  draftArts?: Record<string, string> | null;
   /** Mostra as colunas de preço (permissão "Ver preço de compra"). */
   seesPrice?: boolean;
   labels: VariationLabels;
@@ -267,8 +271,19 @@ export function SelectionVariations({
       : {};
   });
   const [arts, setArts] = useState<Record<string, Record<string, Art>>>(() =>
-    chosenItemId && savedPacking
-      ? { [chosenItemId]: savedArts(savedPacking) }
+    chosenItemId && (savedPacking || draftArts)
+      ? {
+          [chosenItemId]: {
+            ...savedArts(savedPacking),
+            // Rascunho (dono, 26/11/2026): as artes já registradas voltam.
+            ...Object.fromEntries(
+              Object.entries(draftArts ?? {}).map(([key, docId]) => [
+                key,
+                { kind: "kept" as const, docId },
+              ]),
+            ),
+          },
+        }
       : {},
   );
   const [artBusy, setArtBusy] = useState<string | null>(null);
@@ -422,15 +437,22 @@ export function SelectionVariations({
   const packKey = item ? `${item.id}|${x1 ?? ""}|${cbm1 ?? ""}` : "";
   useEffect(() => {
     if (!item) return;
-    ref.current?.closest("form")?.dispatchEvent(
-      new CustomEvent<PackingEventDetail>(PACKING_EVENT, {
-        detail: {
-          itemId: item.id,
-          carton: st?.alterOn && !alterError ? x1 : null,
-          cbm: st?.alterOn && !alterError ? cbm1 : null,
-        },
-      }),
-    );
+    const send = () =>
+      ref.current?.closest("form")?.dispatchEvent(
+        new CustomEvent<PackingEventDetail>(PACKING_EVENT, {
+          detail: {
+            itemId: item.id,
+            carton: st?.alterOn && !alterError ? x1 : null,
+            cbm: st?.alterOn && !alterError ? cbm1 : null,
+          },
+        }),
+      );
+    send();
+    // Ao abrir com a escolha gravada ou o rascunho, a Programação de compra
+    // (mais abaixo na tela) ainda não ouve: o aviso vai de novo no quadro
+    // seguinte (o repetido não muda nada).
+    const frame = requestAnimationFrame(send);
+    return () => cancelAnimationFrame(frame);
     // `packKey` resume o item, a caixa e o CBM.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packKey]);
@@ -440,17 +462,23 @@ export function SelectionVariations({
     : "";
   useEffect(() => {
     if (!item) return;
-    ref.current?.closest("form")?.dispatchEvent(
-      new CustomEvent<ColorsEventDetail>(COLORS_EVENT, {
-        detail: {
-          itemId: item.id,
-          colors: comboKeys,
-          // Sem nenhuma variação incluída, o aviso é deste card.
-          all: noneError ? [] : comboKeys,
-          names,
-        },
-      }),
-    );
+    const send = () =>
+      ref.current?.closest("form")?.dispatchEvent(
+        new CustomEvent<ColorsEventDetail>(COLORS_EVENT, {
+          detail: {
+            itemId: item.id,
+            colors: comboKeys,
+            // Sem nenhuma variação incluída, o aviso é deste card.
+            all: noneError ? [] : comboKeys,
+            names,
+          },
+        }),
+      );
+    send();
+    // Como o aviso da caixa: de novo no quadro seguinte, para a Programação
+    // de compra que ainda não ouvia ao abrir.
+    const frame = requestAnimationFrame(send);
+    return () => cancelAnimationFrame(frame);
     // `colorsKey` resume o item e as combinações.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [colorsKey]);
@@ -494,13 +522,15 @@ export function SelectionVariations({
     try {
       const reduced = await shrink(file, 1600, 0.82);
       const ids = await uploadDirect([reduced], () => {});
-      const url = URL.createObjectURL(reduced);
-      setArt(
-        key,
-        ids?.[0]
-          ? { kind: "uploaded", id: ids[0], url }
-          : { kind: "file", file: reduced, url },
-      );
+      // A arte vira documento na hora, para ficar no rascunho da seleção
+      // (dono, 26/11/2026): direto ao armazenamento quando dá, senão pelo
+      // servidor.
+      const body = new FormData();
+      if (ids?.[0]) body.set("uploaded", ids[0]);
+      else body.set("file", reduced);
+      const result = await uploadSelectionArtAction(body);
+      if (!result.ok || !result.id) throw new Error(result.error ?? "art");
+      setArt(key, { kind: "kept", docId: result.id });
     } catch (err) {
       console.error("arte da combinação", err);
       setArtError(packLabels?.artFailed ?? "");

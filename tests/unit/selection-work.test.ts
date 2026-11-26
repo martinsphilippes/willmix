@@ -157,6 +157,10 @@ describe("seleção em andamento", () => {
         chosen: ["it-1"],
         needs: ["Caixa com a marca"],
         "art.|1": ["arquivo"],
+        "artUploaded.|1": ["chave-do-armazenamento"],
+        // A arte já registrada (documento) fica no rascunho (dono, 26/11/2026).
+        "artKeep.Azul|1": ["doc-arte-1"],
+        "artKeep.Verde|1": ["../fora"],
         quantity: ["480"],
       },
     });
@@ -167,8 +171,11 @@ describe("seleção em andamento", () => {
       needs: ["Caixa com a marca"],
       quantity: ["480"],
     });
-    // As artes (arquivos) não entram no rascunho.
+    // O arquivo e a chave do armazenamento não entram; o documento entra.
     expect(saved.values["art.|1"]).toBeUndefined();
+    expect(saved.values["artUploaded.|1"]).toBeUndefined();
+    expect(saved.values["artKeep.Azul|1"]).toEqual(["doc-arte-1"]);
+    expect(saved.values["artKeep.Verde|1"]).toBeUndefined();
     // A mesma seleção continua salvando; outra é recusada.
     await drafts.saveSelectionDraft(admin, {
       ids: ["it-2", "it-1"],
@@ -184,6 +191,30 @@ describe("seleção em andamento", () => {
     await drafts.clearSelectionDraft(admin);
     expect(await drafts.loadSelectionDraft(admin)).toBeNull();
     await drafts.assertSelectionFree(admin, ["it-9"]);
+  });
+});
+
+describe("arte da combinação no rascunho", () => {
+  it("vira documento interno na hora; só imagem", async () => {
+    const png = new File(
+      [new Uint8Array([137, 80, 78, 71, 1, 2, 3])],
+      "a.png",
+      {
+        type: "image/png",
+      },
+    );
+    const id = await drafts.registerSelectionArt(admin, { file: png });
+    const doc = (await getStore().get("documents", id))!;
+    expect(doc.type).toBe("photo");
+    expect(doc.visibility).toBe("internal");
+    expect(doc.uploadedByUserId).toBe(admin.id);
+    const txt = new File(["oi"], "a.txt", { type: "text/plain" });
+    await expect(
+      drafts.registerSelectionArt(admin, { file: txt }),
+    ).rejects.toThrow("mime");
+    await expect(drafts.registerSelectionArt(admin, {})).rejects.toThrow(
+      "invalid_input",
+    );
   });
 });
 

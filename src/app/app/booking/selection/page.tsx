@@ -742,6 +742,7 @@ export default async function BookingSelectionPage({
           chosenItemId={chosenNow}
           savedColors={restore ? null : (current?.colorPlan?.included ?? null)}
           savedPacking={restore?.packing ?? current?.packing ?? null}
+          draftArts={restore?.arts ?? null}
           seesPrice={seesPrice}
           packLabels={packingLabels(t)}
           labels={{
@@ -1729,8 +1730,14 @@ function restoreFromDraft(values: Record<string, string[]>) {
     ? json<Record<string, number>>(`colorCartons.${chosen}`)
     : null;
   const quantity = Number(one("quantity") ?? "");
+  // As artes registradas (dono, 26/11/2026): `artKeep.<combinação>` → documento.
+  const arts: Record<string, string> = {};
+  for (const [key, list] of Object.entries(values))
+    if (key.startsWith("artKeep.") && list[0])
+      arts[key.slice("artKeep.".length)] = list[0];
   return {
     chosen,
+    arts,
     quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : null,
     schedule,
     needs: one("needs"),

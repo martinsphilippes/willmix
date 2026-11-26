@@ -169,7 +169,11 @@ async function packingPlan(
         arts.set(key, (await uploadDocument(user, file, target)).id);
       } else if (uploaded)
         arts.set(key, (await registerUploadedPhoto(user, uploaded, target)).id);
-      else if (kept) arts.set(key, kept);
+      else if (kept) {
+        // A gravada antes ou a do rascunho (já documento): só uma imagem.
+        const doc = await getStore().get("documents", kept);
+        if (doc && (doc.mime ?? "").startsWith("image/")) arts.set(key, kept);
+      }
     }
   }
   return {
