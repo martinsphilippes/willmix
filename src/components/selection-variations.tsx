@@ -437,15 +437,22 @@ export function SelectionVariations({
   const packKey = item ? `${item.id}|${x1 ?? ""}|${cbm1 ?? ""}` : "";
   useEffect(() => {
     if (!item) return;
-    ref.current?.closest("form")?.dispatchEvent(
-      new CustomEvent<PackingEventDetail>(PACKING_EVENT, {
-        detail: {
-          itemId: item.id,
-          carton: st?.alterOn && !alterError ? x1 : null,
-          cbm: st?.alterOn && !alterError ? cbm1 : null,
-        },
-      }),
-    );
+    const send = () =>
+      ref.current?.closest("form")?.dispatchEvent(
+        new CustomEvent<PackingEventDetail>(PACKING_EVENT, {
+          detail: {
+            itemId: item.id,
+            carton: st?.alterOn && !alterError ? x1 : null,
+            cbm: st?.alterOn && !alterError ? cbm1 : null,
+          },
+        }),
+      );
+    send();
+    // Ao abrir com a escolha gravada ou o rascunho, a Programação de compra
+    // (mais abaixo na tela) ainda não ouve: o aviso vai de novo no quadro
+    // seguinte (o repetido não muda nada).
+    const frame = requestAnimationFrame(send);
+    return () => cancelAnimationFrame(frame);
     // `packKey` resume o item, a caixa e o CBM.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packKey]);
@@ -455,17 +462,23 @@ export function SelectionVariations({
     : "";
   useEffect(() => {
     if (!item) return;
-    ref.current?.closest("form")?.dispatchEvent(
-      new CustomEvent<ColorsEventDetail>(COLORS_EVENT, {
-        detail: {
-          itemId: item.id,
-          colors: comboKeys,
-          // Sem nenhuma variação incluída, o aviso é deste card.
-          all: noneError ? [] : comboKeys,
-          names,
-        },
-      }),
-    );
+    const send = () =>
+      ref.current?.closest("form")?.dispatchEvent(
+        new CustomEvent<ColorsEventDetail>(COLORS_EVENT, {
+          detail: {
+            itemId: item.id,
+            colors: comboKeys,
+            // Sem nenhuma variação incluída, o aviso é deste card.
+            all: noneError ? [] : comboKeys,
+            names,
+          },
+        }),
+      );
+    send();
+    // Como o aviso da caixa: de novo no quadro seguinte, para a Programação
+    // de compra que ainda não ouvia ao abrir.
+    const frame = requestAnimationFrame(send);
+    return () => cancelAnimationFrame(frame);
     // `colorsKey` resume o item e as combinações.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [colorsKey]);
