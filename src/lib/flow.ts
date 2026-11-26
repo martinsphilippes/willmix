@@ -65,6 +65,15 @@ export const FLOW_STEPS: FlowStep[] = [
   // Negociações). A chave continua "negotiations" (endereços e indicadores
   // gravados); as telas antigas seguem abrindo pelo endereço.
   s("new-product", "negotiations", "quotes", "/app/supplier-requests"),
+  // Cadastrar produto (dono, 26/11/2026; docs/PRODUCT_REGISTRATION.md): o
+  // produto que veio do book, aprovado na cotação, ganha o cadastro do
+  // Sankhya numa tela própria, logo depois da Cotação.
+  s(
+    "new-product",
+    "registration",
+    "productRegistration",
+    "/app/product-registration",
+  ),
   // Pedido.
   // Pedidos: o passo em que o pedido é criado (dono, 14/11/2026), com tela
   // própria (a lista /app/orders continua pelo endereço e pelo link da tela).
@@ -341,6 +350,7 @@ const KIND_STEP: Partial<Record<string, Ref>> = {
   purchase_quote_inner: "new-product/negotiations",
   purchase_quote_empty: "new-product/negotiations",
   purchase_quote_approve: "new-product/negotiations",
+  product_registration: "new-product/registration",
   // Ficha técnica corrigida pelo fornecedor: o Cadastro, em Cadastros → Produtos.
   supplier_sheet_review: "registry/products",
   after_sales: "sales/sale",

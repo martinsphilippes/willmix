@@ -15,6 +15,7 @@ A seção "Produto novo" passou a se chamar **Cotação** (a chave do grupo cont
 | Seleção de itens           | `/app/booking/selection`                                                               |
 | Estratégia de compra       | `/app/purchase-strategy`                                                               |
 | **Cotação**                | `/app/supplier-requests`                                                               |
+| **Cadastrar produto**      | `/app/product-registration` (dono, 26/11/2026; docs/PRODUCT_REGISTRATION.md)           |
 
 - "Entrada" não tem tela própria: o nome abre e fecha os três subitens (`NavLink.children`, `NavSubGroup` em `src/components/app-nav.tsx`). Abre sozinho quando a tela atual é de um dos três. Cada subitem mantém o seu contador; fechado, "Entrada" mostra a soma.
 - "Cotação" acende também em `/app/purchase-quotes` e em `/app/supplier-requests/invites` (`NavLink.match`).
@@ -110,7 +111,7 @@ Pedido do dono (22/11/2026): trocar o nome para Cotação não pode perder proce
 | Alternativas e "Abrir solicitação para esta"                                  | Igual, abaixo da Decisão.                                                                                     |
 | Solicitações ligadas ("continuar negociando" ou recusar)                      | Igual; as ligadas também aparecem como linhas do quadro.                                                      |
 | Amostragem (fotos e vídeos, validar)                                          | Igual depois da aprovação; desde 22/11/2026 também pode começar na cotação (docs/SUPPLIER_SAMPLING.md).       |
-| Produto (criar, associar, liberar na vitrine, código do Sankhya)              | Igual, no fim da tela.                                                                                        |
+| Produto (criar, associar, liberar na vitrine, código do Sankhya)              | Desde 26/11/2026, na tela Cadastrar produto (docs/PRODUCT_REGISTRATION.md); na cotação, o atalho.             |
 | Aviso do pedido de compra (gerar ou abrir o pedido)                           | Igual.                                                                                                        |
 | Book, seleção e a previsão de preço do item escolhido                         | Card Book, à direita (só quando há book).                                                                     |
 | Histórico de interações                                                       | Igual, à direita.                                                                                             |

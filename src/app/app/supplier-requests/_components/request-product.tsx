@@ -54,19 +54,21 @@ function SearchForm({
   label,
   value,
   query,
+  home,
   t,
 }: {
   name: "iq" | "pq" | "eq";
   label: string;
   value: string;
   query: RequestProductData["query"];
+  home?: "registration";
   t: Translate;
 }) {
   const keep = { iq: query.items, pq: query.products, eq: query.erp };
   return (
     <form method="get" className="flex flex-wrap items-end gap-2">
       {/* Fica na tela do produto (sem isso a busca voltava à tabela). */}
-      <input type="hidden" name="view" value="item" />
+      {home ? null : <input type="hidden" name="view" value="item" />}
       {(Object.keys(keep) as Array<keyof typeof keep>)
         .filter((k) => k !== name && keep[k])
         .map((k) => (
@@ -88,7 +90,7 @@ function SearchForm({
   );
 }
 
-function ItemList({
+export function ItemList({
   choices,
   chosenId,
   checkedIds,
@@ -145,7 +147,7 @@ function ItemList({
   );
 }
 
-function DealSummary({
+export function DealSummary({
   deal,
   t,
 }: {
@@ -204,18 +206,112 @@ function ErpChecklist({ rows, t }: { rows: ErpReadiness[]; t: Translate }) {
   );
 }
 
+/** Volta das ações para a tela Cadastrar produto (docs/PRODUCT_REGISTRATION.md). */
+function HomeInput({ home }: { home?: "registration" }) {
+  return home ? <input type="hidden" name="home" value={home} /> : null;
+}
+
 export function RequestProductCard({
   data,
   t,
+  home,
 }: {
   data: RequestProductData;
   t: Translate;
+  /**
+   * "registration": na tela Cadastrar produto, que tem o cadastro completo.
+   * Sem produto, o quadro só associa a um produto que já existe; as ações
+   * voltam para lá.
+   */
+  home?: "registration";
 }) {
   const { request: r, product, choices, query } = data;
   // Os itens da seleção (alternativas e grupo comparado) vêm marcados.
   const alternatives = new Set(choices.suggested.map((c) => c.item.id));
   const free = (list: ItemChoice[]) =>
     list.filter((c) => !c.item.productId || c.item.productId === product?.id);
+
+  if (!product && home === "registration") {
+    // O cadastro novo é o formulário da tela; aqui, só associar a um
+    // produto que já existe (com os itens da seleção, marcados como antes).
+    const checked = [
+      r.bookingItemId,
+      ...choices.suggested.map((c) => c.item.id),
+    ].filter(Boolean);
+    return (
+      <Card title={t("productRegistration.exists.title")}>
+        <p className="mb-3 text-sm text-zinc-600">
+          {t("productRegistration.exists.hint")}
+        </p>
+        <div className="mb-3">
+          <SearchForm
+            name="pq"
+            label={t("srProduct.searchProducts")}
+            value={query.products}
+            query={query}
+            home={home}
+            t={t}
+          />
+        </div>
+        {data.catalog.length ? (
+          <form
+            action={requestProductAction}
+            className="space-y-2"
+            data-request-product-link-form
+          >
+            <input type="hidden" name="id" value={r.id} />
+            <HomeInput home={home} />
+            {[...new Set(checked)].map((id) => (
+              <input key={id} type="hidden" name="itemIds" value={id} />
+            ))}
+            {!query.products ? (
+              <p className="text-xs text-zinc-500">
+                {t("srProduct.link.suggested")}
+              </p>
+            ) : null}
+            <ul className="max-h-64 divide-y divide-zinc-100 overflow-y-auto rounded-lg border border-zinc-200 text-sm">
+              {data.catalog.map((p) => (
+                <li key={p.id} className="flex items-center gap-2 px-3 py-2">
+                  <input
+                    type="radio"
+                    name="productId"
+                    value={p.id}
+                    aria-label={p.name}
+                    data-request-product-choose={p.id}
+                  />
+                  <span className="flex-1">
+                    {p.name}{" "}
+                    <span className="text-xs text-zinc-500">
+                      {[
+                        p.sku,
+                        p.supplierSku,
+                        p.sankhyaCode ? `CODPROD ${p.sankhyaCode}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <SubmitButton
+              name="mode"
+              value="link"
+              variant="secondary"
+              pendingText={t("srProduct.pending")}
+              data-request-product-link
+            >
+              {t("srProduct.link.submit")}
+            </SubmitButton>
+          </form>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            {t(query.products ? "srProduct.link.empty" : "srProduct.link.none")}
+          </p>
+        )}
+      </Card>
+    );
+  }
 
   if (!product) {
     const all = [...choices.suggested, ...free(choices.found)];
@@ -228,6 +324,7 @@ export function RequestProductCard({
             label={t("srProduct.searchItems")}
             value={query.items}
             query={query}
+            home={home}
             t={t}
           />
           <SearchForm
@@ -235,6 +332,7 @@ export function RequestProductCard({
             label={t("srProduct.searchProducts")}
             value={query.products}
             query={query}
+            home={home}
             t={t}
           />
         </div>
@@ -406,6 +504,7 @@ export function RequestProductCard({
             <Alert tone="warning">{t("srProduct.hidden")}</Alert>
             <form action={releaseRequestProductAction}>
               <input type="hidden" name="id" value={r.id} />
+              <HomeInput home={home} />
               <SubmitButton
                 variant="secondary"
                 pendingText={t("srProduct.pending")}
@@ -428,6 +527,7 @@ export function RequestProductCard({
             label={t("srProduct.searchItems")}
             value={query.items}
             query={query}
+            home={home}
             t={t}
           />
           {found.length ? (
@@ -436,6 +536,7 @@ export function RequestProductCard({
               className="mt-2 space-y-2"
             >
               <input type="hidden" name="id" value={r.id} />
+              <HomeInput home={home} />
               <ItemList
                 choices={found}
                 chosenId=""
@@ -481,6 +582,7 @@ export function RequestProductCard({
             label={t("srProduct.searchErp")}
             value={query.erp}
             query={query}
+            home={home}
             t={t}
           />
           {erp?.status === "not_configured" ? (
@@ -513,6 +615,7 @@ export function RequestProductCard({
                     </span>
                     <form action={setRequestErpCodeAction}>
                       <input type="hidden" name="id" value={r.id} />
+                      <HomeInput home={home} />
                       <input type="hidden" name="erpCode" value={row.code} />
                       <SubmitButton variant="ghost">
                         {t("srProduct.erp.use")}
@@ -532,6 +635,7 @@ export function RequestProductCard({
             className="mt-3 flex flex-wrap items-end gap-2"
           >
             <input type="hidden" name="id" value={r.id} />
+            <HomeInput home={home} />
             <div className="w-40">
               <Field label={t("srProduct.erp.code")}>
                 <Input

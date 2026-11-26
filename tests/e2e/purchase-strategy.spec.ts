@@ -84,12 +84,15 @@ async function firstPurchase(page: Page): Promise<string> {
   await page.goto(itemUrl);
   await page.click("[data-sampling-review=approve]");
   await page.waitForURL(/[?&]sampling=approved/);
+  // Cadastrar produto (docs/PRODUCT_REGISTRATION.md): tela própria.
+  const registrationUrl = `/app/product-registration/${requestId}`;
+  await page.goto(registrationUrl);
   await page.fill("[data-request-product-name]", productName);
   await page.selectOption("[data-request-product-line]", "linha-utilidades");
   await page.click("[data-request-product-create]");
   await page.waitForURL(/[?&]product=created/);
   // Liberado na vitrine: o cliente encomenda pela tela dele.
-  await page.goto(itemUrl);
+  await page.goto(registrationUrl);
   await page.click("[data-request-product-release]");
   await page.waitForURL(/[?&]product=released/);
   await page.goto("/app/supplier-requests?tab=closed");

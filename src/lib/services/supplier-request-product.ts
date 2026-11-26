@@ -399,13 +399,21 @@ export interface CreateRequestProductInput {
   itemIds: string[];
 }
 
-/** Cria o produto (fora da vitrine) a partir da solicitação aprovada. */
+/**
+ * Cria o produto (fora da vitrine) a partir da solicitação aprovada. Pela
+ * tela Cadastrar produto (`access: "registration"`, docs/PRODUCT_REGISTRATION.md)
+ * basta a tela Cadastrar produto; pelo bloco antigo, Cotação e Produtos.
+ */
 export async function createProductFromRequest(
   user: User,
   requestId: string,
   input: CreateRequestProductInput,
+  options: { access?: "registration" } = {},
 ): Promise<Product> {
-  assertCatalog(user);
+  if (options.access === "registration") {
+    assertWellmix(user);
+    assertScreen(user, "productRegistration");
+  } else assertCatalog(user);
   const store = getStore();
   const request = await approvedRequest(requestId);
   if (request.productId)

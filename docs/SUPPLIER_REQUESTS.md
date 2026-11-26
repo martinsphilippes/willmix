@@ -176,6 +176,7 @@ Na tabela dos produtos da solicitação (Wellmix e fornecedor), o nível é o do
    - nenhuma ação, porque a resposta é por produto.
 
    Com programação, cada produto e as suas sublinhas ficam num `tbody` próprio (`data-supplier-table-group`). As sublinhas (`data-supplier-table-round`) só aparecem com o `<details>` do item aberto, pela regra CSS com `:has()` em `src/app/globals.css`. Sem programação, a tabela fica num `tbody` só, como antes, com a ordenação pelos títulos; com os grupos, a tabela não se ordena pelos títulos, para a sublinha não se separar do produto.
+
 3. **Total de peças** sem a linha cinza que somava as unidades.
 4. **Item com embalagem modificada vira Set** (`variant.units` ≥ 2):
    - a tabela conta sets: "Total de sets", "Sets por programação", "Sets/caixa master", "Sets/caixa interna" e o MOQ "em sets";
@@ -183,6 +184,7 @@ Na tabela dos produtos da solicitação (Wellmix e fornecedor), o nível é o do
    - entra a coluna **"Peças por set"** (`data-supplier-table-pieces-per-set`).
 
    Os textos ficam em `src/i18n/modules/selection-packing.ts` (`supplierRequests.table.set.*`). Teste: `tests/unit/supplier-table-rounds.test.ts`.
+
 5. **Sem o quadro dos Detalhes** (dono, 26/11/2026, segunda rodada): cores, função, pesos e NCM saíram do "Detalhes" do item. Os "Detalhes" só aparecem quando há programação e só abrem as sublinhas. O link do Book (só da Wellmix) fica abaixo do nome.
 6. **Foto, nº e produto fixos** à esquerda na rolagem horizontal, a partir de 768px (`LEFT` em `supplier-table.tsx`; a foto e o nº em caixas de largura certa, `--pin-photo` e `--pin-number`). No celular, as três ocupariam a tela.
 8. **"Foto Marketing"** (dono, 26/11/2026): a arte que a Wellmix pôs na variação × embalagem é a segunda coluna, logo depois da Foto, fixa junto com ela, o nº e o produto, e aparece também nas sublinhas (`data-supplier-table-marketing`; a Foto mostra só a foto do Book). A coluna só existe quando a tabela tem itens de variação × embalagem; sem ela, `--pin-mkt` é zero e as colunas fixas ficam como antes.
@@ -372,6 +374,8 @@ Tabela `selection_groups` (escolha por grupo): `status` saved/requested/replaced
 A aprovação abre a **Amostragem**: o responsável pelo booking envia fotos e vídeos de uma amostra do item e a Wellmix aprova ou reprova (docs/SUPPLIER_SAMPLING.md). O produto e o pedido de compra só saem depois da amostra aprovada; prazo padrão de 1 dia.
 
 ## Produto (depois de aprovada; decisão do dono, 10/11/2026)
+
+> **26/11/2026 (docs/PRODUCT_REGISTRATION.md):** o bloco saiu da tela da cotação e virou a tela **Cadastrar produto**, logo depois de Cotação no menu, com todos os campos do cadastro do Sankhya e o envio pela API. As regras abaixo continuam valendo lá (criar com a ficha, associar, itens iguais, vitrine e CODPROD); na cotação fica o atalho.
 
 Na solicitação **Aprovada**, a Wellmix que abre Cotações e Produtos vê o bloco **Produto**, no próprio detalhe da solicitação.
 

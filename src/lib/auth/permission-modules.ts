@@ -37,6 +37,7 @@ export const PERMISSION_MODULES: readonly PermissionModule[] = [
       "booking",
       "quotes",
       "purchaseStrategy",
+      "productRegistration",
       "sourcing",
     ],
     actions: [

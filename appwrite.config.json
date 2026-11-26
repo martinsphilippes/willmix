@@ -13933,6 +13933,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "registration",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "longtext"
         }
       ],
       "indexes": [

@@ -28,6 +28,7 @@ import {
   linkedSupplierRequests,
   supplierRequestGroup,
 } from "@/lib/services/supplier-requests";
+import { productNameText } from "@/i18n";
 import { getT } from "@/i18n/server";
 import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
 import { errorTextsFor, fallbackError } from "@/i18n/error-text";
@@ -75,10 +76,6 @@ import {
 import { agreedConditions } from "@/lib/services/supplier-request-product";
 import { forecastNegotiatedItem } from "@/lib/services/booking-price-forecast";
 import { STATUS_TONE } from "../_components/status";
-import {
-  RequestProductCard,
-  type RequestProductData,
-} from "../_components/request-product";
 import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { SupplierNoLoginAlert } from "@/components/supplier-no-login";
@@ -356,68 +353,65 @@ export default async function SupplierRequestPage({
   }
 
   // Bloco "Produto": a Wellmix que abre Produtos, na solicitação aprovada.
-  let productData: RequestProductData | null = null;
+  // O cadastro saiu desta tela (dono, 26/11/2026; docs/PRODUCT_REGISTRATION.md):
+  // fica em Cadastrar produto, depois da Cotação no menu; aqui, o atalho.
   // Produto (criar ou associar) e pedido de compra só depois da amostra
   // aprovada (decisão do dono, 12/11/2026; docs/SUPPLIER_SAMPLING.md).
   const productWaitsSample =
     wellmix && r.status === "approved" && !r.productId && !samplingApproved(r);
-  if (
+  const registrationProduct =
     wellmix &&
     r.status === "approved" &&
-    canOpen(user, "products") &&
-    !productWaitsSample
-  ) {
-    const svc = await import("@/lib/services/supplier-request-product");
-    const store = getStore();
-    const q = {
-      items: one("iq").slice(0, 80),
-      products: one("pq").slice(0, 80),
-      erp: one("eq").slice(0, 80),
-    };
-    const [product, lines, choices, catalog, erp, chosenItem] =
-      await Promise.all([
-        r.productId ? store.get("products", r.productId) : null,
-        store.list("product_lines", {
-          filter: { active: true },
-          orderBy: "name",
-        }),
-        svc.requestItemChoices(r, q.items),
-        r.productId
-          ? Promise.resolve([])
-          : q.products
-            ? svc.searchCatalogProducts(q.products)
-            : svc.suggestCatalogProducts(r),
-        r.productId && q.erp ? svc.searchSankhyaProducts(q.erp) : null,
-        r.productId ? null : store.get("booking_items", r.bookingItemId),
-      ]);
-    const linkedCount = product
-      ? (
-          await store.list("booking_items", {
-            filter: { productId: product.id },
-          })
-        ).length
-      : 0;
-    const suggestedName = (it.productName ?? it.description ?? "").slice(
-      0,
-      160,
-    );
-    productData = {
-      request: r,
-      product,
-      linkedCount,
-      lines,
-      choices,
-      catalog,
-      erp,
-      query: q,
-      suggestedName,
-      // Sem "Ver preço de compra": as condições combinadas sem o preço.
-      deal: seesPrice
-        ? svc.agreedConditions(r)
-        : { ...svc.agreedConditions(r), price: null, currency: null },
-      readiness: product ? [] : svc.erpReadiness(r, chosenItem, suggestedName),
-    };
-  }
+    canOpen(user, "productRegistration") &&
+    r.productId
+      ? await getStore().get("products", r.productId)
+      : null;
+  const registrationCard =
+    wellmix &&
+    r.status === "approved" &&
+    canOpen(user, "productRegistration") ? (
+      <Card title={t("srProduct.title")}>
+        <div
+          className="flex flex-wrap items-center gap-2 text-sm"
+          data-request-product-registration-card
+        >
+          {registrationProduct ? (
+            <>
+              <Badge tone="success">
+                {t(
+                  r.productAction === "linked"
+                    ? "srProduct.done.linked"
+                    : "srProduct.done.created",
+                )}
+              </Badge>
+              <Link
+                href={`/app/products/${registrationProduct.id}`}
+                className={linkClass}
+                data-request-product-open
+              >
+                {productNameText(t, registrationProduct.name)}
+              </Link>
+              <span className="text-zinc-600" data-request-product-erp-code>
+                {registrationProduct.sankhyaCode
+                  ? `CODPROD ${registrationProduct.sankhyaCode}`
+                  : "CODPROD —"}
+              </span>
+            </>
+          ) : (
+            <span className="text-zinc-700">
+              {t("productRegistration.quoteCard.pending")}
+            </span>
+          )}
+          <LinkButton
+            href={`/app/product-registration/${r.id}`}
+            variant={registrationProduct ? "secondary" : "primary"}
+            data-request-product-registration
+          >
+            {t("productRegistration.goRegistration")}
+          </LinkButton>
+        </div>
+      </Card>
+    ) : null;
 
   const proposalPending = !!pendingProposal(r.negotiation);
   // Solicitações ligadas (item e alternativas): aprovada uma, as em
@@ -1655,9 +1649,9 @@ export default async function SupplierRequestPage({
           <Alert tone="info">{t("sampling.productBlocked")}</Alert>
         </div>
       ) : null}
-      {productData ? (
+      {registrationCard ? (
         <div className="mt-4" data-request-product>
-          <RequestProductCard data={productData} t={t} />
+          {registrationCard}
         </div>
       ) : null}
     </>
