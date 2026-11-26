@@ -808,14 +808,9 @@ export async function reloadBookingLotPhotosAction(form: FormData) {
     const { reloadBookingLotPhotos } =
       await import("@/lib/services/booking-lots");
     const result = await reloadBookingLotPhotos(user, lotId);
-    return withQuery(
-      withQuery(
-        withQuery(back, "photosFilled", String(result.filled)),
-        "photosMissing",
-        String(result.missing),
-      ),
-      "photosFailed",
-      String(result.failedSheets),
-    );
+    let to = withQuery(back, "photosFilled", String(result.filled));
+    to = withQuery(to, "photosAdded", String(result.photos));
+    to = withQuery(to, "photosMissing", String(result.missing));
+    return withQuery(to, "photosFailed", String(result.failedSheets));
   });
 }

@@ -254,11 +254,13 @@ export const pt = {
   "bookingLots.photos.reload": "Buscar as fotos na planilha",
   "bookingLots.photos.reloadPending": "Buscando as fotos…",
   "bookingLots.photos.reloadHint":
-    "{n} item(ns) sem foto. Lê de novo a planilha guardada e põe as fotos que encontrar; nada mais muda.",
+    "{n} item(ns) sem foto. Lê de novo a planilha guardada e acrescenta as fotos que cada item ainda não tem, também as de outras colunas como fotos adicionais; nada mais muda.",
+  "bookingLots.photos.reloadHintAll":
+    "Lê de novo a planilha guardada e acrescenta as fotos que cada item ainda não tem, também as de outras colunas como fotos adicionais; nada mais muda.",
   "bookingLots.photos.reloaded":
-    "Fotos buscadas na planilha: {filled} de {missing} item(ns) sem foto ganharam foto.",
+    "Fotos buscadas na planilha: {photos} foto(s) acrescentada(s) em {filled} item(ns).",
   "bookingLots.photos.reloadedNone":
-    "A planilha não tem foto legível para os {missing} item(ns) sem foto. Carregue pelo + na coluna Foto.",
+    "A planilha não tem foto que os itens ainda não tenham. O que faltar, carregue pelo + na coluna Foto.",
   "bookingLots.photos.reloadedAll": "Todos os itens já têm foto.",
   "bookingLots.photos.reloadedFailed": "{n} planilha(s) não abriram.",
   "bookingLots.error.booking_item_photos_max":
@@ -585,11 +587,13 @@ export const en: typeof pt = {
   "bookingLots.photos.reload": "Fetch the photos from the sheet",
   "bookingLots.photos.reloadPending": "Fetching the photos…",
   "bookingLots.photos.reloadHint":
-    "{n} item(s) without a photo. Reads the stored sheet again and adds the photos it finds; nothing else changes.",
+    "{n} item(s) without a photo. Reads the stored sheet again and adds the photos each item doesn't have yet, also those in other columns as additional photos; nothing else changes.",
+  "bookingLots.photos.reloadHintAll":
+    "Reads the stored sheet again and adds the photos each item doesn't have yet, also those in other columns as additional photos; nothing else changes.",
   "bookingLots.photos.reloaded":
-    "Photos fetched from the sheet: {filled} of {missing} item(s) without a photo got one.",
+    "Photos fetched from the sheet: {photos} photo(s) added to {filled} item(s).",
   "bookingLots.photos.reloadedNone":
-    "The sheet has no readable photo for the {missing} item(s) without one. Upload with the + in the Photo column.",
+    "The sheet has no photo the items don't already have. For anything missing, upload with the + in the Photo column.",
   "bookingLots.photos.reloadedAll": "Every item already has a photo.",
   "bookingLots.photos.reloadedFailed": "{n} sheet(s) could not be opened.",
   "bookingLots.error.booking_item_photos_max":
@@ -904,11 +908,13 @@ export const zh: typeof pt = {
   "bookingLots.photos.reload": "从表格重新读取照片",
   "bookingLots.photos.reloadPending": "正在读取照片…",
   "bookingLots.photos.reloadHint":
-    "{n} 个商品没有照片。重新读取已保存的表格并补上找到的照片，其他内容不变。",
+    "{n} 个商品没有照片。重新读取已保存的表格，补上每个商品还没有的照片（其他列的图片作为附加照片），其他内容不变。",
+  "bookingLots.photos.reloadHintAll":
+    "重新读取已保存的表格，补上每个商品还没有的照片（其他列的图片作为附加照片），其他内容不变。",
   "bookingLots.photos.reloaded":
-    "已从表格读取照片：{missing} 个无照片商品中有 {filled} 个补上了照片。",
+    "已从表格读取照片：为 {filled} 个商品补上了 {photos} 张照片。",
   "bookingLots.photos.reloadedNone":
-    "表格中没有这 {missing} 个商品可读取的照片。请用照片列的 + 上传。",
+    "表格中没有商品尚未拥有的照片。缺少的请用照片列的 + 上传。",
   "bookingLots.photos.reloadedAll": "所有商品都已有照片。",
   "bookingLots.photos.reloadedFailed": "{n} 个表格无法打开。",
   "bookingLots.error.booking_item_photos_max":

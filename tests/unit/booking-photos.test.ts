@@ -33,12 +33,14 @@ beforeAll(async () => {
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
 });
 
-/** PNG diferente a cada chamada (o último byte do texto muda), para contar. */
+/**
+ * PNG diferente a cada chamada: bytes a mais depois do fim da imagem (cada
+ * uma com um tamanho, como fotos de verdade), para contar e comparar.
+ */
 let seq = 0;
 const png = () => {
-  const out = new Uint8Array(PNG_1X1.length + 1);
+  const out = new Uint8Array(PNG_1X1.length + ++seq);
   out.set(PNG_1X1);
-  out[out.length - 1] = ++seq % 256;
   return out;
 };
 
@@ -304,6 +306,32 @@ describe("fotos da planilha nas linhas", () => {
     expect(parsed.groups[0].photo).toBe(parsed.groups[0].photos?.[0]);
   });
 
+  it("imagem de outra coluna na linha é foto adicional; sem ela, só a da coluna da foto", () => {
+    // Coluna 10 (J) sem título, como a coluna B da planilha do book nº 7.
+    const parsed = parseProductSheet(
+      xlsxBytes([{ name: "S", cells: [HEADER, line("A"), line("B")] }], {
+        images: [
+          // O logo acima do cabeçalho não é de nenhum item.
+          { sheet: 0, col: 9, row: 0, bytes: png(), ext: "png" },
+          { sheet: 0, col: 9, row: 1, bytes: png(), ext: "png" },
+          { sheet: 0, col: 0, row: 1, bytes: png(), ext: "png" },
+          { sheet: 0, col: 0, row: 2, bytes: png(), ext: "png" },
+        ],
+      }),
+    );
+    expect(parsed.groups.map((x) => x.photos?.map((i) => i.col))).toEqual([
+      [0, 9],
+      [0],
+    ]);
+    // Só a outra coluna na linha: ela vira a principal.
+    const only = parseProductSheet(
+      xlsxBytes([{ name: "S", cells: [HEADER, line("A")] }], {
+        images: [{ sheet: 0, col: 9, row: 1, bytes: png(), ext: "png" }],
+      }),
+    );
+    expect(only.groups[0].photo?.col).toBe(9);
+  });
+
   it("sem cabeçalho de foto, a coluna com mais imagens é a da foto", () => {
     const parsed = parseProductSheet(
       xlsxBytes(
@@ -436,11 +464,13 @@ describe("fotos do item do book", () => {
     ).rejects.toThrow("booking_lot_locked");
   });
 
-  it("buscar as fotos na planilha guardada preenche só os itens sem foto", async () => {
+  it("buscar as fotos na planilha acrescenta só o que o item ainda não tem", async () => {
     const lot = await svc.createBookingLotFromSheet(
       admin,
       sheetFile([
         { sheet: 0, col: 0, row: 1, bytes: png(), ext: "png" },
+        // Outra coluna na linha 2 do Excel: foto adicional do primeiro item.
+        { sheet: 0, col: 9, row: 1, bytes: png(), ext: "png" },
         { sheet: 0, col: 0, row: 2, bytes: png(), ext: "png" },
       ]),
     );
@@ -448,24 +478,36 @@ describe("fotos do item do book", () => {
     const items = (
       await store.list("booking_items", { filter: { lotId: lot.id } })
     ).sort((a, b) => a.position - b.position);
-    // Como na importação antiga: a segunda linha entrou sem foto.
+    expect(svc.bookingItemPhotos(items[0])).toHaveLength(2);
+    // Como na importação antiga: o primeiro sem a adicional, o segundo sem foto.
+    await store.update("booking_items", items[0].id, {
+      extraPhotoDocumentIds: [],
+    });
     await store.update("booking_items", items[1].id, {
       photoDocumentId: null,
       description: "editado à mão",
     });
     const kept = items[0].photoDocumentId;
     const result = await svc.reloadBookingLotPhotos(admin, lot.id);
-    expect(result).toMatchObject({ missing: 1, filled: 1, failedSheets: 0 });
-    const after = await store.get("booking_items", items[1].id);
-    expect(after?.photoDocumentId).toBeTruthy();
+    expect(result).toMatchObject({
+      missing: 1,
+      filled: 2,
+      photos: 2,
+      failedSheets: 0,
+    });
+    const first = await store.get("booking_items", items[0].id);
+    const second = await store.get("booking_items", items[1].id);
+    // A principal fica; a adicional volta; o segundo ganha a dele.
+    expect(first?.photoDocumentId).toBe(kept);
+    expect(first?.extraPhotoDocumentIds).toHaveLength(1);
+    expect(second?.photoDocumentId).toBeTruthy();
     // Nada além das fotos muda.
-    expect(after?.description).toBe("editado à mão");
-    expect(
-      (await store.get("booking_items", items[0].id))?.photoDocumentId,
-    ).toBe(kept);
+    expect(second?.description).toBe("editado à mão");
+    // De novo: a mesma imagem não entra duas vezes.
     expect(await svc.reloadBookingLotPhotos(admin, lot.id)).toMatchObject({
       missing: 0,
       filled: 0,
+      photos: 0,
     });
   });
 });

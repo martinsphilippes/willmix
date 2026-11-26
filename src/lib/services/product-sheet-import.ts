@@ -691,25 +691,17 @@ export function parseProductSheet(
   if (!rows.length) throw new SheetImportError("no_rows");
   if (truncated) warnings.push(`rows_truncated:${MAX_SHEET_ROWS}`);
 
-  // Fotos (docs/BOOKING.md, "Fotos da planilha"): as imagens que cobrem a
-  // coluna da foto e a do cartão. Sem coluna de foto reconhecida no
-  // cabeçalho, todas as imagens da aba: a coluna da foto é a que tem mais
-  // imagens (fora a do cartão).
-  const imageLimits = {
+  // Fotos (docs/BOOKING.md, "Fotos da planilha"): todas as imagens da aba.
+  // A principal vem da coluna da foto; as das outras colunas da linha (fora
+  // a do cartão) são fotos adicionais do item (dono, 26/11/2026: "nem
+  // sempre existe essa coluna adicional", então vale qualquer coluna, e
+  // sem ela nada muda). Sem coluna de foto reconhecida no cabeçalho, a
+  // coluna da foto é a que tem mais imagens (fora a do cartão).
+  const images = workbook.readImages(sheetName, {
     maxImages: MAX_IMAGES,
     maxImageBytes: MAX_IMAGE_BYTES,
     maxTotalBytes: MAX_IMAGES_TOTAL_BYTES,
-  };
-  const knownImageCols = [columns.photo, columns.businessCard].filter(
-    (c): c is number => c !== undefined,
-  );
-  const images =
-    columns.photo === undefined
-      ? workbook.readImages(sheetName, imageLimits)
-      : workbook.readImages(sheetName, {
-          ...imageLimits,
-          cols: knownImageCols,
-        });
+  });
   let photoColumn = columns.photo;
   if (photoColumn === undefined) {
     photoColumn = busiestImageColumn(images, columns.businessCard);
@@ -914,7 +906,8 @@ function groupRows(
     });
   }
   // Fotos: as imagens da coluna da foto cujo centro cai nas linhas do
-  // grupo (a principal é a de cima); o cartão, a primeira da coluna dele.
+  // grupo (a principal é a de cima); depois, as das outras colunas nas
+  // linhas do grupo (fotos adicionais); o cartão, a primeira da coluna dele.
   const photos = assignImages(
     groups,
     images,
@@ -922,8 +915,19 @@ function groupRows(
     columns.businessCard,
   );
   const cards = assignImages(groups, images, columns.businessCard, photoColumn);
+  const taken = new Set<SheetImage>();
+  for (const list of [...photos.values(), ...cards.values()])
+    for (const img of list) taken.add(img);
+  const others = assignOtherImages(
+    groups,
+    images.filter((img) => !taken.has(img)),
+    [photoColumn, columns.businessCard],
+  );
   for (const g of groups) {
-    const mine = photos.get(g.index) ?? [];
+    const mine = [
+      ...(photos.get(g.index) ?? []),
+      ...(others.get(g.index) ?? []),
+    ];
     g.photos = mine;
     g.photo = mine[0] ?? null;
     g.card = cards.get(g.index)?.[0] ?? null;
@@ -932,6 +936,36 @@ function groupRows(
       : g.reading.colorAssortment;
   }
   return groups;
+}
+
+/**
+ * As imagens de outras colunas (nem a da foto nem a do cartão) cujo centro
+ * cai nas linhas de um grupo: as fotos adicionais do item, da esquerda para
+ * a direita e de cima para baixo. Imagem fora das linhas dos itens (o logo
+ * acima do cabeçalho, por exemplo) fica de fora.
+ */
+export function assignOtherImages(
+  groups: ReadonlyArray<Pick<ProductGroup, "index" | "firstRow" | "lastRow">>,
+  images: SheetImage[],
+  exclude: ReadonlyArray<number | undefined>,
+): Map<number, SheetImage[]> {
+  const out = new Map<number, SheetImage[]>();
+  const skip = new Set(exclude.filter((c): c is number => c !== undefined));
+  const byRow = [...groups].sort((a, b) => a.firstRow - b.firstRow);
+  for (const img of images) {
+    if (skip.has(imageCol(img))) continue;
+    const row = imageRow(img);
+    const g = byRow.find((x) => row >= x.firstRow - 1 && row <= x.lastRow - 1);
+    if (!g) continue;
+    const list = out.get(g.index) ?? [];
+    list.push(img);
+    out.set(g.index, list);
+  }
+  for (const list of out.values())
+    list.sort(
+      (a, b) => imageCol(a) - imageCol(b) || a.row - b.row || a.col - b.col,
+    );
+  return out;
 }
 
 /**
