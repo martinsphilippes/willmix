@@ -331,15 +331,13 @@ export default async function BookingLotPage({
     notices.push(["success", t("bookingLots.detail.supplierCreated")]);
   if (one("photosMissing")) {
     const filled = Number(one("photosFilled")) || 0;
-    const missing = Number(one("photosMissing")) || 0;
+    const photos = Number(one("photosAdded")) || 0;
     const failed = Number(one("photosFailed")) || 0;
     notices.push([
       filled ? "success" : "info",
       (filled
-        ? t("bookingLots.photos.reloaded", { filled, missing })
-        : missing
-          ? t("bookingLots.photos.reloadedNone", { missing })
-          : t("bookingLots.photos.reloadedAll")) +
+        ? t("bookingLots.photos.reloaded", { filled, photos })
+        : t("bookingLots.photos.reloadedNone")) +
         (failed
           ? ` ${t("bookingLots.photos.reloadedFailed", { n: failed })}`
           : ""),
@@ -896,14 +894,20 @@ export default async function BookingLotPage({
             {text}
           </Alert>
         ))}
-        {photosEditable && noPhoto ? (
+        {photosEditable && (lot.fileDocumentId || lot.sheetFiles?.length) ? (
+          // Sempre que há planilha guardada (dono, 26/11/2026): acrescenta
+          // as fotos que cada item ainda não tem, também as adicionais.
           <form
             action={reloadBookingLotPhotosAction}
             className="flex flex-wrap items-center gap-2 text-sm text-zinc-600"
             data-booking-lot-photos-reload={noPhoto}
           >
             <input type="hidden" name="lotId" value={lot.id} />
-            <span>{t("bookingLots.photos.reloadHint", { n: noPhoto })}</span>
+            <span>
+              {noPhoto
+                ? t("bookingLots.photos.reloadHint", { n: noPhoto })
+                : t("bookingLots.photos.reloadHintAll")}
+            </span>
             <SubmitButton
               variant="secondary"
               pendingText={t("bookingLots.photos.reloadPending")}

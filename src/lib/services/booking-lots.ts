@@ -2067,20 +2067,23 @@ export async function setBookingItemMainPhoto(
 export interface BookingPhotoReload {
   /** Itens sem foto antes de buscar. */
   missing: number;
-  /** Itens que ganharam foto. */
+  /** Itens que ganharam alguma foto. */
   filled: number;
-  /** Fotos guardadas (principais e adicionais). */
+  /** Fotos acrescentadas (principais e adicionais). */
   photos: number;
   /** Planilhas que não abriram (arquivo apagado ou ilegível). */
   failedSheets: number;
 }
 
 /**
- * Busca de novo as fotos na planilha guardada do book, só para os itens sem
- * foto (dono, 26/11/2026): a importação antiga não lia a coluna "PHOTOS" nem
- * a foto que começava na linha de cima. Lê cada planilha com a leitura de
- * hoje e acha o item pela posição e pelas linhas da planilha (as duas têm
- * de bater). Nada além das fotos muda; o item com foto fica como está.
+ * Busca de novo as fotos na planilha guardada do book (dono, 26/11/2026): a
+ * importação antiga não lia a coluna "PHOTOS", a foto que começava na linha
+ * de cima nem as imagens das outras colunas (fotos adicionais). Lê cada
+ * planilha com a leitura de hoje, acha o item pela posição e pelas linhas
+ * da planilha (as duas têm de bater) e acrescenta as imagens da linha que o
+ * item ainda não tem: a mesma imagem relida tem o mesmo tamanho em bytes do
+ * documento que já está no item, e não entra de novo. Sem foto principal, a
+ * primeira vira a principal. Nada além das fotos muda.
  */
 export async function reloadBookingLotPhotos(
   user: User,
@@ -2092,14 +2095,19 @@ export async function reloadBookingLotPhotos(
   const items = await store.list("booking_items", {
     filter: { lotId: lot.id },
   });
-  const missing = items.filter((i) => !i.photoDocumentId);
   const result: BookingPhotoReload = {
-    missing: missing.length,
+    missing: items.filter((i) => !i.photoDocumentId).length,
     filled: 0,
     photos: 0,
     failedSheets: 0,
   };
-  if (!missing.length) return result;
+  if (!items.length) return result;
+  // Tamanho de cada foto que os itens já têm (a mesma imagem não entra duas vezes).
+  const { listByIds } = await import("@/lib/db/lookup");
+  const docs = await listByIds(store, "documents", [
+    ...new Set(items.flatMap((i) => bookingItemPhotos(i))),
+  ]);
+  const sizeOf = new Map(docs.map((d) => [d.id, d.size]));
   // As planilhas na ordem da importação: os itens de cada uma vêm depois
   // dos da anterior (posição contínua).
   const files: Array<{ documentId: string | null; items: number }> = lot
@@ -2110,7 +2118,7 @@ export async function reloadBookingLotPhotos(
   for (const [k, file] of files.entries()) {
     const from = offset;
     offset += file.items;
-    const mine = missing.filter(
+    const mine = items.filter(
       (i) => i.position >= from && i.position < from + file.items,
     );
     if (!mine.length) continue;
@@ -2134,15 +2142,22 @@ export async function reloadBookingLotPhotos(
           ? at
           : groups.find((g) => rowsOf(g) === item.sourceRows);
       if (!group) continue;
-      const ids = await storeImages(user, groupPhotos(group));
+      const current = bookingItemPhotos(item);
+      const known = new Set(current.map((d) => sizeOf.get(d)));
+      const room = BOOKING_ITEM_PHOTOS_MAX - current.length;
+      const fresh = groupPhotos(group)
+        .filter((img) => !known.has(img.bytes.length))
+        .slice(0, Math.max(0, room));
+      if (!fresh.length) continue;
+      const ids = await storeImages(user, fresh);
       if (!ids.length) continue;
       // Lido de novo: alguém pode ter carregado uma foto enquanto buscava.
-      const fresh = (await store.get("booking_items", item.id)) ?? item;
+      const now = (await store.get("booking_items", item.id)) ?? item;
       await store.update("booking_items", item.id, {
         ...photoFields(
-          fresh.photoDocumentId
-            ? [...bookingItemPhotos(fresh), ...ids]
-            : [...ids, ...bookingItemPhotos(fresh)],
+          now.photoDocumentId
+            ? [...bookingItemPhotos(now), ...ids]
+            : [...ids, ...bookingItemPhotos(now)],
         ),
         updatedByUserId: user.id,
       });
@@ -2155,7 +2170,7 @@ export async function reloadBookingLotPhotos(
     "booking_lot.photos_reload",
     "booking_lot",
     lot.id,
-    `Book nº ${lot.number}: fotos buscadas na planilha, ${result.filled} de ${result.missing} item(ns) sem foto ganharam foto (${result.photos} foto(s))`,
+    `Book nº ${lot.number}: fotos buscadas na planilha, ${result.photos} foto(s) acrescentada(s) em ${result.filled} item(ns) (${result.missing} estavam sem foto)`,
   );
   return result;
 }

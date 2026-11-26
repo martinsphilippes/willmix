@@ -9,7 +9,7 @@ import { PNG_1X1, xlsxBytes } from "../unit/xlsx-fixture";
  *   entram no item (a de cima é a principal);
  * - o "+" da célula Foto carrega mais fotos no item sem foto;
  * - a galeria troca a principal e tira uma foto do item;
- * - "Buscar as fotos na planilha" aparece enquanto há item sem foto.
+ * - "Buscar as fotos na planilha" aparece com o número de itens sem foto.
  */
 
 const HEADER = [
@@ -120,7 +120,10 @@ test("Book: fotos da coluna PHOTOS, carregar, trocar a principal e tirar", async
   await expect(
     second.locator("[data-booking-item-photo-count='1']"),
   ).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator("[data-booking-lot-photos-reload]")).toHaveCount(0);
+  // O botão continua (acrescenta o que faltar), agora sem item sem foto.
+  await expect(
+    page.locator("[data-booking-lot-photos-reload='0']"),
+  ).toBeVisible();
 
   // Galeria do primeiro item: a segunda vira a principal, depois sai.
   await first.getByRole("button", { name: /Fotos do item \(2\)/ }).click();
