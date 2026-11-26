@@ -104,13 +104,27 @@ const PIN_VARS = "[--pin-pad:1.25rem] [--pin-status:8.5rem]";
  * fecha o conjunto com o fio e a sombra.
  */
 const LEFT_VARS = "[--pin-photo:3rem] [--pin-number:4.5rem]";
+/*
+ * "Foto Marketing" (a arte da Wellmix, dono, 26/11/2026) entra fixa logo
+ * depois da Foto quando a tabela tem itens de variação × embalagem; sem ela,
+ * `--pin-mkt` é zero e o nº e o produto ficam onde estavam.
+ */
+const MKT_VARS = {
+  on: "[--pin-mkt:calc(var(--pin-photo)_+_var(--pin-pad))]",
+  off: "[--pin-mkt:0px]",
+} as const;
 const LEFT = {
   photo: "md:sticky md:left-0 md:z-10",
-  number: "md:sticky md:z-10 md:left-[calc(var(--pin-photo)_+_var(--pin-pad))]",
-  item: "md:sticky md:z-10 md:left-[calc(var(--pin-photo)_+_var(--pin-number)_+_2*var(--pin-pad))] md:shadow-[inset_-1px_0_0_var(--color-zinc-200),6px_0_6px_-6px_rgba(0,0,0,0.15)]",
+  photoMarketing:
+    "md:sticky md:z-10 md:left-[calc(var(--pin-photo)_+_var(--pin-pad))]",
+  number:
+    "md:sticky md:z-10 md:left-[calc(var(--pin-photo)_+_var(--pin-pad)_+_var(--pin-mkt))]",
+  item: "md:sticky md:z-10 md:left-[calc(var(--pin-photo)_+_var(--pin-number)_+_2*var(--pin-pad)_+_var(--pin-mkt))] md:shadow-[inset_-1px_0_0_var(--color-zinc-200),6px_0_6px_-6px_rgba(0,0,0,0.15)]",
 } as const;
 const leftPin = (c: string) =>
-  c === "photo" || c === "number" || c === "item" ? LEFT[c] : null;
+  c === "photo" || c === "photoMarketing" || c === "number" || c === "item"
+    ? LEFT[c]
+    : null;
 /**
  * Caixa das ações (dono, 14/11/2026): só ícones, com 0,5rem entre eles. Dois
  * por linha (mensagem e abrir) ou, para o fornecedor que ainda responde,
@@ -214,6 +228,8 @@ export function SupplierRequestTable({
   // tabela conta sets, não peças, e mostra as peças por set (dono,
   // 26/11/2026).
   const setMode = rows.some((r) => (r.variant?.units ?? 1) > 1);
+  // Itens de variação × embalagem: a coluna "Foto Marketing" com a arte.
+  const hasMarketing = rows.some((r) => r.variant);
   const before = [
     "photo",
     "number",
@@ -243,7 +259,11 @@ export function SupplierRequestTable({
       (c) => showPrice || (c !== "bookingPrice" && c !== "bookingCurrency"),
     )
     .flatMap((c) =>
-      setMode && c === "masterCartonQty" ? ["piecesPerSet", c] : [c],
+      setMode && c === "masterCartonQty"
+        ? ["piecesPerSet", c]
+        : hasMarketing && c === "photo"
+          ? [c, "photoMarketing"]
+          : [c],
     );
   /** Título da coluna: com sets, as que contavam peças contam sets. */
   const SET_COLS = new Set([
@@ -441,20 +461,37 @@ export function SupplierRequestTable({
           ...(it.photoDocumentId
             ? [{ id: it.photoDocumentId, label: null }]
             : []),
-          // A arte da variação × embalagem (dono, 26/11/2026).
-          ...(r.variant?.artDocumentId
+        ]}
+        name={name}
+        className="h-12 w-12"
+        labels={{
+          title: k("photo"),
+          close: k("close"),
+          open: k("photoOpen"),
+          count: t("supplierRequests.detail.title", {
+            n: r.number,
+          }),
+          noPhoto: k("noPhoto"),
+        }}
+      />
+    );
+    // A arte da variação × embalagem, na coluna "Foto Marketing".
+    const marketing = (
+      <PhotoGallery
+        photos={
+          r.variant?.artDocumentId
             ? [
                 {
                   id: r.variant.artDocumentId,
                   label: t("supplierRequests.variant.art"),
                 },
               ]
-            : []),
-        ]}
+            : []
+        }
         name={name}
         className="h-12 w-12"
         labels={{
-          title: k("photo"),
+          title: k("col.photoMarketing"),
           close: k("close"),
           open: k("photoOpen"),
           count: t("supplierRequests.detail.title", {
@@ -478,6 +515,14 @@ export function SupplierRequestTable({
         <Td className={cx(pinBg, LEFT.photo)}>
           <div className="w-[var(--pin-photo)]">{photo}</div>
         </Td>
+        {hasMarketing ? (
+          <Td
+            className={cx(pinBg, LEFT.photoMarketing)}
+            data-supplier-table-marketing={r.id}
+          >
+            <div className="w-[var(--pin-photo)]">{marketing}</div>
+          </Td>
+        ) : null}
         <Td
           className={cx(nowrap, "tabular-nums font-medium", pinBg, LEFT.number)}
         >
@@ -1089,6 +1134,14 @@ export function SupplierRequestTable({
             <div className="w-[var(--pin-photo)]">{photo}</div>
           </Td>
         ),
+        photoMarketing: (
+          <Td
+            key="photoMarketing"
+            className={cx("bg-zinc-50", LEFT.photoMarketing)}
+          >
+            <div className="w-[var(--pin-photo)]">{marketing}</div>
+          </Td>
+        ),
         number: (
           <Td
             key="number"
@@ -1312,7 +1365,14 @@ export function SupplierRequestTable({
           </p>
         ) : null}
       </div>
-      <Table className={cx(PIN_VARS, LEFT_VARS, PIN_ACTIONS[actionSlots])}>
+      <Table
+        className={cx(
+          PIN_VARS,
+          LEFT_VARS,
+          MKT_VARS[hasMarketing ? "on" : "off"],
+          PIN_ACTIONS[actionSlots],
+        )}
+      >
         <thead>
           <tr>
             {before.map((c) => (

@@ -140,3 +140,37 @@ describe("tabela da solicitação: embalagem modificada conta sets", () => {
     expect(html).not.toContain("Total de sets");
   });
 });
+
+describe("tabela da solicitação: Foto Marketing", () => {
+  it("a arte da Wellmix na segunda coluna, também nas sublinhas", () => {
+    const html = render([
+      request({
+        variant: {
+          key: "ESPELHO VERMELHO|2",
+          variation: "ESPELHO VERMELHO",
+          units: 2,
+          pieceCarton: 48,
+          mix: false,
+          artDocumentId: "art-6",
+          selectionGroupId: "g-1",
+        },
+      }),
+    ]);
+    expect(html).toContain("Foto Marketing");
+    expect(html).toContain('data-supplier-table-marketing="sr-6"');
+    // A arte: na linha do produto e em cada uma das 3 programações.
+    expect(html.match(/\/api\/files\/art-6/g)?.length).toBeGreaterThanOrEqual(
+      4,
+    );
+    // A ordem: Foto e, logo depois, Foto Marketing.
+    expect(html.indexOf("Foto Marketing")).toBeGreaterThan(
+      html.indexOf(">Foto<"),
+    );
+  });
+
+  it("sem variação × embalagem, sem a coluna", () => {
+    const html = render([request({ variant: null, schedule: null })]);
+    expect(html).not.toContain("Foto Marketing");
+    expect(html).not.toContain("data-supplier-table-marketing");
+  });
+});
