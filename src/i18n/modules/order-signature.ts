@@ -25,7 +25,7 @@ export const pt = {
   "orderSign.payment.none": "Conforme combinado (sem parcelas cadastradas).",
   "orderSign.packaging": "Embalagem",
   "orderSign.packaging.ok":
-    "Proposta de embalagem {n}, com o OK do fornecedor na cotação.",
+    "Proposta de embalagem {n}, com o OK do fornecedor na consulta.",
   "orderSign.version": "Versão do documento: {hash}",
   "orderSign.signatures": "Assinaturas",
   "orderSign.side.wellmix": "Wellmix",
@@ -185,7 +185,7 @@ export const en: Record<keyof typeof pt, string> = {
   "orderSign.payment.none": "As agreed (no installments registered).",
   "orderSign.packaging": "Packaging",
   "orderSign.packaging.ok":
-    "Packaging proposal {n}, with the supplier's OK on the quote.",
+    "Packaging proposal {n}, with the supplier's OK on the inquiry.",
   "orderSign.version": "Document version: {hash}",
   "orderSign.signatures": "Signatures",
   "orderSign.side.wellmix": "Wellmix",

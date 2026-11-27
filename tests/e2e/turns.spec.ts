@@ -126,7 +126,7 @@ test("venda aguardando o cliente: Em aberto e com o cliente; ele confirma pelas 
   await login(page, "admin@wellmix.com");
   await page.goto(`/app/requests/batch/${requestId}`);
   await expect(page.locator(`[data-batch-sent="${requestId}"]`)).toContainText(
-    "Virou cotação sozinha",
+    "Virou consulta sozinha",
   );
   await page.goto("/app/requests?vez=supplier");
   await expect(row.locator('[data-request-turn="supplier"]')).toBeVisible();
@@ -380,7 +380,7 @@ test("encomenda aberta pelo cliente: vira cotação na hora, sem a Estratégia d
   ).toHaveCount(0);
   await page.goto(`/app/requests/batch/${requestId}`);
   await expect(page.locator(`[data-batch-sent="${requestId}"]`)).toContainText(
-    "Virou cotação sozinha",
+    "Virou consulta sozinha",
   );
   // A vez é do fornecedor: responder a cotação.
   await page.goto("/app/requests?situ=open");

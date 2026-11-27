@@ -279,8 +279,10 @@ test("Trading e Factory: gravar, recarregar, ocultar × bloquear, revogar com a 
   await t.goto("/app/supplier-requests");
   await expect(t).toHaveURL(/\/app\/supplier-requests$/);
   await t.goto("/app/orders");
+  // Os pedidos voltam ao menu pelo bloco Pedido (o atalho /app/orders saiu
+  // do menu do fornecedor; dono, 27/11/2026).
   await expect(
-    t.locator('[data-nav-link="/app/orders"]').first(),
+    t.locator('[data-sidebar] [data-nav-group="Pedido"]'),
   ).toBeVisible();
 
   // Celular: o painel ocupa a largura inteira.

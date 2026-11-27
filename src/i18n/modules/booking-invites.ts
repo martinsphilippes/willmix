@@ -5,10 +5,10 @@
  */
 export const pt = {
   "nav.bookingInvites": "Convites de book",
-  "bookingInvites.selection.invite": "Abrir cotação",
+  "bookingInvites.selection.invite": "Abrir consulta",
   "bookingInvites.selection.inviteHint":
-    "Abre este item sozinho na aba Seleção, como marcar só ele e Agrupar para seleção, para seguir com a cotação",
-  "bookingInvites.invite.title": "Cotação: book concorrente",
+    "Abre este item sozinho na aba Seleção, como marcar só ele e Agrupar para seleção, para seguir com a consulta",
+  "bookingInvites.invite.title": "Consulta: book concorrente",
   "bookingInvites.invite.back": "Voltar à seleção",
   "bookingInvites.invite.item": "Item avaliado",
   "bookingInvites.invite.list": "Convites deste item",
@@ -92,10 +92,10 @@ export const pt = {
 
 export const en: Record<keyof typeof pt, string> = {
   "nav.bookingInvites": "Book invitations",
-  "bookingInvites.selection.invite": "Open quotation",
+  "bookingInvites.selection.invite": "Open inquiry",
   "bookingInvites.selection.inviteHint":
-    "Opens this item alone in the Selection tab, like ticking only it and Group for selection, to go on with the quotation",
-  "bookingInvites.invite.title": "Quotation: competing book",
+    "Opens this item alone in the Selection tab, like ticking only it and Group for selection, to go on with the inquiry",
+  "bookingInvites.invite.title": "Inquiry: competing book",
   "bookingInvites.invite.back": "Back to selection",
   "bookingInvites.invite.item": "Item under review",
   "bookingInvites.invite.list": "Invitations for this item",
@@ -179,10 +179,10 @@ export const en: Record<keyof typeof pt, string> = {
 
 export const zh: Record<keyof typeof pt, string> = {
   "nav.bookingInvites": "Book 邀请",
-  "bookingInvites.selection.invite": "发起询价",
+  "bookingInvites.selection.invite": "发起询盘",
   "bookingInvites.selection.inviteHint":
-    "在“选择”标签中单独打开此商品，等同于只勾选它并点击“分组选择”，以继续询价",
-  "bookingInvites.invite.title": "询价：竞争 Book",
+    "在“选择”标签中单独打开此商品，等同于只勾选它并点击“分组选择”，以继续询盘",
+  "bookingInvites.invite.title": "询盘：竞争 Book",
   "bookingInvites.invite.back": "返回选品",
   "bookingInvites.invite.item": "评估中的商品",
   "bookingInvites.invite.list": "此商品的邀请",

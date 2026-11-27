@@ -5,16 +5,16 @@
 export const pt = {
   "card.title": "Cartão do fabricante",
   "card.hint":
-    "Obrigatório para enviar a cotação: mostra quem fabrica o produto. Só a Wellmix vê; o cliente nunca.",
+    "Obrigatório para enviar a consulta: mostra quem fabrica o produto. Só a Wellmix vê; o cliente nunca.",
   "card.missing":
-    "Envie o cartão do fabricante (ou escolha um já enviado) para poder enviar a cotação.",
+    "Envie o cartão do fabricante (ou escolha um já enviado) para poder enviar a consulta.",
   "card.add": "Enviar cartão do fabricante",
   "card.adding": "Enviando o cartão…",
-  "card.added": "Cartão enviado e confirmado nesta cotação.",
-  "card.confirmed": "Cartão confirmado nesta cotação.",
+  "card.added": "Cartão enviado e confirmado nesta consulta.",
+  "card.confirmed": "Cartão confirmado nesta consulta.",
   "card.saved": "Dados do cartão salvos.",
-  "card.use": "Usar este cartão nesta cotação",
-  "card.current": "Confirmado nesta cotação",
+  "card.use": "Usar este cartão nesta consulta",
+  "card.current": "Confirmado nesta consulta",
   "card.factory": "Fábrica",
   "card.middleman": "Possível intermediário (sem endereço de fábrica)",
   "card.unread": "Não lido: confira os dados",
@@ -36,28 +36,28 @@ export const pt = {
   "card.edit": "Corrigir dados do cartão",
   "card.save": "Salvar dados do cartão",
   "card.supplier": "Fornecedor",
-  "card.quotes": "Confirmado em {n} cotação(ões)",
+  "card.quotes": "Confirmado em {n} consulta(s)",
   "card.productTitle": "Cartões do fabricante",
   "card.productHint":
-    "Quem fabrica este produto, por fornecedor. O cartão que vem na planilha da ficha técnica entra sozinho na cotação; o fornecedor pode trocar.",
+    "Quem fabrica este produto, por fornecedor. O cartão que vem na planilha da ficha técnica entra sozinho na consulta; o fornecedor pode trocar.",
   "card.productNone": "Nenhum cartão enviado ainda.",
   "quoteSheet.error.manufacturer_card_required":
-    "Falta o cartão do fabricante: envie ou escolha um no quadro “Cartão do fabricante” para enviar a cotação.",
+    "Falta o cartão do fabricante: envie ou escolha um no quadro “Cartão do fabricante” para enviar a consulta.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
   "card.title": "Manufacturer's card",
   "card.hint":
-    "Required to send the quotation: it shows who makes the product. Only Wellmix sees it; never the customer.",
+    "Required to send the inquiry: it shows who makes the product. Only Wellmix sees it; never the customer.",
   "card.missing":
-    "Send the manufacturer's card (or choose one already sent) to be able to send the quotation.",
+    "Send the manufacturer's card (or choose one already sent) to be able to send the inquiry.",
   "card.add": "Send manufacturer's card",
   "card.adding": "Sending the card…",
-  "card.added": "Card sent and confirmed for this quotation.",
-  "card.confirmed": "Card confirmed for this quotation.",
+  "card.added": "Card sent and confirmed for this inquiry.",
+  "card.confirmed": "Card confirmed for this inquiry.",
   "card.saved": "Card details saved.",
-  "card.use": "Use this card for this quotation",
-  "card.current": "Confirmed for this quotation",
+  "card.use": "Use this card for this inquiry",
+  "card.current": "Confirmed for this inquiry",
   "card.factory": "Factory",
   "card.middleman": "Possible middleman (no factory address)",
   "card.unread": "Not read: check the details",
@@ -79,13 +79,13 @@ export const en: Record<keyof typeof pt, string> = {
   "card.edit": "Correct the card details",
   "card.save": "Save card details",
   "card.supplier": "Supplier",
-  "card.quotes": "Confirmed in {n} quotation(s)",
+  "card.quotes": "Confirmed in {n} inquiry(ies)",
   "card.productTitle": "Manufacturer's cards",
   "card.productHint":
-    "Who makes this product, per supplier. The card that comes in the technical-sheet spreadsheet enters the quotation automatically; the supplier can change it.",
+    "Who makes this product, per supplier. The card that comes in the technical-sheet spreadsheet enters the inquiry automatically; the supplier can change it.",
   "card.productNone": "No card sent yet.",
   "quoteSheet.error.manufacturer_card_required":
-    "The manufacturer's card is missing: send or choose one in the “Manufacturer's card” box to send the quotation.",
+    "The manufacturer's card is missing: send or choose one in the “Manufacturer's card” box to send the inquiry.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {

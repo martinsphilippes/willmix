@@ -5,7 +5,7 @@
 export const pt = {
   "productSheet.title": "Ficha de compra do produto (mestre)",
   "productSheet.hint":
-    "Pedidos e cotações deste produto já nascem com os dados dele (caixa, medidas, pesos, embalagem, cor, material, NCM) e com as fotos do cadastro. Fornecedor, preço, moeda, MOQ, caixa, medidas, pesos, cor, material e observações são preenchidos só no cadastro, acima. Aqui fica o que só existe na ficha: local de saída, loja e telefone do fornecedor, FOB/EXW, embalagem, capacidade, energia, container e impostos.",
+    "Pedidos e consultas deste produto já nascem com os dados dele (caixa, medidas, pesos, embalagem, cor, material, NCM) e com as fotos do cadastro. Fornecedor, preço, moeda, MOQ, caixa, medidas, pesos, cor, material e observações são preenchidos só no cadastro, acima. Aqui fica o que só existe na ficha: local de saída, loja e telefone do fornecedor, FOB/EXW, embalagem, capacidade, energia, container e impostos.",
   "productSheet.complete": "Ficha mestre completa",
   "productSheet.partial": "Ficha mestre: faltam {n} item(ns)",
   "productSheet.none": "Sem ficha mestre",
@@ -15,12 +15,12 @@ export const pt = {
   "productSheet.savedPartial": "Ficha mestre salva; faltam: {fields}.",
   "productSheet.photos": "Fotos da ficha no cadastro: {n} de 5.",
   "productSheet.photosHint":
-    "As 5 fotos da ficha ficam no card Fotos deste produto (balança, régua, lado, ângulo e original). Pedidos e cotações deste produto não precisam delas de novo.",
+    "As 5 fotos da ficha ficam no card Fotos deste produto (balança, régua, lado, ângulo e original). Pedidos e consultas deste produto não precisam delas de novo.",
   "productSheet.adopt": "Atualizar cadastro do produto com esta ficha",
   "productSheet.adoptHint":
-    "Copia os campos preenchidos desta ficha para a ficha mestre do produto (campos em branco não apagam o que o cadastro já tem); os próximos pedidos e cotações nascem com os dados do produto (fornecedor e preço ficam como referência da Wellmix).",
+    "Copia os campos preenchidos desta ficha para a ficha mestre do produto (campos em branco não apagam o que o cadastro já tem); os próximos pedidos e consultas nascem com os dados do produto (fornecedor e preço ficam como referência da Wellmix).",
   "productSheet.scheduleHint":
-    "Início da produção, programações e o fechamento do container são definidos em cada pedido ou cotação; aqui fica só o container padrão do produto.",
+    "Início da produção, programações e o fechamento do container são definidos em cada pedido ou consulta; aqui fica só o container padrão do produto.",
   "productSheet.adopted": "Cadastro do produto atualizado com esta ficha.",
   "sheet.prefilledNotice.master":
     "Ficha preenchida com a ficha mestre do produto (cadastro). Confira e ajuste o que for desta compra.",

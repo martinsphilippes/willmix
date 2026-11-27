@@ -31,15 +31,15 @@ export const pt = {
   "packing.option.perCarton": "{n} por caixa",
   "packing.mix": "Mix de cores",
   "packing.mixHint":
-    "Cores sortidas na mesma embalagem: uma imagem por embalagem. Cada variação continua sendo uma cotação.",
+    "Cores sortidas na mesma embalagem: uma imagem por embalagem. Cada variação continua sendo uma consulta.",
   "packing.variation.add": "Variação",
   "packing.variation.placeholder": "Nome da variação (ex.: Preto fosco)",
   "packing.variation.remove": "Tirar esta variação",
   "packing.variation.custom": "digitada",
   "packing.variation.repeat": "Variação repetida.",
   "packing.variations.hint":
-    "Uma linha por variação (as cores do Book e as digitadas) e uma coluna por embalagem. Cada combinação vira uma cotação separada. As caixas saem da divisão igual; digite as de uma combinação para mudar só ela.",
-  "packing.count": "{n} combinação(ões): {n} cotação(ões) ao gravar",
+    "Uma linha por variação (as cores do Book e as digitadas) e uma coluna por embalagem. Cada combinação vira uma consulta separada. As caixas saem da divisão igual; digite as de uma combinação para mudar só ela.",
+  "packing.count": "{n} combinação(ões): {n} consulta(s) ao gravar",
   "packing.cell.cartonsOf": "Caixas de {combo}",
   "packing.cell.units": "{n} emb.",
   "packing.cell.pieces": "{n} pç",
@@ -75,7 +75,7 @@ export const pt = {
     "Embalagem com {n} peças ({m} embalagens por caixa)",
   "supplierRequests.variant.mix": "Mix de cores",
   "supplierRequests.variant.unitsNote":
-    "Nesta cotação, a quantidade, o mínimo, o preço e a caixa contam embalagens: 1 embalagem = {n} peças.",
+    "Nesta consulta, a quantidade, o mínimo, o preço e a caixa contam embalagens: 1 embalagem = {n} peças.",
   "supplierRequests.variant.art": "Arte de exemplo do SKU",
   "supplierRequests.variant.artHint":
     "Imagem de exemplo enviada pela Wellmix: mostra o SKU que está sendo considerado, não é foto de amostra.",
@@ -145,15 +145,15 @@ export const en: Record<keyof typeof pt, string> = {
   "packing.option.perCarton": "{n} per carton",
   "packing.mix": "Color mix",
   "packing.mixHint":
-    "Assorted colors in the same package: one image per package. Each variation is still a quotation.",
+    "Assorted colors in the same package: one image per package. Each variation is still an inquiry.",
   "packing.variation.add": "Variation",
   "packing.variation.placeholder": "Variation name (e.g. Matte black)",
   "packing.variation.remove": "Remove this variation",
   "packing.variation.custom": "typed",
   "packing.variation.repeat": "Repeated variation.",
   "packing.variations.hint":
-    "One row per variation (the Book colors and the typed ones) and one column per package. Each combination becomes a separate quotation. Cartons come from the even split; type those of a combination to change only it.",
-  "packing.count": "{n} combination(s): {n} quotation(s) on save",
+    "One row per variation (the Book colors and the typed ones) and one column per package. Each combination becomes a separate inquiry. Cartons come from the even split; type those of a combination to change only it.",
+  "packing.count": "{n} combination(s): {n} inquiry(ies) on save",
   "packing.cell.cartonsOf": "Cartons of {combo}",
   "packing.cell.units": "{n} pkg",
   "packing.cell.pieces": "{n} pcs",
@@ -189,7 +189,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Package of {n} pieces ({m} packages per carton)",
   "supplierRequests.variant.mix": "Color mix",
   "supplierRequests.variant.unitsNote":
-    "In this quotation, quantity, minimum, price and carton count packages: 1 package = {n} pieces.",
+    "In this inquiry, quantity, minimum, price and carton count packages: 1 package = {n} pieces.",
   "supplierRequests.variant.art": "SKU sample artwork",
   "supplierRequests.variant.artHint":
     "Sample image sent by Wellmix: it shows the SKU being considered, it is not a sample photo.",

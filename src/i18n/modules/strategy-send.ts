@@ -9,29 +9,29 @@ export const pt = {
   "nav.purchaseStrategy": "Estratégia de compra",
   "perm.note.purchaseStrategy":
     "Estratégia de Compra por produto e o resultado dos envios. Nasce aberta para quem abre Solicitações ao fornecedor.",
-  "reqSend.button": "Enviar para cotação",
+  "reqSend.button": "Enviar para consulta",
   "reqSend.confirm": "Enviar {n} produto(s) para a Estratégia de Compra?",
   "reqSend.done": "{n} produto(s) enviado(s) para a Estratégia de Compra.",
   "reqSend.skipped":
     "{n} não foram enviados: só vão os produtos com a situação Solicitado que ainda não foram enviados (a reposição e a compra para estoque seguem sozinhas).",
   "reqSend.open": "Abrir a Estratégia de Compra",
-  "reqSend.all": "Enviar todos para cotação ({n})",
-  "reqSend.sentAt": "Enviado para cotação em {date}",
+  "reqSend.all": "Enviar todos para consulta ({n})",
+  "reqSend.sentAt": "Enviado para consulta em {date}",
   "reqBatch.error.nothing_sent":
-    "Nada foi enviado: marque produtos com a situação Solicitado que ainda não foram enviados para cotação.",
-  "reqList.next.send": "Enviar para cotação",
+    "Nada foi enviado: marque produtos com a situação Solicitado que ainda não foram enviados para consulta.",
+  "reqList.next.send": "Enviar para consulta",
   "reqList.next.strategy": "Estratégia de compra",
   "tasks.group.purchase_strategy_send": "Envio da estratégia com pendência",
-  "strategy.task.toSend.title": "Enviar para cotação: {product}",
+  "strategy.task.toSend.title": "Enviar para consulta: {product}",
   "strategy.task.toSend.detail": "Encomenda · {quantity} {unit}",
   "strategy.task.toSend.titleNumbered":
-    "Enviar para cotação: encomenda nº {n} · {customer}",
+    "Enviar para consulta: encomenda nº {n} · {customer}",
   "strategy.task.toSend.detailProduct": "{product} · {quantity} {unit}",
   "strategy.task.send.title":
     "Envio nº {n} da Estratégia de Compra: {count} parceiro(s) sem receber",
   "strategy.task.send.detail":
     'Regularize o parceiro ou escolha outro e use "Tentar de novo".',
-  "strategy.toSend": "{n} encomenda(s) ainda não enviada(s) para cotação.",
+  "strategy.toSend": "{n} encomenda(s) ainda não enviada(s) para consulta.",
   "strategy.toSendLink": "Abrir Encomendas",
   "strategy.queue.title": "Solicitações esperando a estratégia ({n})",
   "strategy.queue.empty":
@@ -51,9 +51,9 @@ export const pt = {
   "strategy.line.choose": "O que fazer com este produto?",
   "strategy.option.skip": "Não enviar agora",
   "strategy.choice.quote_last": "Cotar com o fornecedor da última compra",
-  "strategy.option.lastHint": "A cotação vai só para {name}.",
+  "strategy.option.lastHint": "A consulta vai só para {name}.",
   "strategy.option.directHint":
-    "Sem cotação: vai para a aprovação da Diretoria de compras e depois vira o pedido de compra.",
+    "Sem consulta: vai para a aprovação da Diretoria de compras e depois vira o pedido de compra.",
   "strategy.option.noHistory":
     "Sem compra anterior deste produto: escolha outros parceiros.",
   "strategy.recipients.linked": "Marcaram a família {family}",
@@ -74,14 +74,14 @@ export const pt = {
   "strategy.recipients.logins": "{n} login(s)",
   "strategy.recipients.ok": "Apto: recebe e responde no portal",
   "strategy.recipients.lastBadge": "Última compra",
-  "strategy.issue.not_quote_type": "Tipo de parceiro que não recebe cotação.",
+  "strategy.issue.not_quote_type": "Tipo de parceiro que não recebe consulta.",
   "strategy.issue.inactive": "Cadastro inativo: reative o parceiro.",
   "strategy.issue.type_inactive":
     "O tipo de parceiro está desativado (Tipos e acessos).",
   "strategy.issue.no_login":
     "Sem login ativo: gere o login de acesso no cadastro do parceiro.",
   "strategy.issue.no_quotes_screen":
-    "A tela Cotação está fechada no perfil do tipo (Gestão de telas).",
+    "A tela Consulta está fechada no perfil do tipo (Gestão de telas).",
   "strategy.warning.no_email": "Login sem e-mail: o aviso fica só no portal.",
   "strategy.issue.fix": "Abrir o cadastro",
   "strategy.review": "Revisar o envio ({n})",
@@ -107,12 +107,12 @@ export const pt = {
   "strategy.tabs.waiting": "Esperando estratégia",
   "strategy.tabs.open": "Em andamento",
   "strategy.tabs.sent": "Enviadas",
-  "strategy.sent.col.what": "Cotação",
+  "strategy.sent.col.what": "Consulta",
   "strategy.sent.col.items": "Solicitação e produtos",
   "strategy.sent.col.at": "Enviada em",
   "strategy.sent.col.status": "Situação",
   "strategy.sent.col.send": "Envio",
-  "strategy.sent.direct": "Pedido direto (sem cotação)",
+  "strategy.sent.direct": "Pedido direto (sem consulta)",
   "strategy.sent.failed": "Não enviada",
   "strategy.sent.more": "+{n}",
   "strategy.sends.title": "Envios recentes",
@@ -120,7 +120,7 @@ export const pt = {
   "strategy.sends.one": "Envio nº {n}",
   "strategy.sends.ok": "Todos receberam",
   "strategy.sends.failures": "{n} sem receber",
-  "strategy.sends.closed": "{n} sem receber (cotação encerrada)",
+  "strategy.sends.closed": "{n} sem receber (consulta encerrada)",
   "strategy.sends.lines": "{n} produto(s)",
   "strategy.send.title": "Envio nº {n} da Estratégia de Compra",
   "strategy.send.subtitle":
@@ -136,8 +136,8 @@ export const pt = {
   "strategy.send.status.failed": "Erro no envio",
   "strategy.send.logins":
     "Aviso no portal para {n} login(s). E-mail e WhatsApp ainda simulados (provedor pendente).",
-  "strategy.send.quote": "Cotação de compra nº {n}",
-  "strategy.send.openQuote": "Abrir a cotação",
+  "strategy.send.quote": "Consulta de compra nº {n}",
+  "strategy.send.openQuote": "Abrir a consulta",
   "strategy.send.direct":
     "Pedido direto: esperando a aprovação da Diretoria de compras.",
   "strategy.send.lineError": "Não foi enviado: {error}",
@@ -152,14 +152,14 @@ export const pt = {
   "strategy.error.strategy_send_no_ok_recipient":
     "Produto sem destinatário apto: escolha outro parceiro.",
   "strategy.error.strategy_recipient_type":
-    "Só Fornecedor, Trading, Supplier e Factory recebem a cotação.",
+    "Só Fornecedor, Trading, Supplier e Factory recebem a consulta.",
   "strategy.error.strategy_send_not_found": "Envio não encontrado.",
   "strategy.error.strategy_line_duplicated":
     "O mesmo produto apareceu duas vezes no envio.",
   "strategy.error.strategy_nothing_to_retry":
     "Ninguém ficou de fora: não há o que tentar de novo.",
   "strategy.error.strategy_demand_not_sent":
-    "A encomenda ainda não foi enviada para cotação (Encomendas → Enviar para cotação).",
+    "A encomenda ainda não foi enviada para consulta (Encomendas → Enviar para consulta).",
   "strategy.error.strategy_send_failed":
     'Erro ao gravar ou ao abrir a cotação. Use "Tentar de novo".',
   "quote.item.spec": "Especificação",
@@ -171,29 +171,29 @@ export const en: Record<keyof typeof pt, string> = {
   "nav.purchaseStrategy": "Purchase strategy",
   "perm.note.purchaseStrategy":
     "Purchase strategy per product and the result of each send. Starts open for those who open Supplier requests.",
-  "reqSend.button": "Send to quotation",
+  "reqSend.button": "Send to inquiry",
   "reqSend.confirm": "Send {n} product(s) to the Purchase strategy?",
   "reqSend.done": "{n} product(s) sent to the Purchase strategy.",
   "reqSend.skipped":
     "{n} were not sent: only products with the Requested status that were not sent yet go (replenishment and stock purchases move on by themselves).",
   "reqSend.open": "Open the Purchase strategy",
-  "reqSend.all": "Send all to quotation ({n})",
-  "reqSend.sentAt": "Sent to quotation on {date}",
+  "reqSend.all": "Send all to inquiry ({n})",
+  "reqSend.sentAt": "Sent to inquiry on {date}",
   "reqBatch.error.nothing_sent":
-    "Nothing was sent: tick products with the Requested status that were not sent to quotation yet.",
-  "reqList.next.send": "Send to quotation",
+    "Nothing was sent: tick products with the Requested status that were not sent to inquiry yet.",
+  "reqList.next.send": "Send to inquiry",
   "reqList.next.strategy": "Purchase strategy",
   "tasks.group.purchase_strategy_send": "Strategy send with issues",
-  "strategy.task.toSend.title": "Send to quotation: {product}",
+  "strategy.task.toSend.title": "Send to inquiry: {product}",
   "strategy.task.toSend.detail": "Customer order · {quantity} {unit}",
   "strategy.task.toSend.titleNumbered":
-    "Send to quotation: order no. {n} · {customer}",
+    "Send to inquiry: order no. {n} · {customer}",
   "strategy.task.toSend.detailProduct": "{product} · {quantity} {unit}",
   "strategy.task.send.title":
     "Purchase strategy send no. {n}: {count} partner(s) did not receive it",
   "strategy.task.send.detail":
     'Fix the partner or choose another one and use "Try again".',
-  "strategy.toSend": "{n} customer order(s) not sent to quotation yet.",
+  "strategy.toSend": "{n} customer order(s) not sent to inquiry yet.",
   "strategy.toSendLink": "Open Customer orders",
   "strategy.queue.title": "Requests waiting for the strategy ({n})",
   "strategy.queue.empty":
@@ -299,8 +299,8 @@ export const en: Record<keyof typeof pt, string> = {
   "strategy.send.status.failed": "Send error",
   "strategy.send.logins":
     "Portal notice to {n} login(s). E-mail and WhatsApp still simulated (provider pending).",
-  "strategy.send.quote": "Purchase quote no. {n}",
-  "strategy.send.openQuote": "Open the quote",
+  "strategy.send.quote": "Purchase inquiry no. {n}",
+  "strategy.send.openQuote": "Open the inquiry",
   "strategy.send.direct":
     "Direct order: waiting for the Purchasing board approval.",
   "strategy.send.lineError": "Not sent: {error}",
@@ -315,14 +315,14 @@ export const en: Record<keyof typeof pt, string> = {
   "strategy.error.strategy_send_no_ok_recipient":
     "Product with no eligible recipient: choose another partner.",
   "strategy.error.strategy_recipient_type":
-    "Only Supplier, Trading, Supplier partner and Factory receive the quote.",
+    "Only Supplier, Trading, Supplier partner and Factory receive the inquiry.",
   "strategy.error.strategy_send_not_found": "Send not found.",
   "strategy.error.strategy_line_duplicated":
     "The same product appeared twice in the send.",
   "strategy.error.strategy_nothing_to_retry":
     "Nobody stayed out: there is nothing to try again.",
   "strategy.error.strategy_demand_not_sent":
-    "The customer order was not sent to quotation yet (Customer orders → Send to quotation).",
+    "The customer order was not sent to inquiry yet (Customer orders → Send to inquiry).",
   "strategy.error.strategy_send_failed":
     'Error while saving or opening the quote. Use "Try again".',
   "quote.item.spec": "Specification",
@@ -333,32 +333,32 @@ export const en: Record<keyof typeof pt, string> = {
 export const zh: Record<keyof typeof pt, string> = {
   "nav.purchaseStrategy": "采购策略",
   "perm.note.purchaseStrategy":
-    "按产品的采购策略和每次发送的结果。默认对能打开向供应商询价的人开放。",
-  "reqSend.button": "发送询价",
+    "按产品的采购策略和每次发送的结果。默认对能打开向供应商询盘的人开放。",
+  "reqSend.button": "发送询盘",
   "reqSend.confirm": "将 {n} 个产品发送到采购策略？",
   "reqSend.done": "已将 {n} 个产品发送到采购策略。",
   "reqSend.skipped":
     "{n} 个未发送：只发送状态为“已提交”且尚未发送的产品（补货和库存采购会自动进入）。",
   "reqSend.open": "打开采购策略",
-  "reqSend.all": "全部发送询价（{n}）",
-  "reqSend.sentAt": "{date} 已发送询价",
+  "reqSend.all": "全部发送询盘（{n}）",
+  "reqSend.sentAt": "{date} 已发送询盘",
   "reqBatch.error.nothing_sent":
-    "没有发送任何产品：请勾选状态为“已提交”且尚未发送询价的产品。",
-  "reqList.next.send": "发送询价",
+    "没有发送任何产品：请勾选状态为“已提交”且尚未发送询盘的产品。",
+  "reqList.next.send": "发送询盘",
   "reqList.next.strategy": "采购策略",
   "tasks.group.purchase_strategy_send": "有问题的策略发送",
-  "strategy.task.toSend.title": "发送询价：{product}",
+  "strategy.task.toSend.title": "发送询盘：{product}",
   "strategy.task.toSend.detail": "客户订货 · {quantity} {unit}",
-  "strategy.task.toSend.titleNumbered": "发送询价：订货 {n} 号 · {customer}",
+  "strategy.task.toSend.titleNumbered": "发送询盘：订货 {n} 号 · {customer}",
   "strategy.task.toSend.detailProduct": "{product} · {quantity} {unit}",
   "strategy.task.send.title": "采购策略第 {n} 次发送：{count} 个合作伙伴未收到",
   "strategy.task.send.detail":
     "请处理该合作伙伴的问题或另选一个，然后点击“重试”。",
-  "strategy.toSend": "{n} 个客户订货尚未发送询价。",
+  "strategy.toSend": "{n} 个客户订货尚未发送询盘。",
   "strategy.toSendLink": "打开客户订货",
   "strategy.queue.title": "等待采购策略的申请（{n}）",
   "strategy.queue.empty":
-    "没有等待采购策略的产品。请在客户订货页面发送产品（“发送询价”）。",
+    "没有等待采购策略的产品。请在客户订货页面发送产品（“发送询盘”）。",
   "strategy.line.order": "客户订货第 {n} 号",
   "strategy.line.replenishment": "补货第 {n} 号",
   "strategy.line.batch": "含 {n} 个产品的批次",
@@ -373,9 +373,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.line.noFamily": "未识别产品系列",
   "strategy.line.choose": "这个产品怎么处理？",
   "strategy.option.skip": "暂不发送",
-  "strategy.choice.quote_last": "向上次采购的供应商询价",
-  "strategy.option.lastHint": "询价只发给 {name}。",
-  "strategy.option.directHint": "不询价：先由采购总监审批，然后生成采购订单。",
+  "strategy.choice.quote_last": "向上次采购的供应商询盘",
+  "strategy.option.lastHint": "询盘只发给 {name}。",
+  "strategy.option.directHint": "不询盘：先由采购总监审批，然后生成采购订单。",
   "strategy.option.noHistory": "该产品没有以前的采购：请选择其他合作伙伴。",
   "strategy.recipients.linked": "已勾选 {family} 系列",
   "strategy.recipients.suggested": "曾供应该系列产品（档案中未关联）",
@@ -394,19 +394,19 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.recipients.logins": "{n} 个登录",
   "strategy.recipients.ok": "符合条件：在门户中接收并回复",
   "strategy.recipients.lastBadge": "上次采购",
-  "strategy.issue.not_quote_type": "该合作伙伴类型不接收询价。",
+  "strategy.issue.not_quote_type": "该合作伙伴类型不接收询盘。",
   "strategy.issue.inactive": "档案未启用：请重新启用该合作伙伴。",
   "strategy.issue.type_inactive": "该合作伙伴类型已停用（类型和访问）。",
   "strategy.issue.no_login": "没有启用的登录：请在合作伙伴档案中生成访问登录。",
   "strategy.issue.no_quotes_screen":
-    "该类型的页面配置中“询价”页面已关闭（页面管理）。",
+    "该类型的页面配置中“询盘”页面已关闭（页面管理）。",
   "strategy.warning.no_email": "登录没有电子邮件：通知只在门户中显示。",
   "strategy.issue.fix": "打开档案",
   "strategy.review": "检查发送（{n}）",
   "strategy.review.none": "请至少为一个产品选择处理方式。",
   "strategy.summary.title": "发送摘要",
   "strategy.summary.hint":
-    "请核对每个询价的接收方。有问题的合作伙伴在处理前不会收到；之后可在结果中点击“重试”。",
+    "请核对每个询盘的接收方。有问题的合作伙伴在处理前不会收到；之后可在结果中点击“重试”。",
   "strategy.summary.receives": "接收（{n}）",
   "strategy.summary.blocked": "未包括（{n}）",
   "strategy.summary.direct": "提交采购总监审批。",
@@ -423,12 +423,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.tabs.waiting": "等待策略",
   "strategy.tabs.open": "进行中",
   "strategy.tabs.sent": "已发送",
-  "strategy.sent.col.what": "询价",
+  "strategy.sent.col.what": "询盘",
   "strategy.sent.col.items": "申请和产品",
   "strategy.sent.col.at": "发送日期",
   "strategy.sent.col.status": "状态",
   "strategy.sent.col.send": "发送",
-  "strategy.sent.direct": "直接下单（不询价）",
+  "strategy.sent.direct": "直接下单（不询盘）",
   "strategy.sent.failed": "未发送",
   "strategy.sent.more": "+{n}",
   "strategy.sends.title": "最近的发送",
@@ -436,7 +436,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.sends.one": "第 {n} 次发送",
   "strategy.sends.ok": "全部已收到",
   "strategy.sends.failures": "{n} 个未收到",
-  "strategy.sends.closed": "{n} 个未收到（询价已结束）",
+  "strategy.sends.closed": "{n} 个未收到（询盘已结束）",
   "strategy.sends.lines": "{n} 个产品",
   "strategy.send.title": "采购策略第 {n} 次发送",
   "strategy.send.subtitle":
@@ -451,8 +451,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.send.status.failed": "发送出错",
   "strategy.send.logins":
     "已在门户通知 {n} 个登录。电子邮件和 WhatsApp 仍为模拟（服务商待定）。",
-  "strategy.send.quote": "采购询价第 {n} 号",
-  "strategy.send.openQuote": "打开询价",
+  "strategy.send.quote": "采购询盘第 {n} 号",
+  "strategy.send.openQuote": "打开询盘",
   "strategy.send.direct": "直接下单：等待采购总监审批。",
   "strategy.send.lineError": "未发送：{error}",
   "strategy.send.by": "由 {name} 于 {date} 发送",
@@ -465,14 +465,14 @@ export const zh: Record<keyof typeof pt, string> = {
   "strategy.error.strategy_send_no_ok_recipient":
     "有产品没有符合条件的接收方：请选择其他合作伙伴。",
   "strategy.error.strategy_recipient_type":
-    "只有供应商、贸易商、Supplier 和工厂接收询价。",
+    "只有供应商、贸易商、Supplier 和工厂接收询盘。",
   "strategy.error.strategy_send_not_found": "未找到该次发送。",
   "strategy.error.strategy_line_duplicated": "同一产品在发送中出现了两次。",
   "strategy.error.strategy_nothing_to_retry":
     "没有未收到的合作伙伴：无需重试。",
   "strategy.error.strategy_demand_not_sent":
-    "该客户订货尚未发送询价（客户订货 → 发送询价）。",
-  "strategy.error.strategy_send_failed": "保存或打开询价时出错。请点击“重试”。",
+    "该客户订货尚未发送询盘（客户订货 → 发送询盘）。",
+  "strategy.error.strategy_send_failed": "保存或打开询盘时出错。请点击“重试”。",
   "quote.item.spec": "规格",
   "quote.item.schedule": "交货计划",
   "quote.item.desiredAt": "期望交货",

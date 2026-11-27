@@ -6,14 +6,14 @@
 export const pt = {
   "tasks.group.product_registration": "Cadastrar produto",
   "nav.productRegistration": "Cadastrar produto",
-  "productRegistration.task.title": "Cadastrar o produto: cotação nº {n}",
+  "productRegistration.task.title": "Cadastrar o produto: consulta nº {n}",
   "productRegistration.task.detail": "{product}",
   "productRegistration.title": "Cadastrar produto",
   "productRegistration.subtitle":
-    "Produtos aprovados na cotação (vindos do book) para cadastrar no Sankhya, com tudo o que foi preenchido no processo.",
+    "Produtos aprovados na consulta (vindos do book) para cadastrar no Sankhya, com tudo o que foi preenchido no processo.",
   "productRegistration.tab.open": "A cadastrar",
   "productRegistration.tab.done": "Cadastrados",
-  "productRegistration.col.quote": "Cotação",
+  "productRegistration.col.quote": "Consulta",
   "productRegistration.col.product": "Produto",
   "productRegistration.col.supplier": "Fornecedor",
   "productRegistration.col.book": "Book",
@@ -53,8 +53,8 @@ export const pt = {
   "productRegistration.state.to_send": "Falta o Sankhya",
   "productRegistration.state.done": "Cadastrado",
   "productRegistration.back": "Voltar para Cadastrar produto",
-  "productRegistration.detail.title": "Cadastrar produto · cotação nº {n}",
-  "productRegistration.detail.quote": "Abrir a cotação",
+  "productRegistration.detail.title": "Cadastrar produto · consulta nº {n}",
+  "productRegistration.detail.quote": "Abrir a consulta",
   "productRegistration.detail.book": "Book nº {n}",
   "productRegistration.detail.intro":
     "Os campos são os do cadastro do produto no Sankhya (aba Compras) e os da planilha de cadastro. O que o processo já tem (book, seleção, negociação, amostra e fornecedor) vem preenchido: confira e complete.",
@@ -107,7 +107,7 @@ export const pt = {
   "productRegistration.photos.none": "Sem foto no item.",
   "productRegistration.exists.title": "Já existe no catálogo?",
   "productRegistration.exists.hint":
-    "Se o produto já existe no cadastro, associe a cotação a ele em vez de cadastrar de novo.",
+    "Se o produto já existe no cadastro, associe a consulta a ele em vez de cadastrar de novo.",
   "productRegistration.map.title": "Campos no Sankhya",
   "productRegistration.map.intro":
     'De-para entre os campos desta tela e as colunas da TGFPRO. Os campos padrão já são conhecidos; os personalizados (AD_) são achados no dicionário do Sankhya pela descrição. Corrija a coluna de um campo ou digite "-" para não enviá-lo.',
@@ -138,7 +138,7 @@ export const pt = {
   "productRegistration.error.registration_column_invalid":
     'Coluna inválida: use letras, números e "_" (ou "-" para não enviar).',
   "productRegistration.error.not_found":
-    "Cotação não encontrada ou ainda não aprovada.",
+    "Consulta não encontrada ou ainda não aprovada.",
   "productRegistration.groupFallback":
     "Sem a lista de grupos do Sankhya agora: escolha a linha do portal (o grupo dela vai ao Sankhya).",
   "productRegistration.groupInfo.group": "Grupo",
@@ -321,14 +321,14 @@ export const pt = {
 export const en = {
   "tasks.group.product_registration": "Register product",
   "nav.productRegistration": "Register product",
-  "productRegistration.task.title": "Register the product: quotation #{n}",
+  "productRegistration.task.title": "Register the product: inquiry #{n}",
   "productRegistration.task.detail": "{product}",
   "productRegistration.title": "Register product",
   "productRegistration.subtitle":
-    "Products approved in the quotation (from a book) to register in Sankhya, with everything filled in during the process.",
+    "Products approved in the inquiry (from a book) to register in Sankhya, with everything filled in during the process.",
   "productRegistration.tab.open": "To register",
   "productRegistration.tab.done": "Registered",
-  "productRegistration.col.quote": "Quotation",
+  "productRegistration.col.quote": "Inquiry",
   "productRegistration.col.product": "Product",
   "productRegistration.col.supplier": "Supplier",
   "productRegistration.col.book": "Book",
@@ -368,8 +368,8 @@ export const en = {
   "productRegistration.state.to_send": "Sankhya missing",
   "productRegistration.state.done": "Registered",
   "productRegistration.back": "Back to Register product",
-  "productRegistration.detail.title": "Register product · quotation #{n}",
-  "productRegistration.detail.quote": "Open the quotation",
+  "productRegistration.detail.title": "Register product · inquiry #{n}",
+  "productRegistration.detail.quote": "Open the inquiry",
   "productRegistration.detail.book": "Book #{n}",
   "productRegistration.detail.intro":
     "The fields are those of the Sankhya product form (Purchasing tab) and of the registration spreadsheet. What the process already has (book, selection, negotiation, sample and supplier) comes pre-filled: check and complete.",
@@ -422,7 +422,7 @@ export const en = {
   "productRegistration.photos.none": "No photo on the item.",
   "productRegistration.exists.title": "Already in the catalog?",
   "productRegistration.exists.hint":
-    "If the product already exists, link the quotation to it instead of registering it again.",
+    "If the product already exists, link the inquiry to it instead of registering it again.",
   "productRegistration.map.title": "Fields in Sankhya",
   "productRegistration.map.intro":
     'Mapping between the fields on this screen and the TGFPRO columns. Standard fields are known; custom ones (AD_) are found in the Sankhya dictionary by their description. Fix a field\'s column or type "-" to not send it.',
@@ -453,7 +453,7 @@ export const en = {
   "productRegistration.error.registration_column_invalid":
     'Invalid column: use letters, numbers and "_" (or "-" to not send).',
   "productRegistration.error.not_found":
-    "Quotation not found or not approved yet.",
+    "Inquiry not found or not approved yet.",
   "productRegistration.groupFallback":
     "The Sankhya group list is not available now: pick the portal line (its group goes to Sankhya).",
   "productRegistration.groupInfo.group": "Group",

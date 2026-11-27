@@ -30,7 +30,7 @@ export const pt = {
   "audit.prev": "Anterior",
   "audit.next": "Próxima",
   "audit.module.request": "Solicitações",
-  "audit.module.quote": "Cotações",
+  "audit.module.quote": "Consultas",
   "audit.module.approval": "Aprovações",
   "audit.module.order": "Pedidos",
   "audit.module.payment": "Pagamentos",

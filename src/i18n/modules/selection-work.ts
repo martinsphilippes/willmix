@@ -28,7 +28,7 @@ export const pt = {
     "Você tem outra seleção em andamento: conclua ou cancele aquela antes.",
   "bookFamily.label": "Família do produto",
   "bookFamily.hint":
-    "Grupo de produto (família) dos itens do book. Obrigatória para fechar; na cotação, sugere os fornecedores da família.",
+    "Grupo de produto (família) dos itens do book. Obrigatória para fechar; na consulta, sugere os fornecedores da família.",
   "bookFamily.choose": "Escolha a família",
   "bookFamily.save": "Gravar família",
   "bookFamily.option": "{name} · código {code}",
@@ -63,7 +63,7 @@ export const en: Record<keyof typeof pt, string> = {
     "You have another selection in progress: finish or cancel it first.",
   "bookFamily.label": "Product family",
   "bookFamily.hint":
-    "Product group (family) of the book items. Required to close; in the quotation, it suggests the family's suppliers.",
+    "Product group (family) of the book items. Required to close; in the inquiry, it suggests the family's suppliers.",
   "bookFamily.choose": "Choose the family",
   "bookFamily.save": "Save family",
   "bookFamily.option": "{name} · code {code}",
@@ -96,7 +96,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "您有另一个进行中的选择：请先完成或取消它。",
   "bookFamily.label": "产品系列",
   "bookFamily.hint":
-    "Book 中产品的产品组（系列）。关闭前必须填写；询价时会推荐该系列的供应商。",
+    "Book 中产品的产品组（系列）。关闭前必须填写；询盘时会推荐该系列的供应商。",
   "bookFamily.choose": "选择系列",
   "bookFamily.save": "保存系列",
   "bookFamily.option": "{name} · 代码 {code}",
