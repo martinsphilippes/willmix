@@ -52,8 +52,24 @@ export type RegistrationFieldType =
   | "date"
   /** Código de outra tabela do Sankhya, com o nome ao lado (só na tela). */
   | "code"
-  /** Linha de produto do portal: leva o grupo do Sankhya (CODGRUPOPROD). */
-  | "line";
+  /**
+   * Código escolhido numa lista lida do Sankhya, com busca ao digitar (dono,
+   * 27/11/2026): grupo, linha, tipo de embalagem, unidades, marcas e país.
+   * Sem a lista (Sankhya fora do ar ou não configurado), vira um "code".
+   */
+  | "lookup";
+
+/** Listas do Sankhya que os campos "lookup" usam. */
+export const LOOKUP_KINDS = [
+  "group",
+  "line",
+  "packageType",
+  "unit",
+  "brand",
+  "brandWellmix",
+  "country",
+] as const;
+export type LookupKind = (typeof LOOKUP_KINDS)[number];
 
 export interface RegistrationField {
   id: string;
@@ -76,7 +92,17 @@ export interface RegistrationField {
   /** Valor de partida (S/N ou a unidade). */
   initial?: string;
   max?: number;
+  /** Lista do Sankhya do campo "lookup". */
+  lookup?: LookupKind;
+  /** Coluna que recebe o nome escolhido (a marca vai em CODMARCA e MARCA). */
+  nameColumn?: string;
+  /** Só no portal: nunca vai ao Sankhya (ex.: nome da Factory). */
+  portalOnly?: boolean;
 }
+
+/** Tipo que tem o nome ao lado do código. */
+export const hasName = (field: Pick<RegistrationField, "type">) =>
+  field.type === "code" || field.type === "lookup";
 
 const f = (
   id: string,
@@ -114,14 +140,18 @@ export const REGISTRATION_FIELDS: readonly RegistrationField[] = [
   f("descrSale", "identity", "text", ["Descrição Venda", "DESCRIÇÃO VENDA"], {
     max: 250,
   }),
-  f("brand", "identity", "text", ["Marca", "NOME DA MARCA"], {
-    column: "MARCA",
+  // Marca: o código (CODMARCA, a lupa da tela do Sankhya) e o nome (MARCA).
+  f("brand", "identity", "lookup", ["Marca", "NOME DA MARCA"], {
+    column: "CODMARCA",
+    nameColumn: "MARCA",
+    lookup: "brand",
     required: "sankhya",
-    max: 60,
+    max: 12,
   }),
-  f("brandWellmix", "identity", "code", ["Marca Wellmix"], {
+  f("brandWellmix", "identity", "lookup", ["Marca Wellmix"], {
     column: "AD_CODMARCAWELL",
-    max: 20,
+    lookup: "brandWellmix",
+    max: 12,
   }),
   f(
     "productManager",
@@ -139,56 +169,78 @@ export const REGISTRATION_FIELDS: readonly RegistrationField[] = [
   ),
   yes("hotsell", "identity", ["Hotsell", "HOTSELL (S/N)"]),
   yes("combat", "identity", ["Combate", "COMBATE (S/N)"]),
-  // Grupo e linha.
-  f("lineId", "group", "line", ["Grupo", "CÓDIGO DO GRUPO"], {
+  // Grupo e linha (dono, 27/11/2026): só o Grupo e o Cód. Linha, escolhidos
+  // nas listas do Sankhya; Sub grupo, Coleção e Categoria vêm do Grupo.
+  f("group", "group", "lookup", ["Grupo", "CÓDIGO DO GRUPO"], {
     column: "CODGRUPOPROD",
+    lookup: "group",
     required: "portal",
+    max: 64,
   }),
   f(
     "productLine",
     "group",
-    "code",
+    "lookup",
     ["Cód.Linha", "Cód. Linha", "Código da Linha", "Linha", "NOME DA LINHA"],
-    { max: 20 },
+    { column: "AD_CODLINHA", lookup: "line", max: 12 },
   ),
-  // Fornecedor e origem.
-  f("supplierName", "supplier", "text", ["Fornecedor", "FORNECEDOR"], {
-    max: 160,
-  }),
+  // Supplier e Factory (dono, 27/11/2026): as duas entidades do book. O
+  // Supplier é o que vai ao Sankhya (Parceiro fornecedor preferencial); a
+  // Factory fica no portal, com o nº da loja e os dados dela.
+  f(
+    "supplierName",
+    "supplier",
+    "text",
+    ["Supplier", "Fornecedor", "FORNECEDOR"],
+    {
+      max: 160,
+      portalOnly: true,
+    },
+  ),
   f(
     "supplierCode",
     "supplier",
     "code",
     [
+      "Parceiro Fornecedor preferencial",
       "Parceiro Fornecedor",
-      "Fornecedor Preferencial",
       "CÓDIGO PARCEIRO FORNECEDOR PREFERENCIAL",
     ],
     { column: "CODPARCFORN", max: 12 },
+  ),
+  f("factoryName", "supplier", "text", ["Factory", "Fábrica"], {
+    max: 160,
+    portalOnly: true,
+  }),
+  f(
+    "factoryStore",
+    "supplier",
+    "text",
+    ["Código Fabricante", "CÓDIGO FABRICANTE"],
+    { max: 60 },
   ),
   f(
     "supplierContact",
     "supplier",
     "text",
     ["Fornec.Adress Phone", "Fornec. Adress/Phone", "FORNEC. ADRESS/PHONE"],
-    { max: 250 },
+    { column: "AD_DADOSFABRICANTE", max: 250 },
   ),
   f(
     "factoryCode",
     "supplier",
     "text",
     ["Factory Code", "CÓDIGO FABRICA (PRODUTO)", "Código Fábrica"],
-    { max: 60 },
+    { column: "AD_FACTORYCODE", max: 60 },
   ),
-  f(
-    "supplierRef",
-    "supplier",
-    "text",
-    ["Referência do Fornecedor", "CÓDIGO FABRICANTE", "Código Fabricante"],
-    { column: "REFFORN", required: "sankhya", max: 60 },
-  ),
-  f("country", "supplier", "code", ["País de origem", "País"], {
+  f("supplierRef", "supplier", "text", ["Referência do Fornecedor"], {
+    column: "REFFORN",
+    required: "sankhya",
+    max: 60,
+  }),
+  f("country", "supplier", "lookup", ["País de origem", "País"], {
     column: "CODPAIS",
+    lookup: "country",
     max: 12,
   }),
   f(
@@ -207,14 +259,16 @@ export const REGISTRATION_FIELDS: readonly RegistrationField[] = [
   ),
   f("company", "supplier", "int", ["Empresa", "EMPRESA"]),
   // Unidades e situação.
-  f("unit", "status", "code", ["Unidade padrão", "Unidade"], {
+  f("unit", "status", "lookup", ["Unidade padrão", "Unidade"], {
     column: "CODVOL",
+    lookup: "unit",
     required: "sankhya",
     initial: "UN",
     max: 6,
   }),
-  f("purchaseUnit", "status", "code", ["Unid. Compra", "Unidade de Compra"], {
+  f("purchaseUnit", "status", "lookup", ["Unid. Compra", "Unidade de Compra"], {
     column: "CODVOLCOMPRA",
+    lookup: "unit",
     initial: "UN",
     max: 6,
   }),
@@ -345,9 +399,9 @@ export const REGISTRATION_FIELDS: readonly RegistrationField[] = [
   f(
     "packageType",
     "packing",
-    "code",
+    "lookup",
     ["Cód. Tipo Embalagem", "Tipo de Embalagem", "TIPO DE EMBALAGEM"],
-    { max: 12 },
+    { column: "AD_CODTIPOEMB", lookup: "packageType", max: 12 },
   ),
   f(
     "piecesPerPackage",
@@ -515,7 +569,7 @@ export function registrationDefaults(): RegistrationValues {
 export function cleanValues(raw: Record<string, unknown>): RegistrationValues {
   const out: RegistrationValues = {};
   for (const field of REGISTRATION_FIELDS) {
-    for (const key of field.type === "code"
+    for (const key of hasName(field)
       ? [field.id, nameKey(field.id)]
       : [field.id]) {
       const v = raw[key];
@@ -615,12 +669,19 @@ export function resolveColumns(
     if (!key) continue;
     byLabel.set(key, [...(byLabel.get(key) ?? []), x]);
   }
-  const used = new Set<string>();
+  // As colunas do nome (MARCA) não são achadas pelo rótulo de outro campo.
+  const used = new Set<string>(
+    REGISTRATION_FIELDS.flatMap((x) => (x.nameColumn ? [x.nameColumn] : [])),
+  );
   const out: Record<string, ColumnResolution> = {};
   const optionsOf = (column: string | null) =>
     (column && dictionary?.options[column]) || [];
   for (const field of REGISTRATION_FIELDS) {
     const override = overrides[field.id]?.trim().toUpperCase();
+    if (field.portalOnly && !override) {
+      out[field.id] = { column: null, source: "none", options: [] };
+      continue;
+    }
     if (override === OFF) {
       out[field.id] = { column: null, source: "off", options: [] };
       continue;
@@ -741,12 +802,15 @@ export interface SankhyaPayload {
  * Valores da TGFPRO a partir do formulário: só os campos com coluna e com
  * valor (vazio não vai: o Sankhya fica com o padrão dele). Números com
  * ponto, S/N, datas DD/MM/AAAA, NCM só com os dígitos e a lista pelo valor
- * da opção. `groupCode` é o CODGRUPOPROD da linha escolhida.
+ * da opção. `groupCode` é o CODGRUPOPROD do Grupo escolhido (o código do
+ * Sankhya ou o da linha do portal escolhida sem a lista do Sankhya).
+ * `hasColumn` diz se a coluna existe no Sankhya (sem o dicionário, todas).
  */
 export function sankhyaPayload(
   values: RegistrationValues,
   columns: Record<string, ColumnResolution>,
   groupCode: string | null,
+  hasColumn: (column: string) => boolean = () => true,
 ): SankhyaPayload {
   const out: Record<string, string> = {};
   const skipped: SankhyaPayload["skipped"] = [];
@@ -754,7 +818,8 @@ export function sankhyaPayload(
     const raw = values[field.id]?.trim();
     const resolution = columns[field.id];
     let value: string | null = null;
-    if (field.type === "line") value = groupCode;
+    if (field.portalOnly) continue;
+    if (field.id === "group") value = groupCode;
     else if (!raw) value = null;
     else if (field.type === "number" || field.type === "int") {
       const n = registrationNumber(field, raw);
@@ -781,6 +846,10 @@ export function sankhyaPayload(
       value = option;
     }
     out[resolution.column] = value;
+    // O nome escolhido na lista, na coluna dele (a marca: CODMARCA + MARCA).
+    const name = values[nameKey(field.id)]?.trim();
+    if (field.nameColumn && name && hasColumn(field.nameColumn))
+      out[field.nameColumn] = name;
   }
   return { values: out, skipped };
 }
@@ -811,18 +880,20 @@ export interface RegistrationSource {
   innerQty: number | null;
   ncm: string | null;
   leadTimeDays: number | null;
+  /** Supplier do book (o que vai ao Sankhya): nome e código do parceiro. */
   supplierName: string | null;
   supplierCode: string | null;
-  supplierContact: string | null;
+  /** Factory do book: nome, nº da loja e o contato (Fornec. Adress Phone). */
+  factoryName: string | null;
+  factoryStore: string | null;
+  factoryContact: string | null;
   /** País e porto dos outros produtos do mesmo fornecedor no Sankhya. */
   countryCode: string | null;
   countryName: string | null;
   portCode: string | null;
   productManager: string | null;
   notes: string | null;
-  /** Linha sugerida (a da família do book, quando há uma só). */
-  lineId: string | null;
-  /** Certificações exigidas pela linha sugerida (INMETRO, ANATEL, ANVISA). */
+  /** Certificações exigidas pela linha da família do book (INMETRO, ANATEL, ANVISA). */
   certifications: string[];
 }
 
@@ -845,11 +916,12 @@ export function prefillValues(source: RegistrationSource): RegistrationValues {
     descrPt: source.name ?? source.description ?? undefined,
     descrEn: source.description ?? source.name ?? undefined,
     productManager: source.productManager ?? undefined,
-    lineId: source.lineId ?? undefined,
     supplierName: source.supplierName ?? undefined,
     supplierCode: source.supplierCode ?? undefined,
     [nameKey("supplierCode")]: source.supplierName ?? undefined,
-    supplierContact: source.supplierContact ?? undefined,
+    factoryName: source.factoryName ?? undefined,
+    factoryStore: source.factoryStore ?? undefined,
+    supplierContact: source.factoryContact ?? undefined,
     factoryCode: source.factoryCode ?? undefined,
     supplierRef: source.factoryCode ?? undefined,
     country: source.countryCode ?? undefined,
@@ -949,7 +1021,8 @@ export function productPatch(
   set("name", text("descrPt", 160));
   set("sku", text("supplierRef", 60) ?? text("factoryCode", 60));
   set("supplierSku", text("factoryCode", 60) ?? text("supplierRef", 60));
-  set("brand", text("brand", 60));
+  // A marca do portal é o nome (TGFPRO.MARCA); sem a lista, o código digitado.
+  set("brand", text(nameKey("brand"), 60) ?? text("brand", 60));
   set("material", text("composition", 120));
   set("color", text("colors", 120) ?? text("requestedColor", 120));
   set("pantone", text("pantone", 120));
@@ -990,4 +1063,154 @@ export function registrationState(input: {
 }): RegistrationState {
   if (input.productId) return input.sankhyaCode ? "done" : "to_send";
   return input.sampleApproved ? "to_register" : "waiting_sample";
+}
+
+/* ------------------------------------------------------------------------ */
+/* Árvore de grupos do Sankhya (Grupo → Sub grupo → Coleção → Categoria)     */
+/* ------------------------------------------------------------------------ */
+
+export interface GroupNode {
+  code: string;
+  name: string;
+}
+
+/** O grupo escolhido e os níveis acima dele, como na tela do Sankhya. */
+export interface GroupPath {
+  group: GroupNode;
+  subgroup: GroupNode | null;
+  collection: GroupNode | null;
+  /** O topo da árvore (GRAU 1): a Categoria do grupo, a família do portal. */
+  category: GroupNode | null;
+}
+
+type GroupTree = ReadonlyMap<string, { name: string; parent: string | null }>;
+
+/**
+ * Do grupo ao topo: Sub grupo é o pai, Coleção o avô e Categoria o topo (ex.:
+ * 10902001 BONECAS FASHION → 10902000 FASHION → 10900000 BONECAS →
+ * 10000000 BRINQUEDO). Árvore mais rasa: o que faltar fica nulo.
+ */
+export function groupPath(code: string, tree: GroupTree): GroupPath | null {
+  const own = tree.get(code);
+  if (!own) return null;
+  const chain: GroupNode[] = [{ code, name: own.name }];
+  const seen = new Set([code]);
+  let parent = own.parent;
+  while (parent && !seen.has(parent) && chain.length < 10) {
+    seen.add(parent);
+    const node = tree.get(parent);
+    if (!node) break;
+    chain.push({ code: parent, name: node.name });
+    parent = node.parent;
+  }
+  const category = chain.length > 1 ? chain[chain.length - 1] : null;
+  const pick = (i: number) =>
+    chain[i] && chain[i] !== category ? chain[i] : null;
+  return { group: chain[0], subgroup: pick(1), collection: pick(2), category };
+}
+
+/** Os grupos que se escolhem no cadastro: os do último nível (sem filhos). */
+export function leafGroups(tree: GroupTree): string[] {
+  const parents = new Set<string>();
+  for (const node of tree.values()) if (node.parent) parents.add(node.parent);
+  return [...tree.keys()].filter((c) => !parents.has(c) && tree.get(c)?.parent);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Produto semelhante do catálogo                                            */
+/* ------------------------------------------------------------------------ */
+
+/** "dd/MM/yyyy[ HH:mm:ss]" ou ISO → "yyyy-mm-dd" (o campo de data). */
+function isoDate(raw: string): string | null {
+  const br = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(raw);
+  if (br) return `${br[3]}-${br[2]}-${br[1]}`;
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
+  return iso ? `${iso[1]}-${iso[2]}-${iso[3]}` : null;
+}
+
+/**
+ * Os valores do formulário a partir do cadastro de um produto no Sankhya
+ * (a linha da TGFPRO), pelo mesmo de-para do envio, ao contrário. Os nomes
+ * das listas (marca, país...) vêm de `nameOf`.
+ */
+export function valuesFromSankhyaRow(
+  row: Record<string, unknown>,
+  columns: Record<string, ColumnResolution>,
+  nameOf: (field: RegistrationField, code: string) => string | null = () =>
+    null,
+): RegistrationValues {
+  const upper = new Map(
+    Object.entries(row).map(([k, v]) => [k.toUpperCase(), v]),
+  );
+  const raw: Record<string, string> = {};
+  for (const field of REGISTRATION_FIELDS) {
+    const column = columns[field.id]?.column;
+    if (!column || field.portalOnly) continue;
+    const v = upper.get(column);
+    if (v === null || v === undefined || String(v).trim() === "") continue;
+    const text = String(v).trim();
+    if (field.type === "yesno") {
+      if (text === "S" || text === "N") raw[field.id] = text;
+    } else if (field.type === "date") {
+      const d = isoDate(text);
+      if (d) raw[field.id] = d;
+    } else if (field.type === "number" || field.type === "int") {
+      const n = Number(text);
+      if (Number.isFinite(n))
+        raw[field.id] = String(Math.round(n * 1e6) / 1e6).replace(".", ",");
+    } else {
+      raw[field.id] = text;
+      if (hasName(field)) {
+        const name =
+          (field.nameColumn
+            ? String(upper.get(field.nameColumn) ?? "").trim()
+            : "") || nameOf(field, text);
+        if (name) raw[nameKey(field.id)] = name;
+      }
+    }
+  }
+  return cleanValues(raw);
+}
+
+/**
+ * O que o produto semelhante pode trazer (dono, 27/11/2026): só os campos que
+ * o processo não preencheu (book, seleção, negociação e fornecedor) e que o
+ * semelhante tem. Os padrões (S/N, unidade) contam como não preenchidos.
+ */
+export function similarCandidates(
+  prefill: RegistrationValues,
+  similar: RegistrationValues,
+): string[] {
+  const defaults = registrationDefaults();
+  return REGISTRATION_FIELDS.filter((field) => {
+    const own = prefill[field.id];
+    const fromProcess = !!own && own !== defaults[field.id];
+    // Da lista sem o código (só o nome, do cadastro do portal): também vale.
+    const has =
+      !!similar[field.id] || (hasName(field) && !!similar[nameKey(field.id)]);
+    return !fromProcess && has;
+  }).map((field) => field.id);
+}
+
+/** Traz do semelhante só os campos escolhidos (com o nome ao lado, quando há). */
+export function applySimilar(
+  values: RegistrationValues,
+  similar: RegistrationValues,
+  fields: readonly string[],
+): RegistrationValues {
+  const out = { ...values };
+  for (const id of fields) {
+    const field = registrationField(id);
+    if (!field) continue;
+    const name = hasName(field) ? similar[nameKey(id)] : undefined;
+    if (!similar[id] && !name) continue;
+    // Só o nome (sem o código): a lista do Sankhya acha o código pelo nome.
+    if (similar[id]) out[id] = similar[id];
+    else delete out[id];
+    if (hasName(field)) {
+      if (name) out[nameKey(id)] = name;
+      else delete out[nameKey(id)];
+    }
+  }
+  return out;
 }

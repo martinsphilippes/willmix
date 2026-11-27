@@ -114,13 +114,77 @@ export const pt = {
     'Coluna inválida: use letras, números e "_" (ou "-" para não enviar).',
   "productRegistration.error.not_found":
     "Cotação não encontrada ou ainda não aprovada.",
+  "productRegistration.groupFallback":
+    "Sem a lista de grupos do Sankhya agora: escolha a linha do portal (o grupo dela vai ao Sankhya).",
+  "productRegistration.groupInfo.group": "Grupo",
+  "productRegistration.groupInfo.subgroup": "Sub grupo",
+  "productRegistration.groupInfo.collection": "Coleção do grupo",
+  "productRegistration.groupInfo.category": "Categoria do grupo (família)",
+  "productRegistration.groupInfo.fromFamily": "Da família do book",
+  "productRegistration.groupInfo.otherFamilies": "Outras famílias",
+  "productRegistration.groupInfo.family": "Família escolhida no book: {family}",
+  "productRegistration.groupInfo.mismatch":
+    "A Categoria do grupo escolhido ({chosen}) é diferente da família escolhida no book ({family}). Confira o Grupo.",
+  "productRegistration.picker.placeholder": "Digite para buscar",
+  "productRegistration.picker.typeMore": "Digite mais letras",
+  "productRegistration.picker.none": "Nada encontrado",
+  "productRegistration.picker.loading": "Buscando…",
+  "productRegistration.picker.pick": "Escolha uma opção da lista",
+  "productRegistration.picker.clear": "Limpar",
+  "productRegistration.similar.title": "É semelhante a algum do catálogo?",
+  "productRegistration.similar.hint":
+    "Escolha um produto parecido e traga dele o que o processo ainda não preencheu.",
+  "productRegistration.similar.suggested":
+    "Sugestões pelo código da fábrica e pela descrição.",
+  "productRegistration.similar.search": "Buscar no catálogo",
+  "productRegistration.similar.none":
+    "Nenhum produto parecido. Busque pelo nome, código ou CODPROD.",
+  "productRegistration.similar.associate": "Associar",
+  "productRegistration.similar.modal.title": "Trazer do produto semelhante",
+  "productRegistration.similar.modal.hint":
+    "Marque o que trazer para o cadastro. Só aparecem os campos que o processo (book, seleção, negociação e fornecedor) não preencheu.",
+  "productRegistration.similar.modal.fromSankhya":
+    "Cadastro lido do Sankhya (CODPROD {code}).",
+  "productRegistration.similar.modal.fromPortal":
+    "Cadastro do portal (o do Sankhya não foi lido).",
+  "productRegistration.similar.modal.typed": "agora: {value}",
+  "productRegistration.similar.modal.empty":
+    "Este produto não tem nada a trazer além do que o processo já preencheu.",
+  "productRegistration.similar.modal.apply": "Trazer os marcados",
+  "productRegistration.similar.modal.cancel": "Cancelar",
+  "productRegistration.notice.similar":
+    "Campos trazidos do produto semelhante: {n}.",
+  "productRegistration.notice.lists": "Listas do Sankhya atualizadas.",
+  "productRegistration.lists.title": "Listas do Sankhya",
+  "productRegistration.lists.intro":
+    "De onde vêm as opções dos campos com lista. As tabelas padrão do Sankhya são conhecidas; as personalizadas (AD_) são achadas no dicionário. Para corrigir, escreva TABELA.CODIGO.NOME.",
+  "productRegistration.lists.loaded": "Listas lidas em {date}.",
+  "productRegistration.lists.notLoaded":
+    "As listas ainda não foram lidas do Sankhya.",
+  "productRegistration.lists.refresh": "Atualizar as listas do Sankhya",
+  "productRegistration.lists.save": "Gravar as tabelas",
+  "productRegistration.lists.col.list": "Lista",
+  "productRegistration.lists.col.source": "Tabela (TABELA.CODIGO.NOME)",
+  "productRegistration.lists.col.options": "Opções",
+  "productRegistration.lists.col.error": "Erro",
+  "productRegistration.lists.groups": "Grupos (árvore TGFGRU)",
+  "productRegistration.lists.kind.line": "Cód. linha",
+  "productRegistration.lists.kind.packageType": "Cód. tipo embalagem",
+  "productRegistration.lists.kind.unit": "Unidades",
+  "productRegistration.lists.kind.brand": "Marca",
+  "productRegistration.lists.kind.brandWellmix": "Marca Wellmix",
+  "productRegistration.lists.kind.country": "País de origem",
+  "productRegistration.error.registration_group_unknown":
+    "Esse Grupo não está na árvore de grupos do Sankhya.",
+  "productRegistration.error.registration_source_invalid":
+    "Tabela inválida: escreva TABELA.CODIGO.NOME, só com letras, números e _.",
   "productRegistration.goRegistration": "Abrir em Cadastrar produto",
   "productRegistration.quoteCard.pending":
     "O cadastro do produto (e o envio ao Sankhya) fica na tela Cadastrar produto.",
   "productRegistration.quoteCard.done": "Produto: {name} · CODPROD {code}",
   "productRegistration.section.identity": "Identificação",
   "productRegistration.section.group": "Grupo e linha",
-  "productRegistration.section.supplier": "Fornecedor e origem",
+  "productRegistration.section.supplier": "Supplier e Factory",
   "productRegistration.section.status": "Unidades e situação",
   "productRegistration.section.certs": "Certificações",
   "productRegistration.section.features": "Características do produto",
@@ -141,14 +205,19 @@ export const pt = {
     "Sazonalidade (ex.: Natal, Crianças)",
   "productRegistration.field.hotsell": "Hotsell",
   "productRegistration.field.combat": "Combate",
-  "productRegistration.field.lineId": "Grupo (linha do portal)",
+  "productRegistration.field.group": "Grupo",
   "productRegistration.field.productLine": "Cód. linha",
-  "productRegistration.field.supplierName": "Fornecedor",
-  "productRegistration.field.supplierCode": "Parceiro fornecedor preferencial",
-  "productRegistration.field.supplierContact": "Fornec. address/phone",
-  "productRegistration.field.factoryCode": "Factory code (código da fábrica)",
+  "productRegistration.field.supplierName": "Supplier",
+  "productRegistration.field.supplierCode":
+    "Supplier no Sankhya (parceiro fornecedor preferencial)",
+  "productRegistration.field.factoryName": "Factory",
+  "productRegistration.field.factoryStore": "Código fabricante (nº da loja)",
+  "productRegistration.field.supplierContact":
+    "Factory: endereço/telefone (Fornec. Adress Phone)",
+  "productRegistration.field.factoryCode":
+    "Factory code (código do item na fábrica)",
   "productRegistration.field.supplierRef":
-    "Código fabricante (referência do fornecedor)",
+    "Referência do fornecedor (código do item)",
   "productRegistration.field.country": "País de origem",
   "productRegistration.field.port": "Porto de embarque",
   "productRegistration.field.leadTime": "Lead time de compra",
@@ -335,13 +404,77 @@ export const en = {
     'Invalid column: use letters, numbers and "_" (or "-" to not send).',
   "productRegistration.error.not_found":
     "Quotation not found or not approved yet.",
+  "productRegistration.groupFallback":
+    "The Sankhya group list is not available now: pick the portal line (its group goes to Sankhya).",
+  "productRegistration.groupInfo.group": "Group",
+  "productRegistration.groupInfo.subgroup": "Subgroup",
+  "productRegistration.groupInfo.collection": "Group collection",
+  "productRegistration.groupInfo.category": "Group category (family)",
+  "productRegistration.groupInfo.fromFamily": "From the book's family",
+  "productRegistration.groupInfo.otherFamilies": "Other families",
+  "productRegistration.groupInfo.family": "Family chosen in the book: {family}",
+  "productRegistration.groupInfo.mismatch":
+    "The chosen group's category ({chosen}) differs from the family chosen in the book ({family}). Check the group.",
+  "productRegistration.picker.placeholder": "Type to search",
+  "productRegistration.picker.typeMore": "Type more letters",
+  "productRegistration.picker.none": "Nothing found",
+  "productRegistration.picker.loading": "Searching…",
+  "productRegistration.picker.pick": "Pick an option from the list",
+  "productRegistration.picker.clear": "Clear",
+  "productRegistration.similar.title": "Is it similar to a catalog product?",
+  "productRegistration.similar.hint":
+    "Pick a similar product and bring from it what the process has not filled in yet.",
+  "productRegistration.similar.suggested":
+    "Suggestions by factory code and description.",
+  "productRegistration.similar.search": "Search the catalog",
+  "productRegistration.similar.none":
+    "No similar product. Search by name, code or CODPROD.",
+  "productRegistration.similar.associate": "Associate",
+  "productRegistration.similar.modal.title": "Bring from the similar product",
+  "productRegistration.similar.modal.hint":
+    "Tick what to bring into the registration. Only fields the process (book, selection, negotiation and supplier) did not fill in are listed.",
+  "productRegistration.similar.modal.fromSankhya":
+    "Registration read from Sankhya (CODPROD {code}).",
+  "productRegistration.similar.modal.fromPortal":
+    "Portal registration (the Sankhya one was not read).",
+  "productRegistration.similar.modal.typed": "now: {value}",
+  "productRegistration.similar.modal.empty":
+    "This product has nothing to bring beyond what the process already filled in.",
+  "productRegistration.similar.modal.apply": "Bring the ticked ones",
+  "productRegistration.similar.modal.cancel": "Cancel",
+  "productRegistration.notice.similar":
+    "Fields brought from the similar product: {n}.",
+  "productRegistration.notice.lists": "Sankhya lists refreshed.",
+  "productRegistration.lists.title": "Sankhya lists",
+  "productRegistration.lists.intro":
+    "Where the options of the list fields come from. Standard Sankhya tables are known; custom ones (AD_) are found in the dictionary. To fix one, write TABLE.CODE.NAME.",
+  "productRegistration.lists.loaded": "Lists read on {date}.",
+  "productRegistration.lists.notLoaded":
+    "The lists have not been read from Sankhya yet.",
+  "productRegistration.lists.refresh": "Refresh the Sankhya lists",
+  "productRegistration.lists.save": "Save the tables",
+  "productRegistration.lists.col.list": "List",
+  "productRegistration.lists.col.source": "Table (TABLE.CODE.NAME)",
+  "productRegistration.lists.col.options": "Options",
+  "productRegistration.lists.col.error": "Error",
+  "productRegistration.lists.groups": "Groups (TGFGRU tree)",
+  "productRegistration.lists.kind.line": "Line code",
+  "productRegistration.lists.kind.packageType": "Packaging type code",
+  "productRegistration.lists.kind.unit": "Units",
+  "productRegistration.lists.kind.brand": "Brand",
+  "productRegistration.lists.kind.brandWellmix": "Wellmix brand",
+  "productRegistration.lists.kind.country": "Country of origin",
+  "productRegistration.error.registration_group_unknown":
+    "This group is not in the Sankhya group tree.",
+  "productRegistration.error.registration_source_invalid":
+    "Invalid table: write TABLE.CODE.NAME with letters, numbers and _ only.",
   "productRegistration.goRegistration": "Open in Register product",
   "productRegistration.quoteCard.pending":
     "The product registration (and the submission to Sankhya) is on the Register product screen.",
   "productRegistration.quoteCard.done": "Product: {name} · CODPROD {code}",
   "productRegistration.section.identity": "Identification",
   "productRegistration.section.group": "Group and line",
-  "productRegistration.section.supplier": "Supplier and origin",
+  "productRegistration.section.supplier": "Supplier and factory",
   "productRegistration.section.status": "Units and status",
   "productRegistration.section.certs": "Certifications",
   "productRegistration.section.features": "Product features",
@@ -362,14 +495,18 @@ export const en = {
     "Seasonality (e.g. Christmas, Children)",
   "productRegistration.field.hotsell": "Hot sell",
   "productRegistration.field.combat": "Combat",
-  "productRegistration.field.lineId": "Group (portal line)",
+  "productRegistration.field.group": "Group",
   "productRegistration.field.productLine": "Line code",
   "productRegistration.field.supplierName": "Supplier",
-  "productRegistration.field.supplierCode": "Preferred supplier partner",
-  "productRegistration.field.supplierContact": "Supplier address/phone",
-  "productRegistration.field.factoryCode": "Factory code",
-  "productRegistration.field.supplierRef":
-    "Manufacturer code (supplier reference)",
+  "productRegistration.field.supplierCode":
+    "Supplier in Sankhya (preferred supplier partner)",
+  "productRegistration.field.factoryName": "Factory",
+  "productRegistration.field.factoryStore": "Manufacturer code (store no.)",
+  "productRegistration.field.supplierContact":
+    "Factory: address/phone (Fornec. Adress Phone)",
+  "productRegistration.field.factoryCode":
+    "Factory code (item code at the factory)",
+  "productRegistration.field.supplierRef": "Supplier reference (item code)",
   "productRegistration.field.country": "Country of origin",
   "productRegistration.field.port": "Port of loading",
   "productRegistration.field.leadTime": "Purchase lead time",
@@ -552,13 +689,74 @@ export const zh = {
   "productRegistration.error.registration_column_invalid":
     '列名无效：请使用字母、数字和 "_"（或 "-" 表示不发送）。',
   "productRegistration.error.not_found": "未找到报价或尚未批准。",
+  "productRegistration.groupFallback":
+    "暂时无法读取 Sankhya 组列表：请选择门户产品线（其组将发送到 Sankhya）。",
+  "productRegistration.groupInfo.group": "组",
+  "productRegistration.groupInfo.subgroup": "子组",
+  "productRegistration.groupInfo.collection": "组系列",
+  "productRegistration.groupInfo.category": "组类别（产品族）",
+  "productRegistration.groupInfo.fromFamily": "Book 产品族",
+  "productRegistration.groupInfo.otherFamilies": "其他产品族",
+  "productRegistration.groupInfo.family": "Book 中选择的产品族：{family}",
+  "productRegistration.groupInfo.mismatch":
+    "所选组的类别（{chosen}）与 Book 中选择的产品族（{family}）不一致。请核对组。",
+  "productRegistration.picker.placeholder": "输入以搜索",
+  "productRegistration.picker.typeMore": "请输入更多字符",
+  "productRegistration.picker.none": "未找到",
+  "productRegistration.picker.loading": "搜索中…",
+  "productRegistration.picker.pick": "请从列表中选择",
+  "productRegistration.picker.clear": "清除",
+  "productRegistration.similar.title": "是否与目录中的产品相似？",
+  "productRegistration.similar.hint":
+    "选择一个相似产品，带入流程尚未填写的信息。",
+  "productRegistration.similar.suggested": "按工厂编码和描述推荐。",
+  "productRegistration.similar.search": "搜索目录",
+  "productRegistration.similar.none":
+    "没有相似产品。请按名称、编码或 CODPROD 搜索。",
+  "productRegistration.similar.associate": "关联",
+  "productRegistration.similar.modal.title": "从相似产品带入",
+  "productRegistration.similar.modal.hint":
+    "勾选要带入登记的内容。仅列出流程（Book、选品、谈判和供应商）未填写的字段。",
+  "productRegistration.similar.modal.fromSankhya":
+    "从 Sankhya 读取的登记（CODPROD {code}）。",
+  "productRegistration.similar.modal.fromPortal":
+    "门户登记（未读取 Sankhya 登记）。",
+  "productRegistration.similar.modal.typed": "当前：{value}",
+  "productRegistration.similar.modal.empty":
+    "除流程已填写的内容外，该产品没有可带入的信息。",
+  "productRegistration.similar.modal.apply": "带入勾选项",
+  "productRegistration.similar.modal.cancel": "取消",
+  "productRegistration.notice.similar": "从相似产品带入的字段：{n} 个。",
+  "productRegistration.notice.lists": "Sankhya 列表已更新。",
+  "productRegistration.lists.title": "Sankhya 列表",
+  "productRegistration.lists.intro":
+    "列表字段选项的来源。Sankhya 标准表已知；自定义表（AD_）从字典中查找。如需修改，请填写 表.代码列.名称列。",
+  "productRegistration.lists.loaded": "列表读取于 {date}。",
+  "productRegistration.lists.notLoaded": "尚未从 Sankhya 读取列表。",
+  "productRegistration.lists.refresh": "更新 Sankhya 列表",
+  "productRegistration.lists.save": "保存表",
+  "productRegistration.lists.col.list": "列表",
+  "productRegistration.lists.col.source": "表（表.代码列.名称列）",
+  "productRegistration.lists.col.options": "选项",
+  "productRegistration.lists.col.error": "错误",
+  "productRegistration.lists.groups": "组（TGFGRU 树）",
+  "productRegistration.lists.kind.line": "产品线代码",
+  "productRegistration.lists.kind.packageType": "包装类型代码",
+  "productRegistration.lists.kind.unit": "单位",
+  "productRegistration.lists.kind.brand": "品牌",
+  "productRegistration.lists.kind.brandWellmix": "Wellmix 品牌",
+  "productRegistration.lists.kind.country": "原产国",
+  "productRegistration.error.registration_group_unknown":
+    "该组不在 Sankhya 组树中。",
+  "productRegistration.error.registration_source_invalid":
+    "表无效：请填写 表.代码列.名称列，只能包含字母、数字和 _。",
   "productRegistration.goRegistration": "在登记产品中打开",
   "productRegistration.quoteCard.pending":
     "产品登记（及发送到 Sankhya）在“登记产品”页面进行。",
   "productRegistration.quoteCard.done": "产品：{name} · CODPROD {code}",
   "productRegistration.section.identity": "基本信息",
   "productRegistration.section.group": "组和产品线",
-  "productRegistration.section.supplier": "供应商和产地",
+  "productRegistration.section.supplier": "供应商与工厂",
   "productRegistration.section.status": "单位和状态",
   "productRegistration.section.certs": "认证",
   "productRegistration.section.features": "产品特性",
@@ -578,13 +776,17 @@ export const zh = {
   "productRegistration.field.seasonality": "季节性（如：圣诞、儿童节）",
   "productRegistration.field.hotsell": "热销",
   "productRegistration.field.combat": "竞争款",
-  "productRegistration.field.lineId": "组（门户产品线）",
+  "productRegistration.field.group": "组",
   "productRegistration.field.productLine": "产品线代码",
-  "productRegistration.field.supplierName": "供应商",
-  "productRegistration.field.supplierCode": "首选供应商伙伴",
-  "productRegistration.field.supplierContact": "供应商地址/电话",
-  "productRegistration.field.factoryCode": "工厂编码",
-  "productRegistration.field.supplierRef": "制造商编码（供应商参考）",
+  "productRegistration.field.supplierName": "供应商（Supplier）",
+  "productRegistration.field.supplierCode":
+    "Sankhya 中的供应商（首选供应商伙伴）",
+  "productRegistration.field.factoryName": "工厂（Factory）",
+  "productRegistration.field.factoryStore": "制造商编码（店铺号）",
+  "productRegistration.field.supplierContact":
+    "工厂：地址/电话（Fornec. Adress Phone）",
+  "productRegistration.field.factoryCode": "工厂编码（工厂的产品编码）",
+  "productRegistration.field.supplierRef": "供应商参考（产品编码）",
   "productRegistration.field.country": "原产国",
   "productRegistration.field.port": "装运港",
   "productRegistration.field.leadTime": "采购周期",

@@ -10,7 +10,11 @@ import { productNameText } from "@/i18n";
 import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
 import { getStore } from "@/lib/db";
-import { registrationContext } from "@/lib/services/product-registration";
+import {
+  registrationContext,
+  similarChoices,
+} from "@/lib/services/product-registration";
+import { LIST_KINDS, sourceText } from "@/lib/services/sankhya-lookups";
 import { samplingOf } from "@/lib/supplier-request-sampling";
 import {
   REGISTRATION_FIELDS,
@@ -37,10 +41,17 @@ import {
   RequestProductCard,
   type RequestProductData,
 } from "../../supplier-requests/_components/request-product";
-import { RegistrationForm } from "../_components/registration-form";
+import {
+  RegistrationForm,
+  type FormExtras,
+} from "../_components/registration-form";
+import type { GroupTuple } from "../_components/lookup-fields";
+import { SimilarColumn, SimilarModal } from "../_components/similar";
 import {
   loadRegistrationDictionaryAction,
+  refreshRegistrationListsAction,
   saveRegistrationFieldMapAction,
+  saveRegistrationListSourcesAction,
 } from "../../actions/product-registration";
 
 /*
@@ -101,6 +112,11 @@ export default async function ProductRegistrationDetailPage({
       t("productRegistration.notice.dictionary", { n: one("dictionary") }),
     );
   if (one("map") === "saved") notices.push(t("productRegistration.notice.map"));
+  if (one("similarApplied"))
+    notices.push(
+      t("productRegistration.notice.similar", { n: one("similarApplied") }),
+    );
+  if (one("lists")) notices.push(t("productRegistration.notice.lists"));
   const last = r.registration;
   const offReason =
     last?.sendStatus === "off" &&
@@ -111,8 +127,10 @@ export default async function ProductRegistrationDetailPage({
 
   // O quadro de associar / vitrine / CODPROD (as regras da Cotação: também
   // a tela Cotação).
+  // Sem produto, "É semelhante a algum do catálogo?" (coluna da direita)
+  // tomou o lugar do "Já existe no catálogo?" (dono, 27/11/2026).
   let productData: RequestProductData | null = null;
-  if (canOpen(user, "quotes") && ctx.state !== "waiting_sample") {
+  if (canOpen(user, "quotes") && ctx.product) {
     const svc = await import("@/lib/services/supplier-request-product");
     const store = getStore();
     const q = {
@@ -150,8 +168,56 @@ export default async function ProductRegistrationDetailPage({
       readiness: [],
     };
   }
-  const { agreedConditions } =
+  const { agreedConditions, searchCatalogProducts, suggestCatalogProducts } =
     await import("@/lib/services/supplier-request-product");
+  // Produtos parecidos: a busca digitada ou as sugestões pelo código da
+  // fábrica e pela descrição.
+  const similarQuery = one("pq").slice(0, 80);
+  const candidates = similarQuery
+    ? await searchCatalogProducts(similarQuery)
+    : await suggestCatalogProducts(r);
+  const similarId = one("similar");
+  const similar =
+    similarId && /^[A-Za-z0-9_-]{1,64}$/.test(similarId)
+      ? await similarChoices(user, ctx, similarId)
+      : null;
+  // Os campos com lista: listas do Sankhya e os grupos com os níveis acima.
+  const groupTuples: GroupTuple[] = ctx.groups.map((g) => [
+    g.value,
+    g.path.group.code,
+    g.path.group.name,
+    g.path.subgroup?.code ?? "",
+    g.path.subgroup?.name ?? "",
+    g.path.collection?.code ?? "",
+    g.path.collection?.name ?? "",
+    g.path.category?.code ?? "",
+    g.path.category?.name ?? "",
+  ]);
+  const extras: FormExtras = {
+    lines: ctx.lines,
+    lists: ctx.lookups.lists,
+    groups: groupTuples,
+    groupsFromSankhya: ctx.groupsFromSankhya,
+    family: ctx.family,
+    groupLabels: {
+      picker: {
+        placeholder: t("productRegistration.picker.placeholder"),
+        typeMore: t("productRegistration.picker.typeMore"),
+        none: t("productRegistration.picker.none"),
+        loading: t("productRegistration.picker.loading"),
+        pick: t("productRegistration.picker.pick"),
+        clear: t("productRegistration.picker.clear"),
+      },
+      group: t("productRegistration.groupInfo.group"),
+      subgroup: t("productRegistration.groupInfo.subgroup"),
+      collection: t("productRegistration.groupInfo.collection"),
+      category: t("productRegistration.groupInfo.category"),
+      fromFamily: t("productRegistration.groupInfo.fromFamily"),
+      otherFamilies: t("productRegistration.groupInfo.otherFamilies"),
+      mismatch: t("productRegistration.groupInfo.mismatch"),
+      family: t("productRegistration.groupInfo.family"),
+    },
+  };
   const deal = seesPrice
     ? agreedConditions(r)
     : { ...agreedConditions(r), price: null, currency: null };
@@ -196,258 +262,380 @@ export default async function ProductRegistrationDetailPage({
         {t("productRegistration.detail.title", { n: r.number })}
       </h1>
       <p className="mb-3 text-sm text-zinc-600">{productNameText(t, name)}</p>
-
-      <div className="mb-3 space-y-2" data-registration-notices>
-        {errorText ? (
-          errorFields.length ? (
-            <FieldErrors
-              names={errorFields}
-              before={t("form.invalid.before")}
-              fallback={errorText}
-              hint={t("sheet.missingHint")}
-              token={one("at") || undefined}
-            />
-          ) : (
-            <Alert tone="danger">{errorText}</Alert>
-          )
-        ) : null}
-        {notices.map((n) => (
-          <Alert key={n} tone="success">
-            {n}
-          </Alert>
-        ))}
-        {erp === "error" ? (
-          <Alert tone="danger">{t("productRegistration.erp.error")}</Alert>
-        ) : null}
-        {erp === "off" && offReason ? (
-          <Alert tone="warning">
-            {t("productRegistration.erp.off", { reason: offReason })}
-          </Alert>
-        ) : null}
-        {ctx.state === "waiting_sample" ? (
-          <Alert tone="info">
-            {t("productRegistration.detail.waitingSample")}
-          </Alert>
-        ) : null}
-      </div>
-
-      <Card dense className="mb-3">
-        <div className="flex flex-wrap items-start gap-4">
-          <PhotoGallery
-            photos={photos}
-            name={name}
-            className="h-24 w-24"
-            labels={{
-              title: t("supplierRequests.table.photo"),
-              close: t("supplierRequests.table.close"),
-              open: t("supplierRequests.table.photoOpen"),
-              count: t("productRegistration.photos"),
-              noPhoto: t("supplierRequests.table.noPhoto"),
-            }}
-          />
-          <div className="min-w-0 flex-1 space-y-1.5 text-sm">
-            <p className="flex flex-wrap items-center gap-2">
-              <span data-registration-state={ctx.state}>
-                <Badge
-                  tone={
-                    ctx.state === "done"
-                      ? "success"
-                      : ctx.state === "to_register"
-                        ? "warning"
-                        : ctx.state === "to_send"
-                          ? "info"
-                          : "neutral"
-                  }
-                >
-                  {t(`productRegistration.state.${ctx.state}`)}
-                </Badge>
-              </span>
-              <Link
-                href={`/app/supplier-requests/${r.id}?view=item`}
-                className={linkClass}
-              >
-                {t("productRegistration.detail.quote")}
-              </Link>
-              {ctx.lot ? (
-                <Link
-                  href={`/app/booking/lots/${ctx.lot.id}`}
-                  className={linkClass}
-                >
-                  {t("productRegistration.detail.book", {
-                    n: ctx.lot.number,
-                  })}
-                </Link>
-              ) : null}
-              {ctx.product ? (
-                <Link
-                  href={`/app/products/${ctx.product.id}`}
-                  className={linkClass}
-                  data-registration-product
-                >
-                  {productNameText(t, ctx.product.name)}
-                  {ctx.product.sankhyaCode
-                    ? ` · CODPROD ${ctx.product.sankhyaCode}`
-                    : ""}
-                </Link>
-              ) : null}
-            </p>
-            <p className="text-zinc-700">
-              {[ctx.supplier?.name, it.factoryItemCode]
-                .filter(Boolean)
-                .join(" · ") || "—"}
-            </p>
-            <DealSummary deal={deal} t={t} />
-            {last?.sentAt && last.sendStatus ? (
-              <p
-                className="text-xs text-zinc-600"
-                data-registration-last-send={last.sendStatus}
-              >
-                {t("productRegistration.lastSend", {
-                  date: formatDate(last.sentAt, t),
-                  status: t(`productRegistration.lastSend.${last.sendStatus}`),
-                })}
-                {last.sendDetail && last.sendStatus !== "off"
-                  ? ` · ${last.sendDetail}`
-                  : offReason
-                    ? ` · ${offReason}`
-                    : ""}
-              </p>
+      {similar ? (
+        <SimilarModal
+          requestId={r.id}
+          similar={similar.similar}
+          fields={similar.fields}
+          current={ctx.values}
+          t={t}
+        />
+      ) : null}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0">
+          <div className="mb-3 space-y-2" data-registration-notices>
+            {errorText ? (
+              errorFields.length ? (
+                <FieldErrors
+                  names={errorFields}
+                  before={t("form.invalid.before")}
+                  fallback={errorText}
+                  hint={t("sheet.missingHint")}
+                  token={one("at") || undefined}
+                />
+              ) : (
+                <Alert tone="danger">{errorText}</Alert>
+              )
             ) : null}
-            {last?.skipped?.length ? (
-              <p className="text-xs text-amber-800">
-                {t("productRegistration.skipped", {
-                  fields: last.skipped
-                    .map((s) => s.split(":")[0])
-                    .map((fid) =>
-                      registrationField(fid)
-                        ? t(`productRegistration.field.${fid}` as DictionaryKey)
-                        : fid,
-                    )
-                    .join(", "),
-                })}
-              </p>
+            {notices.map((n) => (
+              <Alert key={n} tone="success">
+                {n}
+              </Alert>
+            ))}
+            {erp === "error" ? (
+              <Alert tone="danger">{t("productRegistration.erp.error")}</Alert>
             ) : null}
-            {last?.savedAt ? (
-              <p className="text-xs text-zinc-500">
-                {t("productRegistration.savedAt", {
-                  date: formatDate(last.savedAt, t),
-                })}
-              </p>
+            {erp === "off" && offReason ? (
+              <Alert tone="warning">
+                {t("productRegistration.erp.off", { reason: offReason })}
+              </Alert>
             ) : null}
-            <p className="text-xs text-zinc-500">
-              {t("productRegistration.photos.hint")}
-            </p>
+            {ctx.state === "waiting_sample" ? (
+              <Alert tone="info">
+                {t("productRegistration.detail.waitingSample")}
+              </Alert>
+            ) : null}
           </div>
-        </div>
-      </Card>
 
-      <p className="mb-3 text-sm text-zinc-600">
-        {t("productRegistration.detail.intro")}
-      </p>
-
-      <RegistrationForm
-        requestId={r.id}
-        values={ctx.values}
-        columns={ctx.columns}
-        lines={ctx.lines}
-        state={ctx.state}
-        items={items}
-        t={t}
-      />
-
-      {productData ? (
-        <div className="mt-4" data-request-product>
-          <RequestProductCard data={productData} t={t} home="registration" />
-        </div>
-      ) : null}
-
-      {isAdmin(user) ? (
-        <div className="mt-4" id="campos-sankhya">
-          <Card dense title={t("productRegistration.map.title")}>
-            <p className="mb-2 text-xs text-zinc-600">
-              {t("productRegistration.map.intro")}
-            </p>
-            <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-zinc-700" data-registration-dictionary>
-                {ctx.dictionary
-                  ? t("productRegistration.map.loaded", {
-                      date: formatDate(ctx.dictionary.loadedAt, t),
-                      n: ctx.dictionary.fields.length,
-                    })
-                  : t("productRegistration.map.notLoaded")}
-              </span>
-              <form action={loadRegistrationDictionaryAction}>
-                <input type="hidden" name="id" value={r.id} />
-                <SubmitButton
-                  variant="secondary"
-                  pendingText={t("productRegistration.pending")}
-                >
-                  {t("productRegistration.map.load")}
-                </SubmitButton>
-              </form>
-            </div>
-            <form action={saveRegistrationFieldMapAction}>
-              <input type="hidden" name="id" value={r.id} />
-              <Table tools={false}>
-                <thead>
-                  <tr>
-                    <Th>{t("productRegistration.map.col.field")}</Th>
-                    <Th>{t("productRegistration.map.col.column")}</Th>
-                    <Th>{t("productRegistration.map.col.source")}</Th>
-                    <Th>{t("productRegistration.map.col.options")}</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {REGISTRATION_FIELDS.map((field) => {
-                    const res = ctx.columns[field.id];
-                    return (
-                      <tr key={field.id} data-registration-map={field.id}>
-                        <Td>
-                          {t(
-                            `productRegistration.field.${field.id}` as DictionaryKey,
-                          )}
-                        </Td>
-                        <Td>
-                          <Input
-                            name={`map.${field.id}`}
-                            defaultValue={ctx.overrides[field.id] ?? ""}
-                            placeholder={res?.column ?? field.column ?? ""}
-                            maxLength={40}
-                            className="w-44 font-mono"
-                            aria-label={t(
-                              `productRegistration.field.${field.id}` as DictionaryKey,
-                            )}
-                          />
-                        </Td>
-                        <Td className="text-xs">
-                          {t(
-                            `productRegistration.map.source.${res?.source ?? "none"}` as DictionaryKey,
-                          )}
-                          {res?.absent
-                            ? ` (${t("productRegistration.map.absent")})`
-                            : ""}
-                        </Td>
-                        <Td className="text-xs">
-                          {res?.options.length
-                            ? t("productRegistration.map.options", {
-                                n: res.options.length,
-                              })
-                            : "—"}
-                        </Td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </Table>
-              <div className="mt-2">
-                <SubmitButton pendingText={t("productRegistration.pending")}>
-                  {t("productRegistration.map.save")}
-                </SubmitButton>
+          <Card dense className="mb-3">
+            <div className="flex flex-wrap items-start gap-4">
+              <PhotoGallery
+                photos={photos}
+                name={name}
+                className="h-24 w-24"
+                labels={{
+                  title: t("supplierRequests.table.photo"),
+                  close: t("supplierRequests.table.close"),
+                  open: t("supplierRequests.table.photoOpen"),
+                  count: t("productRegistration.photos"),
+                  noPhoto: t("supplierRequests.table.noPhoto"),
+                }}
+              />
+              <div className="min-w-0 flex-1 space-y-1.5 text-sm">
+                <p className="flex flex-wrap items-center gap-2">
+                  <span data-registration-state={ctx.state}>
+                    <Badge
+                      tone={
+                        ctx.state === "done"
+                          ? "success"
+                          : ctx.state === "to_register"
+                            ? "warning"
+                            : ctx.state === "to_send"
+                              ? "info"
+                              : "neutral"
+                      }
+                    >
+                      {t(`productRegistration.state.${ctx.state}`)}
+                    </Badge>
+                  </span>
+                  <Link
+                    href={`/app/supplier-requests/${r.id}?view=item`}
+                    className={linkClass}
+                  >
+                    {t("productRegistration.detail.quote")}
+                  </Link>
+                  {ctx.lot ? (
+                    <Link
+                      href={`/app/booking/lots/${ctx.lot.id}`}
+                      className={linkClass}
+                    >
+                      {t("productRegistration.detail.book", {
+                        n: ctx.lot.number,
+                      })}
+                    </Link>
+                  ) : null}
+                  {ctx.product ? (
+                    <Link
+                      href={`/app/products/${ctx.product.id}`}
+                      className={linkClass}
+                      data-registration-product
+                    >
+                      {productNameText(t, ctx.product.name)}
+                      {ctx.product.sankhyaCode
+                        ? ` · CODPROD ${ctx.product.sankhyaCode}`
+                        : ""}
+                    </Link>
+                  ) : null}
+                </p>
+                <p className="text-zinc-700">
+                  {[ctx.supplier?.name, it.factoryItemCode]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                </p>
+                <DealSummary deal={deal} t={t} />
+                {last?.sentAt && last.sendStatus ? (
+                  <p
+                    className="text-xs text-zinc-600"
+                    data-registration-last-send={last.sendStatus}
+                  >
+                    {t("productRegistration.lastSend", {
+                      date: formatDate(last.sentAt, t),
+                      status: t(
+                        `productRegistration.lastSend.${last.sendStatus}`,
+                      ),
+                    })}
+                    {last.sendDetail && last.sendStatus !== "off"
+                      ? ` · ${last.sendDetail}`
+                      : offReason
+                        ? ` · ${offReason}`
+                        : ""}
+                  </p>
+                ) : null}
+                {last?.skipped?.length ? (
+                  <p className="text-xs text-amber-800">
+                    {t("productRegistration.skipped", {
+                      fields: last.skipped
+                        .map((s) => s.split(":")[0])
+                        .map((fid) =>
+                          registrationField(fid)
+                            ? t(
+                                `productRegistration.field.${fid}` as DictionaryKey,
+                              )
+                            : fid,
+                        )
+                        .join(", "),
+                    })}
+                  </p>
+                ) : null}
+                {last?.savedAt ? (
+                  <p className="text-xs text-zinc-500">
+                    {t("productRegistration.savedAt", {
+                      date: formatDate(last.savedAt, t),
+                    })}
+                  </p>
+                ) : null}
+                <p className="text-xs text-zinc-500">
+                  {t("productRegistration.photos.hint")}
+                </p>
               </div>
-            </form>
+            </div>
           </Card>
+
+          <p className="mb-3 text-sm text-zinc-600">
+            {t("productRegistration.detail.intro")}
+          </p>
+
+          <RegistrationForm
+            requestId={r.id}
+            values={ctx.values}
+            columns={ctx.columns}
+            extras={extras}
+            state={ctx.state}
+            items={items}
+            t={t}
+          />
+
+          {productData ? (
+            <div className="mt-4" data-request-product>
+              <RequestProductCard
+                data={productData}
+                t={t}
+                home="registration"
+              />
+            </div>
+          ) : null}
+
+          {isAdmin(user) ? (
+            <div className="mt-4" id="campos-sankhya">
+              <Card dense title={t("productRegistration.map.title")}>
+                <p className="mb-2 text-xs text-zinc-600">
+                  {t("productRegistration.map.intro")}
+                </p>
+                <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-zinc-700" data-registration-dictionary>
+                    {ctx.dictionary
+                      ? t("productRegistration.map.loaded", {
+                          date: formatDate(ctx.dictionary.loadedAt, t),
+                          n: ctx.dictionary.fields.length,
+                        })
+                      : t("productRegistration.map.notLoaded")}
+                  </span>
+                  <form action={loadRegistrationDictionaryAction}>
+                    <input type="hidden" name="id" value={r.id} />
+                    <SubmitButton
+                      variant="secondary"
+                      pendingText={t("productRegistration.pending")}
+                    >
+                      {t("productRegistration.map.load")}
+                    </SubmitButton>
+                  </form>
+                </div>
+                <form action={saveRegistrationFieldMapAction}>
+                  <input type="hidden" name="id" value={r.id} />
+                  <Table tools={false}>
+                    <thead>
+                      <tr>
+                        <Th>{t("productRegistration.map.col.field")}</Th>
+                        <Th>{t("productRegistration.map.col.column")}</Th>
+                        <Th>{t("productRegistration.map.col.source")}</Th>
+                        <Th>{t("productRegistration.map.col.options")}</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {REGISTRATION_FIELDS.map((field) => {
+                        const res = ctx.columns[field.id];
+                        return (
+                          <tr key={field.id} data-registration-map={field.id}>
+                            <Td>
+                              {t(
+                                `productRegistration.field.${field.id}` as DictionaryKey,
+                              )}
+                            </Td>
+                            <Td>
+                              <Input
+                                name={`map.${field.id}`}
+                                defaultValue={ctx.overrides[field.id] ?? ""}
+                                placeholder={res?.column ?? field.column ?? ""}
+                                maxLength={40}
+                                className="w-44 font-mono"
+                                aria-label={t(
+                                  `productRegistration.field.${field.id}` as DictionaryKey,
+                                )}
+                              />
+                            </Td>
+                            <Td className="text-xs">
+                              {t(
+                                `productRegistration.map.source.${res?.source ?? "none"}` as DictionaryKey,
+                              )}
+                              {res?.absent
+                                ? ` (${t("productRegistration.map.absent")})`
+                                : ""}
+                            </Td>
+                            <Td className="text-xs">
+                              {res?.options.length
+                                ? t("productRegistration.map.options", {
+                                    n: res.options.length,
+                                  })
+                                : "—"}
+                            </Td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </Table>
+                  <div className="mt-2">
+                    <SubmitButton
+                      pendingText={t("productRegistration.pending")}
+                    >
+                      {t("productRegistration.map.save")}
+                    </SubmitButton>
+                  </div>
+                </form>
+              </Card>
+              <Card
+                dense
+                className="mt-4"
+                title={t("productRegistration.lists.title")}
+              >
+                <div data-registration-lists>
+                  <p className="mb-2 text-xs text-zinc-600">
+                    {t("productRegistration.lists.intro")}
+                  </p>
+                  <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-zinc-700">
+                      {ctx.lookups.loadedAt
+                        ? t("productRegistration.lists.loaded", {
+                            date: formatDate(ctx.lookups.loadedAt, t),
+                          })
+                        : t("productRegistration.lists.notLoaded")}
+                    </span>
+                    <form action={refreshRegistrationListsAction}>
+                      <input type="hidden" name="id" value={r.id} />
+                      <SubmitButton
+                        variant="secondary"
+                        pendingText={t("productRegistration.pending")}
+                      >
+                        {t("productRegistration.lists.refresh")}
+                      </SubmitButton>
+                    </form>
+                  </div>
+                  <form action={saveRegistrationListSourcesAction}>
+                    <input type="hidden" name="id" value={r.id} />
+                    <Table tools={false}>
+                      <thead>
+                        <tr>
+                          <Th>{t("productRegistration.lists.col.list")}</Th>
+                          <Th>{t("productRegistration.lists.col.source")}</Th>
+                          <Th>{t("productRegistration.lists.col.options")}</Th>
+                          <Th>{t("productRegistration.lists.col.error")}</Th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr data-registration-list="group">
+                          <Td>{t("productRegistration.lists.groups")}</Td>
+                          <Td className="font-mono text-xs">
+                            TGFGRU.CODGRUPOPROD.DESCRGRUPOPROD
+                          </Td>
+                          <Td className="tabular-nums">
+                            {ctx.groupsFromSankhya ? ctx.groups.length : 0}
+                          </Td>
+                          <Td className="text-xs">—</Td>
+                        </tr>
+                        {LIST_KINDS.map((kind) => {
+                          const list = ctx.lookups.lists[kind];
+                          return (
+                            <tr key={kind} data-registration-list={kind}>
+                              <Td>
+                                {t(
+                                  `productRegistration.lists.kind.${kind}` as DictionaryKey,
+                                )}
+                              </Td>
+                              <Td>
+                                <Input
+                                  name={`source.${kind}`}
+                                  defaultValue={ctx.lookupSources[kind] ?? ""}
+                                  placeholder={sourceText(list?.source)}
+                                  maxLength={130}
+                                  className="w-72 font-mono"
+                                  aria-label={t(
+                                    `productRegistration.lists.kind.${kind}` as DictionaryKey,
+                                  )}
+                                />
+                              </Td>
+                              <Td className="tabular-nums">
+                                {list?.options.length ?? 0}
+                              </Td>
+                              <Td className="max-w-64 text-xs text-amber-800">
+                                {list?.error ?? "—"}
+                              </Td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </Table>
+                    <div className="mt-2">
+                      <SubmitButton
+                        pendingText={t("productRegistration.pending")}
+                      >
+                        {t("productRegistration.lists.save")}
+                      </SubmitButton>
+                    </div>
+                  </form>
+                </div>
+              </Card>
+            </div>
+          ) : null}
         </div>
-      ) : null}
+        <aside className="min-w-0 xl:sticky xl:top-20 xl:z-20 xl:max-h-[calc(100vh-6rem)] xl:self-start xl:overflow-y-auto">
+          <SimilarColumn
+            requestId={r.id}
+            candidates={candidates}
+            query={similarQuery}
+            chosen={similarId}
+            t={t}
+          />
+        </aside>
+      </div>
     </div>
   );
 }

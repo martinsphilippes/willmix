@@ -40,7 +40,10 @@ function useExternalFormPending(formId: string | undefined) {
     if (!formId) return;
     const form = document.getElementById(formId);
     if (!(form instanceof HTMLFormElement)) return;
-    const onSubmit = () => setPending(true);
+    // Trava logo depois, não no mesmo instante: o React monta os dados do
+    // envio depois deste aviso, e um botão já travado (disabled) fica de
+    // fora deles, com o name/value dele (ex.: intent; 27/11/2026).
+    const onSubmit = () => window.setTimeout(() => setPending(true), 0);
     const onDone = () => setPending(false);
     form.addEventListener("submit", onSubmit);
     window.addEventListener("wellmix:form-done", onDone);

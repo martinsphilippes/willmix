@@ -205,6 +205,7 @@ describe("de-para com a TGFPRO", () => {
       { column: "DESCRPROD", label: "Descrição", type: "S" },
       { column: "REFFORN", label: "Referência do Fornecedor", type: "S" },
       { column: "MARCA", label: "Marca", type: "S" },
+      { column: "CODMARCA", label: "Marca", type: "I" },
       { column: "CODGRUPOPROD", label: "Grupo", type: "I" },
       { column: "CODVOL", label: "Unidade padrão", type: "S" },
       { column: "NCM", label: "NCM", type: "S" },
@@ -226,7 +227,12 @@ describe("de-para com a TGFPRO", () => {
   it("sem dicionário, só as colunas conhecidas", () => {
     const cols = lib.resolveColumns(null);
     expect(cols.descrPt.column).toBe("DESCRPROD");
-    expect(cols.lineId.column).toBe("CODGRUPOPROD");
+    expect(cols.group.column).toBe("CODGRUPOPROD");
+    expect(cols.brand.column).toBe("CODMARCA");
+    // Supplier e Factory: o nome do Supplier e o da Factory ficam no portal.
+    expect(cols.supplierName).toMatchObject({ column: null, source: "none" });
+    expect(cols.factoryName).toMatchObject({ column: null, source: "none" });
+    expect(cols.supplierCode.column).toBe("CODPARCFORN");
     expect(cols.productManager).toMatchObject({
       column: null,
       source: "none",
@@ -267,8 +273,10 @@ describe("de-para com a TGFPRO", () => {
       {
         descrPt: "Caneca 300 ml",
         supplierRef: "S-1",
-        brand: "WELLKIDS",
-        lineId: "linha-1",
+        brand: "10",
+        "brand:name": "WELLKIDS",
+        group: "linha-1",
+        supplierName: "HOME IN",
         unit: "UN",
         ncm: "6912.00.00",
         grossWeight: "0,35",
@@ -284,6 +292,7 @@ describe("de-para com a TGFPRO", () => {
     expect(out.values).toMatchObject({
       DESCRPROD: "Caneca 300 ml",
       REFFORN: "S-1",
+      CODMARCA: "10",
       MARCA: "WELLKIDS",
       CODGRUPOPROD: "10902001",
       CODVOL: "UN",
@@ -295,6 +304,17 @@ describe("de-para com a TGFPRO", () => {
       AD_DTDESC: "01/12/2026",
     });
     expect(out.skipped).toContainEqual({ id: "pantone", reason: "no_column" });
+    // O nome do Supplier fica no portal: nem vai nem conta como "não foi".
+    expect(Object.values(out.values)).not.toContain("HOME IN");
+    expect(out.skipped.map((x) => x.id)).not.toContain("supplierName");
+    // Sem a coluna MARCA no Sankhya, só o código da marca.
+    const noName = lib.sankhyaPayload(
+      { brand: "10", "brand:name": "WELLKIDS" },
+      cols,
+      null,
+      (c) => c !== "MARCA",
+    );
+    expect(noName.values).toEqual({ CODMARCA: "10" });
   });
 
   it("confere números, datas e obrigatórios", () => {
@@ -305,9 +325,9 @@ describe("de-para com a TGFPRO", () => {
         height: "0,2",
       }),
     ).toEqual(["grossWeight", "masterQty"]);
-    expect(lib.missingRequired({ descrPt: "x" }, "portal")).toEqual(["lineId"]);
+    expect(lib.missingRequired({ descrPt: "x" }, "portal")).toEqual(["group"]);
     expect(
-      lib.missingRequired({ descrPt: "x", lineId: "l" }, "sankhya"),
+      lib.missingRequired({ descrPt: "x", group: "l" }, "sankhya"),
     ).toEqual(["brand", "supplierRef", "unit"]);
   });
 
@@ -335,13 +355,14 @@ describe("de-para com a TGFPRO", () => {
       leadTimeDays: 30,
       supplierName: "Shenzhen",
       supplierCode: "123",
-      supplierContact: null,
+      factoryName: "Yiwu Factory",
+      factoryStore: "668",
+      factoryContact: "668 / +86 1",
       countryCode: "1",
       countryName: "CHINA",
       portCode: null,
       productManager: "Ana",
       notes: null,
-      lineId: "l1",
       certifications: ["INMETRO"],
     });
     expect(values).toMatchObject({
@@ -357,6 +378,11 @@ describe("de-para com a TGFPRO", () => {
       unit: "UN",
       requestsPurchase: "S",
       "country:name": "CHINA",
+      supplierName: "Shenzhen",
+      supplierCode: "123",
+      factoryName: "Yiwu Factory",
+      factoryStore: "668",
+      supplierContact: "668 / +86 1",
     });
     expect(lib.productPatch(values)).toMatchObject({
       name: "Caneca",
@@ -366,6 +392,134 @@ describe("de-para com a TGFPRO", () => {
       grossWeightKg: 0.35,
       masterBoxQty: 48,
       cbm: 0.12,
+    });
+  });
+});
+
+describe("Grupo pela árvore do Sankhya", () => {
+  const tree = new Map([
+    ["10000000", { name: "BRINQUEDO", parent: null }],
+    ["10900000", { name: "BONECAS", parent: "10000000" }],
+    ["10902000", { name: "FASHION", parent: "10900000" }],
+    ["10902001", { name: "BONECAS FASHION", parent: "10902000" }],
+    ["20000000", { name: "UTILIDADES", parent: null }],
+    ["20100000", { name: "COPOS", parent: "20000000" }],
+  ]);
+
+  it("Sub grupo, Coleção e Categoria acima do Grupo; só os do último nível se escolhem", () => {
+    expect(lib.groupPath("10902001", tree)).toEqual({
+      group: { code: "10902001", name: "BONECAS FASHION" },
+      subgroup: { code: "10902000", name: "FASHION" },
+      collection: { code: "10900000", name: "BONECAS" },
+      category: { code: "10000000", name: "BRINQUEDO" },
+    });
+    // Árvore rasa: o que falta fica nulo.
+    expect(lib.groupPath("20100000", tree)).toMatchObject({
+      subgroup: null,
+      collection: null,
+      category: { code: "20000000" },
+    });
+    expect(lib.leafGroups(tree).sort()).toEqual(["10902001", "20100000"]);
+  });
+});
+
+describe("É semelhante a algum do catálogo?", () => {
+  const cols = lib.resolveColumns({
+    loadedAt: "2026-11-27T00:00:00.000Z",
+    fields: [
+      { column: "CODMARCA", label: "Marca", type: "I" },
+      { column: "MARCA", label: "Marca", type: "S" },
+      { column: "AD_PANTONE", label: "Pantone", type: "S" },
+      { column: "AD_SOM", label: "Produto tem SOM", type: "S" },
+      { column: "AD_DHDESCONTINUADO", label: "Data Descontinuado", type: "H" },
+      { column: "PESOBRUTO", label: "Peso Bruto", type: "F" },
+      { column: "AD_FAIXAETARIA", label: "Faixa Etária", type: "I" },
+    ],
+    options: {},
+  });
+
+  it("o cadastro do Sankhya vira os campos do formulário", () => {
+    const values = lib.valuesFromSankhyaRow(
+      {
+        CODMARCA: 10,
+        MARCA: "WELLKIDS",
+        AD_PANTONE: "286 C",
+        AD_SOM: "S",
+        AD_DHDESCONTINUADO: "05/03/2026 00:00:00",
+        PESOBRUTO: 0.35,
+        AD_FAIXAETARIA: 3,
+      },
+      cols,
+    );
+    expect(values).toMatchObject({
+      brand: "10",
+      "brand:name": "WELLKIDS",
+      pantone: "286 C",
+      sound: "S",
+      discontinuedAt: "2026-03-05",
+      grossWeight: "0,35",
+      ageRange: "3",
+    });
+  });
+
+  it("só traz o que o processo não preencheu, e só o que foi marcado", () => {
+    const prefill = lib.prefillValues({
+      name: "Caneca",
+      description: null,
+      factoryCode: null,
+      material: null,
+      colors: null,
+      variation: null,
+      capacityMl: null,
+      powerDetail: null,
+      packageType: null,
+      piecesPerPackage: null,
+      lengthCm: null,
+      widthCm: null,
+      heightCm: null,
+      netWeightKg: null,
+      grossWeightKg: 0.35,
+      masterQty: null,
+      masterCbm: null,
+      innerQty: null,
+      ncm: null,
+      leadTimeDays: null,
+      supplierName: null,
+      supplierCode: null,
+      factoryName: null,
+      factoryStore: null,
+      factoryContact: null,
+      countryCode: null,
+      countryName: null,
+      portCode: null,
+      productManager: null,
+      notes: null,
+      certifications: [],
+    });
+    const similar = {
+      brand: "10",
+      "brand:name": "WELLKIDS",
+      pantone: "286 C",
+      sound: "S",
+      grossWeight: "0,5",
+      descrPt: "Outra caneca",
+    };
+    // Peso bruto e descrição vieram do processo: não aparecem.
+    expect(lib.similarCandidates(prefill, similar).sort()).toEqual([
+      "brand",
+      "pantone",
+      "sound",
+    ]);
+    const out = lib.applySimilar({ ...prefill, pantone: "digitado" }, similar, [
+      "brand",
+      "sound",
+    ]);
+    expect(out).toMatchObject({
+      brand: "10",
+      "brand:name": "WELLKIDS",
+      sound: "S",
+      pantone: "digitado",
+      grossWeight: "0,35",
     });
   });
 });
@@ -518,7 +672,7 @@ describe("tela Cadastrar produto", () => {
       reg.registerProduct(
         admin,
         request.id,
-        { descrPt: "Caneca Registro 300 ml", lineId: line.id },
+        { descrPt: "Caneca Registro 300 ml", group: line.id },
         [],
       ),
     ).rejects.toThrow("request_product_sampling_pending");
@@ -541,14 +695,14 @@ describe("tela Cadastrar produto", () => {
       reg.registerProduct(admin, request.id, { descrPt: "X caneca" }, []),
     ).rejects.toMatchObject({
       message: "registration_required",
-      fields: ["f.lineId"],
+      fields: ["f.group"],
     });
     const result = await reg.registerProduct(
       admin,
       request.id,
       {
         ...ctx!.values,
-        lineId: line.id,
+        group: line.id,
         height: "0,25",
         masterCbm: "0,15",
         pantone: "Pantone 286 C",
@@ -591,6 +745,52 @@ describe("tela Cadastrar produto", () => {
     expect((await getStore().get("products", product!.id))?.grossWeightKg).toBe(
       0.4,
     );
+  });
+
+  it("o semelhante do catálogo traz para o rascunho só os campos marcados", async () => {
+    const request = await approvedWithSample("REG-3");
+    const line = (
+      await getStore().list("product_lines", { filter: { active: true } })
+    )[0];
+    const similar = await getStore().create("products", {
+      ...(await import("@/lib/db")).PRODUCT_EXTRA_DEFAULTS,
+      lineId: line.id,
+      name: "Caneca parecida",
+      sku: "OUTRA-1",
+      specification: null,
+      active: true,
+      supplierId: null,
+      supplierSku: null,
+      material: "porcelana",
+      pantone: "Pantone 300 C",
+      brand: "WELLMIX",
+      boxHeightCm: 40,
+    });
+    const ctx = await reg.registrationContext(admin, request.id);
+    const choice = await reg.similarChoices(admin, ctx!, similar.id);
+    // O material veio do book: não aparece; o Pantone e a marca, sim.
+    expect(choice?.fields).toEqual(
+      expect.arrayContaining(["pantone", "brand", "masterHeight"]),
+    );
+    expect(choice?.fields).not.toContain("composition");
+    expect(choice?.similar.fromSankhya).toBe(false);
+    const n = await reg.applySimilarProduct(
+      admin,
+      request.id,
+      { ...ctx!.values, descrPt: "Caneca digitada" },
+      similar.id,
+      ["pantone", "masterHeight", "composition"],
+    );
+    expect(n).toBe(2);
+    const saved = (await getStore().get("supplier_requests", request.id))
+      ?.registration?.values;
+    expect(saved).toMatchObject({
+      descrPt: "Caneca digitada",
+      pantone: "Pantone 300 C",
+      masterHeight: "0,4",
+      composition: "ceramic",
+    });
+    expect(saved?.["brand:name"]).toBeUndefined();
   });
 
   it("só a Wellmix com a tela Produtos; o de-para é do administrador", async () => {
