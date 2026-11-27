@@ -375,7 +375,7 @@ describe("pendências da estratégia de compra nos três idiomas", () => {
       `Gerar pedido de compra da estratégia nº ${order.number}`,
     );
     expect(picked[2].detail).toBe(
-      "Pedido direto com o fornecedor da última compra (sem cotação)",
+      "Pedido direto com o fornecedor da última compra (sem consulta)",
     );
 
     const render = (locale: "pt" | "en" | "zh", d: (typeof drafts)[number]) => {

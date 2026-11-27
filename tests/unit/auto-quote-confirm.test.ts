@@ -309,7 +309,7 @@ describe("cliente confirma: a cotação sai sozinha", () => {
       filter: { channel: "inapp" },
     });
     const notices = inbox.filter((n) =>
-      n.subject.startsWith(`Cotação nº ${quote.number} aberta sem convite`),
+      n.subject.startsWith(`Consulta nº ${quote.number} aberta sem convite`),
     );
     expect(notices.length).toBeGreaterThan(0);
     expect(notices[0].body).toContain("Gere os logins");
@@ -317,7 +317,7 @@ describe("cliente confirma: a cotação sai sozinha", () => {
     expect(
       inbox.filter(
         (n) =>
-          n.subject === `Cotação de compra nº ${quote.number} sem resposta`,
+          n.subject === `Consulta de compra nº ${quote.number} sem resposta`,
       ),
     ).toEqual([]);
     expect(quote.emptyNotifiedAt).toBeTruthy();
