@@ -163,14 +163,19 @@ export function RequestTimeline({
                   {t(`supplierRequests.negotiation.side.${entry.side}`)}
                 </span>
               </div>
-              <p className="mt-0.5 flex items-start justify-between gap-2 text-sm font-semibold text-zinc-900">
+              {/* div, não p: o botão leva o modal (<dialog> com <h2>), que
+                  não cabe num parágrafo; com o p, o navegador fechava o
+                  parágrafo antes do modal e a hidratação falhava (o React
+                  redesenhava a tela e o arquivo já escolhido da amostra se
+                  perdia). */}
+              <div className="mt-0.5 flex items-start justify-between gap-2 text-sm font-semibold text-zinc-900">
                 <span>{resolved(entry)}</span>
                 {answerDetail && entry.key === lastAnswerKey ? (
-                  <span className="shrink-0" data-timeline-answer-detail>
+                  <div className="shrink-0" data-timeline-answer-detail>
                     {answerDetail}
-                  </span>
+                  </div>
                 ) : null}
-              </p>
+              </div>
               {chips.length ? (
                 <div className="mt-1 flex flex-wrap gap-1">
                   {chips.map((c) => (
