@@ -140,6 +140,8 @@ Pedido do dono, oito pontos, para as telas ficarem no padrão.
 - as colunas dele (correção do dono, 27/11/2026: sem Tipo de venda, Prazo e Forma de pagamento, Faturamento, VIP, Grupo econômico, Cliente nº, Cliente e Fornecedor, que não fazem sentido para ele): **Nº, Tipo e Produto** primeiro, fixos na rolagem horizontal (o produto, ou o primeiro e "+N"), depois Status, Situação, Prazo resposta, **Completude**, Itens, Entregas, Total CBM, Valor total (o da resposta dele) e Data;
 - a cotação de compra continua sendo respondida em `/app/purchase-quotes/<id>`; `/app/supplier-requests/<cotação>` leva para lá. `/app/purchase-quotes` segue abrindo e acende "Consultas".
 
+**Buscador** nas duas listas, sempre à vista (em qualquer coluna, palavras em qualquer ordem e sem acento; `alwaysSearch` em `Table`).
+
 **Tabela da Wellmix** (correção do dono, 27/11/2026): as colunas padrão ficam (fazem sentido quando a consulta vem de Encomendas ou Reposição), mas **Nº, Fornecedor e Origem** vêm primeiro e ficam fixas na rolagem; **Tipo de venda** saiu da tabela. Colunas fixas: `src/components/pinned-columns.ts` (larguras certas e a posição somada; a partir de 768px).
 
 **Completude** (`src/lib/inquiry-completion.ts`): o percentual do que a linha já resolveu, em etapas, também na lista da Wellmix. Solicitação: por produto, a resposta do fornecedor, a decisão da Wellmix e, com "Necessita amostragem", a amostra aprovada. Cotação de compra (fornecedor): o preço de cada produto e, com a marca, a amostra (o conhecido do produto não conta). Cotação de compra (Wellmix): cada convidado respondido ou que recusou e a escolha da vencedora. Convite: o book enviado. Recusada e cancelada contam como resolvidas.

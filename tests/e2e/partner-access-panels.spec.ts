@@ -89,10 +89,10 @@ test("Trading e Factory: gravar, recarregar, ocultar × bloquear, revogar com a 
   await expect(t).toHaveURL(/\/app\/supplier-requests/);
   await t.goto("/app/orders");
   await expect(t).toHaveURL(/\/app\/orders$/);
-  // No menu: os pedidos pelo passo Pedidos do bloco Pedido (o atalho
-  // /app/orders saiu do menu do fornecedor; dono, 27/11/2026).
+  // No menu: os pedidos pelo bloco Pedido (o atalho /app/orders saiu do
+  // menu do fornecedor; dono, 27/11/2026).
   await expect(
-    t.locator('[data-nav-link="/app/flow/order/orders"]').first(),
+    t.locator('[data-sidebar] [data-nav-group="Pedido"]'),
   ).toBeVisible();
   await expect(t.locator('[data-nav-link="/app/orders"]')).toHaveCount(0);
 
@@ -161,7 +161,7 @@ test("Trading e Factory: gravar, recarregar, ocultar × bloquear, revogar com a 
   await t.goto("/app/orders");
   await expect(t).toHaveURL(/\/app\/orders$/);
   await expect(
-    t.locator('[data-nav-link="/app/flow/order/orders"]'),
+    t.locator('[data-sidebar] [data-nav-group="Pedido"]'),
   ).toHaveCount(0);
   await t.goto("/app/supplier-requests");
   await expect(t).toHaveURL(/denied=quotes/);

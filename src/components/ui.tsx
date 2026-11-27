@@ -583,9 +583,12 @@ export function Table({
   stickyHead = false,
   tableClassName,
   returnKey,
+  alwaysSearch,
 }: {
   children: ReactNode;
   className?: string;
+  /** Busca em qualquer coluna sempre à vista, mesmo com poucas linhas. */
+  alwaysSearch?: boolean;
   tools?: boolean;
   sortable?: boolean;
   searchable?: boolean;
@@ -625,6 +628,7 @@ export function Table({
       stickyHead={stickyHead}
       tableClassName={tableClassName}
       returnKey={returnKey}
+      alwaysSearch={alwaysSearch}
     >
       {children}
     </TableTools>

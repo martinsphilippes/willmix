@@ -236,6 +236,7 @@ export function TableTools({
   stickyHead = false,
   stickyBar,
   returnKey,
+  alwaysSearch = false,
   ...tableAttrs
 }: {
   children: ReactNode;
@@ -260,6 +261,12 @@ export function TableTools({
    * estavam quando a pessoa abriu uma linha.
    */
   returnKey?: ReturnList;
+  /**
+   * Busca sempre à vista, mesmo com poucas linhas (dono, 27/11/2026: as
+   * listas de Consultas e Cadastrar produto têm o buscador em qualquer
+   * coluna). A ordem e a paginação seguem a regra de sempre.
+   */
+  alwaysSearch?: boolean;
 } & { [key: `data-${string}`]: string | undefined }) {
   const tableRef = useRef<HTMLTableElement>(null);
   /** Cabeçalho congelado: a tabela dele, a moldura de cada parte e o quadro. */
@@ -357,7 +364,10 @@ export function TableTools({
       rows.some((row) => row.querySelector("input, select, textarea"));
     const paged = useTools && paginated && !editGrid;
     const matched = ordered.filter(
-      (row) => !useTools || !searchable || matchesQuery(rowText(row), query),
+      (row) =>
+        !(useTools || alwaysSearch) ||
+        !searchable ||
+        matchesQuery(rowText(row), query),
     );
     matchedRef.current = matched;
     let { current } = pageRange(page, pageSize, matched.length);
@@ -389,7 +399,17 @@ export function TableTools({
         ? prev
         : { rows: rows.length, matched: matched.length, paged },
     );
-  }, [sortable, searchable, paginated, sort, query, page, pageSize, labels]);
+  }, [
+    sortable,
+    searchable,
+    paginated,
+    sort,
+    query,
+    page,
+    pageSize,
+    labels,
+    alwaysSearch,
+  ]);
 
   // Volta dos detalhes (returnKey): a busca, a ordem e a página guardadas
   // quando a pessoa abriu a linha, se a lista é a mesma (mesmo endereço).
@@ -531,6 +551,7 @@ export function TableTools({
   }, []);
 
   const showTools = !!stats && stats.rows >= MIN_ROWS;
+  const showSearch = showTools || (alwaysSearch && !!stats && stats.rows > 0);
   const parts = stickyHead ? splitTable(children) : null;
   const range = stats ? pageRange(page, pageSize, stats.matched) : null;
 
@@ -542,7 +563,7 @@ export function TableTools({
         returnKey ? JSON.stringify({ query, sort, page }) : undefined
       }
     >
-      {showTools && searchable ? (
+      {showSearch && searchable ? (
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <input
             type="search"
@@ -622,7 +643,7 @@ export function TableTools({
           </table>
         </div>
       )}
-      {showTools && stats.matched === 0 ? (
+      {showSearch && stats.matched === 0 ? (
         <p className="mt-2 text-[13px] text-zinc-500" data-table-none>
           {labels["tableTools.none"]}
         </p>

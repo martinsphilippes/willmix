@@ -416,7 +416,7 @@ export async function SupplierInquiries({
               products: tabRows.reduce((s, x) => s + x.items, 0),
             })}
           </p>
-          <Table>
+          <Table alwaysSearch>
             <thead>
               {/* Colunas do fornecedor (dono, 27/11/2026): sem as condições
                   de venda, o grupo, o cliente e o "Fornecedor" (ele mesmo);

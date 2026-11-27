@@ -176,7 +176,8 @@ export default async function ProductRegistrationPage({
       </div>
       <Card>
         {rows.length ? (
-          <Table>
+          /* Buscador em qualquer coluna, sempre à vista (dono, 27/11/2026). */
+          <Table alwaysSearch>
             <thead>
               <tr>
                 {heads.map((label, i) => (

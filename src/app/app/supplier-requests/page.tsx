@@ -425,7 +425,7 @@ export default async function SupplierRequestsPage({
                 ).size,
             })}
           </p>
-          <Table>
+          <Table alwaysSearch>
             <thead>
               {wellmix ? (
                 <tr data-order-table="quotation">

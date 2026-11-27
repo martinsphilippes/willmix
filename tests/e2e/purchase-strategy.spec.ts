@@ -74,6 +74,24 @@ async function firstPurchase(page: Page): Promise<string> {
   // espera a amostra: o cadastro já sai.
   // Cadastrar produto (docs/PRODUCT_REGISTRATION.md): tela própria.
   const registrationUrl = `/app/product-registration/${requestId}`;
+  // A lista (dono, 27/11/2026): os cards do passo, a linha do produto com a
+  // completude e o prazo, e o buscador que acha em qualquer coluna.
+  await page.goto("/app/product-registration");
+  await expect(page.locator("[data-registration-kpis]")).toBeVisible();
+  const row = page.locator(`[data-registration-row="${requestId}"]`);
+  await expect(row).toBeVisible();
+  await expect(row.locator("[data-inquiry-completion]")).toBeVisible();
+  await expect(row).toHaveAttribute("data-registration-row", requestId);
+  await expect(row.locator("[data-registration-sla]")).toHaveAttribute(
+    "data-registration-sla",
+    "ok",
+  );
+  const search = page.locator("[data-table-search]");
+  await search.fill(codeA);
+  await expect(row).toBeVisible();
+  await search.fill(`${TAG}-nada-assim`);
+  await expect(row).toBeHidden();
+  await search.fill("");
   await page.goto(registrationUrl);
   await page.fill("[data-request-product-name]", productName);
   await page.selectOption("[data-request-product-line]", "linha-utilidades");
