@@ -77,6 +77,7 @@ import {
 import { ASSIGN_HREF, type MissingAssignment } from "@/lib/assign-href";
 import { DistributeLink } from "@/components/distribute-link";
 import { notFound, redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getCurrentUser } from "@/lib/auth/session";
 import { sheetSummaryWithoutPrice } from "@/lib/services/purchase-sheet-calc";
 import { requireScreen } from "@/lib/auth/guard";
@@ -84,6 +85,10 @@ import { canOpen } from "@/lib/auth/screens";
 import { OrderRoundsSection } from "./_components/rounds";
 import { OrderSaleContent } from "./_components/order-sale";
 import { CustomerPaymentGate } from "./_components/customer-payment";
+import { AsideFold } from "./_components/aside-fold";
+import { OrderRest, RevealHashTarget } from "./_components/order-rest";
+import { ORDER_REST_COOKIE } from "@/lib/order-rest";
+import { customerPaymentVisible } from "@/lib/services/customer-payment";
 import {
   canSeeSellPrice,
   canSeeSupplier,
@@ -304,6 +309,9 @@ export default async function OrderPage({
     charge: chargeNotice,
     item: itemQuery,
   } = await searchParams;
+  // "Ver o restante do pedido" aberto neste pedido (src/lib/order-rest.ts).
+  const restOpen =
+    (await cookies()).get(ORDER_REST_COOKIE)?.value === id;
   // Grupo aberto no pedido (?stage=CHAVE ou ?stage=all, links antigos).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
   // Pedido de compra: papel das tarefas de arte e certificado coerente com
@@ -2112,6 +2120,16 @@ export default async function OrderPage({
     }
   }
 
+  // Lateral direita (dono, 27/11/2026): os mesmos testes de quem via cada
+  // quadro no meio da tela.
+  const showSale =
+    !cargo &&
+    (wellmix
+      ? canSeeMoney(user) || can(user, "sale.record")
+      : canSeeSellPrice(user));
+  const showPayment = !cargo && customerPaymentVisible(user, order);
+  const asideVisible = showSale || showPayment;
+
   return (
     <>
       <PageHeader
@@ -2359,7 +2377,6 @@ export default async function OrderPage({
       {/* Linha do tempo do pedido entre os blocos (docs/FLOW_MENU.md). */}
       {wellmix ? (
         <OrderProgressCard
-          orderId={order.id}
           milestones={compactMilestones(orderViews)}
           rows={milestoneRows}
           focus={isProgressBlock(fromBlock) ? fromBlock : null}
@@ -2456,6 +2473,20 @@ export default async function OrderPage({
 
       {cargo ? <CargoCard t={t} cargo={cargo} /> : null}
 
+      <RevealHashTarget />
+      {/* Até "Marcos do pedido" (dono, 27/11/2026): resumo, itens e marcos
+          à esquerda; "Venda ao cliente" e "Pagamento do cliente" recolhidos
+          na lateral direita, um acima do outro, sem fixar na rolagem. Em
+          tela estreita, os dois quadros recolhidos vêm no alto. */}
+      <div
+        className={
+          asideVisible
+            ? "grid min-w-0 gap-x-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start 2xl:grid-cols-[minmax(0,1fr)_24rem]"
+            : "min-w-0"
+        }
+        data-order-layout={asideVisible ? "aside" : "single"}
+      >
+      <div className="min-w-0" data-order-main>
       {/* Resumo do pedido numa linha: o que este papel pode ver (vazio = não
           aparece). Para o parceiro, só se sobrar algo útil. */}
       {cargo || !orderInfoItems.length ? null : (
@@ -2723,47 +2754,6 @@ export default async function OrderPage({
         </OrderSection>
       )}
 
-      {/* Venda ao cliente por pedido e por produto (dono, 14/11/2026;
-          docs/ORDER_SALE.md): o preço de cada produto e o total (a soma).
-          Vê quem vê valores na Wellmix (ou grava) e o cliente do pedido;
-          grava quem tem "Gravar a venda ao cliente". */}
-      {cargo ||
-      !(wellmix
-        ? canSeeMoney(user) || can(user, "sale.record")
-        : canSeeSellPrice(user)) ? null : (
-        <OrderSection id="order-sale" title={t("orderSale.title")}>
-          <OrderSaleContent
-            order={order}
-            items={items}
-            user={user}
-            products={itemProducts}
-            editable={wellmix && can(user, "sale.record") && !isCancelled}
-            readOnlyNote={wellmix && !can(user, "sale.record")}
-            saved={saleNotice === "saved"}
-            t={t}
-          />
-        </OrderSection>
-      )}
-
-      {/* Pagamento do cliente (dono, 15/11/2026; docs/CUSTOMER_PAYMENT.md):
-          a forma de pagamento com a alçada, o vendedor, as parcelas e os
-          boletos do Sankhya. O componente decide quem vê (nada = some). */}
-      {cargo ? null : (
-        <CustomerPaymentGate
-          user={user}
-          order={order}
-          notice={{
-            payment:
-              typeof paymentNotice === "string" ? paymentNotice : undefined,
-            charges:
-              typeof chargesNotice === "string" ? chargesNotice : undefined,
-            charge: typeof chargeNotice === "string" ? chargeNotice : undefined,
-          }}
-          title={t("customerPayment.title")}
-          t={t}
-        />
-      )}
-
       {/* Wellmix (fase 3, docs/MILESTONES.md): a linha do tempo dos 16 marcos
           no lugar da tabela "Etapas do pedido". Os campos ficam só nos
           marcos em que o login tem tarefa liberada agora. */}
@@ -2877,6 +2867,68 @@ export default async function OrderPage({
         </OrderSection>
       )}
 
+      </div>
+      {asideVisible ? (
+        <aside
+          className="order-first mt-6 flex min-w-0 flex-col gap-3 xl:order-none"
+          data-order-aside
+        >
+          {/* Venda ao cliente por pedido e por produto (dono, 14/11/2026;
+              docs/ORDER_SALE.md): o preço de cada produto e o total (a soma).
+              Vê quem vê valores na Wellmix (ou grava) e o cliente do pedido;
+              grava quem tem "Gravar a venda ao cliente". */}
+          {showSale ? (
+            <AsideFold
+              id="order-sale"
+              title={t("orderSale.title")}
+              open={saleNotice === "saved"}
+            >
+              <OrderSaleContent
+                order={order}
+                items={items}
+                user={user}
+                products={itemProducts}
+                editable={wellmix && can(user, "sale.record") && !isCancelled}
+                readOnlyNote={wellmix && !can(user, "sale.record")}
+                saved={saleNotice === "saved"}
+                t={t}
+              />
+            </AsideFold>
+          ) : null}
+          {/* Pagamento do cliente (dono, 15/11/2026; docs/CUSTOMER_PAYMENT.md):
+              a forma de pagamento com a alçada, o vendedor, as parcelas e os
+              boletos do Sankhya. */}
+          {showPayment ? (
+            <CustomerPaymentGate
+              user={user}
+              order={order}
+              notice={{
+                payment:
+                  typeof paymentNotice === "string" ? paymentNotice : undefined,
+                charges:
+                  typeof chargesNotice === "string" ? chargesNotice : undefined,
+                charge:
+                  typeof chargeNotice === "string" ? chargeNotice : undefined,
+              }}
+              title={t("customerPayment.title")}
+              folded
+              t={t}
+            />
+          ) : null}
+        </aside>
+      ) : null}
+      </div>
+
+      {/* O que vem abaixo de "Marcos do pedido" fica recolhido (dono,
+          27/11/2026): cada pendência se faz na tela da sua área; um clique
+          mostra tudo, e a âncora de outra tela (#production, #receiving...)
+          abre sozinha. */}
+      <OrderRest
+        orderId={id}
+        open={restOpen}
+        label={t("orderView.rest.show")}
+        hint={t("orderView.rest.hint")}
+      >
       {/* Documentos: um por linha, com a trilha visualizado/confirmado.
           Logo depois de Etapas do pedido, antes dos outros blocos (dono,
           14/11/2026); o link Documentos da Certificação leva até aqui. */}
@@ -4308,6 +4360,7 @@ export default async function OrderPage({
           />
         </div>
       ) : null}
+      </OrderRest>
     </>
   );
 }

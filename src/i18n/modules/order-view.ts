@@ -6,6 +6,9 @@
 export const pt = {
   "orderView.index": "Ir para:",
   "orderView.summary": "Resumo do pedido",
+  "orderView.rest.show": "Ver o restante do pedido",
+  "orderView.rest.hint":
+    "Documentos, produção, recebimento, containers, financeiro, multas e embarque. As pendências se fazem na tela de cada área.",
   "orderView.items": "Itens do pedido",
   "orderView.finance": "Financeiro do pedido",
   "orderView.col.n": "Nº",
@@ -90,6 +93,9 @@ export const pt = {
 export const en: Record<keyof typeof pt, string> = {
   "orderView.index": "Go to:",
   "orderView.summary": "Order summary",
+  "orderView.rest.show": "See the rest of the order",
+  "orderView.rest.hint":
+    "Documents, production, receiving, containers, finance, penalties and shipping. Tasks are done on each area's screen.",
   "orderView.items": "Order items",
   "orderView.finance": "Order finance",
   "orderView.col.n": "No.",
@@ -174,6 +180,8 @@ export const en: Record<keyof typeof pt, string> = {
 export const zh: Record<keyof typeof pt, string> = {
   "orderView.index": "跳转到：",
   "orderView.summary": "订单摘要",
+  "orderView.rest.show": "查看订单其余部分",
+  "orderView.rest.hint": "文件、生产、收货、集装箱、财务、罚款和装运。待办事项在各部门的页面中完成。",
   "orderView.items": "订单明细",
   "orderView.finance": "订单财务",
   "orderView.col.n": "序号",

@@ -96,17 +96,19 @@ export function OrderSaleForm({
         ? "legacy"
         : "empty";
 
-  // Computador e iPad: uma linha por produto em quatro colunas. Celular: o
-  // produto em cima, quantidade e subtotal lado a lado e o preço na largura
-  // toda (nada fica escondido numa rolagem de lado).
+  // Quadro largo: uma linha por produto em quatro colunas. Estreito (celular
+  // ou a lateral direita do pedido, dono, 27/11/2026): o produto em cima,
+  // quantidade e subtotal lado a lado e o preço na largura toda (nada fica
+  // escondido numa rolagem de lado). Pela largura do quadro (@container),
+  // não da tela.
   const columns =
-    "grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-[minmax(0,1fr)_7.5rem_11rem_8.5rem] sm:items-center";
+    "grid grid-cols-2 gap-x-3 gap-y-1.5 @2xl:grid-cols-[minmax(0,1fr)_7.5rem_11rem_8.5rem] @2xl:items-center";
   const table = (
-    <div className="text-sm" role="table">
+    <div className="@container text-sm" role="table">
       <div
         className={cx(
           columns,
-          "hidden border-b border-zinc-200 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:grid",
+          "hidden border-b border-zinc-200 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 @2xl:grid",
         )}
         role="row"
       >
@@ -134,28 +136,28 @@ export function OrderSaleForm({
             >
               <span
                 role="cell"
-                className="col-span-2 min-w-0 break-words font-medium text-zinc-900 sm:col-span-1"
+                className="col-span-2 min-w-0 break-words font-medium text-zinc-900 @2xl:col-span-1"
               >
                 {l.name}
               </span>
               <span
                 role="cell"
-                className="whitespace-nowrap tabular-nums text-zinc-700 sm:text-right"
+                className="whitespace-nowrap tabular-nums text-zinc-700 @2xl:text-right"
               >
-                <span className="mr-1 text-xs text-zinc-500 sm:hidden">
+                <span className="mr-1 text-xs text-zinc-500 @2xl:hidden">
                   {labels.colQty}:
                 </span>
                 {l.quantity.toLocaleString(locale)} {l.unit}
               </span>
               <span
                 role="cell"
-                className="col-span-2 row-start-3 tabular-nums sm:col-span-1 sm:row-start-auto sm:text-right"
+                className="col-span-2 row-start-3 tabular-nums @2xl:col-span-1 @2xl:row-start-auto @2xl:text-right"
               >
                 {editable ? (
                   <>
                     <label
                       htmlFor={`sale-price-${l.itemId}`}
-                      className="mb-0.5 block text-xs text-zinc-500 sm:sr-only"
+                      className="mb-0.5 block text-xs text-zinc-500 @2xl:sr-only"
                     >
                       {fill(labels.priceOf, { name: l.name })}
                     </label>
@@ -165,7 +167,7 @@ export function OrderSaleForm({
                       watchField="currency"
                       defaultAmount={l.unitPrice}
                       locale={locale}
-                      className="w-full sm:w-40"
+                      className="w-full @2xl:w-40"
                       onValueChange={(v) =>
                         setRaw((prev) => ({ ...prev, [l.itemId]: v }))
                       }
@@ -173,7 +175,7 @@ export function OrderSaleForm({
                   </>
                 ) : (
                   <>
-                    <span className="mr-1 text-xs text-zinc-500 sm:hidden">
+                    <span className="mr-1 text-xs text-zinc-500 @2xl:hidden">
                       {labels.colUnit}:
                     </span>
                     {unit !== null ? money(unit) : "—"}
@@ -185,7 +187,7 @@ export function OrderSaleForm({
                 className="whitespace-nowrap text-right tabular-nums text-zinc-900"
                 data-order-sale-subtotal
               >
-                <span className="mr-1 text-xs text-zinc-500 sm:hidden">
+                <span className="mr-1 text-xs text-zinc-500 @2xl:hidden">
                   {labels.colSubtotal}:
                 </span>
                 {subtotal !== null ? money(subtotal) : "—"}

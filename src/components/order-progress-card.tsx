@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { milestoneTitle } from "@/lib/milestones";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -12,6 +11,7 @@ import {
   type StageProgressState,
 } from "@/lib/flow-progress";
 import { PercentBar } from "./flow-entities";
+import { OrderProgressBlocks } from "./order-progress-blocks";
 import {
   Badge,
   Card,
@@ -30,7 +30,8 @@ import {
  * docs/FLOW_MENU.md): o pedido aberto pelo Overview de um bloco mostra a
  * viagem inteira (Pedido → Produção → Entrega), com o bloco de onde veio em
  * cor (os marcos, o atraso e a completude) e os outros em cinza, com o
- * percentual; em cima, a completude geral do pedido.
+ * percentual; em cima, a completude geral do pedido. As etapas de cada bloco
+ * ficam recolhidas até o clique no bloco (dono, 27/11/2026).
  */
 
 const TONE: Record<
@@ -44,7 +45,6 @@ const TONE: Record<
 };
 
 export function OrderProgressCard({
-  orderId,
   milestones,
   rows,
   focus: focusParam,
@@ -52,7 +52,6 @@ export function OrderProgressCard({
   locale,
   now = new Date(),
 }: {
-  orderId: string;
   /** Os 16 marcos do pedido (fase 5g: no lugar das etapas). */
   milestones: readonly MilestoneProgressView[];
   /** Linhas gravadas dos marcos (prazo, início e conclusão). */
@@ -65,97 +64,29 @@ export function OrderProgressCard({
 }) {
   const progress = orderProgress(milestones, rows, now);
   const focus = focusParam ?? progress.current ?? "order";
-  const mine = progress.blocks.find((b) => b.block === focus)!;
-  return (
-    <Card
-      className="mb-4 scroll-mt-20"
-      title={
-        <span id="order-progress" data-order-progress={focus}>
-          {t("flow.progress.title")}
-        </span>
-      }
-      actions={
-        <span
-          className="flex w-56 items-center gap-2 text-xs text-zinc-600"
-          data-order-progress-overall={progress.overall}
-        >
-          <span className="whitespace-nowrap">
-            {t("flow.progress.overall")}
-          </span>
-          <PercentBar percent={progress.overall} />
-        </span>
-      }
-    >
-      <p className="mb-3 text-xs text-zinc-500">{t("flow.progress.hint")}</p>
-      <ol className="mb-4 grid gap-2 sm:grid-cols-3" data-order-progress-blocks>
-        {PROGRESS_BLOCKS.map((b, i) => {
-          const p = progress.blocks.find((x) => x.block === b)!;
-          const here = b === focus;
-          return (
-            <li key={b}>
-              <Link
-                href={`/app/orders/${orderId}?from=${b}#order-progress`}
-                scroll={false}
-                aria-current={here ? "step" : undefined}
-                data-order-progress-block={b}
-                data-order-progress-percent={p.percent}
-                className={cx(
-                  "block rounded-xl border px-3 py-2 transition hover:shadow-sm",
-                  here
-                    ? "border-brand-300 bg-brand-50"
-                    : "border-zinc-200 bg-zinc-50 text-zinc-500",
-                )}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className={cx(
-                      "text-sm",
-                      here ? "font-semibold text-brand-700" : "text-zinc-600",
-                    )}
-                  >
-                    {i + 1}. {t(blockLabelKey(b))}
-                  </span>
-                  <span className="flex gap-1">
-                    {progress.current === b ? (
-                      <Badge tone={here ? "brand" : "neutral"}>
-                        {t("flow.progress.now")}
-                      </Badge>
-                    ) : null}
-                    {p.lateDays > 0 ? (
-                      <Badge tone={here ? "danger" : "neutral"}>
-                        {t("flow.progress.lateNow", { n: p.lateDays })}
-                      </Badge>
-                    ) : null}
-                  </span>
-                </div>
-                <div className="mt-1.5">
-                  <PercentBar percent={p.percent} muted={!here} />
-                </div>
-              </Link>
-            </li>
-          );
-        })}
-      </ol>
+  type Block = (typeof progress.blocks)[number];
+  const detail = (p: Block) => (
+    <>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <p
           className={cx(
             "text-sm",
-            mine.lateDays ? "font-medium text-red-700" : "text-zinc-700",
+            p.lateDays ? "font-medium text-red-700" : "text-zinc-700",
           )}
           data-order-progress-report
         >
           {t("flow.progress.report", {
-            late: mine.lateDays,
-            doneLate: mine.doneLate,
+            late: p.lateDays,
+            doneLate: p.doneLate,
           })}
         </p>
-        <TextLink href={overviewHref(focus)} className="text-xs">
+        <TextLink href={overviewHref(p.block)} className="text-xs">
           {t("flow.progress.backToOverview", {
-            block: t(blockLabelKey(focus)),
+            block: t(blockLabelKey(p.block)),
           })}
         </TextLink>
       </div>
-      {mine.milestones.length ? (
+      {p.milestones.length ? (
         <Table tools={false}>
           <thead>
             <tr>
@@ -168,7 +99,7 @@ export function OrderProgressCard({
             </tr>
           </thead>
           <tbody>
-            {mine.milestones.map((s) => (
+            {p.milestones.map((s) => (
               <tr
                 key={s.id}
                 className={rowClass}
@@ -216,6 +147,70 @@ export function OrderProgressCard({
       ) : (
         <Empty>{t("flow.progress.noStages")}</Empty>
       )}
+    </>
+  );
+  return (
+    <Card
+      className="mb-4 scroll-mt-20"
+      title={
+        <span id="order-progress" data-order-progress={focus}>
+          {t("flow.progress.title")}
+        </span>
+      }
+      actions={
+        <span
+          className="flex w-56 items-center gap-2 text-xs text-zinc-600"
+          data-order-progress-overall={progress.overall}
+        >
+          <span className="whitespace-nowrap">
+            {t("flow.progress.overall")}
+          </span>
+          <PercentBar percent={progress.overall} />
+        </span>
+      }
+    >
+      <p className="mb-3 text-xs text-zinc-500">{t("flow.progress.hint")}</p>
+      <OrderProgressBlocks
+        blocks={PROGRESS_BLOCKS.map((b, i) => {
+          const p = progress.blocks.find((x) => x.block === b)!;
+          const here = b === focus;
+          return {
+            key: b,
+            here,
+            percent: p.percent,
+            face: (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={cx(
+                      "text-sm",
+                      here ? "font-semibold text-brand-700" : "text-zinc-600",
+                    )}
+                  >
+                    {i + 1}. {t(blockLabelKey(b))}
+                  </span>
+                  <span className="flex gap-1">
+                    {progress.current === b ? (
+                      <Badge tone={here ? "brand" : "neutral"}>
+                        {t("flow.progress.now")}
+                      </Badge>
+                    ) : null}
+                    {p.lateDays > 0 ? (
+                      <Badge tone={here ? "danger" : "neutral"}>
+                        {t("flow.progress.lateNow", { n: p.lateDays })}
+                      </Badge>
+                    ) : null}
+                  </span>
+                </div>
+                <div className="mt-1.5">
+                  <PercentBar percent={p.percent} muted={!here} />
+                </div>
+              </>
+            ),
+            detail: detail(p),
+          };
+        })}
+      />
     </Card>
   );
 }

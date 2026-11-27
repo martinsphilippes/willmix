@@ -91,7 +91,7 @@ export const pt = {
   "flow.progress.title": "Linha do tempo do pedido",
   "flow.progress.overall": "Completude geral",
   "flow.progress.hint":
-    "O pedido entre os blocos. O bloco em foco aparece em cor, com as etapas, o atraso e a completude; os outros, em cinza, com o percentual.",
+    "O pedido entre os blocos, com o percentual de cada um; o bloco em foco aparece em cor. Toque num bloco para ver as etapas dele, o atraso e a completude.",
   "flow.progress.focus": "Em foco",
   "flow.progress.now": "Agora",
   "flow.progress.stage": "Etapa",
@@ -394,7 +394,7 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.progress.title": "Order timeline",
   "flow.progress.overall": "Overall completion",
   "flow.progress.hint":
-    "The order across the blocks. The block in focus is in color, with its stages, delay and completion; the others are gray, with their percentage.",
+    "The order across the blocks, with each one's percentage; the block in focus is in color. Tap a block to see its stages, delay and completion.",
   "flow.progress.focus": "In focus",
   "flow.progress.now": "Now",
   "flow.progress.stage": "Stage",
@@ -692,7 +692,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.progress.title": "订单时间线",
   "flow.progress.overall": "总体完成度",
   "flow.progress.hint":
-    "订单在各阶段的情况。重点阶段以彩色显示，包括步骤、延误和完成度；其他阶段以灰色显示百分比。",
+    "订单在各阶段的情况及各阶段的百分比；重点阶段以彩色显示。点击某个阶段即可查看其步骤、延误和完成度。",
   "flow.progress.focus": "重点",
   "flow.progress.now": "当前",
   "flow.progress.stage": "步骤",
