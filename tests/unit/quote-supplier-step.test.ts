@@ -95,10 +95,10 @@ describe("cotação nas Pendências do fornecedor", () => {
     const pt = translator("pt");
     const zh = translator("zh");
     expect(pt(task!.text!.title, taskTextValues(pt, task!.text!))).toBe(
-      `Cotação de compra nº ${quote.number}`,
+      `Consulta de compra nº ${quote.number}`,
     );
     expect(zh(task!.text!.title, taskTextValues(zh, task!.text!))).toBe(
-      `第 ${quote.number} 号采购询价`,
+      `第 ${quote.number} 号采购询盘`,
     );
     expect(pt(task!.text!.detail, taskTextValues(pt, task!.text!))).toMatch(
       /^.+ · 4\.800 un$/,
