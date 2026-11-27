@@ -361,9 +361,12 @@ export async function setSupplierRequestSamplingNeed(
   id: string,
   need: boolean,
 ): Promise<SupplierRequest[]> {
-  const { request, wellmix } = await load(user, id);
-  if (!wellmix) throw new SupplierRequestError("forbidden");
+  assertScreen(user, "quotes");
+  if (!isWellmix(user)) throw new SupplierRequestError("forbidden");
   assertCan(user, "supplierRequest.decide");
+  // Sem o `load` da amostragem: desmarcada, ela não está aberta.
+  const request = await getStore().get("supplier_requests", id);
+  if (!request) throw new SupplierRequestError("not_found");
   const { supplierRequestGroup } = await import("./supplier-requests");
   const { openSampling } = await import("@/lib/supplier-request-sampling");
   const group = await supplierRequestGroup(user, request);

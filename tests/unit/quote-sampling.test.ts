@@ -41,10 +41,7 @@ beforeAll(async () => {
   const { users } = await seedDemo();
   // A encomenda não vira cotação sozinha aqui (dono, 22/11/2026): estes
   // testes exercitam a Estratégia manual ou outro assunto.
-  await (await import("@/lib/settings")).setSetting(
-    "autoQuoteOrders",
-    false,
-  );
+  await (await import("@/lib/settings")).setSetting("autoQuoteOrders", false);
   const by = (email: string) => users.find((u) => u.email === email)!;
   admin = by("admin@wellmix.com");
   buyer = by("operador@wellmix.com");
@@ -58,7 +55,7 @@ beforeAll(async () => {
   ]);
 });
 
-async function openQuote() {
+async function openQuote(need = true) {
   const d = await requests.createRequest(joao, {
     customerId: "cliente-joao",
     productId: PRODUCT,
@@ -78,7 +75,11 @@ async function openQuote() {
     note: null,
   });
   const fresh = (await getStore().get("purchase_decisions", decision.id))!;
-  return (await getStore().get("purchase_quotes", fresh.quoteId!))!;
+  // "Necessita amostragem" (dono, 27/11/2026): o padrão é desmarcado; os
+  // testes da amostra marcam a cotação.
+  return need
+    ? sampling.setQuoteSamplingNeed(admin, fresh.quoteId!, true)
+    : (await getStore().get("purchase_quotes", fresh.quoteId!))!;
 }
 
 const responseOf = async (quoteId: string, user: User) =>
@@ -249,5 +250,40 @@ describe("amostragem na cotação de compra", () => {
       skipped: true,
       files: [],
     });
+  });
+});
+
+describe("Necessita amostragem na cotação (dono, 27/11/2026)", () => {
+  it("sem a marca (o padrão), ninguém envia amostra e a vencedora sai sem ela", async () => {
+    const quote = await openQuote(false);
+    expect(quote.samplingNeed ?? null).toBeNull();
+    await expect(
+      sampling.addQuoteSamplingFile(supplierC, quote.id, PRODUCT, {
+        file: photo(),
+        uploadedFileId: null,
+      }),
+    ).rejects.toThrow("sampling_not_open");
+    await quotes.answerQuote(supplierA, quote.id, answer(2.4));
+    await quotes.answerQuote(supplierC, quote.id, answer(2.1));
+    const c = await responseOf(quote.id, supplierC);
+    expect(rules.quoteNeedsSampling(quote, c)).toBe(false);
+    await quotes.chooseWinner(buyer, quote.id, c.id, null, plus(25));
+    const approved = await quotes.decideWinner(director, quote.id, {
+      approve: true,
+      note: null,
+    });
+    const [born] = await getStore().list("supplier_requests", {
+      filter: { id: approved.supplierRequestIds! },
+    });
+    expect(born.samplingNeed).toBe("no");
+    expect(born.sampling ?? null).toBeNull();
+  });
+  it("só a Wellmix com a escolha da vencedora marca", async () => {
+    const quote = await openQuote(false);
+    await expect(
+      sampling.setQuoteSamplingNeed(supplierC, quote.id, true),
+    ).rejects.toThrow();
+    const marked = await sampling.setQuoteSamplingNeed(admin, quote.id, true);
+    expect(marked.samplingNeed).toBe("yes");
   });
 });

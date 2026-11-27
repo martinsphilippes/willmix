@@ -306,19 +306,13 @@ describe("menu lateral", () => {
     // Os passos de cada parceiro, por bloco (docs/FLOW_MENU.md); bloco com um
     // passo só vira link direto.
     // "Meus books" acima de "Pedido" (dono, 21/11/2026).
+    // Consultas (dono, 27/11/2026): convites, solicitações e cotações de
+    // compra numa entrada só; sem o /app/orders (o passo Pedidos já está no
+    // bloco Pedido) e sem a Conta corrente (oculta por padrão). Sem a tela
+    // Booking no perfil, o grupo de uma tela vira o link direto.
     expect(view({ role: "supplier" })).toEqual([
       ...top,
-      {
-        group: "nav.group.myBookings",
-        // Convites de book dentro de "Solicitações do cliente" (dono,
-        // 23/11/2026): uma entrada só.
-        items: [
-          "/app/supplier-requests",
-          "/app/purchase-quotes",
-          "/app/orders",
-          "/app/account",
-        ],
-      },
+      { link: "/app/supplier-requests" },
       {
         group: "nav.group.order",
         items: [
@@ -339,6 +333,22 @@ describe("menu lateral", () => {
         ],
       },
     ]);
+    // Conta corrente ligada nas Configurações: fora dos grupos, logo abaixo
+    // das Pendências; "Consultas" acende também nas telas antigas.
+    const withAccount = sidebarNav(
+      navFor({ role: "supplier" }, { partnerAccount: true }),
+    );
+    expect(
+      withAccount.slice(0, 3).map((e) => !isNavGroup(e) && e.href),
+    ).toEqual(["/app", "/app/account", "/app/supplier-requests"]);
+    const inquiries = flattenNav(navFor({ role: "supplier" })).find(
+      (l) => l.href === "/app/supplier-requests",
+    )!;
+    expect(isActiveLink(inquiries, "/app/purchase-quotes/q1")).toBe(true);
+    expect(isActiveLink(inquiries, "/app/supplier-requests/invites/i1")).toBe(
+      true,
+    );
+    expect(hrefsOf({ role: "supplier" })).not.toContain("/app/orders");
     expect(view({ role: "shipping_line" })).toEqual([
       ...top,
       { link: "/app/flow/production/shipment" },
@@ -402,7 +412,11 @@ describe("menu lateral", () => {
       const hrefs = hrefsOf({ role });
       expect(new Set(hrefs).size).toBe(hrefs.length);
       expect(hrefs[0]).toBe("/app");
-      expect(hrefs).toContain("/app/orders");
+      // O fornecedor chega aos pedidos pelo passo Pedidos do bloco Pedido
+      // (dono, 27/11/2026); os outros, pela lista.
+      expect(hrefs).toContain(
+        role === "supplier" ? "/app/flow/order/orders" : "/app/orders",
+      );
       expect(navFooterFor({ role })).toEqual([]);
       // Nenhum Overview (só a Wellmix) nem passo da Wellmix.
       expect(hrefs.some((h) => /^\/app\/flow\/[^/]+$/.test(h))).toBe(false);

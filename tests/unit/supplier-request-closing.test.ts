@@ -29,6 +29,8 @@ const row = (over: Partial<Row>): Row => ({
   decidedAt: AT,
   updatedAt: AT,
   sampling: sample("approved"),
+  // "Necessita amostragem" (dono, 27/11/2026): marcada nestes casos.
+  samplingNeed: "yes",
   ...over,
 });
 
@@ -56,6 +58,14 @@ describe("requestClosed", () => {
     expect(requestClosed([row({ sampling: sample("rejected") })])).toBe(false);
     // Aprovada antes da etapa existir (sem amostragem gravada): pendente.
     expect(requestClosed([row({ sampling: null })])).toBe(false);
+    // Sem "Necessita amostragem" (o padrão desde 27/11/2026), nada espera
+    // a amostra: encerrada.
+    expect(requestClosed([row({ sampling: null, samplingNeed: null })])).toBe(
+      true,
+    );
+    expect(
+      requestClosed([row({ sampling: sample("pending"), samplingNeed: "no" })]),
+    ).toBe(true);
     // Dispensada (o conhecido do produto) ou já num pedido: encerrada.
     const skipped = {
       ...sample("approved")!,
