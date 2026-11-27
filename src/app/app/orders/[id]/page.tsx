@@ -2120,19 +2120,8 @@ export default async function OrderPage({
         title={t("orders.number", { number: order.number })}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
-            {/* Cada item com o seu ícone de chat: a conversa desce até o produto. */}
-            <span className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
-              {items.map((i, index) => (
-                <span key={i.id} className="inline-flex items-center">
-                  {index > 0 ? <span className="mr-1">;</span> : null}
-                  {`${i.name} · ${i.quantity} ${i.unit}`}
-                  <ChatOpenButton
-                    target={{ orderId: order.id, orderItemId: i.id }}
-                    label={`${t("chat.openItem")}: ${i.name}`}
-                  />
-                </span>
-              ))}
-            </span>
+            {/* Sem a lista dos produtos abaixo do título (dono, 27/11/2026):
+                os produtos e a conversa de cada um ficam na tabela de itens. */}
             <Badge
               tone={
                 isCancelled
