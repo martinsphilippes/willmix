@@ -14,10 +14,24 @@ import type {
  *   aprovada (ou dispensada).
  */
 
-type Sampled = Pick<
-  PurchaseQuoteResponse,
-  "sampling" | "invitedAt" | "status"
->;
+type Sampled = Pick<PurchaseQuoteResponse, "sampling" | "invitedAt" | "status">;
+
+/**
+ * A cotação pede amostragem a este fornecedor? (dono, 27/11/2026): só
+ * quando a Wellmix marca "Necessita amostragem" na cotação; o padrão é
+ * desmarcado. Na cotação de antes da marca (nula), só quem já começou a
+ * enviar (arquivo ou validação em algum produto) segue com a amostragem.
+ */
+export function quoteNeedsSampling(
+  quote: { samplingNeed?: "yes" | "no" | null },
+  response: Pick<PurchaseQuoteResponse, "sampling">,
+): boolean {
+  if (quote.samplingNeed === "yes") return true;
+  if (quote.samplingNeed === "no") return false;
+  return Object.values(response.sampling ?? {}).some(
+    (s) => !!s && !s.skipped && (s.status !== "pending" || s.files.length > 0),
+  );
+}
 
 /**
  * A amostragem de um produto para este fornecedor: a gravada ou, antes do

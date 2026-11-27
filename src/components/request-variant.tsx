@@ -263,58 +263,85 @@ export function RequestVariant({
           </figcaption>
         </figure>
       </div>
-      {f.rounds.length ? (
-        <div className="overflow-x-auto" data-request-variant-rounds>
-          <table className="min-w-full text-left text-xs">
-            <thead className="text-[11px] uppercase tracking-wide text-zinc-500">
-              <tr>
-                <th className="py-1 pr-3 font-semibold">
-                  {t("purchaseRounds.col.round")}
-                </th>
-                <th className="py-1 pr-3 font-semibold">
-                  {t("purchaseRounds.col.date")}
-                </th>
-                {packed ? (
-                  <th className="py-1 pr-3 text-right font-semibold">
-                    {t("supplierRequests.variant.col.packs")}
-                  </th>
-                ) : null}
-                <th className="py-1 pr-3 text-right font-semibold">
-                  {t("purchaseRounds.col.pieces")}
-                </th>
-                <th className="py-1 text-right font-semibold">
-                  {t("supplierRequests.variant.col.cartons")}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="tabular-nums text-zinc-800">
-              {f.rounds.map((r) => (
-                <tr
-                  key={r.index}
-                  className="border-t border-brand-100"
-                  data-request-variant-round={r.index}
-                >
-                  <td className="py-1 pr-3">{r.index}</td>
-                  <td className="py-1 pr-3">
-                    {r.expectedAt
-                      ? new Date(`${r.expectedAt}T12:00:00`).toLocaleDateString(
-                          t.intl,
-                        )
-                      : "—"}
-                  </td>
-                  {packed ? (
-                    <td className="py-1 pr-3 text-right">
-                      {num(r.quantity, 0)}
-                    </td>
-                  ) : null}
-                  <td className="py-1 pr-3 text-right">{num(r.pieces, 0)}</td>
-                  <td className="py-1 text-right">{num(r.cartons, 0)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+      <RoundsTable f={f} t={t} />
     </section>
   );
+}
+
+type Facts = NonNullable<ReturnType<typeof variantFacts>>;
+
+/** As entregas da variação, em embalagens, peças e caixas. */
+function RoundsTable({ f, t }: { f: Facts; t: Translate }) {
+  if (!f.rounds.length) return null;
+  const num = (v: number | null, max = 4) =>
+    v === null ? "—" : v.toLocaleString(t.intl, { maximumFractionDigits: max });
+  const packed = f.units > 1;
+  return (
+    <div className="overflow-x-auto" data-request-variant-rounds>
+      <table className="min-w-full text-left text-xs">
+        <thead className="text-[11px] uppercase tracking-wide text-zinc-500">
+          <tr>
+            <th className="py-1 pr-3 font-semibold">
+              {t("purchaseRounds.col.round")}
+            </th>
+            <th className="py-1 pr-3 font-semibold">
+              {t("purchaseRounds.col.date")}
+            </th>
+            {packed ? (
+              <th className="py-1 pr-3 text-right font-semibold">
+                {t("supplierRequests.variant.col.packs")}
+              </th>
+            ) : null}
+            <th className="py-1 pr-3 text-right font-semibold">
+              {t("purchaseRounds.col.pieces")}
+            </th>
+            <th className="py-1 text-right font-semibold">
+              {t("supplierRequests.variant.col.cartons")}
+            </th>
+          </tr>
+        </thead>
+        <tbody className="tabular-nums text-zinc-800">
+          {f.rounds.map((r) => (
+            <tr
+              key={r.index}
+              className="border-t border-brand-100"
+              data-request-variant-round={r.index}
+            >
+              <td className="py-1 pr-3">{r.index}</td>
+              <td className="py-1 pr-3">
+                {r.expectedAt
+                  ? new Date(`${r.expectedAt}T12:00:00`).toLocaleDateString(
+                      t.intl,
+                    )
+                  : "—"}
+              </td>
+              {packed ? (
+                <td className="py-1 pr-3 text-right">{num(r.quantity, 0)}</td>
+              ) : null}
+              <td className="py-1 pr-3 text-right">{num(r.pieces, 0)}</td>
+              <td className="py-1 text-right">{num(r.cartons, 0)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/**
+ * Só as entregas da variação × embalagem (dono, 27/11/2026): a tela do
+ * fornecedor tirou o quadro "Variação e embalagem" (informação repetida) e
+ * mostra a programação na própria seção. Nulo sem variação ou sem entregas.
+ */
+export function VariantRoundsTable({
+  request,
+  book,
+  t,
+}: {
+  request: Pick<SupplierRequest, "variant" | "item" | "quantity" | "schedule">;
+  book?: Partial<RequestBookSpecs> | null;
+  t: Translate;
+}) {
+  const f = variantFacts(request, book);
+  return f ? <RoundsTable f={f} t={t} /> : null;
 }

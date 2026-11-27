@@ -46,17 +46,45 @@ export function samplingKind(mime: string): SamplingFile["kind"] | null {
   return null;
 }
 
+/** A marca "Necessita amostragem" da consulta (opcional nas leituras parciais). */
+type SamplingFlag = { samplingNeed?: "yes" | "no" | null };
+
+/**
+ * A consulta pede amostragem? (dono, 27/11/2026): só quando a Wellmix marca
+ * "Necessita amostragem"; o padrão é desmarcado. A consulta de antes da
+ * marca (nula) segue pedindo só se a amostra já andou (arquivo enviado ou
+ * validação), para não sumir com o que o fornecedor já mandou; a dispensada
+ * da cotação (`skipped`) não pede.
+ */
+export function samplingRequired(
+  request: Pick<SupplierRequest, "sampling"> & SamplingFlag,
+): boolean {
+  if (request.samplingNeed === "yes") return true;
+  if (request.samplingNeed === "no") return false;
+  return samplingStarted(request.sampling);
+}
+
+/** A amostra já andou: arquivo enviado ou passou da pendente (sem a dispensada). */
+export function samplingStarted(
+  s: SupplierRequestSampling | null | undefined,
+): boolean {
+  return !!s && !s.skipped && (s.status !== "pending" || s.files.length > 0);
+}
+
 /**
  * A amostragem da solicitação: a gravada ou, na aprovada antes da etapa
- * existir, uma pendente aberta na aprovação. Sem aprovação, nula.
+ * existir, uma pendente aberta na aprovação. Sem aprovação, ou sem
+ * "Necessita amostragem" (dono, 27/11/2026), nula.
  */
 export function samplingOf(
   request: Pick<
     SupplierRequest,
     "status" | "decidedAt" | "updatedAt" | "sampling"
-  >,
+  > &
+    SamplingFlag,
 ): SupplierRequestSampling | null {
   if (request.status !== "approved") return null;
+  if (!samplingRequired(request)) return null;
   if (request.sampling) return request.sampling;
   return {
     status: "pending",
@@ -79,8 +107,10 @@ export function samplingFor(
   request: Pick<
     SupplierRequest,
     "status" | "decidedAt" | "updatedAt" | "createdAt" | "sampling"
-  >,
+  > &
+    SamplingFlag,
 ): SupplierRequestSampling | null {
+  if (!samplingRequired(request)) return null;
   if (request.status === "approved") return samplingOf(request);
   if (request.status !== "open" && request.status !== "answered") return null;
   return (
@@ -218,7 +248,8 @@ export function supplierRequestTurn(
   request: Pick<
     SupplierRequest,
     "status" | "negotiation" | "decidedAt" | "updatedAt" | "sampling"
-  >,
+  > &
+    SamplingFlag,
 ): { party: "supplier" | "wellmix"; step: SupplierRequestStep } | null {
   const negotiation = negotiationTurn(request);
   if (negotiation)
@@ -234,13 +265,17 @@ export function supplierRequestTurn(
   };
 }
 
-/** Amostra aprovada: libera criar/associar o produto e o pedido de compra. */
+/**
+ * Amostra aprovada: libera criar/associar o produto e o pedido de compra.
+ * Sem "Necessita amostragem" (dono, 27/11/2026), nada espera a amostra.
+ */
 export const samplingApproved = (
   request: Pick<
     SupplierRequest,
     "status" | "decidedAt" | "updatedAt" | "sampling"
-  >,
-) => samplingOf(request)?.status === "approved";
+  > &
+    SamplingFlag,
+) => !samplingRequired(request) || samplingOf(request)?.status === "approved";
 
 /** Padrão do SLA da amostragem (dias corridos), decisão do dono (12/11/2026). */
 export const SAMPLING_SLA_DAYS = 1;

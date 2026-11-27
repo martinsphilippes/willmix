@@ -264,3 +264,27 @@ export async function reviewQuoteSamplingAction(form: FormData) {
     );
   });
 }
+
+/**
+ * "Necessita amostragem" da cotação de compra (dono, 27/11/2026): a Wellmix
+ * marca ou desmarca para a cotação inteira; volta para a tela de onde veio.
+ */
+export async function setQuoteSamplingAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "quoteId");
+  const ok = ID.safeParse(raw).success;
+  const home = str(form, "home");
+  const back = !ok
+    ? "/app/supplier-requests"
+    : home === "quotation"
+      ? `/app/supplier-requests/${raw}`
+      : `/app/purchase-quotes/${raw}`;
+  await run(back, async () => {
+    if (!ok) throw new Error("invalid_input");
+    const need = z.enum(["yes", "no"]).parse(str(form, "need")) === "yes";
+    const { setQuoteSamplingNeed } =
+      await import("@/lib/services/quote-sampling");
+    await setQuoteSamplingNeed(user, raw, need);
+    return withQuery(back, "samplingNeed", need ? "yes" : "no");
+  });
+}

@@ -8,7 +8,7 @@
  */
 export const pt = {
   "quotation.close": "Fechar",
-  "quotation.list.title": "Cotação",
+  "quotation.list.title": "Consulta",
   "quotation.list.subtitle":
     "Todas as cotações com os fornecedores: as que saíram de um book, de uma encomenda ou de uma reposição. A negociação acontece dentro da cotação, até escolher o fornecedor do pedido.",
   "quotation.list.count": "{n} cotações · {products} produtos distintos",
@@ -23,8 +23,8 @@ export const pt = {
   "quotation.origin.book": "Book",
   "quotation.origin.order": "Encomenda",
   "quotation.origin.replenishment": "Reposição",
-  "quotation.detail.title": "Cotação nº {n}",
-  "quotation.detail.back": "Voltar às cotações",
+  "quotation.detail.title": "Consulta nº {n}",
+  "quotation.detail.back": "Voltar às consultas",
   "quotation.item.product": "Produto da cotação",
   "quotation.item.open": "Abrir o produto na cotação",
   "quotation.board.hint":
@@ -128,7 +128,7 @@ export const pt = {
 
 export const en: Record<keyof typeof pt, string> = {
   "quotation.close": "Close",
-  "quotation.list.title": "Quotation",
+  "quotation.list.title": "Inquiry",
   "quotation.list.subtitle":
     "Every quotation with suppliers: from a book, a customer order or a replenishment. Negotiation happens inside the quotation, until the supplier of the order is chosen.",
   "quotation.list.count": "{n} quotations · {products} distinct products",
@@ -143,8 +143,8 @@ export const en: Record<keyof typeof pt, string> = {
   "quotation.origin.book": "Book",
   "quotation.origin.order": "Customer order",
   "quotation.origin.replenishment": "Replenishment",
-  "quotation.detail.title": "Quotation no. {n}",
-  "quotation.detail.back": "Back to quotations",
+  "quotation.detail.title": "Inquiry no. {n}",
+  "quotation.detail.back": "Back to inquiries",
   "quotation.item.product": "Product in this quotation",
   "quotation.item.open": "Open the product in the quotation",
   "quotation.board.hint":
@@ -246,7 +246,7 @@ export const en: Record<keyof typeof pt, string> = {
 
 export const zh: Record<keyof typeof pt, string> = {
   "quotation.close": "关闭",
-  "quotation.list.title": "询价",
+  "quotation.list.title": "询盘",
   "quotation.list.subtitle":
     "与供应商的全部询价：来自 Book、客户订货或补货。谈判在询价内进行，直到确定订单的供应商。",
   "quotation.list.count": "{n} 个询价 · {products} 个不同产品",
@@ -261,8 +261,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "quotation.origin.book": "Book",
   "quotation.origin.order": "客户订货",
   "quotation.origin.replenishment": "补货",
-  "quotation.detail.title": "询价 {n} 号",
-  "quotation.detail.back": "返回询价列表",
+  "quotation.detail.title": "询盘 {n} 号",
+  "quotation.detail.back": "返回询盘列表",
   "quotation.item.product": "本询价的产品",
   "quotation.item.open": "在询价中打开产品",
   "quotation.board.hint":

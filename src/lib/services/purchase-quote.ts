@@ -41,6 +41,7 @@ import {
   soldBeforeProducts,
 } from "./supplier-sheets";
 import {
+  quoteNeedsSampling,
   quoteSamplingReady,
   quoteSamplingToSend,
   skippedSampling,
@@ -543,6 +544,9 @@ export async function supplierQuoteView(user: User, quoteId: string) {
       items: quote.items,
       hours: quote.hours,
       status: quote.status,
+      // "Necessita amostragem" (dono, 27/11/2026): a amostragem só aparece
+      // para ele quando a Wellmix marca.
+      samplingNeed: quote.samplingNeed ?? null,
     },
     response,
   };
@@ -573,6 +577,8 @@ export async function supplierInvitations(user: User, now = new Date()) {
               number: quote.number,
               items: quote.items,
               status: quote.status,
+              samplingNeed: quote.samplingNeed ?? null,
+              createdAt: quote.createdAt,
             },
           }
         : null;
@@ -818,7 +824,11 @@ export async function chooseWinner(
   // conhecido do produto (dono, 22/11/2026; docs/SUPPLIER_SAMPLING.md).
   const productIds = quote.items.map((i) => i.productId);
   const known = await soldBeforeProducts(winner.supplierId, productIds);
-  if (!quoteSamplingReady(winner, productIds, known))
+  // Sem "Necessita amostragem" (dono, 27/11/2026), a amostra não trava.
+  if (
+    quoteNeedsSampling(quote, winner) &&
+    !quoteSamplingReady(winner, productIds, known)
+  )
     throw new PurchaseQuoteError("quote_winner_sampling");
   const updated = await getStore().update("purchase_quotes", quote.id, {
     status: "chosen",
@@ -957,10 +967,15 @@ async function supplierRequestsFromWinner(
     winner.supplierId,
     quote.items.map((i) => i.productId),
   );
+  // "Necessita amostragem" passa da cotação para a solicitação (dono,
+  // 27/11/2026); sem ela, a solicitação nasce sem amostragem.
+  const needsSampling = quoteNeedsSampling(quote, winner);
+  const samplingNeed = needsSampling ? ("yes" as const) : ("no" as const);
   for (const item of quote.items) {
     const sampled = winner.sampling?.[item.productId];
-    const sampling =
-      sampled?.status === "approved"
+    const sampling = !needsSampling
+      ? null
+      : sampled?.status === "approved"
         ? sampled
         : known.has(item.productId)
           ? skippedSampling(now.toISOString())
@@ -1021,6 +1036,7 @@ async function supplierRequestsFromWinner(
         createdByUserId: user.id,
         quoteResponseId: winner.id,
         demandIds: quote.demandIds,
+        samplingNeed,
         ...(sampling ? { sampling } : {}),
       });
       out.push(request);
@@ -1094,6 +1110,7 @@ async function supplierRequestsFromWinner(
       productLinkedByUserId: user.id,
       quoteResponseId: winner.id,
       demandIds: quote.demandIds,
+      samplingNeed,
       ...(sampling ? { sampling } : {}),
     });
     out.push(request);
@@ -1308,6 +1325,7 @@ export async function quoteTaskDrafts(user: User, now = new Date()) {
           // Amostra a enviar (ou reprovada): a cotação continua nas
           // Pendências dele até a Wellmix ter o que validar.
           (state === "answered" &&
+            quoteNeedsSampling(quote, response) &&
             quoteSamplingToSend(
               response,
               quote.items.map((i) => i.productId),

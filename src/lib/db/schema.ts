@@ -3903,6 +3903,13 @@ export interface PurchaseQuote extends BaseRow {
   supplierRequestIds: string[] | null;
   /** Quando o Comprador foi avisado de que ninguém respondeu no prazo. */
   emptyNotifiedAt: string | null;
+  /**
+   * "Necessita amostragem" (dono, 27/11/2026): só marcada pela Wellmix o
+   * fornecedor vê e envia a amostra, e a vencedora precisa dela aprovada.
+   * Padrão desmarcado; nula nas de antes (ver `quoteNeedsSampling`).
+   * "yes"/"no" e não booleano: o banco lê o booleano nulo como falso.
+   */
+  samplingNeed?: YesNo | null;
 }
 
 export interface QuoteResponsePrice {
@@ -4344,6 +4351,14 @@ export interface SupplierRequest extends BaseRow {
    * rascunho.
    */
   registration?: SupplierRequestRegistration | null;
+  /**
+   * "Necessita amostragem" (dono, 27/11/2026): só marcada pela Wellmix o
+   * fornecedor vê e envia a amostra, e o produto e o pedido de compra
+   * esperam a amostra aprovada. Padrão desmarcado; nula nas de antes (ver
+   * `samplingRequired` em src/lib/supplier-request-sampling.ts). "yes"/"no"
+   * e não booleano: o banco lê o booleano nulo como falso.
+   */
+  samplingNeed?: YesNo | null;
 }
 
 /** O cadastro do produto da cotação aprovada (Cadastrar produto). */
@@ -7058,6 +7073,7 @@ export const TABLES: Record<TableName, TableDef> = {
       approvalNote: text(),
       supplierRequestIds: json(),
       emptyNotifiedAt: datetime(),
+      samplingNeed: enumOf(YES_NO, false),
     },
     indexes: [
       { key: "by_status", type: "key", columns: ["status"] },
@@ -7297,6 +7313,7 @@ export const TABLES: Record<TableName, TableDef> = {
       demandIds: json(),
       variant: json(),
       registration: jsonLarge(),
+      samplingNeed: enumOf(YES_NO, false),
     },
     indexes: [
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
