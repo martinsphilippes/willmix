@@ -26,7 +26,7 @@ const sidebar = (page: Page) => page.locator("[data-sidebar-nav]").first();
  */
 async function newProductLinks(page: Page) {
   await page.goto("/app");
-  const group = sidebar(page).locator('[data-nav-group="Cotação"]');
+  const group = sidebar(page).locator('[data-nav-group="Backlog"]');
   await expect(group).toBeVisible();
   const toggle = group.locator("button").first();
   if ((await toggle.getAttribute("aria-expanded")) === "false")

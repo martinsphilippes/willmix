@@ -408,6 +408,8 @@ A cotação de compra vencedora, aprovada pela Diretoria de compras (docs/PURCHA
 
 ## Solicitações do cliente e Books no menu do fornecedor (dono, 23/11/2026)
 
+> Desde 27/11/2026 a tela se chama **Consultas** e junta também as cotações de compra, na tabela padrão do fornecedor com Tipo e Completude; a tela do item do fornecedor foi reorganizada (moeda antes do preço, arte no alto, programação na seção 3, resposta à direita). Ver docs/QUOTATION.md, seção 9.
+
 Pedido do dono para a tela do fornecedor (login externo):
 
 - **Books**, primeira opção de "Meus books" (`/app/booking`, `nav.partnerBooks`):

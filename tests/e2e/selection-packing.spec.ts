@@ -171,11 +171,19 @@ test("Alterar, embalagens, variações e uma cotação por combinação", async 
     fullPage: true,
   });
 
-  // 9. O fornecedor (Supplier do book) vê a mesma variação e abre a arte.
+  // 9. O fornecedor (Supplier do book) vê a variação numa linha e a arte no
+  // alto da seção 1, sem o quadro "Variação e embalagem" (dono, 27/11/2026).
   await login(page, "supplier.a@china.com");
   await page.goto(`${url}?view=item`);
-  await expect(variant).toBeVisible();
-  const art = variant.locator("[data-request-variant-art] img");
+  await expect(variant).toHaveCount(0);
+  // O fornecedor de teste usa o portal em chinês.
+  await expect(page.locator("[data-negotiation-variant]")).toContainText(
+    "Preto fosco",
+  );
+  await expect(
+    page.locator("[data-negotiation-section=schedule]"),
+  ).toBeVisible();
+  const art = page.locator('[data-negotiation-image="art"] img');
   await expect(art).toBeVisible();
   const src = await art.getAttribute("src");
   const res = await page.request.get(src!);

@@ -97,3 +97,14 @@ A amostra pode ser aprovada depois, mas precisa poder ser enviada antes, para os
 | Ações        | `src/app/app/actions/quotation.ts`                                      |
 | Tela         | `_components/sampling.tsx` (`SamplingPanel`, usado nos dois casos)      |
 | Testes       | `tests/unit/quote-sampling.test.ts`, `tests/e2e/purchase-quote.spec.ts` |
+
+## Necessita amostragem (dono, 27/11/2026)
+
+A amostragem só aparece para o fornecedor quando a Wellmix marca a consulta com **"Necessita amostragem"**. O padrão é desmarcado.
+
+- **Onde marca**: na solicitação ao fornecedor, no alto da tabela dos produtos e na coluna da direita do item (vale para todos os produtos da solicitação; ação "Decidir a solicitação", `supplierRequest.decide`); na cotação de compra, no alto do quadro (ação "Escolher a vencedora", `purchaseQuote.choose`, com a cotação aberta ou com a vencedora escolhida). Quem não pode mudar vê só a situação (`_components/sampling-need.tsx`).
+- **Gravado em** `supplier_requests.samplingNeed` e `purchase_quotes.samplingNeed` ("yes", "no" ou nulo; texto e não booleano porque o banco lê o booleano nulo como falso).
+- **Desmarcada**: o fornecedor não vê o cartão da amostragem (na cotação de compra, o card fica só com as fotos do produto), não envia, não tem pendência nem prazo, e nada espera a amostra: o produto, o pedido de compra, a aba Encerradas e a escolha da vencedora seguem sem ela (`samplingApproved` e `quoteNeedsSampling`). O que ele já tinha enviado fica guardado.
+- **Marcada**: as regras de sempre. Na solicitação já aprovada, marcar abre a amostragem na hora, com o prazo, e avisa o fornecedor.
+- **Da cotação para a solicitação**: a vencedora leva a marca para a solicitação que nasce dela; sem a marca, a solicitação nasce sem amostragem.
+- **Consultas de antes** (marca nula): seguem pedindo a amostra só se ela já tinha andado (arquivo enviado ou validação); a dispensada (`skipped`) não pede. Regras em `samplingRequired` (`src/lib/supplier-request-sampling.ts`) e `quoteNeedsSampling` (`src/lib/quote-sampling.ts`).

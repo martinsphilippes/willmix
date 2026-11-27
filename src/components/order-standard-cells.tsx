@@ -46,19 +46,22 @@ export function orderHeadText(t: Translate, key: OrderColumn): string {
 export function OrderStandardHeads({
   t,
   seeValue,
+  omit = [],
 }: {
   t: Translate;
   seeValue: boolean;
+  /** Colunas que a tela tira ou põe em outro lugar (ex.: Consulta, 27/11/2026). */
+  omit?: readonly OrderColumn[];
 }) {
   return (
     <>
-      {STANDARD_AFTER_NUMBER.filter((key) => seeValue || key !== "value").map(
-        (key) => (
-          <Th key={key} className="whitespace-nowrap" data-order-head={key}>
-            {orderHeadText(t, key)}
-          </Th>
-        ),
-      )}
+      {STANDARD_AFTER_NUMBER.filter(
+        (key) => (seeValue || key !== "value") && !omit.includes(key),
+      ).map((key) => (
+        <Th key={key} className="whitespace-nowrap" data-order-head={key}>
+          {orderHeadText(t, key)}
+        </Th>
+      ))}
     </>
   );
 }
@@ -71,11 +74,14 @@ export function OrderTermsTds({
   cells,
   createdAt,
   compact = false,
+  omit = [],
 }: {
   t: Translate;
   cells: OrderCells | null | undefined;
   /** Sem solicitação ligada: o dia em que a própria linha nasceu. */
   createdAt: string | null;
+  /** Colunas que a tela tira (ex.: Tipo de venda na Consulta, 27/11/2026). */
+  omit?: readonly OrderColumn[];
   /**
    * Linha fina (dono, 24/11/2026; "Todos no passo"): forma de pagamento,
    * grupo econômico e cliente numa linha só, com "ver mais" no que não cabe.
@@ -103,9 +109,13 @@ export function OrderTermsTds({
       >
         {formatDate(c?.negotiationDate ?? createdAt, t)}
       </Td>
-      <Td className="whitespace-nowrap" data-order-col="saleType">
-        {c?.terms.saleType ? t(`orderTable.saleType.${c.terms.saleType}`) : "—"}
-      </Td>
+      {omit.includes("saleType") ? null : (
+        <Td className="whitespace-nowrap" data-order-col="saleType">
+          {c?.terms.saleType
+            ? t(`orderTable.saleType.${c.terms.saleType}`)
+            : "—"}
+        </Td>
+      )}
       <Td className={num} data-order-col="paymentTerm">
         {c?.terms.installments ?? "—"}
       </Td>

@@ -185,3 +185,13 @@ Contexto: o portal inclui e altera o produto na TGFPRO pela API (`DatasetSP.save
 
 1. "Descrição venda" e "Empresa" da planilha: em que campos da TGFPRO? (Não achamos pelo nome.)
 2. "Fornec.Adress Phone" (AD_DADOSFABRICANTE) é o endereço/telefone da fábrica? No exemplo vem "668", o nº da loja. Há um campo para o código da fábrica?
+
+## Lista rica (dono, 27/11/2026)
+
+A lista `/app/product-registration` continua no nível do produto, com mais do que já temos de cada item (`registrationOverview`, `src/lib/services/product-registration.ts`):
+
+- **Cards do passo** (sempre os em aberto): A cadastrar, Prontos para cadastrar, Esperando a amostra, Falta o Sankhya, Atrasados e Completude média, com quantos têm obrigatório faltando. Abaixo, **O que mais falta**: os seis campos em branco mais comuns, com a contagem.
+- **Tabela**: Foto, Cotação nº e Produto (com o código da fábrica e a variação) fixos à esquerda; Situação; **Completude** (os campos preenchidos sobre o total, sem os Sim/Não, que já nascem com "Não"; `registrationCompleteness`, `src/lib/product-registration.ts`); **O que falta** (os obrigatórios em vermelho e quantos campos estão em branco, a lista na dica); **Responsável** (quem gravou o último rascunho ou, antes dele, o GP do book); **Prazo**; Fornecedor; Book; Quantidade; Preço combinado (só com "Ver preço de compra"); NCM; CODPROD; Rascunho.
+- **Buscador** acima da tabela, sempre à vista: acha em qualquer coluna, com as palavras em qualquer ordem e sem acento (o da tabela padrão, `alwaysSearch` em `Table`; antes só aparecia a partir de 6 linhas). Vale também nas duas listas de Consultas.
+- **Completude** pelos mesmos valores da tela do produto: o que o processo preencheu mais o rascunho.
+- **Prazo**: corre a partir da amostra aprovada (com "Necessita amostragem") ou da aprovação da cotação. Usa o prazo "Cadastro e fiscal" das Configurações (`purchaseRegistrationSlaDays`, padrão 3 dias). Antes da amostra, "Corre depois da amostra".

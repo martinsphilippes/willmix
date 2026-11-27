@@ -63,9 +63,7 @@ test("seleção → abrir cotação → convidado sobe o booking concorrente", a
     sidebar.locator('[data-nav-link="/app/supplier-requests/invites"]'),
   ).toHaveCount(0);
   await page.goto("/app/supplier-requests");
-  await expect(
-    page.getByRole("heading", { name: "Customer requests" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Inquiries" })).toBeVisible();
   await page
     .locator('[data-booking-invite-row="open"]', { hasText: TAG })
     .locator("[data-booking-invite-open]")

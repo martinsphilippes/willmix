@@ -366,6 +366,17 @@ test("cotação de compra: dois respondem, um não; Comprador escolhe, Diretoria
   );
   await answer(page, "supplier.b@china.com", quoteId!, "185", "USD");
 
+  // "Necessita amostragem" (dono, 27/11/2026): sem a marca, o fornecedor
+  // não vê a amostragem; a Wellmix marca a cotação.
+  await page.locator('[data-quote-product-open="prod-jarra"]').click();
+  await page.waitForURL(/[?&]item=prod-jarra/);
+  await expect(page.locator("[data-sampling-upload]")).toHaveCount(0);
+  await login(page, "admin@wellmix.com");
+  await page.goto(`/app/supplier-requests/${quoteId}`);
+  await page.click("[data-sampling-need-toggle=yes]");
+  await page.waitForURL(/[?&]samplingNeed=yes/);
+  await login(page, "supplier.b@china.com");
+  await page.goto(`/app/purchase-quotes/${quoteId}`);
   // Amostragem dentro da cotação (dono, 22/11/2026;
   // docs/SUPPLIER_SAMPLING.md): o B vê as fotos do produto e envia a amostra
   // sem esperar a escolha; a Wellmix valida no quadro comparativo do produto.

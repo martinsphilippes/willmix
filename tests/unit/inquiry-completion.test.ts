@@ -96,3 +96,31 @@ describe("completude das consultas", () => {
     expect(inviteCompletion({ status: "answered" }).percent).toBe(100);
   });
 });
+
+describe("completude do cadastro (dono, 27/11/2026)", () => {
+  it("conta os campos sem os Sim/Não e aponta os obrigatórios", async () => {
+    const lib = await import("@/lib/product-registration");
+    const empty = lib.registrationCompleteness({});
+    expect(empty.filled).toBe(0);
+    expect(empty.percent).toBe(0);
+    expect(empty.missingRequired).toContain("descrPt");
+    const some = lib.registrationCompleteness({
+      ...lib.registrationDefaults(),
+      descrPt: "Caneca",
+    });
+    expect(some.filled).toBeGreaterThan(0);
+    expect(some.missing).not.toContain("descrPt");
+    expect(some.missingRequired).not.toContain("descrPt");
+  });
+});
+
+describe("busca da tabela (dono, 27/11/2026)", () => {
+  it("acha em qualquer coluna, palavras em qualquer ordem e sem acento", async () => {
+    const { matchesQuery } = await import("@/lib/table-tools");
+    const row =
+      "3 Caneca Cerâmica 300 ml Ningbo Supplier A Esperando a amostra";
+    expect(matchesQuery(row, "ceramica caneca")).toBe(true);
+    expect(matchesQuery(row, "ningbo 300")).toBe(true);
+    expect(matchesQuery(row, "vidro")).toBe(false);
+  });
+});

@@ -7,6 +7,8 @@
  */
 export const pt = {
   "inquiries.col.completion": "Completude",
+  "inquiries.col.product": "Produto",
+  "inquiries.moreProducts": "+{n}",
   "inquiries.completion.hint": "{done} de {total} etapas resolvidas",
   "inquiries.kind.quote": "Cotação de compra",
   "inquiries.photosTitle": "Fotos do produto",
@@ -34,6 +36,8 @@ export const pt = {
 
 export const en: Record<keyof typeof pt, string> = {
   "inquiries.col.completion": "Completion",
+  "inquiries.col.product": "Product",
+  "inquiries.moreProducts": "+{n}",
   "inquiries.completion.hint": "{done} of {total} steps resolved",
   "inquiries.kind.quote": "Purchase quote",
   "inquiries.photosTitle": "Product photos",
@@ -61,6 +65,8 @@ export const en: Record<keyof typeof pt, string> = {
 
 export const zh: Record<keyof typeof pt, string> = {
   "inquiries.col.completion": "完成度",
+  "inquiries.col.product": "产品",
+  "inquiries.moreProducts": "+{n}",
   "inquiries.completion.hint": "已完成 {done}/{total} 个步骤",
   "inquiries.kind.quote": "采购询价",
   "inquiries.photosTitle": "产品照片",

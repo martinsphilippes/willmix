@@ -4,6 +4,8 @@ Pedido do dono (14/11/2026): o menu lateral segue os blocos do mapa do processo 
 
 ## Estrutura
 
+> **27/11/2026 (docs/QUOTATION.md, seção 9):** o bloco "Cotação" passou a se chamar **Backlog** e o item da cotação, **Consulta**; no menu do fornecedor, **Consultas** juntou as solicitações, os convites e as cotações de compra, o `/app/orders` saiu (o passo Pedidos fica no bloco Pedido) e a Conta corrente ficou abaixo das Pendências, oculta até as Configurações ligarem.
+>
 > **22/11/2026 (docs/QUOTATION.md):** o bloco "Produto novo" passou a se chamar **Cotação**, com Overview, **Entrada** (Book, Reposição e Encomendas, que abre e fecha), Seleção de itens, Estratégia de compra e **Cotação**, que juntou Convites de book, Cotação de compra e Negociações num item só. A tabela abaixo descreve o bloco como era até então.
 
 | Bloco (mapa)        | Itens                                                                                                                                                                                                                  |

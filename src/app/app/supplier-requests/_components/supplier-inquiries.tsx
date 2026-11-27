@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { getStore, type User } from "@/lib/db";
+import type { User } from "@/lib/db";
 import { SUPPLIER_REQUEST_STATUSES } from "@/lib/db/schema";
 import { listSupplierRequests } from "@/lib/services/supplier-requests";
 import {
@@ -43,18 +43,18 @@ import {
   Td,
   Th,
   formatDate,
+  cx,
   linkClass,
   rowClass,
 } from "@/components/ui";
-import {
-  OrderStandardHeads,
-  orderHeadText,
-} from "@/components/order-standard-cells";
+import { orderHeadText } from "@/components/order-standard-cells";
 import { QuoteDeadline } from "../../purchase-quotes/_time";
 import { STATUS_TONE } from "./status";
 import { SlaBadge } from "./negotiation";
 import { requestRounds } from "./request-load";
 import { CompletionTd } from "./completion";
+import { pinnedColumns } from "@/components/pinned-columns";
+import { productNameText } from "@/i18n";
 
 /*
  * Consultas do fornecedor (dono, 27/11/2026): o mesmo passo do fluxo que a
@@ -76,15 +76,7 @@ const INVITE_TONE: Record<string, "warning" | "success" | "neutral"> = {
 };
 
 const num = "whitespace-nowrap text-right tabular-nums";
-const HIDDEN = [
-  "saleType",
-  "paymentTerm",
-  "paymentMethod",
-  "billing",
-  "vip",
-  "group",
-  "customerCode",
-] as const;
+const pin = pinnedColumns(["3.5rem", "7.5rem", "13rem"]);
 
 interface Row {
   key: string;
@@ -105,6 +97,8 @@ interface Row {
   cbm: number | null;
   value: string | null;
   kind: DictionaryKey;
+  /** O produto (ou o primeiro e "+N"), para ele achar a consulta. */
+  product: string;
   completion: Completion;
   openMarks?: Record<string, string>;
 }
@@ -120,16 +114,11 @@ export async function SupplierInquiries({
 }) {
   const now = new Date();
   await sweepQuotes(now).catch(() => null);
-  const [entries, invites, quotes, slaMinutes, party] = await Promise.all([
+  const [entries, invites, quotes, slaMinutes] = await Promise.all([
     listSupplierRequests(user),
     listInvitesFor(user).then((x) => x ?? []),
     supplierInvitations(user, now),
     supplierRequestSlaMinutes(),
-    user.partyId
-      ? getStore()
-          .get("parties", user.partyId)
-          .catch(() => null)
-      : Promise.resolve(null),
   ]);
   const quoteProductIds = [
     ...new Set(quotes.flatMap((q) => q.quote.items.map((i) => i.productId))),
@@ -147,7 +136,6 @@ export async function SupplierInquiries({
           : Promise.resolve(new Set<string>()),
       ])
     : [new Map<string, number | null>(), new Set<string>()];
-  const supplierName = party?.name ?? "—";
   const waiting = (who: "you" | "wellmix", href?: string | null) => {
     const badge = (
       <Badge tone={who === "you" ? "warning" : "info"}>
@@ -166,6 +154,13 @@ export async function SupplierInquiries({
       maximumFractionDigits: 2,
     })}`.trim();
 
+  // O primeiro produto e quantos mais (os nomes repetidos contam uma vez).
+  const productsText = (names: string[]) => {
+    const list = [...new Set(names)];
+    return list.length <= 1
+      ? (list[0] ?? "—")
+      : `${list[0]} ${t("inquiries.moreProducts", { n: list.length - 1 })}`;
+  };
   const rows: Row[] = [];
 
   // Cotações de compra (mapa B13): a resposta dele a cada convite.
@@ -212,6 +207,7 @@ export async function SupplierInquiries({
           ? money(response.currency, total)
           : null,
       kind: "inquiries.kind.quote",
+      product: productsText(quote.items.map((i) => productNameText(t, i.name))),
       completion: quoteResponseCompletion(quote, response, known),
     });
   }
@@ -241,9 +237,6 @@ export async function SupplierInquiries({
               <Badge tone="danger">{t("bookingInvites.late")}</Badge>
             ) : null}
           </span>
-          <span className="max-w-56 whitespace-normal text-xs text-zinc-500">
-            {i.item.description ?? i.item.productName ?? "—"}
-          </span>
         </span>
       ),
       deadline:
@@ -257,6 +250,7 @@ export async function SupplierInquiries({
       cbm: null,
       value: null,
       kind: "customerRequests.kind.invite",
+      product: i.item.description ?? i.item.productName ?? "—",
       completion: inviteCompletion(i),
     });
   }
@@ -351,6 +345,15 @@ export async function SupplierInquiries({
         ? [...byCurrency.entries()].map(([c, v]) => money(c, v)).join(" · ")
         : null,
       kind: "customerRequests.kind.request",
+      product: productsText(
+        products.map(
+          (p) =>
+            p.item.description ??
+            p.item.productName ??
+            p.item.factoryItemCode ??
+            "—",
+        ),
+      ),
       completion: requestCompletion(products),
       openMarks: { "data-supplier-request-open": r.id },
     });
@@ -413,14 +416,45 @@ export async function SupplierInquiries({
               products: tabRows.reduce((s, x) => s + x.items, 0),
             })}
           </p>
-          <Table>
+          <Table alwaysSearch>
             <thead>
+              {/* Colunas do fornecedor (dono, 27/11/2026): sem as condições
+                  de venda, o grupo, o cliente e o "Fornecedor" (ele mesmo);
+                  Nº, Tipo e Produto primeiro, fixos na rolagem, para ele
+                  achar a consulta. */}
               <tr data-order-table="supplier-inquiries">
-                <Th>{orderHeadText(t, "number")}</Th>
-                <OrderStandardHeads t={t} seeValue />
-                <Th>{t("customerRequests.col.kind")}</Th>
+                {(
+                  [
+                    orderHeadText(t, "number"),
+                    t("customerRequests.col.kind"),
+                    t("inquiries.col.product"),
+                  ] as const
+                ).map((label, i) => (
+                  <Th
+                    key={label}
+                    className={pin.cell(i, true)}
+                    style={pin.style(i)}
+                  >
+                    {label}
+                  </Th>
+                ))}
+                {(["status", "step", "sla"] as const).map((key) => (
+                  <Th key={key} className="whitespace-nowrap">
+                    {orderHeadText(t, key)}
+                  </Th>
+                ))}
                 <Th className="whitespace-nowrap">
                   {t("inquiries.col.completion")}
+                </Th>
+                {(["items", "deliveries", "cbm", "value"] as const).map(
+                  (key) => (
+                    <Th key={key} className="whitespace-nowrap">
+                      {orderHeadText(t, key)}
+                    </Th>
+                  ),
+                )}
+                <Th className="whitespace-nowrap">
+                  {orderHeadText(t, "negotiationDate")}
                 </Th>
                 <Th>
                   <span className="sr-only">{t("tasks.open")}</span>
@@ -429,28 +463,40 @@ export async function SupplierInquiries({
             </thead>
             <tbody>
               {tabRows.map((x) => (
-                <tr key={x.key} className={rowClass} {...x.marks}>
-                  <Td className="tabular-nums">
-                    <Link
-                      href={x.href}
-                      className={linkClass}
-                      {...(x.numberMarks ?? {})}
-                    >
-                      {x.number}
-                    </Link>
+                <tr key={x.key} className={cx(rowClass, pin.row)} {...x.marks}>
+                  <Td className={pin.cell(0)} style={pin.style(0)}>
+                    <div style={pin.box(0)} className="tabular-nums">
+                      <Link
+                        href={x.href}
+                        className={linkClass}
+                        {...(x.numberMarks ?? {})}
+                      >
+                        {x.number}
+                      </Link>
+                    </div>
                   </Td>
                   <Td
-                    className="whitespace-nowrap tabular-nums"
-                    data-order-col="negotiationDate"
+                    className={pin.cell(1)}
+                    style={pin.style(1)}
+                    data-inquiry-kind
                   >
-                    {formatDate(x.at, t)}
+                    <div style={pin.box(1)} className="whitespace-normal">
+                      {t(x.kind)}
+                    </div>
                   </Td>
-                  {HIDDEN.map((key) => (
-                    <Td key={key} data-order-col={key}>
-                      —
-                    </Td>
-                  ))}
-                  <Td data-order-col="customerName">Wellmix</Td>
+                  <Td
+                    className={pin.cell(2)}
+                    style={pin.style(2)}
+                    data-inquiry-product
+                  >
+                    <div
+                      style={pin.box(2)}
+                      className="line-clamp-2 whitespace-normal"
+                      title={x.product}
+                    >
+                      {x.product}
+                    </div>
+                  </Td>
                   <Td className="whitespace-nowrap" data-order-col="status">
                     {x.status}
                   </Td>
@@ -458,6 +504,7 @@ export async function SupplierInquiries({
                   <Td className="whitespace-nowrap" data-order-col="sla">
                     {x.deadline}
                   </Td>
+                  <CompletionTd c={x.completion} t={t} />
                   <Td className={num} {...(x.itemsMark ?? {})}>
                     {x.items.toLocaleString(t.intl)}
                   </Td>
@@ -474,11 +521,12 @@ export async function SupplierInquiries({
                   <Td className={num} data-order-col="value">
                     {x.value ?? "—"}
                   </Td>
-                  <Td data-order-col="supplier">{supplierName}</Td>
-                  <Td className="whitespace-nowrap" data-inquiry-kind>
-                    {t(x.kind)}
+                  <Td
+                    className="whitespace-nowrap tabular-nums"
+                    data-order-col="negotiationDate"
+                  >
+                    {formatDate(x.at, t)}
                   </Td>
-                  <CompletionTd c={x.completion} t={t} />
                   <Td>
                     <OpenLink
                       href={x.href}
