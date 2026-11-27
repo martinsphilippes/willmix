@@ -455,8 +455,12 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await expect(slaToggle).toHaveAttribute("aria-expanded", "true");
   await expect(slaDue).toBeVisible();
   await expect(slaDue).toHaveText(/^\d{2}\/\d{2}\/\d{4},? \d{2}:\d{2}$/);
+  // Medidos juntos, depois do clique (a tela pode ter rolado até o botão).
   const dueBox = (await slaDue.boundingBox())!;
-  expect(dueBox.y).toBeGreaterThan(slaBadge.y + slaBadge.height - 1);
+  const badgeNow = (await sla
+    .locator("[data-supplier-table-sla-badge]")
+    .boundingBox())!;
+  expect(dueBox.y).toBeGreaterThan(badgeNow.y + badgeNow.height - 1);
   // A coluna mantém a largura com o prazo aberto.
   expect(
     Math.abs((await statusCell.boundingBox())!.width - cellWidth),

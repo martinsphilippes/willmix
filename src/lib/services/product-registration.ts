@@ -32,6 +32,7 @@ import {
   missingRequired,
   prefillValues,
   productPatch,
+  registrationCompleteness,
   registrationState,
   resolveColumns,
   sankhyaPayload,
@@ -39,6 +40,7 @@ import {
   type ProductDictionary,
   type RegistrationSource,
   type RegistrationState,
+  type RegistrationCompleteness,
   type RegistrationValues,
 } from "@/lib/product-registration";
 import { audit } from "./audit";
@@ -264,6 +266,207 @@ export async function listRegistrations(
     })
     .filter((row) => (tab === "done") === (row.state === "done"))
     .sort((a, b) => b.request.number - a.request.number);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Lista com os dados do item, a completude e o prazo (dono, 27/11/2026)     */
+/* ------------------------------------------------------------------------ */
+
+export interface RegistrationOverviewRow extends RegistrationRow {
+  /** Foto do item (a do book). */
+  photoId: string | null;
+  factoryCode: string | null;
+  variation: string | null;
+  /** Peças por embalagem da cotação de um SKU (1 = a unitária). */
+  units: number;
+  quantity: number;
+  /** Condições combinadas na cotação (o preço só com "Ver preço de compra"). */
+  price: number | null;
+  currency: string | null;
+  incoterm: string | null;
+  ncm: string | null;
+  completeness: RegistrationCompleteness;
+  /** Quem cuida: quem gravou o rascunho por último ou, antes, o GP do book. */
+  responsible: { name: string; kind: "saved" | "owner" } | null;
+  /** Desde quando o cadastro corre (amostra aprovada ou cotação aprovada). */
+  sinceAt: string | null;
+  /** Prazo: desde + o prazo do cadastro (Configurações, "Cadastro e fiscal"). */
+  dueAt: string | null;
+  late: boolean;
+}
+
+export interface RegistrationOverview {
+  rows: RegistrationOverviewRow[];
+  /** Os números do passo (sempre das em aberto) e quantas já estão feitas. */
+  kpis: {
+    open: number;
+    toRegister: number;
+    waitingSample: number;
+    toSend: number;
+    late: number;
+    done: number;
+    /** Média da completude das em aberto. */
+    averagePercent: number;
+    /** Em aberto com algum obrigatório faltando. */
+    missingRequired: number;
+  };
+  /** Os campos que mais faltam nas em aberto (os 6 primeiros). */
+  topMissing: Array<{ id: string; n: number }>;
+  slaDays: number;
+}
+
+/**
+ * A lista Cadastrar produto com o que já temos de cada item (dono,
+ * 27/11/2026): a foto, o código da fábrica, a variação, a quantidade, as
+ * condições combinadas e o NCM; a completude do cadastro pelos mesmos
+ * valores da tela (o que o processo preencheu e o rascunho); quem cuida e o
+ * prazo, contado da amostra aprovada (ou da aprovação, sem amostragem) com o
+ * prazo "Cadastro e fiscal" das Configurações (`purchaseRegistrationSlaDays`).
+ */
+export async function registrationOverview(
+  user: User,
+  tab: "open" | "done",
+  now = new Date(),
+): Promise<RegistrationOverview> {
+  const [open, done] = await Promise.all([
+    listRegistrations(user, "open"),
+    listRegistrations(user, "done"),
+  ]);
+  const store = getStore();
+  const { getSettings } = await import("@/lib/settings");
+  const { agreedConditions } = await import("./supplier-request-product");
+  const { samplingRequired } = await import("@/lib/supplier-request-sampling");
+  const slaDays = (await getSettings()).purchaseRegistrationSlaDays;
+  const all = [...open, ...done];
+  const itemIds = [
+    ...new Set(all.map((r) => r.request.bookingItemId).filter(Boolean)),
+  ];
+  const lotIds = [
+    ...new Set(all.map((r) => r.request.bookingLotId).filter(Boolean)),
+  ];
+  const [items, lots, lines] = await Promise.all([
+    itemIds.length
+      ? store.list("booking_items", { filter: { id: itemIds } })
+      : ([] as BookingItem[]),
+    lotIds.length
+      ? store.list("booking_lots", { filter: { id: lotIds } })
+      : ([] as BookingLot[]),
+    store.list("product_lines", { filter: { active: true } }),
+  ]);
+  const itemOf = new Map(items.map((i) => [i.id, i]));
+  const lotOf = new Map(lots.map((l) => [l.id, l]));
+  const partyIds = [
+    ...new Set([
+      ...all.map((r) => r.request.supplierId),
+      ...lots.map((l) => l.supplierId).filter((x): x is string => !!x),
+    ]),
+  ];
+  const userIds = [
+    ...new Set(
+      all
+        .flatMap((r) => [
+          r.request.registration?.savedByUserId,
+          lotOf.get(r.request.bookingLotId)?.ownerUserId,
+          r.request.createdByUserId,
+        ])
+        .filter((x): x is string => !!x),
+    ),
+  ];
+  const [parties, users] = await Promise.all([
+    partyIds.length
+      ? store.list("parties", { filter: { id: partyIds } })
+      : ([] as Party[]),
+    userIds.length
+      ? store.list("users", { filter: { id: userIds } })
+      : ([] as User[]),
+  ]);
+  const partyOf = new Map(parties.map((p) => [p.id, p]));
+  const userOf = new Map(users.map((u) => [u.id, u]));
+
+  const enrich = async (
+    row: RegistrationRow,
+  ): Promise<RegistrationOverviewRow> => {
+    const r = row.request;
+    const item = r.bookingItemId ? (itemOf.get(r.bookingItemId) ?? null) : null;
+    const lot = r.bookingLotId ? (lotOf.get(r.bookingLotId) ?? null) : null;
+    const supplier = partyOf.get(r.supplierId) ?? null;
+    const factory = lot?.supplierId
+      ? (partyOf.get(lot.supplierId) ?? null)
+      : null;
+    const prefill = prefillValues(
+      await prefillSource(r, item, lot, supplier, factory, lines),
+    );
+    const values = mergeValues(prefill, r.registration?.values ?? null);
+    const deal = agreedConditions(r);
+    const savedBy = r.registration?.savedByUserId
+      ? userOf.get(r.registration.savedByUserId)
+      : null;
+    const owner = userOf.get(lot?.ownerUserId ?? r.createdByUserId) ?? null;
+    // O prazo corre do momento em que dá para cadastrar: a amostra aprovada
+    // (com "Necessita amostragem") ou a aprovação da cotação.
+    const running = row.state === "to_register" || row.state === "to_send";
+    const sinceAt = !running
+      ? null
+      : samplingRequired(r) && r.sampling?.reviewedAt
+        ? r.sampling.reviewedAt
+        : (r.decidedAt ?? r.createdAt);
+    const dueAt = sinceAt
+      ? new Date(Date.parse(sinceAt) + slaDays * 86_400_000).toISOString()
+      : null;
+    return {
+      ...row,
+      photoId: r.item.photoDocumentId ?? null,
+      factoryCode: r.item.factoryItemCode ?? null,
+      variation: r.variant?.variation ?? null,
+      units: Math.max(1, r.variant?.units ?? 1),
+      quantity: r.quantity,
+      price: deal.price ?? null,
+      currency: deal.currency ?? null,
+      incoterm: deal.incoterm ?? null,
+      ncm: values.ncm?.trim() || null,
+      completeness: registrationCompleteness(values),
+      responsible: savedBy
+        ? { name: savedBy.name, kind: "saved" }
+        : owner
+          ? { name: owner.name, kind: "owner" }
+          : null,
+      sinceAt,
+      dueAt,
+      late: !!dueAt && Date.parse(dueAt) < now.getTime(),
+    };
+  };
+  const openRows = await Promise.all(open.map(enrich));
+  const rows = tab === "done" ? await Promise.all(done.map(enrich)) : openRows;
+  const missingCount = new Map<string, number>();
+  for (const row of openRows)
+    for (const id of row.completeness.missing)
+      missingCount.set(id, (missingCount.get(id) ?? 0) + 1);
+  return {
+    rows,
+    kpis: {
+      open: openRows.length,
+      toRegister: openRows.filter((x) => x.state === "to_register").length,
+      waitingSample: openRows.filter((x) => x.state === "waiting_sample")
+        .length,
+      toSend: openRows.filter((x) => x.state === "to_send").length,
+      late: openRows.filter((x) => x.late).length,
+      done: done.length,
+      averagePercent: openRows.length
+        ? Math.floor(
+            openRows.reduce((s, x) => s + x.completeness.percent, 0) /
+              openRows.length,
+          )
+        : 0,
+      missingRequired: openRows.filter(
+        (x) => x.completeness.missingRequired.length > 0,
+      ).length,
+    },
+    topMissing: [...missingCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([id, n]) => ({ id, n })),
+    slaDays,
+  };
 }
 
 /** Pendências "Cadastrar o produto": amostra aprovada e sem produto. */

@@ -49,6 +49,7 @@ import {
   Table,
   Td,
   Th,
+  cx,
   formatDate,
   linkClass,
   rowClass,
@@ -83,6 +84,8 @@ import { InvitesTable } from "./_components/invites-table";
 import { inviteLate, listInvitesFor } from "@/lib/services/booking-invites";
 import { SupplierInquiries } from "./_components/supplier-inquiries";
 import { CompletionTd } from "./_components/completion";
+import { pinnedColumns } from "@/components/pinned-columns";
+import type { ReactNode } from "react";
 import { quoteCompletion, requestCompletion } from "@/lib/inquiry-completion";
 
 /*
@@ -299,8 +302,27 @@ export default async function SupplierRequestsPage({
       ]).catch(() => null)
     : null;
   const numTd = "whitespace-nowrap text-right tabular-nums";
+  // Colunas da Consulta (dono, 27/11/2026): Nº, Fornecedor e Origem
+  // primeiro, fixas na rolagem; "Tipo de venda" saiu da tabela.
+  const pin = pinnedColumns(["4rem", "10rem", "7rem"]);
+  const pinned = (
+    i: number,
+    content: ReactNode,
+    mark?: Record<string, string>,
+  ) => (
+    <Td className={pin.cell(i)} style={pin.style(i)} {...(mark ?? {})}>
+      <div style={pin.box(i)} className="whitespace-normal">
+        {content}
+      </div>
+    </Td>
+  );
   const termsCells = (key: string, createdAt: string) => (
-    <OrderTermsTds t={t} cells={cells?.byKey.get(key)} createdAt={createdAt} />
+    <OrderTermsTds
+      t={t}
+      cells={cells?.byKey.get(key)}
+      createdAt={createdAt}
+      omit={["saleType"]}
+    />
   );
   const totalCells = (key: string) => (
     <OrderTotalsTds t={t} cells={cells?.byKey.get(key)} seeValue={seeValue} />
@@ -407,9 +429,20 @@ export default async function SupplierRequestsPage({
             <thead>
               {wellmix ? (
                 <tr data-order-table="quotation">
-                  <Th>{orderHeadText(t, "number")}</Th>
-                  <OrderStandardHeads t={t} seeValue={seeValue} />
-                  <Th>{t("quotation.col.origin")}</Th>
+                  <Th className={pin.cell(0, true)} style={pin.style(0)}>
+                    {orderHeadText(t, "number")}
+                  </Th>
+                  <Th className={pin.cell(1, true)} style={pin.style(1)}>
+                    {orderHeadText(t, "supplier")}
+                  </Th>
+                  <Th className={pin.cell(2, true)} style={pin.style(2)}>
+                    {t("quotation.col.origin")}
+                  </Th>
+                  <OrderStandardHeads
+                    t={t}
+                    seeValue={seeValue}
+                    omit={["saleType", "supplier"]}
+                  />
                   <Th>{t("supplierRequests.col.answer")}</Th>
                   <Th>{t("supplierRequests.col.finishedAt")}</Th>
                   {/* Completude (dono, 27/11/2026). */}
@@ -496,14 +529,30 @@ export default async function SupplierRequestsPage({
                 return (
                   <tr
                     key={q.id}
-                    className={rowClass}
+                    className={cx(rowClass, pin.row)}
                     data-quotation-quote-row={q.id}
                   >
-                    <Td>
+                    {pinned(
+                      0,
                       <Link href={href} className={linkClass}>
                         {q.number}
-                      </Link>
-                    </Td>
+                      </Link>,
+                    )}
+                    {pinned(
+                      1,
+                      <span title={names.join(", ")}>
+                        {names.length === 0
+                          ? "—"
+                          : names.length === 1
+                            ? names[0]
+                            : t("quotation.list.suppliers", {
+                                n: names.length,
+                              })}
+                      </span>,
+                    )}
+                    {pinned(2, originText(null, q.demandIds), {
+                      "data-quotation-origin": "",
+                    })}
                     {termsCells(`q:${q.id}`, q.createdAt)}
                     {/* Status: de quem é a vez. */}
                     <Td className="whitespace-nowrap">
@@ -548,20 +597,6 @@ export default async function SupplierRequestsPage({
                     </Td>
                     <Td className={numTd}>{rounds}</Td>
                     {totalCells(`q:${q.id}`)}
-                    <Td className="max-w-56 whitespace-normal">
-                      <span title={names.join(", ")}>
-                        {names.length === 0
-                          ? "—"
-                          : names.length === 1
-                            ? names[0]
-                            : t("quotation.list.suppliers", {
-                                n: names.length,
-                              })}
-                      </span>
-                    </Td>
-                    <Td data-quotation-origin>
-                      {originText(null, q.demandIds)}
-                    </Td>
                     <Td className="whitespace-nowrap">
                       {t("supplierRequests.list.answered", {
                         n: mine.filter((r) => r.status === "answered").length,
@@ -808,14 +843,21 @@ export default async function SupplierRequestsPage({
                   return (
                     <tr
                       key={r.id}
-                      className={rowClass}
+                      className={cx(rowClass, pin.row)}
                       data-supplier-request-row={r.id}
                     >
-                      <Td>
+                      {pinned(
+                        0,
                         <Link href={href} className={linkClass}>
                           {r.number}
-                        </Link>
-                      </Td>
+                        </Link>,
+                      )}
+                      {pinned(1, supplier?.name ?? "—")}
+                      {pinned(
+                        2,
+                        originText(r.bookingLotId || null, r.demandIds ?? null),
+                        { "data-quotation-origin": "" },
+                      )}
                       {termsCells(`r:${r.id}`, r.createdAt)}
                       {/* Status: de quem é a vez e a ação. */}
                       <Td
@@ -885,13 +927,6 @@ export default async function SupplierRequestsPage({
                         {rounds}
                       </Td>
                       {totalCells(`r:${r.id}`)}
-                      <Td>{supplier?.name ?? "—"}</Td>
-                      <Td data-quotation-origin>
-                        {originText(
-                          r.bookingLotId || null,
-                          r.demandIds ?? null,
-                        )}
-                      </Td>
                       {answerCell}
                       {finishedCell}
                       <CompletionTd c={requestCompletion(products)} t={t} />

@@ -176,8 +176,9 @@ test("Alterar, embalagens, variações e uma cotação por combinação", async 
   await login(page, "supplier.a@china.com");
   await page.goto(`${url}?view=item`);
   await expect(variant).toHaveCount(0);
-  await expect(page.locator("[data-negotiation-variant]")).toHaveText(
-    "Preto fosco · Emb. 3 pç",
+  // O fornecedor de teste usa o portal em chinês.
+  await expect(page.locator("[data-negotiation-variant]")).toContainText(
+    "Preto fosco",
   );
   await expect(
     page.locator("[data-negotiation-section=schedule]"),

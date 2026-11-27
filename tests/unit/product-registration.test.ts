@@ -692,6 +692,23 @@ describe("tela Cadastrar produto", () => {
     ).toBe(true);
     ctx = await reg.registrationContext(admin, request.id);
     expect(ctx?.state).toBe("to_register");
+    // Lista rica (dono, 27/11/2026): o item, a completude pelos mesmos
+    // valores da tela, quem cuida e o prazo, que corre desde a amostra.
+    const overview = await reg.registrationOverview(admin, "open");
+    const listed = overview.rows.find((r) => r.request.id === request.id)!;
+    expect(listed).toMatchObject({
+      state: "to_register",
+      factoryCode: "REG-1",
+      ncm: "70133700",
+      responsible: { kind: "saved" },
+      late: false,
+    });
+    expect(listed.completeness.percent).toBeGreaterThan(0);
+    expect(listed.completeness.percent).toBeLessThan(100);
+    expect(listed.completeness.missing).not.toContain("descrPt");
+    expect(listed.dueAt).not.toBeNull();
+    expect(overview.kpis.toRegister).toBeGreaterThanOrEqual(1);
+    expect(overview.topMissing.length).toBeGreaterThan(0);
     // O rascunho volta na tela.
     expect(ctx?.values.descrPt).toBe("Caneca Registro 300 ml");
     // Sem a linha: recusa apontando o campo.

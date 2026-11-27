@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, CSSProperties, ReactNode } from "react";
 import { cloneElement, isValidElement, useId } from "react";
 import { twMerge } from "tailwind-merge";
 import type { Translate } from "@/i18n";
@@ -639,17 +639,21 @@ export function Th({
   className,
   colSpan,
   rowSpan,
+  style,
   ...rest
 }: {
   children?: ReactNode;
   className?: string;
   colSpan?: number;
   rowSpan?: number;
+  /** Posição da coluna fixa (`left`), quando a largura vem de fora. */
+  style?: CSSProperties;
 } & DataAttrs) {
   return (
     <th
       colSpan={colSpan}
       rowSpan={rowSpan}
+      style={style}
       className={cx(
         "border-b border-zinc-200 bg-zinc-50/80 px-2.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500",
         className,
@@ -665,15 +669,19 @@ export function Td({
   children,
   className,
   colSpan,
+  style,
   ...rest
 }: {
   children?: ReactNode;
   className?: string;
   colSpan?: number;
+  /** Posição da coluna fixa (`left`), quando a largura vem de fora. */
+  style?: CSSProperties;
 } & DataAttrs) {
   return (
     <td
       colSpan={colSpan}
+      style={style}
       className={cx(
         "border-b border-zinc-100 px-2.5 py-2 align-top text-[13px] text-zinc-800",
         className,

@@ -1214,3 +1214,40 @@ export function applySimilar(
   }
   return out;
 }
+
+/* ------------------------------------------------------------------------ */
+/* Completude (lista Cadastrar produto; dono, 27/11/2026)                    */
+/* ------------------------------------------------------------------------ */
+
+export interface RegistrationCompleteness {
+  /** Campos com valor, sem os Sim/Não (já nascem respondidos). */
+  filled: number;
+  total: number;
+  /** 0 a 100, para baixo (100 só com tudo preenchido). */
+  percent: number;
+  /** Obrigatórios sem valor (para o portal e para o Sankhya). */
+  missingRequired: string[];
+  /** Todos os campos sem valor, na ordem da tela. */
+  missing: string[];
+}
+
+/**
+ * Quanto do cadastro já está preenchido (o que o processo trouxe e o
+ * rascunho): os campos do catálogo sem os Sim/Não, que já nascem com "Não"
+ * e não dizem se alguém olhou. Os obrigatórios faltando vêm à parte.
+ */
+export function registrationCompleteness(
+  values: RegistrationValues,
+): RegistrationCompleteness {
+  const counted = REGISTRATION_FIELDS.filter((x) => x.type !== "yesno");
+  const missing = counted.filter((x) => !values[x.id]?.trim()).map((x) => x.id);
+  const total = counted.length;
+  const filled = total - missing.length;
+  return {
+    filled,
+    total,
+    percent: total ? Math.floor((filled / total) * 100) : 0,
+    missingRequired: missingRequired(values, "sankhya"),
+    missing,
+  };
+}
