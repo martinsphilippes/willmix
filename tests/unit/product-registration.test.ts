@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { setTestFamily } from "./helpers/book-family";
 import { withTempStore } from "./setup";
 import { xlsxBytes } from "./xlsx-fixture";
@@ -10,6 +10,89 @@ import { xlsxBytes } from "./xlsx-fixture";
  * produto da cotação aprovada é cadastrado no portal pela tela nova.
  */
 withTempStore();
+
+/*
+ * Sankhya de mentira, desligado por padrão (os testes de sempre seguem "sem
+ * Sankhya"). Ligado, responde aos produtos do NCM, ao REFFORN depois da
+ * inclusão e guarda as gravações; o resto (dicionário, grupos) fica fora do
+ * ar, como o portal já trata.
+ */
+const erp = {
+  on: false,
+  /** Linhas da TGFPRO com o NCM pedido. */
+  ncmRows: [] as Array<Record<string, unknown>>,
+  /** O REFFORN que o Sankhya devolve depois da inclusão. */
+  refforn: null as string | null,
+  /** O CODPROD que a inclusão devolve (nulo: a resposta não traz). */
+  created: "31001" as string | null,
+  saves: [] as Array<{
+    values: Record<string, unknown>;
+    pk?: Record<string, unknown>;
+    returnFields?: string[];
+  }>,
+  sql: [] as string[],
+  loads: [] as Array<{ entity: string; where?: string }>,
+};
+vi.mock("@/lib/integrations/sankhya-settings", async (importOriginal) => {
+  const real =
+    await importOriginal<
+      typeof import("@/lib/integrations/sankhya-settings")
+    >();
+  return {
+    ...real,
+    getSankhyaConfigStatus: async () => {
+      const status = await real.getSankhyaConfigStatus();
+      return erp.on
+        ? { ...status, config: { baseUrl: "https://erp.test" } as never }
+        : status;
+    },
+    getSankhyaErpSettings: async () => {
+      const value = await real.getSankhyaErpSettings();
+      return erp.on
+        ? {
+            ...value,
+            ordersEnabled: true,
+            // O fixo vale onde o NCM não traz; o do NCM vale por cima.
+            productDefaults: { USOPROD: "R", CSTIPIENT: "99" },
+          }
+        : value;
+    },
+  };
+});
+vi.mock("@/lib/integrations/sankhya-client", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/lib/integrations/sankhya-client")
+  >()),
+  executeQuery: async (sql: string) => {
+    erp.sql.push(sql);
+    if (!erp.on) throw new Error("Sankhya fora do ar");
+    if (sql.includes("FROM TGFPRO WHERE NCM IN"))
+      return { columns: [], rows: erp.ncmRows };
+    if (sql.startsWith("SELECT REFFORN FROM TGFPRO"))
+      return { columns: ["REFFORN"], rows: [{ REFFORN: erp.refforn }] };
+    throw new Error("Sankhya fora do ar");
+  },
+  datasetSave: async (input: {
+    values: Record<string, unknown>;
+    pk?: Record<string, unknown>;
+    returnFields?: string[];
+  }) => {
+    erp.saves.push(input);
+    if (!input.pk && erp.created)
+      return { columns: ["CODPROD"], rows: [{ CODPROD: erp.created }] };
+    return { columns: [], rows: [] };
+  },
+  loadRecords: async (input: { entity: string; where?: string }) => {
+    erp.loads.push(input);
+    return {
+      columns: ["CODPROD"],
+      rows: erp.created ? [] : [{ CODPROD: "31000" }, { CODPROD: "31007" }],
+      total: null,
+      hasMore: false,
+      page: 0,
+    };
+  },
+}));
 
 const lib = await import("@/lib/product-registration");
 const { dictionaries } = await import("@/i18n/dictionaries");
@@ -291,7 +374,6 @@ describe("de-para com a TGFPRO", () => {
     );
     expect(out.values).toMatchObject({
       DESCRPROD: "Caneca 300 ml",
-      REFFORN: "S-1",
       CODMARCA: "10",
       MARCA: "WELLKIDS",
       CODGRUPOPROD: "10902001",
@@ -304,6 +386,10 @@ describe("de-para com a TGFPRO", () => {
       AD_DTDESC: "01/12/2026",
     });
     expect(out.skipped).toContainEqual({ id: "pantone", reason: "no_column" });
+    // O SKU (REFFORN) nasce no Sankhya: o formulário nunca o envia, nem um
+    // valor que tenha sobrado de rascunho antigo (dono, 27/11/2026).
+    expect(out.values.REFFORN).toBeUndefined();
+    expect(out.skipped.map((x) => x.id)).not.toContain("supplierRef");
     // O nome do Supplier fica no portal: nem vai nem conta como "não foi".
     expect(Object.values(out.values)).not.toContain("HOME IN");
     expect(out.skipped.map((x) => x.id)).not.toContain("supplierName");
@@ -328,7 +414,7 @@ describe("de-para com a TGFPRO", () => {
     expect(lib.missingRequired({ descrPt: "x" }, "portal")).toEqual(["group"]);
     expect(
       lib.missingRequired({ descrPt: "x", group: "l" }, "sankhya"),
-    ).toEqual(["brand", "supplierRef", "unit"]);
+    ).toEqual(["brand", "unit"]);
   });
 
   it("pré-preenche em metros e com as certificações da linha; o portal guarda em cm", () => {
@@ -365,10 +451,12 @@ describe("de-para com a TGFPRO", () => {
       notes: null,
       certifications: ["INMETRO"],
     });
+    // O código da fábrica não vira SKU (REFFORN): este nasce no Sankhya.
+    expect(values.supplierRef).toBeUndefined();
     expect(values).toMatchObject({
       descrPt: "Caneca",
       descrEn: "Mug 300ml",
-      supplierRef: "S-1",
+      factoryCode: "S-1",
       height: "0,2",
       depth: "0,1",
       grossWeight: "0,35",
@@ -384,9 +472,12 @@ describe("de-para com a TGFPRO", () => {
       factoryStore: "668",
       supplierContact: "668 / +86 1",
     });
-    expect(lib.productPatch(values)).toMatchObject({
+    const patch = lib.productPatch(values);
+    // O formulário nunca grava o SKU no portal: vem do Sankhya.
+    expect(patch).not.toHaveProperty("sku");
+    expect(patch).toMatchObject({
       name: "Caneca",
-      sku: "S-1",
+      supplierSku: "S-1",
       heightCm: 20,
       lengthCm: 10,
       grossWeightKg: 0.35,
@@ -647,9 +738,9 @@ describe("tela Cadastrar produto", () => {
     // Antes da amostra: dá para gravar o rascunho, não para cadastrar.
     let ctx = await reg.registrationContext(admin, request.id);
     expect(ctx?.state).toBe("waiting_sample");
+    expect(ctx?.values.supplierRef).toBeUndefined();
     expect(ctx?.values).toMatchObject({
       descrEn: "Registration mug 300ml",
-      supplierRef: "REG-1",
       factoryCode: "REG-1",
       leadTime: "45",
       grossWeight: "0,35",
@@ -733,9 +824,12 @@ describe("tela Cadastrar produto", () => {
     // Sem a credencial do Sankhya (teste): gravado no portal, sem envio.
     expect(result.send).toBe("off");
     const product = await getStore().get("products", result.product.id);
+    // Sem o Sankhya, o produto fica sem SKU (o "WX" + CODPROD vem na
+    // inclusão); o código da fábrica fica no código do fornecedor.
     expect(product).toMatchObject({
       name: "Caneca Registro 300 ml",
-      sku: "REG-1",
+      sku: null,
+      supplierSku: "REG-1",
       brand: "WELLMIX",
       heightCm: 25,
       cbm: 0.15,
@@ -765,6 +859,165 @@ describe("tela Cadastrar produto", () => {
     });
     expect((await getStore().get("products", product!.id))?.grossWeightKg).toBe(
       0.4,
+    );
+  });
+
+  it("inclui no Sankhya sem REFFORN, com os fiscais do NCM, e grava o SKU WX + CODPROD", async () => {
+    const request = await approvedWithSample("REG-9");
+    await approveSample(request.id);
+    const line = (
+      await getStore().list("product_lines", { filter: { active: true } })
+    )[0];
+    await getStore().update("product_lines", line.id, {
+      sankhyaCode: "10902001",
+    });
+    const ctx = await reg.registrationContext(admin, request.id);
+    // Três produtos ativos com o NCM (o inativo não conta): CST 0 na maioria;
+    // no GRUPOPIS, empate, vale o do mais recente (maior CODPROD).
+    erp.ncmRows = [
+      { CODPROD: 100, ATIVO: "S", CSTIPIENT: 0, CSTIPISAI: 50, GRUPOPIS: "A" },
+      { CODPROD: 300, ATIVO: "S", CSTIPIENT: 0, CSTIPISAI: 50, GRUPOPIS: "B" },
+      { CODPROD: 200, ATIVO: "S", CSTIPIENT: 49, CSTIPISAI: null },
+      { CODPROD: 400, ATIVO: "N", CSTIPIENT: 3, CSTIPISAI: 53 },
+    ];
+    erp.refforn = null;
+    erp.created = "31001";
+    erp.saves = [];
+    erp.sql = [];
+    erp.loads = [];
+    erp.on = true;
+    try {
+      const result = await reg.registerProduct(
+        admin,
+        request.id,
+        {
+          ...ctx!.values,
+          // Um REFFORN digitado (o código do Supplier) não vai.
+          supplierRef: "62387",
+          group: line.id,
+          brand: "6",
+          "brand:name": "VIDROS",
+          unit: "UN",
+        },
+        [],
+      );
+      expect(result.send).toBe("done");
+    } finally {
+      erp.on = false;
+    }
+    // A consulta do NCM: só dígitos e as colunas fiscais.
+    expect(erp.sql.find((q) => q.includes("WHERE NCM IN"))).toContain(
+      "NCM IN ('70133700', '7013.37.00')",
+    );
+    // Sem conferência de repetido pelo REFFORN (dono, 27/11/2026).
+    expect(erp.loads).toEqual([]);
+    const [create, sku] = erp.saves;
+    expect(create.pk).toBeUndefined();
+    expect(create.returnFields).toEqual(["CODPROD"]);
+    expect(create.values).toMatchObject({
+      USOPROD: "R",
+      CSTIPIENT: "0",
+      CSTIPISAI: "50",
+      GRUPOPIS: "B",
+      NCM: "70133700",
+      CODGRUPOPROD: "10902001",
+      ATIVO: "S",
+    });
+    expect(create.values).not.toHaveProperty("REFFORN");
+    expect(sku).toEqual({
+      entity: "Produto",
+      pk: { CODPROD: "31001" },
+      values: { REFFORN: "WX31001" },
+    });
+    const saved = await getStore().get("supplier_requests", request.id);
+    const product = await getStore().get("products", saved!.productId!);
+    expect(product).toMatchObject({
+      sankhyaCode: "31001",
+      sku: "WX31001",
+      supplierSku: "REG-9",
+    });
+    expect(saved?.registration).toMatchObject({
+      sendStatus: "done",
+      fiscal: {
+        ncm: "70133700",
+        products: 3,
+        values: { CSTIPIENT: "0", CSTIPISAI: "50", GRUPOPIS: "B" },
+      },
+    });
+    expect(saved?.registration?.values.supplierRef).toBeUndefined();
+    expect(saved?.registration?.sendDetail).toContain(
+      "produto 31001 incluído · SKU WX31001",
+    );
+    expect(saved?.registration?.sendDetail).toContain(
+      "fiscal do NCM 70133700 (3 produto(s))",
+    );
+    // Depois de incluído, a tela mostra o SKU no campo.
+    const after = await reg.registrationContext(admin, request.id);
+    expect(after?.values.supplierRef).toBe("WX31001");
+    expect(after?.state).toBe("done");
+
+    // Reenviar altera o produto e não troca um REFFORN que o Sankhya já tem.
+    erp.refforn = "WX31001";
+    erp.saves = [];
+    erp.on = true;
+    try {
+      await reg.sendRegistration(admin, request.id, {
+        ...after!.values,
+        grossWeight: "0,4",
+      });
+    } finally {
+      erp.on = false;
+    }
+    expect(erp.saves).toHaveLength(1);
+    expect(erp.saves[0].pk).toEqual({ CODPROD: "31001" });
+    expect(erp.saves[0].values).not.toHaveProperty("REFFORN");
+    expect(erp.saves[0].values).not.toHaveProperty("CSTIPIENT");
+  });
+
+  it("sem o CODPROD na resposta, acha o incluído pela descrição e pelo grupo", async () => {
+    const request = await approvedWithSample("REG-8");
+    await approveSample(request.id);
+    const line = (
+      await getStore().list("product_lines", { filter: { active: true } })
+    )[0];
+    await getStore().update("product_lines", line.id, {
+      sankhyaCode: "10902001",
+    });
+    const ctx = await reg.registrationContext(admin, request.id);
+    erp.ncmRows = [];
+    erp.refforn = null;
+    erp.created = null;
+    erp.saves = [];
+    erp.loads = [];
+    erp.on = true;
+    try {
+      await reg.registerProduct(
+        admin,
+        request.id,
+        {
+          ...ctx!.values,
+          group: line.id,
+          brand: "6",
+          unit: "UN",
+        },
+        [],
+      );
+    } finally {
+      erp.on = false;
+      erp.created = "31001";
+    }
+    // O maior CODPROD com a mesma descrição e o mesmo grupo.
+    expect(erp.loads[0]).toMatchObject({ entity: "Produto" });
+    expect(erp.loads[0].where).toContain("DESCRPROD = ?");
+    expect(erp.loads[0].where).toContain("CODGRUPOPROD = ?");
+    const saved = await getStore().get("supplier_requests", request.id);
+    const product = await getStore().get("products", saved!.productId!);
+    expect(product).toMatchObject({ sankhyaCode: "31007", sku: "WX31007" });
+    // Sem produto com o NCM: o fixo vale e o detalhe diz.
+    expect(erp.saves[0].values).toMatchObject({ CSTIPIENT: "99" });
+    expect(saved?.registration?.fiscal).toBeNull();
+    expect(saved?.registration?.sendDetail).toContain(
+      "nenhum produto com o NCM 70133700 no Sankhya",
     );
   });
 

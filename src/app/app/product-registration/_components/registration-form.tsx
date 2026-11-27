@@ -29,8 +29,32 @@ import {
   type LookupChoice,
 } from "./lookup-fields";
 
+/** Uma coluna fiscal que vai (ou foi) pelo NCM. */
+export interface FiscalRow {
+  column: string;
+  label: string;
+  value: string;
+  /** Em quantos dos produtos do NCM o valor aparece (só na prévia). */
+  count: number | null;
+}
+
+/** Os campos fiscais pelo NCM (dono, 27/11/2026; src/lib/ncm-fiscal.ts). */
+export type FiscalView =
+  | {
+      kind: "preview" | "sent";
+      ncm: string;
+      products: number;
+      inactiveOnly: boolean;
+      rows: FiscalRow[];
+    }
+  | { kind: "none"; ncm: string }
+  | { kind: "no_ncm" }
+  | { kind: "error"; error: string };
+
 /** O que os campos com lista precisam (listas do Sankhya e os grupos). */
 export interface FormExtras {
+  /** Os campos fiscais pelo NCM (nulo: sem o Sankhya, nada a mostrar). */
+  fiscal: FiscalView | null;
   lines: ProductLine[];
   lists: RegistrationLookups["lists"];
   groups: GroupTuple[];
@@ -149,6 +173,20 @@ function FieldControl({
     ? t(`productRegistration.unit.${field.unit}` as DictionaryKey)
     : null;
   const label = fieldLabel(t, field.id);
+  // Gerado na inclusão (o SKU): só mostrado, sem campo para digitar.
+  if (field.generated)
+    return (
+      <p
+        className="min-h-9 rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-700"
+        data-registration-generated={field.id}
+      >
+        {value || (
+          <span className="text-xs text-zinc-500">
+            {t("productRegistration.generated.pending")}
+          </span>
+        )}
+      </p>
+    );
   if (field.type === "lookup" && field.lookup === "group") {
     // Sem a árvore do Sankhya: as linhas do portal (o grupo delas vai).
     if (!extras.groupsFromSankhya)
@@ -364,7 +402,76 @@ function SectionCard({
           {t("productRegistration.groupHint")}
         </p>
       ) : null}
+      {section === "fiscal" && extras.fiscal ? (
+        <NcmFiscalBox view={extras.fiscal} t={t} />
+      ) : null}
     </Card>
+  );
+}
+
+/** Os campos fiscais que vão (ou foram) na inclusão pelo NCM. */
+function NcmFiscalBox({ view, t }: { view: FiscalView; t: Translate }) {
+  return (
+    <div
+      className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-700"
+      data-registration-ncm-fiscal={view.kind}
+    >
+      {view.kind === "preview" || view.kind === "sent" ? (
+        <>
+          <p className="font-medium text-zinc-800">
+            {t(
+              view.kind === "preview"
+                ? "productRegistration.ncmFiscal.title"
+                : "productRegistration.ncmFiscal.sent",
+              { ncm: view.ncm, n: view.products },
+            )}
+          </p>
+          <p className="mt-0.5 text-zinc-500">
+            {view.kind === "preview"
+              ? t("productRegistration.ncmFiscal.intro")
+              : t("productRegistration.ncmFiscal.sentIntro")}
+            {view.inactiveOnly
+              ? ` ${t("productRegistration.ncmFiscal.inactiveOnly")}`
+              : ""}
+          </p>
+          <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+            {view.rows.map((row) => (
+              <div
+                key={row.column}
+                className="flex min-w-0 flex-wrap items-baseline gap-x-1.5"
+                data-registration-ncm-fiscal-column={row.column}
+              >
+                <dt className="text-zinc-500">
+                  {row.label}{" "}
+                  <span className="font-mono text-[10px] text-zinc-400">
+                    {row.column}
+                  </span>
+                </dt>
+                <dd className="font-medium text-zinc-900">
+                  {row.value}
+                  {row.count !== null && view.products ? (
+                    <span className="ml-1 font-normal text-zinc-400">
+                      {t("productRegistration.ncmFiscal.share", {
+                        count: row.count,
+                        n: view.products,
+                      })}
+                    </span>
+                  ) : null}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </>
+      ) : view.kind === "none" ? (
+        <p>{t("productRegistration.ncmFiscal.none", { ncm: view.ncm })}</p>
+      ) : view.kind === "no_ncm" ? (
+        <p>{t("productRegistration.ncmFiscal.noNcm")}</p>
+      ) : view.kind === "error" ? (
+        <p className="text-amber-800">
+          {t("productRegistration.ncmFiscal.error", { error: view.error })}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

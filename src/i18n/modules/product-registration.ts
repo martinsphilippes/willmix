@@ -84,6 +84,25 @@ export const pt = {
   "productRegistration.lastSend.done": "enviado",
   "productRegistration.lastSend.error": "recusado",
   "productRegistration.lastSend.off": "não enviado",
+  "productRegistration.generated.pending":
+    "Nasce na inclusão no Sankhya: WX + CODPROD",
+  "productRegistration.ncmFiscal.title":
+    "Campos fiscais pelo NCM {ncm} ({n} produtos no Sankhya)",
+  "productRegistration.ncmFiscal.intro":
+    "Vão na inclusão no Sankhya com o valor que a maioria dos produtos do Sankhya com este NCM tem (empate: o do mais recente). É o NCM gravado: trocou o NCM, grave o rascunho para ver de novo.",
+  "productRegistration.ncmFiscal.sent":
+    "Incluído com os campos fiscais do NCM {ncm} ({n} produtos no Sankhya)",
+  "productRegistration.ncmFiscal.sentIntro":
+    "Os valores que foram na inclusão; depois dela, quem muda é o cadastro do Sankhya.",
+  "productRegistration.ncmFiscal.inactiveOnly":
+    "Nenhum produto ativo com este NCM: valeram os inativos.",
+  "productRegistration.ncmFiscal.share": "({count} de {n})",
+  "productRegistration.ncmFiscal.none":
+    "Nenhum produto com o NCM {ncm} no Sankhya: os campos fiscais vão só pelos valores fixos (Configurações → Sankhya → Processos → Produto (TGFPRO)).",
+  "productRegistration.ncmFiscal.noNcm":
+    "Preencha e grave o NCM para ver os campos fiscais que vão ao Sankhya.",
+  "productRegistration.ncmFiscal.error":
+    "Não deu para ler os produtos do NCM no Sankhya agora ({error}). Na inclusão, o portal tenta de novo.",
   "productRegistration.skipped":
     "Não foram ao Sankhya (sem campo achado no Sankhya ou valor fora da lista): {fields}",
   "productRegistration.column": "Sankhya: {column}",
@@ -242,7 +261,7 @@ export const pt = {
   "productRegistration.field.factoryCode":
     "Factory code (código do item na fábrica)",
   "productRegistration.field.supplierRef":
-    "Referência do fornecedor (código do item)",
+    "SKU Wellmix (Referência do fornecedor)",
   "productRegistration.field.country": "País de origem",
   "productRegistration.field.port": "Porto de embarque",
   "productRegistration.field.leadTime": "Lead time de compra",
@@ -399,6 +418,25 @@ export const en = {
   "productRegistration.lastSend.done": "sent",
   "productRegistration.lastSend.error": "rejected",
   "productRegistration.lastSend.off": "not sent",
+  "productRegistration.generated.pending":
+    "Created when added to Sankhya: WX + CODPROD",
+  "productRegistration.ncmFiscal.title":
+    "Tax fields by NCM {ncm} ({n} products in Sankhya)",
+  "productRegistration.ncmFiscal.intro":
+    "Sent when the product is added to Sankhya, with the value most Sankhya products with this NCM have (tie: the most recent one). Uses the saved NCM: if you change it, save the draft to see it again.",
+  "productRegistration.ncmFiscal.sent":
+    "Added with the tax fields of NCM {ncm} ({n} products in Sankhya)",
+  "productRegistration.ncmFiscal.sentIntro":
+    "The values sent when the product was added; after that, changes are made in Sankhya.",
+  "productRegistration.ncmFiscal.inactiveOnly":
+    "No active product with this NCM: inactive ones were used.",
+  "productRegistration.ncmFiscal.share": "({count} of {n})",
+  "productRegistration.ncmFiscal.none":
+    "No product with NCM {ncm} in Sankhya: tax fields go only with the fixed values (Settings → Sankhya → Processes → Product (TGFPRO)).",
+  "productRegistration.ncmFiscal.noNcm":
+    "Fill in and save the NCM to see the tax fields sent to Sankhya.",
+  "productRegistration.ncmFiscal.error":
+    "Could not read the NCM products in Sankhya now ({error}). The portal tries again when adding the product.",
   "productRegistration.skipped":
     "Not sent to Sankhya (no matching Sankhya field or value outside the list): {fields}",
   "productRegistration.column": "Sankhya: {column}",
@@ -556,7 +594,7 @@ export const en = {
     "Factory: address/phone (Fornec. Adress Phone)",
   "productRegistration.field.factoryCode":
     "Factory code (item code at the factory)",
-  "productRegistration.field.supplierRef": "Supplier reference (item code)",
+  "productRegistration.field.supplierRef": "Wellmix SKU (supplier reference)",
   "productRegistration.field.country": "Country of origin",
   "productRegistration.field.port": "Port of loading",
   "productRegistration.field.leadTime": "Purchase lead time",
@@ -710,6 +748,25 @@ export const zh = {
   "productRegistration.lastSend.done": "已发送",
   "productRegistration.lastSend.error": "被拒绝",
   "productRegistration.lastSend.off": "未发送",
+  "productRegistration.generated.pending":
+    "在 Sankhya 新建时生成：WX + CODPROD",
+  "productRegistration.ncmFiscal.title":
+    "按 NCM {ncm} 的税务字段（Sankhya 中 {n} 个产品）",
+  "productRegistration.ncmFiscal.intro":
+    "在 Sankhya 新建产品时发送，取 Sankhya 中同一 NCM 的多数产品所用的值（相同时取最新的）。使用已保存的 NCM：修改 NCM 后请保存草稿再查看。",
+  "productRegistration.ncmFiscal.sent":
+    "已按 NCM {ncm} 的税务字段新建（Sankhya 中 {n} 个产品）",
+  "productRegistration.ncmFiscal.sentIntro":
+    "新建时发送的值；之后的修改在 Sankhya 中进行。",
+  "productRegistration.ncmFiscal.inactiveOnly":
+    "没有该 NCM 的有效产品：使用了停用的产品。",
+  "productRegistration.ncmFiscal.share": "（{n} 个中 {count} 个）",
+  "productRegistration.ncmFiscal.none":
+    "Sankhya 中没有 NCM {ncm} 的产品：税务字段只按固定值发送（设置 → Sankhya → 流程 → 产品 (TGFPRO)）。",
+  "productRegistration.ncmFiscal.noNcm":
+    "请填写并保存 NCM，以查看发送到 Sankhya 的税务字段。",
+  "productRegistration.ncmFiscal.error":
+    "现在无法读取 Sankhya 中该 NCM 的产品（{error}）。新建时门户会再试一次。",
   "productRegistration.skipped":
     "未发送到 Sankhya（Sankhya 中没有对应字段或值不在列表中）：{fields}",
   "productRegistration.column": "Sankhya：{column}",
@@ -861,7 +918,7 @@ export const zh = {
   "productRegistration.field.supplierContact":
     "工厂：地址/电话（Fornec. Adress Phone）",
   "productRegistration.field.factoryCode": "工厂编码（工厂的产品编码）",
-  "productRegistration.field.supplierRef": "供应商参考（产品编码）",
+  "productRegistration.field.supplierRef": "Wellmix SKU（供应商参考）",
   "productRegistration.field.country": "原产国",
   "productRegistration.field.port": "装运港",
   "productRegistration.field.leadTime": "采购周期",

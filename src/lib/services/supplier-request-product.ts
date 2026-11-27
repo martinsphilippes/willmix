@@ -434,9 +434,10 @@ export async function createProductFromRequest(
     ...PRODUCT_EXTRA_DEFAULTS,
     lineId: line.id,
     name,
-    // REFFORN no Sankhya (a carga lê o SKU dele): o código da fábrica, que
-    // também liga ao produto do ERP que já tiver essa referência.
-    sku: clip(it.factoryItemCode, 60),
+    // O SKU é o REFFORN do Sankhya, o código WX da Wellmix: nasce na
+    // inclusão no Sankhya ("WX" + CODPROD; dono, 27/11/2026). O código da
+    // fábrica fica no código do fornecedor (supplierSku).
+    sku: null,
     specification: null,
     active: true,
     supplierId: request.supplierId,

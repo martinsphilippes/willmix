@@ -43,6 +43,15 @@ import {
   type RegistrationCompleteness,
   type RegistrationValues,
 } from "@/lib/product-registration";
+import {
+  NCM_FISCAL_COLUMNS,
+  ncmDigits,
+  ncmFiscalFrom,
+  ncmFiscalNote,
+  ncmFiscalQuery,
+  wellmixSku,
+  type NcmFiscal,
+} from "@/lib/ncm-fiscal";
 import { audit } from "./audit";
 import {
   readLookupSources,
@@ -709,6 +718,20 @@ export async function lineForGroup(
   return { line, groupCode: v };
 }
 
+/**
+ * O SKU (REFFORN) só aparece depois da inclusão no Sankhya: o do produto,
+ * nunca o de um rascunho antigo (dono, 27/11/2026).
+ */
+function withGenerated(
+  values: RegistrationValues,
+  product: Product | null,
+): RegistrationValues {
+  const out = { ...values };
+  delete out.supplierRef;
+  if (product?.sankhyaCode && product.sku) out.supplierRef = product.sku;
+  return out;
+}
+
 export async function registrationContext(
   user: User,
   requestId: string,
@@ -788,7 +811,7 @@ export async function registrationContext(
     factory,
     product,
     lines,
-    values: mergeValues(prefill, draft),
+    values: withGenerated(mergeValues(prefill, draft), product),
     prefill,
     lookups,
     lookupSources,
@@ -839,7 +862,7 @@ async function saveValues(
   values: RegistrationValues,
   send?: Pick<
     SupplierRequestRegistration,
-    "sendStatus" | "sendDetail" | "skipped"
+    "sendStatus" | "sendDetail" | "skipped" | "fiscal"
   >,
 ): Promise<SupplierRequestRegistration> {
   const now = new Date().toISOString();
@@ -1115,19 +1138,6 @@ export async function applySimilarProduct(
   return chosen.length;
 }
 
-async function findByRef(ref: string | undefined): Promise<string | null> {
-  if (!ref) return null;
-  const { loadRecords } = await import("@/lib/integrations/sankhya-client");
-  const found = await loadRecords({
-    entity: "Produto",
-    fields: "CODPROD",
-    where: "REFFORN = ?",
-    params: [{ type: "S", value: ref }],
-  });
-  const code = found.rows[0]?.CODPROD;
-  return code == null ? null : String(code);
-}
-
 const errorText = (error: unknown) => {
   const e = error as { code?: string; detail?: string; message?: string };
   return `${e.code ?? "error"}: ${e.detail ?? e.message ?? String(error)}`.slice(
@@ -1136,7 +1146,126 @@ const errorText = (error: unknown) => {
   );
 };
 
-/** Envia e grava o resultado na cotação (e em process_events). */
+const textOf = (v: unknown) =>
+  v === null || v === undefined || String(v).trim() === ""
+    ? null
+    : String(v).trim();
+
+/**
+ * Os campos fiscais do NCM no Sankhya (dono, 27/11/2026;
+ * src/lib/ncm-fiscal.ts): lê os produtos da TGFPRO com o mesmo NCM e escolhe,
+ * por coluna, o valor da maioria. Só as colunas que existem no dicionário
+ * lido (sem ele, todas). Sem NCM com 8 dígitos: nulo.
+ */
+export async function readNcmFiscal(
+  ncm: string | null | undefined,
+  dictionary: ProductDictionary | null,
+): Promise<NcmFiscal | null> {
+  const digits = ncmDigits(ncm);
+  if (!digits) return null;
+  const present = new Set(
+    (dictionary?.fields ?? []).map((f) => f.column.toUpperCase()),
+  );
+  const columns = NCM_FISCAL_COLUMNS.filter(
+    (c) => !dictionary || present.has(c),
+  );
+  if (!columns.length) return null;
+  const { executeQuery } = await import("@/lib/integrations/sankhya-client");
+  const result = await executeQuery(ncmFiscalQuery(digits, columns));
+  return ncmFiscalFrom(digits, result.rows, columns);
+}
+
+export type NcmFiscalPreview =
+  | { kind: "fiscal"; fiscal: NcmFiscal }
+  | { kind: "none"; ncm: string }
+  | { kind: "no_ncm" }
+  | { kind: "error"; error: string };
+
+/**
+ * O que vai pelo NCM, para a tela antes da inclusão. Sem o Sankhya
+ * configurado, nulo (a tela não mostra o quadro).
+ */
+export async function ncmFiscalPreview(
+  ncm: string | null | undefined,
+  dictionary: ProductDictionary | null,
+): Promise<NcmFiscalPreview | null> {
+  const { getSankhyaConfigStatus } = await settings();
+  if (!(await getSankhyaConfigStatus()).config) return null;
+  const digits = ncmDigits(ncm);
+  if (!digits) return { kind: "no_ncm" };
+  try {
+    const fiscal = await readNcmFiscal(digits, dictionary);
+    return fiscal?.products
+      ? { kind: "fiscal", fiscal }
+      : { kind: "none", ncm: digits };
+  } catch (error) {
+    console.error("[product-registration] fiscal do NCM", error);
+    return { kind: "error", error: errorText(error) };
+  }
+}
+
+/**
+ * O CODPROD do produto que acabou de ser incluído, quando a resposta do
+ * DatasetSP.save não traz: o maior CODPROD com a mesma descrição e o mesmo
+ * grupo (e o código da fábrica e o Supplier, quando foram).
+ */
+async function createdCode(
+  values: Record<string, string>,
+): Promise<string | null> {
+  const where: string[] = [];
+  const params: Array<{ value: string; type: "S" | "I" }> = [];
+  const add = (column: string, type: "S" | "I") => {
+    const v = values[column];
+    if (!v) return;
+    where.push(`${column} = ?`);
+    params.push({ value: v, type });
+  };
+  add("DESCRPROD", "S");
+  add("CODGRUPOPROD", "I");
+  add("AD_FACTORYCODE", "S");
+  add("CODPARCFORN", "I");
+  if (!where.length) return null;
+  const { loadRecords } = await import("@/lib/integrations/sankhya-client");
+  const found = await loadRecords({
+    entity: "Produto",
+    fields: "CODPROD",
+    where: where.join(" AND "),
+    params,
+  });
+  const codes = found.rows
+    .map((r) => Number(r.CODPROD))
+    .filter((n) => Number.isInteger(n) && n > 0);
+  return codes.length ? String(Math.max(...codes)) : null;
+}
+
+/**
+ * O SKU (REFFORN) do produto no Sankhya: o que o Sankhya já tiver; vazio,
+ * "WX" + CODPROD, gravado lá (dono, 27/11/2026).
+ */
+async function ensureSku(code: string): Promise<string> {
+  const { datasetSave, executeQuery } =
+    await import("@/lib/integrations/sankhya-client");
+  const current = await executeQuery(
+    `SELECT REFFORN FROM TGFPRO WHERE CODPROD = ${Number(code)}`,
+  );
+  const ref = textOf(current.rows[0]?.REFFORN);
+  if (ref) return ref;
+  const sku = wellmixSku(code);
+  await datasetSave({
+    entity: "Produto",
+    pk: { CODPROD: code },
+    values: { REFFORN: sku },
+  });
+  return sku;
+}
+
+/**
+ * Envia e grava o resultado na cotação (e em process_events). Sem CODPROD,
+ * inclui um produto novo (sem conferir repetido; dono, 27/11/2026) com os
+ * valores fixos, os campos fiscais do NCM e o formulário, nessa ordem (o de
+ * depois vale); com CODPROD, altera só o que o formulário tem. Depois, o SKU
+ * (REFFORN) "WX" + CODPROD.
+ */
 async function sendNow(
   user: User,
   request: SupplierRequest,
@@ -1185,34 +1314,56 @@ async function sendNow(
     dictionary = await loadProductDictionary(user).catch(() => null);
   const columns = resolveColumns(dictionary, await readFieldOverrides());
   const present = new Set((dictionary?.fields ?? []).map((f) => f.column));
+  const hasColumn = (column: string) => !dictionary || present.has(column);
   const payload = sankhyaPayload(
     values,
     columns,
     line!.sankhyaCode!,
-    (column) => !dictionary || present.has(column),
+    hasColumn,
   );
   const skipped = payload.skipped.map((s) => `${s.id}:${s.reason}`);
   let status: SendOutcome;
   let detail: string;
   let code = product.sankhyaCode ?? null;
   const kind = code ? "update" : "create";
+  let fiscal: NcmFiscal | null = null;
+  let fiscalNote: string | null = null;
   try {
     const { datasetSave } = await import("@/lib/integrations/sankhya-client");
-    if (!code) code = await findByRef(payload.values.REFFORN);
     if (!code) {
-      await datasetSave({
+      // Campos fiscais do NCM: os dos produtos do Sankhya com o mesmo NCM.
+      const ncm = ncmDigits(values.ncm);
+      try {
+        fiscal = await readNcmFiscal(ncm, dictionary);
+        fiscalNote = ncmFiscalNote(fiscal, ncm);
+      } catch (error) {
+        fiscalNote = `fiscal do NCM não lido (${errorText(error)})`;
+      }
+      const fiscalValues = Object.fromEntries(
+        Object.entries(fiscal?.values ?? {}).filter(([c]) => hasColumn(c)),
+      );
+      const sent = {
+        ...(erp.productDefaults ?? {}),
+        ...fiscalValues,
+        ...payload.values,
+        ATIVO: "S",
+      };
+      const saved = await datasetSave({
         entity: "Produto",
-        values: {
-          ...(erp.productDefaults ?? {}),
-          ...payload.values,
-          ATIVO: "S",
-        },
+        values: sent,
+        returnFields: ["CODPROD"],
       });
-      code = await findByRef(payload.values.REFFORN);
+      code =
+        textOf(saved.rows[0]?.CODPROD) ?? (await createdCode(payload.values));
       if (!code)
         throw new Error(
-          "incluído, mas não achei o CODPROD pela referência do fornecedor",
+          "incluído, mas o Sankhya não devolveu o CODPROD e não achei o produto pela descrição e pelo grupo",
         );
+      // O vínculo já: um novo envio altera em vez de incluir de novo.
+      await store.update("products", product.id, {
+        sankhyaCode: code,
+        sankhyaSyncedAt: syncedStamp(),
+      });
       detail = `Sankhya: produto ${code} incluído`;
     } else {
       await datasetSave({
@@ -1220,27 +1371,43 @@ async function sendNow(
         pk: { CODPROD: code },
         values: payload.values,
       });
-      detail =
-        kind === "create"
-          ? `Sankhya: vinculado ao produto ${code} (mesma referência) e alterado`
-          : `Sankhya: produto ${code} alterado`;
+      detail = `Sankhya: produto ${code} alterado`;
     }
+    const sku = await ensureSku(code);
     await store.update("products", product.id, {
       sankhyaCode: code,
+      sku,
       sankhyaSyncedAt: syncedStamp(),
     });
     await store.update("supplier_requests", request.id, {
       erpCheckedAt: new Date().toISOString(),
     });
+    detail = `${detail} · SKU ${sku}`;
     status = "done";
   } catch (error) {
     status = "error";
-    detail = `Sankhya: ${product.name}: ${errorText(error)}`;
+    detail =
+      kind === "create" && code
+        ? `Sankhya: produto ${code} incluído, mas o SKU não foi gravado: ${errorText(error)}`
+        : `Sankhya: ${product.name}: ${errorText(error)}`;
   }
-  await saveValues(user, request, values, {
+  if (fiscalNote) detail = `${detail} · ${fiscalNote}`;
+  const fresh = (await store.get("supplier_requests", request.id)) ?? request;
+  await saveValues(user, fresh, values, {
     sendStatus: status,
-    sendDetail: detail,
+    sendDetail: detail.slice(0, 2000),
     skipped,
+    ...(kind === "create"
+      ? {
+          fiscal: fiscal?.products
+            ? {
+                ncm: fiscal.ncm,
+                products: fiscal.products,
+                values: fiscal.values,
+              }
+            : null,
+        }
+      : {}),
   });
   try {
     await store.create("process_events", {
@@ -1251,7 +1418,7 @@ async function sendNow(
       sankhyaAction: kind,
       top: null,
       status: status === "done" ? "done" : "error",
-      detail,
+      detail: detail.slice(0, 2000),
       nunotaBefore: null,
       nunotaAfter: null,
       createdByUserId: user.id,

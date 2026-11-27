@@ -11,9 +11,11 @@ import { dictionaries, type DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
 import { getStore } from "@/lib/db";
 import {
+  ncmFiscalPreview,
   registrationContext,
   similarChoices,
 } from "@/lib/services/product-registration";
+import { NCM_FISCAL_COLUMNS } from "@/lib/ncm-fiscal";
 import { LIST_KINDS, sourceText } from "@/lib/services/sankhya-lookups";
 import { samplingOf } from "@/lib/supplier-request-sampling";
 import {
@@ -193,7 +195,52 @@ export default async function ProductRegistrationDetailPage({
     g.path.category?.code ?? "",
     g.path.category?.name ?? "",
   ]);
+  // Campos fiscais pelo NCM (dono, 27/11/2026): antes da inclusão, o que vai
+  // (lido agora no Sankhya); depois, o que foi.
+  const fiscalLabel = (column: string) =>
+    ctx.dictionary?.fields.find((f) => f.column.toUpperCase() === column)
+      ?.label ?? column;
+  const fiscalValue = (column: string, value: string) => {
+    const option = ctx.dictionary?.options[column]?.find(
+      (o) => o.value === value,
+    );
+    return option ? `${value} - ${option.label}` : value;
+  };
+  const fiscalRows = (
+    values: Record<string, string>,
+    counts: Record<string, number> | null,
+  ) =>
+    NCM_FISCAL_COLUMNS.filter((c) => values[c] !== undefined).map((c) => ({
+      column: c,
+      label: fiscalLabel(c),
+      value: fiscalValue(c, values[c]),
+      count: counts?.[c] ?? null,
+    }));
+  let fiscal: FormExtras["fiscal"] = null;
+  if (ctx.product?.sankhyaCode) {
+    const sent = last?.fiscal;
+    if (sent)
+      fiscal = {
+        kind: "sent",
+        ncm: sent.ncm,
+        products: sent.products,
+        inactiveOnly: false,
+        rows: fiscalRows(sent.values, null),
+      };
+  } else {
+    const preview = await ncmFiscalPreview(ctx.values.ncm, ctx.dictionary);
+    if (preview?.kind === "fiscal")
+      fiscal = {
+        kind: "preview",
+        ncm: preview.fiscal.ncm,
+        products: preview.fiscal.products,
+        inactiveOnly: preview.fiscal.inactiveOnly,
+        rows: fiscalRows(preview.fiscal.values, preview.fiscal.counts),
+      };
+    else if (preview) fiscal = preview;
+  }
   const extras: FormExtras = {
+    fiscal,
     lines: ctx.lines,
     lists: ctx.lookups.lists,
     groups: groupTuples,

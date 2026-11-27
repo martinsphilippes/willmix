@@ -323,6 +323,21 @@ describe("serviços", () => {
     ).toEqual({
       CODPARC: "4454",
     });
+    // Campo só de retorno (o CODPROD gerado): em `fields`, sem valor.
+    await sk.datasetSave(
+      {
+        entity: "Produto",
+        values: { DESCRPROD: "ESPELHO", ATIVO: "S" },
+        returnFields: ["CODPROD", "ATIVO"],
+      },
+      { config, fetch: fetcher },
+    );
+    expect(JSON.parse(String(calls[3].init.body)).requestBody).toEqual({
+      entityName: "Produto",
+      standAlone: false,
+      fields: ["DESCRPROD", "ATIVO", "CODPROD"],
+      records: [{ values: { 0: "ESPELHO", 1: "S" } }],
+    });
   });
 });
 

@@ -4375,6 +4375,15 @@ export interface SupplierRequestRegistration {
   sentByUserId?: string | null;
   /** Campos com valor que não foram ao Sankhya (sem coluna ou fora da lista). */
   skipped?: string[] | null;
+  /**
+   * Campos fiscais que foram na inclusão pelo NCM (dono, 27/11/2026;
+   * src/lib/ncm-fiscal.ts): o NCM, quantos produtos do Sankhya e os valores.
+   */
+  fiscal?: {
+    ncm: string;
+    products: number;
+    values: Record<string, string>;
+  } | null;
 }
 
 export const SAMPLING_STATUSES = [
