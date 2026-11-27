@@ -33,7 +33,8 @@ test("Produção: menu, Overview, Telas e links e acesso pelo endereço", async 
   expect(order.slice(0, 4)).toEqual([
     "/app",
     "/app/tasks",
-    "Cotação",
+    // Backlog (antes "Cotação"; dono, 27/11/2026).
+    "Backlog",
     "Pedido",
   ]);
   expect(order[order.indexOf("Pedido") + 1]).toBe("Produção");

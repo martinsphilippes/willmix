@@ -46,13 +46,17 @@ export function RequestTimeline({
   /** Preço de cada passo: falso para a Wellmix sem "Ver preço de compra". */
   showPrice?: boolean;
   /**
-   * Ícone ao lado de cada resposta do fornecedor que abre a resposta
-   * detalhada num modal (dono, 27/11/2026, tela do fornecedor).
+   * Ícone ao lado da resposta do fornecedor (a mais recente) que abre a
+   * resposta detalhada num modal (dono, 27/11/2026, tela do fornecedor).
    */
   answerDetail?: ReactNode;
   t: Translate;
 }) {
   const entries = requestTimeline(r, legacyAnswers);
+  // O ícone da resposta detalhada fica na resposta mais recente (o modal
+  // mostra a oferta de hoje e as rodadas anteriores).
+  const lastAnswerKey =
+    [...entries].reverse().find((e) => e.kind === "answer")?.key ?? null;
   const k = (key: string, vars?: Record<string, string | number>) =>
     t(`supplierRequests.timeline.${key}` as DictionaryKey, vars);
   const num = (n: number | null | undefined, digits = 4) =>
@@ -161,7 +165,7 @@ export function RequestTimeline({
               </div>
               <p className="mt-0.5 flex items-start justify-between gap-2 text-sm font-semibold text-zinc-900">
                 <span>{resolved(entry)}</span>
-                {answerDetail && entry.kind === "answer" ? (
+                {answerDetail && entry.key === lastAnswerKey ? (
                   <span className="shrink-0" data-timeline-answer-detail>
                     {answerDetail}
                   </span>

@@ -621,7 +621,13 @@ test("booking → seleção de itens → solicitação ao fornecedor → produto
   await page.goto(`${altUrl}?view=item`);
   await expect(page.locator("[data-linked-ask]")).toHaveCount(0);
   await page.goto(itemUrl);
-  // A aprovação abre a amostragem, esperando o responsável pelo booking.
+  // Sem "Necessita amostragem" (o padrão desde 27/11/2026), nada espera a
+  // amostra; a Wellmix marca, e a amostragem abre com o prazo.
+  await expect(page.locator("[data-sampling-need=no]")).toBeVisible();
+  await expect(page.locator("[data-sampling=pending]")).toHaveCount(0);
+  await page.click("[data-sampling-need-toggle=yes]");
+  await page.waitForURL(/[?&]samplingNeed=yes/);
+  // Marcada, a amostragem abre, esperando o responsável pelo booking.
   await expect(page.locator("[data-sampling=pending]")).toBeVisible();
   await expect(page.locator("[data-sampling-upload]")).toHaveCount(0);
   // Produto e pedido de compra só depois da amostra aprovada; prazo de 1 dia.

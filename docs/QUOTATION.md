@@ -127,3 +127,34 @@ Nenhuma ação saiu. O que mudou de lugar foi a resposta do fornecedor (da faixa
 1. **Número**: a solicitação ao fornecedor e a cotação de compra têm numerações separadas, então pode haver duas "nº 3" na lista (a coluna Origem e o título da tela as diferenciam). Unificar a numeração mexe em dados gravados.
 2. **Nome para o fornecedor**: ele continua vendo "Solicitações ao fornecedor" e "Cotações de compra" no menu dele.
 3. **Uma cotação só do começo ao fim**: hoje a cotação de compra aprovada cria a solicitação da vencedora (dois registros para a mesma cotação). Juntar os dois num registro só é mudança de fluxo e de dados.
+
+## 9. Backlog, Consulta e Consultas do fornecedor (dono, 27/11/2026)
+
+Pedido do dono, oito pontos, para as telas ficarem no padrão.
+
+**Nomes.** O bloco do fluxo e o grupo do menu "Cotação" passaram a se chamar **Backlog** (`flow.block.new-product`, `nav.group.newProduct`). O item que abre `/app/supplier-requests` e o passo do fluxo passaram a se chamar **Consulta** (`nav.quotation`, `flow.step.new-product.negotiations`); a tela da Wellmix é "Consulta" e o detalhe, "Consulta nº N". As chaves, os blocos e os endereços não mudaram.
+
+**Consultas do fornecedor** (`/app/supplier-requests`, `_components/supplier-inquiries.tsx`). Como na Wellmix, o mesmo passo numa tela só:
+
+- uma tabela com os **convites de book**, as **solicitações** sobre os itens dos books dele e as **cotações de compra** (antes em `/app/purchase-quotes`), abas "Em negociação" e "Encerradas";
+- a tabela padrão do fornecedor (docs/ORDER_TABLES.md): as colunas na ordem padrão, com "—" no que é interno (condições de venda, grupo, cliente final) e "Wellmix" no cliente; no fim, **Tipo** e **Completude**;
+- a cotação de compra continua sendo respondida em `/app/purchase-quotes/<id>`; `/app/supplier-requests/<cotação>` leva para lá. `/app/purchase-quotes` segue abrindo e acende "Consultas".
+
+**Completude** (`src/lib/inquiry-completion.ts`): o percentual do que a linha já resolveu, em etapas, também na lista da Wellmix. Solicitação: por produto, a resposta do fornecedor, a decisão da Wellmix e, com "Necessita amostragem", a amostra aprovada. Cotação de compra (fornecedor): o preço de cada produto e, com a marca, a amostra (o conhecido do produto não conta). Cotação de compra (Wellmix): cada convidado respondido ou que recusou e a escolha da vencedora. Convite: o book enviado. Recusada e cancelada contam como resolvidas.
+
+**Menu do fornecedor** (`src/lib/nav.ts`):
+
+- saiu o `/app/orders` (era um segundo "Pedidos", fora do bloco Pedido, que já tem o passo Pedidos); a tela segue abrindo pelo endereço;
+- a **Conta corrente** saiu de "Meus books" e fica fora dos grupos, logo abaixo das Pendências, **oculta por padrão**. Liga em Configurações → "Conta corrente no menu do fornecedor" (`partnerAccountInMenu`).
+
+**Tela do item do fornecedor** (`?view=item`):
+
+1. Resumo: **Moeda à esquerda do Preço** (também nos campos de oferta: resposta, contraproposta e resposta a ela), a foto e a **arte** da variação no alto e a variação numa linha ("Preto fosco · Emb. 3 pç").
+2. Ficha do produto.
+3. **Programação**: as entregas (na variação × embalagem, em embalagens, peças e caixas) ou "Entrega única".
+
+O quadro "Variação e embalagem" saiu da tela do fornecedor (informação repetida); a Wellmix continua com ele. À direita, fixos: o **Histórico de interações** (o ícone da resposta mais recente abre a resposta detalhada num modal: oferta, contraproposta e rodadas), o quadro **Responder** (a resposta ou, com contraproposta esperando, a resposta a ela) e a **Conversa**.
+
+**Necessita amostragem**: docs/SUPPLIER_SAMPLING.md, seção de mesmo nome.
+
+O item 2 de "Em aberto" (nome para o fornecedor) ficou resolvido: ele vê "Consultas".

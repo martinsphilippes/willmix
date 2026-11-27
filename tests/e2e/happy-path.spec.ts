@@ -295,6 +295,10 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.goto(itemUrl);
   await page.click("[data-supplier-decide=approved]");
   await page.waitForURL(/[?&]decided=approved/);
+  // "Necessita amostragem" (dono, 27/11/2026): o padrão é desmarcado; aqui
+  // a Wellmix marca, e a amostragem abre.
+  await page.click("[data-sampling-need-toggle=yes]");
+  await page.waitForURL(/[?&]samplingNeed=yes/);
   // Amostragem (docs/SUPPLIER_SAMPLING.md): o produto sai depois da amostra
   // aprovada; o fornecedor manda a foto da peça e a Wellmix aprova.
   await login(page, "supplier.a@china.com");

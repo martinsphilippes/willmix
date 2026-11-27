@@ -119,9 +119,7 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   await login(page, userLogin);
   await page.goto("/app/supplier-requests");
   await expect(page).toHaveURL(/\/app\/supplier-requests/);
-  await expect(
-    page.getByRole("heading", { name: "Solicitações do cliente" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Consultas" })).toBeVisible();
   // Embaixo do nome dele no menu: o tipo (Factory), não o papel do login.
   await expect(page.locator("[data-user-role]")).toHaveText("Factory");
 
@@ -242,9 +240,7 @@ test("Factory com login: telas do Fornecedor, revogar, comparar e copiar", async
   // Como Factory de novo: Solicitações ao fornecedor voltou a abrir.
   await login(page, userLogin);
   await page.goto("/app/supplier-requests");
-  await expect(
-    page.getByRole("heading", { name: "Solicitações do cliente" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Consultas" })).toBeVisible();
   // Multas abre para a Factory e mostra só as da própria empresa (nenhuma).
   await page.goto("/app/penalties");
   await expect(page).toHaveURL(/\/app\/penalties/);

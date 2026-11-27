@@ -70,20 +70,8 @@ async function firstPurchase(page: Page): Promise<string> {
   await page.goto(itemUrl);
   await page.click("[data-supplier-decide=approved]");
   await page.waitForURL(/[?&]decided=approved/);
-  await login(page, "supplier.a@china.com");
-  await page.goto(itemUrl);
-  await page.setInputFiles("[data-sampling-upload] input[type=file]", {
-    name: "amostra.png",
-    mimeType: "image/png",
-    buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-  });
-  await page.waitForURL(/[?&]sampling=file/);
-  await page.click("[data-sampling-submit]");
-  await page.waitForURL(/[?&]sampling=submitted/);
-  await login(page, "admin@wellmix.com");
-  await page.goto(itemUrl);
-  await page.click("[data-sampling-review=approve]");
-  await page.waitForURL(/[?&]sampling=approved/);
+  // Sem "Necessita amostragem" (o padrão desde 27/11/2026), o produto não
+  // espera a amostra: o cadastro já sai.
   // Cadastrar produto (docs/PRODUCT_REGISTRATION.md): tela própria.
   const registrationUrl = `/app/product-registration/${requestId}`;
   await page.goto(registrationUrl);
