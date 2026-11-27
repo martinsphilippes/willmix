@@ -1988,3 +1988,15 @@ Auditoria de performance (`PERFORMANCE_AUDIT.md`), com evidência de produção 
 - **Como ficou**: o subtítulo do pedido só com os selos (marco, vez, atraso, solicitação de origem, origem e pedido de origem). Os produtos, a quantidade e a conversa de cada um seguem na tabela de itens do pedido (o ícone de chat por item já estava lá).
 - **Não mudou**: dados, rotas, permissões, a tabela de itens e a conversa por item.
 - Teste: `tests/e2e/happy-path.spec.ts` confere que o subtítulo do pedido não tem o nome do produto.
+
+## Pedido: venda e pagamento na lateral, linha do tempo recolhida e o restante num clique (dono, 27/11/2026)
+
+- **Pedido do dono**, na tela do pedido (ex.: `/app/orders/snk-t67975?item=…#order-items`):
+  1. "Venda ao cliente" e "Pagamento do cliente" recolhidos, um acima do outro, na lateral direita, sem fixar, abrindo para ver o que já se via.
+  2. "Linha do tempo do pedido": o detalhamento do bloco recolhido; só o clique num bloco abre as etapas dele.
+  3. A tela só até "Marcos do pedido"; o que vem abaixo some, para levar cada um a fazer as pendências na tela da sua área, mas com a opção de ver com um clique.
+- **Como ficou**:
+  1. Lateral direita (`data-order-aside`) a partir de 1280 px (20rem; 24rem a partir de 1536 px). Em tela estreita, os dois quadros recolhidos vêm no alto. Cada quadro é um `AsideFold` (`src/app/app/orders/[id]/_components/aside-fold.tsx`) com a âncora e o `data-order-section` de antes (`order-sale`, `customer-payment`), e abre sozinho na volta de uma ação dele. A tabela da venda e os formulários do pagamento seguem a largura do quadro (`@container`), não a da tela. A lateral só aparece para quem vê um dos dois (as regras de antes; `customerPaymentVisible`).
+  2. Blocos da linha do tempo como botões (`src/components/order-progress-blocks.tsx`): um clique mostra o relatório, o "Voltar ao Overview" e os marcos do bloco (`data-order-progress-detail`); outro recolhe. O bloco em foco (`?from=` ou o atual) segue em cor.
+  3. "Ver o restante do pedido" (`OrderRest`, `src/app/app/orders/[id]/_components/order-rest.tsx`): documentos, cartões das partes, produção, recebimento, containers, financeiro, multas, retrato, cancelamento e embarque. Aberto, o cookie `orderRest` guarda o pedido (`src/lib/order-rest.ts`): o restante segue aberto na volta das ações dele, e outro pedido abre recolhido. A âncora de outra tela ou de um marco (`#production`, `#receiving`, `#samples`, `#import-flow`…) abre o restante e rola até ela (`RevealHashTarget`).
+- **Não mudou**: dados, rotas, permissões, quem vê cada quadro e as ações.
