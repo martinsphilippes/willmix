@@ -16,6 +16,7 @@ import {
 } from "@/app/app/actions/customer-payment";
 import { Alert, Badge, Field, Input, Select, Textarea } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { AsideFold } from "./aside-fold";
 
 /*
  * Pagamento do cliente no pedido (dono, 15/11/2026; docs/CUSTOMER_PAYMENT.md):
@@ -29,12 +30,18 @@ export async function CustomerPaymentGate({
   order,
   notice,
   title,
+  folded = false,
   t,
 }: {
   user: User;
   order: Order;
   /** Título da seção (a mesma moldura das outras seções do pedido). */
   title: string;
+  /**
+   * Na lateral direita do pedido, recolhido (dono, 27/11/2026): abre na volta
+   * de uma ação dele (?payment=, ?charges=, ?charge=) ou pela âncora.
+   */
+  folded?: boolean;
   /** Volta de uma ação (?payment=, ?charges=, ?charge=). */
   notice: { payment?: string; charges?: string; charge?: string };
   t: Translate;
@@ -89,15 +96,13 @@ export async function CustomerPaymentGate({
     rejected: "danger",
   } as const;
 
-  return (
-    <section
-      id="customer-payment"
-      className="mt-6 min-w-0 scroll-mt-24"
-      data-order-section="customer-payment"
-    >
-      <h2 className="mb-2 text-base font-semibold text-brand-700">{title}</h2>
+  const body = (
       <div
-        className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4"
+        className={
+          folded
+            ? "space-y-4"
+            : "@container space-y-4 rounded-2xl border border-zinc-200 bg-white p-4"
+        }
         data-customer-payment={plan?.status ?? "none"}
       >
         {notice.payment ? (
@@ -367,7 +372,7 @@ export async function CustomerPaymentGate({
                           </summary>
                           <form
                             action={saveManualChargeAction}
-                            className="mt-2 grid gap-2 sm:grid-cols-2"
+                            className="mt-2 grid gap-2 @md:grid-cols-2"
                             data-customer-installment-manual={row.index}
                           >
                             <input
@@ -427,7 +432,7 @@ export async function CustomerPaymentGate({
                               />
                               {t("customerPayment.markPaid")}
                             </label>
-                            <div className="sm:col-span-2">
+                            <div className="@md:col-span-2">
                               <SubmitButton variant="secondary">
                                 {t("common.save")}
                               </SubmitButton>
@@ -472,7 +477,7 @@ export async function CustomerPaymentGate({
             </summary>
             <form
               action={chooseOrderPaymentPlanAction}
-              className="mt-3 grid gap-3 sm:grid-cols-3"
+              className="mt-3 grid gap-3 @2xl:grid-cols-3"
               data-customer-payment-choose
             >
               <input type="hidden" name="orderId" value={order.id} />
@@ -519,7 +524,7 @@ export async function CustomerPaymentGate({
                   defaultValue={plan?.saleNunota ?? ""}
                 />
               </Field>
-              <div className="sm:col-span-3">
+              <div className="@2xl:col-span-3">
                 <SubmitButton>{t("common.save")}</SubmitButton>
                 {(order.customerCharges ?? []).length ? (
                   <p className="mt-1 text-xs text-zinc-500">
@@ -531,6 +536,26 @@ export async function CustomerPaymentGate({
           </details>
         ) : null}
       </div>
+  );
+  if (folded) {
+    const returned =
+      !!notice.payment ||
+      notice.charges !== undefined ||
+      !!notice.charge;
+    return (
+      <AsideFold id="customer-payment" title={title} open={returned}>
+        {body}
+      </AsideFold>
+    );
+  }
+  return (
+    <section
+      id="customer-payment"
+      className="mt-6 min-w-0 scroll-mt-24"
+      data-order-section="customer-payment"
+    >
+      <h2 className="mb-2 text-base font-semibold text-brand-700">{title}</h2>
+      {body}
     </section>
   );
 }

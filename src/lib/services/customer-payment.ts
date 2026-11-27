@@ -205,6 +205,28 @@ export interface CustomerPaymentView {
 }
 
 /**
+ * Quem vê o pagamento do cliente no pedido, só pelo pedido e pelo login (sem
+ * ler mais nada): a tela do pedido decide por ele se a lateral direita tem
+ * o que mostrar (dono, 27/11/2026). O cliente do pedido vê a forma aprovada.
+ */
+export function customerPaymentVisible(user: User, order: Order): boolean {
+  const plan = order.customerPaymentPlan ?? null;
+  const seller = !!order.sellerUserId && order.sellerUserId === user.id;
+  const approver = !!plan?.approverUserId && plan.approverUserId === user.id;
+  const sees = isWellmix(user)
+    ? canSeeMoney(user) ||
+      can(user, "sale.record") ||
+      isFinance(user) ||
+      seller ||
+      approver
+    : user.role === "customer" &&
+      canSeeSellPrice(user) &&
+      canViewOrder(user, order) &&
+      plan?.status === "approved";
+  return sees && !order.parentOrderId;
+}
+
+/**
  * O que a pessoa vê do pagamento do cliente no pedido; nulo = não vê. O
  * cliente do pedido vê a forma aprovada e os boletos.
  */
@@ -216,17 +238,7 @@ export async function customerPaymentView(
   const plan = order.customerPaymentPlan ?? null;
   const seller = !!order.sellerUserId && order.sellerUserId === user.id;
   const approver = !!plan?.approverUserId && plan.approverUserId === user.id;
-  const sees = wellmix
-    ? canSeeMoney(user) ||
-      can(user, "sale.record") ||
-      isFinance(user) ||
-      seller ||
-      approver
-    : user.role === "customer" &&
-      canSeeSellPrice(user) &&
-      canViewOrder(user, order) &&
-      plan?.status === "approved";
-  if (!sees || order.parentOrderId) return null;
+  if (!customerPaymentVisible(user, order)) return null;
   const events = plan
     ? await paymentEventDates(order, plan)
     : { order: null, shipment: null, cargo_presence: null, delivery: null };
