@@ -5,7 +5,7 @@
 export const pt = {
   "productPhotos.sheet.title": "Fotos da ficha mestre",
   "productPhotos.sheet.hint":
-    "Estas 5 fotos completam a ficha mestre. Pedidos e cotações deste produto já usam as fotos daqui e não pedem de novo.",
+    "Estas 5 fotos completam a ficha mestre. Pedidos e consultas deste produto já usam as fotos daqui e não pedem de novo.",
   "productPhotos.sheet.status": "{done} de {total} enviadas",
   "productPhotos.sheet.missing": "Falta enviar",
   "productSheet.photosLink": "Ver quais faltam",
@@ -16,7 +16,7 @@ export const pt = {
 export const en = {
   "productPhotos.sheet.title": "Master sheet photos",
   "productPhotos.sheet.hint":
-    "These 5 photos complete the master sheet. Orders and quotations for this product use the photos from here and do not ask for them again.",
+    "These 5 photos complete the master sheet. Orders and inquiries for this product use the photos from here and do not ask for them again.",
   "productPhotos.sheet.status": "{done} of {total} uploaded",
   "productPhotos.sheet.missing": "Not uploaded yet",
   "productSheet.photosLink": "See which are missing",

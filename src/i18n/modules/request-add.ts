@@ -7,11 +7,11 @@ export const pt = {
   "reqAdd.title": "Adicionar produtos à solicitação",
   "reqAdd.titleNumbered": "Adicionar produtos à solicitação nº {n}",
   "reqAdd.intro":
-    "Os produtos entram nesta solicitação de {customer}, com o mesmo número. Cada um recebe a sua cotação e vira o seu pedido quando o sinal for confirmado.",
+    "Os produtos entram nesta solicitação de {customer}, com o mesmo número. Cada um recebe a sua consulta e vira o seu pedido quando o sinal for confirmado.",
   "reqAdd.back": "Voltar para a solicitação",
   "reqAdd.submit": "Adicionar à solicitação",
   "reqAdd.done":
-    "{n} produto(s) adicionado(s). Abra a cotação deles para os fornecedores abaixo.",
+    "{n} produto(s) adicionado(s). Abra a consulta deles para os fornecedores abaixo.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -19,11 +19,10 @@ export const en: Record<keyof typeof pt, string> = {
   "reqAdd.title": "Add products to the request",
   "reqAdd.titleNumbered": "Add products to request no. {n}",
   "reqAdd.intro":
-    "The products join this request from {customer}, with the same number. Each one gets its own quotation and becomes its own order once the down payment is confirmed.",
+    "The products join this request from {customer}, with the same number. Each one gets its own inquiry and becomes its own order once the down payment is confirmed.",
   "reqAdd.back": "Back to the request",
   "reqAdd.submit": "Add to request",
-  "reqAdd.done":
-    "{n} product(s) added. Open their quotation to suppliers below.",
+  "reqAdd.done": "{n} product(s) added. Open their inquiry to suppliers below.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {

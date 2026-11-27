@@ -9,10 +9,10 @@ export const pt = {
   "reqDelete.selected": "{n} selecionada(s)",
   "reqDelete.deleteSelected": "Excluir selecionadas",
   "reqDelete.confirmMany":
-    "Excluir {n} solicitação(ões)? Elas saem da lista e as cotações em aberto são encerradas.",
+    "Excluir {n} solicitação(ões)? Elas saem da lista e as consultas em aberto são encerradas.",
   "reqDelete.delete": "Excluir solicitação",
   "reqDelete.confirmOne":
-    "Excluir esta solicitação? Ela sai da lista e as cotações em aberto são encerradas.",
+    "Excluir esta solicitação? Ela sai da lista e as consultas em aberto são encerradas.",
   "reqDelete.ordered":
     "Já virou pedido: não pode ser excluída aqui (o pedido continua).",
   "reqDelete.done": "{n} solicitação(ões) excluída(s).",
@@ -33,10 +33,10 @@ export const en: Record<keyof typeof pt, string> = {
   "reqDelete.selected": "{n} selected",
   "reqDelete.deleteSelected": "Delete selected",
   "reqDelete.confirmMany":
-    "Delete {n} request(s)? They leave the list and open quotes are closed.",
+    "Delete {n} request(s)? They leave the list and open inquiries are closed.",
   "reqDelete.delete": "Delete request",
   "reqDelete.confirmOne":
-    "Delete this request? It leaves the list and open quotes are closed.",
+    "Delete this request? It leaves the list and open inquiries are closed.",
   "reqDelete.ordered":
     "Already became an order: it cannot be deleted here (the order continues).",
   "reqDelete.done": "{n} request(s) deleted.",

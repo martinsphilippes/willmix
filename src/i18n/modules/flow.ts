@@ -195,7 +195,7 @@ export const pt = {
     "Itens dos books comparados e escolhidos, com o produto filho.",
   "flow.step.new-product.quotes": "Convites de book",
   "flow.help.new-product.quotes":
-    "Convites de book concorrente: o parceiro manda o book do item. A cotação de preço é a Cotação de compra.",
+    "Convites de book concorrente: o parceiro manda o book do item. A consulta de preço é a Consulta de compra.",
   "flow.step.new-product.demands": "Encomendas",
   "flow.help.new-product.demands":
     "Encomendas do cliente pela vitrine, pela tela dele ou lançadas por Vendas ou por um operador em nome dele. Seguem para a estratégia de compra.",
@@ -205,15 +205,15 @@ export const pt = {
   "flow.step.new-product.strategy": "Estratégia de compra",
   "flow.help.new-product.strategy":
     "Reposições e encomendas: repetir o fornecedor da última compra ou cotar entre fornecedores, com a aprovação da Diretoria de compras.",
-  "flow.step.new-product.purchase-quotes": "Cotação de compra",
+  "flow.step.new-product.purchase-quotes": "Consulta de compra",
   "flow.help.new-product.purchase-quotes":
-    "Cotação de preço aberta pelo sistema com os fornecedores das linhas, 24 h para cada um responder; o Comprador escolhe e a Diretoria de compras aprova.",
+    "Consulta de preço aberta pelo sistema com os fornecedores das linhas, 24 h para cada um responder; o Comprador escolhe e a Diretoria de compras aprova.",
   "flow.step.new-product.negotiations": "Consulta",
   "flow.help.new-product.negotiations":
-    "Cotação com os fornecedores: convites, respostas, quadro comparativo, negociação e amostragem até o fornecedor do pedido.",
+    "Consulta com os fornecedores: convites, respostas, quadro comparativo, negociação e amostragem até o fornecedor do pedido.",
   "flow.step.new-product.registration": "Cadastrar produto",
   "flow.help.new-product.registration":
-    "O produto do book aprovado na cotação ganha o cadastro do Sankhya, já preenchido com o que o processo juntou, e vai ao Sankhya pela API.",
+    "O produto do book aprovado na consulta ganha o cadastro do Sankhya, já preenchido com o que o processo juntou, e vai ao Sankhya pela API.",
   "flow.step.order.orders": "Pedidos",
   "flow.help.order.orders":
     "Pedidos de compra: confirmação, programação de compra e ficha do pedido.",
@@ -498,7 +498,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Book items compared and chosen, with the child product.",
   "flow.step.new-product.quotes": "Book invites",
   "flow.help.new-product.quotes":
-    "Competing book invitations: the partner sends the item's book. Price quotes are in Purchase quote.",
+    "Competing book invitations: the partner sends the item's book. Price quotes are in Purchase inquiry.",
   "flow.step.new-product.demands": "Customer orders",
   "flow.help.new-product.demands":
     "Customer orders from the storefront, from the customer's own screen, or placed by Sales or an operator on the customer's behalf. They go to the purchase strategy.",
@@ -508,15 +508,15 @@ export const en: Record<keyof typeof pt, string> = {
   "flow.step.new-product.strategy": "Purchase strategy",
   "flow.help.new-product.strategy":
     "Replenishments and customer orders: repeat the last purchase's supplier or quote among suppliers, approved by the Purchasing board.",
-  "flow.step.new-product.purchase-quotes": "Purchase quote",
+  "flow.step.new-product.purchase-quotes": "Purchase inquiry",
   "flow.help.new-product.purchase-quotes":
     "Price quote opened by the system with the lines' suppliers, 24 h for each to answer; the Buyer picks and the Purchasing board approves.",
   "flow.step.new-product.negotiations": "Inquiry",
   "flow.help.new-product.negotiations":
-    "Quotation with suppliers: invitations, answers, comparison board, negotiation and sampling up to the supplier of the order.",
+    "Inquiry with suppliers: invitations, answers, comparison board, negotiation and sampling up to the supplier of the order.",
   "flow.step.new-product.registration": "Register product",
   "flow.help.new-product.registration":
-    "The book product approved in the quotation gets its Sankhya registration, pre-filled with what the process gathered, and goes to Sankhya through the API.",
+    "The book product approved in the inquiry gets its Sankhya registration, pre-filled with what the process gathered, and goes to Sankhya through the API.",
   "flow.step.order.orders": "Orders",
   "flow.help.order.orders":
     "Purchase orders: confirmation, purchase schedule and order sheet.",
@@ -792,7 +792,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.help.new-product.selection": "比较并选定 Book 中的商品及子商品。",
   "flow.step.new-product.quotes": "Book 邀请",
   "flow.help.new-product.quotes":
-    "竞争 Book 邀请：合作方提交商品的 Book。价格报价见采购询价。",
+    "竞争 Book 邀请：合作方提交商品的 Book。价格报价见采购询盘。",
   "flow.step.new-product.demands": "客户订货",
   "flow.help.new-product.demands":
     "客户通过橱窗、自己的页面下的订货，或由销售或运营人员代客户录入。之后进入采购策略。",
@@ -802,12 +802,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "flow.step.new-product.strategy": "采购策略",
   "flow.help.new-product.strategy":
     "补货和客户订货：沿用上次采购的供应商或在供应商之间询价，由采购总监批准。",
-  "flow.step.new-product.purchase-quotes": "采购询价",
+  "flow.step.new-product.purchase-quotes": "采购询盘",
   "flow.help.new-product.purchase-quotes":
-    "系统向产品线的供应商发起询价，每家 24 小时内回复；采购员选择，采购总监批准。",
+    "系统向产品线的供应商发起询盘，每家 24 小时内回复；采购员选择，采购总监批准。",
   "flow.step.new-product.negotiations": "询盘",
   "flow.help.new-product.negotiations":
-    "与供应商询价：邀请、回复、比价表、谈判和打样，直到确定订单的供应商。",
+    "与供应商询盘：邀请、回复、比价表、谈判和打样，直到确定订单的供应商。",
   "flow.step.new-product.registration": "登记产品",
   "flow.help.new-product.registration":
     "报价中批准的 Book 产品在此完成 Sankhya 登记（已预填流程中收集的信息），并通过 API 发送到 Sankhya。",

@@ -132,7 +132,7 @@ Nenhuma ação saiu. O que mudou de lugar foi a resposta do fornecedor (da faixa
 
 Pedido do dono, oito pontos, para as telas ficarem no padrão.
 
-**Nomes.** O bloco do fluxo e o grupo do menu "Cotação" passaram a se chamar **Backlog** (`flow.block.new-product`, `nav.group.newProduct`). O item que abre `/app/supplier-requests` e o passo do fluxo passaram a se chamar **Consulta** (`nav.quotation`, `flow.step.new-product.negotiations`); a tela da Wellmix é "Consulta" e o detalhe, "Consulta nº N". As chaves, os blocos e os endereços não mudaram.
+**Nomes.** O bloco do fluxo e o grupo do menu "Cotação" passaram a se chamar **Backlog** (`flow.block.new-product`, `nav.group.newProduct`). O item que abre `/app/supplier-requests` e o passo do fluxo passaram a se chamar **Consulta** (`nav.quotation`, `flow.step.new-product.negotiations`); a tela da Wellmix é "Consulta" e o detalhe, "Consulta nº N". As chaves, os blocos e os endereços não mudaram. Os textos do passo também passaram a dizer **consulta** no lugar de "cotação" (correção do dono, 27/11/2026): títulos, descrições, cabeçalhos de tabela, abas, avisos, pendências e ações da consulta, da cotação de compra (agora "Consulta de compra"), da Estratégia ("Enviar para consulta"), de Encomendas, do Cadastrar produto, da ficha técnica e do cartão do fabricante, em pt, en ("inquiry") e zh（询盘）. Ficaram como estavam os outros sentidos da palavra: a cotação do câmbio, a de frete, a "cotação V2" de preço do Sankhya, as TOPs de cotação do Sankhya e os textos da RFQ antiga.
 
 **Consultas do fornecedor** (`/app/supplier-requests`, `_components/supplier-inquiries.tsx`). Como na Wellmix, o mesmo passo numa tela só:
 

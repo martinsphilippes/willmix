@@ -4,7 +4,8 @@
  */
 export const pt = {
   "reqBatch.inOrder": "Produtos no pedido",
-  "reqBatch.inOrderHint": "Os produtos já preenchidos ficam recolhidos aqui. Abra um para revisar ou completar.",
+  "reqBatch.inOrderHint":
+    "Os produtos já preenchidos ficam recolhidos aqui. Abra um para revisar ou completar.",
   "reqBatch.expand": "Abrir",
   "reqBatch.collapse": "Recolher",
   "reqBatch.colProduct": "Produto",
@@ -13,7 +14,8 @@ export const pt = {
   "reqBatch.colStatus": "Preenchimento",
   "reqBatch.complete": "Completo",
   "reqBatch.incomplete": "Incompleto",
-  "reqBatch.incompleteHint": "Faltam dados neste produto: abra para completar antes de enviar.",
+  "reqBatch.incompleteHint":
+    "Faltam dados neste produto: abra para completar antes de enviar.",
   "reqBatch.outside": "Fora do catálogo",
   "reqBatch.noProduct": "Produto não escolhido",
   "reqBatch.products": "Produtos",
@@ -31,7 +33,7 @@ export const pt = {
   "reqBatch.title": "Solicitação com {n} produtos",
   "reqBatch.count": "{n} produtos",
   "reqBatch.pageHint":
-    "Os produtos foram pedidos juntos. Cada um segue com a própria cotação, fornecedor e pedido: abra um produto para ver os detalhes.",
+    "Os produtos foram pedidos juntos. Cada um segue com a própria consulta, fornecedor e pedido: abra um produto para ver os detalhes.",
   "reqBatch.viewBatch": "Ver o lote completo",
   "reqBatch.selectBatch": "Selecionar os produtos do lote",
   "reqBatch.deleteAll": "Excluir o lote",
@@ -41,7 +43,8 @@ export const pt = {
   "reqBatch.col.perBox": "Peças por caixa",
   "reqBatch.col.boxes": "Caixas",
   "reqBatch.col.rounds": "Programações",
-  "reqBatch.summary": "{products} produto(s) · {rounds} programação(ões) · containers por programação: {containers}",
+  "reqBatch.summary":
+    "{products} produto(s) · {rounds} programação(ões) · containers por programação: {containers}",
   "reqBatch.openProduct": "Abrir o produto neste pedido",
   "reqBatch.chatProduct": "Conversar sobre este produto neste pedido",
   "reqBatch.backToOrder": "← Voltar ao pedido",
@@ -49,7 +52,7 @@ export const pt = {
   "requests.numberShort": "Nº",
   "requests.numbered": "Solicitação nº {n}",
   "reqBatch.titleNumbered": "Solicitação nº {number} · {n} produtos",
-  "reqBatch.quotes": "Cotações",
+  "reqBatch.quotes": "Consultas",
   "reqBatch.quotesCount": "{answered} de {invited} responderam",
   "reqBatch.rfqTitle": "Abrir RFQ do lote",
   "reqBatch.rfqWholeBatch": "Abrir a RFQ do lote inteiro ({n} produtos) →",
@@ -71,7 +74,7 @@ export const pt = {
   "reqBatch.error.invalid_supplier":
     "Um dos fornecedores escolhidos não está cadastrado como fornecedor.",
   "reqBatch.error.invalid_status":
-    "Nenhum produto deste lote está mais em cotação.",
+    "Nenhum produto deste lote está mais em consulta.",
   "reqBatch.error.no_products": "Informe ao menos um produto.",
   "reqBatch.error.invalid_input":
     "Confira os produtos: nome, descrição e quantidade são obrigatórios.",
@@ -145,7 +148,8 @@ export const pt = {
 
 export const en: Record<keyof typeof pt, string> = {
   "reqBatch.inOrder": "Products in the order",
-  "reqBatch.inOrderHint": "Products already filled in are collapsed here. Open one to review or complete it.",
+  "reqBatch.inOrderHint":
+    "Products already filled in are collapsed here. Open one to review or complete it.",
   "reqBatch.expand": "Open",
   "reqBatch.collapse": "Collapse",
   "reqBatch.colProduct": "Product",
@@ -154,7 +158,8 @@ export const en: Record<keyof typeof pt, string> = {
   "reqBatch.colStatus": "Completion",
   "reqBatch.complete": "Complete",
   "reqBatch.incomplete": "Incomplete",
-  "reqBatch.incompleteHint": "This product is missing data: open it and complete before sending.",
+  "reqBatch.incompleteHint":
+    "This product is missing data: open it and complete before sending.",
   "reqBatch.outside": "Not in catalog",
   "reqBatch.noProduct": "No product chosen",
   "reqBatch.products": "Products",
@@ -172,7 +177,7 @@ export const en: Record<keyof typeof pt, string> = {
   "reqBatch.title": "Request with {n} products",
   "reqBatch.count": "{n} products",
   "reqBatch.pageHint":
-    "These products were requested together. Each one has its own quotation, supplier and order: open a product to see the details.",
+    "These products were requested together. Each one has its own inquiry, supplier and order: open a product to see the details.",
   "reqBatch.viewBatch": "See the whole batch",
   "reqBatch.selectBatch": "Select the batch products",
   "reqBatch.deleteAll": "Delete the batch",
@@ -182,7 +187,8 @@ export const en: Record<keyof typeof pt, string> = {
   "reqBatch.col.perBox": "Pieces per carton",
   "reqBatch.col.boxes": "Cartons",
   "reqBatch.col.rounds": "Deliveries",
-  "reqBatch.summary": "{products} product(s) · {rounds} delivery(ies) · containers per delivery: {containers}",
+  "reqBatch.summary":
+    "{products} product(s) · {rounds} delivery(ies) · containers per delivery: {containers}",
   "reqBatch.openProduct": "Open the product in this order",
   "reqBatch.chatProduct": "Talk about this product in this order",
   "reqBatch.backToOrder": "← Back to the order",
@@ -323,7 +329,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqBatch.col.perBox": "每箱件数",
   "reqBatch.col.boxes": "箱数",
   "reqBatch.col.rounds": "交货批次",
-  "reqBatch.summary": "{products} 个产品 · {rounds} 个批次 · 每批集装箱：{containers}",
+  "reqBatch.summary":
+    "{products} 个产品 · {rounds} 个批次 · 每批集装箱：{containers}",
   "reqBatch.openProduct": "打开此订单中的产品",
   "reqBatch.chatProduct": "讨论此订单中的这个产品",
   "reqBatch.backToOrder": "← 返回订单",
@@ -379,7 +386,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqBatch.price.hint":
     "每件 {price} × {pieces} 件：提交时保存的 Sankhya V2 报价（{date}）",
   "reqBatch.boxes.rounds": "每批：{list}",
-  "reqBatch.cbm.otherBox": "已登记的体积是每箱 {qty} 件的外箱，而计算用每箱 {perBox} 件：不计入",
+  "reqBatch.cbm.otherBox":
+    "已登记的体积是每箱 {qty} 件的外箱，而计算用每箱 {perBox} 件：不计入",
   // 草稿详情（所有者，2026/11/19；docs/ORDER_LEVEL_LISTS.md 第 7 节）。
   "reqDraft.title": "草稿 · {n} 个产品",
   "reqDraft.resume": "继续编辑",

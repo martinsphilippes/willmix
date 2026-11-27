@@ -53,7 +53,7 @@ export const pt = {
   "reqList.head.next.hint":
     "A ação pendente e quem deve agir: a pessoa, a equipe (função) ou o parceiro, pela mesma regra das Pendências. Toque no responsável para ver os nomes.",
   "reqList.head.deadline.hint":
-    "Prazo de resposta da ação pendente: o mesmo da pendência (convite da cotação, negociação e amostragem com o fornecedor). Sem prazo próprio, vale o prazo de resposta da solicitação.",
+    "Prazo de resposta da ação pendente: o mesmo da pendência (convite da consulta, negociação e amostragem com o fornecedor). Sem prazo próprio, vale o prazo de resposta da solicitação.",
   "reqList.head.owner.hint":
     "Analista vinculado à solicitação (escolhido pela divisão da linha do produto). Não é, necessariamente, quem age na próxima ação.",
   "reqList.head.date.hint":
@@ -121,7 +121,7 @@ export const pt = {
   "reqList.col.rounds": "Programações",
   "reqList.open": "Abrir o pedido",
   "reqList.col.next": "Próximo passo",
-  "reqList.col.quotes": "Cotações",
+  "reqList.col.quotes": "Consultas",
   "reqList.next.new": "Analisar a solicitação",
   "reqList.next.rfq": "Abrir a cotação com fornecedores",
   "reqList.next.quotes": "Aguardando a cotação dos fornecedores",
@@ -402,7 +402,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqList.head.next.hint":
     "待处理的操作和应处理的人：个人、团队（职能）或合作方，规则与待办相同。点击负责人查看姓名。",
   "reqList.head.deadline.hint":
-    "待处理操作的回复期限：与待办相同（询价邀请、与供应商的谈判和打样）。没有自己的期限时，按需求单的回复期限。",
+    "待处理操作的回复期限：与待办相同（询盘邀请、与供应商的谈判和打样）。没有自己的期限时，按需求单的回复期限。",
   "reqList.head.owner.hint":
     "与需求单关联的分析员（按产品线部门分配）。不一定是处理下一步的人。",
   "reqList.head.date.hint": "需求单创建日期；草稿为首次保存的日期。",

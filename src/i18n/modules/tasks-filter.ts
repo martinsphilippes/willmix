@@ -22,7 +22,7 @@ export const pt = {
   "tasks.due.late1": "atrasada há 1 dia",
   "tasks.due.late": "atrasada há {n} dias",
   "tasks.group.rfq": "Abrir RFQ",
-  "tasks.group.quote": "Responder cotação",
+  "tasks.group.quote": "Responder consulta",
   "tasks.group.select_supplier": "Escolher fornecedor",
   "tasks.group.approval": "Aprovação do pré-custo",
   "tasks.group.confirm_payment": "Confirmar sinal",

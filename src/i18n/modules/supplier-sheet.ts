@@ -7,14 +7,14 @@
 export const pt = {
   "supplierSheet.disclaimer.title": "Revalidação do cadastro",
   "supplierSheet.disclaimer.body":
-    "Estamos implantando o novo portal da Wellmix e, por isso, revalidando uma única vez as informações de cadastro dos produtos que já compramos de vocês. Confira os dados abaixo e confirme ou corrija. Depois de confirmados, não pediremos de novo: nas próximas cotações deste produto, só as condições comerciais. Se algo mudar no produto ou na embalagem, avise pela conversa.",
+    "Estamos implantando o novo portal da Wellmix e, por isso, revalidando uma única vez as informações de cadastro dos produtos que já compramos de vocês. Confira os dados abaixo e confirme ou corrija. Depois de confirmados, não pediremos de novo: nas próximas consultas deste produto, só as condições comerciais. Se algo mudar no produto ou na embalagem, avise pela conversa.",
   "supplierSheet.title": "Ficha técnica",
   "supplierSheet.hint.declare":
     "Preencha com o produto e a embalagem que vocês vão fornecer.",
   "supplierSheet.hint.confirm":
     "Estes são os dados do nosso cadastro. Confira cada campo e corrija o que estiver diferente.",
   "supplierSheet.hint.own":
-    "Você já mandou esta ficha nesta cotação e pode corrigir até o fim do prazo.",
+    "Você já mandou esta ficha nesta consulta e pode corrigir até o fim do prazo.",
   "supplierSheet.settled": "Ficha técnica confirmada em {date}.",
   "supplierSheet.settled.hint":
     "Se algo mudou no produto ou na embalagem, avise pela conversa.",
@@ -124,7 +124,7 @@ export const pt = {
   "supplierSheet.list.col.review": "Revisão",
   "supplierSheet.view.title": "Ficha técnica: {product}",
   "supplierSheet.view.subtitle": "{supplier} · {kind} em {date}",
-  "supplierSheet.view.source.quote": "Cotação de compra nº {n}",
+  "supplierSheet.view.source.quote": "Consulta de compra nº {n}",
   "supplierSheet.view.source.purchase_sheet": "Ficha de compra do pedido",
   "supplierSheet.view.soldBefore": "Já vendia o produto à Wellmix",
   "supplierSheet.view.firstTime": "Primeira vez com o produto",
@@ -134,7 +134,7 @@ export const pt = {
   "supplierSheet.view.changed": "Mudou",
   "supplierSheet.view.filled": "Preencheu",
   "supplierSheet.view.noSankhya":
-    "Aceitar ou recusar não muda o cadastro do produto nem o Sankhya. Aceita, a ficha vale para este fornecedor nas cotações e nos pedidos dele; recusada, ele confere de novo na próxima cotação.",
+    "Aceitar ou recusar não muda o cadastro do produto nem o Sankhya. Aceita, a ficha vale para este fornecedor nas consultas e nos pedidos dele; recusada, ele confere de novo na próxima consulta.",
   "supplierSheet.view.photo": "Foto na balança",
   "supplierSheet.view.noPhoto": "Sem foto",
   "supplierSheet.view.reviewed": "{review} em {date}",
@@ -156,18 +156,18 @@ export const pt = {
   "tasks.group.supplier_sheet_review": "Revisar ficha técnica do fornecedor",
   "action.supplierSheet.review": "Revisar a ficha técnica do fornecedor",
   "action.desc.supplierSheet.review":
-    "Aceitar ou recusar a correção que o fornecedor mandou na cotação. O cadastro do produto e o Sankhya não mudam.",
+    "Aceitar ou recusar a correção que o fornecedor mandou na consulta. O cadastro do produto e o Sankhya não mudam.",
   "supplierSheet.notify.rejected.subject":
     "Ficha técnica de {product}: correção recusada",
   "supplierSheet.notify.rejected.body":
-    "Motivo: {note}. Na próxima cotação deste produto, confira os dados de novo.",
+    "Motivo: {note}. Na próxima consulta deste produto, confira os dados de novo.",
   "sheet.prefilled.supplier": "Preenchida com a ficha técnica do fornecedor.",
   "sheet.prefilledNotice.supplier":
     "A ficha veio da ficha técnica que o fornecedor informou: confira, ajuste o que mudou e complete o que falta.",
   "supplierSheet.purchaseSheet.hint":
     "Salva completa, esta ficha vale como a confirmação dos dados deste produto, uma vez só.",
   "supplierSheet.purchaseSheet.givenTitle":
-    "Foto na balança enviada na cotação",
+    "Foto na balança enviada na consulta",
   "supplierSheet.purchaseSheet.givenNote":
     "Vale como a foto na balança deste pedido. Se quiser, envie outra abaixo.",
   "supplierSheet.purchaseSheet.scaleOwn":
@@ -177,14 +177,14 @@ export const pt = {
 export const en: Record<keyof typeof pt, string> = {
   "supplierSheet.disclaimer.title": "Registration revalidation",
   "supplierSheet.disclaimer.body":
-    "We are launching Wellmix's new portal and, for this reason, revalidating, one time only, the registration data of the products we have already bought from you. Please review the data below and confirm or correct it. Once confirmed, we will not ask again: future quotations for this product will only ask for the commercial terms. If anything changes in the product or the packaging, let us know in the chat.",
+    "We are launching Wellmix's new portal and, for this reason, revalidating, one time only, the registration data of the products we have already bought from you. Please review the data below and confirm or correct it. Once confirmed, we will not ask again: future inquiries for this product will only ask for the commercial terms. If anything changes in the product or the packaging, let us know in the chat.",
   "supplierSheet.title": "Technical sheet",
   "supplierSheet.hint.declare":
     "Fill in with the product and packaging you will supply.",
   "supplierSheet.hint.confirm":
     "This is the data in our records. Check each field and correct whatever is different.",
   "supplierSheet.hint.own":
-    "You already sent this sheet in this quotation and can correct it until the deadline.",
+    "You already sent this sheet in this inquiry and can correct it until the deadline.",
   "supplierSheet.settled": "Technical sheet confirmed on {date}.",
   "supplierSheet.settled.hint":
     "If anything changed in the product or the packaging, let us know in the chat.",
@@ -298,7 +298,7 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierSheet.list.col.review": "Review",
   "supplierSheet.view.title": "Technical sheet: {product}",
   "supplierSheet.view.subtitle": "{supplier} · {kind} on {date}",
-  "supplierSheet.view.source.quote": "Purchase quote no. {n}",
+  "supplierSheet.view.source.quote": "Purchase inquiry no. {n}",
   "supplierSheet.view.source.purchase_sheet": "Order purchase sheet",
   "supplierSheet.view.soldBefore": "Already sold this product to Wellmix",
   "supplierSheet.view.firstTime": "First time with this product",
@@ -308,7 +308,7 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierSheet.view.changed": "Changed",
   "supplierSheet.view.filled": "Filled in",
   "supplierSheet.view.noSankhya":
-    "Accepting or rejecting does not change the product record or Sankhya. Accepted, the sheet applies to this supplier in their quotations and orders; rejected, they check it again in the next quotation.",
+    "Accepting or rejecting does not change the product record or Sankhya. Accepted, the sheet applies to this supplier in their inquiries and orders; rejected, they check it again in the next inquiry.",
   "supplierSheet.view.photo": "Photo on the scale",
   "supplierSheet.view.noPhoto": "No photo",
   "supplierSheet.view.reviewed": "{review} on {date}",
@@ -330,18 +330,18 @@ export const en: Record<keyof typeof pt, string> = {
   "tasks.group.supplier_sheet_review": "Review supplier technical sheet",
   "action.supplierSheet.review": "Review the supplier technical sheet",
   "action.desc.supplierSheet.review":
-    "Accept or reject the correction the supplier sent in the quotation. The product record and Sankhya do not change.",
+    "Accept or reject the correction the supplier sent in the inquiry. The product record and Sankhya do not change.",
   "supplierSheet.notify.rejected.subject":
     "Technical sheet of {product}: correction rejected",
   "supplierSheet.notify.rejected.body":
-    "Reason: {note}. In the next quotation for this product, please check the data again.",
+    "Reason: {note}. In the next inquiry for this product, please check the data again.",
   "sheet.prefilled.supplier": "Filled with the supplier's technical sheet.",
   "sheet.prefilledNotice.supplier":
     "The sheet came from the technical sheet the supplier entered: review it, adjust what changed and complete what is missing.",
   "supplierSheet.purchaseSheet.hint":
     "Saved complete, this sheet counts as the confirmation of this product's data, one time only.",
   "supplierSheet.purchaseSheet.givenTitle":
-    "Photo on the scale sent in the quotation",
+    "Photo on the scale sent in the inquiry",
   "supplierSheet.purchaseSheet.givenNote":
     "It counts as the photo on the scale for this order. If you want, send another one below.",
   "supplierSheet.purchaseSheet.scaleOwn":
@@ -459,7 +459,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "supplierSheet.list.col.review": "审核",
   "supplierSheet.view.title": "技术资料：{product}",
   "supplierSheet.view.subtitle": "{supplier} · {kind}（{date}）",
-  "supplierSheet.view.source.quote": "采购询价 第 {n} 号",
+  "supplierSheet.view.source.quote": "采购询盘 第 {n} 号",
   "supplierSheet.view.source.purchase_sheet": "订单采购单",
   "supplierSheet.view.soldBefore": "曾向 Wellmix 供应此产品",
   "supplierSheet.view.firstTime": "首次供应此产品",

@@ -10,23 +10,23 @@ export const pt = {
   "quotation.close": "Fechar",
   "quotation.list.title": "Consulta",
   "quotation.list.subtitle":
-    "Todas as cotações com os fornecedores: as que saíram de um book, de uma encomenda ou de uma reposição. A negociação acontece dentro da cotação, até escolher o fornecedor do pedido.",
-  "quotation.list.count": "{n} cotações · {products} produtos distintos",
-  "quotation.list.empty": "Nenhuma cotação ainda.",
+    "Todas as consultas com os fornecedores: as que saíram de um book, de uma encomenda ou de uma reposição. A negociação acontece dentro da consulta, até escolher o fornecedor do pedido.",
+  "quotation.list.count": "{n} consultas · {products} produtos distintos",
+  "quotation.list.empty": "Nenhuma consulta ainda.",
   "quotation.list.suppliers": "{n} fornecedores",
   "quotation.tabs.open": "Em andamento",
   "quotation.tabs.closed": "Encerradas",
   "quotation.tabs.invites": "Convites de book",
-  "quotation.tabs.emptyOpen": "Nenhuma cotação em andamento.",
-  "quotation.tabs.emptyClosed": "Nenhuma cotação encerrada ainda.",
+  "quotation.tabs.emptyOpen": "Nenhuma consulta em andamento.",
+  "quotation.tabs.emptyClosed": "Nenhuma consulta encerrada ainda.",
   "quotation.col.origin": "Origem",
   "quotation.origin.book": "Book",
   "quotation.origin.order": "Encomenda",
   "quotation.origin.replenishment": "Reposição",
   "quotation.detail.title": "Consulta nº {n}",
   "quotation.detail.back": "Voltar às consultas",
-  "quotation.item.product": "Produto da cotação",
-  "quotation.item.open": "Abrir o produto na cotação",
+  "quotation.item.product": "Produto da consulta",
+  "quotation.item.open": "Abrir o produto na consulta",
   "quotation.board.hint":
     "Marque os fornecedores que vão receber a contraproposta do bloco ao lado. Os ícones de cada linha abrem a conversa e a sequência de propostas e contrapropostas com aquele fornecedor.",
   "quotation.board.col.select": "Receber a contraproposta",
@@ -38,7 +38,7 @@ export const pt = {
   "quotation.board.chatTitle": "Conversa · {name}",
   "quotation.board.history": "Ver propostas e contrapropostas de {name}",
   "quotation.board.historyTitle": "Propostas e contrapropostas · {name}",
-  "quotation.board.open": "Abrir a cotação de {name}",
+  "quotation.board.open": "Abrir a consulta de {name}",
   "quotation.counter.title": "Devolver com contraproposta",
   "quotation.counter.hint":
     "Vai para os fornecedores marcados no quadro comparativo. Comentário obrigatório e ao menos um valor.",
@@ -48,18 +48,18 @@ export const pt = {
     "Nenhum fornecedor pode receber contraproposta agora: é preciso ter respondido e não ter outra contraproposta esperando a resposta dele.",
   "quotation.counter.sent": "Contraproposta enviada a {n} fornecedor(es).",
   "quotation.history.answer": "Proposta do fornecedor",
-  "quotation.history.decline": "O fornecedor recusou a cotação",
+  "quotation.history.decline": "O fornecedor recusou a consulta",
   "quotation.history.proposal": "Contraproposta da Wellmix",
   "quotation.history.empty": "Nenhuma proposta ainda.",
   "quotation.error.quote_counter_none":
     "Marque ao menos um fornecedor no quadro comparativo.",
   "quotation.error.quote_counter_not_answered":
-    "A contraproposta só vai para quem já respondeu a cotação.",
+    "A contraproposta só vai para quem já respondeu a consulta.",
   "quotation.notify.counter.subject":
-    "Cotação nº {n}: a Wellmix devolveu com contraproposta",
+    "Consulta nº {n}: a Wellmix devolveu com contraproposta",
   "quotation.notify.counter.body":
-    "Produto: {product}. Abra a cotação, veja a contraproposta e corrija a sua resposta.",
-  "quotation.notify.message.subject": "Cotação nº {n}: nova mensagem",
+    "Produto: {product}. Abra a consulta, veja a contraproposta e corrija a sua resposta.",
+  "quotation.notify.message.subject": "Consulta nº {n}: nova mensagem",
   "quotation.supplier.title": "Negociação com a Wellmix",
   "quotation.supplier.counter": "Contraproposta da Wellmix para {product}",
   "quotation.supplier.counterHint":
@@ -69,7 +69,7 @@ export const pt = {
   "sampling.intro.earlySupplier":
     "Você já pode enviar as fotos e os vídeos da amostra deste item (feita em impressora 3D: detalhes, medidas, encaixes), sem esperar a decisão da Wellmix. A amostra física não é enviada.",
   "sampling.intro.earlyWellmix":
-    "O fornecedor já pode enviar a amostra enquanto a cotação corre. Quando ele enviar, confira e aprove, ou reprove com o motivo para ele mandar de novo.",
+    "O fornecedor já pode enviar a amostra enquanto a consulta corre. Quando ele enviar, confira e aprove, ou reprove com o motivo para ele mandar de novo.",
   "quoteSampling.col": "Amostra",
   "quoteSampling.skipped": "Dispensada",
   "quoteSampling.skippedHint":
@@ -94,9 +94,9 @@ export const pt = {
   "quoteSampling.notice.rejected":
     "Amostra reprovada; o fornecedor foi avisado.",
   "quoteSampling.notify.submitted.subject":
-    "Cotação nº {n}: amostra de {product} enviada",
-  "quoteSampling.notify.approved.subject": "Cotação nº {n}: amostra aprovada",
-  "quoteSampling.notify.rejected.subject": "Cotação nº {n}: amostra reprovada",
+    "Consulta nº {n}: amostra de {product} enviada",
+  "quoteSampling.notify.approved.subject": "Consulta nº {n}: amostra aprovada",
+  "quoteSampling.notify.rejected.subject": "Consulta nº {n}: amostra reprovada",
   "quote.error.quote_winner_sampling":
     "A amostra deste fornecedor ainda não foi aprovada: só vence quem tem a amostra aprovada ou é conhecido do produto.",
   "quote.error.sampling_not_open": "Não há amostragem para este produto.",
@@ -130,23 +130,23 @@ export const en: Record<keyof typeof pt, string> = {
   "quotation.close": "Close",
   "quotation.list.title": "Inquiry",
   "quotation.list.subtitle":
-    "Every quotation with suppliers: from a book, a customer order or a replenishment. Negotiation happens inside the quotation, until the supplier of the order is chosen.",
-  "quotation.list.count": "{n} quotations · {products} distinct products",
-  "quotation.list.empty": "No quotations yet.",
+    "Every inquiry with suppliers: from a book, a customer order or a replenishment. Negotiation happens inside the inquiry, until the supplier of the order is chosen.",
+  "quotation.list.count": "{n} inquiries · {products} distinct products",
+  "quotation.list.empty": "No inquiries yet.",
   "quotation.list.suppliers": "{n} suppliers",
   "quotation.tabs.open": "In progress",
   "quotation.tabs.closed": "Closed",
   "quotation.tabs.invites": "Book invitations",
-  "quotation.tabs.emptyOpen": "No quotations in progress.",
-  "quotation.tabs.emptyClosed": "No closed quotations yet.",
+  "quotation.tabs.emptyOpen": "No inquiries in progress.",
+  "quotation.tabs.emptyClosed": "No closed inquiries yet.",
   "quotation.col.origin": "Origin",
   "quotation.origin.book": "Book",
   "quotation.origin.order": "Customer order",
   "quotation.origin.replenishment": "Replenishment",
   "quotation.detail.title": "Inquiry no. {n}",
   "quotation.detail.back": "Back to inquiries",
-  "quotation.item.product": "Product in this quotation",
-  "quotation.item.open": "Open the product in the quotation",
+  "quotation.item.product": "Product in this inquiry",
+  "quotation.item.open": "Open the product in the inquiry",
   "quotation.board.hint":
     "Tick the suppliers that will receive the counterproposal from the block on the side. The icons on each row open the conversation and the sequence of proposals and counterproposals with that supplier.",
   "quotation.board.col.select": "Receive the counterproposal",
@@ -158,7 +158,7 @@ export const en: Record<keyof typeof pt, string> = {
   "quotation.board.chatTitle": "Conversation · {name}",
   "quotation.board.history": "See proposals and counterproposals of {name}",
   "quotation.board.historyTitle": "Proposals and counterproposals · {name}",
-  "quotation.board.open": "Open the quotation of {name}",
+  "quotation.board.open": "Open the inquiry of {name}",
   "quotation.counter.title": "Send back with a counterproposal",
   "quotation.counter.hint":
     "Goes to the suppliers ticked on the comparison board. A comment and at least one value are required.",
@@ -168,18 +168,18 @@ export const en: Record<keyof typeof pt, string> = {
     "No supplier can receive a counterproposal now: they must have answered and have no other counterproposal waiting for them.",
   "quotation.counter.sent": "Counterproposal sent to {n} supplier(s).",
   "quotation.history.answer": "Supplier proposal",
-  "quotation.history.decline": "The supplier declined the quotation",
+  "quotation.history.decline": "The supplier declined the inquiry",
   "quotation.history.proposal": "Wellmix counterproposal",
   "quotation.history.empty": "No proposals yet.",
   "quotation.error.quote_counter_none":
     "Tick at least one supplier on the comparison board.",
   "quotation.error.quote_counter_not_answered":
-    "A counterproposal only goes to those who already answered the quotation.",
+    "A counterproposal only goes to those who already answered the inquiry.",
   "quotation.notify.counter.subject":
-    "Quotation no. {n}: Wellmix sent a counterproposal",
+    "Inquiry no. {n}: Wellmix sent a counterproposal",
   "quotation.notify.counter.body":
-    "Product: {product}. Open the quotation, see the counterproposal and update your answer.",
-  "quotation.notify.message.subject": "Quotation no. {n}: new message",
+    "Product: {product}. Open the inquiry, see the counterproposal and update your answer.",
+  "quotation.notify.message.subject": "Inquiry no. {n}: new message",
   "quotation.supplier.title": "Negotiation with Wellmix",
   "quotation.supplier.counter": "Wellmix counterproposal for {product}",
   "quotation.supplier.counterHint":
@@ -189,7 +189,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sampling.intro.earlySupplier":
     "You can already send photos and videos of the sample of this item (3D-printed: details, dimensions, fittings), without waiting for Wellmix's decision. The physical sample is not shipped.",
   "sampling.intro.earlyWellmix":
-    "The supplier can already send the sample while the quotation is running. When they do, check and approve, or reject with the reason so they send again.",
+    "The supplier can already send the sample while the inquiry is running. When they do, check and approve, or reject with the reason so they send again.",
   "quoteSampling.col": "Sample",
   "quoteSampling.skipped": "Not required",
   "quoteSampling.skippedHint":
@@ -213,9 +213,9 @@ export const en: Record<keyof typeof pt, string> = {
   "quoteSampling.notice.rejected":
     "Sample rejected; the supplier was notified.",
   "quoteSampling.notify.submitted.subject":
-    "Quotation no. {n}: sample of {product} sent",
-  "quoteSampling.notify.approved.subject": "Quotation no. {n}: sample approved",
-  "quoteSampling.notify.rejected.subject": "Quotation no. {n}: sample rejected",
+    "Inquiry no. {n}: sample of {product} sent",
+  "quoteSampling.notify.approved.subject": "Inquiry no. {n}: sample approved",
+  "quoteSampling.notify.rejected.subject": "Inquiry no. {n}: sample rejected",
   "quote.error.quote_winner_sampling":
     "This supplier's sample is not approved yet: only a supplier with an approved sample, or a known supplier of the product, can win.",
   "quote.error.sampling_not_open": "There is no sampling for this product.",
@@ -248,23 +248,23 @@ export const zh: Record<keyof typeof pt, string> = {
   "quotation.close": "关闭",
   "quotation.list.title": "询盘",
   "quotation.list.subtitle":
-    "与供应商的全部询价：来自 Book、客户订货或补货。谈判在询价内进行，直到确定订单的供应商。",
-  "quotation.list.count": "{n} 个询价 · {products} 个不同产品",
-  "quotation.list.empty": "暂无询价。",
+    "与供应商的全部询盘：来自 Book、客户订货或补货。谈判在询盘内进行，直到确定订单的供应商。",
+  "quotation.list.count": "{n} 个询盘 · {products} 个不同产品",
+  "quotation.list.empty": "暂无询盘。",
   "quotation.list.suppliers": "{n} 家供应商",
   "quotation.tabs.open": "进行中",
   "quotation.tabs.closed": "已结束",
   "quotation.tabs.invites": "Book 邀请",
-  "quotation.tabs.emptyOpen": "没有进行中的询价。",
-  "quotation.tabs.emptyClosed": "暂无已结束的询价。",
+  "quotation.tabs.emptyOpen": "没有进行中的询盘。",
+  "quotation.tabs.emptyClosed": "暂无已结束的询盘。",
   "quotation.col.origin": "来源",
   "quotation.origin.book": "Book",
   "quotation.origin.order": "客户订货",
   "quotation.origin.replenishment": "补货",
   "quotation.detail.title": "询盘 {n} 号",
   "quotation.detail.back": "返回询盘列表",
-  "quotation.item.product": "本询价的产品",
-  "quotation.item.open": "在询价中打开产品",
+  "quotation.item.product": "本询盘的产品",
+  "quotation.item.open": "在询盘中打开产品",
   "quotation.board.hint":
     "勾选将收到旁边还价的供应商。每行的图标可打开与该供应商的对话以及报价与还价的记录。",
   "quotation.board.col.select": "接收还价",
@@ -276,7 +276,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "quotation.board.chatTitle": "对话 · {name}",
   "quotation.board.history": "查看 {name} 的报价与还价",
   "quotation.board.historyTitle": "报价与还价 · {name}",
-  "quotation.board.open": "打开 {name} 的询价",
+  "quotation.board.open": "打开 {name} 的询盘",
   "quotation.counter.title": "退回并还价",
   "quotation.counter.hint":
     "发送给比价表中勾选的供应商。必须填写说明和至少一个数值。",
@@ -286,16 +286,16 @@ export const zh: Record<keyof typeof pt, string> = {
     "目前没有供应商可接收还价：需已回复且没有待其答复的还价。",
   "quotation.counter.sent": "已向 {n} 家供应商发送还价。",
   "quotation.history.answer": "供应商报价",
-  "quotation.history.decline": "供应商拒绝了询价",
+  "quotation.history.decline": "供应商拒绝了询盘",
   "quotation.history.proposal": "Wellmix 还价",
   "quotation.history.empty": "暂无报价。",
   "quotation.error.quote_counter_none": "请在比价表中至少勾选一家供应商。",
   "quotation.error.quote_counter_not_answered":
-    "还价只能发送给已回复询价的供应商。",
-  "quotation.notify.counter.subject": "询价 {n} 号：Wellmix 已还价",
+    "还价只能发送给已回复询盘的供应商。",
+  "quotation.notify.counter.subject": "询盘 {n} 号：Wellmix 已还价",
   "quotation.notify.counter.body":
-    "产品：{product}。请打开询价，查看还价并更新您的回复。",
-  "quotation.notify.message.subject": "询价 {n} 号：新消息",
+    "产品：{product}。请打开询盘，查看还价并更新您的回复。",
+  "quotation.notify.message.subject": "询盘 {n} 号：新消息",
   "quotation.supplier.title": "与 Wellmix 的谈判",
   "quotation.supplier.counter": "Wellmix 对 {product} 的还价",
   "quotation.supplier.counterHint":
@@ -305,7 +305,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sampling.intro.earlySupplier":
     "您现在就可以发送该商品样品（3D 打印：细节、尺寸、配合）的照片和视频，无需等待 Wellmix 的决定。实物样品无需寄送。",
   "sampling.intro.earlyWellmix":
-    "询价进行期间供应商即可发送样品。收到后请检查并批准，或填写原因驳回，让其重新发送。",
+    "询盘进行期间供应商即可发送样品。收到后请检查并批准，或填写原因驳回，让其重新发送。",
   "quoteSampling.col": "样品",
   "quoteSampling.skipped": "免样",
   "quoteSampling.skippedHint":
@@ -326,9 +326,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "quoteSampling.notice.submitted": "样品已提交 Wellmix 验证。",
   "quoteSampling.notice.approved": "样品已批准。",
   "quoteSampling.notice.rejected": "样品已驳回；已通知供应商。",
-  "quoteSampling.notify.submitted.subject": "询价 {n} 号：{product} 样品已发送",
-  "quoteSampling.notify.approved.subject": "询价 {n} 号：样品已批准",
-  "quoteSampling.notify.rejected.subject": "询价 {n} 号：样品被驳回",
+  "quoteSampling.notify.submitted.subject": "询盘 {n} 号：{product} 样品已发送",
+  "quoteSampling.notify.approved.subject": "询盘 {n} 号：样品已批准",
+  "quoteSampling.notify.rejected.subject": "询盘 {n} 号：样品被驳回",
   "quote.error.quote_winner_sampling":
     "该供应商的样品尚未批准：只有样品已批准或为该产品已知供应商的才能中选。",
   "quote.error.sampling_not_open": "该产品没有打样环节。",

@@ -6,7 +6,7 @@ export const pt = {
   "supplierPay.due": "Valor a pagar ao fornecedor",
   "supplierPay.dueHint": "FOB do pedido {fob} · já registrado {paid}",
   "supplierPay.noFob":
-    "O pedido ainda não tem valor FOB (preço da cotação × quantidade).",
+    "O pedido ainda não tem valor FOB (preço da consulta × quantidade).",
   "supplierPay.transfer": "Dados para a transferência",
   "supplierPay.missingBank": "Falta no cadastro do fornecedor: {fields}.",
   "supplierPay.fillBank": "Preencher dados bancários",
