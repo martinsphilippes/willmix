@@ -15,7 +15,29 @@ import {
 } from "@/lib/product-registration";
 import { Card, Input, Select, Textarea, cx } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { labelKey } from "@/lib/product-registration";
+import type {
+  ListKind,
+  RegistrationLookups,
+} from "@/lib/services/sankhya-lookups";
 import { registrationAction } from "../../actions/product-registration";
+import {
+  GroupField,
+  LookupField,
+  type GroupLabels,
+  type GroupTuple,
+  type LookupChoice,
+} from "./lookup-fields";
+
+/** O que os campos com lista precisam (listas do Sankhya e os grupos). */
+export interface FormExtras {
+  lines: ProductLine[];
+  lists: RegistrationLookups["lists"];
+  groups: GroupTuple[];
+  groupsFromSankhya: boolean;
+  family: { code: string; name: string } | null;
+  groupLabels: GroupLabels;
+}
 
 /*
  * O formulário do cadastro (docs/PRODUCT_REGISTRATION.md): os campos da tela
@@ -31,8 +53,27 @@ const fieldLabel = (t: Translate, id: string) =>
 /** Atributos que o E2E e os testes já usavam no bloco antigo. */
 const LEGACY_ATTR: Record<string, Record<string, string>> = {
   descrPt: { "data-request-product-name": "" },
-  lineId: { "data-request-product-line": "" },
+  group: { "data-request-product-line": "" },
 };
+
+/**
+ * O escolhido de partida numa lista: o código gravado; sem ele, a opção com
+ * o mesmo nome do que o processo trouxe (ex.: a embalagem do book "COLOR
+ * BOX"); fora da lista, o código como está.
+ */
+function initialChoice(
+  options: readonly LookupChoice[],
+  code: string,
+  name: string,
+): LookupChoice | null {
+  if (code) {
+    const hit = options.find((o) => o.code === code);
+    return hit ?? { code, name: name || code };
+  }
+  if (!name) return null;
+  const key = labelKey(name);
+  return options.find((o) => labelKey(o.name) === key) ?? null;
+}
 
 function ColumnHint({
   resolution,
@@ -91,13 +132,13 @@ function FieldControl({
   field,
   values,
   resolution,
-  lines,
+  extras,
   t,
 }: {
   field: RegistrationField;
   values: RegistrationValues;
   resolution: ColumnResolution | undefined;
-  lines: ProductLine[];
+  extras: FormExtras;
   t: Translate;
 }) {
   const name = `f.${field.id}`;
@@ -107,20 +148,60 @@ function FieldControl({
   const unit = field.unit
     ? t(`productRegistration.unit.${field.unit}` as DictionaryKey)
     : null;
-  switch (field.type) {
-    case "line":
+  const label = fieldLabel(t, field.id);
+  if (field.type === "lookup" && field.lookup === "group") {
+    // Sem a árvore do Sankhya: as linhas do portal (o grupo delas vai).
+    if (!extras.groupsFromSankhya)
       return (
-        <Select name={name} defaultValue={value} {...attrs}>
-          <option value="">{t("common.select")}</option>
-          {lines.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.sankhyaCode
-                ? `${l.name} · ${l.sankhyaCode}`
-                : `${l.name} (${t("productRegistration.lineNoGroup")})`}
-            </option>
-          ))}
-        </Select>
+        <div className="space-y-1">
+          <Select
+            name={name}
+            defaultValue={value}
+            aria-label={label}
+            {...attrs}
+          >
+            <option value="">{t("common.select")}</option>
+            {extras.lines.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.sankhyaCode
+                  ? `${l.name} · ${l.sankhyaCode}`
+                  : `${l.name} (${t("productRegistration.lineNoGroup")})`}
+              </option>
+            ))}
+          </Select>
+          <p className="text-xs text-amber-700">
+            {t("productRegistration.groupFallback")}
+          </p>
+        </div>
       );
+    return (
+      <GroupField
+        groups={extras.groups}
+        initial={value || null}
+        family={extras.family}
+        labels={extras.groupLabels}
+        ariaLabel={label}
+      />
+    );
+  }
+  if (field.type === "lookup" && field.lookup) {
+    const choices = extras.lists[field.lookup as ListKind]?.options ?? [];
+    if (choices.length)
+      return (
+        <LookupField
+          fieldId={field.id}
+          options={choices}
+          initial={initialChoice(
+            choices,
+            value,
+            values[nameKey(field.id)] ?? "",
+          )}
+          labels={extras.groupLabels.picker}
+          ariaLabel={label}
+        />
+      );
+  }
+  switch (field.type) {
     case "yesno":
       return (
         <Select name={name} defaultValue={value || "N"} {...attrs}>
@@ -141,6 +222,8 @@ function FieldControl({
     case "date":
       return <Input type="date" name={name} defaultValue={value} {...attrs} />;
     case "code":
+    case "lookup":
+      // Sem a lista do Sankhya: o código e o nome digitados.
       return (
         <div className="flex gap-1.5">
           {options.length ? (
@@ -209,19 +292,19 @@ function FieldControl({
 }
 
 const WIDE = new Set<RegistrationField["type"]>(["longtext"]);
-const DOUBLE = new Set<RegistrationField["type"]>(["code", "line"]);
+const DOUBLE = new Set<RegistrationField["type"]>(["code", "lookup"]);
 
 function SectionCard({
   section,
   values,
   columns,
-  lines,
+  extras,
   t,
 }: {
   section: RegistrationSection;
   values: RegistrationValues;
   columns: Record<string, ColumnResolution>;
-  lines: ProductLine[];
+  extras: FormExtras;
   t: Translate;
 }) {
   const fields = REGISTRATION_FIELDS.filter((x) => x.section === section);
@@ -245,7 +328,7 @@ function SectionCard({
             data-registration-field={field.id}
           >
             {/* Rótulo com o campo dentro: o aviso de erro acha o nome. */}
-            <label className="block min-w-0 space-y-1">
+            <FieldBox list={field.type === "lookup"}>
               <span
                 className="block text-xs font-medium leading-5 text-zinc-700"
                 data-field-label=""
@@ -268,10 +351,10 @@ function SectionCard({
                 field={field}
                 values={values}
                 resolution={columns[field.id]}
-                lines={lines}
+                extras={extras}
                 t={t}
               />
-            </label>
+            </FieldBox>
             <ColumnHint resolution={columns[field.id]} t={t} />
           </div>
         ))}
@@ -285,11 +368,20 @@ function SectionCard({
   );
 }
 
+/** Rótulo em volta do campo; nas listas com busca, um bloco (o rótulo não abre a lista). */
+function FieldBox({ list, children }: { list: boolean; children: ReactNode }) {
+  return list ? (
+    <div className="block min-w-0 space-y-1">{children}</div>
+  ) : (
+    <label className="block min-w-0 space-y-1">{children}</label>
+  );
+}
+
 export function RegistrationForm({
   requestId,
   values,
   columns,
-  lines,
+  extras,
   state,
   items,
   t,
@@ -297,7 +389,7 @@ export function RegistrationForm({
   requestId: string;
   values: RegistrationValues;
   columns: Record<string, ColumnResolution>;
-  lines: ProductLine[];
+  extras: FormExtras;
   state: RegistrationState;
   /** Os itens do book a ligar (só antes de o produto existir). */
   items?: ReactNode;
@@ -319,7 +411,7 @@ export function RegistrationForm({
           section={section}
           values={values}
           columns={columns}
-          lines={lines}
+          extras={extras}
           t={t}
         />
       ))}

@@ -17,7 +17,15 @@ import { normalizeNcm } from "@/lib/fiscal";
 import {
   OFF,
   REGISTRATION_FIELDS,
+  applySimilar,
   cleanValues,
+  groupPath,
+  leafGroups,
+  similarCandidates,
+  valuesFromSankhyaRow,
+  nameKey,
+  type GroupNode,
+  type GroupPath,
   invalidFields,
   isColumnName,
   mergeValues,
@@ -34,6 +42,12 @@ import {
   type RegistrationValues,
 } from "@/lib/product-registration";
 import { audit } from "./audit";
+import {
+  readLookupSources,
+  registrationLookups,
+  type ListKind,
+  type RegistrationLookups,
+} from "./sankhya-lookups";
 
 /*
  * Cadastrar produto (dono, 26/11/2026; docs/PRODUCT_REGISTRATION.md): a
@@ -275,20 +289,42 @@ export async function registrationTaskRows(): Promise<SupplierRequest[]> {
 /* A tela de um produto                                                      */
 /* ------------------------------------------------------------------------ */
 
+/** Um Grupo do Sankhya na lista, com os níveis acima dele. */
+export interface GroupChoice {
+  /** O valor gravado: o CODGRUPOPROD (ou o id da linha do portal, sem o Sankhya). */
+  value: string;
+  path: GroupPath;
+}
+
 export interface RegistrationContext {
   request: SupplierRequest;
   item: BookingItem | null;
   lot: BookingLot | null;
   supplier: Party | null;
+  /** A Factory do book (pode ser o próprio Supplier). */
+  factory: Party | null;
   product: Product | null;
   lines: ProductLine[];
   values: RegistrationValues;
+  /** O que o processo preencheu (sem o rascunho): base do "semelhante". */
+  prefill: RegistrationValues;
   columns: Record<string, ColumnResolution>;
   dictionary: ProductDictionary | null;
   overrides: Record<string, string>;
   state: RegistrationState;
   /** Foto do produto na balança (amostra ou ficha da cotação), se houver. */
   photoDocumentIds: string[];
+  /** Listas do Sankhya (linha, embalagem, unidades, marcas, país). */
+  lookups: RegistrationLookups;
+  lookupSources: Partial<Record<ListKind, string>>;
+  /**
+   * Grupos para escolher: os do último nível da árvore do Sankhya; sem ela,
+   * as linhas do portal (`fromSankhya` falso).
+   */
+  groups: GroupChoice[];
+  groupsFromSankhya: boolean;
+  /** Família escolhida antes (a do book), para o aviso de divergência. */
+  family: GroupNode | null;
 }
 
 /** O mais frequente de uma lista (empate: o primeiro). */
@@ -310,6 +346,7 @@ async function prefillSource(
   item: BookingItem | null,
   lot: BookingLot | null,
   supplier: Party | null,
+  factory: Party | null,
   lines: ProductLine[],
 ): Promise<RegistrationSource> {
   const store = getStore();
@@ -327,12 +364,19 @@ async function prefillSource(
   const owner = ownerId
     ? await store.get("users", ownerId).catch(() => null)
     : null;
-  // Linha: a da família do book, quando só uma linha tem essa família.
+  // Certificações: as da linha da família do book, quando só uma tem essa família.
   const familyLines = lot?.familyCode
     ? lines.filter((l) => l.familyCode === lot.familyCode)
     : [];
   const line = familyLines.length === 1 ? familyLines[0] : null;
   const variant = request.variant ?? null;
+  // Factory (dono, 27/11/2026): o nº da loja digitado na importação do book
+  // (o código da fábrica), senão o do cadastro dela ou o da planilha.
+  const store_ =
+    lot?.storeNumber?.trim() ||
+    factory?.storeNumber?.trim() ||
+    item?.sheetStore?.trim() ||
+    null;
   return {
     name: it.productName ?? it.description ?? null,
     description: it.description ?? it.productName ?? null,
@@ -354,12 +398,13 @@ async function prefillSource(
     innerQty: it.innerQty,
     ncm: normalizeNcm(item?.ncm) ?? null,
     leadTimeDays: deal.leadTimeDays,
-    supplierName: supplier?.name ?? null,
+    supplierName: supplier?.name ?? lot?.supplierName ?? null,
     supplierCode: supplier?.sankhyaCode ?? null,
-    supplierContact:
-      [supplier?.address, supplier?.city, supplier?.phone]
-        .filter(Boolean)
-        .join(" / ") || null,
+    factoryName: factory?.name ?? null,
+    factoryStore: store_,
+    factoryContact:
+      [store_, factory?.address, factory?.phone].filter(Boolean).join(" / ") ||
+      null,
     countryCode: mostCommon(
       refs.map((r) => (r.CODPAIS == null ? null : String(r.CODPAIS))),
     ),
@@ -377,9 +422,88 @@ async function prefillSource(
       ]
         .filter(Boolean)
         .join("\n") || null,
-    lineId: line?.id ?? null,
     certifications: line?.requiredCertifications ?? [],
   };
+}
+
+/**
+ * Os Grupos para escolher (dono, 27/11/2026): os do último nível da árvore do
+ * Sankhya, cada um com Sub grupo, Coleção e Categoria. Sem a árvore (Sankhya
+ * fora do ar ou não configurado, e nos testes), as linhas do portal.
+ */
+async function groupChoices(
+  lines: ProductLine[],
+): Promise<{ groups: GroupChoice[]; fromSankhya: boolean }> {
+  const { sankhyaProductGroups } = await import("./sankhya-product-families");
+  const tree = await sankhyaProductGroups().catch(
+    () => new Map<string, { name: string; parent: string | null }>(),
+  );
+  if (tree.size) {
+    const groups = leafGroups(tree)
+      .map((code) => groupPath(code, tree))
+      .filter((p): p is GroupPath => !!p)
+      .map((path) => ({ value: path.group.code, path }))
+      .sort((a, b) => a.path.group.name.localeCompare(b.path.group.name));
+    return { groups, fromSankhya: true };
+  }
+  return {
+    groups: lines.map((l) => ({
+      value: l.id,
+      path: {
+        group: { code: l.sankhyaCode ?? "", name: l.name },
+        subgroup: null,
+        collection: null,
+        category: l.familyCode
+          ? { code: l.familyCode, name: l.familyCode }
+          : null,
+      },
+    })),
+    fromSankhya: false,
+  };
+}
+
+/**
+ * A linha do portal do Grupo escolhido: o id de uma linha (escolhida sem a
+ * lista do Sankhya) ou o CODGRUPOPROD, que acha a linha pelo código; grupo
+ * do Sankhya sem linha no portal ganha a linha, como na carga do Sankhya.
+ */
+export async function lineForGroup(
+  value: string | undefined,
+): Promise<{ line: ProductLine; groupCode: string | null }> {
+  const store = getStore();
+  const v = (value ?? "").trim();
+  if (!v)
+    throw new ProductRegistrationError("registration_required", ["f.group"]);
+  const byId = /^\d+$/.test(v) ? null : await store.get("product_lines", v);
+  if (byId) return { line: byId, groupCode: byId.sankhyaCode ?? null };
+  if (!/^\d{1,12}$/.test(v))
+    throw new ProductRegistrationError("registration_invalid", ["f.group"]);
+  const [existing] = await store.list("product_lines", {
+    filter: { sankhyaCode: v },
+    limit: 1,
+  });
+  if (existing) return { line: existing, groupCode: v };
+  const { sankhyaProductGroups } = await import("./sankhya-product-families");
+  const tree = await sankhyaProductGroups();
+  const path = groupPath(v, tree);
+  if (!path)
+    throw new ProductRegistrationError("registration_group_unknown", [
+      "f.group",
+    ]);
+  const { LINE_EXTRA_DEFAULTS } = await import("@/lib/db");
+  const { DEFAULT_PREPARATION_REQUIREMENTS } =
+    await import("@/lib/workflow/templates");
+  const line = await store.create("product_lines", {
+    ...LINE_EXTRA_DEFAULTS,
+    name: path.group.name,
+    manualDocumentId: null,
+    requirements: DEFAULT_PREPARATION_REQUIREMENTS,
+    requiredCertifications: null,
+    active: true,
+    sankhyaCode: v,
+    familyCode: path.category?.code ?? null,
+  });
+  return { line, groupCode: v };
 }
 
 export async function registrationContext(
@@ -419,21 +543,57 @@ export async function registrationContext(
       });
   }
   const { samplingApproved } = await import("@/lib/supplier-request-sampling");
+  // Factory do book: o cadastro estimado pela planilha (pode ser o Supplier).
+  const factory =
+    lot?.supplierId && lot.supplierId !== supplier?.id
+      ? await store.get("parties", lot.supplierId).catch(() => null)
+      : lot?.supplierId
+        ? supplier
+        : null;
   const prefill = prefillValues(
-    await prefillSource(request, item, lot, supplier, lines),
+    await prefillSource(request, item, lot, supplier, factory, lines),
   );
   const photos = [
     request.item.photoDocumentId,
     ...(item?.extraPhotoDocumentIds ?? []),
   ].filter((x): x is string => !!x);
+  const [lookups, lookupSources, groupData, families] = await Promise.all([
+    registrationLookups(),
+    readLookupSources(),
+    groupChoices(lines),
+    lot?.familyCode
+      ? import("./product-families")
+          .then((m) => m.listProductFamilies({ includeInactive: true }))
+          .catch(() => [])
+      : Promise.resolve([]),
+  ]);
+  const familyRow = lot?.familyCode
+    ? families.find((f) => f.code === lot.familyCode)
+    : null;
+  // Rascunho de antes da lista de grupos (27/11/2026): a linha do portal
+  // escolhida vale como o Grupo.
+  const saved = request.registration?.values ?? null;
+  const draft =
+    saved && saved.lineId && !saved.group
+      ? { ...saved, group: saved.lineId }
+      : saved;
   return {
     request,
     item,
     lot,
     supplier,
+    factory,
     product,
     lines,
-    values: mergeValues(prefill, request.registration?.values),
+    values: mergeValues(prefill, draft),
+    prefill,
+    lookups,
+    lookupSources,
+    groups: groupData.groups,
+    groupsFromSankhya: groupData.fromSankhya,
+    family: lot?.familyCode
+      ? { code: lot.familyCode, name: familyRow?.name ?? lot.familyCode }
+      : null,
     columns: resolveColumns(dict, overrides),
     dictionary: dict,
     overrides,
@@ -569,6 +729,8 @@ export async function registerProduct(
       "registration_required",
       missing.map((id) => `f.${id}`),
     );
+  // O Grupo escolhido leva à linha do portal (o produto do portal precisa dela).
+  const { line } = await lineForGroup(values.group);
   const { createProductFromRequest } =
     await import("./supplier-request-product");
   const created = await createProductFromRequest(
@@ -576,7 +738,7 @@ export async function registerProduct(
     request.id,
     {
       name: values.descrPt,
-      lineId: values.lineId,
+      lineId: line.id,
       itemIds,
     },
     { access: "registration" },
@@ -604,8 +766,150 @@ export async function sendRegistration(
   const current = await store.get("products", request.productId);
   if (!current) throw new ProductRegistrationError("request_product_not_found");
   const values = checked(raw);
-  const product = await applyToProduct(user, current, values);
+  // Grupo trocado depois de cadastrar: o produto do portal muda de linha.
+  let base = current;
+  if (values.group) {
+    const { line } = await lineForGroup(values.group);
+    if (line.id !== current.lineId)
+      base = await store.update("products", current.id, { lineId: line.id });
+  }
+  const product = await applyToProduct(user, base, values);
   return sendNow(user, request, product, values);
+}
+
+/* ------------------------------------------------------------------------ */
+/* É semelhante a algum do catálogo?                                         */
+/* ------------------------------------------------------------------------ */
+
+const shownNumber = (n: number | null | undefined, factor = 1) =>
+  n === null || n === undefined || !Number.isFinite(n)
+    ? undefined
+    : String(Math.round(n * factor * 1e6) / 1e6).replace(".", ",");
+
+/** O que o cadastro do portal tem do produto, nos campos do formulário. */
+function portalProductValues(p: Product): RegistrationValues {
+  const meters = (cm: number | null) => shownNumber(cm, 0.01);
+  return cleanValues({
+    descrPt: p.name,
+    [nameKey("brand")]: p.brand ?? undefined,
+    composition: p.material ?? undefined,
+    colors: p.color ?? undefined,
+    pantone: p.pantone ?? undefined,
+    ncm: p.ncm ?? undefined,
+    height: meters(p.heightCm),
+    width: meters(p.widthCm),
+    depth: meters(p.lengthCm),
+    netWeight: shownNumber(p.netWeightKg),
+    grossWeight: shownNumber(p.grossWeightKg),
+    masterQty: shownNumber(p.masterBoxQty),
+    innerQty: shownNumber(p.innerBoxQty),
+    masterHeight: meters(p.boxHeightCm),
+    masterWidth: meters(p.boxWidthCm),
+    masterDepth: meters(p.boxLengthCm),
+    masterCbm: shownNumber(p.cbm),
+  } as Record<string, unknown>);
+}
+
+export interface SimilarProduct {
+  product: Product;
+  values: RegistrationValues;
+  /** O cadastro veio do Sankhya (pelo CODPROD); senão, só o do portal. */
+  fromSankhya: boolean;
+}
+
+/**
+ * O cadastro de um produto do catálogo nos campos do formulário: o do
+ * Sankhya (a linha da TGFPRO pelo CODPROD, pelo mesmo de-para do envio),
+ * completado pelo do portal. Sem o Sankhya, só o do portal.
+ */
+export async function similarProduct(
+  user: User,
+  productId: string,
+): Promise<SimilarProduct | null> {
+  assertRegistration(user);
+  const store = getStore();
+  const product = await store.get("products", productId);
+  if (!product) return null;
+  const portal = portalProductValues(product);
+  if (!product.sankhyaCode || !/^\d{1,12}$/.test(product.sankhyaCode))
+    return { product, values: portal, fromSankhya: false };
+  try {
+    const { getSankhyaConfigStatus } = await settings();
+    if (!(await getSankhyaConfigStatus()).config)
+      return { product, values: portal, fromSankhya: false };
+    const [dictionary, overrides, lookups] = await Promise.all([
+      readProductDictionary(),
+      readFieldOverrides(),
+      registrationLookups(),
+    ]);
+    const columns = resolveColumns(dictionary, overrides);
+    const wanted = [
+      ...new Set(
+        REGISTRATION_FIELDS.flatMap((f) => [
+          columns[f.id]?.column ?? null,
+          f.nameColumn ?? null,
+        ]).filter((c): c is string => !!c),
+      ),
+    ];
+    const { executeQuery } = await import("@/lib/integrations/sankhya-client");
+    const result = await executeQuery(
+      `SELECT ${wanted.join(", ")} FROM TGFPRO WHERE CODPROD = ${Number(product.sankhyaCode)}`,
+    );
+    const row = result.rows[0];
+    if (!row) return { product, values: portal, fromSankhya: false };
+    const fromErp = valuesFromSankhyaRow(row, columns, (field, code) =>
+      field.lookup && field.lookup !== "group"
+        ? (lookups.lists[field.lookup]?.options.find((o) => o.code === code)
+            ?.name ?? null)
+        : null,
+    );
+    return { product, values: { ...portal, ...fromErp }, fromSankhya: true };
+  } catch (error) {
+    console.error("[product-registration] semelhante no Sankhya", error);
+    return { product, values: portal, fromSankhya: false };
+  }
+}
+
+/** Os campos que o semelhante pode trazer para esta cotação. */
+export async function similarChoices(
+  user: User,
+  ctx: Pick<RegistrationContext, "prefill">,
+  productId: string,
+): Promise<{ similar: SimilarProduct; fields: string[] } | null> {
+  const similar = await similarProduct(user, productId);
+  if (!similar) return null;
+  return { similar, fields: similarCandidates(ctx.prefill, similar.values) };
+}
+
+/**
+ * Traz para o rascunho os campos escolhidos do produto semelhante (dono,
+ * 27/11/2026): só os que o processo não preencheu; o que foi digitado nos
+ * outros fica.
+ */
+export async function applySimilarProduct(
+  user: User,
+  requestId: string,
+  raw: Record<string, string>,
+  productId: string,
+  fields: string[],
+): Promise<number> {
+  assertRegistration(user);
+  const ctx = await registrationContext(user, requestId);
+  if (!ctx) throw new ProductRegistrationError("not_found");
+  const choice = await similarChoices(user, ctx, productId);
+  if (!choice) throw new ProductRegistrationError("request_product_not_found");
+  const allowed = new Set(choice.fields);
+  const chosen = fields.filter((id) => allowed.has(id));
+  const values = applySimilar(cleanValues(raw), choice.similar.values, chosen);
+  await saveValues(user, ctx.request, values);
+  await audit(
+    user,
+    "product_registration.similar",
+    "supplier_request",
+    ctx.request.id,
+    `Cotação nº ${ctx.request.number}: ${chosen.length} campo(s) trazidos do produto semelhante ${choice.similar.product.name}${choice.similar.product.sankhyaCode ? ` (CODPROD ${choice.similar.product.sankhyaCode})` : ""}`,
+  );
+  return chosen.length;
 }
 
 async function findByRef(ref: string | undefined): Promise<string | null> {
@@ -661,7 +965,7 @@ async function sendNow(
   }
   const missing = missingRequired(values, "sankhya");
   const line = await store.get("product_lines", product.lineId);
-  if (!line?.sankhyaCode) missing.push("lineId");
+  if (!line?.sankhyaCode) missing.push("group");
   if (missing.length) {
     await saveValues(user, request, values, {
       sendStatus: "error",
@@ -677,7 +981,13 @@ async function sendNow(
   if (!dictionary)
     dictionary = await loadProductDictionary(user).catch(() => null);
   const columns = resolveColumns(dictionary, await readFieldOverrides());
-  const payload = sankhyaPayload(values, columns, line!.sankhyaCode!);
+  const present = new Set((dictionary?.fields ?? []).map((f) => f.column));
+  const payload = sankhyaPayload(
+    values,
+    columns,
+    line!.sankhyaCode!,
+    (column) => !dictionary || present.has(column),
+  );
   const skipped = payload.skipped.map((s) => `${s.id}:${s.reason}`);
   let status: SendOutcome;
   let detail: string;

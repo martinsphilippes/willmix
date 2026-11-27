@@ -46,10 +46,11 @@ export async function registrationAction(form: FormData) {
   const raw = str(form, "id");
   const back = ID.safeParse(raw).success ? `${LIST}/${raw}` : LIST;
   const intent = z
-    .enum(["draft", "register", "send"])
+    .enum(["draft", "register", "send", "similarPick", "similarApply"])
     .catch("draft")
     .parse(str(form, "intent"));
   let target = back;
+  let anchor = "#cadastro";
   try {
     const id = ID.parse(raw);
     const svc = await import("@/lib/services/product-registration");
@@ -57,7 +58,31 @@ export async function registrationAction(form: FormData) {
     await svc.saveRegistrationDraft(user, id, values);
     if (intent === "draft")
       target = withParams(back, { registration: "saved" });
-    else if (intent === "register") {
+    else if (intent === "similarPick") {
+      // "É semelhante a algum do catálogo?" (dono, 27/11/2026): com o
+      // rascunho gravado, abre o quadro dos campos a trazer.
+      const similar = ID.parse(str(form, "similarId"));
+      target = withParams(back, { similar });
+      anchor = "#semelhante";
+    } else if (intent === "similarApply") {
+      const similar = ID.parse(str(form, "similarId"));
+      const fields = z
+        .array(z.string().regex(/^[A-Za-z]{1,40}$/))
+        .max(120)
+        .parse(
+          form
+            .getAll("similarField")
+            .filter((v): v is string => typeof v === "string"),
+        );
+      const n = await svc.applySimilarProduct(
+        user,
+        id,
+        values,
+        similar,
+        fields,
+      );
+      target = withParams(back, { similarApplied: String(n) });
+    } else if (intent === "register") {
       const result = await svc.registerProduct(user, id, values, itemIds(form));
       target = withParams(back, { product: "created", erp: result.send });
     } else {
@@ -79,7 +104,41 @@ export async function registrationAction(form: FormData) {
     });
   }
   revalidatePath("/app", "layout");
-  redirect(`${target}#cadastro`);
+  redirect(`${target}${target.includes("error=") ? "#cadastro" : anchor}`);
+}
+
+/** Lê de novo as listas do Sankhya (grupos, linha, embalagem, unidades...). */
+export async function refreshRegistrationListsAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "id");
+  const back = ID.safeParse(raw).success ? `${LIST}/${raw}` : LIST;
+  await run(`${back}#campos-sankhya`, async () => {
+    const svc = await import("@/lib/services/product-registration");
+    svc.assertRegistration(user);
+    const { registrationLookups } =
+      await import("@/lib/services/sankhya-lookups");
+    await registrationLookups({ refresh: true });
+    return withParams(back, { lists: "1" }) + "#campos-sankhya";
+  });
+}
+
+/** Tabela de cada lista ("TABELA.CODIGO.NOME"), escolhida pelo administrador. */
+export async function saveRegistrationListSourcesAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "id");
+  const back = ID.safeParse(raw).success ? `${LIST}/${raw}` : LIST;
+  await run(`${back}#campos-sankhya`, async () => {
+    const svc = await import("@/lib/services/product-registration");
+    svc.assertRegistration(user);
+    const sources: Record<string, string> = {};
+    for (const [key, value] of form.entries())
+      if (key.startsWith("source.") && typeof value === "string")
+        sources[key.slice(7)] = value;
+    const lookups = await import("@/lib/services/sankhya-lookups");
+    await lookups.saveLookupSources(user, sources);
+    await lookups.registrationLookups({ refresh: true });
+    return withParams(back, { lists: "1" }) + "#campos-sankhya";
+  });
 }
 
 /** Lê de novo os campos da TGFPRO no dicionário do Sankhya. */
