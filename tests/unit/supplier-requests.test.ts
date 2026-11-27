@@ -562,8 +562,10 @@ describe("produto da solicitação aprovada", () => {
       name: "Garrafa térmica 500 ml",
       supplierId: lotA.supplierId,
       supplierSku: "PX-A",
-      // REFFORN do Sankhya.
-      sku: "PX-A",
+      // O SKU (REFFORN do Sankhya, código WX) nasce na inclusão no Sankhya,
+      // "WX" + CODPROD; o código da fábrica fica no supplierSku (dono,
+      // 27/11/2026).
+      sku: null,
       active: true,
       // Herda o NCM do item escolhido.
       ncm: "70133700",

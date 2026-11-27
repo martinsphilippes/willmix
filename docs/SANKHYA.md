@@ -204,6 +204,7 @@ Decisões 8 e 14: o que nasce ou muda no portal vai para o Sankhya, e os dois fi
 - **Pendente** = criado depois de `syncSince` (gravado na primeira vez que a execução é ligada) e sem código, ou alterado depois de `sankhyaSyncedAt`. A carga grava `sankhyaSyncedAt`: o que veio do Sankhya não volta duplicado.
 - **Quando roda**: logo depois das telas de cadastro de parceiro e de produto gravarem; no job diário (`/api/jobs/reminders`); em `/api/jobs/sankhya-sync` (agendador externo, com `CRON_SECRET`); e no botão "Sincronizar agora" (Configurações → Processos), que mostra as pendências. Só com a execução no Sankhya ligada. Cada envio fica em `process_events` (`sync:party|product|order:create|update`).
 - **Campos fixos** (Configurações → Processos): JSON com colunas que o Sankhya exige ao incluir e o portal não tem (ex.: `{"USOPROD": "R"}`). A recusa do Sankhya aparece em "Últimos eventos" com o texto dele.
+- **Cadastrar produto** (docs/PRODUCT_REGISTRATION.md, "SKU e campos fiscais na inclusão", dono, 27/11/2026): a inclusão pela tela Cadastrar produto não procura pelo REFFORN, lê o CODPROD da resposta do `DatasetSP.save`, grava o REFFORN = "WX" + CODPROD (o SKU da Wellmix) quando o Sankhya não preenche e leva os campos fiscais que dependem do NCM pelo valor da maioria dos produtos com o mesmo NCM (`src/lib/ncm-fiscal.ts`).
 
 ## Decisões da Wellmix (10/11/2026)
 

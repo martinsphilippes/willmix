@@ -98,6 +98,12 @@ export interface RegistrationField {
   nameColumn?: string;
   /** Só no portal: nunca vai ao Sankhya (ex.: nome da Factory). */
   portalOnly?: boolean;
+  /**
+   * Gerado na inclusão no Sankhya (o SKU = REFFORN, "WX" + CODPROD; dono,
+   * 27/11/2026): só mostrado, nunca digitado, pré-preenchido, copiado do
+   * semelhante nem enviado pelo formulário.
+   */
+  generated?: boolean;
 }
 
 /** Tipo que tem o nome ao lado do código. */
@@ -233,9 +239,11 @@ export const REGISTRATION_FIELDS: readonly RegistrationField[] = [
     ["Factory Code", "CÓDIGO FABRICA (PRODUTO)", "Código Fábrica"],
     { column: "AD_FACTORYCODE", max: 60 },
   ),
+  // O REFFORN da Wellmix é o SKU (código WX), não o código do fornecedor
+  // nem o da fábrica: nasce na inclusão, "WX" + CODPROD (dono, 27/11/2026).
   f("supplierRef", "supplier", "text", ["Referência do Fornecedor"], {
     column: "REFFORN",
-    required: "sankhya",
+    generated: true,
     max: 60,
   }),
   f("country", "supplier", "lookup", ["País de origem", "País"], {
@@ -569,6 +577,8 @@ export function registrationDefaults(): RegistrationValues {
 export function cleanValues(raw: Record<string, unknown>): RegistrationValues {
   const out: RegistrationValues = {};
   for (const field of REGISTRATION_FIELDS) {
+    // O gerado (SKU) não é guardado no rascunho: vem do produto.
+    if (field.generated) continue;
     for (const key of hasName(field)
       ? [field.id, nameKey(field.id)]
       : [field.id]) {
@@ -818,7 +828,7 @@ export function sankhyaPayload(
     const raw = values[field.id]?.trim();
     const resolution = columns[field.id];
     let value: string | null = null;
-    if (field.portalOnly) continue;
+    if (field.portalOnly || field.generated) continue;
     if (field.id === "group") value = groupCode;
     else if (!raw) value = null;
     else if (field.type === "number" || field.type === "int") {
@@ -923,7 +933,6 @@ export function prefillValues(source: RegistrationSource): RegistrationValues {
     factoryStore: source.factoryStore ?? undefined,
     supplierContact: source.factoryContact ?? undefined,
     factoryCode: source.factoryCode ?? undefined,
-    supplierRef: source.factoryCode ?? undefined,
     country: source.countryCode ?? undefined,
     [nameKey("country")]: source.countryName ?? undefined,
     port: source.portCode ?? undefined,
@@ -1019,8 +1028,8 @@ export function productPatch(
     if (value !== undefined) out[key] = value;
   };
   set("name", text("descrPt", 160));
-  set("sku", text("supplierRef", 60) ?? text("factoryCode", 60));
-  set("supplierSku", text("factoryCode", 60) ?? text("supplierRef", 60));
+  // O SKU (REFFORN) vem do Sankhya depois da inclusão, nunca do formulário.
+  set("supplierSku", text("factoryCode", 60));
   // A marca do portal é o nome (TGFPRO.MARCA); sem a lista, o código digitado.
   set("brand", text(nameKey("brand"), 60) ?? text("brand", 60));
   set("material", text("composition", 120));
@@ -1145,7 +1154,7 @@ export function valuesFromSankhyaRow(
   const raw: Record<string, string> = {};
   for (const field of REGISTRATION_FIELDS) {
     const column = columns[field.id]?.column;
-    if (!column || field.portalOnly) continue;
+    if (!column || field.portalOnly || field.generated) continue;
     const v = upper.get(column);
     if (v === null || v === undefined || String(v).trim() === "") continue;
     const text = String(v).trim();
@@ -1183,6 +1192,7 @@ export function similarCandidates(
 ): string[] {
   const defaults = registrationDefaults();
   return REGISTRATION_FIELDS.filter((field) => {
+    if (field.generated) return false;
     const own = prefill[field.id];
     const fromProcess = !!own && own !== defaults[field.id];
     // Da lista sem o código (só o nome, do cadastro do portal): também vale.
@@ -1239,7 +1249,9 @@ export interface RegistrationCompleteness {
 export function registrationCompleteness(
   values: RegistrationValues,
 ): RegistrationCompleteness {
-  const counted = REGISTRATION_FIELDS.filter((x) => x.type !== "yesno");
+  const counted = REGISTRATION_FIELDS.filter(
+    (x) => x.type !== "yesno" && !x.generated,
+  );
   const missing = counted.filter((x) => !values[x.id]?.trim()).map((x) => x.id);
   const total = counted.length;
   const filled = total - missing.length;

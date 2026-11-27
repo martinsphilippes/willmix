@@ -27,7 +27,7 @@ Os campos são a união da tela do Sankhya (aba Compras) com as 72 colunas da pl
 - **Listas do Sankhya com busca** (dono, 27/11/2026): Grupo, Cód. Linha, Cód. Tipo Embalagem, Unidade padrão, Unid. Compra, Marca, Marca Wellmix e País de origem são escolhidos nas opções lidas do Sankhya: digita-se e a lista vai filtrando (o buscador padrão dos formulários, `SearchPicker`). O código vai ao Sankhya; a Marca vai com o código (CODMARCA) e o nome (MARCA). O que o processo trouxe continua preenchido: o código gravado, ou a opção com o mesmo nome (ex.: a embalagem "COLOR BOX" do book). Sem a lista (Sankhya fora do ar), o campo volta a ser código e nome digitados. Ver "Listas do Sankhya" abaixo.
 - Os outros campos de código (Parceiro fornecedor, Porto) têm o código e o nome ao lado; só o código vai ao Sankhya.
 - Campos de lista do dicionário (ex.: Situação Embalagem, Gerente de Produto, Tipo Pilha/Bateria) viram uma lista com as opções do TDDOPC.
-- Obrigatórios: para cadastrar no portal, a descrição e o Grupo; para enviar ao Sankhya, também a marca, a unidade padrão e a referência do fornecedor (REFFORN).
+- Obrigatórios: para cadastrar no portal, a descrição e o Grupo; para enviar ao Sankhya, também a marca e a unidade padrão. O REFFORN (SKU) não é mais obrigatório nem digitado: nasce na inclusão (seção "SKU e campos fiscais na inclusão", 27/11/2026).
 
 ### Grupo e linha (dono, 27/11/2026)
 
@@ -48,7 +48,7 @@ As duas entidades do book, já preenchidas:
 | Código fabricante (nº da loja)                         | O nº da loja digitado na importação do book                                 | Só no portal (sem campo achado no Sankhya) |
 | Factory: endereço/telefone (Fornec. Adress Phone)      | O nº da loja e o endereço/telefone da fábrica                               | AD_DADOSFABRICANTE                         |
 | Factory code (código do item na fábrica)               | O código da fábrica do item (SKU)                                           | AD_FACTORYCODE                             |
-| Referência do fornecedor (código do item)              | O código da fábrica do item                                                 | REFFORN (por ele o portal acha o CODPROD)  |
+| SKU Wellmix (Referência do fornecedor)                 | Nasce na inclusão: "WX" + CODPROD (só leitura; dono, 27/11/2026)            | REFFORN                                    |
 
 - Ao lado de cada campo, a coluna do Sankhya para onde ele vai, ou "Só no portal".
 
@@ -92,9 +92,19 @@ No lugar do "Já existe no catálogo?" (que associava a cotação a um produto e
 ## 4. Envio ao Sankhya
 
 - `DatasetSP.save` na entidade **Produto** (TGFPRO), como a sincronização já fazia (`sankhya-sync.ts`), agora com todos os campos que têm coluna. Na inclusão vão também os valores fixos dos cadastros (Configurações → Sankhya → Processos) e ATIVO = S.
-- Antes de incluir, procura pelo REFFORN: achando, liga e altera (não duplica). Depois de incluir, acha o CODPROD pelo REFFORN e grava no produto.
+- Inclui sempre um produto novo, sem conferir repetido (dono, 27/11/2026; os repetidos ficam por conta do "É semelhante" e do "associar a um produto que já existe"). O CODPROD vem na resposta do `DatasetSP.save` (`returnFields`); sem ele, o maior CODPROD com a mesma descrição e o mesmo grupo (e o código da fábrica e o Supplier, quando foram). O vínculo é gravado logo, para um novo envio alterar em vez de incluir de novo. Ver "SKU e campos fiscais na inclusão" abaixo.
 - Só envia com a credencial do Sankhya e a **execução no Sankhya ligada** (a mesma chave dos pedidos). Sem uma delas, o produto fica cadastrado no portal, a tela diz o motivo e o "Gravar e enviar ao Sankhya" fica para depois. Em produção, em 26/11/2026, a execução estava desligada.
 - O resultado fica na cotação (`registration.sendStatus`, `sendDetail`, `skipped`), em `process_events` (`sync:product:create|update`) e na Auditoria (`product.registration_send`). Recusa do Sankhya não desfaz o produto do portal.
+
+### SKU e campos fiscais na inclusão (dono, 27/11/2026)
+
+A primeira inclusão real (cotação nº 3, ESPELHO, NCM 7009.92.00) foi recusada pelo Sankhya: "Código Sit.Trib.IPI Entrada deve ser informado" (CSTIPIENT). No mesmo envio, o REFFORN tinha o código do Supplier digitado. Decisões do dono:
+
+- **SKU = REFFORN = "WX" + CODPROD.** No Sankhya da Wellmix, o REFFORN é o SKU (código WX; ex.: CODPROD 25253 → WX25253), não o código do fornecedor nem o da fábrica. Produto que ainda não existe não tem SKU. O campo "SKU Wellmix (Referência do fornecedor)" ficou só de leitura (`generated` no catálogo): não é obrigatório, não vem pré-preenchido, não é copiado do semelhante, não entra no rascunho nem no envio do formulário. Depois da inclusão, o portal lê o REFFORN do produto no Sankhya; vazio, grava "WX" + CODPROD (`wellmixSku`, `ensureSku`) e copia para o SKU do portal (`products.sku`). Reenviar não troca um REFFORN que o Sankhya já tem.
+- O produto criado da cotação nasce sem SKU no portal (`createProductFromRequest`); o código da fábrica fica no código do fornecedor (`supplierSku`) e no AD_FACTORYCODE. O Supplier vai no CODPARCFORN.
+- **Campos fiscais pelo NCM.** Na inclusão, os campos fiscais da TGFPRO que dependem do NCM vão com o valor que a maioria dos produtos do Sankhya com o mesmo NCM tem, coluna por coluna (empate: o do produto mais recente; os ativos primeiro, sem ativo valem os inativos; até os 300 mais recentes). Colunas (`NCM_FISCAL_COLUMNS`, `src/lib/ncm-fiscal.ts`): CSTIPIENT, CSTIPISAI, TEMIPICOMPRA, TEMIPIVENDA, CODIPI, CODENQIPIENT, CODENQIPISAI, GRUPOICMS, GRUPOICMS2, CLASSUBTRIB, CODESPECST, GRUPOPIS, GRUPOCOFINS, NATEFDCONTM410M810 e as cargas médias PERCCMTNAC/IMP/EST/MUN/FED. Ficam de fora as que dependem do item: origem (ORIGPROD), "Usado como" (USOPROD) e a exceção da TIPI (CODEXNCM). Só as colunas que existem no dicionário lido.
+- Ordem dos valores na inclusão: os fixos das Configurações (Processos → Produto (TGFPRO)), depois os do NCM, depois o formulário (o de depois vale). Sem produto com o NCM no Sankhya, ficam só os fixos, e o detalhe do envio diz isso. Na alteração (produto com CODPROD), os fiscais não vão: quem muda é o cadastro do Sankhya.
+- Na tela, a seção **Fiscal** mostra antes da inclusão o que vai (lido na hora no Sankhya, pelo NCM gravado: coluna, nome do campo, valor e "x de n" produtos) e, depois, o que foi (`registration.fiscal`). O detalhe do envio leva o SKU e o resumo do NCM.
 
 ### De-para dos campos (TGFPRO)
 
@@ -123,21 +133,21 @@ No lugar do "Já existe no catálogo?" (que associava a cotação a um produto e
 
 ## 5. Esquema (aditivo)
 
-- `supplier_requests.registration` (JSON): os valores do formulário, quem gravou e quando, e o último envio.
+- `supplier_requests.registration` (JSON): os valores do formulário, quem gravou e quando, e o último envio; desde 27/11/2026, também os campos fiscais que foram na inclusão pelo NCM (`registration.fiscal`: NCM, quantos produtos e os valores). Sem coluna nova no banco.
 - Nenhuma tela, rota ou campo saiu. O bloco antigo da cotação continua no código (`RequestProductCard`), usado pela tela nova com o produto já cadastrado; as ações dele voltam para a tela nova com `home=registration`.
 - Rascunhos gravados antes de 27/11/2026 com a linha do portal (`lineId`) valem como o Grupo.
 
 ## 6. Código
 
-| Parte        | Arquivo                                                                                                                  |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| Regras puras | `src/lib/product-registration.ts` (catálogo, de-para, valores, pré-preenchimento, situação)                              |
-| Serviço      | `src/lib/services/product-registration.ts` (lista, tela, rascunho, cadastrar, enviar, dicionário, de-para, pendência)    |
-| Ações        | `src/app/app/actions/product-registration.ts`                                                                            |
-| Listas       | `src/lib/services/sankhya-lookups.ts` (listas do Sankhya, tabelas, cópia de 12 h)                                        |
-| Telas        | `src/app/app/product-registration/page.tsx`, `[id]/page.tsx` e `_components/` (formulário, listas com busca, semelhante) |
-| Textos       | `src/i18n/modules/product-registration.ts` (pt, en e zh)                                                                 |
-| Testes       | `tests/unit/product-registration.test.ts`; E2E do book ao pedido passando pela tela nova                                 |
+| Parte        | Arquivo                                                                                                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Regras puras | `src/lib/product-registration.ts` (catálogo, de-para, valores, pré-preenchimento, situação) e `src/lib/ncm-fiscal.ts` (campos fiscais pelo NCM, SKU "WX" + CODPROD) |
+| Serviço      | `src/lib/services/product-registration.ts` (lista, tela, rascunho, cadastrar, enviar, dicionário, de-para, pendência)                                               |
+| Ações        | `src/app/app/actions/product-registration.ts`                                                                                                                       |
+| Listas       | `src/lib/services/sankhya-lookups.ts` (listas do Sankhya, tabelas, cópia de 12 h)                                                                                   |
+| Telas        | `src/app/app/product-registration/page.tsx`, `[id]/page.tsx` e `_components/` (formulário, listas com busca, semelhante)                                            |
+| Textos       | `src/i18n/modules/product-registration.ts` (pt, en e zh)                                                                                                            |
+| Testes       | `tests/unit/product-registration.test.ts` (com o envio ao Sankhya simulado) e `tests/unit/ncm-fiscal.test.ts`; E2E do book ao pedido passando pela tela nova        |
 
 ## 7. Em aberto (para o dono decidir)
 

@@ -552,6 +552,11 @@ export interface DatasetSaveInput {
   /** Campos e valores; com `pk` altera o registro, sem `pk` inclui. */
   values: Record<string, string | number | null>;
   pk?: Record<string, string | number>;
+  /**
+   * Campos só para ler na resposta, sem valor enviado (ex.: o CODPROD que o
+   * Sankhya gera ao incluir). Vão em `fields` depois dos campos com valor.
+   */
+  returnFields?: string[];
 }
 
 /** DatasetSP.save: inclui ou altera um registro de qualquer entidade. */
@@ -564,11 +569,14 @@ export async function datasetSave(
       "sankhya_service",
       `entidade inválida: ${input.entity}`,
     );
-  const fields = Object.keys(input.values);
-  if (!fields.length || fields.some((f) => !PATH_NAME.test(f)))
+  const sent = Object.keys(input.values);
+  const extra = (input.returnFields ?? []).filter((f) => !sent.includes(f));
+  const fields = [...sent, ...extra];
+  if (!sent.length || fields.some((f) => !PATH_NAME.test(f)))
     throw new SankhyaError("sankhya_service", "campos inválidos");
+  // Só os campos com valor entram em `values` (pelo índice em `fields`).
   const values: Record<string, string> = {};
-  fields.forEach((f, i) => {
+  sent.forEach((f, i) => {
     const v = input.values[f];
     values[String(i)] = v == null ? "" : String(v);
   });
