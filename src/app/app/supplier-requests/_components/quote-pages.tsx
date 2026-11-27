@@ -40,7 +40,7 @@ import {
 import { QuoteChat } from "./board-chat";
 import { InfoCell, InfoGrid } from "./negotiation-sections";
 import { ItemImagesCard } from "./item-images";
-import { quoteSamplingOf } from "@/lib/quote-sampling";
+import { quoteNeedsSampling, quoteSamplingOf } from "@/lib/quote-sampling";
 import { soldBeforeProducts } from "@/lib/services/supplier-sheets";
 import { reviewQuoteSamplingAction } from "../../actions/quotation";
 
@@ -326,13 +326,15 @@ export async function QuotationQuotePage({
             samples={responses
               .filter((r) => r.status !== "declined")
               .map((r) => {
-                const known = knownSuppliers.has(r.supplierId);
+                // Só com "Necessita amostragem" (dono, 27/11/2026).
+                const needs = quoteNeedsSampling(quote, r);
+                const known = needs && knownSuppliers.has(r.supplierId);
                 return {
                   key: `response:${r.id}`,
                   supplierName:
                     suppliers.find((p) => p.id === r.supplierId)?.name ??
                     r.supplierId,
-                  sampling: quoteSamplingOf(r, productId, known),
+                  sampling: needs ? quoteSamplingOf(r, productId, known) : null,
                   skipped: known,
                   review: canValidate
                     ? {

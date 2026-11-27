@@ -347,3 +347,47 @@ export async function notifyLateSampling(
   }
   return count;
 }
+
+/**
+ * "Necessita amostragem" da consulta (dono, 27/11/2026): só a Wellmix com a
+ * ação de decidir a solicitação marca ou desmarca, para todos os produtos da
+ * solicitação de uma vez. Marcada, o fornecedor passa a ver e enviar a
+ * amostra; na aprovada, a amostragem abre na hora (com o prazo) e ele é
+ * avisado. Desmarcada, a amostra some da tela dele e nada espera por ela; o
+ * que ele já mandou fica guardado.
+ */
+export async function setSupplierRequestSamplingNeed(
+  user: User,
+  id: string,
+  need: boolean,
+): Promise<SupplierRequest[]> {
+  const { request, wellmix } = await load(user, id);
+  if (!wellmix) throw new SupplierRequestError("forbidden");
+  assertCan(user, "supplierRequest.decide");
+  const { supplierRequestGroup } = await import("./supplier-requests");
+  const { openSampling } = await import("@/lib/supplier-request-sampling");
+  const group = await supplierRequestGroup(user, request);
+  const store = getStore();
+  const now = new Date().toISOString();
+  const out: SupplierRequest[] = [];
+  for (const r of group) {
+    const opens =
+      need && r.status === "approved" && !r.sampling && !r.productId;
+    const updated = await store.update("supplier_requests", r.id, {
+      samplingNeed: need ? "yes" : "no",
+      ...(opens ? { sampling: openSampling(now, user.id) } : {}),
+    });
+    out.push(updated);
+    if (opens) await notifySamplingOpened(updated);
+  }
+  await audit(
+    user,
+    "supplier_request.sampling_need",
+    "supplier_request",
+    request.id,
+    `Solicitação ao fornecedor nº ${request.number}: necessita amostragem = ${need ? "sim" : "não"}`,
+    { samplingNeed: request.samplingNeed ?? null },
+    { samplingNeed: need ? "yes" : "no" },
+  );
+  return out;
+}

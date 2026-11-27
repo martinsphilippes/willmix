@@ -2094,6 +2094,7 @@ alter table public."purchase_quotes" add column if not exists "approvedAt" times
 alter table public."purchase_quotes" add column if not exists "approvalNote" text;
 alter table public."purchase_quotes" add column if not exists "supplierRequestIds" jsonb;
 alter table public."purchase_quotes" add column if not exists "emptyNotifiedAt" timestamptz;
+alter table public."purchase_quotes" add column if not exists "samplingNeed" text;
 create index if not exists "purchase_quotes_by_status" on public."purchase_quotes" ("status");
 create index if not exists "purchase_quotes_by_decision" on public."purchase_quotes" ("decisionId");
 create index if not exists "purchase_quotes_created" on public."purchase_quotes" ("createdAt");
@@ -2343,6 +2344,7 @@ alter table public."supplier_requests" add column if not exists "quoteResponseId
 alter table public."supplier_requests" add column if not exists "demandIds" jsonb;
 alter table public."supplier_requests" add column if not exists "variant" jsonb;
 alter table public."supplier_requests" add column if not exists "registration" jsonb;
+alter table public."supplier_requests" add column if not exists "samplingNeed" text;
 create index if not exists "supplier_requests_by_supplier" on public."supplier_requests" ("supplierId");
 create index if not exists "supplier_requests_by_item" on public."supplier_requests" ("bookingItemId");
 create index if not exists "supplier_requests_by_status" on public."supplier_requests" ("status");

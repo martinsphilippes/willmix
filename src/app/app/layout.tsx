@@ -14,6 +14,7 @@ import {
   type NavLink,
 } from "@/lib/nav";
 import { projectManagementNav } from "@/lib/project-management";
+import { getSettings } from "@/lib/settings";
 import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
 import { partnerTypeLabelOf } from "@/lib/services/partner-access";
@@ -344,7 +345,18 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
   });
   // Gestão do projeto (docs/PROJECT_MANAGEMENT.md): só para os logins da
   // lista, no fim do menu; para os outros, o menu não muda.
-  const nav = [...navFor(user), ...projectManagementNav(user)];
+  // Conta corrente no menu do parceiro (dono, 27/11/2026): oculta até as
+  // Configurações ligarem.
+  const partnerAccount =
+    !isWellmix(user) && user.role !== "customer"
+      ? await getSettings()
+          .then((s) => s.partnerAccountInMenu)
+          .catch(() => false)
+      : false;
+  const nav = [
+    ...navFor(user, { partnerAccount }),
+    ...projectManagementNav(user),
+  ];
   // Barra lateral e menu do celular sem Mensagens e Notificações (só nos
   // ícones do cabeçalho; dono, 14/11/2026). O cabeçalho e o "Voltar" seguem
   // a lista inteira (nav).

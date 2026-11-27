@@ -57,17 +57,7 @@ export function OfferRowFields({
       >
         {showPrice ? (
           <>
-            <Field label={labels.price ?? t("negotiationScreen.f.price")}>
-              <Input
-                name="price"
-                inputMode="decimal"
-                className={FIELD}
-                defaultValue={raw(values.price)}
-                {...mark("price")}
-              />
-              {/* Trocar a moeda converte o preço (dono, 21/11/2026). */}
-              <FxFieldWatch price="price" currency="currency" locale={t.intl} />
-            </Field>
+            {/* Moeda à esquerda do preço (dono, 27/11/2026). */}
             <Field label={t("negotiationScreen.f.currency")}>
               <Select
                 name="currency"
@@ -80,6 +70,17 @@ export function OfferRowFields({
                   </option>
                 ))}
               </Select>
+            </Field>
+            <Field label={labels.price ?? t("negotiationScreen.f.price")}>
+              <Input
+                name="price"
+                inputMode="decimal"
+                className={FIELD}
+                defaultValue={raw(values.price)}
+                {...mark("price")}
+              />
+              {/* Trocar a moeda converte o preço (dono, 21/11/2026). */}
+              <FxFieldWatch price="price" currency="currency" locale={t.intl} />
             </Field>
           </>
         ) : null}

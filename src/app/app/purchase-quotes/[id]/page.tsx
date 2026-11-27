@@ -63,7 +63,7 @@ import {
   quoteProductMessages,
 } from "@/lib/quote-negotiation";
 import { errorTextsFor } from "@/i18n/error-text";
-import { quoteSamplingOf } from "@/lib/quote-sampling";
+import { quoteNeedsSampling, quoteSamplingOf } from "@/lib/quote-sampling";
 import { soldBeforeProducts } from "@/lib/services/supplier-sheets";
 import { SamplingPanel } from "../../supplier-requests/_components/sampling";
 import {
@@ -129,6 +129,9 @@ export default async function PurchaseQuotePage({
         .catch(() => []),
     ]);
     const samplingOpen = quote.status === "open" || quote.status === "chosen";
+    // Só com "Necessita amostragem" marcada pela Wellmix (dono, 27/11/2026);
+    // sem ela, ficam só as fotos do produto.
+    const needsSampling = quoteNeedsSampling(quote, response);
     const samplingNotice =
       typeof sp.sampling === "string" &&
       ["file", "removed", "submitted"].includes(sp.sampling)
@@ -392,11 +395,9 @@ export default async function PurchaseQuotePage({
       const product =
         sampleProducts.find((p) => p.id === item.productId) ?? null;
       const name = productNameText(t, item.name);
-      const sampling = quoteSamplingOf(
-        response,
-        item.productId,
-        known.has(item.productId),
-      );
+      const sampling = needsSampling
+        ? quoteSamplingOf(response, item.productId, known.has(item.productId))
+        : null;
       return (
         <div
           key={item.productId}
@@ -447,7 +448,7 @@ export default async function PurchaseQuotePage({
               }
               t={t}
             />
-          ) : sampling ? null : (
+          ) : sampling || !needsSampling ? null : (
             <p
               className="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600"
               data-quote-sampling-skipped={item.productId}
@@ -559,7 +560,13 @@ export default async function PurchaseQuotePage({
               </div>
               {response.status !== "declined" ? (
                 <div id="amostragem" className="scroll-mt-20">
-                  <Card title={t("quoteSampling.productsTitle")}>
+                  <Card
+                    title={t(
+                      needsSampling
+                        ? "quoteSampling.productsTitle"
+                        : "inquiries.photosTitle",
+                    )}
+                  >
                     <div className="space-y-4" data-quote-sampling>
                       {samplingNotice ? (
                         <div role="status" data-quote-sampling-notice>

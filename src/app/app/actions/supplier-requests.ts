@@ -893,3 +893,21 @@ export async function reviewSamplingAction(form: FormData) {
     return samplingBack(back, decision === "approve" ? "approved" : "rejected");
   });
 }
+
+/**
+ * "Necessita amostragem" da consulta (dono, 27/11/2026): a Wellmix marca ou
+ * desmarca para a solicitação inteira; volta para a tela de onde veio (a
+ * tabela, `view=table`, ou o produto).
+ */
+export async function setSupplierRequestSamplingAction(form: FormData) {
+  const user = await requireUser();
+  const { id, ok, back } = backOf(form);
+  await run(back, async () => {
+    if (!ok) throw new Error("invalid_input");
+    const need = z.enum(["yes", "no"]).parse(str(form, "need")) === "yes";
+    const { setSupplierRequestSamplingNeed } =
+      await import("@/lib/services/supplier-request-sampling");
+    await setSupplierRequestSamplingNeed(user, id, need);
+    return withQuery(back, "samplingNeed", need ? "yes" : "no");
+  });
+}

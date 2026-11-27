@@ -877,14 +877,15 @@ async function writeDecision(
   const decidedAt = new Date().toISOString();
   // Aprovada: abre a amostragem (o responsável envia fotos e vídeos de uma
   // amostra; docs/SUPPLIER_SAMPLING.md).
-  const { samplingOnApproval } =
+  const { samplingOnApproval, samplingRequired } =
     await import("@/lib/supplier-request-sampling");
   const updated = await store.update("supplier_requests", request.id, {
     status: decision,
     decidedAt,
     decidedByUserId: user.id,
     decisionNote: clip(note, 500),
-    ...(decision === "approved"
+    // Só com "Necessita amostragem" (dono, 27/11/2026).
+    ...(decision === "approved" && samplingRequired(request)
       ? // O que ele já adiantou (ou veio aprovado da cotação) segue valendo.
         { sampling: samplingOnApproval(request.sampling, decidedAt, user.id) }
       : {}),

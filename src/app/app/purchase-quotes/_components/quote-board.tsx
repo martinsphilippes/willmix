@@ -67,7 +67,9 @@ import type { Translate } from "@/i18n";
 import { ClampText } from "@/components/clamp-text";
 import { HoverZoomPhoto } from "@/components/hover-zoom-photo";
 import { quoteItemHref } from "@/lib/quote-item-href";
-import { quoteSamplingReady } from "@/lib/quote-sampling";
+import { quoteNeedsSampling, quoteSamplingReady } from "@/lib/quote-sampling";
+import { SamplingNeedForm } from "../../supplier-requests/_components/sampling-need";
+import { setQuoteSamplingAction } from "../../actions/quotation";
 import { soldBeforeProducts } from "@/lib/services/supplier-sheets";
 
 /*
@@ -259,13 +261,15 @@ export async function QuoteBoard({
         async (r) =>
           [
             r.id,
-            quoteSamplingReady(
-              r,
-              productIds,
-              await soldBeforeProducts(r.supplierId, productIds).catch(
-                () => new Set<string>(),
+            // Sem "Necessita amostragem" (dono, 27/11/2026), não trava.
+            !quoteNeedsSampling(quote, r) ||
+              quoteSamplingReady(
+                r,
+                productIds,
+                await soldBeforeProducts(r.supplierId, productIds).catch(
+                  () => new Set<string>(),
+                ),
               ),
-            ),
           ] as const,
       ),
     ),
@@ -308,6 +312,24 @@ export async function QuoteBoard({
           <Alert tone="success">{t(`quote.notice.${notice}`)}</Alert>
         </div>
       ) : null}
+      {/* "Necessita amostragem" (dono, 27/11/2026): padrão desmarcado. */}
+      <div className="mb-3">
+        <SamplingNeedForm
+          need={quote.samplingNeed === "yes"}
+          canChange={
+            can(user, "purchaseQuote.choose") &&
+            (quote.status === "open" || quote.status === "chosen")
+          }
+          action={setQuoteSamplingAction}
+          fields={
+            <>
+              <input type="hidden" name="quoteId" value={quote.id} />
+              {homeField}
+            </>
+          }
+          t={t}
+        />
+      </div>
       <Card title={t("quote.productsTitle")}>
         <Table tools={false}>
           <thead>

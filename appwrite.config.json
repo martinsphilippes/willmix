@@ -12510,6 +12510,18 @@
           "array": false,
           "default": null,
           "type": "datetime"
+        },
+        {
+          "key": "samplingNeed",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "yes",
+            "no"
+          ]
         }
       ],
       "indexes": [
@@ -13940,6 +13952,18 @@
           "array": false,
           "default": null,
           "type": "longtext"
+        },
+        {
+          "key": "samplingNeed",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "yes",
+            "no"
+          ]
         }
       ],
       "indexes": [

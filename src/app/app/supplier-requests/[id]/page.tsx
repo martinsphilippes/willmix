@@ -52,6 +52,7 @@ import {
   openSupplierRequestAction,
   resolveLinkedRequestAction,
   reviewSamplingAction,
+  setSupplierRequestSamplingAction,
 } from "../../actions/supplier-requests";
 import { ActionForm } from "@/components/action-form";
 import { requestItemSpecs } from "@/lib/supplier-request-specs";
@@ -92,7 +93,15 @@ import { RequestTimeline } from "../_components/timeline";
 import { dateTime } from "../_components/negotiation";
 import { canPostMessage, canPropose } from "@/lib/supplier-requests";
 import { RequestAiReferences } from "@/components/selection-ai-prompts";
-import { packLabels, RequestVariant } from "@/components/request-variant";
+import {
+  packLabels,
+  RequestVariant,
+  VariantRoundsTable,
+  variantText,
+} from "@/components/request-variant";
+import { variantFacts } from "@/lib/selection-packing";
+import { QuickDialog } from "@/components/quick-dialog";
+import { OpenIcon } from "../_components/icons";
 import {
   BoardCounterForm,
   QuotationBoard,
@@ -111,7 +120,12 @@ import { SamplingCard } from "../_components/sampling";
 import { ItemImagesCard } from "../_components/item-images";
 import { samplingSlaDays } from "@/lib/services/supplier-request-sampling";
 import { supplierRequestResponsibles } from "@/lib/services/supplier-request-turns";
-import { samplingApproved, samplingFor } from "@/lib/supplier-request-sampling";
+import {
+  samplingApproved,
+  samplingFor,
+  samplingRequired,
+} from "@/lib/supplier-request-sampling";
+import { SamplingNeedForm } from "../_components/sampling-need";
 import {
   entityLinkAccess,
   linksForSupplierRequest,
@@ -162,12 +176,13 @@ export default async function SupplierRequestPage({
     // endereço abre a cotação de compra ainda com os fornecedores (antes de
     // virar a solicitação da vencedora). Só a Wellmix; o fornecedor segue
     // na cotação dele.
-    const quote = isWellmix(user)
-      ? await getStore()
-          .get("purchase_quotes", id)
-          .catch(() => null)
-      : null;
+    const quote = await getStore()
+      .get("purchase_quotes", id)
+      .catch(() => null);
     if (!quote) notFound();
+    // O fornecedor responde a cotação de compra na tela dele (dono,
+    // 27/11/2026: Consultas junta a lista; a cotação segue onde ele responde).
+    if (!isWellmix(user)) redirect(`/app/purchase-quotes/${quote.id}`);
     return <QuotationQuotePage user={user} quote={quote} query={query} t={t} />;
   }
   const { request: r, supplier, lot, chosen, alternatives } = detail;
@@ -256,6 +271,9 @@ export default async function SupplierRequestPage({
     )
   )
     notices.push(t(`sampling.notice.${samplingNotice}` as DictionaryKey));
+  const samplingNeedNotice = one("samplingNeed");
+  if (samplingNeedNotice === "yes" || samplingNeedNotice === "no")
+    notices.push(t(`inquiries.samplingNeed.saved.${samplingNeedNotice}`));
   const erpNotice = one("erp");
   if (["checked", "unchecked", "cleared"].includes(erpNotice))
     notices.push(t(`srProduct.notice.erp.${erpNotice}` as DictionaryKey));
@@ -334,6 +352,31 @@ export default async function SupplierRequestPage({
         />
         {timelineCard}
         {noticeBlock}
+        {/* "Necessita amostragem" da consulta (dono, 27/11/2026). */}
+        {wellmix ? (
+          <div className="mb-3">
+            <SamplingNeedForm
+              need={rows.some((p) => samplingRequired(p))}
+              canChange={
+                can(user, "supplierRequest.decide") &&
+                rows.some(
+                  (p) =>
+                    p.status !== "declined" &&
+                    p.status !== "cancelled" &&
+                    !p.orderId,
+                )
+              }
+              action={setSupplierRequestSamplingAction}
+              fields={
+                <>
+                  <input type="hidden" name="id" value={r.id} />
+                  <input type="hidden" name="view" value="table" />
+                </>
+              }
+              t={t}
+            />
+          </div>
+        ) : null}
         <div data-supplier-table>
           <SupplierRequestTable
             rows={rows}
@@ -562,21 +605,52 @@ export default async function SupplierRequestPage({
       mark="summary"
     >
       <div className="flex gap-3">
-        {/* A Wellmix vê a foto no card Imagens, à direita (um lugar só). */}
-        {it.photoDocumentId && !wellmix ? (
-          <a
-            href={`/api/files/${it.photoDocumentId}`}
-            target="_blank"
-            rel="noreferrer"
-            className="shrink-0"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
-            <img
-              src={`/api/files/${it.photoDocumentId}`}
-              alt=""
-              className="h-20 w-20 rounded-lg border border-zinc-200 object-cover"
-            />
-          </a>
+        {/* A Wellmix vê a foto no card Imagens, à direita (um lugar só). O
+            fornecedor vê a foto e, desde 27/11/2026, a arte da variação
+            aqui no alto (o quadro "Variação e embalagem" saiu da tela dele). */}
+        {!wellmix && (it.photoDocumentId || r.variant?.artDocumentId) ? (
+          <span className="flex shrink-0 gap-2">
+            {[
+              { id: it.photoDocumentId, label: null, mark: "photo" },
+              {
+                id: r.variant?.artDocumentId ?? null,
+                label: t("supplierRequests.variant.art"),
+                mark: "art",
+              },
+            ]
+              .filter(
+                (x): x is { id: string; label: string | null; mark: string } =>
+                  !!x.id,
+              )
+              .map((x) => (
+                <figure
+                  key={x.mark}
+                  className="space-y-0.5"
+                  data-negotiation-image={x.mark}
+                >
+                  <a
+                    href={`/api/files/${x.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+                    <img
+                      src={`/api/files/${x.id}`}
+                      alt={x.label ?? ""}
+                      className={`h-20 w-20 rounded-lg border border-zinc-200 bg-white ${
+                        x.mark === "art" ? "object-contain" : "object-cover"
+                      }`}
+                    />
+                  </a>
+                  {x.label ? (
+                    <figcaption className="max-w-20 text-[10px] leading-tight text-zinc-500">
+                      {x.label}
+                    </figcaption>
+                  ) : null}
+                </figure>
+              ))}
+          </span>
         ) : null}
         <div className="min-w-0 flex-1 space-y-2">
           <p className="min-w-0" data-negotiation-product>
@@ -586,6 +660,15 @@ export default async function SupplierRequestPage({
             <span className="block text-xs text-zinc-500">
               {[it.factoryItemCode, it.itemNumber].filter(Boolean).join(" · ")}
             </span>
+            {/* A variação e a embalagem, numa linha (dono, 27/11/2026). */}
+            {!wellmix && r.variant ? (
+              <span
+                className="mt-0.5 block text-xs font-medium text-brand-800"
+                data-negotiation-variant
+              >
+                {variantText(r.variant, t)}
+              </span>
+            ) : null}
           </p>
           <InfoGrid>
             <InfoCell
@@ -614,11 +697,7 @@ export default async function SupplierRequestPage({
             </InfoCell>
             {seesPrice ? (
               <>
-                <InfoCell label={packLabels(packUnits, t).price} mark="price">
-                  {deal
-                    ? changed(num(deal.price), num(it.price), "price")
-                    : num(it.price)}
-                </InfoCell>
+                {/* Moeda à esquerda do preço (dono, 27/11/2026). */}
                 <InfoCell
                   label={t("negotiationScreen.f.currency")}
                   mark="currency"
@@ -630,6 +709,11 @@ export default async function SupplierRequestPage({
                         "currency",
                       )
                     : (it.currency ?? "—")}
+                </InfoCell>
+                <InfoCell label={packLabels(packUnits, t).price} mark="price">
+                  {deal
+                    ? changed(num(deal.price), num(it.price), "price")
+                    : num(it.price)}
                 </InfoCell>
               </>
             ) : null}
@@ -699,8 +783,9 @@ export default async function SupplierRequestPage({
           {r.needs ?? t("supplierRequests.detail.needsNone")}
         </p>
         {/* Com variação × embalagem, as entregas ficam no quadro da
-            variação, em embalagens, peças e caixas. */}
-        {r.variant ? null : (
+            variação, em embalagens, peças e caixas. Para o fornecedor, a
+            programação tem a seção própria, a 3 (dono, 27/11/2026). */}
+        {r.variant || !wellmix ? null : (
           <PurchaseScheduleTable schedule={r.schedule} t={t} />
         )}
         {/* Variações de cor: cada cor na própria linha, por data. */}
@@ -741,15 +826,60 @@ export default async function SupplierRequestPage({
     </NegotiationSection>
   );
 
+  // Programação (dono, 27/11/2026): na tela do fornecedor, a seção 3, com
+  // as entregas (em embalagens, peças e caixas na variação × embalagem).
+  const hasRounds = r.variant
+    ? (variantFacts(r, book)?.rounds.length ?? 0) > 0
+    : !!r.schedule?.items.length;
+  const scheduleSection = wellmix ? null : (
+    <NegotiationSection
+      n={nextSection()}
+      title={t("inquiries.schedule.title")}
+      mark="schedule"
+    >
+      {hasRounds ? (
+        r.variant ? (
+          <VariantRoundsTable request={r} book={book} t={t} />
+        ) : (
+          <PurchaseScheduleTable schedule={r.schedule} t={t} />
+        )
+      ) : (
+        <p
+          className="text-[13px] text-zinc-600"
+          data-negotiation-schedule-single
+        >
+          {t("inquiries.schedule.single", {
+            n:
+              packUnits > 1
+                ? t("supplierRequests.variant.packs", {
+                    n: r.quantity.toLocaleString(intl),
+                  })
+                : t("supplierRequests.detail.pieces", {
+                    n: r.quantity.toLocaleString(intl),
+                  }),
+          })}
+        </p>
+      )}
+    </NegotiationSection>
+  );
+
   // Resposta do fornecedor e "Negociação e conversa": seções da tela do
   // fornecedor. Para a Wellmix, o quadro comparativo mostra a proposta de
   // cada um, com a conversa e o histórico nos modais e a contraproposta no
   // bloco à direita (dono, 22/11/2026; docs/QUOTATION.md).
-  const answerSection = wellmix ? null : (
-    <NegotiationSection
-      n={nextSection()}
-      title={t("negotiationScreen.s.answer")}
-      mark="answer"
+  // Tela do fornecedor (dono, 27/11/2026): a resposta dele (oferta recebida,
+  // contraproposta e rodadas) abre num modal pelo ícone do Histórico de
+  // interações, e o quadro para responder fica fixo na coluna da direita,
+  // acima da Conversa.
+  const answerDetail = wellmix ? null : (
+    <QuickDialog
+      label={<OpenIcon className="h-3.5 w-3.5" />}
+      hint={t("inquiries.answer.detail")}
+      title={t("inquiries.answer.detailTitle")}
+      closeLabel={t("quotation.close")}
+      size="lg"
+      className="h-6 w-6 px-0 py-0"
+      data-negotiation-answer-detail=""
     >
       <SupplierResponseStrip
         request={r}
@@ -758,6 +888,10 @@ export default async function SupplierRequestPage({
         seesPrice={seesPrice}
         t={t}
       />
+    </QuickDialog>
+  );
+  const answerSection = wellmix ? null : (
+    <div data-negotiation-section="answer">
       {canAnswer ? (
         <ActionForm
           action={answerSupplierRequestStateAction}
@@ -766,7 +900,7 @@ export default async function SupplierRequestPage({
           pendingLabel={t("supplierRequests.detail.answer.pending")}
           // Resposta gravada: o formulário renasce com os valores novos.
           key={`answer-${r.respondedAt ?? "none"}`}
-          className="mt-2 rounded-lg border border-zinc-200 p-2.5"
+          className="@container"
           data-supplier-answer-form
         >
           <input type="hidden" name="id" value={r.id} />
@@ -842,7 +976,7 @@ export default async function SupplierRequestPage({
           </div>
         </ActionForm>
       ) : null}
-    </NegotiationSection>
+    </div>
   );
 
   const decisionSection = wellmix ? (
@@ -969,25 +1103,39 @@ export default async function SupplierRequestPage({
   );
 
   const negotiationSection = wellmix ? null : (
-    <NegotiationSection
-      n={nextSection()}
-      title={t("negotiationScreen.s.negotiation")}
-      mark="negotiation"
-      id="conversa"
+    <div
+      className="@container space-y-3"
+      data-negotiation-section="negotiation"
     >
-      <div className="space-y-3">
-        <NegotiationForms
-          request={r}
-          wellmix={wellmix}
-          t={t}
-          simulation={simulation}
-          showPrice={seesPrice}
-          fromTo={fromTo}
-          errors={errorTexts}
-          fallbackError={errorFallback}
-        />
+      <NegotiationForms
+        request={r}
+        wellmix={wellmix}
+        t={t}
+        simulation={simulation}
+        showPrice={seesPrice}
+        fromTo={fromTo}
+        errors={errorTexts}
+        fallbackError={errorFallback}
+      />
+    </div>
+  );
+  // O quadro para responder (fornecedor): a resposta ou, com contraproposta
+  // da Wellmix esperando, a resposta a ela; sem nada a responder, o aviso.
+  const respondCard = wellmix ? null : (
+    <Card title={t("inquiries.answer.title")} dense>
+      <div className="space-y-3" data-negotiation-respond>
+        {canAnswer ? answerSection : null}
+        {proposalPending ? negotiationSection : null}
+        {!canAnswer && !proposalPending ? (
+          <p
+            className="text-[13px] text-zinc-600"
+            data-negotiation-respond-none
+          >
+            {t("inquiries.answer.none")}
+          </p>
+        ) : null}
       </div>
-    </NegotiationSection>
+    </Card>
   );
 
   const alternativesSection = wellmix ? (
@@ -1500,6 +1648,19 @@ export default async function SupplierRequestPage({
             className="grid min-w-0 gap-4 md:grid-cols-2 md:items-start xl:sticky xl:top-[calc(var(--wm-header)+1rem)] xl:max-h-[calc(100vh-var(--wm-header)-2rem)] xl:grid-cols-1 xl:overflow-y-auto xl:px-1 xl:pb-1"
             data-negotiation-aside
           >
+            {/* "Necessita amostragem" da consulta (dono, 27/11/2026). */}
+            <SamplingNeedForm
+              need={samplingRequired(r)}
+              canChange={
+                can(user, "supplierRequest.decide") &&
+                r.status !== "declined" &&
+                r.status !== "cancelled" &&
+                !r.orderId
+              }
+              action={setSupplierRequestSamplingAction}
+              fields={<input type="hidden" name="id" value={r.id} />}
+              t={t}
+            />
             {/* Imagens sempre à vista enquanto se negocia: a referência da
                 Wellmix e a amostra de cada fornecedor (dono, 22/11/2026). */}
             <ItemImagesCard
@@ -1574,25 +1735,21 @@ export default async function SupplierRequestPage({
           </aside>
         </div>
       ) : (
-        /* Fornecedor: a tela de sempre. Centro (~75%) com o card "O que
-           está sendo negociado" e lateral (~25%) com o Histórico. */
+        /* Fornecedor (dono, 27/11/2026): no centro, 1. resumo (com a foto
+           e a arte), 2. ficha e 3. programação, sem o quadro "Variação e
+           embalagem" (informação repetida); à direita, fixos, o Histórico
+           (o ícone de cada resposta abre a resposta detalhada), o quadro
+           para responder e a Conversa. */
         <div
-          className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(15rem,1fr)] xl:items-start"
+          className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)] xl:items-start"
           data-negotiation-layout
         >
           <div className="min-w-0 space-y-4" data-negotiation-center>
             <Card title={t("supplierRequests.detail.request")} dense>
               <div className="space-y-3" data-negotiation-main>
                 {summarySection}
-                <RequestVariant
-                  request={r}
-                  book={book}
-                  showPrice={seesPrice}
-                  t={t}
-                />
                 {sheetSection}
-                {answerSection}
-                {negotiationSection}
+                {scheduleSection}
               </div>
             </Card>
             <RequestAiReferences assets={r.aiAssets} t={t} />
@@ -1601,7 +1758,10 @@ export default async function SupplierRequestPage({
             className="grid min-w-0 gap-4 xl:sticky xl:top-[calc(var(--wm-header)+1rem)] xl:max-h-[calc(100vh-var(--wm-header)-2rem)] xl:overflow-y-auto xl:px-1 xl:pb-1"
             data-negotiation-aside
           >
-            <div id="historico" className="min-w-0 scroll-mt-20">
+            <div
+              id="historico"
+              className="min-w-0 scroll-mt-20 xl:max-h-[40vh] xl:overflow-y-auto"
+            >
               <RequestTimeline
                 request={{
                   ...r,
@@ -1612,8 +1772,12 @@ export default async function SupplierRequestPage({
                 }}
                 legacyAnswers={timelineLegacy.get(r.id) ?? []}
                 showPrice={seesPrice}
+                answerDetail={answerDetail}
                 t={t}
               />
+            </div>
+            <div id="conversa" className="min-w-0 scroll-mt-20">
+              {respondCard}
             </div>
             {chatBlock}
           </aside>

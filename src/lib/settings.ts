@@ -76,6 +76,13 @@ export const DEFAULT_SETTINGS = {
    */
   autoQuoteOrders: true,
   /**
+   * Conta corrente no menu do parceiro externo (dono, 27/11/2026): o item
+   * fica fora dos grupos, logo abaixo das Pendências, e oculto por padrão.
+   * Ligada, aparece para quem abre a tela (o fornecedor). A tela segue
+   * abrindo pelo endereço.
+   */
+  partnerAccountInMenu: false,
+  /**
    * SLA da amostragem, em dias corridos: da aprovação da solicitação (ou da
    * reprovação da amostra) até o responsável enviar as fotos e vídeos
    * (docs/SUPPLIER_SAMPLING.md). Decisão do dono (12/11/2026): 1 dia.

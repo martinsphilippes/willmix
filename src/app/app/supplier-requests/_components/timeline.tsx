@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { SupplierRequest, SupplierRequestEvent } from "@/lib/db/schema";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -36,6 +37,7 @@ export function RequestTimeline({
   request: r,
   legacyAnswers = [],
   showPrice = true,
+  answerDetail,
   t,
 }: {
   request: SupplierRequest;
@@ -43,6 +45,11 @@ export function RequestTimeline({
   legacyAnswers?: Array<{ at: string; canDo: "yes" | "no" | null }>;
   /** Preço de cada passo: falso para a Wellmix sem "Ver preço de compra". */
   showPrice?: boolean;
+  /**
+   * Ícone ao lado de cada resposta do fornecedor que abre a resposta
+   * detalhada num modal (dono, 27/11/2026, tela do fornecedor).
+   */
+  answerDetail?: ReactNode;
   t: Translate;
 }) {
   const entries = requestTimeline(r, legacyAnswers);
@@ -152,8 +159,13 @@ export function RequestTimeline({
                   {t(`supplierRequests.negotiation.side.${entry.side}`)}
                 </span>
               </div>
-              <p className="mt-0.5 text-sm font-semibold text-zinc-900">
-                {resolved(entry)}
+              <p className="mt-0.5 flex items-start justify-between gap-2 text-sm font-semibold text-zinc-900">
+                <span>{resolved(entry)}</span>
+                {answerDetail && entry.kind === "answer" ? (
+                  <span className="shrink-0" data-timeline-answer-detail>
+                    {answerDetail}
+                  </span>
+                ) : null}
               </p>
               {chips.length ? (
                 <div className="mt-1 flex flex-wrap gap-1">

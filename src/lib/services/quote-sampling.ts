@@ -20,7 +20,7 @@ import {
   samplingKind,
   samplingRoundFiles,
 } from "@/lib/supplier-request-sampling";
-import { quoteSamplingOf } from "@/lib/quote-sampling";
+import { quoteNeedsSampling, quoteSamplingOf } from "@/lib/quote-sampling";
 import { quoteItemHref } from "@/lib/quote-item-href";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { audit } from "./audit";
@@ -82,7 +82,10 @@ async function load(
   const known = (await knownQuoteProducts(quote, response.supplierId)).has(
     productId,
   );
-  const sampling = quoteSamplingOf(response, productId, known);
+  // Sem "Necessita amostragem" (dono, 27/11/2026), não há amostra a enviar.
+  const sampling = quoteNeedsSampling(quote, response)
+    ? quoteSamplingOf(response, productId, known)
+    : null;
   if (!sampling) throw new PurchaseQuoteError("sampling_not_open");
   return { quote, item, response, sampling, wellmix };
 }
@@ -386,4 +389,39 @@ export async function supplierQuotesProduct(
       q.status !== "cancelled" &&
       q.items.some((i) => i.productId === productId),
   );
+}
+
+/**
+ * "Necessita amostragem" da cotação de compra (dono, 27/11/2026): só a
+ * Wellmix que escolhe a vencedora marca ou desmarca, enquanto a cotação
+ * corre (aberta ou com a vencedora escolhida). Marcada, cada convidado vê e
+ * envia a amostra, e a vencedora precisa dela aprovada; desmarcada, nada
+ * espera a amostra e o que já foi enviado fica guardado.
+ */
+export async function setQuoteSamplingNeed(
+  user: User,
+  quoteId: string,
+  need: boolean,
+): Promise<PurchaseQuote> {
+  assertScreen(user, "quotes");
+  if (!isWellmix(user)) throw new PurchaseQuoteError("forbidden");
+  assertCan(user, "purchaseQuote.choose");
+  const store = getStore();
+  const quote = await store.get("purchase_quotes", quoteId);
+  if (!quote) throw new PurchaseQuoteError("not_found");
+  if (quote.status !== "open" && quote.status !== "chosen")
+    throw new PurchaseQuoteError("quote_closed");
+  const updated = await store.update("purchase_quotes", quote.id, {
+    samplingNeed: need ? "yes" : "no",
+  });
+  await audit(
+    user,
+    "purchase_quote.sampling_need",
+    "purchase_quote",
+    quote.id,
+    `Cotação de compra nº ${quote.number}: necessita amostragem = ${need ? "sim" : "não"}`,
+    { samplingNeed: quote.samplingNeed ?? null },
+    { samplingNeed: need ? "yes" : "no" },
+  );
+  return updated;
 }

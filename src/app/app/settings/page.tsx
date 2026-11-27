@@ -519,6 +519,21 @@ export default async function SettingsPage({
                       <option value="false">{t("common.no")}</option>
                     </Select>
                   </Field>
+                  {/* Conta corrente no menu do fornecedor (dono,
+                      27/11/2026): oculta por padrão. */}
+                  <Field
+                    label={t("inquiries.settings.account")}
+                    hint={t("inquiries.settings.accountHint")}
+                  >
+                    <Select
+                      name="partnerAccountInMenu"
+                      defaultValue={String(s.partnerAccountInMenu)}
+                      data-setting-partner-account
+                    >
+                      <option value="true">{t("common.yes")}</option>
+                      <option value="false">{t("common.no")}</option>
+                    </Select>
+                  </Field>
                   {/* Carteira: prazo único de atendimento ao cliente
                       (docs/TRADE_COMERCIAL.md). */}
                   <Field

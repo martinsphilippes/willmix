@@ -81,6 +81,9 @@ import {
 import { QuoteDeadline } from "../purchase-quotes/_time";
 import { InvitesTable } from "./_components/invites-table";
 import { inviteLate, listInvitesFor } from "@/lib/services/booking-invites";
+import { SupplierInquiries } from "./_components/supplier-inquiries";
+import { CompletionTd } from "./_components/completion";
+import { quoteCompletion, requestCompletion } from "@/lib/inquiry-completion";
 
 /*
  * Solicitações ao fornecedor (docs/SUPPLIER_REQUESTS.md): a Wellmix vê todas;
@@ -117,6 +120,16 @@ export default async function SupplierRequestsPage({
       .catch((error) => console.error("notifyLateSampling", error));
   });
   const wellmix = isWellmix(user);
+  // Consultas do fornecedor (dono, 27/11/2026): os convites de book, as
+  // solicitações e as cotações de compra numa tabela só, a padrão dele.
+  if (!wellmix)
+    return (
+      <SupplierInquiries
+        user={user}
+        closedTab={(await searchParams).tab === "closed"}
+        t={t}
+      />
+    );
   // Preço de compra: a Wellmix com "Ver preço de compra"; o fornecedor vê o
   // dele (dono, 15/11/2026; docs/LINHA_DE_VISAO.md, seção 7).
   const seesPrice = !wellmix || canSeePurchasePrice(user);
@@ -399,6 +412,10 @@ export default async function SupplierRequestsPage({
                   <Th>{t("quotation.col.origin")}</Th>
                   <Th>{t("supplierRequests.col.answer")}</Th>
                   <Th>{t("supplierRequests.col.finishedAt")}</Th>
+                  {/* Completude (dono, 27/11/2026). */}
+                  <Th className="whitespace-nowrap">
+                    {t("inquiries.col.completion")}
+                  </Th>
                   {closedTab && showPurchase ? (
                     <Th>{t("supplierRequests.col.order")}</Th>
                   ) : null}
@@ -552,6 +569,7 @@ export default async function SupplierRequestsPage({
                       })}
                     </Td>
                     <Td>—</Td>
+                    <CompletionTd c={quoteCompletion(q, mine)} t={t} />
                     {closedTab && showPurchase ? <Td>—</Td> : null}
                     <Td>
                       <OpenLink
@@ -876,6 +894,7 @@ export default async function SupplierRequestsPage({
                       </Td>
                       {answerCell}
                       {finishedCell}
+                      <CompletionTd c={requestCompletion(products)} t={t} />
                       {orderCell}
                       {openCell}
                     </tr>

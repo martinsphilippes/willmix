@@ -300,8 +300,19 @@ const GRANTED_FROM_PARTNERS: Entry[] = [
   ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
 ];
 
+/** O que o menu lê das Configurações (o layout passa; os testes usam o padrão). */
+export interface NavOptions {
+  /**
+   * Conta corrente no menu do parceiro externo (dono, 27/11/2026): fora dos
+   * grupos, logo abaixo das Pendências, e oculta por padrão; liga nas
+   * Configurações (`partnerAccountInMenu`).
+   */
+  partnerAccount?: boolean;
+}
+
 export function navFor(
   user: Pick<User, "role"> & Partial<Pick<User, "functions">>,
+  options: NavOptions = {},
 ): NavEntry[] {
   const has = menuScreensFor(user);
   if (isWellmix(user)) {
@@ -468,28 +479,37 @@ export function navFor(
       ),
     ];
   // Fornecedores e parceiros: início nas Pendências; num grupo, a tela própria
-  // do papel (bookings, fretes, multas, conta corrente).
+  // do papel (bookings, fretes, multas). A conta corrente fica fora dos
+  // grupos, abaixo das Pendências (dono, 27/11/2026).
+  const steps = partnerStepsOf(user.role);
+  const hasOrderStep = steps.some((x) => stepId(x) === "order/orders");
   const own = pick(
     has,
     [
       // Books (dono, 23/11/2026): a primeira opção de "Meus books", os books
       // da empresa dele (Fornecedor, Trading e quem mais recebe a tela).
       ["booking", { href: "/app/booking", key: "nav.partnerBooks" }],
-      // Solicitações do cliente (dono, 23/11/2026): os convites para subir
-      // um book concorrente e o que a Wellmix pergunta sobre um item do book
-      // dele, numa tela e numa tabela só. A tela antiga dos convites segue
-      // abrindo pelo endereço e acende este item.
+      // Consultas (dono, 27/11/2026; antes "Solicitações do cliente" e
+      // "Cotações de compra"): o mesmo passo do fluxo numa tela e numa
+      // tabela só, como na Wellmix: os convites para subir um book, as
+      // solicitações sobre os itens dos books dele e as cotações de compra.
+      // As telas antigas seguem abrindo pelo endereço e acendem este item.
       [
         "quotes",
         {
           href: "/app/supplier-requests",
           key: "nav.customerRequests",
-          match: ["/app/supplier-requests/invites"],
+          match: ["/app/supplier-requests/invites", "/app/purchase-quotes"],
         },
       ],
-      // Cotação de compra (mapa B13): os convites de preço do fornecedor.
-      ["quotes", { href: "/app/purchase-quotes", key: "nav.purchaseQuotes" }],
-      ["orders", { href: "/app/orders", key: "nav.orders" }],
+      // Pedidos (/app/orders) saiu do menu de quem tem o passo Pedidos no
+      // bloco Pedido (dono, 27/11/2026: dois "Pedidos" no menu, e o de fora
+      // do bloco antes dele). A tela segue abrindo pelo endereço.
+      ...(hasOrderStep
+        ? []
+        : ([
+            ["orders", { href: "/app/orders", key: "nav.orders" }],
+          ] as Entry[])),
       ["freight", { href: "/app/freight", key: "nav.freight" }],
       // A companhia envia a própria tabela de fretes (só vê as dela).
       [
@@ -502,7 +522,6 @@ export function navFor(
             ["tasks", { href: "/app/ncm-items", key: "nav.ncmItems" }],
           ] as Entry[])
         : []),
-      ["account", { href: "/app/account", key: "nav.account" }],
       ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
     ],
     // Telas do cliente liberadas na Gestão de telas.
@@ -519,7 +538,6 @@ export function navFor(
     ["production", "nav.production", "factory"],
     ["delivery", "nav.group.arrival", "ship"],
   ];
-  const steps = partnerStepsOf(user.role);
   const flow = partnerBlocks.flatMap(([block, key, icon]) =>
     group(
       key,
@@ -556,6 +574,17 @@ export function navFor(
       ["messages", MESSAGES],
       ["notifications", NOTIFICATIONS],
     ]),
+    // Conta corrente (dono, 27/11/2026): não é passo de nenhuma etapa, então
+    // fica fora dos grupos, logo abaixo das Pendências. Oculta por padrão;
+    // aparece quando as Configurações ligam (`partnerAccountInMenu`).
+    ...(options.partnerAccount
+      ? pick(has, [
+          [
+            "account",
+            { href: "/app/account", key: "nav.account", icon: "money" },
+          ],
+        ])
+      : []),
     // "Meus books" logo abaixo das Pendências, acima de "Pedido" (dono,
     // 21/11/2026): o fornecedor começa pelo book. Os outros parceiros
     // continuam com "Pedidos" no fim.
