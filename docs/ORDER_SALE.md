@@ -2,7 +2,7 @@
 
 Decisões do dono em 14/11/2026, depois do histórico de compras do cliente (docs/PURCHASE_HISTORY.md), que mostrava "—" no valor de venda porque nenhum pedido tinha venda gravada. Desde a saída da cotação (11/11/2026) não havia tela para gravar a venda.
 
-1. **Onde se digita:** no pedido, por produto. O card fica no detalhe do pedido, logo depois de "Itens do pedido".
+1. **Onde se digita:** no pedido, por produto. O card fica no detalhe do pedido, logo depois de "Itens do pedido". Desde 27/11/2026 (dono), fica recolhido na lateral direita do pedido, acima do "Pagamento do cliente" e sem fixar na rolagem; aberto, mostra o mesmo de antes, e abre sozinho na volta da gravação (`?sale=saved`) e pela âncora `#order-sale`. A tabela segue a largura do quadro (`@container`): estreita, um produto em cima do outro.
 2. **Total:** o total do pedido é sempre a soma dos produtos (preço unitário × quantidade).
 3. **Quem grava:** quem tem a ação nova configurável "Gravar a venda ao cliente" (`sale.record`). Padrão: só o administrador, que libera para outras funções em Equipe → Funções e acessos. Toda alteração vai para a Auditoria.
 

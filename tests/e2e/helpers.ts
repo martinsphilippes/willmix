@@ -34,6 +34,40 @@ export async function login(page: Page, email: string) {
 }
 
 /**
+ * Tela do pedido até "Marcos do pedido" (dono, 27/11/2026): o restante
+ * (documentos, produção, recebimento, financeiro, embarque...) abre com um
+ * clique em "Ver o restante do pedido". Aberto, fica aberto neste pedido até
+ * o próximo login (cookie `orderRest`).
+ */
+export async function showOrderRest(page: Page) {
+  const rest = page.locator("[data-order-rest]");
+  await expect(rest).toHaveCount(1);
+  if (!(await rest.evaluate((el) => (el as HTMLDetailsElement).open)))
+    await page.locator("[data-order-rest-toggle]").click();
+  await expect(rest).toHaveAttribute("open", "");
+}
+
+/** Abre o pedido com o restante à vista. */
+export async function openOrder(page: Page, url: string) {
+  await page.goto(url);
+  await showOrderRest(page);
+}
+
+/**
+ * Quadro recolhido da lateral direita do pedido (dono, 27/11/2026): "Venda
+ * ao cliente" ou "Pagamento do cliente".
+ */
+export async function openOrderFold(
+  page: Page,
+  id: "order-sale" | "customer-payment",
+) {
+  const fold = page.locator(`[data-order-aside-fold="${id}"]`);
+  if (!(await fold.evaluate((el) => (el as HTMLDetailsElement).open)))
+    await fold.locator(`[data-order-aside-toggle="${id}"]`).click();
+  await expect(fold).toHaveAttribute("open", "");
+}
+
+/**
  * Login novo da equipe (Equipe → Criar login), com as funções dadas e a
  * senha de demonstração, sem trocar no primeiro acesso. Precisa estar logado
  * como administrador. Devolve o id da pessoa.

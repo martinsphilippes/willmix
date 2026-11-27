@@ -26,7 +26,7 @@ A tela fica em **Configurações → Formas de pagamento do cliente** (`/app/set
 
 ## 2. No pedido (seção "Pagamento do cliente")
 
-A seção fica em `/app/orders/<id>#customer-payment`, logo abaixo de "Venda ao cliente".
+A seção fica em `/app/orders/<id>#customer-payment`, logo abaixo de "Venda ao cliente". Desde 27/11/2026 (dono), as duas ficam recolhidas na lateral direita do pedido, sem fixar na rolagem; o pagamento abre sozinho na volta das ações dele (`?payment=`, `?charges=`, `?charge=`) e pela âncora. Quem vê é o mesmo (`customerPaymentVisible`, o teste do `customerPaymentView`).
 
 - **Escolher**: quem tem a ação "Gravar a venda ao cliente" (`sale.record`) escolhe três coisas:
   - a forma de pagamento;

@@ -6,6 +6,8 @@ import {
   gotoProduct,
   importAndClose,
   login,
+  openOrder,
+  openOrderFold,
   pdf,
   png,
   selectAndOpenSupplierRequest,
@@ -35,7 +37,7 @@ async function expectOrderBlocks(page: Page, orderUrl: string) {
     { width: 390, height: 844 },
   ]) {
     await page.setViewportSize(size);
-    await page.goto(orderUrl);
+    await openOrder(page, orderUrl);
     const layout = await page.evaluate(() => {
       const stages = document.querySelector(
         '[data-order-section="order-stages"]',
@@ -43,14 +45,19 @@ async function expectOrderBlocks(page: Page, orderUrl: string) {
       const docs = document.querySelector(
         '[data-order-section="order-documents"]',
       );
+      const rest = document.querySelector("[data-order-rest]");
       const cert = document.getElementById("certification");
       const flow = document.querySelector("[data-order-import-flow]");
       const main = document.querySelector("main");
-      if (!stages || !docs || !cert || !flow || !main) return null;
+      if (!stages || !docs || !rest || !cert || !flow || !main) return null;
       const follows = (a: Element, b: Element) =>
         !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      // A tela vai até os Marcos (dono, 27/11/2026); Documentos abre o
+      // restante, logo depois.
       return {
-        docsRightAfterStages: stages.nextElementSibling === docs,
+        docsRightAfterStages:
+          follows(stages, rest) &&
+          rest.querySelector("[data-order-section]") === docs,
         certAfterDocs: follows(docs, cert),
         flowAfterCert: follows(cert, flow),
         // Nenhuma seção de conteúdo depois do Embarque e desembaraço.
@@ -88,7 +95,7 @@ async function expectOrderBlocks(page: Page, orderUrl: string) {
  * "Visualizado" e não confirma; confirmar a leitura é o botão.
  */
 async function expectDocumentAck(page: Page, orderUrl: string) {
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   const docs = page.locator('[data-order-section="order-documents"]');
   const href = await docs
     .locator("[data-order-document]", { has: page.locator("form button") })
@@ -97,7 +104,7 @@ async function expectDocumentAck(page: Page, orderUrl: string) {
     .getAttribute("href");
   expect(href).toBeTruthy();
   expect((await page.request.get(href!)).status()).toBe(200);
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   const row = docs.locator("[data-order-document]", {
     has: page.locator(`a[href="${href}"]`),
   });
@@ -399,7 +406,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.goto("/app/tasks");
   // (A lista pagina no navegador: as linhas das outras páginas também contam.)
   await expect(page.locator(certFeaturedTask)).toHaveCount(0);
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   // Transportador: o pedido só designa sozinho quando há exatamente um ativo
   // no cadastro. Outros testes cadastram mais transportadores (que nascem
   // ativos), então a Wellmix designa aqui, em Parceiros do pedido.
@@ -410,7 +417,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await carrierRow.locator("select").selectOption({ label: "Trans Rodo" });
   await carrierRow.locator("button[type=submit]").click();
   await page.waitForLoadState("networkidle");
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(carrierRow.locator("td").nth(1)).toHaveText("Trans Rodo");
   // A solicitação fica presa ao pedido: o botão sai e a linha diz que já
   // virou pedido.
@@ -427,8 +434,12 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // Venda ao cliente por pedido e por produto (dono, 14/11/2026;
   // docs/ORDER_SALE.md): o administrador grava o preço de cada produto no
   // detalhe do pedido; o total do pedido é a soma.
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
+  // Na lateral direita, recolhida (dono, 27/11/2026): um clique abre.
   const saleCard = page.locator('[data-order-section="order-sale"]');
+  await expect(saleCard).not.toHaveAttribute("open", "");
+  await expect(saleCard.locator('[data-order-sale-form="edit"]')).toBeHidden();
+  await openOrderFold(page, "order-sale");
   await expect(saleCard.locator('[data-order-sale-form="edit"]')).toBeVisible();
   // Caixas, cubagem e containers no topo do card (dono, 24/11/2026). Sem o
   // Sankhya ligado (modo memória), o preço continua digitado.
@@ -451,6 +462,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   );
   await saleCard.locator("[data-order-sale-save]").click();
   await page.waitForURL(/[?&]sale=saved/);
+  // Na volta da gravação o quadro já vem aberto.
   await expect(
     page.locator('[data-order-section="order-sale"] [data-order-sale-total]'),
   ).toBeVisible();
@@ -498,11 +510,16 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // Forma de pagamento do cliente (dono, 15/11/2026;
   // docs/CUSTOMER_PAYMENT.md): no pedido, a forma, o vendedor e o NUNOTA da
   // venda no Sankhya; as parcelas aparecem com o evento de cada uma.
-  await page.goto(orderPath);
+  await openOrder(page, orderPath);
   const customerPayment = page.locator(
     '[data-order-section="customer-payment"]',
   );
   await expect(customerPayment).toBeVisible();
+  // Abaixo da venda, na lateral direita, recolhido (dono, 27/11/2026).
+  await expect(
+    page.locator("[data-order-aside] [data-order-aside-fold]"),
+  ).toHaveCount(2);
+  await openOrderFold(page, "customer-payment");
   const choosePlan = customerPayment.locator("[data-customer-payment-choose]");
   await choosePlan
     .locator('select[name="planId"]')
@@ -550,7 +567,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.locator("[data-desk-queue=ncm] [data-desk-row]").first(),
   ).toBeVisible();
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   const ncmGate = page.locator("[data-requirement-gate=ncm_validated]");
   await expect(ncmGate).toBeVisible();
   const taxUrl = (await ncmGate.getAttribute("href"))!;
@@ -599,7 +616,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     page.waitForURL(/[?&]saved=1/),
     page.locator("#product-form button[type=submit]").last().click(),
   ]);
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(requirementRow(page, /^NCM validado/)).toContainText(
     /Concluído/,
   );
@@ -609,13 +626,13 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
 
   // 6. As raias, em paralelo. A arte espera a faca e a foto em alta; a arte
   // final espera a validação e o certificado; a validação espera a arte.
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(requirementRow(page, /Arte final com o selo/)).toContainText(
     /Pendente/,
   );
   // 6a. Fornecedor: faca, foto em alta, MOQ e prazo.
   await login(page, "supplier.a@china.com");
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(requirementRow(page, /Faca \(die cut\)/).first()).toBeVisible();
   // Na seção ele vê só a faca, a foto em alta e o prazo (dono, 13/11/2026).
   // Sem prazo na resposta à solicitação, o campo do prazo vem vazio.
@@ -755,7 +772,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await page.unroute(/\/die-cut/, slowSave);
   await expect(termsValues).toHaveText("2,000 件 · 45 天");
   // Nada mais dele na Preparação: o pedido mostra os quatro concluídos.
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(page.locator("[data-die-cut-link]")).toBeVisible();
   await expect(requirementRow(page, /Faca \(die cut\)/).first()).toContainText(
     /doc\.pdf/,
@@ -768,7 +785,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // arte concluído. Antes da aprovação do Comprador, a agência não tem o
   // que enviar; o Comprador (aqui o administrador) aprova o material.
   await login(page, "agencia@design.com");
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(page.locator("form:has(input[name=requirementId])")).toHaveCount(
     0,
   );
@@ -781,7 +798,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // diz o que ela aguarda.
   await login(page, "agencia@design.com");
   await fillMyRequirements(page, orderUrl, {}, 1);
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(requirementRow(page, /^Arte ·/)).toContainText(/Concluído/);
   await expect(
     requirementRow(page, /Arte final com o selo/).locator(
@@ -790,7 +807,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   ).toContainText(/Aguarda/);
   // 6c. A Wellmix devolve a arte com o motivo; a agência reenvia.
   await login(page, "admin@wellmix.com");
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   const review = requirementRow(page, /Validação da arte pela Wellmix/);
   // Quem valida abre a arte enviada na própria linha da validação.
   await expect(review.locator("[data-lane-inputs] a")).toHaveCount(1);
@@ -798,7 +815,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await review.locator("button[value=reject]").click();
   await page.waitForLoadState("networkidle");
   await login(page, "agencia@design.com");
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(requirementRow(page, /^Arte ·/)).toContainText(
     /Reprovado|Pendente/,
   );
@@ -873,10 +890,16 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.locator('[data-order-progress-block="order"]'),
   ).toHaveAttribute("aria-current", "step");
+  // As etapas do bloco ficam recolhidas até o clique no bloco (dono,
+  // 27/11/2026); outro clique recolhe.
+  await expect(page.locator("[data-order-progress-detail]")).toHaveCount(0);
+  await page.locator('[data-order-progress-block="order"]').click();
   await expect(
     // Fase 5g: as linhas do bloco são os marcos (o Contrato no bloco Pedido).
     page.locator('[data-order-progress-milestone="contract"]'),
   ).toBeVisible();
+  await page.locator('[data-order-progress-block="order"]').click();
+  await expect(page.locator("[data-order-progress-detail]")).toHaveCount(0);
   // Pedido → Arte (dono, 14/11/2026), o padrão da Certificação: só a lista,
   // uma linha por produto, sem os cartões dos pedidos embaixo. O "Resolver"
   // abre o produto no pedido no passo, onde a Wellmix valida a arte
@@ -939,7 +962,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
       String(rowsBefore - 1),
     );
   else await expect(artBadge).toHaveCount(0);
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(
     requirementRow(page, /Validação da arte pela Wellmix/),
   ).toContainText(/Concluído/);
@@ -947,7 +970,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // Certificação, o memorial e o selo (dono, 14/11/2026). O despachante não
   // envia nenhum deles.
   await login(page, "despachante@comex.com");
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(
     requirementRow(page, /^Certificado/).locator(
       "form:has(input[name=requirementId])",
@@ -1176,7 +1199,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
 
   // Assinado pelos dois: a produção espera o sinal (mapa, P12?/P12).
   await login(page, "admin@wellmix.com");
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(requirementRow(page, /^Sinal pago ao fornecedor/)).toContainText(
     /Pendente/,
   );
@@ -1191,7 +1214,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   await expect(
     page.locator(`[data-payable-row="${orderNumber}-1"]`),
   ).toBeVisible();
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(page.locator("[data-terms-text]")).toContainText(
     /30% na data do pedido \+ 70% 90 dias após a entrega/,
   );
@@ -1220,7 +1243,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     })
     .click();
   await page.waitForLoadState("networkidle");
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(page.locator('[data-installment="1"]')).toHaveAttribute(
     "data-status",
     "received",
@@ -1331,7 +1354,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   );
   expect(page.url()).toContain(`/app/flow/production/inspection/${inspId}`);
   await page.waitForLoadState("networkidle");
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(page.locator("[data-sku-item]").first()).toHaveAttribute(
     "data-sku-status",
     "approved",
@@ -1341,14 +1364,14 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   // (o administrador, responsável interno) e os itens do Embarque são do
   // armador designado: nenhuma tarefa dele aqui, nem o card do Embarque.
   await login(page, "operador@wellmix.com");
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(page.locator("[data-stage-mine-hint]")).toBeVisible();
   await expect(page.locator("[data-stage-mine-empty]")).toBeVisible();
   await expect(page.locator("[data-stage-row]")).toHaveCount(0);
   await expect(page.locator("[data-stage-card]")).toHaveCount(0);
   // O administrador continua com a linha do tempo inteira.
   await login(page, "admin@wellmix.com");
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(page.locator("[data-stage-mine-hint]")).toHaveCount(0);
   await expect(page.getByText(/Revisão necessária/)).toHaveCount(0);
   // Fase 5d: com a produção concluída, o marco Booking e logística abre
@@ -1547,7 +1570,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
 
   // 10. Embarque, desembaraço e transporte pelos parceiros do pedido.
   await login(page, "armador@maritima.com");
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   // A companhia marítima não vê o comparativo (tem as tarifas das outras);
   // vê só o botão de enviar a tabela de frete dela.
   await expect(page.locator("[data-tariff-box]")).toHaveCount(0);
@@ -1571,7 +1594,7 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
     .locator("button[type=submit]")
     .click();
   await page.waitForLoadState("networkidle");
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   const eta = page.locator('input[type=date][min="2026-10-15"][data-ready]');
   await eta.fill("2026-10-14");
   await expect(page.locator("[data-date-error]")).toBeVisible();
@@ -1633,14 +1656,14 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
   ]);
   await expect(page.locator("[data-receiving-unloading-row]")).toBeVisible();
   await expect(page.locator("[data-receiving-ric]")).toHaveCount(0);
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   // Fatura ativa (R24): com o BL conferido, o faturamento já tem vencimento.
   await expect(page.locator("[data-invoice-due]")).toBeVisible();
   await page
     .locator("[data-requirement-form=receipt_confirmed] button[type=submit]")
     .click();
   await page.waitForLoadState("networkidle");
-  await page.goto(orderUrl);
+  await openOrder(page, orderUrl);
   await expect(page.getByText(/Pedido encerrado/).first()).toBeVisible();
   // Recebimento (Fase E) e artes (Fase F) no pedido encerrado.
   await expect(page.locator("[data-receiving-card]")).toBeVisible();
