@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createUploadTokenAction } from "@/app/app/actions/uploads";
 import { uploadOne } from "@/components/direct-upload";
@@ -43,6 +43,16 @@ export function FileAutoInput({
   const [progress, setProgress] = useState<number | null>(null);
   const { pending } = useFormStatus();
   const busy = pending || progress !== null;
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Arquivo escolhido antes de a página ficar pronta (rede lenta, iPad na
+  // fábrica, máquina carregada): o onChange ainda não existia e nada subia.
+  // Pronta a página, a escolha que ficou no campo segue o caminho de sempre.
+  useEffect(() => {
+    const input = inputRef.current;
+    if (input?.files?.length)
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+  }, []);
 
   async function onChange(event: React.ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
@@ -125,6 +135,7 @@ export function FileAutoInput({
         )}
         <span aria-hidden>{text}</span>
         <input
+          ref={inputRef}
           name={name}
           type="file"
           accept={accept}
