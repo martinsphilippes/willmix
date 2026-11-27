@@ -117,7 +117,11 @@ async function approvedRequest() {
     needs: null,
     searchQuery: null,
   });
-  return request;
+  // "Necessita amostragem" (dono, 27/11/2026): os testes daqui passam pela
+  // amostra, então a Wellmix marca a consulta.
+  return getStore().update("supplier_requests", request.id, {
+    samplingNeed: "yes",
+  });
 }
 
 describe("regras da amostragem", () => {
@@ -127,6 +131,7 @@ describe("regras da amostragem", () => {
       decidedAt: "2026-11-12T10:00:00.000Z",
       updatedAt: "2026-11-12T11:00:00.000Z",
       sampling: null,
+      samplingNeed: "yes" as const,
     };
     expect(lib.samplingOf(base)).toMatchObject({
       status: "pending",
@@ -484,6 +489,7 @@ describe("de quem é a vez na cotação (dono, 24/11/2026)", () => {
       decidedAt: null,
       updatedAt: "2026-11-24T10:00:00.000Z",
       sampling: null,
+      samplingNeed: "yes" as const,
     };
     const turn = lib.supplierRequestTurn;
     expect(turn(base)).toEqual({ party: "supplier", step: "supplier_answer" });
@@ -599,5 +605,96 @@ describe("de quem é a vez na cotação (dono, 24/11/2026)", () => {
     ).get(approved.id)!;
     expect(validate.party).toBe("wellmix");
     expect(lib.supplierRequestTurn(submitted)?.step).toBe("sampling_validate");
+  });
+});
+
+describe("Necessita amostragem (dono, 27/11/2026)", () => {
+  const approved = {
+    status: "approved" as const,
+    decidedAt: "2026-11-27T10:00:00.000Z",
+    updatedAt: "2026-11-27T10:00:00.000Z",
+    createdAt: "2026-11-27T09:00:00.000Z",
+    negotiation: null,
+    sampling: null,
+  };
+  it("sem a marca (o padrão), não há amostragem e nada espera a amostra", () => {
+    expect(lib.samplingRequired(approved)).toBe(false);
+    expect(lib.samplingOf(approved)).toBeNull();
+    expect(lib.samplingFor({ ...approved, status: "open" })).toBeNull();
+    expect(lib.samplingApproved(approved)).toBe(true);
+    expect(lib.supplierRequestTurn(approved)).toBeNull();
+    const no = { ...approved, samplingNeed: "no" as const };
+    expect(lib.samplingApproved(no)).toBe(true);
+  });
+  it("marcada, a amostragem abre e trava até a amostra aprovada", () => {
+    const yes = { ...approved, samplingNeed: "yes" as const };
+    expect(lib.samplingRequired(yes)).toBe(true);
+    expect(lib.samplingOf(yes)).toMatchObject({ status: "pending" });
+    expect(lib.samplingApproved(yes)).toBe(false);
+    expect(lib.supplierRequestTurn(yes)).toEqual({
+      party: "supplier",
+      step: "sampling_send",
+    });
+  });
+  it("a de antes da marca segue pedindo só se a amostra já andou", () => {
+    const started = {
+      ...approved,
+      sampling: {
+        ...lib.openSampling(approved.decidedAt, "w1"),
+        status: "submitted" as const,
+      },
+    };
+    expect(lib.samplingRequired(started)).toBe(true);
+    expect(lib.samplingApproved(started)).toBe(false);
+    // A dispensada da cotação não pede.
+    expect(
+      lib.samplingRequired({
+        ...approved,
+        sampling: {
+          ...lib.openSampling(approved.decidedAt, "w1"),
+          status: "approved" as const,
+          skipped: true,
+        },
+      }),
+    ).toBe(false);
+  });
+  it("a aprovação sem a marca não abre a amostragem", async () => {
+    const request = await getStore().update(
+      "supplier_requests",
+      (await approvedRequest()).id,
+      { samplingNeed: null },
+    );
+    await svc.answerSupplierRequest(supplierA, request.id, {
+      canDo: "yes",
+      price: 1.1,
+      currency: "USD",
+      moq: 1000,
+      leadTimeDays: 30,
+      note: null,
+    });
+    const done = await svc.decideSupplierRequest(
+      admin,
+      request.id,
+      "approved",
+      null,
+    );
+    expect(done.sampling ?? null).toBeNull();
+    await expect(
+      sampling.addSamplingFile(supplierA, request.id, {
+        file: photo(),
+        uploadedFileId: null,
+      }),
+    ).rejects.toThrow("sampling_not_open");
+    // A Wellmix marca depois: a amostragem abre na hora, com o prazo.
+    const [marked] = await sampling.setSupplierRequestSamplingNeed(
+      admin,
+      request.id,
+      true,
+    );
+    expect(marked.samplingNeed).toBe("yes");
+    expect(marked.sampling).toMatchObject({ status: "pending", round: 1 });
+    await expect(
+      sampling.setSupplierRequestSamplingNeed(supplierA, request.id, false),
+    ).rejects.toThrow();
   });
 });

@@ -17,6 +17,7 @@ type Row = Pick<
   | "decidedAt"
   | "updatedAt"
   | "sampling"
+  | "samplingNeed"
 >;
 
 const FINAL = new Set(["approved", "declined", "cancelled"]);
@@ -31,7 +32,12 @@ const FINAL = new Set(["approved", "declined", "cancelled"]);
 export const requestClosed = (
   products: Pick<
     Row,
-    "status" | "orderId" | "decidedAt" | "updatedAt" | "sampling"
+    | "status"
+    | "orderId"
+    | "decidedAt"
+    | "updatedAt"
+    | "sampling"
+    | "samplingNeed"
   >[],
 ) =>
   products.length > 0 &&

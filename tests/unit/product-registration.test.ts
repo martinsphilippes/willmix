@@ -615,6 +615,10 @@ describe("tela Cadastrar produto", () => {
       needs: "Logo Wellmix no fundo",
       searchQuery: null,
     });
+    // "Necessita amostragem" (dono, 27/11/2026): marcada neste caso.
+    await getStore().update("supplier_requests", request.id, {
+      samplingNeed: "yes",
+    });
     await requests.answerSupplierRequest(supplierA, request.id, {
       canDo: "yes",
       price: 1.05,

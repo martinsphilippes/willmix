@@ -11,7 +11,11 @@ export async function approveSample(admin: User, requestId: string) {
   const { getStore } = await import("@/lib/db");
   const sampling = await import("@/lib/services/supplier-request-sampling");
   const store = getStore();
-  const request = (await store.get("supplier_requests", requestId))!;
+  // "Necessita amostragem" (dono, 27/11/2026): o padrão é desmarcado; o
+  // teste que passa pela amostra marca a consulta antes.
+  const request = await store.update("supplier_requests", requestId, {
+    samplingNeed: "yes",
+  });
   const suppliers = await store.list("users", {
     filter: { role: "supplier" },
   });
@@ -38,7 +42,10 @@ export async function approveQuoteSample(quoteId: string, responseId: string) {
   const { getStore } = await import("@/lib/db");
   const sampling = await import("@/lib/services/quote-sampling");
   const store = getStore();
-  const quote = (await store.get("purchase_quotes", quoteId))!;
+  // "Necessita amostragem" (dono, 27/11/2026): marcada antes de enviar.
+  const quote = await store.update("purchase_quotes", quoteId, {
+    samplingNeed: "yes",
+  });
   const response = (await store.get("purchase_quote_responses", responseId))!;
   const admin = (await store.list("users", { filter: { role: "admin" } }))[0];
   const suppliers = await store.list("users", {
