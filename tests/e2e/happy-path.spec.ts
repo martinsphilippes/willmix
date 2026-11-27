@@ -364,6 +364,13 @@ test("booking → seleção → solicitação ao fornecedor → produto → pedi
       .textContent()
   )?.match(/#(\d+)/)?.[1];
   expect(orderNumber).toBeTruthy();
+  // Sem a lista dos produtos abaixo do título (dono, 27/11/2026): o
+  // subtítulo do pedido só tem os selos; o produto fica na tabela de itens.
+  const orderSubtitle = page
+    .locator("h1", { hasText: `Pedido #${orderNumber}` })
+    .locator("xpath=following-sibling::div[1]");
+  await expect(orderSubtitle).toBeVisible();
+  await expect(orderSubtitle).not.toContainText(productName);
   await expect(
     // Fase 5e: o selo do pedido mostra o marco atual (não a etapa).
     page.getByText("1. Pedido novo").first(),
